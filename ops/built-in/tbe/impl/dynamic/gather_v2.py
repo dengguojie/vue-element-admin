@@ -24,122 +24,121 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from impl import constant_util as constant
 
-PARAMS_SIZE = 2 ** 31 - 1
-INDICES_NUM = 2 ** 31 - 1
-TILING_ARG_NUM = 32
-# 100K, caches input params data
-CACHE_UB_SIZE = 100 * 1024
-# reserved ub size
-RESERVED_UB_SIZE = 2 * 1024
 
-# data type of int32
-INT32 = "int32"
-# data type of int64
-INT64 = "int64"
-# one block size takes up 32b
-BLOCK_SIZE = 32
+class Constant:
+    """
+    The class for constant
+    """
+    PARAMS_SIZE = 2 ** 31 - 1
+    INDICES_NUM = 2 ** 31 - 1
+    TILING_ARG_NUM = 32
+    # 100K, caches input params data
+    CACHE_UB_SIZE = 100 * 1024
+    # reserved ub size
+    RESERVED_UB_SIZE = 2 * 1024
 
-# A. block tiling: indices tiling
-# paramsRowSize < 32
-# params is not cache in UB
-TILING_MODE_1 = 1
-# params is cache in UB
-TILING_MODE_4 = 4
-# params is cache in L1
-TILING_MODE_13 = 13
+    # A. block tiling: indices tiling
+    # paramsRowSize < 32
+    # params is not cache in UB
+    TILING_MODE_1 = 1
+    # params is cache in UB
+    TILING_MODE_4 = 4
+    # params is cache in L1
+    TILING_MODE_13 = 13
 
-# paramsRow is not 32B aligned
-TILING_MODE_2 = 2
-# one paramsRow of data can not store in half UB
-TILING_MODE_5 = 5
+    # paramsRow is not 32B aligned
+    TILING_MODE_2 = 2
+    # one paramsRow of data can not store in half UB
+    TILING_MODE_5 = 5
 
-# paramsRow is 32B aligned
-# params is not cache in UB or L1
-TILING_MODE_3 = 3
-# params is cache in UB
-TILING_MODE_6 = 6
-# params is not cache in UB or L1
-TILING_MODE_7 = 7
+    # paramsRow is 32B aligned
+    # params is not cache in UB or L1
+    TILING_MODE_3 = 3
+    # params is cache in UB
+    TILING_MODE_6 = 6
+    # params is not cache in UB or L1
+    TILING_MODE_7 = 7
 
-# B. block tiling: params_pre tiling
-# paramsRowSize < 32
-# params is not cache in UB
-TILING_MODE_8 = 8
-# params is not cache in UB
-TILING_MODE_9 = 9
+    # B. block tiling: params_pre tiling
+    # paramsRowSize < 32
+    # params is not cache in UB
+    TILING_MODE_8 = 8
+    # params is not cache in UB
+    TILING_MODE_9 = 9
 
-# paramsRow is 32B aligned
-# params is not cache in UB or L1
-TILING_MODE_10 = 10
-# params is cache in UB
-TILING_MODE_11 = 11
-# params is not cache in UB or L1
-TILING_MODE_12 = 12
+    # paramsRow is 32B aligned
+    # params is not cache in UB or L1
+    TILING_MODE_10 = 10
+    # params is cache in UB
+    TILING_MODE_11 = 11
+    # params is not cache in UB or L1
+    TILING_MODE_12 = 12
 
-# tiling_mode with batch_dims
-# 1.one params row size is smaller than 32B
-# 1.1 params is cached in UB
-TILING_MODE_20 = 20
-TILING_MODE_21 = 21
-TILING_MODE_22 = 22
-# 1.2 params is not cached in UB
-TILING_MODE_23 = 23
-TILING_MODE_24 = 24
-TILING_MODE_25 = 25
+    # tiling_mode with batch_dims
+    # 1.one params row size is smaller than 32B
+    # 1.1 params is cached in UB
+    TILING_MODE_20 = 20
+    TILING_MODE_21 = 21
+    TILING_MODE_22 = 22
+    # 1.2 params is not cached in UB
+    TILING_MODE_23 = 23
+    TILING_MODE_24 = 24
+    TILING_MODE_25 = 25
 
-# 2.one params row size is large than 32B and not align
-TILING_MODE_26 = 26
-TILING_MODE_27 = 27
-TILING_MODE_28 = 28
+    # 2.one params row size is large than 32B and not align
+    TILING_MODE_26 = 26
+    TILING_MODE_27 = 27
+    TILING_MODE_28 = 28
 
-# 3.one params row size is align
-# 3.1 params is cached in UB
-TILING_MODE_29 = 29
-TILING_MODE_30 = 30
-TILING_MODE_31 = 31
-# 3.2 params is not cached in UB
-TILING_MODE_32 = 32
-TILING_MODE_33 = 33
-TILING_MODE_34 = 34
+    # 3.one params row size is align
+    # 3.1 params is cached in UB
+    TILING_MODE_29 = 29
+    TILING_MODE_30 = 30
+    TILING_MODE_31 = 31
+    # 3.2 params is not cached in UB
+    TILING_MODE_32 = 32
+    TILING_MODE_33 = 33
+    TILING_MODE_34 = 34
 
-# 4. large params row size
-TILING_MODE_35 = 35
-TILING_MODE_36 = 36
-TILING_MODE_37 = 37
+    # 4. large params row size
+    TILING_MODE_35 = 35
+    TILING_MODE_36 = 36
+    TILING_MODE_37 = 37
 
-# 5. small indices row size
-TILING_MODE_38 = 38
-TILING_MODE_39 = 39
+    # 5. small indices row size
+    TILING_MODE_38 = 38
+    TILING_MODE_39 = 39
 
-# 6. small params and indices row size
-TILING_MODE_40 = 40
-TILING_MODE_41 = 41
+    # 6. small params and indices row size
+    TILING_MODE_40 = 40
+    TILING_MODE_41 = 41
 
-# Aligned types for params row size
-MODE_LESS_THAN_32B = 0
-MODE_ALIGNED = 1
-MODE_MORE_THAN_32B = 2
-MODE_LARGE_PARAMS_ROW = 3
-MODE_SMALL_PARAMS_ROW = 4
+    # Aligned types for params row size
+    MODE_LESS_THAN_32B = 0
+    MODE_ALIGNED = 1
+    MODE_MORE_THAN_32B = 2
+    MODE_LARGE_PARAMS_ROW = 3
+    MODE_SMALL_PARAMS_ROW = 4
 
-# Cached types for params
-PARAMS_CACHED_UB = 0
-PARAMS_NOT_CACHED = 1
+    # Cached types for params
+    PARAMS_CACHED_UB = 0
+    PARAMS_NOT_CACHED = 1
 
-# Cached types for indices
-INDICES_CACHED_ALL = 0
-INDICES_CACHED_ONE_ROW = 1
-INDICES_LARGE_ROW = 2
-INDICES_SMALL_ROW = 3
+    # Cached types for indices
+    INDICES_CACHED_ALL = 0
+    INDICES_CACHED_ONE_ROW = 1
+    INDICES_LARGE_ROW = 2
+    INDICES_SMALL_ROW = 3
 
-TYPE_LEN_DICT = {"float16": 2, "float32": 4, "int8": 1, "uint8": 1,
-                 "int16": 2, "uint16": 2, "int32": 4, "uint32": 4,
-                 "int64": 8, "uint64": 8}
+    TYPE_LEN_DICT = {"float16": 2, "float32": 4, "int8": 1, "uint8": 1,
+                     "int16": 2, "uint16": 2, "int32": 4, "uint32": 4,
+                     "int64": 8, "uint64": 8}
 
 
 # pylint: disable=too-many-public-methods,invalid-name,too-many-arguments,too-many-locals
-# pylint: disable=too-many-lines,too-many-instance-attributes,too-many-statements
+# pylint: disable=too-many-lines,too-many-instance-attributes,too-many-statements,unused-argument
 def ceil_value(value, factor):
     """
     if not divide exactly then plus 1
@@ -249,13 +248,14 @@ class GatherV2():
         if self.y_dtype == "bool":
             self.y_dtype = "int8"
 
-        self.tiling_dtype = INT64
+        self.tiling_dtype = constant.DATA_TYPE_INT64
         dtype_list = ("int8", "int16", "int32", "int64", "uint8", "uint16",
                       "uint32", "uint64", "float16", "float32")
         indices_support_dtype_list = ("int32", "int64")
         para_check.check_dtype(self.params_dtype, dtype_list, param_name="x")
         para_check.check_dtype(self.indices_dtype, indices_support_dtype_list, param_name="indices")
-        para_check.check_dtype(self.axis_dtype, (INT32, INT64), param_name="axis")
+        para_check.check_dtype(self.axis_dtype,
+                               (constant.DATA_TYPE_INT32, constant.DATA_TYPE_INT64), param_name="axis")
         if self.y_dtype != self.params_dtype:
             error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "y", "x",
                                                                   self.y_dtype, self.params_dtype)
@@ -269,13 +269,13 @@ class GatherV2():
         self.kernel_name = kernel_name
 
         self.axis_shape = (1,)
-        self.x_shape = (PARAMS_SIZE,)
-        self.indices_shape = (INDICES_NUM,)
-        self.y_shape = (PARAMS_SIZE,)
+        self.x_shape = (Constant.PARAMS_SIZE,)
+        self.indices_shape = (Constant.INDICES_NUM,)
+        self.y_shape = (Constant.PARAMS_SIZE,)
 
-        self.params_dsize = TYPE_LEN_DICT.get(self.params_dtype)
-        self.indices_dsize = TYPE_LEN_DICT.get(self.indices_dtype)
-        self.block_elem = BLOCK_SIZE // self.params_dsize
+        self.params_dsize = Constant.TYPE_LEN_DICT.get(self.params_dtype)
+        self.indices_dsize = Constant.TYPE_LEN_DICT.get(self.indices_dtype)
+        self.block_elem = constant.BLOCK_SIZE // self.params_dsize
 
         self.x = None
         self.indices = None
@@ -317,9 +317,9 @@ class GatherV2():
         self.params_batch_remaining = None
         self.is_remaining = 0
         self.buffers = {"params_ub": None, "indices_ub": None, "res_ub": None}
-        self.cached_types = {"cached_types_params": PARAMS_CACHED_UB,
-                             "cached_types_indices": INDICES_CACHED_ALL,
-                             "aligned_types_params": MODE_LESS_THAN_32B}
+        self.cached_types = {"cached_types_params": Constant.PARAMS_CACHED_UB,
+                             "cached_types_indices": Constant.INDICES_CACHED_ALL,
+                             "aligned_types_params": Constant.MODE_LESS_THAN_32B}
 
     def get_tiling_args(self, tiling_ub):
         """
@@ -406,15 +406,15 @@ class GatherV2():
         """
         half_ub_size = (self.ub_size - 2 * 1024) // 2
         quarter_ub_size = (self.ub_size - 2 * 1024) // 4
-        remain_half_ub_size = (self.ub_size - CACHE_UB_SIZE - RESERVED_UB_SIZE) // 2
+        remain_half_ub_size = (self.ub_size - Constant.CACHE_UB_SIZE - Constant.RESERVED_UB_SIZE) // 2
         tik_instance = self.tik_instance
 
         # get tiling data
-        tiling_ub = tik_instance.Tensor(self.tiling_dtype, (TILING_ARG_NUM,), name="tiling_ub",
+        tiling_ub = tik_instance.Tensor(self.tiling_dtype, (Constant.TILING_ARG_NUM,), name="tiling_ub",
                                         scope=tik.scope_ubuf)
-        tik_instance.data_move(tiling_ub, self.tiling_gm, 0,
-                               1, ceil_value(TILING_ARG_NUM * TYPE_LEN_DICT.get(self.tiling_dtype), BLOCK_SIZE),
-                               0, 0)
+        tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1,
+                               ceil_value(Constant.TILING_ARG_NUM * Constant.TYPE_LEN_DICT.get(self.tiling_dtype),
+                                          constant.BLOCK_SIZE), 0, 0)
 
         tiling_mode = self.tik_instance.Scalar(dtype=self.tiling_dtype, name="tiling_mode")
         tiling_mode.set_as(tiling_ub[0])
@@ -424,135 +424,157 @@ class GatherV2():
 
         with tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_id:
             with tik_instance.if_scope(block_id < self.need_core_num):
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_1):
+                with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_1):
                     with tik_instance.new_stmt_scope():
                         self.compute_mode_1(half_ub_size, quarter_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_2):
+                with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_2):
                     with tik_instance.new_stmt_scope():
                         self.compute_mode_2(half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_3):
+                with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_3):
                     with tik_instance.new_stmt_scope():
                         self.compute_mode_3(half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_4):
+                with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_4):
                     with tik_instance.new_stmt_scope():
                         self.compute_mode_4(remain_half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_5):
+                with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_5):
                     with tik_instance.new_stmt_scope():
                         self.compute_mode_5(half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_6):
+                with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_6):
                     with tik_instance.new_stmt_scope():
                         self.compute_mode_6(remain_half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_7):
+                with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_7):
                     with tik_instance.new_stmt_scope():
                         self.compute_mode_7(half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_8):
+                with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_8):
                     with tik_instance.new_stmt_scope():
                         self.compute_mode_8(remain_half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_9):
+                with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_9):
                     with tik_instance.new_stmt_scope():
                         self.compute_mode_9(half_ub_size, quarter_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_10):
+                with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_10):
                     with tik_instance.new_stmt_scope():
                         self.compute_mode_10(remain_half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_11):
+                with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_11):
                     with tik_instance.new_stmt_scope():
                         self.compute_mode_11(half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_12):
+                with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_12):
                     with tik_instance.new_stmt_scope():
                         self.compute_mode_12(half_ub_size, block_id)
-                with tik_instance.if_scope(tiling_mode == TILING_MODE_13):
+                with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_13):
                     with tik_instance.new_stmt_scope():
                         self.compute_mode_13(half_ub_size, block_id)
 
                 if self.batch_dims != 0:
                     # Tiling mode with batch_dims
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_20):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_20):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_CACHED_UB, INDICES_CACHED_ALL)
+                            self._set_mode_paras(Constant.MODE_LESS_THAN_32B, Constant.PARAMS_CACHED_UB,
+                                                 Constant.INDICES_CACHED_ALL)
                             self.compute_with_batch_dims(remain_half_ub_size, block_id)
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_21):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_21):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_CACHED_UB, INDICES_CACHED_ONE_ROW)
+                            self._set_mode_paras(Constant.MODE_LESS_THAN_32B, Constant.PARAMS_CACHED_UB,
+                                                 Constant.INDICES_CACHED_ONE_ROW)
                             self.compute_with_batch_dims(remain_half_ub_size, block_id)
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_22):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_22):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_CACHED_UB, INDICES_LARGE_ROW)
+                            self._set_mode_paras(Constant.MODE_LESS_THAN_32B, Constant.PARAMS_CACHED_UB,
+                                                 Constant.INDICES_LARGE_ROW)
                             self.compute_with_batch_dims(remain_half_ub_size, block_id)
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_23):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_23):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_NOT_CACHED, INDICES_CACHED_ALL)
+                            self._set_mode_paras(Constant.MODE_LESS_THAN_32B, Constant.PARAMS_NOT_CACHED,
+                                                 Constant.INDICES_CACHED_ALL)
                             self.compute_with_batch_dims(half_ub_size, block_id)
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_24):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_24):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_NOT_CACHED, INDICES_CACHED_ONE_ROW)
+                            self._set_mode_paras(Constant.MODE_LESS_THAN_32B, Constant.PARAMS_NOT_CACHED,
+                                                 Constant.INDICES_CACHED_ONE_ROW)
                             self.compute_with_batch_dims(half_ub_size, block_id)
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_25):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_25):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_NOT_CACHED, INDICES_LARGE_ROW)
+                            self._set_mode_paras(Constant.MODE_LESS_THAN_32B, Constant.PARAMS_NOT_CACHED,
+                                                 Constant.INDICES_LARGE_ROW)
                             self.compute_with_batch_dims(half_ub_size, block_id)
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_26):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_26):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_MORE_THAN_32B, PARAMS_NOT_CACHED, INDICES_CACHED_ALL)
+                            self._set_mode_paras(Constant.MODE_MORE_THAN_32B, Constant.PARAMS_NOT_CACHED,
+                                                 Constant.INDICES_CACHED_ALL)
                             self.compute_with_batch_dims(half_ub_size, block_id)
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_27):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_27):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_MORE_THAN_32B, PARAMS_NOT_CACHED, INDICES_CACHED_ONE_ROW)
+                            self._set_mode_paras(Constant.MODE_MORE_THAN_32B, Constant.PARAMS_NOT_CACHED,
+                                                 Constant.INDICES_CACHED_ONE_ROW)
                             self.compute_with_batch_dims(half_ub_size, block_id)
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_28):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_28):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_MORE_THAN_32B, PARAMS_NOT_CACHED, INDICES_LARGE_ROW)
+                            self._set_mode_paras(Constant.MODE_MORE_THAN_32B, Constant.PARAMS_NOT_CACHED,
+                                                 Constant.INDICES_LARGE_ROW)
                             self.compute_with_batch_dims(half_ub_size, block_id)
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_29):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_29):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_ALIGNED, PARAMS_CACHED_UB, INDICES_CACHED_ALL)
+                            self._set_mode_paras(Constant.MODE_ALIGNED, Constant.PARAMS_CACHED_UB,
+                                                 Constant.INDICES_CACHED_ALL)
                             self.compute_with_batch_dims(remain_half_ub_size, block_id)
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_30):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_30):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_ALIGNED, PARAMS_CACHED_UB, INDICES_CACHED_ONE_ROW)
+                            self._set_mode_paras(Constant.MODE_ALIGNED, Constant.PARAMS_CACHED_UB,
+                                                 Constant.INDICES_CACHED_ONE_ROW)
                             self.compute_with_batch_dims(remain_half_ub_size, block_id)
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_31):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_31):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_ALIGNED, PARAMS_CACHED_UB, INDICES_LARGE_ROW)
+                            self._set_mode_paras(Constant.MODE_ALIGNED, Constant.PARAMS_CACHED_UB,
+                                                 Constant.INDICES_LARGE_ROW)
                             self.compute_with_batch_dims(remain_half_ub_size, block_id)
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_32):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_32):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_ALIGNED, PARAMS_NOT_CACHED, INDICES_CACHED_ALL)
+                            self._set_mode_paras(Constant.MODE_ALIGNED, Constant.PARAMS_NOT_CACHED,
+                                                 Constant.INDICES_CACHED_ALL)
                             self.compute_with_batch_dims(half_ub_size, block_id)
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_33):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_33):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_ALIGNED, PARAMS_NOT_CACHED, INDICES_CACHED_ONE_ROW)
+                            self._set_mode_paras(Constant.MODE_ALIGNED, Constant.PARAMS_NOT_CACHED,
+                                                 Constant.INDICES_CACHED_ONE_ROW)
                             self.compute_with_batch_dims(half_ub_size, block_id)
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_34):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_34):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_ALIGNED, PARAMS_NOT_CACHED, INDICES_LARGE_ROW)
+                            self._set_mode_paras(Constant.MODE_ALIGNED, Constant.PARAMS_NOT_CACHED,
+                                                 Constant.INDICES_LARGE_ROW)
                             self.compute_with_batch_dims(half_ub_size, block_id)
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_35):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_35):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_LARGE_PARAMS_ROW, PARAMS_NOT_CACHED, INDICES_CACHED_ALL)
+                            self._set_mode_paras(Constant.MODE_LARGE_PARAMS_ROW, Constant.PARAMS_NOT_CACHED,
+                                                 Constant.INDICES_CACHED_ALL)
                             self.compute_with_batch_dims(half_ub_size, block_id)
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_36):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_36):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_LARGE_PARAMS_ROW, PARAMS_NOT_CACHED, INDICES_CACHED_ONE_ROW)
+                            self._set_mode_paras(Constant.MODE_LARGE_PARAMS_ROW, Constant.PARAMS_NOT_CACHED,
+                                                 Constant.INDICES_CACHED_ONE_ROW)
                             self.compute_with_batch_dims(half_ub_size, block_id)
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_37):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_37):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_LARGE_PARAMS_ROW, PARAMS_NOT_CACHED, INDICES_LARGE_ROW)
+                            self._set_mode_paras(Constant.MODE_LARGE_PARAMS_ROW, Constant.PARAMS_NOT_CACHED,
+                                                 Constant.INDICES_LARGE_ROW)
                             self.compute_with_batch_dims(half_ub_size, block_id)
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_38):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_38):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_CACHED_UB, INDICES_SMALL_ROW)
+                            self._set_mode_paras(Constant.MODE_LESS_THAN_32B, Constant.PARAMS_CACHED_UB,
+                                                 Constant.INDICES_SMALL_ROW)
                             self.compute_with_batch_dims(remain_half_ub_size, block_id)
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_39):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_39):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_LESS_THAN_32B, PARAMS_NOT_CACHED, INDICES_SMALL_ROW)
+                            self._set_mode_paras(Constant.MODE_LESS_THAN_32B, Constant.PARAMS_NOT_CACHED,
+                                                 Constant.INDICES_SMALL_ROW)
                             self.compute_with_batch_dims(half_ub_size, block_id)
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_40):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_40):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_SMALL_PARAMS_ROW, PARAMS_CACHED_UB, INDICES_CACHED_ONE_ROW)
+                            self._set_mode_paras(Constant.MODE_SMALL_PARAMS_ROW, Constant.PARAMS_CACHED_UB,
+                                                 Constant.INDICES_CACHED_ONE_ROW)
                             self.compute_with_batch_dims(remain_half_ub_size, block_id)
-                    with tik_instance.if_scope(tiling_mode == TILING_MODE_41):
+                    with tik_instance.if_scope(tiling_mode == Constant.TILING_MODE_41):
                         with tik_instance.new_stmt_scope():
-                            self._set_mode_paras(MODE_SMALL_PARAMS_ROW, PARAMS_NOT_CACHED, INDICES_CACHED_ONE_ROW)
+                            self._set_mode_paras(Constant.MODE_SMALL_PARAMS_ROW, Constant.PARAMS_NOT_CACHED,
+                                                 Constant.INDICES_CACHED_ONE_ROW)
                             self.compute_with_batch_dims(half_ub_size, block_id)
 
     def compute_mode_1(self, half_ub_size, quarter_ub_size, block_id):
@@ -571,9 +593,11 @@ class GatherV2():
         tik_instance = self.tik_instance
         indices_ub = tik_instance.Tensor(self.indices_dtype, ((half_ub_size + 256) // self.indices_dsize,),
                                          name="indices_ub", scope=tik.scope_ubuf)
-        res_ub = tik_instance.Tensor(self.params_dtype, ((quarter_ub_size + BLOCK_SIZE) // self.params_dsize,),
+        res_ub = tik_instance.Tensor(self.params_dtype,
+                                     ((quarter_ub_size + constant.BLOCK_SIZE) // self.params_dsize,),
                                      name="res_ub", scope=tik.scope_ubuf)
-        block_ub = tik_instance.Tensor(self.params_dtype, ((quarter_ub_size + BLOCK_SIZE) // self.params_dsize,),
+        block_ub = tik_instance.Tensor(self.params_dtype,
+                                       ((quarter_ub_size + constant.BLOCK_SIZE) // self.params_dsize,),
                                        name="block_ub", scope=tik.scope_ubuf)
 
         with tik_instance.for_range(0, self.params_pre) as pre_i:
@@ -583,7 +607,8 @@ class GatherV2():
                 indices_num_offset = block_id * self.indices_num_each_core + indices_loop_i * self.indices_row_num_once
                 # move indices data from gm to ub
                 tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1,
-                                       ceil_value(self.indices_row_num_once * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                       ceil_value(self.indices_row_num_once * self.indices_dsize,
+                                                  constant.BLOCK_SIZE), 0, 0)
 
                 with tik_instance.if_scope(self.inner_loop_num > 0):
                     with tik_instance.for_range(0, self.inner_loop_num) as inner_loop_i:
@@ -602,7 +627,8 @@ class GatherV2():
                                      self.indices_loop_num * self.indices_row_num_once
                 # copy indices data from gm to ub
                 tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1,
-                                       ceil_value(self.indices_row_num_last * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                       ceil_value(self.indices_row_num_last * self.indices_dsize,
+                                                  constant.BLOCK_SIZE), 0, 0)
 
                 with tik_instance.if_scope(self.inner_loop_num_last > 0):
                     with tik_instance.for_range(0, self.inner_loop_num_last) as inner_loop_i:
@@ -646,7 +672,7 @@ class GatherV2():
         res_ub_to_gm_loop_num = (row_num_last * self.params_row +
                                  res_ub_to_gm_per_loop_num - 1) // res_ub_to_gm_per_loop_num
         # elements num in block_ub
-        block_per_loop_num = quarter_ub_size / BLOCK_SIZE
+        block_per_loop_num = quarter_ub_size / constant.BLOCK_SIZE
 
         res_to_gm_loop_num = tik_instance.Scalar(dtype=self.tiling_dtype, name="res_to_gm_loop_num")
         row_num_last_remaining = tik_instance.Scalar(dtype=self.tiling_dtype, name="row_num_last_remaining")
@@ -663,7 +689,8 @@ class GatherV2():
             # loop num from x_src to block_ub
             x_to_block_loop_num = row_num_last_remaining // block_per_loop_num
             # compute output offset of every loop
-            burst_len_res = ceil_value(row_num_last_remaining * self.params_row * self.params_dsize, BLOCK_SIZE)
+            burst_len_res = ceil_value(row_num_last_remaining * self.params_row * self.params_dsize,
+                                       constant.BLOCK_SIZE)
             output_offset = (pre_i * self.indices_num + indices_num_offset + inner_indices_offset) * self.params_row \
                             + row_g * (row_num_last // res_to_gm_loop_num) * self.params_row
 
@@ -740,9 +767,10 @@ class GatherV2():
         indices_num_offset = self.need_core_num * self.indices_num_each_core
         # move indices data to ub from gm
         tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1,
-                               ceil_value(self.indices_num_remaining * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                               ceil_value(self.indices_num_remaining * self.indices_dsize, constant.BLOCK_SIZE), 0, 0)
 
-        burst_len_res = ceil_value(self.indices_num_remaining * self.params_row * self.params_dsize, BLOCK_SIZE)
+        burst_len_res = ceil_value(self.indices_num_remaining * self.params_row * self.params_dsize,
+                                   constant.BLOCK_SIZE)
         output_offset = (pre_i * self.indices_num + indices_num_offset) * self.params_row
 
         with tik_instance.for_range(0, self.indices_num_remaining, thread_num=1) as row_i:
@@ -779,7 +807,7 @@ class GatherV2():
         tik_instance = self.tik_instance
         indices_ub = tik_instance.Tensor(self.indices_dtype, ((half_ub_size + 256) // self.indices_dsize,),
                                          name="indices_ub", scope=tik.scope_ubuf)
-        res_ub = tik_instance.Tensor(self.params_dtype, ((half_ub_size + BLOCK_SIZE) // self.params_dsize,),
+        res_ub = tik_instance.Tensor(self.params_dtype, ((half_ub_size + constant.BLOCK_SIZE) // self.params_dsize,),
                                      name="res_ub", scope=tik.scope_ubuf)
         x_cbuf = tik_instance.Tensor(self.params_dtype, (self.l1_size // self.params_dsize,),
                                      name="x_l1", scope=tik.scope_cbuf)
@@ -794,7 +822,8 @@ class GatherV2():
                 indices_num_offset = block_id * self.indices_num_each_core + indices_loop_i * self.indices_row_num_once
                 # move indices data from gm to ub
                 tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1,
-                                       ceil_value(self.indices_row_num_once * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                       ceil_value(self.indices_row_num_once * self.indices_dsize,
+                                                  constant.BLOCK_SIZE), 0, 0)
 
                 with tik_instance.if_scope(self.inner_loop_num > 0):
                     self.process_loop_mode_13(self.inner_loop_num, indices_num_offset, pre_i,
@@ -811,7 +840,8 @@ class GatherV2():
                                      self.indices_loop_num * self.indices_row_num_once
                 # copy indices data from gm to ub
                 tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1,
-                                       ceil_value(self.indices_row_num_last * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                       ceil_value(self.indices_row_num_last * self.indices_dsize,
+                                                  constant.BLOCK_SIZE), 0, 0)
 
                 with tik_instance.if_scope(self.inner_loop_num_last > 0):
                     self.process_loop_mode_13(self.inner_loop_num_last, indices_num_offset, pre_i,
@@ -843,7 +873,7 @@ class GatherV2():
         None
         """
         tik_instance = self.tik_instance
-        burst_len_res = ceil_value(self.row_num_once_ub * self.params_row * self.params_dsize, BLOCK_SIZE)
+        burst_len_res = ceil_value(self.row_num_once_ub * self.params_row * self.params_dsize, constant.BLOCK_SIZE)
 
         with tik_instance.for_range(0, loop_num) as inner_loop_i:
             inner_indices_offset = inner_loop_i * self.row_num_once_ub
@@ -890,7 +920,7 @@ class GatherV2():
         None
         """
         tik_instance = self.tik_instance
-        burst_len_res = ceil_value(row_num_last * self.params_row * self.params_dsize, BLOCK_SIZE)
+        burst_len_res = ceil_value(row_num_last * self.params_row * self.params_dsize, constant.BLOCK_SIZE)
         output_offset = (pre_i * self.indices_num + indices_num_offset + inner_indices_offset) * self.params_row
 
         with tik_instance.for_range(0, row_num_last, thread_num=2) as row_i:
@@ -944,9 +974,10 @@ class GatherV2():
         indices_num_offset = self.need_core_num * self.indices_num_each_core
         # move indices data to ub from gm
         tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1,
-                               ceil_value(self.indices_num_remaining * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                               ceil_value(self.indices_num_remaining * self.indices_dsize, constant.BLOCK_SIZE), 0, 0)
 
-        burst_len_res = ceil_value(self.indices_num_remaining * self.params_row * self.params_dsize, BLOCK_SIZE)
+        burst_len_res = ceil_value(self.indices_num_remaining * self.params_row * self.params_dsize,
+                                   constant.BLOCK_SIZE)
         output_offset = (pre_i * self.indices_num + indices_num_offset) * self.params_row
 
         with tik_instance.for_range(0, self.indices_num_remaining, thread_num=1) as row_i:
@@ -985,9 +1016,9 @@ class GatherV2():
         tik_instance = self.tik_instance
         indices_ub = tik_instance.Tensor(self.indices_dtype, ((half_ub_size + 256) // self.indices_dsize,),
                                          name="indices_ub", scope=tik.scope_ubuf)
-        res_ub = tik_instance.Tensor(self.params_dtype, ((half_ub_size + BLOCK_SIZE) // self.params_dsize,),
+        res_ub = tik_instance.Tensor(self.params_dtype, ((half_ub_size + constant.BLOCK_SIZE) // self.params_dsize,),
                                      name="res_ub", scope=tik.scope_ubuf)
-        x_ub = tik_instance.Tensor(self.params_dtype, (CACHE_UB_SIZE // self.params_dsize,),
+        x_ub = tik_instance.Tensor(self.params_dtype, (Constant.CACHE_UB_SIZE // self.params_dsize,),
                                    name="x_ub", scope=tik.scope_ubuf)
 
         # cache params data in UB from gm
@@ -1000,7 +1031,8 @@ class GatherV2():
                 indices_num_offset = block_id * self.indices_num_each_core + indices_loop_i * self.indices_row_num_once
                 # move indices data from gm to ub
                 tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1,
-                                       ceil_value(self.indices_row_num_once * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                       ceil_value(self.indices_row_num_once * self.indices_dsize,
+                                                  constant.BLOCK_SIZE), 0, 0)
 
                 with tik_instance.if_scope(self.inner_loop_num > 0):
                     self.process_loop_mode_4(self.inner_loop_num, indices_num_offset, pre_i, indices_ub, res_ub, x_ub)
@@ -1016,7 +1048,8 @@ class GatherV2():
                                      self.indices_loop_num * self.indices_row_num_once
                 # copy indices data from gm to ub
                 tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1,
-                                       ceil_value(self.indices_row_num_last * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                       ceil_value(self.indices_row_num_last * self.indices_dsize,
+                                                  constant.BLOCK_SIZE), 0, 0)
 
                 with tik_instance.if_scope(self.inner_loop_num_last > 0):
                     self.process_loop_mode_4(self.inner_loop_num_last, indices_num_offset, pre_i,
@@ -1048,7 +1081,7 @@ class GatherV2():
         None
         """
         tik_instance = self.tik_instance
-        burst_len_res = ceil_value(self.row_num_once_ub * self.params_row * self.params_dsize, BLOCK_SIZE)
+        burst_len_res = ceil_value(self.row_num_once_ub * self.params_row * self.params_dsize, constant.BLOCK_SIZE)
 
         with tik_instance.for_range(0, loop_num) as inner_loop_i:
             inner_indices_offset = inner_loop_i * self.row_num_once_ub
@@ -1088,7 +1121,7 @@ class GatherV2():
         None
         """
         tik_instance = self.tik_instance
-        burst_len_res = ceil_value(row_num_last * self.params_row * self.params_dsize, BLOCK_SIZE)
+        burst_len_res = ceil_value(row_num_last * self.params_row * self.params_dsize, constant.BLOCK_SIZE)
         output_offset = (pre_i * self.indices_num + indices_num_offset + inner_indices_offset) * self.params_row
 
         with tik_instance.for_range(0, row_num_last, thread_num=2) as row_i:
@@ -1135,9 +1168,10 @@ class GatherV2():
         indices_num_offset = self.need_core_num * self.indices_num_each_core
         # move indices data to ub from gm
         tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1,
-                               ceil_value(self.indices_num_remaining * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                               ceil_value(self.indices_num_remaining * self.indices_dsize, constant.BLOCK_SIZE), 0, 0)
 
-        burst_len_res = ceil_value(self.indices_num_remaining * self.params_row * self.params_dsize, BLOCK_SIZE)
+        burst_len_res = ceil_value(self.indices_num_remaining * self.params_row * self.params_dsize,
+                                   constant.BLOCK_SIZE)
         output_offset = (pre_i * self.indices_num + indices_num_offset) * self.params_row
 
         with tik_instance.for_range(0, self.indices_num_remaining, thread_num=1) as row_i:
@@ -1179,7 +1213,8 @@ class GatherV2():
             with tik_instance.for_range(0, self.indices_loop_num) as indices_loop_i:
                 indices_offset = block_id * self.indices_num_each_core + indices_loop_i * self.indices_row_num_once
                 tik_instance.data_move(indices_ub, self.indices[indices_offset], 0, 1,
-                                       ceil_value(self.indices_row_num_once * indices_dsize, BLOCK_SIZE), 0, 0)
+                                       ceil_value(self.indices_row_num_once * indices_dsize,
+                                                  constant.BLOCK_SIZE), 0, 0)
 
                 self.indices_inner_gather_2(self.indices_row_num_once, indices_offset, pre_i, indices_ub, res_ub)
                 # process last one loop in indices_loop_num
@@ -1190,7 +1225,8 @@ class GatherV2():
                 indices_offset = block_id * self.indices_num_each_core + \
                                  self.indices_loop_num * self.indices_row_num_once
                 tik_instance.data_move(indices_ub, self.indices[indices_offset], 0, 1,
-                                       ceil_value(self.indices_row_num_last * indices_dsize, BLOCK_SIZE), 0, 0)
+                                       ceil_value(self.indices_row_num_last * indices_dsize,
+                                                  constant.BLOCK_SIZE), 0, 0)
 
                 # process first (indices_row_num_last - 1) loop
                 self.indices_inner_gather_2(self.indices_row_num_last, indices_offset, pre_i,
@@ -1209,7 +1245,7 @@ class GatherV2():
         process row_num_once_ub indices for tiling mode 2
         """
         tik_instance = self.tik_instance
-        burst_len_row = ceil_value(self.params_row * self.params_dsize, BLOCK_SIZE)
+        burst_len_row = ceil_value(self.params_row * self.params_dsize, constant.BLOCK_SIZE)
 
         with tik_instance.for_range(0, loop_num - 1) as row_i:
             indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
@@ -1225,7 +1261,7 @@ class GatherV2():
         process last loop num indices for tiling mode 2
         """
         tik_instance = self.tik_instance
-        burst_len_row = ceil_value(self.params_row * self.params_dsize, BLOCK_SIZE)
+        burst_len_row = ceil_value(self.params_row * self.params_dsize, constant.BLOCK_SIZE)
 
         indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
         indices_value.set_as(indices_ub[loop_num - 1])
@@ -1247,7 +1283,7 @@ class GatherV2():
         process tail indices in previous indices_num_remaining core for tiling mode 2
         """
         tik_instance = self.tik_instance
-        burst_len_row = ceil_value(self.params_row * self.params_dsize, BLOCK_SIZE)
+        burst_len_row = ceil_value(self.params_row * self.params_dsize, constant.BLOCK_SIZE)
 
         # move one indices data to ub from gm
         tik_instance.data_move(indices_ub, self.indices[indices_offset], 0, 1, 1, 0, 0)
@@ -1284,7 +1320,7 @@ class GatherV2():
         tik_instance = self.tik_instance
         indices_ub = tik_instance.Tensor(self.indices_dtype, (half_ub_size // self.indices_dsize,),
                                          name="indices_ub", scope=tik.scope_ubuf)
-        res_ub = tik_instance.Tensor(self.params_dtype, ((half_ub_size + BLOCK_SIZE) // self.params_dsize,),
+        res_ub = tik_instance.Tensor(self.params_dtype, ((half_ub_size + constant.BLOCK_SIZE) // self.params_dsize,),
                                      name="res_ub", scope=tik.scope_ubuf)
         half_ub_params_elem = half_ub_size // self.params_dsize
 
@@ -1294,7 +1330,8 @@ class GatherV2():
                                      indices_loop_i * self.indices_row_num_once
                 # move indices data to ub from gm
                 tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1,
-                                       ceil_value(self.indices_row_num_once * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                       ceil_value(self.indices_row_num_once * self.indices_dsize,
+                                                  constant.BLOCK_SIZE), 0, 0)
 
                 # process one indices_row_num_once
                 self.process_loop_mode_5(self.indices_row_num_once, indices_num_offset, pre_i, indices_ub, res_ub,
@@ -1306,7 +1343,8 @@ class GatherV2():
                                      self.indices_loop_num * self.indices_row_num_once
                 # copy indices data to ub from gm
                 tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1,
-                                       ceil_value(self.indices_row_num_last * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                       ceil_value(self.indices_row_num_last * self.indices_dsize,
+                                                  constant.BLOCK_SIZE), 0, 0)
 
                 self.process_loop_mode_5(self.indices_row_num_last, indices_num_offset, pre_i, indices_ub, res_ub,
                                          half_ub_params_elem)
@@ -1458,7 +1496,7 @@ class GatherV2():
         None
         """
         tik_instance = self.tik_instance
-        x_ub = tik_instance.Tensor(self.params_dtype, (CACHE_UB_SIZE // self.params_dsize,),
+        x_ub = tik_instance.Tensor(self.params_dtype, (Constant.CACHE_UB_SIZE // self.params_dsize,),
                                    name="x_ub", scope=tik.scope_ubuf)
         # cache params data from gm in UB
         tik_instance.data_move(x_ub, self.x, 0, 1, ceil_value(self.params_total, self.block_elem), 0, 0)
@@ -1490,7 +1528,8 @@ class GatherV2():
                 indices_num_offset = block_id * self.indices_num_each_core + indices_loop_i * self.indices_row_num_once
                 # move indices data to ub from gm
                 tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1,
-                                       ceil_value(self.indices_row_num_once * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                       ceil_value(self.indices_row_num_once * self.indices_dsize,
+                                                  constant.BLOCK_SIZE), 0, 0)
 
                 with tik_instance.if_scope(self.inner_loop_num > 0):
                     self.process_loop_32b_aligned(self.inner_loop_num, indices_num_offset, pre_i,
@@ -1506,7 +1545,8 @@ class GatherV2():
                                      self.indices_loop_num * self.indices_row_num_once
                 # copy indices data to ub from gm
                 tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1,
-                                       ceil_value(self.indices_row_num_last * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                       ceil_value(self.indices_row_num_last * self.indices_dsize,
+                                                  constant.BLOCK_SIZE), 0, 0)
 
                 with tik_instance.if_scope(self.inner_loop_num_last > 0):
                     self.process_loop_32b_aligned(self.inner_loop_num_last, indices_num_offset, pre_i,
@@ -1540,8 +1580,8 @@ class GatherV2():
         None
         """
         tik_instance = self.tik_instance
-        burst_len_res = ceil_value(self.row_num_once_ub * self.params_row * self.params_dsize, BLOCK_SIZE)
-        burst_len_row = ceil_value(self.params_row * self.params_dsize, BLOCK_SIZE)
+        burst_len_res = ceil_value(self.row_num_once_ub * self.params_row * self.params_dsize, constant.BLOCK_SIZE)
+        burst_len_row = ceil_value(self.params_row * self.params_dsize, constant.BLOCK_SIZE)
 
         with tik_instance.for_range(0, loop_num) as inner_loop_i:
             inner_indices_offset = inner_loop_i * self.row_num_once_ub
@@ -1580,8 +1620,8 @@ class GatherV2():
         None
         """
         tik_instance = self.tik_instance
-        burst_len_res = ceil_value(row_num_last * self.params_row * self.params_dsize, BLOCK_SIZE)
-        burst_len_row = ceil_value(self.params_row * self.params_dsize, BLOCK_SIZE)
+        burst_len_res = ceil_value(row_num_last * self.params_row * self.params_dsize, constant.BLOCK_SIZE)
+        burst_len_row = ceil_value(self.params_row * self.params_dsize, constant.BLOCK_SIZE)
         output_offset = (pre_i * self.indices_num + indices_num_offset + inner_indices_offset) * self.params_row
 
         with tik_instance.new_stmt_scope(disable_sync=True):
@@ -1615,7 +1655,7 @@ class GatherV2():
         # move one indices data from gm to ub
         tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1, 1, 0, 0)
 
-        burst_len_row = ceil_value(self.params_row * self.params_dsize, BLOCK_SIZE)
+        burst_len_row = ceil_value(self.params_row * self.params_dsize, constant.BLOCK_SIZE)
         output_offset = (pre_i * self.indices_num + indices_num_offset) * self.params_row
 
         indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
@@ -1665,9 +1705,10 @@ class GatherV2():
         tik_instance = self.tik_instance
         indices_ub = tik_instance.Tensor(self.indices_dtype, ((remain_half_ub_size + 256) // self.indices_dsize,),
                                          name="indices_ub", scope=tik.scope_ubuf)
-        res_ub = tik_instance.Tensor(self.params_dtype, ((remain_half_ub_size + BLOCK_SIZE) // self.params_dsize,),
+        res_ub = tik_instance.Tensor(self.params_dtype,
+                                     ((remain_half_ub_size + constant.BLOCK_SIZE) // self.params_dsize,),
                                      name="res_ub", scope=tik.scope_ubuf)
-        x_ub = tik_instance.Tensor(self.params_dtype, (CACHE_UB_SIZE // self.params_dsize,),
+        x_ub = tik_instance.Tensor(self.params_dtype, (Constant.CACHE_UB_SIZE // self.params_dsize,),
                                    name="x_ub", scope=tik.scope_ubuf)
 
         # cache params data in UB from gm
@@ -1704,7 +1745,8 @@ class GatherV2():
             indices_num_offset = indices_loop_i * self.indices_row_num_once
             # move indices data from gm to ub
             tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1,
-                                   ceil_value(self.indices_row_num_once * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                   ceil_value(self.indices_row_num_once * self.indices_dsize,
+                                              constant.BLOCK_SIZE), 0, 0)
 
             with tik_instance.if_scope(self.inner_loop_num > 0):
                 self.process_loop_mode_4(self.inner_loop_num, indices_num_offset, pre_i, indices_ub, res_ub, x_src)
@@ -1719,7 +1761,8 @@ class GatherV2():
             indices_num_offset = self.indices_loop_num * self.indices_row_num_once
             # copy indices data from gm to ub
             tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1,
-                                   ceil_value(self.indices_row_num_last * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                   ceil_value(self.indices_row_num_last * self.indices_dsize,
+                                              constant.BLOCK_SIZE), 0, 0)
 
             with tik_instance.if_scope(self.inner_loop_num_last > 0):
                 self.process_loop_mode_4(self.inner_loop_num_last, indices_num_offset, pre_i,
@@ -1782,7 +1825,8 @@ class GatherV2():
             indices_num_offset = indices_loop_i * self.indices_row_num_once
             # move indices data from gm to ub
             tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1,
-                                   ceil_value(self.indices_row_num_once * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                   ceil_value(self.indices_row_num_once * self.indices_dsize,
+                                              constant.BLOCK_SIZE), 0, 0)
 
             with tik_instance.if_scope(self.inner_loop_num > 0):
                 with tik_instance.for_range(0, self.inner_loop_num) as inner_loop_i:
@@ -1800,7 +1844,8 @@ class GatherV2():
             indices_num_offset = self.indices_loop_num * self.indices_row_num_once
             # copy indices data from gm to ub
             tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1,
-                                   ceil_value(self.indices_row_num_last * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                   ceil_value(self.indices_row_num_last * self.indices_dsize,
+                                              constant.BLOCK_SIZE), 0, 0)
 
             with tik_instance.if_scope(self.inner_loop_num_last > 0):
                 with tik_instance.for_range(0, self.inner_loop_num_last) as inner_loop_i:
@@ -1827,7 +1872,7 @@ class GatherV2():
         None
         """
         tik_instance = self.tik_instance
-        x_ub = tik_instance.Tensor(self.params_dtype, (CACHE_UB_SIZE // self.params_dsize,),
+        x_ub = tik_instance.Tensor(self.params_dtype, (Constant.CACHE_UB_SIZE // self.params_dsize,),
                                    name="x_ub", scope=tik.scope_ubuf)
         # cache params data from gm in UB
         tik_instance.data_move(x_ub, self.x, 0, 1, ceil_value(self.params_total, self.block_elem), 0, 0)
@@ -1867,7 +1912,8 @@ class GatherV2():
             indices_num_offset = indices_loop_i * self.indices_row_num_once
             # move indices data to ub from gm
             tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1,
-                                   ceil_value(self.indices_row_num_once * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                   ceil_value(self.indices_row_num_once * self.indices_dsize,
+                                              constant.BLOCK_SIZE), 0, 0)
 
             with tik_instance.if_scope(self.inner_loop_num > 0):
                 self.process_loop_32b_aligned(self.inner_loop_num, indices_num_offset, pre_i,
@@ -1882,7 +1928,8 @@ class GatherV2():
             indices_num_offset = self.indices_loop_num * self.indices_row_num_once
             # copy indices data to ub from gm
             tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1,
-                                   ceil_value(self.indices_row_num_last * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                   ceil_value(self.indices_row_num_last * self.indices_dsize,
+                                              constant.BLOCK_SIZE), 0, 0)
 
             with tik_instance.if_scope(self.inner_loop_num_last > 0):
                 self.process_loop_32b_aligned(self.inner_loop_num_last, indices_num_offset, pre_i,
@@ -1976,13 +2023,13 @@ class GatherV2():
         indices_ub = self.buffers["indices_ub"]
         params_ub = self.buffers["params_ub"]
         res_ub = self.buffers["res_ub"]
-        burst_len_res = ceil_value(self.row_num_once_ub * self.params_row * self.params_dsize, BLOCK_SIZE)
+        burst_len_res = ceil_value(self.row_num_once_ub * self.params_row * self.params_dsize, constant.BLOCK_SIZE)
         output_offset_base = batch_i * self.params_pre * self.indices_row
         indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
         batch_base = block_id * self.params_batch_each_core
         indices_offset_base = (batch_i - batch_base) * self.indices_row if \
-            self.cached_types["cached_types_indices"] == INDICES_CACHED_ALL and self.is_remaining == 0 else 0
-        if self.cached_types["cached_types_params"] == PARAMS_CACHED_UB:
+            self.cached_types["cached_types_indices"] == Constant.INDICES_CACHED_ALL and self.is_remaining == 0 else 0
+        if self.cached_types["cached_types_params"] == Constant.PARAMS_CACHED_UB:
             params_batch_diff = (batch_i - batch_base) if self.is_remaining == 0 else 0
         else:
             params_batch_diff = batch_i
@@ -1997,7 +2044,7 @@ class GatherV2():
                 indices_value.set_as(indices_ub[inner_indices_offset + row_i])
                 params_offset = (params_offset_base + indices_value) * self.params_row
                 res_ub_offset = row_i * self.params_row
-                if self.cached_types["cached_types_params"] == PARAMS_CACHED_UB:
+                if self.cached_types["cached_types_params"] == Constant.PARAMS_CACHED_UB:
                     with tik_instance.for_range(0, self.params_row) as i:
                         res_ub[res_ub_offset + i].set_as(params_ub[params_offset + i])
                 else:
@@ -2012,7 +2059,7 @@ class GatherV2():
             tik_instance.data_move(self.y[output_offset], res_ub, 0, 1, burst_len_res, 0, 0)
 
         with tik_instance.if_scope(tail_num > 0):
-            burst_len_res = ceil_value(tail_num * self.params_row * self.params_dsize, BLOCK_SIZE)
+            burst_len_res = ceil_value(tail_num * self.params_row * self.params_dsize, constant.BLOCK_SIZE)
             inner_indices_offset = indices_offset_base + loop_num * self.row_num_once_ub
             output_offset = (output_offset_base + pre_i * self.indices_row +
                              (indices_loop_offset + loop_num * self.row_num_once_ub)) * self.params_row
@@ -2022,7 +2069,7 @@ class GatherV2():
                 indices_value.set_as(indices_ub[inner_indices_offset + row_i])
                 params_offset = (params_offset_base + indices_value) * self.params_row
                 res_ub_offset = row_i * self.params_row
-                if self.cached_types["cached_types_params"] == PARAMS_CACHED_UB:
+                if self.cached_types["cached_types_params"] == Constant.PARAMS_CACHED_UB:
                     with tik_instance.for_range(0, self.params_row) as i:
                         res_ub[res_ub_offset + i].set_as(params_ub[params_offset + i])
                 else:
@@ -2055,11 +2102,11 @@ class GatherV2():
         loop_num = self.indices_row_num_last if is_last else self.indices_row_num_once
         indices_ub = self.buffers["indices_ub"]
         res_ub = self.buffers["res_ub"]
-        burst_len_row = ceil_value(self.params_row * self.params_dsize, BLOCK_SIZE)
+        burst_len_row = ceil_value(self.params_row * self.params_dsize, constant.BLOCK_SIZE)
         indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
         batch_base = block_id * self.params_batch_each_core
         indices_offset_base = (batch_i - batch_base) * self.indices_row if \
-            self.cached_types["cached_types_indices"] == INDICES_CACHED_ALL and self.is_remaining == 0 else 0
+            self.cached_types["cached_types_indices"] == Constant.INDICES_CACHED_ALL and self.is_remaining == 0 else 0
         params_offset_base = batch_i * self.params_pre * self.params_axis + pre_i * self.params_axis
         output_offset_base = batch_i * self.params_pre * self.indices_row
 
@@ -2100,14 +2147,14 @@ class GatherV2():
         x_src = self.buffers["params_ub"]
         indices_ub = self.buffers["indices_ub"]
         res_ub = self.buffers["res_ub"]
-        burst_len_res = ceil_value(self.row_num_once_ub * self.params_row * self.params_dsize, BLOCK_SIZE)
-        burst_len_row = ceil_value(self.params_row * self.params_dsize, BLOCK_SIZE)
+        burst_len_res = ceil_value(self.row_num_once_ub * self.params_row * self.params_dsize, constant.BLOCK_SIZE)
+        burst_len_row = ceil_value(self.params_row * self.params_dsize, constant.BLOCK_SIZE)
 
         indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
         batch_base = block_id * self.params_batch_each_core
         indices_offset_base = (batch_i - batch_base) * self.indices_row if \
-            self.cached_types["cached_types_indices"] == INDICES_CACHED_ALL and self.is_remaining == 0 else 0
-        if self.cached_types["cached_types_params"] == PARAMS_CACHED_UB:
+            self.cached_types["cached_types_indices"] == Constant.INDICES_CACHED_ALL and self.is_remaining == 0 else 0
+        if self.cached_types["cached_types_params"] == Constant.PARAMS_CACHED_UB:
             params_batch_diff = (batch_i - batch_base) if self.is_remaining == 0 else 0
         else:
             params_batch_diff = batch_i
@@ -2132,7 +2179,7 @@ class GatherV2():
 
         # process of the remaining part after block split
         with tik_instance.if_scope(tail_num > 0):
-            burst_len_res = ceil_value(tail_num * self.params_row * self.params_dsize, BLOCK_SIZE)
+            burst_len_res = ceil_value(tail_num * self.params_row * self.params_dsize, constant.BLOCK_SIZE)
             inner_indices_offset = indices_offset_base + loop_num * self.row_num_once_ub
             output_offset = (output_offset_base + pre_i * self.indices_row +
                              (indices_loop_offset + loop_num * self.row_num_once_ub)) * self.params_row
@@ -2165,7 +2212,7 @@ class GatherV2():
         indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
         batch_base = block_id * self.params_batch_each_core
         indices_offset_base = (batch_i - batch_base) * self.indices_row if \
-            self.cached_types["cached_types_indices"] == INDICES_CACHED_ALL and self.is_remaining == 0 else 0
+            self.cached_types["cached_types_indices"] == Constant.INDICES_CACHED_ALL and self.is_remaining == 0 else 0
         params_offset_base = batch_i * self.params_pre * self.params_axis + pre_i * self.params_axis
         output_offset_base = batch_i * self.params_pre * self.indices_row
         inner_indices_offset = self.indices_row_num_once if is_last else 0
@@ -2216,7 +2263,7 @@ class GatherV2():
         indices_ub = self.buffers["indices_ub"]
         params_ub = self.buffers["params_ub"]
         res_ub = self.buffers["res_ub"]
-        burst_len_res = ceil_value(self.row_num_once_ub * self.params_row * self.params_dsize, BLOCK_SIZE)
+        burst_len_res = ceil_value(self.row_num_once_ub * self.params_row * self.params_dsize, constant.BLOCK_SIZE)
         output_offset_base = batch_i * self.params_pre * self.indices_row + block_id * self.indices_num_each_core
         indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
         params_batch_diff = batch_i
@@ -2233,7 +2280,7 @@ class GatherV2():
                     params_offset = (params_offset_base + row_i * self.params_axis + indices_value) * self.params_row
                     res_ub_offset = (row_i * self.indices_row + ele_i) * self.params_row
 
-                    if self.cached_types["cached_types_params"] == PARAMS_CACHED_UB:
+                    if self.cached_types["cached_types_params"] == Constant.PARAMS_CACHED_UB:
                         with tik_instance.for_range(0, self.params_row) as i:
                             res_ub[res_ub_offset + i].set_as(params_ub[params_offset + i])
                     else:
@@ -2248,7 +2295,8 @@ class GatherV2():
             tik_instance.data_move(self.y[output_offset], res_ub, 0, 1, burst_len_res, 0, 0)
 
         with tik_instance.if_scope(tail_num > 0):
-            burst_len_res = ceil_value(tail_num * self.indices_row * self.params_row * self.params_dsize, BLOCK_SIZE)
+            burst_len_res = ceil_value(tail_num * self.indices_row * self.params_row * self.params_dsize,
+                                       constant.BLOCK_SIZE)
             output_offset = (output_offset_base + loop_num * self.row_num_once_ub) * self.params_row
             params_offset_base = params_batch_diff * self.params_pre * self.params_axis + \
                                  block_id * self.indices_num_each_core + \
@@ -2258,7 +2306,7 @@ class GatherV2():
                     indices_value.set_as(indices_ub[ele_i])
                     params_offset = (params_offset_base + row_i * self.params_axis + indices_value) * self.params_row
                     res_ub_offset = (row_i * self.indices_row + ele_i) * self.params_row
-                    if self.cached_types["cached_types_params"] == PARAMS_CACHED_UB:
+                    if self.cached_types["cached_types_params"] == Constant.PARAMS_CACHED_UB:
                         with tik_instance.for_range(0, self.params_row) as i:
                             res_ub[res_ub_offset + i].set_as(params_ub[params_offset + i])
                     else:
@@ -2296,10 +2344,10 @@ class GatherV2():
         params_ub = self.buffers["params_ub"]
         res_ub = self.buffers["res_ub"]
         batch_base = block_id * self.params_batch_each_core
-        burst_len_res = ceil_value(self.row_num_once_ub * self.params_row * self.params_dsize, BLOCK_SIZE)
+        burst_len_res = ceil_value(self.row_num_once_ub * self.params_row * self.params_dsize, constant.BLOCK_SIZE)
         output_offset_base = batch_base * self.params_pre * self.indices_row
         indices_value = tik_instance.Scalar(dtype=self.indices_dtype, name="indices_value", init_value=0)
-        params_batch_diff = batch_base if self.cached_types["cached_types_params"] != PARAMS_CACHED_UB else 0
+        params_batch_diff = batch_base if self.cached_types["cached_types_params"] != Constant.PARAMS_CACHED_UB else 0
         batch_num = self.row_num_once_ub // self.params_pre // self.indices_row
 
         with tik_instance.for_range(0, loop_num) as inner_loop_i:
@@ -2310,7 +2358,7 @@ class GatherV2():
                                      self.params_pre * self.params_axis
                 indices_num_offset = (batch_base + inner_loop_i * batch_num + batch_i) * self.indices_row
                 tik_instance.data_move(self.buffers["indices_ub"], self.indices[indices_num_offset], 0, 1,
-                                       ceil_value(self.indices_row * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                       ceil_value(self.indices_row * self.indices_dsize, constant.BLOCK_SIZE), 0, 0)
                 with tik_instance.for_range(0, self.params_pre) as pre_i:
                     with tik_instance.for_range(0, self.indices_row) as ele_i:
                         indices_value.set_as(indices_ub[ele_i])
@@ -2319,7 +2367,7 @@ class GatherV2():
                         res_ub_offset = ((batch_i * self.params_pre + pre_i) * self.indices_row + ele_i) * \
                                         self.params_row
 
-                        if self.cached_types["cached_types_params"] == PARAMS_CACHED_UB:
+                        if self.cached_types["cached_types_params"] == Constant.PARAMS_CACHED_UB:
                             with tik_instance.for_range(0, self.params_row) as i:
                                 res_ub[res_ub_offset + i].set_as(params_ub[params_offset + i])
                         else:
@@ -2335,14 +2383,14 @@ class GatherV2():
 
         with tik_instance.if_scope(tail_num > 0):
             burst_len_res = ceil_value(tail_num * self.params_pre * self.indices_row *
-                                       self.params_row * self.params_dsize, BLOCK_SIZE)
+                                       self.params_row * self.params_dsize, constant.BLOCK_SIZE)
             output_offset = (output_offset_base + loop_num * self.row_num_once_ub) * self.params_row
             with tik_instance.for_range(0, tail_num) as batch_i:
                 params_offset_base = (params_batch_diff + loop_num * batch_num + batch_i) * \
                                      self.params_pre * self.params_axis
                 indices_num_offset = (batch_base + loop_num * batch_num + batch_i) * self.indices_row
                 tik_instance.data_move(self.buffers["indices_ub"], self.indices[indices_num_offset], 0, 1,
-                                       ceil_value(self.indices_row * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                       ceil_value(self.indices_row * self.indices_dsize, constant.BLOCK_SIZE), 0, 0)
                 with tik_instance.for_range(0, self.params_pre) as pre_i:
                     with tik_instance.for_range(0, self.indices_row) as ele_i:
                         indices_value.set_as(indices_ub[ele_i])
@@ -2350,7 +2398,7 @@ class GatherV2():
                                         self.params_row
                         res_ub_offset = ((batch_i * self.params_pre + pre_i) * self.indices_row + ele_i) * \
                                         self.params_row
-                        if self.cached_types["cached_types_params"] == PARAMS_CACHED_UB:
+                        if self.cached_types["cached_types_params"] == Constant.PARAMS_CACHED_UB:
                             with tik_instance.for_range(0, self.params_row) as i:
                                 res_ub[res_ub_offset + i].set_as(params_ub[params_offset + i])
                         else:
@@ -2380,29 +2428,32 @@ class GatherV2():
         """
         inner loop of the func:compute_with_batch_dims
         """
-        if self.cached_types["aligned_types_params"] == MODE_LESS_THAN_32B:
+        if self.cached_types["aligned_types_params"] == Constant.MODE_LESS_THAN_32B:
             self.params_row_less_than_32b(indices_loop_offset, batch_i, block_id, pre_i, is_last)
-        elif self.cached_types["aligned_types_params"] == MODE_ALIGNED:
+        elif self.cached_types["aligned_types_params"] == Constant.MODE_ALIGNED:
             self.params_row_aligned(indices_loop_offset, batch_i, block_id, pre_i, is_last)
-        elif self.cached_types["aligned_types_params"] == MODE_MORE_THAN_32B:
+        elif self.cached_types["aligned_types_params"] == Constant.MODE_MORE_THAN_32B:
             self.params_row_more_than_32b(indices_loop_offset, batch_i, block_id, pre_i, is_last)
         else:
             self.large_params_row(indices_loop_offset, batch_i, block_id, pre_i, is_last)
 
     def process_large_indices_row(self, indices_num_offset, batch_i, block_id, pre_i):
+        """
+        process_large_indices_row
+        """
         tik_instance = self.tik_instance
         with tik_instance.for_range(0, self.indices_loop_num) as indices_loop_i:
             indices_loop_offset = indices_loop_i * self.indices_row_num_once
             indices_offset = indices_num_offset + indices_loop_offset
             tik_instance.data_move(self.buffers["indices_ub"], self.indices[indices_offset], 0, 1,
-                                   ceil_value(self.indices_row_num_once * self.indices_dsize, BLOCK_SIZE),
+                                   ceil_value(self.indices_row_num_once * self.indices_dsize, constant.BLOCK_SIZE),
                                    0, 0)
             self.inner_loop_with_batch_dims(indices_loop_offset, batch_i, block_id, pre_i, 0)
         with tik_instance.if_scope(self.indices_row_num_last > 0):
             indices_loop_offset = self.indices_loop_num * self.indices_row_num_once
             indices_offset = indices_num_offset + indices_loop_offset
             tik_instance.data_move(self.buffers["indices_ub"], self.indices[indices_offset], 0, 1,
-                                   ceil_value(self.indices_row_num_last * self.indices_dsize, BLOCK_SIZE),
+                                   ceil_value(self.indices_row_num_last * self.indices_dsize, constant.BLOCK_SIZE),
                                    0, 0)
             self.inner_loop_with_batch_dims(indices_loop_offset, batch_i, block_id, pre_i, 1)
 
@@ -2412,39 +2463,41 @@ class GatherV2():
         """
         tik_instance = self.tik_instance
         self.buffers["indices_ub"] = tik_instance.Tensor(self.indices_dtype,
-                                                         ((avl_ub_size + BLOCK_SIZE) // self.indices_dsize,),
+                                                         ((avl_ub_size + constant.BLOCK_SIZE) // self.indices_dsize,),
                                                          name="indices_ub", scope=tik.scope_ubuf)
         self.buffers["res_ub"] = tik_instance.Tensor(self.params_dtype,
-                                                     ((avl_ub_size + BLOCK_SIZE) // self.params_dsize,),
+                                                     ((avl_ub_size + constant.BLOCK_SIZE) // self.params_dsize,),
                                                      name="res_ub", scope=tik.scope_ubuf)
 
         indices_num_offset = block_id * self.indices_num_each_core
-        if self.cached_types["cached_types_indices"] == INDICES_CACHED_ALL:
+        if self.cached_types["cached_types_indices"] == Constant.INDICES_CACHED_ALL:
             tik_instance.data_move(self.buffers["indices_ub"], self.indices[indices_num_offset], 0, 1,
-                                   ceil_value(self.indices_num_each_core * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                   ceil_value(self.indices_num_each_core * self.indices_dsize,
+                                              constant.BLOCK_SIZE), 0, 0)
 
-        if self.cached_types["cached_types_params"] == PARAMS_CACHED_UB:
-            self.buffers["params_ub"] = tik_instance.Tensor(self.params_dtype, (CACHE_UB_SIZE // self.params_dsize,),
+        if self.cached_types["cached_types_params"] == Constant.PARAMS_CACHED_UB:
+            self.buffers["params_ub"] = tik_instance.Tensor(self.params_dtype,
+                                                            (Constant.CACHE_UB_SIZE // self.params_dsize,),
                                                             name="params_ub", scope=tik.scope_ubuf)
             params_offset = self.params_total * block_id if \
-                self.cached_types["cached_types_indices"] != INDICES_SMALL_ROW else 0
+                self.cached_types["cached_types_indices"] != Constant.INDICES_SMALL_ROW else 0
             tik_instance.data_move(self.buffers["params_ub"], self.x[params_offset], 0, 1,
                                    ceil_value(self.params_total, self.block_elem), 0, 0)
         else:
             self.buffers["params_ub"] = self.x
 
-        if self.cached_types["cached_types_indices"] == INDICES_SMALL_ROW:
+        if self.cached_types["cached_types_indices"] == Constant.INDICES_SMALL_ROW:
             with tik_instance.for_range(0, self.params_batch) as batch_i:
                 indices_num_offset = batch_i * self.indices_row
                 tik_instance.data_move(self.buffers["indices_ub"], self.indices[indices_num_offset], 0, 1,
-                                       ceil_value(self.indices_row * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                       ceil_value(self.indices_row * self.indices_dsize, constant.BLOCK_SIZE), 0, 0)
                 with tik_instance.if_scope(block_id < self.tail_process_core):
                     self.small_indices_row(batch_i, block_id, 0)
                 with tik_instance.if_scope(block_id == self.tail_process_core):
                     self.small_indices_row(batch_i, block_id, 1)
             return
 
-        if self.cached_types["aligned_types_params"] == MODE_SMALL_PARAMS_ROW:
+        if self.cached_types["aligned_types_params"] == Constant.MODE_SMALL_PARAMS_ROW:
             with tik_instance.if_scope(block_id < self.tail_process_core):
                 self.small_params_row(block_id, 0)
             with tik_instance.if_scope(block_id == self.tail_process_core):
@@ -2456,11 +2509,12 @@ class GatherV2():
         with tik_instance.for_range(range_left, range_right) as batch_i:
             self.is_remaining = 0
             with tik_instance.for_range(0, self.params_pre) as pre_i:
-                if self.cached_types["cached_types_indices"] != INDICES_LARGE_ROW:
-                    if self.cached_types["cached_types_indices"] == INDICES_CACHED_ONE_ROW:
+                if self.cached_types["cached_types_indices"] != Constant.INDICES_LARGE_ROW:
+                    if self.cached_types["cached_types_indices"] == Constant.INDICES_CACHED_ONE_ROW:
                         indices_num_offset = batch_i * self.indices_row
                         tik_instance.data_move(self.buffers["indices_ub"], self.indices[indices_num_offset], 0, 1,
-                                               ceil_value(self.indices_row * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                               ceil_value(self.indices_row * self.indices_dsize,
+                                                          constant.BLOCK_SIZE), 0, 0)
                     self.inner_loop_with_batch_dims(0, batch_i, block_id, pre_i, 0)
                 else:
                     indices_num_offset = batch_i * self.indices_row
@@ -2468,7 +2522,7 @@ class GatherV2():
         with tik_instance.if_scope(tik.all(self.params_batch_remaining > 0, block_id < self.params_batch_remaining)):
             self.is_remaining = 1
             batch_i = self.need_core_num * self.params_batch_each_core + block_id
-            if self.cached_types["cached_types_params"] == PARAMS_CACHED_UB:
+            if self.cached_types["cached_types_params"] == Constant.PARAMS_CACHED_UB:
                 num_per_batch = self.params_pre * self.params_axis * self.params_row
                 params_offset = self.params_total * self.need_core_num + block_id * num_per_batch
                 tik_instance.data_move(self.buffers["params_ub"], self.x[params_offset], 0, 1,
@@ -2476,9 +2530,9 @@ class GatherV2():
             else:
                 self.buffers["params_ub"] = self.x
             indices_num_offset = self.need_core_num * self.indices_num_each_core + block_id * self.indices_row
-            if self.cached_types["cached_types_indices"] != INDICES_LARGE_ROW:
+            if self.cached_types["cached_types_indices"] != Constant.INDICES_LARGE_ROW:
                 tik_instance.data_move(self.buffers["indices_ub"], self.indices[indices_num_offset], 0, 1,
-                                       ceil_value(self.indices_row * self.indices_dsize, BLOCK_SIZE), 0, 0)
+                                       ceil_value(self.indices_row * self.indices_dsize, constant.BLOCK_SIZE), 0, 0)
                 with tik_instance.for_range(0, self.params_pre) as pre_i:
                     self.inner_loop_with_batch_dims(0, batch_i, block_id, pre_i, 0)
             else:
@@ -2503,7 +2557,7 @@ class GatherV2():
                                                 name="indices", scope=tik.scope_gm)
         self.axis = self.tik_instance.Tensor(self.axis_dtype, self.axis_shape,
                                              name="axis", scope=tik.scope_gm)
-        self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, (TILING_ARG_NUM,),
+        self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, (Constant.TILING_ARG_NUM,),
                                                   name="ddr_arg", scope=tik.scope_gm)
         self.y = self.tik_instance.Tensor(self.y_dtype, shape=self.y_shape,
                                           name="y", scope=tik.scope_gm)
@@ -2545,7 +2599,7 @@ class GatherV2():
                                           name="x", scope=tik.scope_gm)
         self.indices = self.tik_instance.Tensor(self.indices_dtype, self.indices_shape,
                                                 name="indices", scope=tik.scope_gm)
-        self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, (TILING_ARG_NUM,),
+        self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, (Constant.TILING_ARG_NUM,),
                                                   name="ddr_arg", scope=tik.scope_gm)
         self.y = self.tik_instance.Tensor(self.y_dtype, shape=self.y_shape,
                                           name="y", scope=tik.scope_gm)

@@ -1,0 +1,42 @@
+[
+  {
+    "op": "GatherV2",
+    "input_desc": [
+      {
+        "shape": [-2],
+        "typical_shape": [20],
+        "oir_shape": [20],
+        "format": "ND",
+        "oir_format": "ND",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [10],
+        "oir_shape": [10],
+        "format": "ND",
+        "oir_format": "ND",
+        "name": "indices",
+        "type": "int32"
+      },
+      {
+        "shape": [1],
+        "format": "NCHW",
+        "value":[0],
+        "name": "axis",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [10],
+        "oir_shape": [10],
+        "format": "NCHW",
+        "oir_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "case_name": "test_GatherV2_000"
+  }
+]

@@ -29,48 +29,49 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-# max int64 value
-MAX_INT64_VALUE = 2**64 -1
-# tiling param num
-TILING_ARG_NUM = 8
-# reserved ub size
-RESERVED_UB_SIZE = 8 * 1024
-# 8 bit
-EIGHT_BIT = 8
-# mask size
-ONE_VECTOR_CALC_SIZE = 256
-# mask of type
-TYPE_BYTES_MAP = {"float16": 2, "float32": 4, "int8": 2, "uint8": 2, "int16": 2, "int32": 4}
-# bytes of one block
-ONE_BLOCK_SIZE = 32
-# bytes of two block
-TWO_BLOCK_SIZE = 64
-# max repeat times
-MAX_REPEAT_TIMES = 255
-# use rate of max ubsize use
-MAX_UBSIZE_USE_RATE = 0.9
-# when tiling_mode is 1 or 4
-# ubsize of the allocated block: UBSIZE_ALLOCATED_BLOCK_1
-# updates_num occupied allocation block: UPDATE_NUMS_BLOCK_1
-# indices_num occupied allocation block: INDICES_NUMS_BLOCK_1
-UBSIZE_ALLOCATED_BLOCK_1 = 100
-UPDATE_NUMS_BLOCK_1 = 45
-INDICES_NUMS_BLOCK_1 = 10
-# when tiling_mode is 2 or 5
-# ubsize of the allocated block: UBSIZE_ALLOCATED_BLOCK_2
-# updates_num occupied allocation block: UPDATE_NUMS_BLOCK_2
-# indices_num occupied allocation block: INDICES_NUMS_BLOCK_2
-UBSIZE_ALLOCATED_BLOCK_2 = 10
-UPDATE_NUMS_BLOCK_2 = 4
-INDICES_NUMS_BLOCK_2 = 2
-# when tiling_mode is 3 or 6
-# ubsize of the allocated block: UBSIZE_ALLOCATED_BLOCK_3
-# updates_num occupied allocation block: UPDATE_NUMS_BLOCK_3
-# indices_num occupied allocation block: INDICES_NUMS_BLOCK_3
-UBSIZE_ALLOCATED_BLOCK_3 = 96
-UPDATE_NUMS_BLOCK_3 = INDICES_NUMS_BLOCK_3 = 32
+class Constant:
+    """
+    The class for constant
+    """
+    MAX_INT64_VALUE = 2**64 -1
+    TILING_ARG_NUM = 8
+    RESERVED_UB_SIZE = 8 * 1024
+    EIGHT_BIT = 8
+    # mask size
+    ONE_VECTOR_CALC_SIZE = 256
+    # mask of type
+    TYPE_BYTES_MAP = {"float16": 2, "float32": 4, "int8": 2, "uint8": 2, "int16": 2, "int32": 4}
+    # bytes of one block
+    ONE_BLOCK_SIZE = 32
+    # bytes of two block
+    TWO_BLOCK_SIZE = 64
+    # max repeat times
+    MAX_REPEAT_TIMES = 255
+    # use rate of max ubsize use
+    MAX_UBSIZE_USE_RATE = 0.9
+    # when tiling_mode is 1 or 4
+    # ubsize of the allocated block: UBSIZE_ALLOCATED_BLOCK_1
+    # updates_num occupied allocation block: UPDATE_NUMS_BLOCK_1
+    # indices_num occupied allocation block: INDICES_NUMS_BLOCK_1
+    UBSIZE_ALLOCATED_BLOCK_1 = 100
+    UPDATE_NUMS_BLOCK_1 = 45
+    INDICES_NUMS_BLOCK_1 = 10
+    # when tiling_mode is 2 or 5
+    # ubsize of the allocated block: UBSIZE_ALLOCATED_BLOCK_2
+    # updates_num occupied allocation block: UPDATE_NUMS_BLOCK_2
+    # indices_num occupied allocation block: INDICES_NUMS_BLOCK_2
+    UBSIZE_ALLOCATED_BLOCK_2 = 10
+    UPDATE_NUMS_BLOCK_2 = 4
+    INDICES_NUMS_BLOCK_2 = 2
+    # when tiling_mode is 3 or 6
+    # ubsize of the allocated block: UBSIZE_ALLOCATED_BLOCK_3
+    # updates_num occupied allocation block: UPDATE_NUMS_BLOCK_3
+    # indices_num occupied allocation block: INDICES_NUMS_BLOCK_3
+    UBSIZE_ALLOCATED_BLOCK_3 = 96
+    UPDATE_NUMS_BLOCK_3 = INDICES_NUMS_BLOCK_3 = 32
 
 
+# pylint: disable=unused-argument,undefined-variable
 def get_op_support_info(var, indices, updates, var_out, axis, kernel_name="index_add"):
     """
     get_op_support_info
@@ -130,30 +131,36 @@ class InplaceIndexAdd():
         self.vconv_dst_dtype = "float16"
         self.vconv_dtype_bytes_size = tbe_platform.get_bit_len(
             self.vconv_dst_dtype)
-        self.vconv_data_each_block = ONE_BLOCK_SIZE // self.vconv_dtype_bytes_size
+        self.vconv_data_each_block = Constant.ONE_BLOCK_SIZE // self.vconv_dtype_bytes_size
 
         # check input attr params
         self.check_param()
 
         self.ai_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.ub_size_bytes = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE) * MAX_UBSIZE_USE_RATE
-        self.var_dtype_bytes_size = tbe_platform.get_bit_len(self.var_dtype) // EIGHT_BIT
-        self.indices_dtype_bytes_size = tbe_platform.get_bit_len(self.indices_dtype) // EIGHT_BIT
-        self.var_data_each_block = ONE_BLOCK_SIZE // self.var_dtype_bytes_size
-        self.indices_data_each_block = ONE_BLOCK_SIZE // self.indices_dtype_bytes_size
+        self.ub_size_bytes = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - Constant.RESERVED_UB_SIZE) * \
+                             Constant.MAX_UBSIZE_USE_RATE
+        self.var_dtype_bytes_size = tbe_platform.get_bit_len(self.var_dtype) // Constant.EIGHT_BIT
+        self.indices_dtype_bytes_size = tbe_platform.get_bit_len(self.indices_dtype) // Constant.EIGHT_BIT
+        self.var_data_each_block = Constant.ONE_BLOCK_SIZE // self.var_dtype_bytes_size
+        self.indices_data_each_block = Constant.ONE_BLOCK_SIZE // self.indices_dtype_bytes_size
 
-        self.tiling_gm = self.tik_instance.Tensor("int32", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
-        self.var_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,), name="var_gm", scope=tik.scope_gm)
-        self.indices_gm = self.tik_instance.Tensor(self.indices_dtype, (MAX_INT64_VALUE,), name="indices_gm", scope=tik.scope_gm)
-        self.updates_gm = self.tik_instance.Tensor(self.updates_dtype, (MAX_INT64_VALUE,), name="updates_gm", scope=tik.scope_gm)
-        self.var_out_gm = self.tik_instance.Tensor(self.var_out_dtype, (MAX_INT64_VALUE,), name="var_out_gm", scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor("int32", (Constant.TILING_ARG_NUM,),
+                                                  name="tiling_gm", scope=tik.scope_gm)
+        self.var_gm = self.tik_instance.Tensor(self.var_dtype, (Constant.MAX_INT64_VALUE,),
+                                               name="var_gm", scope=tik.scope_gm)
+        self.indices_gm = self.tik_instance.Tensor(self.indices_dtype, (Constant.MAX_INT64_VALUE,),
+                                                   name="indices_gm", scope=tik.scope_gm)
+        self.updates_gm = self.tik_instance.Tensor(self.updates_dtype, (Constant.MAX_INT64_VALUE,),
+                                                   name="updates_gm", scope=tik.scope_gm)
+        self.var_out_gm = self.tik_instance.Tensor(self.var_out_dtype, (Constant.MAX_INT64_VALUE,),
+                                                   name="var_out_gm", scope=tik.scope_gm)
 
         # decide the mask of computation
-        self.max_num_one_repeat = ONE_VECTOR_CALC_SIZE // TYPE_BYTES_MAP[self.var_dtype]
+        self.max_num_one_repeat = Constant.ONE_VECTOR_CALC_SIZE // Constant.TYPE_BYTES_MAP[self.var_dtype]
 
         # init some variable
         self.init_variable()
-    
+
     def check_param(self):
         """
         Check whether the input parameters is valid or not
@@ -165,9 +172,11 @@ class InplaceIndexAdd():
         para_check.check_dtype(self.indices_dtype, indices_support_dtype_list, param_name="indices")
         para_check.check_dtype(self.var_dtype, var_support_dtype_list, param_name="var")
         if self.var_dtype != self.updates_dtype:
-            error_manager_vector.raise_err_inputs_dtype_not_equal(self.kernel_name, "update", "var", self.updates_dtype, self.var_dtype)
+            error_manager_vector.raise_err_inputs_dtype_not_equal(self.kernel_name, "update", "var",
+                                                                  self.updates_dtype, self.var_dtype)
         if self.var_dtype != self.var_out_dtype:
-            error_manager_vector.raise_err_inputs_dtype_not_equal(self.kernel_name, "var_out", "var", self.var_out_dtype, self.var_dtype)
+            error_manager_vector.raise_err_inputs_dtype_not_equal(self.kernel_name, "var_out", "var",
+                                                                  self.var_out_dtype, self.var_dtype)
 
     def init_variable(self):
         """
@@ -203,7 +212,7 @@ class InplaceIndexAdd():
         self.outer_loops_ub_per_block = None
         self.outer_loop_start_index_of_var = None
         self.outer_loop_start_index_of_updates = None
-    
+
     def tiling_args(self):
         """
         get runtime params from tiling
@@ -221,7 +230,8 @@ class InplaceIndexAdd():
         self.indices_num = self.tik_instance.Scalar("int32", name="indices_num")
         self.outer_loop = self.tik_instance.Scalar("int32", name="outer_loop")
         self.outer_loops_per_block = self.tik_instance.Scalar("int32", name="outer_loops_per_block")
-        self.axis_and_after_data_num_of_updates = self.tik_instance.Scalar("int32", name="axis_and_after_data_num_of_updates")
+        self.axis_and_after_data_num_of_updates = self.tik_instance.Scalar("int32",
+                                                                           name="axis_and_after_data_num_of_updates")
         self.axis_and_after_data_num_of_var = self.tik_instance.Scalar("int32", name="axis_and_after_data_num_of_var")
         self.update_data_num = self.tik_instance.Scalar("int32", name="update_data_num")
 
@@ -241,25 +251,29 @@ class InplaceIndexAdd():
         """
         with self.tik_instance.if_scope(self.tiling_mode == 1):
             # if indices size is smaller than 0.1 ub size
-            self.updates_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_1 * UPDATE_NUMS_BLOCK_1 // self.var_dtype_bytes_size
+            self.updates_ub_number = self.ub_size_bytes // Constant.UBSIZE_ALLOCATED_BLOCK_1 * \
+                                     Constant.UPDATE_NUMS_BLOCK_1 // self.var_dtype_bytes_size
             self.updates_ub_number = math.ceil(
                 self.updates_ub_number /
                 self.var_data_each_block) * self.var_data_each_block
-            self.indices_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_1 * INDICES_NUMS_BLOCK_1 // self.indices_dtype_bytes_size
+            self.indices_ub_number = self.ub_size_bytes // Constant.UBSIZE_ALLOCATED_BLOCK_1 * \
+                                     Constant.INDICES_NUMS_BLOCK_1 // self.indices_dtype_bytes_size
             self.indices_ub_number = math.ceil(
                 self.indices_ub_number /
                 self.indices_data_each_block) * self.indices_data_each_block
             last_num = self.update_data_num % self.updates_ub_number
             if (last_num < self.var_data_each_block and self.update_data_num > self.updates_ub_number):
                 self.updates_ub_number -= self.var_data_each_block
-        
+
         with self.tik_instance.if_scope(self.tiling_mode == 2):
             # if indices size is smaller than 0.2 ub size
-            self.updates_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_2 * UPDATE_NUMS_BLOCK_2 // self.var_dtype_bytes_size
+            self.updates_ub_number = self.ub_size_bytes // Constant.UBSIZE_ALLOCATED_BLOCK_2 * \
+                                     Constant.UPDATE_NUMS_BLOCK_2 // self.var_dtype_bytes_size
             self.updates_ub_number = math.ceil(
                 self.updates_ub_number /
                 self.var_data_each_block) * self.var_data_each_block
-            self.indices_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_2 * INDICES_NUMS_BLOCK_2 // self.indices_dtype_bytes_size
+            self.indices_ub_number = self.ub_size_bytes // Constant.UBSIZE_ALLOCATED_BLOCK_2 * \
+                                     Constant.INDICES_NUMS_BLOCK_2 // self.indices_dtype_bytes_size
             self.indices_ub_number = math.ceil(
                 self.indices_ub_number /
                 self.indices_data_each_block) * self.indices_data_each_block
@@ -268,64 +282,75 @@ class InplaceIndexAdd():
                 self.updates_ub_number -= self.var_data_each_block
 
         with self.tik_instance.if_scope(self.tiling_mode == 3):
-            self.updates_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_3 * UPDATE_NUMS_BLOCK_3 // self.var_dtype_bytes_size
+            self.updates_ub_number = self.ub_size_bytes // Constant.UBSIZE_ALLOCATED_BLOCK_3 * \
+                                     Constant.UPDATE_NUMS_BLOCK_3 // self.var_dtype_bytes_size
             self.updates_ub_number = math.ceil(
                 self.updates_ub_number /
                 self.var_data_each_block) * self.var_data_each_block
-            self.indices_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_3 * INDICES_NUMS_BLOCK_3 // self.indices_dtype_bytes_size
+            self.indices_ub_number = self.ub_size_bytes // Constant.UBSIZE_ALLOCATED_BLOCK_3 * \
+                                     Constant.INDICES_NUMS_BLOCK_3 // self.indices_dtype_bytes_size
             self.indices_ub_number = math.ceil(
                 self.indices_ub_number /
                 self.indices_data_each_block) * self.indices_data_each_block
             last_num = self.update_data_num % self.updates_ub_number
             if (last_num < self.var_data_each_block and self.update_data_num > self.updates_ub_number):
                 self.updates_ub_number -= self.var_data_each_block
-        
+
         with self.tik_instance.if_scope(self.tiling_mode == 4):
-            self.updates_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_1 * UPDATE_NUMS_BLOCK_1 // self.var_dtype_bytes_size // 2
+            self.updates_ub_number = self.ub_size_bytes // Constant.UBSIZE_ALLOCATED_BLOCK_1 * \
+                                     Constant.UPDATE_NUMS_BLOCK_1 // self.var_dtype_bytes_size // 2
             self.updates_ub_number = math.ceil(
                 self.updates_ub_number /
                 self.var_data_each_block) * self.var_data_each_block
 
-            self.vconv_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_1 * UPDATE_NUMS_BLOCK_1 // self.vconv_data_each_block // 2
+            self.vconv_ub_number = self.ub_size_bytes // Constant.UBSIZE_ALLOCATED_BLOCK_1 * \
+                                   Constant.UPDATE_NUMS_BLOCK_1 // self.vconv_data_each_block // 2
             self.vconv_ub_number = math.ceil(
                 self.vconv_ub_number /
                 self.vconv_data_each_block) * self.vconv_data_each_block
 
-            self.indices_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_1 * INDICES_NUMS_BLOCK_1 // self.indices_dtype_bytes_size // 2
+            self.indices_ub_number = self.ub_size_bytes // Constant.UBSIZE_ALLOCATED_BLOCK_1 * \
+                                     Constant.INDICES_NUMS_BLOCK_1 // self.indices_dtype_bytes_size // 2
             self.indices_ub_number = math.ceil(
                 self.indices_ub_number /
                 self.indices_data_each_block) * self.indices_data_each_block
 
         with self.tik_instance.if_scope(self.tiling_mode == 5):
-            self.updates_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_2 * UPDATE_NUMS_BLOCK_2 // self.var_dtype_bytes_size // 2
+            self.updates_ub_number = self.ub_size_bytes // Constant.UBSIZE_ALLOCATED_BLOCK_2 * \
+                                     Constant.UPDATE_NUMS_BLOCK_2 // self.var_dtype_bytes_size // 2
             self.updates_ub_number = math.ceil(
                 self.updates_ub_number /
                 self.var_data_each_block) * self.var_data_each_block
 
-            self.vconv_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_2 * UPDATE_NUMS_BLOCK_2 // self.vconv_data_each_block // 2
+            self.vconv_ub_number = self.ub_size_bytes // Constant.UBSIZE_ALLOCATED_BLOCK_2 * \
+                                   Constant.UPDATE_NUMS_BLOCK_2 // self.vconv_data_each_block // 2
             self.vconv_ub_number = math.ceil(
                 self.vconv_ub_number /
                 self.vconv_data_each_block) * self.vconv_data_each_block
 
-            self.indices_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_2 * INDICES_NUMS_BLOCK_2 // self.indices_dtype_bytes_size
+            self.indices_ub_number = self.ub_size_bytes // Constant.UBSIZE_ALLOCATED_BLOCK_2 * \
+                                     Constant.INDICES_NUMS_BLOCK_2 // self.indices_dtype_bytes_size
             self.indices_ub_number = math.ceil(
                 self.indices_ub_number /
                 self.indices_data_each_block) * self.indices_data_each_block
 
         with self.tik_instance.if_scope(self.tiling_mode == 6):
-            self.updates_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_3 * UPDATE_NUMS_BLOCK_3 // self.var_dtype_bytes_size // 2
+            self.updates_ub_number = self.ub_size_bytes // Constant.UBSIZE_ALLOCATED_BLOCK_3 * \
+                                     Constant.UPDATE_NUMS_BLOCK_3 // self.var_dtype_bytes_size // 2
             self.updates_ub_number = math.ceil(
                 self.updates_ub_number /
                 self.var_data_each_block) * self.var_data_each_block
-            self.indices_ub_number = self.ub_size_bytes // UBSIZE_ALLOCATED_BLOCK_3 * INDICES_NUMS_BLOCK_3 // self.indices_dtype_bytes_size // 2
+            self.indices_ub_number = self.ub_size_bytes // Constant.UBSIZE_ALLOCATED_BLOCK_3 * \
+                                     Constant.INDICES_NUMS_BLOCK_3 // self.indices_dtype_bytes_size // 2
             self.indices_ub_number = math.ceil(
                 self.indices_ub_number /
                 self.indices_data_each_block) * self.indices_data_each_block
             self.vconv_ub_number = self.updates_ub_number
         with self.tik_instance.if_scope(self.tiling_mode == 7):
             self.updates_ub_number = self.var_data_each_block
-            self.indices_ub_number = (self.ub_size_bytes - TWO_BLOCK_SIZE) // self.indices_dtype_bytes_size // \
-                                     self.indices_data_each_block * self.indices_data_each_block
+            self.indices_ub_number = (self.ub_size_bytes - Constant.TWO_BLOCK_SIZE) // \
+                                      self.indices_dtype_bytes_size // \
+                                      self.indices_data_each_block * self.indices_data_each_block
             self.vconv_ub_number = self.updates_ub_number
 
     def init_ub_tensor(self):
@@ -548,20 +573,20 @@ class InplaceIndexAdd():
         :return:
         """
         compute_loop = self.tik_instance.Scalar("int32", name="compute_loop")
-        compute_loop.set_as(element_num // self.max_num_one_repeat // MAX_REPEAT_TIMES)
+        compute_loop.set_as(element_num // self.max_num_one_repeat // Constant.MAX_REPEAT_TIMES)
 
         with self.tik_instance.if_scope(compute_loop > 0):
             with self.tik_instance.for_range(0, compute_loop) as index:
-                self.index_offset.set_as(index * self.max_num_one_repeat * MAX_REPEAT_TIMES)
+                self.index_offset.set_as(index * self.max_num_one_repeat * Constant.MAX_REPEAT_TIMES)
                 self.calc_process(self.max_num_one_repeat, self.index_offset,
-                                  self.index_offset, self.index_offset, MAX_REPEAT_TIMES, False)
-        
+                                  self.index_offset, self.index_offset, Constant.MAX_REPEAT_TIMES, False)
+
         last_loop = self.tik_instance.Scalar("int32", name="last_loop")
         last_loop.set_as(element_num % (self.max_num_one_repeat *
-                                   MAX_REPEAT_TIMES) // self.max_num_one_repeat)
+                                   Constant.MAX_REPEAT_TIMES) // self.max_num_one_repeat)
 
         with self.tik_instance.if_scope(last_loop > 0):
-            self.index_offset.set_as(compute_loop * self.max_num_one_repeat * MAX_REPEAT_TIMES)
+            self.index_offset.set_as(compute_loop * self.max_num_one_repeat * Constant.MAX_REPEAT_TIMES)
             self.calc_process(self.max_num_one_repeat, self.index_offset,
                               self.index_offset, self.index_offset, last_loop, False)
 
@@ -581,7 +606,8 @@ class InplaceIndexAdd():
             self.index_offset.set_as(
                     element_num // self.max_num_one_repeat *
                     self.max_num_one_repeat)
-            with self.tik_instance.if_scope(tik.any(tail_ele_num == 0, self.update_data_num < self.var_data_each_block)):
+            with self.tik_instance.if_scope(tik.any(tail_ele_num == 0,
+                                            self.update_data_num < self.var_data_each_block)):
                 self.calc_process(compute_mask, self.index_offset, self.index_offset,
                                   self.index_offset, 1, False)
 
@@ -745,7 +771,8 @@ class InplaceIndexAdd():
         Main process of inplace_index_add
         """
         with self.tik_instance.for_range(0, self.ai_core_num, block_num=self.ai_core_num) as core_index:
-            self.tiling_ub = self.tik_instance.Tensor("int32", (TILING_ARG_NUM,), name="tiling_ub", scope=tik.scope_ubuf)
+            self.tiling_ub = self.tik_instance.Tensor("int32", (Constant.TILING_ARG_NUM,),
+                                                      name="tiling_ub", scope=tik.scope_ubuf)
             self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 1, 0, 0)
             self.tiling_args()
 
@@ -757,7 +784,6 @@ class InplaceIndexAdd():
                     self.outer_loops_ub_per_block.set_as(self.outer_loop - self.outer_loop_start_index_every_block)
                 self.traversing_outer_loop_per_block()
 
-    
     def inplace_index_add_operator(self):
         """
         inplace_index_add operation
@@ -781,7 +807,7 @@ class InplaceIndexAdd():
                                    outputs=(self.var_out_gm),
                                    flowtable=[self.tiling_gm],
                                    config=opt_config)
-                                   
+
         return self.tik_instance
 
 

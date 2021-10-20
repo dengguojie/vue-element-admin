@@ -15,7 +15,6 @@
 """
 layer_norm_beta_gamma_backprop_v2
 """
-import operator
 import tbe.common.register as tbe_register
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
@@ -27,10 +26,8 @@ from impl.util.platform_adapter import tuple_sum
 from impl.util.platform_adapter import tbe_context
 
 
-# max last dim factor
-MAX_LAST_FACTOR = 2048
-
-
+# pylint: disable=unused-argument,too-many-arguments,too-many-locals
+# pylint: disable=too-many-statements,invalid-name
 @tbe_register.register_param_generalization("LayerNormBetaGammaBackpropV2")
 def layer_norm_beta_gamma_backprop_v2_generalization(input_dy, res_for_gamma, output_pd_gamma, output_pd_beta,
                                                      shape_gamma, impl_mode, generalize_config=None):
@@ -41,7 +38,7 @@ def layer_norm_beta_gamma_backprop_v2_generalization(input_dy, res_for_gamma, ou
     last_dim = input_dy["shape"][-1]
     shape_in = (-1, -1, last_dim)
     range_in = [(1, -1), (1, -1), (last_dim, last_dim)]
-    shape_out = (last_dim, )
+    shape_out = (last_dim,)
     range_out = [(last_dim, last_dim)]
     input_dy["shape"], input_dy["ori_shape"] = shape_in, shape_in
     input_dy["range"], input_dy["ori_range"] = range_in, range_in
@@ -125,6 +122,9 @@ def layer_norm_beta_gamma_backprop_v2_compute(data_dy, res_for_gamma, output_pd_
 
 
 def calc_max_reduce_factor(dy_type, last_dim):
+    """
+    calc_max_reduce_factor
+    """
     ub_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     bytes_fp32 = 4
     bytes_fp16 = 2
@@ -177,10 +177,10 @@ def layer_norm_beta_gamma_backprop_v2(input_dy, res_for_gamma, output_pd_gamma,
     -------
     None
     """
+    MAX_LAST_FACTOR = 2048
     dtype = input_dy.get("dtype").lower()
     shape_dy = input_dy.get("shape")
     dtype_x = res_for_gamma.get("dtype").lower()
-    format_dy = input_dy.get("format")
 
     no_reduce = False
     reduce_dim = None
@@ -192,7 +192,7 @@ def layer_norm_beta_gamma_backprop_v2(input_dy, res_for_gamma, output_pd_gamma,
     if len(shape_dy) == len(shape_gamma):
         # do not reduce
         fused_all_axis = tbe.var("fused_all_axis")
-        shape_data = (fused_all_axis, )
+        shape_data = (fused_all_axis,)
         no_reduce = True
         shape_gamma_new = shape_gamma
     else:
@@ -210,9 +210,9 @@ def layer_norm_beta_gamma_backprop_v2(input_dy, res_for_gamma, output_pd_gamma,
                 break
             normal_dim *= shape_dy[i]
         gamma_dim = 1
-        for i in range(len(shape_gamma)):
+        for i, _ in enumerate(shape_gamma):
             gamma_dim = gamma_dim * shape_gamma[i]
-        shape_gamma_new = (gamma_dim, )
+        shape_gamma_new = (gamma_dim,)
         shape_data = (reduce_dim, normal_dim)
 
     if dynamic_normal:
@@ -251,4 +251,3 @@ def layer_norm_beta_gamma_backprop_v2(input_dy, res_for_gamma, output_pd_gamma,
               "tensor_list": tensor_list}
 
     tbe.build(sch, config)
-

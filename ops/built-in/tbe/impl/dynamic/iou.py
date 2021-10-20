@@ -23,20 +23,24 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe_context
 
-# MAX ELIMENT NUM OF FP16 IN 1BLOCK
-FP16_ELIMENTS_BLOCK = 16
-# MAX ELIMENT NUM OF FP32 IN 1BLOCK
-FP32_ELIMENTS_BLOCK = 8
-# CONST GTBOX SLICE SEGMENT
-GTBOX_SEGMENT = 4096 * 4
-# CONST BBOX SLICE SEGMENT
-BBOX_SEGMENT = 4096 * 4
+class Constant:
+    """
+    The class for constant
+    """
+    # MAX ELIMENT NUM OF FP16 IN 1BLOCK
+    FP16_ELIMENTS_BLOCK = 16
+    # MAX ELIMENT NUM OF FP32 IN 1BLOCK
+    FP32_ELIMENTS_BLOCK = 8
+    # CONST GTBOX SLICE SEGMENT
+    GTBOX_SEGMENT = 4096 * 4
+    # CONST BBOX SLICE SEGMENT
+    BBOX_SEGMENT = 4096 * 4
 
-MAX_INT32 = 2 ** 31 - 1
-TILING_SCALAR_DTYPE = "int32"
-TILING_PARAMS_NUM = 64
+    MAX_INT32 = 2 ** 31 - 1
+    TILING_SCALAR_DTYPE = "int32"
+    TILING_PARAMS_NUM = 64
 
-AREA_UB_SIZE = 4096
+    AREA_UB_SIZE = 4096
 
 
 def _apply_mem(tik_instance, dtype,
@@ -63,7 +67,8 @@ def _apply_mem(tik_instance, dtype,
 
 
 def _get_ceil_int(int1, int2):
-    """Get Ceil Int
+    """
+    Get Ceil Int
 
     Parameters
     ----------
@@ -84,7 +89,7 @@ def _get_align_int(int1, int2):
     return _get_ceil_int(int1, int2) * int2
 
 
-# pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-instance-attributes,invalid-name
 class Iou:
     """Function: use to finish Iou main functions
     """
@@ -131,42 +136,42 @@ class Iou:
         # input and output tensor in gm
         self.bboxes_gm = self.tik_instance.Tensor(
             self.bboxes_dtype,
-            (MAX_INT32,),
+            (Constant.MAX_INT32,),
             name="bboxes_gm",
             scope=tik.scope_gm)
         self.gtboxes_gm = self.tik_instance.Tensor(
             self.gtboxes_dtype,
-            (MAX_INT32,),
+            (Constant.MAX_INT32,),
             name="gtboxes_gm",
             scope=tik.scope_gm)
         self.overlap_gm = self.tik_instance.Tensor(
             self.bboxes_dtype,
-            (MAX_INT32,),
+            (Constant.MAX_INT32,),
             name="overlap_gm",
             scope=tik.scope_gm)
         self.tiling_gm = self.tik_instance.Tensor(
-            TILING_SCALAR_DTYPE,
-            (TILING_PARAMS_NUM,),
+            Constant.TILING_SCALAR_DTYPE,
+            (Constant.TILING_PARAMS_NUM,),
             name="tiling_gm",
             scope=tik.scope_gm)
-        
-        self.bboxes_num = self.tik_instance.Scalar(TILING_SCALAR_DTYPE, "bboxes_num")
-        self.gtboxes_num = self.tik_instance.Scalar(TILING_SCALAR_DTYPE, "gtboxes_num")
 
-        self.core_num = self.tik_instance.Scalar(TILING_SCALAR_DTYPE, "core_num")
+        self.bboxes_num = self.tik_instance.Scalar(Constant.TILING_SCALAR_DTYPE, "bboxes_num")
+        self.gtboxes_num = self.tik_instance.Scalar(Constant.TILING_SCALAR_DTYPE, "gtboxes_num")
+
+        self.core_num = self.tik_instance.Scalar(Constant.TILING_SCALAR_DTYPE, "core_num")
 
         # init attr in objext
-        self.tiling_mode = self.tik_instance.Scalar(TILING_SCALAR_DTYPE, "tiling_mode")
-        self.point_per_core = self.tik_instance.Scalar(TILING_SCALAR_DTYPE, "point_per_core")
-        self.core_tail_num = self.tik_instance.Scalar(TILING_SCALAR_DTYPE, "core_tail_num")
-        self.area_x0_size = self.tik_instance.Scalar(TILING_SCALAR_DTYPE, "area_x0_size")
-        self.area_ub_size = self.tik_instance.Scalar(TILING_SCALAR_DTYPE, "area_ub_size")
-        self.gt_area_ub_size = self.tik_instance.Scalar(TILING_SCALAR_DTYPE, "gt_area_ub_size")
-        self.bb_loop = self.tik_instance.Scalar(TILING_SCALAR_DTYPE, "bb_loop")
-        self.bb_tail = self.tik_instance.Scalar(TILING_SCALAR_DTYPE, "bb_tail")
-        self.bb_tail_offset = self.tik_instance.Scalar(TILING_SCALAR_DTYPE, "bb_tail_offset")
-        self.dst_gm_offset = self.tik_instance.Scalar(TILING_SCALAR_DTYPE, "dst_gm_offset")
-        self.gm_point_offset = self.tik_instance.Scalar(TILING_SCALAR_DTYPE, "gm_point_offset")
+        self.tiling_mode = self.tik_instance.Scalar(Constant.TILING_SCALAR_DTYPE, "tiling_mode")
+        self.point_per_core = self.tik_instance.Scalar(Constant.TILING_SCALAR_DTYPE, "point_per_core")
+        self.core_tail_num = self.tik_instance.Scalar(Constant.TILING_SCALAR_DTYPE, "core_tail_num")
+        self.area_x0_size = self.tik_instance.Scalar(Constant.TILING_SCALAR_DTYPE, "area_x0_size")
+        self.area_ub_size = self.tik_instance.Scalar(Constant.TILING_SCALAR_DTYPE, "area_ub_size")
+        self.gt_area_ub_size = self.tik_instance.Scalar(Constant.TILING_SCALAR_DTYPE, "gt_area_ub_size")
+        self.bb_loop = self.tik_instance.Scalar(Constant.TILING_SCALAR_DTYPE, "bb_loop")
+        self.bb_tail = self.tik_instance.Scalar(Constant.TILING_SCALAR_DTYPE, "bb_tail")
+        self.bb_tail_offset = self.tik_instance.Scalar(Constant.TILING_SCALAR_DTYPE, "bb_tail_offset")
+        self.dst_gm_offset = self.tik_instance.Scalar(Constant.TILING_SCALAR_DTYPE, "dst_gm_offset")
+        self.gm_point_offset = self.tik_instance.Scalar(Constant.TILING_SCALAR_DTYPE, "gm_point_offset")
         self.area_x0 = None
         self.area_x1 = None
         self.area_y0 = None
@@ -190,24 +195,25 @@ class Iou:
         self.rec_1 = None
         self.rec_2 = None
         if self.bboxes_dtype == "float16":
-            self.gt_ub_segment = GTBOX_SEGMENT
-            self.bb_ub_segment = BBOX_SEGMENT
-            self.max_eliments = FP16_ELIMENTS_BLOCK * 8
-            self.min_point_per_core = FP16_ELIMENTS_BLOCK
-            self.eliments_per_block = FP16_ELIMENTS_BLOCK
+            self.gt_ub_segment = Constant.GTBOX_SEGMENT
+            self.bb_ub_segment = Constant.BBOX_SEGMENT
+            self.max_eliments = Constant.FP16_ELIMENTS_BLOCK * 8
+            self.min_point_per_core = Constant.FP16_ELIMENTS_BLOCK
+            self.eliments_per_block = Constant.FP16_ELIMENTS_BLOCK
         else:
-            self.gt_ub_segment = GTBOX_SEGMENT // 2
-            self.bb_ub_segment = BBOX_SEGMENT // 2
-            self.max_eliments = FP32_ELIMENTS_BLOCK * 8
-            self.min_point_per_core = FP32_ELIMENTS_BLOCK
-            self.eliments_per_block = FP32_ELIMENTS_BLOCK
+            self.gt_ub_segment = Constant.GTBOX_SEGMENT // 2
+            self.bb_ub_segment = Constant.BBOX_SEGMENT // 2
+            self.max_eliments = Constant.FP32_ELIMENTS_BLOCK * 8
+            self.min_point_per_core = Constant.FP32_ELIMENTS_BLOCK
+            self.eliments_per_block = Constant.FP32_ELIMENTS_BLOCK
         if self.product is False:
             self.bb_ub_segment = self.bb_ub_segment // 2
 
     # pylint: disable=too-many-statements
     def iou_process(self, core_id):
-        """do process and schedule
-           main function
+        """
+        do process and schedule
+        main function
 
         Parameters
         ----------
@@ -224,7 +230,7 @@ class Iou:
             run_gt_point_segment = run_gt_point * 4
             # global
             nbust = _get_ceil_int(run_gt_point_segment,
-                                self.eliments_per_block)
+                                  self.eliments_per_block)
             self.tik_instance.data_move(self.gtboxes_ub, self.gtboxes_gm, 0, 1,
                                         nbust, 0, 0)
             # [n,4] --> 4*[n,1]  by scalar
@@ -273,8 +279,9 @@ class Iou:
                     self._run_segment(self.bb_tail, self.gm_point_offset, self.gtboxes_num)
 
     def iou_process_cut_by_gt(self, core_id):
-        """do process and schedule by gt
-           main function
+        """
+        do process and schedule by gt
+        main function
 
         Parameters
         ----------
@@ -291,11 +298,11 @@ class Iou:
                 with self.tik_instance.for_range(0, gt_loop) as _gt_loop:
                     self.dst_gm_offset.set_as(\
                         (self.point_per_core * core_id +
-                        _gt_loop * self.gt_ub_segment // 4) * self.bboxes_num)
+                         _gt_loop * self.gt_ub_segment // 4) * self.bboxes_num)
 
                     # global
                     nbust = _get_ceil_int(self.gt_ub_segment,
-                                        self.eliments_per_block)
+                                          self.eliments_per_block)
                     gt_gm_offset = core_id * self.point_per_core * 4 + \
                                 _gt_loop * self.gt_ub_segment
                     self.tik_instance.data_move(self.gtboxes_ub,
@@ -311,36 +318,36 @@ class Iou:
                         self.gm_point_offset.set_as(\
                             (bb_loop_index * self.bb_ub_segment) // 4)
                         self._run_segment(self.bb_ub_segment,
-                                        self.gm_point_offset, gtbox_num,
-                                        self.dst_gm_offset)
+                                          self.gm_point_offset, gtbox_num,
+                                          self.dst_gm_offset)
 
                     with self.tik_instance.if_scope(self.bb_tail != 0):
                         self.gm_point_offset.set_as(self.bb_tail_offset // 4)
 
                         with self.tik_instance.if_scope(
-                            tik.any((self.bb_tail // 4) % self.eliments_per_block == 0, self.core_num == 1)
-                        ):
+                                tik.any((self.bb_tail // 4) % self.eliments_per_block == 0, self.core_num == 1)
+                            ):
                             self._run_segment(self.bb_tail, self.gm_point_offset,
-                                            self.dst_gm_offset)
+                                              self.dst_gm_offset)
 
                         with self.tik_instance.else_scope():
                             bb_tail_half = _get_align_int(self.bb_tail // 8, self.eliments_per_block)
                             self._run_segment(bb_tail_half * 4, self.gm_point_offset,
-                                            self.dst_gm_offset)
+                                              self.dst_gm_offset)
                             self.gm_point_offset.set_as(self.gm_point_offset + bb_tail_half - \
                                             (bb_tail_half * 2 - self.bb_tail // 4))
                             self._run_segment(bb_tail_half * 4, self.gm_point_offset,
-                                            self.dst_gm_offset)
+                                              self.dst_gm_offset)
 
 
                 with self.tik_instance.if_scope(gt_tail != 0):
                     self.dst_gm_offset.set_as(\
                         (self.point_per_core * core_id +
-                        gt_loop * self.gt_ub_segment // 4) * self.bboxes_num)
+                         gt_loop * self.gt_ub_segment // 4) * self.bboxes_num)
 
                     # global
                     nbust = _get_ceil_int(gt_tail,
-                                        self.eliments_per_block)
+                                          self.eliments_per_block)
                     gt_gm_offset = core_id * self.point_per_core * 4 + \
                                 gt_loop * self.gt_ub_segment
                     self.tik_instance.data_move(self.gtboxes_ub,
@@ -356,31 +363,31 @@ class Iou:
                         self.gm_point_offset.set_as(\
                             (bb_loop_index * self.bb_ub_segment) // 4)
                         self._run_segment(self.bb_ub_segment,
-                                        self.gm_point_offset, gtbox_num,
-                                        self.dst_gm_offset)
+                                          self.gm_point_offset, gtbox_num,
+                                          self.dst_gm_offset)
 
                     with self.tik_instance.if_scope(self.bb_tail != 0):
                         self.gm_point_offset.set_as(self.bb_tail_offset // 4)
 
                         with self.tik_instance.if_scope(
-                            tik.any((self.bb_tail // 4) % self.eliments_per_block == 0, self.core_num == 1)
-                        ):
+                                tik.any((self.bb_tail // 4) % self.eliments_per_block == 0, self.core_num == 1)
+                            ):
                             self._run_segment(self.bb_tail,
-                                            self.gm_point_offset, gtbox_num,
-                                            self.dst_gm_offset)
+                                              self.gm_point_offset, gtbox_num,
+                                              self.dst_gm_offset)
 
                         with self.tik_instance.else_scope():
                             bb_tail_half = _get_align_int(self.bb_tail // 8,
-                                            self.eliments_per_block)
+                                                          self.eliments_per_block)
                             self._run_segment(bb_tail_half * 4,
-                                            self.gm_point_offset, gtbox_num,
-                                            self.dst_gm_offset)
+                                              self.gm_point_offset, gtbox_num,
+                                              self.dst_gm_offset)
                             self.gm_point_offset.set_as(self.gm_point_offset + \
                                             bb_tail_half - \
                                             (bb_tail_half * 2 - self.bb_tail // 4))
                             self._run_segment(bb_tail_half * 4,
-                                            self.gm_point_offset, gtbox_num,
-                                            self.dst_gm_offset)
+                                              self.gm_point_offset, gtbox_num,
+                                              self.dst_gm_offset)
 
             with self.tik_instance.if_scope(self.core_tail_num == 0):
                 _run(self.point_per_core * 4)
@@ -392,36 +399,39 @@ class Iou:
                     _run(self.point_per_core * 4)
 
     def _apply_all_ub(self):
+        """
+        apply_all_ub
+        """
         self.area_x0 = _apply_mem(self.tik_instance, self.dtype,
-                                  [AREA_UB_SIZE], "area_x0")
+                                  [Constant.AREA_UB_SIZE], "area_x0")
         self.area_x1 = _apply_mem(self.tik_instance, self.dtype,
-                                  [AREA_UB_SIZE], "area_x1")
+                                  [Constant.AREA_UB_SIZE], "area_x1")
         self.area_y0 = _apply_mem(self.tik_instance, self.dtype,
-                                  [AREA_UB_SIZE], "area_y0")
+                                  [Constant.AREA_UB_SIZE], "area_y0")
         self.area_y1 = _apply_mem(self.tik_instance, self.dtype,
-                                  [AREA_UB_SIZE], "area_y1")
+                                  [Constant.AREA_UB_SIZE], "area_y1")
         self.inter_area_x0 = _apply_mem(self.tik_instance, self.dtype,
-                                        [AREA_UB_SIZE], "inter_area_x0")
+                                        [Constant.AREA_UB_SIZE], "inter_area_x0")
         self.inter_area_x1 = _apply_mem(self.tik_instance, self.dtype,
-                                        [AREA_UB_SIZE], "inter_area_x1")
+                                        [Constant.AREA_UB_SIZE], "inter_area_x1")
         self.inter_area_y0 = _apply_mem(self.tik_instance, self.dtype,
-                                        [AREA_UB_SIZE], "inter_area_y0")
+                                        [Constant.AREA_UB_SIZE], "inter_area_y0")
         self.inter_area_y1 = _apply_mem(self.tik_instance, self.dtype,
-                                        [AREA_UB_SIZE], "inter_area_y1")
+                                        [Constant.AREA_UB_SIZE], "inter_area_y1")
         self.area_y1_y0 = _apply_mem(self.tik_instance, self.dtype,
-                                     [AREA_UB_SIZE], "area_y1_y0")
+                                     [Constant.AREA_UB_SIZE], "area_y1_y0")
         self.gtboxes_ub = _apply_mem(self.tik_instance, self.dtype,
                                      [self.gt_ub_segment], "gtboxes_ub")
         self.gt_boxes_area_ub = _apply_mem(self.tik_instance, self.dtype,
-                                           [AREA_UB_SIZE], "gt_boxes_area_ub")
+                                           [Constant.AREA_UB_SIZE], "gt_boxes_area_ub")
         self.zero_ub = _apply_mem(self.tik_instance, self.dtype,
-                                    [self.eliments_per_block], "zero_ub")
+                                  [self.eliments_per_block], "zero_ub")
         self.out_ub = _apply_mem(self.tik_instance, self.dtype,
-                                        [AREA_UB_SIZE], "out_ub")
+                                 [Constant.AREA_UB_SIZE], "out_ub")
         self.inter_area_ub = _apply_mem(self.tik_instance, self.dtype,
-                                        [AREA_UB_SIZE], "inter_area_ub")
+                                        [Constant.AREA_UB_SIZE], "inter_area_ub")
         self.bboxes_area_ub = _apply_mem(self.tik_instance, self.dtype,
-                                        [AREA_UB_SIZE], "bboxes_area_ub")
+                                         [Constant.AREA_UB_SIZE], "bboxes_area_ub")
         self.bboxes_ub = _apply_mem(self.tik_instance, self.dtype,
                                     [self.bb_ub_segment], "bboxes_ub")
         self.gtboxes_x0 = _apply_mem(self.tik_instance, self.dtype,
@@ -434,25 +444,25 @@ class Iou:
                                      [self.eliments_per_block], "gtboxes_y1")
         if self.product is False:
             self.rec_1 = _apply_mem(self.tik_instance, self.dtype,
-                                   [AREA_UB_SIZE], "rec_1")
+                                    [Constant.AREA_UB_SIZE], "rec_1")
             self.rec_2 = _apply_mem(self.tik_instance, self.dtype,
-                                   [AREA_UB_SIZE], "rec_2")
-        _repeat = _get_ceil_int(AREA_UB_SIZE, self.max_eliments)
+                                    [Constant.AREA_UB_SIZE], "rec_2")
+        _repeat = _get_ceil_int(Constant.AREA_UB_SIZE, self.max_eliments)
         self.tik_instance.vector_dup(self.max_eliments,
-                                    self.area_x0, 0.0,
-                                    _repeat, 1, 8)
+                                     self.area_x0, 0.0,
+                                     _repeat, 1, 8)
         self.tik_instance.vector_dup(self.max_eliments,
-                                    self.area_x1, 0.0,
-                                    _repeat, 1, 8)
+                                     self.area_x1, 0.0,
+                                     _repeat, 1, 8)
         self.tik_instance.vector_dup(self.max_eliments,
-                                    self.area_y0, 0.0,
-                                    _repeat, 1, 8)
+                                     self.area_y0, 0.0,
+                                     _repeat, 1, 8)
         self.tik_instance.vector_dup(self.max_eliments,
-                                    self.area_y1, 0.0,
-                                    _repeat, 1, 8)
+                                     self.area_y1, 0.0,
+                                     _repeat, 1, 8)
         self.tik_instance.vector_dup(self.eliments_per_block,
-                                    self.zero_ub, 0.0,
-                                    1, 1, 8)
+                                     self.zero_ub, 0.0,
+                                     1, 1, 8)
 
     def _run_segment(self, run_bb_point_segment, gm_offset, gtbox_num, gm_out_offset=0):
         """
@@ -482,14 +492,14 @@ class Iou:
         self.calcu_area(run_bb_point, self.bboxes_area_ub)
 
         scalar_addr = \
-            [self.tik_instance.Scalar(dtype=self.dtype) for _ in range(4)]
+            [self.tik_instance.Scalar(dtype=self.dtype)] * 4
         scalar_area = self.tik_instance.Scalar(dtype=self.dtype)
         with self.tik_instance.for_range(
                 0, gtbox_num) as gt_global_index:
             scalar_area.set_as(self.gt_boxes_area_ub[gt_global_index])
             for i in range(4):
                 scalar_addr[i].set_as(self.gtboxes_ub[gt_global_index * 4 + i])
-            # scalar_area = (scalar_addr[2]-scalar_addr[0]) * (scalar_addr[3]-scalar_addr[1])
+            # `scalar_area = (scalar_addr[2]-scalar_addr[0]) * (scalar_addr[3]-scalar_addr[1])`
             self.tik_instance.vector_dup(self.eliments_per_block,
                                          self.gtboxes_x0, scalar_addr[0],
                                          1, 1, 8)
@@ -599,12 +609,11 @@ class Iou:
             tik_instance
         """
 
-        with self.tik_instance.for_range(
-        0, self.full_core_num, block_num=self.full_core_num) as core_id:
+        with self.tik_instance.for_range(0, self.full_core_num, block_num=self.full_core_num) as core_id:
             with self.tik_instance.new_stmt_scope():
                 tiling_ub = self.tik_instance.Tensor(
-                    TILING_SCALAR_DTYPE,
-                    (TILING_PARAMS_NUM,),
+                    Constant.TILING_SCALAR_DTYPE,
+                    (Constant.TILING_PARAMS_NUM,),
                     tik.scope_ubuf,
                     "tiling_ub"
                 )
@@ -628,7 +637,7 @@ class Iou:
                 with self.tik_instance.new_stmt_scope():
                     self.iou_process_cut_by_gt(core_id)
 
-        opt_config = {"out_of_bound_sync_check":True}
+        opt_config = {"out_of_bound_sync_check": True}
         self.tik_instance.BuildCCE(
             kernel_name=kernel_name,
             inputs=[self.bboxes_gm, self.gtboxes_gm],
@@ -640,7 +649,7 @@ class Iou:
             "vars", {
                 "full_core_num": self.full_core_num,
                 "product": self.product
-        })
+                })
         return self.tik_instance
 
     def data_rerange(self, run_point, point_ub):
@@ -659,9 +668,7 @@ class Iou:
         None
         """
         for_range = _get_ceil_int(run_point, 2)
-        index_reg = [
-            self.tik_instance.Scalar(dtype=self.dtype) for _ in range(8)
-        ]
+        index_reg = [self.tik_instance.Scalar(dtype=self.dtype)] * 8
         with self.tik_instance.for_range(0, for_range) as conv_index:
             for i in range(8):
                 index_reg[i].set_as(point_ub[conv_index * 8 + i])
@@ -738,11 +745,11 @@ class Iou:
                                 8)
         if inter_mode is True:
             self.tik_instance.vmax(self.max_eliments, area_ub,
-                                    self.zero_ub, area_ub,
-                                    repeat_time, 1, 0, 1, 8, 0, 8)
+                                   self.zero_ub, area_ub,
+                                   repeat_time, 1, 0, 1, 8, 0, 8)
             self.tik_instance.vmax(self.max_eliments, self.area_y1_y0,
-                                    self.zero_ub, self.area_y1_y0,
-                                    repeat_time, 1, 0, 1, 8, 0, 8)
+                                   self.zero_ub, self.area_y1_y0,
+                                   repeat_time, 1, 0, 1, 8, 0, 8)
         self.tik_instance.vmul(self.max_eliments, area_ub,
                                self.area_y1_y0,
                                area_ub, repeat_time, 1,

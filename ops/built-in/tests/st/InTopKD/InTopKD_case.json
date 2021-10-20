@@ -1,0 +1,35 @@
+[
+  {
+    "op": "InTopKD",
+    "input_desc": [
+      {
+        "shape": [1, 1],
+        "format": "ND",
+        "name": "x1",
+        "type": "float32"
+      },
+      {
+        "shape": [1],
+        "format": "ND",
+        "name": "x2",
+        "type": "int32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [1, 1],
+        "format": "ND",
+        "name": "y",
+        "type": "float32"
+      }
+    ],
+    "attr":[
+        {
+          "name": "k",
+          "type": "int",
+          "value": 1
+        }
+    ],
+    "case_name": "test_InTopKD_000"
+  }
+]

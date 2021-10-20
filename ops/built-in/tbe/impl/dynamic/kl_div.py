@@ -15,8 +15,6 @@
 """
 dynamic kl_div
 """
-import functools
-
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
@@ -69,11 +67,11 @@ def kl_div_compute(input_x, input_target, output_y, axis, reduction, batch_size,
 
     output_pos = tbe.vmul(input_target, tmp_result)
 
-    # max(output_pos, 0)
+    # `max(output_pos, 0)`
     target_gt_zero = tbe.vmaxs(input_target, 0)
 
     if input_x_dtype == "float16":
-        # algrithm : Y = X*1024/(X*1024+ESP_MIN)
+        # algrithm : Y = `X*1024/(X*1024+ESP_MIN)`
         # for float16, add a small number which value is 1.18e-7, so that the
         # divisor is not equal to 0, and for accuracy, multiply by a number
         # which value is 1024.
@@ -81,7 +79,7 @@ def kl_div_compute(input_x, input_target, output_y, axis, reduction, batch_size,
         add_espmin = tbe.vadds(mul_big, 1.18e-7)
         y_espmin = tbe.vdiv(mul_big, add_espmin)
     elif input_x_dtype == "float32":
-        # algrithm : Y = X/(X+ESP_MIN)
+        # algrithm : `Y = X/(X+ESP_MIN)`
         # for float32, add a small number which value is 1.18e-38, so that
         # the divisor is not equal to 0.
         add_espmin = tbe.vadds(target_gt_zero, 1.18e-38)
@@ -190,7 +188,7 @@ def kl_div(input_x, input_target, output_y, reduction, kernel_name="kl_div"):
     x_shape = input_x.get("shape")
     shape_len = len(x_shape)
     axis_list = list(range(shape_len))
-    input_axis = {"shape": [shape_len, ], "value": axis_list, "rel_pos_to_reduce": "axis"}
+    input_axis = {"shape": [shape_len,], "value": axis_list, "rel_pos_to_reduce": "axis"}
 
     ins = classify([input_x, input_target, input_axis], OpPatternMode.REDUCE, {"keepdims": False})
 
