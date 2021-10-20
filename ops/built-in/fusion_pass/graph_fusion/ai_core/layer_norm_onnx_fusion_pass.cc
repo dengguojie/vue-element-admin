@@ -594,7 +594,8 @@ Status LayerNormONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   fusionNodes.push_back(layer_node);
   Operator op_layer = ge::OpDescUtils::CreateOperatorFromNode(layer_node);
   op_layer.SetAttr("begin_norm_axis", begin_norm_axis);  // reducemean0的axes属性
-  op_layer.SetAttr("begin_params_axis", -1);
+  int beta_dims_size = beta_desc.GetShape().GetDims().size();
+  op_layer.SetAttr("begin_params_axis", 0 - beta_dims_size);
   op_layer.SetAttr("epsilon", epsilon);  // add0的const输入值
 
   // step8: add edge
