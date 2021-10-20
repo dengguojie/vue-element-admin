@@ -144,18 +144,6 @@ case10 = {"params": [{"shape": (4, 2, 16, 16), "dtype": "float32", "format": "FR
          "format_expect": [],
          "support_expect": True}
 
-case11 = {"params": [{"shape": (11,2,1023), "dtype": "float16", "format": "NCHW", "ori_shape": (11,2,1023),"ori_format": "NCHW"},
-                     {"shape": (1023,), "dtype": "float16", "format": "NCHW", "ori_shape": (1023,),"ori_format": "NCHW"},
-                     {"shape": (1023,), "dtype": "float16", "format": "NCHW", "ori_shape": (1023,),"ori_format": "NCHW"},
-                     {"shape": (11,2,1023), "dtype": "float16", "format": "NCHW", "ori_shape": (11,2,1023),"ori_format": "NCHW"},
-                     {"shape": (11,2,1), "dtype": "float16", "format": "NCHW", "ori_shape": (11,2,1),"ori_format": "NCHW"},
-                     {"shape": (11,2,1), "dtype": "float16", "format": "NCHW", "ori_shape": (11,2,1),"ori_format": "NCHW"},
-                     -1, -1],
-         "case_name": "layer_norm_1",
-         "expect": RuntimeError,
-         "format_expect": [],
-         "support_expect": True}
-
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case21)
@@ -168,7 +156,6 @@ ut_case.add_case(["Ascend910A"], case7)
 ut_case.add_case(["Ascend910A"], case8)
 ut_case.add_case(["Ascend910A"], case9)
 ut_case.add_case(["Ascend910A"], case10)
-ut_case.add_case(["Ascend910A"], case11)
 
 # pylint: disable=unused-argument
 def calc_expect_func(x, gamma, beta, y, mean, variance, begin_norm_axis,begin_params_axis):

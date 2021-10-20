@@ -98,11 +98,11 @@ class SegmentSort:
         index_l1 = self._index_move_in()
         if data_num <= self.ub_pro_num_max or self.k_num <= self.ub_sort_num:
             self.merge_sort.get_top_proposal(self.output_proposal, core_index, data_num, self.k_num,
-                                             self._get_proposal_ub, index_l1, data_index_start)
+                                             self._get_proposal_ub, (index_l1, data_index_start))
         else:
             self.merge_sort.get_top_proposal_large(self.output_proposal, self.temp_proposal,
                                                    core_index, data_num, self.k_num,
-                                                   self._get_proposal_ub, index_l1, data_index_start)
+                                                   self._get_proposal_ub, (index_l1, data_index_start))
         self._set_tail(core_index, data_num)
 
     def _index_move_in(self):
