@@ -39,9 +39,9 @@ TEST_F(reduce_mean, reduce_mean_infer_shape_01) {
   std::vector<std::pair<int64_t,int64_t>> output_shape_range;
   EXPECT_EQ(output_desc.GetShapeRange(output_shape_range), ge::GRAPH_SUCCESS);
   std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
-    {1, 2},
-    {1, 200},
-    {1, 8},
+    {0, 2},
+    {0, 200},
+    {0, 8},
   };
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }

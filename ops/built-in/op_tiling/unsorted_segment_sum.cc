@@ -1395,9 +1395,33 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
       return false;
     }
   }
-  if (input_size == 0 || ids_size == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, " input_size or ids_size is 0, not support");
+  std::string key_num_segments = "num_segments";
+  if (op_paras.const_inputs.find(key_num_segments) == op_paras.const_inputs.end()) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "num_segments not exists.");
     return false;
+  }
+  const int32_t* num_segments_ptr =
+    reinterpret_cast<const int32_t*>(std::get<0>(op_paras.const_inputs.at(key_num_segments)));
+  int32_t num_segments = *num_segments_ptr;
+  if (num_segments <= 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "num_segments is small then 0");
+    return false;
+  }
+  GELOGD("op [%s] : num_segments=%d", op_type.c_str(), num_segments);
+  if (input_size == 0 || ids_size == 0) {
+    TilingParamsFp32 params;
+    InitTilingParams(params);
+    params.select_key_input_scalar = 0;
+    params.need_core_num_input_scalar = 1;
+    WriteTilingParams(params, run_info);
+    // cout tiling params
+    PrintTilingParams(op_type, params);
+    // BlockDim, core num used in tik op
+    run_info.block_dim = params.need_core_num_input_scalar;
+    // workspace, null for tik op
+    std::vector<int64_t> workspace;
+    run_info.workspaces = workspace;
+    return true;
   }
   int32_t e_size = input_size / ids_size;
   GELOGD("op[%s] e_size is %d",op_type.c_str(), e_size);
@@ -1431,15 +1455,6 @@ bool UnsortedSegmentSumTiling(const std::string& op_type, const TeOpParas& op_pa
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileParams failed.");
     return false;
   }
-  std::string key_num_segments = "num_segments";
-  if (op_paras.const_inputs.find(key_num_segments) == op_paras.const_inputs.end()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "num_segments not exists.");
-    return false;
-  }
-  const int32_t* num_segments_ptr =
-    reinterpret_cast<const int32_t*>(std::get<0>(op_paras.const_inputs.at(key_num_segments)));
-  int32_t num_segments = *num_segments_ptr;
-  GELOGD("op [%s] : num_segments=%d", op_type.c_str(), num_segments);
 
   if (input_dtype == DTYPE_FP32) {
     int32_t ub_tensor_size = 0;

@@ -252,7 +252,7 @@ TEST_F(unsorted_segment_sum, unsorted_segment_sum_infershape_diff_test_9) {
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT32);
   std::vector<int64_t> expected_output_shape = {-1,5,6,7};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
-  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{1,-1},{5,5},{6,6},{7,7}};
+  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{0,-1},{5,5},{6,6},{7,7}};
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
@@ -276,7 +276,7 @@ TEST_F(unsorted_segment_sum, unsorted_segment_sum_infershape_diff_test_10) {
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_INT32);
   std::vector<int64_t> expected_output_shape = {-2};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
-  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{1,-1},{5,5},{6,6},{7,7}};
+  std::vector<std::pair<int64_t, int64_t>> expected_output_shape_range = {{0,-1},{5,5},{6,6},{7,7}};
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);

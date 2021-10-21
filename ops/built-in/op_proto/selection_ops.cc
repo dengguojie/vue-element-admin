@@ -1307,7 +1307,7 @@ IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentSumInferShape) {
 
   if (GRAPH_SUCCESS != op.GetInputConstData("num_segments", input_num_segments_tensor)) {
     input_num_segments = -1;
-    out_range.push_back(std::pair<int64_t, int64_t>(1, -1));
+    out_range.push_back(std::pair<int64_t, int64_t>(0, -1));
   } else {
     GetUnsortedSegmentSumConstValue(input_num_segments_tensor, input_num_segments_dtype, input_num_segments);
     out_range.push_back(std::pair<int64_t, int64_t>(input_num_segments, input_num_segments));

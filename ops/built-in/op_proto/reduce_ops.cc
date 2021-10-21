@@ -383,7 +383,7 @@ static void DoAxisUnKnown(const bool& keep_dims, const std::vector<int64_t>& axi
   size_t axis_length = axis_shape.size();
   if (keep_dims) {
     for (size_t item = 0; item < input_length; ++item) {
-      int64_t range_min_value = 1;
+      int64_t range_min_value = 0;
       int64_t range_max_value = input_shape_range[item].second;
       output_shape_range.push_back(std::make_pair(range_min_value, range_max_value));
       if (range_max_value == 1) {

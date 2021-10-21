@@ -27,6 +27,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from . import unsorted_segment_sum_no_atomic
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant.
@@ -1094,6 +1095,16 @@ class UnsortedSegmentSum():
         _enable_atomic_add(self.tik_instance)
         with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_index:
             with self.tik_instance.if_scope(block_index < self.obj_common_scalar.need_core_num):
+                with self.tik_instance.new_stmt_scope():
+                    with self.tik_instance.if_scope(
+                            self.obj_common_scalar.select_key == 0):
+                        self.obj_ub_tensor.output_ub = self.tik_instance.Tensor(
+                            self.output_dtype, (64,),
+                            name="output_ub",
+                            scope=tik.scope_ubuf)
+                        self.tik_instance.vector_dup(MASK_FP32, self.obj_ub_tensor.output_ub[0], 0,
+                                1, 1, 8)
+                        self.tik_instance.data_move(self.obj_gm_tensor.output_gm[0], self.obj_ub_tensor.output_ub[0], 0, 1, 1, 0, 0)
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
                             self.obj_common_scalar.select_key == \
