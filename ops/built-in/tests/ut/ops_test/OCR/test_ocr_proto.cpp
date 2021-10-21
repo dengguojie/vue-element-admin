@@ -166,3 +166,134 @@ TEST_F(OCRTest, OCRRecognitionPreHandleInferShapeDimFailed) {
   auto ret = op.InferShapeAndType();
   EXPECT_NE(ret, ge::GRAPH_SUCCESS);
 }
+
+TEST_F(OCRTest, BatchDilatePolysInferShapeUnknown) {
+  ge::op::BatchDilatePolys op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{1, 100}};
+  auto tensor_desc1 = create_desc_shape_range({-1},
+                                             ge::DT_INT32, ge::FORMAT_ND,
+                                             {-1},
+                                             ge::FORMAT_ND, shape_range);
+  std::vector<std::pair<int64_t,int64_t>> shape_range2 = {{1, 200}, {1, 300}};
+  auto tensor_desc2 = create_desc_shape_range({-1, -1},
+                                             ge::DT_FLOAT, ge::FORMAT_ND,
+                                             {-1, -1},
+                                             ge::FORMAT_ND, shape_range2);
+
+  std::vector<std::pair<int64_t,int64_t>> shape_range3 = {{1, 100}};
+  auto tensor_desc3 = create_desc_shape_range({-1},
+                                             ge::DT_INT32, ge::FORMAT_ND,
+                                             {-1},
+                                             ge::FORMAT_ND, shape_range3);
+  std::vector<std::pair<int64_t,int64_t>> shape_range4 = {{1, 100}};
+  auto tensor_desc4 = create_desc_shape_range({-1},
+                                             ge::DT_INT32, ge::FORMAT_ND,
+                                             {-1},
+                                             ge::FORMAT_ND, shape_range4);
+  op.UpdateInputDesc("polys_data", tensor_desc1);
+  op.UpdateInputDesc("polys_offset", tensor_desc3);
+  op.UpdateInputDesc("polys_size", tensor_desc4);
+  op.UpdateInputDesc("score", tensor_desc2 );
+  
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(OCRTest, OCRFindContoursInferShape) {
+  ge::op::OCRFindContours op;
+  op.UpdateInputDesc("img", create_desc({200,300}, ge::DT_UINT8));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(OCRTest, OCRFindContoursInferShapeUnknown) {
+  ge::op::OCRFindContours op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range ={{1, 200}, {1, 300}};
+  auto tensor_desc1 = create_desc_shape_range({-1, -1},
+                                             ge::DT_UINT8, ge::FORMAT_ND,
+                                             {-1, -1},
+                                             ge::FORMAT_ND, shape_range);
+  op.UpdateInputDesc("img", tensor_desc1);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(OCRTest, DequeueInferShape) {
+  ge::op::Dequeue op;
+  op.SetAttr("output_type", ge::DT_UINT8);
+  op.SetAttr("output_shape", {2,1,1,1});
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(OCRTest, OCRDetectionPostHandleShape) {
+  ge::op::OCRDetectionPostHandle op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{1, 100}, {1, 100}, {3, 3}};
+  auto tensor_desc1 = create_desc_shape_range({50, 50, 3},
+                                             ge::DT_UINT8, ge::FORMAT_ND,
+                                             {50, 50, 3},
+                                             ge::FORMAT_ND, shape_range);
+  op.UpdateInputDesc("img", tensor_desc1);
+  std::vector<std::pair<int64_t,int64_t>> shape_range2 = {{1, 10}};
+  auto tensor_desc2 = create_desc_shape_range({3},
+                                             ge::DT_INT32, ge::FORMAT_ND,
+                                             {3},
+                                             ge::FORMAT_ND, shape_range2);
+  op.UpdateInputDesc("polys_offset", tensor_desc2);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(OCRTest, OCRDetectionPostHandleInferShapeUnknown) {
+  ge::op::OCRDetectionPostHandle op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{1, 100}, {1, 100}, {3, 3}};
+  auto tensor_desc1 = create_desc_shape_range({-1, -1, 3},
+                                             ge::DT_UINT8, ge::FORMAT_ND,
+                                             {-1, -1, 3},
+                                             ge::FORMAT_ND, shape_range);
+  op.UpdateInputDesc("img", tensor_desc1);
+  std::vector<std::pair<int64_t,int64_t>> shape_range2 = {{1, 10}};
+  auto tensor_desc2 = create_desc_shape_range({-1},
+                                             ge::DT_INT32, ge::FORMAT_ND,
+                                             {-1},
+                                             ge::FORMAT_ND, shape_range2);
+  op.UpdateInputDesc("polys_offset", tensor_desc2);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(OCRTest, ResizeAndClipPolysInferShape) {
+  ge::op::ResizeAndClipPolys op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{1, 100}};
+  auto tensor_desc1 = create_desc_shape_range({6},
+                                             ge::DT_INT32, ge::FORMAT_ND,
+                                             {6},
+                                             ge::FORMAT_ND, shape_range);
+  op.UpdateInputDesc("polys_data", tensor_desc1);
+  std::vector<std::pair<int64_t,int64_t>> shape_range2 = {{1, 10}};
+  auto tensor_desc2 = create_desc_shape_range({1},
+                                             ge::DT_INT32, ge::FORMAT_ND,
+                                             {1},
+                                             ge::FORMAT_ND, shape_range2);
+  op.UpdateInputDesc("polys_offset", tensor_desc2);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(OCRTest, ResizeAndClipPolysInferShapeUnknown) {
+  ge::op::ResizeAndClipPolys op;
+  std::vector<std::pair<int64_t,int64_t>> shape_range = {{1, 100}};
+  auto tensor_desc1 = create_desc_shape_range({-1},
+                                             ge::DT_INT32, ge::FORMAT_ND,
+                                             {-1},
+                                             ge::FORMAT_ND, shape_range);
+  op.UpdateInputDesc("polys_data", tensor_desc1);
+  std::vector<std::pair<int64_t,int64_t>> shape_range2 = {{1, 10}};
+  auto tensor_desc2 = create_desc_shape_range({-1},
+                                             ge::DT_INT32, ge::FORMAT_ND,
+                                             {-1},
+                                             ge::FORMAT_ND, shape_range2);
+  op.UpdateInputDesc("polys_offset", tensor_desc2);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}

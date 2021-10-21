@@ -44,4 +44,34 @@ REGISTER_CUSTOM_OP("OCRIdentifyPreHandle")
     .OriginOpType("OCRIdentifyPreHandle")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
+
+REGISTER_CUSTOM_OP("BatchDilatePolys")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("BatchDilatePolys")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+REGISTER_CUSTOM_OP("OCRFindContours")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("OCRFindContours")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+REGISTER_CUSTOM_OP("Dequeue")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("Dequeue")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+REGISTER_CUSTOM_OP("OCRDetectionPostHandle")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("OCRDetectionPostHandle")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
+
+REGISTER_CUSTOM_OP("ResizeAndClipPolys")
+    .FrameworkType(TENSORFLOW)
+    .OriginOpType("ResizeAndClipPolys")
+    .ParseParamsFn(AutoMappingFn)
+    .ImplyType(ImplyType::AI_CPU);
 }  // namespace domi
