@@ -167,7 +167,7 @@ Status SqueezeUnsqueezeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapp
   ge::NodePtr squeezeNode = GetNodeFromMapping(PATTERN_SQUEEZE, mapping);
   ge::NodePtr unsqueezeNode = GetNodeFromMapping(PATTERN_UNSQUEEZE, mapping);
   Status checkRet = CheckParams(squeezeNode, unsqueezeNode);
-  FUSION_PASS_CHECK(SUCCESS != checkRet, OP_LOGE(FUSED_OP_TYPE.c_str(), "Unsupport parameters. Fusion end."),
+  FUSION_PASS_CHECK(SUCCESS != checkRet, OP_LOGI(FUSED_OP_TYPE.c_str(), "Unsupport parameters. Fusion end."),
                     return checkRet);
 
   if (unsqueezeNode->GetOutDataAnchor(0)->GetPeerInDataAnchors().size() > 0) {
