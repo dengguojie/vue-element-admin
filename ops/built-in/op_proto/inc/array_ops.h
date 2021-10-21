@@ -702,6 +702,31 @@ REG_OP(Unsqueeze)
     .OP_END_FACTORY_REG(Unsqueeze)
 
 /**
+*@brief Inserts a dimension of 1 into a tensor's shape. Only the tensor shape is changed, without changing the data. \n
+
+*@par Inputs:
+*@li x: Original tensor.
+
+*@par Attributes:
+*@li axes: List of ints indicating the dimensions to be inserted. \n
+
+*@par Outputs:
+*y: Reshape tensor with same data as input. \n
+
+*@par Third-party framework compatibility
+*Compatible with the Onnx operator Unsqueeze.
+
+*@par Restrictions:
+* Warning: THIS FUNCTION IS DEPRECATED. Please use Unsqueeze instead.
+*/
+
+REG_OP(UnsqueezeV2)
+    .INPUT(x, TensorType::ALL())
+    .OUTPUT(y, TensorType::ALL())
+    .ATTR(axis, ListInt, {})
+    .OP_END_FACTORY_REG(UnsqueezeV2)
+
+/**
 *@brief Reshapes a tensor. Only the tensor shape is changed, without changing the data. \n
 
 *@par Inputs:
@@ -752,6 +777,30 @@ REG_OP(Squeeze)
     .OUTPUT(y, TensorType::ALL())
     .ATTR(axis, ListInt, {})
     .OP_END_FACTORY_REG(Squeeze)
+
+/**
+*@brief Removes dimensions of size 1 from the shape of a tensor. \n
+
+*@par Inputs:
+*x: A tensor. \n
+
+*@par Attributes:
+*axis: An optional list of int32 or int64. If not specified, squeezes all dimensions of size 1.   If specified, only squeezes the dimensions listed. It is an error to squeeze a dimension that is not 1. \n
+
+*@par Outputs:
+*y: A tensor. \n
+
+*@par Third-party framework compatibility
+*Compatible with the TensorFlow operator Squeeze.
+
+*@par Restrictions:
+* Warning: THIS FUNCTION IS DEPRECATED. Please use Squeeze instead.
+*/
+REG_OP(SqueezeV2)
+    .INPUT(x, TensorType::ALL())
+    .OUTPUT(y, TensorType::ALL())
+    .ATTR(axis, ListInt, {})
+    .OP_END_FACTORY_REG(SqueezeV2)
 
 /**
 *@brief Returns an integer representing the rank of input tensor. The rank of a tensor is the number of indices required to uniquely select each element of the tensor, that is, the dimension size of the tensor. \n

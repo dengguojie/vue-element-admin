@@ -1651,6 +1651,115 @@ IMPLEMT_INFERFUNC(Squeeze, SqueezeInfer) {
 
 INFER_FUNC_REG(Squeeze, SqueezeInfer);
 
+bool CanSqueezeV2DoSqueeze(const vector<int32_t> &axis_arr, const size_t dim_size) {
+  if (axis_arr.size() >= dim_size) {
+    GE_OP_LOGW("SqueezeV2", "axis array size[%zu] >= dim size[%zu], can not squeeze, use"
+        "input shape as output shape", axis_arr.size(), dim_size);
+    return false;
+  }
+
+  // check axis val is in dim range[-dim, dim -1], if not, we use input shape as output shape
+  for (auto val : axis_arr) {
+    if ((val + static_cast<int32_t>(dim_size) < 0) || (val >= static_cast<int32_t>(dim_size))) {
+      string reason = "Dimension out of range (expect to be in range of [-" + std::to_string(dim_size) + "," +   
+                      std::to_string(dim_size - 1) + "], but got " + std::to_string(val) + ".";
+      GE_OP_LOGW("SqueezeV2", "%s, can not squeeze, use input shape as output shape", reason.c_str());
+      return false;
+    }
+  }
+  return true;
+  
+}
+
+IMPLEMT_INFERFUNC(SqueezeV2, SqueezeV2Infer) {
+  GE_OP_LOGD("Enter SqueezeV2 Infershape!");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_desc->MutableInputDesc(0);
+  auto output_desc = op_desc->MutableOutputDesc(0);
+
+  const auto &input_shape = input_desc->GetShape();
+  output_desc->SetDataType(input_desc->GetDataType());
+  // process -2(UnknownRank)
+  if (input_shape.GetDims() == UNKNOWN_RANK) {
+    GE_OP_LOGD("Input x shape is -2!");
+    output_desc->SetShape(input_shape);
+    output_desc->SetOriginShape(input_desc->GetOriginShape());
+    return GRAPH_SUCCESS;
+  }
+
+  auto &output_shape = output_desc->MutableShape();
+  vector<int32_t> axis_arr;
+  (void)op.GetAttr("axis", axis_arr);
+
+  const size_t dim_size = input_shape.GetDimNum();
+  const bool is_unknown_shape = input_shape.IsUnknownShape();
+
+  std::vector<std::pair<int64_t, int64_t>> input_range;
+  std::vector<std::pair<int64_t, int64_t>> output_range;
+  input_desc->GetShapeRange(input_range);
+  if (axis_arr.empty()) {
+    GE_OP_LOGD(op.GetName().c_str(), "axis is empty!");
+    auto input_dims = input_shape.GetDims();
+    auto output_size = std::count_if(input_dims.begin(), input_dims.end(), [](const int64_t &item) {return item != 1;});
+    output_shape.SetDimNum(output_size);
+    size_t idx = 0;
+    for (size_t i = 0; i < input_dims.size(); ++i) {
+      if (input_dims[i] != 1 && idx < output_size) {
+        output_shape.SetDim(idx, input_dims[i]);
+        if (is_unknown_shape && i < input_range.size()) {
+          output_range.emplace_back(input_range[i]);
+        }
+        idx++;
+      }
+    }
+    output_desc->SetShapeRange(output_range);
+    return GRAPH_SUCCESS;
+  }
+
+  // squeeze support repeat axis, so we did not report error when there is repeated axis in axis list.
+  std::sort(axis_arr.begin(), axis_arr.end());
+  axis_arr.erase(std::unique(axis_arr.begin(), axis_arr.end()), axis_arr.end());
+
+  // Special treatment of SqueezeV2 infershape, if can not squeeze, we use input shape as output shape 
+  if (!CanSqueezeV2DoSqueeze(axis_arr, dim_size)) {
+    GE_OP_LOGI(op.GetName().c_str(), "SqueezeV2: can not squeeze, we use input shape as output shape");
+    output_desc->SetShape(input_shape);
+    output_desc->SetOriginShape(input_desc->GetOriginShape());
+    output_desc->SetShapeRange(input_range);
+    return GRAPH_SUCCESS;
+  }
+
+  output_shape.SetDimNum(dim_size - axis_arr.size());
+  size_t idx = 0;
+  size_t adx = 0;
+  for (int64_t i = 0; i < static_cast<int64_t>(dim_size); i++) {
+    auto exist_dim = input_shape.GetDim(i);
+    if (adx < axis_arr.size() && (axis_arr[adx] == i || axis_arr[adx] + static_cast<int64_t>(dim_size) == i)) {
+      if (exist_dim != 1 && exist_dim != UNKNOWN_DIM) {
+          string reason = "axis[" + std::to_string(i) + "] is not supported, expected dim[" + std::to_string(i) +
+                          "]=1, actually dim[" + std::to_string(i) + "]=" + std::to_string(exist_dim);
+          GeInfershapeErrReport(op.GetName(), op.GetOpType(), kShape, reason);
+          REPORT_INNER_ERROR("E19999", "[Node:%s] Check input x shape failed, as %s", op.GetName().c_str(),
+                            reason.c_str());
+          GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check input x shape failed, as %s", reason.c_str());
+          return GRAPH_FAILED;
+      }
+      adx++;
+    } else {
+      if (idx < output_shape.GetDimNum()) {
+        output_shape.SetDim(idx, exist_dim);
+        idx++;
+      }
+      if (is_unknown_shape && i < input_range.size()) {
+        output_range.emplace_back(input_range[i]);
+      }
+    }
+  }
+  output_desc->SetShapeRange(output_range);
+  return GRAPH_SUCCESS;
+}
+INFER_FUNC_REG(SqueezeV2, SqueezeV2Infer);
+
 IMPLEMT_INFERFUNC(Unsqueeze, UnsqueezeInfer) {
   auto axis_arr = op.get_attr_axes();
   auto axis_nums = axis_arr.size();
@@ -1706,6 +1815,82 @@ IMPLEMT_INFERFUNC(Unsqueeze, UnsqueezeInfer) {
 INFER_FUNC_REG(Unsqueeze, UnsqueezeInfer);
 
 INFER_VALUE_RANGE_DEFAULT_REG(Unsqueeze);
+
+IMPLEMT_INFERFUNC(UnsqueezeV2, UnsqueezeV2Infer) {
+  GE_OP_LOGD("Enter UnSqueezeV2 Infershape!");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc = op_desc->MutableInputDesc(0);
+  auto output_desc = op_desc->MutableOutputDesc(0);
+  const auto &input_shape = input_desc->GetShape();
+  output_desc->SetDataType(input_desc->GetDataType());
+
+  // process -2(UnknownRank)
+  if (input_shape.GetDims() == UNKNOWN_RANK) {
+    GE_OP_LOGD("Input x shape is -2!");
+    output_desc->SetShape(input_shape);
+    output_desc->SetOriginShape(input_desc->GetOriginShape());
+    return GRAPH_SUCCESS;
+  }
+  vector<int32_t> axis_arr;
+  (void)op.GetAttr("axis", axis_arr);
+  auto &output_shape = output_desc->MutableShape();
+  size_t dim_size = input_shape.GetDimNum();
+
+  std::vector<std::pair<int64_t, int64_t>> input_range;
+  std::vector<std::pair<int64_t, int64_t>> output_range;
+  bool is_unknown_shape = input_shape.IsUnknownShape();
+  input_desc->GetShapeRange(input_range);
+  // we use input_shape to feed output_shape when axis is empty
+  if (axis_arr.empty()) {
+    output_desc->SetShape(input_shape);
+    output_desc->SetShapeRange(input_range);
+    return GRAPH_SUCCESS;
+  }
+  std::sort(axis_arr.begin(), axis_arr.end());
+  size_t k_axis_arr_size_unique = std::unique(axis_arr.begin(), axis_arr.end()) - axis_arr.begin();
+  if (k_axis_arr_size_unique != axis_arr.size()) {
+    string reason = "axes should not contain duplicate values";
+    GeInfershapeErrReport(op.GetName(), op.GetOpType(), kAttrAxis, reason);
+    REPORT_INNER_ERROR("E19999", "[Node:%s] Check attr axes failed, as %s", op.GetName().c_str(), reason.c_str());
+    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check attr axes failed, as %s", reason.c_str());
+    return GRAPH_PARAM_INVALID;
+  }
+
+  int64_t total_dim_num = input_shape.GetDimNum() + k_axis_arr_size_unique;
+  output_shape.SetDimNum(total_dim_num);
+
+  size_t in_idx = 0;
+  size_t ax_idx = 0;
+  for (int64_t i = 0; i < total_dim_num; ++i) {
+    if ((ax_idx < axis_arr.size()) && 
+        ((axis_arr[ax_idx] + static_cast<int32_t>(total_dim_num) < 0) || (axis_arr[ax_idx] >= total_dim_num))) {
+      string reason = "Dimension out of range (expect to be in range of [-" + std::to_string(total_dim_num) + "," + 
+                      std::to_string(total_dim_num - 1) + "], but got " + std::to_string(axis_arr[ax_idx]) + ".";
+      GeInfershapeErrReport(op.GetName(), op.GetOpType(), kAttrAxis, reason);
+      REPORT_INNER_ERROR("E19999", "[Node:%s] Check attr axis failed, as %s", op.GetName().c_str(), reason.c_str());
+      GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Check attr axes failed, as %s", reason.c_str());
+      return GRAPH_PARAM_INVALID;
+    }
+    if ((ax_idx < axis_arr.size()) && (axis_arr[ax_idx] == i || (axis_arr[ax_idx] + total_dim_num == i))) {
+      output_shape.SetDim(i, 1);
+      if (is_unknown_shape) {
+        (void)output_range.emplace_back(std::pair<int64_t, int64_t>(1, 1));
+      }
+      ax_idx++;
+    } else {
+      output_shape.SetDim(i, input_shape.GetDim(in_idx));
+      if (is_unknown_shape && in_idx < input_range.size()) {
+        (void)output_range.emplace_back(input_range[in_idx]);
+      }
+      in_idx++;
+    }
+  }
+  output_desc->SetShapeRange(output_range);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(UnsqueezeV2, UnsqueezeV2Infer);
+
 
 IMPLEMT_INFERFUNC(Rank, RankInfer) {
   OP_LOGI(op.GetName().c_str(), "Rank infershape start");
