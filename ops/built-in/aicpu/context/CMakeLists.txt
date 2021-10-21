@@ -151,7 +151,7 @@ set(local_context_inc_path
     ${TOP_DIR}/inc/external/aicpu
     ${TOP_DIR}/libc_sec/include
     ${TOP_DIR}/open_source/eigen
-    ${TOP_DIR}/air/base/exec_runtime
+    ${TOP_DIR}/asl/ops/cann/third_party/air/base/exec_runtime
     ${TOP_DIR}/out/${product}
     ${CMAKE_BINARY_DIR}/proto/aicpu_proto/proto/cpu_proto/proto
     ${CMAKE_BINARY_DIR}/proto/aicpu_proto/proto
