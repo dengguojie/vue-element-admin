@@ -17,7 +17,7 @@
 """
 pad_d
 """
-# pylint: disable=locally-disabled,too-many-lines
+# 'pylint: disable=locally-disabled,too-many-lines
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tvm
@@ -34,7 +34,7 @@ USED_BUFFER_LEN = 5120
 UINT64_ALL_ONE = 18446744073709551615
 
 
-# pylint: disable = unused-argument
+# 'pylint: disable = unused-argument
 def get_op_support_info(input_x, output_x, paddings, kernel_name="pad_d"):
     """
     get_op_support_info
@@ -108,10 +108,10 @@ def _get_scalar_dtype():
     return dtype
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-branches,
-# pylint: disable=locally-disabled,too-many-statements,too-many-locals
-# pylint: disable=locally-disabled,unused-variable,too-many-return-statements
-# pylint: disable=unused-argument,consider-using-in,import-outside-toplevel
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-branches,
+# 'pylint: disable=locally-disabled,too-many-statements,too-many-locals
+# 'pylint: disable=locally-disabled,unused-variable,too-many-return-statements
+# 'pylint: disable=unused-argument,consider-using-in,import-outside-toplevel
 def _do_cast(params, input_tensor, gm_cast, shape, dtype_src, dtype_dst):
     # vconv count of elements every time
     ele_cnt = 128
@@ -724,7 +724,7 @@ def _data_copy(axis, bufs, gm_align, params, multi_core_top=False):
                                  gm_align, params)
 
 
-# pylint: disable=locally-disabled,too-many-instance-attributes
+# 'pylint: disable=locally-disabled,too-many-instance-attributes
 class PadParams:
     """
     Define the parameters for pad operation.
@@ -1014,7 +1014,7 @@ def _pad_wc_axis(axis, bufs, params, n_align, n_padding):
     _data_copy_wc()
 
 
-# pylint: disable=locally-disabled,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-locals
 def _pad_recursive_fun(axis, bufs, gm_align, params, multi_core_top=False):
     """
     Achieve pad operations with different shapes norms by recursively way.
@@ -1262,7 +1262,7 @@ def _multi_core_do_padding(padding_len, constant_values, gm_out_buf,
                         multi_core_top=True)
 
 
-# pylint: disable=locally-disabled,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-locals
 def _pad_multi_core_fun(axis, bufs, gm_align, params):
     """
     The method of realizing pad operation in multi-core scenario.
@@ -1333,7 +1333,7 @@ def _pad_multi_core_fun(axis, bufs, gm_align, params):
                            gm_out_buf.offset, params)
 
 
-# pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-arguments
 def _intrin_factor(input_tensor, output_res, gm_cast, gm_align, output_tensor,
                    args):
     """
@@ -1481,7 +1481,7 @@ def _zero_ub_tail(tvm_ir, buf_addr, buf_offset, zero_len, dtype):
     _set_mask_insn(tvm_ir, dtype, 128)
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def _emit_copy_ubuf_to_gm(tvm_ir, dtype, dst, src, nburst, burstlen, srcstride,
                           dststride, dst_offset=0, src_offset=0):
     """
@@ -1493,7 +1493,7 @@ def _emit_copy_ubuf_to_gm(tvm_ir, dtype, dst, src, nburst, burstlen, srcstride,
                                 nburst, burstlen, srcstride, dststride))
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def _emit_copy_ubuf_to_gm_safely(tvm_ir, dtype, dst, src, count, tail_ub,
                                  dst_offset=0,
                                  src_offset=0):
@@ -1524,7 +1524,7 @@ def _emit_copy_ubuf_to_gm_safely(tvm_ir, dtype, dst, src, count, tail_ub,
                                     tail_ub.access_ptr('r'), 0, 1, 1, 0, 0))
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def _emit_copy_gm_to_ubuf(tvm_ir, dtype, dst, src, nburst, burstlen, srcstride,
                           dststride, dst_offset=0, src_offset=0):
     """
@@ -2184,8 +2184,8 @@ def op_select_format(input_x,
     return param_dynamic_in_json
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-branches,
-# pylint: disable=locally-disabled,too-many-statements,inconsistent-return-statements
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-branches,
+# 'pylint: disable=locally-disabled,too-many-statements,inconsistent-return-statements
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_LIST_INT, para_check.KERNEL_NAME)
 def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):

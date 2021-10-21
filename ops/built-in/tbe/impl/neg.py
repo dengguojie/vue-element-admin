@@ -31,7 +31,7 @@ SCALER_NEGATIVE_ONE = -1
 SCALER_NEGATIVE_ONE_FLOAT = -1.0
 
 
-# pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=locally-disabled,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("neg")
 def neg_compute(input_x, output_y, kernel_name="neg"):
     """

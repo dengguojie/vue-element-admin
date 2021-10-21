@@ -17,7 +17,7 @@
 """
 one_hot_d
 """
-# pylint: disable=too-many-lines,protected-access
+# 'pylint: disable=too-many-lines,protected-access
 import functools
 
 import te.platform as tbe_platform
@@ -92,7 +92,7 @@ def _get_perm(shape, depth, axis):
     return output_shape, perm + [len(shape) + 1, ]
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def _transpose(shape, dtype, depth, axis, data, indices_input, on_value_input,
                off_value_input):
     """ transpose to right axis after doing one hot.
@@ -1366,7 +1366,7 @@ def _one_core_in_multi_ir(tvm_ib, indices_input, output, args_dict):
                 _do_operation(tvm_ib, output, op_args)
 
 
-# pylint: disable=locally-disabled,too-many-locals,too-many-statements
+# 'pylint: disable=locally-disabled,too-many-locals,too-many-statements
 def _one_core_ir_not_neg_one(tvm_ib, indices_input, output, args_dict):
     output_size_each_core = int(functools.reduce(lambda i, j: i * j, output.shape))
     input_ub_shape = indices_input.shape
@@ -1788,7 +1788,7 @@ def _check_is_prime_case(indices_input, output_dtype, depth):
     return True
 
 
-# pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-arguments
 def one_hot_ir(ins, output, depth, axis):
     """IR node builder make function.
 
@@ -1927,7 +1927,7 @@ def _one_hot_ir_not_neg_one(ins, output, depth):
     return tvm_ib.get()
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 def one_hot_compute(indices_input,
                     shape,
                     raw_shape,
@@ -1988,7 +1988,7 @@ def one_hot_compute(indices_input,
     return res
 
 
-# pylint: disable=too-many-locals,invalid-name
+# 'pylint: disable=too-many-locals,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_INT,
                             para_check.KERNEL_NAME)

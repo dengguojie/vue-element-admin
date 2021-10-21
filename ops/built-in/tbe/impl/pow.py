@@ -23,7 +23,7 @@ from te import tvm
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def _is_equal_zero(x):
     """
     if x==0,then return 1,else return 0.
@@ -139,7 +139,7 @@ def _negative_compute(input_x, input_y):
     return res
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("pow")
 def pow_compute(input_x, input_y, output_z, kernel_name="pow"):
     """
@@ -215,7 +215,7 @@ def pow_compute(input_x, input_y, output_z, kernel_name="pow"):
 
     return res
 
-# pylint: disable=locally-disabled,redefined-builtin
+# 'pylint: disable=locally-disabled,redefined-builtin
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def pow(input_x, input_y, output_z, kernel_name="pow"):

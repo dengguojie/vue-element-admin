@@ -297,7 +297,7 @@ class Pdist():
         return self.tik_instance
 
     # init tensor and scalar on ub
-    # pylint: disable=W0201
+    # 'pylint: disable=W0201
     def init_ub_tensor_and_scalar(self):
         self.src1_ub = self.tik_instance.Tensor("float32", (self.ub_tensor_each_loop, ), name="src1_ub", scope=tik.scope_ubuf)
         self.src2_ub = self.tik_instance.Tensor("float32", (self.ub_tensor_each_loop, ), name="src2_ub", scope=tik.scope_ubuf)

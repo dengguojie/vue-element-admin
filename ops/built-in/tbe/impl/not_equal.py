@@ -38,7 +38,7 @@ SCALAR_MIN_FP16 = 2**(-24)
 # define a scalar, value = 2**(12)
 SCALAR_MUL_FP16 = 2**(12)
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 @fusion_manager.register("not_equal")
 def not_equal_compute(input_x, input_y, output_z, kernel_name="not_equal"):
     """

@@ -23,7 +23,7 @@ from te import tik
 from impl import common_util
 from impl import constant_util as constant
 
-# pylint: disable=redefined-builtin,useless-object-inheritance
+# 'pylint: disable=redefined-builtin,useless-object-inheritance
 if "reduce" not in dir(__builtins__):
     import functools
 
@@ -275,7 +275,7 @@ class SpaceToDepth(SpaceToDepthBase):
                     break
         return tiling_case, buf_size
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def move_tail_less_32(self, data_ub, index_info, burst_info, offset_info):
         """
         block_size * c  is not aligned with the 32B, but less than 32B
@@ -509,7 +509,7 @@ class SpaceToDepth(SpaceToDepthBase):
                     self.data_gm_in[in_index + src_num * loop_n], "", loop_r,
                     burst_len, constant.STRIDE_ZERO, burst_info[2])
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def move_data(self, block_num, block_i, loop_info, data_ub):
         """
         move data from input to output

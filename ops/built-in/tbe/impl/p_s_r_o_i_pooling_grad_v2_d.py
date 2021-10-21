@@ -111,8 +111,8 @@ def _ceil_value(value, factor):
     return (value + factor - 1) // factor
 
 
-# pylint: disable=invalid-name, too-many-locals, too-many-arguments
-# pylint: disable=too-many-instance-attributes, too-many-lines
+# 'pylint: disable=invalid-name, too-many-locals, too-many-arguments
+# 'pylint: disable=too-many-instance-attributes, too-many-lines
 class PSROIPoolingGradV2DClass(object):
     """
     Function: class that execute PSROIPoolingGradV2D
@@ -1230,7 +1230,7 @@ class PSROIPoolingGradV2DClass(object):
                                    outputs=(self.y,))
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
                             para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_FLOAT,

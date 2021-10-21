@@ -17,7 +17,7 @@
 """
 nll_loss_grad
 """
-# pylint: disable=ungrouped-imports,import-error
+# 'pylint: disable=ungrouped-imports,import-error
 import math
 from te import tik
 from impl.util.platform_adapter import para_check
@@ -34,8 +34,8 @@ ONE_KB = 1024
 NUM_SIXTYFOUR = MASK64
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
-# pylint: disable=too-many-arguments
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=too-many-arguments
 def _shape_and_dtype_check(x, y_grad, target, weight, total_weight, reduction,
                            kernel_name):
     x_shape = x.get("shape")
@@ -94,9 +94,9 @@ def _shape_and_dtype_check(x, y_grad, target, weight, total_weight, reduction,
                                                       total_weight must be (1,).")
 
 
-# pylint: disable=too-many-instance-attributes,too-many-arguments
-# pylint: disable=too-many-locals,too-many-statements
-# pylint: disable=attribute-defined-outside-init
+# 'pylint: disable=too-many-instance-attributes,too-many-arguments
+# 'pylint: disable=too-many-locals,too-many-statements
+# 'pylint: disable=attribute-defined-outside-init
 class NllLossGradCompute:
     """
     NLLLOSSGRAD

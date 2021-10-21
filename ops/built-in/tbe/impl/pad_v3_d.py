@@ -20,8 +20,8 @@ from impl.pad_d import pad_d
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-branches,
-# pylint: disable=locally-disabled,too-many-statements
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-branches,
+# 'pylint: disable=locally-disabled,too-many-statements
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_LIST_INT,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_BOOL,

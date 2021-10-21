@@ -17,8 +17,8 @@
 """
 pad_align_reorder_ub
 """
-# pylint: disable=too-many-lines,import-error,no-self-use,too-many-arguments,too-many-branches
-# pylint: disable=too-many-locals,too-many-instance-attributes
+# 'pylint: disable=too-many-lines,import-error,no-self-use,too-many-arguments,too-many-branches
+# 'pylint: disable=too-many-locals,too-many-instance-attributes
 import math
 from te import tik
 from te import platform as tbe_platform
@@ -32,7 +32,7 @@ MAX_REPEAT = 255
 MINI_UNIT = 32
 
 
-# pylint: disable=self-assigning-variable,inconsistent-return-statements,attribute-defined-outside-init
+# 'pylint: disable=self-assigning-variable,inconsistent-return-statements,attribute-defined-outside-init
 def _get_output_shape(input_shape, paddings):
     """
     Derive the shape size of the output.
@@ -622,7 +622,7 @@ class PadCompute:
 
         return tik_instance
 
-# pylint: disable=invalid-name,unused-argument
+# 'pylint: disable=invalid-name,unused-argument
 @para_check.check_input_type((list, tuple), (list, tuple), str, str)
 def pad_align(shape, paddings, dtype, kernel_name):
     """

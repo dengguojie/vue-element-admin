@@ -25,7 +25,7 @@ from impl.util import util_select_op_base
 
 
 
-# pylint: disable=locally-disabled,too-many-branches,too-many-statements,invalid-name,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-branches,too-many-statements,invalid-name,unused-argument,too-many-locals
 def op_select_format(x, weight, y, kernel_name="prelu"):
     """ calculating data
 
@@ -98,7 +98,7 @@ def op_select_format(x, weight, y, kernel_name="prelu"):
     return param_dynamic_in_json
 
 
-# pylint: disable=unused-variable,too-many-branches,too-many-statements
+# 'pylint: disable=unused-variable,too-many-branches,too-many-statements
 def reshape(tensor_in, new_shape):
     """
     :params:
@@ -114,7 +114,7 @@ def reshape(tensor_in, new_shape):
     return tvm.compute(new_shape, lambda *indices: _nd2nz_compute(tensor_in, indices), name='reshape')
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("prelu")
 def prelu_compute(input_x, weight_input, output_y, kernel_name="prelu"):
     """
@@ -165,7 +165,7 @@ def prelu_compute(input_x, weight_input, output_y, kernel_name="prelu"):
     return res
 
 
-# pylint: disable=too-many-locals,invalid-name
+# 'pylint: disable=too-many-locals,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def prelu(input_x, input_A, output_y, kernel_name="prelu"):

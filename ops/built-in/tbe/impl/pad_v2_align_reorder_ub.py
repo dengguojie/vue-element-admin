@@ -15,7 +15,7 @@
 """
 pad_v2_align_reorder_ub
 """
-# pylint: disable=too-many-lines,import-error
+# 'pylint: disable=too-many-lines,import-error
 import math
 
 from te import tik
@@ -90,7 +90,7 @@ def _cal_core(total_core_loop_num, core_number, device_core_num):
     return split_core_index, list_out[0][0], list_out[0][0]
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def _params_model(in_shape, ou_shape, core, ub_maxsize):
     # not consider padding of axis that is 0
     total_num = in_shape[0]
@@ -131,7 +131,7 @@ def _params_model(in_shape, ou_shape, core, ub_maxsize):
     return split_core_idx, [core_loop0, core_loop1], [model0, model1]
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class PadCompute():
     """
     PadCompute
@@ -283,7 +283,7 @@ class PadCompute():
                     self._pad_case1_main(tik_instance, ac_num_two,
                                          begin_index, self.ubuf)
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def _pad_case0_main(self, tik_instance, loop, model,
                         blk_idx, src_gm, dst_gm, vec_mark):
 
@@ -403,7 +403,7 @@ class PadCompute():
         if in_num_bottom != 0:
             _do_vec_dup(in_num_bottom, in_num, bottom_index, blk_idx, vec_mark)
 
-    # pylint: disable=too-many-branches
+    # 'pylint: disable=too-many-branches
     def _recusive_case0(self, tik_instance, axis, in_shape,
                         ou_shape, padding, model, src_gm,
                         dst_gm, src_ub, dst_ub,
@@ -596,7 +596,7 @@ class PadCompute():
         if tail_block != 0:
             _copy_ub2gm(tik_instance, tail, tail_block, dst_gm)
 
-    # pylint: disable=no-self-use
+    # 'pylint: disable=no-self-use
     def copy_ubuf_2_ubuf_case0(self, tik_instance, nburst, burstlen,
                                src_stride, dst_stride, ubuf, src_ub, dst_ub):
         """
@@ -639,7 +639,7 @@ class PadCompute():
 
         return tik_instance
 
-# pylint: disable=invalid-name,unused-argument
+# 'pylint: disable=invalid-name,unused-argument
 @para_check.check_op_params(para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_LIST_INT,
                             para_check.REQUIRED_ATTR_STR, para_check.KERNEL_NAME)
 def pad_align(shape, paddings, dtype, kernel_name):

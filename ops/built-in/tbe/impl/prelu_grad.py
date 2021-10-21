@@ -24,7 +24,7 @@ from te import tvm
 from impl.util import util_select_op_base
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals,invalid-name
 def op_select_format(grads, features, weights, dx, da, kernel_name="prelu_grad"):
     """ calculating data
 
@@ -80,7 +80,7 @@ def op_select_format(grads, features, weights, dx, da, kernel_name="prelu_grad")
     return param_dynamic_in_json
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def check_inputs_shape(features_shape, weights_shape, input_format):
     """
     check input para
@@ -153,7 +153,7 @@ def check_inputs_shape(features_shape, weights_shape, input_format):
         error_manager_vector.raise_err_two_input_shape_invalid('prelu_grad', 'feature', 'weight', detail)
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def compare_zero_and_select(input_features, input_weights, shape, dtype):
     """
     compare_zero_and_select comput
@@ -205,8 +205,8 @@ def compare_zero_and_select(input_features, input_weights, shape, dtype):
     return result_dx, result_da
 
 
-# pylint: disable=too-many-arguments,unused-argument,too-many-branches
-# pylint: disable=too-many-statements
+# 'pylint: disable=too-many-arguments,unused-argument,too-many-branches
+# 'pylint: disable=too-many-statements
 def prelu_grad_compute(input_gradients,
                        input_features,
                        input_weights,

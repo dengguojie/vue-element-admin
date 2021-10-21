@@ -17,7 +17,7 @@
 """
 nll_loss
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 import math
 from te import tik
 from te import platform as tbe_platform
@@ -32,7 +32,7 @@ MAXREPEAT = 255
 NUM_SIXTYFOUR = MASK64
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def check_supported(x, target, weight, y, total_weight, reduction="mean",
                     ignore_index=-100, kernel_name="nll_loss"):
     """
@@ -67,7 +67,7 @@ def check_supported(x, target, weight, y, total_weight, reduction="mean",
     return True, ""
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 def _shape_and_dtype_check(x, target, weight, kernel_name):
     x_shape = x.get("shape")
     x_dtype = x.get("dtype").lower()
@@ -104,9 +104,9 @@ def _shape_and_dtype_check(x, target, weight, kernel_name):
                                                       weight should be equal")
 
 
-# pylint: disable=too-many-instance-attributes,too-many-arguments
-# pylint: disable=too-many-locals,too-many-statements
-# pylint: disable=attribute-defined-outside-init,too-many-lines
+# 'pylint: disable=too-many-instance-attributes,too-many-arguments
+# 'pylint: disable=too-many-locals,too-many-statements
+# 'pylint: disable=attribute-defined-outside-init,too-many-lines
 class NllLossCompute:
     """
     NLLLOSS

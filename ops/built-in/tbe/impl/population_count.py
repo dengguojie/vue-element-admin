@@ -47,7 +47,7 @@ VSEL_MODE = 0
 THREAD_NUM = 2
 
 
-# pylint: disable = unused-argument
+# 'pylint: disable = unused-argument
 def get_op_support_info(x, y, kernel_name="population_count"):
     format_x = x.get("format").upper()
     shape_x_len = len(x.get("shape"))
@@ -73,7 +73,7 @@ def get_op_support_info(x, y, kernel_name="population_count"):
     return op_cal_info_in_json
 
 
-# pylint: disable=too-many-instance-attributes, no-self-use, invalid-name
+# 'pylint: disable=too-many-instance-attributes, no-self-use, invalid-name
 def _check_param(input_x, kernel_name):
     """
     check the parameters is valid, if one is invalid,then raise error

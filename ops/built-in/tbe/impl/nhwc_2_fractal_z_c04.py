@@ -17,7 +17,7 @@
 """
 nhwc_2_fractal_z_c04
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 import functools
 
 import te.platform as tbe_platform
@@ -48,8 +48,8 @@ NUM_CUBE = MAX_MASK // CUBE_SIZE
 C0 = 4
 
 
-# pylint: disable=too-many-instance-attributes,too-many-locals,too-many-lines
-# pylint: disable=too-many-arguments,unused-argument,too-many-public-methods
+# 'pylint: disable=too-many-instance-attributes,too-many-locals,too-many-lines
+# 'pylint: disable=too-many-arguments,unused-argument,too-many-public-methods
 def _cal_core(tik_instance, total_core_loop_num, num_core, core_number):
     """
     calculate the loop number on each core

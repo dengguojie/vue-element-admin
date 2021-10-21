@@ -688,7 +688,7 @@ def check_params(input_x, seq_len, output_y, normalize_type, epsilon, kernel_nam
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def normalize_batch(input_x, seq_len, output_y, normalize_type, epsilon=0.00001, kernel_name="NormalizeBatch"):
     """
     algorithm: Count normalize of input_x based on seq_len

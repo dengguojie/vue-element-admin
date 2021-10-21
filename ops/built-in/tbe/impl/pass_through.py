@@ -17,7 +17,7 @@
 """
 pass_through
 """
-# pylint: disable=too-many-arguments,unused-argument
+# 'pylint: disable=too-many-arguments,unused-argument
 import te.platform as tbe_platform
 from te.utils import para_check
 from impl import pass_through_forward
@@ -41,7 +41,7 @@ def get_op_support_info(in_dic, filter_dic, out_dic, stride,
     return op_cal_info_in_json
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def op_select_format(in_dic, filter_dic, out_dic,
                      stride, reverse, kernel_name="pass_through"):
     """

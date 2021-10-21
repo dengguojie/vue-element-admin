@@ -27,7 +27,7 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-# pylint: disable = unused-argument
+# 'pylint: disable = unused-argument
 def get_op_support_info(x, y, axis, kernel_name="pack"):
     """
     get_op_support_info

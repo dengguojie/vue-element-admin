@@ -24,7 +24,7 @@ from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable = unused-argument
+# 'pylint: disable = unused-argument
 def get_op_support_info(x1, x2, x3, y, across_spatial=True, channel_shared=True,
                         eps=1e-10, kernel_name="normalize_scale"):
     format_x = x1.get("format")
@@ -51,9 +51,9 @@ def get_op_support_info(x1, x2, x3, y, across_spatial=True, channel_shared=True,
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
-# pylint: disable=locally-disabled,too-many-arguments,protected-access
-# pylint: disable=locally-disabled,too-many-branches
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,protected-access
+# 'pylint: disable=locally-disabled,too-many-branches
 @tbe_platform.fusion_manager.fusion_manager.register("normalize_scale")
 def normalize_scale_compute(x1, x2, x3, y,
                             across_spatial=True, eps=1e-10,
@@ -303,8 +303,8 @@ def _check_shape_3(shape_1, shape_3, data_format, across_spatial):
                                                                   str(shape_1[2]) + ", 1)")
 
 
-# pylint: disable=locally-disabled,invalid-name,too-many-arguments
-# pylint: disable=locally-disabled,too-many-locals
+# 'pylint: disable=locally-disabled,invalid-name,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
@@ -370,7 +370,7 @@ def normalize_scale(x1, x2, x3, y, across_spatial=True,
     res = normalize_scale_compute(data_x1, data_x2, data_x3, y,
                                   across_spatial, eps, kernel_name)
 
-    # pylint: disable=no-member
+    # 'pylint: disable=no-member
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
 

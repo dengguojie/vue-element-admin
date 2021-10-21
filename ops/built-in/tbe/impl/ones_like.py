@@ -23,7 +23,7 @@ from te.utils import para_check
 from te import tvm
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 def ones_like_compute(input_x, output_y, kernel_name="ones_like"):
     """
     Given a tensor, this operation returns a tensor of the same

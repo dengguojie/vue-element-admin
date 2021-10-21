@@ -56,8 +56,8 @@ def get_op_support_info(x, matrix, bias, y, window=(1, 1), stride=(1, 1),
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
-# pylint: disable=too-many-arguments,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-locals
 def _pooling_check_rule(input_shape, output_dtype, window, stride, kernel_name):
     """
     :param input_shape: shape of input_data
@@ -108,7 +108,7 @@ def get_fusion_params(input_data, output_data, is_fused_compute=True):
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("pooling")
-# pylint: too-many-branches,too-many-statements
+# 'pylint: too-many-branches,too-many-statements
 def pool_fuse_compute(input_data, matrix, bias, output_data, window,
                       stride, offset_x=0, mode=0, pad=(0, 0, 0, 0),
                       global_pooling=False, ceil_mode=0,
@@ -290,7 +290,7 @@ def pool_fuse_compute(input_data, matrix, bias, output_data, window,
     return res
 
 
-# pylint: disable=unnecessary-lambda
+# 'pylint: disable=unnecessary-lambda
 def pooling_compute(x, matrix, y, window, stride,
                     mode=0, pad=(0, 0, 0, 0),
                     global_pooling=False, ceil_mode=0,
@@ -365,7 +365,7 @@ def pooling_compute(x, matrix, y, window, stride,
 
     return res
 
-# pylint: too-many-branches,too-many-statements
+# 'pylint: too-many-branches,too-many-statements
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,

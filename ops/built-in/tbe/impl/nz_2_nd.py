@@ -17,11 +17,11 @@
 """
 nz_2_nd
 """
-# pylint: disable=too-many-lines,import-error,too-many-branches,too-many-arguments
-# pylint: disable=too-many-statements,too-many-locals,missing-function-docstring
-# pylint: disable=too-many-public-methods,unused-variable,invalid-name,no-self-use
-# pylint: disable=too-many-instance-attributes
-# pylint: disable=chained-comparison,attribute-defined-outside-init
+# 'pylint: disable=too-many-lines,import-error,too-many-branches,too-many-arguments
+# 'pylint: disable=too-many-statements,too-many-locals,missing-function-docstring
+# 'pylint: disable=too-many-public-methods,unused-variable,invalid-name,no-self-use
+# 'pylint: disable=too-many-instance-attributes
+# 'pylint: disable=chained-comparison,attribute-defined-outside-init
 from functools import reduce as functools_reduce
 import math
 from te import platform as tbe_platform
@@ -7291,7 +7291,7 @@ class Nz2NDCompute:
         return tik_instance
 
 
-# pylint: disable=invalid-name,unused-argument
+# 'pylint: disable=invalid-name,unused-argument
 @para_check.check_input_type(dict, dict, str, str, str)
 def nz_2_nd(src, dst, src_format, dst_format, kernel_name="Nz2ND"):
     """

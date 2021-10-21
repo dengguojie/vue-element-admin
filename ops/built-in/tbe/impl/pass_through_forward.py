@@ -17,7 +17,7 @@
 """
 pass_through_forward
 """
-# pylint: disable=too-many-lines,import-error
+# 'pylint: disable=too-many-lines,import-error
 import functools
 
 import te.platform as tbe_platform
@@ -77,9 +77,9 @@ def _cal_core(tik_instance, total_core_loop_num, num_core, core_number):
     return core_loop, sum_core
 
 
-# pylint: disable=too-many-instance-attributes,too-many-arguments
-# pylint: disable=too-many-locals,too-many-statements
-# pylint: disable=attribute-defined-outside-init
+# 'pylint: disable=too-many-instance-attributes,too-many-arguments
+# 'pylint: disable=too-many-locals,too-many-statements
+# 'pylint: disable=attribute-defined-outside-init
 class DepthToSpace:
     """
     Rearranges data from depth into blocks of spatial data

@@ -17,7 +17,7 @@
 """
 parallel_concat
 """
-# pylint: disable=import-error
+# 'pylint: disable=import-error
 import functools
 from te import tik
 import te.platform as tbe_platform
@@ -32,8 +32,8 @@ from impl.util.util_select_op_base import get_op_cal_info
 UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 
 
-# pylint: disable = unused-argument,too-many-branches
-# pylint: disable=super-with-arguments
+# 'pylint: disable = unused-argument,too-many-branches
+# 'pylint: disable=super-with-arguments
 def get_op_support_info(values, output_data, shape, num, kernel_name="parallel_concat"):
     """
     get_op_support_info
@@ -169,7 +169,7 @@ def _check_param(input_values, shape, kernel_name):
                                                                "shape", error_detail)
 
 
-# pylint: disable=too-many-locals,invalid-name,unused-argument
+# 'pylint: disable=too-many-locals,invalid-name,unused-argument
 @para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def parallel_concat(values, output_data, shape, num, kernel_name="parallel_concat"):
@@ -253,7 +253,7 @@ class ParallelConcatBase:
         return functools.reduce(lambda x1, x2: x1 * x2, self.output_shape)
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class ParallelConcat(ParallelConcatBase):
     """
     Function: use to store patallel_concat compute parameters
@@ -306,7 +306,7 @@ class ParallelConcat(ParallelConcatBase):
                max_single_tensor_size_all_core, \
                max_single_tensor_size_each_core
 
-    # pylint: disable=too-many-branches,too-many-statements
+    # 'pylint: disable=too-many-branches,too-many-statements
     def parallel_concat_compute(self):
         """
         describe the ParallelConcat calculation process

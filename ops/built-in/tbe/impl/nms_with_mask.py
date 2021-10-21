@@ -84,7 +84,7 @@ def _ceiling(value, factor):
     return result
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def _get_src_tensor(ib):
     """
     Produce two tensors with all zero or all one
@@ -108,7 +108,7 @@ def _get_src_tensor(ib):
     return src0_ub, src1_ub
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def _get_reduced_proposal(ib, out_proposal, output_proposals_final, in_proposal, coord_addr):
     """
     Reduce input proposal when input boxes out of range.
@@ -152,7 +152,7 @@ def _get_reduced_proposal(ib, out_proposal, output_proposals_final, in_proposal,
         ib.vconcat(out_proposal, coord_addr[BURST_PROPOSAL_NUM * i], BURST_PROPOSAL_NUM // RPN_PROPOSAL_NUM, i)
 
 
-# pylint: disable=too-many-locals,too-many-arguments
+# 'pylint: disable=too-many-locals,too-many-arguments
 def _tik_func_nms_single_core_multithread(input_shape, thresh, total_output_proposal_num, kernel_name_var):
     """
     Compute output boxes after non-maximum suppression.
@@ -404,7 +404,7 @@ def _tik_func_nms_single_core_multithread(input_shape, thresh, total_output_prop
     return tik_instance
 
 
-# pylint: disable=unused-argument,too-many-locals,too-many-arguments
+# 'pylint: disable=unused-argument,too-many-locals,too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def nms_with_mask(box_scores, selected_boxes, selected_idx, selected_mask, iou_thr, kernel_name="nms_with_mask"):
@@ -1620,7 +1620,7 @@ class _NMSHelper(object):
         return selected_mask_ub
 
 
-# pylint: disable=too-many-locals,too-many-arguments
+# 'pylint: disable=too-many-locals,too-many-arguments
 def _tik_func_nms_multi_core_basic_api(input_shape, input_dtype, thresh, total_output_proposal_num, kernel_name_var):
     """
     Compute output boxes after non-maximum suppression
@@ -1684,7 +1684,7 @@ def _tik_func_nms_multi_core_basic_api(input_shape, input_dtype, thresh, total_o
     return tik_instance
 
 
-# pylint: disable=unused-argument,too-many-locals,too-many-arguments
+# 'pylint: disable=unused-argument,too-many-locals,too-many-arguments
 def _nms_with_mask_basic_api(box_scores, selected_boxes, selected_idx, selected_mask, iou_thr,
                              kernel_name="nms_with_mask"):
     """
