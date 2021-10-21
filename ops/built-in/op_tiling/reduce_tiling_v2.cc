@@ -978,10 +978,11 @@ bool Reduce::GetGeInfo() {
             ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(compileInfo.axes_idx.second) :
             ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc("axes");
     std::string axes_name = axes_desc->GetName();
+    const char* axes_dst_name = axes_name.c_str();
     geInfo.axes_type = axes_desc->GetDataType();
 
     // push data in axis_tensor
-    V_OP_TILING_CHECK(op_paras.GetInputConstData(axes_name, geInfo.axis_tensor) == ge::GRAPH_SUCCESS,
+    V_OP_TILING_CHECK(op_paras.GetInputConstData(axes_dst_name, geInfo.axis_tensor) == ge::GRAPH_SUCCESS,
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetInputConstData Failed"),
                       return false);
     V_OP_TILING_CHECK(!(geInfo.axes_type != ge::DT_INT32 && geInfo.axes_type != ge::DT_INT64),
@@ -1137,10 +1138,11 @@ bool Reduce::NewDoTiling(const OpInfo& op_info) {
                        ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(compileInfo.axes_idx.second) :
                        ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc("axes");
       std::string axes_name = axes_desc->GetName();
+      const char* axes_dst_name = axes_name.c_str();
       geInfo.axes_type = axes_desc->GetDataType();
 
       // push data in axis_tensor
-      V_OP_TILING_CHECK(op_paras.GetInputConstData(axes_name, geInfo.axis_tensor) == ge::GRAPH_SUCCESS,
+      V_OP_TILING_CHECK(op_paras.GetInputConstData(axes_dst_name, geInfo.axis_tensor) == ge::GRAPH_SUCCESS,
                         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetInputConstData Failed"),
                         return false);
       V_OP_TILING_CHECK(!(geInfo.axes_type != ge::DT_INT32 && geInfo.axes_type != ge::DT_INT64),

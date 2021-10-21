@@ -19,6 +19,7 @@
 
 #include "reduce_ops.h"
 #include "array_ops.h"
+#include "test_common.h"
 
 
 using namespace std;
@@ -450,3 +451,63 @@ TEST_F(ReduceTilingV2, ReduceTiling12) {
   ASSERT_TRUE(optiling::ReduceTiling("CustomOP", reduce_sum_d_op, json_info, runInfo, c_op_info));
 }
 
+static void ReduceSumCompute(std::vector<int64_t> inputA, std::vector<int64_t> inputB, std::vector<int32_t> axes,
+                             std::vector<int64_t> output, ge::DataType dtypeA, ge::DataType dtypeB,
+                             ge::DataType dtypeOutput, std::string compileInfo, bool isCustom, std::string caseName) {
+  using namespace optiling;
+
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputA));
+  tensor_inputA.SetDataType(dtypeA);
+
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputB));
+  tensor_inputB.SetDataType(dtypeB);
+
+  TensorDesc tensor_output;
+  tensor_output.SetShape(ge::Shape(output));
+  tensor_output.SetDataType(dtypeOutput);
+
+  auto opParas = op::ReduceSum(caseName);
+  TENSOR_INPUT(opParas, tensor_inputA, x);
+  TENSOR_INPUT_CONST(opParas, tensor_inputB, axes, (const uint8_t*)axes.data(), axes.size() * 4);
+  TENSOR_OUTPUT(opParas, tensor_output, y);
+
+  nlohmann::json json_info = nlohmann::json::parse(compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
+  if (!isCustom) {
+    ASSERT_TRUE(optiling::ReduceTiling("AutoTiling", opParas, json_info, runInfo));
+  } else {
+    std::vector<std::vector<int64_t>> input_shapes{inputA, inputB};
+    optiling::OpInfo c_op_info(input_shapes, DT_FLOAT);
+    ASSERT_TRUE(optiling::ReduceTiling("AutoTiling", opParas, json_info, runInfo, c_op_info));
+  }
+}
+
+TEST_F(ReduceTilingV2, ReduceSumTiling1) {
+  std::string caseName = "ReduceSumTiling1";
+  std::string compileInfo = R"({"_pattern": "CommReduce", "_common_info": [32,1,8,1,1], "_pattern_info": [5, 4, 9], "_ub_info_rf": [32512, 21376, 32512], "_ub_info": [32512, 21376, 16128], "_idx_before_reduce": 0, "_vars": {"4293966796": ["_dim_1", "_block_factor", "_ub_factor"], "4293866796": ["_dim_1", "_block_factor", "_ub_factor"], "500": ["_dim_1", "_block_factor", "_ub_factor"], "100500": ["_dim_1", "_block_factor", "_ub_factor"], "2147483647": ["_dim_1"], "4294966896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294866896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1100400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294966396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1000900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1100900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1200900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}, "_normal_vars": {"4293966796": ["_dim_1", "_block_factor", "_ub_factor"], "4293866796": ["_dim_1", "_block_factor", "_ub_factor"], "500": ["_dim_1", "_block_factor", "_ub_factor"], "100500": ["_dim_1", "_block_factor", "_ub_factor"], "2147483647": ["_dim_1"], "4294966896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294866896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1100400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294966396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1000900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1100900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1200900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}, "_attr_vars": {"4293966796": [], "4293866796": [], "500": [], "100500": [], "2147483647": [], "4294966896": [], "4294866896": [], "1000400": [], "1100400": [], "4294966396": [], "4294866396": [], "4294766396": [], "4292866396": [], "4292766396": [], "1000900": [], "1100900": [], "1200900": []}, "_custom_vars": {"4293966796": [], "4293866796": [], "500": [], "100500": [], "2147483647": [], "4294966896": [], "4294866896": [], "1000400": [], "1100400": [], "4294966396": [], "4294866396": [], "4294766396": [], "4292866396": [], "4292766396": [], "1000900": [], "1100900": [], "1200900": []}})";
+  std::vector<int64_t> inputA{32,256};
+  std::vector<int64_t> inputB{1};
+  std::vector<int32_t> axes{0};
+  std::vector<int64_t> output{1,256};
+  ge::DataType dtypeA = ge::DT_FLOAT;
+  ge::DataType dtypeB = ge::DT_INT32;
+  ge::DataType dtypeOutput = dtypeA;
+  bool isCustom = true;
+  ReduceSumCompute(inputA, inputB, axes, output, dtypeA, dtypeB, dtypeOutput, compileInfo, isCustom, caseName);
+}
+
+TEST_F(ReduceTilingV2, ReduceSumTiling2) {
+  std::string caseName = "ReduceSumTiling2";
+  std::string compileInfo = R"({"_pattern": "CommReduce", "_common_info": [32,1,8,1,1], "_pattern_info": [5, 4, 9], "_ub_info_rf": [32512, 21376, 32512], "_ub_info": [32512, 21376, 16128], "_idx_before_reduce": 0, "_vars": {"4293966796": ["_dim_1", "_block_factor", "_ub_factor"], "4293866796": ["_dim_1", "_block_factor", "_ub_factor"], "500": ["_dim_1", "_block_factor", "_ub_factor"], "100500": ["_dim_1", "_block_factor", "_ub_factor"], "2147483647": ["_dim_1"], "4294966896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294866896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1100400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294966396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1000900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1100900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1200900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}, "_normal_vars": {"4293966796": ["_dim_1", "_block_factor", "_ub_factor"], "4293866796": ["_dim_1", "_block_factor", "_ub_factor"], "500": ["_dim_1", "_block_factor", "_ub_factor"], "100500": ["_dim_1", "_block_factor", "_ub_factor"], "2147483647": ["_dim_1"], "4294966896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294866896": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1000400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "1100400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"], "4294966396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4294766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292866396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "4292766396": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1000900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1100900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"], "1200900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}, "_attr_vars": {"4293966796": [], "4293866796": [], "500": [], "100500": [], "2147483647": [], "4294966896": [], "4294866896": [], "1000400": [], "1100400": [], "4294966396": [], "4294866396": [], "4294766396": [], "4292866396": [], "4292766396": [], "1000900": [], "1100900": [], "1200900": []}, "_custom_vars": {"4293966796": [], "4293866796": [], "500": [], "100500": [], "2147483647": [], "4294966896": [], "4294866896": [], "1000400": [], "1100400": [], "4294966396": [], "4294866396": [], "4294766396": [], "4292866396": [], "4292766396": [], "1000900": [], "1100900": [], "1200900": []}})";
+  std::vector<int64_t> inputA{32,256};
+  std::vector<int64_t> inputB{1};
+  std::vector<int32_t> axes{0};
+  std::vector<int64_t> output{1,256};
+  ge::DataType dtypeA = ge::DT_FLOAT;
+  ge::DataType dtypeB = ge::DT_INT32;
+  ge::DataType dtypeOutput = dtypeA;
+  bool isCustom = false;
+  ReduceSumCompute(inputA, inputB, axes, output, dtypeA, dtypeB, dtypeOutput, compileInfo, isCustom, caseName);
+}
