@@ -369,3 +369,80 @@ TEST_F(one_hot_infershapeone_hot_infershape_pass_test, one_hot_infershapeone_hot
   delete[] depth_tensor_value;
 }
 
+TEST_F(one_hot_infershapeone_hot_infershape_pass_test, one_hot_infershapeone_hot_infershape_pass_test_6) {
+  ge::Graph graph("one_hot_infershapeone_hot_infershape_pass_test_6");
+  // input x info
+  auto input_x_shape = vector<int64_t>({-1, -1, -1});
+  std::vector<std::pair<int64_t, int64_t>> range_x1 = {{1, 3}, {1, 4}, {1, 5}};
+  uint32_t depth = 1001;
+  int64_t axis = 2;
+  auto dtype = DT_FLOAT;
+  // expect info
+  std::vector<int64_t> expected_shape = {-1, -1, 1001, -1};
+  std::vector<std::pair<int64_t, int64_t>> expected_range = {{1, 3}, {1, 4}, {1001, 1001}, {1, 5}};
+
+  // input x desc
+  TensorDesc desc_data(ge::Shape(input_x_shape), FORMAT_NCHW, DT_INT32);
+  desc_data.SetShapeRange(range_x1);
+  auto data = op::Data("data");
+  data.update_input_desc_x(desc_data);
+  data.update_output_desc_y(desc_data);
+
+  // depth scaler const
+  vector<int64_t> depth_dims;
+  TensorDesc desc_input_size_1(ge::Shape(depth_dims), FORMAT_ND, DT_INT32);
+  Tensor depth_tensor(desc_input_size_1);
+  uint32_t* depth_tensor_value = new uint32_t[1]{depth};
+  depth_tensor.SetData((uint8_t*)depth_tensor_value, sizeof(uint32_t));
+  auto depth_const_op = op::Const("depth").set_attr_value(depth_tensor);
+
+  auto depth_op = op::Data("depth");
+  depth_op.update_input_desc_x(desc_input_size_1);
+  depth_op.update_output_desc_y(desc_input_size_1);
+  // on_value / off_value tensor
+  auto value_data = vector<int64_t>({});
+  TensorDesc value_desc(ge::Shape(value_data), FORMAT_NCHW, dtype);
+  auto value_op = op::Data("value_data");
+  value_op.update_input_desc_x(value_desc);
+  value_op.update_output_desc_y(value_desc);
+
+  // new op
+  auto test_op = op::OneHot("OneHot");
+  test_op.set_input_x(data);
+  test_op.set_input_depth(depth_const_op);
+  test_op.set_input_on_value(value_op);
+  test_op.set_input_off_value(value_op);
+  test_op.SetAttr("axis", axis);
+  std::vector<Operator> inputs{data, depth_const_op, value_op};
+  std::vector<Operator> outputs{test_op};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+
+  bool findOp = false;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == "OneHot") {
+      findOp = true;
+      auto output_desc = node->GetOpDesc()->GetOutputDesc(0);
+      std::vector<int64_t> dims = output_desc.GetShape().GetDims();
+      std::vector<std::pair<int64_t, int64_t>> output_range;
+      output_desc.GetShapeRange(output_range);
+      EXPECT_EQ(output_range, expected_range);
+      EXPECT_EQ(dims, expected_shape);
+      auto output_dtype = output_desc.GetDataType();
+      EXPECT_EQ(output_dtype, dtype);
+    }
+  }
+  EXPECT_EQ(findOp, true);
+  delete[] depth_tensor_value;
+
+  fe::FusionPassTestUtils::RunGraphFusionPass("OneHotFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  bool ret = false;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == "OneHotD") {
+      ret = true;
+    }
+  }
+  EXPECT_EQ(ret, true);
+}
