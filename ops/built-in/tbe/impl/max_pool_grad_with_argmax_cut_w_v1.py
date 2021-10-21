@@ -33,8 +33,8 @@ FP32_MAX = 64
 MASK_MAX = 8
 
 
-# pylint: disable=too-many-arguments,useless-super-delegation,super-with-arguments
-# pylint: disable=too-many-locals,too-many-branches,too-many-statements
+# 'pylint: disable=too-many-arguments,useless-super-delegation,super-with-arguments
+# 'pylint: disable=too-many-locals,too-many-branches,too-many-statements
 
 class MaxpoolGardObject(MaxpoolGradBase):
     """

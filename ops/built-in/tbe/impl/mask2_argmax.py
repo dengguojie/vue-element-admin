@@ -47,7 +47,7 @@ def _ceil_div(value, factor):
     return quotient
 
 
-# pylint: disable=too-many-arguments,unused-argument
+# 'pylint: disable=too-many-arguments,unused-argument
 @para_check.check_input_type(dict, dict, dict, (list, tuple), (list, tuple), str, (list, tuple), str)
 def mask2_argmax(input_x, mask, argmax, ksize, strides, padding, originshape,
                  kernel_name="mask2_argmax"):
@@ -72,7 +72,7 @@ def mask2_argmax(input_x, mask, argmax, ksize, strides, padding, originshape,
     return argmax_reslut.tik_instance_function(kernel_name)
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class Mask2Argmax():
     """
        Function: use to finish Mask2Argmax main functions
@@ -159,7 +159,7 @@ class Mask2Argmax():
         self.in_size_w_scalar.set_as(self.in_size_w)
         self.c_size_scalar.set_as(self.c_size)
 
-    # pylint: disable=too-many-locals, too-many-function-args
+    # 'pylint: disable=too-many-locals, too-many-function-args
     def tik_instance_function(self, kernel_name):
         """
         tik_instance_function
@@ -346,7 +346,7 @@ class Mask2Argmax():
 
         self.tik_instance.vec_add(16, reg_argmax_ub, out_h_index_ub3, out_w_index_ub3, 1, 1, 1, 1)
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def fun_no_cut(self, block_index, nc1_size, nc1_index):
         """
         funtion no need cut
@@ -598,7 +598,7 @@ class Mask2Argmax():
                                     0,
                                     0)
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def fun_cut_mask(self, block_index, nc1_size, nc1_index):
         """
         funtion need cut

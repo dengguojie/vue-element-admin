@@ -33,14 +33,14 @@ FP32_MAX = 64
 MASK_MAX = 8
 
 
-# pylint: disable=locally-disabled,too-few-public-methods,
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=locally-disabled,too-few-public-methods,
+# 'pylint: disable=too-many-instance-attributes
 class MaxpoolGradResnet50():
     """
     parameter for max_pool_grad_with_pool
     """
 
-    # pylint: disable=locally-disabled,too-many-locals,too-many-arguments
+    # 'pylint: disable=locally-disabled,too-many-locals,too-many-arguments
     def __init__(self, grad, argmax, input_x, ksize, strides, padding):
         """
         init compare and bit pack base parameters
@@ -96,8 +96,8 @@ class MaxpoolGradResnet50():
         if windoww > stridew:
             self.woverlap = windoww - stridew
 
-    # pylint: disable=locally-disabled,too-many-arguments,too-many-locals
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals
+    # 'pylint: disable=too-many-statements
     def tik_instance_cut_nc1_cut_h(self, kernel_name):
         """
         function for max_pool_grad_with_pool calc for normal shape
@@ -426,7 +426,7 @@ class MaxpoolGradResnet50():
         return self.tik_instance
 
 
-# pylint: disable=invalid-name, too-many-arguments
+# 'pylint: disable=invalid-name, too-many-arguments
 def is_max_pool_grad_with_argmax_param(grad, argmax, x, ksize, strides,
                                        padding):
     """
@@ -474,7 +474,7 @@ def is_max_pool_grad_with_argmax_param(grad, argmax, x, ksize, strides,
     return False
 
 
-# pylint: disable=invalid-name, too-many-arguments
+# 'pylint: disable=invalid-name, too-many-arguments
 def max_pool_grad_with_argmax(grad, argmax, x, ksize, strides, padding,
                               kernel_name):
     """

@@ -26,9 +26,9 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=invalid-name,too-many-statements
-# pylint: disable=self-assigning-variable
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=invalid-name,too-many-statements
+# 'pylint: disable=self-assigning-variable
 def check_window_rule(ksize, strides, padding_mode, pads, data_format, kernel_name):
     """
     check ksize and strides of window in pooling
@@ -84,7 +84,7 @@ def check_window_rule(ksize, strides, padding_mode, pads, data_format, kernel_na
                                                         str(padding_mode))
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-arguments
+# 'pylint: disable=locally-disabled,unused-argument,too-many-arguments
 @fusion_manager.register("max_pool_v3")
 def max_pool_fuse_compute(input_data, output_data, ksize, strides, padding=None,
                           data_format="NC1HWC0", kernel_name="max_pool_v3"):
@@ -145,7 +145,7 @@ def max_pool_fuse_compute(input_data, output_data, ksize, strides, padding=None,
     return res
 
 
-# pylint: disable=unnecessary-lambda,too-many-locals
+# 'pylint: disable=unnecessary-lambda,too-many-locals
 def max_pool_compute(input_data, output_data, ksize, strides, padding_mode, pads,
                      data_format="NC1HWC0", global_pooling=False, ceil_mode=False, kernel_name="max_pool_v3"):
     """
@@ -268,7 +268,7 @@ def max_pool_compute(input_data, output_data, ksize, strides, padding_mode, pads
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_LIST_INT, para_check.REQUIRED_ATTR_STR,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
                             para_check.KERNEL_NAME)
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def max_pool_v3(input_data, output_data, ksize, strides, padding_mode="CALCULATED", pads=(0, 0, 0, 0),
                 data_format="NC1HWC0", global_pooling=False, ceil_mode=False, kernel_name="max_pool_v3"):
     """

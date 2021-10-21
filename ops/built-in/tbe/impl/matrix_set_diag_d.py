@@ -33,7 +33,7 @@ SCALAR_NEGATIVE_ONE = -1
 SCALAR_TWO = 2
 
 
-# pylint: disable = unused-argument
+# 'pylint: disable = unused-argument
 def get_op_support_info(input_matrix, input_diagonal, input_help, output_matrix,
                         kernel_name="matrix_set_diag_d"):
     """
@@ -90,7 +90,7 @@ def _check_tensor_size(shape_x, shape_y):
                                                                "input_help", error_detail)
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("matrix_set_diag_d")
 def matrix_set_diag_d_compute(input_matrix, input_diagonal, input_help,
                               output_matrix, kernel_name="matrix_set_diag_d"):
@@ -141,7 +141,7 @@ def matrix_set_diag_d_compute(input_matrix, input_diagonal, input_help,
     return res
 
 
-# pylint: disable=locally-disabled,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)

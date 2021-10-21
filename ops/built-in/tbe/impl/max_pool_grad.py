@@ -15,7 +15,7 @@
 """
 max_pool_grad
 """
-# pylint:disable=too-many-lines
+# 'pylint:disable=too-many-lines
 import math
 
 import te.platform as tbe_platform
@@ -26,9 +26,9 @@ from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 
-# pylint: disable=too-few-public-methods,too-many-statements,too-many-branches,no-self-use
-# pylint: disable=too-many-instance-attributes,unused-argument,too-many-lines
-# pylint: disable=too-many-lines,too-many-locals,too-many-statements,unused-variable
+# 'pylint: disable=too-few-public-methods,too-many-statements,too-many-branches,no-self-use
+# 'pylint: disable=too-many-instance-attributes,unused-argument,too-many-lines
+# 'pylint: disable=too-many-lines,too-many-locals,too-many-statements,unused-variable
 def op_select_format(x1, x2, grad, y, ksize, strides,
                      padding, data_format="NHWC", kernel_name="maxpoolgrad"):
     """
@@ -146,7 +146,7 @@ def _cal_shape_ele(shape):
     return reduce_
 
 
-# pylint: disable=inconsistent-return-statements
+# 'pylint: disable=inconsistent-return-statements
 def _cal_byte_size(shape, dtype):
     """
     calcu tensor size
@@ -303,7 +303,7 @@ MAX_NBURST = 4095
 FIXED_USED_UB = 512 * 4 + 256 * 4 + 1024
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def _check_param(ori_input, ori_output, grad, ksize, strides, padding, kernel_name):
     """
     check parameters, if one is invalid, then raise error
@@ -712,7 +712,7 @@ def _branch_choice(ori_input_shape, ksize, strides, padding, data_format):
     return atomic_flag
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_STR,
@@ -791,7 +791,7 @@ def max_pool_grad(ori_input,
         return maxpoolgrad.tik_instance_function(kernel_name)
 
 
-# pylint: disable=too-many-instance-attributes,too-few-public-methods
+# 'pylint: disable=too-many-instance-attributes,too-few-public-methods
 class MaxpoolGrad:
     """
     MaxpoolGrad  Object include all fuction and paras
@@ -853,7 +853,7 @@ class MaxpoolGrad:
         self.scalar_esp.set_as(1.18e-38)
         self.scalar_one.set_as(1)
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def _padding_mode(self, ori_input, ksize, strides, padding):
         _, _, fmap_h, fmap_w, _ = ori_input
         _, kernel_h, kernel_w, _ = ksize
@@ -951,7 +951,7 @@ class MaxpoolGrad:
                     src[src_start + repeate_max_time * MAX_VECTOR_REPEATE_TIME * mask_value +
                         remain_repeate_time * mask_value], 1, 1, 1, dst_stride, src_stride)
 
-    # pylint: disable=too-many-branches
+    # 'pylint: disable=too-many-branches
     def _vector_op(self, operator, src1, src2, dst, dtype, ele_num, stride_cofig=None, offset=None):
         if dtype == "float16":
             repeate_times = ele_num // VECTOR_FP16_SIZE
@@ -1841,7 +1841,7 @@ class MaxpoolGrad:
                     self.tik_instance.data_move(self.res_gm[self.offset_gm + loop_gm_offset], grad_sel_ub, 0, 1,
                                                 each_h * each_w, 0, 0)
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def _tilling_ho_only(self, each_process_ho, n_index, c1_index, each_process_ho_block, each_process_hi_block,
                          mov_len_ho, mov_len_hi, start_ho_index, start_hi_index, start_threshold, offset_gm_block,
                          shape, pad):
@@ -1979,7 +1979,7 @@ class MaxpoolGrad:
                 output_data_nums = remain_ho_nums * self.wo * C0
                 process_ho(output_data_nums, cut_ho_nums, remain_ho_nums, remained_hi)
 
-    # pylint: disable=too-many-branches,too-many-statements
+    # 'pylint: disable=too-many-branches,too-many-statements
     def _tilling_l1_ho_only(self, each_process_ho, n_index, c1_index, each_process_ho_block, each_process_hi_block,
                             mov_len_ho, mov_len_hi, start_ho_index, start_hi_index, start_threshold, offset_gm_block,
                             shape, pad):
@@ -2299,7 +2299,7 @@ class MaxpoolGrad:
                 _process_tiling_l1_ho(n_hi_block, remain_hi_block, start_h, end_h, 0, src_output_offset,
                                       output_data_nums, remain_ho_nums, remained_hi, 0)
 
-    # pylint: disable=too-many-statements,too-many-branches
+    # 'pylint: disable=too-many-statements,too-many-branches
     def _tilling_l1_ho_wo(self, each_process_wo, n_index, c1_index, each_process_ho_block, each_process_hi_block,
                           mov_len_ho, mov_len_hi, start_ho_index, start_hi_index, start_threshold, offset_gm_block,
                           shape, pad):
@@ -2888,7 +2888,7 @@ class MaxpoolGrad:
                                                 _cal_shape_ele(temp_zero.shape) // 16, 0, 0)
                     self.offset_gm.set_as(self.offset_gm + _cal_shape_ele(temp_zero.shape))
 
-    # pylint:disable=no-self-use
+    # 'pylint:disable=no-self-use
     @staticmethod
     def _get_core_divlist():
         div_list = []
@@ -2920,7 +2920,7 @@ class MaxpoolGrad:
             return False
         return True
 
-    # pylint:disable=no-self-use
+    # 'pylint:disable=no-self-use
     @staticmethod
     def _get_block_num(block_num):
         if block_num > CORE_NUM:
@@ -2931,7 +2931,7 @@ class MaxpoolGrad:
             block_cycle = 1
         return real_block, block_cycle
 
-    # pylint: disable=too-many-branches,too-many-statements
+    # 'pylint: disable=too-many-branches,too-many-statements
     def tik_instance_function(self, kernel_name):
         """
         main function of tik_instance

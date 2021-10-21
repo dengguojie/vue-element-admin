@@ -29,7 +29,7 @@ SCALAR_255 = 255
 SCALAR_20 = 20
 
 
-# pylint: disable=unused-argument,unused-variable
+# 'pylint: disable=unused-argument,unused-variable
 def check_supported(input_data, output_data, ksize, strides, padding,
                                 data_format="NC1HWC0", kernel_name="max_pool"):
     """
@@ -67,7 +67,7 @@ def check_supported(input_data, output_data, ksize, strides, padding,
     return True, ""
 
 
-# pylint: disable=too-many-arguments,unused-argument
+# 'pylint: disable=too-many-arguments,unused-argument
 def get_op_support_info(input_data, output_data, ksize, strides, padding,
                         data_format="NC1HWC0", kernel_name="max_pool"):
     """
@@ -138,8 +138,8 @@ def get_fusion_params(input_data, output_data, is_fused_compute=True):
     return fusion_params
 
 
-# pylint: disable=unnecessary-lambda
-# pylint: disable=unused-argument,,too-many-locals
+# 'pylint: disable=unnecessary-lambda
+# 'pylint: disable=unused-argument,,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("max_pool")
 def max_pool_fuse_compute(input_data, output_data, ksize, strides, padding=None,
                           data_format="NC1HWC0", kernel_name="max_pool_fuse"):
@@ -222,8 +222,8 @@ def max_pool_fuse_compute(input_data, output_data, ksize, strides, padding=None,
     return res
 
 
-# pylint: disable=unnecessary-lambda,too-many-locals,too-many-arguments
-# pylint: disable=unused-argument
+# 'pylint: disable=unnecessary-lambda,too-many-locals,too-many-arguments
+# 'pylint: disable=unused-argument
 def max_pool_compute(input_data, output_data, ksize, strides, padding,
                      data_format="NC1HWC0", kernel_name="max_pool"):
     """
@@ -288,12 +288,12 @@ def max_pool_compute(input_data, output_data, ksize, strides, padding,
     return res
 
 
-# pylint: disable=too-many-arguments,too-many-statements
+# 'pylint: disable=too-many-arguments,too-many-statements
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_STR,
                             para_check.KERNEL_NAME)
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def max_pool(input_data, output_data, ksize, strides, padding,
              data_format="NC1HWC0", kernel_name="max_pool"):
     """

@@ -61,8 +61,8 @@ def _ceil_div(value, factor):
     return math.ceil(value / factor)
 
 
-# pylint: disable=locally-disabled, too-many-instance-attributes
-# pylint: disable=too-few-public-methods
+# 'pylint: disable=locally-disabled, too-many-instance-attributes
+# 'pylint: disable=too-few-public-methods
 class MaxPoolWithArgmaxV1Resnet50(object):
     def __init__(self, x, ksize, strides, padding, dtype, dilation, ceil_mode, kernel_name):
         """
@@ -275,7 +275,7 @@ class MaxPoolWithArgmaxV1Resnet50(object):
             self.tik_inst.vector_dup(single_vec_fp16_mask, ub_buff[vec_repeat_time * vec_fp16_mask],
                                      pad_value, res_vec_length // single_vec_fp16_mask, 1, 1)
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def _load_gm_to_ub_ping(self, ub_buff, output_block_h, input_fmap_gm, input_gm_idx, looph):
         """
         load data from gm to ub
@@ -619,7 +619,7 @@ def is_max_pool_with_argmax_param(x, ksize, strides, padding):
 
     return False
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def max_pool_with_argmax_v1_resnet50(x, y, argmax, ksize, strides, pads, dtype=DT_INT32, dilation=(1, 1, 1, 1),
                                      ceil_mode=False, kernel_name="max_pool_with_argmax_v1"):
     """

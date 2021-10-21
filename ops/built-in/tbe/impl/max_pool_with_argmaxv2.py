@@ -49,8 +49,8 @@ UB_SIZE = MAX_ALLOW_UB if UB_SIZE > MAX_ALLOW_UB else UB_SIZE
 L1_SIZE = tbe_platform.cce_conf.CceProductParams().getParams("L1_Buffer")
 
 
-# pylint: disable=unused-argument,invalid-name,too-many-arguments
-# pylint: disable=too-many-lines,unused-variable,singleton-comparison
+# 'pylint: disable=unused-argument,invalid-name,too-many-arguments
+# 'pylint: disable=too-many-lines,unused-variable,singleton-comparison
 def get_op_support_info(x, y, argmax, ksize, strides, pads, dtype=DT_INT32,
                          dilation=(1, 1, 1, 1), ceil_mode=False,
                          kernel_name="max_pool_with_argmaxv2"):
@@ -95,7 +95,7 @@ def _ceil_div(value, factor):
     return quotient
 
 
-# pylint: disable=too-many-branches
+# 'pylint: disable=too-many-branches
 def _check_param(x, ksize, strides, padding, dtype, dilation, ceil_mode,
                  kernel_name):
     """
@@ -185,7 +185,7 @@ def _check_param(x, ksize, strides, padding, dtype, dilation, ceil_mode,
                            "should be <= 255")
 
 
-# pylint: disable=too-many-instance-attributes,too-few-public-methods
+# 'pylint: disable=too-many-instance-attributes,too-few-public-methods
 class MaxPoolWithargmaxPytorch():
     """
     Function: use to finish MaxPoolWithargmax main functions
@@ -286,7 +286,7 @@ class MaxPoolWithargmaxPytorch():
                                                        name="output_mask_gm",
                                                        scope=tik.scope_gm)
 
-    # pylint: disable=too-many-locals, too-many-function-args
+    # 'pylint: disable=too-many-locals, too-many-function-args
     def tik_instance_function(self, kernel_name):
         """
         tik_instance_function
@@ -417,7 +417,7 @@ class MaxPoolWithargmaxPytorch():
 
         return need_cut_h, need_cut_h_w, need_cut
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def _fun_no_cut(self, block_index, nc1_index, nc1_size):
         """
         funtion while no need cut H
@@ -522,7 +522,7 @@ class MaxPoolWithargmaxPytorch():
                 mask_ub[w_index * self.fmap_h_num * self.c0_size],
                 0, 1, self.fmap_h_num, 0, 0)
 
-    # pylint: disable=too-many-locals,too-many-statements
+    # 'pylint: disable=too-many-locals,too-many-statements
     def _calc_only_cut_h(self, cur_h_idx, cut_h_size, cut_stride, cut_h_num,
                          input_fmap_l1, fmap_ub, fmap_cut_h,
                          mask_shape_ub, nc1_num):
@@ -879,7 +879,7 @@ class MaxPoolWithargmaxPytorch():
                             self.c0_size], 0,
                     1, fmap_cut_h_num, 0, 0)
 
-    # pylint: disable=too-many-locals,too-many-statements
+    # 'pylint: disable=too-many-locals,too-many-statements
     def _fun_only_cut_h(self, block_index, nc1_cuth_index, cut_h_size,
                         cut_stride, cut_h_num, nc1_cuth_size, flag_cut_h):
         """
@@ -936,7 +936,7 @@ class MaxPoolWithargmaxPytorch():
                                       cut_h_num, input_fmap_l1, fmap_ub,
                                       fmap_cut_h, mask_shape_ub, nc1_num)
 
-    # pylint: disable=no-self-use
+    # 'pylint: disable=no-self-use
     @staticmethod
     def _pooling_output_shape_pad_lr(input_size, kernel_size, pad_l,
                                      pad_r, stride, dilation, ceil_mode):
@@ -1023,7 +1023,7 @@ class MaxPoolWithargmaxPytorch():
 
         return pad, output_h, output_w
 
-    # pylint: disable=too-many-branches
+    # 'pylint: disable=too-many-branches
     def _calc_cut_h_size_fun(self, need_cut=False):
         """
         caculate cut_h size
@@ -1337,7 +1337,7 @@ class MaxPoolWithargmaxPytorch():
                                          DSTSTRIDEM0)
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def max_pool_with_argmax(x, y, argmax, ksize, strides, pads, dtype=DT_INT32,
                          dilation=(1, 1, 1, 1), ceil_mode=False,
                          kernel_name="max_pool_with_argmaxv2"):

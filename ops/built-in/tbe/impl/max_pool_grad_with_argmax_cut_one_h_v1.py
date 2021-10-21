@@ -35,9 +35,9 @@ BLOCK_SIZE = 32
 L1_SIZE = CceProductParams().getParams("L1_Buffer")
 
 
-# pylint: disable=too-many-arguments,useless-super-delegation,super-with-arguments
-# pylint: disable=redefined-builtin,too-many-locals,simplifiable-if-expression,too-many-branches
-# pylint: disable=too-many-statements,literal-comparison
+# 'pylint: disable=too-many-arguments,useless-super-delegation,super-with-arguments
+# 'pylint: disable=redefined-builtin,too-many-locals,simplifiable-if-expression,too-many-branches
+# 'pylint: disable=too-many-statements,literal-comparison
 class MaxpoolGradCustom(MaxpoolGardObject):
     """
     parameter for max_pool_grad_with_pool

@@ -1,4 +1,4 @@
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -146,7 +146,7 @@ class L0ubTilingType(Enum):
     CUT_HOWO = 4
 
 
-# pylint:disable=too-many-arguments,too-many-locals,invalid-name,too-many-statements
+# 'pylint:disable=too-many-arguments,too-many-locals,invalid-name,too-many-statements
 def _get_load3d_tiling(fmap_shape,
                        ksize,
                        strides,
@@ -365,7 +365,7 @@ def _get_load3d_tiling(fmap_shape,
     return tiling
 
 
-# pylint:disable=too-many-arguments,too-many-locals,unused-argument,too-many-statements
+# 'pylint:disable=too-many-arguments,too-many-locals,unused-argument,too-many-statements
 def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", kernel_name="cce_max_pool_grad_grad"):
     """
     Calculation of maxpoolgradgrad with ir_build.

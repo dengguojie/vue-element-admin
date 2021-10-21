@@ -45,8 +45,8 @@ DT_INT32 = 3
 DT_INT64 = 9
 
 
-# pylint: disable=invalid-name,too-many-arguments,useless-super-delegation,super-with-arguments
-# pylint: disable=too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,consider-using-in
+# 'pylint: disable=invalid-name,too-many-arguments,useless-super-delegation,super-with-arguments
+# 'pylint: disable=too-many-locals,too-many-branches,too-many-statements,too-many-return-statements,consider-using-in
 @para_check.check_input_type(dict, dict, dict, dict, (list, tuple), (list, tuple), (list, tuple), int, (list, tuple),
                              bool, str)
 def max_pool_grad_with_argmax_v1(x, grad, argmax, y, ksize, strides, pads,

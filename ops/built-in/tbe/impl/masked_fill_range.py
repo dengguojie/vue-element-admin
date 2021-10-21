@@ -53,12 +53,12 @@ def _ceil_with_value(value, align_num):
     return (value + align_num - 1) // align_num
 
 
-class MaskedFillRange(object):
+class MaskedFillRange():
     """
     use to store MaskedFillRange basic parameters
     """
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def __init__(self, x, start, end, value, y, axis, kernel_name):
         self.input_x_shape = x.get("shape")
         self.input_x_ori_shape = x.get("ori_shape")
@@ -830,7 +830,7 @@ class MaskedFillRange(object):
             inputs=[self.input_x_gm, self.start_gm, self.end_gm, self.mask_value_gm], outputs=[self.output_y_gm])
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.KERNEL_NAME)

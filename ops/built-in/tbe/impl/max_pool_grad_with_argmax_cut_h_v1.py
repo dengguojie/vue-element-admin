@@ -34,9 +34,9 @@ MASK_MAX = 8
 L1_SIZE = CceProductParams().getParams("L1_Buffer")
 
 
-# pylint: disable=too-many-lines,too-many-instance-attributes,too-many-arguments
-# pylint: too-many-locals,simplifiable-if-statement,too-many-branches,too-many-statements
-class MaxpoolGradBase(object):
+# 'pylint: disable=too-many-lines,too-many-instance-attributes,too-many-arguments
+# 'pylint: too-many-locals,simplifiable-if-statement,too-many-branches,too-many-statements
+class MaxpoolGradBase():
     """
     parameter for max_pool_grad_with_pool
     """

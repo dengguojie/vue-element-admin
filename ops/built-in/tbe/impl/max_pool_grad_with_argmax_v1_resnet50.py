@@ -32,10 +32,10 @@ FP32_MAX = 64
 MASK_MAX = 8
 
 
-# pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-locals,unused-variable
-# pylint: disable=missing-function-docstring,too-many-statements,invalid-name,too-many-boolean-expressions
+# 'pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-locals,unused-variable
+# 'pylint: disable=missing-function-docstring,too-many-statements,invalid-name,too-many-boolean-expressions
 
-class MaxpoolGradV2Resnet50(object):
+class MaxpoolGradV2Resnet50():
     """
     parameter for max_pool_grad_with_pool
     """

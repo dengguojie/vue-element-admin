@@ -60,9 +60,9 @@ def _ceil_div(value, factor):
     return math.ceil(value / factor)
 
 
-# pylint: disable=locally-disabled, too-many-instance-attributes
-# pylint: disable=too-few-public-methods
-class MaxPoolWithargmaxResnet50(object):
+# 'pylint: disable=locally-disabled, too-many-instance-attributes
+# 'pylint: disable=too-few-public-methods
+class MaxPoolWithargmaxResnet50():
     """
        Function: use to finish MaxPoolWithargmax main functions
     """
@@ -238,7 +238,7 @@ class MaxPoolWithargmaxResnet50(object):
                               self.window_w, self.window_h,
                               1, 1, 1, 1, 4 * 56 // 16, 0, self.pad_value)
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def _load_gm_to_ub_ping(self, ub_buff, output_block_h, input_fmap_gm, input_gm_idx, looph):
         """
         load data from gm to ub
@@ -289,7 +289,7 @@ class MaxPoolWithargmaxResnet50(object):
                                                      (w_loop * self.in_size_w + w_index) * c0_dim],
                                        0, gm_len, 1, 1, 0)
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def _ub_rearrangement_ping(self, ub_buff, ub_load, output_block_h, input_fmap_gm, input_gm_idx, looph,
                                src_offsets_gm):
         """
@@ -326,7 +326,7 @@ class MaxPoolWithargmaxResnet50(object):
         instance.data_move(src_offsets, src_offsets_gm, 0, 1, src_offsets_size // 8, 0, 0)
         instance.vgatherb(ub_buff, ub_load, src_offsets, repeat_times, 1, 8)
 
-    # pylint: disable=too-many-arguments,too-many-locals
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _ub_rearrangement_pong(self, ub_buff, ub_load, output_block_h, input_fmap_gm, input_gm_idx, looph, loop_h,
                                src_offsets_gm, src_offsets_last_gm):
         """
@@ -373,7 +373,7 @@ class MaxPoolWithargmaxResnet50(object):
 
         instance.vgatherb(ub_buff, ub_load, src_offsets, repeat_times, 1, 8)
 
-    # pylint: disable=too-many-arguments,too-many-locals
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _load_gm_to_ub_pong(self, ub_buff, output_block_h, input_fmap_gm, input_gm_idx, looph, loop_h):
         """
         load data from gm to ub
@@ -492,7 +492,7 @@ class MaxPoolWithargmaxResnet50(object):
 
         return src_offsets_value, src_offsets_last_value
 
-    # pylint: disable=too-many-locals,too-many-statements,too-many-branches
+    # 'pylint: disable=too-many-locals,too-many-statements,too-many-branches
     def tik_instance_function(self, kernel_name):
         """
         implementation of max_pool_with_argmax and return the tik instance
@@ -849,7 +849,7 @@ class MaxPoolWithargmaxResnet50(object):
         return instance
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def is_max_pool_with_argmax_param(x, ksize, strides, padding):
     """
     test if the param suitable for this module to treat
@@ -900,7 +900,7 @@ def is_max_pool_with_argmax_param(x, ksize, strides, padding):
     return False
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def max_pool_with_argmax(x, ksize, strides, padding, kernel_name):
     """
     implementation of max_pool_with_argmax and return the tik instance

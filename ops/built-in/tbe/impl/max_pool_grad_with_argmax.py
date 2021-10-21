@@ -51,7 +51,7 @@ MASK_MAX = 8
 SCALAR_255 = 255
 
 
-# pylint: disable=unused-argument,unused-variable
+# 'pylint: disable=unused-argument,unused-variable
 def check_supported(x, grad, argmax, y, ksize, strides,
                                 padding, kernel_name="max_pool_with_argmax"):
     """
@@ -89,8 +89,8 @@ def check_supported(x, grad, argmax, y, ksize, strides,
     return True, ""
 
 
-# pylint: disable = unused-argument,too-many-arguments,invalid-name
-# pylint: disable=super-with-arguments
+# 'pylint: disable = unused-argument,too-many-arguments,invalid-name
+# 'pylint: disable=super-with-arguments
 def get_op_support_info(x, grad, argmax, y, ksize, strides, padding,
                         kernel_name="max_pool_grad_with_argmax"):
     """
@@ -110,7 +110,7 @@ def get_op_support_info(x, grad, argmax, y, ksize, strides, padding,
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,too-many-arguments,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
@@ -146,7 +146,7 @@ class MaxpoolGard(argmax_cut_one_h.MaxpoolGradCustom):
     """
     parameter for max_pool_grad_with_pool
     """
-    # pylint: disable=locally-disabled,too-many-arguments,too-many-locals,useless-super-delegation
+    # 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals,useless-super-delegation
     def __init__(self, grad, argmax, input_x, ksize, strides, padding):
         """
         init compare and bit pack parameters
@@ -163,7 +163,7 @@ class MaxpoolGard(argmax_cut_one_h.MaxpoolGradCustom):
         """
         super(MaxpoolGard, self).__init__(grad, argmax, input_x, ksize, strides, padding)
 
-    # pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements,too-many-branches
+    # 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements,too-many-branches
     def tik_instance_shape_large_shape(self, kernel_name):
         """
         function for max_pool_grad_with_pool calc for large shape, ksize or windows special
@@ -451,7 +451,7 @@ class MaxpoolGard(argmax_cut_one_h.MaxpoolGradCustom):
                                    outputs=(data_output), enable_l2=False)
         return self.tik_instance
 
-    # pylint: disable=locally-disabled,too-many-statements
+    # 'pylint: disable=locally-disabled,too-many-statements
     def calc_dma_param(self, block_num, burst_len, channel, col2img_w, dst_address, dst_stride, dxh,
                        dxw, dyh, dyw, hoverlap, loopc1, looph, loopw, nburst, num_one_block,
                        num_one_c0, pad_left, pad_top, src_address,
@@ -515,7 +515,7 @@ class MaxpoolGard(argmax_cut_one_h.MaxpoolGradCustom):
         src_stride.set_as(col2img_w - burst_len)
         dst_stride.set_as(dxw - burst_len)
 
-    # pylint: disable=locally-disabled,too-many-locals,too-many-statements,too-many-branches,too-many-return-statements
+    # 'pylint: disable=locally-disabled,too-many-locals,too-many-statements,too-many-branches,too-many-return-statements
     def tik_instance_function(self, kernel_name):
         """
         get vector instruct repeat times
@@ -588,7 +588,7 @@ def check_padding(padding, check_list):
                                                            "padding", check_list, padding)
 
 
-# pylint: disable=locally-disabled,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-locals
 def check_output_dim_with_ksize_stride(padding, input_gard_shape, y_shape, ksize, strides):
     """
     The common check rule for output dim and ksize and strides

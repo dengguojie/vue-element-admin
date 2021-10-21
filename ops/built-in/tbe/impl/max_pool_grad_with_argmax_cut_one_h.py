@@ -34,13 +34,13 @@ MASK_MAX = 8
 BLOCK_SIZE = 32
 
 
-# pylint: disable=locally-disabled,too-few-public-methods,too-many-instance-attributes
-# pylint: disable=super-with-arguments
+# 'pylint: disable=locally-disabled,too-few-public-methods,too-many-instance-attributes
+# 'pylint: disable=super-with-arguments
 class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
     """
     parameter for max_pool_grad_with_pool
     """
-    # pylint: disable=locally-disabled,too-many-locals,too-many-arguments,useless-super-delegation
+    # 'pylint: disable=locally-disabled,too-many-locals,too-many-arguments,useless-super-delegation
     def __init__(self, grad, argmax, input_x, ksize, strides, padding):
         """
         init compare and bit pack base parameters
@@ -57,7 +57,7 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
         """
         super(MaxpoolGradCustom, self).__init__(grad, argmax, input_x, ksize, strides, padding)
 
-    # pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements,too-many-branches
+    # 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements,too-many-branches
     def tik_instance_cut_nc1_cut_one_h(self, kernel_name):
         """
         get vector instruct repeat times
@@ -404,7 +404,7 @@ class MaxpoolGradCustom(argmax_cut_w.MaxpoolGardObject):
                                    outputs=(data_output), enable_l2=False)
         return self.tik_instance
 
-    # pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements,too-many-branches
+    # 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements,too-many-branches
     def tik_instance_cut_nc1h_cut_one_h(self, kernel_name):
         """
         function for max_pool_grad_with_pool calc for normal shape

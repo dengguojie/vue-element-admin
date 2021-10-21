@@ -25,8 +25,8 @@ from te.utils.error_manager import error_manager_vector
 from impl.util import util_select_op_base
 
 
-# pylint: disable=too-many-arguments,too-many-statements
-# pylint: disable=unused-argument
+# 'pylint: disable=too-many-arguments,too-many-statements
+# 'pylint: disable=unused-argument
 def get_op_support_info(input_data, output_data, ksize, strides, padding,
              data_format="NC1HWC0", kernel_name="max_pool_ext2"):
     """
@@ -62,8 +62,8 @@ def get_op_support_info(input_data, output_data, ksize, strides, padding,
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
-# pylint: disable=too-many-arguments,unnecessary-lambda
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=too-many-arguments,unnecessary-lambda
 @tbe_platform.fusion_manager.fusion_manager.register("max_pool_ext2")
 def max_pool_ext2_compute(input_data, output_data, ksize, strides, padding,
                           data_format="NC1HWC0", is_fused_compute=True,

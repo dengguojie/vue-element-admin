@@ -47,7 +47,7 @@ DT_INT32 = 3
 DT_INT64 = 9
 
 
-# pylint: disable=locally-disabled,too-many-arguments,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,invalid-name
 @para_check.check_input_type(dict, dict, dict, dict, (list, tuple), (list, tuple),
                              (list, tuple), int,
                              (list, tuple), bool, str)
@@ -96,14 +96,14 @@ def max_pool_grad_with_argmax(x, grad, argmax, y, ksize, strides, pads,
     return maxpoolgard.tik_instance_function(kernel_name)
 
 
-# pylint: disable=too-few-public-methods,useless-super-delegation
+# 'pylint: disable=too-few-public-methods,useless-super-delegation
 class MaxpoolGard(argmax_cut_h_v2.MaxpoolGradBase):
     """
     parameter for max_pool_grad_with_pool
     """
 
-    # pylint: disable=locally-disabled,too-many-arguments,
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=locally-disabled,too-many-arguments,
+    # 'pylint: disable=too-many-locals
     def __init__(self, grad, argmax, input_x, ksize, strides, padding,
                  dilation, ceil_mode):
         """
@@ -123,13 +123,13 @@ class MaxpoolGard(argmax_cut_h_v2.MaxpoolGradBase):
         -------
         None
         """
-        # pylint: disable=super-with-arguments
+        # 'pylint: disable=super-with-arguments
         super(MaxpoolGard, self).__init__(grad, argmax, input_x, ksize,
                                           strides, padding,
                                           dilation, ceil_mode)
 
-    # pylint: disable=locally-disabled,too-many-locals,too-many-statements,
-    # pylint: disable=unused-variable,too-many-branches,too-many-return-statements
+    # 'pylint: disable=locally-disabled,too-many-locals,too-many-statements,
+    # 'pylint: disable=unused-variable,too-many-branches,too-many-return-statements
     def tik_instance_function(self, kernel_name):
         """
         get vector instruct repeat times
@@ -257,7 +257,7 @@ def _pool2d_shape_check(kernel_h, kernel_w, stride_h, stride_w,
                                                            str(output_h) + str("and") + str(output_w))
 
 
-# pylint: disable=locally-disabled,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-locals
 def check_output_dim_with_ksize_stride(padding, input_gard_shape, y_shape,
                                        ksize, strides, dilation, ceil_mode):
     """

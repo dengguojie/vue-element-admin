@@ -22,7 +22,7 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
-# pylint: disable=invalid-name,unused-argument,unused-variable,too-many-locals
+# 'pylint: disable=invalid-name,unused-argument,unused-variable,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("masked_fill")
 def masked_fill_compute(x, mask, value, y, kernel_name="masked_fill"):
     """

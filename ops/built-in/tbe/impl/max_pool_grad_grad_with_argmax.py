@@ -54,7 +54,7 @@ def _get_output_length(l1_hi, l1_wi, stride, kernel_size, output_h, output_w, in
     return tile_l1_ho, tile_l1_wo
 
 
-# pylint: disable=too-many-arguments,invalid-name,too-many-locals,too-many-statements,too-many-branches
+# 'pylint: disable=too-many-arguments,invalid-name,too-many-locals,too-many-statements,too-many-branches
 def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, max_next_valid_size, dtype):
     """
     get load3d tiling in davinci.
@@ -208,7 +208,7 @@ def _get_load3d_tiling(fmap_shape, ksize, strides, padding, max_l1_valid_size, m
                                                                         l0ub_c0), l0_double_buffer
 
 
-# pylint: disable=too-many-branches
+# 'pylint: disable=too-many-branches
 def check_shape_and_format_vailded(x, grad, argmax, y, ksize, strides, padding):
     """
     check whether the input param valid or not
@@ -328,7 +328,7 @@ def check_shape_and_format_vailded(x, grad, argmax, y, ksize, strides, padding):
     return shape_max_pool, pad_list
 
 
-# pylint: disable=too-many-arguments,unused-argument,unnecessary-lambda,too-many-locals
+# 'pylint: disable=too-many-arguments,unused-argument,unnecessary-lambda,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("max_pool_grad_grad_with_argmax")
 def max_pool_grad_grad_with_argmax_compute(placeholders,
                                            x,
@@ -500,7 +500,7 @@ def max_pool_grad_grad_with_argmax_compute(placeholders,
            grad_grad, output_res
 
 
-# pylint: disable=too-many-statements,too-many-locals
+# 'pylint: disable=too-many-statements,too-many-locals
 def _max_pool_grad_grad_with_argmax_schedule(compute_list, sch_list):
     """
     Computes second-order gradients of the maxpooling function.
@@ -661,7 +661,7 @@ def _max_pool_grad_grad_with_argmax_schedule(compute_list, sch_list):
     sch[res].bind(res_fused_n_c1_howo_outer_o, block)
 
 
-# pylint: disable=too-many-arguments,too-many-locals,too-many-statements
+# 'pylint: disable=too-many-arguments,too-many-locals,too-many-statements
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_STR, para_check.KERNEL_NAME)

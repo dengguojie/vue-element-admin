@@ -30,7 +30,7 @@ from impl.util.util_select_op_base import get_op_cal_info
 SCALAR_TWO = 2
 
 
-# pylint: disable = unused-argument
+# 'pylint: disable = unused-argument
 def get_op_support_info(input_diagonal, input_help, output_diagonal,
                         kernel_name="matrix_diag_d"):
     """
@@ -52,7 +52,7 @@ def get_op_support_info(input_diagonal, input_help, output_diagonal,
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=locally-disabled,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("matrix_diag_d")
 def matrix_diag_d_compute(input_diagonal, input_help, output_diagonal,
                           kernel_name="matrix_diag_d"):

@@ -49,7 +49,7 @@ UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
 L1_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.L1_SIZE)
 
 
-# pylint: disable=unused-argument,unused-variable
+# 'pylint: disable=unused-argument,unused-variable
 def check_supported(input_x, out_y, output_argmax, ksize, strides,
                                 padding, kernel_name="max_pool_with_argmax"):
     """
@@ -88,8 +88,8 @@ def check_supported(input_x, out_y, output_argmax, ksize, strides,
     return True, ""
 
 
-# pylint: disable=unused-argument,too-many-arguments
-# pylint: disable=too-many-lines,unused-variable
+# 'pylint: disable=unused-argument,too-many-arguments
+# 'pylint: disable=too-many-lines,unused-variable
 def get_op_support_info(input_x, output_y, output_argmax, ksize, strides,
                         padding, kernel_name="max_pool_with_argmax"):
     """
@@ -211,7 +211,7 @@ def _check_param(input_x, ksize, strides, padding, kernel_name):
                                                            expected_value, real_value)
 
 
-# pylint: disable=too-many-arguments,unused-argument,too-many-lines
+# 'pylint: disable=too-many-arguments,unused-argument,too-many-lines
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_STR,
@@ -250,7 +250,7 @@ def max_pool_with_argmax(input_x, output_y, output_argmax, ksize, strides,
     return max_pool_reslut.tik_instance_function(kernel_name)
 
 
-# pylint: disable=too-many-instance-attributes,too-few-public-methods
+# 'pylint: disable=too-many-instance-attributes,too-few-public-methods
 class MaxPoolWithargmax():
     """
        Function: use to finish MaxPoolWithargmax main functions
@@ -323,7 +323,7 @@ class MaxPoolWithargmax():
         self.output_mask_gm = self.tik_instance.Tensor("uint16", output_mask_gm_shape, name="output_mask_gm",
                                                        scope=tik.scope_gm, is_atomic_add=True)
 
-    # pylint: disable=too-many-locals,too-many-function-args,too-many-branches,too-many-statements
+    # 'pylint: disable=too-many-locals,too-many-function-args,too-many-branches,too-many-statements
     def tik_instance_function(self, kernel_name):
         """
         tik_instance_function
@@ -452,7 +452,7 @@ class MaxPoolWithargmax():
 
         return need_cut_h, need_cut_h_w, need_cut
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def _fun_no_cut(self, block_index, nc1_index, nc1_size):
         """
         funtion while no need cut H
@@ -524,7 +524,7 @@ class MaxPoolWithargmax():
                                         mask_ub[w_index * self.fmap_img2col_h_num * self.c_block_size],
                                         0, 1, self.fmap_img2col_h_num, 0, 0)
 
-    # pylint: disable=too-many-locals,too-many-statements
+    # 'pylint: disable=too-many-locals,too-many-statements
     def _calc_only_cut_h(self, cut_h_index, cut_h_size, cut_stride, cut_h_num,
                          input_fmap_l1, fmap_img2col_ub, fmap_img2col_cut_h,
                          mask_shape_ub, nc1_num):
@@ -738,7 +738,7 @@ class MaxPoolWithargmax():
                                             mask_ub[w_index * fmap_img2col_cut_h_num * self.c_block_size],
                                             0, 1, fmap_img2col_cut_h_num, 0, 0)
 
-    # pylint: disable=too-many-locals,too-many-statements
+    # 'pylint: disable=too-many-locals,too-many-statements
     def _fun_only_cut_h(self, block_index, nc1_cuth_index, cut_h_size, cut_stride, cut_h_num,
                         nc1_cuth_size, flag_cut_h):
         """
@@ -779,7 +779,7 @@ class MaxPoolWithargmax():
                 self._calc_only_cut_h(cut_h_index, cut_h_size, cut_stride, cut_h_num, input_fmap_l1,
                                       fmap_img2col_ub, fmap_img2col_cut_h, mask_shape_ub, nc1_num)
 
-    # pylint: disable=too-many-statements,too-many-branches
+    # 'pylint: disable=too-many-statements,too-many-branches
     def _calc_need_cut_h_w(self, nc1_num, cut_h_size, cut_h_num, cut_h_index, cut_stride):
         """
         funtion need cut H and W while l1 not enough
@@ -1320,7 +1320,7 @@ class MaxPoolWithargmax():
                                                     mask_ub[w_index * fmap_img2col_cut_w_num * self.c_block_size],
                                                     0, 1, fmap_img2col_cut_w_num, 0, 0)
 
-    # pylint: disable=too-many-statements,too-many-branches
+    # 'pylint: disable=too-many-statements,too-many-branches
     def _fun_need_cut_h_w(self, block_index, nc1_cuth_index, cut_h_size,
                           cut_stride, cut_h_num, nc1_cuth_size, flag_cut_h):
         """
@@ -1410,7 +1410,7 @@ class MaxPoolWithargmax():
 
         return pad, out_size_h, out_size_w
 
-    # pylint: disable=too-many-branches
+    # 'pylint: disable=too-many-branches
     def _calc_cut_h_size_fun(self, need_cut=False):
         """
         caculate cut_h size

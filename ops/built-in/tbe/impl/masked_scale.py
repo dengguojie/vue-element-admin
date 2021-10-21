@@ -81,7 +81,7 @@ def get_format_same(dtype_list, format_list, dtype_total, mask_dtypes):
     return dtypes, formats
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def op_select_format(x, mask, y, value=1.0, kernel_name="masked_scale"):
     """
     Parameters
@@ -122,7 +122,7 @@ def op_select_format(x, mask, y, value=1.0, kernel_name="masked_scale"):
     raise RuntimeError("The shape of x and mask must be the same.")
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def masked_scale_compute(x, mask, y, value=1.0, kernel_name="masked_scale"):
     """
     function: compute of masked_scale
@@ -163,7 +163,7 @@ def masked_scale_compute(x, mask, y, value=1.0, kernel_name="masked_scale"):
     return res
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.KERNEL_NAME)
