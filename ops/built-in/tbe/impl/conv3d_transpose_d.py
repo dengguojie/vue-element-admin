@@ -336,7 +336,7 @@ def check_supported(out_backprop,
                     bias,
                     offset_w,
                     y_input,
-                    input_sizes,
+                    input_size,
                     strides,
                     pads,
                     dilations=(1, 1, 1, 1, 1),
@@ -369,9 +369,10 @@ def check_supported(out_backprop,
     The data in L1 buffer should <= the chip's L1 buffer size
     """
     try:
+        input_size = y_input.get("ori_shape") if (all(i == 0 for i in input_size)) else input_size
         (shape_filters, shape_out_backprop, shape_res, shape_strides, pads, groups, shape_dilations,
          filters_dtype, out_backprop_dtype, res_dtype,
-         kernel_name) = _process_and_check_input(out_backprop, filters, bias, offset_w, y_input, input_sizes,
+         kernel_name) = _process_and_check_input(out_backprop, filters, bias, offset_w, y_input, input_size,
                                                  strides, pads, dilations, groups, data_format,
                                                  output_padding, offset_x, kernel_name)
 
@@ -455,6 +456,7 @@ def conv3d_transpose_d(out_backprop, filters, # pylint: disable=R0913,R0914
     -------
     None
     """
+    input_size = y_input.get("ori_shape") if (all(i == 0 for i in input_size)) else input_size
     (shape_filters, shape_out_backprop, shape_res, shape_strides,
         pads, groups, shape_dilations, filters_dtype, out_backprop_dtype,
         res_dtype, kernel_name) = _process_and_check_input(

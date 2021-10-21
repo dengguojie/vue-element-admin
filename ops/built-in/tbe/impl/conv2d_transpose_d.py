@@ -173,7 +173,7 @@ def check_supported(x,
         if bias:
             bias_dtype = bias.get("dtype").lower()
             para_check.check_dtype_rule(bias_dtype, ("float16", "float32", "int32"), "bias")
-
+        input_size = y.get("ori_shape") if (all(i == 0 for i in input_size)) else input_size
         _check_param(x, filter, y, input_size, strides, pads, dilations, data_format, offset_x)
         return True, ""
     except Exception as e:
@@ -412,7 +412,7 @@ def conv2d_transpose_d(  # pylint: disable=R0913,R0914,W0613,W0622,C0103
         DEFAULT_MAX_SHAPE_NUM,
     )
 
-    if list(input_size) != list(ori_shape_res):
+    if not (all(i == 0 for i in input_size)) and list(input_size) != list(ori_shape_res):
         dict_args = {}
         dict_args["errCode"] = "E65007"
         dict_args["param1"] = "input_size"
@@ -542,7 +542,7 @@ def conv2d_transpose_d_compute(  # pylint: disable=R0913,R0914,W0613,C0103,W0622
     ori_format_x = x.op.attrs["ori_format"]
     ori_format_res = y["ori_format"]
 
-    if list(input_size) != list(ori_shape_res):
+    if not (all(i == 0 for i in input_size)) and list(input_size) != list(ori_shape_res):
         dict_args = {}
         dict_args["errCode"] = "E65007"
         dict_args["param1"] = "input_size"

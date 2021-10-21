@@ -8483,7 +8483,7 @@ static bool SetInputsizeListConv3dtranspose(ge::Operator& op, const std::vector<
   int32_t pad_left = pads_list[kConv3dPadLeftIdx];
   int32_t pad_right = pads_list[kConv3dPadRightIdx];
 
-  std::vector<int32_t> output;
+  std::vector<int64_t> output;
   int32_t output_h = 0;
   int32_t output_w = 0;
   int32_t output_d = 0;
@@ -8895,9 +8895,34 @@ IMPLEMT_INFERFUNC(Conv3DTranspose, Conv3DTransposeInfer) {
     }
   }
 
+  // set dtype of x
+  auto x_dtype = op.GetInputDescByName("x").GetDataType();
+  y_desc->SetDataType(x_dtype);
+  if (!unknown_rank) {
+    std::vector<int64_t> filter_sizes = op.GetInputDescByName("filter").GetShape().GetDims();
+    Format filter_format = op.GetInputDescByName("filter").GetFormat();
+    Format input_format = y_desc->GetFormat();
+    Format x_format = x_desc->GetFormat();
+    if (!SetInputsizeListConv3dtranspose(op, x_sizes, x_format, filter_sizes, filter_format,
+                                         input_sizes, input_format)) {
+      CUBE_INNER_ERR_REPORT(op_name.GetString(),
+        "Conv3DTranspose update pads list by padding failed or calculate input sizes failed.");
+      return GRAPH_FAILED;
+    }
+  }
+
+  // set shape of output desc, input_sizes should match the format of y
+  std::vector<int64_t> dedx;
+  bool get_dedx_invalid = (!unknown_rank) && (op.GetAttr("dedx", dedx) != GRAPH_SUCCESS);
+  if (get_dedx_invalid) {
+    CUBE_INNER_ERR_REPORT(op_name.GetString(), "Get dedx shape which is used to set output shape failed");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> dedx_shape = !is_input_size_const ? input_sizes : dedx;
   // set shape of output desc, input_size should match the format of y
   if (input_sizes.size() == kConv3dDimSizeLimit) {
-    y_desc->SetShape(GeShape(input_sizes));
+    y_desc->SetShape(GeShape(dedx_shape));
   }
 
   // update pads list by padding[SAME,VALID]
@@ -8914,22 +8939,6 @@ IMPLEMT_INFERFUNC(Conv3DTranspose, Conv3DTransposeInfer) {
       }
 
       op.SetAttr("pads", pads);
-    }
-  }
-
-  // set dtype of x
-  auto x_dtype = op.GetInputDescByName("x").GetDataType();
-  y_desc->SetDataType(x_dtype);
-  if (!unknown_rank) {
-    std::vector<int64_t> filter_sizes = op.GetInputDescByName("filter").GetShape().GetDims();
-    Format filter_format = op.GetInputDescByName("filter").GetFormat();
-    Format input_format = y_desc->GetFormat();
-    Format x_format = x_desc->GetFormat();
-    if (!SetInputsizeListConv3dtranspose(op, x_sizes, x_format, filter_sizes, filter_format,
-                                         input_sizes, input_format)) {
-      CUBE_INNER_ERR_REPORT(op_name.GetString(),
-        "Conv3DTranspose update pads list by padding failed or calculate input sizes failed.");
-      return GRAPH_FAILED;
     }
   }
 
@@ -9240,7 +9249,7 @@ static bool SetInputsizeListConv2DTranspose(ge::Operator& op, const std::vector<
   int32_t pad_left = pads_list[kConv2dPadLeftIdx];
   int32_t pad_right = pads_list[kConv2dPadRightIdx];
 
-  std::vector<int32_t> output;
+  std::vector<int64_t> output;
   int32_t output_h = 0;
   int32_t output_w = 0;
   int32_t output_n = 0;
@@ -9639,7 +9648,7 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
     yDesc->SetDataType(DT_INT32);
   }
   // set shape of output desc, input_sizes should match the format of y
-  std::vector<int32_t> dedx;
+  std::vector<int64_t> dedx;
   bool get_dedx_invalid = (!unknownRank) && (op.GetAttr("dedx", dedx) != GRAPH_SUCCESS);
   if (get_dedx_invalid) {
     OP_LOGE(op_name.GetString(), "get dedx list failed.");
@@ -9652,8 +9661,9 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
   }
 
   std::vector<int64_t> outShape;
+  std::vector<int64_t> dedx_shape = !isInputSizeConst ? inputSizes : dedx;
   if (inputSizes.size() == kConv2dInputSizeLimit) {
-    for (auto i : inputSizes) {
+    for (auto i : dedx_shape) {
       outShape.push_back(i);
     }
     yDesc->SetShape(ge::GeShape(outShape));
