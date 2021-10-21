@@ -43,7 +43,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libcpu_kernels
 LOCAL_SRC_FILES := $(local_normalized_kernels)
 LOCAL_C_INCLUDES := $(local_kernels_inc_path)
-LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -Dgoogle=ascend_private -O2 -ftrapv -std=c++14 -fvisibility-inlines-hidden -fvisibility=hidden
+LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -Dgoogle=ascend_private -O2 -ftrapv -std=c++14 -fvisibility-inlines-hidden -fvisibility=hidden -DEIGEN_NO_DEBUG -DNDEBUG -DEIGEN_HAS_CXX11_MATH -DEIGEN_OS_GNULINUX
 LOCAL_LDFLAGS += -Wl,-z,relro,-z,now -s -ldl
 LOCAL_LDFLAGS += -Wl,-Bsymbolic -Wl,--exclude-libs=libascend_protobuf.a
 LOCAL_WHOLE_STATIC_LIBRARIES := libcpu_kernels_context
@@ -61,7 +61,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libcpu_kernels_v1.0.1
 LOCAL_SRC_FILES := $(local_normalized_kernels)
 LOCAL_C_INCLUDES := $(local_kernels_inc_path)
-LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -Dgoogle=ascend_private -O2 -ftrapv -std=c++14 -fvisibility-inlines-hidden -fvisibility=hidden
+LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -Dgoogle=ascend_private -O2 -ftrapv -std=c++14 -fvisibility-inlines-hidden -fvisibility=hidden -DEIGEN_NO_DEBUG -DNDEBUG -DEIGEN_HAS_CXX11_MATH -DEIGEN_OS_GNULINUX
 LOCAL_LDFLAGS += -Wl,-z,relro,-z,now -s -ldl
 LOCAL_LDFLAGS += -Wl,-Bsymbolic -Wl,--exclude-libs=libascend_protobuf.a
 LOCAL_WHOLE_STATIC_LIBRARIES := libcpu_kernels_context

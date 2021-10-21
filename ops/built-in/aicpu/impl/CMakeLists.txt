@@ -162,6 +162,10 @@ if(BUILD_OPEN_PROJECT)
       -fvisibility=hidden
       -frename-registers
       -fpeel-loops
+      -DEIGEN_NO_DEBUG
+      -DNDEBUG
+      -DEIGEN_HAS_CXX11_MATH
+      -DEIGEN_OS_GNULINUX
     )
 
     target_link_options(cpu_kernels PRIVATE
@@ -300,6 +304,10 @@ target_compile_options(cpu_kernels PRIVATE
     -fvisibility=hidden
     -frename-registers
     -fpeel-loops
+    -DEIGEN_NO_DEBUG
+    -DNDEBUG
+    -DEIGEN_HAS_CXX11_MATH
+    -DEIGEN_OS_GNULINUX
 )
 
 target_link_options(cpu_kernels PRIVATE

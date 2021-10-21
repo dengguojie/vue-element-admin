@@ -27,9 +27,9 @@ namespace {
 const char *kIsInf = "IsInf";
 const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 1;
-constexpr int64_t kParallelDataNumsFloat16 = 32 * 1024;
+constexpr int64_t kParallelDataNumsFloat16 = 128 * 1024;
 constexpr int64_t kParallelDataNumsFloat = 128 * 1024;
-constexpr int64_t kParallelDataNumsDouble = 256 * 1024;
+constexpr int64_t kParallelDataNumsDouble = 300 * 1024;
 
 #define ISINF_COMPUTE_CASE(DTYPE, TYPE, CTX)            \
   case (DTYPE): {                                       \
