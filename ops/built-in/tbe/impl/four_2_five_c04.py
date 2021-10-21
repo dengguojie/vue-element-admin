@@ -15,15 +15,16 @@
 """
 four_2_five_c04
 """
-# pylint: disable=too-many-lines,import-error
-# pylint: disable=unused-variable,too-many-locals,invalid-name,redefined-builtin,too-many-public-methods
-# pylint: disable=too-many-branches,too-many-statements,too-many-arguments,no-self-use,too-many-instance-attributes
+# ’pylint: disable=too-many-lines,import-error
+# ’pylint: disable=unused-variable,too-many-locals,invalid-name,redefined-builtin,too-many-public-methods
+# ’pylint: disable=too-many-branches,too-many-statements,too-many-arguments,no-self-use,too-many-instance-attributes
 import math
 from te import platform as tbe_platform
 from te import tik
 from impl.util.platform_adapter import para_check
 
 
+# ’pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for common constants
@@ -2252,7 +2253,7 @@ def check_c_axis_rule(format, shape):
             raise RuntimeError("value of C axis is illeagl")
 
 
-# pylint: disable=invalid-name,unused-argument
+# ’pylint: disable=invalid-name,unused-argument
 @para_check.check_input_type(dict, dict, str, str, str)
 def four_2_five_c04(src, dst, src_format, dst_format, kernel_name="four_2_five_c04"):
     """

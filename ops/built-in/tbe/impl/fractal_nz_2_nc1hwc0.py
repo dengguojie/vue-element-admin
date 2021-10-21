@@ -15,8 +15,8 @@
 """
 fractal_nz_2_nc1hwc0
 """
-# pylint: disable=W0614
-# pylint: disable=bad-option-value,wildcard-import,no-else-return,undefined-variable
+# ’pylint: disable=W0614
+# ’pylint: disable=bad-option-value,wildcard-import,no-else-return,undefined-variable
 from te import platform as cce
 import te.platform.cce_params as cce_params
 from te import tik
@@ -30,6 +30,7 @@ from te.utils.op_utils import check_dtype
 from te.utils.op_utils import check_shape
 
 
+# ’pylint: disable=too-few-public-methods
 class Constant:
     """
     common constants
@@ -40,7 +41,7 @@ class Constant:
     AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
 
 
-# pylint: disable=locally-disabled,too-many-lines,too-many-locals
+# ’pylint: disable=locally-disabled,too-many-lines,too-many-locals
 def _ceil_div(value, block):
     """
     integrate the input value by block
@@ -245,10 +246,10 @@ def _set_loop(tik_instance, num_core, max_core, total_dim):
     return core_loop
 
 
-# pylint: disable=locally-disabled,too-many-instance-attributes
-# pylint: disable=locally-disabled,too-many-return-statements
-# pylint: disable=locally-disabled,too-many-statements, too-many-branches
-# pylint: disable=locally-disabled,too-many-public-methods
+# ’pylint: disable=locally-disabled,too-many-instance-attributes
+# ’pylint: disable=locally-disabled,too-many-return-statements
+# ’pylint: disable=locally-disabled,too-many-statements, too-many-branches
+# ’pylint: disable=locally-disabled,too-many-public-methods
 class Fnz2Nc1hwc0Compute:
     """
     Rearranges data from FRACTAL_NZ format to NC1HWC0 format

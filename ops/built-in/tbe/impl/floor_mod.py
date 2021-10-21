@@ -23,8 +23,8 @@ from te.utils import shape_util
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
-# pylint: disable=unused-variable
+# ’pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
+# ’pylint: disable=unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("floor_mod")
 def floor_mod_compute(x1, x2, y, kernel_name="floor_mod"):
     """

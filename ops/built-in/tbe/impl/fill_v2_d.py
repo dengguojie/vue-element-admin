@@ -26,7 +26,7 @@ from te import platform as tbe_platform
 from impl.constant_util import BLOCK_SIZE as ALIGNMENT_BYTES
 
 
-# pylint: disable=protected-access,invalid-name,unused-argument
+# ’pylint: disable=protected-access,invalid-name,unused-argument
 def _do_buffer_tile(self):
     """
     _do_buffer_tile

@@ -15,7 +15,7 @@
 """
 five_2_four
 """
-# pylint: disable=too-many-lines
+# ’pylint: disable=too-many-lines
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -34,6 +34,7 @@ from impl import trans_data_negative_target_tc
 from impl import trans_data_negative_target_ntc
 
 
+# ’pylint: disable=too-few-public-methods
 class Constant:
     """
     common constants
@@ -42,7 +43,7 @@ class Constant:
     AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
 
 
-# pylint: disable=locally-disabled,too-many-lines
+# ’pylint: disable=locally-disabled,too-many-lines
 def _new_alloc(tvm_ib, dtype, shape, name, scope):
     """
     decl new buffer for ir builder make function
@@ -96,7 +97,7 @@ def _get_scalar_dtype():
     return dtype
 
 
-# pylint: disable=locally-disabled,too-many-locals,too-many-nested-blocks
+# ’pylint: disable=locally-disabled,too-many-locals,too-many-nested-blocks
 def _get_param_more_dim(tvm_ib, src_shape, dtype, max_dim, shape_all, is_zn2nchw=0):
     """
     calculate parameters for more dim ir builder make function
@@ -1358,7 +1359,7 @@ def _ub_gm_split_dim_two(args):
                                     0, 1, burst_len_dst, 0, 0))
 
 
-# pylint: disable=locally-disabled,too-many-statements
+# ’pylint: disable=locally-disabled,too-many-statements
 def _func_split_dim(args):
     """
     function of moving data for split dim scene
@@ -1592,7 +1593,7 @@ def _split_dim_ir(dst, data, max_dim, shape_all, is_zn2nchw=0):
     return tvm_ib.get()
 
 
-# pylint: disable = locally-disabled,too-many-arguments
+# ’pylint: disable = locally-disabled,too-many-arguments
 def _get_param_more_dim_fp16(tvm_ib, src_shape, dst_shape, dtype,
                              max_dim, shape_all, is_zn2nchw=0):
     """
@@ -1603,8 +1604,8 @@ def _get_param_more_dim_fp16(tvm_ib, src_shape, dst_shape, dtype,
     cp_align_len = cce_params.BLOCK_REDUCE_INT8 // float_size
     ub_bytes = Constant.UB_SIZE_B - (cp_align_len * 32)
     device_core_num = Constant.AICORE_NUM
-    src_shape_list = [int(x) for x in src_shape]
-    dst_shape_list = [int(x) for x in dst_shape]
+    src_shape_list = list(src_shape)
+    dst_shape_list = list(dst_shape)
     if shape_all > 380000000 and \
             not (cce.cce_conf.intrinsic_check_support("Intrinsic_vln", "float32") and
                  not cce.cce_conf.intrinsic_check_support("Intrinsic_vbi", "float16") and
@@ -3650,8 +3651,8 @@ def _split_row_ir_nhwc(dst, data, max_dim, shape_all):
     return tvm_ib.get()
 
 
-# pylint: disable=locally-disabled,invalid-name,unused-variable
-# pylint: disable=locally-disabled,superfluous-parens,too-many-return-statements
+# ’pylint: disable=locally-disabled,invalid-name,unused-variable
+# ’pylint: disable=locally-disabled,superfluous-parens,too-many-return-statements
 def _cal_core(total_core_loop_num, core_number, device_core_num):
     """
     calculate the loop number on each core
@@ -9256,7 +9257,7 @@ def _tilling_axis(shape, dtype, no_remainder):
     return split_axis, split_factor
 
 
-# pylint: disable=locally-disabled,too-many-branches,unnecessary-lambda
+# ’pylint: disable=locally-disabled,too-many-branches,unnecessary-lambda
 def _move_for_one(c_i, dtype):
     """
     move data for n=1, h=1, w=1 scene
@@ -9735,7 +9736,7 @@ def _check_nchw_fp32_sp1(src_shape, dst_shape, dst_format, dtype):
     return True
 
 
-# pylint: disable=inconsistent-return-statements
+# ’pylint: disable=inconsistent-return-statements
 def _choose_nchw_fp32_sp1(src_shape, dst_shape, dtype):
     """
     choose branch of nchw fp32 sp1 scene
@@ -9867,7 +9868,7 @@ def _check_n_16_7_7_nchw_fp16(dst_shape, dst_format, dtype):
     return False
 
 
-# pylint: disable=too-many-boolean-expressions
+# ’pylint: disable=too-many-boolean-expressions
 @para_check.check_input_type(dict, dict, str, str, str)
 def five_2_four(src, dst, src_format, dst_format, kernel_name='five_2_four'):
     """

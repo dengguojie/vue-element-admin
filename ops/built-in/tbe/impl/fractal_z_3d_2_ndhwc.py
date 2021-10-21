@@ -23,6 +23,7 @@ from te.utils import para_check
 from impl import trans_data_negative_target_tc
 
 
+# `pylint: disable=too-few-public-methods
 class Constant:
     """
     common constants
@@ -33,8 +34,8 @@ class Constant:
     AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
 
 
-# pylint: disable=locally-disabled,too-many-lines,too-many-locals
-# pylint: disable=bad-option-value,no-else-return
+# `pylint: disable=locally-disabled,too-many-lines,too-many-locals
+# `pylint: disable=bad-option-value,no-else-return
 def _ceil_div(value, block):
     """
     integrate the input value by block
@@ -191,8 +192,8 @@ def _set_loop(tik_instance, num_core, max_core, total_dim):
     return core_loop
 
 
-# pylint: disable=locally-disabled,too-many-instance-attributes
-# pylint: disable=locally-disabled,too-many-statements
+# `pylint: disable=locally-disabled,too-many-instance-attributes
+# `pylint: disable=locally-disabled,too-many-statements
 class Fz3d2NdhwcCompute:
     """
     Rearranges data from FRACTAL_Z_3D format to NDHWC format
@@ -813,4 +814,4 @@ def fractal_z_3d_2_ndhwc(src, dst, src_format, dst_format,
     if template_fp16.check_branch() != "not_support":
         return template_fp16.get_tik_instance()
     else:
-        trans_data_negative_target_tc.trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name)
+        return trans_data_negative_target_tc.trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name)

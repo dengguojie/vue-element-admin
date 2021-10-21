@@ -15,7 +15,7 @@
 """
 five_2_four_int8
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -31,10 +31,10 @@ from impl.util.platform_adapter import para_check
 from impl.util.util_common import write_code
 
 
-# pylint: disable=locally-disabled,too-many-lines,too-many-statements
-# pylint: disable=too-many-locals,too-many-arguments,invalid-name
-# pylint: disable=too-many-branches,too-few-public-methods,unused-variable
-# pylint: disable=unnecessary-comprehension,too-many-return-statements
+# 'pylint: disable=locally-disabled,too-many-lines,too-many-statements
+# 'pylint: disable=too-many-locals,too-many-arguments,invalid-name
+# 'pylint: disable=too-many-branches,too-few-public-methods,unused-variable
+# 'pylint: disable=unnecessary-comprehension,too-many-return-statements
 def _new_alloc(tvm_ib, dtype, shape, name, scope):
     """
     decl new buffer for ir builder make function
@@ -285,7 +285,7 @@ def _move_align(args):
         ))
 
 
-# pylint: disable = locally-disabled,too-many-arguments
+# 'pylint: disable = locally-disabled,too-many-arguments
 def _get_param_more_dim_fp16(tvm_ib, src_shape, dst_shape, dtype,
                              max_dim, shape_all):
     """
@@ -3935,7 +3935,7 @@ def _tilling_axis(shape, dtype, no_remainder):
     return split_axis, split_factor
 
 
-# pylint: disable=locally-disabled,too-many-branches,unnecessary-lambda
+# 'pylint: disable=locally-disabled,too-many-branches,unnecessary-lambda
 def _move_for_one(c_i, dtype):
     """
     move data for n=1, h=1, w=1 scene
@@ -4092,7 +4092,7 @@ def _check_divide_sp_fp16(src_shape, dst_shape, dtype):
     return True
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def compute_five_2_four(input_tensor, output_tensor, src_format, dst_format):
     """
     compute for five_2_four

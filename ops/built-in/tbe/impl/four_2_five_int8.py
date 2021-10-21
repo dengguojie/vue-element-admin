@@ -19,6 +19,7 @@ four_2_five_int8
 from __future__ import absolute_import
 from functools import reduce as function_reduce
 
+import te.lang.cce
 from te.platform import insn_cmd
 from te import tvm
 from te import platform as tbe_platform
@@ -27,10 +28,10 @@ from te.platform import cce_intrin as intrin
 from te.platform import cce_util
 from te.platform.cce_build import build_config
 from impl.util.platform_adapter import para_check
-import te.lang.cce
 from impl.util.util_common import write_code
 
 
+# ’pylint: disable=too-few-public-methods
 class Constant:
     """
     common constants
@@ -40,9 +41,9 @@ class Constant:
     UB_NAME_SUFFIX = [0]
 
 
-# pylint: disable=too-many-lines,too-many-statements,too-few-public-methods
-# pylint: disable=too-many-locals,too-many-arguments,superfluous-parens
-# pylint: disable=too-many-branches
+# ’pylint: disable=too-many-lines,too-many-statements,too-few-public-methods
+# ’pylint: disable=too-many-locals,too-many-arguments,superfluous-parens
+# ’pylint: disable=too-many-branches
 class FormatTransferParams():
     """
     :param object
@@ -59,7 +60,7 @@ class FormatTransferParams():
         self.ib_.scope_attr(self.block, "thread_extent", self.device_core_num)
 
 
-# pylint: disable=too-many-boolean-expressions, unnecessary-lambda
+# ’pylint: disable=too-many-boolean-expressions, unnecessary-lambda
 def compute_four_2_five(input_tensor, output_tensor, raw_shape_4d, src_format,
                         dst_format):
     '''
@@ -621,7 +622,7 @@ def _clean_ubuf(ib_, src, src_offset, dup_len):
                             uint64_all_one))
 
 
-# pylint: disable=unnecessary-comprehension
+# ’pylint: disable=unnecessary-comprehension
 def _mov_data_p2p(args):
     """
     :param args:
@@ -643,9 +644,8 @@ def _mov_data_p2p(args):
         hw_loop_left = num_hw % c0_factor
 
         with ib_.for_range(0, hw_loop, name="hw_loop") as hw_loop_i:
-            reg_list = [n for n in range(reg_c0_count)]
 
-            for reg_r_index in reg_list:
+            for _, reg_r_index in enumerate(reg_c0_count):
                 ib_.emit(
                     tvm.call_extern(
                         src_ub.dtype, "reg_mov",
@@ -657,7 +657,7 @@ def _mov_data_p2p(args):
                                     (reg_count // c0_len) * hw_loop_i +
                                     (reg_r_index % c0_len) * interv_len))))
 
-            for reg_w_index in reg_list:
+            for _, reg_w_index in enumerate(reg_c0_count):
                 ib_.emit(
                     tvm.call_extern(
                         dst_ub.dtype, "reg_mov",
@@ -674,9 +674,8 @@ def _mov_data_p2p(args):
             hw_left = num_hw - hw_loop * c0_factor
             with ib_.for_range(0,
                                hw_left, name="left_loop") as left_loop:
-                reg_list = [n for n in range(c0_len)]
 
-                for reg_r_index in reg_list:
+                for _, reg_r_index in enumerate(c0_len):
                     ib_.emit(
                         tvm.call_extern(
                             src_ub.dtype, "reg_mov",
@@ -686,7 +685,7 @@ def _mov_data_p2p(args):
                                              left_loop + hw_loop * c0_factor +
                                              (reg_r_index) * interv_len))))
 
-                for reg_w_index in reg_list:
+                for _, reg_w_index in enumerate(c0_len):
                     ib_.emit(
                         tvm.call_extern(
                             dst_ub.dtype, "reg_mov",
@@ -704,8 +703,8 @@ def _mov_data_p2p(args):
             # emit 8 statments once in order to improve performance
             with ib_.for_range(0, c0_loop, name="c_0") as c0_loop_i:
                 def _p2p_intrinc(c0_count):
-                    reg_list = [n for n in range(c0_count)]
-                    for reg_r_index in reg_list:
+
+                    for _, reg_r_index in enumerate(c0_count):
                         ib_.emit(
                             tvm.call_extern(
                                 src_ub.dtype, "reg_mov",
@@ -718,7 +717,7 @@ def _mov_data_p2p(args):
                                      (reg_r_index +
                                       c0_loop_i * reg_count) * interv_len))))
 
-                    for reg_w_index in reg_list:
+                    for _, reg_w_index in enumerate(c0_count):
                         ib_.emit(
                             tvm.call_extern(
                                 dst_ub.dtype, "reg_mov",
