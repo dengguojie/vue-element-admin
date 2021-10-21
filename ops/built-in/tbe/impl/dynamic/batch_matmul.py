@@ -52,6 +52,7 @@ def base_op_select_format(src_fp16_flag):
     full_case_scenario_list = []
     # The order from left to right is input1, input2, input3(bias), output
     base_case_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float16", "ND"), ("float16", "FRACTAL_NZ"))]
+    fp32_out_scenario = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float", "ND"), ("float", "FRACTAL_NZ"))]
 
     quant_case_scenario = [(("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC"), ("float", "NHWC")),
                            (("float", "ND"), ("float", "ND"), ("float", "ND"), ("float", "ND")),
@@ -69,7 +70,7 @@ def base_op_select_format(src_fp16_flag):
     dyn_case_scenario_list = base_case_scenario + nd_case_scenario
     # Construct scenario list for static
     if src_fp16_flag:
-        full_case_scenario_list = base_case_scenario + nd_case_scenario + nd_fp32out_scenario
+        full_case_scenario_list = base_case_scenario + fp32_out_scenario + nd_case_scenario + nd_fp32out_scenario
     else:
         full_case_scenario_list = base_case_scenario + quant_case_scenario
     return dyn_case_scenario_list, full_case_scenario_list
