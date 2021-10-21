@@ -119,15 +119,12 @@ class PadV3GradInit(object):
         self.not_last_core_num = self.tik_instance.Scalar(self.tiling_dtype, "not_last_core_num", init_value=0)
         self.last_core_num = self.tik_instance.Scalar(self.tiling_dtype, "last_core_num", init_value=0)
 
-    def tiling_args(self):
+    def tiling_args(self, tiling_ub):
         """
         when input shape is less 6, will. expand to 6
         tiling_input_dim_cut_axis: which dim will be cut
         """
         with self.tik_instance.new_stmt_scope():
-            tiling_ub = self.tik_instance.Tensor("int64", (TILING_NUMS,),
-                                                 name="tiling_ub", scope=tik.scope_ubuf)
-            self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, TILING_NUMS, 0, 0)
             self.tiling_key.set_as(tiling_ub[0])
             self.tiling_input_dim_0.set_as(tiling_ub[1])
             self.tiling_input_dim_1.set_as(tiling_ub[2])
@@ -162,23 +159,18 @@ class PadV3GradInit(object):
                                                   name="tiling_gm", scope=tik.scope_gm)
         self.work_space = self.tik_instance.Tensor(self.inner_dtype, self.workspace_shape,
                                                   name="work_space", scope=tik.scope_gm, is_workspace=True)
-        for i, input_dict in enumerate(input_dict_list):
-            input_dtype = input_dict.get("dtype") if pad_input_idx != i else self.inner_dtype
-            input_gm = self.tik_instance.Tensor(input_dtype, self.unknown_max_shape,
-                                                name="input_gm_" + str(i), scope=tik.scope_gm)
-            self.input_gm_list.append(input_gm)
-
-        for i, output_dict in enumerate(output_dict_list):
-            output_dtype = output_dict.get("dtype")
-            if pad_outnput_idx == i:
-                # the pad output must will atomic_add to clear the output_gm to all zero
-                output_gm = self.tik_instance.Tensor(self.inner_dtype, self.unknown_max_shape,
-                                                     name="output_gm_" + str(i), scope=tik.scope_gm)
-                self.input_bytes_size = tbe_platform.get_bit_len(output_dtype) // EIGHT_BIT
-            else:
-                output_gm = self.tik_instance.Tensor(output_dtype, self.unknown_max_shape,
-                                                     name="output_gm_" + str(i), scope=tik.scope_gm)
-            self.output_gm_list.append(output_gm)
+        x_dtype = input_dict_list[0].get("dtype")
+        paddings_dtype = input_dict_list[1].get("dtype")
+        x_gm = self.tik_instance.Tensor(self.inner_dtype, self.unknown_max_shape, name="x", scope=tik.scope_gm)
+        paddings_gm = self.tik_instance.Tensor(paddings_dtype, self.unknown_max_shape,
+                                               name="paddings", scope=tik.scope_gm)
+        self.input_gm_list.append(x_gm)
+        self.input_gm_list.append(paddings_gm)
+        
+        y_dtype = output_dict_list[0].get("dtype")
+        y_gm = self.tik_instance.Tensor(self.inner_dtype, self.unknown_max_shape, name="y", scope=tik.scope_gm)
+        self.input_bytes_size = tbe_platform.get_bit_len(x_dtype) // EIGHT_BIT
+        self.output_gm_list.append(y_gm)
 
         self.input_gm = self.input_gm_list[pad_input_idx]
         self.output_gm = self.output_gm_list[pad_outnput_idx]
@@ -193,7 +185,7 @@ class PadV3GradInit(object):
         self.core_uesd_num.set_as(tiling_ub[9])
         with self.tik_instance.for_range(0, self.core_nums, block_num=self.core_nums) as core_index:
             with self.tik_instance.if_scope(core_index < self.core_uesd_num):
-                self.tiling_args()
+                self.tiling_args(tiling_ub)
                 self.do_pad(core_index)
 
     def do_tiling_key_mode_0(self, core_index):
@@ -939,6 +931,7 @@ class PadV3GradInit(object):
         # add compile info
         wr_compile_info = dict()
         wr_compile_info["core_num"] = self.core_nums
+        wr_compile_info["padding_contiguous"] = self.padding_contiguous
         if outer_compile_info is not None:
             for key in outer_compile_info.keys():
                 wr_compile_info[key] = outer_compile_info[key]

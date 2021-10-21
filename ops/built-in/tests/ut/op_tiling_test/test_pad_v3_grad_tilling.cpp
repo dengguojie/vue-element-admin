@@ -36,7 +36,7 @@ TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_0) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"core_num\": 32}}";
+  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"padding_contiguous\": true}}";
 
   std::vector<int64_t> input{64, 64, 64, 64};
   std::vector<int64_t> padding_shape{8};
@@ -84,7 +84,7 @@ TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_1) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"core_num\": 32}}";
+  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"padding_contiguous\": true}}";
 
   std::vector<int64_t> input{1, 512, 42, 12};
   std::vector<int64_t> padding_shape{8};
@@ -132,7 +132,7 @@ TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_2) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"core_num\": 32}}";
+  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"padding_contiguous\": true}}";
 
   std::vector<int64_t> input{1, 512, 42, 1002};
   std::vector<int64_t> padding_shape{4};
@@ -180,7 +180,7 @@ TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_3) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"core_num\": 32}}";
+  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"padding_contiguous\": true}}";
 
   std::vector<int64_t> input{1, 512, 400, 1002};
   std::vector<int64_t> padding_shape{8};
@@ -228,7 +228,7 @@ TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_4) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"core_num\": 32}}";
+  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"padding_contiguous\": true}}";
 
   std::vector<int64_t> input{64, 64, 66, 66};
   std::vector<int64_t> padding_shape{8};
@@ -276,7 +276,7 @@ TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_5) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"core_num\": 32}}";
+  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"padding_contiguous\": true}}";
 
   std::vector<int64_t> input{2, 512, 1000, 1000};
   std::vector<int64_t> padding_shape{8};
@@ -324,7 +324,7 @@ TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_6) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"core_num\": 32}}";
+  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"padding_contiguous\": true}}";
 
   std::vector<int64_t> input{2, 512, 52, 964};
   std::vector<int64_t> padding_shape{8};
@@ -372,11 +372,11 @@ TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_7) {
   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
 
-  std::string compileInfo = "{\"vars\": {\"core_num\": 32}}";
+  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"padding_contiguous\": false}}";
 
   std::vector<int64_t> input{2, 512, 964, 52};
   std::vector<int64_t> padding_shape{8};
-  std::vector<int32_t> padding_value{0, 0, 0, 0, 1, 1, 1, 1};
+  std::vector<int32_t> padding_value{0, 0, 1, 1, 0, 0, 1, 1};
   std::vector<int64_t> output{2, 512, 962, 50};
 
   TeOpTensor tensor_input;
