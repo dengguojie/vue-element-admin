@@ -122,6 +122,32 @@ def test_1951_uint8_small_shape_002(test_arg):
             "test_1951_uint8_small_shape_004")
     set_current_compile_soc_info(test_arg)
 
+def test_1951_uint8_small_shape_003(test_arg):
+    set_current_compile_soc_info('Ascend710')
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        scan_pq_codes(
+            {"shape": (131072, 16), "dtype": "uint8", "format": "ND", "ori_shape": (131072, 16), "ori_format": "ND",
+             "range": [(131072, 131072), (16, 16)]},
+            {"shape": (64,), "dtype": "int32", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
+             "range": [(64, 64)]},
+            {"shape": (64,), "dtype": "float16", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
+             "range": [(64, 64)]},
+            {"shape": (64,), "dtype": "int32", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
+             "range": [(64, 64)]},
+            {"shape": (64,), "dtype": "int64", "format": "ND", "ori_shape": (5, ), "ori_format": "ND",
+             "range": [(64, 64)]},
+            {"shape": (64, 16, 256), "dtype": "float16", "format": "ND", "ori_shape": (5, 16, 256), "ori_format": "ND",
+             "range": [(64, 64), (16, 16), (256, 256)]},
+
+            {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1, ), "ori_format": "ND"},
+            {"shape": (262144,), "dtype": "float16", "format": "ND", "ori_shape": (262144, ), "ori_format": "ND"},
+            {"shape": (4096,), "dtype": "float16", "format": "ND", "ori_shape": (4096, ), "ori_format": "ND"},
+            {"shape": (262144,), "dtype": "int32", "format": "ND", "ori_shape": (262144, ), "ori_format": "ND"},
+            {"shape": (262144,), "dtype": "int32", "format": "ND", "ori_shape": (262144, ), "ori_format": "ND"},
+            262144, 64, 0, 2, 1,
+            "test_1951_uint8_small_shape_004")
+    set_current_compile_soc_info(test_arg)
+
 ut_case.add_cust_test_func(test_func=test_1951_uint8_small_shape_001)
 ut_case.add_cust_test_func(test_func=test_1951_uint8_small_shape_002)
 

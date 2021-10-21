@@ -228,8 +228,22 @@ class ScanPQCodes():
             dst_list = [self.adc_tables_ub_fp16[j * 16 + i * 256 + i * 16] for i in range(16)]
             src_list = [self.adc_trans_ub_fp16[j * 256 + i * 16] for i in range(16)]
             self.tik_instance.vnchwconv(False, False, dst_list, src_list, 16, 256 + 16, 1)
-        self.tik_instance.data_move(self.adc_tables_ub_fp16[256], self.adc_tables_ub_fp16[256 + 16], 0, 256, 16, 1, 0)
-
+        if self.split_index == 0:
+            self.tik_instance.data_move(self.adc_tables_ub_fp16[256], self.adc_tables_ub_fp16[256 + 16], 0, 256, 16, 1, 0)
+        else:
+            with self.tik_instance.new_stmt_scope(disable_sync=True):
+                adc_tables_assis_ub_fp16 = self.tik_instance.Tensor(self.adc_tables_dtype, (128, 16, 16),
+                                                                name="adc_tables_assis_ub_fp16",
+                                                                scope=tik.scope_ubuf)
+                self.tik_instance.vadds(MASK_FLOAT16, adc_tables_assis_ub_fp16,
+                                        self.adc_tables_ub_fp16[256 + 16 + 128],
+                                        0, 255, 1, 1, 8, 17)
+                self.tik_instance.vadds(MASK_FLOAT16, self.adc_tables_ub_fp16[256],
+                                        self.adc_tables_ub_fp16[256 + 16],
+                                        0, 255, 1, 1, 16, 17)
+                self.tik_instance.vadds(MASK_FLOAT16, self.adc_tables_ub_fp16[256 + 128],
+                                        adc_tables_assis_ub_fp16,
+                                        0, 255, 1, 1, 16, 8)
 
     def _init_assist_ub(self):
         assist_init_ub = self.tik_instance.Tensor("float32", (IVF_UNIT_LEN, ),
@@ -253,12 +267,12 @@ class ScanPQCodes():
         assist_value.set_as(7)
         assist_init_ub[7].set_as(assist_value)
         self.tik_instance.vadds(8, assist_init_ub[8], assist_init_ub, 8, 1, 1, 1, 8, 8)
-        self.tik_instance.data_move(self.assist_add_init_ub_fp32, assist_init_ub, 0, 1, 2, 0, 0)
+        self.tik_instance.vadds(16, self.assist_add_init_ub_fp32, assist_init_ub, 0, 1, 1, 1, 2, 2)
         self.tik_instance.vmuls(16, self.assist_add_init_ub_fp32, self.assist_add_init_ub_fp32, 32, 1, 1, 1, 8, 8)
         self.tik_instance.vadds(16, self.assist_add_init_ub_fp32[16], self.assist_add_init_ub_fp32, 0, 1, 1, 1, 2, 2)
         self.tik_instance.vadds(32, self.assist_add_init_ub_fp32[32], self.assist_add_init_ub_fp32, 0, 1, 1, 1, 4, 4)
         self.tik_instance.vadds(64, self.assist_add_init_ub_fp32[64], self.assist_add_init_ub_fp32, 0, 1, 1, 1, 8, 8)
-        self.tik_instance.data_move(self.assist_pq_index_init_ub_fp32, assist_init_ub, 0, 1, 2, 0, 0)
+        self.tik_instance.vadds(16, self.assist_pq_index_init_ub_fp32, assist_init_ub, 0, 1, 1, 1, 2, 2)
         self.tik_instance.vadds(16, self.assist_pq_index_init_ub_fp32[16], self.assist_pq_index_init_ub_fp32, 16, 1, 1, 1, 2, 2)
         self.tik_instance.vadds(32, self.assist_pq_index_init_ub_fp32[32], self.assist_pq_index_init_ub_fp32, 32, 1, 1, 1, 4, 4)
         self.tik_instance.vadds(64, self.assist_pq_index_init_ub_fp32[64], self.assist_pq_index_init_ub_fp32, 64, 1, 1, 1, 8, 8)
