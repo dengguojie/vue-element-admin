@@ -173,6 +173,7 @@ add_library(cpu_kernels_llt STATIC
 add_dependencies(cpu_kernels_llt eigen_headers)
 
 set(cpu_kernels_llt_include
+  ${CANN_ROOT}/third_party/air/base/exec_runtime
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer
   ${CPU_KERNELS_DIR}
   ${CPU_KERNELS_DIR}/utils

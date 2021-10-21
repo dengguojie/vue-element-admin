@@ -22,6 +22,7 @@
 #include "cpu_kernel_register.h"
 #include "cpu_kernel_utils.h"
 #include "log.h"
+#include "runtime_tensor_desc.h"
 #include "status.h"
 
 using namespace aicpu;
@@ -47,10 +48,9 @@ int32_t CpuKernelCache::InitParameter() {
 /*
  * update framework output tensor shape.
  */
-uint32_t CpuKernelCache::UpdateFWKOutputShape(
-    bool unknown_shape, const CpuKernelContext &ctx,
-    std::vector<FWKAdapter::ShapeAndType *> &output_shape_and_type) {
-  if (unknown_shape) {
+uint32_t CpuKernelCache::UpdateFWKOutputShape(ExtInfoMsg &ext_info_msg,
+                                              const CpuKernelContext &ctx) {
+  if (ext_info_msg.unknown_shape) {
     for (size_t i = 0; i < ctx.GetOutputsSize(); ++i) {
       Tensor *output = ctx.Output(i);
       KERNEL_CHECK_NULLPTR(output, KERNEL_STATUS_PARAM_INVALID,
@@ -60,8 +60,29 @@ uint32_t CpuKernelCache::UpdateFWKOutputShape(
                            "Get output[%zu] shape failed.", i)
 
       for (int32_t index = 0; index < shape->GetDims(); ++index) {
-        output_shape_and_type[i]->dims[index] = shape->GetDimSize(index);
+        ext_info_msg.output_shape_and_type[i]->dims[index] =
+            shape->GetDimSize(index);
       }
+    }
+  }
+  for (auto it = ext_info_msg.unknown_shape_output_index_addr.begin();
+       it != ext_info_msg.unknown_shape_output_index_addr.end(); ++it) {
+    Tensor *output = ctx.Output(it->first);
+    KERNEL_CHECK_NULLPTR(output, KERNEL_STATUS_PARAM_INVALID,
+                         "Get output[%u] failed.", it->first)
+    auto shape = output->GetTensorShape();
+    KERNEL_CHECK_NULLPTR(shape, KERNEL_STATUS_PARAM_INVALID,
+                         "Get output[%u] shape failed.", it->first)
+    ge::RuntimeTensorDesc *tensor_desc =
+        reinterpret_cast<ge::RuntimeTensorDesc *>(
+            static_cast<uintptr_t>(it->second));
+    KERNEL_CHECK_FALSE((shape->GetDims() <= ge::kMaxDimSize),
+                       KERNEL_STATUS_PARAM_INVALID,
+                       "Max shape size[32], but got output[%u] shape size[%d]",
+                       it->first, shape->GetDims())
+    tensor_desc->shape[0] = shape->GetDims();
+    for (int32_t index = 0; index < shape->GetDims(); ++index) {
+      tensor_desc->shape[index + 1] = shape->GetDimSize(index);
     }
   }
   return KERNEL_STATUS_OK;
@@ -84,14 +105,20 @@ void CpuKernelCache::GetDimsFromShapeAndType(
   }
 }
 
+void CpuKernelCache::GetDimsFromArrays(const int64_t *shape, size_t len,
+                                       std::vector<int64_t> &dims) {
+  for (size_t index = 0; index < len; ++index) {
+    KERNEL_LOG_INFO("Get arrays shape[%zu] is [%lld]", index, shape[index]);
+    dims.emplace_back(shape[index]);
+  }
+}
+
 /*
  * update tensor information.
  */
-uint32_t CpuKernelCache::UpdateTensor(
-    const std::vector<uint64_t> &io_addrs, bool unknown_shape,
-    const std::vector<FWKAdapter::ShapeAndType *> &input_shape_and_type,
-    const std::vector<FWKAdapter::ShapeAndType *> &output_shape_and_type,
-    CpuKernelContext &ctx) {
+uint32_t CpuKernelCache::UpdateTensor(const std::vector<uint64_t> &io_addrs,
+                                      ExtInfoMsg &ext_info_msg,
+                                      CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("Update tensor info begin.");
   if (io_addrs.size() != ctx.GetInputsSize() + ctx.GetOutputsSize()) {
     KERNEL_LOG_ERROR(
@@ -101,15 +128,15 @@ uint32_t CpuKernelCache::UpdateTensor(
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
-  if ((unknown_shape) &&
-      ((input_shape_and_type.size() != ctx.GetInputsSize()) ||
-       (output_shape_and_type.size() != ctx.GetOutputsSize()))) {
+  if ((ext_info_msg.unknown_shape) &&
+      ((ext_info_msg.input_shape_and_type.size() != ctx.GetInputsSize()) ||
+       (ext_info_msg.output_shape_and_type.size() != ctx.GetOutputsSize()))) {
     KERNEL_LOG_ERROR(
         "Input shape_and_type size error, input size[%zu], input "
         "shape_and_type "
         "size[%zu], output size[%zu], output shape_and_type size[%zu].",
-        ctx.GetInputsSize(), input_shape_and_type.size(), ctx.GetOutputsSize(),
-        output_shape_and_type.size());
+        ctx.GetInputsSize(), ext_info_msg.input_shape_and_type.size(),
+        ctx.GetOutputsSize(), ext_info_msg.output_shape_and_type.size());
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
@@ -118,12 +145,33 @@ uint32_t CpuKernelCache::UpdateTensor(
     Tensor *input = ctx.Input(i);
     KERNEL_CHECK_NULLPTR(input, KERNEL_STATUS_PARAM_INVALID,
                          "Get input[%zu] failed.", i)
-    input->SetData(
-        reinterpret_cast<void *>(static_cast<uintptr_t>(io_addrs[addr_index])));
-
-    if (unknown_shape) {
+    auto iter = ext_info_msg.unknown_shape_input_index_addr.find(static_cast<uint32_t>(i));
+    if (iter != ext_info_msg.unknown_shape_input_index_addr.end()) {
+      iter->second = io_addrs[addr_index];
+      ge::RuntimeTensorDesc *tensor_desc =
+          reinterpret_cast<ge::RuntimeTensorDesc *>(
+              static_cast<uintptr_t>(io_addrs[addr_index]));
       std::vector<int64_t> dims;
-      GetDimsFromShapeAndType(input_shape_and_type[i], dims);
+      KERNEL_CHECK_FALSE(
+          (tensor_desc->shape[0] <= ge::kMaxDimSize),
+          KERNEL_STATUS_PARAM_INVALID,
+          "Max shape size[%lld], but got input[%zu] shape size[%lld]", ge::kMaxDimSize, i,
+          tensor_desc->shape[0])
+      GetDimsFromArrays(&(tensor_desc->shape[1]),
+                        static_cast<size_t>(tensor_desc->shape[0]), dims);
+      auto shape = input->GetTensorShape();
+      KERNEL_CHECK_NULLPTR(shape, KERNEL_STATUS_PARAM_INVALID,
+                           "Get input[%zu] shape failed.", i)
+      shape->SetDimSizes(dims);
+      input->SetData(reinterpret_cast<void *>(
+          static_cast<uintptr_t>(tensor_desc->data_addr)));
+    } else {
+      input->SetData(reinterpret_cast<void *>(static_cast<uintptr_t>(io_addrs[addr_index])));
+    }
+
+    if (ext_info_msg.unknown_shape) {
+      std::vector<int64_t> dims;
+      GetDimsFromShapeAndType(ext_info_msg.input_shape_and_type[i], dims);
       auto shape = input->GetTensorShape();
       KERNEL_CHECK_NULLPTR(shape, KERNEL_STATUS_PARAM_INVALID,
                            "Get input[%zu] shape failed.", i)
@@ -140,23 +188,36 @@ uint32_t CpuKernelCache::UpdateTensor(
                     io_addrs[addr_index]);
   }
 
+  bool no_tiling = ext_info_msg.unknown_shape_output_index_addr.empty();
+
   for (size_t i = 0; i < ctx.GetOutputsSize(); i++, addr_index++) {
     Tensor *output = ctx.Output(i);
     KERNEL_CHECK_NULLPTR(output, KERNEL_STATUS_PARAM_INVALID,
                          "Get output[%zu] failed.", i)
-    output->SetData(
-        reinterpret_cast<void *>(static_cast<uintptr_t>(io_addrs[addr_index])));
+    auto iter = ext_info_msg.unknown_shape_output_index_addr.find(static_cast<uint32_t>(i));
+    if (iter != ext_info_msg.unknown_shape_output_index_addr.end()) {
+      iter->second = io_addrs[addr_index];
+      ge::RuntimeTensorDesc *tensor_desc =
+          reinterpret_cast<ge::RuntimeTensorDesc *>(
+              static_cast<uintptr_t>(io_addrs[addr_index]));
+      output->SetData(reinterpret_cast<void *>(
+          static_cast<uintptr_t>(tensor_desc->data_addr)));
+    } else {
+      output->SetData(
+         reinterpret_cast<void *>(static_cast<uintptr_t>(io_addrs[addr_index])));
+    }
 
-    if (unknown_shape) {
+    if (ext_info_msg.unknown_shape) {
       std::vector<int64_t> dims;
-      GetDimsFromShapeAndType(output_shape_and_type[i], dims);
+      GetDimsFromShapeAndType(ext_info_msg.output_shape_and_type[i], dims);
       auto shape = output->GetTensorShape();
       KERNEL_CHECK_NULLPTR(shape, KERNEL_STATUS_PARAM_INVALID,
                            "Get output[%zu] shape failed.", i)
       shape->SetDimSizes(dims);
     }
 
-    KERNEL_CHECK_FALSE((unknown_shape || output->NumElements() >= 0),
+    KERNEL_CHECK_FALSE((ext_info_msg.unknown_shape || (!no_tiling) ||
+                        (output->NumElements() >= 0)),
                        KERNEL_STATUS_PARAM_INVALID,
                        "Output[%zu] data elements number must be >= 0 "
                        "when known shape, got size[%lld].",
@@ -278,21 +339,33 @@ uint32_t CpuKernelCache::ParseAsyncWait(FWKAdapter::ExtInfo *ext_info,
   return KERNEL_STATUS_OK;
 }
 
+uint32_t CpuKernelCache::ParseExtUnknownShapeIndex(
+    FWKAdapter::ExtInfo *ext_info,
+    std::map<uint32_t, uint64_t> &unknown_shape_index_addr) {
+  if (ext_info->infoLen % sizeof(uint32_t) != 0) {
+    KERNEL_LOG_ERROR(
+        "Parse unknown shape index extend info length[%u] failed, must be "
+        "integer multiple of the [%zu].",
+        ext_info->infoLen, sizeof(uint32_t));
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
+  uint32_t size = ext_info->infoLen / sizeof(uint32_t);
+  KERNEL_LOG_INFO("Parse extend unknown shape index, size[%u].", size);
+  auto indexes = reinterpret_cast<uint32_t *>(ext_info->infoMsg);
+  for (uint32_t i = 0U; i < size; ++i) {
+    unknown_shape_index_addr[indexes[i]] = 0U;
+  }
+  return KERNEL_STATUS_OK;
+}
+
 /*
  * parse extend information.
  */
 uint32_t CpuKernelCache::ParseExtMsg(AicpuParamHead *param_head,
-                                     bool &has_session_info,
-                                     uint64_t &kernel_id,
-                                     bool &unknown_shape,
-                                     bool &async_flag,
-                                     uint8_t &wait_type,
-                                     uint32_t &wait_id,
-                                     std::vector<FWKAdapter::ShapeAndType *> &input_shape_and_type,
-                                     std::vector<FWKAdapter::ShapeAndType *> &output_shape_and_type) {
+                                     ExtInfoMsg &ext_info_msg) {
   KERNEL_LOG_INFO("Parse extend info and update shape begin.");
   uint32_t offset = 0;
-  async_flag = false;
+  ext_info_msg.async_flag = false;
   FWKAdapter::ExtInfo *ext_info = nullptr;
   char *extInfo_buf =
       reinterpret_cast<char *>(static_cast<uintptr_t>(param_head->extInfoAddr));
@@ -309,30 +382,43 @@ uint32_t CpuKernelCache::ParseExtMsg(AicpuParamHead *param_head,
     uint32_t ret = KERNEL_STATUS_OK;
     switch (ext_info->infoType) {
       case FWKAdapter::FWK_ADPT_EXT_SHAPE_TYPE:
-        ret = ParseExtShapeType(ext_info, unknown_shape);
+        ret = ParseExtShapeType(ext_info, ext_info_msg.unknown_shape);
         break;
       case FWKAdapter::FWK_ADPT_EXT_INPUT_SHAPE:
-        ret =
-            ParseExtShapeAndType(unknown_shape, ext_info, input_shape_and_type);
+        ret = ParseExtShapeAndType(ext_info_msg.unknown_shape, ext_info,
+                                   ext_info_msg.input_shape_and_type);
         break;
       case FWKAdapter::FWK_ADPT_EXT_OUTPUT_SHAPE:
-        ret = ParseExtShapeAndType(unknown_shape, ext_info,
-                                   output_shape_and_type);
+        ret = ParseExtShapeAndType(ext_info_msg.unknown_shape, ext_info,
+                                   ext_info_msg.output_shape_and_type);
         break;
       case FWKAdapter::FWK_ADPT_EXT_SESSION_INFO:
-        has_session_info = true;
-        ret = ParseExtSessionInfo(ext_info, kernel_id);
+        ext_info_msg.has_sess_info = true;
+        ret = ParseExtSessionInfo(ext_info, ext_info_msg.kernel_id);
         break;
       case FWKAdapter::FWK_ADPT_EXT_BITMAP:
-        ret = ParseExtBitMap(ext_info, unknown_shape);
+        ret = ParseExtBitMap(ext_info, ext_info_msg.unknown_shape);
         break;
-      case FWKAdapter::FWK_ADPT_EXT_ASYNCWAIT:
-        ret = ParseAsyncWait(ext_info, wait_type, wait_id);
-        if (ret == KERNEL_STATUS_OK &&
-            wait_type != FWKAdapter::FWKExtWaitType::FWK_ADPT_WAIT_TYPE_NULL &&
-            wait_type != FWKAdapter::FWKExtWaitType::FWK_ADPT_WAIT_TYPE_INVALID) {
-          async_flag = true;
+      case FWKAdapter::FWK_ADPT_EXT_ASYNCWAIT: {
+        ret = ParseAsyncWait(ext_info, ext_info_msg.wait_type,
+                             ext_info_msg.wait_id);
+        bool flag = ((ret == KERNEL_STATUS_OK) &&
+                     (ext_info_msg.wait_type !=
+                      FWKAdapter::FWKExtWaitType::FWK_ADPT_WAIT_TYPE_NULL) &&
+                     (ext_info_msg.wait_type !=
+                      FWKAdapter::FWKExtWaitType::FWK_ADPT_WAIT_TYPE_INVALID));
+        if (flag) {
+          ext_info_msg.async_flag = true;
         }
+        break;
+      }
+      case FWKAdapter::FWK_ADPT_EXT_UNKNOWN_SHAPE_INPUT_INDEX:
+        ret = ParseExtUnknownShapeIndex(
+            ext_info, ext_info_msg.unknown_shape_input_index_addr);
+        break;
+      case FWKAdapter::FWK_ADPT_EXT_UNKNOWN_SHAPE_OUTPUT_INDEX:
+        ret = ParseExtUnknownShapeIndex(
+            ext_info, ext_info_msg.unknown_shape_output_index_addr);
         break;
       default:
         KERNEL_LOG_INFO("Ignore infoType[%d], infoLen[%u].", ext_info->infoType,
@@ -464,44 +550,42 @@ int32_t CpuKernelCache::RunKernel(void *param) {
   if (ret != KERNEL_STATUS_OK) {
     return -1;
   }
-
-  bool has_sess_info = false;
-  uint64_t kernel_id = 0;
-  bool unknown_shape = false;
-  bool async_flag = false;
-  uint8_t wait_type = 0;
-  uint32_t wait_id = 0;
-  std::shared_ptr<ShapeAndTypeState> shape_and_type_state = std::make_shared<ShapeAndTypeState>();
-  ret = ParseExtMsg(param_head, has_sess_info, kernel_id, unknown_shape,
-                    async_flag, wait_type, wait_id,
-                    shape_and_type_state->input_shape_and_type,
-                    shape_and_type_state->output_shape_and_type);
+  std::shared_ptr<ExtInfoMsg> ext_info_msg = nullptr;
+  try {
+    ext_info_msg = std::make_shared<ExtInfoMsg>();
+  } catch(std::bad_alloc &) {
+    KERNEL_LOG_ERROR("Create ExtInfoMsg failed");
+    return -1;
+  }
+  ret = ParseExtMsg(param_head, *ext_info_msg);
   if (ret != KERNEL_STATUS_OK) {
     return -1;
   }
 
   std::shared_ptr<NodeDef> nodedef_proto = nullptr;
-  auto ctx = GetCpuKernelContext(has_sess_info, kernel_id, nodedef, nodedef_len,
-                                 nodedef_proto);
+  auto ctx =
+      GetCpuKernelContext(ext_info_msg->has_sess_info, ext_info_msg->kernel_id,
+                          nodedef, nodedef_len, nodedef_proto);
   KERNEL_CHECK_NULLPTR(ctx, KERNEL_STATUS_INNER_ERROR,
                        "Get cpu kernel context from buff failed.")
 
-  ret = UpdateTensor(io_addrs, unknown_shape, shape_and_type_state->input_shape_and_type,
-                     shape_and_type_state->output_shape_and_type, *ctx);
+  ret = UpdateTensor(io_addrs, *ext_info_msg, *ctx);
   if (ret != KERNEL_STATUS_OK) {
     return -1;
   }
 
-  if (async_flag) {
-    ret = CpuKernelRegister::Instance().RunCpuKernelAsync(*ctx, wait_type, wait_id, [&, ctx, shape_and_type_state](){
-      return UpdateFWKOutputShape(unknown_shape, *ctx, shape_and_type_state->output_shape_and_type);
-    });
+  if (ext_info_msg->async_flag) {
+    ret = CpuKernelRegister::Instance().RunCpuKernelAsync(
+        *ctx, ext_info_msg->wait_type, ext_info_msg->wait_id,
+        [&, ctx, ext_info_msg]() {
+          return UpdateFWKOutputShape(*ext_info_msg, *ctx);
+        });
   } else {
     ret = CpuKernelRegister::Instance().RunCpuKernel(*ctx);
     if (ret != KERNEL_STATUS_OK) {
       return -1;
     }
-    ret = UpdateFWKOutputShape(unknown_shape, *ctx, shape_and_type_state->output_shape_and_type);
+    ret = UpdateFWKOutputShape(*ext_info_msg, *ctx);
   }
   if (ret != KERNEL_STATUS_OK) {
     return -1;

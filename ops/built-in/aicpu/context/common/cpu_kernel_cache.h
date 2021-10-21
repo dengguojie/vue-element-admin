@@ -26,17 +26,25 @@
 #include "kernel_cache.h"
 
 namespace aicpu {
+struct ExtInfoMsg {
+  bool has_sess_info = false;
+  uint64_t kernel_id = 0U;
+  bool unknown_shape = false;
+  bool async_flag = false;
+  uint8_t wait_type = 0U;
+  uint32_t wait_id = 0U;
+  std::vector<FWKAdapter::ShapeAndType *> input_shape_and_type;
+  std::vector<FWKAdapter::ShapeAndType *> output_shape_and_type;
+  std::map<uint32_t, uint64_t> unknown_shape_input_index_addr;
+  std::map<uint32_t, uint64_t> unknown_shape_output_index_addr;
+};
+
 struct CpuCacheData {
   std::shared_ptr<NodeDef> proto = nullptr;
   std::shared_ptr<CpuKernelContext> context = nullptr;
   CpuCacheData(std::shared_ptr<NodeDef> proto,
                std::shared_ptr<CpuKernelContext> context)
       : proto(proto), context(context) {}
-};
-
-struct ShapeAndTypeState {
-  std::vector<FWKAdapter::ShapeAndType *> input_shape_and_type;
-  std::vector<FWKAdapter::ShapeAndType *> output_shape_and_type;
 };
 
 class CpuKernelCache : public KernelCache<CpuCacheData> {
@@ -67,9 +75,8 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    * update framework output tensor shape.
    * @return uint32_t: 0 indicates success, while the others fail
    */
-  uint32_t UpdateFWKOutputShape(
-      bool unknown_shape, const CpuKernelContext &ctx,
-      std::vector<FWKAdapter::ShapeAndType *> &output_shape_and_type);
+  uint32_t UpdateFWKOutputShape(ExtInfoMsg &ext_info_msg,
+                                const CpuKernelContext &ctx);
 
   /*
    * get shape information from framework.
@@ -79,15 +86,19 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
                                std::vector<int64_t> &dims);
 
   /*
+   * get shape information from arrays.
+   * @param dims: shape information
+   */
+  void GetDimsFromArrays(const int64_t *shape, size_t len,
+                         std::vector<int64_t> &dims);
+
+  /*
    * update tensor information.
    * @param ctx: kernel context
    * @return uint32_t: 0 indicates success, while the others fail
    */
-  uint32_t UpdateTensor(
-      const std::vector<uint64_t> &io_addrs, bool unknown_shape,
-      const std::vector<FWKAdapter::ShapeAndType *> &input_shape_and_type,
-      const std::vector<FWKAdapter::ShapeAndType *> &output_shape_and_type,
-      CpuKernelContext &ctx);
+  uint32_t UpdateTensor(const std::vector<uint64_t> &io_addrs,
+                        ExtInfoMsg &ext_info_msg, CpuKernelContext &ctx);
 
   /*
    * parse extend tensor shape types information.
@@ -116,6 +127,16 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
       std::vector<FWKAdapter::ShapeAndType *> &shape_and_type);
 
   /*
+   * parse extend unknown shape index information.
+   * @param ext_info: extend information
+   * @param unknown_shape_index_addr: unknown shape index and addr map
+   * @return uint32_t: 0 indicates success, while the others fail
+   */
+  uint32_t ParseExtUnknownShapeIndex(
+      FWKAdapter::ExtInfo *ext_info,
+      std::map<uint32_t, uint64_t> &unknown_shape_index_addr);
+
+  /*
    * parse extend session information.
    * @param ext_info: extend information
    * @param kernel_id: kernel id from extend information
@@ -129,7 +150,7 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    * @param ext_info : extend infomation
    * @param wait_type: event wait type
    * @param wait_id : event wait id
-   * @return uint32_t: 0 indicates success, while the others fail 
+   * @return uint32_t: 0 indicates success, while the others fail
    */
   uint32_t ParseAsyncWait(FWKAdapter::ExtInfo *ext_info,
                           uint8_t &wait_type,
@@ -138,20 +159,10 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
   /*
    * parse extend information.
    * @param param_head: kernel context
-   * @param has_session_info: whether has session info in extend info
-   * @param kernel_id: kernel id
-   * @param wait_type: event wait type
-   * @param wait_id : event wait id
+   * @param ext_info_msg: extend info msg
    * @return uint32_t: 0 indicates success, while the others fail
    */
-  uint32_t ParseExtMsg(
-      AicpuParamHead *param_head, bool &has_session_info, uint64_t &kernel_id,
-      bool &unknown_shape,
-      bool &async_flag,
-      uint8_t &wait_type,
-      uint32_t &wait_id,
-      std::vector<FWKAdapter::ShapeAndType *> &input_shape_and_type,
-      std::vector<FWKAdapter::ShapeAndType *> &output_shape_and_type);
+  uint32_t ParseExtMsg(AicpuParamHead *param_head, ExtInfoMsg &ext_info_msg);
 
   /*
    * parse io address.
