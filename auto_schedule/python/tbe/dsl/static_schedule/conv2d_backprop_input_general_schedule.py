@@ -2570,13 +2570,13 @@ def general_schedule(
     # split g_dim for ddr; outer is g, inner is c1
     if tensor_attr.get("5HD_TRANS_NHWC"):
         #n hw c,the channel axis is the third axis
-        sch_agent[c_ddr].split_group(c_ddr.op.axis[2], factor=cin1_g)
+        sch_agent[c_ddr].split_group(c_ddr.op.axis[2], nparts=g_after)
     else:
         if l0c_multi_group_flag:
             cl0_factor = cin1_g * cl0_tiling_g // 2
             sch_agent[c_ddr].split_group(c_ddr.op.axis[1], cl0_factor)
         else:
-            sch_agent[c_ddr].split_group(c_ddr.op.axis[1], factor=cin1_g)
+            sch_agent[c_ddr].split_group(c_ddr.op.axis[1], nparts=g_after)
 
     affine_cub = _cub_process()
     _cl0_process(affine_cub)
