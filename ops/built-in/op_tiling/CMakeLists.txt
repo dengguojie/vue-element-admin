@@ -235,6 +235,7 @@ if(ENABLE_TEST STREQUAL "")
   )
 
   if(BUILD_OPEN_PROJECT)
+    add_dependencies(optiling external_protobuf)
     set(OP_TILING_PATH "${INSTALL_PATH}/opp/op_impl/built-in/ai_core/tbe/op_tiling")
     cann_install(
       TARGET      optiling
