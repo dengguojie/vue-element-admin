@@ -22,8 +22,8 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable = locally-disabled,invalid-name,too-many-locals
-# pylint: disable = too-many-arguments,unused-argument,no-member
+# 'pylint: disable = locally-disabled,invalid-name,too-many-locals
+# 'pylint: disable = too-many-arguments,unused-argument,no-member
 @tbe_platform.fusion_manager.fusion_manager.register("inplace_update_d")
 def inplace_update_d_compute(x, v, y, indices, kernel_name="inplace_update_d"):
     """

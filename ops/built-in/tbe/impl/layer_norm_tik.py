@@ -30,6 +30,7 @@ class LayerNormalizeBase:
     layer normalize
     """
 
+    # 'pylint: disable=too-many-arguments
     def __init__(self, batch_num, data_num, epsilon, kernel_name, cont, data_type, elementwise, output_mean_var):
         """
         init LayerNormalize attrs, init gm tensor
@@ -85,7 +86,7 @@ class LayerNormalizeBase:
                                                              "variance_ub_type", is_workspace=True, is_atomic_add=True)
 
     @staticmethod
-    def _get_loop_info( all_data_num, each_loop_num):
+    def _get_loop_info(all_data_num, each_loop_num):
         loop_times = ceil_div(all_data_num, each_loop_num)
         last_loop_num = all_data_num - each_loop_num * (loop_times - 1)
         return loop_times, last_loop_num
@@ -261,6 +262,7 @@ class LayerNormalizeBase:
                    src0_name="batch_mean_square_ub", src1_name="batch_variance_ub"), ]  # 1/std(x)
         VecExecutor.exec_vec_cmd(buf_mean_all, cmd_count_rec_std_ne_mean, "batch_mean_ub")
 
+    # 'pylint: disable=too-many-arguments
     def _data_move(self, dst, src, sid, nburst, burst, src_stride, dst_stride):
         """
         move data
@@ -367,6 +369,7 @@ class LayerNormalizeSplitD(LayerNormalizeBase):
         data_num_max_align = self._get_align_num(data_num_max, self.ub_repeat_data_num, False)
         return data_num_max_align
 
+    # 'pylint: disable=too-many-locals
     def _count_mean_each_batch_loop(self, batch_index, start_index, data_num, mean_ub_all):
         mean_data_ub, mean_data_square_ub, mean_temp_ub = mean_ub_all
         data_num_align = self._get_align_num(data_num, self.ub_repeat_data_num)
@@ -403,6 +406,7 @@ class LayerNormalizeSplitD(LayerNormalizeBase):
         self._count_mean_each_batch_loop_count(mean_temp_ub, input_data_ub, work_tensor_ub,
                                                repeat_num, mean_data_square_ub)
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _data_move_in(self, ub_data_tensor_ub, ub_data_tensor_ub_name, gm_data_tensor_ub, tensor_gm,
                       buf_sum_ub, batch_index, start_index, data_num, mode):
         if self.gm_type != self.ub_type:
@@ -438,6 +442,7 @@ class LayerNormalizeSplitD(LayerNormalizeBase):
         last_block_gm_index = start_index + data_num - self.gm_block_data_num
         return last_block_ub_index, last_block_gm_index
 
+    # 'pylint: disable=too-many-arguments
     def _count_mean_each_batch_loop_count(self, mean_temp_ub, src_tensor_ub, work_tensor_ub, repeat_num, mean_data_ub):
         mask_sum = self.ub_repeat_data_num
         mask_mean = self.ub_block_data_num
@@ -535,6 +540,7 @@ class LayerNormalizeSplitD(LayerNormalizeBase):
             src_stand_ub, gm_data_tensor_ub, buf_stand_ub, batch_index,
             start_index, data_num)
 
+    # 'pylint: disable=too-many-arguments
     def _mode_data_move_out(self, data_tensor_ub, gm_data_tensor_ub, buf_stand_ub,
                             batch_index, start_index, data_num):
         if self.gm_type != self.ub_type:
@@ -594,6 +600,7 @@ class LayerNormalizeSplitN(LayerNormalizeBase):
         each_loop_batch_num = min(max_loop_batch_num, each_thread_batch_num)
         return each_loop_batch_num
 
+    # 'pylint: disable=too-many-locals
     def _mode1_compute_each_loop(self, batch_index_start, batch_num):
         # fp32 data info
         batch_num_align = self._get_align_num(batch_num, self.ub_block_data_num)
@@ -669,6 +676,7 @@ class LayerNormalizeSplitN(LayerNormalizeBase):
             VecExecutor.exec_vec_cmd(buf_data_all, cmd_dup_input_tensor, "input_data_ub")
         return buf_data_all, gm_data_tensor_ub
 
+    # 'pylint: disable=too-many-arguments
     def _data_move_in(self, data_ub_all, tensor_gm, buf_data_all, cmd_gm_vconv_ub,
                       batch_index_start, batch_num, data_num_align, mode):
         # get block format num
@@ -681,7 +689,8 @@ class LayerNormalizeSplitN(LayerNormalizeBase):
         each_batch_gm_block_num = self.data_num // self.gm_block_data_num
         # if data 32byte align
         if self.data_num == data_num_align:
-            self._data_move(tensor_ub, tensor_gm[batch_index_start, 0], 0, 1, batch_num * each_batch_gm_block_num, 0, 0)
+            self._data_move(tensor_ub, tensor_gm[batch_index_start, 0], 0, 1, batch_num * each_batch_gm_block_num,
+                            0, 0)
         elif self.data_num % self.gm_block_data_num == 0:
             self._data_move(tensor_ub, tensor_gm[batch_index_start, 0], 0, batch_num, each_batch_gm_block_num,
                             0, each_batch_ub_block_num - each_batch_gm_block_num)
@@ -691,6 +700,7 @@ class LayerNormalizeSplitN(LayerNormalizeBase):
         if self.gm_type != self.ub_type:
             VecExecutor.exec_vec_cmd(buf_data_all, [cmd_gm_vconv_ub[mode]], "gm_data_tensor_vconv_ub")
 
+    # 'pylint: disable=too-many-arguments
     def _data_move_in_not_align(self, tensor_ub, tensor_gm, batch_index_start, batch_num, mode):
         if mode == 0:
             each_batch_block_num = ceil_div(self.data_num, self.gm_block_data_num)
@@ -718,6 +728,7 @@ class LayerNormalizeSplitN(LayerNormalizeBase):
         last_block_gm_index = self.data_num - self.gm_block_data_num
         return last_block_ub_index, last_block_gm_index
 
+    # 'pylint: disable=too-many-arguments
     def _mode1_count_sum(self, data_ub_all, mean_ub_all, reduce_work_tensor, batch_num, data_num_align):
         input_data_ub, input_data_square_ub, _ = data_ub_all
         batch_mean_ub, batch_mean_square_ub, _ = mean_ub_all
@@ -771,6 +782,7 @@ class LayerNormalizeSplitN(LayerNormalizeBase):
                                         input_data_ub[batch_index, last_block_ub_index],
                                         gm_data_tensor_ub, 1, 1, 1, 8, 8)
 
+    # 'pylint: disable=too-many-arguments
     def _stand_data(self, input_data_ub, batch_ne_mean_ub, batch_rec_std_ub, batch_num, data_num_align):
         scalar_type = self.ub_type
         mask = self.ub_repeat_data_num
@@ -785,6 +797,7 @@ class LayerNormalizeSplitN(LayerNormalizeBase):
             self.tik_inst.vmuls(mask, input_data_ub[batch_index, 0], input_data_ub[batch_index, 0],
                                 rec_std_scalar, repeat_num, 1, 1, 8, 8)
 
+    # 'pylint: disable=too-many-arguments
     def _mode1_count_elementwise(self, data_ub_all, batch_num, data_num_align, buf_data_all, cmd_gm_vconv_ub):
         input_data_ub, input_data_square_ub, _ = data_ub_all
         mask = self.ub_repeat_data_num
@@ -800,6 +813,7 @@ class LayerNormalizeSplitN(LayerNormalizeBase):
             self.tik_inst.vadd(mask, input_data_ub[batch_index, 0], input_data_ub[batch_index, 0],
                                input_data_square_ub, each_batch_repeat_num, 1, 1, 1, 8, 8, 8)
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _mode1_data_move_out(self, data_ub_all, buf_data_all, batch_index_start, batch_num, data_num_align):
         input_data_ub, _, gm_data_tensor_ub = data_ub_all
         if self.gm_type == self.ub_type:
@@ -813,8 +827,8 @@ class LayerNormalizeSplitN(LayerNormalizeBase):
         each_batch_ub_block_num = data_num_align // self.gm_block_data_num
         each_batch_gm_block_num = self.data_num // self.gm_block_data_num
         if self.data_num == data_num_align:
-            self._data_move(self.input_y[batch_index_start, 0], tensor_ub, 0, 1, batch_num * each_batch_gm_block_num, 0,
-                            0)
+            self._data_move(self.input_y[batch_index_start, 0], tensor_ub, 0, 1, batch_num * each_batch_gm_block_num,
+                            0, 0)
         elif self.data_num % self.gm_block_data_num == 0:
             self._data_move(self.input_y[batch_index_start, 0], tensor_ub, 0, batch_num, each_batch_gm_block_num,
                             each_batch_ub_block_num - each_batch_gm_block_num, 0)
@@ -861,6 +875,7 @@ def check_shape(params, support_shape):
     return True
 
 
+# 'pylint: disable=too-many-arguments,too-many-return-statements
 def if_support_shape(input_x, input_gamma, input_beta, output_y,
                      output_mean, output_variance, begin_norm_axis):
     """
@@ -899,6 +914,7 @@ def if_support_shape(input_x, input_gamma, input_beta, output_y,
     return True
 
 
+# 'pylint: disable=too-many-arguments,too-many-locals
 def if_tik_support(input_x, input_gamma, input_beta,
                    output_y, output_mean, output_variance,
                    begin_norm_axis, begin_params_axis, epsilon):
@@ -948,7 +964,7 @@ def select_layer_normalize(batch_num, data_num, gm_type, cont, ai_core_use):
     return obj
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
 def layer_normalize(input_x, gamma, beta, input_y, mean, variance, begin_norm_axis, begin_params_axis, epsilon,
                     kernel_name="LayerNormalize"):
     """

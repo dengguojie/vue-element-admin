@@ -23,7 +23,7 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=locally-disabled,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("inv_grad")
 def inv_grad_compute(input_y, input_dy, output_z, kernel_name="inv_grad"):
     """

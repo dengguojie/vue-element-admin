@@ -22,7 +22,7 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @fusion_manager.register("is_close")
 def is_close_compute(input_x1, input_x2, output_y, rtol=1e-05, atol=1e-08, equal_nan=False, kernel_name="is_close"):
     """
@@ -63,6 +63,7 @@ def is_close_compute(input_x1, input_x2, output_y, rtol=1e-05, atol=1e-08, equal
     return tbe.vcmp(lhs, rhs, operation='le')
 
 
+# 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL,

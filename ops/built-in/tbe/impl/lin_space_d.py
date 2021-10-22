@@ -22,8 +22,8 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("lin_space_d")
 def lin_space_d_compute(input_assist, input_start, input_stop, input_num,
                         output_op, kernel_name="lin_space"):

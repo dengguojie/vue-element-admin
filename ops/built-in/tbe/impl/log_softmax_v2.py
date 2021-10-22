@@ -23,7 +23,7 @@ from te.utils import shape_util
 from impl.util import util_select_op_base
 
 
-# pylint: disable = unused-argument,unused-variable,too-many-locals
+# 'pylint: disable = unused-argument,unused-variable,too-many-locals
 def get_op_support_info(input_x, output_y, axis=-1, kernel_name="log_softmax_v2"):
     """
     get_op_support_info
@@ -45,7 +45,7 @@ def get_op_support_info(input_x, output_y, axis=-1, kernel_name="log_softmax_v2"
     return op_cal_info_in_json
 
 
-# pylint: disable = locally-disabled,unused-argument
+# 'pylint: disable = locally-disabled,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("log_softmax_v2")
 def log_softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="log_softmax_v2",
                            impl_mode="high_performance"):
@@ -99,6 +99,7 @@ def log_softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="log_softmax_
     return res
 
 
+# 'pylint: disable=variable_type_changed
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT),
                             para_check.KERNEL_NAME)

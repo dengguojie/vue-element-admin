@@ -24,7 +24,7 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=too-many-arguments,unused-argument,too-many-locals
+# 'pylint: disable=too-many-arguments,unused-argument,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("kl_div")
 def kl_div_compute(input_x, input_target, output_y, reduction, batch_size, kernel_name="kl_div"):
     """

@@ -21,7 +21,7 @@ from impl import store_to_gm
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_STR, para_check.REQUIRED_ATTR_STR,
                             para_check.KERNEL_NAME)

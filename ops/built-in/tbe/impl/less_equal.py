@@ -24,6 +24,7 @@ from impl.constant_util import MIN_FP32 as SCALAR_MIN_FP32
 from impl.constant_util import MIN_FP16 as SCALAR_MIN_FP16
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     Constant for less_equal
@@ -36,7 +37,7 @@ class Constant:
     SCALAR_MUL_FP16 = 2 ** 12
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("less_equal")
 def less_equal_compute(input_x, input_y, output_z, kernel_name="less_equal"):
     """
@@ -115,7 +116,7 @@ def less_equal_compute(input_x, input_y, output_z, kernel_name="less_equal"):
     return res
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def less_equal(input_x, input_y, output_z, kernel_name="less_equal"):

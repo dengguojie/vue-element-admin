@@ -1,0 +1,47 @@
+[
+  {
+    "op": "Less",
+    "calc_expect_func_file" : "test_less_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x1",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x2",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "bool"
+      }
+    ],
+    "case_name": "test_Less_000"
+  }
+]

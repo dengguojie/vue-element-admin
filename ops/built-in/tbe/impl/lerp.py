@@ -22,7 +22,7 @@ from te.utils import shape_util
 
 
 @fusion_manager.register("lerp")
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def lerp_compute(start, end, weight, y, kernel_name="lerp"):
     """
     Compute
@@ -64,6 +64,7 @@ def lerp_compute(start, end, weight, y, kernel_name="lerp"):
     return res
 
 
+# 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)

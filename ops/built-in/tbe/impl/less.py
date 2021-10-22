@@ -65,7 +65,7 @@ def _less_compare(data, shape, dtype, data_min):
     return tbe.cast_to(res, "uint8", True)
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("less")
 def less_compute(input_x, input_y, output_z, kernel_name="less"):
     """
@@ -127,7 +127,7 @@ def less_compute(input_x, input_y, output_z, kernel_name="less"):
     return _less_compare((input_x, input_y), shape, dtype, data_min)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def less(input_x, input_y, output_z, kernel_name="less"):

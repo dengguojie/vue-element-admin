@@ -24,7 +24,7 @@ from te.platform.cce_conf import api_check_support
 
 
 @fusion_manager.register("log_sigmoid")
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-locals
 def log_sigmoid_compute(x, y, kernel_name='log_sigmoid'):
     """
     log-sigmoid function compute

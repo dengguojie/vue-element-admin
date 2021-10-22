@@ -15,7 +15,6 @@
 """
 layer_norm_grad
 """
-# pylint: disable=global-statement
 import operator
 
 import te.lang.cce as tbe
@@ -27,12 +26,17 @@ from te.utils.error_manager import error_manager_vector
 from impl.constant_util import EPSLON
 
 
+# 'pylint: disable=too-few-public-methods
 class LayerNormGradAxis:
+    """
+    LayerNormGradAxis param
+    """
     # reduce axis
     PARAMS_AXIS = []
 
-# pylint: disable=too-many-locals,too-many-arguments
-# pylint: disable=locally-disabled,unused-argument
+
+# 'pylint: disable=too-many-locals,too-many-arguments
+# 'pylint: disable=locally-disabled,unused-argument
 def _check_params(params_map):
     """
     check parameters including shape_dy, shape_x, shape_var,
@@ -75,13 +79,13 @@ def _check_shape(params_map):
     if operator.ne(tuple(params_map.get("shape_dy")),
                    tuple(params_map.get("shape_x"))):
         error_detail = "shape of input_dy and input_x should be same"
-        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_grad", "input_dy", \
+        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_grad", "input_dy",
                                                                "input_x", error_detail)
 
     if operator.ne(tuple(params_map.get("shape_var")),
                    tuple(params_map.get("shape_mean"))):
         error_detail = "shape of input_variance and input_mean should be same"
-        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_grad", "input_variance", \
+        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_grad", "input_variance",
                                                                "input_mean", error_detail)
 
     shape_x = params_map.get("shape_x")
@@ -91,7 +95,6 @@ def _check_shape(params_map):
     para_check.check_shape(shape_x, param_name="input_x")
     para_check.check_shape(shape_mean, param_name="input_mean")
     para_check.check_shape(shape_gamma, param_name="input_gamma")
-
 
     _check_shape_mean(shape_x, shape_mean)
     _check_shape_gamma(shape_x, shape_gamma)
@@ -114,7 +117,7 @@ def _check_shape_mean(shape_x, shape_mean):
     """
     if len(shape_x) != len(shape_mean):
         error_detail = "length of shape_x and shape_mean should be same"
-        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_grad", "input_x", \
+        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_grad", "input_x",
                                                                "input_mean", error_detail)
 
     if shape_mean[-1] != 1:
@@ -153,7 +156,7 @@ def _check_shape_gamma(shape_x, shape_gamma):
     """
     if len(shape_gamma) > len(shape_x):
         error_detail = "length of shape_gamma can not be longer than shape_x"
-        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_grad", "input_gamma", \
+        error_manager_vector.raise_err_two_input_shape_invalid("layer_norm_grad", "input_gamma",
                                                                "input_x", error_detail)
 
     for xtem, gamma in zip(reversed(shape_x), reversed(shape_gamma)):

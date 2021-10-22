@@ -42,15 +42,22 @@ install_stest() {
   get_related_ops "${task_type}" "${pr_file}"
   all_cases=""
   install_related_ops "${pr_file}"
+  case_not_found=""
   for op_case in $(echo "${all_cases}" | tr ',' ' '); do
     echo "[INFO] install testcase: ${op_case}"
     if [[ ! -d "${op_case}" ]]; then
       echo "[ERROR] cannot find testcase ${op_case}"
-      exit $STATUS_FAILED
+      case_not_found="${case_not_found} ${op_case##*/}"
+      continue
     else
       cp -rf "${op_case}" "${TEST_INSTALL_PATH}"
     fi
   done
+
+  if [ ! -z "${case_not_found}" ];then
+    echo "[ERROR] st case not found:[${case_not_found}]"
+    exit $STATUS_FAILED
+  fi
 }
 
 install_sch_stest() {

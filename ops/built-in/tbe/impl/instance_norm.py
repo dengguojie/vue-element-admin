@@ -23,7 +23,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=unused-argument,invalid-name,too-many-arguments,too-many-locals
+# 'pylint: disable=unused-argument,invalid-name,too-many-arguments,too-many-locals
 def instance_norm_compute(x,
                           gamma,
                           beta,

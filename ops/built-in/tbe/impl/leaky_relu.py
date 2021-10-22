@@ -24,7 +24,7 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=invalid-name,too-many-locals
+# 'pylint: disable=invalid-name,too-many-locals
 def get_fusion_params(x_tensor, y):
     """
     Get L1 fusion_params
@@ -54,7 +54,7 @@ def get_fusion_params(x_tensor, y):
     return fusion_params
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
 @fusion_manager.register("leaky_relu")
 def leaky_relu_compute(x, y, negative_slope=0, kernel_name="leaky_relu"):
     """

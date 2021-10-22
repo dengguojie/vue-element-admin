@@ -25,9 +25,9 @@ from te.utils import shape_util
 from .greater import greater_compute
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=locally-disabled,too-many-locals,unused-variable
-# pylint: disable=relative-beyond-top-level
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-locals,unused-variable
+# 'pylint: disable=relative-beyond-top-level
 def select_compute(condition, data_x=None, data_y=None):
     """
     select data from data_x or data_y according to the condition.

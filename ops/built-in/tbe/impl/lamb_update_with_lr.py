@@ -23,9 +23,9 @@ from te.utils import shape_util
 from impl.common_util import constant
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=locally-disabled,invalid-name,unused-variable
-# pylint: disable=locally-disabled,redefined-builtin,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,invalid-name,unused-variable
+# 'pylint: disable=locally-disabled,redefined-builtin,too-many-locals
 def real_div_compute(data_1, data_2, output_z, kernel_name="real_div"):
     """
     calculating data's realdiv, `c = a / b`

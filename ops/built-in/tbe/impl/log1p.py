@@ -45,7 +45,7 @@ TAYLOR_SIXTH_ORDER_PARAM = 1 / 720.0
 TAYLOR_SEVENTH_ORDER_PARAM = 1 / 5040.0
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("log1p")
 def log1p_compute(input_x, output_y, kernel_name="log1p"):
     """

@@ -24,7 +24,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=too-many-locals,too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-locals,too-many-arguments,unused-argument,invalid-name
 def _check_params(params):
     """
     check parameters including shape_dy, shape_x, shape_var, shape_mean, shape_gamma, dtype

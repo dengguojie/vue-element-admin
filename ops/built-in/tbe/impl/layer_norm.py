@@ -33,8 +33,8 @@ from impl.layer_norm_tik import if_tik_support
 from impl.layer_norm_tik import layer_normalize
 
 
-# pylint: disable = unused-argument
-# pylint: disable=too-many-arguments,too-many-locals
+# 'pylint: disable = unused-argument
+# 'pylint: disable=too-many-arguments,too-many-locals
 def get_op_support_info(input_x, input_gamma, input_beta,
                         output_y, output_mean, output_variance,
                         begin_norm_axis, begin_params_axis,
@@ -73,8 +73,8 @@ def get_op_support_info(input_x, input_gamma, input_beta,
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=too-many-locals,too-many-statements,too-many-branches
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=too-many-locals,too-many-statements,too-many-branches
 def _division_sixteen(shape, begin_norm_axis):
     """
     division_sixteen
@@ -82,13 +82,13 @@ def _division_sixteen(shape, begin_norm_axis):
     if len(shape) < 2:
         if shape[-1] == 0:
             error_detail = "value of shape_x is illegal"
-            error_manager_vector.raise_err_input_shape_invalid("layer_norm", "input_x", \
+            error_manager_vector.raise_err_input_shape_invalid("layer_norm", "input_x",
                                                                error_detail)
         return False
 
     if shape[-1] == 0 or shape[-2] == 0:
         error_detail = "value of shape_x is illegal"
-        error_manager_vector.raise_err_input_shape_invalid("layer_norm", "input_x", \
+        error_manager_vector.raise_err_input_shape_invalid("layer_norm", "input_x",
                                                            error_detail)
 
     is_reduce_last = begin_norm_axis in (-1, len(shape) - 1)

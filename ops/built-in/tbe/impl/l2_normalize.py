@@ -23,7 +23,7 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("l2_normalize")
 def l2_normalize_compute(input_x,
                          output_y,

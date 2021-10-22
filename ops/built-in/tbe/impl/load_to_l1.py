@@ -21,7 +21,7 @@ from te.platform.cce_build import build_config
 from te import platform as cce
 
 
-# pylint: disable=locally-disabled,unused-argument,unnecessary-lambda
+# 'pylint: disable=locally-disabled,unused-argument,unnecessary-lambda
 @fusion_manager.register("load_to_l1")
 def load_to_l1_compute(input_tensor, output_x, kernel_name="load_to_l1"):
     """

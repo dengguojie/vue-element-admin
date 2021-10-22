@@ -21,8 +21,8 @@ from te.utils import para_check
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=unused-argument,invalid-name
-# pylint: disable=inconsistent-return-statements,no-else-return
+# 'pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=inconsistent-return-statements,no-else-return
 def check_supported(x, indices, v, y, kernel_name="inplace_update"):
     """
     To check whether the AICORE operator can support the shape of indices or not
@@ -47,7 +47,8 @@ def check_supported(x, indices, v, y, kernel_name="inplace_update"):
 
     return True, ""
 
-# pylint: disable=invalid-name,too-many-instance-attributes
+
+# 'pylint: disable=invalid-name,too-many-instance-attributes
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def inplace_update(x, indices, v, y, kernel_name="inplace_update"):
@@ -116,7 +117,7 @@ class InplaceUpdate():
                                                     name="output_y_gm",
                                                     scope=tik.scope_gm)
 
-    # pylint: disable=too-many-locals, too-many-function-args
+    # 'pylint: disable=too-many-locals, too-many-function-args
     def tik_instance_function(self, kernel_name):
         """
         tik_instance_function

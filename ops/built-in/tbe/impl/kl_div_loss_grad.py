@@ -23,8 +23,8 @@ from te.utils import shape_util
 import te.platform as tbe_platform
 
 
-# pylint: disable=redefined-builtin,too-many-locals,consider-using-in
-# pylint: disable=unused-variable,invalid-name,too-many-arguments,unused-argument
+# 'pylint: disable=redefined-builtin,too-many-locals,consider-using-in
+# 'pylint: disable=unused-variable,invalid-name,too-many-arguments,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("KlDivLossGrad")
 def kl_div_loss_grad_compute(grad, input, target, reduction="mean", log_target=False):
     """

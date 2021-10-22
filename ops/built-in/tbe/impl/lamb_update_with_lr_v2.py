@@ -23,8 +23,8 @@ from te.utils import shape_util
 from impl.common_util import constant
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
-# pylint: disable=locally-disabled,too-many-locals,too-many-arguments
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-locals,too-many-arguments
 def true_div_compute(x1, x2, kernel_name="true_div"):
     """
     calculating data's realdiv, `c = a / b`

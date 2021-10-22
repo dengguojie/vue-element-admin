@@ -23,8 +23,8 @@ from te.utils import shape_util
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=unused-argument,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("l2_normalize_grad")
 def l2_normalize_grad_compute(input_data_x,
                               input_data_y,
@@ -98,7 +98,7 @@ def l2_normalize_grad_compute(input_data_x,
     return result
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_INT),
@@ -129,7 +129,7 @@ def l2_normalize_grad(input_x,
         shape and dtype of backward output,
         should be same shape and type as input_x
     dim : int
-        the dimemsion to normalize. Default : 1.
+        the dimension to normalize. Default : 1.
         only support dim=1(for NC/NCHW) and
         dim=[1,4](for NC1HWC0) in this version
     eps : float16/float32
@@ -163,8 +163,6 @@ def l2_normalize_grad(input_x,
     input_data_dy = tvm.placeholder(
         input_shape_dy, name="input_data_dy", dtype=input_dtype)
 
-    assert (input_shape_x == input_shape_y and input_shape_x == input_shape_dy
-            ), "all input/output should have the same shape"
     if input_shape_x != input_shape_y or input_shape_x != input_shape_dy:
         error_manager_vector.raise_err_inputs_shape_not_equal("l2_normalize_grad", input_y, input_dy,
                                                               input_shape_y, input_shape_dy, input_shape_x)

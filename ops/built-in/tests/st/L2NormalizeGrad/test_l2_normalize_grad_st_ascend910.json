@@ -1,0 +1,74 @@
+[
+  {
+    "op": "L2NormalizeGrad",
+    "calc_expect_func_file" : "test_l2_normalize_grad_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [
+          16, 16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16, 16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16, 16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16, 16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16, 16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16, 16
+        ],
+        "ori_format": "ND",
+        "name": "dy",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16, 16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16, 16
+        ],
+        "ori_format": "ND",
+        "name": "dx",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dim",
+        "type": "list_int",
+        "value": [
+          0,
+          1
+        ]
+      },
+      {
+        "name": "eps",
+        "type": "float",
+        "value": 0.0001
+      }
+    ],
+    "case_name": "test_L2NormalizeGrad_000"
+  }
+]

@@ -42,7 +42,7 @@ def _isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
     return math.isclose(valuex, valuey, rel_tol=rel_tol, abs_tol=abs_tol)
 
 
-# pylint: disable=too-many-arguments,unused-argument
+# 'pylint: disable=too-many-arguments,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("log")
 def log_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0, kernel_name="log"):
     """

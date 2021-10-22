@@ -15,7 +15,7 @@
 """
 layer_norm_beta_gamma_backprop
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 import operator
 import te.lang.cce as tbe
 
@@ -31,7 +31,7 @@ from impl.util.util_select_op_base import get_op_cal_info
 from impl.common_util import constant
 
 
-# pylint: disable = unused-argument,invalid-name,too-many-locals,too-many-arguments,too-many-branches
+# 'pylint: disable = unused-argument,invalid-name,too-many-locals,too-many-arguments,too-many-branches
 def get_op_support_info(input_dy, input_x, input_variance,
                         input_mean, output_pd_gamma,
                         output_pd_beta, shape_gamma,
@@ -73,8 +73,8 @@ def get_op_support_info(input_dy, input_x, input_variance,
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-arguments
-# pylint: disable=too-many-locals,too-many-lines,too-many-function-args
+# 'pylint: disable=locally-disabled,unused-argument,too-many-arguments
+# 'pylint: disable=too-many-locals,too-many-lines,too-many-function-args
 def _check_dynamic_format(shape_dy, shape_gamma, c_0):
     """
     check dynamic format branch

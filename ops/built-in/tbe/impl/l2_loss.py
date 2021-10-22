@@ -25,7 +25,7 @@ from impl.util import util_common
 from impl.util import util_select_op_base
 
 
-# pylint: disable=invalid-name,unused-argument,unused-variable,too-many-locals
+# 'pylint: disable=invalid-name,unused-argument,unused-variable,too-many-locals,too-many-statements
 def op_select_format(x, y, kernel_name="l2_loss"):
     """
     select format dynamically
@@ -133,7 +133,7 @@ def l2_loss_compute(x, y, kernel_name="l2_loss"):
     return res
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def l2_loss(x, y, kernel_name="l2_loss"):

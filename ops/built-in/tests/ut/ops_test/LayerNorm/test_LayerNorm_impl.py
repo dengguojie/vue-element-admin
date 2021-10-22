@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
+from impl.layer_norm import op_select_format
 import numpy as np
 ut_case = OpUT("LayerNorm", None, None)
 
@@ -38,7 +39,7 @@ case21 = {"params": [{"shape": (128, 1024), "dtype": "float16", "format": "ND", 
          "case_name": "layer_norm_21",
          "expect": "success",
          "format_expect": [],
-         "support_expect": True}         
+         "support_expect": True}
 case3 = {"params": [{"shape": (11,2,1023), "dtype": "float16", "format": "NCHW", "ori_shape": (11,2,1023),"ori_format": "NCHW"},
                     {"shape": (1023,), "dtype": "float16", "format": "NCHW", "ori_shape": (1023,),"ori_format": "NCHW"},
                     {"shape": (1023,), "dtype": "float16", "format": "NCHW", "ori_shape": (1023,),"ori_format": "NCHW"},
@@ -220,6 +221,53 @@ ut_case.add_case("all", {"params": [
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
+
+def test_op_select_format(test_arg):
+    input_x = {"shape": (0,), "dtype": "float32", "format": "NCHW", "ori_shape": (0,),
+               "ori_format": "NCHW", "param_type": "input"}
+    input_gamma = {"shape": (768,), "dtype": "float32", "format": "NCHW", "ori_shape": (768,), "ori_format": "NCHW",
+                   "param_type": "input"}
+    input_beta = {"shape": (768,), "dtype": "float32", "format": "NCHW", "ori_shape": (768,), "ori_format": "NCHW",
+                  "param_type": "input"}
+    output_y = {"shape": (0,), "dtype": "float32", "format": "NCHW", "ori_shape": (0,),
+                "ori_format": "NCHW",
+                "param_type": "output"}
+    output_mean = {"shape": (2,), "dtype": "float32", "format": "NCHW", "ori_shape": (768,), "ori_format": "NCHW",
+                   "param_type": "output"}
+    output_variance = {"shape": (2,), "dtype": "float32", "format": "NCHW", "ori_shape": (768,), "ori_format": "NCHW",
+                       "param_type": "output"}
+    begin_norm_axis = 1
+    begin_params_axis = 2
+    try:
+        op_select_format(input_x, input_gamma, input_beta, output_y, output_mean, output_variance,
+                         begin_norm_axis, begin_params_axis)
+        assert False
+    except RuntimeError as e:
+        pass
+
+    input_x = {"shape": (2, 2, 0), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 2, 0),
+               "ori_format": "NCHW",
+               "param_type": "input"}
+    input_gamma = {"shape": (768,), "dtype": "float32", "format": "NCHW", "ori_shape": (768,), "ori_format": "NCHW",
+                   "param_type": "input"}
+    input_beta = {"shape": (768,), "dtype": "float32", "format": "NCHW", "ori_shape": (768,), "ori_format": "NCHW",
+                  "param_type": "input"}
+    output_y = {"shape": (2, 2, 0), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 2, 0),
+                "ori_format": "NCHW",
+                "param_type": "output"}
+    output_mean = {"shape": (2,), "dtype": "float32", "format": "NCHW", "ori_shape": (768,), "ori_format": "NCHW",
+                   "param_type": "output"}
+    output_variance = {"shape": (2,), "dtype": "float32", "format": "NCHW", "ori_shape": (768,), "ori_format": "NCHW",
+                       "param_type": "output"}
+    try:
+        op_select_format(input_x, input_gamma, input_beta, output_y, output_mean, output_variance,
+                         begin_norm_axis, begin_params_axis)
+        assert False
+    except RuntimeError as e:
+        pass
+
+
+ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 if __name__ == "__main__":
     ut_case.run(["Ascend910A", "Ascend710", "Ascend310"])

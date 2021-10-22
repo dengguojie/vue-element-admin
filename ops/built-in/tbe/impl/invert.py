@@ -23,7 +23,7 @@ from te import platform as tbe_platform
 from te.utils import para_check
 
 
-# pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=locally-disabled,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("invert")
 def invert_compute(input_x, output_y, kernel_name="invert"):
     """Flips all bits elementwise.

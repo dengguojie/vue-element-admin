@@ -22,7 +22,7 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-locals
 @fusion_manager.register("log_sigmoid_grad")
 def log_sigmoid_grad_compute(grads, features, backprops, kernel_name='log_sigmoid_grad'):
     """
@@ -65,7 +65,7 @@ def log_sigmoid_grad_compute(grads, features, backprops, kernel_name='log_sigmoi
     return res
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def log_sigmoid_grad(grads, features, backprops, kernel_name='log_sigmoid_grad'):

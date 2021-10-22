@@ -22,7 +22,7 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
-# pylint: disable=unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=unused-argument,invalid-name,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("leaky_relu_grad")
 def leaky_relu_grad_compute(g, x, y, negative_slope=0,
                             kernel_name="leaky_relu_grad"):

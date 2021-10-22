@@ -15,7 +15,7 @@
 """
 layer_norm_x_backprop
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 import operator
 
 from te import tvm
@@ -31,7 +31,7 @@ from impl.util import util_select_op_base
 from impl.constant_util import EPSLON
 
 
-# pylint: disable = unused-argument,too-many-arguments,too-many-locals
+# 'pylint: disable = unused-argument,too-many-arguments,too-many-locals
 def get_op_support_info(input_dy, input_x, input_variance, input_mean,
                         input_gamma, output_pd_x,
                         kernel_name="layer_norm_x_backprop"):
@@ -72,8 +72,8 @@ def get_op_support_info(input_dy, input_x, input_variance, input_mean,
     return op_cal_info_in_json
 
 
-# pylint: disable=invalid-name,too-many-lines,too-many-arguments
-# pylint: disable=unused-argument,too-many-locals,locally-disabled
+# 'pylint: disable=invalid-name,too-many-lines,too-many-arguments
+# 'pylint: disable=unused-argument,too-many-locals,locally-disabled
 def _check_dynamic_format(shape_dy, shape_gamma, c_0):
     """
     check dynamic format branch
