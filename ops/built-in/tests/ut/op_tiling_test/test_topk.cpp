@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include <iostream>
 using namespace std;
@@ -32,8 +33,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(TopKDTiling, topkd_tiling_0) {
     using namespace optiling;
     std::string op_name = "TopKD";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("TopKD");
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("TopKD");
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     
     std::string compileInfo = "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"batch_cols_padding\":4835, \"k_num\":139, \"max_k\":4096}}";
 
@@ -78,7 +79,7 @@ TEST_F(TopKDTiling, topkd_tiling_0) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "aa";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "32 32 20308 139 6 1 1 32 ");
 }
 

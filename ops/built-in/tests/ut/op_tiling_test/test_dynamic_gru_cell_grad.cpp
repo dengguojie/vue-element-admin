@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -33,8 +34,8 @@ static string to_string(const std::stringstream& tiling_data) {
 TEST_F(DynamicGRUCellGradTilling, DynamicGRUCellGradTilling_tilling1) {
   using namespace optiling;
   optiling::OpRunInfo op_run_info;
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("DynamicGRUCellGrad");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("DynamicGRUCellGrad");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   TeOpParas opParas;
   vector<vector<int64_t>> input_shapes = {
       {32, 1, 16, 16},    {1, 32, 1, 16, 16}, {1, 32, 1, 16, 16}, {1, 32, 1, 16, 16}, {1, 32, 1, 16, 16},
@@ -75,6 +76,6 @@ TEST_F(DynamicGRUCellGradTilling, DynamicGRUCellGradTilling_tilling1) {
   op_compile_info.key = "123456cde";
   // do tilling, get runInfo
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "32 0 8064 0 8192 32 256 256 1 8192 ");
 }

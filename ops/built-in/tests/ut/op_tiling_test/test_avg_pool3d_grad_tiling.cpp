@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "array_ops.h"
 #include "nn_pooling_ops.h"
@@ -43,8 +44,8 @@ TEST_F(AvgPool3DGradTiling, Avg_Pool3D_Grad_tiling_invalid_test_A)
 {
   using namespace optiling;
   std::string op_name = "AvgPool3DGrad";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"({"_pattern": "Avg_pool3d_grad","tiling_type": "default_tiling","default_range": {"10000": [3,3,3,3,3,3,32,32]},"block_dim": {"10000": 2},"_vars": {"10000": ["dedy_d","dedy_h","dedy_w","dedx_d","dedx_h","dedx_w"]}})";
 
@@ -81,15 +82,15 @@ TEST_F(AvgPool3DGradTiling, Avg_Pool3D_Grad_tiling_invalid_test_A)
   optiling::utils::OpCompileInfo op_compile_info("Avg_Pool3D_Grad_tiling_invalid_test_A", compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_FALSE(iter->second(avgPool3DGrad, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_v2_(avgPool3DGrad, op_compile_info, runInfo));
 }
 
 TEST_F(AvgPool3DGradTiling, Avg_Pool3D_Grad_tiling_invalid_test_B)
 {
   using namespace optiling;
   std::string op_name = "AvgPool3DGrad";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"({"_pattern": "Avg_pool3d_grad","tiling_type": "default_tiling","default_range": {"10000": [3,3,3,3,3,3,32,32]},"block_dim": {"10000": 2},"_vars": {"10000": ["dedy_d","dedy_h","dedy_w","dedx_d","dedx_h","dedx_w"]}})";
 
@@ -126,5 +127,5 @@ TEST_F(AvgPool3DGradTiling, Avg_Pool3D_Grad_tiling_invalid_test_B)
   optiling::utils::OpCompileInfo op_compile_info("Avg_Pool3D_Grad_tiling_invalid_test_A", compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_FALSE(iter->second(avgPool3DGrad, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_v2_(avgPool3DGrad, op_compile_info, runInfo));
 }

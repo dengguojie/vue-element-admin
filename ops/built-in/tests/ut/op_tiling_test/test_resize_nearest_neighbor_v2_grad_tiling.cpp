@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "image_ops.h"
 #include "array_ops.h"
@@ -46,8 +47,8 @@ using namespace ge;
 
 TEST_F(ResizeNearestNeighborV2GradTiling, resize_nearest_neighbor_tiling_0) {
   std::string op_name = "ResizeNearestNeighborV2Grad";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::ResizeNearestNeighborV2Grad("ResizeNearestNeighborV2Grad");
 
   std::string compileInfo =
@@ -69,19 +70,19 @@ TEST_F(ResizeNearestNeighborV2GradTiling, resize_nearest_neighbor_tiling_0) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "111000 16 1 1000 1000 1000 1000 16 1 2 ");
 
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(ResizeNearestNeighborV2GradTiling, resize_nearest_neighbor_tiling_2) {
   std::string op_name = "ResizeNearestNeighborV2Grad";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::ResizeNearestNeighborV2Grad("ResizeNearestNeighborV2Grad");
 
   std::string compileInfo =
@@ -103,19 +104,19 @@ TEST_F(ResizeNearestNeighborV2GradTiling, resize_nearest_neighbor_tiling_2) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "100000 16 1 1000 1000 999 1001 2 4 4 ");
 
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(ResizeNearestNeighborV2GradTiling, resize_nearest_neighbor_tiling_3) {
   std::string op_name = "ResizeNearestNeighborV2Grad";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::ResizeNearestNeighborV2Grad("ResizeNearestNeighborV2Grad");
 
   std::string compileInfo =
@@ -136,19 +137,19 @@ TEST_F(ResizeNearestNeighborV2GradTiling, resize_nearest_neighbor_tiling_3) {
   TENSOR_OUTPUT(opParas, tensor_output, y);
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "101000 16 1 1000 1000 999 2000 2 4 4 ");
 
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(ResizeNearestNeighborV2GradTiling, resize_nearest_neighbor_tiling_4) {
   std::string op_name = "ResizeNearestNeighborV2Grad";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::ResizeNearestNeighborV2Grad("ResizeNearestNeighborV2Grad");
 
   std::string compileInfo =
@@ -170,19 +171,19 @@ TEST_F(ResizeNearestNeighborV2GradTiling, resize_nearest_neighbor_tiling_4) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "100010 16 1 1000 1000 999 22 2 4 4 ");
 
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(ResizeNearestNeighborV2GradTiling, resize_nearest_neighbor_tiling_5) {
   std::string op_name = "ResizeNearestNeighborV2Grad";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::ResizeNearestNeighborV2Grad("ResizeNearestNeighborV2Grad");
 
   std::string compileInfo =
@@ -204,11 +205,11 @@ TEST_F(ResizeNearestNeighborV2GradTiling, resize_nearest_neighbor_tiling_5) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "100110 16 1 1000 1000 999 20 1 1 20 ");
 
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }

@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -32,8 +33,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(MaxPoolWithArgmaxV1Tiling, maxpool_with_argmax_v1_tiling_0) {
     using namespace optiling;
     std::string op_name = "MaxPoolWithArgmaxV1";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 253952, \"l1_size\": 1048576, \"kernel_h\": 3,\"kernel_w\": 3, \"stride_h\": 2, \"stride_w\": 2, \"pad_h\": 1, \"pad_w\": 1,\"dilation_h\": 1, \"dilation_w\": 1, \"ceil_mode\": 0}}";
 
@@ -70,15 +71,15 @@ TEST_F(MaxPoolWithArgmaxV1Tiling, maxpool_with_argmax_v1_tiling_0) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345671";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "1 8 1 1 2 4 42 42 1764 8 21 21 441 28 441 7 23 22 2 0 565 564 1 ");
 }
 
 TEST_F(MaxPoolWithArgmaxV1Tiling, maxpool_with_argmax_v1_tiling_1) {
     using namespace optiling;
     std::string op_name = "MaxPoolWithArgmaxV1";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 253952, \"l1_size\": 1048576, \"kernel_h\": 3,\"kernel_w\": 3, \"stride_h\": 2, \"stride_w\": 2, \"pad_h\": 1, \"pad_w\": 1,\"dilation_h\": 1, \"dilation_w\": 1, \"ceil_mode\": 0}}";
 
@@ -115,7 +116,7 @@ TEST_F(MaxPoolWithArgmaxV1Tiling, maxpool_with_argmax_v1_tiling_1) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345671";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "0 8 1 1 2 4 32 32 1024 8 16 16 256 16 256 0 29 28 2 1 565 564 1 ");
 }
 

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -36,8 +37,8 @@ TEST_F(TileWithAxisTiling, TileWithAxisTiling_test_1) {
 
   std::string op_name = "TileWithAxis";
 
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = R"({"ori_axis_value": -1, "attr_axis": 0, "attr_tiles": 2, "_fusion_index": [[0], [1], [2], [3], [4], [5]], "_pattern": "Broadcast", "_flag_info": [false, false, true, false, false, false, false], "_base_info": {"000": [32, 4, 32760, 16376]}, "_elewise_vars": {"0": [10100], "1": [10100, 20000, 30000], "2": [10100, 20000, 30001], "3": [10100, 20000, 30002], "4": [10100, 20000, 30003], "5": [10100, 20000, 30004], "6": [10100, 20000, 30005], "8": [10100, 20001, 30001], "9": [10100, 20001, 30002], "10": [10100, 20001, 30003], "11": [10100, 20001, 30004], "12": [10100, 20001, 30005], "15": [10100, 20002, 30002], "16": [10100, 20002, 30003], "17": [10100, 20002, 30004], "18": [10100, 20002, 30005], "22": [10100, 20003, 30003], "23": [10100, 20003, 30004], "24": [10100, 20003, 30005], "29": [10100, 20004, 30004], "30": [10100, 20004, 30005], "36": [10100, 20005, 30005]}, "push_status": 1})";
 
@@ -71,7 +72,7 @@ TEST_F(TileWithAxisTiling, TileWithAxisTiling_test_1) {
   op_compile_info.key = "TILEWITHAXIS__COUNTER__1";
 
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 
   EXPECT_EQ(to_string(runInfo.tiling_data), "5 16 16 ");
 

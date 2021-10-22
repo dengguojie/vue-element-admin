@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -33,8 +34,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(GatherElementsTiling, gather_elements_tiling_0) {
   using namespace optiling;
   std::string op_name = "GatherElements";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("GatherElements");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("GatherElements");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, \"indices_dsize\":4, \"params_dsize\":2, \"axis\":0}}";
 
@@ -76,15 +77,15 @@ TEST_F(GatherElementsTiling, gather_elements_tiling_0) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "1 1 87552 1 174 1 174 0 0 0 174 87552 0 0 ");
 }
 
 TEST_F(GatherElementsTiling, gather_elements_tiling_1) {
   using namespace optiling;
   std::string op_name = "GatherElements";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("GatherElements");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("GatherElements");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, \"indices_dsize\":4, \"params_dsize\":2, \"axis\":0}}";
 
@@ -126,15 +127,15 @@ TEST_F(GatherElementsTiling, gather_elements_tiling_1) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "2 1 81 18 6 1 6 0 0 0 6 1458 0 0 ");
 }
 
 TEST_F(GatherElementsTiling, gather_elements_tiling_2) {
   using namespace optiling;
   std::string op_name = "GatherElements";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("GatherElements");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("GatherElements");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, \"indices_dsize\":4, \"params_dsize\":2, \"axis\":0}}";
 
@@ -176,15 +177,15 @@ TEST_F(GatherElementsTiling, gather_elements_tiling_2) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "6 1 81 960 600 32 18 24 0 32512 18 77760 0 3 ");
 }
 
 TEST_F(GatherElementsTiling, gather_elements_tiling_3) {
   using namespace optiling;
   std::string op_name = "GatherElements";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("GatherElements");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("GatherElements");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, \"indices_dsize\":4, \"params_dsize\":2, \"axis\":0}}";
 
@@ -226,15 +227,15 @@ TEST_F(GatherElementsTiling, gather_elements_tiling_3) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "3 1 81 960 256 32 8 0 0 32512 8 77760 0 0 ");
 }
 
 TEST_F(GatherElementsTiling, gather_elements_tiling_4) {
   using namespace optiling;
   std::string op_name = "GatherElements";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("GatherElements");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("GatherElements");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_size\": 262144, \"core_num\": 30, \"l1_size\":2097152, \"indices_dsize\":4, \"params_dsize\":2, \"axis\":0}}";
 
@@ -276,15 +277,15 @@ TEST_F(GatherElementsTiling, gather_elements_tiling_4) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "4 1 64 768 256 32 8 0 0 32512 8 49152 0 0 ");
 }
 
 TEST_F(GatherElementsTiling, gather_elements_tiling_5) {
   using namespace optiling;
   std::string op_name = "GatherElements";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("GatherElements");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("GatherElements");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_size\": 262144, \"core_num\": 30, \"l1_size\":2097152, \"indices_dsize\":4, \"params_dsize\":2, \"axis\":0}}";
 
@@ -326,15 +327,15 @@ TEST_F(GatherElementsTiling, gather_elements_tiling_5) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "5 1 64 289 272 32 8 16 0 32512 8 18496 0 2 ");
 }
 
 TEST_F(GatherElementsTiling, gather_elements_tiling_6) {
   using namespace optiling;
   std::string op_name = "GatherElements";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("GatherElements");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("GatherElements");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_size\": 262144, \"core_num\": 30, \"l1_size\":2097152, \"indices_dsize\":4, \"params_dsize\":2, \"axis\":0}}";
 
@@ -376,6 +377,6 @@ TEST_F(GatherElementsTiling, gather_elements_tiling_6) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "6 1 64 4096 272 32 8 16 0 32512 8 262144 0 2 ");
 }

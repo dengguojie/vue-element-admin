@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "pad_ops.h"
 #include "array_ops.h"
@@ -54,8 +55,8 @@ using namespace ut_util;
 */
 
 TEST_F(FillTiling, fill_tiling_test_1) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("Fill");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Fill");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::Fill("Fill");
 
   vector<vector<int64_t>> input_shapes = {
@@ -78,6 +79,6 @@ TEST_F(FillTiling, fill_tiling_test_1) {
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "15 1 ");
 }

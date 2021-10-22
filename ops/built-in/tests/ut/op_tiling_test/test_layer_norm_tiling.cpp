@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -31,8 +32,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_1) {
   using namespace optiling;
   std::string op_name = "LayerNorm";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = R"({
                         "input_format": "NCHW",
                         "core_num": 32,
@@ -79,7 +80,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_1) {
   op_compile_info.key = "LayerNorm_tiling_test_1";
 
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
   EXPECT_EQ(to_string(runInfo.tiling_data), "0 132 512 27 5 2 989855744 ");
 }
@@ -87,8 +88,8 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_1) {
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_2) {
   using namespace optiling;
   std::string op_name = "LayerNorm";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = R"({
                         "begin_norm_axis":1,
                         "begin_params_axis":-1,
@@ -191,7 +192,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_2) {
   op_compile_info.key = "LayerNorm_tiling_test_2";
 
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
   EXPECT_EQ(runInfo.tiling_key, 1480001);
   EXPECT_EQ(to_string(runInfo.tiling_data), "1024 30 512 948471945 32 1 20 23 ");
@@ -200,8 +201,8 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_2) {
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_3) {
   using namespace optiling;
   std::string op_name = "LayerNorm";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = R"({
                         "input_format": "NCHW",
                         "core_num": 32,
@@ -248,7 +249,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_3) {
   op_compile_info.key = "LayerNorm_tiling_test_3";
 
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
   EXPECT_EQ(to_string(runInfo.tiling_data), "1 34 158208 17 2 2 919869235 ");
 }
@@ -256,8 +257,8 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_3) {
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_4) {
   using namespace optiling;
   std::string op_name = "LayerNorm";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = R"({
                         "begin_norm_axis":0,
                         "begin_params_axis":-1,                       
@@ -390,7 +391,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_4) {
   op_compile_info.key = "LayerNorm_tiling_test_4";
 
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 1);
   EXPECT_EQ(runInfo.tiling_key, 2020001);
   EXPECT_EQ(to_string(runInfo.tiling_data), "34 309 512 877108573 34 1 20 34 ");
@@ -399,8 +400,8 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_4) {
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_5) {
   using namespace optiling;
   std::string op_name = "LayerNorm";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = R"({
                         "begin_norm_axis":1,
                         "begin_params_axis":-1,                        
@@ -502,7 +503,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_5) {
   op_compile_info.key = "LayerNorm_tiling_test_5";
 
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 5);
   EXPECT_EQ(runInfo.tiling_key, 1480001);
   EXPECT_EQ(to_string(runInfo.tiling_data), "34 309 512 919869235 8 1 20 8 ");
@@ -511,8 +512,8 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_5) {
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_6) {
   using namespace optiling;
   std::string op_name = "LayerNorm";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = R"({
                         "begin_norm_axis": -1,
                         "begin_params_axis":-1,                        
@@ -605,7 +606,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_6) {
   op_compile_info.key = "LayerNorm_tiling_test_6";
 
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
   EXPECT_EQ(runInfo.tiling_key, 671001);
   EXPECT_EQ(to_string(runInfo.tiling_data), "20 304 512 989855744 2 16 19 0 ");
@@ -614,8 +615,8 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_6) {
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_7) {
   using namespace optiling;
   std::string op_name = "LayerNorm";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = R"({
                         "begin_norm_axis":-1,
                         "begin_params_axis":-1,                        
@@ -708,7 +709,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_7) {
   op_compile_info.key = "LayerNorm_tiling_test_7";
 
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 784);
   EXPECT_EQ(runInfo.tiling_key, 671001);
   EXPECT_EQ(to_string(runInfo.tiling_data), "49 304 512 989855744 49 16 19 0 ");
@@ -717,8 +718,8 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_7) {
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_8) {
   using namespace optiling;
   std::string op_name = "LayerNorm";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = R"({
                         "begin_norm_axis": -1,
                         "begin_params_axis":-1,                        
@@ -811,7 +812,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_8) {
   op_compile_info.key = "LayerNorm_tiling_test_8";
 
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
   EXPECT_EQ(runInfo.tiling_key, 671001);
   EXPECT_EQ(to_string(runInfo.tiling_data), "34 309 512 989855744 2 16 20 0 ");
@@ -820,8 +821,8 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_8) {
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_9) {
   using namespace optiling;
   std::string op_name = "LayerNorm";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = R"({
                         "begin_norm_axis":-1,
                         "begin_params_axis":-1,                        
@@ -914,7 +915,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_9) {
   op_compile_info.key = "LayerNorm_tiling_test_9";
 
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 1);
   EXPECT_EQ(runInfo.tiling_key, 270001);
   EXPECT_EQ(to_string(runInfo.tiling_data), "352 4 512 989855744 352 1 5 0 ");
@@ -923,8 +924,8 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_9) {
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_10) {
   using namespace optiling;
   std::string op_name = "LayerNorm";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = R"({
                         "begin_norm_axis":-1,
                         "begin_params_axis":-1,                        
@@ -1017,7 +1018,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_10) {
   op_compile_info.key = "LayerNorm_tiling_test_10";
 
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
   EXPECT_EQ(runInfo.tiling_key, 1940001);
   EXPECT_EQ(to_string(runInfo.tiling_data), "32 121 768 984263339 1 1 768 1 ");
@@ -1027,8 +1028,8 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_10) {
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_11) {
   using namespace optiling;
   std::string op_name = "LayerNorm";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = R"({
                         "begin_norm_axis":-1,
                         "begin_params_axis":-1,                        
@@ -1090,7 +1091,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_11) {
   op_compile_info.key = "LayerNorm_tiling_test_11";
 
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
   EXPECT_EQ(runInfo.tiling_key, 671001);
   EXPECT_EQ(to_string(runInfo.tiling_data), "20 304 512 0 1 1 0 2 16 19 0 1 ");
@@ -1100,8 +1101,8 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_11) {
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_12) {
   using namespace optiling;
   std::string op_name = "LayerNorm";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = R"({
                         "begin_norm_axis":-1,
                         "begin_params_axis":-1,                        
@@ -1176,7 +1177,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_12) {
   op_compile_info.key = "LayerNorm_tiling_test_12";
 
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
   EXPECT_EQ(runInfo.tiling_key, 5391000);
   EXPECT_EQ(to_string(runInfo.tiling_data), "32 32 16 16 989855744 1 1 1 0 ");
@@ -1186,8 +1187,8 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_13) {
   using namespace optiling;
   // tik case
   std::string op_name = "LayerNorm";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = R"({
                         "input_format": "NCHW",
                         "core_num": 32,
@@ -1234,7 +1235,7 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_13) {
   op_compile_info.key = "LayerNorm_tiling_test_13";
 
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 27);
   EXPECT_EQ(to_string(runInfo.tiling_data), "0 132 512 27 5 2 989855744 ");
 }

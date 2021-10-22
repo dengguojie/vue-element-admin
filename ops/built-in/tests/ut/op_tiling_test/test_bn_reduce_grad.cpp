@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -76,8 +77,8 @@ static std::string compileInfo = R"({"_fusion_index": [[0], [1], [2], [3], [4]],
 TEST_F(BNReduceGradTiling, BnReduceGradTiling3) {
   using namespace optiling;
   std::string op_name = "BNTrainingReduceGrad";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
 
   std::vector<int64_t> input_x{128, 16, 20, 20, 16};
@@ -125,7 +126,7 @@ TEST_F(BNReduceGradTiling, BnReduceGradTiling3) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "REDUCEMEAN__COUNTER__3";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
   EXPECT_EQ(to_string(runInfo.tiling_data), "128 128 16 16 16 16 16 16 16 20 20 20 20 1 1 4 1 933484298 -1213999350 ");
 }

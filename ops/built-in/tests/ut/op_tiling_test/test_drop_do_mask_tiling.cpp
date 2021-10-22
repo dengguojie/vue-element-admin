@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "nn_norm_ops.h"
 #include "array_ops.h"
@@ -42,8 +43,8 @@ using namespace ge;
 */
 
 TEST_F(DropOutDoMaskTiling, dropout_do_mask_tiling_1) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("DropOutDoMask");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("DropOutDoMask");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::DropOutDoMask("DropOutDoMask");
 
   std::vector<int64_t> input_x_shape = {40, 10};
@@ -70,11 +71,11 @@ TEST_F(DropOutDoMaskTiling, dropout_do_mask_tiling_1) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
 
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 128 16 ");
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }

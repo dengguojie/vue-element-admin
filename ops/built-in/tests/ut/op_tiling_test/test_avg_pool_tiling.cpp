@@ -9,6 +9,7 @@
 #include "graph/graph.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/op_desc_utils.h"
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -42,8 +43,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(AvgPoolTiling, AvgPool_tiling_dynamic_nhw) {
   using namespace optiling;
   std::string op_name = "AvgPool";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "strides_h" : 60, "strides_w" : 60, "_vars": {"10000": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}})";
 
@@ -71,7 +72,7 @@ TEST_F(AvgPoolTiling, AvgPool_tiling_dynamic_nhw) {
 
   optiling::utils::OpCompileInfo op_compile_info("AvgPool_tiling_dynamic_nhw", compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(avg_pool_op, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(avg_pool_op, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 2);
   EXPECT_EQ(runInfo.GetTilingKey(), 10000);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 16 16 16 16 ");
@@ -80,8 +81,8 @@ TEST_F(AvgPoolTiling, AvgPool_tiling_dynamic_nhw) {
 TEST_F(AvgPoolTiling, AvgPool_tiling_dynamic_None) {
   using namespace optiling;
   std::string op_name = "AvgPool";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   const ge::AscendString compileInfo = R"({"_pattern": "Convolution", "push_status": 0, "tiling_type": "default_tiling", "default_range": {"10000": [1, 2147483647, 16, 16, 16, 16]}, "block_dim": {"10000": 1}, "strides_h" : 60, "strides_w" : 60, "_vars": {"10000": ["batch_n"]}})";
 
@@ -109,7 +110,7 @@ TEST_F(AvgPoolTiling, AvgPool_tiling_dynamic_None) {
 
   optiling::utils::OpCompileInfo op_compile_info("AvgPool_tiling_dynamic_None", compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(avg_pool_op, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(avg_pool_op, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
   EXPECT_EQ(runInfo.GetTilingKey(), 10000);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 ");
@@ -118,8 +119,8 @@ TEST_F(AvgPoolTiling, AvgPool_tiling_dynamic_None) {
 TEST_F(AvgPoolTiling, AvgPool_tiling_dynamic_Vector) {
   using namespace optiling;
   std::string op_name = "AvgPool";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"({"strides_h" : 64, "strides_w" : 64, "vars": {"ub_ele": 126976, "core_num": 30, "ksize_h": 1, "ksize_w": 1, "strides_h": 64, "strides_w": 64, "padding": 0}})";
 
@@ -147,7 +148,7 @@ TEST_F(AvgPoolTiling, AvgPool_tiling_dynamic_Vector) {
 
   optiling::utils::OpCompileInfo op_compile_info("AvgPool_tiling_dynamic_Vector", compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(avg_pool_op, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(avg_pool_op, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 30 7 5 79 69 2 2 65 65 0 0 0 0 1 1 1 2 0 2 0 ");
 }
 
@@ -155,8 +156,8 @@ TEST_F(AvgPoolTiling, AvgPool_tiling_dynamic_Vector) {
 TEST_F(AvgPoolTiling, AvgPool_tiling_fuzz_build_list_input) {
   using namespace optiling;
   std::string op_name = "AvgPool";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"([{"_pattern": "Convolution", "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"0": [16, 32, 16, 32, 16, 32]}, "strides_h" : 60, "strides_w" : 60, "block_dim": {"0": 16}, "_vars": {"0": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}},{"_pattern": "Convolution", "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"1": [16, 32, 64, 128, 64, 128]}, "block_dim": {"1": 16}, "_vars": {"1": ["batch_n", "fmap_h", "ho", "fmap_w", "wo"]}}])";
 
@@ -183,6 +184,6 @@ TEST_F(AvgPoolTiling, AvgPool_tiling_fuzz_build_list_input) {
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
   optiling::utils::OpCompileInfo op_compile_info("AvgPool_tiling_fuzz_build_list_input", compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(avg_pool_op, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(avg_pool_op, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 16 14 16 12 ");  
 }

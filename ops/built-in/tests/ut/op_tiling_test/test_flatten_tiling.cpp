@@ -19,6 +19,7 @@
 #include <iostream>
 #include <vector>
 
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -46,8 +47,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(FlattenTiling, FlattenTiling_tiling_1) {
   using namespace optiling;
   std::string op_name = "Flatten";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 63488, \"block_size\": 8}}";
 
@@ -78,6 +79,6 @@ TEST_F(FlattenTiling, FlattenTiling_tiling_1) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234561";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "8 32 0 8 0 8 ");
 }

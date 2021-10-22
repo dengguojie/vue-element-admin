@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include <iostream>
 using namespace std;
@@ -32,8 +33,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_0) {
     using namespace optiling;
     std::string op_name = "LayerNormBetaGammaBackprop";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("LayerNormBetaGammaBackprop");
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("LayerNormBetaGammaBackprop");
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     
     std::string compileInfo = "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"batch_cols_padding\":4835, \"k_num\":139}}";
 
@@ -54,14 +55,14 @@ TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_0) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "aa";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_1) {
     using namespace optiling;
     std::string op_name = "LayerNormBetaGammaBackpropV2";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("LayerNormBetaGammaBackpropV2");
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("LayerNormBetaGammaBackpropV2");
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"core_num\": 32, \"max_reduce_factor\":50, \"max_last_factor\":2048, \"shape_gamma\":[512],\"dynamic_reduce\":true,\"dynamic_normal\":false}";
 
@@ -82,14 +83,14 @@ TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_1) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "tiling1";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_2) {
     using namespace optiling;
     std::string op_name = "LayerNormBetaGammaBackpropV2";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("LayerNormBetaGammaBackpropV2");
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("LayerNormBetaGammaBackpropV2");
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"core_num\": 32, \"max_reduce_factor\":50, \"max_last_factor\":2048, \"shape_gamma\":[512],\"dynamic_reduce\":true,\"dynamic_normal\":false}";
 
@@ -110,14 +111,14 @@ TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_2) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "aa2";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_3) {
     using namespace optiling;
     std::string op_name = "LayerNormBetaGammaBackpropV2";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("LayerNormBetaGammaBackpropV2");
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("LayerNormBetaGammaBackpropV2");
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"core_num\": 32, \"max_reduce_factor\":50, \"max_last_factor\":2048, \"shape_gamma\":[512],\"dynamic_reduce\":true,\"dynamic_normal\":false}";
 
@@ -138,14 +139,14 @@ TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_3) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "aa3";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_4) {
     using namespace optiling;
     std::string op_name = "LayerNormBetaGammaBackpropV2";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("LayerNormBetaGammaBackpropV2");
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("LayerNormBetaGammaBackpropV2");
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"core_num\": 32, \"max_reduce_factor\":50, \"max_last_factor\":2048, \"shape_gamma\":[4096],\"dynamic_reduce\":true,\"dynamic_normal\":false}";
 
@@ -166,14 +167,14 @@ TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_4) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "aa4";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_5) {
     using namespace optiling;
     std::string op_name = "LayerNormBetaGammaBackpropV2";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("LayerNormBetaGammaBackpropV2");
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("LayerNormBetaGammaBackpropV2");
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"core_num\": 32, \"max_reduce_factor\":50, \"max_last_factor\":2048, \"shape_gamma\":[512],\"dynamic_reduce\":false,\"dynamic_normal\":true}";
 
@@ -194,14 +195,14 @@ TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_5) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "aa5";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
  
 TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_6) {
     using namespace optiling;
     std::string op_name = "LayerNormBetaGammaBackpropV2";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("LayerNormBetaGammaBackpropV2");
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("LayerNormBetaGammaBackpropV2");
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"core_num\": 32, \"max_reduce_factor\":50, \"max_last_factor\":2048, \"shape_gamma\":[512],\"dynamic_reduce\":false,\"dynamic_normal\":true}";
 
@@ -222,15 +223,15 @@ TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_6) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "aa6";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_7) {
     std::cout<<"tiling7 start."<<std::endl;
     using namespace optiling;
     std::string op_name = "LayerNormBetaGammaBackpropV2";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("LayerNormBetaGammaBackpropV2");
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("LayerNormBetaGammaBackpropV2");
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"core_num\": 32, \"max_reduce_factor\":50, \"max_last_factor\":2048, \"shape_gamma\":[512],\"dynamic_reduce\":false,\"dynamic_normal\":true}";
 
@@ -251,15 +252,15 @@ TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_7) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "aa7";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_8) {
     std::cout<<"tiling8 start."<<std::endl;
     using namespace optiling;
     std::string op_name = "LayerNormBetaGammaBackpropV2";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("LayerNormBetaGammaBackpropV2");
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("LayerNormBetaGammaBackpropV2");
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"core_num\": 32, \"max_reduce_factor\":50, \"max_last_factor\":2048, \"shape_gamma\":[4096],\"dynamic_reduce\":false,\"dynamic_normal\":true}";
 
@@ -280,15 +281,15 @@ TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_8) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "aa8";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_9) {
     std::cout<<"tiling9 start."<<std::endl;
     using namespace optiling;
     std::string op_name = "LayerNormBetaGammaBackpropV2";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("LayerNormBetaGammaBackpropV2");
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("LayerNormBetaGammaBackpropV2");
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"core_num\": 32, \"max_reduce_factor\":50, \"max_last_factor\":2048, \"shape_gamma\":[512],\"dynamic_reduce\":true,\"dynamic_normal\":true}";
 
@@ -309,15 +310,15 @@ TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_9) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "aa9";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_10) {
     std::cout<<"tiling10 start."<<std::endl;
     using namespace optiling;
     std::string op_name = "LayerNormBetaGammaBackpropV2";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("LayerNormBetaGammaBackpropV2");
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("LayerNormBetaGammaBackpropV2");
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"core_num\": 32, \"max_reduce_factor\":50, \"max_last_factor\":2048, \"shape_gamma\":[512],\"dynamic_reduce\":true,\"dynamic_normal\":true}";
 
@@ -338,15 +339,15 @@ TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_10) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "aa10";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_11) {
     std::cout<<"tiling11 start."<<std::endl;
     using namespace optiling;
     std::string op_name = "LayerNormBetaGammaBackpropV2";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("LayerNormBetaGammaBackpropV2");
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("LayerNormBetaGammaBackpropV2");
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"core_num\": 32, \"max_reduce_factor\":50, \"max_last_factor\":2048, \"shape_gamma\":[512],\"dynamic_reduce\":true,\"dynamic_normal\":true}";
 
@@ -367,15 +368,15 @@ TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_11) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "aa11";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_12) {
     std::cout<<"tiling12 start."<<std::endl;
     using namespace optiling;
     std::string op_name = "LayerNormBetaGammaBackpropV2";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("LayerNormBetaGammaBackpropV2");
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("LayerNormBetaGammaBackpropV2");
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"core_num\": 32, \"max_reduce_factor\":50, \"max_last_factor\":2048, \"shape_gamma\":[4096],\"dynamic_reduce\":true,\"dynamic_normal\":true}";
 
@@ -396,15 +397,15 @@ TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_12) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "aa12";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_13) {
     std::cout<<"tiling13 start."<<std::endl;
     using namespace optiling;
     std::string op_name = "LayerNormBetaGammaBackpropV2";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("LayerNormBetaGammaBackpropV2");
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("LayerNormBetaGammaBackpropV2");
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"core_num\": 32, \"max_reduce_factor\":50, \"max_last_factor\":2048, \"shape_gamma\":[2,3,512],\"dynamic_reduce\":true,\"dynamic_normal\":false}";
 
@@ -425,15 +426,15 @@ TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_13) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "aa13";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_14) {
     std::cout<<"tiling14 start."<<std::endl;
     using namespace optiling;
     std::string op_name = "LayerNormBetaGammaBackpropV2";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("LayerNormBetaGammaBackpropV2");
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("LayerNormBetaGammaBackpropV2");
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"core_num\": 32, \"max_reduce_factor\":50, \"max_last_factor\":2048, \"shape_gamma\":[32,100,512],\"dynamic_reduce\":true,\"dynamic_normal\":false}";
 
@@ -454,15 +455,15 @@ TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_14) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "aa14";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_15) {
     std::cout<<"tiling15 start."<<std::endl;
     using namespace optiling;
     std::string op_name = "LayerNormBetaGammaBackpropV2";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("LayerNormBetaGammaBackpropV2");
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("LayerNormBetaGammaBackpropV2");
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"core_num\": 0, \"max_reduce_factor\":50, \"max_last_factor\":2048, \"shape_gamma\":[32,100,512],\"dynamic_reduce\":true,\"dynamic_normal\":false}";
 
@@ -483,6 +484,6 @@ TEST_F(LayerNormBetaGammaTiling, layernormbetagamma_tiling_15) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "aa15";
     OpRunInfo runInfo;
-    ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 

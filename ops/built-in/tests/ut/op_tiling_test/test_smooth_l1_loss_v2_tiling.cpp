@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -33,8 +34,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(SmoothL1LossV2TilingTest, SmoothL1LossV2_Tiling_Test_1) {
   using namespace optiling;
   optiling::OpRunInfo op_run_info;
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("SmoothL1LossV2");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SmoothL1LossV2");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   TeOpTensorArg tensorInputs, tensorOutputsArg;
   TeOpParas opParas;
 
@@ -68,7 +69,7 @@ TEST_F(SmoothL1LossV2TilingTest, SmoothL1LossV2_Tiling_Test_1) {
 
   // do tilling, get runInfo
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   std::cout << to_string(runInfo.tiling_data) << std::endl;
   EXPECT_EQ(to_string(runInfo.tiling_data),
             "1 4000 1 1 964891246 ");
@@ -77,8 +78,8 @@ TEST_F(SmoothL1LossV2TilingTest, SmoothL1LossV2_Tiling_Test_1) {
 TEST_F(SmoothL1LossV2TilingTest, SmoothL1LossV2_Tiling_Test_2) {
   using namespace optiling;
   optiling::OpRunInfo op_run_info;
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("SmoothL1LossV2");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SmoothL1LossV2");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   TeOpTensorArg tensorInputs, tensorOutputsArg;
   TeOpParas opParas;
 
@@ -112,7 +113,7 @@ TEST_F(SmoothL1LossV2TilingTest, SmoothL1LossV2_Tiling_Test_2) {
 
   // do tilling, get runInfo
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   std::cout << to_string(runInfo.tiling_data) << std::endl;
   EXPECT_EQ(to_string(runInfo.tiling_data),
             "1 4000 1 1 ");
@@ -121,8 +122,8 @@ TEST_F(SmoothL1LossV2TilingTest, SmoothL1LossV2_Tiling_Test_2) {
 TEST_F(SmoothL1LossV2TilingTest, SmoothL1LossV2_Tiling_Test_3) {
   using namespace optiling;
   optiling::OpRunInfo op_run_info;
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("SmoothL1LossV2");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SmoothL1LossV2");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   TeOpTensorArg tensorInputs, tensorOutputsArg;
   TeOpParas opParas;
 
@@ -156,7 +157,7 @@ TEST_F(SmoothL1LossV2TilingTest, SmoothL1LossV2_Tiling_Test_3) {
 
   // do tilling, get runInfo
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   std::cout << to_string(runInfo.tiling_data) << std::endl;
   EXPECT_EQ(to_string(runInfo.tiling_data),
             "200000 200000 200000 ");
@@ -166,8 +167,8 @@ TEST_F(SmoothL1LossV2TilingTest, SmoothL1LossV2_Tiling_Test_3) {
 TEST_F(SmoothL1LossV2TilingTest, SmoothL1LossV2_Tiling_Test_4) {
   using namespace optiling;
   optiling::OpRunInfo op_run_info;
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("SmoothL1LossV2");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SmoothL1LossV2");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   TeOpTensorArg tensorInputs, tensorOutputsArg;
   TeOpParas opParas;
 
@@ -201,7 +202,7 @@ TEST_F(SmoothL1LossV2TilingTest, SmoothL1LossV2_Tiling_Test_4) {
 
   // do tilling, get runInfo
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   std::cout << to_string(runInfo.tiling_data) << std::endl;
   EXPECT_EQ(to_string(runInfo.tiling_data),
             "1 4000 1 1 ");
@@ -210,8 +211,8 @@ TEST_F(SmoothL1LossV2TilingTest, SmoothL1LossV2_Tiling_Test_4) {
 TEST_F(SmoothL1LossV2TilingTest, SmoothL1LossV2_Tiling_Test_5) {
   using namespace optiling;
   optiling::OpRunInfo op_run_info;
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("SmoothL1LossV2");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SmoothL1LossV2");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   TeOpTensorArg tensorInputs, tensorOutputsArg;
   TeOpParas opParas;
 
@@ -245,7 +246,7 @@ TEST_F(SmoothL1LossV2TilingTest, SmoothL1LossV2_Tiling_Test_5) {
 
   // do tilling, get runInfo
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   std::cout << to_string(runInfo.tiling_data) << std::endl;
   EXPECT_EQ(to_string(runInfo.tiling_data),
             "1 4000 1 1 3097 ");

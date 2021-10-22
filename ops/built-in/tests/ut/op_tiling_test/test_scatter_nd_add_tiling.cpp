@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -49,8 +50,8 @@ static string to_string(const std::stringstream& tiling_data) {
 TEST_F(ScatterNdAddTiling, scatter_nd_add_tiling_0) {
   using namespace optiling;
   std::string op_name = "ScatterNdAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterNdAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterNdAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\":4, \"indices_size\":4}}";
 
@@ -95,15 +96,15 @@ TEST_F(ScatterNdAddTiling, scatter_nd_add_tiling_0) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234560";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "1 8 6 8 0 4 16 0 8 24 8 0 0 0 0 0 2 2 ");
 }
 
 TEST_F(ScatterNdAddTiling, scatter_nd_add_tiling_1) {
   using namespace optiling;
   std::string op_name = "ScatterNdAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterNdAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterNdAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\":4, \"indices_size\":4}}";
 
@@ -148,15 +149,15 @@ TEST_F(ScatterNdAddTiling, scatter_nd_add_tiling_1) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234561";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "2 16672 32 88888 0 4 177776 2 25400 266664 88888 0 0 0 0 0 2 2 ");
 }
 
 TEST_F(ScatterNdAddTiling, scatter_nd_add_tiling_2) {
   using namespace optiling;
   std::string op_name = "ScatterNdAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterNdAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterNdAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\":4, \"indices_size\":4}}";
 
@@ -201,15 +202,15 @@ TEST_F(ScatterNdAddTiling, scatter_nd_add_tiling_2) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234562";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "3 8 1 7 0 4 14 0 14 21 7 0 0 0 0 0 2 2 ");
 }
 
 TEST_F(ScatterNdAddTiling, scatter_nd_add_tiling_3) {
   using namespace optiling;
   std::string op_name = "ScatterNdAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterNdAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterNdAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\":4, \"indices_size\":4}}";
 
@@ -254,15 +255,15 @@ TEST_F(ScatterNdAddTiling, scatter_nd_add_tiling_3) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234563";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "4 8 1 7 5 19056 622216 0 7 21 7 0 0 0 0 0 2 88888 ");
 }
 
 TEST_F(ScatterNdAddTiling, scatter_nd_add_tiling_4) {
   using namespace optiling;
   std::string op_name = "ScatterNdAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterNdAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterNdAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_size\": 0, \"core_num\": 0, \"var_size\":4, \"indices_size\":4}}";
 
@@ -307,5 +308,5 @@ TEST_F(ScatterNdAddTiling, scatter_nd_add_tiling_4) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "h1234560";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }

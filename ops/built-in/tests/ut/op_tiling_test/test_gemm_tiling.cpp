@@ -9,6 +9,7 @@
 #include "graph/graph.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/op_desc_utils.h"
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -42,8 +43,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(GEMMTiling, GEMM_op_tiling_obj_matmul) {
   using namespace optiling;
   std::string op_name = "MatMul";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"({"_pattern": "Matmul", "format_a": "FRACTAL_NZ", "format_b": "FRACTAL_NZ", "dynamic_mode":"dynamic_mkn", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 3, 1, 3, 1, 3]}, "block_dim": {"10000": 2}, "attrs":{"transpose_a": false, "transpose_b": false}})";
 
@@ -79,7 +80,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_obj_matmul) {
 
   optiling::utils::OpCompileInfo op_compile_info("matmul_op_tiling_test_0", compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(matmul, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(matmul, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 2);
   EXPECT_EQ(runInfo.GetTilingKey(), 10000);
 }
@@ -87,8 +88,8 @@ TEST_F(GEMMTiling, GEMM_op_tiling_obj_matmul) {
 TEST_F(GEMMTiling, GEMM_op_tiling_obj_batchmatmul) {
   using namespace optiling;
   std::string op_name = "BatchMatMul";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"({"_pattern": "BatchMatMul", "format_a": "FRACTAL_NZ", "format_b": "FRACTAL_NZ", "dynamic_mode":"dynamic_mknb", "repo_seeds": {"10000": [1, 3, 3, 2]}, "repo_range": {"10000": [1, 3, 1, 3, 1, 4, 1, 4]}, "cost_range": {}, "block_dim": {"10000": 2}, "attrs":{"transpose_a": true, "transpose_b": true}})";
 
@@ -124,7 +125,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_obj_batchmatmul) {
 
   optiling::utils::OpCompileInfo op_compile_info("batchmatmul_op_tiling_test_0", compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(matmul, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(matmul, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 2);
   EXPECT_EQ(runInfo.GetTilingKey(), 10000);
 }
@@ -132,8 +133,8 @@ TEST_F(GEMMTiling, GEMM_op_tiling_obj_batchmatmul) {
 TEST_F(GEMMTiling, GEMM_op_tiling_arr) {
   using namespace optiling;
   std::string op_name = "MatMul";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"([{"_pattern": "Matmul", "format_a": "FRACTAL_NZ", "format_b": "FRACTAL_NZ", "dynamic_mode":"dynamic_mkn", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 3, 1, 3, 1, 3]}, "block_dim": {"10000": 2}, "attrs":{"transpose_a": false, "transpose_b": false}},{"_pattern": "Matmul", "dynamic_mode":"dynamic_mkn", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10001": [1, 3, 1, 3, 4, 7]}, "block_dim": {"10001": 2}, "attrs":{"transpose_a": false, "transpose_b": false}}])";
 
@@ -169,7 +170,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_arr) {
 
   optiling::utils::OpCompileInfo op_compile_info("matmul_op_tiling_test_1", compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(matmul, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(matmul, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 2);
   EXPECT_EQ(runInfo.GetTilingKey(), 10000);
 }
@@ -177,8 +178,8 @@ TEST_F(GEMMTiling, GEMM_op_tiling_arr) {
 TEST_F(GEMMTiling, GEMM_op_tiling_obj_nd) {
   using namespace optiling;
   std::string op_name = "MatMul";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"({"_pattern": "Matmul", "format_a": "ND", "format_b": "ND", "dynamic_mode":"dynamic_mkn", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 3, 1, 3, 1, 3]}, "block_dim": {"10000": 2}, "attrs":{"transpose_a": false, "transpose_b": false}})";
 
@@ -214,7 +215,7 @@ TEST_F(GEMMTiling, GEMM_op_tiling_obj_nd) {
 
   optiling::utils::OpCompileInfo op_compile_info("matmul_op_tiling_test_2", compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(matmul, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(matmul, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 2);
   EXPECT_EQ(runInfo.GetTilingKey(), 10000);
 }

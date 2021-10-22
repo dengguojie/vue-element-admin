@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -33,8 +34,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(MirrorPadTiling, mirror_pad_tiling_0) {
   using namespace optiling;
   std::string op_name = "MirrorPad";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"output_dim4_max_cnt\": 64, \"core_num\": 2, \"dtype_rate\": 2}}";
 
@@ -74,15 +75,15 @@ TEST_F(MirrorPadTiling, mirror_pad_tiling_0) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234560";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "0 1 64 64 64 254 0 0 0 0 0 0 0 0 0 0 2 131072 131072 ");
 }
 
 TEST_F(MirrorPadTiling, mirror_pad_tiling_1) {
   using namespace optiling;
   std::string op_name = "MirrorPad";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"output_dim4_max_cnt\": 64, \"core_num\": 2, \"dtype_rate\": 2}}";
 
@@ -122,15 +123,15 @@ TEST_F(MirrorPadTiling, mirror_pad_tiling_1) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234560";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "1 1 64 64 64 8 0 0 1 1 1 1 1 1 0 0 1 0 4356 ");
 }
 
 TEST_F(MirrorPadTiling, mirror_pad_tiling_2) {
   using namespace optiling;
   std::string op_name = "MirrorPad";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"output_dim4_max_cnt\": 64, \"core_num\": 2, \"dtype_rate\": 2}}";
 
@@ -170,6 +171,6 @@ TEST_F(MirrorPadTiling, mirror_pad_tiling_2) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234560";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "2 1 64 64 64 256 0 0 0 0 0 0 0 0 0 0 2 131072 131072 ");
 }

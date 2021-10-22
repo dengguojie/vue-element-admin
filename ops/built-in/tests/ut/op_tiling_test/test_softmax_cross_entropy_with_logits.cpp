@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -40,8 +41,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": -1, "features_shape1": -1, "labels_shape0": -1, "labels_shape1": -1},
@@ -101,7 +102,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_1";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -112,8 +113,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": -1, "features_shape1": -1, "labels_shape0": -1, "labels_shape1": -1},
@@ -173,7 +174,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_2";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -184,8 +185,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": -1, "features_shape1": -1, "labels_shape0": -1, "labels_shape1": -1},
@@ -245,7 +246,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_3";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -256,8 +257,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": -1, "features_shape1": -1, "labels_shape0": -1, "labels_shape1": -1},
@@ -317,7 +318,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_4";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -328,8 +329,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": -1, "features_shape1": -1, "labels_shape0": -1, "labels_shape1": -1},
@@ -389,7 +390,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_5";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -400,8 +401,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": -1, "features_shape1": -1, "labels_shape0": -1, "labels_shape1": 8},
@@ -461,7 +462,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_6";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -472,8 +473,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": -1, "features_shape1": -1, "labels_shape0": -1, "labels_shape1": 8},
@@ -533,7 +534,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_7";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -544,8 +545,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": -1, "features_shape1": -1, "labels_shape0": 98, "labels_shape1": -1},
@@ -605,7 +606,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_8";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -616,8 +617,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": -1, "features_shape1": -1, "labels_shape0": 98, "labels_shape1": -1},
@@ -677,7 +678,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_9";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -688,8 +689,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": -1, "features_shape1": 8, "labels_shape0": -1, "labels_shape1": -1},
@@ -749,7 +750,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_10";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -760,8 +761,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": -1, "features_shape1": 8, "labels_shape0": -1, "labels_shape1": -1},
@@ -821,7 +822,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_11";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -832,8 +833,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": 98, "features_shape1": -1, "labels_shape0": -1, "labels_shape1": -1},
@@ -893,7 +894,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_12";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -904,8 +905,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": 98, "features_shape1": -1, "labels_shape0": -1, "labels_shape1": -1},
@@ -965,7 +966,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_13";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -977,8 +978,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": -1, "features_shape1": -1, "labels_shape0": 98, "labels_shape1": 8},
@@ -1038,7 +1039,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_14";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -1050,8 +1051,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": -1, "features_shape1": 8, "labels_shape0": -1, "labels_shape1": 8},
@@ -1111,7 +1112,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_15";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -1123,8 +1124,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": -1, "features_shape1": 8, "labels_shape0": -1, "labels_shape1": 8},
@@ -1184,7 +1185,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_16";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -1196,8 +1197,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": -1, "features_shape1": 8, "labels_shape0": 98, "labels_shape1": -1},
@@ -1257,7 +1258,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_17";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -1269,8 +1270,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": 98, "features_shape1": -1, "labels_shape0": -1, "labels_shape1": 8},
@@ -1330,7 +1331,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_18";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -1342,8 +1343,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": 98, "features_shape1": -1, "labels_shape0": 98, "labels_shape1": -1},
@@ -1403,7 +1404,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_19";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -1415,8 +1416,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": 98, "features_shape1": -1, "labels_shape0": 98, "labels_shape1": -1},
@@ -1476,7 +1477,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_20";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -1488,8 +1489,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": 98, "features_shape1": 8, "labels_shape0": -1, "labels_shape1": -1},
@@ -1549,7 +1550,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_21";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -1561,8 +1562,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": -1, "features_shape1": 8, "labels_shape0": 98, "labels_shape1": 8},
@@ -1622,7 +1623,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_22";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -1634,8 +1635,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": 98, "features_shape1": -1, "labels_shape0": 98, "labels_shape1": 8},
@@ -1695,7 +1696,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_23";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -1707,8 +1708,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": 98, "features_shape1": 8, "labels_shape0": -1, "labels_shape1": 8},
@@ -1768,7 +1769,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_24";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -1780,8 +1781,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": 98, "features_shape1": 8, "labels_shape0": 98, "labels_shape1": -1},
@@ -1841,7 +1842,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_25";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -1853,8 +1854,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": 98, "features_shape1": 8, "labels_shape0": 98, "labels_shape1": 8},
@@ -1914,7 +1915,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_26";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -1926,8 +1927,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": 98, "features_shape1": 8, "labels_shape0": 98, "labels_shape1": 1},
@@ -1987,7 +1988,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_27";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -2000,8 +2001,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": 98, "features_shape1": 1, "labels_shape0": 98, "labels_shape1": 8},
@@ -2061,7 +2062,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_28";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -2074,8 +2075,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": 98, "features_shape1": 1, "labels_shape0": 1, "labels_shape1": 8},
@@ -2135,7 +2136,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_29";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -2148,8 +2149,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": 1, "features_shape1": 8, "labels_shape0": 98, "labels_shape1": 1},
@@ -2209,7 +2210,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_30";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -2221,8 +2222,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": 1, "features_shape1": 8, "labels_shape0": 98, "labels_shape1": 1},
@@ -2282,7 +2283,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_31";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 12);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -2295,8 +2296,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": 98, "features_shape1": 8000, "labels_shape0": 98, "labels_shape1": 8000},
@@ -2356,7 +2357,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_32";
 
     OpRunInfo runInfo;
-    EXPECT_EQ(iter->second(opParas, op_compile_info, runInfo), false);
+    EXPECT_EQ(iter->second.tiling_func_(opParas, op_compile_info, runInfo), false);
 //    EXPECT_EQ(runInfo.block_dim, 12);
 
 //    std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;
@@ -2369,8 +2370,8 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
 {
     using namespace optiling;
     std::string op_name = "SoftmaxCrossEntropyWithLogits";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "_pattern": "SoftmaxCrossEntropyWithLogits",
                         "ori_shape": {"features_shape0": 7, "features_shape1": 8, "labels_shape0": 7, "labels_shape1": 8},
@@ -2430,7 +2431,7 @@ TEST_F(SoftmaxCrossEntropyWithLogitsTiling, SoftmaxCrossEntropyWithLogits_tiling
     op_compile_info.key = "SoftmaxCrossEntropyWithLogits_tiling_test_33";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 1);
 
     std::cout << "to_string(runInfo.tiling_data)" << to_string(runInfo.tiling_data) << std::endl;

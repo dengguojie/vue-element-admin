@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -34,8 +35,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(UnpackTiling, Unpack_tiling1) {
   using namespace optiling;
   std::string op_name = "Unpack";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   // dynamic_tile_d_llt_case_1
   std::string compileInfo = R"({ "push_status": 0, "compile_vars": {"core_num": 32, "ub_size": 262144, "output_num": 1, "axis": 2, "is_special_tiling": false}, "vars": {"0": ["left_dim", "right_dim", "left_dim_out", "right_dim_in", "split_factor"]}})";
 
@@ -64,15 +65,15 @@ TEST_F(UnpackTiling, Unpack_tiling1) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "Unpack_tiling1";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "100 5412 32 16913 16913 ");
 }
 
 TEST_F(UnpackTiling, Unpack_tiling2) {
   using namespace optiling;
   std::string op_name = "Unpack";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   // dynamic_tile_d_llt_case_2
   std::string compileInfo = R"({ "push_status": 0, "compile_vars": {"core_num": 32, "ub_size": 262144, "output_num": 2, "axis": 1, "is_special_tiling": false}, "vars": {"1": ["left_dim", "right_dim", "left_dim_out", "right_dim_in", "split_factor"], "2": ["left_dim", "right_dim", "left_dim_out", "right_dim_in", "split_factor"], "3": ["left_dim", "right_dim", "left_dim_out", "right_dim_in", "split_factor"]}})";
 
@@ -109,15 +110,15 @@ TEST_F(UnpackTiling, Unpack_tiling2) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "Unpack_tiling2";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "70 392644 32 392644 130876 ");
 }
 
 TEST_F(UnpackTiling, Unpack_tiling3) {
   using namespace optiling;
   std::string op_name = "Unpack";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   // dynamic_tile_d_llt_case_3
   std::string compileInfo = R"({ "push_status": 0, "compile_vars": {"core_num": 32, "ub_size": 262144, "output_num": 2, "axis": 1, "is_special_tiling": false}, "vars": {"1": ["left_dim", "right_dim", "left_dim_out", "right_dim_in", "split_factor"], "2": ["left_dim", "right_dim", "left_dim_out", "right_dim_in", "split_factor"], "3": ["left_dim", "right_dim", "left_dim_out", "right_dim_in", "split_factor"]}})";
 
@@ -154,15 +155,15 @@ TEST_F(UnpackTiling, Unpack_tiling3) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "Unpack_tiling3";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "1 392644 1 12271 1 ");
 }
 
 TEST_F(UnpackTiling, Unpack_tiling4) {
   using namespace optiling;
   std::string op_name = "Unpack";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   // dynamic_tile_d_llt_case_4
   std::string compileInfo = R"({ "push_status": 0, "compile_vars": {"core_num": 32, "ub_size": 262144, "output_num": 2, "axis": 1, "is_special_tiling": false}, "vars": {"1": ["left_dim", "right_dim", "left_dim_out", "right_dim_in", "split_factor"], "2": ["left_dim", "right_dim", "left_dim_out", "right_dim_in", "split_factor"], "3": ["left_dim", "right_dim", "left_dim_out", "right_dim_in", "split_factor"]}})";
 
@@ -199,15 +200,15 @@ TEST_F(UnpackTiling, Unpack_tiling4) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "Unpack_tiling4";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "70 4 23 4 4 ");
 }
 
 TEST_F(UnpackTiling, Unpack_tiling5) {
   using namespace optiling;
   std::string op_name = "Unpack";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   // dynamic_tile_d_llt_case_5
   std::string compileInfo = R"({ "push_status": 0, "compile_vars": {"core_num": 32, "ub_size": 262144, "output_num": 2, "axis": 1, "is_special_tiling": false}, "vars": {"1": ["left_dim", "right_dim", "left_dim_out", "right_dim_in", "split_factor"], "2": ["left_dim", "right_dim", "left_dim_out", "right_dim_in", "split_factor"], "3": ["left_dim", "right_dim", "left_dim_out", "right_dim_in", "split_factor"]}})";
 
@@ -244,15 +245,15 @@ TEST_F(UnpackTiling, Unpack_tiling5) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "Unpack_tiling5";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "70 16 32 16 3 ");
 }
 
 TEST_F(UnpackTiling, Unpack_tiling6) {
   using namespace optiling;
   std::string op_name = "Unpack";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   // dynamic_tile_d_llt_case_6
   std::string compileInfo = R"({ "push_status": 0, "compile_vars": {"core_num": 32, "ub_size": 262144, "output_num": 2, "axis": 1, "is_special_tiling": false}, "vars": {"1": ["left_dim", "right_dim", "left_dim_out", "right_dim_in", "split_factor"], "2": ["left_dim", "right_dim", "left_dim_out", "right_dim_in", "split_factor"], "3": ["left_dim", "right_dim", "left_dim_out", "right_dim_in", "split_factor"]}})";
 
@@ -289,5 +290,5 @@ TEST_F(UnpackTiling, Unpack_tiling6) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "Unpack_tiling6";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }

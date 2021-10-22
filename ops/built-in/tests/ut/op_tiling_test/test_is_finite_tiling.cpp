@@ -30,6 +30,7 @@
 #include "selection_ops.h"
 #include "math_ops.h"
 #include "array_ops.h"
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -61,8 +62,8 @@ static std::string to_string(const std::stringstream& tiling_data) {
 
 TEST_F(IsFiniteTiling, IsFiniteTiling1) {
 std::string op_name = "IsFinite";
-auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
 std::string compileInfo =
         "{\"vars\": {\"ub_size\": 24320, \"core_num\": 48, \"input_data_byte\": 4}}";
@@ -82,7 +83,7 @@ opParas.UpdateInputDesc("x", tensor_input);
 
 optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 optiling::utils::OpRunInfo runInfo;
-ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
 EXPECT_EQ(
         to_string(runInfo.GetAllTilingData()),
 "1 512 0 0 0 512 0 512 ");
@@ -90,8 +91,8 @@ EXPECT_EQ(
 
 TEST_F(IsFiniteTiling, IsFiniteTiling2) {
 std::string op_name = "IsFinite";
-auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
 std::string compileInfo =
         "{\"vars\": {\"ub_size\": 24320, \"core_num\": 48, \"input_data_byte\": 4}}";
@@ -111,7 +112,7 @@ opParas.UpdateInputDesc("x", tensor_input);
 
 optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 optiling::utils::OpRunInfo runInfo;
-ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
 EXPECT_EQ(
         to_string(runInfo.GetAllTilingData()),
 "48 100000 2112 0 2112 736 0 736 ");
@@ -119,8 +120,8 @@ EXPECT_EQ(
 
 TEST_F(IsFiniteTiling, IsFiniteTiling3) {
 std::string op_name = "IsFinite";
-auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
 std::string compileInfo =
         "{\"vars\": {\"ub_size\": 24320, \"core_num\": 48, \"input_data_byte\": 4}}";
@@ -140,7 +141,7 @@ opParas.UpdateInputDesc("x", tensor_input);
 
 optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 optiling::utils::OpRunInfo runInfo;
-ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
 EXPECT_EQ(
         to_string(runInfo.GetAllTilingData()),
 "48 1963840 40928 3 4448 40224 3 3744 ");
@@ -148,8 +149,8 @@ EXPECT_EQ(
 
 TEST_F(IsFiniteTiling, IsFiniteTiling4) {
 std::string op_name = "IsFinite";
-auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
 std::string compileInfo =
         "{\"vars\": {\"ub_size\": 48640, \"core_num\": 48, \"input_data_byte\": 2}}";
@@ -169,7 +170,7 @@ opParas.UpdateInputDesc("x", tensor_input);
 
 optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 optiling::utils::OpRunInfo runInfo;
-ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
 EXPECT_EQ(
         to_string(runInfo.GetAllTilingData()),
 "47 25160 544 0 544 136 0 136 ");
@@ -177,8 +178,8 @@ EXPECT_EQ(
 
 TEST_F(IsFiniteTiling, IsFiniteTiling5) {
 std::string op_name = "IsFinite";
-auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
 std::string compileInfo =
         "{\"vars\": {\"ub_size\": 48640, \"core_num\": 48, \"input_data_byte\": 2}}";
@@ -198,7 +199,7 @@ opParas.UpdateInputDesc("x", tensor_input);
 
 optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 optiling::utils::OpRunInfo runInfo;
-ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
 EXPECT_EQ(
         to_string(runInfo.GetAllTilingData()),
 "1 3672 0 0 0 3672 0 3672 ");
@@ -206,8 +207,8 @@ EXPECT_EQ(
 
 TEST_F(IsFiniteTiling, IsFiniteTiling6) {
 std::string op_name = "IsFinite";
-auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
 std::string compileInfo =
         "{\"vars\": {\"ub_size\": 48640, \"core_num\": 48, \"input_data_byte\": 2}}";
@@ -227,7 +228,7 @@ opParas.UpdateInputDesc("x", tensor_input);
 
 optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 optiling::utils::OpRunInfo runInfo;
-ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
 EXPECT_EQ(
         to_string(runInfo.GetAllTilingData()),
 "48 2935764 61184 2 12544 60116 2 11476 ");

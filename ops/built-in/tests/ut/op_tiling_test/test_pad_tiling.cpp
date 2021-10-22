@@ -23,6 +23,7 @@
 
 #include <gtest/gtest.h>
 #include <graph/utils/type_utils.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "all_ops.h"
 #include "test_common.h"
@@ -47,8 +48,8 @@ static void run_case(std::vector<int64_t> input_shape, std::string data_dtype, s
                      std::string src_ori_format, std::string src_format, std::string compile_info,
                      std::string expect_tiling, std::string case_name) {
   using namespace ut_util;
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("Pad");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Pad");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto test_op = op::Pad("Pad");
   int64_t input_len = input_shape.size();
   std::vector<int64_t> const_shape{input_len, 2};
@@ -61,12 +62,12 @@ static void run_case(std::vector<int64_t> input_shape, std::string data_dtype, s
   optiling::utils::OpCompileInfo op_compile_info(case_name.c_str(), compile_info);
 
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(test_op, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(test_op, op_compile_info, runInfo));
   if (expect_tiling != "") {
     EXPECT_EQ(to_string_int64(runInfo.GetAllTilingData()), expect_tiling);
   }
   for (int64_t i = 0; i < profiling_test_num; i++) {
-    iter->second(test_op, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(test_op, op_compile_info, runInfo);
   }
 }
 

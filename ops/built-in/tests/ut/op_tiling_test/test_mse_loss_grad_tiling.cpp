@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -32,8 +33,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(MseLossGradTiling, MseLossGrad_tiling_test_1) {
   using namespace optiling;
   optiling::OpRunInfo op_run_info;
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("MseLossGrad");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("MseLossGrad");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   TeOpTensorArg tensorInputs, tensorOutputsArg;
   TeOpParas opParas;
 
@@ -68,7 +69,7 @@ TEST_F(MseLossGradTiling, MseLossGrad_tiling_test_1) {
 
   // do tilling, get runInfo
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
             "16 16 16 16 12288 ");
 }
@@ -76,8 +77,8 @@ TEST_F(MseLossGradTiling, MseLossGrad_tiling_test_1) {
 TEST_F(MseLossGradTiling, MseLossGrad_tiling_test_2) {
   using namespace optiling;
   optiling::OpRunInfo op_run_info;
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("MseLossGrad");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("MseLossGrad");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   TeOpTensorArg tensorInputs, tensorOutputsArg;
   TeOpParas opParas;
 
@@ -112,7 +113,7 @@ TEST_F(MseLossGradTiling, MseLossGrad_tiling_test_2) {
 
   // do tilling, get runInfo
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
             "16 16 16 16 12288 ");
 }

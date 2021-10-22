@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -33,8 +34,8 @@ static string to_string(const std::stringstream& tiling_data) {
 TEST_F(SpaceToBatchNDTiling, SpaceToBatchND_tiling_0) {
   using namespace optiling;
   std::string op_name = "SpaceToBatchND";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"block_size\": 2}}";
 
@@ -78,14 +79,14 @@ TEST_F(SpaceToBatchNDTiling, SpaceToBatchND_tiling_0) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234560";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "0 8 1 1 4 0 2 2 0 0 1 1 1 1 0 2 2 2 16 16 0 2 2 ");
 }
 TEST_F(SpaceToBatchNDTiling, SpaceToBatchND_tiling_1) {
   using namespace optiling;
   std::string op_name = "SpaceToBatchND";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"block_size\": 0}}";
 
@@ -140,14 +141,14 @@ TEST_F(SpaceToBatchNDTiling, SpaceToBatchND_tiling_1) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234561";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "6 2 1 1 2 2 2 2 1 1 1 1 1 1 2 2 2 2 16 16 2 2 2 ");
 }
 TEST_F(SpaceToBatchNDTiling, SpaceToBatchND_tiling_2) {
   using namespace optiling;
   std::string op_name = "SpaceToBatchND";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"block_size\": 0}}";
 
@@ -202,15 +203,15 @@ TEST_F(SpaceToBatchNDTiling, SpaceToBatchND_tiling_2) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234562";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "0 8 1 1 4 0 2 2 0 0 1 1 1 1 0 2 2 2 16 16 0 2 2 ");
 }
 
 TEST_F(SpaceToBatchNDTiling, SpaceToBatchND_tiling_3) {
   using namespace optiling;
   std::string op_name = "SpaceToBatchND";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"block_size\": 0}}";
 
@@ -265,14 +266,14 @@ TEST_F(SpaceToBatchNDTiling, SpaceToBatchND_tiling_3) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234563";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "6 2 1 1 2 2 2 2 1 1 1 1 1 1 2 2 2 2 16 16 2 2 2 ");
 }
 TEST_F(SpaceToBatchNDTiling, SpaceToBatchND_tiling_4) {
   using namespace optiling;
   std::string op_name = "SpaceToBatchND";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"block_size\": 0}}";
 
@@ -327,15 +328,15 @@ TEST_F(SpaceToBatchNDTiling, SpaceToBatchND_tiling_4) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456a";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "12 32 249 233 2 0 1 1 0 0 0 0 0 0 0 2 7952 1 16 2 0 7952 1 ");
 }
 
 TEST_F(SpaceToBatchNDTiling, SpaceToBatchND_tiling_5) {
   using namespace optiling;
   std::string op_name = "SpaceToBatchND";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"block_size\": 0}}";
 
@@ -390,6 +391,6 @@ TEST_F(SpaceToBatchNDTiling, SpaceToBatchND_tiling_5) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456b";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "1 4 1 1 2 0 2 1 0 0 0 1 0 0 0 2 4487 1 16 4 0 2244 1 ");
 }

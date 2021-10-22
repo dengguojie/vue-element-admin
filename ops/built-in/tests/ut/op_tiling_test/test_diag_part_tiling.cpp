@@ -2,6 +2,7 @@
 #include <fstream>
 #include <vector>
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "test_common.h"
 #include "matrix_calculation_ops.h"
@@ -36,8 +37,8 @@ static string to_string(const std::stringstream& tiling_data) {
 
 TEST_F(DiagPartTiling, DiagPart_tiling1) {
   std::string op_name = "DiagPart";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 256000}}";
   vector<vector<int64_t>> input_shapes = {
       {128, 128},
@@ -58,6 +59,6 @@ TEST_F(DiagPartTiling, DiagPart_tiling1) {
   AscendString key(compileInfo.c_str());
   optiling::utils::OpCompileInfo op_compile_info(name, key);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "128 1 128 128 ");
 }

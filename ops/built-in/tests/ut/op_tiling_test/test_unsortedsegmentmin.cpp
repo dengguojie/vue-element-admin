@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include <iostream>
 using namespace std;
@@ -32,8 +33,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(UnsortedSegmentMinTiling, unsortedsegmentmin_tiling_0) {
     using namespace optiling;
     std::string op_name = "UnsortedSegmentMin";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("UnsortedSegmentMin");
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentMin");
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     
     std::string compileInfo = "{\"vars\": {\"ub_size\": 261632, \"core_num\": 32, \"dtype\":\"float16\", \"ub_tensor_num\":2}}";
 
@@ -81,14 +82,14 @@ TEST_F(UnsortedSegmentMinTiling, unsortedsegmentmin_tiling_0) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "aa";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "50 32 3 3 1 3 3 96 5248 1552 1 8 8 1 1 1 5248 500112 41 13 0 328 97 1 ");
 }
 TEST_F(UnsortedSegmentMinTiling, unsortedsegmentmin_tiling_1) {
     using namespace optiling;
     std::string op_name = "UnsortedSegmentMin";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("UnsortedSegmentMin");
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentMin");
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     
     std::string compileInfo = "{\"vars\": {\"ub_size\": 261632, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
 
@@ -136,6 +137,6 @@ TEST_F(UnsortedSegmentMinTiling, unsortedsegmentmin_tiling_1) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "aa";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "40 2 1 1 1 4 4 2 64 60 8 2 2 8 1 1 64 124 1 1 4 8 8 1 ");
 }

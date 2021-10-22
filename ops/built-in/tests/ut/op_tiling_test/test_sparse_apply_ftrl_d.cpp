@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -32,8 +33,8 @@ static string to_string(const stringstream &tiling_data) {
 TEST_F(SparseApplyFtrlDTiling, sparseapplyftrld_tiling_0) {
   using namespace optiling;
   string op_name = "SparseApplyFtrlD";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("SparseApplyFtrlD");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SparseApplyFtrlD");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 131072, \"indices_dsize\": 4, \"ub_take_parts\": 1, \"ub_block_num\":4, \"cache_threshold_col\":7}}";
 
@@ -111,7 +112,7 @@ TEST_F(SparseApplyFtrlDTiling, sparseapplyftrld_tiling_0) {
   op_compile_info.key = "aa";
   OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 
   EXPECT_EQ(to_string(runInfo.tiling_data), "1 12 0 1 0 0 1 512 12 0 32 0 0 0 0 0 0 0 ");
 }

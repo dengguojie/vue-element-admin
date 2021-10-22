@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "selection_ops.h"
 #include "array_ops.h"
@@ -56,8 +57,8 @@ using namespace ut_util;
 
 TEST_F(TileDTiling, TileD_tiling1) {
   std::string op_name = "TileD";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   // dynamic_tile_d_llt_case_1
   std::string compileInfo =
       R"({ "_pattern": "Broadcast", "push_status": 0, "_flag_info": [false, false, true, false, false, false, false], "_base_info": {"000": [32, 4, 32768, 16384]}, "_elewise_vars": {"1":[10200, 20000, 30000], "2":[10200, 20000, 30001], "3":[10200, 20000, 30002], "5": [10200, 20001, 30001], "6":[10200, 20001, 30002], "9":[10200, 20002, 30002]}, "_vars": {"1":["_dim_2_0", "_block_factor_0", "_ub_factor_0"], "2": ["_dim_2_0", "_block_factor_0", "_ub_factor_1"], "3": ["_dim_2_0", "_block_factor_0", "_ub_factor_2"],  "5": ["_dim_2_0", "_block_factor_1", "_ub_factor_1"], "6": ["_dim_2_0", "_block_factor_1", "_ub_factor_2"], "9": ["_dim_2_0", "_block_factor_2", "_ub_factor_2"]}, "tiling_info": [1, 0, 1, 1, -1, 42763, 16, -1]})";
@@ -72,7 +73,7 @@ TEST_F(TileDTiling, TileD_tiling1) {
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, dtype, ge::FORMAT_ND, {});
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "777 1337 2 ");
 }

@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "split_combination_ops.h"
 #include "array_ops.h"
@@ -43,8 +44,8 @@ using namespace ge;
 */
 
 TEST_F(SplitVTiling, SplitV_tiling1) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("SplitV");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SplitV");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::SplitV("SplitV");
   vector<vector<int64_t>> input_shapes = {
       {1820, 232},
@@ -85,18 +86,18 @@ TEST_F(SplitVTiling, SplitV_tiling1) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "1 32 422240 1820 13195 13195 0 13195 13195 0 13195 13195 232 1 422240 0 0 0 0 0 0 0 0 0 ");
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(SplitVTiling, SplitV_tiling2) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("SplitV");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SplitV");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::SplitV("SplitV");
   vector<vector<int64_t>> input_shapes = {
       {232, 1820},
@@ -139,17 +140,17 @@ TEST_F(SplitVTiling, SplitV_tiling2) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 32 422240 232 0 0 0 0 0 0 0 0 1820 1 422240 0 0 0 0 0 0 0 0 0 ");
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(SplitVTiling, SplitV_tiling3) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("SplitV");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SplitV");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::SplitV("SplitV");
   vector<vector<int64_t>> input_shapes = {
       {1820, 232},
@@ -190,17 +191,17 @@ TEST_F(SplitVTiling, SplitV_tiling3) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "3 32 422240 232 0 0 0 0 0 0 0 0 1 1820 232 0 0 0 0 0 0 0 0 0 ");
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(SplitVTiling, SplitV_tiling4) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("SplitV");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SplitV");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::SplitV("SplitV");
   vector<vector<int64_t>> input_shapes = {
       {1, 48, 512},
@@ -242,17 +243,17 @@ TEST_F(SplitVTiling, SplitV_tiling4) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "8 32 24576 48 0 0 0 0 0 0 0 0 512 1 24576 0 0 0 0 0 0 0 0 0 ");
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(SplitVTiling, SplitV_tiling5) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("SplitV");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SplitV");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::SplitV("SplitV");
   vector<vector<int64_t>> input_shapes = {
       {18720, 3},
@@ -295,17 +296,17 @@ TEST_F(SplitVTiling, SplitV_tiling5) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 25 56160 3 0 0 0 0 0 0 0 0 1 18720 3 0 224 3 0 3 1 0 1 0 ");
   int64_t tiling_test_num =0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(SplitVTiling, SplitV_tiling6) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("SplitV");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SplitV");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::SplitV("SplitV");
   vector<vector<int64_t>> input_shapes = {
       {18725, 6},
@@ -348,18 +349,18 @@ TEST_F(SplitVTiling, SplitV_tiling6) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "5 32 112350 6 592 373 0 592 592 0 373 373 1 18725 6 0 0 0 0 0 0 0 0 0 ");
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(SplitVTiling, SplitV_tiling7) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("SplitV");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SplitV");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::SplitV("SplitV");
   vector<vector<int64_t>> input_shapes = {
       {48000, 256},
@@ -400,18 +401,18 @@ TEST_F(SplitVTiling, SplitV_tiling7) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "6 32 12288000 256 1504 1376 11 96 128 10 96 128 1 48000 256 0 0 0 0 0 0 0 0 0 ");
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(SplitVTiling, SplitV_tiling8) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("SplitV");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SplitV");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::SplitV("SplitV");
   vector<vector<int64_t>> input_shapes = {
       {40000, 85},
@@ -455,18 +456,18 @@ TEST_F(SplitVTiling, SplitV_tiling8) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "7 32 3400000 85 1280 320 5 0 256 1 64 256 1 40000 85 0 0 0 0 0 0 0 0 0 ");
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(SplitVTiling, SplitV_tiling9) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("SplitV");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SplitV");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::SplitV("SplitV");
   vector<vector<int64_t>> input_shapes = {
       {40000, 85},
@@ -514,10 +515,10 @@ TEST_F(SplitVTiling, SplitV_tiling9) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), to_string(runInfo.GetAllTilingData()));
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }

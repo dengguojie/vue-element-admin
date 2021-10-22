@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "test_common.h"
 #include "nn_training_ops.h"
@@ -36,21 +37,21 @@ static string to_string(const std::stringstream& tiling_data) {
 
 TEST_F(DynamicAtomicAddrCleanTiling, DynamicAtomicAddrClean_tiling_1) {
   std::string op_name = "DynamicAtomicAddrClean";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = R"({"_workspace_size_list": [32], "vars": {"ub_size": 126976, "core_num": 2, "workspace_num": 1}})";
   std::vector<uint32_t> workspace_size{1, 2, 3, 4, 5, 6, 7, 8};
   auto opParas = op::DynamicAtomicAddrClean("DynamicAtomicAddrClean");
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 16320 2040 8 0 0 1 1 8 0 0 1 1 ");
 }
 
 TEST_F(DynamicAtomicAddrCleanTiling, DynamicAtomicAddrClean_tiling_2) {
   std::string op_name = "DynamicAtomicAddrClean";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   auto opParas = op::DynamicAtomicAddrClean("DynamicAtomicAddrClean");
 
@@ -60,14 +61,14 @@ TEST_F(DynamicAtomicAddrCleanTiling, DynamicAtomicAddrClean_tiling_2) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 16320 2040 8 0 0 1 1 8 0 0 1 1 ");
 }
 
 TEST_F(DynamicAtomicAddrCleanTiling, DynamicAtomicAddrClean_tiling_3) {
   std::string op_name = "DynamicAtomicAddrClean";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = R"({"_workspace_size_list": [32], "vars": {"ub_size": 126976, "core_num": 2}})";
   std::vector<uint32_t> workspace_size{1, 2, 3, 4, 5, 6, 7, 8};
@@ -75,14 +76,14 @@ TEST_F(DynamicAtomicAddrCleanTiling, DynamicAtomicAddrClean_tiling_3) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 16320 2040 8 0 0 1 1 8 0 0 1 1 ");
 }
 
 TEST_F(DynamicAtomicAddrCleanTiling, DynamicAtomicAddrClean_tiling_4) {
   std::string op_name = "DynamicAtomicAddrClean";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = R"({"_workspace_size_list": [0], "vars": {"ub_size": 126976, "core_num": 2}})";
   std::vector<uint32_t> workspace_size{};
@@ -90,6 +91,6 @@ TEST_F(DynamicAtomicAddrCleanTiling, DynamicAtomicAddrClean_tiling_4) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 16320 2040 0 0 0 0 0 0 0 0 0 0 ");
 }

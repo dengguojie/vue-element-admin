@@ -22,6 +22,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -53,8 +54,8 @@ static string to_string(const std::stringstream& tiling_data) {
 TEST_F(MaxPoolTiling, maxpool_tiling_0) {
   using namespace optiling;
   std::string op_name = "MaxPool";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"ub_ele\": 130560, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 1, \"strides_h\": 1, "
@@ -89,15 +90,15 @@ TEST_F(MaxPoolTiling, maxpool_tiling_0) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234560";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "0 32 35432 35416 79 69 79 69 79 69 0 0 0 0 1 1 1 4 2792 4 2776 0 ");
 }
 
 TEST_F(MaxPoolTiling, maxpool_tiling_1) {
   using namespace optiling;
   std::string op_name = "MaxPool";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"ub_ele\": 130560, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 1, \"strides_h\": 2, "
@@ -132,15 +133,15 @@ TEST_F(MaxPoolTiling, maxpool_tiling_1) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234561";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "1 30 7 5 10 70 5 35 9 69 0 0 0 0 2 1 1 3 1 2 1 208 ");
 }
 
 TEST_F(MaxPoolTiling, maxpool_tiling_2) {
   using namespace optiling;
   std::string op_name = "MaxPool";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"ub_ele\": 130560, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 1, \"strides_h\": 2, "
@@ -175,15 +176,15 @@ TEST_F(MaxPoolTiling, maxpool_tiling_2) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234562";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "2 30 7 5 62 250 31 125 61 249 0 0 0 0 1 3 1 10 1 10 1 208 ");
 }
 
 TEST_F(MaxPoolTiling, maxpool_tiling_3) {
   using namespace optiling;
   std::string op_name = "MaxPool";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"ub_ele\": 130560, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 1, \"strides_h\": 2, "
@@ -218,15 +219,15 @@ TEST_F(MaxPoolTiling, maxpool_tiling_3) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234563";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "3 30 7 5 10 2500 5 1250 9 2499 0 0 0 0 1 1 680 1 570 1 570 208 ");
 }
 
 TEST_F(MaxPoolTiling, maxpool_tiling_4) {
   using namespace optiling;
   std::string op_name = "MaxPool";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"ub_ele\": 130560, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 1, \"strides_h\": 2, "
@@ -261,6 +262,6 @@ TEST_F(MaxPoolTiling, maxpool_tiling_4) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234564";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "1 30 7 5 10 70 5 35 9 69 0 0 0 0 2 1 1 3 1 2 1 208 ");
 }

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -37,8 +38,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(DynamicRnnV2Tiling, dynamic_rnn_tiling_0) {
   using namespace optiling;
   std::string op_name = "DynamicRNNV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[32,128,0],[64,64,1]]}}";
 
@@ -91,14 +92,14 @@ TEST_F(DynamicRnnV2Tiling, dynamic_rnn_tiling_0) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456a001";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(DynamicRnnV2Tiling, dynamic_rnn_tiling_1) {
   using namespace optiling;
   std::string op_name = "DynamicRNNV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[-1,-1,0],[99,99,1]]}}";
 
@@ -151,14 +152,14 @@ TEST_F(DynamicRnnV2Tiling, dynamic_rnn_tiling_1) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456a002";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(DynamicRnnV2Tiling, dynamic_rnn_tiling_2) {
   using namespace optiling;
   std::string op_name = "DynamicRNNV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[32,8,1]]}}";
 
@@ -211,13 +212,13 @@ TEST_F(DynamicRnnV2Tiling, dynamic_rnn_tiling_2) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456a003";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 TEST_F(DynamicRnnV2Tiling, dynamic_rnn_tiling_3) {
   using namespace optiling;
   std::string op_name = "DynamicRNNV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"tune_shape_list\": [[]]}}";
 
@@ -270,5 +271,5 @@ TEST_F(DynamicRnnV2Tiling, dynamic_rnn_tiling_3) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456a004";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }

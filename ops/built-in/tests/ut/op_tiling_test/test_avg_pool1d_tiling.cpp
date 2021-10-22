@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -32,8 +33,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(AvgPool1DTiling, avgpool1d_tiling_0) {
   using namespace optiling;
   std::string op_name = "AvgPool1DD";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("AvgPool1DD");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("AvgPool1DD");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"core_num\":32, \"max_w_in_ub\":2730, \"ksize\":3, \"strides\":1,\"pad_l\":0,\"pad_r\":0,\"ceil_mode\":true}";
 
@@ -70,15 +71,15 @@ TEST_F(AvgPool1DTiling, avgpool1d_tiling_0) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "1 3 1 ");
 }
 
 TEST_F(AvgPool1DTiling, avgpool1d_tiling_1) {
   using namespace optiling;
   std::string op_name = "AvgPool1DD";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("AvgPool1DD");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("AvgPool1DD");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"core_num\":32, \"max_w_in_ub\":455, \"ksize\":8, \"strides\":1,\"pad_l\":1,\"pad_r\":1,\"ceil_mode\":true}";
 
@@ -115,15 +116,15 @@ TEST_F(AvgPool1DTiling, avgpool1d_tiling_1) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "4590 7 5 144 ");
 }
 
 TEST_F(AvgPool1DTiling, avgpool1d_tiling_2) {
   using namespace optiling;
   std::string op_name = "AvgPool1DD";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("AvgPool1DD");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("AvgPool1DD");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"core_num\":32, \"max_w_in_ub\":455, \"ksize\":8, \"strides\":1,\"pad_l\":1,\"pad_r\":1,\"ceil_mode\":true}";
 
@@ -160,15 +161,15 @@ TEST_F(AvgPool1DTiling, avgpool1d_tiling_2) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "4590 15 13 144 ");
 }
 
 TEST_F(AvgPool1DTiling, avgpool1d_tiling_3) {
   using namespace optiling;
   std::string op_name = "AvgPool1DD";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("AvgPool1DD");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("AvgPool1DD");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"core_num\":32, \"max_w_in_ub\":455, \"ksize\":8, \"strides\":1,\"pad_l\":1,\"pad_r\":1,\"ceil_mode\":true}";
 
@@ -205,15 +206,15 @@ TEST_F(AvgPool1DTiling, avgpool1d_tiling_3) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "4590 20 18 144 ");
 }
 
 TEST_F(AvgPool1DTiling, avgpool1d_tiling_4) {
   using namespace optiling;
   std::string op_name = "AvgPool1DD";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("AvgPool1DD");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("AvgPool1DD");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"core_num\":32, \"max_w_in_ub\":455, \"ksize\":8, \"strides\":1,\"pad_l\":1,\"pad_r\":1,\"ceil_mode\":true}";
 
@@ -250,15 +251,15 @@ TEST_F(AvgPool1DTiling, avgpool1d_tiling_4) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "4590 80 78 144 ");
 }
 
 TEST_F(AvgPool1DTiling, avgpool1d_tiling_5) {
   using namespace optiling;
   std::string op_name = "AvgPool1DD";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("AvgPool1DD");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("AvgPool1DD");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"core_num\":32, \"max_w_in_ub\":455, \"ksize\":8, \"strides\":1,\"pad_l\":1,\"pad_r\":1,\"ceil_mode\":true}";
 
@@ -295,6 +296,6 @@ TEST_F(AvgPool1DTiling, avgpool1d_tiling_5) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "4590 300 298 144 ");
 }

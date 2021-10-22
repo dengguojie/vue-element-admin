@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -33,8 +34,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(BatchMultiClassNonMaxSuppressionTiling, batch_multi_class_non_max_suppression_tiling_0) {
   using namespace optiling;
   std::string op_name = "BatchMultiClassNonMaxSuppression";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"aicore_num\": 32, \"proposal_topk_k\": 2}}";
   std::vector<int64_t> input0{1, 1024, 1, 4}; // boxes_shape
@@ -83,7 +84,7 @@ TEST_F(BatchMultiClassNonMaxSuppressionTiling, batch_multi_class_non_max_suppres
 
   OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second(op_paras, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(op_paras, op_compile_info, runInfo));
   //1-cal_mode 2-core_used 3-bath_per_core 4-bath_last_core 
   //5-batch 6-classes 7-boxes_num 8-topk_loop_time 9-topk_loop_tail
   // EXPECT_EQ(to_string(runInfo.tiling_data), "1 2 3 4 5 6 7 8 9 ");
@@ -93,8 +94,8 @@ TEST_F(BatchMultiClassNonMaxSuppressionTiling, batch_multi_class_non_max_suppres
 TEST_F(BatchMultiClassNonMaxSuppressionTiling, batch_multi_class_non_max_suppression_tiling_1) {
   using namespace optiling;
   std::string op_name = "BatchMultiClassNonMaxSuppression";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"aicore_num\": 32, \"proposal_topk_k\": 2}}";
   std::vector<int64_t> input0{2, 16, 1, 4}; // boxes_shape
@@ -143,7 +144,7 @@ TEST_F(BatchMultiClassNonMaxSuppressionTiling, batch_multi_class_non_max_suppres
 
   OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second(op_paras, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(op_paras, op_compile_info, runInfo));
   //1-cal_mode 2-core_used 3-bath_per_core 4-bath_last_core 
   //5-batch 6-classes 7-boxes_num 8-topk_loop_time 9-topk_loop_tail
   // EXPECT_EQ(to_string(runInfo.tiling_data), "1 2 3 4 5 6 7 8 9 ");

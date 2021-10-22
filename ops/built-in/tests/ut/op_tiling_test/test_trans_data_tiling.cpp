@@ -7,6 +7,7 @@
 #include "graph/utils/op_desc_utils.h"
 #include "transformation_ops.h"
 #include "array_ops.h"
+#define private public
 #include "register/op_tiling_registry.h"
 #include "op_log.h"
 #include "op_tiling/op_tiling_util.h"
@@ -110,8 +111,8 @@ static void run_case(std::vector<int64_t> input_shape, std::vector<int64_t> outp
                      std::string expect_tiling, std::string case_name) {
   OP_EVENT("OP_TILING_UTEST", "case_name = %s", case_name.c_str());
   OP_EVENT("OP_TILING_UTEST", "case_mode = %s_TO_%s", src_format.c_str(), dst_format.c_str());
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("TransData");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("TransData");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto test_op = op::TransData("TransData");
   add_input_desc_by_idx(test_op, 0, input_shape, input_shape, data_dtype, src_format, src_format);
   add_output_desc_by_idx(test_op, 0, output_shape, output_shape, data_dtype, dst_format, dst_format);
@@ -119,12 +120,12 @@ static void run_case(std::vector<int64_t> input_shape, std::vector<int64_t> outp
   optiling::utils::OpCompileInfo op_compile_info(case_name.c_str(), compile_info);
 
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(test_op, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(test_op, op_compile_info, runInfo));
   if (expect_tiling != "") {
     EXPECT_EQ(to_string_int64(runInfo.GetAllTilingData()), expect_tiling);
   }
   for (int64_t i = 0; i < profiling_test_num; i++) {
-    iter->second(test_op, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(test_op, op_compile_info, runInfo);
   }
 }
 

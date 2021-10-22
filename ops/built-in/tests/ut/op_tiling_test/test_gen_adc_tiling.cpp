@@ -21,6 +21,7 @@
 #include <iostream>
 #include <vector>
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -57,8 +58,8 @@ static void RunTestTiling(const std::vector<int64_t>& queryShape, const std::str
                           const std::string& compileInfo, const std::string& compileInfoKey,
                           const std::string& expectTiling) {
   std::string opName = "GenADC";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("GenADC");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("GenADC");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   TeOpTensor queryTensor;
   queryTensor.shape = queryShape;
@@ -112,7 +113,7 @@ static void RunTestTiling(const std::vector<int64_t>& queryShape, const std::str
   opCompileInfo.str = compileInfo;
   opCompileInfo.key = compileInfoKey;
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, opCompileInfo, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, opCompileInfo, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), expectTiling);
 }
 
@@ -225,8 +226,8 @@ TEST_F(GenADCTiling, gen_adc_tiling_002) {
 // Test case: missing bucket_list tensor
 TEST_F(GenADCTiling, gen_adc_tiling_101) {
   std::string opName = "GenADC";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("GenADC");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("GenADC");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   TeOpTensor queryTensor;
   queryTensor.shape = {32};
@@ -279,14 +280,14 @@ TEST_F(GenADCTiling, gen_adc_tiling_101) {
   opCompileInfo.str = "{\"vars\": {\"core_num\": 8}}";
   opCompileInfo.key = "gen_adc.key.101";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, opCompileInfo, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, opCompileInfo, runInfo));
 }
 
 // Test case: bucket_list shape error
 TEST_F(GenADCTiling, gen_adc_tiling_102) {
   std::string opName = "GenADC";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("GenADC");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("GenADC");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   TeOpTensor queryTensor;
   queryTensor.shape = {32};
@@ -340,14 +341,14 @@ TEST_F(GenADCTiling, gen_adc_tiling_102) {
   opCompileInfo.str = "{\"vars\": {\"core_num\": 8}}";
   opCompileInfo.key = "gen_adc.key.102";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, opCompileInfo, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, opCompileInfo, runInfo));
 }
 
 // Test case: core num error
 TEST_F(GenADCTiling, gen_adc_tiling_103) {
   std::string opName = "GenADC";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("GenADC");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("GenADC");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   TeOpTensor queryTensor;
   queryTensor.shape = {32};
@@ -401,5 +402,5 @@ TEST_F(GenADCTiling, gen_adc_tiling_103) {
   opCompileInfo.str = "{\"vars\": {\"core_num\": -1}}";
   opCompileInfo.key = "gen_adc.key.103";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, opCompileInfo, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, opCompileInfo, runInfo));
 }

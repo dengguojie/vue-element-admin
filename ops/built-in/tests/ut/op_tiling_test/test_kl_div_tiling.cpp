@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "array_ops.h"
 #include "elewise_calculation_ops.h"
@@ -43,8 +44,8 @@ TEST_F(KLDivTiling, KLDivTiling_test_1)
 {
   using namespace optiling;
   std::string op_name = "KLDiv";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = R"({ "_ori_axis": [0, 1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float16"})";
 
@@ -82,7 +83,7 @@ TEST_F(KLDivTiling, KLDivTiling_test_1)
   optiling::utils::OpCompileInfo op_compile_info("KLDivTiling_test_1", compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second(klDiv, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(klDiv, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 327680 10240 1 819 ");
 }
 
@@ -90,8 +91,8 @@ TEST_F(KLDivTiling, KLDivTiling_test_2)
 {
   using namespace optiling;
   std::string op_name = "KLDiv";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = R"({ "_ori_axis": [0, 1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float32"})";
 
@@ -129,6 +130,6 @@ TEST_F(KLDivTiling, KLDivTiling_test_2)
   optiling::utils::OpCompileInfo op_compile_info("KLDivTiling_test_2", compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second(klDiv, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(klDiv, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 16384 32 512 508 981467136 ");
 }

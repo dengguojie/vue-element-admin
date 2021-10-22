@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -34,8 +35,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling4) {
     using namespace optiling;
     std::string op_name = "BNTrainingUpdateGrad";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = R"({"mode": "original",
                                   "_pattern": "BNTrainingUpdateGrad", 
@@ -135,7 +136,7 @@ TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling4) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "4";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 32);
     EXPECT_EQ(runInfo.tiling_key, 5213400);
     EXPECT_EQ(to_string(runInfo.tiling_data), "2 2 16 16 2 1 ");
@@ -144,8 +145,8 @@ TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling4) {
 TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling1) {
     using namespace optiling;
     std::string op_name = "BNTrainingUpdateGrad";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = R"({"mode": "original",
                                   "_pattern": "BNTrainingUpdateGrad", 
@@ -245,7 +246,7 @@ TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling1) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "1";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 32);
     EXPECT_EQ(runInfo.tiling_key, 13400);
     EXPECT_EQ(to_string(runInfo.tiling_data), "32 16 13 13 1 1 ");
@@ -254,8 +255,8 @@ TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling1) {
 TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling2) {
     using namespace optiling;
     std::string op_name = "BNTrainingUpdateGrad";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = R"({"mode": "original",
                                   "_pattern": "BNTrainingUpdateGrad", 
@@ -355,7 +356,7 @@ TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling2) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "2";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 32);
     EXPECT_EQ(runInfo.tiling_key, 1213400);
     EXPECT_EQ(to_string(runInfo.tiling_data), "256 32 28 28 1 14 ");
@@ -364,8 +365,8 @@ TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling2) {
 TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling3) {
     using namespace optiling;
     std::string op_name = "BNTrainingUpdateGrad";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = R"({"mode": "original",
                                   "_pattern": "BNTrainingUpdateGrad", 
@@ -465,7 +466,7 @@ TEST_F(BNTrainingUpdateGradTiling, BNTrainingUpdateGradTiling3) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "3";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.block_dim, 32);
     EXPECT_EQ(runInfo.tiling_key, 2213400);
     EXPECT_EQ(to_string(runInfo.tiling_data), "2 2 256 256 8 1 ");

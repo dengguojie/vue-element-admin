@@ -19,6 +19,7 @@
 #include <iostream>
 #include <vector>
 
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -46,8 +47,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(SquareSumAllTiling, SquareSumAllTiling_tiling_1) {
   using namespace optiling;
   std::string op_name = "SquareSumAll";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_size\": 262080, \"core_num\": 32, \"data_each_block\": 8, \"dtype_bytes_size\": 4}}";
 
@@ -96,15 +97,15 @@ TEST_F(SquareSumAllTiling, SquareSumAllTiling_tiling_1) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "SquareSumAllTiling_1";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "32 16384 1 1 16384 16384 0 0 8 0 8 0 2048 0 2048 0 ");
 }
 
 TEST_F(SquareSumAllTiling, SquareSumAllTiling_tiling_2) {
   using namespace optiling;
   std::string op_name = "SquareSumAll";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_size\": 262080, \"core_num\": 32, \"data_each_block\": 8, \"dtype_bytes_size\": 4}}";
 
@@ -153,15 +154,15 @@ TEST_F(SquareSumAllTiling, SquareSumAllTiling_tiling_2) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "SquareSumAllTiling_2";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "32 3358719 102 102 32760 32760 17199 17212 9 8 9 8 4095 2150 4095 2152 ");
 }
 
 TEST_F(SquareSumAllTiling, SquareSumAllTiling_tiling_3) {
   using namespace optiling;
   std::string op_name = "SquareSumAll";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_size\": 262080, \"core_num\": 8, \"data_each_block\": 8, \"dtype_bytes_size\": 4}}";
 
@@ -210,5 +211,5 @@ TEST_F(SquareSumAllTiling, SquareSumAllTiling_tiling_3) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "SquareSumAllTiling_3";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }

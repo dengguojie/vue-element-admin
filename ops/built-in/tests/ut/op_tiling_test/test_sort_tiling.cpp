@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -32,8 +33,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(SortTiling, sort_tiling_0) {
     using namespace optiling;
     std::string op_name = "Sort";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("Sort");
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Sort");
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     
     std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32}}";
 
@@ -76,7 +77,7 @@ TEST_F(SortTiling, sort_tiling_0) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "babababaing";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "2 8 8 5600 5600 6 0 8 5 6144 ");
 }
 

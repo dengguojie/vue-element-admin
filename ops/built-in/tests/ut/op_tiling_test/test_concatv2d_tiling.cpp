@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "split_combination_ops.h"
 #include "array_ops.h"
@@ -34,8 +35,8 @@ static string to_string(const std::stringstream& tiling_data) {
 }
 
 TEST_F(ConcatV2DTiling, Concat_tiling1) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("ConcatV2D");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatV2D");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   vector<vector<int64_t>> input_shapes = {
       {4, 4, 4, 4},
       {5, 4, 4, 4},
@@ -57,13 +58,13 @@ TEST_F(ConcatV2DTiling, Concat_tiling1) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 384 256 960 3 0 0 256 0 320 256 384 576 ");
 }
 
 TEST_F(ConcatV2DTiling, Concat_tiling2) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("ConcatV2D");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatV2D");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   vector<vector<int64_t>> input_shapes = {
       {4, 4, 4, 4},
       {4, 5, 4, 4},
@@ -85,13 +86,13 @@ TEST_F(ConcatV2DTiling, Concat_tiling2) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 4 96 64 240 3 0 0 64 0 80 64 96 144 ");
 }
 
 TEST_F(ConcatV2DTiling, Concat_tiling3) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("ConcatV2D");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatV2D");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   vector<vector<int64_t>> input_shapes = {
       {4, 5},  {4, 6},  {4, 7},  {4, 8},  {4, 9},  {4, 10}, {4, 11}, {4, 12}, {4, 13}, {4, 14},
       {4, 15}, {4, 16}, {4, 17}, {4, 18}, {4, 19}, {4, 20}, {4, 21}, {4, 22}, {4, 23}, {4, 24},
@@ -167,7 +168,7 @@ TEST_F(ConcatV2DTiling, Concat_tiling3) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),
       "1 4 34 5 585 30 0 0 5 0 6 5 7 11 8 18 9 26 10 35 11 45 12 56 13 68 14 81 15 95 16 110 17 126 18 143 19 161 20 "
@@ -175,8 +176,8 @@ TEST_F(ConcatV2DTiling, Concat_tiling3) {
 }
 
 TEST_F(ConcatV2DTiling, Concat_tiling4) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("ConcatV2D");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatV2D");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   vector<vector<int64_t>> input_shapes = {
       {},
       {4, 5},
@@ -198,12 +199,12 @@ TEST_F(ConcatV2DTiling, Concat_tiling4) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(ConcatV2DTiling, Concat_tiling5) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("ConcatV2D");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatV2D");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   vector<vector<int64_t>> input_shapes = {
       {4, 4},
       {4, 5},
@@ -225,12 +226,12 @@ TEST_F(ConcatV2DTiling, Concat_tiling5) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(ConcatV2DTiling, Concat_tiling6) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("ConcatV2D");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatV2D");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   vector<vector<int64_t>> input_shapes = {
       {9, 4},
       {4, 5},
@@ -252,5 +253,5 @@ TEST_F(ConcatV2DTiling, Concat_tiling6) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
 }

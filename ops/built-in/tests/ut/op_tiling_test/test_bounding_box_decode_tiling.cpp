@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -33,8 +34,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(BoundingBoxDecodeTiling, bounding_box_decode_tiling_0) {
     using namespace optiling;
     std::string op_name = "BoundingBoxDecode";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"rois_data_each_block\": 16, \"each_repeat_block_number\": 32,\"ub_max_size\":8704}}";
     std::vector<int64_t> input0{32,4};
@@ -76,15 +77,15 @@ TEST_F(BoundingBoxDecodeTiling, bounding_box_decode_tiling_0) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "boundingboxdecode_32_4";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "4 1 1 1 1 ");
 }
 
 TEST_F(BoundingBoxDecodeTiling, bounding_box_decode_tiling_1) {
     using namespace optiling;
     std::string op_name = "BoundingBoxDecode";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"rois_data_each_block\": 16, \"each_repeat_block_number\": 32,\"ub_max_size\":8704}}";
     std::vector<int64_t> input0{35,4};
@@ -126,15 +127,15 @@ TEST_F(BoundingBoxDecodeTiling, bounding_box_decode_tiling_1) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "boundingboxdecode_35_4";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "4 1 1 1 1 ");
 }
 
 TEST_F(BoundingBoxDecodeTiling, bounding_box_decode_tiling_2) {
     using namespace optiling;
     std::string op_name = "BoundingBoxDecode";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"rois_data_each_block\": 16, \"each_repeat_block_number\": 32,\"ub_max_size\":8704}}";
     std::vector<int64_t> input0{16,35,4};
@@ -176,15 +177,15 @@ TEST_F(BoundingBoxDecodeTiling, bounding_box_decode_tiling_2) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "boundingboxdecode_16_35_4";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "68 1 9 9 1 ");
 }
 
 TEST_F(BoundingBoxDecodeTiling, bounding_box_decode_tiling_3) {
     using namespace optiling;
     std::string op_name = "BoundingBoxDecode";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"rois_data_each_block\": 16, \"each_repeat_block_number\": 32,\"ub_max_size\":8704}}";
     std::vector<int64_t> input0{8,35,4};
@@ -226,6 +227,6 @@ TEST_F(BoundingBoxDecodeTiling, bounding_box_decode_tiling_3) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "boundingboxdecode_8_35_4";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "32 1 8 8 1 ");
 }

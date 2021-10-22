@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include <register/op_tiling.h>
 #include "selection_ops.h"
 #include "test_common.h"
@@ -36,8 +37,8 @@ static string to_string(const std::stringstream& tiling_data) {
 }
 
 TEST_F(stried_slice_v3_tiling, stried_slice_v3_tiling_no_mask) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("StridedSliceV3");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("StridedSliceV3");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::StridedSliceV3("StridedSliceV3");
   vector<vector<int64_t>> input_shapes = {
       {4, 4, 4, 4}, {4}, {4}, {4}, {4},
@@ -72,15 +73,15 @@ TEST_F(stried_slice_v3_tiling, stried_slice_v3_tiling_no_mask) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   std::cout << to_string(runInfo.GetAllTilingData()) << std::endl;
   ASSERT_TRUE(ret);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 4 4 4 4 4 2 2 2 2 1 1 1 1 3 3 3 3 1 1 1 1 ");
 }
 
 TEST_F(stried_slice_v3_tiling, stried_slice_v3_tiling_no_axes) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("StridedSliceV3");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("StridedSliceV3");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::StridedSliceV3("StridedSliceV3");
   vector<vector<int64_t>> input_shapes = {
       {4, 4, 4, 4}, {4}, {4}, {}, {4},
@@ -111,15 +112,15 @@ TEST_F(stried_slice_v3_tiling, stried_slice_v3_tiling_no_axes) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   std::cout << to_string(runInfo.GetAllTilingData()) << std::endl;
   ASSERT_TRUE(ret);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 4 4 4 4 4 2 2 2 2 1 1 1 1 3 3 3 3 1 1 1 1 ");
 }
 
 TEST_F(stried_slice_v3_tiling, stried_slice_v3_tiling_pad_head) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("StridedSliceV3");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("StridedSliceV3");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::StridedSliceV3("StridedSliceV3");
   vector<vector<int64_t>> input_shapes = {
       {4, 4, 4, 4}, {2}, {2}, {2}, {2},
@@ -153,7 +154,7 @@ TEST_F(stried_slice_v3_tiling, stried_slice_v3_tiling_pad_head) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   std::cout << to_string(runInfo.GetAllTilingData()) << std::endl;
   ASSERT_TRUE(ret);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
@@ -162,8 +163,8 @@ TEST_F(stried_slice_v3_tiling, stried_slice_v3_tiling_pad_head) {
 }
 
 TEST_F(stried_slice_v3_tiling, stried_slice_v3_tiling_pad_tail) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("StridedSliceV3");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("StridedSliceV3");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::StridedSliceV3("StridedSliceV3");
   vector<vector<int64_t>> input_shapes = {
       {4, 4, 4, 4}, {2}, {2}, {2}, {2},
@@ -198,15 +199,15 @@ TEST_F(stried_slice_v3_tiling, stried_slice_v3_tiling_pad_tail) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   std::cout << to_string(runInfo.GetAllTilingData()) << std::endl;
   ASSERT_TRUE(ret);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 3 16 4 4 16 2 2 0 1 1 16 3 3 1 1 1 ");
 }
 
 TEST_F(stried_slice_v3_tiling, stried_slice_v3_tiling_no_begin) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("StridedSliceV3");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("StridedSliceV3");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::StridedSliceV3("StridedSliceV3");
   vector<vector<int64_t>> input_shapes = {
       {4, 4, 4, 4}, {}, {4}, {4}, {4},
@@ -239,14 +240,14 @@ TEST_F(stried_slice_v3_tiling, stried_slice_v3_tiling_no_begin) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   std::cout << to_string(runInfo.GetAllTilingData()) << std::endl;
   ASSERT_FALSE(ret);
 }
 
 TEST_F(stried_slice_v3_tiling, stried_slice_v3_tiling_diff_size) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("StridedSliceV3");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("StridedSliceV3");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::StridedSliceV3("StridedSliceV3");
   vector<vector<int64_t>> input_shapes = {
       {4, 4, 4, 4}, {1}, {4}, {4}, {4},
@@ -282,14 +283,14 @@ TEST_F(stried_slice_v3_tiling, stried_slice_v3_tiling_diff_size) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   std::cout << to_string(runInfo.GetAllTilingData()) << std::endl;
   ASSERT_FALSE(ret);
 }
 
 TEST_F(stried_slice_v3_tiling, stried_slice_v3_tiling_no_mask_neg) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("StridedSliceV3");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("StridedSliceV3");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::StridedSliceV3("StridedSliceV3");
   vector<vector<int64_t>> input_shapes = {
       {4, 4, 4, 4}, {4}, {4}, {4}, {4},
@@ -323,15 +324,15 @@ TEST_F(stried_slice_v3_tiling, stried_slice_v3_tiling_no_mask_neg) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   std::cout << to_string(runInfo.GetAllTilingData()) << std::endl;
   ASSERT_TRUE(ret);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 4 4 4 4 4 2 2 2 2 1 1 1 1 3 3 3 3 1 1 1 1 ");
 }
 
 TEST_F(stried_slice_v3_tiling, stried_slice_v3_tiling_no_stride) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("StridedSliceV3");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("StridedSliceV3");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::StridedSliceV3("StridedSliceV3");
   vector<vector<int64_t>> input_shapes = {
       {4, 4, 4, 4}, {4}, {4}, {4}, {},  // no stride
@@ -364,7 +365,7 @@ TEST_F(stried_slice_v3_tiling, stried_slice_v3_tiling_no_stride) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   std::cout << to_string(runInfo.GetAllTilingData()) << std::endl;
   ASSERT_TRUE(ret);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 3 4 4 16 2 2 8 1 1 4 3 3 12 1 1 1 ");

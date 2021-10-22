@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -33,8 +34,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_0) {
   using namespace optiling;
   std::string op_name = "ScanPQCodes";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"core_nums\": 8, \"split_count\": 1, \"split_index\": 0}}";
 
@@ -75,7 +76,7 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_0) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "scanPQCodes.key0";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   std::cout << "Tiling_data is: " << to_string(runInfo.tiling_data) << std::endl;
   EXPECT_EQ(to_string(runInfo.tiling_data), "4 1 0 4 0 ");
 }
@@ -83,8 +84,8 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_0) {
 TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_1) {
   using namespace optiling;
   std::string op_name = "ScanPQCodes";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"core_nums\": 8, \"split_count\": 1, \"split_index\": 0}}";
 
@@ -125,7 +126,7 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_1) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "scanPQCodes.key1";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   std::cout << "Tiling_data is: " << to_string(runInfo.tiling_data) << std::endl;
   EXPECT_EQ(to_string(runInfo.tiling_data), "8 1 0 8 0 ");
 }
@@ -133,8 +134,8 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_1) {
 TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_2) {
   using namespace optiling;
   std::string op_name = "ScanPQCodes";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"core_nums\": 8, \"split_count\": 2, \"split_index\": 0}}";
 
@@ -175,15 +176,15 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_2) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "scanPQCodes.key0";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   std::cout << "Tiling_data is: " << to_string(runInfo.tiling_data) << std::endl;
   EXPECT_EQ(to_string(runInfo.tiling_data), "2 1 0 2 0 ");
 }
 TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_3) {
   using namespace optiling;
   std::string op_name = "ScanPQCodes";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"core_nums\": 8, \"split_count\": 2, \"split_index\": 1}}";
 
@@ -224,7 +225,7 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_3) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "scanPQCodes.key0";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   std::cout << "Tiling_data is: " << to_string(runInfo.tiling_data) << std::endl;
   EXPECT_EQ(to_string(runInfo.tiling_data), "2 1 0 2 0 ");
 }
@@ -232,8 +233,8 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_3) {
 TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_2) {
   using namespace optiling;
   std::string op_name = "ScanPQCodes";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"core_nums\": 8, \"split_count\": 1, \"split_index\": 0}}";
 
@@ -274,14 +275,14 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_2) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "scanPQCodes.key3";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 */
 TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_4) {
   using namespace optiling;
   std::string op_name = "ScanPQCodes";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {}}";
 
@@ -322,14 +323,14 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_4) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "scanPQCodes.key2";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 /*
 TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_4) {
   using namespace optiling;
   std::string op_name = "ScanPQCodes";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"core_nums\": 8, \"split_count\": 1, \"split_index\": 0}}";
 
@@ -370,14 +371,14 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_4) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "scanPQCodes.key4";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_5) {
   using namespace optiling;
   std::string op_name = "ScanPQCodes";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"core_nums\": 8, \"split_count\": 1, \"split_index\": 0}}";
 
@@ -418,14 +419,14 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_5) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "scanPQCodes.key5";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_6) {
   using namespace optiling;
   std::string op_name = "ScanPQCodes";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"core_nums\": 8, \"split_count\": 1, \"split_index\": 0}}";
 
@@ -466,5 +467,5 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_6) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "scanPQCodes.key6";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }*/

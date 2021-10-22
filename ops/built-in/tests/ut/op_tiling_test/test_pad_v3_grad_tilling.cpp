@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -33,8 +34,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_0) {
   using namespace optiling;
   std::string op_name = "PadV3Grad";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"padding_contiguous\": true}}";
 
@@ -74,15 +75,15 @@ TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_0) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234560";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "0 64 64 64 64 64 64 64 64 32 0 0 0 0 128 128 ");
 }
 
 TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_1) {
   using namespace optiling;
   std::string op_name = "PadV3Grad";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"padding_contiguous\": true}}";
 
@@ -122,15 +123,15 @@ TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_1) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234561";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "0 1 512 42 12 1 512 40 10 32 1 1 1 1 16 16 ");
 }
 
 TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_2) {
   using namespace optiling;
   std::string op_name = "PadV3Grad";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"padding_contiguous\": true}}";
 
@@ -170,15 +171,15 @@ TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_2) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234562";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "0 1 512 42 1002 1 512 40 1000 32 1 1 1 1 16 16 ");
 }
 
 TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_3) {
   using namespace optiling;
   std::string op_name = "PadV3Grad";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"padding_contiguous\": true}}";
 
@@ -218,15 +219,15 @@ TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_3) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234563";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "1 1 512 400 1002 1 512 398 1000 32 1 1 1 1 16 16 ");
 }
 
 TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_4) {
   using namespace optiling;
   std::string op_name = "PadV3Grad";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"padding_contiguous\": true}}";
 
@@ -266,15 +267,15 @@ TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_4) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1654326";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "0 64 64 66 66 64 64 63 63 32 2 1 2 1 128 128 ");
 }
 
 TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_5) {
   using namespace optiling;
   std::string op_name = "PadV3Grad";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"padding_contiguous\": true}}";
 
@@ -314,15 +315,15 @@ TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_5) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1654327";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "1 2 512 1000 1000 2 512 995 995 32 2 3 2 3 32 32 ");
 }
 
 TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_6) {
   using namespace optiling;
   std::string op_name = "PadV3Grad";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"padding_contiguous\": true}}";
 
@@ -362,15 +363,15 @@ TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_6) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1654328";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "1 2 512 52 964 2 512 50 962 32 1 1 1 1 32 32 ");
 }
 
 TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_7) {
   using namespace optiling;
   std::string op_name = "PadV3Grad";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"padding_contiguous\": false}}";
 
@@ -410,6 +411,6 @@ TEST_F(PadV3GradTiling, rpad_v3_grad_tiling_7) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1654329";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "1 2 512 964 52 2 512 962 50 32 1 1 1 1 32 32 ");
 }

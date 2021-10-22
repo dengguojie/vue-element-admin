@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "nn_norm_ops.h"
 #include "array_ops.h"
@@ -59,8 +60,8 @@ using namespace ut_util;
 
 TEST_F(SigmoidCrossEntropyWithLogitsGradV2Tiling, SigmoidCrossEntropyWithLogitsGradV2_Tiling_test_1) {
   auto iter =
-      optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("SigmoidCrossEntropyWithLogitsGradV2");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+      optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SigmoidCrossEntropyWithLogitsGradV2");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::SigmoidCrossEntropyWithLogitsGradV2("SigmoidCrossEntropyWithLogitsGradV2");
 
   vector<vector<int64_t>> input_shapes = {
@@ -82,14 +83,14 @@ TEST_F(SigmoidCrossEntropyWithLogitsGradV2Tiling, SigmoidCrossEntropyWithLogitsG
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "48000 1536 1536 1536 934200126 ");
 }
 
 TEST_F(SigmoidCrossEntropyWithLogitsGradV2Tiling, SigmoidCrossEntropyWithLogitsGradV2_tiling_test_2) {
   auto iter =
-      optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("SigmoidCrossEntropyWithLogitsGradV2");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+      optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SigmoidCrossEntropyWithLogitsGradV2");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::SigmoidCrossEntropyWithLogitsGradV2("SigmoidCrossEntropyWithLogitsGradV2");
 
   vector<vector<int64_t>> input_shapes = {
@@ -111,6 +112,6 @@ TEST_F(SigmoidCrossEntropyWithLogitsGradV2Tiling, SigmoidCrossEntropyWithLogitsG
 
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "48000 1536 1536 1536 1536 350 ");
 }

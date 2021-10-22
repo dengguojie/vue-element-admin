@@ -9,6 +9,7 @@
 #include "graph/graph.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/op_desc_utils.h"
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -42,8 +43,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_dynamic_nhw) {
   using namespace optiling;
   std::string op_name = "Conv2DBackpropFilter";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_filter", "push_status": 1, "tiling_type": "dynamic_tiling", "repo_seeds": {"10000": [8, 52, 635]}, "repo_range": {"10000": [8, 8, 52, 52, 635, 635]}, "cost_range": {}, "block_dim": {"10000": 16}, "correct_range_flag": false, "_vars": {"10000": ["batch", "fmap_h", "dedy_h", "fmap_w", "dedy_w"]}})";
 
@@ -88,15 +89,15 @@ TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_dynamic_nhw) {
 
   optiling::utils::OpCompileInfo op_compile_info("Conv2d_bp_filter_tiling_dynamic_nhw", compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(conv2dbackpropfilter, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(conv2dbackpropfilter, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 16);
 }
 
 TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_dynamic_n) {
   using namespace optiling;
   std::string op_name = "Conv2DBackpropFilter";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_filter", "push_status": 1, "tiling_type": "dynamic_tiling", "repo_seeds": {}, "tiling_range": {"10000": [1, 7]}, "block_dim": {"10000": 16}, "correct_range_flag": true, "_vars": {"10000": ["batch"]}})";
 
@@ -141,14 +142,14 @@ TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_dynamic_n) {
 
   optiling::utils::OpCompileInfo op_compile_info("Conv2d_bp_filter_tiling_dynamic_n", compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(conv2dbackpropfilter, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_v2_(conv2dbackpropfilter, op_compile_info, runInfo));
 }
 
 TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_dynamic_compile_info_empty) {
   using namespace optiling;
   std::string op_name = "Conv2DBackpropFilter";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"({})";
 
@@ -193,14 +194,14 @@ TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_dynamic_compile_info_
 
   optiling::utils::OpCompileInfo op_compile_info("Conv2d_bp_filter_tiling_dynamic_compile_info_empty", compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(conv2dbackpropfilter, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_v2_(conv2dbackpropfilter, op_compile_info, runInfo));
 }
 
 TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_dynamic_compile_info_not_have_vars) {
   using namespace optiling;
   std::string op_name = "Conv2DBackpropFilter";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_filter", "push_status": 1, "tiling_type": "dynamic_tiling", "repo_seeds": {"10000": [8, 52, 635]}, "repo_range": {"10000": [8, 8, 52, 52, 635, 635]}, "cost_range": {}, "block_dim": {"10000": 16}, "correct_range_flag": false})";
 
@@ -245,15 +246,15 @@ TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_dynamic_compile_info_
 
   optiling::utils::OpCompileInfo op_compile_info("Conv2d_bp_filter_tiling_dynamic_compile_info_not_have_vars", compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(conv2dbackpropfilter, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_v2_(conv2dbackpropfilter, op_compile_info, runInfo));
 }
 
 // fuzz build compile list input
 TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_fuzz_build_list_input) {
   using namespace optiling;
   std::string op_name = "Conv2DBackpropFilter";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"([{"_pattern": "Conv2d_backprop_filter", "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"0": [1, 16, 50, 53, 630, 640]}, "block_dim": {"0": 16}, "_vars": {"0": ["batch", "fmap_h", "dedy_h", "fmap_w", "dedy_w"]}},{"_pattern": "Conv2d_backprop_filter", "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"1": [16, 32, 64, 128, 64, 128]}, "block_dim": {"1": 16}, "_vars": {"1": ["batch", "fmap_h", "dedy_h", "fmap_w", "dedy_w"]}}])";
 
@@ -298,7 +299,7 @@ TEST_F(Conv2DBackpropFilterTiling, Conv2d_bp_filter_tiling_fuzz_build_list_input
 
   optiling::utils::OpCompileInfo op_compile_info("Conv2d_bp_filter_tiling_fuzz_build_list_input", compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(conv2dbackpropfilter, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(conv2dbackpropfilter, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 16);
   EXPECT_EQ(runInfo.GetTilingKey(), 0);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "8 52 13 635 159 ");

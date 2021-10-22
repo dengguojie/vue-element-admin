@@ -9,6 +9,7 @@
 #include "graph/graph.h"
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/op_desc_utils.h"
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -42,8 +43,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(Conv2DTransposeTiling, Conv2d_transpose_tiling_dynamic_nhw) {
   using namespace optiling;
   std::string op_name = "Conv2DTranspose";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_input", "push_status": 0, "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}, "_vars": {"10000": ["batch_n", "dedy_h", "dx_h", "dedy_w", "dx_w"]}})";
 
@@ -88,7 +89,7 @@ TEST_F(Conv2DTransposeTiling, Conv2d_transpose_tiling_dynamic_nhw) {
 
   optiling::utils::OpCompileInfo op_compile_info("Conv2d_transpose_tiling_dynamic_nhw", compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(conv2dtranspose, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(conv2dtranspose, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 2);
   EXPECT_EQ(runInfo.GetTilingKey(), 10000);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 16 16 16 16 ");
@@ -97,8 +98,8 @@ TEST_F(Conv2DTransposeTiling, Conv2d_transpose_tiling_dynamic_nhw) {
 TEST_F(Conv2DTransposeTiling, Conv2d_transpose_compile_info_empty) {
   using namespace optiling;
   std::string op_name = "Conv2DTranspose";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"({})";
 
@@ -143,14 +144,14 @@ TEST_F(Conv2DTransposeTiling, Conv2d_transpose_compile_info_empty) {
 
   optiling::utils::OpCompileInfo op_compile_info("Conv2d_transpose_compile_info_empty", compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(conv2dtranspose, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_v2_(conv2dtranspose, op_compile_info, runInfo));
 }
 
 TEST_F(Conv2DTransposeTiling, Conv2d_transpose_compile_info_not_have_vars) {
   using namespace optiling;
   std::string op_name = "Conv2DTranspose";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"({"_pattern": "Conv2d_backprop_input", "push_status": 0, "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"10000": [1, 10, 10, 25, 10, 25]}, "block_dim": {"10000": 2}})";
 
@@ -195,15 +196,15 @@ TEST_F(Conv2DTransposeTiling, Conv2d_transpose_compile_info_not_have_vars) {
 
   optiling::utils::OpCompileInfo op_compile_info("Conv2d_transpose_compile_info_not_have_vars", compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(conv2dtranspose, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_v2_(conv2dtranspose, op_compile_info, runInfo));
 }
 
 // fuzz build compile list input
 TEST_F(Conv2DTransposeTiling, Conv2d_transpose_tiling_fuzz_build_list_input) {
   using namespace optiling;
   std::string op_name = "Conv2DTranspose";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"([{"_pattern": "Conv2d_backprop_input", "push_status": 0, "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"0": [1, 10, 10, 25, 10, 25]}, "block_dim": {"0": 2}, "_vars": {"0": ["batch_n", "dedy_h", "dx_h", "dedy_w", "dx_w"]}}, {"_pattern": "Conv2d_backprop_input", "push_status": 0, "tiling_type": "dynamic_tiling", "repo_seeds": {}, "repo_range": {}, "cost_range": {"1": [10, 20, 15, 35, 14, 35]}, "block_dim": {"1": 2}, "_vars": {"1": ["batch_n", "dedy_h", "dx_h", "dedy_w", "dx_w"]}}])";
   ge::Graph graph("conv2dtranspose_op_tiling_test_0");
@@ -247,7 +248,7 @@ TEST_F(Conv2DTransposeTiling, Conv2d_transpose_tiling_fuzz_build_list_input) {
 
   optiling::utils::OpCompileInfo op_compile_info("Conv2d_transpose_tiling_fuzz_build_list_input", compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(conv2dtranspose, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(conv2dtranspose, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 2);
   EXPECT_EQ(runInfo.GetTilingKey(), 0);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 16 16 16 16 ");

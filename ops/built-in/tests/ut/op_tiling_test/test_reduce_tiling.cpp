@@ -6,7 +6,8 @@
 // #include "graph/utils/op_desc_utils.h"
 // #include "graph/utils/attr_utils.h"
 // #define private public
-// #include "register/op_tiling_registry.h"
+// #define private public
+#include "register/op_tiling_registry.h"
 
 // using namespace std;
 
@@ -37,8 +38,8 @@
 // TEST_F(ReduceTiling, ReduceTiling1) {
 //   using namespace optiling;
 //   std::string op_name = "AutoTiling";
-//   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-//   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+//   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+//   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
 
 //   std::string compileInfo = R"({ "_ori_axis": [0], "_pattern": "CommReduce","push_status": 0,"_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5], "_ub_info": [16256], "_ub_info_rf": [16256], "_vars": {"-1000500": ["_dim_1_0", "_block_factor", "_ub_factor"]}})";
@@ -67,7 +68,7 @@
 //   op_compile_info.str = compileInfo;
 //   op_compile_info.key = "REDUCE__COUNTER__1";
 //   OpRunInfo runInfo;
-//   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+//   ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 //   EXPECT_EQ(runInfo.block_dim, 1);
 //   EXPECT_EQ(to_string(runInfo.tiling_data), "1 1 1 ");
 // }
@@ -75,8 +76,8 @@
 // TEST_F(ReduceTiling, ReduceTiling2) {
 //   using namespace optiling;
 //   std::string op_name = "AutoTiling";
-//   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-//   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+//   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+//   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
 
 //   std::string compileInfo = R"({ "_ori_axis": [2], "_pattern": "CommReduce", "push_status": 0, "_zero_ub_factor": 25600, "_vars": {"10": ["_dim_1", "_ub_factor"]}})";
@@ -105,7 +106,7 @@
 //   op_compile_info.str = compileInfo;
 //   op_compile_info.key = "REDUCE__COUNTER__2";
 //   OpRunInfo runInfo;
-//   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+//   ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 //   EXPECT_EQ(runInfo.block_dim, 1);
 //   EXPECT_EQ(to_string(runInfo.tiling_data), "78 25600 ");
 // }
@@ -113,8 +114,8 @@
 // TEST_F(ReduceTiling, ReduceTiling3) {
 //   using namespace optiling;
 //   std::string op_name = "AutoTiling";
-//   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-//   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+//   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+//   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
 
 //   std::string compileInfo = R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_zero_ub_factor": 32128, "_vars": {"110": ["_dim_2", "_ub_factor"]}})";
@@ -143,7 +144,7 @@
 //   op_compile_info.str = compileInfo;
 //   op_compile_info.key = "REDUCE__COUNTER__3";
 //   OpRunInfo runInfo;
-//   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+//   ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 //   EXPECT_EQ(runInfo.block_dim, 1);
 //   EXPECT_EQ(to_string(runInfo.tiling_data), "2 128 ");
 // }
@@ -151,8 +152,8 @@
 // TEST_F(ReduceTiling, ReduceTiling4) {
 //   using namespace optiling;
 //   std::string op_name = "AutoTiling";
-//   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-//   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+//   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+//   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
 //   std::string compileInfo = R"({"_ori_axis": [0],"_pattern": "CommReduce", "push_status": 0, "_zero_ub_factor": 32512, "_common_info": [32,1,8,1,1], "_pattern_info": [1], "_ub_info":[32512], "_ub_info_rf": [32512], "_reduce_shape_known": true, "_const_shape_post": true, "_compile_pattern": 1, "_block_dims":{"1":32},
 //       "_atomic_flags":{"1": true},
@@ -180,14 +181,14 @@
 //   op_compile_info.str = compileInfo;
 //   op_compile_info.key = "REDUCE__COUNTER__4";
 //   OpRunInfo runInfo;
-//   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+//   ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 // }
 
 // TEST_F(ReduceTiling, ReduceTiling5) {
 //   using namespace optiling;
 //   std::string op_name = "AutoTiling";
-//   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-//   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+//   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+//   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
 
 //   std::string compileInfo = R"({ "_ori_axis": [0], "_pattern": "CommReduce","push_status": 0,"common_info": [32, 1, 8, 1, 1], "pattern_info": [20000], "ub_info": [16256], "_ub_info_rf": [16256], "_vars": {"-1000500": ["dim_1_0", "block_factor", "ub_factor"]}})";
@@ -216,14 +217,14 @@
 //   op_compile_info.str = compileInfo;
 //   op_compile_info.key = "REDUCE__COUNTER__5";
 //   OpRunInfo runInfo;
-//   ASSERT_TRUE(!iter->second(opParas, op_compile_info, runInfo));
+//   ASSERT_TRUE(!iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 // }
 
 // TEST_F(ReduceTiling, ReduceTiling6) {
 //   using namespace optiling;
 //   std::string op_name = "AutoTiling";
-//   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-//   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+//   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+//   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
 
 //   std::string compileInfo = R"({ "axes_idx": 0, "_pattern": "CommReduce","push_status": 0,"common_info": [32, 1, 8, 1, 1], "pattern_info": [20000], "ub_info": [16256], "_ub_info_rf": [16256], "_vars": {"-1000500": ["dim_1_0", "block_factor", "ub_factor"]}})";
@@ -252,14 +253,14 @@
 //   op_compile_info.str = compileInfo;
 //   op_compile_info.key = "REDUCE__COUNTER__6";
 //   OpRunInfo runInfo;
-//   ASSERT_TRUE(!iter->second(opParas, op_compile_info, runInfo));
+//   ASSERT_TRUE(!iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 // }
 
 // TEST_F(ReduceTiling, ReduceTiling7) {
 //   using namespace optiling;
 //   std::string op_name = "AutoTiling";
-//   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-//   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+//   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+//   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
 
 //   std::string compileInfo = R"({"_idx_before_reduce": 0, "_pattern": "CommReduce", "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [-1], "_ub_info": [32512], "_ub_info_rf": [32512], "_reduce_shape_known": true, "_const_shape_post": true, "_compile_pattern": -1, "_block_dims": {"-1": 32}, "_atomic_flags": {"-1": false}})";
@@ -302,15 +303,15 @@
 //   op_compile_info.str = compileInfo;
 //   op_compile_info.key = "REDUCE__COUNTER__7";
 //   OpRunInfo runInfo;
-//   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+//   ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 // }
 
 // // FineTuning tune0
 // TEST_F(ReduceTiling, ReduceTiling8) {
 //   using namespace optiling;
 //   std::string op_name = "AutoTiling";
-//   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-//   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+//   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+//   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
 //   std::string compileInfo = R"({"_ori_axis": [0],"_pattern": "CommReduce", "push_status": 0,
 //                                 "_zero_ub_factor": 32512, "_common_info": [32,1,16,0,1],
@@ -341,15 +342,15 @@
 //   op_compile_info.str = compileInfo;
 //   op_compile_info.key = "REDUCE__COUNTER__8";
 //   OpRunInfo runInfo;
-//   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+//   ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 // }
 
 // // FineTuning tune1
 // TEST_F(ReduceTiling, ReduceTiling9) {
 //   using namespace optiling;
 //   std::string op_name = "AutoTiling";
-//   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-//   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+//   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+//   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
 //   std::string compileInfo = R"({"_ori_axis": [0,2,3,4,5],"_pattern": "CommReduce",
 //                                 "_common_info": [32,1,8,1,1],
@@ -380,7 +381,7 @@
 //   op_compile_info.str = compileInfo;
 //   op_compile_info.key = "REDUCE__COUNTER__9";
 //   OpRunInfo runInfo;
-//   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+//   ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 // }
 
 
@@ -394,8 +395,8 @@
 // TEST_F(ReduceTiling, ReduceTiling10) {
 //   using namespace optiling;
 //   std::string op_name = "AutoTiling";
-//   auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-//   ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+//   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+//   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
 //   std::string compileInfo = R"({"_ori_axis": [0],"_pattern": "CommReduce",
 //                                 "_zero_ub_factor": 32512, "_common_info": [32,1,8,1,1],
@@ -436,5 +437,5 @@
 //   op_compile_info.str = compileInfo;
 //   op_compile_info.key = "REDUCE__COUNTER__10";
 //   OpRunInfo runInfo;
-//   ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+//   ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 // }

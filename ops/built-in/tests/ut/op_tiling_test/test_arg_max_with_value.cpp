@@ -25,6 +25,7 @@
 #include "selection_ops.h"
 #include "elewise_calculation_ops.h"
 #include "array_ops.h"
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -66,8 +67,8 @@ using namespace ge;
 
 TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_0) {
   std::string op_name = "ArgMaxWithValue";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"axis\": 1}}";
 
@@ -80,18 +81,18 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_0) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "7 35 5 128 18 2 1 0 0 0 0 0 128 128 0 0 128 128 0 ");
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_1) {
   std::string op_name = "ArgMaxWithValue";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"axis\": 1}}";
 
@@ -104,18 +105,18 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_1) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 35 128 128 3 16 3 1 128 0 0 0 16 0 0 0 3 0 0 ");
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_2) {
   std::string op_name = "ArgMaxWithValue";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"axis\": 1}}";
 
@@ -128,18 +129,18 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_2) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 35 96 96 3 16 3 1 240 0 0 0 16 0 0 0 3 0 0 ");
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_3) {
   std::string op_name = "ArgMaxWithValue";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"axis\": 1}}";
 
@@ -152,18 +153,18 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_3) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "3 35 10000 10000 3 16 3 0 0 0 10000 0 16 0 0 0 3 0 0 ");
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_4) {
   std::string op_name = "ArgMaxWithValue";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_ele\": 63488, \"core_num\": 32, \"axis\": 1}}";
 
@@ -176,18 +177,18 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_4) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "4 35 10000 10000 5 8 3 0 0 1 1808 0 8 0 0 0 3 0 0 ");
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_5) {
   std::string op_name = "ArgMaxWithValue";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_ele\": 63488, \"core_num\": 32, \"axis\": 1}}";
 
@@ -200,10 +201,10 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_5) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "12 35 8000 8000 5 8 3 0 0 0 8000 0 8 0 0 0 3 0 0 ");
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }

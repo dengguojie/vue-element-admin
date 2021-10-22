@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "array_ops.h"
 #include "nn_calculation_ops.h"
@@ -43,8 +44,8 @@ TEST_F(Conv3DBackpropFilterTiling, Conv3d_bp_filter_tiling_default_tiling_invali
 {
   using namespace optiling;
   std::string op_name = "Conv3DBackpropFilter";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"({"_pattern": "Conv3d_backprop_filter","tiling_type": "default_tiling","fmap_c1": 233, "default_range": {"10000": [3,3,3,3,3,3,32,32]},"block_dim": {"10000": 2},"_vars": {"10000": ["dedy_d","dedy_h","dedy_w","dedx_d","dedx_h","dedx_w"]}})";
 
@@ -89,15 +90,15 @@ TEST_F(Conv3DBackpropFilterTiling, Conv3d_bp_filter_tiling_default_tiling_invali
   optiling::utils::OpCompileInfo op_compile_info("Conv3d_bp_filter_tiling_default_tiling_invalid_fmap_C", compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_FALSE(iter->second(conv3dw, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_v2_(conv3dw, op_compile_info, runInfo));
 }
 
 TEST_F(Conv3DBackpropFilterTiling, Conv3d_bp_filter_tiling_default_tiling_invalid_dedy_C)
 {
   using namespace optiling;
   std::string op_name = "Conv3DBackpropFilter";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"({"_pattern": "Conv3d_backprop_filter","tiling_type": "default_tiling", "fmap_c1": 2, "dedy_c1": 233, "default_range": {"10000": [3,3,3,3,3,3,32,32]},"block_dim": {"10000": 2},"_vars": {"10000": ["dedy_d","dedy_h","dedy_w","dedx_d","dedx_h","dedx_w"]}})";
 
@@ -142,15 +143,15 @@ TEST_F(Conv3DBackpropFilterTiling, Conv3d_bp_filter_tiling_default_tiling_invali
   optiling::utils::OpCompileInfo op_compile_info("Conv3d_bp_filter_tiling_default_tiling_invalid_dedy_C", compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_FALSE(iter->second(conv3dw, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_v2_(conv3dw, op_compile_info, runInfo));
 }
 
 TEST_F(Conv3DBackpropFilterTiling, Conv3d_bp_filter_tiling_default_tiling_invalid_test_C)
 {
   using namespace optiling;
   std::string op_name = "Conv3DBackpropFilter";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"({"_pattern": "Conv3d_backprop_filter","tiling_type": "default_tiling", "fmap_c1": 2, "dedy_c1": 233, "default_range": {"10000": [3,3,3,3,3,3,32,32]},"block_dim": {"10000": 2},"_vars": {"10000": ["dedy_d","dedy_h","dedy_w","dedx_d","dedx_h","dedx_w"]}})";
 
@@ -195,15 +196,15 @@ TEST_F(Conv3DBackpropFilterTiling, Conv3d_bp_filter_tiling_default_tiling_invali
   optiling::utils::OpCompileInfo op_compile_info("Conv3d_bp_filter_tiling_default_tiling_invalid_test_C", compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_FALSE(iter->second(conv3dw, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_v2_(conv3dw, op_compile_info, runInfo));
 }
 
 TEST_F(Conv3DBackpropFilterTiling, Conv3d_bp_filter_tiling_default_tiling_invalid_test)
 {
   using namespace optiling;
   std::string op_name = "Conv3DBackpropFilter";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"({"_pattern": "Conv3d_backprop_filter","tiling_type": "default_tiling", "default_range": {"10000": [3,3,3,3,3,3,32,32]},"block_dim": {"10000": 2},"_vars": {"10000": ["dedy_d","dedy_h","dedy_w","dedx_d","dedx_h","dedx_w"]}})";
 
@@ -248,5 +249,5 @@ TEST_F(Conv3DBackpropFilterTiling, Conv3d_bp_filter_tiling_default_tiling_invali
   optiling::utils::OpCompileInfo op_compile_info("Conv3d_bp_filter_tiling_default_tiling_invalid_test", compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_FALSE(iter->second(conv3dw, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_v2_(conv3dw, op_compile_info, runInfo));
 }

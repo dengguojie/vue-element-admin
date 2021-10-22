@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 #include <graph/utils/type_utils.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "all_ops.h"
 #include "test_common.h"
@@ -29,8 +30,8 @@ static void run_case(std::vector<int64_t> input_shape_0, std::string data_dtype_
                      std::string compile_info, std::string expect_tiling, 
                      std::string case_name) {
   using namespace ut_util;
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("EmbeddingDenseGrad");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("EmbeddingDenseGrad");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto test_op = op::EmbeddingDenseGrad("EmbeddingDenseGrad");
 
   TENSOR_INPUT_WITH_SHAPE(test_op, grad, input_shape_0, StringToDtype(data_dtype_0),
@@ -43,12 +44,12 @@ static void run_case(std::vector<int64_t> input_shape_0, std::string data_dtype_
   optiling::utils::OpCompileInfo op_compile_info(case_name.c_str(), compile_info);
 
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(test_op, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(test_op, op_compile_info, runInfo));
   if (expect_tiling != "") {
     EXPECT_EQ(to_string_int32(runInfo.GetAllTilingData()), expect_tiling);
   }
   for (int64_t i = 0; i < profiling_test_num; i++) {
-    iter->second(test_op, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(test_op, op_compile_info, runInfo);
   }
 }
 

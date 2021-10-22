@@ -22,6 +22,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -53,8 +54,8 @@ static string to_string(const std::stringstream& tiling_data) {
 TEST_F(MaxPoolV3Tiling, max_pool_v3_tiling_0) {
   using namespace optiling;
   std::string op_name = "MaxPoolV3";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"ksize_h\": 3, \"ksize_w\": 3, \"strides_h\": 2, "
@@ -89,15 +90,15 @@ TEST_F(MaxPoolV3Tiling, max_pool_v3_tiling_0) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "max_pool_v3_tiling_0";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "2 4 1 1 56 56 28 28 57 57 1 0 1 0 1 11 1 2 6 2 6 4 ");
 }
 
 TEST_F(MaxPoolV3Tiling, maxpool_tiling_1) {
   using namespace optiling;
   std::string op_name = "MaxPool";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"ub_ele\": 130560, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 1, \"strides_h\": 1, "
@@ -132,14 +133,14 @@ TEST_F(MaxPoolV3Tiling, maxpool_tiling_1) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "maxpool_tiling_1";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "0 32 35432 35416 79 69 79 69 79 69 0 0 0 0 1 1 1 4 2792 4 2776 0 ");
 }
 TEST_F(MaxPoolV3Tiling, max_pool_v3_tiling_2) {
   using namespace optiling;
   std::string op_name = "MaxPoolV3";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"ksize_h\": 3, \"ksize_w\": 3, \"strides_h\": 2, "
@@ -174,14 +175,14 @@ TEST_F(MaxPoolV3Tiling, max_pool_v3_tiling_2) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "max_pool_v3_tiling_2";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "2 4 1 1 56 56 29 29 59 59 1 2 1 2 1 10 1 2 9 2 9 4 ");
 }
 TEST_F(MaxPoolV3Tiling, max_pool_v3_tiling_global) {
   using namespace optiling;
   std::string op_name = "MaxPoolV3";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 3, \"strides_h\": 1, "
@@ -216,6 +217,6 @@ TEST_F(MaxPoolV3Tiling, max_pool_v3_tiling_global) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "max_pool_v3_tiling_global";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "6 32 1 1 3 3 1 1 3 3 0 0 0 0 1 1 1 0 0 0 0 32 ");
 }

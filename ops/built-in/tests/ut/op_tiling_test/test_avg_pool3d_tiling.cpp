@@ -2,6 +2,7 @@
 #include <fstream>
 #include <vector>
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "array_ops.h"
 #include "nn_pooling_ops.h"
@@ -46,8 +47,8 @@ TEST_F(AvgPool3DTiling, avg_pool3d_tiling_dynamic_w)
 {
   using namespace optiling;
   std::string op_name = "AvgPool3D";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = "{\"_pattern\": \"conv3d\", \"push_status\": 0, \"tiling_type\": \"dynamic_tiling\", \"repo_seeds\": {\"10000\": [32, 16, 56, 56]}, \"repo_range\": {\"10000\": [32, 32, 16, 16, 56, 56, 24, 456]}, \"cost_range\": {}, \"block_dim\": {\"10000\": 32}, \"_vars\": {\"10000\": [\"fmap_w\", \"w_out\"]}}";
 
@@ -76,7 +77,7 @@ TEST_F(AvgPool3DTiling, avg_pool3d_tiling_dynamic_w)
   optiling::utils::OpCompileInfo op_compile_info("avg_pool3d_tiling_dynamic_w", compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second(avgPool3D, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(avgPool3D, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(runInfo.GetTilingKey(), 10000);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "56 56 ");
@@ -86,8 +87,8 @@ TEST_F(AvgPool3DTiling, avg_pool3d_tiling_dynamic_batch_invalid_dim)
 {
   using namespace optiling;
   std::string op_name = "AvgPool3D";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = "{\"_pattern\": \"conv3d\", \"push_status\": 0, \"fmap_c1\": 233, \"tiling_type\": \"dynamic_tiling\", \"repo_seeds\": {\"10000\": 32}, \"tiling_range\": {\"10000\": [1, 35]}, \"block_dim\": {\"10000\": 32}, \"_vars\": {\"10000\": [\"batch_n\"]}}";
 
@@ -116,5 +117,5 @@ TEST_F(AvgPool3DTiling, avg_pool3d_tiling_dynamic_batch_invalid_dim)
   optiling::utils::OpCompileInfo op_compile_info("avg_pool3d_tiling_dynamic_batch_invalid_dim", compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_FALSE(iter->second(avgPool3D, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_v2_(avgPool3D, op_compile_info, runInfo));
 }

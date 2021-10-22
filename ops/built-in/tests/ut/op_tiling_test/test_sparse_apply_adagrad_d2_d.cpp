@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -32,8 +33,8 @@ static string to_string(const stringstream &tiling_data) {
 TEST_F(SparseApplyAdagradV2DTiling, sparseapplyadagradv2d_tiling_0) {
   using namespace optiling;
   string op_name = "SparseApplyAdagradV2D";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("SparseApplyAdagradV2D");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SparseApplyAdagradV2D");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 131072, \"indices_dsize\": 4, \"ub_take_parts\": 1, \"ub_block_num\":4, \"cache_threshold_col\":7}}";
 
@@ -95,7 +96,7 @@ TEST_F(SparseApplyAdagradV2DTiling, sparseapplyadagradv2d_tiling_0) {
   op_compile_info.key = "aa";
   OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 
   EXPECT_EQ(to_string(runInfo.tiling_data), "12 12 512 12 12 256 256 ");
 }
@@ -103,8 +104,8 @@ TEST_F(SparseApplyAdagradV2DTiling, sparseapplyadagradv2d_tiling_0) {
 TEST_F(SparseApplyAdagradV2DTiling, sparseapplyadagradv2d_tiling_1) {
   using namespace optiling;
   string op_name = "SparseApplyAdagradV2D";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("SparseApplyAdagradV2D");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SparseApplyAdagradV2D");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 131072, \"indices_dsize\": 4, \"ub_take_parts\": 1, \"ub_block_num\":4, \"cache_threshold_col\":7}}";
 
@@ -166,7 +167,7 @@ TEST_F(SparseApplyAdagradV2DTiling, sparseapplyadagradv2d_tiling_1) {
   op_compile_info.key = "aa";
   OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 
   EXPECT_EQ(to_string(runInfo.tiling_data), "12 12 2048 24 12 1024 1024 ");
 }
@@ -175,8 +176,8 @@ TEST_F(SparseApplyAdagradV2DTiling, sparseapplyadagradv2d_tiling_1) {
 TEST_F(SparseApplyAdagradV2DTiling, sparseapplyadagradv2d_tiling_2) {
   using namespace optiling;
   string op_name = "SparseApplyAdagradV2D";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("SparseApplyAdagradV2D");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SparseApplyAdagradV2D");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   string compileInfo = "{\"vars\": {\"core_num\": 0, \"ub_size\": 131072, \"indices_dsize\": 4, \"ub_take_parts\": 1, \"ub_block_num\":4, \"cache_threshold_col\":7}}";
 
@@ -238,15 +239,15 @@ TEST_F(SparseApplyAdagradV2DTiling, sparseapplyadagradv2d_tiling_2) {
   op_compile_info.key = "aa";
   OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 
 TEST_F(SparseApplyAdagradV2DTiling, sparseapplyadagradv2d_tiling_3) {
   using namespace optiling;
   string op_name = "SparseApplyAdagradV2D";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("SparseApplyAdagradV2D");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SparseApplyAdagradV2D");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 131072, \"indices_dsize\": 4, \"ub_take_parts\": 1, \"ub_block_num\":4, \"cache_threshold_col\":0}}";
 
@@ -308,5 +309,5 @@ TEST_F(SparseApplyAdagradV2DTiling, sparseapplyadagradv2d_tiling_3) {
   op_compile_info.key = "aa";
   OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }

@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -40,8 +41,8 @@ TEST_F(BNTrainingUpdateTiling, BNTrainingUpdate_tiling_test_1)
 {
     using namespace optiling;
     std::string op_name = "BNTrainingUpdate";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
     std::string compileInfo = R"({
                         "bn_update_num_rec_dtype": "float32", 
                         "bn_update_batch_var_scaler_dtype": "float32", 
@@ -123,5 +124,5 @@ TEST_F(BNTrainingUpdateTiling, BNTrainingUpdate_tiling_test_1)
     op_compile_info.key = "BNTrainingUpdate_tiling_test_1";
 
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }

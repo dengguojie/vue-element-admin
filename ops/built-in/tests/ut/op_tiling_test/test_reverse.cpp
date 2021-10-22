@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -33,8 +34,8 @@ static string to_string(const std::stringstream& tiling_data) {
 TEST_F(ReverseV2Tiling, rReverseV2_tiling_0) {
   using namespace optiling;
   std::string op_name = "ReverseV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
@@ -77,7 +78,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_0) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234560";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
             "11 1 1 1 1 1250 200 8 0 0 0 0 0 1 0 1 1 1 1 1 1 32 0 0 0 0 0 0 0 0 19 1250 3 1 ");
 }
@@ -85,8 +86,8 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_0) {
 TEST_F(ReverseV2Tiling, rReverseV2_tiling_1) {
   using namespace optiling;
   std::string op_name = "ReverseV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
@@ -129,7 +130,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_1) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234561";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
             "1 1 1 1 1 1 200 400 0 0 0 0 0 1 0 1 1 1 1 25 8 200 0 0 0 0 1 1 0 1 153 200 2 3 ");
 }
@@ -137,8 +138,8 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_1) {
 TEST_F(ReverseV2Tiling, rReverseV2_tiling_2) {
   using namespace optiling;
   std::string op_name = "ReverseV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
@@ -181,7 +182,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_2) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234562";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
             "2 1 1 1 1 1250 200 46 0 0 0 0 0 1 0 1 1 1 1 1 1 32 0 0 0 0 0 0 0 0 6 1250 3 1 ");
 }
@@ -189,8 +190,8 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_2) {
 TEST_F(ReverseV2Tiling, rReverseV2_tiling_3) {
   using namespace optiling;
   std::string op_name = "ReverseV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
@@ -233,7 +234,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_3) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234563";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
             "3 1 1 1 1 1 1 12800 0 0 0 0 0 0 0 1 1 1 1 32 1250 200 0 0 0 0 0 0 1 0 512 12800 1 3 ");
 }
@@ -241,8 +242,8 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_3) {
 TEST_F(ReverseV2Tiling, rReverseV2_tiling_4) {
   using namespace optiling;
   std::string op_name = "ReverseV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
@@ -285,7 +286,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_4) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234564";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
             "11 1 1 1 1 128 64 4 0 0 0 0 1 0 1 1 1 1 1 1 1 32 0 0 0 0 0 0 1 1 60 128 3 1 ");
 }
@@ -293,8 +294,8 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_4) {
 TEST_F(ReverseV2Tiling, rReverseV2_tiling_5) {
   using namespace optiling;
   std::string op_name = "ReverseV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
@@ -337,7 +338,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_5) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234564";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
             "5 1 1 1 1 1 8192 129 0 0 0 0 0 0 1 1 1 1 1 1 1 32 0 0 0 0 0 0 0 0 240 8192 2 1 ");
 }
@@ -345,8 +346,8 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_5) {
 TEST_F(ReverseV2Tiling, rReverseV2_tiling_6) {
   using namespace optiling;
   std::string op_name = "ReverseV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
@@ -389,7 +390,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_6) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234564";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data),
             "6 1 1 1 1 1 1 6400 0 0 0 0 0 0 1 1 1 1 1 1 32 8192 0 0 0 0 0 0 0 1 512 6400 1 2 ");
 }
@@ -397,8 +398,8 @@ TEST_F(ReverseV2Tiling, rReverseV2_tiling_6) {
 TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim) {
   using namespace optiling;
   std::string op_name = "ReverseV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
@@ -441,15 +442,15 @@ TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "01234561";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "4 1 1 1 1 1 1 2 0 0 0 0 0 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 1 2 2 1 0 ");
 }
 
 TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim_1) {
   using namespace optiling;
   std::string op_name = "ReverseV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
@@ -492,14 +493,14 @@ TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim_1) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "11234561";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "0 1 1 1 1 1 1 1 0 0 0 0 0 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 1 1 1 1 0 ");
 }
 TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim_scalar) {
   using namespace optiling;
   std::string op_name = "ReverseV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
@@ -542,14 +543,14 @@ TEST_F(ReverseV2Tiling, rReverseV2_only_one_dim_scalar) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "111234561";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "0 1 1 1 1 1 1 1 0 0 0 0 0 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 1 1 1 1 0 ");
 }
 TEST_F(ReverseV2Tiling, rReverseV2_test_1) {
   using namespace optiling;
   std::string op_name = "ReverseV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
@@ -592,15 +593,15 @@ TEST_F(ReverseV2Tiling, rReverseV2_test_1) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "111234561";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "4 1 1 1 1 31 1 36 0 0 0 0 1 0 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 1 31 31 3 0 ");
 }
 
 TEST_F(ReverseV2Tiling, rReverseV2_test_big_first) {
   using namespace optiling;
   std::string op_name = "ReverseV2";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"topk_threshold\": 16, \"max_elements\": 61440, \"max_elements_last_large_size\": 512, "
@@ -643,7 +644,7 @@ TEST_F(ReverseV2Tiling, rReverseV2_test_big_first) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "11123456333";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "11 1 1 1 1 79 3 2 0 0 0 0 0 1 0 1 1 1 1 1 1 79 0 0 0 0 0 0 0 0 79 79 3 1 ");
 }
 

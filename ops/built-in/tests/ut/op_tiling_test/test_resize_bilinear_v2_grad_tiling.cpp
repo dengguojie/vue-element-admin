@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -33,8 +34,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(ResizeBilinearV2GradTiling, resize_bilinear_v2_grad_tiling_0) {
     using namespace optiling;
     std::string op_name = "ResizeBilinearV2Grad";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32}}";
 
@@ -71,15 +72,15 @@ TEST_F(ResizeBilinearV2GradTiling, resize_bilinear_v2_grad_tiling_0) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345671";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "4 32 32 32 0 0 32 32 16 16 16384 4096 512 256 1024 1 32 ");
 }
 
 TEST_F(ResizeBilinearV2GradTiling, resize_bilinear_v2_grad_tiling_1) {
     using namespace optiling;
     std::string op_name = "ResizeBilinearV2Grad";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32}}";
 
@@ -116,7 +117,7 @@ TEST_F(ResizeBilinearV2GradTiling, resize_bilinear_v2_grad_tiling_1) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345673";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "4 2 1 1 0 0 28 56 7 8 25088 896 896 128 2 1 56 ");
 }
 

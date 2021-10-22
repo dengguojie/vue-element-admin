@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 #include "reduce_ops.h"
+#define private public
 #include "register/op_tiling_registry.h"
 #include "array_ops.h" 
 
@@ -55,8 +56,8 @@ using namespace ut_util;
 TEST_F(BNTrainingUpdateV3Tiling, BNTrainingUpdateV3Tiling1) {
     using namespace optiling;
     std::string op_name = "BNTrainingUpdateV3";
-    auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     auto opParas = op::BNTrainingUpdateV3(op_name);
 
@@ -163,7 +164,7 @@ TEST_F(BNTrainingUpdateV3Tiling, BNTrainingUpdateV3Tiling1) {
     optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
     optiling::utils::OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(runInfo.GetBlockDim(), 32);
     EXPECT_EQ(runInfo.GetTilingKey(), 8);
     EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "32 16 26 26 16 22 943842492 1065353604 ");

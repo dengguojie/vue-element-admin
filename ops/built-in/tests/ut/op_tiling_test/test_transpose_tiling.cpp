@@ -21,6 +21,7 @@
 #include <iostream>
 #include <vector>
 #include <gtest/gtest.h>
+#define private public
 #include <register/op_tiling.h>
 #include "op_tiling/transpose.h"
 #include "op_tiling/op_tiling_util.h"
@@ -1876,8 +1877,8 @@ static void run_case(std::vector<int64_t> input_shape, std::vector<int64_t> outp
                      std::vector<int64_t> const_value, std::string data_dtype, std::string compile_info,
                      std::string expect_tiling, std::string case_name) {
   using namespace ut_util;
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("Transpose");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Transpose");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   int64_t dim_num = input_shape.size();
   std::vector<int64_t> const_shape = {dim_num};
@@ -1889,9 +1890,9 @@ static void run_case(std::vector<int64_t> input_shape, std::vector<int64_t> outp
   optiling::utils::OpCompileInfo op_compile_info(case_name.c_str(), compile_info);
 
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(test_op, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(test_op, op_compile_info, runInfo));
   for (int64_t i = 0; i < profiling_test_num; i++) {
-    iter->second(test_op, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(test_op, op_compile_info, runInfo);
   }
 }
 

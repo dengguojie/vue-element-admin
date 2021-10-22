@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -33,8 +34,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(ScatterAddTiling, scatter_add_tiling_0) {
   using namespace optiling;
   std::string op_name = "ScatterAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\":4, \"indices_size\":4, \"support_atomic\":0}}";
 
@@ -79,7 +80,7 @@ TEST_F(ScatterAddTiling, scatter_add_tiling_0) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234561";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 17);
   EXPECT_EQ(to_string(runInfo.tiling_data), "7 2 17 704 0 2112 1486848 0 704 23232 0 23232 176 88 33 1408 0 0 0 0 0 0 ");
 }
@@ -87,8 +88,8 @@ TEST_F(ScatterAddTiling, scatter_add_tiling_0) {
 TEST_F(ScatterAddTiling, scatter_add_tiling_1) {
   using namespace optiling;
   std::string op_name = "ScatterAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\":4, \"indices_size\":4, \"support_atomic\":0}}";
 
@@ -133,7 +134,7 @@ TEST_F(ScatterAddTiling, scatter_add_tiling_1) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 3);
   EXPECT_EQ(to_string(runInfo.tiling_data), "14 1 3 2210 0 258 570180 0 2210 6630 0 2210 0 0 3 0 0 0 0 0 0 0 ");
 }
@@ -141,8 +142,8 @@ TEST_F(ScatterAddTiling, scatter_add_tiling_1) {
 TEST_F(ScatterAddTiling, scatter_add_tiling_2) {
   using namespace optiling;
   std::string op_name = "ScatterAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\":253952, \"core_num\":32, \"support_atomic\":1, \"var_size\":4, \"indices_size\":4}}";
 
@@ -187,7 +188,7 @@ TEST_F(ScatterAddTiling, scatter_add_tiling_2) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234567";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
   EXPECT_EQ(to_string(runInfo.tiling_data), "16 0 32 1 0 0 0 0 0 0 0 0 0 0 21340 0 667 663 0 667 0 663 ");
 }
@@ -195,8 +196,8 @@ TEST_F(ScatterAddTiling, scatter_add_tiling_2) {
 TEST_F(ScatterAddTiling, scatter_add_tiling_3) {
   using namespace optiling;
   std::string op_name = "ScatterAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\":253952, \"core_num\":32, \"support_atomic\":1, \"var_size\":4, \"indices_size\":4}}";
 
@@ -241,7 +242,7 @@ TEST_F(ScatterAddTiling, scatter_add_tiling_3) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "12345678";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 17);
   EXPECT_EQ(to_string(runInfo.tiling_data), "2 2 17 704 0 2112 1486848 0 704 0 0 0 0 0 33 0 0 0 0 0 0 0 ");
 }
@@ -249,8 +250,8 @@ TEST_F(ScatterAddTiling, scatter_add_tiling_3) {
 TEST_F(ScatterAddTiling, scatter_add_tiling_4) {
   using namespace optiling;
   std::string op_name = "ScatterAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\":253952, \"core_num\":32, \"support_atomic\":1, \"var_size\":4, \"indices_size\":4}}";
 
@@ -295,14 +296,14 @@ TEST_F(ScatterAddTiling, scatter_add_tiling_4) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "123456789";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(ScatterAddTiling, scatter_add_tiling_5) {
   using namespace optiling;
   std::string op_name = "ScatterAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\":253952, \"core_num\":32, \"support_atomic\":1, \"var_size\":4, \"indices_size\":4}}";
 
@@ -347,14 +348,14 @@ TEST_F(ScatterAddTiling, scatter_add_tiling_5) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "12345678b";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(ScatterAddTiling, scatter_add_tiling_6) {
   using namespace optiling;
   std::string op_name = "ScatterAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\":253952, \"core_num\":32, \"support_atomic\":1, \"var_size\":4, \"indices_size\":4}}";
 
@@ -399,14 +400,14 @@ TEST_F(ScatterAddTiling, scatter_add_tiling_6) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "12345678a";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(ScatterAddTiling, scatter_add_tiling_7) {
   using namespace optiling;
   std::string op_name = "ScatterAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"var_size\":4, \"indices_size\":4, \"support_atomic\":0}}";
 
@@ -451,14 +452,14 @@ TEST_F(ScatterAddTiling, scatter_add_tiling_7) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "a1234561";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(ScatterAddTiling, scatter_add_tiling_8) {
   using namespace optiling;
   std::string op_name = "ScatterAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"var_size\":4, \"indices_size\":4, \"support_atomic\":0}}";
 
@@ -503,14 +504,14 @@ TEST_F(ScatterAddTiling, scatter_add_tiling_8) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "b1234561";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(ScatterAddTiling, scatter_add_tiling_9) {
   using namespace optiling;
   std::string op_name = "ScatterAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"indices_size\":4, \"support_atomic\":0}}";
 
@@ -555,14 +556,14 @@ TEST_F(ScatterAddTiling, scatter_add_tiling_9) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "c1234561";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(ScatterAddTiling, scatter_add_tiling_10) {
   using namespace optiling;
   std::string op_name = "ScatterAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\":4, \"support_atomic\":0}}";
 
@@ -607,14 +608,14 @@ TEST_F(ScatterAddTiling, scatter_add_tiling_10) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "d1234561";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(ScatterAddTiling, scatter_add_tiling_11) {
   using namespace optiling;
   std::string op_name = "ScatterAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\": 4, \"indices_size\": 4}}";
 
@@ -659,14 +660,14 @@ TEST_F(ScatterAddTiling, scatter_add_tiling_11) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "e1234561";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(ScatterAddTiling, scatter_add_tiling_13) {
   using namespace optiling;
   std::string op_name = "ScatterAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\": 4, \"indices_size\": 4, \"support_atomic\": 0}}";
 
@@ -710,14 +711,14 @@ TEST_F(ScatterAddTiling, scatter_add_tiling_13) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "f1234561";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 
 TEST_F(ScatterAddTiling, scatter_add_tiling_14) {
   using namespace optiling;
   std::string op_name = "ScatterAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\": 4, \"indices_size\": 4, \"support_atomic\": 0}}";
 
@@ -761,13 +762,13 @@ TEST_F(ScatterAddTiling, scatter_add_tiling_14) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "g1234561";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
 TEST_F(ScatterAddTiling, scatter_add_tiling_15) {
   using namespace optiling;
   std::string op_name = "ScatterAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("ScatterAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ScatterAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\":0, \"core_num\":0, \"support_atomic\":1, \"var_size\":4, \"indices_size\":4}}";
 
@@ -812,5 +813,5 @@ TEST_F(ScatterAddTiling, scatter_add_tiling_15) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "h1234567";
   OpRunInfo runInfo;
-  ASSERT_FALSE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }

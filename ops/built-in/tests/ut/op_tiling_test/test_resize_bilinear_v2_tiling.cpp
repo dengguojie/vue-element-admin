@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "common/utils/ut_profiling_reg.h"
 #include "image_ops.h"
@@ -46,8 +47,8 @@ using namespace ge;
 
 TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_0) {
   std::string op_name = "ResizeBilinearV2";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::ResizeBilinearV2("ResizeBilinearV2");
 
   std::string compileInfo =
@@ -69,22 +70,22 @@ TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_0) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "100110 4096 1 7 7 33 33 4 7 1 ");
   // test performance start
   // PROFILING_TEST(iter->second, (opParas, op_compile_info, runInfo), 1000, 10);
 
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
   // test performance end
 }
 
 TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_2) {
   std::string op_name = "ResizeBilinearV2";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::ResizeBilinearV2("ResizeBilinearV2");
 
   std::string compileInfo =
@@ -106,19 +107,19 @@ TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_2) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "100000 16 1 1000 1000 999 999 2 4 4 ");
 
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_3) {
   std::string op_name = "ResizeBilinearV2";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::ResizeBilinearV2("ResizeBilinearV2");
 
   std::string compileInfo =
@@ -140,19 +141,19 @@ TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_3) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "999999 16000000 1 1 1 1 1 32 1 1 ");
 
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_4) {
   std::string op_name = "ResizeBilinearV2";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::ResizeBilinearV2("ResizeBilinearV2");
 
   std::string compileInfo =
@@ -175,14 +176,14 @@ TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_4) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "999999 16000000 1 1 1 1 1 32 1 1 ");
 }
 
 TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_5) {
   std::string op_name = "ResizeBilinearV2";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::ResizeBilinearV2("ResizeBilinearV2");
 
   std::string compileInfo =
@@ -208,14 +209,14 @@ TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_5) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "100110 16 1 1000 1000 999 999 2 16 1 ");
 }
 
 TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_6) {
   std::string op_name = "ResizeBilinearV2";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::ResizeBilinearV2("ResizeBilinearV2");
 
   std::string compileInfo =
@@ -241,14 +242,14 @@ TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_6) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "100000 4096 1 7 7 33 33 3 2 5 ");
 }
 
 TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_7) {
   std::string op_name = "ResizeBilinearV2";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::ResizeBilinearV2("ResizeBilinearV2");
 
   std::string compileInfo =
@@ -274,6 +275,6 @@ TEST_F(ResizeBilinearV2Tiling, resize_bilinear_tiling_7) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "100110 4096 1 7 7 33 33 4 7 1 ");
 }

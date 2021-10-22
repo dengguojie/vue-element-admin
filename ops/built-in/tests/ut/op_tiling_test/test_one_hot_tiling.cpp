@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -32,8 +33,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(OneHotTiling, one_hot_tiling_0) {
     using namespace optiling;
     std::string op_name = "OneHot";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"axis\":-1}}";
 
@@ -68,15 +69,15 @@ TEST_F(OneHotTiling, one_hot_tiling_0) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345671";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "0 4608 2 32 147456 147456 1 4718592 4608 0 0 ");
 }
 
 TEST_F(OneHotTiling, one_hot_tiling_1) {
     using namespace optiling;
     std::string op_name = "OneHot";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"axis\":0}}";
 
@@ -111,15 +112,15 @@ TEST_F(OneHotTiling, one_hot_tiling_1) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345673";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 8 32 32768 1 32768 1048576 0 1 1 ");
 }
 
 TEST_F(OneHotTiling, one_hot_tiling_2) {
     using namespace optiling;
     std::string op_name = "OneHot";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"axis\":0}}";
 
@@ -154,15 +155,15 @@ TEST_F(OneHotTiling, one_hot_tiling_2) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345673";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 8 32 32768 1 32768 1048576 0 1 1 ");
 }
 
 TEST_F(OneHotTiling, one_hot_tiling_3) {
     using namespace optiling;
     std::string op_name = "OneHot";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"axis\":-1}}";
 
@@ -197,15 +198,15 @@ TEST_F(OneHotTiling, one_hot_tiling_3) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345673";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 8 32 32768 1 32768 1048576 0 1 1 ");
 }
 
 TEST_F(OneHotTiling, one_hot_tiling_4) {
     using namespace optiling;
     std::string op_name = "OneHot";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"axis\":1}}";
 
@@ -240,15 +241,15 @@ TEST_F(OneHotTiling, one_hot_tiling_4) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345673";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 8 32 32768 1 32768 1048576 0 1 1 ");
 }
 
 TEST_F(OneHotTiling, one_hot_tiling_5) {
     using namespace optiling;
     std::string op_name = "OneHot";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"axis\":2}}";
 
@@ -283,15 +284,15 @@ TEST_F(OneHotTiling, one_hot_tiling_5) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345673";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 8 32 32768 1 32768 1048576 0 1 1 ");
 }
 
 TEST_F(OneHotTiling, one_hot_tiling_6) {
     using namespace optiling;
     std::string op_name = "OneHot";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"axis\":3}}";
 
@@ -326,15 +327,15 @@ TEST_F(OneHotTiling, one_hot_tiling_6) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345673";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 8 32 32768 1 32768 1048576 0 1 1 ");
 }
 
 TEST_F(OneHotTiling, one_hot_tiling_7) {
     using namespace optiling;
     std::string op_name = "OneHot";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"axis\":4}}";
 
@@ -369,15 +370,15 @@ TEST_F(OneHotTiling, one_hot_tiling_7) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345673";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 8 32 32768 1 32768 1048576 0 1 1 ");
 }
 
 TEST_F(OneHotTiling, one_hot_tiling_8) {
     using namespace optiling;
     std::string op_name = "OneHot";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"axis\":-1}}";
 
@@ -412,15 +413,15 @@ TEST_F(OneHotTiling, one_hot_tiling_8) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345673";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 8 32 32768 1 32768 1048576 0 1 1 ");
 }
 
 TEST_F(OneHotTiling, one_hot_tiling_9) {
     using namespace optiling;
     std::string op_name = "OneHot";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"axis\":0}}";
 
@@ -455,15 +456,15 @@ TEST_F(OneHotTiling, one_hot_tiling_9) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345673";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 8 32 32768 1 32768 1048576 0 1 1 ");
 }
 
 TEST_F(OneHotTiling, one_hot_tiling_10) {
     using namespace optiling;
     std::string op_name = "OneHot";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"axis\":1}}";
 
@@ -498,15 +499,15 @@ TEST_F(OneHotTiling, one_hot_tiling_10) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345673";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 8 32 32768 1 32768 1048576 0 1 1 ");
 }
 
 TEST_F(OneHotTiling, one_hot_tiling_11) {
     using namespace optiling;
     std::string op_name = "OneHot";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"axis\":2}}";
 
@@ -541,15 +542,15 @@ TEST_F(OneHotTiling, one_hot_tiling_11) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345673";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 8 32 32768 1 32768 1048576 0 1 1 ");
 }
 
 TEST_F(OneHotTiling, one_hot_tiling_12) {
     using namespace optiling;
     std::string op_name = "OneHot";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"axis\":3}}";
 
@@ -584,15 +585,15 @@ TEST_F(OneHotTiling, one_hot_tiling_12) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345673";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 8 32 32768 1 32768 1048576 0 1 1 ");
 }
 
 TEST_F(OneHotTiling, one_hot_tiling_13) {
     using namespace optiling;
     std::string op_name = "OneHot";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"axis\": 4}}";
 
@@ -627,15 +628,15 @@ TEST_F(OneHotTiling, one_hot_tiling_13) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345673";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 8 32 32768 1 32768 1048576 0 1 1 ");
 }
 
 TEST_F(OneHotTiling, one_hot_tiling_14) {
     using namespace optiling;
     std::string op_name = "OneHot";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"axis\":5}}";
 
@@ -670,15 +671,15 @@ TEST_F(OneHotTiling, one_hot_tiling_14) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345673";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 8 32 32768 1 32768 1048576 0 1 1 ");
 }
 
 TEST_F(OneHotTiling, one_hot_tiling_15) {
     using namespace optiling;
     std::string op_name = "OneHot";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"axis\":-1}}";
 
@@ -713,15 +714,15 @@ TEST_F(OneHotTiling, one_hot_tiling_15) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345673";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 9 16 65536 1 65536 1048576 0 1 1 ");
 }
 
 TEST_F(OneHotTiling, one_hot_tiling_16) {
     using namespace optiling;
     std::string op_name = "OneHot";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"axis\":1}}";
 
@@ -756,15 +757,15 @@ TEST_F(OneHotTiling, one_hot_tiling_16) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345673";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 9 30 42240 1 42240 13643520 0 11 4 ");
 }
 
 TEST_F(OneHotTiling, one_hot_tiling_17) {
     using namespace optiling;
     std::string op_name = "OneHot";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"axis\":1}}";
 
@@ -799,6 +800,6 @@ TEST_F(OneHotTiling, one_hot_tiling_17) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345673";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 7 30 4224 1 4224 1364352 0 11 4 ");
 }

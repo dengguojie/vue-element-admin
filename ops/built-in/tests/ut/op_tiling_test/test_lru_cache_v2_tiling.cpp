@@ -9,6 +9,7 @@
 #include "selection_ops.h"
 #include "elewise_calculation_ops.h"
 #include "array_ops.h"
+#define private public
 #include "register/op_tiling_registry.h"
 #include "data_flow_ops.h"
 
@@ -59,8 +60,8 @@ REG_OP(LRUCacheV2)
 */
 TEST_F(LRUCacheV2Tiling, lru_cache_v2_tiling_0) {
   std::string op_name = "LRUCacheV2";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = "{\"vars\": {\"set_num\": 8,\"time_stamp_wsp_size\": 8,\"miss_index_bytes\": 8}}";
 
   std::vector<int64_t> shape_a{32};
@@ -102,18 +103,18 @@ TEST_F(LRUCacheV2Tiling, lru_cache_v2_tiling_0) {
   string expectTilingData = "0 32 ";
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), expectTilingData);
   int64_t profiling_test_num = 100;
   for (int64_t i = 0; i < profiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(LRUCacheV2Tiling, lru_cache_v2_tiling_1) {
   std::string op_name = "LRUCacheV2";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = "{\"vars\": {\"time_stamp_wsp_size\": 8,\"miss_index_bytes\": 8}}";
   std::vector<int64_t> shape_a{32};
   std::vector<int64_t> shape_b{1024, 256};
@@ -156,14 +157,14 @@ TEST_F(LRUCacheV2Tiling, lru_cache_v2_tiling_1) {
   optiling::utils::OpRunInfo runInfo;
   int64_t profiling_test_num = 100;
   for (int64_t i = 0; i < profiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(LRUCacheV2Tiling, lru_cache_v2_tiling_2) {
   std::string op_name = "LRUCacheV2";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = "{\"vars\": {\"set_num\": 8,\"miss_index_bytes\": 8}}";
   std::vector<int64_t> shape_a{32};
   std::vector<int64_t> shape_b{1024, 256};
@@ -206,14 +207,14 @@ TEST_F(LRUCacheV2Tiling, lru_cache_v2_tiling_2) {
   optiling::utils::OpRunInfo runInfo;
   int64_t profiling_test_num = 100;
   for (int64_t i = 0; i < profiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(LRUCacheV2Tiling, lru_cache_v2_tiling_3) {
   std::string op_name = "LRUCacheV2";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = "{\"vars\": {\"set_num\": 8,\"time_stamp_wsp_size\": 8}}";
   std::vector<int64_t> shape_a{32};
   std::vector<int64_t> shape_b{1024, 256};
@@ -254,6 +255,6 @@ TEST_F(LRUCacheV2Tiling, lru_cache_v2_tiling_3) {
   optiling::utils::OpRunInfo runInfo;
   int64_t profiling_test_num = 100;
   for (int64_t i = 0; i < profiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }

@@ -22,6 +22,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "all_ops.h"
 #include "test_common.h"
@@ -42,8 +43,8 @@ class ConcatOffsetTiling : public testing::Test {
 
 TEST_F(ConcatOffsetTiling, concat_offset_tiling_0) {
   using namespace ut_util;
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("ConcatOffset");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ConcatOffset");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compile_info = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32}}";
   std::vector<int64_t> input{4};
@@ -53,6 +54,6 @@ TEST_F(ConcatOffsetTiling, concat_offset_tiling_0) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compile_info);
   optiling::utils::OpRunInfo run_info;
-  ASSERT_TRUE(iter->second(test_op, op_compile_info, run_info));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(test_op, op_compile_info, run_info));
   EXPECT_EQ(to_string_int64(run_info.GetAllTilingData()), "4 ");
 }

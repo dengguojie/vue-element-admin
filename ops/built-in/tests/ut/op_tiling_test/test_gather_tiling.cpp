@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "selection_ops.h"
 #include "array_ops.h"
@@ -36,8 +37,8 @@ static string to_string(const std::stringstream& tiling_data) {
 
 TEST_F(GatherTiling, gather_tiling_0) {
   std::string op_name = "Gather";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("Gather");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Gather");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, "
@@ -67,20 +68,20 @@ TEST_F(GatherTiling, gather_tiling_0) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "13 1 87552 1 174 0 8 0 21 6 0 32512 21 65024 "
             "32512 0 65024 21 0 87552 0 0 0 0 1 1 0 1 ");
   int64_t num = 100;
   for (int64_t i = 0; i < num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(GatherTiling, gather_tiling_1) {
   std::string op_name = "Gather";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("Gather");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Gather");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo =
       "{\"vars\": {\"ub_size\": 262144, \"core_num\": 32, \"l1_size\":2097152, "
@@ -108,7 +109,7 @@ TEST_F(GatherTiling, gather_tiling_1) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "29 1 32 16 330 0 32 0 6 138 0 6 0 "
             "2464 6 0 0 0 0 512 0 0 0 0 6 1 23 55 ");

@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -34,8 +35,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(InTopKTiling, InTopK_tiling1) {
   using namespace optiling;
   std::string op_name = "InTopKD";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = "{\"vars\": {\"mini_cloud_core_nums\": 32}}";
 
   std::vector<int64_t> inputx1{56, 84};
@@ -75,7 +76,7 @@ TEST_F(InTopKTiling, InTopK_tiling1) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "InTopK_tiling1";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 2);
   EXPECT_EQ(to_string(runInfo.tiling_data), "56 84 2 ");
 }
@@ -83,8 +84,8 @@ TEST_F(InTopKTiling, InTopK_tiling1) {
 TEST_F(InTopKTiling, InTopK_tiling2) {
   using namespace optiling;
   std::string op_name = "InTopKD";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = "{\"vars\": {\"mini_cloud_core_nums\": 32}}";
 
   std::vector<int64_t> inputx1{16, 84};
@@ -124,7 +125,7 @@ TEST_F(InTopKTiling, InTopK_tiling2) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "InTopK_tiling2";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 1);
   EXPECT_EQ(to_string(runInfo.tiling_data), "16 84 1 ");
 }
@@ -132,8 +133,8 @@ TEST_F(InTopKTiling, InTopK_tiling2) {
 TEST_F(InTopKTiling, InTopK_tiling3) {
   using namespace optiling;
   std::string op_name = "InTopKD";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = "{\"vars\": {\"mini_cloud_core_nums\": 32}}";
 
   std::vector<int64_t> inputx1{1156, 844};
@@ -173,7 +174,7 @@ TEST_F(InTopKTiling, InTopK_tiling3) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "InTopK_tiling3";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
   EXPECT_EQ(to_string(runInfo.tiling_data), "1156 844 32 ");
 }
@@ -181,8 +182,8 @@ TEST_F(InTopKTiling, InTopK_tiling3) {
 TEST_F(InTopKTiling, InTopK_tiling4) {
   using namespace optiling;
   std::string op_name = "InTopKD";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = "{\"vars\": {\"mini_cloud_core_nums\": 32}}";
 
   std::vector<int64_t> inputx1{56, 18444};
@@ -222,7 +223,7 @@ TEST_F(InTopKTiling, InTopK_tiling4) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "InTopK_tiling4";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 2);
   EXPECT_EQ(to_string(runInfo.tiling_data), "56 18444 2 ");
 }
@@ -230,8 +231,8 @@ TEST_F(InTopKTiling, InTopK_tiling4) {
 TEST_F(InTopKTiling, InTopK_tiling5) {
   using namespace optiling;
   std::string op_name = "InTopKD";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = "{\"vars\": {\"mini_cloud_core_nums\": 32}}";
 
   std::vector<int64_t> inputx1{72, 2048};
@@ -271,7 +272,7 @@ TEST_F(InTopKTiling, InTopK_tiling5) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "InTopK_tiling5";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 3);
   EXPECT_EQ(to_string(runInfo.tiling_data), "72 2048 3 ");
 }
@@ -280,8 +281,8 @@ TEST_F(InTopKTiling, InTopK_tiling5) {
 TEST_F(InTopKTiling, InTopK_tiling6) {
   using namespace optiling;
   std::string op_name = "InTopKD";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = "{\"vars\": {\"mini_cloud_core_nums\": 32}}";
 
   std::vector<int64_t> inputx1{795, 35208};
@@ -321,7 +322,7 @@ TEST_F(InTopKTiling, InTopK_tiling6) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "InTopK_tiling6";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 25);
   EXPECT_EQ(to_string(runInfo.tiling_data), "795 35208 25 ");
 }
@@ -329,8 +330,8 @@ TEST_F(InTopKTiling, InTopK_tiling6) {
 TEST_F(InTopKTiling, InTopK_tiling7) {
   using namespace optiling;
   std::string op_name = "InTopKD";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = "{\"vars\": {\"mini_cloud_core_nums\": 32}}";
 
   std::vector<int64_t> inputx1{1312, 4};
@@ -370,7 +371,7 @@ TEST_F(InTopKTiling, InTopK_tiling7) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "InTopK_tiling7";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 32);
   EXPECT_EQ(to_string(runInfo.tiling_data), "1312 4 32 ");
 }
@@ -378,8 +379,8 @@ TEST_F(InTopKTiling, InTopK_tiling7) {
 TEST_F(InTopKTiling, InTopK_tiling8) {
   using namespace optiling;
   std::string op_name = "InTopKD";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   std::string compileInfo = "{\"vars\": {\"mini_cloud_core_nums\": 32}}";
 
   std::vector<int64_t> inputx1{958, 9857};
@@ -419,7 +420,7 @@ TEST_F(InTopKTiling, InTopK_tiling8) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "InTopK_tiling8";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 30);
   EXPECT_EQ(to_string(runInfo.tiling_data), "958 9857 30 ");
 }

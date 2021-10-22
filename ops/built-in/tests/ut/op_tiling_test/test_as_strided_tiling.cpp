@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "transformation_ops.h"
 #include "array_ops.h"
@@ -34,8 +35,8 @@ static string to_string(const std::stringstream &tiling_data) {
 #include "test_common.h"
 
 TEST_F(AsStridedTiling, tiling1) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("AsStrided");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("AsStrided");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::AsStrided("AsStrided");
   TensorDesc tensorOutput;
   tensorOutput.SetDataType(ge::DT_FLOAT16);
@@ -43,6 +44,6 @@ TEST_F(AsStridedTiling, tiling1) {
   std::string compileInfo = "{\"vars\": {\"ub_size\": 196608, \"core_num\" : 96, \"dtype\": \"int32\"}}";
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  EXPECT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  EXPECT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
 }
 

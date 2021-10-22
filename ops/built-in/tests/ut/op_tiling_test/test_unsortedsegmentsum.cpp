@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -34,8 +35,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_0) {
   using namespace optiling;
   std::string op_name = "UnsortedSegmentSum";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("UnsortedSegmentSum");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentSum");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
 
@@ -84,15 +85,15 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_0) {
   op_compile_info.key = "aa";
   OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 
   EXPECT_EQ(to_string(runInfo.tiling_data), "17 2 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3132864 96 4096 32768 2488 19904 2 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ");
 }
 TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_1) {
   using namespace optiling;
   std::string op_name = "UnsortedSegmentSum";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("UnsortedSegmentSum");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentSum");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
 
@@ -142,15 +143,15 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_1) {
   op_compile_info.key = "aa";
   OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 
   EXPECT_EQ(to_string(runInfo.tiling_data), "1 32 2560 1 320 320 2560 2560 32 32 1 320 320 2560 2560 32 32 2560 1 320 320 2560 2560 32 32 1 320 320 2560 2560 32 32 80 1 10 80 10 80 1024 32 1 4 4 32 32 32 1 4 4 32 32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ");
 }
 TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_2) {
   using namespace optiling;
   std::string op_name = "UnsortedSegmentSum";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("UnsortedSegmentSum");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentSum");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
 
@@ -200,15 +201,15 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_2) {
   op_compile_info.key = "aa";
   OpRunInfo runInfo;
   
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   std::cout << "#####2" << std::endl;
   EXPECT_EQ(to_string(runInfo.tiling_data), "9 32 9 21 1024 1 1024 128 1024 128 80 1 5 80 1 5 80 1 0 0 5 5 419 0 0 0 0 0 0 0 0 0 0 0 0 0 ");
 }
 TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_3) {
   using namespace optiling;
   std::string op_name = "UnsortedSegmentSum";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("UnsortedSegmentSum");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentSum");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
 
@@ -257,15 +258,15 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_3) {
   op_compile_info.key = "aa";
   OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   std::cout << "#####3" << std::endl;
   EXPECT_EQ(to_string(runInfo.tiling_data), "15 32 97888 98336 2 1 2 1 2 1 3132864 3 2048 32768 1 2022 32 253 0 0 0 0 0 0 0 0 0 0 0 2048 2 2 1 1 4 1 ");
 }
 TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_4) {
   using namespace optiling;
   std::string op_name = "UnsortedSegmentSum";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("UnsortedSegmentSum");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentSum");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
 
@@ -314,14 +315,14 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_4) {
   op_compile_info.key = "aa";
   OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "4 32 44 1 6 6 44 44 1 1 1 6 6 44 44 1 1 660 1 83 83 660 660 15 15 1 83 83 660 660 15 15 44 1 5 40 1 4 46 1 1 1 1 1 1 15 1 2 2 15 15 1 1 1 1 2 1 2 1 40 48 4 0 1 1 1 1 2 1 2 1 ");
 }
 TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_5) {
   using namespace optiling;
   std::string op_name = "UnsortedSegmentSum";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("UnsortedSegmentSum");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("UnsortedSegmentSum");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"ub_size\": 131072, \"core_num\": 32, \"dtype\":\"float32\", \"ub_tensor_num\":2}}";
 
@@ -369,7 +370,7 @@ TEST_F(UnsortedSegmentSumTiling, unsortedsegmentsum_tiling_5) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "aa";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ");
 
 }

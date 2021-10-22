@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -49,8 +50,8 @@ static string to_string(const std::stringstream& tiling_data) {
 TEST_F(InplaceIndexAddTiling, inplace_index_add_tiling_0) {
   using namespace optiling;
   std::string op_name = "InplaceIndexAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("InplaceIndexAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("InplaceIndexAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\":4, \"indices_size\":4, \"vconv_size\":2, \"axis\":1}}";
 
@@ -95,15 +96,15 @@ TEST_F(InplaceIndexAddTiling, inplace_index_add_tiling_0) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234560";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "7 1 2 2 2 16 24 8 ");
 }
 
 TEST_F(InplaceIndexAddTiling, inplace_index_add_tiling_1) {
   using namespace optiling;
   std::string op_name = "InplaceIndexAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("InplaceIndexAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("InplaceIndexAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\":4, \"indices_size\":4, \"vconv_size\":2, \"axis\":1}}";
 
@@ -148,15 +149,15 @@ TEST_F(InplaceIndexAddTiling, inplace_index_add_tiling_1) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234561";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "7 1 3 3 3 9 9 3 ");
 }
 
 TEST_F(InplaceIndexAddTiling, inplace_index_add_tiling_2) {
   using namespace optiling;
   std::string op_name = "InplaceIndexAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("InplaceIndexAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("InplaceIndexAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\":4, \"indices_size\":4, \"vconv_size\":2, \"axis\":1}}";
 
@@ -201,15 +202,15 @@ TEST_F(InplaceIndexAddTiling, inplace_index_add_tiling_2) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234562";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "7 1 3 3 3 9 9 3 ");
 }
 
 TEST_F(InplaceIndexAddTiling, inplace_index_add_tiling_3) {
   using namespace optiling;
   std::string op_name = "InplaceIndexAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("InplaceIndexAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("InplaceIndexAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\":4, \"indices_size\":4, \"vconv_size\":2, \"axis\":1}}";
 
@@ -254,15 +255,15 @@ TEST_F(InplaceIndexAddTiling, inplace_index_add_tiling_3) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234563";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "7 1 2 2 2 16 24 8 ");
 }
 
 TEST_F(InplaceIndexAddTiling, inplace_index_add_tiling_4) {
   using namespace optiling;
   std::string op_name = "InplaceIndexAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("InplaceIndexAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("InplaceIndexAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\":4, \"indices_size\":4, \"vconv_size\":2, \"axis\":1}}";
 
@@ -307,15 +308,15 @@ TEST_F(InplaceIndexAddTiling, inplace_index_add_tiling_4) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234564";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "7 1 8000 2 2 16 24 8 ");
 }
 
 TEST_F(InplaceIndexAddTiling, inplace_index_add_tiling_5) {
   using namespace optiling;
   std::string op_name = "InplaceIndexAdd";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("InplaceIndexAdd");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("InplaceIndexAdd");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"ub_size\": 253952, \"core_num\": 32, \"var_size\":4, \"indices_size\":4, \"vconv_size\":2, \"axis\":1}}";
 
@@ -360,6 +361,6 @@ TEST_F(InplaceIndexAddTiling, inplace_index_add_tiling_5) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "1234565";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "7 1 8000 2 2 16 24 8 ");
 }

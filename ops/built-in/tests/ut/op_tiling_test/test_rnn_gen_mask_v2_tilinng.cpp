@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -34,8 +35,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(RnnGenMaskV2Tiling, rnn_gen_mask_v2_tiling_0) {
     using namespace optiling;
     std::string op_name = "RnnGenMaskV2";
-    auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
     // std::string compileInfo = "{\"vars\": {\"cal_mode\": 1,\"available_aicore_num\": 32, \"core_used\": 9, \"block\": 16, \"core_num\": 32, \"batch_size\": 3, \"num_step\": 3, \"hidden_size\": 3, \"hidden_size_block\": 8, \"repeat\": 1, \"rounds\": 9, \"batch_num_per_aicore\": 1, \"batch_tail\": 0}}";
     std::string compileInfo = "{\"vars\": {\"cal_mode\": 1,\"available_aicore_num\": 32, \"core_used\": 9, \"block\": 16, \"core_num\": 32, \"batch_size\": 3, \"num_step\": 3, \"rounds\": 9, \"batch_num_per_aicore\": 1, \"batch_tail\": 0}}";
@@ -73,7 +74,7 @@ TEST_F(RnnGenMaskV2Tiling, rnn_gen_mask_v2_tiling_0) {
     op_compile_info.str = compileInfo;
     op_compile_info.key = "12345671";
     OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "1 32 32 2 64 2 0 ");
 
 }

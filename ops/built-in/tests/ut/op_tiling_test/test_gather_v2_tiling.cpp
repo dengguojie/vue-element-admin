@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "selection_ops.h"
 #include "array_ops.h"
@@ -38,8 +39,8 @@ static void Compute(vector<int64_t> inputA, vector<int64_t> inputB, vector<int64
                     vector<int64_t> output, ge::DataType dtypeA, ge::DataType dtypeB, ge::DataType dtypeC,
                     ge::DataType dtypeOutput, string infoKey, string compileInfo, string expectTilingData) {
   std::string op_name = "GatherV2";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("GatherV2");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("GatherV2");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   TensorDesc tensor_inputA;
   tensor_inputA.SetShape(ge::Shape(inputA));
@@ -63,11 +64,11 @@ static void Compute(vector<int64_t> inputA, vector<int64_t> inputB, vector<int64
 
   optiling::utils::OpCompileInfo op_compile_info(infoKey.c_str(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), expectTilingData);
   int64_t profiling_test_num = 100;
   for (int64_t i = 0; i < profiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 

@@ -2,6 +2,7 @@
 #include <fstream>
 #include <vector>
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "array_ops.h"
 #include "nn_calculation_ops.h"
@@ -46,8 +47,8 @@ TEST_F(Conv3DTiling, Conv3d_tiling_dynamic_w)
 {
   using namespace optiling;
   std::string op_name = "Conv3D";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = "{\"_pattern\": \"conv3d\", \"push_status\": 0, \"tiling_type\": \"dynamic_tiling\", \"repo_seeds\": {\"10000\": [32, 16, 56, 56]}, \"repo_range\": {\"10000\": [32, 32, 16, 16, 56, 56, 24, 456]}, \"cost_range\": {}, \"block_dim\": {\"10000\": 32}, \"_vars\": {\"10000\": [\"fmap_w\", \"w_out\"]}}";
 
@@ -84,7 +85,7 @@ TEST_F(Conv3DTiling, Conv3d_tiling_dynamic_w)
   optiling::utils::OpCompileInfo op_compile_info("Conv3d_tiling_dynamic_w", compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second(conv3d, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(conv3d, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(runInfo.GetTilingKey(), 10000);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "56 56 ");
@@ -94,8 +95,8 @@ TEST_F(Conv3DTiling, Conv3d_tiling_dynamic_batch)
 {
   using namespace optiling;
   std::string op_name = "Conv3D";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = "{\"_pattern\": \"conv3d\", \"push_status\": 0, \"tiling_type\": \"dynamic_tiling\", \"repo_seeds\": {\"10000\": 32}, \"tiling_range\": {\"10000\": [1, 35]}, \"block_dim\": {\"10000\": 32}, \"_vars\": {\"10000\": [\"batch_n\"]}}";
 
@@ -132,7 +133,7 @@ TEST_F(Conv3DTiling, Conv3d_tiling_dynamic_batch)
   optiling::utils::OpCompileInfo op_compile_info("Conv3d_tiling_dynamic_batch", compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second(conv3d, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(conv3d, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(runInfo.GetTilingKey(), 10000);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "32 ");
@@ -142,8 +143,8 @@ TEST_F(Conv3DTiling, Conv3d_tiling_dynamic_batch_invalid_C)
 {
   using namespace optiling;
   std::string op_name = "Conv3D";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = "{\"_pattern\": \"conv3d\", \"push_status\": 0, \"fmap_c1\": 233, \"tiling_type\": \"dynamic_tiling\", \"repo_seeds\": {\"10000\": 32}, \"tiling_range\": {\"10000\": [1, 35]}, \"block_dim\": {\"10000\": 32}, \"_vars\": {\"10000\": [\"batch_n\"]}}";
 
@@ -180,7 +181,7 @@ TEST_F(Conv3DTiling, Conv3d_tiling_dynamic_batch_invalid_C)
   optiling::utils::OpCompileInfo op_compile_info("Conv3d_tiling_dynamic_batch_invalid_C", compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_FALSE(iter->second(conv3d, op_compile_info, runInfo));
+  ASSERT_FALSE(iter->second.tiling_func_v2_(conv3d, op_compile_info, runInfo));
 }
 
 // fuzz build compile list input
@@ -188,8 +189,8 @@ TEST_F(Conv3DTiling, Conv3d_tiling_fuzzy_build)
 {
   using namespace optiling;
   std::string op_name = "Conv3D";
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   const ge::AscendString compileInfo = R"({"_pattern": "conv3d","_vars": {"0": ["batch_n","fmap_d","d_out","fmap_h","h_out","fmap_w","w_out"]},"block_dim": {"0":32},"correct_range_flag":false,"cost_range":{"0": [2,3,8,15,8,15,8,15]},"fmap_c1":20,"kernelId":0,"repo_range": {},"repo_seeds": {},"tiling_type": "dynamic_tiling"})";
 
@@ -226,7 +227,7 @@ TEST_F(Conv3DTiling, Conv3d_tiling_fuzzy_build)
   optiling::utils::OpCompileInfo op_compile_info("Conv3d_tiling_fuzzy_build", compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second(conv3d, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(conv3d, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(runInfo.GetTilingKey(), 0);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 8 4 8 4 8 4 ");

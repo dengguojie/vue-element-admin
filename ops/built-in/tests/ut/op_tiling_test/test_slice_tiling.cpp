@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include <register/op_tiling.h>
 #include "test_common.h"
 #include "array_ops.h"
@@ -35,8 +36,8 @@ static string to_string(const std::stringstream& tiling_data) {
 }
 
 TEST_F(slice_tiling, slice_tiling_no_mask) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("Slice");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Slice");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   auto opParas = op::Slice("Slice");
   vector<vector<int64_t>> input_shapes = {
@@ -66,18 +67,18 @@ TEST_F(slice_tiling, slice_tiling_no_mask) {
   std::string compileInfo = R"({"vars": {"block_dim": 32}})";
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   ASSERT_TRUE(ret);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 4 4 4 4 4 2 2 2 2 1 1 1 1 3 3 3 3 1 1 1 1 ");
   int64_t num = 100;
   for (int64_t i = 0; i < num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(slice_tiling, slice_tiling_with_mask1) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("Slice");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Slice");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::Slice("Slice");
   vector<vector<int64_t>> input_shapes = {
       {10, 10},
@@ -107,14 +108,14 @@ TEST_F(slice_tiling, slice_tiling_with_mask1) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   ASSERT_TRUE(ret);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 2 10 10 3 3 0 0 3 3 1 1 ");
 }
 
 TEST_F(slice_tiling, slice_tiling_no_const_value) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("Slice");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Slice");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::Slice("Slice");
   vector<vector<int64_t>> input_shapes = {
       {10, 10},
@@ -144,13 +145,13 @@ TEST_F(slice_tiling, slice_tiling_no_const_value) {
 
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   ASSERT_FALSE(ret);
 }
 
 TEST_F(slice_tiling, slice_tiling_invalid_begin_length) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("Slice");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Slice");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::Slice("Slice");
   vector<vector<int64_t>> input_shapes = {
       {10, 10},
@@ -181,13 +182,13 @@ TEST_F(slice_tiling, slice_tiling_invalid_begin_length) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   ASSERT_FALSE(ret);
 }
 
 TEST_F(slice_tiling, slice_tiling_invalid_begin_value) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("Slice");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Slice");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::Slice("Slice");
   vector<vector<int64_t>> input_shapes = {
       {10, 10},
@@ -218,13 +219,13 @@ TEST_F(slice_tiling, slice_tiling_invalid_begin_value) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   ASSERT_FALSE(ret);
 }
 
 TEST_F(slice_tiling, slice_tiling_end_value_negative_one) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("Slice");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Slice");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::Slice("Slice");
   vector<vector<int64_t>> input_shapes = {
       {10, 10},
@@ -254,14 +255,14 @@ TEST_F(slice_tiling, slice_tiling_end_value_negative_one) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   ASSERT_TRUE(ret);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "7 1 100 100 0 100 1 ");
 }
 
 TEST_F(slice_tiling, slice_tiling_empty_input) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("Slice");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Slice");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::Slice("Slice");
   vector<vector<int64_t>> input_shapes = {
       {10, 10},
@@ -283,6 +284,6 @@ TEST_F(slice_tiling, slice_tiling_empty_input) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  auto ret = iter->second(opParas, op_compile_info, runInfo);
+  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   ASSERT_FALSE(ret);
 }

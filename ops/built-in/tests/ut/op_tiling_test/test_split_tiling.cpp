@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 #include "split_combination_ops.h"
 #include "array_ops.h"
@@ -44,8 +45,8 @@ REG_OP(Split)
 */
 
 TEST_F(SplitTiling, Split_tiling0) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("Split");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Split");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::Split("Split");
   vector<vector<int64_t>> input_shapes = {
       {0, 8},
@@ -80,12 +81,12 @@ TEST_F(SplitTiling, Split_tiling0) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  iter->second(opParas, op_compile_info, runInfo);
+  iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
 }
 
 TEST_F(SplitTiling, Split_tiling1) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("Split");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Split");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::Split("Split");
   vector<vector<int64_t>> input_shapes = {
       {1820, 232},
@@ -120,18 +121,18 @@ TEST_F(SplitTiling, Split_tiling1) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "1 32 422240 1820 13195 13195 0 13195 13195 0 13195 13195 232 1 422240 0 0 0 0 0 0 0 0 1820 ");
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
 
 TEST_F(SplitTiling, Split_tiling2) {
-  auto iter = optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().find("Split");
-  ASSERT_TRUE(iter != optiling::utils::OpTilingRegistryInterf_V2::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Split");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   auto opParas = op::Split("Split");
   vector<vector<int64_t>> input_shapes = {
       {40000, 84},
@@ -172,10 +173,10 @@ TEST_F(SplitTiling, Split_tiling2) {
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   // do tilling, get runInfo
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), to_string(runInfo.GetAllTilingData()));
   int64_t tiling_test_num = 0;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second(opParas, op_compile_info, runInfo);
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }

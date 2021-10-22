@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -30,8 +31,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(NMSWithMaskTiling, nms_with_mask_tiling_test) {
   using namespace optiling;
   std::string op_name = "NMSWithMask";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find("NMSWithMask");
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("NMSWithMask");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
   
   std::string compileInfo = "{\"vars\": {\"max_boxes_num\":2960}}";
 
@@ -65,7 +66,7 @@ TEST_F(NMSWithMaskTiling, nms_with_mask_tiling_test) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "nms_with_mask_dynamic_tiling";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(runInfo.block_dim, 1);
   EXPECT_EQ(to_string(runInfo.tiling_data), "16");
 }

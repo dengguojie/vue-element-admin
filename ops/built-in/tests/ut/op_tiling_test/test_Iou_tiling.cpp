@@ -2,6 +2,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#define private public
 #include "register/op_tiling_registry.h"
 
 using namespace std;
@@ -33,8 +34,8 @@ static string to_string(const std::stringstream &tiling_data) {
 TEST_F(IouTilingTest, iou_tiling_test_1) {
   using namespace optiling;
   std::string op_name = "Iou";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"full_core_num\": 32, \"product\": true}}";
   std::vector<int64_t> input0{32,4};
@@ -76,15 +77,15 @@ TEST_F(IouTilingTest, iou_tiling_test_1) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "iou_32_4_32_4";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "1 16 0 2 4096 32 32 0 64 0 ");
 }
 
 TEST_F(IouTilingTest, iou_tiling_test_2) {
   using namespace optiling;
   std::string op_name = "Iou";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"full_core_num\": 32, \"product\": true}}";
   std::vector<int64_t> input0{32,4};
@@ -126,15 +127,15 @@ TEST_F(IouTilingTest, iou_tiling_test_2) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "iou_32_4_4128_4";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "2 129 0 32 4096 32 4128 0 128 0 ");
 }
 
 TEST_F(IouTilingTest, iou_tiling_test_3) {
   using namespace optiling;
   std::string op_name = "Iou";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"full_core_num\": 32, \"product\": true}}";
   std::vector<int64_t> input0{451143,4};
@@ -176,15 +177,15 @@ TEST_F(IouTilingTest, iou_tiling_test_3) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "iou_451143_4_10_4";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "1 14112 13671 32 4096 451143 10 3 7296 49152 ");
 }
 
 TEST_F(IouTilingTest, iou_tiling_test_4) {
   using namespace optiling;
   std::string op_name = "Iou";
-  auto iter = optiling::OpTilingRegistryInterf::RegisteredOpInterf().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingRegistryInterf::RegisteredOpInterf().end());
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
   std::string compileInfo = "{\"vars\": {\"full_core_num\": 32, \"product\": true}}";
   std::vector<int64_t> input0{1025,4};
@@ -226,6 +227,6 @@ TEST_F(IouTilingTest, iou_tiling_test_4) {
   op_compile_info.str = compileInfo;
   op_compile_info.key = "iou_1025_4_25_4";
   OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second(opParas, op_compile_info, runInfo));
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "1 48 17 22 4096 1025 25 0 192 0 ");
 }
