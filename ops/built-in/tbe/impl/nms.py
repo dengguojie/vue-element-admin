@@ -1029,19 +1029,14 @@ def get_scale_factor_mini(tik_instance, im_info, batch_id, scale_factor):
     src1_ub = tik_instance.Tensor("float32", (8,), name="src1_ub", scope=tik.scope_ubuf)
     src1_ub[0].set_as(src0_ub[1])
     dst_ub = tik_instance.Tensor("float32", (8,), name="dst_ub", scope=tik.scope_ubuf)
-    src0_list = [src0_ub[0]]
-    src1_list = [src1_ub[0]]
-    dst_list = [dst_ub[0]]
-    tik_instance.scatter_vmul(8, dst_list, src0_list, src1_list, 1, 0, 0, 0)
+
+    tik_instance.vmul(8, dst_ub, src0_ub, src1_ub, 1, 1, 1, 1, 8, 8, 8)
 
     index_reg = tik_instance.Scalar(dtype="float32")
     index_reg.set_as(1/32752.0)
     src0_ub[0].set_as(index_reg)
 
-    src0_list = [src0_ub[0]]
-    src1_list = [src1_ub[0]]
-    dst_list = [dst_ub[0]]
-    tik_instance.scatter_vmul(8, src1_list, dst_list, src0_list, 1, 0, 0, 0)
+    tik_instance.vmul(8, src1_ub, dst_ub, src0_ub, 1, 1, 1, 1, 8, 8, 8)
 
     # //310 910 610 es
     src_ub = tik_instance.Tensor("float32", (8,), name="src_ub", scope=tik.scope_ubuf)
