@@ -1,11 +1,13 @@
-onnx-parser_test:Ú
-|
+onnx-parser_test:
+¢
 x
 wy"ConvTranspose*
 	dilations@@ *
 group *
 kernel_shape@@ *
-output_padding@@ *
+output_padding@@ *
+output_shape@@ *
+pads@@ *
 strides@@ ConvTransposeZ
 x
 

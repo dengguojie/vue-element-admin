@@ -47,4 +47,27 @@ ge::DataType GetOmDtypeFromOnnxDtype(int onnx_type) {
   }
   return onnx2om_dtype_map[dto_type];
 }
+
+Status ChangeFormatFromOnnx(std::shared_ptr<ge::OpDesc>& op_dsc, const int idx, ge::Format format, bool is_input) {
+  if (is_input) {
+    ge::GeTensorDesc org_tensor = op_dsc->GetInputDesc(idx);
+    org_tensor.SetOriginFormat(format);
+    org_tensor.SetFormat(format);
+    auto ret = op_dsc->UpdateInputDesc(idx, org_tensor);
+    if (ret != ge::GRAPH_SUCCESS) {
+      ONNX_PLUGIN_LOGE(op_dsc->GetName().c_str(), "change input format failed.");
+      return FAILED;
+    }
+  } else {
+    ge::GeTensorDesc org_tensor_y = op_dsc->GetOutputDesc(idx);
+    org_tensor_y.SetOriginFormat(format);
+    org_tensor_y.SetFormat(format);
+    auto ret_y = op_dsc->UpdateOutputDesc(idx, org_tensor_y);
+    if (ret_y != ge::GRAPH_SUCCESS) {
+      ONNX_PLUGIN_LOGE(op_dsc->GetName().c_str(), "change output format failed.");
+      return FAILED;
+    }
+  }
+  return SUCCESS;
+}
 }  //  namespace domi

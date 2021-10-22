@@ -34,7 +34,7 @@ TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_1) 
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
+  EXPECT_EQ(nodes.size(), 4);
 }
 
 TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_2) {
@@ -53,7 +53,7 @@ TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_2) 
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
+  EXPECT_EQ(nodes.size(), 4);
 }
 
 TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_3) {
@@ -72,7 +72,7 @@ TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_3) 
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
+  EXPECT_EQ(nodes.size(), 4);
 }
 
 TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_4) {
@@ -91,7 +91,7 @@ TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_4) 
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
+  EXPECT_EQ(nodes.size(), 4);
 }
 
 TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_5) {
@@ -110,7 +110,7 @@ TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_5) 
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
+  EXPECT_EQ(nodes.size(), 4);
 }
 
 TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_6) {
@@ -129,7 +129,7 @@ TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_6) 
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
+  EXPECT_EQ(nodes.size(), 4);
 }
 
 TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_7) {
@@ -148,7 +148,7 @@ TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_7) 
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
+  EXPECT_EQ(nodes.size(), 4);
 }
 
 TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_8) {
@@ -167,7 +167,7 @@ TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_8) 
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
+  EXPECT_EQ(nodes.size(), 4);
 }
 
 TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_9) {
@@ -186,7 +186,7 @@ TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_9) 
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
+  EXPECT_EQ(nodes.size(), 4);
 }
 
 TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_10) {
@@ -205,7 +205,7 @@ TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_10)
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
+  EXPECT_EQ(nodes.size(), 4);
 }
 
 TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_11) {
@@ -224,7 +224,7 @@ TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_11)
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
+  EXPECT_EQ(nodes.size(), 4);
 }
 
 TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_12) {
@@ -243,7 +243,7 @@ TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_12)
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
+  EXPECT_EQ(nodes.size(), 4);
 }
 
 TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_13) {
@@ -262,7 +262,7 @@ TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_13)
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
+  EXPECT_EQ(nodes.size(), 4);
 }
 
 TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_14) {
@@ -281,7 +281,7 @@ TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_14)
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 4);
+  EXPECT_EQ(nodes.size(), 5);
 }
 
 TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_15) {
@@ -300,7 +300,7 @@ TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_15)
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
+  EXPECT_EQ(nodes.size(), 4);
 }
 
 TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_16) {
@@ -319,5 +319,40 @@ TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_16)
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
+  EXPECT_EQ(nodes.size(), 4);
+}
+
+TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_17) {
+  CleanGlobal();
+  ge::Graph graph;
+
+  std::cout << __FILE__ << std::endl;
+  std::string caseDir = __FILE__;
+  std::size_t idx = caseDir.find_last_of("/");
+  caseDir = caseDir.substr(0, idx);
+  std::string modelFile = caseDir + "/test_conv3d_fail.onnx";
+  std::map<ge::AscendString, ge::AscendString> parser_params;
+
+  auto status = aclgrphParseONNX(modelFile.c_str(), parser_params, graph);
+
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(conv_transpose_onnx_plugin_test, conv_transpose_onnx_plugin_test_case_18) {
+  CleanGlobal();
+  ge::Graph graph;
+
+  std::cout << __FILE__ << std::endl;
+  std::string caseDir = __FILE__;
+  std::size_t idx = caseDir.find_last_of("/");
+  caseDir = caseDir.substr(0, idx);
+  std::string modelFile = caseDir + "/test_conv_dims_3.onnx";
+  std::map<ge::AscendString, ge::AscendString> parser_params;
+
+  auto status = aclgrphParseONNX(modelFile.c_str(), parser_params, graph);
+
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  // check op count, some op need check op attr, op input count.
+  std::vector<ge::GNode> nodes = graph.GetAllNodes();
+  EXPECT_EQ(nodes.size(), 7);
 }

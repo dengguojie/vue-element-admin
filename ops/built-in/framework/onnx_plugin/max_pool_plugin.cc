@@ -63,7 +63,6 @@ Status UpdateOnnxAttrFromOnnx(const ge::onnx::NodeProto* node, OnnxAttr& onnx_at
       }
       if (attr.ints_size() == LEN_ATTR_1D) {
         onnx_attr.strides.push_back(1);
-        onnx_attr.trans_2d = true;
       }
     } else if (attr.name() == "auto_pad" && attr.type() == ge::onnx::AttributeProto::STRING) {
       onnx_attr.auto_pad = attr.s();
@@ -80,7 +79,6 @@ Status UpdateOnnxAttrFromOnnx(const ge::onnx::NodeProto* node, OnnxAttr& onnx_at
       if (len / 2 == LEN_ATTR_1D) {
         onnx_attr.pads.push_back(0);
         onnx_attr.pads.push_back(0);
-        onnx_attr.trans_2d = true;
       }
     } else if (attr.name() == "ceil_mode" && attr.type() == ge::onnx::AttributeProto::INT) {
       onnx_attr.ceil_mode = attr.i();

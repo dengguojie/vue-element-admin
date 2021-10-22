@@ -67,6 +67,11 @@ Status ParseParamsMaxUnpool(const Message *op_src, ge::Operator &op_dest) {
     }
   }
  
+  if (kernel_shape.empty()) {
+    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "node must have attr kernel_shape");
+    return FAILED;
+  }
+
   if (pads.size() == 0) {
     pads.resize(kernel_shape.size() * 2, 0);
   }

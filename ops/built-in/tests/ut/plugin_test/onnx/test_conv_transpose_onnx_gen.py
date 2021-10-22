@@ -12,6 +12,7 @@ def make_conv_transpose_v11():
         'ConvTranspose',
         inputs=['x', 'w'],
         outputs=['y'],
+        kernel_shape=[3,3],
     )
 
     graph = helper.make_graph(
@@ -122,6 +123,7 @@ def make_conv_transpose_v12():
         'ConvTranspose',
         inputs=['x', 'w'],
         outputs=['y'],
+        kernel_shape = [3,3],
     )
 
     graph = helper.make_graph(
@@ -146,6 +148,7 @@ def make_conv_transpose_v13():
         'ConvTranspose',
         inputs=['x', 'w'],
         outputs=['y'],
+        kernel_shape = [3,3],
     )
 
     graph = helper.make_graph(
@@ -170,6 +173,7 @@ def make_conv_transpose_v9():
         'ConvTranspose',
         inputs=['x', 'w'],
         outputs=['y'],
+        kernel_shape = [3,3],
     )
 
     graph = helper.make_graph(
@@ -193,6 +197,7 @@ def make_conv_transpose_v8():
         'ConvTranspose',
         inputs=['x', 'w'],
         outputs=['y'],
+        kernel_shape = [3,3],
     )
 
     graph = helper.make_graph(
@@ -389,7 +394,9 @@ def make_conv_transpose_output_padding():
         kernel_shape=[3, 3],
         dilations=[1, 1],
         group=1,
-        output_padding=[1, 1]
+        output_padding=[1, 1],
+        output_shape = [1, 1],
+        pads = [1, 1],
     )
 
     graph = helper.make_graph(
@@ -432,6 +439,57 @@ def make_conv3d_transpose_output_padding():
     onnx.save(model, "./test_conv3d_transpose_case_output_padding.onnx")
     onnx.checker.check_model(model)
 
+def make_conv3d_fail():
+    """v9"""
+    x = helper.make_tensor_value_info('x', TensorProto.FLOAT, [1, 320, 7, 7, 5])
+    w = helper.make_tensor_value_info('w', TensorProto.FLOAT, [320, 320, 2, 2, 2])
+    y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [1, 320, 14, 14, 10])
+    node_def = helper.make_node(
+        'ConvTranspose',
+        inputs=['x', 'w'],
+        outputs=['y'],
+        dilations=[1, 1, 1],
+        group=1,
+        output_padding=[0,0,0],
+        strides=[2, 2, 2]
+    )
+
+    graph = helper.make_graph(
+        [node_def],
+        'ConvTranspose',
+        [x, w],
+        [y],
+
+    )
+    model = helper.make_model(graph, producer_name="onnx-parser_test")
+    model.opset_import[0].version = 9
+    onnx.save(model, "./test_conv3d_fail.onnx")
+    onnx.checker.check_model(model)
+
+def make_conv_dims_3():
+    """v8"""
+    x = helper.make_tensor_value_info('x', TensorProto.FLOAT, [1, 1, 3])
+    w = helper.make_tensor_value_info('w', TensorProto.FLOAT, [1, 2, 3])
+    y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [1, 2, 5, 5])
+    node_def = helper.make_node(
+        'ConvTranspose',
+        inputs=['x', 'w'],
+        outputs=['y'],
+        kernel_shape = [3],
+    )
+
+    graph = helper.make_graph(
+        [node_def],
+        'ConvTranspose',
+        [x, w],
+        [y],
+    )
+
+    model = helper.make_model(graph, producer_name="onnx-parser_test")
+    model.opset_import[0].version = 8
+    onnx.save(model, "./test_conv_dims_3.onnx")
+    onnx.checker.check_model(model)
+
 
 if __name__ == '__main__':
     make_conv_transpose_v8()
@@ -450,3 +508,5 @@ if __name__ == '__main__':
     make_conv2d_Transpose_3_inputs()
     make_conv_transpose_output_padding()
     make_conv3d_transpose_output_padding()
+    make_conv3d_fail()
+    make_conv_dims_3()
