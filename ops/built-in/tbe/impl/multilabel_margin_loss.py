@@ -27,7 +27,7 @@ def _check_shape(shape_predict, shape_label):
         raise RuntimeError("predict and label must have the same shape !")
 
 
-class MultilabelMarginLoss(object):
+class MultilabelMarginLoss:
     """
         object
     """
@@ -253,6 +253,7 @@ class MultilabelMarginLoss(object):
         with self.tik_instance.if_scope(last_num > 0):
             self.compute_is_target_each_loop(move_offset, last_num, self.target_data_each_block, self.update_data_num)
 
+    # 'pylint: disable=too-many-locals,too-many-branches,too-many-statements
     def compute_total_weight_per_core(self, target_loop_index):
         """
         compute_is_target_per_core
@@ -499,7 +500,7 @@ class MultilabelMarginLoss(object):
         return self.tik_instance
 
 
-#pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)

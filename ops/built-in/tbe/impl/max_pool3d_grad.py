@@ -15,7 +15,7 @@
 """
 max_pool3d_grad
 """
-# pylint: disable=too-many-lines,import-error
+# 'pylint: disable=too-many-lines,import-error
 import math
 from te import tik
 from te import platform as tbe_platform
@@ -40,8 +40,8 @@ MASK64_VALUE = 64
 MAX_STRIDE = 65535
 
 
-# pylint: disable=too-many-locals,too-many-arguments,invalid-name,too-many-locals,no-self-use,too-few-public-methods
-# pylint: disable=too-many-statements,unused-variable,too-many-branches,too-many-instance-attributes
+# 'pylint: disable=too-many-locals,too-many-arguments,invalid-name,too-many-locals,no-self-use,too-few-public-methods
+# 'pylint: disable=too-many-statements,unused-variable,too-many-branches,too-many-instance-attributes
 def _ceil_div(value, block):
     """
     Integrate the input value by block.
@@ -4055,7 +4055,7 @@ class MaxPool3DGradCompute:
         return tik_instance
 
 
-# pylint: disable = too-many-arguments
+# 'pylint: disable = too-many-arguments
 def check_param(ori_input, ori_output, grad, ksize, strides,
                 kernel_name, data_format):
     """
@@ -4139,7 +4139,7 @@ def check_param(ori_input, ori_output, grad, ksize, strides,
                                                           "should be one")
 
 
-# pylint: disable=invalid-name,unused-argument
+# 'pylint: disable=invalid-name,unused-argument
 @para_check.check_input_type(dict, dict, dict, dict,
                        (tuple, list), (tuple, list), str, (tuple, list), str, str)
 def max_pool3d_grad(orig_x, orig_y, grads, y,

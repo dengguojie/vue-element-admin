@@ -15,8 +15,8 @@
 """
 nc1hwc0_2_nz
 """
-# pylint: disable=W0613
-# pylint: disable=wildcard-import,undefined-variable
+# 'pylint: disable=W0613
+# 'pylint: disable=wildcard-import,undefined-variable
 from te import tik
 from te import platform as tbe_platform
 from te.utils.op_utils import *
@@ -166,7 +166,7 @@ def _get_max_element_in_ub_c1hw(col_size, block_size, in_dtype):
     return loop_cnt, left_col, per_loop_col, in_ub_size
 
 
-# pylint: disable=too-many-locals,too-many-statements
+# 'pylint: disable=too-many-locals,too-many-statements
 def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
     """
     do nc1hwc0 to nz transfer by multiple core on axis n

@@ -15,8 +15,8 @@
 """
 ncdhw_2_fractal_z_3d
 """
-# pylint: disable=W0613
-# pylint: disable=wildcard-import,undefined-variable
+# 'pylint: disable=W0613
+# 'pylint: disable=wildcard-import,undefined-variable
 from functools import reduce as func_reduce
 from te import tik
 from te import platform as tbe_platform
@@ -124,7 +124,7 @@ def _get_vnchwconv_ub_size(cube_size, parts):
     return allocated_ub
 
 
-# pylint: disable=too-many-arguments,too-many-locals
+# 'pylint: disable=too-many-arguments,too-many-locals
 def _scalar_conv(tik_inst, dst_ub, src_ub, axis_params, reg_list):
     """
     do cdhw to c1dhwc0 transfer by scalar
@@ -232,7 +232,7 @@ def _check_input_params(input_params):
     check_shape(dst_shape)
 
 
-# pylint: disable=too-many-locals,too-many-statements
+# 'pylint: disable=too-many-locals,too-many-statements
 def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
     """
     do ncdhw to fractal_z_3d transfer by multiple core on axis n
@@ -283,7 +283,7 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
 
     with tik_inst.for_range(0, core_num, block_num=core_num) as block_idx:
 
-        # pylint: disable=too-many-locals,too-many-statements
+        # 'pylint: disable=too-many-locals,too-many-statements
         def _n_transfer_process(n_len):
             """
             process of hw transfer

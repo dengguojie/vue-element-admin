@@ -22,8 +22,8 @@ from te.utils import shape_util
 from te import tvm
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
-# pylint: disable=unused-variable
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("mod")
 def mod_compute(input_x, input_y, output_z, kernel_name="mod"):
     """

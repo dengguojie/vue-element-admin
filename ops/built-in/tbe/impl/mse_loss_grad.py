@@ -24,7 +24,7 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
-# pylint: disable=too-many-arguments,unused-argument,consider-using-in,len-as-condition,too-many-locals
+# 'pylint: disable=too-many-arguments,unused-argument,consider-using-in,len-as-condition,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("mse_loss_grad")
 def mse_loss_grad_compute(predict, label, dout, grad, reduction="mean", kernel_name="mse_loss_grad"):
     """

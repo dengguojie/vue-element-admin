@@ -23,11 +23,11 @@ from impl.merge_sort import CommonMethod
 from impl.merge_sort import MergeSort
 
 
-class MultiMerge(object):
+class MultiMerge:
     """
     MultiMerge
     """
-
+    # 'pylint: disable=too-many-arguments
     def __init__(self, input_shape, k_num, data_type, kernel_name, cont):
         self.sorted_num = input_shape[1]
         self.data_type = data_type
@@ -115,7 +115,7 @@ def check_params(input_proposal, kernel_name):
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def multi_merge(input_proposal, output_proposal, k_num, kernel_name="top_k_2"):
     """
     algorithm: merge and sort on single core

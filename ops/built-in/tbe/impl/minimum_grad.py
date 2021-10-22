@@ -41,8 +41,8 @@ def _compare_value_int32(data_x, data_y, shape_dz):
     return result
 
 
-# pylint: disable = locally-disabled,invalid-name,too-many-arguments
-# pylint: disable = unused-argument
+# 'pylint: disable = locally-disabled,invalid-name,too-many-arguments
+# 'pylint: disable = unused-argument,too-many-locals
 def _compare_value_float(data_x, data_y, shape_dz):
     """
     The input data type of the function only support float;
@@ -128,6 +128,7 @@ def _reduce_result(shape_x, shape_y, shape_dz, result_dx, result_dy):
     return result_dx, result_dy
 
 
+# 'pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("minimum_grad")
 def minimum_grad_compute(data_dz, data_x, data_y, y1, y2, grad_x, grad_y,
                          kernel_name="minimum_grad"):
@@ -191,6 +192,7 @@ def minimum_grad_compute(data_dz, data_x, data_y, y1, y2, grad_x, grad_y,
     return res
 
 
+# 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)

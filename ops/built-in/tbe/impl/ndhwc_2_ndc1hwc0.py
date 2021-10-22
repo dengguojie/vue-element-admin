@@ -19,7 +19,7 @@ from te.utils import para_check
 from impl import four_2_five
 
 
-# pylint: disable=chained-comparison
+# 'pylint: disable=chained-comparison
 def _check_parameters(src, dst, src_format, dst_format, kernel_name):
     """
     check the parameters including src_shape, dst_shape,
@@ -69,7 +69,7 @@ def _check_parameters(src, dst, src_format, dst_format, kernel_name):
                            "and greater than ((c1 - 1)*c0 )!")
 
 
-# pylint: disable=locally-disabled, too-many-locals
+# 'pylint: disable=locally-disabled, too-many-locals
 @para_check.check_input_type(dict, dict, str, str, str)
 def ndhwc_2_ndc1hwc0(src, dst, src_format, dst_format,
                      kernel_name='ndhwc_2_ndc1hwc0'):

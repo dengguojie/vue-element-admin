@@ -15,8 +15,8 @@
 """
 ndhwc_2_fractal_z_3d
 """
-# pylint: disable=W0613
-# pylint: disable=wildcard-import,undefined-variable
+# 'pylint: disable=W0613
+# 'pylint: disable=wildcard-import,undefined-variable
 from functools import reduce as func_reduce
 from te import tik
 from te import platform as tbe_platform
@@ -104,7 +104,7 @@ def _clean_ubuf(tik_inst, src, src_offset, dup_len):
                                 dup_value, 1, 1, 8)
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def _padding_short_c(tik_inst, dst_ub, src_ub, c_len, dhw_len, reg_list):
     """
     do dhwc to c1dhwc0 transfer by scalar
@@ -144,7 +144,7 @@ def _padding_short_c(tik_inst, dst_ub, src_ub, c_len, dhw_len, reg_list):
     _inner_conv_process()
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def _padding_long_c(tik_inst, dst_ub, src_ub, c_len, reg_list):
     """
     do c to c1c0 transfer
@@ -206,7 +206,7 @@ def _check_input_params(input_params):
     check_shape(dst_shape)
 
 
-# pylint: disable=too-many-locals,too-many-statements
+# 'pylint: disable=too-many-locals,too-many-statements
 def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
     """
     do ndhwc to fractal_z_3d transfer by multiple core on axis n
@@ -245,7 +245,7 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
 
     with tik_inst.for_range(0, core_num, block_num=core_num) as block_idx:
 
-        # pylint: disable=too-many-locals,too-many-statements
+        # 'pylint: disable=too-many-locals,too-many-statements
         def _n_transfer_process(n_len):
             """
             process of hw transfer

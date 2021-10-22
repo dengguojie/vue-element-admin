@@ -29,9 +29,9 @@ MAX_CORE_NUM = 32
 SRC_C_UNIT = 16
 
 
-# pylint: disable=superfluous-parens,useless-object-inheritance,invalid-name
-# pylint: disable=too-many-instance-attributes,too-few-public-methods,unused-argument,no-self-use
-# pylint: disable=too-many-arguments,too-many-locals,useless-return,protected-access
+# 'pylint: disable=superfluous-parens,useless-object-inheritance,invalid-name
+# 'pylint: disable=too-many-instance-attributes,too-few-public-methods,unused-argument,no-self-use
+# 'pylint: disable=too-many-arguments,too-many-locals,useless-return,protected-access
 class Nchw2Fractalzg(object):
     """
     Nchw2Fractalzg
@@ -613,7 +613,7 @@ class Nchw2Fractalzg(object):
                                                nc0_counter, left_part, right_part, is_left)
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @para_check.check_input_type(dict, dict, str, str, int, str)
 def nchw_2_fractal_z_g(src, dst, src_format, dst_format, groups, kernel_name="nchw_2_fractal_z_g"):
     """

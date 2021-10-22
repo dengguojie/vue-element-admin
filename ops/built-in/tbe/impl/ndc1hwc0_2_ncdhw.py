@@ -15,8 +15,8 @@
 """
 ndc1hwc0_2_ncdhw
 """
-# pylint: disable=W0613
-# pylint: disable=too-many-lines,wildcard-import,undefined-variable,chained-comparison
+# 'pylint: disable=W0613
+# 'pylint: disable=too-many-lines,wildcard-import,undefined-variable,chained-comparison
 import functools
 from te import platform as cce
 import te.platform.cce_params as cce_params
@@ -30,7 +30,7 @@ UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
 AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
 
 
-# pylint: disable=locally-disabled,too-many-lines
+# 'pylint: disable=locally-disabled,too-many-lines
 def _ceil_div(value, block):
     """
     integrate the input value by block
@@ -47,7 +47,7 @@ def _ceil_fill(value, block):
     return _ceil_div(value, block)*block
 
 
-# pylint: disable=locally-disabled,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-locals
 def _gm_to_ub_one(args):
     """
     move data from GM to UB one scene
@@ -364,8 +364,8 @@ def _set_loop(tik_instance, num_core, max_core, total_dim):
     return core_loop
 
 
-# pylint: disable=locally-disabled,too-many-instance-attributes
-# pylint: disable=locally-disabled,too-many-statements,unused-variable
+# 'pylint: disable=locally-disabled,too-many-instance-attributes
+# 'pylint: disable=locally-disabled,too-many-statements,unused-variable
 class Ndc1hwc02NcdhwCompute:
     """
     Rearranges data from NDC1HWC0 format to NCDHW format
@@ -1210,7 +1210,7 @@ def _check_parameters(src, dst, src_format, dst_format):
                            "and greater than ((c1 - 1)*c0 )!")
 
 
-# pylint: disable=inconsistent-return-statements
+# 'pylint: disable=inconsistent-return-statements
 def ndc1hwc0_2_ncdhw(src, dst, src_format, dst_format,
                      kernel_name='ndc1hwc0_2_ncdhw'):
     """

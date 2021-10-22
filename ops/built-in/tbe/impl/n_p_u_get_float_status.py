@@ -23,7 +23,7 @@ from te import tik
 NUM_EIGHT = 8
 
 
-# pylint:disable=invalid-name,too-many-locals,unused-argument,unused-variable
+# 'pylint:disable=invalid-name,too-many-locals,unused-argument,unused-variable
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def n_p_u_get_float_status(addr, data, kernel_name="n_p_u_get_float_status"):
     """

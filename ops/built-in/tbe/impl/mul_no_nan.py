@@ -22,8 +22,7 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
-
-# pylint: disable=pointless-string-statement,unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=pointless-string-statement,unused-argument,invalid-name,too-many-locals
 @fusion_manager.register("mul_no_nan")
 def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
     """

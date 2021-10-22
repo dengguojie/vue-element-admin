@@ -23,7 +23,7 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-locals
 def mish_compute(data_grad, data_x):
     """
     algorithm: mish_grad
@@ -61,7 +61,7 @@ def mish_compute(data_grad, data_x):
     return res
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def mish_compute_tanh(data_grad, data_x, data_tanh):
     """
     algorithm: mish_grad
@@ -96,6 +96,7 @@ def mish_compute_tanh(data_grad, data_x, data_tanh):
     return res
 
 
+# 'pylint: disable=too-many-locals
 def check_params(input_grad, input_x, input_tanhx, output_grad, kernel_name):
     """
     check params
@@ -124,6 +125,7 @@ def check_params(input_grad, input_x, input_tanhx, output_grad, kernel_name):
                 kernel_name, "format of input_x and {}".format(param_name), excepted_value, real_value)
 
 
+# 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)

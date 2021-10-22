@@ -25,8 +25,8 @@ from te.utils import shape_util
 SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=invalid-name,unused-variable,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=invalid-name,unused-variable,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("maximum")
 def maximum_compute(x1, x2, y, kernel_name="maximum"):
     """maximum compute

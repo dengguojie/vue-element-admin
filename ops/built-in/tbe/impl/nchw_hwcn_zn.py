@@ -15,8 +15,8 @@
 """
 nchw_hwcn_zn
 """
-# pylint: disable=W0613
-# pylint: disable=too-many-lines,wildcard-import,undefined-variable
+# 'pylint: disable=W0613
+# 'pylint: disable=too-many-lines,wildcard-import,undefined-variable
 from __future__ import absolute_import
 import te.lang.cce
 from te import tvm
@@ -26,10 +26,10 @@ from te.platform import cce_intrin as intrin
 from te.platform import cce_util
 from te.utils.op_utils import *
 
-# pylint: disable=locally-disabled,too-many-lines,too-many-statements
-# pylint: disable=locally-disabled,too-many-locals,too-many-arguments
-# pylint: disable=locally-disabled,too-many-branches,too-few-public-methods
-# pylint: disable=locally-disabled,unnecessary-comprehension
+# 'pylint: disable=locally-disabled,too-many-lines,too-many-statements
+# 'pylint: disable=locally-disabled,too-many-locals,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-branches,too-few-public-methods
+# 'pylint: disable=locally-disabled,unnecessary-comprehension
 
 # parameter naming allocated UB
 OUTPUT_NAME_SUFFIX = [0]
@@ -1910,7 +1910,7 @@ def _check_parameters_special(src, dst, src_format, dst_format):
             raise RuntimeError("src_shape is wrong !")
 
 
-# pylint: disable=locally-disabled, unused-argument
+# 'pylint: disable=locally-disabled, unused-argument
 def nchw_hwcn_fz_compute(src, dst, src_format, dst_format,
                          kernel_name="nchw_hwcn_zn"):
     """

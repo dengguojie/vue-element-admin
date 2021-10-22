@@ -21,7 +21,7 @@ from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
 
 
-# pylint: disable=invalid-name,unused-argument
+# 'pylint: disable=invalid-name,unused-argument
 @fusion_manager.register("muls")
 def muls_compute(x, scalar, kernel_name="muls"):
     """

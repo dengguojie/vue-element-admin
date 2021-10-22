@@ -15,8 +15,8 @@
 """
 ncdhw_2_ndc1hwc0
 """
-# pylint: disable=W0613
-# pylint: disable=wildcard-import,undefined-variable
+# 'pylint: disable=W0613
+# 'pylint: disable=wildcard-import,undefined-variable
 from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
@@ -132,7 +132,7 @@ def _check_input_params(input_params):
     para_check.check_tensor_shape_size(dst_shape)
 
 
-# pylint: disable=too-many-locals,too-many-statements
+# 'pylint: disable=too-many-locals,too-many-statements
 def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
     """
     do ncdhw to ndc1hwc0 transfer by multiple core on axis h and w
@@ -169,7 +169,7 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
         with tik_inst.for_range(0, axis_n) as n_idx:
             with tik_inst.for_range(0, axis_d) as d_idx:
 
-                # pylint: disable=too-many-locals,too-many-statements
+                # 'pylint: disable=too-many-locals,too-many-statements
                 def _hw_transfer_process(hw_len):
                     """
                     process of hw transfer
@@ -272,7 +272,7 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
                     _hw_transfer_process(per_core_hw_cnt)
 
 
-# pylint: disable=too-many-locals,too-many-statements
+# 'pylint: disable=too-many-locals,too-many-statements
 def _multi_core_on_d(tik_inst, data_in, data_out, shape_in):
     """
     do ncdhw to ndc1hwc0 transfer by multiple core on axis h and w
@@ -302,7 +302,7 @@ def _multi_core_on_d(tik_inst, data_in, data_out, shape_in):
     with tik_inst.for_range(0, core_num, block_num=core_num) as block_idx:
         with tik_inst.for_range(0, axis_n) as n_idx:
 
-            # pylint: disable=too-many-locals,too-many-statements
+            # 'pylint: disable=too-many-locals,too-many-statements
             def _d_transfer_process(d_len):
                 """
                 process of hw transfer

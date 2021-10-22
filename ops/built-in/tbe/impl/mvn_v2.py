@@ -27,8 +27,8 @@ CONST_HALF = 0.5
 CONST_SQRT_ITER = 3
 
 
-# pylint: disable = unused-argument
-# pylint: disable=invalid-name,too-many-arguments
+# 'pylint: disable = unused-argument
+# 'pylint: disable=invalid-name,too-many-arguments
 def get_op_support_info(x, y, eps=1e-9, axis=None, kernel_name="mvn_v2"):
     """
     get_op_support_info
@@ -52,7 +52,7 @@ def get_op_support_info(x, y, eps=1e-9, axis=None, kernel_name="mvn_v2"):
     return op_cal_info_in_json
 
 
-# pylint: disable=too-few-public-methods
+# 'pylint: disable=too-few-public-methods
 def _check_format_shape(data_format, shape):
     """
     Function to check format and shape of input data.
@@ -97,8 +97,8 @@ def _check_dtype(input_dtype):
         para_check.check_dtype(input_dtype, ("float16", "float32",), param_name="x")
 
 
-# pylint: disable=too-many-arguments,too-many-locals,protected-access
-# pylint: disable=too-many-branches,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-locals,protected-access
+# 'pylint: disable=too-many-branches,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("mvn_v2")
 def mvn_v2_compute(x, y, eps=1e-9, axis=None, kernel_name="mvn_v2"):
     """

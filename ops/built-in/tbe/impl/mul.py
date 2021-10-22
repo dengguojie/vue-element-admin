@@ -30,8 +30,8 @@ from impl.util import util_common
 SIZE_SIXTEEN = 16
 
 
-# pylint: disable=too-many-statements,too-many-branches,too-many-nested-blocks,too-many-boolean-expressions
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-statements,too-many-branches,too-many-nested-blocks,too-many-boolean-expressions
+# 'pylint: disable=too-many-locals
 def _can_division_sixteen(shape):
     """
     _can_division_sixteen
@@ -53,7 +53,7 @@ def _can_division_sixteen(shape):
     return False
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def _broadcast_zn_rule(shape0, shape1, format0, format1):
     """
     _broadcast_zn_rule
@@ -103,8 +103,8 @@ def _broadcast_zn_rule(shape0, shape1, format0, format1):
     return True
 
 
-# pylint: disable=unused-argument,too-many-locals,invalid-name,too-many-branches,too-many-statements
-# pylint: disable=too-many-boolean-expressions,too-many-nested-blocks
+# 'pylint: disable=unused-argument,too-many-locals,invalid-name,too-many-branches,too-many-statements
+# 'pylint: disable=too-many-boolean-expressions,too-many-nested-blocks
 def op_sub_select_format(x, y, output, kernel_name="mul"):
     """
     Dynamic matching format
@@ -231,8 +231,8 @@ def _gen_para(dtype_total, format_list0, format_list1, format_list2, unknownshap
     return [input0, input1, output0]
 
 
-# pylint: disable=unused-argument,too-many-locals,invalid-name,too-many-branches,too-many-statements
-# pylint: disable=too-many-boolean-expressions,too-many-nested-blocks
+# 'pylint: disable=unused-argument,too-many-locals,invalid-name,too-many-branches,too-many-statements
+# 'pylint: disable=too-many-boolean-expressions,too-many-nested-blocks
 def op_select_format(x, y, output, kernel_name="mul"):
     """
     select format dynamically\n
@@ -716,7 +716,7 @@ def _mul_check_format(x, y):
     return format_pattern
 
 
-# pylint: disable=unused-variable,invalid-name
+# 'pylint: disable=unused-variable,invalid-name
 def _infer_shape(format_pattern, x, y):
     """
     _infer_shape
@@ -836,7 +836,7 @@ def mul_compute(input_x, input_y, output_data, is_scene_1d=False, kernel_name="m
     return res
 
 
-# pylint: disable=too-many-arguments,unused-argument,bad-continuation
+# 'pylint: disable=too-many-arguments,unused-argument,bad-continuation
 def _mul_compute_ex(input_x, input_y, shape_x, shape_y, shape_max):
     """
     _mul_compute_ex
@@ -894,7 +894,7 @@ def _mul_compute_ex(input_x, input_y, shape_x, shape_y, shape_max):
     return res
 
 
-# pylint: disable=unused-argument, too-many-locals
+# 'pylint: disable=unused-argument, too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def mul(x, y, output, kernel_name="mul"):

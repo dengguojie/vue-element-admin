@@ -43,9 +43,9 @@ MAX_STRIDE_BLK = 65535
 MAX_MASK = 128
 
 
-# pylint: disable=too-many-instance-attributes,too-many-arguments
-# pylint: disable=too-many-locals,invalid-name
-# pylint: disable=unused-argument,too-many-lines,too-many-statements
+# 'pylint: disable=too-many-instance-attributes,too-many-arguments
+# 'pylint: disable=too-many-locals,invalid-name
+# 'pylint: disable=unused-argument,too-many-lines,too-many-statements
 def _cal_core(tik_instance, total_core_loop_num, num_core, core_number):
     """
     calculate the loop number on each core

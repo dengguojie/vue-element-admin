@@ -17,7 +17,7 @@ max_pool3d
 """
 from __future__ import absolute_import
 
-# pylint: disable=E0401,too-many-return-statements,too-many-arguments,invalid-name
+# 'pylint: disable=E0401,too-many-return-statements,too-many-arguments,invalid-name
 import te.lang.cce
 from te import platform as cce
 from te import tvm
@@ -44,7 +44,7 @@ CAFFE_DATA_MODE = 0
 TENSORFLOW_DATA_MODE = 1
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def get_op_support_info(x, y, ksize, strides, padding="SAME", pads=(0, 0, 0, 0, 0, 0),
                         dilation=(1, 1, 1), ceil_mode=0, data_format="NDHWC",
                         kernel_name="max_pool3d"):
@@ -116,7 +116,7 @@ def check_padding(padding):
         error_manager_vector.raise_err_pad_mode_invalid("max_pool3d", "SAME or VALID", str(padding))
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 def max_pool3d_check_rule(input_shape, output_dtype, ksize, strides,
                           padding, data_format, kernel_name):
     """
@@ -138,7 +138,7 @@ def max_pool3d_check_rule(input_shape, output_dtype, ksize, strides,
     check_padding(padding)
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 def max_pool3d_check_rule_new(input_dtype, output_dtype, ksize, strides, data_format):
     """
     :param input_dtype: dtype of input_data
@@ -171,8 +171,8 @@ def max_pool3d_check_rule_new(input_dtype, output_dtype, ksize, strides, data_fo
                                                               "strides N and C must be 1")
 
 
-# pylint: disable=too-many-locals,too-many-arguments
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=too-many-locals,too-many-arguments
+# 'pylint: disable=unused-argument,invalid-name
 @fusion_manager.register("max_pool3d")
 def max_pool3d_compute(x, y, ksize, strides,
                        padding="VALID", data_format="NDHWC",
@@ -286,7 +286,7 @@ def max_pool3d_schedule(res, sch):
     sch[res].emit_insn(res_2i, 'dma_copy')
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 @para_check.check_input_type(dict, dict, (list, tuple), (list, tuple), str,
                        (list, tuple), (list, tuple),
                        int, str, str)
@@ -387,7 +387,7 @@ def get_stride(strides, data_format):
     error_manager_vector.raise_err_specific_reson("max_pool3d", "Invalid strides")
 
 
-# pylint: disable=too-many-arguments,invalid-name
+# 'pylint: disable=too-many-arguments,invalid-name
 def max_pool3d_generic(tensor_in, ksize, strides,
                        padding_mode="SAME", pads=(0, 0, 0, 0, 0, 0),
                        dilation=(1, 1, 1), ceil_mode=0,

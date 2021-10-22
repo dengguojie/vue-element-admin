@@ -22,7 +22,7 @@ from te.utils import shape_util
 from te import platform as tbe_platform
 
 
-# pylint: disable=invalid-name,unused-argument,too-many-locals
+# 'pylint: disable=invalid-name,unused-argument,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("mse_loss")
 def mse_loss_compute(predict, label, reduction='mean', kernel_name="mse_loss"):
     """

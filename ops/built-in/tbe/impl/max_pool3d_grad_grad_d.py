@@ -15,8 +15,8 @@
 """
 max_pool3d_grad_grad_d
 """
-# pylint: disable=E0401
-# pylint: disable=unreachable
+# 'pylint: disable=E0401
+# 'pylint: disable=unreachable
 import te.lang.cce as tbe
 from te import tvm
 from te.utils.error_manager import error_manager_vector

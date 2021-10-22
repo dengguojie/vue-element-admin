@@ -47,7 +47,7 @@ class UbKernelStrategy(Enum):
     ONLY_KW = 3
 
 
-# pylint: disable=too-few-public-methods
+# 'pylint: disable=too-few-public-methods
 class Core:
     """
     Calculate n, c1, d_step based on core_index
@@ -60,7 +60,7 @@ class Core:
         self.ind_C1 = n_rest % c1
 
 
-# pylint: disable=too-few-public-methods
+# 'pylint: disable=too-few-public-methods
 class MaxPool3DWithArgmax(metaclass=ABCMeta):
     """
     MaxPool3DWithArgmax: compute definition of max_pool3d_with_argmax
@@ -130,6 +130,7 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
                                 src1_rep_stride=8)
 
     # encapsulate the two-number compute function.
+    # 'pylint: diable=too-many-arguments
     @staticmethod
     def _compute_two_ctn(method, dst, src0, src1, rep_times=1, mask=128):
         method(mask=mask,
@@ -172,6 +173,7 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
                             repeat_time=rep_times
                         )
 
+    # 'pylint: diable=too-many-arguments
     def _calc_maxline(self, max_line_ub, big_matrix_ub, line_blk, super_line_loop, super_line_tail):
         self._move_ctn(dst=max_line_ub,
                        src=big_matrix_ub,
@@ -221,6 +223,7 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
 
         return tensor_info
 
+    # 'pylint: diable=too-many-arguments
     def _calc_bitmask(self, bitmask_ub, big_matrix_ub, max_line_ub, super_line_loop, super_line_tail):
         with self.inst.for_range(0, self.k_elem) as line_ind:
             if super_line_loop != 0:
@@ -290,7 +293,7 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
         pass
 
 
-# pylint: disable=too-few-public-method
+# 'pylint: disable=too-few-public-method
 class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
     """
     MaxPool3DWithArgmaxWholeKernel: inherited from MaxPool3DWithArgmax
@@ -340,6 +343,7 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
         self.ubtail_super_loop_cmp = self.ubtail_ub_loop // self.upper_cmp_rep
         self.ubtail_super_tail_cmp = self.ubtail_ub_loop % self.upper_cmp_rep
 
+    # 'pylint: diable=too-many-locals
     def _cut_ub_process(self, ind_ctx, mode):
         tensor_info = ind_ctx['tensor_info']
         ind_n = ind_ctx['ind_N']
@@ -529,6 +533,7 @@ class MaxPool3DWithArgmaxWholeKernel(MaxPool3DWithArgmax):
         return self.inst
 
 
+# 'pylint: diable=too-many-arguments,too-many-branches
 def _check_param(x, ksize, strides, pads, dilation, ceil_mode, argmax_type):
     input_shape = x.get("shape")
     if x.get("dtype").lower() != "float16":
@@ -580,7 +585,7 @@ def _check_param(x, ksize, strides, pads, dilation, ceil_mode, argmax_type):
         raise RuntimeError("current version don't support W_out = 1 in this environment!")
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments
 @register_operator("MaxPool3DWithArgmax")
 def max_pool3d_with_argmax(x, y, argmax, kernel_size, strides, pads=((0, 0), (0, 0), (0, 0)),
                            dilation=(1, 1, 1, 1, 1), ceil_mode=False, data_format="NCDHW", argmax_type="bitmask",
