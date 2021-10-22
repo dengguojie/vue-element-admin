@@ -21,13 +21,9 @@
 #include <string>
 #include <vector>
 #include <algorithm>
-#include <nlohmann/json.hpp>
 #include "op_tiling_util.h"
-#include "../op_proto/util/error_util.h"
 #include "op_log.h"
 #include "trans_data_common.h"
-#include "transpose.h"
-#include "error_log.h"
 #include "vector_tiling_profiling.h"
 #include "graph/utils/op_desc_utils.h"
 
@@ -70,40 +66,16 @@ bool CheckTensorShape(const std::string& op_type, int64_t ub_size, int64_t block
   return true;
 }
 
-bool GetCompileParams(const nlohmann::json& compile_info_json, int64_t& ub_size, int64_t& block_dim,
+bool GetCompileParams(const std::vector<int64_t>& compile_info_vec, int64_t& ub_size, int64_t& block_dim,
                       int64_t& group, int64_t& vnc_fp32_flag, const std::string& op_type) {
-  using namespace nlohmann;
-
-  auto all_vars = compile_info_json["vars"];
-
-  if (all_vars.count("ub_size") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetCompileParams, get ub_size error");
-    return false;
-  }
-  ub_size = all_vars["ub_size"].get<std::int64_t>();
-
-  if (all_vars.count("block_dim") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetCompileParams, get block_dim error");
-    return false;
-  }
-  block_dim = all_vars["block_dim"].get<std::int64_t>();
-
-  if (all_vars.count("group") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetCompileParams, get group error");
-    return false;
-  }
-  group = all_vars["group"].get<std::int64_t>();
-
-  if (block_dim == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "Core count cannot be zero!");
-    return false;
-  }
-
-  if (all_vars.count("vnc_fp32_flag") == 0) {
-    OP_LOGD(op_type, "Use vnc_fp32_flag default value.");
-  } else {
-    vnc_fp32_flag = all_vars["vnc_fp32_flag"].get<std::int64_t>();
-  }
+  OP_TILING_CHECK(
+      compile_info_vec.size() != 4,
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the compile info num is not 4, is %zu", compile_info_vec.size()),
+      return false);
+  ub_size = compile_info_vec[0];
+  block_dim = compile_info_vec[1];
+  group = compile_info_vec[2];
+  vnc_fp32_flag = compile_info_vec[3];
 
   OP_LOGD(op_type, "GetCompileParams, \
           ub_size[%d], block_dim[%d], group[%d], vnc_fp32_flag[%d].",
@@ -653,7 +625,7 @@ bool IsDoWithNegativeTargetNtc200(const ge::Format& src_format, const ge::Format
  * @param [out] run_info: result data
  * @return bool: success or not
  */
-bool TransDataTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+bool TransDataTiling(const std::string& op_type, const ge::Operator& op_paras, const std::vector<int64_t>& op_info,
                      utils::OpRunInfo& run_info) {
   PROFILING_TILING_INIT(op_type.c_str());
   OP_LOGI(op_type, "Tiling is running.");
@@ -792,7 +764,9 @@ bool TransDataTiling(const std::string& op_type, const ge::Operator& op_paras, c
   return true;
 }
 
+static const std::vector<std::string> COMPILE_INFO_KEY = {"ub_size", "block_dim", "group", "vnc_fp32_flag"};
+static const std::map<std::string, std::int64_t> OPTIONAL_VALUE = {{"vnc_fp32_flag", 0}};
 // register tiling interface of the TransData op
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(TransData, TransDataTiling);
+REGISTER_OP_TILING_V3_WITH_VECTOR(TransData, TransDataTiling, COMPILE_INFO_KEY, OPTIONAL_VALUE);
 
 }  // namespace optiling

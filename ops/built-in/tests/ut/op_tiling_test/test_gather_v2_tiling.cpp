@@ -7,6 +7,7 @@
 #include "selection_ops.h"
 #include "array_ops.h"
 #include "test_common.h"
+#include "common/utils/ut_op_util.h"
 
 using namespace std;
 using namespace ge;
@@ -62,14 +63,9 @@ static void Compute(vector<int64_t> inputA, vector<int64_t> inputB, vector<int64
   TENSOR_INPUT_CONST(opParas, tensor_inputC, axis, (const uint8_t*)axis.data(), axis.size() * 4);
   TENSOR_OUTPUT(opParas, tensor_output, y);
 
-  optiling::utils::OpCompileInfo op_compile_info(infoKey.c_str(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), expectTilingData);
-  int64_t profiling_test_num = 100;
-  for (int64_t i = 0; i < profiling_test_num; i++) {
-    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  }
 }
 
 TEST_F(GatherV2Tiling, gather_v2_tiling_0) {

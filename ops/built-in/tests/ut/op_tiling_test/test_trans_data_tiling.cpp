@@ -11,6 +11,7 @@
 #include "register/op_tiling_registry.h"
 #include "op_log.h"
 #include "op_tiling/op_tiling_util.h"
+#include "common/utils/ut_op_util.h"
 
 using namespace std;
 using namespace ge;
@@ -116,16 +117,13 @@ static void run_case(std::vector<int64_t> input_shape, std::vector<int64_t> outp
   auto test_op = op::TransData("TransData");
   add_input_desc_by_idx(test_op, 0, input_shape, input_shape, data_dtype, src_format, src_format);
   add_output_desc_by_idx(test_op, 0, output_shape, output_shape, data_dtype, dst_format, dst_format);
-
-  optiling::utils::OpCompileInfo op_compile_info(case_name.c_str(), compile_info);
-
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(test_op, op_compile_info, runInfo));
+  RUN_TILING_V3(test_op, iter->second, compile_info, runInfo);
   if (expect_tiling != "") {
     EXPECT_EQ(to_string_int64(runInfo.GetAllTilingData()), expect_tiling);
   }
   for (int64_t i = 0; i < profiling_test_num; i++) {
-    iter->second.tiling_func_v2_(test_op, op_compile_info, runInfo);
+    RUN_TILING_V3(test_op, iter->second, compile_info, runInfo);
   }
 }
 

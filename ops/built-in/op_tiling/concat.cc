@@ -20,18 +20,19 @@
  */
 #include <map>
 
-#include <nlohmann/json.hpp>
 #include "op_tiling_util.h"
 
 #include "op_log.h"
 #include "../op_proto/util/error_util.h"
-#include "error_log.h"
 #include "vector_tiling_profiling.h"
 #include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
 using namespace ge;
 using namespace std;
+
+// define the compile key of json.vars
+static const std::vector<std::string> COMPILE_INFO_KEY = {"concat_dim", "input_size", "block_dim"};
 
 static string to_string(const ByteBuffer& tiling_data) {
   auto data = tiling_data.str();
@@ -158,21 +159,6 @@ static bool GetTilingParam(const vector<vector<int64_t>>& input_shapes, int32_t 
   return true;
 }
 
-template <typename T>
-static bool GetCompileInfo(const nlohmann::json& op_info, const std::string& name, T& value) {
-  const nlohmann::json& allVars = op_info["vars"];
-  if (allVars.empty()) {
-    return false;
-  }
-
-  if (allVars.count(name) == 0) {
-    return false;
-  }
-
-  value = allVars[name].get<T>();
-  return true;
-}
-
 static void Pack2ConcatParams(const std::string& opType, vector<vector<int64_t>>& input_shapes, int32_t& concat_dim) {
   if (opType != "Pack") {
     return;
@@ -201,7 +187,7 @@ static void Pack2ConcatParams(const std::string& opType, vector<vector<int64_t>>
  * @param [out] runInfo: result data
  * @return bool: success or not
  */
-bool ConcatV2Tiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& op_info,
+bool ConcatV2Tiling(const std::string& opType, const ge::Operator& opParas, const std::vector<int64_t>& op_info,
                     utils::OpRunInfo& runInfo) {
   OP_LOGD(opType.c_str(), "ConcatV2Tiling running.");
   auto operator_info = OpDescUtils::GetOpDescFromOperator(opParas);
@@ -214,25 +200,14 @@ bool ConcatV2Tiling(const std::string& opType, const ge::Operator& opParas, cons
   }
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
 
-  int32_t concat_dim = 0;
-  int32_t input_size = 0;
-  int32_t block_dim = 0;
-
-  const map<string, int32_t&> compile_params = {
-      {"concat_dim", concat_dim},
-      {"input_size", input_size},
-      {"block_dim", block_dim},
-  };
-
-  for (auto& param : compile_params) {
-    const auto& name = param.first;
-    OP_LOGD(opType.c_str(), "GetCompileInfo %s.", name.c_str());
-    if (!GetCompileInfo<int32_t>(op_info, name, param.second)) {
-      VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileInfo %s failed.", name.c_str());
-      return false;
-    }
-    OP_LOGD(opType.c_str(), "%s=%d.", name.c_str(), param.second);
-  }
+  OP_TILING_CHECK(
+      op_info.size() != COMPILE_INFO_KEY.size(),
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "the compile info num is not equal expect compile_info(%zu), is %zu",
+                                      COMPILE_INFO_KEY.size(), op_info.size()),
+      return false);
+  int32_t concat_dim = static_cast<int32_t>(op_info[0]);
+  int32_t input_size = static_cast<int32_t>(op_info[1]);
+  int32_t block_dim = static_cast<int32_t>(op_info[2]);
 
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
   Pack2ConcatParams(opType, input_shapes, concat_dim);
@@ -269,9 +244,8 @@ bool ConcatV2Tiling(const std::string& opType, const ge::Operator& opParas, cons
 }
 
 // register tiling interface of the Concat, ConcatV2 op.
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(ConcatV2D, ConcatV2Tiling);
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(ConcatD, ConcatV2Tiling);
-
+REGISTER_OP_TILING_V3_WITH_VECTOR(ConcatV2D, ConcatV2Tiling, COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
+REGISTER_OP_TILING_V3_WITH_VECTOR(ConcatD, ConcatV2Tiling, COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
 // register tiling interface of the Pack op.
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(Pack, ConcatV2Tiling);
+REGISTER_OP_TILING_V3_WITH_VECTOR(Pack, ConcatV2Tiling, COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
 }  // namespace optiling

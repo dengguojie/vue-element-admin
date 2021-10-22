@@ -59,15 +59,13 @@ static void run_case(std::vector<int64_t> input_shape, std::string data_dtype, s
   TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, end, const_shape, DT_INT32, FORMAT_ND, const_end);
   TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, strides, const_shape, DT_INT32, FORMAT_ND, const_strides);
 
-  optiling::utils::OpCompileInfo op_compile_info(case_name.c_str(), compile_info);
-
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(test_op, op_compile_info, runInfo));
+  RUN_TILING_V3(test_op, iter->second, compile_info, runInfo);
   if (expect_tiling != "") {
     EXPECT_EQ(to_string_int64(runInfo.GetAllTilingData()), expect_tiling);
   }
   for (int64_t i = 0; i < profiling_test_num; i++) {
-    iter->second.tiling_func_v2_(test_op, op_compile_info, runInfo);
+    RUN_TILING_V3(test_op, iter->second, compile_info, runInfo);
   }
 }
 

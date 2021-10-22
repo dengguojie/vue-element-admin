@@ -7,6 +7,7 @@
 #include "selection_ops.h"
 #include "array_ops.h"
 #include "test_common.h"
+#include "common/utils/ut_op_util.h"
 
 using namespace std;
 using namespace ge;
@@ -66,16 +67,11 @@ TEST_F(GatherTiling, gather_tiling_0) {
   TENSOR_INPUT(opParas, tensor_inputB, indices);
   TENSOR_OUTPUT(opParas, tensor_output, y);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "13 1 87552 1 174 0 8 0 21 6 0 32512 21 65024 "
             "32512 0 65024 21 0 87552 0 0 0 0 1 1 0 1 ");
-  int64_t num = 100;
-  for (int64_t i = 0; i < num; i++) {
-    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  }
 }
 
 TEST_F(GatherTiling, gather_tiling_1) {
@@ -107,9 +103,8 @@ TEST_F(GatherTiling, gather_tiling_1) {
   TENSOR_INPUT(opParas, tensor_inputB, indices);
   TENSOR_OUTPUT(opParas, tensor_output, y);
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "29 1 32 16 330 0 32 0 6 138 0 6 0 "
             "2464 6 0 0 0 0 512 0 0 0 0 6 1 23 55 ");

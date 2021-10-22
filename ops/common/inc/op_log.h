@@ -23,6 +23,7 @@
 
 #include <string>
 #include <type_traits>
+#include "external/graph/operator.h"
 
 #if !defined( __ANDROID__) && !defined(ANDROID)
 #include "toolchain/slog.h"
@@ -48,6 +49,28 @@ template <class T>
 typename std::enable_if<std::is_same<char*, typename std::decay<T>::type>::value, const char*>::type
 get_op_name(T name) {
   return name;
+}
+
+template <typename T>
+std::string TbeGetName(const T& op) {
+  ge::AscendString op_ascend_name;
+  ge::graphStatus ret = op.GetName(op_ascend_name);
+  if (ret != ge::GRAPH_SUCCESS) {
+    std::string op_name = "None";
+    return op_name;
+  }
+  return op_ascend_name.GetString();
+}
+
+template <typename T>
+std::string TbeGetOpType(const T& op) {
+  ge::AscendString op_ascend_name;
+  ge::graphStatus ret = op.GetOpType(op_ascend_name);
+  if (ret != ge::GRAPH_SUCCESS) {
+    std::string op_name = "None";
+    return op_name;
+  }
+  return op_ascend_name.GetString();
 }
 
 #define CHECK_DIVISOR_ZERO(divisor) \

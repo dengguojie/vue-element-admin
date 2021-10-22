@@ -31,6 +31,13 @@
 namespace optiling {
 
 const int64_t BLOCK_SIZE = 32;
+// define the redution mode for int64_t
+static const int64_t MODE_NONE = 0;
+static const int64_t MODE_SUM = 1;
+static const int64_t MODE_MEAN = 2;
+// define a map format for string mode to int mode
+static const map<std::string, int64_t> REDUCE_MODE_STR_MAP = {
+    {"none", MODE_NONE}, {"sum", MODE_SUM}, {"mean", MODE_MEAN}};
 
 static int64_t GetFloorDiv(const int64_t l_value, const int64_t r_value) {
   if (r_value == 0) {
@@ -56,31 +63,18 @@ static int64_t GetMod(const int64_t l_value, const int64_t r_value) {
   return l_value % r_value;
 }
 
-bool GetCompileParams(const std::string& op_type, const nlohmann::json& op_compile_info_json, int64_t& core_num,
-                      int64_t& ub_size, std::string& reduction) {
-  using namespace nlohmann;
-
-  auto all_vars = op_compile_info_json["vars"];
-  if (all_vars.count("core_num") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: GetCompileParams, get core_num error.");
-    return false;
-  }
-  core_num = all_vars["core_num"].get<std::int64_t>();
-
-  if (all_vars.count("ub_size") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: GetCompileParams, get ub_size error.");
-    return false;
-  }
-  ub_size = all_vars["ub_size"].get<std::int64_t>();
-
-  if (all_vars.count("reduction") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: GetCompileParams, get reduction error.");
-    return false;
-  }
-  reduction = all_vars["reduction"].get<std::string>();
-
-  OP_LOGD(op_type.c_str(), "NLLLossTiling: GetCompileParams, core_num[%lld], ub_size[%lld], reduction[%s].", core_num,
-          ub_size, reduction.c_str());
+bool GetCompileParams(const std::string& op_type, const std::vector<int64_t>& op_compile_info, int64_t& core_num,
+                      int64_t& ub_size, int64_t& reduction) {
+  OP_TILING_CHECK(
+      op_compile_info.size() != 3,
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the compile info num is not equal expect compile_info(3), is %zu",
+                                      op_compile_info.size()),
+      return false);
+  core_num = op_compile_info[0];
+  ub_size = op_compile_info[1];
+  reduction = op_compile_info[2];
+  OP_LOGD(op_type.c_str(), "NLLLossTiling: GetCompileParams, core_num[%lld], ub_size[%lld], reduction[%lld].",
+          core_num, ub_size, reduction);
 
   return true;
 }
@@ -277,6 +271,41 @@ int64_t CalculUbSizeLargeWeight(int64_t& x_size, int64_t& target_size, int64_t& 
   return ub_max_line;
 }
 
+bool NLLLossParseFunc(const std::string& op_type,
+                      const nlohmann::json& compile_info,
+                      std::vector<int64_t>& compile_value) {
+  // output vector is {"core_num", "ub_size", "reduction"}
+  if (compile_info.count("vars") == 0) {
+    return false;
+  }
+  const nlohmann::json& all_vars = compile_info["vars"];
+
+  compile_value.resize(3);
+
+  // get core_num value
+  OP_TILING_CHECK(!GetCompileValue(all_vars, "core_num", compile_value[0]),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossParseFunc, get core_num error"),
+                  return false);
+  // get ub_size value
+  OP_TILING_CHECK(!GetCompileValue(all_vars, "ub_size", compile_value[1]),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossParseFunc, get ub_size error"),
+                  return false);
+
+  std::string reduction_str;
+  // get reduction value
+  OP_TILING_CHECK(!GetCompileValue(all_vars, "reduction", reduction_str),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossParseFunc, get reduction error"),
+                  return false);
+  auto mode_it = REDUCE_MODE_STR_MAP.find(reduction_str);
+  OP_TILING_CHECK(mode_it == REDUCE_MODE_STR_MAP.end(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "do not support mode(%s)",
+                                                  reduction_str.c_str()),
+                  return false);
+  compile_value[2] = mode_it->second;
+  OP_LOGI(op_type.c_str(), "GetCompileParams success.");
+  return true;
+}
+
 /*
  * @brief: tiling function of op
  * @param [in] opType: opType of the op
@@ -285,7 +314,7 @@ int64_t CalculUbSizeLargeWeight(int64_t& x_size, int64_t& target_size, int64_t& 
  * @param [out] runInfo: result data
  * @return bool: success or not
  */
-bool NLLLossTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+bool NLLLossTiling(const std::string& op_type, const ge::Operator& op_paras, const std::vector<int64_t>& op_info,
                    utils::OpRunInfo& run_info) {
   OP_LOGD(op_type.c_str(), "NLLLossTiling start running.");
   PROFILING_TILING_INIT(op_type.c_str());
@@ -315,7 +344,7 @@ bool NLLLossTiling(const std::string& op_type, const ge::Operator& op_paras, con
   int64_t weight_size = 0;
   int64_t ub_max_line = 0;
 
-  std::string reduction;
+  int64_t reduction;
   int64_t min_aligned = 1;
   bool is_left_data = true;
 
@@ -365,7 +394,7 @@ bool NLLLossTiling(const std::string& op_type, const ge::Operator& op_paras, con
     ub_max_line = CalculUbSizeLargeWeight(x_size, target_size, weight_size, ub_size, c_size, data_one_block);
   }
 
-  if (reduction == "none") {
+  if (reduction == MODE_NONE) {
     min_aligned = GetFloorDiv(BLOCK_SIZE, bytes);
   }
 
@@ -409,6 +438,5 @@ bool NLLLossTiling(const std::string& op_type, const ge::Operator& op_paras, con
 }
 
 // register tiling inferface of the Nllloss op
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(NLLLoss, NLLLossTiling);
-
+REGISTER_OP_TILING_V3_CUSTOM(NLLLoss, NLLLossTiling, NLLLossParseFunc, std::vector<int64_t>);
 }  // namespace optiling

@@ -38,6 +38,13 @@ static const int64_t DIM_2 = 2;
 static const int64_t NUM_4 = 4;
 static const int64_t NUM_8 = 8;
 static const int64_t NUM_64 = 64;
+// define the redution mode for int64_t
+static const int64_t MODE_NONE = 0;
+static const int64_t MODE_SUM = 1;
+static const int64_t MODE_MEAN = 2;
+// define a map format for string mode to int mode
+static const map<std::string, int64_t> REDUCE_MODE_STR_MAP = {
+    {"none", MODE_NONE}, {"sum", MODE_SUM}, {"mean", MODE_MEAN}};
 
 static string to_string(const ByteBuffer& tiling_data) {
   auto data = tiling_data.str();
@@ -76,50 +83,48 @@ static int64_t GetCeilDiv(int64_t u_value, int64_t d_value) {
   return res_value;
 }
 
-static bool CheckParams(const string& op, const vector<int64_t>& x_shape, const vector<int64_t>& y_grad_shape,
-                        const vector<int64_t>& target_shape, const vector<int64_t>& weight_shape,
-                        const vector<int64_t>& total_weight_shape, const std::string& reduction) {
-  if (x_shape.size() > DIM_2) {
+static bool CheckParams(const string& op, const GeShape& x_shape, const GeShape& y_grad_shape,
+                        const GeShape& target_shape, const GeShape& weight_shape,
+                        const int64_t reduction) {
+  if (x_shape.GetDimNum() > 2) {
     VECTOR_INNER_ERR_REPORT_TILIING(op, "The dimension of x should be equal to or less than two.");
     return false;
   }
+  OP_TILING_CHECK(x_shape.GetDimNum() <= 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op, "The dimension of x can not be 0."),
+                  return false);
 
-  if (x_shape.size() == 2 && x_shape[0] != target_shape[0]) {
+  if (x_shape.GetDimNum() == 2 && x_shape.GetDim(0) != target_shape.GetDim(0)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op, "The first dimension of x and target should be equal.");
     return false;
   }
 
-  if (x_shape.back() != weight_shape[0]) {
+  if (x_shape.GetDim(x_shape.GetDimNum() - 1) != weight_shape.GetDim(0)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op, "The last dimension of x and the first dimension of weight should be equal.");
     return false;
   }
 
-  if (y_grad_shape.size() != 1) {
+  if (y_grad_shape.GetDimNum() != 1) {
     VECTOR_INNER_ERR_REPORT_TILIING(op, "The dimension of y_grad should be 1D.");
     return false;
   }
 
-  if (weight_shape.size() != 1) {
+  if (weight_shape.GetDimNum() != 1) {
     VECTOR_INNER_ERR_REPORT_TILIING(op, "The dimension of weight should be 1D.");
     return false;
   }
 
-  if (target_shape.size() != 1) {
+  if (target_shape.GetDimNum() != 1) {
     VECTOR_INNER_ERR_REPORT_TILIING(op, "The dimension of target should be 1D.");
     return false;
   }
 
-  if (total_weight_shape[0] != 1 || total_weight_shape.size() != 1) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op, "The shape of total_weight must be (1,)");
-    return false;
-  }
-
-  if (x_shape.size() == 1 && y_grad_shape[0] != 1) {
+  if (x_shape.GetDimNum() == 1 && y_grad_shape.GetDim(0) != 1) {
     VECTOR_INNER_ERR_REPORT_TILIING(op, "The shape of y_grad must be (1,), while input x is 1D.");
     return false;
   }
 
-  if ((reduction == "mean" || reduction == "sum") && y_grad_shape[0] != 1) {
+  if ((reduction == MODE_MEAN || reduction == MODE_SUM) && y_grad_shape.GetDim(0) != 1) {
     VECTOR_INNER_ERR_REPORT_TILIING(op, "The shape of y_grad must be (1,), while reduction is mean or sum.");
     return false;
   }
@@ -172,7 +177,7 @@ struct TilingParam {
   int64_t offet = 0;
 };
 
-static bool GetTilingParamOfNormalTwoDim(const int64_t max_move_line, const std::string& reduction,
+static bool GetTilingParamOfNormalTwoDim(const int64_t max_move_line, const int64_t reduction,
                                          TilingParam& tiling_param) {
   OP_TILING_CHECK(max_move_line == 0,
                   VECTOR_INNER_ERR_REPORT_TILIING("NLLLossGrad", "max_move_line = 0 is not supported."), return false);
@@ -222,7 +227,7 @@ static bool GetTilingParamOfNormalTwoDim(const int64_t max_move_line, const std:
   tiling_param.max_out_burst = GetCeilDiv(tiling_param.max_total_num, NUM_8);
   tiling_param.last_out_burst = GetCeilDiv(tiling_param.lower_total_num, NUM_8);
 
-  if (reduction == "none") {
+  if (reduction == MODE_NONE) {
     tiling_param.y_grad_ub_size = tiling_param.target_ub_size;
   } else {
     tiling_param.y_grad_ub_size = NUM_64;
@@ -257,31 +262,32 @@ static bool GetTilingParamOfOneDimAndBigWeight(const int64_t ub_size_float, Tili
   return true;
 }
 
-static bool GetTilingParam(const vector<int64_t>& x_shape, const vector<int64_t>& y_grad_shape,
-                           const vector<int64_t>& target_shape, const vector<int64_t>& weight_shape,
-                           const int64_t block_dim, const int64_t ub_size, const std::string& reduction,
+static bool GetTilingParam(const ge::GeShape& x_shape, const ge::GeShape& y_grad_shape,
+                           const ge::GeShape& target_shape, const ge::GeShape& weight_shape,
+                           const int64_t block_dim, const int64_t ub_size, const int64_t reduction,
                            const int64_t ignore_idx, TilingParam& tiling_param) {
-  int64_t c_dim = x_shape.back();
-  int64_t n_dim = x_shape[0];
+  int64_t x_shape_size = x_shape.GetDimNum();
+  int64_t c_dim = x_shape.GetDim(x_shape_size - 1);
+  int64_t n_dim = x_shape_size == 1 ? 1 : x_shape.GetDim(0);
   if (ignore_idx < 0 || ignore_idx >= c_dim) {
     tiling_param.invalid_target = 1;
   }
   tiling_param.ignore_idx = ignore_idx;
   int64_t ub_size_float = GetFloorDiv(ub_size, NUM_4);
-  if (x_shape.size() == DIM_2) {
+  if (x_shape_size == DIM_2) {
     tiling_param.output_gm_size = c_dim * n_dim;
   } else {
-    tiling_param.output_gm_size = n_dim;
+    tiling_param.output_gm_size = c_dim;
   }
 
   tiling_param.n_dim = n_dim;
   tiling_param.c_dim = c_dim;
   tiling_param.x_gm_size = tiling_param.output_gm_size;
-  tiling_param.y_grad_gm_size = y_grad_shape[0];
-  tiling_param.target_gm_size = target_shape[0];
+  tiling_param.y_grad_gm_size = y_grad_shape.GetDim(0);
+  tiling_param.target_gm_size = x_shape_size == 1 ? 1 : target_shape.GetDim(0);
   tiling_param.data_total_weight_size = 1;
-  tiling_param.weight_gm_size = weight_shape[0];
-  tiling_param.weight_ub_size = GetCeilDiv(weight_shape[0], NUM_64) * NUM_64;
+  tiling_param.weight_gm_size = weight_shape.GetDim(0);
+  tiling_param.weight_ub_size = GetCeilDiv(weight_shape.GetDim(0), NUM_64) * NUM_64;
   tiling_param.total_weight_ub_size = NUM_64;
   ub_size_float = ub_size_float - NUM_64;
   int64_t last_ub_size = ub_size_float - tiling_param.weight_ub_size;
@@ -356,56 +362,6 @@ static bool GetTilingParam(const vector<int64_t>& x_shape, const vector<int64_t>
   return true;
 }
 
-static bool GetCompileParams(const nlohmann::json& op_compile_info_json, std::string& reduction, std::string& dtype,
-                             std::string& dtype_weight, int64_t& ignore_idx, int64_t& ub_size, int64_t& block_dim,
-                             const std::string& op_type) {
-  using namespace nlohmann;
-
-  auto allVars = op_compile_info_json["vars"];
-  if (allVars.count("reduction") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("NLLLossGradTiling", "GetCompileParams, get reduction error");
-    return false;
-  }
-  reduction = allVars["reduction"].get<std::string>();
-
-  if (allVars.count("dtype") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("NLLLossGradTiling", "GetCompileParams, get dtype error");
-    return false;
-  }
-  dtype = allVars["dtype"].get<std::string>();
-
-  if (allVars.count("dtype_weight") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("NLLLossGradTiling", "GetCompileParams, get dtype_weight error");
-    return false;
-  }
-  dtype_weight = allVars["dtype_weight"].get<std::string>();
-
-  if (allVars.count("ignore_idx") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("NLLLossGradTiling", "GetCompileParams, get ignore_idx error");
-    return false;
-  }
-  ignore_idx = allVars["ignore_idx"].get<std::int64_t>();
-
-  if (allVars.count("ub_size") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("NLLLossGradTiling", "GetCompileParams, get ub_size error");
-    return false;
-  }
-  ub_size = allVars["ub_size"].get<std::int64_t>();
-
-  if (allVars.count("block_dim") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("NLLLossGradTiling", "GetCompileParams, get block_dim error");
-    return false;
-  }
-  block_dim = allVars["block_dim"].get<std::int64_t>();
-
-  OP_LOGD(op_type,
-          "GetCompileParams, reduction[%s], dtype[%s], dtype_weight[%s], ignore_idx[%lld], "
-          "ub_size[%lld], block_dim[%lld].",
-          reduction.c_str(), dtype.c_str(), dtype_weight.c_str(), ignore_idx, ub_size, block_dim);
-
-  return true;
-}
-
 bool SetRunningInfo(const TilingParam& tiling_param, utils::OpRunInfo& runInfo) {
   runInfo.AddTilingData(tiling_param.c_dim);
   runInfo.AddTilingData(tiling_param.n_dim);
@@ -453,6 +409,46 @@ bool SetRunningInfo(const TilingParam& tiling_param, utils::OpRunInfo& runInfo) 
   return true;
 }
 
+bool NLLLossGradParseFunc(const std::string& op_type,
+                          const nlohmann::json& compile_info,
+                          std::vector<int64_t>& compile_value) {
+  if (compile_info.count("vars") == 0) {
+    return false;
+  }
+  const nlohmann::json& all_vars = compile_info["vars"];
+
+  compile_value.resize(4);
+  std::string reduction_str;
+  // get reduction value
+  OP_TILING_CHECK(!GetCompileValue(all_vars, "reduction", reduction_str),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossGradParseFunc, get reduction error"),
+                  return false);
+  auto mode_it = REDUCE_MODE_STR_MAP.find(reduction_str);
+  OP_TILING_CHECK(mode_it == REDUCE_MODE_STR_MAP.end(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "do not support mode(%s)",
+                                                  reduction_str.c_str()),
+                  return false);
+  compile_value[0] = mode_it->second;
+
+  // get ignore_idx value
+  OP_TILING_CHECK(!GetCompileValue(all_vars, "ignore_idx", compile_value[1]),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossGradParseFunc, get ignore_idx error"),
+                  return false);
+
+  // get ub_size value
+  OP_TILING_CHECK(!GetCompileValue(all_vars, "ub_size", compile_value[2]),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossGradParseFunc, get ub_size error"),
+                  return false);
+
+  // get block_dim value
+  OP_TILING_CHECK(!GetCompileValue(all_vars, "block_dim", compile_value[3]),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossGradParseFunc, get block_dim error"),
+                  return false);
+
+  OP_LOGI(op_type.c_str(), "GetCompileParams success.");
+  return true;
+}
+
 /*
  * @brief: tiling function of op
  * @param [in] opType: opType of the op
@@ -461,7 +457,7 @@ bool SetRunningInfo(const TilingParam& tiling_param, utils::OpRunInfo& runInfo) 
  * @param [out] runInfo: result data
  * @return bool: success or not
  */
-bool NLLLossGradTiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& op_info,
+bool NLLLossGradTiling(const std::string& opType, const ge::Operator& opParas, const std::vector<int64_t>& op_info,
                        utils::OpRunInfo& runInfo) {
   OP_LOGD(opType, "NLLLossGradTiling running.");
   PROFILING_TILING_INIT(opType.c_str());
@@ -475,68 +471,42 @@ bool NLLLossGradTiling(const std::string& opType, const ge::Operator& opParas, c
   auto input_y_grad_desc = operator_info->MutableInputDesc(1);
   auto input_target_desc = operator_info->MutableInputDesc(2);
   auto input_weight_desc = operator_info->MutableInputDesc(3);
-  auto input_total_weight_desc = operator_info->MutableInputDesc(4);
-  auto out_desc = operator_info->MutableOutputDesc(0);
 
   if (input_x_desc == nullptr || input_y_grad_desc == nullptr || input_target_desc == nullptr ||
-      input_weight_desc == nullptr || input_total_weight_desc == nullptr) {
+      input_weight_desc == nullptr) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "get input_desc failed.");
     return false;
   }
 
-  if (out_desc == nullptr) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "get out_desc failed.");
-    return false;
-  }
-
-  std::vector<int64_t> x_shape = input_x_desc->MutableShape().GetDims();
-  std::vector<int64_t> y_grad_shape = input_y_grad_desc->MutableShape().GetDims();
-  std::vector<int64_t> target_shape = input_target_desc->MutableShape().GetDims();
-  std::vector<int64_t> weight_shape = input_weight_desc->MutableShape().GetDims();
-  std::vector<int64_t> total_weight_shape = input_total_weight_desc->MutableShape().GetDims();
-  std::vector<int64_t> out_shape = out_desc->MutableShape().GetDims();
+  const GeShape& x_shape = input_x_desc->MutableShape();
+  const GeShape& y_grad_shape = input_y_grad_desc->MutableShape();
+  const GeShape& target_shape = input_target_desc->MutableShape();
+  const GeShape& weight_shape = input_weight_desc->MutableShape();
 
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
-  if (x_shape.empty() || y_grad_shape.empty() || target_shape.empty() || weight_shape.empty() ||
-      total_weight_shape.empty()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "Get input shape failed.");
-    return false;
-  }
-
   OP_LOGD(
       opType,
-      "Original x_shape is %s, y_grad_shape is %s, target_shape is %s, weight_shape is %s, total_weight_shape is %s, "
-      "out_shape is %s.",
-      ops::to_string(x_shape).c_str(), ops::to_string(y_grad_shape).c_str(), ops::to_string(target_shape).c_str(),
-      ops::to_string(weight_shape).c_str(), ops::to_string(total_weight_shape).c_str(),
-      ops::to_string(out_shape).c_str());
-
-  std::string reduction;
-  std::string dtype;
-  std::string dtype_weight;
-  int64_t ignore_idx = -100;
-  int64_t ub_size = 0;
-  int64_t block_dim = 0;
+      "Original x_shape is %s, y_grad_shape is %s, target_shape is %s, weight_shape is %s",
+      x_shape.ToString().c_str(), y_grad_shape.ToString().c_str(), target_shape.ToString().c_str(),
+      weight_shape.ToString().c_str());
 
   // get compileinfo params
-  bool flag = GetCompileParams(op_info, reduction, dtype, dtype_weight, ignore_idx, ub_size, block_dim, opType);
-  if (!flag) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "NLLLossGradTiling: GetCompileParams error.");
-    return false;
-  }
+  OP_TILING_CHECK(
+      op_info.size() != 4,
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "the compile info num is not 4, is %zu", op_info.size()),
+      return false);
+  const int64_t reduction = op_info[0];
+  const int64_t ignore_idx = op_info[1];
+  const int64_t ub_size = op_info[2];
+  const int64_t block_dim = op_info[3];
+
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
   // check params
   OP_LOGD(opType, "to check params.");
-  if (!CheckParams(opType, x_shape, y_grad_shape, target_shape, weight_shape, total_weight_shape, reduction)) {
+  if (!CheckParams(opType, x_shape, y_grad_shape, target_shape, weight_shape, reduction)) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "NLLLossGradTiling: CheckParams error.");
     return false;
-  }
-
-  // One dim, converted to two dims processing; for example:x=(N,)->x=(1,N);target=(N,)->target=(1,)
-  if (x_shape.size() == 1) {
-    x_shape.insert(x_shape.begin(), 1);
-    target_shape[0] = 1;
   }
 
   OP_LOGD(opType, "GetTilingParam.");
@@ -565,5 +535,5 @@ bool NLLLossGradTiling(const std::string& opType, const ge::Operator& opParas, c
 }
 
 // register tiling interface of the NLLLossGrad op.
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(NLLLossGrad, NLLLossGradTiling);
+REGISTER_OP_TILING_V3_CUSTOM(NLLLossGrad, NLLLossGradTiling, NLLLossGradParseFunc, std::vector<int64_t>);
 }  // namespace optiling

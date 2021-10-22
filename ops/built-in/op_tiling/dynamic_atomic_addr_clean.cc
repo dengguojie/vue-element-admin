@@ -64,28 +64,6 @@ int32_t CeilDiv(const int32_t& num, const int32_t& factor) {
   return res;
 }
 
-bool GetCompileParams(const std::string& op_type, const nlohmann::json& opCompileInfoJson, uint32_t& workspace_num,
-                      uint32_t& core_num, uint32_t& ub_size) {
-  using namespace nlohmann;
-  const auto& all_vars = opCompileInfoJson["vars"];
-  if (all_vars.count("workspace_num") != 0) {
-    // om compatibility, so increase the default value
-    workspace_num = all_vars["workspace_num"].get<std::uint32_t>();
-    OP_LOGI(op_type.c_str(), "get workspace_num sucess");
-  }
-  if (all_vars.count("core_num") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get core_num failed");
-    return false;
-  }
-  core_num = all_vars["core_num"].get<std::uint32_t>();
-  if (all_vars.count("ub_size") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get ub_size failed");
-    return false;
-  }
-  ub_size = all_vars["ub_size"].get<std::uint32_t>();
-  return true;
-}
-
 void ComputeParamsOneCore(const int32_t& ele_num_one_core,
                           const int32_t& ele_num_full_mask_full_repeat_time_input_scalar,
                           int32_t& init_times_full_mask_full_repeat_time_input_scalar,
@@ -185,35 +163,60 @@ bool CheckSize(const std::string& op_type, const int64_t& size) {
   return true;
 }
 
-// tiling function
-bool DynamicAtomicAddrCleanTiling(const std::string& op_type, const ge::Operator& op_paras,
-                                  const nlohmann::json& opCompileInfoJson, utils::OpRunInfo& run_info) {
-  OP_LOGI(op_type.c_str(), "op[%s] op tiling begin.", op_type.c_str());
-
-  PROFILING_TILING_INIT(op_type.c_str());
-
+// parse function
+struct DynamicAtomicAddrCleanCompile {
+  uint32_t workspace_num = 0;
+  uint32_t core_num = 0;
+  uint32_t ub_size = 0;
   std::vector<int64_t> workspace_size_list;
-  uint32_t workspace_num = 1;
-  uint32_t core_num = 1;
-  uint32_t ub_size = 256 * 1024;
-  // get compile_info params
-  bool flag = GetCompileParams(op_type, opCompileInfoJson, workspace_num, core_num, ub_size);
-  if (!flag) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileParams failed");
+};
+
+bool DynamicAtomicAddrCleanParseFunc(const std::string& op_type,
+                                     const nlohmann::json& compile_info,
+                                     DynamicAtomicAddrCleanCompile& compile_value) {
+  if (compile_info.count("vars") == 0) {
     return false;
   }
-  PROFILING_TILING_AFTER_GET_SHAPE_REG();
-  OP_LOGI(op_type.c_str(), "op[%s] GetCompileParams success.", op_type.c_str());
-  if (opCompileInfoJson.find("_workspace_size_list") == opCompileInfoJson.end()) {
+  const nlohmann::json& all_vars = compile_info["vars"];
+
+  // get core_num value
+  OP_TILING_CHECK(!GetCompileValue(all_vars, "core_num", compile_value.core_num),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "AddrCleanParseFunc, get core_num error"),
+                  return false);
+  // get ub_size value
+  OP_TILING_CHECK(!GetCompileValue(all_vars, "ub_size", compile_value.ub_size),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "AddrCleanParseFunc, get ub_size error"),
+                  return false);
+  // get workspace_num value, default = 1
+  GetCompileValue(all_vars, "workspace_num", compile_value.workspace_num, 1);
+
+  OP_LOGI(op_type.c_str(), "GetCompileParams success.");
+
+  // get _workspace_size_list
+  if (compile_info.find("_workspace_size_list") == compile_info.end()) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "key _workspace_size_list not exists.");
     return false;
   } else {
-    const auto& workspace_size_list_1 = opCompileInfoJson["_workspace_size_list"];
+    const auto& workspace_size_list_1 = compile_info["_workspace_size_list"];
     for (auto iter = workspace_size_list_1.begin(); iter != workspace_size_list_1.end(); iter++) {
-      workspace_size_list.push_back((int64_t)*iter);
+      compile_value.workspace_size_list.push_back((int64_t)*iter);
     }
   }
+  return true;
+}
+
+// tiling function
+bool DynamicAtomicAddrCleanTiling(const std::string& op_type, const ge::Operator& op_paras,
+                                  const DynamicAtomicAddrCleanCompile& compile_info, utils::OpRunInfo& run_info) {
+  OP_LOGI(op_type.c_str(), "op[%s] op tiling begin.", op_type.c_str());
+
+  PROFILING_TILING_INIT(op_type.c_str());
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
+
+  std::vector<int64_t> workspace_size_list = compile_info.workspace_size_list;
+  uint32_t core_num = compile_info.core_num;
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
+
   auto size_count = workspace_size_list.size();
   for (size_t i = 0; i < size_count; i++) {
     int64_t addr_tensor_size = workspace_size_list[i];
@@ -282,5 +285,6 @@ bool DynamicAtomicAddrCleanTiling(const std::string& op_type, const ge::Operator
   OP_LOGI(op_type.c_str(), "op[%s] op tiling success", op_type.c_str());
   return true;
 }
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(DynamicAtomicAddrClean, DynamicAtomicAddrCleanTiling);
+REGISTER_OP_TILING_V3_CUSTOM(DynamicAtomicAddrClean, DynamicAtomicAddrCleanTiling,
+                             DynamicAtomicAddrCleanParseFunc, DynamicAtomicAddrCleanCompile);
 }  // namespace optiling

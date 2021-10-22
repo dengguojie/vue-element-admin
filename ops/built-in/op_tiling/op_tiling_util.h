@@ -23,15 +23,51 @@
 #define CANN_OPS_BUILT_IN_OP_TILING_OP_TILING_UTIL_H_
 
 #include <vector>
+#include <nlohmann/json.hpp>
+#include "error_log.h"
 #include "op_tiling.h"
 #include "op_const.h"
 #include "external/graph/operator.h"
 #include "graph/utils/op_desc_utils.h"
 
+#define REGISTER_OP_TILING_V3_WITH_VECTOR(optype, opfunc, vector_key, optional_key)                             \
+  bool Tbe##optype##TilingV3WithVec(const ge::Operator& para, const void* op_info_void,                         \
+                                    optiling::utils::OpRunInfo& rinfo) {                                        \
+    return opfunc(#optype, para, *(const std::vector<int64_t>*)op_info_void, rinfo);                            \
+  }                                                                                                             \
+  void* Tbe##optype##TilingV3WithVecParsefunc(const ge::Operator& para, const ge::AscendString& compile_info) { \
+    return ParseCompileToInt64Vec(para, compile_info, vector_key, optional_key);                                \
+  }                                                                                                             \
+  REGISTER_OP_TILING_V3(optype, Tbe##optype##TilingV3WithVec, Tbe##optype##TilingV3WithVecParsefunc)
+
+#define REGISTER_OP_TILING_V3_CUSTOM(optype, opfunc, parse_func, struct_name)                                         \
+  bool Tbe##optype##TilingV3Custom(const ge::Operator& para, const void* op_info_void,                                \
+                                   optiling::utils::OpRunInfo& rinfo) {                                               \
+    if (op_info_void == nullptr) {                                                                                    \
+      return false;                                                                                                   \
+    }                                                                                                                 \
+    return opfunc(#optype, para, *(const struct_name*)op_info_void, rinfo);                                           \
+  }                                                                                                                   \
+  void* Tbe##optype##TilingV3CustomParsefunc(const ge::Operator& para, const ge::AscendString& compile_info) {        \
+    std::shared_ptr<nlohmann::json> json_object(new nlohmann::json(nlohmann::json::parse(compile_info.GetString()))); \
+    if (json_object == nullptr) {                                                                                     \
+      return nullptr;                                                                                                 \
+    }                                                                                                                 \
+    struct_name* parsed_void_ptr = new struct_name();                                                                 \
+    bool parse_ret = parse_func(#optype, *json_object, *parsed_void_ptr);                                             \
+    if (parse_ret) {                                                                                                  \
+      return static_cast<void*>(parsed_void_ptr);                                                                     \
+    }                                                                                                                 \
+    delete parsed_void_ptr;                                                                                           \
+    return nullptr;                                                                                                   \
+  }                                                                                                                   \
+  REGISTER_OP_TILING_V3(optype, Tbe##optype##TilingV3Custom, Tbe##optype##TilingV3CustomParsefunc)
+
 namespace optiling {
 using optiling::ByteBuffer;
 using namespace ge;
 
+const std::map<std::string, std::int64_t> NO_OPTIONAL_VALUE;
 const std::map<std::string, DataType> STR_TO_DATATYPE = {{"float", DT_FLOAT},
                                                          {"float32", DT_FLOAT},
                                                          {"float16", DT_FLOAT16},
@@ -76,9 +112,9 @@ std::string to_string(const ge::Format& format);
  * @param [in] shape: std::vector<int64_t>
  * @return : void
  */
-inline void ScalarToShape(std::vector<int64_t>& shape)
-{
-  if(shape.empty()) shape.push_back(1);
+inline void ScalarToShape(std::vector<int64_t>& shape) {
+  if (shape.empty())
+    shape.push_back(1);
 }
 
 template <typename T>
@@ -109,5 +145,40 @@ int64_t GetByteLenByString(const std::string& op_type);
  * @return Int: dataBlock;
  */
 int64_t GetDataBlockElems(const ge::DataType& dtype);
+
+template <typename T>
+bool GetCompileValue(const nlohmann::json& all_vars, const std::string& name, T& value) {
+  if (all_vars.empty()) {
+    return false;
+  }
+
+  if (all_vars.count(name) == 0) {
+    return false;
+  }
+
+  value = all_vars[name].get<T>();
+  return true;
+}
+
+template <typename T1, typename T2>
+bool GetCompileValue(const nlohmann::json& all_vars, const std::string& name, T1& value, const T2 default_value) {
+  if (!GetCompileValue(all_vars, name, value)) {
+    value = static_cast<T1>(default_value);
+  }
+  return true;
+}
+
+/*
+ * @brief: transfor the json to vector_int64, with the json string key
+ * @param [in] op_type: op type
+ * @param [in] compile_info_json: the compile info json class
+ * @param [in] compile_info_key: the string vector, inclue the key value for op_type
+ * @param [in] compile_info_vec: the result vector of int64_t, base on the compile_info_key
+ * @return bool: true or false;
+ */
+void* ParseCompileToInt64Vec(const ge::Operator& op, const ge::AscendString compile_info,
+                             const std::vector<std::string>& compile_info_key,
+                             const std::map<std::string, int64_t> optional_key);
+
 }  // namespace optiling
 #endif  // CANN_OPS_BUILT_IN_OP_TILING_OP_TILING_UTIL_H_

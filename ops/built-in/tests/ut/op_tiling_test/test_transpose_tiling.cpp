@@ -1872,7 +1872,7 @@ TEST_F(TransposeTilingTest, last_axis_join_transpose_check_jump_stride) {
   EXPECT_EQ(runtimeInfo.infoPerCore[1].infoN.loopOnN, 1);
 }
 
-const int64_t profiling_test_num = 0;
+const int64_t profiling_test_num = 1;
 static void run_case(std::vector<int64_t> input_shape, std::vector<int64_t> output_shape,
                      std::vector<int64_t> const_value, std::string data_dtype, std::string compile_info,
                      std::string expect_tiling, std::string case_name) {
@@ -1887,12 +1887,11 @@ static void run_case(std::vector<int64_t> input_shape, std::vector<int64_t> outp
   TENSOR_INPUT_WITH_SHAPE(test_op, x, input_shape, StringToDtype(data_dtype), FORMAT_ND, {});
   TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(test_op, perm, const_shape, DT_INT64, FORMAT_ND, const_value);
   TENSOR_OUTPUT_WITH_SHAPE(test_op, y, output_shape, StringToDtype(data_dtype), FORMAT_ND, {});
-  optiling::utils::OpCompileInfo op_compile_info(case_name.c_str(), compile_info);
 
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(test_op, op_compile_info, runInfo));
+  RUN_TILING_V3(test_op, iter->second, compile_info, runInfo);
   for (int64_t i = 0; i < profiling_test_num; i++) {
-    iter->second.tiling_func_v2_(test_op, op_compile_info, runInfo);
+    RUN_TILING_V3(test_op, iter->second, compile_info, runInfo);
   }
 }
 

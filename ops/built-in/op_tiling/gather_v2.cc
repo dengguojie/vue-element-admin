@@ -392,43 +392,19 @@ bool CheckTensorShape(const std::string& op_type, const GatherShapeInfo& shape_i
   return true;
 }
 
-bool GetV2GatherCompileParams(const std::string& op_type, const nlohmann::json& opCompileInfoJson,
+bool GetV2GatherCompileParams(const std::string& op_type, const std::vector<int64_t>& compile_info_vec,
                               GatherCompileParams& params) {
-  using namespace nlohmann;
+  OP_TILING_CHECK(
+      compile_info_vec.size() != 6,
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the compile info num is not 6, is %zu", compile_info_vec.size()),
+      return false);
 
-  const auto& allVars = opCompileInfoJson["vars"];
-  if (allVars.count("core_num") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [GatherV2Tiling] : GetGatherCompileParams, get core_num failed");
-    return false;
-  }
-  params.core_num = allVars["core_num"].get<std::int64_t>();
-  if (allVars.count("ub_size") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [GatherV2Tiling] : GetGatherCompileParams, get ub_size failed");
-    return false;
-  }
-  params.ub_size = allVars["ub_size"].get<std::int64_t>();
-  if (allVars.count("l1_size") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [GatherV2Tiling] : GetGatherCompileParams, get l1_size failed");
-    return false;
-  }
-  params.l1_size = allVars["l1_size"].get<std::int64_t>();
-  if (allVars.count("params_dsize") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [GatherV2Tiling] : GetGatherCompileParams, get params_dsize failed");
-    return false;
-  }
-  params.params_d_size = allVars["params_dsize"].get<std::int64_t>();
-  if (allVars.count("indices_dsize") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op [GatherV2Tiling] : GetGatherCompileParams, get indices_dsize failed");
-    return false;
-  }
-  params.indices_d_size = allVars["indices_dsize"].get<std::int64_t>();
-  if (allVars.count("batch_dims") == 0) {
-    params.batch_dims = 0;
-    OP_LOGW(op_type.c_str(), "get batch_dims failed, set default value to 0.");
-  } else {
-    params.batch_dims = allVars["batch_dims"].get<std::int64_t>();
-  }
-
+  params.core_num = compile_info_vec[0];
+  params.ub_size = compile_info_vec[1];
+  params.l1_size = compile_info_vec[2];
+  params.params_d_size = compile_info_vec[3];
+  params.indices_d_size = compile_info_vec[4];
+  params.batch_dims = compile_info_vec[5];
   return true;
 }
 
@@ -1120,7 +1096,7 @@ bool TilingWithBatchDims(GatherV2TilingParams& run_params, const GatherCompilePa
  * @param [out] run_info: result data
  * @return bool: success or not
  */
-bool GatherV2Tiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+bool GatherV2Tiling(const std::string& op_type, const ge::Operator& op_paras, const std::vector<int64_t>& op_info,
                     utils::OpRunInfo& run_info) {
   OP_LOGI(op_type.c_str(), "GatherV2Tiling running.");
   PROFILING_TILING_INIT(op_type.c_str());
@@ -1186,9 +1162,12 @@ bool GatherV2Tiling(const std::string& op_type, const ge::Operator& op_paras, co
   return true;
 }
 
+static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num",     "ub_size",       "l1_size",
+                                                          "params_dsize", "indices_dsize", "batch_dims"};
+static const std::map<std::string, std::int64_t> OPTIONAL_VALUE = {{"batch_dims", 0}};
 // register tiling interface of the GatherV2 op.
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(GatherV2, GatherV2Tiling);
+REGISTER_OP_TILING_V3_WITH_VECTOR(GatherV2, GatherV2Tiling, COMPILE_INFO_KEY, OPTIONAL_VALUE);
 // register tiling interface of the Gather op.
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(Gather, GatherV2Tiling);
+REGISTER_OP_TILING_V3_WITH_VECTOR(Gather, GatherV2Tiling, COMPILE_INFO_KEY, OPTIONAL_VALUE);
 
 }  // namespace optiling

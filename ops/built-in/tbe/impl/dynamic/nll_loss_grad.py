@@ -504,8 +504,8 @@ class NllLossGradCompute:
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name, inputs=input_list, outputs=[self.output],
                                    flowtable=[self.tiling_gm])
         tbe_context.get_context().add_compile_info("vars", {"block_dim": self.real_core_num, "ub_size": self.ub_size,
-                                                            "dtype": self.dtype, "dtype_weight": self.dtype_target,
-                                                            "reduction": self.reduction, "ignore_idx": self.ignore_idx})
+                                                            "reduction": self.reduction,
+                                                            "ignore_idx": self.ignore_idx})
         return self.tik_instance
 
 

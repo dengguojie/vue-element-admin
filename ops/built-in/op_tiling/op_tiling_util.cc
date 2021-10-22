@@ -19,10 +19,10 @@
  * \brief tiling function of op
  */
 
-#include "op_tiling_util.h"
 #include <functional>
 #include <ge_error_codes.h>
 #include <graph/utils/type_utils.h>
+#include "op_tiling_util.h"
 #include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
@@ -82,6 +82,41 @@ int64_t GetDataBlockElems(const ge::DataType& dtype) {
     dataBlock = 4;
   }
   return dataBlock;
+}
+
+static bool TransJsonToVector(const ge::Operator& op, const nlohmann::json& compile_info_json,
+                              const std::vector<std::string>& compile_info_key,
+                              const std::map<std::string, int64_t> optional_key,
+                              std::vector<int64_t>& compile_info_vec) {
+  using namespace nlohmann;
+  const nlohmann::json& all_vars = compile_info_json["vars"];
+  compile_info_vec.resize(compile_info_key.size(), 0);
+  for (size_t i = 0; i < compile_info_key.size(); i++) {
+    auto it = optional_key.find(compile_info_key[i]);
+    if (it == optional_key.end()) {
+      OP_TILING_CHECK(!GetCompileValue(all_vars, compile_info_key[i], compile_info_vec[i]),
+                      VECTOR_INNER_ERR_REPORT_TILIING(TbeGetOpType(op).c_str(), "GetCompileParams, get %s error",
+                                                      compile_info_key[i].c_str()),
+                      return false);
+    } else {
+      const int64_t default_value = it->second;
+      GetCompileValue(all_vars, compile_info_key[i], compile_info_vec[i], default_value);
+    }
+    OP_LOGD(TbeGetOpType(op).c_str(), "TransJsonToVector key:value = %s:%ld", compile_info_key[i].c_str(),
+            compile_info_vec[i]);
+  }
+
+  OP_LOGD(TbeGetOpType(op).c_str(), "TransJsonToVector end");
+  return true;
+}
+
+void* ParseCompileToInt64Vec(const ge::Operator& op, const ge::AscendString compile_info,
+                             const std::vector<std::string>& compile_info_key,
+                             const std::map<std::string, int64_t> optional_key) {
+  std::shared_ptr<nlohmann::json> json_object(new nlohmann::json(nlohmann::json::parse(compile_info.GetString())));
+  std::vector<int64_t>* parsed_vector_ptr = new std::vector<int64_t>(compile_info_key.size(), 0);
+  TransJsonToVector(op, *json_object, compile_info_key, optional_key, *parsed_vector_ptr);
+  return static_cast<void*>(parsed_vector_ptr);
 }
 
 }  // namespace optiling

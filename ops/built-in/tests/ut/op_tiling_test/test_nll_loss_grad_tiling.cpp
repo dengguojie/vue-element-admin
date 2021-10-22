@@ -27,6 +27,7 @@
 #include "register/op_tiling_registry.h"
 #include "math_ops.h"
 #include "array_ops.h"
+#include "common/utils/ut_op_util.h"
 
 class NLLLossGradTiling : public testing::Test {
  protected:
@@ -105,20 +106,15 @@ TEST_F(NLLLossGradTiling, NLLLossGrad_tiling1) {
   TENSOR_OUTPUT(opParas, tensorOutput, x_grad);
 
   std::string compileInfo =
-      "{\"vars\": {\"reduction\": \"None\", \"dtype\": \"float32\", \"dtype_weight\": \"int32\", \"ignore_idx\": 5, "
+      "{\"vars\": {\"reduction\": \"none\", \"dtype\": \"float32\", \"dtype_weight\": \"int32\", \"ignore_idx\": 5, "
       "\"ub_size\": 252928, \"block_dim\": 2}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossGradTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),
       "32 16 0 5 512 512 16 16 1 32 0 2 8 8 1 1 0 256 256 256 64 64 64 64 4 1 1 1 1 1 1 4 4 32 32 64 2000 0 0 0 0 0 ");
-  int64_t tiling_test_num = 0;
-  for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  }
 }
 
 TEST_F(NLLLossGradTiling, NLLLossGrad_tiling2) {
@@ -160,20 +156,19 @@ TEST_F(NLLLossGradTiling, NLLLossGrad_tiling2) {
   tensorOutput.SetDataType(dtype);
   TENSOR_OUTPUT(opParas, tensorOutput, x_grad);
   std::string compileInfo =
-      "{\"vars\": {\"reduction\": \"None\", \"dtype\": \"float32\", \"dtype_weight\": \"int32\", \"ignore_idx\": "
+      "{\"vars\": {\"reduction\": \"none\", \"dtype\": \"float32\", \"dtype_weight\": \"int32\", \"ignore_idx\": "
       "215907, "
       "\"ub_size\": 260096, \"block_dim\": 32}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossGradTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "255658 40 0 215907 10226320 10226320 40 40 1 255658 1 32 0 0 2 0 0 1 0 64960 64 64 64 8 0 0 0 0 0 0 0 0 0 "
             "8120 7598 64 2001 64960 4 1015 950 64960 ");
-  int64_t tiling_test_num = 0;
+  int64_t tiling_test_num = 10;
   for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
+    RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   }
 }
 
@@ -219,19 +214,14 @@ TEST_F(NLLLossGradTiling, NLLLossGrad_tiling3) {
       "{\"vars\": {\"reduction\": \"mean\", \"dtype\": \"float32\", \"dtype_weight\": \"int32\", \"ignore_idx\": "
       "-1, "
       "\"ub_size\": 260096, \"block_dim\": 32}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossGradTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "15003 1020 1 -1 15303060 15303060 1 1020 1 15003 0 32 3 3 11 340 28 45009 45009 45056 64 15040 64 64 1876 "
             "1 1 1 1 1 1 704 704 "
             "5627 5627 64 2000 0 0 0 0 0 ");
-  int64_t tiling_test_num = 0;
-  for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  }
 }
 
 TEST_F(NLLLossGradTiling, NLLLossGrad_tiling4) {
@@ -276,17 +266,12 @@ TEST_F(NLLLossGradTiling, NLLLossGrad_tiling4) {
       "{\"vars\": {\"reduction\": \"sum\", \"dtype\": \"float32\", \"dtype_weight\": \"int32\", \"ignore_idx\": "
       "1, "
       "\"ub_size\": 260096, \"block_dim\": 32}}";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
 
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossGradTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "7243 7 0 1 50701 50701 1 7 1 7243 0 7 1 1 1 1 0 7243 7243 7296 64 7296 64 64 906 "
             "1 1 1 1 1 1 114 114 "
             "906 906 64 2000 0 0 0 0 0 ");
-  int64_t tiling_test_num = 0;
-  for (int64_t i = 0; i < tiling_test_num; i++) {
-    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  }
 }

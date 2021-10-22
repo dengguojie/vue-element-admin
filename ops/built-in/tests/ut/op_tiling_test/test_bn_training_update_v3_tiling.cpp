@@ -59,7 +59,7 @@ TEST_F(BNTrainingUpdateV3Tiling, BNTrainingUpdateV3Tiling1) {
     auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
     ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-    auto opParas = op::BNTrainingUpdateV3(op_name);
+    auto opParas = op::BNTrainingUpdateV3(op_name.c_str());
 
     vector<vector<int64_t>> input_shapes = {
         {32, 16, 26, 26, 16}, {1, 16, 1, 1, 16}, {1, 16, 1, 1, 16}, {1, 16, 1, 1, 16}, {1, 16, 1, 1, 16}};

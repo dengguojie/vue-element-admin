@@ -29,7 +29,6 @@
 #include "op_tiling_util.h"
 #include "securec.h"
 #include <nlohmann/json.hpp>
-#include "error_log.h"
 #include "vector_tiling_profiling.h"
 
 using namespace std;
@@ -59,6 +58,36 @@ namespace optiling {
     vector<int64_t> t(info);    \
     specificShape.push_back(t); \
   }
+
+struct TransposeInputCompile {
+  int64_t core_num = 0;
+  int64_t ub_size = 0;
+  int64_t block_size = 0;
+  std::string mode;
+};
+
+bool TransposeParseFunc(const std::string& op_type,
+                        const nlohmann::json& compile_info,
+                        TransposeInputCompile& compile_value) {
+  if (compile_info.count("vars") == 0) {
+    return false;
+  }
+  const nlohmann::json& all_vars = compile_info["vars"];
+  OP_TILING_CHECK(!GetCompileValue(all_vars, "core_num", compile_value.core_num),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type.c_str(), "TransposeParseFunc, get core_num error"),
+                  return false);
+  OP_TILING_CHECK(!GetCompileValue(all_vars, "ub_size", compile_value.ub_size),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type.c_str(), "TransposeParseFunc, get ub_size error"),
+                  return false);
+  compile_value.block_size = 0;
+  if ((op_type == "DepthToSpace") || (op_type == "SpaceToDepth")) {
+    OP_TILING_CHECK(!GetCompileValue(all_vars, "block_size", compile_value.block_size),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type.c_str(), "TransposeParseFunc, get block_size error"),
+                    return false);
+  }
+  GetCompileValue(all_vars, "mode", compile_value.mode, "DCR");
+  return true;
+}
 
 static map<uint64_t, PermInfo> InitPerm() {
   map<uint64_t, PermInfo> permDict;
@@ -5117,31 +5146,12 @@ bool TransposeCalcTilingData(const string& opType, const CompilerInfo& compilerI
   return res;
 }
 
-bool GetCompileParams(const string& opType, const nlohmann::json& opCompileInfoJson, CompilerInfo& info) {
+bool GetCompileParams(const string& opType, const TransposeInputCompile& opCompileInfoJson, CompilerInfo& info) {
   OP_LOGD(opType.c_str(), "Entering GetCompileParams.");
 
-  using namespace nlohmann;
-
-  if (opCompileInfoJson.count("vars") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get vars error");
-    return false;
-  }
-
-  auto allVars = opCompileInfoJson["vars"];
-
   info.opType = opType;
-
-  if (allVars.count("core_num") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get core_num error");
-    return false;
-  }
-  if (allVars.count("ub_size") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get ub_size error");
-    return false;
-  }
-
-  info.coreNum = allVars["core_num"].get<std::int64_t>();
-  info.ubSize = allVars["ub_size"].get<std::int64_t>();
+  info.coreNum = opCompileInfoJson.core_num;
+  info.ubSize = opCompileInfoJson.ub_size;
   info.ubSizeCouldUse = info.ubSize - UB_RESERVED_BLOCK_SIZE;
   if (info.coreNum == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "The core count cannot be zero!");
@@ -5150,21 +5160,12 @@ bool GetCompileParams(const string& opType, const nlohmann::json& opCompileInfoJ
 
   // for depthtospace and spacetodepth
   if ((opType == "DepthToSpace") || (opType == "SpaceToDepth")) {
-    if (allVars.count("block_size") == 0) {
-      VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get block_size error");
-      return false;
-    }
-    info.blockSize = allVars["block_size"].get<std::int64_t>();
+    info.blockSize = opCompileInfoJson.block_size;
     OP_LOGD(opType.c_str(), "GetCompileParams, blockSize[%d].", info.blockSize);
   }
   // for depthtospace
   if (opType == "DepthToSpace") {
-    if (allVars.count("mode") == 0) {
-      info.mode = "DCR";
-      OP_LOGW(opType, "GetCompileParams mode failed, set as default value DCR.");
-    } else {
-      info.mode = allVars["mode"].get<std::string>();
-    }
+    info.mode = opCompileInfoJson.mode;
     OP_LOGD(opType, "GetCompileParams, mode [%s].", info.mode.c_str());
   }
   return true;
@@ -6070,7 +6071,7 @@ void SerializeTilingData(utils::OpRunInfo& runInfo, const CompilerInfo& compiler
   }
 }
 
-bool TransposeTiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opInfo,
+bool TransposeTiling(const std::string& opType, const ge::Operator& opParas, const TransposeInputCompile& opInfo,
                      utils::OpRunInfo& runInfo) {
   PROFILING_TILING_INIT(opType.c_str());
   OP_LOGI(opType.c_str(), "Tiling is running.");
@@ -6110,8 +6111,7 @@ bool TransposeTiling(const std::string& opType, const ge::Operator& opParas, con
   return true;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(DepthToSpace, TransposeTiling);
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(SpaceToDepth, TransposeTiling);
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(Transpose, TransposeTiling);
-
+REGISTER_OP_TILING_V3_CUSTOM(DepthToSpace, TransposeTiling, TransposeParseFunc, TransposeInputCompile);
+REGISTER_OP_TILING_V3_CUSTOM(SpaceToDepth, TransposeTiling, TransposeParseFunc, TransposeInputCompile);
+REGISTER_OP_TILING_V3_CUSTOM(Transpose, TransposeTiling, TransposeParseFunc, TransposeInputCompile);
 }  // namespace optiling

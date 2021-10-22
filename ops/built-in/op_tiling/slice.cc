@@ -22,14 +22,12 @@
 #include <map>
 #include <cmath>
 
-#include <nlohmann/json.hpp>
 #include "op_tiling_util.h"
 #include "graph/debug/ge_log.h"
 
 #include "../op_proto/util/error_util.h"
 #include "../op_proto/util/op_common_util.h"
 #include "op_log.h"
-#include "error_log.h"
 #include "strided_slice.h"
 #include "graph/utils/op_desc_utils.h"
 #include "vector_tiling_profiling.h"
@@ -37,23 +35,12 @@
 namespace optiling {
 using namespace ge;
 
-template <typename OUT_TYPE>
-static OUT_TYPE GetCompileInfo(const nlohmann::json& op_info, const std::string& name) {
-  const nlohmann::json& allVars = op_info["vars"];
-  if (allVars.empty()) {
-    return 0;
-  }
 
-  if (allVars.count(name) == 0) {
-    return 0;
-  }
+// define the compile key of json.vars
+static const std::vector<std::string> COMPILE_INFO_KEY = {"block_dim", "ub_size"};
 
-  return allVars[name].get<OUT_TYPE>();
-}
-
-bool SliceTiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
+bool SliceTiling(const std::string& opType, const ge::Operator& opParas, const std::vector<int64_t>& opCompileInfo,
                  utils::OpRunInfo& runInfo) {
-  using namespace nlohmann;
   OP_LOGD(opType.c_str(), "SliceTiling running.");
 
   PROFILING_TILING_INIT(opType.c_str());
@@ -97,9 +84,16 @@ bool SliceTiling(const std::string& opType, const ge::Operator& opParas, const n
 
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
 
-  int32_t core_num = GetCompileInfo<int32_t>(opCompileInfo, "block_dim");
+  // get compile info for vector
+  OP_TILING_CHECK(
+      opCompileInfo.size() != COMPILE_INFO_KEY.size(),
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "the compile info num is not equal expect compile_info(%zu), is %zu",
+                                      COMPILE_INFO_KEY.size(), opCompileInfo.size()),
+      return false);
+
+  int32_t core_num = static_cast<int32_t>(opCompileInfo[0]);
   OP_TILING_CHECK(core_num == 0, VECTOR_INNER_ERR_REPORT_TILIING(opType, "core_num cannot be zero."), return false);
-  int32_t ub_size = GetCompileInfo<int32_t>(opCompileInfo, "ub_size");
+  int32_t ub_size = static_cast<int32_t>(opCompileInfo[1]);
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
   for (size_t index = 0; index < slice_params_output.end_list.size(); index++) {
@@ -149,5 +143,5 @@ bool SliceTiling(const std::string& opType, const ge::Operator& opParas, const n
   return true;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(Slice, SliceTiling);
+REGISTER_OP_TILING_V3_WITH_VECTOR(Slice, SliceTiling, COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
 }  // namespace optiling

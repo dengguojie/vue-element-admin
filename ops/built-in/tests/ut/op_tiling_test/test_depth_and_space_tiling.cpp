@@ -59,16 +59,15 @@ static void run_case(std::vector<int64_t> input_shape, std::vector<int64_t> outp
                           TypeUtils::SerialStringToFormat(data_format), {});
   TENSOR_OUTPUT_WITH_SHAPE(test_op, y, output_shape, StringToDtype(data_dtype),
                            TypeUtils::SerialStringToFormat(data_format), {});
-  optiling::utils::OpCompileInfo op_compile_info(case_name.c_str(), compile_info);
 
   optiling::utils::OpRunInfo runInfo;
   const int64_t profiling_test_num = 0;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(test_op, op_compile_info, runInfo));
+  RUN_TILING_V3(test_op, iter->second, compile_info, runInfo);
   if (expect_tiling != "") {
     EXPECT_EQ(to_string_int64(runInfo.GetAllTilingData()), expect_tiling);
   }
   for (int64_t i = 0; i < profiling_test_num; i++) {
-    iter->second.tiling_func_v2_(test_op, op_compile_info, runInfo);
+    RUN_TILING_V3(test_op, iter->second, compile_info, runInfo);
   }
 }
 

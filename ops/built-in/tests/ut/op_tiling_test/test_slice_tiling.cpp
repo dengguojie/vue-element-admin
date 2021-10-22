@@ -7,6 +7,7 @@
 #include "test_common.h"
 #include "array_ops.h"
 #include "selection_ops.h"
+#include "common/utils/ut_op_util.h"
 
 using namespace std;
 using namespace ge;
@@ -65,14 +66,12 @@ TEST_F(slice_tiling, slice_tiling_no_mask) {
   TENSOR_OUTPUT(opParas, tensorOutput, y);
 
   std::string compileInfo = R"({"vars": {"block_dim": 32}})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  ASSERT_TRUE(ret);
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 4 4 4 4 4 2 2 2 2 1 1 1 1 3 3 3 3 1 1 1 1 ");
-  int64_t num = 100;
+  int64_t num = 10;
   for (int64_t i = 0; i < num; i++) {
-    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
+    RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   }
 }
 
@@ -106,10 +105,8 @@ TEST_F(slice_tiling, slice_tiling_with_mask1) {
 
   std::string compileInfo = R"({"vars": {"block_dim": 32}})";
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  ASSERT_TRUE(ret);
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 2 10 10 3 3 0 0 3 3 1 1 ");
 }
 
@@ -143,10 +140,8 @@ TEST_F(slice_tiling, slice_tiling_no_const_value) {
 
   std::string compileInfo = R"({"vars": {"block_dim": 32}})";
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  ASSERT_FALSE(ret);
+  RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
 }
 
 TEST_F(slice_tiling, slice_tiling_invalid_begin_length) {
@@ -179,11 +174,9 @@ TEST_F(slice_tiling, slice_tiling_invalid_begin_length) {
 
   std::string compileInfo = R"({"vars": {"block_dim": 32}})";
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  ASSERT_FALSE(ret);
+  RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
 }
 
 TEST_F(slice_tiling, slice_tiling_invalid_begin_value) {
@@ -216,11 +209,9 @@ TEST_F(slice_tiling, slice_tiling_invalid_begin_value) {
 
   std::string compileInfo = R"({"vars": {"block_dim": 32}})";
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  ASSERT_FALSE(ret);
+  RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
 }
 
 TEST_F(slice_tiling, slice_tiling_end_value_negative_one) {
@@ -252,11 +243,9 @@ TEST_F(slice_tiling, slice_tiling_end_value_negative_one) {
   TENSOR_OUTPUT(opParas, tensorOutput, y);
   std::string compileInfo = R"({"vars": {"block_dim": 32}})";
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  ASSERT_TRUE(ret);
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "7 1 100 100 0 100 1 ");
 }
 
@@ -281,9 +270,7 @@ TEST_F(slice_tiling, slice_tiling_empty_input) {
   TENSOR_OUTPUT(opParas, tensorOutput, y);
   std::string compileInfo = R"({"vars": {"block_dim": 32}})";
 
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
 
-  auto ret = iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
-  ASSERT_FALSE(ret);
+  RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
 }
