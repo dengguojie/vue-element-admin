@@ -23,12 +23,10 @@ from impl.util.platform_adapter import tik
 from impl import trans_data_common_func as tdc
 
 
-# used for scalar
-PAD_IDX_LIST = (0, 1)
-# frame up levels
-FRAME_LEVEL = 2
-# used for tiling data
-TILING_CTRL_PARAM = ("int64", 96)
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    # used for tiling data
+    TILING_CTRL_PARAM = ("int64", 96)
 
 
 def _get_tiling_params(tik_inst, tiling_ub, tiling_gm, tiling_params, tiling_dtype_bytes):
@@ -38,12 +36,12 @@ def _get_tiling_params(tik_inst, tiling_ub, tiling_gm, tiling_params, tiling_dty
 
     ele_per_block = tdc.BLOCK_BYTE_SIZE // tiling_dtype_bytes
     tik_inst.data_move(tiling_ub, tiling_gm, 0, 1,
-                       TILING_CTRL_PARAM[1] // ele_per_block, 0, 0)
-    for reg_idx in range(TILING_CTRL_PARAM[1]):
+                       Constant.TILING_CTRL_PARAM[1] // ele_per_block, 0, 0)
+    for reg_idx in range(Constant.TILING_CTRL_PARAM[1]):
         tiling_params[reg_idx].set_as(tiling_ub[reg_idx])
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable, too-many-locals, too-many-statements
 def _twice_vnchwconv_invert(args):
     """
     do ncdh to ndhc transform by twice vnchwconv
@@ -167,7 +165,7 @@ def _twice_vnchwconv_invert(args):
                 tik_inst.vnchwconv(True, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable, too-many-locals, too-many-statements
 def _once_vnchwconv_invert(args):
     """
     do cdh to dhc transform by once vnchwconv
@@ -254,6 +252,7 @@ def _update_input_offset(args):
     return in_offset
 
 
+# 'pylint: disable=too-many-locals
 def _copy_data_in(args):
     """
     copy data from gm to ub
@@ -292,6 +291,7 @@ def _copy_data_in(args):
                                        0, 1, cr_blocks, 0, 0)
 
 
+# 'pylint: disable=too-many-locals
 def _update_out_offset_cl(args):
     """
     update c-left out offset
@@ -375,7 +375,7 @@ def _inner_move_data_out_target_two_cl(args):
         _move_data_out(cur_cl_1_cr_2_args)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _copy_data_out_1st_src_r2nd_dst_not_same(out_offset_args, copy_out_args):
     """
     copy data from ub to gm for source 1st and target r2nd is not same
@@ -442,7 +442,7 @@ def _split_dims(args):
     cur_cr_size.set_as(plp_cr_size - last_cr_size - mid_lp_cnt * cr_out_idx_0_size)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _copy_data_out_1st_src_r2nd_dst_same(out_offset_args, copy_out_args):
     """
     copy data from ub to gm for source 1st and target r2nd is same
@@ -546,6 +546,7 @@ def _copy_data_out_1st_src_r2nd_dst_same(out_offset_args, copy_out_args):
             _inner_move_data_out_srcr1st_dstr2nd_same()
 
 
+# 'pylint: disable=too-many-locals
 def _func_transform_100(tensor_args, tp_args):
     """
     transform function for tiling mode 100
@@ -561,6 +562,7 @@ def _func_transform_100(tensor_args, tp_args):
      cl_out_idx_1_dst_rsize, cl_out_idx_1_dst_asize, cr_out_idx_0_size, cr_out_idx_0_dst_rsize,
      cr_out_idx_0_dst_asize, cr_out_idx_1_size, cr_out_idx_1_dst_rsize, cr_out_idx_1_dst_asize) = tp_args
 
+    # 'pylint: disable=too-many-locals
     def _inner_func(args):
         cl_lp_cnt, cl_left, c_lp_cnt, c_left, cr_lp_cnt, cr_left = args
         plp_cl_size = tik_inst.Scalar(name="plp_cl_size")
@@ -634,6 +636,7 @@ def _func_transform_100(tensor_args, tp_args):
         _inner_func(lc_args)
 
 
+# 'pylint: disable=too-many-locals
 def trans_data_positive_source_ntc(src, dst, src_format, dst_format, kernel_name="trans_data_positive_source_ntc"):
     """
     positive transform for last dimension of source format is not c
@@ -661,7 +664,7 @@ def trans_data_positive_source_ntc(src, dst, src_format, dst_format, kernel_name
     in_dtype = src.get("dtype").lower() if src.get("dtype").lower() != "bfloat16" else "float16"
     in_dtype_bytes = tdc.get_dtype_len(in_dtype)
     tiling_dtype_bytes = tdc.get_dtype_len("int64")
-    ub_size = tdc.get_max_element_in_ub(in_dtype, 1, 256) - TILING_CTRL_PARAM[1] * tiling_dtype_bytes // in_dtype_bytes
+    ub_size = tdc.get_max_element_in_ub(in_dtype, 1, 256) - Constant.TILING_CTRL_PARAM[1] * tiling_dtype_bytes // in_dtype_bytes
     block_elem_cnt = tdc.BLOCK_BYTE_SIZE // tdc.get_dtype_len(in_dtype)
 
     tik_inst = tik.Tik()
@@ -670,12 +673,12 @@ def trans_data_positive_source_ntc(src, dst, src_format, dst_format, kernel_name
         dst_out_gm = tik_inst.Tensor(in_dtype, (tdc.MAX_INT64_VALUE,), tik.scope_gm, "dst_out_gm", is_atomic_add=False)
     else:
         dst_out_gm = tik_inst.Tensor(in_dtype, (tdc.MAX_INT64_VALUE,), tik.scope_gm, "dst_out_gm", is_atomic_add=True)
-    tiling_gm = tik_inst.Tensor(TILING_CTRL_PARAM[0], (TILING_CTRL_PARAM[1],), tik.scope_gm, "tiling_gm")
+    tiling_gm = tik_inst.Tensor(Constant.TILING_CTRL_PARAM[0], (Constant.TILING_CTRL_PARAM[1],), tik.scope_gm, "tiling_gm")
     half_ub = ub_size // 2
     src_ub = tik_inst.Tensor(in_dtype, (half_ub,), tik.scope_ubuf, "src_ub")
     dst_ub = tik_inst.Tensor(in_dtype, (half_ub,), tik.scope_ubuf, "dst_ub")
-    tiling_ub = tik_inst.Tensor(TILING_CTRL_PARAM[0], (TILING_CTRL_PARAM[1],), tik.scope_ubuf, "tiling_ub")
-    tiling_params = [tik_inst.Scalar(TILING_CTRL_PARAM[0]) for i in range(TILING_CTRL_PARAM[1])]
+    tiling_ub = tik_inst.Tensor(Constant.TILING_CTRL_PARAM[0], (Constant.TILING_CTRL_PARAM[1],), tik.scope_ubuf, "tiling_ub")
+    tiling_params = [tik_inst.Scalar(Constant.TILING_CTRL_PARAM[0]) for i in range(Constant.TILING_CTRL_PARAM[1])]
     _get_tiling_params(tik_inst, tiling_ub, tiling_gm, tiling_params, tiling_dtype_bytes)
 
     used_core_cnt = tiling_params[3]

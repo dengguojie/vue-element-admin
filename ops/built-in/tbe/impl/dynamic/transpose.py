@@ -16,7 +16,6 @@ transpose
 # pylint: disable=too-many-lines
 
 from impl.util import util_common
-from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
@@ -96,12 +95,11 @@ def _fuzzy_match(shape_t):
         if len(shape_t) != len(shape_w):
             continue
         count = 0
-        for i in range(len(shape_t)):
+        for i, _ in enumerate(shape_t):
             if shape_w[i] == -1 or shape_t[i] == shape_w[i]:
                 count = count + 1
                 continue
-            else:
-                break
+            break
         if count == len(shape_t):
             return True
     return False
@@ -204,6 +202,7 @@ def check_supported(input_x, perm, output_y, kernel_name="dynamic_transpose"):
     return False, ""
 
 
+# 'pylint: disable=too-many-statements, too-many-arguments
 def _set_param_python_arr(tiling_reg_list, reg_base, ub_input, ub_offset, param, actual_num, max_num):
     for i in range(max_num):
         tiling_reg_list[reg_base[0] + i].set_as(ub_input[ub_offset + i])
@@ -212,6 +211,7 @@ def _set_param_python_arr(tiling_reg_list, reg_base, ub_input, ub_offset, param,
     reg_base[0] = reg_base[0] + max_num
 
 
+# 'pylint: disable=too-many-statements, too-many-arguments
 def _set_param_scalar_arr(tiling_reg_list, ub_input, ub_offset, param, actual_num, max_num):
     for i in range(max_num):
         param[i].set_as(ub_input[ub_offset + i])
@@ -222,15 +222,16 @@ def _get_half_ub():
     # first div 2 means half the ub, second div 2 means b16
     return (UB_SIZE - RESERVED_UB * 1024) // 2 // 2
 
+
 # pylint: disable=unused-argument,invalid-name, too-many-arguments, unused-variable, too-many-locals
 # pylint: disable=too-many-statements, invalid-name, no-self-use, protected-access
 # pylint: disable=too-many-instance-attributes, too-few-public-methods
-class Transpose(object):
+class Transpose():
     """
     Transpose
     """
 
-    class TilingParamS0(object):
+    class TilingParamS0():
         """
         TilingParamS0
         """
@@ -261,7 +262,7 @@ class Transpose(object):
             self.tail_num.set_as(ub_input_64[4])
             self.not_align_ele.set_as(ub_input_64[5])
 
-    class TilingParamS1(object):
+    class TilingParamS1():
         """
         TilingParamS1
         """
@@ -332,7 +333,7 @@ class Transpose(object):
             self.src_addr = tiling_reg_list[reg_base]
             self.dst_addr = tiling_reg_list[reg_base + 1]
 
-    class TilingParamS2(object):
+    class TilingParamS2():
         """
         TilingParamS2
         """
@@ -432,7 +433,7 @@ class Transpose(object):
             self.src_addr = tiling_reg_list[reg_base]
             self.dst_addr = tiling_reg_list[reg_base + 1]
 
-    class TilingParamS3(object):
+    class TilingParamS3():
         """
         TilingParamS3
         """
@@ -499,7 +500,7 @@ class Transpose(object):
             self.src_addr = tiling_reg_list[reg_base]
             self.dst_addr = tiling_reg_list[reg_base + 1]
 
-    class TilingParamS4(object):
+    class TilingParamS4():
         """
         TilingParamS4
         """
@@ -667,7 +668,7 @@ class Transpose(object):
             self.offset_2.set_as(_get_half_ub())
             self.ub_res_addr.set_as(self.offset_1)
 
-    class TilingParamS5(object):
+    class TilingParamS5():
         """
         TilingParamS5
         """
@@ -864,7 +865,8 @@ class Transpose(object):
             self.offset_2.set_as(_get_half_ub())
             self.ub_res_addr.set_as(self.offset_1)
 
-    class TilingParamS7(object):
+    # 'pylint: disable=unused-variable
+    class TilingParamS7():
         """
         TilingParamS7
         """
@@ -1023,7 +1025,7 @@ class Transpose(object):
             self.offset_a.set_as(0)
             self.offset_b.set_as(_get_half_ub())
 
-    class TilingParamS9(object):
+    class TilingParamS9():
         """
         TilingParamS9
         """
@@ -1092,7 +1094,7 @@ class Transpose(object):
             self.src_addr = tiling_reg_list[reg_base]
             self.dst_addr = tiling_reg_list[reg_base + 1]
 
-    class TilingParamS11(object):
+    class TilingParamS11():
         """
         TilingParamS11
         """
@@ -4851,20 +4853,20 @@ class Transpose(object):
     #             C           |          C             |  D
     # --------------------------------------------------------
 
-    # A: major_col_major_batch
-    # B: tail_col_major_batch
-    # C: major_col_tail_batch
-    # D: tail_col_tail_batch
+    # `A: major_col_major_batch`
+    # `B: tail_col_major_batch`
+    # `C: major_col_tail_batch`
+    # `D: tail_col_tail_batch`
 
     def _reorder_s7_b16(self, tp, ub_input, ub_offset, is_tc=False, is_tr=False):
         ub_input_fp16 = ub_input.reinterpret_cast_to("float16")
 
-        with self.tik_inst.if_scope(is_tc == True):
+        with self.tik_inst.if_scope(is_tc):
             tp.col_reorder.set_as(tp.col_tc)
         with self.tik_inst.else_scope():
             tp.col_reorder.set_as(tp.col_per_mc)
 
-        with self.tik_inst.if_scope(is_tr == True):
+        with self.tik_inst.if_scope(is_tr):
             tp.row_reorder.set_as(tp.row_tr)
         with self.tik_inst.else_scope():
             tp.row_reorder.set_as(tp.row_per_mr)
@@ -4886,12 +4888,12 @@ class Transpose(object):
 
     def _reorder_s7_b32(self, tp, ub_input, ub_offset, is_tc=False, is_tr=False):
 
-        with self.tik_inst.if_scope(is_tc == True):
+        with self.tik_inst.if_scope(is_tc):
             tp.col_reorder.set_as(tp.col_tc)
         with self.tik_inst.else_scope():
             tp.col_reorder.set_as(tp.col_per_mc)
 
-        with self.tik_inst.if_scope(is_tr == True):
+        with self.tik_inst.if_scope(is_tr):
             tp.row_reorder.set_as(tp.row_tr)
         with self.tik_inst.else_scope():
             tp.row_reorder.set_as(tp.row_per_mr)
@@ -6040,7 +6042,6 @@ class Transpose(object):
 def transpose(x, perm, y, kernel_name="transpose"):
     """
     do transpose by perm attribute
-    
     Parameters
     ----------
     x : dict
@@ -6051,7 +6052,6 @@ def transpose(x, perm, y, kernel_name="transpose"):
         shape and dtype of output, the dtype should be same as input
     kernel_name : str
         kernel name, default value is "transpose"
-    
     Returns
     -------
     compile info
