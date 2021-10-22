@@ -167,8 +167,7 @@ def col2im(
     kernel_name : cce kernel name, default value is "Col2im"
     -------
     """
-    tik_dprofile = tik.Dprofile("v100", "cloud")
-    tik_instance = tik.Tik(tik_dprofile)
+    tik_instance = tik.Tik()
 
     y_gm = tik_instance.Tensor(y["dtype"], y["shape"], tik.scope_gm, "y_gm")
     x_gm = tik_instance.Tensor(x["dtype"], x["shape"], tik.scope_gm, "x_gm")
