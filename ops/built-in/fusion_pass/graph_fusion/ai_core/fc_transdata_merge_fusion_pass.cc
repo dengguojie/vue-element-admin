@@ -43,6 +43,7 @@ static const string PATTERN_TRANSDATA_1 = "Transdata_1";
 static const string PATTERN_TRANSDATA_2 = "Transdata_2";
 static const string PATTERN_RESHAPE = "Reshape";
 static const string PATTERN_REFORMAT = "ReFormat";
+static const string PATTERN_UNSQUEEZE_V2 = "UnsqueezeV2";
 static const int NUM_2 = 2;
 static const int NUM_4 = 4;
 /*
@@ -50,9 +51,9 @@ static const int NUM_4 = 4;
 */
 
 vector<FusionPattern*> FCTransdataMergePass::DefinePatterns() {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define FCTransdataMergePass pattern begin");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define FCTransdataMergePass pattern1 begin");
   vector<FusionPattern*> patterns;
-  FusionPattern* pattern1 = new (std::nothrow) FusionPattern("FCTransdataMergePass");
+  FusionPattern* pattern1 = new (std::nothrow) FusionPattern("FCTransdataMergePass1");
   FUSION_PASS_CHECK(pattern1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"), return patterns);
 
   pattern1->AddOpDesc(PATTERN_TRANSDATA_1, {"TransData"})
@@ -64,6 +65,20 @@ vector<FusionPattern*> FCTransdataMergePass::DefinePatterns() {
       .SetInputs(PATTERN_TRANSDATA_2, {PATTERN_RESHAPE})
       .SetOutput(PATTERN_TRANSDATA_2);
   patterns.push_back(pattern1);
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define FCTransdataMergePass1 pattern end");
+
+  FusionPattern* pattern2 = new (std::nothrow) FusionPattern("FCTransdataMergePass2");
+  FUSION_PASS_CHECK(pattern2 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"), return patterns);
+  pattern2->AddOpDesc(PATTERN_TRANSDATA_1, {"TransData"})
+      .AddOpDesc(PATTERN_REFORMAT, {"ReFormat"})
+      .AddOpDesc(PATTERN_UNSQUEEZE_V2, {"UnsqueezeV2"})
+      .AddOpDesc(PATTERN_TRANSDATA_2, {"TransData"})
+      .SetInputs(PATTERN_REFORMAT, {PATTERN_TRANSDATA_1})
+      .SetInputs(PATTERN_UNSQUEEZE_V2, {PATTERN_REFORMAT})
+      .SetInputs(PATTERN_TRANSDATA_2, {PATTERN_UNSQUEEZE_V2})
+      .SetOutput(PATTERN_TRANSDATA_2);
+  patterns.push_back(pattern2);
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define FCTransdataMergePass2 pattern end");
 
   return patterns;
 }
@@ -72,8 +87,12 @@ Status FCTransdataMergePass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define FCTransdataMergePass fusion begin");
   ge::NodePtr transData_1 = GetNodeFromMapping(PATTERN_TRANSDATA_1, mapping);
   ge::NodePtr reFormat = GetNodeFromMapping(PATTERN_REFORMAT, mapping);
-  ge::NodePtr reShape = GetNodeFromMapping(PATTERN_RESHAPE, mapping);
+  ge::NodePtr reShape = GetNodeFromMapping(PATTERN_UNSQUEEZE_V2, mapping);
   ge::NodePtr transData_2 = GetNodeFromMapping(PATTERN_TRANSDATA_2, mapping);
+
+  if (reShape == nullptr) {
+    reShape = GetNodeFromMapping(PATTERN_RESHAPE, mapping);
+  }
 
   FUSION_PASS_CHECK(transData_1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transData_1 is null"),
                     return PARAM_INVALID);

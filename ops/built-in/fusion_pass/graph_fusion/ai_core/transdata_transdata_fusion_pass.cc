@@ -44,6 +44,7 @@ static const string PATTERN_TRANSDATA_1 = "Transdata_1";
 static const string PATTERN_TRANSDATA_2 = "Transdata_2";
 static const string PATTERN_RESHAPE = "Reshape";
 static const string PATTERN_FULLYCONNECTION = "FullyConnection";
+static const string PATTERN_SQUEEZE_V2 = "SqueezeV2";
 
 /*
  transdata --> transdata --> FullyConnection
@@ -100,6 +101,22 @@ vector<FusionPattern*> TransdataTransdataPass::DefinePatterns() {
   patterns.push_back(pattern2);
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define TransdataTransdataPass2 pattern end");
 
+  FusionPattern* pattern3 = new (std::nothrow) FusionPattern("TransdataTransdataPass3");
+  FUSION_PASS_CHECK(pattern3 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new an object failed"), return patterns);
+
+  pattern3->AddOpDesc(PATTERN_TRANSDATA_1, {"TransData"})
+      .AddOpDesc(PATTERN_TRANSDATA_2, {"TransData"})
+      .AddOpDesc(PATTERN_SQUEEZE_V2, {"SqueezeV2"})
+      .AddOpDesc(PATTERN_REFORMAT, {"ReFormat"})
+      .AddOpDesc(PATTERN_FULLYCONNECTION, {"FullyConnection", "FullyConnectionCompress"})
+      .SetInputs(PATTERN_SQUEEZE_V2, {PATTERN_TRANSDATA_1})
+      .SetInputs(PATTERN_REFORMAT, {PATTERN_SQUEEZE_V2})
+      .SetInputs(PATTERN_TRANSDATA_2, {PATTERN_REFORMAT})
+      .SetInputs(PATTERN_FULLYCONNECTION, {PATTERN_TRANSDATA_2})
+      .SetOutput(PATTERN_FULLYCONNECTION);
+  patterns.push_back(pattern3);
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define TransdataTransdataPass3 pattern end");
+
   return patterns;
 }
 
@@ -107,9 +124,13 @@ Status TransdataTransdataPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define TransdataTransdataPass fusion begin");
   ge::NodePtr transData_1 = GetNodeFromMapping(PATTERN_TRANSDATA_1, mapping);
   ge::NodePtr transData_2 = GetNodeFromMapping(PATTERN_TRANSDATA_2, mapping);
-  ge::NodePtr reshapeOP = GetNodeFromMapping(PATTERN_RESHAPE, mapping);
+  ge::NodePtr reshapeOP = GetNodeFromMapping(PATTERN_SQUEEZE_V2, mapping);
   ge::NodePtr reformatOP = GetNodeFromMapping(PATTERN_REFORMAT, mapping);
   ge::NodePtr fullyConnection = GetNodeFromMapping(PATTERN_FULLYCONNECTION, mapping);
+
+  if (reshapeOP == nullptr) {
+    reshapeOP = GetNodeFromMapping(PATTERN_RESHAPE, mapping);
+  }
 
   FUSION_PASS_CHECK(transData_1 == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "transData_1 is null"),
                     return PARAM_INVALID);
