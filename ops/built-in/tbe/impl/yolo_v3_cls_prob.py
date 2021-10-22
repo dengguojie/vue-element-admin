@@ -15,7 +15,7 @@
 """
 yolo_v3_cls_prob
 """
-# pylint: disable=ungrouped-imports,import-error,too-many-branches
+# 'pylint: disable=ungrouped-imports,import-error,too-many-branches
 import te.platform as tbe_platform
 from te.utils.error_manager import error_manager_vector
 from te.utils import para_check
@@ -69,7 +69,7 @@ def check_param_range(param_name, min_value, max_value, real_value,
            error_info['max_value'], error_info['real_value']))
 
 
-# pylint: disable=too-many-ancestors
+# 'pylint: disable=too-many-ancestors
 class ClsProbComputer(yolo_v3_correct_region_box.GetCorrectBoxComputer):
     """
     Function: store yolov3 ClsProb parameters
@@ -317,7 +317,7 @@ class ClsProbComputer(yolo_v3_correct_region_box.GetCorrectBoxComputer):
         else:
             self.big_clsprob(batch, in_param)
 
-    # pylint: disable=too-many-locals,too-many-statements
+    # 'pylint: disable=too-many-locals,too-many-statements
     def small_clsprob(self, batch, param):
         """
           compute small cls prob

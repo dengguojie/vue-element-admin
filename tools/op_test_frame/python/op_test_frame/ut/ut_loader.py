@@ -91,7 +91,7 @@ def _get_op_module_info(case_file):
     sys.path.insert(0, case_dir)
     try:
         __import__(case_module_name)
-    except BaseException as import_err:  # pylint: disable=broad-except
+    except BaseException as import_err:  # 'pylint: disable=broad-except
         exc_type, exc_value, exc_traceback = sys.exc_info()
         trace_info = traceback.format_exception(exc_type, exc_value, exc_traceback)
         err_trace_str = "".join(trace_info)

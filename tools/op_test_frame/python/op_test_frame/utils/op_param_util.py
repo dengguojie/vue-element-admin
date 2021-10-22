@@ -112,7 +112,7 @@ def change_cur_format(op_params, format_list):
     return op_params
 
 
-def gen_all_format_params(format_res, op_params):  # pylint: disable=too-many-locals
+def gen_all_format_params(format_res, op_params):  # 'pylint: disable=too-many-locals
     """
     generate all format params
     :param format_res: format
@@ -156,7 +156,7 @@ def gen_all_format_params(format_res, op_params):  # pylint: disable=too-many-lo
     return res
 
 
-def cartesian_set_format_dtype(name_list, dtype_list, format_list):  # pylint: disable=too-many-locals
+def cartesian_set_format_dtype(name_list, dtype_list, format_list):  # 'pylint: disable=too-many-locals
     """
     cartesian set format and dtype
     :param name_list: name list

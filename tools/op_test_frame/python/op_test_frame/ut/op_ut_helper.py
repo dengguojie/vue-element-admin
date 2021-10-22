@@ -49,7 +49,7 @@ def get_case_name_from_file(params):
         case_module = sys.modules[case_module_name]
         ut_case = getattr(case_module, "ut_case", None)
         case_name_list_inner = ut_case.get_all_test_case_name(soc_version)
-    except BaseException as run_err:  # pylint: disable=broad-except
+    except BaseException as run_err:  # 'pylint: disable=broad-except
         logger.log_err("Get case name failed, error msg: %s" % run_err.args[0])
         return None
     return {case_file_path: case_name_list_inner}

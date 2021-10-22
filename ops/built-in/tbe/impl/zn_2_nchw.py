@@ -29,7 +29,7 @@ from impl import trans_data_negative_target_ntc
 UB_SIZE_B = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 
 
-# pylint: disable=unnecessary-comprehension,protected-access,unused-argument
+# 'pylint: disable=unnecessary-comprehension,protected-access,unused-argument
 def _ceil_div(value, block):
     """
     integrate the input value by block
@@ -349,8 +349,8 @@ def _perm_to_flag(perm):
     return flag
 
 
-# pylint: disable = locally-disabled,too-many-arguments,too-many-locals
-# pylint: disable = locally-disabled,unnecessary-lambda
+# 'pylint: disable = locally-disabled,too-many-arguments,too-many-locals
+# 'pylint: disable = locally-disabled,unnecessary-lambda
 def _tranpose_notchange_last(data, shape_5hd, dst_shape, perm, dtype,
                              max_dim, shape_all):
     """
@@ -700,7 +700,7 @@ def _check_parameters_special(src, dst, src_format, dst_format, kernel_name):
         raise RuntimeError("src_shape is wrong !")
 
 
-# pylint: disable=locally-disabled,too-many-statements
+# 'pylint: disable=locally-disabled,too-many-statements
 @para_check.check_input_type(dict, dict, str, str, str)
 def zn_2_nchw(src, dst, src_format, dst_format, kernel_name='zn_2_nchw'):
     """

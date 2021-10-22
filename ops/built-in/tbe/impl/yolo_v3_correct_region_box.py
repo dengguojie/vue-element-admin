@@ -15,7 +15,7 @@
 """
 yolo_v3_correct_region_box
 """
-# pylint: disable=too-many-lines,import-error,no-self-use
+# 'pylint: disable=too-many-lines,import-error,no-self-use
 import math
 
 import te.platform as tbe_platform
@@ -63,13 +63,13 @@ NEG_ONE = -1
 VALUE_HALF = 0.5
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class GetCorrectBoxBase():
     """
     Function: store yolov3 ClsProb parameters
     Modify : 2019-11-06
     """
-    # pylint:disable=no-member
+    # 'pylint:disable=no-member
     def __init__(self, input_dict):
         """
       init the CorrectBox parameters

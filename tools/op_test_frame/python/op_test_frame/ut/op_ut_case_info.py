@@ -24,7 +24,7 @@ from op_test_frame.common import op_status
 from op_test_frame.common import precision_info
 
 
-class UTCaseFileInfo:  # pylint: disable=too-few-public-methods
+class UTCaseFileInfo:  # 'pylint: disable=too-few-public-methods
     """
     UT case file info, contains case_file and op_module_name
     """
@@ -78,7 +78,7 @@ class OpUTBaseCase:
     Op ut base case info
     """
 
-    def __init__(self, support_soc=None, op_type=None, case_name=None,  # pylint: disable=too-many-arguments
+    def __init__(self, support_soc=None, op_type=None, case_name=None,  # 'pylint: disable=too-many-arguments
                  case_usage: CaseUsage = CaseUsage.IMPL, case_file=None, case_line_num=None):
         self.support_soc = support_soc
         self.op_type = op_type
@@ -142,12 +142,12 @@ class OpUTBaseCase:
         return OpUTCase.parser_json_obj(json_obj)
 
 
-class OpUTCase(OpUTBaseCase):  # pylint: disable=too-many-instance-attributes
+class OpUTCase(OpUTBaseCase):  # 'pylint: disable=too-many-instance-attributes
     """
     op ut case
     """
 
-    def __init__(self, support_soc=None, op_type=None, case_name=None,  # pylint: disable=too-many-arguments
+    def __init__(self, support_soc=None, op_type=None, case_name=None,  # 'pylint: disable=too-many-arguments
                  op_params=None, expect=None, case_usage: CaseUsage = CaseUsage.IMPL,
                  expect_out_fn=None, case_file=None, case_line_num=None,
                  precision_standard: precision_info.PrecisionStandard = None,
@@ -250,7 +250,7 @@ class OpUTCustomCase(OpUTBaseCase):
     op custom ut case
     """
 
-    def __init__(self, support_soc=None, op_type=None, case_name=None,  # pylint: disable=too-many-arguments
+    def __init__(self, support_soc=None, op_type=None, case_name=None,  # 'pylint: disable=too-many-arguments
                  case_usage: CaseUsage = CaseUsage.CUSTOM, case_file=None, case_line_num=None,
                  test_func_name=None, test_func=None):
         super().__init__(support_soc, op_type, case_name, case_usage, case_file, case_line_num)
@@ -296,7 +296,7 @@ class OpUTStageResult:
     op ut run stage result info
     """
 
-    def __init__(self, status, stage_name=None, result=None,  # pylint: disable=too-many-arguments
+    def __init__(self, status, stage_name=None, result=None,  # 'pylint: disable=too-many-arguments
                  err_msg=None, err_trace=None):
         self.status = status
         self.result = result

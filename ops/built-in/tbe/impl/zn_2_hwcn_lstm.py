@@ -15,8 +15,8 @@
 """
 zn_2_hwcn_lstm
 """
-# pylint: disable=W0613
-# pylint: disable=wildcard-import,chained-comparison,redefined-outer-name,undefined-variable
+# 'pylint: disable=W0613
+# 'pylint: disable=wildcard-import,chained-comparison,redefined-outer-name,undefined-variable
 from te import tik
 from te import platform as tbe_platform
 from te.utils.op_utils import *
@@ -28,8 +28,8 @@ MAX_CORE_NUM = tbe_platform.cce_conf.get_soc_spec(
     tbe_platform.cce_conf.CORE_NUM)
 
 
-# pylint: disable=too-many-instance-attributes,too-many-statements
-# pylint: disable=too-many-arguments,invalid-name
+# 'pylint: disable=too-many-instance-attributes,too-many-statements
+# 'pylint: disable=too-many-arguments,invalid-name
 class ZN2HWCNLSTM():
 
     """

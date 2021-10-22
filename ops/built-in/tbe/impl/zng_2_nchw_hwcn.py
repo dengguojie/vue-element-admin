@@ -57,7 +57,7 @@ ADDR_IDX_LIST = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
 VNC_LINES = 16
 
 
-# pylint: disable=too-many-locals,invalid-name,unused-variable,too-many-statements,too-many-arguments
+# 'pylint: disable=too-many-locals,invalid-name,unused-variable,too-many-statements,too-many-arguments
 def _ceil_div(value_x, value_y):
     """
     do ceil division

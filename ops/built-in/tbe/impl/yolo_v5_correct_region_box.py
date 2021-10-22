@@ -15,7 +15,7 @@
 """
 yolo_v5_correct_region_box
 """
-# pylint: disable=too-many-lines,import-error,no-self-use
+# 'pylint: disable=too-many-lines,import-error,no-self-use
 import math
 
 import te.platform as tbe_platform
@@ -63,8 +63,8 @@ NEG_ONE = -1
 VALUE_HALF = 0.5
 
 
-# pylint: disable=too-many-instance-attributes
-# pylint: disable=too-many-public-methods
+# 'pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-public-methods
 class CorrectBoxComputer():
     """
     Function: store CorrectBoxComputer parameters

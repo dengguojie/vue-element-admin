@@ -15,7 +15,7 @@
 """
 yolo_v2_cls_prob
 """
-# pylint: disable=import-error,too-many-locals,too-many-statements
+# 'pylint: disable=import-error,too-many-locals,too-many-statements
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
@@ -52,7 +52,7 @@ VALUE_ONE = 1
 PRE_NMS_TOPN = 1024
 
 
-# pylint: disable=super-with-arguments
+# 'pylint: disable=super-with-arguments
 def check_param_range(param_name, min_value, max_value, real_value,
                       op_name='yolo_v2_detection_output_d'):
     """

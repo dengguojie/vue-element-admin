@@ -16,8 +16,8 @@
 yolo_v5_detection_output_d
 """
 
-# pylint: disable=too-many-lines,unused-argument,too-many-locals,too-many-arguments
-# pylint: disable=ungrouped-imports,import-error,too-many-branches
+# 'pylint: disable=too-many-lines,unused-argument,too-many-locals,too-many-arguments
+# 'pylint: disable=ungrouped-imports,import-error,too-many-branches
 from impl.common_util import get_datamove_nburst
 from impl.common_util import get_vector_repeat_times
 from impl import constant_util as constant
@@ -35,7 +35,7 @@ PRE_NMS_TOPN = 1024
 UB_NUM = 10240
 
 
-# pylint: disable=unused-argument, too-many-locals, too-many-arguments
+# 'pylint: disable=unused-argument, too-many-locals, too-many-arguments
 def get_op_support_info(input_x, box_out, box_out_num, biases,
                         boxes=3, coords=4, classes=80,
                         relative=True, obj_threshold=0.5,
@@ -51,8 +51,8 @@ def get_op_support_info(input_x, box_out, box_out_num, biases,
     return util_select_op_base.get_split_n_info([0], [0, 1])
 
 
-# pylint: disable=invalid-name, too-many-locals, too-many-arguments
-# pylint: disable=unused-argument
+# 'pylint: disable=invalid-name, too-many-locals, too-many-arguments
+# 'pylint: disable=unused-argument
 def yolo_v5_detection_output_d(x, box_out, box_out_num, biases,
                                boxes=3, coords=4, classes=80,
                                relative=True, obj_threshold=0.5,
@@ -140,7 +140,7 @@ def yolo_v5_detection_output_d(x, box_out, box_out_num, biases,
     return tik_instance
 
 
-# pylint: disable=too-many-ancestors,too-many-public-methods
+# 'pylint: disable=too-many-ancestors,too-many-public-methods
 class DetectionOutput(ClsProbComputer):
     """
     Function: use to process DetectionOutput
@@ -419,7 +419,7 @@ class DetectionOutput(ClsProbComputer):
                 self.get_xyhw(obj_ub, mask, xyhw_ub, param)
                 offset.set_as(offset + ub_num)
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def get_xyhw(self, obj_ub, mask, xyhw_ub, param):
         """
         ge filtered coordinates of x,y,h,w

@@ -54,8 +54,8 @@ REP_STRIDE = {FP16: 4, FP32: 8}
 CALC_MODE = {"high_precision": 1, "high_performance": 2}
 
 
-# pylint: disable=too-many-instance-attributes
-class YoloBoxesEncode(object):
+# 'pylint: disable=too-many-instance-attributes
+class YoloBoxesEncode():
     """
     Funtion: use to store BoundingBoxEncode base parameters
     """
@@ -102,7 +102,7 @@ class YoloBoxesEncode(object):
             raise RuntimeError(error_info, "In op[%s], the calc mode [%s] must be high_precision or high_performance."
                                % (error_info['op_name'], error_info['param_value1']))
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def __init__(self, anchor_box, ground_truth_box, stride, encode_boxes, mode, kernel_name):
         self.init_tik_inst()
         self.anchor_box_shape = anchor_box.get("shape")
@@ -564,7 +564,7 @@ class YoloBoxesEncode(object):
 
             self._get_transpose_small_data_fp32_ub(stride_fp32_ub, box_stride_dst_ub)
 
-    # pylint: disable=too-many-locals,too-many-statements,too-many-branches
+    # 'pylint: disable=too-many-locals,too-many-statements,too-many-branches
     def bounding_box_encode_compute(self, input_ub_list, repeat_times):
         """
         use tik instruction to calculate result bounding_box_encode_compute
@@ -641,7 +641,7 @@ class YoloBoxesEncode(object):
         return delta_out_ub
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
 def yolo_boxes_encode(anchor_boxes, gt_bboxes, stride, encoded_bboxes, performance_mode="high_precision",

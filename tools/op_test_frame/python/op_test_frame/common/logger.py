@@ -37,7 +37,7 @@ def set_logger_level(level):
     :param level: level
     :return: None
     """
-    global LOG_LEVEL  # pylint: disable=global-statement
+    global LOG_LEVEL  # 'pylint: disable=global-statement
     LOG_LEVEL = level
 
 

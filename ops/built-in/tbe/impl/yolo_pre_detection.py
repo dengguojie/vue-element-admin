@@ -15,8 +15,8 @@
 """
 yolo_pre_detection
 """
-# pylint: disable=too-many-lines
-# pylint: disable=too-many-arguments,import-error
+# 'pylint: disable=too-many-lines
+# 'pylint: disable=too-many-arguments,import-error
 
 import te.platform as tbe_platform
 from te import tik
@@ -29,7 +29,7 @@ FP16_MINI = -65504
 FP32_MINI = -3.4 * (10**38)
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def get_op_support_info(input_dic, coord_out_dic, obj_out_dic, class_out_dic,
                         boxes, coords, classes, yolo_version="V5",
                         softmax=False, background=False, softmaxtree=False,
@@ -57,7 +57,7 @@ def ceil_x(total_len, align_value):
     return align_len
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def _check_yolo_param(check_dic_dic, param_dic, kernel_name_check):
     """
     check yolo param error

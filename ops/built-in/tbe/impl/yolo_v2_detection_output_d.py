@@ -15,8 +15,8 @@
 """
 yolo_v2_detection_output_d
 """
-# pylint: disable=too-many-lines,import-error,too-many-arguments
-# pylint: disable=too-many-locals,unused-argument
+# 'pylint: disable=too-many-lines,import-error,too-many-arguments
+# 'pylint: disable=too-many-locals,unused-argument
 import te.platform as tbe_platform
 from te import tik
 from impl import constant_util as constant
@@ -109,7 +109,7 @@ def yolo_v2_detection_output_d(coord_data, obj_prob, classes_prob,
     return nms_computer.compute_detection_output()
 
 
-# pylint: disable=too-many-public-methods
+# 'pylint: disable=too-many-public-methods
 class NmsComputer(yolo_v2_cls_prob.ClsProbComputer):
     """
      class for nms compute
@@ -522,7 +522,7 @@ class NmsComputer(yolo_v2_cls_prob.ClsProbComputer):
             param["mask_offset"].set_as(param["mask_offset"] + \
                                         self.max_ub_num // (8 * self.dsize))
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def class_filter(self, selected_tmp, proposals_ub, selected_class, param):
         """
       filter by class threshold
@@ -1414,7 +1414,7 @@ class NmsComputer(yolo_v2_cls_prob.ClsProbComputer):
                 self.get_xyhw(obj_ub, mask, xyhw_ub, param)
                 offset.set_as(offset + ub_num)
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def get_xyhw(self, obj_ub, mask, xyhw_ub, param):
         """
           ge filtered coordinates of x,y,h,w

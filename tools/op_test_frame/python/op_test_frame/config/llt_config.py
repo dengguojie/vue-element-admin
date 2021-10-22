@@ -19,7 +19,7 @@ llt config module
 """
 
 
-class LLTConf:  # pylint: disable=too-few-public-methods
+class LLTConf:  # 'pylint: disable=too-few-public-methods
     """
     llt conf
     """

@@ -15,8 +15,8 @@
 """
 yolo_v2_correct_box
 """
-# pylint: disable=too-many-lines
-# pylint: disable=import-error,too-many-instance-attributes,no-self-use
+# 'pylint: disable=too-many-lines
+# 'pylint: disable=import-error,too-many-instance-attributes,no-self-use
 import math
 import te.platform as tbe_platform
 from te import tik

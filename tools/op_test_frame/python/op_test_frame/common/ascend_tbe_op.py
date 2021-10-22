@@ -36,8 +36,8 @@ from op_test_frame.utils import shape_utils
 from op_test_frame.utils import file_util
 
 
-# pylint: disable=too-many-locals,too-many-arguments,too-few-public-methods
-# pylint: disable=too-many-instance-attributes,too-many-boolean-expressions
+# 'pylint: disable=too-many-locals,too-many-arguments,too-few-public-methods
+# 'pylint: disable=too-many-instance-attributes,too-many-boolean-expressions
 class AscendOpKernel:
     """
     Class AscendOpKernel
@@ -221,8 +221,8 @@ class AscendOp:
         """
         compile
         """
-        import tbe  # pylint: disable=import-outside-toplevel
-        import tbe.common.context.op_info as operator_info  # pylint: disable=import-outside-toplevel
+        import tbe  # 'pylint: disable=import-outside-toplevel
+        import tbe.common.context.op_info as operator_info  # 'pylint: disable=import-outside-toplevel
         op_func = self._load_op_func()
         try:
             with tbe.common.context.op_context.OpContext("dynamic"):
@@ -254,7 +254,7 @@ class AscendOpKernelParam:
     Class AscendOpKernelParam
     """
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def __init__(self, np_data=None, shape=None, dtype=None, ascend_device: AscendRTSApi = None,
                  hbm_pointer: ctypes.c_void_p = None):
         if np_data is not None:
@@ -361,7 +361,7 @@ class AscendOpKernelRunner:
     """
     _kernel_params: List[AscendOpKernelParam]
 
-    # pylint: disable=unused-argument
+    # 'pylint: disable=unused-argument
     def __init__(self, simulator_mode=None, device_id=0, soc_version=None, simulator_lib_path=None,
                  simulator_dump_path="./model", auto_copy_device_data=False, profiling=False, profiling_times=1):
         if not isinstance(profiling_times, int):

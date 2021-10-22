@@ -23,8 +23,8 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=invalid-name
-# pylint: disable=unused-argument
+# 'pylint: disable=invalid-name
+# 'pylint: disable=unused-argument
 def broadcast_gradient_args(x, y):
     """
     Return the reduction indices for computing gradients of
@@ -52,7 +52,7 @@ def broadcast_gradient_args(x, y):
     return rx, ry
 
 
-# pylint: disable=invalid-name,too-many-locals
+# 'pylint: disable=invalid-name,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("xlogy_grad")
 def xlogy_grad_compute(placeholders, shape_max, dtype, rx, ry):
     """
@@ -113,7 +113,7 @@ def xlogy_grad_compute(placeholders, shape_max, dtype, rx, ry):
     return output_y1, output_y2
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def xlogy_grad(x1, x2, grad, y1, y2, kernel_name="xlogy_grad"):

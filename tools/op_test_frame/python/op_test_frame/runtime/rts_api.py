@@ -31,9 +31,9 @@ from . import rts_info
 ONLINE_PROF_MAX_PMU_NUM = 8
 
 
-# pylint: disable=too-few-public-methods,too-many-instance-attributes
-# pylint: disable=invalid-name,unused-variable,no-self-use
-# pylint: disable=too-many-arguments,too-many-public-methods
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+# 'pylint: disable=invalid-name,unused-variable,no-self-use
+# 'pylint: disable=too-many-arguments,too-many-public-methods
 class rtDevBinary_t(ctypes.Structure):
     """
     Class rtDevBinary_t
@@ -517,7 +517,7 @@ class AscendRTSApi:
             c_buffer = ctypes.string_at(c_buffer_p, data_size)
         return c_buffer, c_buffer_p
 
-    # pylint: disable=unused-argument
+    # 'pylint: disable=unused-argument
     def memcpy(self, c_memory_p: ctypes.c_void_p, memory_size: int,
                data: Union[bytes, ctypes.c_void_p], data_size: int,
                memcpy_kind: str = "RT_MEMCPY_HOST_TO_HOST", retry_count: int = 0) -> None:

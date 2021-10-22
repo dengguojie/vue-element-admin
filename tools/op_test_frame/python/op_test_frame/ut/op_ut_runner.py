@@ -40,7 +40,7 @@ from op_test_frame.ut.op_ut_case_info import CaseUsage
 DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
 
 
-# pylint: disable=too-few-public-methods,too-many-arguments,too-many-branches,too-many-statements
+# 'pylint: disable=too-few-public-methods,too-many-arguments,too-many-branches,too-many-statements
 class OpUTTestRunner:
     """
     Op ut runner
@@ -119,12 +119,12 @@ class OpUTTestRunner:
         return report
 
 
-class RunUTCaseFileArgs:  # pylint: disable=too-many-instance-attributes,too-few-public-methods
+class RunUTCaseFileArgs:  # 'pylint: disable=too-many-instance-attributes,too-few-public-methods
     """
     run ut case file args for multiprocess run
     """
 
-    def __init__(self, case_file, op_module_name, soc_version,  # pylint: disable=too-many-arguments
+    def __init__(self, case_file, op_module_name, soc_version,  # 'pylint: disable=too-many-arguments
                  case_name, test_report, test_report_data_path,
                  cov_report, cov_data_path, simulator_mode, simulator_lib_path,
                  data_dir, dump_model_dir):
@@ -152,7 +152,7 @@ def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
     try:
         if sys.modules.get(run_arg.op_module_name):
             print("[INFO]reload module for coverage ,moule name:", sys.modules.get(run_arg.op_module_name))
-            import importlib # pylint: disable=import-outside-toplevel
+            import importlib # 'pylint: disable=import-outside-toplevel
             importlib.reload(sys.modules.get(run_arg.op_module_name))
         case_dir = os.path.dirname(os.path.realpath(run_arg.case_file))
         case_module_name = os.path.basename(os.path.realpath(run_arg.case_file))[:-3]
@@ -178,7 +178,7 @@ def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
         ut_rpt = case_runner.run(run_arg.soc_version, ut_case, case_name_list, case_usage_list)
         ut_rpt.save(run_arg.test_report_data_path)
         del sys.modules[case_module_name]
-    except BaseException as run_err:  # pylint: disable=broad-except
+    except BaseException as run_err:  # 'pylint: disable=broad-except
         logger.log_err("Test Failed! case_file: %s, error_msg: %s" % (run_arg.case_file, run_err.args[0]),
                        print_trace=True)
         res = False
@@ -223,7 +223,7 @@ def _build_report_data_path(test_report_path):
     return rpt_combine_path
 
 
-def run_ut(case_dir, soc_version, case_name=None,  # pylint: disable=too-many-arguments, too-many-locals
+def run_ut(case_dir, soc_version, case_name=None,  # 'pylint: disable=too-many-arguments, too-many-locals
            test_report="json", test_report_path="./report",
            cov_report=None, cov_report_path="./cov_report",
            simulator_mode=None, simulator_lib_path=None,

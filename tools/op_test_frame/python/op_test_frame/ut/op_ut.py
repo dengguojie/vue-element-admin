@@ -48,7 +48,7 @@ from op_test_frame.common.ascend_tbe_op import AscendOpKernel
 from op_test_frame.common.ascend_tbe_op import AscendOpKernelRunner
 
 
-# pylint: disable=too-many-lines,too-many-branches,too-many-locals,invalid-name,no-self-use
+# 'pylint: disable=too-many-lines,too-many-branches,too-many-locals,invalid-name,no-self-use
 class OpFuncType(Enum):
     """
     Op Func Type Enum, contains INTF_FUNC, SELECT_FORMAT_FUNC, CHECK_SUPPORT_TYPE
@@ -119,7 +119,7 @@ def get_trace_info() -> str:
     return "".join(trace_info)
 
 
-class OpUT:  # pylint: disable=too-many-instance-attributes
+class OpUT:  # 'pylint: disable=too-many-instance-attributes
     """
         OpUT
         example:
@@ -570,8 +570,8 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         try:
             if self.imply_type == OpImplyType.DYNAMIC_SHAPE:
                 # there is a bug in te, we can't import te before tensorflow, so can't import te outside
-                import tbe  # pylint: disable=import-outside-toplevel
-                import tbe.common.context.op_info as operator_info # pylint: disable=import-outside-toplevel
+                import tbe  # 'pylint: disable=import-outside-toplevel
+                import tbe.common.context.op_info as operator_info # 'pylint: disable=import-outside-toplevel
                 with tbe.common.context.op_context.OpContext("dynamic"):
                     op_info = operator_info.OpInfo(self.op_type, self.op_type)
                     tbe.common.context.op_context.get_context().add_op_info(op_info)
@@ -579,10 +579,10 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                     compile_info = tbe.common.context.get_context().get_compile_info()
                     self._save_compile_info_json(kernel_name=kernel_name, compile_info=compile_info)
             else:
-                import tbe # pylint: disable=import-outside-toplevel
+                import tbe # 'pylint: disable=import-outside-toplevel
                 with tbe.common.context.op_context.OpContext("pre-static"):
                     op_func(*case_info.op_params, **addition_params)
-        except BaseException as run_err:  # pylint: disable=broad-except
+        except BaseException as run_err:  # 'pylint: disable=broad-except
             if case_info.expect != op_status.SUCCESS:
                 if case_info.expect != op_status.FAILED and not isinstance(run_err, case_info.expect):
                     call_op_success = False
@@ -657,7 +657,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
 
     def _do_tiling(self, run_soc_version: str, case_info: op_ut_case_info.OpUTCase,
                    input_info_list: List, output_info_list: List):
-        from tbe.common.utils import op_tiling # pylint: disable=import-outside-toplevel
+        from tbe.common.utils import op_tiling # 'pylint: disable=import-outside-toplevel
         kernel_name = self._get_kernel_name(run_soc_version, case_info)
         compile_info = self._get_compile_info(kernel_name)
         tiling_info = op_tiling.do_op_tiling(self.op_type, compile_info=compile_info,
@@ -814,7 +814,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         err_msg = None
         try:
             self._run_kernel(run_soc_version, case_info, run_cfg)
-        except BaseException as _:  # pylint: disable=broad-except
+        except BaseException as _:  # 'pylint: disable=broad-except
             run_success = False
             err_msg = get_trace_info()
         stage_status = op_ut_case_info.OpUTStageResult(status=op_status.SUCCESS if run_success else op_status.FAILED,
@@ -829,7 +829,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
             addition_params = case_info.addition_params
         try:
             output_tensors = case_info.expect_out_fn(*case_info.op_params, **addition_params)
-        except BaseException as _:  # pylint: disable=broad-except
+        except BaseException as _:  # 'pylint: disable=broad-except
             err_trace = get_trace_info()
             return False, err_trace
 
@@ -850,7 +850,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
     def _run_gen_expect_stage(self, case_info: op_ut_case_info.OpUTCase) -> op_ut_case_info.OpUTStageResult:
         try:
             gen_success, err_msg = self._gen_expect_data(case_info)
-        except BaseException as _:  # pylint: disable=broad-except
+        except BaseException as _:  # 'pylint: disable=broad-except
             gen_success = False
             err_msg = get_trace_info()
         stage_status = op_ut_case_info.OpUTStageResult(status=op_status.SUCCESS if gen_success else op_status.FAILED,
@@ -925,10 +925,10 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
         run_success = True
         err_trace = None
         try:
-            import tbe # pylint: disable=import-outside-toplevel
+            import tbe # 'pylint: disable=import-outside-toplevel
             with tbe.common.context.op_context.OpContext("pre-static"):
                 case_info.test_func(run_soc_version)
-        except BaseException as _:  # pylint: disable=broad-except
+        except BaseException as _:  # 'pylint: disable=broad-except
             run_success = False
             err_trace = get_trace_info()
             if "Ascend920A" in err_trace and \
@@ -954,7 +954,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
                 case_rpt = self._run_precision_case(run_soc_version, case_info, run_cfg)
             elif case_info.case_usage == op_ut_case_info.CaseUsage.CUSTOM:
                 case_rpt = self._run_custom_case(run_soc_version, case_info)
-        except BaseException as _:  # pylint: disable=broad-except
+        except BaseException as _:  # 'pylint: disable=broad-except
             err_trace = get_trace_info()
             stage_status = op_ut_case_info.OpUTStageResult(
                 status=op_status.ERROR,
@@ -969,7 +969,7 @@ class OpUT:  # pylint: disable=too-many-instance-attributes
     @staticmethod
     def _set_run_soc(run_soc_version):
         # there is a bug in te, we can't import te before tensorflow, so can't import te outside
-        from te.platform import te_set_version  # pylint: disable=import-outside-toplevel
+        from te.platform import te_set_version  # 'pylint: disable=import-outside-toplevel
         te_set_version(run_soc_version)
 
     def run_case(self, one_soc_version: str, case_name_list: List[str] = None,
@@ -1069,7 +1069,7 @@ class BroadcastOpUT(OpUT):
         caller = inspect.stack()[1]
         self.case_file = caller.filename
 
-    def add_broadcast_case(self, soc, input_1_info, input_2_info,  # pylint: disable=too-many-arguments
+    def add_broadcast_case(self, soc, input_1_info, input_2_info,  # 'pylint: disable=too-many-arguments
                            output_info=None, expect=op_status.SUCCESS, case_name=None):
         """
         add a only test op compile case
@@ -1096,7 +1096,7 @@ class BroadcastOpUT(OpUT):
         else:
             self.add_case(soc, {"params": [input_1, input_2, output_param], "expect": expect, "case_name": case_name})
 
-    def add_broadcast_case_simple(self, soc, dtypes, shape1, shape2,  # pylint: disable=too-many-arguments
+    def add_broadcast_case_simple(self, soc, dtypes, shape1, shape2,  # 'pylint: disable=too-many-arguments
                                   expect=op_status.SUCCESS, case_name=None):
         """
         add a only test op compile case
@@ -1139,7 +1139,7 @@ class ElementwiseOpUT(OpUT):
         # elementwise op's output is the same as input
         self.add_case(soc, {"params": [input_info, input_info], "expect": expect, "case_name": case_name})
 
-    def add_elewise_case_simple(self, soc, dtypes, shape,  # pylint: disable=too-many-arguments
+    def add_elewise_case_simple(self, soc, dtypes, shape,  # 'pylint: disable=too-many-arguments
                                 expect=op_status.SUCCESS, case_name=None):
         """
         add a only test op compile case
@@ -1194,7 +1194,7 @@ class ReduceOpUT(OpUT):
         output_info = op_param_util.build_op_param([input_info[0], reduce_shape, input_info[2]])
         return {"params": [input_param, output_info, axes, keep_dim]}
 
-    def add_reduce_case(self, soc, input_info, axes, keep_dim=False,  # pylint: disable=too-many-arguments
+    def add_reduce_case(self, soc, input_info, axes, keep_dim=False,  # 'pylint: disable=too-many-arguments
                         expect=op_status.SUCCESS, case_name=None):
         """
         add a only test op compile case
@@ -1211,7 +1211,7 @@ class ReduceOpUT(OpUT):
         op_params["case_name"] = case_name
         self.add_case(soc, op_params)
 
-    def add_reduce_case_simple(self, soc, dtypes, shape, axes, keep_dim=False,  # pylint: disable=too-many-arguments
+    def add_reduce_case_simple(self, soc, dtypes, shape, axes, keep_dim=False,  # 'pylint: disable=too-many-arguments
                                expect=op_status.SUCCESS, case_name=None):
         """
         add a only test op compile case

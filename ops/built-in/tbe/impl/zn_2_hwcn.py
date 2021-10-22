@@ -15,7 +15,7 @@
 """
 zn_2_hwcn
 """
-# pylint: disable=too-many-lines,unnecessary-comprehension,no-else-return
+# 'pylint: disable=too-many-lines,unnecessary-comprehension,no-else-return
 from te import platform as tbe_platform
 from te.utils import para_check
 from te import tvm
@@ -27,7 +27,7 @@ UB_SIZE_B = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
 AICORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
 
-# pylint: disable=locally-disabled,too-many-lines
+# 'pylint: disable=locally-disabled,too-many-lines
 def _new_alloc(tvm_ib, dtype, shape, name, scope):
     """
     decl new buffer for ir builder make function
@@ -56,7 +56,7 @@ def _ceil_fill(value, block):
     return _ceil_div(value, block)*block
 
 
-# pylint: disable=locally-disabled,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-locals
 def _get_param_more_row(tvm_ib, src_shape, dtype):
     """
     calculate parameters for more row ir builder make function
@@ -90,7 +90,7 @@ def _get_param_more_row(tvm_ib, src_shape, dtype):
     return param_map
 
 
-# pylint: disable=locally-disabled,too-many-statements
+# 'pylint: disable=locally-disabled,too-many-statements
 def _func_more_row(args):
     """
     function of moving data for more row scene

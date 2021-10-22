@@ -25,7 +25,7 @@ from te.utils import para_check
 from te import tvm
 
 
-# pylint: disable=locally-disabled,invalid-name,unused-argument
+# 'pylint: disable=locally-disabled,invalid-name,unused-argument
 def zeros_like_compute(x, y, kernel_name="zeros_like"):
     """
     Enter a tensor, output a tensor of all zero,

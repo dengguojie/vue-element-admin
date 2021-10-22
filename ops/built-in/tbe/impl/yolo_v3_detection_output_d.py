@@ -15,7 +15,7 @@
 """
 yolo_v3_detection_output_d
 """
-# pylint: disable=import-error,too-many-lines
+# 'pylint: disable=import-error,too-many-lines
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
@@ -29,7 +29,7 @@ PRE_NMS_TOPN = 1024
 UB_NUM = 10240
 
 
-# pylint: disable=unused-argument,too-many-arguments,too-many-locals
+# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
 def get_op_support_info(coord_data_low_dic, coord_data_mid_dic,
                         coord_data_high_dic, obj_prob_low_dic,
                         obj_prob_mid_dic,
@@ -52,8 +52,8 @@ def get_op_support_info(coord_data_low_dic, coord_data_mid_dic,
         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [0, 1])
 
 
-# pylint: disable=invalid-name, too-many-locals, too-many-arguments
-# pylint: disable=unused-argument
+# 'pylint: disable=invalid-name, too-many-locals, too-many-arguments
+# 'pylint: disable=unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
@@ -168,7 +168,7 @@ def yolo_v3_detection_output_d(coord_data_low_dic, coord_data_mid_dic,
     return tik_instance
 
 
-# pylint: disable=too-many-ancestors,too-many-public-methods
+# 'pylint: disable=too-many-ancestors,too-many-public-methods
 class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
     """
     Function: use to process DetectionOutput
@@ -452,7 +452,7 @@ class DetectionOutput(yolo_v3_cls_prob.ClsProbComputer):
                 self.get_xyhw(obj_ub, mask, xyhw_ub, param)
                 offset.set_as(offset + ub_num)
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def get_xyhw(self, obj_ub, mask, xyhw_ub, param):
         """
         ge filtered coordinates of x,y,h,w
