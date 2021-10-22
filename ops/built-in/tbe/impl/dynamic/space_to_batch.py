@@ -22,9 +22,10 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.util_select_op_base import get_op_cal_info
 
-
+# pylint: disable=unused-argument
 def get_op_support_info(x, paddings, y, block_size, kernel_name="space_to_batch"):
-    """get op support info
+    """
+    get op support info
     """
     axis_split_list = None
     axis_reduce_list = None
@@ -32,7 +33,7 @@ def get_op_support_info(x, paddings, y, block_size, kernel_name="space_to_batch"
     return op_cal_info_in_json
 
 
-# pylint: disable=invalid-name,unused-argument
+# pylint: disable=invalid-name
 @register_operator("SpaceToBatch")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)

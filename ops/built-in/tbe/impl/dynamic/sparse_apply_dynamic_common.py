@@ -16,8 +16,8 @@
 sparse_apply_dynamic_common
 """
 import functools
-from impl.util.platform_adapter import tbe_platform
 from tbe import tik
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_context
 from impl.util import util_common
 
@@ -160,18 +160,21 @@ class SparseApplyDynamic(object):
         self.num_indices = self.tik_instance.Scalar(dtype="int32", name="num_indices")
         self.each_row_data_num = self.tik_instance.Scalar(dtype="int32", name="each_row_data_num")
         self.cache_threshold_col = self.block_len - 1
+        self.remain_size = None
+        self.one_part_size = None
+        self.tiling_ub = None
 
     def _get_tiling_const(self):
-        UB_INDICES_SIZE = 4 * 1024
-        self.remain_size = self.ub_size_bytes - UB_2K_SIZE - UB_INDICES_SIZE
+        ub_indices_size = 4 * 1024
+        self.remain_size = self.ub_size_bytes - UB_2K_SIZE - ub_indices_size
         self.one_part_size = self.remain_size // self.ub_take_parts
         self.cols_per_part = self.one_part_size // self.indices_dtype_bytes_size
         vector_eles = tbe_platform.VECTOR_INST_BLOCK_WIDTH // _get_dtype_byte("float32")
         self.cols_per_part = self.cols_per_part // vector_eles * vector_eles
 
         self.var_ub_shape = (self.cols_per_part,)
-        self.indices_ub_shape = (UB_INDICES_SIZE // self.indices_dtype_bytes_size,)
-        self.indices_ub_number = UB_INDICES_SIZE // self.indices_dtype_bytes_size
+        self.indices_ub_shape = (ub_indices_size // self.indices_dtype_bytes_size,)
+        self.indices_ub_number = ub_indices_size // self.indices_dtype_bytes_size
 
     def _get_tiling_args(self):
         self.tiling_ub = self.tik_instance.Tensor("int32", TILING_SHAPE, name="tiling_ub", scope=tik.scope_ubuf)
@@ -424,7 +427,8 @@ class SparseApplyDynamic(object):
         burst_len = util_common.ceil(cnt, self.indices_data_each_block)
         self.tik_instance.data_move(self.indices_ub, self.indices_gm[start], 0, 1, burst_len, 0, 0)
 
-    def _calculate(self, repeat_times, mask, offset):
+    @staticmethod
+    def _calculate(repeat_times, mask, offset):
         """
         remain for sub calss to implement their own calculation logic
 

@@ -39,8 +39,10 @@ BLOCK_BYTES = 32
 REPEAT_LIMIT = 255
 
 
+# pylint: disable=too-many-lines,unused-argument
 def get_op_support_info(x, block_shape, paddings, y, kernel_name="space_to_batch_nd"):
-    """get op support info.
+    """
+    get op support info.
     """
     axis_split_list = None
     axis_reduce_list = None
@@ -48,7 +50,7 @@ def get_op_support_info(x, block_shape, paddings, y, kernel_name="space_to_batch
     return op_cal_info_in_json
 
 
-# pylint: disable=invalid-name,unused-argument,too-many-locals,unnecessary-pass,too-many-return-statements
+# pylint: disable=invalid-name,too-many-locals,unnecessary-pass,too-many-return-statements
 def check_supported(x, block_shape, paddings, y, kernel_name="space_to_batch_nd"):
     """
     check supported dynamiclly. \n
@@ -74,7 +76,7 @@ def check_supported(x, block_shape, paddings, y, kernel_name="space_to_batch_nd"
         reason = "shape of input is not supported, block_s is [%s], pad_s is [%s]" % (str(block_s), str(pad_s))
         return False, reason
     reason = "when ori_format is [%s], shape of input is not supported," \
-             "ori_shape is [%s], block_s is [%s], pad_s is [%s]" %(ori_format, str(ori_shape), str(block_s), str(pad_s))
+             "ori_shape is [%s], block_s is [%s], pad_s is [%s]" % (ori_format, str(ori_shape), str(block_s), str(pad_s))
     if ori_format in ("NHWC",):
         if len(ori_shape) != 4 or block_s[0] != 2 or pad_s[0] != 2:
             if len(ori_shape) != 3 or block_s[0] != 1 or pad_s[0] != 1:
@@ -158,8 +160,9 @@ def op_select_format(x, block_shape, paddings, y, kernel_name="space_to_batch_nd
     return param_dynamic_in_json
 
 
-# pylint: disable=invalid-name,unused-argument,too-many-instance-attributes,unexpected-keyword-arg,too-many-function-args
-# pylint: disable=too-many-locals,too-many-arguments,attribute-defined-outside-init,too-many-statements,too-many-public-methods
+# pylint: disable=too-many-function-args,too-many-public-methods
+# pylint: disable=too-many-instance-attributes,unexpected-keyword-arg
+# pylint: disable=too-many-arguments,attribute-defined-outside-init,too-many-statements
 class SpaceToBatchND:
     """Performs space_to_batch_nd on input tensor
     5HD:
@@ -457,9 +460,9 @@ class SpaceToBatchND:
         flag_h = (core_idx * self.one_core_ele + ele_idx) * self.block_h + idx_bh
         with self.tik_instance.new_stmt_scope(disable_sync=True):
             with self.tik_instance.if_scope(tik.all(flag_h >= self.pads_t, flag_h < self.pads_t + self.input_h)):
-                offset_gm_in = (idx_ib * self.channel_one + idx_c1) * self.input_h * self.input_w * self.channel_zero + \
-                               ((core_idx * self.one_core_ele + ele_idx) * self.block_h + idx_bh - self.pads_t) * self.input_w * \
-                               self.channel_zero
+                offset_gm_in = (idx_ib * self.channel_one + idx_c1) * self.input_h * self.input_w * \
+                               self.channel_zero + ((core_idx * self.one_core_ele + ele_idx) * self.block_h + \
+                               idx_bh - self.pads_t) * self.input_w * self.channel_zero
                 offset_ub_in = self.pads_l * self.channel_zero
                 # move in
                 self.tik_instance.data_move(ub_a[offset_ub_in], self.input_gm[offset_gm_in], 0, 1,
@@ -487,8 +490,8 @@ class SpaceToBatchND:
                 offset_ub_out = idx_bw * self.output_w * self.channel_zero
                 offset_gm_out = (idx_bh * self.block_w + idx_bw) * self.input_b * self.channel_one * self.output_h * \
                                 self.output_w * self.channel_zero + (idx_ib * self.channel_one + idx_c1) * \
-                                self.output_h * self.output_w * self.channel_zero + (core_idx * self.one_core_ele + ele_idx) * self.output_w * \
-                                self.channel_zero
+                                self.output_h * self.output_w * self.channel_zero + \
+                                (core_idx * self.one_core_ele + ele_idx) * self.output_w * self.channel_zero
                 self.tik_instance.data_move(self.output_gm[offset_gm_out], ub_b[offset_ub_out], 0, 1,
                                             self.output_w * self.channel_zero // self.blk_ele, 0, 0)
 

@@ -68,7 +68,7 @@ def ceil_value(value, factor):
 
 
 # pylint: disable=invalid-name, too-many-locals, too-many-arguments, disable=too-many-statements
-# pylint: unused-argument, too-many-instance-attributes, too-many-boolean-expressions
+# pylint: unused-argument, too-many-instance-attributes
 class SparseApplyFtrl():
     """
     Function: class that execute sparse_apply_ftrl

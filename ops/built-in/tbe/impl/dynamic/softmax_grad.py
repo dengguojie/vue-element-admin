@@ -124,12 +124,12 @@ def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_gr
     tensors = []
     ins = classify([softmax, grad_softmax, input_axis], "norm")
 
-    for (x, grad, axis) in ins:
+    for (x, grad, input_axis) in ins:
         with tbe.compute():
-            shape_var_new, grad_shape_var_new, _= shape_util.variable_shape([x, grad, axis], op_mode="norm")
+            shape_var_new, grad_shape_var_new, _ = shape_util.variable_shape([x, grad, input_axis], op_mode="norm")
             softmax = tvm.placeholder(shape_var_new, dtype=dtype, name="softmax")
             grad_softmax = tvm.placeholder(grad_shape_var_new, dtype=dtype, name="grad_softmax")
-            output = softmax_grad_compute(softmax, grad_softmax, grad_x, axis.get("value"), kernel_name)
+            output = softmax_grad_compute(softmax, grad_softmax, grad_x, input_axis.get("value"), kernel_name)
             tensors.append([softmax, grad_softmax, output])
 
         with tvm.target.cce():

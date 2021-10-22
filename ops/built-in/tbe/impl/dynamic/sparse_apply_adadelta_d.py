@@ -15,9 +15,9 @@
 """
 sparse_apply_adadelta_d
 """
-from impl.util.platform_adapter import tbe_platform
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
 from impl.dynamic.sparse_apply_dynamic_common import SparseApplyDynamic
 

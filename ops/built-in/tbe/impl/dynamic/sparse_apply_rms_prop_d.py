@@ -15,11 +15,11 @@
 """
 sparse_apply_rms_prop_d
 """
+from impl.dynamic.sparse_apply_dynamic_common import SparseApplyDynamic
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_platform
 from te.utils.error_manager import error_manager_vector
-from impl.dynamic.sparse_apply_dynamic_common import SparseApplyDynamic
 
 
 # pylint: disable=too-many-instance-attributes
@@ -127,13 +127,13 @@ class SparseApplyRMSProp(SparseApplyDynamic):
         self.lr_scalar.set_as(lr_ub[0])
 
         def _func():
-            # ms_ = ms * rho + grad * grad * (1 - rho)
+            # `ms_ = ms * rho + grad * grad * (1 - rho)`
             self.tik_instance.vmuls(mask, ms_ub, ms_ub, self.rho, repeat_times, 1, 1, 8, 8)
             self.tik_instance.vmul(mask, tmp_ub, grad_ub, grad_ub, repeat_times, 1, 1, 1, 8, 8, 8)
             self.tik_instance.vmuls(mask, tmp_ub, tmp_ub, (1 - self.rho), repeat_times, 1, 1, 8, 8)
             self.tik_instance.vadd(mask, ms_ub, ms_ub, tmp_ub, repeat_times, 1, 1, 1, 8, 8, 8)
 
-            # mom_ = mom * momentum + (ms_ + epsilon).rsqrt() * lr * grad
+            # `mom_ = mom * momentum + (ms_ + epsilon).rsqrt() * lr * grad`
             self.tik_instance.vmuls(mask, mom_ub, mom_ub, self.momentum, repeat_times, 1, 1, 8, 8)
             self.tik_instance.vadds(mask, tmp_ub, ms_ub, self.epsilon, repeat_times, 1, 1, 8, 8)
 
@@ -147,7 +147,7 @@ class SparseApplyRMSProp(SparseApplyDynamic):
                 self.tik_instance.vmul(mask, tmp_ub, grad_ub, tmp_ub, repeat_times, 1, 1, 1, 8, 8, 8)
             self.tik_instance.vadd(mask, mom_ub, mom_ub, tmp_ub, repeat_times, 1, 1, 1, 8, 8, 8)
 
-            # var_ = var - mom_
+            # `var_ = var - mom_`
             self.tik_instance.vsub(mask, var_ub, var_ub, mom_ub, repeat_times, 1, 1, 1, 8, 8, 8)
 
         with self.tik_instance.if_scope(self.each_row_data_num <= self.cache_threshold_col):
@@ -162,6 +162,7 @@ class SparseApplyRMSProp(SparseApplyDynamic):
             mom_ub = self._get_ub("mom_ub")[offset]
             grad_ub = self.grad_ub[offset]
             _func()
+
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name,too-many-locals
 @register_operator("SparseApplyRMSPropD")

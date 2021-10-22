@@ -25,6 +25,7 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util import util_select_op_base
 
 
+# pylint: disable=unused-argument
 def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     """
     select format dynamically \n
@@ -77,8 +78,9 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     last_dim = len(input_x.shape) - 1
     vcmax_flag = False
 
+    check_axis_list = [-1, last_dim]
     for i in axis:
-        if (i == -1) or (i == last_dim):
+        if i in check_axis_list:
             vcmax_flag = True
 
     if dtype == "float32" and vcmax_flag and \
@@ -168,11 +170,11 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     tensors = []
     ins = classify([input_x, input_axis], "norm")
 
-    for (x, axis) in ins:
+    for (x, input_axis) in ins:
         with tbe.compute():
-            shape_var_new, _= shape_util.variable_shape([x, axis], op_mode="norm")
+            shape_var_new, _= shape_util.variable_shape([x, input_axis], op_mode="norm")
             input_x = tvm.placeholder(shape_var_new, dtype=dtype, name="input_x")
-            output = softmax_v2_compute(input_x, output_y, axis.get("value"), kernel_name)
+            output = softmax_v2_compute(input_x, output_y, input_axis.get("value"), kernel_name)
             tensors.append([input_x, output])
 
         with tvm.target.cce():

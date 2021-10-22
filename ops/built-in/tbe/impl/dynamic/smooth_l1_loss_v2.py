@@ -27,13 +27,13 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=redefined-builtin,too-many-locals,too-many-arguments
+# pylint: disable=redefined-builtin,too-many-locals,too-many-arguments,unused-argument
 @register_operator_compute("SmoothL1LossV2", op_mode="dynamic", support_fusion=False)
 def smooth_l1_loss_v2_compute(input_predict,
                               input_label,
                               input_axis,
                               sigma,
-                              reduction, 
+                              reduction,
                               kernel_name="smooth_l1_loss"):
     """
     calculating data
@@ -45,7 +45,7 @@ def smooth_l1_loss_v2_compute(input_predict,
     input_label : TVM tensor
        the placeholder of input_label
     input_axis :  axis from classify for reduce
-    sigma :  const param 
+    sigma :  const param
     reduction: str
        type of result, default value is "mean"
     kernel_name : str
@@ -75,7 +75,7 @@ def smooth_l1_loss_v2_compute(input_predict,
     input_sub_res_half = tbe.vmuls(input_sub_res, half_scalar)
     input_sub_square_half = tbe.vmul(input_sub_res_half, input_sub_res)
     sigma_rec_scalar = tvm.const(1.0 / sigma, dtype=input_dtype)
-    # (xi - yi) ** 2  * 0.5 / sigma
+    # `(xi - yi) ** 2  * 0.5 / sigma`
     method_one_res = tbe.vmuls(input_sub_square_half, sigma_rec_scalar)
 
     predict_label_sub_abs = tbe.vabs(input_sub_res)
@@ -163,7 +163,7 @@ def smooth_l1_loss_v2(predict,
     reduction_type = reduction.lower()
 
     para_check.check_dtype(reduction_type, check_list_reduction, param_name="reduction")
-    
+
     schedules, tensors = [], []
     axes = list(range(len(shape_predict)))
     predict["rel_pos_to_reduce"] = "before"
@@ -188,7 +188,7 @@ def smooth_l1_loss_v2(predict,
             schedules.append(sch)
     else:
         ins = classify([predict, label], OpPatternMode.ELEWISE)
-    
+
         for (_predict, _label) in ins:
             with tbe.compute():
                 predict_shape, label_shape = shape_util.variable_shape([_predict, _label])

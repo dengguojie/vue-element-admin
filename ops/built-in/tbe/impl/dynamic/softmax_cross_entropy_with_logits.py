@@ -34,6 +34,7 @@ SCALAR_MINUS_ONE = -1
 MAX_SHAPE_NUM = 10000000
 MAX_INT32_VALUE = 2147483647
 
+
 def _process_range(range0, range1):
     dim00_range = range0[0]
     dim01_range = range0[1]
@@ -84,11 +85,10 @@ def variable_shape(inputs: list, support_broadcast=False):
     def _select(cond, then_case, else_case):
         if cond:
             return then_case
-        else:
-            return else_case
+        return else_case
 
     def _update_range(shape0, range0, shape1, range1):
-        for index in range(len(range0)):
+        for index, _ in enumerate(range0):
             verify_shape = (shape0[index] != -1 and shape1[index] != -1) or \
                             shape0[index] == 1 or shape1[index] == 1
             if verify_shape:
@@ -283,6 +283,7 @@ def softmax_cross_entropy_with_logits_compute(
     return res
 
 
+# pylint: disable=unused-argument
 @register_operator("SoftmaxCrossEntropyWithLogits", pattern="SoftmaxCrossEntropyWithLogits")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)

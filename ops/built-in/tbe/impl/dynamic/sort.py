@@ -16,10 +16,10 @@
 sort
 """
 
+
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl import common_util
@@ -471,15 +471,15 @@ class Sort(object):
         input_ub: UB
         ----------
         """
-        Max = tik_instance.Scalar('float16', init_value=65504)
-        Min = tik_instance.Scalar('float16', init_value=-65504)
+        max_scalar = tik_instance.Scalar('float16', init_value=65504)
+        min_scalar = tik_instance.Scalar('float16', init_value=-65504)
         # Add ineffective object for 16 alignment
         if descending:
             with tik_instance.for_range(0, total - num) as i:
-                src_ub[(num + i) * PROPOSAL_NUM + 4].set_as(Min)
+                src_ub[(num + i) * PROPOSAL_NUM + 4].set_as(min_scalar)
         else:
             with tik_instance.for_range(0, total - num) as i:
-                src_ub[(num + i) * PROPOSAL_NUM + 4].set_as(Max)
+                src_ub[(num + i) * PROPOSAL_NUM + 4].set_as(max_scalar)
 
         n_repeat_total = total // BLOCK
         with self.tik_instance.if_scope(n_repeat_total > REPEAT_MAX):
@@ -514,7 +514,8 @@ class Sort(object):
             region_list_reg.set_as((region_list_reg + 3) // 4)
 
     # pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements,no-self-use
-    def _merge(self, tik_instance, src_ub, dst_ub, last_dim, total_region_list, level, region_offset=0):
+    @staticmethod
+    def _merge(tik_instance, src_ub, dst_ub, last_dim, total_region_list, level, region_offset=0):
         """
         _merge_recur
         merge multi sorted region proposal list to one sorted region proposal list
@@ -877,7 +878,8 @@ class Sort(object):
         return data_out, data_indices
 
     # pylint: disable=no-self-use,too-many-arguments
-    def moveout_more(self, tik_instance, descending, num_16, num, data_out, offset_out, src_ub, des_ub, data_indices,
+    @staticmethod
+    def moveout_more(tik_instance, descending, num_16, num, data_out, offset_out, src_ub, des_ub, data_indices,
                      version, ub_align_size):
         """
         Function: Move UB to GM, and trans y2 from fp16 to int32.
@@ -1118,7 +1120,8 @@ class Sort(object):
         self.sort_compute_tiling()
 
     def build_tik_instance(self, kernel_name_value):
-        """build_tik_instance
+        """
+        build_tik_instance
         """
         opt_config = {"out_of_bound_sync_check": True}
         self.tik_instance.BuildCCE(

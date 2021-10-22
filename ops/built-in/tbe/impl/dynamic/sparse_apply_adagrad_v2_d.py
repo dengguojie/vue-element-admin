@@ -113,6 +113,7 @@ class SparseApplyAdagradV2D(SparseApplyDynamic):
             accum_ub = self._get_ub("accum_ub")[offset]
             _func()
 
+
 # pylint: disable=too-many-arguments,unused-argument,invalid-name
 @register_operator("SparseApplyAdagradV2D")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

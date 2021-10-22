@@ -35,7 +35,7 @@ BLOCK_BYTES = 32
 
 
 # pylint: disable=too-many-arguments,too-many-instance-attributes
-# pylint: disable=invalid-name,bad-continuation,attribute-defined-outside-init,unused-argument
+# pylint: disable=invalid-name,attribute-defined-outside-init,unused-argument
 class ScatterNdUpdate():
     """
     Function: use to store scatter_nd_update base parameters
@@ -272,7 +272,7 @@ class ScatterNdUpdate():
                 self.calc_indices(indices_ub_index)
                 with self.tik_instance.if_scope(self.core_loop_index * self.indice_step <= self.var_read_index):
                     with self.tik_instance.if_scope(
-                        (self.core_loop_index + 1) * self.indice_step > self.var_read_index):
+                            (self.core_loop_index + 1) * self.indice_step > self.var_read_index):
                         self.traversing_updates(indices_ub_index, indices_in_index, mode)
 
     def traversing_updates(self, indices_ub_index, indices_in_index, mode):
@@ -509,7 +509,6 @@ class ScatterNdUpdate():
             })
 
 
-#pylint: disable=unused-argument
 @register_operator("ScatterNdUpdate")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)

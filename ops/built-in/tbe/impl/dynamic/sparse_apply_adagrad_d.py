@@ -20,6 +20,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.dynamic.sparse_apply_dynamic_common import SparseApplyDynamic
 
+
 class SparseApplyAdagrad(SparseApplyDynamic):
     """
     Sub class inherited form SparseApply for sparse_apply_adagrad op
