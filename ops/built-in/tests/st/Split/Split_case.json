@@ -16,9 +16,9 @@
         {
           "format": "ND",
           "ori_format": "ND",
-          "shape": [1, -1],
-          "ori_shape": [1, -1],
-          "typical_shape": [1, 128],
+          "shape": [2, -1],
+          "ori_shape": [2, -1],
+          "typical_shape": [2, 128],
           "shape_range": [[32, 128]],
           "type": "float16",
           "value_range": [[0, 10]],
@@ -36,12 +36,22 @@
         "shape_range": [[32, 128]],
         "type": "float16",
         "name": "y0"
+       },
+       {
+        "format": "ND",
+        "ori_format": "ND",
+        "shape": [1, -1],
+        "ori_shape": [1, -1],
+        "typical_shape": [1, 128],
+        "shape_range": [[32, 128]],
+        "type": "float16",
+        "name": "y1"
        }
      ],
      "attr": [
          {
           "name": "num_split",
-          "value": 1,
+          "value": 2,
           "type": "int"
          }
      ]

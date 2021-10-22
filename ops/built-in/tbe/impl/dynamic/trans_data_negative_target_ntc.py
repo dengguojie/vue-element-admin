@@ -23,13 +23,19 @@ from impl.util.platform_adapter import para_check
 from .. import trans_data_common_func as tdc
 from impl.util.platform_adapter import tbe_context
 
-# used for tiling data
-TILING_CTRL_PARAM = ("int64", 96)
-INT8_DTYPES = ("int8", "uint8")
-NEED_CAST_DTYPES = ("float32", "int32", "uint32")
-VNC_SUPPORT_DTYPES = ("int8", "uint8", "float16")
-# burst limit
-BURST_LIMIT = 65535
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # used for tiling data
+    TILING_CTRL_PARAM = ("int64", 96)
+    INT8_DTYPES = ("int8", "uint8")
+    NEED_CAST_DTYPES = ("float32", "int32", "uint32")
+    VNC_SUPPORT_DTYPES = ("int8", "uint8", "float16")
+    # burst limit
+    BURST_LIMIT = 65535
 
 
 def _get_tiling_params(tik_inst, tiling_ub, tiling_gm, tiling_params, tiling_dtype_bytes):
@@ -38,11 +44,12 @@ def _get_tiling_params(tik_inst, tiling_ub, tiling_gm, tiling_params, tiling_dty
     """
 
     ele_per_block = tdc.BLOCK_BYTE_SIZE // tiling_dtype_bytes
-    tik_inst.data_move(tiling_ub, tiling_gm, 0, 1, TILING_CTRL_PARAM[1] // ele_per_block, 0, 0)
-    for reg_idx in range(TILING_CTRL_PARAM[1]):
+    tik_inst.data_move(tiling_ub, tiling_gm, 0, 1, Constant.TILING_CTRL_PARAM[1] // ele_per_block, 0, 0)
+    for reg_idx in range(Constant.TILING_CTRL_PARAM[1]):
         tiling_params[reg_idx].set_as(tiling_ub[reg_idx])
 
 
+# 'pylint: disable=too-many-locals,too-many-statements
 def _twice_vnchwconv_invert(args):
     """
     do nc1ht to nc1th transform by twice vnchwconv
@@ -51,7 +58,7 @@ def _twice_vnchwconv_invert(args):
     (tik_inst, src_ub, dst_ub, in_dtype, cl_plp_size, dst_c_size, c_plp_size, cr_lp_cnt, cr_pln_size,
      is_mc_cr, c0_len, ele_per_block, tiling_mode, vnc_col_len, c_mod_c0, is_last_c1) = args
     size_factor = tdc.get_dtype_factor(in_dtype)
-    if in_dtype in NEED_CAST_DTYPES:
+    if in_dtype in Constant.NEED_CAST_DTYPES:
         src_ub_casted = src_ub.reinterpret_cast_to("float16")
         dst_ub_casted = dst_ub.reinterpret_cast_to("float16")
     else:
@@ -93,7 +100,7 @@ def _twice_vnchwconv_invert(args):
         with tik_inst.else_scope():
             cr_align_block_size.set_as(tdc.ceil_fill(cr_pln_size, ele_per_block))
 
-        if in_dtype not in INT8_DTYPES:
+        if in_dtype not in Constant.INT8_DTYPES:
             # do nc1ht -> c1htn
             with tik_inst.if_scope(tiling_mode == 2002):  # using 16 lines
                 vnc_col_size.set_as(c_plp_size * cr_pln_size * c0_len * size_factor)
@@ -179,6 +186,7 @@ def _twice_vnchwconv_invert(args):
             tik_inst.vnchwconv(True, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
 
 
+# 'pylint: disable=too-many-locals
 def _once_vnchwconv_invert(args):
     """
     do nc1ht to nc1th transform by once vnchwconv
@@ -191,7 +199,7 @@ def _once_vnchwconv_invert(args):
         dst_stride = tik_inst.Scalar(dtype="int32")
         cr_align_block_size = tdc.ceil_fill(cr_pln_size, c0_len)
         repeat_cnt = tdc.ceil_div(cr_pln_size, c0_len)
-        if (src_ub.dtype.lower() in NEED_CAST_DTYPES and
+        if (src_ub.dtype.lower() in Constant.NEED_CAST_DTYPES and
                 not cce.intrinsic_check_support("Intrinsic_vnchwconv", "float32")):
             src_ub = src_ub.reinterpret_cast_to("float16")
             dst_ub = dst_ub.reinterpret_cast_to("float16")
@@ -211,7 +219,7 @@ def _once_vnchwconv_invert(args):
                         src_stride.set_as(16)
                         dst_stride.set_as(1)
                     tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
-                elif in_dtype in NEED_CAST_DTYPES and cce.intrinsic_check_support("Intrinsic_vnchwconv", "float32"):
+                elif in_dtype in Constant.NEED_CAST_DTYPES and cce.intrinsic_check_support("Intrinsic_vnchwconv", "float32"):
                     with tik_inst.for_range(0, c0_len // 8) as c0_idx:  # process 16*8 once
                         c0_offset = c0_idx * 8 * cr_align_block_size
                         src_addr_list = [src_ub[c0_len * i + c0_idx * 8 + src_offset] for i in tdc.ADDR_IDX_LIST]
@@ -259,6 +267,7 @@ def _once_vnchwconv_invert(args):
                     tik_inst.vnchwconv(True, True, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
 
 
+# 'pylint: disable=too-many-locals
 def _reorder_data(args, tiling_mode):
     """
     reorder data from ncht to ncth
@@ -323,6 +332,7 @@ def _update_input_offset_all_dims_one(args):
     return in_offset
 
 
+# 'pylint: disable=too-many-locals
 def _update_input_offset_cl_dims_two(args, cl_beg):
     """
     count input gm offset for c-left has two dimensions
@@ -340,6 +350,7 @@ def _update_input_offset_cl_dims_two(args, cl_beg):
     return in_offset
 
 
+# 'pylint: disable=too-many-locals
 def _update_input_offset_cr_dims_two(args, cr_beg):
     """
     count input gm offset for c-right has two dimensions
@@ -357,6 +368,7 @@ def _update_input_offset_cr_dims_two(args, cr_beg):
     return in_offset
 
 
+# 'pylint: disable=too-many-locals
 def _update_output_offset(args):
     """
     count output gm offset
@@ -372,6 +384,7 @@ def _update_output_offset(args):
     return out_offset
 
 
+# 'pylint: disable=too-many-locals
 def _move_data_in_cr_cl_one_dims(args):
     """
     move data in process when c-right or c-right only has one dimensions
@@ -431,6 +444,7 @@ def _split_cr(args):
     right_dims_size.set_as(cr_pln_size - left_dims_size - mid_lp_cnt * cr_in_idx_0_size)
 
 
+# 'pylint: disable=too-many-locals
 def _move_cr_in_for_two_cr_dims(args):
     """
     move c-right in first in process when c-right has two dimensions
@@ -461,7 +475,7 @@ def _move_cr_in_for_two_cr_dims(args):
     left_gm_offset = is_left_dims_nz * (left_dims_size * c0_len - cr_in_idx_0_size * c0_len + cr_in_idx_1_src_asize)
 
     bust_len_scalar = tik_inst.Scalar(name="bust_len_scalar")
-    with tik_inst.if_scope(cr_in_idx_0_size * c0_len // ele_per_block > BURST_LIMIT):
+    with tik_inst.if_scope(cr_in_idx_0_size * c0_len // ele_per_block > Constant.BURST_LIMIT):
         bust_len_scalar.set_as(1)
     with tik_inst.else_scope():
         bust_len_scalar.set_as(cr_in_idx_0_size * c0_len // ele_per_block)
@@ -504,7 +518,8 @@ def _move_cr_in_for_two_cr_dims(args):
                                    right_dims_size * c0_len // ele_per_block, right_c_cr_gap, right_cr_gap)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=too-many-locals
+# 'pylint: disable=unused-variable
 def _move_cl_in_for_two_cr_dims(args):
     """
     move c-left in first in process when c-right has two dimensions
@@ -572,7 +587,8 @@ def _move_cl_in_for_two_cr_dims(args):
                                sub_c_cr_size, c0_len // ele_per_block, (cl_plp_size - 1) * c0_len // ele_per_block, 0)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=too-many-locals
+# 'pylint: disable=unused-variable
 def _copy_data_in_0(in_offset_args, tik_args):
     """
     copy data from gm to ub for transform such as nc1hwc0 -> nchw
@@ -663,7 +679,8 @@ def _copy_data_in_0(in_offset_args, tik_args):
                     _move_cr_in_for_two_cr_dims(data_in_args)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=too-many-locals
+# 'pylint: disable=unused-variable
 def _copy_data_in_1(in_offset_args, tik_args):
     """
     copy data from gm to ub for transform such as fractal_z -> nchw
@@ -726,7 +743,8 @@ def _copy_data_in_1(in_offset_args, tik_args):
                 _move_cl_in_for_two_cr_dims(data_in_args)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=too-many-locals
+# 'pylint: disable=unused-variable
 def _copy_data_out(copy_out_args):
     """
     copy data from ub to gm
@@ -867,6 +885,7 @@ def _get_backend_idx(args):
         cl_backend_idx.set_as(cl_lp_cnt)
 
 
+# 'pylint: disable=too-many-locals,too-many-statements,R0914,R0915
 def _func_transform_200(tensor_args, tp_args):
     """
     transform function for tiling mode 200
@@ -883,6 +902,7 @@ def _func_transform_200(tensor_args, tp_args):
      cr_in_idx_0_size, cr_in_idx_0_dst_rsize, cr_in_idx_0_src_asize, cr_in_idx_1_size, cr_in_idx_1_dst_rsize,
      cr_in_idx_1_src_asize) = tp_args
 
+    # 'pylint: disable=too-many-locals,too-many-statements
     def _inner_func(tiling_args):
         cr_lp_cnt, cr_left, c_lp_cnt, c_left, cl_lp_cnt, cl_left = tiling_args
         cr_pln_size = tik_inst.Scalar(name="cr_pln_size")
@@ -1034,7 +1054,9 @@ def _func_transform_200(tensor_args, tp_args):
         lc_args = (lc_cr_lp_cnt, lc_cr_left, lc_c_lp_cnt, lc_c_left, lc_cl_lp_cnt, lc_cl_left)
         _inner_func(lc_args)
 
-# pylint: disable=unused-argument
+
+# 'pylint: disable=too-many-locals
+# 'pylint: disable=unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_STR, para_check.REQUIRED_ATTR_STR, para_check.KERNEL_NAME)
 def trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name="trans_data_negative_target_ntc"):
@@ -1065,18 +1087,21 @@ def trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name
     in_dtype = src.get("dtype").lower() if src.get("dtype").lower() != "bfloat16" else "float16"
     in_dtype_bytes = tdc.get_dtype_len(in_dtype)
     tiling_dtype_bytes = tdc.get_dtype_len("int64")
-    ub_size = tdc.get_max_element_in_ub(in_dtype, 1, 256) - TILING_CTRL_PARAM[1] * tiling_dtype_bytes // in_dtype_bytes
+    ub_size = tdc.get_max_element_in_ub(in_dtype, 1, 256) - \
+              Constant.TILING_CTRL_PARAM[1] * tiling_dtype_bytes // in_dtype_bytes
     block_elem_cnt = tdc.BLOCK_BYTE_SIZE // tdc.get_dtype_len(in_dtype)
 
     tik_inst = tik.Tik()
     src_in_gm = tik_inst.Tensor(in_dtype, (tdc.MAX_INT64_VALUE,), tik.scope_gm, "src_in_gm")
     dst_out_gm = tik_inst.Tensor(in_dtype, (tdc.MAX_INT64_VALUE,), tik.scope_gm, "dst_out_gm")
-    tiling_gm = tik_inst.Tensor(TILING_CTRL_PARAM[0], (TILING_CTRL_PARAM[1],), tik.scope_gm, "tiling_gm")
+    tiling_gm = tik_inst.Tensor(Constant.TILING_CTRL_PARAM[0],
+                                (Constant.TILING_CTRL_PARAM[1],), tik.scope_gm, "tiling_gm")
     half_ub = ub_size // 2
     src_ub = tik_inst.Tensor(in_dtype, (half_ub,), tik.scope_ubuf, "src_ub")
     dst_ub = tik_inst.Tensor(in_dtype, (half_ub,), tik.scope_ubuf, "dst_ub")
-    tiling_ub = tik_inst.Tensor(TILING_CTRL_PARAM[0], (TILING_CTRL_PARAM[1],), tik.scope_ubuf, "tiling_ub")
-    tiling_params = [tik_inst.Scalar(TILING_CTRL_PARAM[0]) for i in range(TILING_CTRL_PARAM[1])]
+    tiling_ub = tik_inst.Tensor(Constant.TILING_CTRL_PARAM[0],
+                                (Constant.TILING_CTRL_PARAM[1],), tik.scope_ubuf, "tiling_ub")
+    tiling_params = [tik_inst.Scalar(Constant.TILING_CTRL_PARAM[0]) for i in range(Constant.TILING_CTRL_PARAM[1])]
     _get_tiling_params(tik_inst, tiling_ub, tiling_gm, tiling_params, tiling_dtype_bytes)
     is_vnc_support_float32 = 1 if cce.intrinsic_check_support("Intrinsic_vnchwconv", "float32") else 0
 

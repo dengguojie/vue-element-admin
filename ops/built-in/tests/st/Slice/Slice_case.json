@@ -10,6 +10,7 @@
                 "typical_shape": [38, 38],
                 "shape_range": [[38, 38]],
                 "type": "float16",
+                "param_type": "input",
                 "value_range": [[0, 1]],
                 "data_distribute": "uniform",
                 "name": "x"
@@ -18,6 +19,7 @@
                 "format": "ND",
                 "shape": [2],
                 "type": "int32",
+                "param_type": "input",
                 "value_range": [[0.1, 1.0]],
                 "data_distribute": "uniform",
                 "name": "offsets"
@@ -26,6 +28,7 @@
                 "format": "ND",
                 "shape": [2],
                 "type": "int32",
+                "param_type": "input",
                 "value_range": [[0.1, 1.0]],
                 "data_distribute": "uniform",
                 "name": "size"
@@ -38,7 +41,8 @@
                 "shape_range": [[38, 38]],
                 "typical_shape": [38, 38],
                 "type": "float16",
-                "name": "y"
+                "name": "y",
+                "param_type": "output"
             }
         ]
     }

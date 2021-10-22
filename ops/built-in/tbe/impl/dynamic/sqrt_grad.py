@@ -27,11 +27,8 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 
-# General limitation of the reduce size for input shape: 2**30
-SHAPE_LIMIT = 1 << 30
 
-
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals
 def sqrt_grad_compute(x, dx, out, kernel_name="sqrt_grad"):
     """
     algorithm: sqrt_grad_compute
@@ -60,7 +57,7 @@ def sqrt_grad_compute(x, dx, out, kernel_name="sqrt_grad"):
     return res
 
 
-# pylint: disable=redefined-argument-from-local
+# 'pylint: disable=redefined-argument-from-local
 @register_operator("SqrtGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)

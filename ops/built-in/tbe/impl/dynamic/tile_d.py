@@ -26,8 +26,8 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=too-many-statements
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=too-many-statements
 def tile_d_compute(data, output_x, multiples, kernel_name="tile_d"):
     """TVM calculation process, used for fusion operation.
 
@@ -61,7 +61,7 @@ def tile_d_compute(data, output_x, multiples, kernel_name="tile_d"):
     return res
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 @register_operator("TileD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_LIST_INT,
                             para_check.KERNEL_NAME)
@@ -159,7 +159,7 @@ def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
     extra_params = {"disable_optimization": True}
     ins = classify([input_x], OpPatternMode.ELEWISE_WITH_BROADCAST, extra_params)
     schedules, tensors = [], []
-    for (_input_x, ) in ins:
+    for (_input_x,) in ins:
         with tbe.compute():
             shape = shape_util.variable_shape([_input_x])[0]
             data = tvm.placeholder(shape, name="data", dtype=input_dtype)

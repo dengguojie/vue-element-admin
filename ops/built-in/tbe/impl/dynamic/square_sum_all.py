@@ -24,21 +24,27 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-BYTE_BLOCK = 32
-TILING_PARAMS_NUM = 16
-TILING_PARAM_DTYPE = "int32"
 
-MAX_INT32 = 2 ** 31 - 1
-MAX_SHAPE_SIZE = MAX_INT32
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    BYTE_BLOCK = 32
+    TILING_PARAMS_NUM = 16
+    TILING_PARAM_DTYPE = "int32"
+
+    MAX_INT32 = 2 ** 31 - 1
+    MAX_SHAPE_SIZE = MAX_INT32
 
 
-# pylint: disable=too-many-instance-attributes,too-few-public-methods
+# 'pylint: disable=too-many-instance-attributes,too-few-public-methods
 class SquareSumAll():
     """
     Function: class that execute square_sum_all
     """
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def __init__(self, input_x, input_y, kernel_name):
         """
         Init square_sum_all base parameters
@@ -197,7 +203,7 @@ class SquareSumAll():
         input_scalar_index = input_scalar_index + 1
         self.burst_len_tail_remain_core.set_as(self.tiling_ub[input_scalar_index])
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def _vector_mul(self, mask, des_offset, src1_offset, src2_offset, repeat_times, calc_target):
         """
         Execute the vector mul calculation
@@ -284,7 +290,7 @@ class SquareSumAll():
 
         return calc_num
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def _vector_add(self, mask, des_offset, src1_offset, src2_offset, repeat_times):
         """
         Execute the vector add calculation
@@ -310,7 +316,7 @@ class SquareSumAll():
         self.tik_instance.vadd(mask, self.input_y_ub[des_offset], self.input_y_ub[src1_offset],
                                self.input_y_ub[src2_offset], repeat_times, 1, 1, 1, 8, 8, 8)
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _calc_op(self, calc_num, burst_len, reduce_sum_loop, offset):
         """
         every process square_sum
@@ -432,7 +438,7 @@ class SquareSumAll():
         # for two inputs
         ub_max_num = self.ub_size_bytes // self.dtype_bytes_size // 2
         flag = self.data_each_block
-        assign_ub_shape = (math.ceil(ub_max_num / flag) * flag, )
+        assign_ub_shape = (math.ceil(ub_max_num / flag) * flag,)
 
         self.input_x_ub = self.tik_instance.Tensor(self.input_x_dtype,
                                                    assign_ub_shape,
@@ -481,19 +487,19 @@ class SquareSumAll():
         -------
         None
         """
-        tiling_gm = self.tik_instance.Tensor(TILING_PARAM_DTYPE, (TILING_PARAMS_NUM,), name="tiling_gm",
-                                             scope=tik.scope_gm)
+        tiling_gm = self.tik_instance.Tensor(Constant.TILING_PARAM_DTYPE, (Constant.TILING_PARAMS_NUM,),
+                                             name="tiling_gm", scope=tik.scope_gm)
 
         # get tiling args from gm
-        self.tiling_ub = self.tik_instance.Tensor(TILING_PARAM_DTYPE, (TILING_PARAMS_NUM,), name="tiling_ub",
-                                                  scope=tik.scope_ubuf)
+        self.tiling_ub = self.tik_instance.Tensor(Constant.TILING_PARAM_DTYPE, (Constant.TILING_PARAMS_NUM,),
+                                                  name="tiling_ub", scope=tik.scope_ubuf)
         self.tik_instance.data_move(self.tiling_ub, tiling_gm, 0, 1, 2, 0, 0)
 
         self._get_tiling_args()
 
-        self.input_x_gm = self.tik_instance.Tensor(self.input_x_dtype, (MAX_SHAPE_SIZE,), name="input_x_gm",
+        self.input_x_gm = self.tik_instance.Tensor(self.input_x_dtype, (Constant.MAX_SHAPE_SIZE,), name="input_x_gm",
                                                    scope=tik.scope_gm)
-        self.input_y_gm = self.tik_instance.Tensor(self.input_y_dtype, (MAX_SHAPE_SIZE,), name="input_y_gm",
+        self.input_y_gm = self.tik_instance.Tensor(self.input_y_dtype, (Constant.MAX_SHAPE_SIZE,), name="input_y_gm",
                                                    scope=tik.scope_gm)
         self.output_x_gm = self.tik_instance.Tensor(self.input_x_dtype, (1,), name="output_x_gm", scope=tik.scope_gm,
                                                     is_atomic_add=True)
@@ -517,7 +523,7 @@ class SquareSumAll():
                                    flowtable=(tiling_gm,))
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @register_operator("SquareSumAll")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)

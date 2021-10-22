@@ -29,8 +29,8 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=too-many-locals,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=too-many-locals,invalid-name
 def sub_compute(input_x, input_y, output_z, kernel_name="sub"):
     """
     calculating data's sub, c = a - b
@@ -54,8 +54,8 @@ def sub_compute(input_x, input_y, output_z, kernel_name="sub"):
     shape_y = shape_util.shape_to_list(input_y.shape)
 
     shape_x, shape_y, shape_max = shape_util.broadcast_shapes(shape_x, shape_y,
-                                                   param_name_input1="input_x",
-                                                   param_name_input2="input_y")
+                                                              param_name_input1="input_x",
+                                                              param_name_input2="input_y")
     input_x = tbe.broadcast(input_x, shape_max)
     input_y = tbe.broadcast(input_y, shape_max)
     res = tbe.vsub(input_x, input_y)

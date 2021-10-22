@@ -26,8 +26,8 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=too-many-locals,invalid-name,redefined-argument-from-local
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=too-many-locals,invalid-name,redefined-argument-from-local
 def tanh_compute(input_x, output_y, kernel_name="tanh"):
     """
     algorithm: tanh

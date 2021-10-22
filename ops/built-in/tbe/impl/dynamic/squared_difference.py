@@ -29,8 +29,8 @@ from impl.util.platform_adapter import register_operator_compute
 SHAPE_SIZE_LIMIT = 2147483648
 
 
-# pylint: disable=locally-disabled,too-many-locals,unused-argument
-# pylint: disable=invalid-name,unused-variable
+# 'pylint: disable=locally-disabled,too-many-locals,unused-argument
+# 'pylint: disable=invalid-name,unused-variable
 @register_operator_compute("SquaredDifference", op_mode="dynamic", support_fusion=True)
 def squared_difference_compute(data_x, data_y, y, kernel_name="squared_difference"):
     """
@@ -67,7 +67,7 @@ def squared_difference_compute(data_x, data_y, y, kernel_name="squared_differenc
     return res
 
 
-# pylint: disable=locally-disabled,too-many-locals,invalid-name
+# 'pylint: disable=locally-disabled,too-many-locals,invalid-name
 @register_operator("SquaredDifference")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)

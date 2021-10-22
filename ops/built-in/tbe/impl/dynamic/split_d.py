@@ -25,19 +25,25 @@ from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-# max int64
-MAX_INT64 = 2 ** 64 - 1
-# tiling param num
-TILING_ARG_NUM = 18
-# reserved ub size
-RESERVED_UB_SIZE = 9 * 1024
-# 8 bit
-EIGHT_BIT = 8
-# bytes of one block
-BLOCK_BYTES = 32
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # max int64
+    MAX_INT64 = 2 ** 64 - 1
+    # tiling param num
+    TILING_ARG_NUM = 18
+    # reserved ub size
+    RESERVED_UB_SIZE = 9 * 1024
+    # 8 bit
+    EIGHT_BIT = 8
+    # bytes of one block
+    BLOCK_BYTES = 32
 
 
-# pylint: disable=unused-argument,invalid-name,no-self-use
+# 'pylint: disable=unused-argument,invalid-name,no-self-use
 def op_select_format(x, y, split_dim, num_split, kernel_name="split_d"):
     """
     select format dynamically
@@ -62,7 +68,7 @@ def op_select_format(x, y, split_dim, num_split, kernel_name="split_d"):
     return param_dynamic_in_json
 
 
-# pylint: disable=too-many-instance-attributes,too-many-statements,too-many-locals,too-many-arguments,unused-variable
+# 'pylint: disable=too-many-instance-attributes,too-many-statements,too-many-locals,too-many-arguments,unused-variable
 class SplitD:
     """
     Split a tensor into `num_split` tensors along one dimension.
@@ -95,10 +101,10 @@ class SplitD:
         self.kernel_name = kernel_name
         self.input_dtype = x.get("dtype").lower()
         self.output_dtype = y[0].get("dtype").lower()
-        self.input_dtype_bytes_size = tbe_platform.get_bit_len(self.input_dtype) // EIGHT_BIT
-        self.input_data_each_block = BLOCK_BYTES // self.input_dtype_bytes_size
+        self.input_dtype_bytes_size = tbe_platform.get_bit_len(self.input_dtype) // Constant.EIGHT_BIT
+        self.input_data_each_block = Constant.BLOCK_BYTES // self.input_dtype_bytes_size
         self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE
+        self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - Constant.RESERVED_UB_SIZE
         self.ub_number = self.ub_size // self.input_dtype_bytes_size
         self.ub_number = (self.ub_number // self.input_data_each_block) * self.input_data_each_block
         self.tiling_gm, self.input_gm, self.outs_gm = self.init_gm_tensor()
@@ -139,12 +145,14 @@ class SplitD:
         -------
         gm tensors
         """
-        tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
-        input_gm = self.tik_instance.Tensor(self.input_dtype, (MAX_INT64,), name="input_gm", scope=tik.scope_gm)
+        tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
+        input_gm = self.tik_instance.Tensor(self.input_dtype, (Constant.MAX_INT64,), name="input_gm",
+                                            scope=tik.scope_gm)
         outputs_gm = []
         for i in range(self.num_split):
             tensor_name = "gm_output_" + str(i)
-            gm_tensor = self.tik_instance.Tensor(self.input_dtype, (MAX_INT64,), name=tensor_name, scope=tik.scope_gm)
+            gm_tensor = self.tik_instance.Tensor(self.input_dtype, (Constant.MAX_INT64,),
+                                                 name=tensor_name, scope=tik.scope_gm)
             outputs_gm.append(gm_tensor)
 
         return tiling_gm, input_gm, outputs_gm
@@ -495,9 +503,9 @@ class SplitD:
         """
         with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as core_index:
             self.init_ub_tensor()
-            self.tiling_ub = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_ub",
+            self.tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_ub",
                                                       scope=tik.scope_ubuf)
-            tiling_burst_len = self.ceil_div(TILING_ARG_NUM, 4)
+            tiling_burst_len = self.ceil_div(Constant.TILING_ARG_NUM, 4)
             self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, tiling_burst_len, 0, 0)
             self.tiling_args()
             with self.tik_instance.if_scope(self.select_mode == 0):

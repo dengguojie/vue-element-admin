@@ -28,7 +28,8 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=C0103
 @register_operator_compute("TileWithAxis", op_mode="dynamic", support_fusion=False)
 def tile_with_axis_compute(x, shape_y):
     """TVM calculation process, used for fusion operation.
@@ -48,6 +49,8 @@ def tile_with_axis_compute(x, shape_y):
     return res
 
 
+# 'pylint: disable=too-many-locals,too-many-branches,too-many-statements
+# 'pylint: disable=C0103
 @register_operator("TileWithAxis")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
                             para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)

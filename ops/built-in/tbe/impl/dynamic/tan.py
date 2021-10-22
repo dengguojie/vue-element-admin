@@ -26,18 +26,24 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 
-# define a string name of "float16"
-FLOAT_16 = "float16"
-# define a string name of "float32"
-FLOAT_32 = "float32"
-# define a string name of "int32"
-INT_32 = "int32"
-# define the PI
-PI = 3.14159265
-# define the expansion order of Tan series
-TAN_EXPANSION_ORDER = 5
-# define the number of times using the tan2x formula
-TAN_2X_TIMES = 6
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # define a string name of "float16"
+    FLOAT_16 = "float16"
+    # define a string name of "float32"
+    FLOAT_32 = "float32"
+    # define a string name of "int32"
+    INT_32 = "int32"
+    # define the PI
+    PI = 3.14159265
+    # define the expansion order of Tan series
+    TAN_EXPANSION_ORDER = 5
+    # define the number of times using the tan2x formula
+    TAN_2X_TIMES = 6
 
 
 def _tan_expand(input_x):
@@ -52,7 +58,7 @@ def _tan_expand(input_x):
     iter_value = input_x
     res = input_x
 
-    for i, _ in enumerate(range(TAN_EXPANSION_ORDER)):
+    for i, _ in enumerate(range(Constant.TAN_EXPANSION_ORDER)):
         iter_value = tbe.vmuls(
             tbe.vmul(input_x_power, iter_value), factors[i])
         res = tbe.vadd(res, iter_value)
@@ -80,7 +86,7 @@ def _tan_2x_multi(input_x, times):
     return res
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
 def tan_compute(x, y, kernel_name="tan"):
     """
     algorithm: tan
@@ -103,26 +109,26 @@ def tan_compute(x, y, kernel_name="tan"):
     dtype = x.dtype
 
     has_improve_precision = False
-    cast_dtype = FLOAT_16
+    cast_dtype = Constant.FLOAT_16
     if tbe_platform.api_check_support("te.lang.cce.vdiv", "float32"):
         has_improve_precision = True
-        cast_dtype = FLOAT_32
+        cast_dtype = Constant.FLOAT_32
 
     # cast to type float32 when type is float16 or int32
-    if dtype in (FLOAT_16, INT_32):
+    if dtype in (Constant.FLOAT_16, Constant.INT_32):
         if has_improve_precision:
-            x = tbe.cast_to(x, FLOAT_32)
+            x = tbe.cast_to(x, Constant.FLOAT_32)
 
     # adjust x to [-pi/2,pi/2] using x = x-round(x/pi)*pi
-    round_pi_div = tbe.round(tbe.vmuls(x, tvm.const(1.0 / PI, cast_dtype)))
+    round_pi_div = tbe.round(tbe.vmuls(x, tvm.const(1.0 / Constant.PI, cast_dtype)))
     if has_improve_precision:
-        round_pi_div = tbe.cast_to(round_pi_div, FLOAT_32)
-    input_x = tbe.vsub(x, tbe.vmuls(round_pi_div, tvm.const(PI, cast_dtype)))
+        round_pi_div = tbe.cast_to(round_pi_div, Constant.FLOAT_32)
+    input_x = tbe.vsub(x, tbe.vmuls(round_pi_div, tvm.const(Constant.PI, cast_dtype)))
 
-    res = _tan_2x_multi(input_x, TAN_2X_TIMES)
+    res = _tan_2x_multi(input_x, Constant.TAN_2X_TIMES)
 
     # cast the dtype to original dtype
-    if dtype in (FLOAT_16, INT_32):
+    if dtype in (Constant.FLOAT_16, Constant.INT_32):
         if has_improve_precision:
             res = tbe.cast_to(res, dtype)
 
@@ -154,7 +160,7 @@ def tan(input_x, output_y, kernel_name="tan"):
     None
     """
     dtype_input = input_x.get("dtype").lower()
-    check_list = (FLOAT_16, FLOAT_32, INT_32)
+    check_list = (Constant.FLOAT_16, Constant.FLOAT_32, Constant.INT_32)
     para_check.check_dtype(dtype_input, check_list, param_name="input_x")
     ins = classify([input_x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []

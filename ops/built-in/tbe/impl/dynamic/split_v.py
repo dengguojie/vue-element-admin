@@ -91,8 +91,8 @@ def align_value(value, factor):
     return (value + factor - 1) // factor * factor
 
 
-# pylint: disable=invalid-name,too-many-statements,too-many-locals,too-many-arguments
-# pylint: disable=too-many-instance-attributes,too-many-public-methods,too-many-lines
+# 'pylint: disable=invalid-name,too-many-statements,too-many-locals,too-many-arguments
+# 'pylint: disable=too-many-instance-attributes,too-many-public-methods,too-many-lines
 class SplitV():
     """
     Function: class that execute split_v
@@ -1337,7 +1337,7 @@ class SplitV():
                     with tik_instance.if_scope(block_id == self.need_core_num - 1):
                         with tik_instance.new_stmt_scope():
                             self.compute_move_copy(block_id, self.loop_num_last_core, self.one_loop_elems_last_core,
-                                                self.last_num_last_core)
+                                                   self.last_num_last_core)
             # num_split >= 2
             else:
                 with tik_instance.if_scope(self.tiling_mode == MODE_8):

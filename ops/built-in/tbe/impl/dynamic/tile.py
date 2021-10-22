@@ -25,7 +25,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 def tile_compute(data, multiples, output_x, kernel_name="tile"):
     """
     TVM calculation process, used for fusion operation.
@@ -55,7 +55,7 @@ def tile_compute(data, multiples, output_x, kernel_name="tile"):
     return res
 
 
-# pylint: disable=too-many-locals,too-many-statements
+# 'pylint: disable=too-many-locals,too-many-statements
 @register_operator("Tile")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
@@ -118,7 +118,7 @@ def tile(input_x, input_m, output_x, kernel_name="tile"):
         error_info['real_value'] = str(dims_value)
         raise RuntimeError(error_info, "In op[%s], input[%s]'s shape value [%s] is invalid. "
                                        "It should be more than -1." % (
-                               error_info['op_name'], error_info['param_name'], error_info['real_value']))
+                                           error_info['op_name'], error_info['param_name'], error_info['real_value']))
     if dims_value == -1:
         dims_value = len(input_x_shape)
 
@@ -131,8 +131,8 @@ def tile(input_x, input_m, output_x, kernel_name="tile"):
         error_info['max_value'] = str(dims_value)
         raise RuntimeError(error_info, "In op[%s], the dimensions of input[%s] is [%s], should not be bigger than "
                                        "multiples values [%s]. " % (
-                               error_info['op_name'], error_info['param_name'], error_info['real_value'],
-                               error_info['max_value']))
+                                           error_info['op_name'], error_info['param_name'], error_info['real_value'],
+                                           error_info['max_value']))
 
     if len(input_x_shape) < dims_value:
         len_diff = dims_value - len(input_x_shape)

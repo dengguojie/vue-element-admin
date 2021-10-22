@@ -465,6 +465,7 @@
         "ori_format": "ND",
         "name": "x",
         "type": "float16",
+        "param_type": "input",
         "shape_range": [
           [
             1,
@@ -502,6 +503,7 @@
         "ori_format": "ND",
         "name": "y",
         "type": "float16",
+        "param_type": "output",
         "shape_range": [
           [
             1,

@@ -27,7 +27,7 @@ from impl.util.platform_adapter import register_operator_compute
 
 
 @register_operator_compute("ThresholdV2D", op_mode="dynamic", support_fusion=True)
-# pylint: disable=unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=unused-argument,too-many-locals,invalid-name
 def threshold_v2_d_compute(x, y, threshold, value,
                            kernel_name="threshold_v2_d_cce"):
     """
@@ -65,7 +65,7 @@ def threshold_v2_d_compute(x, y, threshold, value,
         data_res = tbe.cast_to(data_res, dtype_x)
     return data_res
 
-# pylint: disable=unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=unused-argument,too-many-locals,invalid-name
 @register_operator("ThresholdV2D")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT,

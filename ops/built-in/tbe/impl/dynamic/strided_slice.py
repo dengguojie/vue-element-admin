@@ -27,10 +27,16 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.util_tik_comm_func import ceil_align, ceil_div, floor_align
 
-MAX_SIZE = 2 ** 31 - 1
-MAX_NBURST = 4095
-MAX_REPEAT = 255
-Tiling_UB_SIZE = 382
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    MAX_SIZE = 2 ** 31 - 1
+    MAX_NBURST = 4095
+    MAX_REPEAT = 255
+    Tiling_UB_SIZE = 382
 
 
 def check_supported(input_x, begin, end, strides=None,
@@ -58,14 +64,14 @@ def _data_move(tik_instance: tik.Tik, dest: tik.Tensor, src: tik.Tensor, count):
     tik_instance.data_move(dest, src, 0, 1, burst, 0, 0)
 
 
-# pylint: disable=too-many-locals, too-many-statements, too-many-instance-attributes
-# pylint: disable=too-few-public-methods
+# 'pylint: disable=too-many-locals, too-many-statements, too-many-instance-attributes
+# 'pylint: disable=too-few-public-methods
 class StridedSlice:
     """
     StridedSlice
     """
 
-    # pylint: disable=too-many-locals, too-many-statements, too-many-instance-attributes
+    # 'pylint: disable=too-many-locals, too-many-statements, too-many-instance-attributes
     class TilingParam:
         """
         TilingParam
@@ -97,7 +103,7 @@ class StridedSlice:
             self.out_dim = inst.Scalar(dtype, name="out_dim")
             self.out_dim_with_vnchwconv = inst.Scalar(dtype, name="out_dim_with_vnchwconv")
 
-        # pylint: disable=invalid-name
+        # 'pylint: disable=invalid-name
         def init(self):
             """
             init process data
@@ -134,8 +140,8 @@ class StridedSlice:
                     self.input_steps[index].set_as(self.input_steps[index] * self.input_steps[index - 1])
                     self.output_steps[index].set_as(self.output_steps[index] * self.output_steps[index - 1])
 
-    # pylint: disable=locally-disabled,too-many-arguments,
-    # pylint: disable=unused-argument,too-many-locals
+    # 'pylint: disable=locally-disabled,too-many-arguments,
+    # 'pylint: disable=unused-argument,too-many-locals
     def __init__(self, input_x, strides, begin_mask, end_mask, ellipsis_mask, new_axis_mask, shrink_axis_mask,
                  kernel_name="strided_slice"):
         self.strides = strides
@@ -153,14 +159,14 @@ class StridedSlice:
         self.tiling_param = self.TilingParam([1] * max_dim_supported, inst)
         self.dtype = input_x.get("dtype").lower()
         self.dtype_size = common_util.get_data_size(self.dtype)
-        self.input_gm = inst.Tensor(self.dtype, (MAX_SIZE,), name="input_gm", scope=tik.scope_gm)
-        self.begin_gm = inst.Tensor(self.dtype, (MAX_SIZE,), name="begin_gm", scope=tik.scope_gm)
-        self.end_gm = inst.Tensor(self.dtype, (MAX_SIZE,), name="end_gm", scope=tik.scope_gm)
-        self.strides_gm = inst.Tensor(self.dtype, (MAX_SIZE,), name="strides_gm", scope=tik.scope_gm)
-        self.output_gm = inst.Tensor(self.dtype, (MAX_SIZE,), name="output_gm", scope=tik.scope_gm)
+        self.input_gm = inst.Tensor(self.dtype, (Constant.MAX_SIZE,), name="input_gm", scope=tik.scope_gm)
+        self.begin_gm = inst.Tensor(self.dtype, (Constant.MAX_SIZE,), name="begin_gm", scope=tik.scope_gm)
+        self.end_gm = inst.Tensor(self.dtype, (Constant.MAX_SIZE,), name="end_gm", scope=tik.scope_gm)
+        self.strides_gm = inst.Tensor(self.dtype, (Constant.MAX_SIZE,), name="strides_gm", scope=tik.scope_gm)
+        self.output_gm = inst.Tensor(self.dtype, (Constant.MAX_SIZE,), name="output_gm", scope=tik.scope_gm)
         self.aicore_num = self.tik_profiling.get_aicore_num()
         self.block_element = constant.BLOCK_SIZE // self.dtype_size
-        self.reserve_ub_size = Tiling_UB_SIZE
+        self.reserve_ub_size = Constant.Tiling_UB_SIZE
         self.ub_size = (self.tik_profiling.get_unified_buffer_size() - self.reserve_ub_size) // self.dtype_size // \
                        self.block_element * self.block_element
         self.ub_size_with_vnchwconv = ((self.tik_profiling.get_unified_buffer_size() - self.reserve_ub_size) // \
@@ -500,8 +506,8 @@ class StridedSlice:
         output_addr = inst.Scalar("int64", name="output_addr")
         max_rows_in_ub.set_as(floor_align(self.ub_size // self.tiling_param.input_shape[self.shape_length - 1],
                                           self.block_element))
-        with inst.if_scope(max_rows_in_ub // self.block_element > MAX_REPEAT):
-            max_rows_in_ub.set_as(MAX_REPEAT * self.block_element)
+        with inst.if_scope(max_rows_in_ub // self.block_element > Constant.MAX_REPEAT):
+            max_rows_in_ub.set_as(Constant.MAX_REPEAT * self.block_element)
         rows_each_core.set_as(self._ceil_32bytes_count(self._ceil_div(self.tiling_param.input_shape[0],
                                                                       self.aicore_num), self.block_element))
         repeat_times.set_as(self._ceil_div(rows_each_core, max_rows_in_ub))
@@ -970,7 +976,7 @@ class StridedSlice:
                     with inst.else_scope():
                         self._do_large_last_dim_not_align(input_gm_addr, output_gm_addr, inner_loop_idx)
 
-    # pylint: disable=invalid-name
+    # 'pylint: disable=invalid-name
     def _do_small_last_dim(self, core_idx):
         """
         _do_small_last_dim
@@ -1035,7 +1041,7 @@ class StridedSlice:
             self._data_move(ub, input_gm[input_gm_addr + inner_loop_idx * self.ub_size], count)
             self._data_move(output_gm[output_gm_addr + inner_loop_idx * self.ub_size], ub, count)
 
-    # pylint: disable=too-many-locals,invalid-name
+    # 'pylint: disable=too-many-locals,invalid-name
     def _do_large_last_dim_not_align(self, input_gm_addr, output_gm_addr, inner_loop_idx):
         """
         _do_large_last_dim_not_align
@@ -1200,24 +1206,24 @@ class StridedSlice:
             dst_addr = [ub2[16 * 16 * i + 16 * j] for j in range(16)]
             inst.vnchwconv(False, False, dst_addr, src_addr, 1, 0, 0)
 
-        nburst_loop = rows // MAX_NBURST
+        nburst_loop = rows // Constant.MAX_NBURST
         with inst.for_range(0, nburst_loop) as i:
             inst.data_move(
-                ub1[i * MAX_NBURST * output_shape[self.shape_length - 1] * 16],
-                ub2[(i * MAX_NBURST * input_shape[self.shape_length - 1] + begin[self.shape_length - 1]) * 16],
+                ub1[i * Constant.MAX_NBURST * output_shape[self.shape_length - 1] * 16],
+                ub2[(i * Constant.MAX_NBURST * input_shape[self.shape_length - 1] + begin[self.shape_length - 1]) * 16],
                 0,
-                MAX_NBURST,
+                Constant.MAX_NBURST,
                 output_shape[self.shape_length - 1],
                 input_shape[self.shape_length - 1] - output_shape[self.shape_length - 1],
                 0)
 
-        with inst.if_scope(rows % MAX_NBURST != 0):
+        with inst.if_scope(rows % Constant.MAX_NBURST != 0):
             inst.data_move(
-                ub1[nburst_loop * MAX_NBURST * output_shape[self.shape_length - 1] * 16],
-                ub2[(nburst_loop * MAX_NBURST * input_shape[self.shape_length - 1] + begin[
+                ub1[nburst_loop * Constant.MAX_NBURST * output_shape[self.shape_length - 1] * 16],
+                ub2[(nburst_loop * Constant.MAX_NBURST * input_shape[self.shape_length - 1] + begin[
                     self.shape_length - 1]) * 16],
                 0,
-                rows % MAX_NBURST,
+                rows % Constant.MAX_NBURST,
                 output_shape[self.shape_length - 1],
                 input_shape[self.shape_length - 1] - output_shape[self.shape_length - 1],
                 0)
@@ -1246,14 +1252,14 @@ class StridedSlice:
             with inst.for_range(0, self.block_element, name="block_element_loop") as element_id:
                 ub_block[element_id] = ub2[output_matrix_count - self.block_element + element_id]
             self._data_move(self.output_gm[output_gm_addr + output_matrix_count -
-                                            self.block_element], ub_block, self.block_element)
+                                           self.block_element], ub_block, self.block_element)
 
         with inst.else_scope():
             self._data_move(self.output_gm[output_gm_addr], ub2, output_matrix_count)
 
 
-# pylint: disable=locally-disabled,too-many-arguments,
-# pylint: disable=unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,
+# 'pylint: disable=unused-argument,too-many-locals
 @register_operator("StridedSlice")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
@@ -1329,5 +1335,5 @@ def strided_slice(input_x, begin, end, strides=None, output_x=None, begin_mask=0
                                                         "new_axis_mask": strided_slice_instance.new_axis_mask,
                                                         "shrink_axis_mask": strided_slice_instance.shrink_axis_mask,
                                                         "ub_size": tik.Dprofile().get_unified_buffer_size() - \
-                                                                   Tiling_UB_SIZE})
+                                                                   Constant.Tiling_UB_SIZE})
     return inst

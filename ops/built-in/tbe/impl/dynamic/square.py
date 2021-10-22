@@ -26,7 +26,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 
 
-# pylint: disable=unused-argument,redefined-argument-from-local
+# 'pylint: disable=unused-argument,redefined-argument-from-local
 @register_operator_compute("Square", op_mode="dynamic", support_fusion=True)
 def square_compute(input_x, output_y, kernel_name="square"):
     """

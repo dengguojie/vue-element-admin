@@ -26,7 +26,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=locally-disabled,unused-argument
 def sqrt_compute(input_data, output_data, kernel_name="sqrt"):
     """
     calculating data sqrt,y= x**0.5,mini not support vsqrt, use exp(0.5*log(x))

@@ -33,8 +33,8 @@ VALUE_ONE = 1
 SHAPE_SIZE_LIMIT = 200000000
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
-# pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
 def reduce_sum_d_compute(x, y, axis=None, keepdims=None, kernel_name="reduce_sum_d"):
     """redusce_sum_d compute
 

@@ -20,7 +20,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments
 def check_supported(shape, begin, end, strides, dy, output, begin_mask=0,
                     end_mask=0, ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,
                     kernel_name="strided_slice_grad_d"):
@@ -56,7 +56,7 @@ def check_supported(shape, begin, end, strides, dy, output, begin_mask=0,
     return check_result
 
 
-# pylint: disable=locally-disabled,too-many-arguments,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,invalid-name
 @register_operator("StridedSliceGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
