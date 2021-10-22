@@ -574,7 +574,8 @@ static bool GetShapePerm(const string& opType, const ge::Operator& paras, Compil
     return false;
   }
 
-  auto get_const_flag = GetConstValue(paras, "perm", shapeInfo.perm);
+  // input perm index is 1
+  auto get_const_flag = ops::GetConstIntData(paras, 1, shapeInfo.perm);
   if (get_const_flag == false) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "get const perm failed.");
     return false;

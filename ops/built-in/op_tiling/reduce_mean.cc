@@ -62,16 +62,16 @@ bool GetReduceAxis(const std::string& op_type, const ge::Operator& op_paras, con
   // Get ori reduce aixs
   std::vector<int64_t> values;
   if(op_type == "ReduceMean") {
-    std::string axes_name = "axes";
+    //input axes index is 1
+    int axes_idx = 1;
     if (op_info.count("axes_idx") > 0) {
       auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
       OP_TILING_CHECK(operator_info == nullptr,
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetOpDescFromOperator return nullptr!"), return false);
-      int axes_idx = op_info.at("axes_idx").get<int>();
-      axes_name = operator_info->GetInputNameByIndex(axes_idx);
+      axes_idx = op_info.at("axes_idx").get<int>();
     }
-    OP_TILING_CHECK(!GetConstValue(op_paras, axes_name, values),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetConstValue %s error!",axes_name.c_str()), return false);
+    OP_TILING_CHECK(!ops::GetConstIntData(op_paras, axes_idx, values),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetConstIntData %d error!", axes_idx), return false);
     // clear reduce_axis_ori when shape of input axis is (0, )
     reduce_axis_ori.resize(values.size());
     for (size_t i = 0; i < values.size(); i++) {

@@ -298,7 +298,8 @@ void PrintGatherV2Params(const GatherV2TilingParams& params, const std::string& 
 
 bool GetAxis(const std::string& op_type, const ge::Operator& op_paras, int64_t& axis) {
   std::vector<int64_t> values;
-  if (!GetConstValue(op_paras, "axis", values)) {
+  // input axis index is 2
+  if (!ops::GetConstIntData(op_paras, 2, values)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "axis not exists.");
     return false;
   }

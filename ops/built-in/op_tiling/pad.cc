@@ -298,7 +298,7 @@ static bool CalcuPaddingForStridedSliceGrad(const ge::Operator& op_paras, const 
                                             std::vector<int64_t>& paddings_input_shape) {
   struct SliceParameters slice_params_output = {};
   struct SliceMasks slicemasks_output;
-  map<string, std::pair<int, vector<int64_t>&>> const_params = {
+  map<string, std::pair<int64_t, vector<int64_t>&>> const_params = {
       {"shape", {0, slice_params_output.input}},
       {"begin", {1, slice_params_output.begin_list}},
       {"end", {2, slice_params_output.end_list}},
@@ -314,8 +314,9 @@ static bool CalcuPaddingForStridedSliceGrad(const ge::Operator& op_paras, const 
   // Get Const Input
   for (auto& item : const_params) {
     auto& name = item.first;
+    int64_t index = item.second.first;
     auto& values = item.second.second;
-    if (!GetConstValue(op_paras, name, values)) {
+    if (!ops::GetConstIntData(op_paras, index, values)) {
       VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "Get %s values failed", name.c_str());
       return false;
     }
@@ -525,7 +526,8 @@ bool PadTiling(const std::string& op_type, const ge::Operator& op_paras, const n
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "calcu paddings const value failed."), return false);
 
   } else {
-    OP_TILING_CHECK(!GetConstValue(op_paras, "paddings", paddings_const_values),
+    //the paddings input index is 1
+    OP_TILING_CHECK(!ops::GetConstIntData(op_paras, 1, paddings_const_values),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get paddings const value failed."), return false);
   }
   PrintTensorValue(compile_params, input_shape, "input_shape");

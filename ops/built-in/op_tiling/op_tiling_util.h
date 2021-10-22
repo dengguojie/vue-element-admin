@@ -24,6 +24,7 @@
 
 #include <vector>
 #include "op_tiling.h"
+#include "op_const.h"
 #include "external/graph/operator.h"
 #include "graph/utils/op_desc_utils.h"
 
@@ -57,15 +58,6 @@ const std::map<std::string, DataType> STR_TO_DATATYPE = {{"float", DT_FLOAT},
  */
 vector<vector<int64_t>> GetInputShapes(const ge::Operator& paras);
 
-/*
- * @brief: read constvalue from paras store into values
- * @param [in] paras: ge::Operator
- * @param [in] input_name: constvalue name
- * @param [out] values: vector to store return values.
- * @return bool: flag of success or not
- */
-
-bool GetConstValue(const ge::Operator& paras, const string& input_name, std::vector<int64_t>& values);
 /*
  * @brief: get datatype string from enum
  * @param [in] type: enum datatype

@@ -80,8 +80,9 @@ bool StridedSliceV3Tiling(const std::string& opType, const ge::Operator& opParas
   bool strides_exist = true;
   for (auto& item : const_params) {
     auto& name = item.first;
+    int index = item.second.first;
     auto& values = item.second.second;
-    if (!GetConstValue(opParas, name, values)) {
+    if (!ops::GetConstIntData(opParas, index, values)) {
       if (name == "axes") {
         axes_exist = false;
         continue;

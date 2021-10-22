@@ -46,8 +46,9 @@ bool TileTiling(const std::string& op_type, const ge::Operator& op_paras, const 
   std::vector<int64_t> compile_shape = op_info["compile_shape"].get<std::vector<int64_t>>();
   std::vector<int64_t> multiples_value;
 
-  OP_TILING_CHECK(!GetConstValue(op_paras, "multiples", multiples_value),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetConstValue multiples error!"), return false);
+  // input multiples index is 1
+  OP_TILING_CHECK(!ops::GetConstIntData(op_paras, 1, multiples_value),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetConstIntData multiples error!"), return false);
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
   OP_TILING_CHECK(x_runtime_shape.size() != compile_shape.size(),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input0 shape size must equal to compile shape size!"),

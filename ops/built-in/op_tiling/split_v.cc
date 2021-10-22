@@ -616,10 +616,17 @@ bool SplitVTiling(const std::string& opType, const ge::Operator& opParas, const 
   // get split_dim
   std::vector<int64_t> splitDimVec;
   GELOGD("op SplitVTiling : splitDimInputIndex=%d.", splitDimInputIndex);
-  if (!GetConstValue(opParas, "split_dim", splitDimVec)) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitVTiling: Get split_dim value failed.");
-    return false;
+
+  if (isSplitV) {
+    // input split_dim index is 2
+    OP_TILING_CHECK(!ops::GetConstIntData(opParas, 2, splitDimVec),
+                    VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitVTiling: Get split_dim value failed."), return false);
+  } else {
+    // input split_dim index is 0
+    OP_TILING_CHECK(!ops::GetConstIntData(opParas, 0, splitDimVec),
+                    VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitVTiling: Get split_dim value failed."), return false);
   }
+
   int64_t splitDim = splitDimVec[0];
   if (splitDim == 1 and input_format == ge::FORMAT_FRACTAL_NZ) {
     splitDim = 0;
@@ -637,7 +644,8 @@ bool SplitVTiling(const std::string& opType, const ge::Operator& opParas, const 
   int64_t splitSizeValue = 0;
   std::vector<int64_t> sizeSplitsVec;
   if (isSplitV) {
-    if (!GetConstValue(opParas, "size_splits", sizeSplitsVec)) {
+    //input size_splits index is 1
+    if (!ops::GetConstIntData(opParas, 1, sizeSplitsVec)) {
       VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitVTiling: Get size_splits value failed.");
       return false;
     }
