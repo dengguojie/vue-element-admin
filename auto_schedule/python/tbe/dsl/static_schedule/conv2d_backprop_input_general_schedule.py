@@ -2344,6 +2344,9 @@ def general_schedule(
             sch[bias_ub].emit_insn(bias_ub.op.axis[0], 'dma_copy')
             sch[bias_ub_brc].emit_insn(bias_ub_brc.op.axis[0], 'vector_auto')
             mad_dict["init_bias"] = 1
+        if (cube_vector_split and "impl_mode" in c_col.op.attrs and 
+            c_col.op.attrs["impl_mode"] == "high_performance"):
+            mad_dict["hf32"] = 1
         sch_agent[c_col].emit_insn(scope_insn, "mad", mad_dict)
 
         if not double_out_tensor:

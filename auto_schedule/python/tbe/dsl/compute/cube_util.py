@@ -413,7 +413,7 @@ class CubeDslPattern:
         return type_c
 
     def generate_c(  # pylint: disable=R0913,R0914
-            self, tensor_a, tensor_b, tensor_bias=None, c_type=None, offset_x=0):
+            self, tensor_a, tensor_b, tensor_bias=None, c_type=None, offset_x=0, impl_mode=""):
         """
         calculate the mad result tensor
 
@@ -452,7 +452,10 @@ class CubeDslPattern:
                  tensor_b(g_index, axis_k1, co1_index, co0_index, axis_k0)).astype(type_c),
                 axis=[axis_k1, axis_k0]),
             name="C",
-            tag="mad")
+            tag="mad",
+            attrs={
+                "impl_mode": impl_mode
+            })
         if tensor_bias is not None:
             bias_ub_brc_shape = list(shape_c)
             bias_ub_brc_shape[3] = bias_ub_brc_shape[3] // BRC_STANDARD_BLOCK_SIZE

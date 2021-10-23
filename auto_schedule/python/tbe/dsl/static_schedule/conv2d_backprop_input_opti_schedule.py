@@ -2565,7 +2565,10 @@ class Conv2dDxOptiSchedule:
                 sch[bias_ub].emit_insn(bias_ub.op.axis[0], 'dma_copy')
                 sch[bias_ub_brc].emit_insn(bias_ub_brc.op.axis[0], 'vector_auto')
                 mad_dict["init_bias"] = 1
-
+            if (self.dx_para.get_para_map("cube_vector_split_flag") and
+                "impl_mode" in c_l0c.op.attrs and
+                c_l0c.op.attrs["impl_mode"] == "high_performance"):
+                mad_dict["hf32"] = 1
             sch[c_l0c].emit_insn(batch_l0c_inner, "mad", mad_dict)
             self._print_ir_conv("intrin mapping", sch)
 

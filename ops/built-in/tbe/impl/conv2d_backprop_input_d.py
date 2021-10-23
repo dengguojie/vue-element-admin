@@ -461,6 +461,7 @@ def check_supported(
     para_check.OPTION_ATTR_INT,
     para_check.OPTION_ATTR_STR,
     para_check.KERNEL_NAME,
+    para_check.OPTION_ATTR_STR
 )
 def conv2d_backprop_input_d(  # pylint: disable=W0622,C0103,R0913,R0914
     filter,
@@ -473,6 +474,7 @@ def conv2d_backprop_input_d(  # pylint: disable=W0622,C0103,R0913,R0914
     groups=1,
     data_format="NHWC",
     kernel_name="conv2d_backprop_input",
+    impl_mode=""
 ):
     """
     algorithm: conv2d_backprop_input
@@ -511,6 +513,8 @@ def conv2d_backprop_input_d(  # pylint: disable=W0622,C0103,R0913,R0914
     kernel_name: str
         kernel name. Default to "conv2d_backprop_input".
 
+    impl_mode: str
+        calculate mode
     Returns
     -------
     None
@@ -592,7 +596,8 @@ def conv2d_backprop_input_d(  # pylint: disable=W0622,C0103,R0913,R0914
         out_backprop_dtype,
         res_dtype,
         kernel_name,
-        group_dict
+        group_dict,
+        impl_mode
     )
 
 
@@ -608,6 +613,7 @@ def conv2d_backprop_input_d_compute(  # pylint: disable=C0103,W0622,R0913,R0914
     groups=1,
     data_format="NHWC",  # pylint: disable=W0613
     kernel_name="conv2d_backprop_input",
+    impl_mode=""
 ):
     """
     used for fusion
@@ -644,6 +650,9 @@ def conv2d_backprop_input_d_compute(  # pylint: disable=C0103,W0622,R0913,R0914
 
     kernel_name: str
         kernel name. Default to "conv2d_backprop_input".
+
+    impl_mode: str
+        calculate mode
 
     Returns
     -------
@@ -704,7 +713,8 @@ def conv2d_backprop_input_d_compute(  # pylint: disable=C0103,W0622,R0913,R0914
         "dilations": dilations,
         "res_dtype": res_dtype,
         "kernel_name": kernel_name,
-        "group_dict": group_dict
+        "group_dict": group_dict,
+        "impl_mode": impl_mode
     }
 
     res = tbe.conv2d_backprop_input(filter, out_backprop, shape_filters, shape_res, para_dict=para_dict)
@@ -723,7 +733,8 @@ def conv2d_backprop_input_d_compute(  # pylint: disable=C0103,W0622,R0913,R0914
     str,
     str,
     str,
-    (dict, para_check.NONE_TYPE)
+    (dict, para_check.NONE_TYPE),
+    str
 )
 def _conv2d_backprop_input_cce(  # pylint: disable=R0913,R0914
     shape_filter,
@@ -736,7 +747,8 @@ def _conv2d_backprop_input_cce(  # pylint: disable=R0913,R0914
     out_backprop_dtype="float16",
     res_dtype="float16",
     kernel_name="conv2d_backprop_input_cce",
-    group_dict=None
+    group_dict=None,
+    impl_mode=""
 ):
     """
     Topi interface of conv2d backprop input
@@ -768,6 +780,8 @@ def _conv2d_backprop_input_cce(  # pylint: disable=R0913,R0914
     kernel_name: Cce kernel name. Default to "conv2d_backprop_input_cce".
 
     group_dict: The params of group_dict.
+
+    impl_mode: calculate mode
 
     Returns: None
     ----------
@@ -843,7 +857,8 @@ def _conv2d_backprop_input_cce(  # pylint: disable=R0913,R0914
         "dilations": dilations,
         "res_dtype": res_dtype,
         "kernel_name": kernel_name,
-        "group_dict": group_dict
+        "group_dict": group_dict,
+        "impl_mode": impl_mode
     }
 
     dedx = tbe.conv2d_backprop_input(filters=filter_frac,

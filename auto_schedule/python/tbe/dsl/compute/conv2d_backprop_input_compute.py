@@ -659,6 +659,8 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
 
         group_dict : The params of group convolution.
 
+        impl_mode: calculate mode
+
     Returns
     ----------
     dx_ddr: dE/dX tensor
@@ -676,6 +678,7 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
     group_dict = para_dict.get("group_dict")
     is_fusion_flag = para_dict.get("is_fusion_flag")
     pooling_mode = para_dict.get("pooling_mode")
+    impl_mode = para_dict.get("impl_mode", "")
 
     def ceil(lhs, rhs):
         return (lhs + rhs - 1) // rhs
@@ -808,7 +811,8 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
             offset_x=offset_x,
             group_dict=group_dict,
             var_map=DeconvParam.var_map,
-            pooling_mode=pooling_mode
+            pooling_mode=pooling_mode,
+            impl_mode=impl_mode
         )
     else:
         # dynamic avg_pool_grad: dy_grad is dy_grad / mean_matrix
@@ -863,7 +867,8 @@ def conv2d_backprop_input_compute(filters, out_backprop, filter_sizes, input_siz
             group_dict=group_dict,
             var_map=DeconvParam.var_map,
             pooling_mode=pooling_mode,
-            l0a_dma_flag=l0a_dma_flag
+            l0a_dma_flag=l0a_dma_flag,
+            impl_mode=impl_mode
         )
 
     dy_col = pattc.generate_a(out_backprop)

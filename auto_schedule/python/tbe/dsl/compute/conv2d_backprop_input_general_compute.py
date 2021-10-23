@@ -69,7 +69,8 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
         group_dict,
         var_map,
         pooling_mode,
-        l0a_dma_flag
+        l0a_dma_flag,
+        impl_mode
     ):
         super().__init__()
         _, _, kernel_h, kernel_w = kernel_sizes
@@ -93,6 +94,7 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
         self.pooling_mode = pooling_mode
         self.l0a_dma_flag = l0a_dma_flag
         self.load3d_special_multiply = 1
+        self.impl_mode = impl_mode
 
     def generate_a(self, dy_ddr):  # pylint: disable=R0914,R0915
         """
@@ -539,7 +541,7 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
         else:
             bias = None
         dx_col = super().generate_c(
-            dy_col, w_col, c_type=res_c_type, tensor_bias=bias, offset_x=self._offset_x
+            dy_col, w_col, c_type=res_c_type, tensor_bias=bias, offset_x=self._offset_x, impl_mode=self.impl_mode
         )
         # mad dx shape
         dx_g, dx_batch, dx_c1, dx_hw, dx_c0 = cube_util.shape_to_list(dx_col.shape)
