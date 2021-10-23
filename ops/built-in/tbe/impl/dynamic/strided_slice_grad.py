@@ -29,7 +29,11 @@ def check_supported(shape, begin, end, strides, dy, output, begin_mask=0,
     the value of shrink_axis_mas should in {0, 1, 2, 4}
     the length of shape should not equal to 0.
     """
-    strides_value = strides.get("const_value")
+    begin_value, end_value, strides_value = begin.get("const_value"), end.get("const_value"), \
+                                            strides.get("const_value")
+    if not begin_value or not end_value or not strides_value:
+        return False, "begin and end and strides can not be const."
+
     if strides_value:
         for i in strides_value:
             if i != 1:
