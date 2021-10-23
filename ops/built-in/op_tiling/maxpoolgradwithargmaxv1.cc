@@ -112,12 +112,16 @@ namespace optiling {
 
     int32_t NumDiv(int32_t div_a, int32_t div_b)
     {
+        OP_TILING_CHECK(div_b == 0,
+                        VECTOR_INNER_ERR_REPORT_TILIING("MaxPoolGradWithArgmaxV1Tiling",
+                                                        "div_b = 0 is not supported."),
+                        return div_a);
         int32_t res = 0;
         res = (div_a + div_b - 1) / div_b;
         return res;
     }
 
-    int32_t CalUbLimit(CompileInfoParams& compile_info) {
+    int32_t CalUbLimit(const CompileInfoParams& compile_info) {
         int32_t ori_stride_h = compile_info.ori_stride_h;
         int32_t ori_stride_w = compile_info.ori_stride_w;
         int32_t stride_hw = ori_stride_h * ori_stride_w;
@@ -137,7 +141,7 @@ namespace optiling {
         return ub_limit;
     }
 
-    int32_t CalTilingMode(CompileInfoParams& compile_info, int32_t hoverlap, int32_t woverlap, int32_t ub_limit,
+    int32_t CalTilingMode(const CompileInfoParams& compile_info, int32_t hoverlap, int32_t woverlap, int32_t ub_limit,
                           std::vector<int64_t> grad_shape) {
         int32_t stride_h = compile_info.ori_stride_h;
         int32_t stride_w = compile_info.ori_stride_w;
@@ -189,7 +193,7 @@ namespace optiling {
         return 5;
     }
 
-    void CalCol2Img0(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info) {
+    void CalCol2Img0(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, const CompileInfoParams& compile_info) {
         int32_t kernel_h = compile_info.kernel_h;
         int32_t kernel_w = compile_info.kernel_w;
         int32_t stride_h = tiling_params.stride_h;
@@ -215,7 +219,7 @@ namespace optiling {
         tiling_params.col2img_w = col2img_w;
     }
 
-    void CalCol2Img1(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info,
+    void CalCol2Img1(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, const CompileInfoParams& compile_info,
                      int32_t ub_limit) {
 
         int32_t kernel_h = compile_info.kernel_h;
@@ -255,7 +259,7 @@ namespace optiling {
         tiling_params.col2img_w = col2img_w;
     }
 
-    void CalCol2Img2(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info,
+    void CalCol2Img2(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, const CompileInfoParams& compile_info,
                      int32_t ub_limit) {
         int32_t kernel_h = compile_info.kernel_h;
         int32_t kernel_w = compile_info.kernel_w;
@@ -305,7 +309,7 @@ namespace optiling {
         tiling_params.col2img_w = col2img_w;
     }
 
-    void CalCol2Img3(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info) {
+    void CalCol2Img3(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, const CompileInfoParams& compile_info) {
         int32_t kernel_h = compile_info.kernel_h;
         int32_t kernel_w = compile_info.kernel_w;
         int32_t stride_h = tiling_params.stride_h;
@@ -337,7 +341,7 @@ namespace optiling {
         tiling_params.col2img_w = col2img_w;
     }
 
-    void CalCol2Img4(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info,
+    void CalCol2Img4(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, const CompileInfoParams& compile_info,
                      int32_t ub_limit) {
 
         int32_t kernel_h = compile_info.kernel_h;
@@ -381,7 +385,7 @@ namespace optiling {
         tiling_params.col2img_w = col2img_w;
     }
 
-    void CalCol2Img5(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info,
+    void CalCol2Img5(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, const CompileInfoParams& compile_info,
                      int32_t ub_limit) {
         int32_t kernel_h = compile_info.kernel_h;
         int32_t kernel_w = compile_info.kernel_w;
@@ -460,7 +464,7 @@ namespace optiling {
         tiling_params.col2img_w = col2img_w;
     }
 
-    void CalCount(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info,
+    void CalCount(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, const CompileInfoParams& compile_info,
                   std::vector<int64_t> grad_shape, int32_t hoverlap) {
         int32_t core_num = compile_info.core_num;
         int32_t batch = grad_shape[0];
@@ -489,7 +493,7 @@ namespace optiling {
         tiling_params.ho_last = ho_last;
     }
 
-    void CalCoreInfo(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info,
+    void CalCoreInfo(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, const CompileInfoParams& compile_info,
                      int32_t block) {
         int32_t core_num = compile_info.core_num;
         int32_t tiling_mode = tiling_params.tiling_mode;

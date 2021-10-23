@@ -495,21 +495,18 @@ vector<int64_t> PaddingMode(const std::vector<int64_t>& input_shape, const std::
   }
   return pad;
 }
-int64_t OverlapMode(int64_t& stride, int64_t& ksize, int64_t& xo, int64_t& xi, int64_t& overlap) {
+int64_t OverlapMode(int64_t stride, int64_t ksize, int64_t xo, int64_t xi) {
   if (xo == 1) {
     if (xi >= stride) {
-      overlap = ksize - stride;
-    } else {
-      overlap = 0;
+      return ksize - stride;
     }
-  } else {
-    overlap = ksize - stride;
+    return 0;
   }
-  return overlap;
+  return ksize - stride;
 }
 
-void InferDimReturn(int64_t& ho, int64_t& wo, bool& model, std::vector<int64_t>& ksize, std::vector<int64_t>& strides,
-                    int64_t& ho_ys, int64_t& wo_ys, int64_t& h_ys, int64_t& w_ys, int64_t& hi, int64_t& wi) {
+void InferDimReturn(int64_t ho, int64_t wo, bool model, std::vector<int64_t>& ksize, std::vector<int64_t>& strides,
+                    int64_t ho_ys, int64_t wo_ys, int64_t h_ys, int64_t w_ys, int64_t& hi, int64_t& wi) {
   int64_t kh = ksize[1];
   int64_t sh = strides[1];
   int64_t kw = ksize[2];
@@ -534,9 +531,9 @@ void InferDimReturn(int64_t& ho, int64_t& wo, bool& model, std::vector<int64_t>&
   }
 }
 
-void GetInvalidPart(int64_t& ho, int64_t& wo, int64_t& h_ys, int64_t& w_ys, bool& true_false,
-                    std::vector<int64_t>& ksize, std::vector<int64_t>& strides, int64_t& ho_ys, int64_t& wo_ys,
-                    int64_t& invalid_h, int64_t& invalid_w) {
+void GetInvalidPart(int64_t ho, int64_t wo, int64_t h_ys, int64_t w_ys, bool true_false,
+                    std::vector<int64_t>& ksize, std::vector<int64_t>& strides,
+                    int64_t ho_ys, int64_t wo_ys, int64_t& invalid_h, int64_t& invalid_w) {
   int64_t hi = 0;
   int64_t wi = 0;
   InferDimReturn(ho, wo, true_false, ksize, strides, ho_ys, wo_ys, h_ys, w_ys, hi, wi);
@@ -599,8 +596,8 @@ bool GetUssCompileParams(const std::string& op_type, const nlohmann::json& op_co
   return true;
 }
 
-void VectorDup(int64_t& ele_num, const std::string& dtype, int64_t& dup_repeat_merchant, int64_t& dup_repeat_remainder,
-               int64_t& dup_remainder, int64_t& repeats) {
+void VectorDup(int64_t ele_num, const std::string& dtype, int64_t& dup_repeat_merchant,
+               int64_t& dup_repeat_remainder, int64_t& dup_remainder, int64_t& repeats) {
   int64_t mask = 0;
   if (dtype == "float16") {
     mask = MASK_FP16;
@@ -627,7 +624,7 @@ int64_t CheckConfig(vector<int64_t>& config) {
   return mark;
 }
 
-void VectorDup2(int64_t& ele_num, int64_t& repeat_max_time_grad_sel, int64_t& remain_repeat_time_grad_sel,
+void VectorDup2(int64_t ele_num, int64_t& repeat_max_time_grad_sel, int64_t& remain_repeat_time_grad_sel,
                 int64_t& remain_ele_grad_sel) {
   int64_t total_repeat_time = ele_num / MASK_FP32;
   remain_ele_grad_sel = ele_num % MASK_FP32;
@@ -635,7 +632,7 @@ void VectorDup2(int64_t& ele_num, int64_t& repeat_max_time_grad_sel, int64_t& re
   remain_repeat_time_grad_sel = total_repeat_time % MAX_REPEAT_TIME;
 }
 
-void VectorDup3(int64_t& ele_num, const std::string& dtype, int64_t& repeat_max_loop, int64_t& remain_max_loop,
+void VectorDup3(int64_t ele_num, const std::string& dtype, int64_t& repeat_max_loop, int64_t& remain_max_loop,
                 int64_t& remain_ele) {
   int64_t repeat_times = 0;
   if (dtype == "float16") {
@@ -805,7 +802,7 @@ void MaxPrintTilingParams(const std::string& op_type, const TilingParams& params
   OP_LOGD(op_type.c_str(), " params.dst_stride=%d", params.dst_stride);
 }
 
-void DivisionNDearest(int64_t& number, int64_t& base_num, int64_t& core_num, int64_t& n1, int64_t& new_base_num) {
+void DivisionNDearest(int64_t number, int64_t base_num, int64_t core_num, int64_t& n1, int64_t& new_base_num) {
   n1 = number;
   new_base_num = base_num;
   for (int n0 = 1; n0 < number + 1; n0 = n0 + 1) {
@@ -866,8 +863,9 @@ vector<int64_t> SplitPore(int64_t& n, int64_t& c1, int64_t& core_num, vector<int
   return list_data;
 }
 
-void InferMapReturn(int64_t& ho, int64_t& wo, vector<int64_t>& ksize, vector<int64_t>& strides, int64_t& ho_ys,
-                    int64_t& wo_ys, int64_t& h_ys, int64_t& w_ys, vector<int64_t>& pad, int64_t& hi, int64_t& wi) {
+void InferMapReturn(int64_t ho, int64_t wo, vector<int64_t>& ksize, vector<int64_t>& strides,
+                    int64_t ho_ys, int64_t wo_ys, int64_t h_ys, int64_t w_ys,
+                    vector<int64_t>& pad, int64_t& hi, int64_t& wi) {
   int64_t kh = ksize[1];
   int64_t sh = strides[1];
   int64_t kw = ksize[2];
@@ -890,9 +888,10 @@ void InferMapReturn(int64_t& ho, int64_t& wo, vector<int64_t>& ksize, vector<int
   }
 }
 
-void CheckProcessSpace(int64_t& ho, int64_t& wo, vector<int64_t>& params_ub, vector<int64_t>& ksize,
-                       vector<int64_t>& strides, int64_t& ho_ys, int64_t& wo_ys, int64_t& h_ys, int64_t& w_ys,
-                       string& padding, vector<int64_t>& pad, int64_t& ub_size, int64_t& l1_size, bool& ub_split) {
+void CheckProcessSpace(int64_t ho, int64_t wo, vector<int64_t>& params_ub, vector<int64_t>& ksize,
+                       vector<int64_t>& strides, int64_t ho_ys, int64_t wo_ys, int64_t h_ys,
+                       int64_t w_ys, const string& padding, vector<int64_t>& pad, int64_t ub_size,
+                       int64_t l1_size, bool& ub_split) {
   bool true_false = true;
   int64_t infer_hi = 0;
   int64_t infer_wi = 0;
@@ -955,8 +954,8 @@ void CheckProcessSpace(int64_t& ho, int64_t& wo, vector<int64_t>& params_ub, vec
                zero_size,  grad_sel_fp16_size, grad_sel_fp32_size, f_map_fp32_size};
 }
 
-int64_t CheckCutModel(bool& split_do, bool& split_ho, bool& split_wo, vector<int64_t>& split_model,
-                      int64_t& core_branch) {
+int64_t CheckCutModel(bool split_do, bool split_ho, bool split_wo, vector<int64_t>& split_model,
+                      int64_t core_branch) {
   int64_t model = -1;
   if (split_do && (!split_ho) && (!split_wo)) {
     model = 0;
@@ -971,9 +970,10 @@ int64_t CheckCutModel(bool& split_do, bool& split_ho, bool& split_wo, vector<int
   return model;
 }
 
-void Pattern(int64_t& core_ou_shape_h, int64_t& core_ou_shape_w, int64_t& core_branch, vector<int64_t>& ksize,
-             vector<int64_t>& strides, int64_t& ho_ys, int64_t& wo_ys, int64_t& h_ys, int64_t& w_ys, string& padding,
-             vector<int64_t>& pad, int64_t& ub_size, int64_t& l1_size, int64_t& branch, int64_t& ho, int64_t& wo,
+void Pattern(int64_t core_ou_shape_h, int64_t core_ou_shape_w, int64_t core_branch,
+             vector<int64_t>& ksize, vector<int64_t>& strides, int64_t ho_ys, int64_t wo_ys,
+             int64_t h_ys, int64_t w_ys, const string& padding, vector<int64_t>& pad,
+             int64_t ub_size, int64_t l1_size, int64_t& branch, int64_t& ho, int64_t& wo,
              vector<int64_t>& params_ub, bool& support) {
   int64_t all_wo = core_ou_shape_w;
   int64_t all_ho = core_ou_shape_h;
@@ -1114,8 +1114,8 @@ bool MaxPoolGradTiling(const std::string& op_type, const TeOpParas& op_paras,
   std::vector<int64_t> strides = {1, sh, sw, 1};
   bool bool_data = true;
 
-  params.overlap_h = OverlapMode(sh, kh, params.ho, params.h, params.overlap_h);
-  params.overlap_w = OverlapMode(sw, kw, params.wo, params.w, params.overlap_w);
+  params.overlap_h = OverlapMode(sh, kh, params.ho, params.h);
+  params.overlap_w = OverlapMode(sw, kw, params.wo, params.w);
   bool true_false = false;
 
   GetInvalidPart(params.ho, params.wo, params.h, params.w, true_false, ksize, strides, params.ho, params.wo,

@@ -110,12 +110,15 @@ namespace optiling {
 
     int32_t Ceildiv(int32_t div_a, int32_t div_b)
     {
+        OP_TILING_CHECK(div_b == 0,
+                        VECTOR_INNER_ERR_REPORT_TILIING("MaxPoolWithArgmaxV1Tiling", "div_b = 0 is not supported."),
+                        return div_a);
         int32_t res = 0;
         res = (div_a + div_b - 1) / div_b;
         return res;
     }
 
-    int32_t CalOutPutH(CompileInfoParams& compile_info, std::vector<int64_t> input_shape) {
+    int32_t CalOutPutH(const CompileInfoParams& compile_info, std::vector<int64_t> input_shape) {
         int32_t output_h;
         int32_t input_h = input_shape[2];
         int32_t kernel_h = compile_info.kernel_h;
@@ -139,7 +142,7 @@ namespace optiling {
         return output_h;
     }
 
-    int32_t CalOutPutW(CompileInfoParams& compile_info, std::vector<int64_t> input_shape) {
+    int32_t CalOutPutW(const CompileInfoParams& compile_info, std::vector<int64_t> input_shape) {
         int32_t output_w;
         int32_t input_w = input_shape[3];
         int32_t kernel_w = compile_info.kernel_w;
@@ -163,7 +166,7 @@ namespace optiling {
         return output_w;
     }
 
-    void CalPad(CompileInfoParams& compile_info, Pad& pads) {
+    void CalPad(const CompileInfoParams& compile_info, Pad& pads) {
         int32_t ceil_mode = compile_info.ceil_mode;
         int32_t pad_h = compile_info.pad_h;
         int32_t pad_w = compile_info.pad_w;
@@ -183,8 +186,8 @@ namespace optiling {
         }
     }
 
-    void CheckNeedCut(MaxPoolWithArgmaxV1TilingParams& tiling_params, int32_t& need_cut,
-                      int32_t& need_cut_h, int32_t& need_cut_h_w, CompileInfoParams& compile_info) {
+    void CheckNeedCut(const MaxPoolWithArgmaxV1TilingParams& tiling_params, int32_t& need_cut,
+                      int32_t& need_cut_h, int32_t& need_cut_h_w, const CompileInfoParams& compile_info) {
         int32_t input_wh = tiling_params.input_wh;
         int32_t output_w = tiling_params.output_w;
         int32_t output_wh = tiling_params.output_wh;
@@ -210,8 +213,8 @@ namespace optiling {
         }
     }
 
-    void CalCutSize(MaxPoolWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info, Pad& pads,
-                    int32_t need_cut) {
+    void CalCutSize(MaxPoolWithArgmaxV1TilingParams& tiling_params, const CompileInfoParams& compile_info,
+                    const Pad& pads, int32_t need_cut) {
         int32_t kernel_h = compile_info.kernel_h;
         int32_t kernel_w = compile_info.kernel_w;
         int32_t stride_h = compile_info.stride_h;
@@ -290,7 +293,8 @@ namespace optiling {
         tiling_params.cut_h_num = cut_h_num;
     }
 
-    void CalCutSizeW(MaxPoolWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info, Pad& pads) {
+    void CalCutSizeW(MaxPoolWithArgmaxV1TilingParams& tiling_params, const CompileInfoParams& compile_info,
+                     const Pad& pads) {
         int32_t kernel_h = compile_info.kernel_h;
         int32_t kernel_w = compile_info.kernel_w;
         int32_t stride_w = compile_info.stride_w;
@@ -329,7 +333,8 @@ namespace optiling {
         tiling_params.cut_w_num = cut_w_num;
     }
 
-    void CalFlag(MaxPoolWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info, int32_t& nc1_cuth) {
+    void CalFlag(MaxPoolWithArgmaxV1TilingParams& tiling_params,
+                 const CompileInfoParams& compile_info, int32_t& nc1_cuth) {
         int32_t flag_cut_h = 0;
         int32_t cut_h_size = tiling_params.cut_h_size;
         int32_t output_w = tiling_params.output_w;
@@ -382,7 +387,7 @@ namespace optiling {
         tiling_params.tiling_mode = tiling_mode;
     }
 
-    void CalCoreInfo(MaxPoolWithArgmaxV1TilingParams& tiling_params, CompileInfoParams& compile_info,
+    void CalCoreInfo(MaxPoolWithArgmaxV1TilingParams& tiling_params, const CompileInfoParams& compile_info,
                      int32_t nc1_cuth) {
         int32_t need_core_num = 0;
         int32_t nc1_per_core = 0;
