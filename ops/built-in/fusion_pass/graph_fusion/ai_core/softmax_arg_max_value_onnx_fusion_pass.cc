@@ -150,21 +150,18 @@ Status SoftmaxArgMaxValueONNXFusionPass::GetFusedNodes(const ge::ComputeGraph& g
   OP_LOGD(FUSED_OP_TYPE.c_str(), "GetFusedNodes begin");
 
   softmaxNode = GetNodeFromMapping(PATTERN_SOFTMAX_V2, mapping);
-  FUSION_PASS_CHECK(softmaxNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to get SoftmaxV2 node."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(softmaxNode == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "Failed to get SoftmaxV2 node."),
+                    return NOT_CHANGED);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "SoftmaxV2 nodeName: %s", softmaxNode->GetName().c_str());
 
   reduceMaxNode = GetNodeFromMapping(PATTERN_REDUCE_MAX_D, mapping);
-  FUSION_PASS_CHECK(reduceMaxNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to get ArgMaxD node."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(reduceMaxNode == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "Failed to get ArgMaxD node."),
+                    return NOT_CHANGED);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "ReduceMaxD nodeName: %s", reduceMaxNode->GetName().c_str());
 
   ge::NodePtr inputNode = GetNodeFromMapping(PATTERN_INPUT, mapping);
-  FUSION_PASS_CHECK(inputNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to get Input0 node."),
-                    return PARAM_INVALID);
+  FUSION_PASS_CHECK(inputNode == nullptr, OP_LOGW(FUSED_OP_TYPE.c_str(), "Failed to get Input0 node."),
+                    return NOT_CHANGED);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "Input0 nodeName: %s", inputNode->GetName().c_str());
 
   string opType = PATTERN_ARG_MAX_D;
@@ -174,8 +171,8 @@ Status SoftmaxArgMaxValueONNXFusionPass::GetFusedNodes(const ge::ComputeGraph& g
   } else {
     getArgMaxRet = GetArgMaxNode(softmaxNode, argMaxNode, opType);  // Secondly, try to get ArgMaxD after SoftmaxV2.
     FUSION_PASS_CHECK(getArgMaxRet != SUCCESS || argMaxNode == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Failed to get ReduceMaxD node."),
-                      return PARAM_INVALID);
+                      OP_LOGW(FUSED_OP_TYPE.c_str(), "Failed to get ReduceMaxD node."),
+                      return NOT_CHANGED);
     OP_LOGD(FUSED_OP_TYPE.c_str(), "Got ArgMaxD node after SoftMaxV2 node.");
   }
   OP_LOGD(FUSED_OP_TYPE.c_str(), "ArgMaxD nodeName: %s", argMaxNode->GetName().c_str());
@@ -288,7 +285,7 @@ Status SoftmaxArgMaxValueONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping
   ge::NodePtr argMaxNode;
   ge::NodePtr reduceMaxNode;
   Status getNodesRet = GetFusedNodes(graph, mapping, softmaxNode, argMaxNode, reduceMaxNode);
-  FUSION_PASS_CHECK(SUCCESS != getNodesRet, OP_LOGD(FUSED_OP_TYPE.c_str(), "Failed to get fused node."),
+  FUSION_PASS_CHECK(SUCCESS != getNodesRet, OP_LOGI(FUSED_OP_TYPE.c_str(), "Failed to get fused node."),
                     return getNodesRet);
 
   Status addNodeRet = AddArgMaxWithValueNode(graph, softmaxNode, argMaxNode, reduceMaxNode, newNodes);
