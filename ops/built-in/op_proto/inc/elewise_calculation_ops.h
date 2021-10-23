@@ -132,7 +132,7 @@ REG_OP(MinimumGrad)
 *dst_type: An required attribute of type int32, specifying the dst data type. \n
 
 *@par Outputs:
-*y:A Tensor. Has the same type as x.
+*y:A Tensor with same shape as x, and data type is specified by dst_type.
 */
 REG_OP(Cast)
     .INPUT(x, TensorType({DT_BOOL, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT32, DT_UINT8,

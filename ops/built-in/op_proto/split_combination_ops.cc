@@ -89,8 +89,12 @@ IMPLEMT_COMMON_INFERFUNC(SplitInferShape) {
       }
     } else {
       for(size_t i = 0; i < x_shape_range.size(); ++i) {
-        x_shape.SetDim(i, -1);
         out_range.push_back(std::pair<int64_t, int64_t>(1, x_shape_range[i].second));
+      }
+    }
+    if (num_split > 1) {
+      for(size_t i = 0; i < x_shape.GetDimNum(); ++i) {
+        x_shape.SetDim(i, -1);
       }
     }
     td.SetShape(x_shape);
