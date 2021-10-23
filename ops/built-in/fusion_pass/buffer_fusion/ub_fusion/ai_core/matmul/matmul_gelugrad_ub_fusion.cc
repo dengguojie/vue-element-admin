@@ -153,6 +153,7 @@ Status MatmulGelugradUbFusion::GetFusionNodes(const BufferFusionMapping& mapping
 
   // buffer fusion do not support dynamic shape now
   vector<ge::NodePtr> matmulNodes = GetMatchedNodesByDescName(PATTERN_MATMUL, mapping);
+  vector<ge::NodePtr> elemwiseNodes = GetMatchedNodesByDescName(PATTERN_ELTWISE, mapping);
   for (const auto& matmulNode : matmulNodes){
     auto input0desc = GetCurrNodeInputDesc(matmulNode, 0);
     auto input1desc = GetCurrNodeInputDesc(matmulNode, 1);
@@ -188,7 +189,9 @@ Status MatmulGelugradUbFusion::GetFusionNodes(const BufferFusionMapping& mapping
       }
     }
   }
-  SetSplitInfo(mapping, fusionNodes);
+  if (elemwiseNodes[0]->GetType() != "ReluGrad") {
+    SetSplitInfo(mapping, fusionNodes);
+  }
   OP_LOGD(FUSED_OP_TYPE.c_str(), "End to do MatmulGelugradUbFusion!");
   return SUCCESS;
 }
