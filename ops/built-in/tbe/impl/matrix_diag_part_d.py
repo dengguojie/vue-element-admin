@@ -26,7 +26,7 @@ from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
-# define a scaler, value = -2
+# `define a scaler, value = -2`
 SCALER_NEGATIVE_TWO = -2
 
 

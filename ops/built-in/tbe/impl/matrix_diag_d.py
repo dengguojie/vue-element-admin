@@ -26,7 +26,7 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-# define a scalar, value = 2
+# `define a scalar, value = 2`
 SCALAR_TWO = 2
 
 

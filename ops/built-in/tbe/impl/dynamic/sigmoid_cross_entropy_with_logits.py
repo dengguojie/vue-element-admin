@@ -25,11 +25,6 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import OpImplMode
 
-# define a scalar, value = 1
-SCALAR_ONE = 1
-# define a scalar, value = 0
-SCALAR_ZREO = 0
-
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
 # pylint: disable=invalid-name
@@ -91,7 +86,7 @@ def sigmoid_cross_entropy_with_logits_compute(predict, target, loss, kernel_name
     dtype_predict = predict.dtype
     shape_predict = shape_util.shape_to_list(predict.shape)
 
-    const_zero = tvm.const(SCALAR_ZREO, dtype=dtype_predict)
+    const_zero = tvm.const(0, dtype=dtype_predict)
     max_predict_zero = tbe.vmaxs(predict, const_zero)
 
     abs_predict = tbe.vabs(predict)
@@ -108,7 +103,7 @@ def sigmoid_cross_entropy_with_logits_compute(predict, target, loss, kernel_name
             not tbe_platform.api_check_support("te.lang.cce.vexp", "float32"):
         vexp_predict = tbe.cast_to(vexp_predict, "float32")
 
-    const_one = tvm.const(SCALAR_ONE, dtype=dtype_predict)
+    const_one = tvm.const(1, dtype=dtype_predict)
     vadds_res = tbe.vadds(vexp_predict, const_one)
 
     if dtype_predict == "float32" and \

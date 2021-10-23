@@ -689,7 +689,7 @@ class ResizeNearestNeighborV2Grad:
 
     def _function_hw_to_nhnw_resize(self):
         """
-        _function_hw_to_nhnw_resize, when tiling key = 111000, run this
+        _function_hw_to_nhnw_resize, when `tiling key = 111000, run this`
         """
         # h boardcast base input_h cut
         size_h_n = self.tiling_out_height // self.tiling_in_height
@@ -827,8 +827,8 @@ class ResizeNearestNeighborV2Grad:
 
         # tiling_key format: 000000
         # 1. Reserved, default 1
-        # 2. h align flag, 0: h -> x.x*h, 1: h -> nh, 2: nh -> h, 3: h = h
-        # 3. w align flag, 0: w -> x.x*w, 1: w -> nw, 2: nw -> w, 3: w = w
+        # 2. h align flag, 0: `h -> x.x*h, 1: h -> nh, 2: nh -> h, 3: h = h`
+        # 3. w align flag, 0: `w -> x.x*w, 1: w -> nw, 2: nw -> w, 3: w = w`
         # 4. src stride flag, 0: can not copy with stride 1: can copy with stride
         # 5. des stride flag, 0: can not copy with stride 1: can copy with stride
         # 6. Reserved, default 0

@@ -98,7 +98,7 @@ class IrParams:
         else:
             self.mid_dtype = self.input_dtype
 
-        # get dtype size, float16 size = 2 byte   / float32 size = 4 byte
+        # get dtype size, `float16 size = 2 byte   / float32 size = 4 byte`
         self.input_dtype_size = \
             tbe_platform.cce_intrin.get_bit_len(self.input_dtype) // \
             cce_params.VECTOR_INST_BLOCK_NUM
@@ -816,7 +816,7 @@ def _histogram_fixed_width_ir(dst, src, nbins, shape_list):
     kernel_api.kernel_vector_dup_fuc(
         params.ir_builder, [params.range0_ub, params.mid_vec_align_len],
         2**(-126), [params.mid_vec_align_len, params.mid_vec_align_len])
-    # init tensor: output tensor, len=nbins
+    # init tensor: output tensor, `len=nbins`
     kernel_api.kernel_vector_dup_fuc(
         params.ir_builder, [params.des_output_ub, 0], Constant.SCALAR_ZERO,
         [params.out_num_per_core, params.output_vec_align_len])
@@ -869,7 +869,7 @@ def _histogram_fixed_width_ir(dst, src, nbins, shape_list):
                                             Constant.SEGMENT_SIZE_COPY_GM_TO_UB)
 
     def _run_fuc(data_len, data_offset, copy_ub):
-        # copy data(len=data_len,offset=data_offset) from out to ub
+        # copy `data(len=data_len,offset=data_offset)` from out to ub
         kernel_api.kernel_cp_fuc(params.ir_builder,
                                  [[copy_ub, 0], [data, data_offset]],
                                  [data_len, params.input_align_len],

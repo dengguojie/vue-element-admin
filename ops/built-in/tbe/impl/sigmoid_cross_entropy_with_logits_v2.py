@@ -151,8 +151,8 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict,
             pos_weight = te.lang.cce.cast_to(pos_weight, "float32")
 
     shape_predict = te.lang.cce.util.shape_to_list(predict.shape)
-    const_zero = tvm.const(SCALAR_ZREO, dtype=predict.dtype)
-    const_one = tvm.const(SCALAR_ONE, dtype=predict.dtype)
+    const_zero = tvm.const(0, dtype=predict.dtype)
+    const_one = tvm.const(1, dtype=predict.dtype)
     const_zero_broadcast = te.lang.cce.broadcast(const_zero, shape_predict)
     const_one_broadcast = te.lang.cce.broadcast(const_one, shape_predict)
 
@@ -160,8 +160,8 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict,
     reversed_predict = te.lang.cce.vsub(const_zero_broadcast, predict)
     max_predict_zero = te.lang.cce.vmaxs(reversed_predict, const_zero)
 
-    # info: max_val=max(-predict,0)
-    # info: ln(1+exp(-x))=max_val+np.log(np.exp(-max_val)+np.exp(-predict-max_val)))
+    # `info: max_val=max(-predict,0)`
+    # `info: ln(1+exp(-x))=max_val+np.log(np.exp(-max_val)+np.exp(-predict-max_val)))`
     reversed_max_predict_zero = te.lang.cce.vsub(const_zero_broadcast, max_predict_zero)
     exp_reversed_max_predict_zero = te.lang.cce.vexp(reversed_max_predict_zero)
     sub_reversed_max_predict_zero = te.lang.cce.vsub(reversed_max_predict_zero, predict)
@@ -176,8 +176,8 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict,
     mul_predict_target = te.lang.cce.vmul(sub_target, predict)
 
     if pos_weight is not None:
-        # info: log_weight=(pos_weight - 1)*target+1
-        # info: loss=(1-target)*predict+(log_weight*(max_val+np.log(np.exp(-max_val)+np.exp(-predict-max_val))))
+        # `info: log_weight=(pos_weight - 1)*target+1`
+        # `info: loss=(1-target)*predict+(log_weight*(max_val+np.log(np.exp(-max_val)+np.exp(-predict-max_val))))`
         pos_weight = te.lang.cce.broadcast(pos_weight, shape_predict)
         sub_pos_weight = te.lang.cce.vsub(pos_weight, const_one_broadcast)
         mul_pos_weight = te.lang.cce.vmul(sub_pos_weight, target)
@@ -185,7 +185,7 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict,
         mul_pos_weight_predict = te.lang.cce.vmul(add_pos_weight, add_max_predict)
         loss = te.lang.cce.vadd(mul_predict_target, mul_pos_weight_predict)
     else:
-        # info: loss=(1-target)*predict+max_val+np.log(np.exp(-max_val)+np.exp(-predict-max_val))
+        # `info: loss=(1-target)*predict+max_val+np.log(np.exp(-max_val)+np.exp(-predict-max_val))`
         loss = te.lang.cce.vadd(mul_predict_target, add_max_predict)
 
     if weight is not None:

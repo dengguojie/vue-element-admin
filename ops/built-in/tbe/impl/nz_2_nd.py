@@ -149,9 +149,9 @@ class Nz2NDCompute:
             ub_maximum = self.maximum_size_ub
 
         # the case of shape like [A,...B, D, C, 16, 16]
-        # D*16*16 > ub_maximum  pattern = 1
-        # D*16*16 <= ub_maximum and A*B >= 32 pattern = 0
-        # else pattern = 1
+        # `D*16*16 > ub_maximum  pattern = 1`
+        # `D*16*16 <= ub_maximum and A*B >= 32 pattern = 0`
+        # `else pattern = 1`
         patch_ele_ub_maximum = patch_ele / shape[-3] / 16 * 17
         if (all_ele // patch_ele) >= 32 and patch_ele_ub_maximum <= ub_maximum:
             tiling_shape = [shape[-4], shape[-3], shape[-2], shape[-1]]
@@ -1109,9 +1109,9 @@ class Nz2NDCompute:
         """
         no padding
         [32,16,16,16,16,16]
-        deal [16,16,16,16] == [D,C,16,16]
+        deal `[16,16,16,16] == [D,C,16,16]`
         [32,16,256,256]
-        total_num = 32*16
+        `total_num = 32*16`
         """
         # D-axis optimization
         # base shape: [D,1,16,16]
@@ -1677,10 +1677,10 @@ class Nz2NDCompute:
     def nz2nd_normal_case0_int32(self, tik_instance, params):
         """
         no padding
-        [32,16,16,16,16,16]
-        deal [16,16,16,16] == [D,C,16,16]
-        [32,16,256,256]
-        total_num = 32*16
+        `[32,16,16,16,16,16]`
+        `deal [16,16,16,16] == [D,C,16,16]`
+        `[32,16,256,256]`
+        `total_num = 32*16`
         """
         # D-axis optimization
         # base shape: [D,1,16,16]
@@ -1989,10 +1989,10 @@ class Nz2NDCompute:
     def nz2nd_normal_case0_int32_mini(self, tik_instance, params):
         """
         no padding
-        [32,16,16,16,16,16]
-        deal [16,16,16,16] == [D,C,16,16]
-        [32,16,256,256]
-        total_num = 32*16
+        `[32,16,16,16,16,16]`
+        deal `[16,16,16,16] == [D,C,16,16]`
+        `[32,16,256,256]`
+        `total_num = 32*16`
         """
         # D-axis optimization
         # base shape: [D,1,16,16]
@@ -3615,9 +3615,9 @@ class Nz2NDCompute:
     def nz2nd_special_case0(self, tik_instance, params):
         """
         padding
-        [5,1,1,16,16]
-        total_num = 5
-        output = 5, 14, 14
+        `[5,1,1,16,16]`
+        `total_num = 5`
+        `output = 5, 14, 14`
         """
         core_num = params.get("core_num")
         total_core_loop_num = params.get("total_core_loop_num")
@@ -3880,9 +3880,9 @@ class Nz2NDCompute:
     def nz2nd_special_case0_int32(self, tik_instance, params):
         """
         padding
-        [5,1,1,16,16]
-        total_num = 5
-        output = 5, 14, 14
+        `[5,1,1,16,16]`
+        `total_num = 5`
+        `output = 5, 14, 14`
         """
         core_num = params.get("core_num")
         total_core_loop_num = params.get("total_core_loop_num")
@@ -4106,9 +4106,9 @@ class Nz2NDCompute:
     def nz2nd_special_case0_int32_mini(self, tik_instance, params):
         """
         padding
-        [5,1,1,16,16]
-        total_num = 5
-        output = 5, 14, 14
+        `[5,1,1,16,16]`
+        `total_num = 5`
+        `output = 5, 14, 14`
         """
         core_num = params.get("core_num")
         total_core_loop_num = params.get("total_core_loop_num")
@@ -4372,9 +4372,9 @@ class Nz2NDCompute:
     def nz2nd_special_case2(self, tik_instance, params):
         """
         padding
-        [5,32,10,16,16]
-        total_num = 50
-        output = 5,158,510
+        `[5,32,10,16,16]`
+        `total_num = 50`
+        `output = 5,158,510`
         """
         core_num = params.get("core_num")
         total_core_loop_num = params.get("total_core_loop_num")
@@ -5114,8 +5114,8 @@ class Nz2NDCompute:
         """
         padding
         [5,32,10,16,16]
-        total_num = 50
-        output = 5,158,510
+        `total_num = 50`
+        `output = 5,158,510`
         support int32
         int32->fp32->sorted->int32
         """
@@ -5628,7 +5628,7 @@ class Nz2NDCompute:
         """
         padding
         [5,32,10,16,16]
-        total_num = 50
+        total_num = 50`
         output = 5,158,510
         support int32
         int32->fp32->sorted->int32
@@ -6049,11 +6049,11 @@ class Nz2NDCompute:
     def nz2nd_special_case2_int32_pattern_zero(self, tik_instance, params):
         """
         padding
-        [A,B,62500,1,16,16]
-        A,B = 1,1
-        total_num = 50
-        output = [1,100W]
-        [1250,1,16,16]
+        `[A,B,62500,1,16,16]`
+        `A,B = 1,1`
+        `total_num = 50`
+        `output = [1,100W]`
+        `[1250,1,16,16]`
         support int32
         int32->fp32->sorted->int32
         """
@@ -6687,10 +6687,10 @@ class Nz2NDCompute:
         """
         padding
         [A,B,62500,1,16,16]
-        A,B = 1,1
-        total_num = 50
-        output = [1,100W]
-        [1250,1,16,16]
+        `A,B = 1,1`
+        `total_num = 50`
+        `output = [1,100W]`
+        `[1250,1,16,16]`
         support int32
         int32->vadd->int32
         """

@@ -26,26 +26,20 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import error_manager_vector
 
-# define a scalar, value = -1
-SCALAR_NEG_ONE = -1.0
-# define a scalar, value = 1
-SCALAR_ONE = 1.0
-# define taylor negative threshold , value = -1.7
-TAYLOR_NEGATIVE_THRESHOLD = -1.7
-# define taylor positive threshold , value = 0.7
-TAYLOR_POSITIVE_THRESHOLD = 0.7
-# define second order parameter , value = 1 / 2.0
-TAYLOR_SECOND_ORDER_PARAM = 1 / 2.0
-# define third order parameter , value = 1 / 6.0
-TAYLOR_THIRD_ORDER_PARAM = 1 / 6.0
-# define fourth order parameter , value = 1 / 24.0
-TAYLOR_FOURTH_ORDER_PARAM = 1 / 24.0
-# define fifth order parameter , value = 1 / 120.0
-TAYLOR_FIFTH_ORDER_PARAM = 1 / 120.0
-# define sixth order parameter , value = 1 / 720.0
-TAYLOR_SIXTH_ORDER_PARAM = 1 / 720.0
-# define seventh order parameter , value = 1 / 5040.0
-TAYLOR_SEVENTH_ORDER_PARAM = 1 / 5040.0
+class Constant:
+    """
+    The class for constant.
+    """
+    SCALAR_NEG_ONE = -1.0
+    SCALAR_ONE = 1.0
+    TAYLOR_NEGATIVE_THRESHOLD = -1.7
+    TAYLOR_POSITIVE_THRESHOLD = 0.7
+    TAYLOR_SECOND_ORDER_PARAM = 1 / 2.0
+    TAYLOR_THIRD_ORDER_PARAM = 1 / 6.0
+    TAYLOR_FOURTH_ORDER_PARAM = 1 / 24.0
+    TAYLOR_FIFTH_ORDER_PARAM = 1 / 120.0
+    TAYLOR_SIXTH_ORDER_PARAM = 1 / 720.0
+    TAYLOR_SEVENTH_ORDER_PARAM = 1 / 5040.0
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
@@ -59,10 +53,10 @@ def xlogy_compute(input_x, input_y, output_z, kernel_name="xlogy"):
     in mini scene :
     z(n+1) = z(n) - (e^(z(n)*x(n)^-1) - y(n))/x(n)^-1*e^(z(n)*x(n)^-1)
     f(z) = e^(z(n)*x(n)^-1)
-    z(n)*x(n)^-1 <= TAYLOR_NEGATIVE_THRESHOLD or z(n)*x(n)^-1 >=
-    TAYLOR_POSITIVE_THRESHOLD
+    z(n)*x(n)^-1 <= Constant.TAYLOR_NEGATIVE_THRESHOLD or z(n)*x(n)^-1 >=
+    Constant.TAYLOR_POSITIVE_THRESHOLD
     f(z) = seventh taylor computer
-    TAYLOR_NEGATIVE_THRESHOLD < z(n)*x(n)^-1 < TAYLOR_POSITIVE_THRESHOLD
+    Constant.TAYLOR_NEGATIVE_THRESHOLD < z(n)*x(n)^-1 < Constant.TAYLOR_POSITIVE_THRESHOLD
 
     Parameters
     ----------
@@ -123,10 +117,10 @@ def _xlogy_mini_compute(res_mini, input_x, input_y, shape, dtype_change):
     """
     do element-wise x*log(y) compute in mini scene
     f(z) = e^(z(n)*x(n)^-1)
-    z(n)*x(n)^-1 <= TAYLOR_NEGATIVE_THRESHOLD or z(n)*x(n)^-1 >=
-    TAYLOR_POSITIVE_THRESHOLD
+    z(n)*x(n)^-1 <= Constant.TAYLOR_NEGATIVE_THRESHOLD or z(n)*x(n)^-1 >=
+    Constant.TAYLOR_POSITIVE_THRESHOLD
     f(z) = seventh taylor computer
-    TAYLOR_NEGATIVE_THRESHOLD < z(n)*x(n)^-1 < TAYLOR_POSITIVE_THRESHOLD
+    Constant.TAYLOR_NEGATIVE_THRESHOLD < z(n)*x(n)^-1 < Constant.TAYLOR_POSITIVE_THRESHOLD
 
     Parameters:
     ----------
@@ -146,10 +140,10 @@ def _xlogy_mini_compute(res_mini, input_x, input_y, shape, dtype_change):
     newton_taylor_res = _newton_taylor_xlogy(input_x, input_y, input_z)
     newton_exp_res = _newton_exp_xlogy(input_x, input_y, input_z, dtype_change)
 
-    input_left_border = tvm.const(TAYLOR_NEGATIVE_THRESHOLD, "float32")
+    input_left_border = tvm.const(Constant.TAYLOR_NEGATIVE_THRESHOLD, "float32")
     tensor_input_left_border = tbe.broadcast(input_left_border, shape)
 
-    input_right_border = tvm.const(TAYLOR_POSITIVE_THRESHOLD, "float32")
+    input_right_border = tvm.const(Constant.TAYLOR_POSITIVE_THRESHOLD, "float32")
     tensor_input_right_border = tbe.broadcast(input_right_border, shape)
 
     if not tbe_platform.api_check_support("tbe.dsl.vcmp", "float32"):
@@ -182,38 +176,38 @@ def _exp_taylor_compute(input_x):
     -------
     """
     # calculate second order tayloy section : x^2 / 2!
-    taylor_second_order_param = tvm.const(TAYLOR_SECOND_ORDER_PARAM, "float32")
+    taylor_second_order_param = tvm.const(Constant.TAYLOR_SECOND_ORDER_PARAM, "float32")
     data_power_2 = tbe.vmul(input_x, input_x)
     data_power_2_div_2 = tbe.vmuls(data_power_2, taylor_second_order_param)
 
     # calculate third order tayloy section : x^3 / 3!
-    taylor_third_order_param = tvm.const(TAYLOR_THIRD_ORDER_PARAM, "float32")
+    taylor_third_order_param = tvm.const(Constant.TAYLOR_THIRD_ORDER_PARAM, "float32")
     data_power_3 = tbe.vmul(data_power_2, input_x)
     data_power_3_div_6 = tbe.vmuls(data_power_3, taylor_third_order_param)
 
     # calculate fourth order tayloy section : x^4 / 4!
-    taylor_fourth_order_param = tvm.const(TAYLOR_FOURTH_ORDER_PARAM, "float32")
+    taylor_fourth_order_param = tvm.const(Constant.TAYLOR_FOURTH_ORDER_PARAM, "float32")
     data_power_4 = tbe.vmul(data_power_3, input_x)
     data_power_4_div_24 = tbe.vmuls(data_power_4, taylor_fourth_order_param)
 
     # calculate fifth order tayloy section : x^5 / 5!
-    taylor_fifth_order_param = tvm.const(TAYLOR_FIFTH_ORDER_PARAM, "float32")
+    taylor_fifth_order_param = tvm.const(Constant.TAYLOR_FIFTH_ORDER_PARAM, "float32")
     data_power_5 = tbe.vmul(data_power_4, input_x)
     data_power_5_div_120 = tbe.vmuls(data_power_5, taylor_fifth_order_param)
 
     # xcalculate sixth order tayloy section : ^6 / 6!
-    taylor_sixth_order_param = tvm.const(TAYLOR_SIXTH_ORDER_PARAM, "float32")
+    taylor_sixth_order_param = tvm.const(Constant.TAYLOR_SIXTH_ORDER_PARAM, "float32")
     data_power_6 = tbe.vmul(data_power_5, input_x)
     data_power_6_div_720 = tbe.vmuls(data_power_6, taylor_sixth_order_param)
 
     # calculate seventh order tayloy section : x^7 / 7!
-    taylor_seventh_order_param = tvm.const(TAYLOR_SEVENTH_ORDER_PARAM,
+    taylor_seventh_order_param = tvm.const(Constant.TAYLOR_SEVENTH_ORDER_PARAM,
                                            "float32")
     data_power_7 = tbe.vmul(data_power_6, input_x)
     data_power_7_div_5040 = tbe.vmuls(data_power_7, taylor_seventh_order_param)
 
     # calculate first order tayloy plus one section : 1 + x
-    res_first_taylor = tbe.vadds(input_x, tvm.const(SCALAR_ONE, "float32"))
+    res_first_taylor = tbe.vadds(input_x, tvm.const(Constant.SCALAR_ONE, "float32"))
     res_second_taylor = tbe.vadd(res_first_taylor, data_power_2_div_2)
     res_third_taylor = tbe.vadd(res_second_taylor, data_power_3_div_6)
     res_fourth_taylor = tbe.vadd(res_third_taylor, data_power_4_div_24)
@@ -238,12 +232,12 @@ def _newton_exp_iter(input_x, input_y, input_z, dtype_change):
     Returns : A Tensor. Has the same type as input_z.
     -------
     """
-    # Newton begin:z(n+1) = z(n) - x(n) + x(n)*y(n)*e^(-z(n)*x(n)^-1)
-    input_x_mul = tbe.vmuls(input_x, tvm.const(SCALAR_NEG_ONE, "float32"))
+    # Newton begin: `z(n+1) = z(n) - x(n) + x(n)*y(n)*e^(-z(n)*x(n)^-1)`
+    input_x_mul = tbe.vmuls(input_x, tvm.const(Constant.SCALAR_NEG_ONE, "float32"))
     newton_exp = tbe.vadd(input_x_mul, input_z)
     input_xy = tbe.vmul(input_x, input_y)
     input_x_rec = tbe.vrec(input_x)
-    input_x_res = tbe.vmuls(input_x_rec, tvm.const(SCALAR_NEG_ONE, "float32"))
+    input_x_res = tbe.vmuls(input_x_rec, tvm.const(Constant.SCALAR_NEG_ONE, "float32"))
     input_z_mul = tbe.vmul(input_x_res, input_z)
     if not tbe_platform.api_check_support("tbe.dsl.vexp", "float32") and dtype_change == "float32":
         input_z_mul_16 = tbe.cast_to(input_z_mul, "float16")
@@ -272,12 +266,12 @@ def _newton_taylor_iter(input_x, input_y, input_z):
     Returns : A Tensor. Has the same type as input_z.
     -------
     """
-    # Newton begin:z(n+1) = z(n) - x(n) + x(n)*y(n)*e^(-z(n)*x(n)^-1)
-    input_x_mul = tbe.vmuls(input_x, tvm.const(SCALAR_NEG_ONE, "float32"))
+    # Newton begin: `z(n+1) = z(n) - x(n) + x(n)*y(n)*e^(-z(n)*x(n)^-1)`
+    input_x_mul = tbe.vmuls(input_x, tvm.const(Constant.SCALAR_NEG_ONE, "float32"))
     newton_taylor = tbe.vadd(input_x_mul, input_z)
     input_xy = tbe.vmul(input_x, input_y)
     input_x_rec = tbe.vrec(input_x)
-    input_x_res = tbe.vmuls(input_x_rec, tvm.const(SCALAR_NEG_ONE, "float32"))
+    input_x_res = tbe.vmuls(input_x_rec, tvm.const(Constant.SCALAR_NEG_ONE, "float32"))
     input_z_mul = tbe.vmul(input_x_res, input_z)
     input_z_taylor = _exp_taylor_compute(input_z_mul)
     input_z_res = tbe.vmul(input_z_taylor, input_xy)

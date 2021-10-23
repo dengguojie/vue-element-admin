@@ -199,7 +199,7 @@ def _do_cast(params, input_tensor, gm_cast, shape, dtype_src, dtype_dst):
                         "r", offset=(num_cycle - 1) * ub_block_ele), 0, 1,
                     _ceil_div(shape_mod, cp_align_len_src), 0, 0))
             vconv_cycle_index = shape_mod // vconv_ele
-            # 255*128=32640
+            # `255*128=32640`
             vconv_cycle_mod = shape_mod % vconv_ele
             if vconv_cycle_mod > 0:
                 vconv_cycle = vconv_cycle_index + 1

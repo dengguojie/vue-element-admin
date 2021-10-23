@@ -76,17 +76,17 @@ def gelu_compute(input_x, output_y, kernel_name="gelu",
             has_improve_precision = True
             input_x = tbe.cast_to(input_x, "float32")
 
-    # gelu(x) = 0.5*x*(1.0+tanh(np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x,3))))
-    # tanh(y) = 2/(1+exp(-2y)) - 1
+    # `gelu(x) = 0.5*x*(1.0+tanh(np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x,3))))`
+    # `tanh(y) = 2/(1+exp(-2y)) - 1`
 
     # simplize
-    # gelu(x) = x/(1+e^(-y))
+    # `gelu(x) = x/(1+e^(-y))`
     # the formula is y = 2*np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x,3))
 
     # to avoid overflow, keep exp negative
-    # gelu(x) = x/(1+e^(-|y|)) * v_const
+    # `gelu(x) = x/(1+e^(-|y|)) * v_const`
     # the formula is y = 2*np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x,3))
-    # v_const = 1 if x > 0  , e^y  if x < 0
+    # `v_const = 1 if x > 0  , e^y  if x < 0`
     const_0 = tvm.const(1.5957691, "float32") # 2*np.sqrt(2/np.pi)
     const_1 = tvm.const(1.0, "float32")
     const_2 = tvm.const(-1.0, "float32")

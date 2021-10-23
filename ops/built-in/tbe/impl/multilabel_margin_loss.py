@@ -164,7 +164,6 @@ class MultilabelMarginLoss:
     def compute_is_target_each_loop(self, move_offset, need_num, data_each_block, dim):
         """
         compute_is_target_each_loop
-
         Parameters
         ----------
         move_offset : int

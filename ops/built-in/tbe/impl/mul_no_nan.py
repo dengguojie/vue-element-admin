@@ -44,7 +44,7 @@ def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
     output tensor
     """
     """
-    np.where(np.equal(y, 0.), np.zeros((), dtype=dtype), np.multiply(x, y))
+    `np.where(np.equal(y, 0.), np.zeros((), dtype=dtype), np.multiply(x, y))`
     """
     src_dtype = input_x1.dtype.lower()
     shape_x1 = te.lang.cce.util.shape_to_list(input_x1.shape)

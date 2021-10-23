@@ -57,8 +57,8 @@ def log1p_compute(input_x, output_y, kernel_name="log1p"):
     y = log(x + 1)
     in mini scene :
     y(n+1) = y(n) - (e^y(n) - 1 - x(n))/e^y(n)
-    f(y) = e^y(n),        y(n) <= TAYLOR_NEGATIVE_THRESHOLD or y(n) >= TAYLOR_POSITIVE_THRESHOLD
-    f(y) = seventh taylor computer, TAYLOR_NEGATIVE_THRESHOLD < y(n) < TAYLOR_POSITIVE_THRESHOLD
+    f(y) = e^y(n),        y(n) <= Constant.TAYLOR_NEGATIVE_THRESHOLD or y(n) >= Constant.TAYLOR_POSITIVE_THRESHOLD
+    f(y) = seventh taylor computer, Constant.TAYLOR_NEGATIVE_THRESHOLD < y(n) < Constant.TAYLOR_POSITIVE_THRESHOLD
 
     Parameters
     ----------
@@ -98,8 +98,8 @@ def log1p_compute(input_x, output_y, kernel_name="log1p"):
 def _log1p_mini_compute(mini_res, input_x, shape):
     """
     do element-wise log(x + 1) compute in mini scene
-    f(y) = e^y(n),        y(n) <= TAYLOR_NEGATIVE_THRESHOLD or y(n) >= TAYLOR_POSITIVE_THRESHOLD
-    f(y) = seventh taylor computer, TAYLOR_NEGATIVE_THRESHOLD < y(n) < TAYLOR_POSITIVE_THRESHOLD
+    f(y) = e^y(n),        y(n) <= Constant.TAYLOR_NEGATIVE_THRESHOLD or y(n) >= Constant.TAYLOR_POSITIVE_THRESHOLD
+    f(y) = seventh taylor computer, Constant.TAYLOR_NEGATIVE_THRESHOLD < y(n) < Constant.TAYLOR_POSITIVE_THRESHOLD
 
     Parameters:
     ----------

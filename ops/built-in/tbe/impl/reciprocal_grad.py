@@ -21,9 +21,6 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 
-# define a scaler , value = -1
-SCALER_NEGATIVE_ONE = -1
-
 
 # pylint: disable=locally-disabled,unused-argument
 # pylint: disable=too-many-locals
@@ -51,7 +48,7 @@ def reciprocal_grad_compute(input_y, input_dy, output_data, kernel_name="recipro
     shape_y = shape_util.shape_to_list(input_y.shape)
     dtype = input_y.dtype
 
-    reciprocal_const = tvm.const(SCALER_NEGATIVE_ONE, dtype=dtype)
+    reciprocal_const = tvm.const(-1, dtype=dtype)
     is_cast = False
 
     if dtype in ("int32", ):
@@ -61,7 +58,7 @@ def reciprocal_grad_compute(input_y, input_dy, output_data, kernel_name="recipro
         const_res = tbe.vmuls(input_y, reciprocal_const)
     if dtype in ("float16", "int8") and tbe_platform.api_check_support("te.lang.cce.vmuls", "float32"):
         is_cast = True
-        reciprocal_const = tvm.const(SCALER_NEGATIVE_ONE, dtype="float32")
+        reciprocal_const = tvm.const(-1, dtype="float32")
         input_y = tbe.cast_to(input_y, "float32")
         input_dy = tbe.cast_to(input_dy, "float32")
         const_res = tbe.vmuls(input_y, reciprocal_const)

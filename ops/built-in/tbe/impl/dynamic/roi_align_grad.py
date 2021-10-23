@@ -142,7 +142,6 @@ class RoiAlignGrad():
 
         with tik_instance.if_scope(w_gap < 0):
             w_gap = 0
-        # w_gap = 65536
 
         return c1_gap, w_gap
 
@@ -229,7 +228,7 @@ class RoiAlignGrad():
         else:
             c1_gap = (((h_num * w_num) - 1) * 16 * 4) // 32
             w_gap = ((w_num - 2) * 16 * 4) // 32
-            # c1_gap, w_gap = self._modify_value(c1_gap, w_gap)
+            # `c1_gap, w_gap = self._modify_value(c1_gap, w_gap)`
             with tik_instance.if_scope(c1_gap <= 65535):
                 x_offset = self._get_x_diff_offset(image_index, start_c1, h_index, w_index)
                 tik_instance.tensor_mov(x_diff[x_offset],
@@ -268,7 +267,7 @@ class RoiAlignGrad():
         else:
             c1_gap = (((h_num * w_num) - 2) * 16 * 4) // 32
             w_gap = ((w_num - 2) * 16 * 4) // 32
-            # c1_gap, w_gap = self._modify_value(c1_gap, w_gap)
+            # `c1_gap, w_gap = self._modify_value(c1_gap, w_gap)`
             with tik_instance.if_scope(c1_gap <= 65535):
                 x_offset = self._get_x_diff_offset(image_index, start_c1, h_index, w_index)
                 tik_instance.tensor_mov(x_diff[x_offset],
@@ -313,7 +312,7 @@ class RoiAlignGrad():
         else:
             c1_gap = (((h_num * w_num) - 1) * 16 * 4) // 32
             w_gap = ((w_num - 2) * 16 * 4) // 32
-            # c1_gap, w_gap = self._modify_value(c1_gap, w_gap)
+            # `c1_gap, w_gap = self._modify_value(c1_gap, w_gap)`
             with tik_instance.if_scope(c1_gap <= 65535):
                 x_offset = self._get_x_diff_offset(image_index, start_c1, h_index, w_index)
                 tik_instance.tensor_mov(x_diff[x_offset],
@@ -365,7 +364,7 @@ class RoiAlignGrad():
         else:
             c1_gap = (((h_num * w_num) - 2) * 16 * 4) // 32
             w_gap = ((w_num - 2) * 16 * 4) // 32
-            # c1_gap, w_gap = self._modify_value(c1_gap, w_gap)
+            # `c1_gap, w_gap = self._modify_value(c1_gap, w_gap)`
             with tik_instance.if_scope(c1_gap <= 65535):
                 x_offset = self._get_x_diff_offset(image_index, start_c1, h_index, w_index)
                 tik_instance.tensor_mov(x_diff[x_offset],

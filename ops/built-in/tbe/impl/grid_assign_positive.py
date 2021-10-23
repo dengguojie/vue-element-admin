@@ -186,8 +186,8 @@ class GridAssignPositive(object):
     def _mode_0_assigned_gt_inds_pos_iou(self):
         """
         algorithm:
-            pos_inds = (max_overlaps > pos_iou_thr & box_responsible_flags)
-            assigned_gt_inds_pos[pos_inds] = argmax_overlaps[pos_inds] + 1
+            `pos_inds = (max_overlaps > pos_iou_thr & box_responsible_flags)`
+            `assigned_gt_inds_pos[pos_inds] = argmax_overlaps[pos_inds] + 1`
         """
         each_loop_n_num = self.data_repeat_data_num
         loop_times, last_loop_n_num = self.get_loop_info(self.n_num, each_loop_n_num)
@@ -215,8 +215,8 @@ class GridAssignPositive(object):
     def _mode0_assigned_positive_each_k(self, k_index):
         """
         algorithm:
-            if gt_max_overlaps[k_index] > min_pos_iou and box_responsible_flag:
-                 assigned_gt_inds_pos[gt_argmax_overlaps[i]] = i + 1
+            `if gt_max_overlaps[k_index] > min_pos_iou and box_responsible_flag:`
+                `assigned_gt_inds_pos[gt_argmax_overlaps[i]] = i + 1`
         """
         gt_argmax_overlaps_scalar = self.tik_inst.Scalar(self.int_type)
         gt_argmax_overlaps_ub = self.tik_inst.Tensor(self.int_type, (self.int_block_data_num,),
@@ -256,7 +256,7 @@ class GridAssignPositive(object):
         Returns
         -------
             gt_min_pos_iou_ub:
-                Tensor. int_type. shape(k_num, ). gt_min_pos_iou_ub = 1 if (gt_max_ovelasps > min_pos_iou) else 0
+                `Tensor. int_type. shape(k_num, ). gt_min_pos_iou_ub = 1 if (gt_max_ovelasps > min_pos_iou) else 0`
         """
         k_num_align = self.get_align_num(self.k_num, self.data_repeat_data_num)
         gt_min_pos_iou_ub = self.tik_inst.Tensor(self.int_type, (k_num_align,),
@@ -274,8 +274,8 @@ class GridAssignPositive(object):
     def _get_gt_min_pos_iou_ub_each_loop(self, gt_min_pos_iou_int_ub, k_index_start, k_num):
         """
         algorithm:
-            k_index_start: k_index_start+k_num
-            gt_min_pos_iou_int_ub = 1 if (gt_max_ovelasps > min_pos_iou) else 0
+            `k_index_start: k_index_start+k_num`
+            `gt_min_pos_iou_int_ub = 1 if (gt_max_ovelasps > min_pos_iou) else 0`
         """
         k_num_align = self.data_repeat_data_num
         data_shape = (k_num_align,)
@@ -314,7 +314,7 @@ class GridAssignPositive(object):
     def _assigned_gt_inds_pos_iou_each_loop(self, n_index_start, n_num):
         """
         algorithm:
-            pos_inds = (max_overlaps > pos_iou_thr & box_responsible_flags)
+            `pos_inds = (max_overlaps > pos_iou_thr & box_responsible_flags)`
             assigned_gt_inds_ub_new[pos_inds] = argmax_overlaps[pos_inds] + 1
             assigned_gt_inds_ub_new = assigned_gt_inds_ub_new.astype(data_type)
             flag_ub = box_responsible_flags.astype(data_type)
@@ -373,7 +373,7 @@ class GridAssignPositive(object):
     def _get_pos_iou_thr_ub(self, gt_pos_iou_thr_ub, n_index_start, n_num, zero_tensor_ub, one_tensor_ub):
         """
         algorithm:
-            gt_pos_iou_thr_ub = 1 if (max_overlaps > pos_iou_thr) else 0
+            `gt_pos_iou_thr_ub = 1 if (max_overlaps > pos_iou_thr) else 0`
         """
         data_shape = gt_pos_iou_thr_ub.shape
         with self.tik_inst.new_stmt_scope():

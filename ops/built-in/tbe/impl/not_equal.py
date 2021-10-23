@@ -27,16 +27,15 @@ from te.utils import shape_util
 
 
 
-# define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
-SCALAR_MIN_FP32 = 2**(-126)
-# define a scalar, value = 2**(50)
-SCALAR_MUL_FP32 = 2**(50)
-# define a scalar, value = 2**(26)
-SCALAR_MUL2_FP32 = 2**(26)
-# define a scalar, value = 2**(-24), minimun num of float16 2**(-24)
-SCALAR_MIN_FP16 = 2**(-24)
-# define a scalar, value = 2**(12)
-SCALAR_MUL_FP16 = 2**(12)
+class Constant:
+    """
+    The class for constant.
+    """
+    SCALAR_MIN_FP32 = 2**(-126)
+    SCALAR_MUL_FP32 = 2**(50)
+    SCALAR_MUL2_FP32 = 2**(26)
+    SCALAR_MIN_FP16 = 2**(-24)
+    SCALAR_MUL_FP16 = 2**(12)
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 @fusion_manager.register("not_equal")
@@ -68,20 +67,20 @@ def not_equal_compute(input_x, input_y, output_z, kernel_name="not_equal"):
                                                          param_name_input2="input_y")
 
     if dtype_x == "float32":
-        tensor_min = te.lang.cce.broadcast(tvm.const(SCALAR_MIN_FP32,
+        tensor_min = te.lang.cce.broadcast(tvm.const(Constant.SCALAR_MIN_FP32,
                                                      dtype="float32"),
                                            shape_broadcast)
-        tensor_mul = te.lang.cce.broadcast(tvm.const(SCALAR_MUL_FP32,
+        tensor_mul = te.lang.cce.broadcast(tvm.const(Constant.SCALAR_MUL_FP32,
                                                      dtype="float32"),
                                            shape_broadcast)
-        tensor_mul1 = te.lang.cce.broadcast(tvm.const(SCALAR_MUL2_FP32,
+        tensor_mul1 = te.lang.cce.broadcast(tvm.const(Constant.SCALAR_MUL2_FP32,
                                                       dtype="float32"),
                                             shape_broadcast)
     else:
-        tensor_min = te.lang.cce.broadcast(tvm.const(SCALAR_MIN_FP16,
+        tensor_min = te.lang.cce.broadcast(tvm.const(Constant.SCALAR_MIN_FP16,
                                                      dtype="float16"),
                                            shape_broadcast)
-        tensor_mul = te.lang.cce.broadcast(tvm.const(SCALAR_MUL_FP16,
+        tensor_mul = te.lang.cce.broadcast(tvm.const(Constant.SCALAR_MUL_FP16,
                                                      dtype="float16"),
                                            shape_broadcast)
 

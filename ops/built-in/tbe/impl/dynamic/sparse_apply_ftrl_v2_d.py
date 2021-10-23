@@ -111,58 +111,58 @@ class SparseApplyFtrl(SparseApplyDynamic):
                 self.tik_instance.vmuls(mask, tmp_ub, var_ub, 2 * self.l2_shrinkage, repeat_times, 1, 1, 8, 8)
                 self.tik_instance.vadd(mask, tmp2_ub, grad_ub, tmp_ub, repeat_times, 1, 1, 1, 8, 8, 8)
 
-            # tmp =  grad*grad
+            # `tmp =  grad*grad`
             self.tik_instance.vmul(mask, tmp_ub, grad_ub, grad_ub, repeat_times, 1, 1, 1, 8, 8, 8)
             # linear += grad, grad will not used after this operation
             if self.l2_shrinkage != 0:
                 self.tik_instance.vadd(mask, linear_ub, tmp2_ub, linear_ub, repeat_times, 1, 1, 1, 8, 8, 8)
             else:
                 self.tik_instance.vadd(mask, linear_ub, grad_ub, linear_ub, repeat_times, 1, 1, 1, 8, 8, 8)
-            # a^b = e^(b*lna)
-            # grad = ln(accum)
+            # `a^b = e^(b*lna)`
+            # `grad = ln(accum)`
             self.tik_instance.vln(mask, grad_ub, accum_ub, repeat_times, 1, 1, 8, 8)
-            # grad = -lr_power*ln(accum)
+            # `grad = -lr_power*ln(accum)`
             self.tik_instance.vmuls(mask, grad_ub, grad_ub, -self.lr_power, repeat_times, 1, 1, 8, 8)
-            # grad = e^(-lr_power*ln(accum)) = accum ^ (-lr_power)
+            # `grad = e^(-lr_power*ln(accum)) = accum ^ (-lr_power)`
             self.tik_instance.vexp(mask, grad_ub, grad_ub, repeat_times, 1, 1, 8, 8)
 
-            # accum += grad*grad
+            # `accum += grad*grad`
             self.tik_instance.vadd(mask, accum_ub, accum_ub, tmp_ub, repeat_times, 1, 1, 1, 8, 8, 8)
-            # tmp = ln(accum_new)
+            # `tmp = ln(accum_new)`
             self.tik_instance.vln(mask, tmp_ub, accum_ub, repeat_times, 1, 1, 8, 8)
 
             # accum_new^(-lr_power)
             self.tik_instance.vmuls(mask, tmp_ub, tmp_ub, -self.lr_power, repeat_times, 1, 1, 8, 8)
 
-            # tmp = accum_new ^ (-lr_power)
+            # `tmp = accum_new ^ (-lr_power)`
             self.tik_instance.vexp(mask, tmp_ub, tmp_ub, repeat_times, 1, 1, 8, 8)
 
-            # tmp2 =accum_new^(-lr_power)/lr, used by y_res
+            # `tmp2 =accum_new^(-lr_power)/lr, used by y_res`
             self.tik_instance.vmuls(mask, tmp2_ub, tmp_ub, self.lr_vrec, repeat_times, 1, 1, 8, 8)
 
-            # tmp = accum^(-lr_power)- accum_new^(-lr_power)
+            # `tmp = accum^(-lr_power)- accum_new^(-lr_power)`
             self.tik_instance.vsub(mask, tmp_ub, grad_ub, tmp_ub, repeat_times, 1, 1, 1, 8, 8, 8)
 
-            # tmp = tmp / lr
+            # `tmp = tmp / lr`
             self.tik_instance.vmuls(mask, tmp_ub, tmp_ub, self.lr_vrec, repeat_times, 1, 1, 8, 8)
 
-            # tmp = tmp / lr * var
+            # `tmp = tmp / lr * var`
             self.tik_instance.vmul(mask, tmp_ub, tmp_ub, var_ub, repeat_times, 1, 1, 1, 8, 8, 8)
 
-            # linear += grad +(accum^(-lr_power)-accum_new^(-lr_power))/lr*var
+            # `linear += grad +(accum^(-lr_power)-accum_new^(-lr_power))/lr*var`
             self.tik_instance.vadd(mask, linear_ub, tmp_ub, linear_ub, repeat_times, 1, 1, 1, 8, 8, 8)
 
-            # x_res=linear.min(l1).max(-l1)-linear
+            # `x_res=linear.min(l1).max(-l1)-linear`
             self.tik_instance.vector_dup(mask, tmp_ub, self.l1, repeat_times, 1, 8)
             self.tik_instance.vmin(mask, grad_ub, linear_ub, tmp_ub, repeat_times, 1, 1, 1, 8, 8, 8)
             self.tik_instance.vector_dup(mask, tmp_ub, -self.l1, repeat_times, 1, 8)
             self.tik_instance.vmax(mask, tmp_ub, grad_ub, tmp_ub, repeat_times, 1, 1, 1, 8, 8, 8)
             self.tik_instance.vsub(mask, tmp_ub, tmp_ub, linear_ub, repeat_times, 1, 1, 1, 8, 8, 8)
 
-            # y_res = accum_new^(-lr_power)/lr + 2*l2
+            # `y_res = accum_new^(-lr_power)/lr + 2*l2`
             self.tik_instance.vadds(mask, tmp2_ub, tmp2_ub, 2 * self.l2, repeat_times, 1, 1, 8, 8)
 
-            # var = x_res/y_res
+            # `var = x_res/y_res`
             self.tik_instance.vdiv(mask, var_ub, tmp_ub, tmp2_ub, repeat_times, 1, 1, 1, 8, 8, 8)
 
         with self.tik_instance.if_scope(self.each_row_data_num <= self.cache_threshold_col):

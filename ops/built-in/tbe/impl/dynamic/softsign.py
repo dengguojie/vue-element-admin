@@ -26,9 +26,6 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-# define a scalar, value = 1
-SCALAR_ONE = 1
-
 
 # pylint: disable=unused-argument,too-many-locals
 # pylint: disable=invalid-name
@@ -60,7 +57,7 @@ def softsign_compute(input_x, y, kernel_name="softsign"):
         input_x = tbe.cast_to(input_x, "float32")
 
     data_abs = tbe.vabs(input_x)
-    data_add = tbe.vadds(data_abs, SCALAR_ONE)
+    data_add = tbe.vadds(data_abs, 1)
     data_rec = tbe.vrec(data_add)
     res = tbe.vmul(input_x, data_rec)
 

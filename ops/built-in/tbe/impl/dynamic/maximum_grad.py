@@ -54,8 +54,8 @@ def _compare_value_float(data_x, data_y):
     """
     # The smallest positive subnormal number of float32 is 2**(-126)
     min_value = tvm.const(2**(-126), dtype="float32")
-    # (2**(-126))*(2**(62))*(2**(62))*(2**(2)) = 1
-    # so min_value*max_value*max_value*max_value_1 = 1
+    # `(2**(-126))*(2**(62))*(2**(62))*(2**(2)) = 1`
+    # so `min_value*max_value*max_value*max_value_1 = 1`
     max_value = tvm.const(2**(62), dtype="float32")
     max_value_1 = tvm.const(2**(2), dtype="float32")
 
@@ -102,7 +102,7 @@ def _calculate_result_ge(data_x, data_y, data_dz, dtype, shape_dz):
         value_one = tvm.const(1, dtype="int32")
     minus_one_tensor = tbe.broadcast(minus_one, shape_dz)
     value_one_tensor = tbe.broadcast(value_one, shape_dz)
-    # if data_y < data_x ; datax_select_ge = 1; else datax_select_le =0;
+    # `if data_y < data_x ; datax_select_ge = 1; else datax_select_le =0;`
     datax_select_ge = _compare_value(data_x, data_y, dtype, shape_dz)
     result_dx = tbe.vmul(data_dz, datax_select_ge)
     select_reverse = tbe.vsub(datax_select_ge, value_one_tensor)

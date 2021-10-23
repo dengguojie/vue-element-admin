@@ -874,7 +874,7 @@ class StridedSlice:
         """
         inst = self.tik_instance
         core_num = self.aicore_num
-        # out_dim = 67, num_rows_per_aicore: 3, 3, 3, 2, 2, 2 ...
+        # `out_dim = 67, num_rows_per_aicore: 3, 3, 3, 2, 2, 2 ...`
         num_rows_per_aicore = inst.Scalar("int64", name="num_rows_per_aicore")
         num_tail_rows = inst.Scalar("int64", name="num_tail_rows")
         num_rows_per_aicore.set_as(self.tiling_param.out_dim // core_num)

@@ -61,7 +61,7 @@ def l2_normalize_grad_compute(input_data_x,
         the result of l2_normalize_grad
     """
     dtype = input_data_x.dtype
-    # max(||x||, eps)
+    # `max(||x||, eps)`
     if dtype == "float16" and tbe_platform.cce_conf.api_check_support(
             "te.lang.cce.sum", "float32"):
         input_data_x = tbe.cast_to(input_data_x, "float32")
@@ -85,7 +85,7 @@ def l2_normalize_grad_compute(input_data_x,
                                                    shape_util.shape_to_list(
                                                        input_data_x.shape))
 
-    # dx = (dy - y * sum(dy*y)) / max(||x||, eps)
+    # `dx = (dy - y * sum(dy*y)) / max(||x||, eps)`
     numerator = tbe.vsub(input_data_dy,
                                  tbe.vmul(input_data_y,
                                                   sum_y_mul_dy_broadcast))

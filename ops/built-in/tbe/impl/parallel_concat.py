@@ -93,7 +93,7 @@ def get_op_support_info(values, output_data, shape, num, kernel_name="parallel_c
 
 def ceil_align(ori_num, divider):
     '''
-    dst_num = (ori_num + divider -1) / divider * divider
+    `dst_num = (ori_num + divider -1) / divider * divider`
     :param ori_num: original number
     :param divider: divider
     :return:
@@ -103,7 +103,7 @@ def ceil_align(ori_num, divider):
 
 def floor_align(ori_num, divider):
     '''
-    dst_num = ori_num // divider * divider
+    `dst_num = ori_num // divider * divider`
     :param ori_num: original number
     :param divider: divider
     :return:
@@ -113,7 +113,7 @@ def floor_align(ori_num, divider):
 
 def ceil_divide(ori_num, divider):
     '''
-    dst_num = (ori_num + divider -1) / divider
+    `dst_num = (ori_num + divider -1) / divider`
     :param ori_num: original number
     :param divider: divider
     :return:

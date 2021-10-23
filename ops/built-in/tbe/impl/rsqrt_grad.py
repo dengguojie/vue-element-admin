@@ -22,8 +22,11 @@ from te.utils import shape_util
 from te import tvm
 
 
-# define a scalar, value = -0.5
-SCALAR = -0.5
+class Constant:
+    """
+    The class for constant.
+    """
+    SCALAR = -0.5
 
 
 # pylint: disable=locally-disabled,unused-argument
@@ -49,9 +52,9 @@ def rsqrt_grad_compute(input_y, input_dy, output_z, kernel_name="rsqrt_grad"):
         the result of compute
     """
     dtype_input_y = input_y.dtype
-    rsqrt_const = tvm.const(SCALAR, dtype=dtype_input_y)
+    rsqrt_const = tvm.const(Constant.SCALAR, dtype=dtype_input_y)
     if dtype_input_y in ("int8", "float16"):
-        rsqrt_const = tvm.const(SCALAR, dtype="float32")
+        rsqrt_const = tvm.const(Constant.SCALAR, dtype="float32")
         input_y = tbe.cast_to(input_y, "float32")
         input_dy = tbe.cast_to(input_dy, "float32")
     res_vmul = tbe.vmul(input_y, input_y)

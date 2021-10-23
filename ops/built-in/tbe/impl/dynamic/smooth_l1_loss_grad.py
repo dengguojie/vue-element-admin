@@ -62,9 +62,9 @@ def smooth_l1_loss_grad_compute(predict, label, dout, gradient, sigma, kernel_na
         predict = tbe.broadcast(predict, shape, dtype)
         label = tbe.broadcast(label, shape, dtype)
     out_sub = tbe.vsub(predict, label)
-    # out = sigma if out_sub > sigma
+    # `out = sigma if out_sub > sigma`
     out_sub_one = tbe.vmins(out_sub, sigma)
-    # out = -sigma if out_sub < -sigma
+    # `out = -sigma if out_sub < -sigma`
     out_sub_one_neg_one = tbe.vmaxs(out_sub_one, -sigma)
     out_sub_one_neg_one_sigma = tbe.vmuls(out_sub_one_neg_one, 1 / float(sigma))
     res = tbe.vmul(out_sub_one_neg_one_sigma, dout)

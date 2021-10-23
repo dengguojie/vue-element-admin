@@ -207,7 +207,7 @@ class PadCompute():
             # outermost padding (top, bottom)
             # vec_mark: pad_vec_dup_outermost had worked
             # and model_list[0][x] is 'ub_reorder',it will be 'True'
-            # if vec_mark = True, the followed
+            # `if vec_mark = True, the followed`
             # computation will not vec_dup again
             in_num_top = self.in_paddings[0][0] * _prod(self.ou_shape[1:])
             in_num_bottom = self.in_paddings[0][1] * _prod(self.ou_shape[1:])

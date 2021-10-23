@@ -9225,7 +9225,7 @@ def _tilling_axis(shape, dtype, no_remainder):
 
     """
     Constant.UB_SIZE_Bytes = Constant.UB_SIZE_B - 32
-    # 8 bit = 1byte, '8' below for this reason
+    # `8 bit = 1byte`, '8' below for this reason
     dtype_bytes_size = cce.cce_intrin.get_bit_len(dtype) // 8
     total_ele = Constant.UB_SIZE_Bytes // dtype_bytes_size
     split_axis = 0

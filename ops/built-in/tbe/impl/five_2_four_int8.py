@@ -3904,7 +3904,7 @@ def _tilling_axis(shape, dtype, no_remainder):
     """
     ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(
         tbe_platform.cce_conf.UB_SIZE) - 32
-    # 8 bit = 1byte, '8' below for this reason
+    # `8 bit = 1byte`, '8' below for this reason
     dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
     total_ele = ub_size_bytes // dtype_bytes_size
     split_axis = 0

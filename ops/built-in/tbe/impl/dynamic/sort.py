@@ -1000,8 +1000,6 @@ class Sort(object):
                     tik_instance.vextract(des_ub[num_16], src_ub[0], num_16 // BLOCK, 0)
             else:
                 raise RuntimeError("Unexcepted version.")
-
-            # if num_16 > DATA_MAX:
             with tik_instance.if_scope(num_16 > DATA_MAX):
                 tik_instance.vec_conv(BLOCK, "round", int_list, des_ub[num_16], self.repeat_max, 2, 1)
                 tik_instance.vec_conv(BLOCK, "round", int_list[self.max_data], des_ub[num_16 + DATA_MAX],

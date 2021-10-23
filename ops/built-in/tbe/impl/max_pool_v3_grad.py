@@ -163,7 +163,7 @@ def init_coordinate(tik_instance, pad_x_top, xi_coordinate):
     """
     init_coordinate
     """
-    # return actual xi_coord
+    # actual xi_coord
     if pad_x_top != 0:
         xi_coord = tik_instance.Scalar(dtype='int64', name='xi_coord')
         with tik_instance.if_scope(xi_coordinate < 0):
@@ -407,8 +407,8 @@ def branch_choice(ori_input_shape, ksize, strides, padding, pads, data_format, c
     # calculate col ub size
     # There are two col ub, one is fp32, other is fp16, shape is (each_hi, each_wi, c0_local)
     # Here we need calculate each_wi to judge if need cut wo or cut ho.
-    # self.kw > self.stride_w, each_wi = (each_process_wo - 1) * self.stride_w + self.kw
-    # self.kw <= self.stride_w, each_wi = each_process_wo * self.stride_w
+    # `self.kw > self.stride_w, each_wi = (each_process_wo - 1) * self.stride_w + self.kw`
+    # `self.kw <= self.stride_w, each_wi = each_process_wo * self.stride_w`
     col_size_times = each_process_hi * stride_w * c0_local * (fp16_data_size + fp32_data_size)
     col_size_const = each_process_hi * max(0,
                                             kernel_w - stride_w) * c0_local * (fp16_data_size + fp32_data_size)
@@ -497,8 +497,8 @@ def branch_choice(ori_input_shape, ksize, strides, padding, pads, data_format, c
 
         # calculate col ub size
         # There are two col ub, one is fp32, other is fp16, shape is (each_hi, wi, c0_local)
-        # kernel_h > stride_h, each_hi = (each_process_ho - 1) * stride_h + kernel_h
-        # kernel_h <= stride_h, each_hi = each_process_ho * stride_h
+        # `kernel_h > stride_h, each_hi = (each_process_ho - 1) * stride_h + kernel_h`
+        # `kernel_h <= stride_h, each_hi = each_process_ho * stride_h`
         if stride_h * wi_temp * c0_local * (fp16_data_size + fp32_data_size) > L1_SIZE:
             col_size_times = kernel_h * wi * c0_local * (fp16_data_size + fp32_data_size)
         else:
@@ -1442,8 +1442,8 @@ class MaxpoolV3Grad():
         # calculate col ub size
         # There are two col ub, one is fp32, other is fp16, shape is (each_hi, each_wi, C0)
         # Here we need calculate each_wi to judge if need cut wo or cut ho.
-        # self.kw > self.stride_w, each_wi = (each_process_wo - 1) * self.stride_w + self.kw
-        # self.kw <= self.stride_w, each_wi = each_process_wo * self.stride_w
+        # `self.kw > self.stride_w, each_wi = (each_process_wo - 1) * self.stride_w + self.kw`
+        # `self.kw <= self.stride_w, each_wi = each_process_wo * self.stride_w`
 
         col_ub_size_times = each_process_hi * self.stride_w * C0 * (fp16_data_size + fp32_data_size)
 
@@ -1474,8 +1474,8 @@ class MaxpoolV3Grad():
                         fp16_data_size + 2 * fp32_data_size)
             # calculate col ub size
             # There are two col ub, one is fp32, other is fp16, shape is (each_hi, wi, C0)
-            # self.kh > self.stride_h, each_hi = (each_process_ho - 1) * self.stride_h + self.kh
-            # self.kh <= self.stride_h, each_hi = each_process_ho * self.stride_h
+            # `self.kh > self.stride_h, each_hi = (each_process_ho - 1) * self.stride_h + self.kh`
+            # `self.kh <= self.stride_h, each_hi = each_process_ho * self.stride_h`
             col_ub_size_times = self.stride_h * wi * C0 * (fp16_data_size + fp32_data_size)
 
             mask_ub_size_times = self.wo * uint16_data_size * 4
@@ -5090,12 +5090,12 @@ class MaxpoolV3GradAtomic:
                                             param.grad_sel_fp16_size, "float16")
 
                                 # ---rewrite grad_sel_fp32 to f_map_fp32
-                                # do = 1, ho = 1
+                                # `do = 1, ho = 1`
                                 # map_index has two part: begin_index of kernel,
                                 # begin_index of child kernel
                                 # must use tik variable as index of grad_sel_fp32_buf,
                                 # python variable is not work in grad_sel_fp32_buf[mask_index],
-                                # while x = grad_sel_fp32_buf[mask_index], y = x[n].
+                                # `while x = grad_sel_fp32_buf[mask_index], y = x[n].`
                                 with tik_instance.for_range(0, 1) as index_mask:
                                     map_index = idx_d * hi_batch * wi_batch * c0 + \
                                                 idx_h * wi_batch * c0 + idx_w * c0
@@ -5997,12 +5997,12 @@ class MaxpoolV3GradAtomic:
                                             param.grad_sel_fp16_size, "float16")
 
                                 # ---rewrite grad_sel_fp32 to f_map_fp32
-                                # do = 1, ho = 1
+                                # `do = 1, ho = 1`
                                 # map_index has two part: begin_index of kernel,
                                 # begin_index of child kernel
                                 # must use tik variable as index of grad_sel_fp32_buf,
                                 # python variable is not work in grad_sel_fp32_buf[mask_index],
-                                # while x = grad_sel_fp32_buf[mask_index], y = x[n].
+                                # `while x = grad_sel_fp32_buf[mask_index], y = x[n].`
                                 with tik_instance.for_range(0, 1) as index_mask:
                                     map_index = idx_d * map_hi * map_wi * c0 + \
                                                 idx_h * map_wi * c0 + idx_w * c0

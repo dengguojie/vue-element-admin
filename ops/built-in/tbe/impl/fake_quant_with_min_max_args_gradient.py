@@ -145,8 +145,8 @@ def _cmpare_value(x, nudged_min, nudged_max):
         the result of f_cmpare_value
     """
     min_value = tvm.const(2 ** (-126), dtype="float32")
-    # (2**(-126))*(2**(62))*(2**(62))*(2**(2)) = 1
-    # so min_value*max_value*max_value*max_value_one = 1
+    # `(2**(-126))*(2**(62))*(2**(62))*(2**(2)) = 1`
+    # so `min_value*max_value*max_value*max_value_one = 1`
     max_value = tvm.const(2 ** (62), dtype="float32")
     max_value_one = tvm.const(2 ** (2), dtype="float32")
 

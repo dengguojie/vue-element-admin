@@ -69,7 +69,7 @@ def select_v2_compute(condition, x1, x2, y, kernel_name="select_v2"):
     x2 = tbe.broadcast(x2, shape_max)
     condition = tbe.broadcast(condition, shape_max)
 
-    ones = tbe.broadcast(tvm.const(VALUE_ONE, dtype="float32"), shape_max, output_dtype="float32")
+    ones = tbe.broadcast(tvm.const(1, dtype="float32"), shape_max, output_dtype="float32")
 
     res = tbe.vcmpsel(condition, rhs=ones, operation='eq', slhs=x1, srhs=x2)
     res = tbe.cast_to(res, num_dtype)

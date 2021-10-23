@@ -1767,7 +1767,7 @@ class Four2fiveCompute:
         # hw1*c0*n > maximum_ub
         # because the scale of n can't be controlled
         # split_hw*c0*n will be bigger than maximum_ub
-        # while split_hw = self.step_move // c0
+        # while `split_hw = self.step_move // c0`
         if split_hw == 0:
             raise RuntimeError("in this case split_hw can't be zero")
 

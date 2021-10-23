@@ -579,7 +579,7 @@ def traversal_idx(tik_instance,
                            0, 1,
                            fp32_input_scalar.one_row_burstlen,
                            0, 0)
-    # vmla, accum += grad*grad
+    # `vmla, accum += grad*grad`
     tik_instance.vmla(MASK_FP32, ub_tensor.accum_ub[0],
                       ub_tensor.grad_ub[0],
                       ub_tensor.grad_ub[0],

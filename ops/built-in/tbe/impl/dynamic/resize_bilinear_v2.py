@@ -908,8 +908,8 @@ class ResizeBilinearV2(OpBase):
 
                         # do resize compute in input_ub
                         # 1. cast to fp32
-                        # 2. do bottom = (bottom - top) * y_lerp + top
-                        # 3. do out = bottom_left + (bottom_right - bottom_left) * x_lerp
+                        # 2. do `bottom = (bottom - top) * y_lerp + top`
+                        # 3. do `out = bottom_left + (bottom_right - bottom_left) * x_lerp`
                     total_num = do_nc_num * w_do_len * self.images_shape_c0 * 4
                     if self.inner_dtype != self.images_dtype:
                         self.tik_instance.vconv(64, "", inner_ub, input_ub, total_num // 64, 1, 1, 8, 4)

@@ -174,7 +174,7 @@ def select_compute(condition, x1, x2, y, kernel_name="select"):
         else:
             condition = tbe.cast_to(condition, num_dtype)
         condition = tbe.broadcast(condition, shape)
-        ones = tbe.broadcast(tvm.const(VALUE_ONE, dtype=num_dtype), shape, output_dtype=num_dtype)
+        ones = tbe.broadcast(tvm.const(1, dtype=num_dtype), shape, output_dtype=num_dtype)
         condition_opp = tbe.vsub(ones, condition)
         temp_x = tbe.vmul(x1, condition)
         temp_y = tbe.vmul(x2, condition_opp)
@@ -184,17 +184,17 @@ def select_compute(condition, x1, x2, y, kernel_name="select"):
     if num_dtype in ("int8", "uint8", "int32"):
         if tbe_platform.api_check_support("te.lang.cce.vsel", "float32"):
             x1_dtype = "float32"
-            ones = tbe.broadcast(tvm.const(VALUE_ONE, dtype="float32"), shape, output_dtype="float32")
+            ones = tbe.broadcast(tvm.const(1, dtype="float32"), shape, output_dtype="float32")
             x1 = tbe.cast_to(x1, "float32")
             x2 = tbe.cast_to(x2, "float32")
         else:
             x1_dtype = "float16"
-            ones = tbe.broadcast(tvm.const(VALUE_ONE, dtype="float16"), shape, output_dtype="float16")
+            ones = tbe.broadcast(tvm.const(1, dtype="float16"), shape, output_dtype="float16")
             x1 = tbe.cast_to(x1, "float16")
             x2 = tbe.cast_to(x2, "float16")
     else:
         x1_dtype = num_dtype
-        ones = tbe.broadcast(tvm.const(VALUE_ONE, dtype=num_dtype), shape, output_dtype=num_dtype)
+        ones = tbe.broadcast(tvm.const(1, dtype=num_dtype), shape, output_dtype=num_dtype)
     if list(con_shape) == list(shape):
         res = tbe.vsel(condition, x1, x2)
     else:

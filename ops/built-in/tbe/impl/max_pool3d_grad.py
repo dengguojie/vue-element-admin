@@ -87,7 +87,7 @@ def init_coordinate(tik_instance, pad_x_top, xi_coordinate):
     """
     init_coordinate
     """
-    # return actual xi_coord
+    # actual xi_coord
     if pad_x_top != 0:
         xi_coord = tik_instance.Scalar(dtype='int64', name='xi_coord')
         with tik_instance.if_scope(xi_coordinate < 0):
@@ -2115,12 +2115,12 @@ class MaxPool3DGradCompute:
                                             param.grad_sel_fp16_size, "float16")
 
                                 # ---rewrite grad_sel_fp32 to f_map_fp32
-                                # do = 1, ho = 1
+                                # `do = 1, ho = 1`
                                 # map_index has two part: begin_index of kernel,
                                 # begin_index of child kernel
                                 # must use tik variable as index of grad_sel_fp32_buf,
                                 # python variable is not work in grad_sel_fp32_buf[mask_index],
-                                # while x = grad_sel_fp32_buf[mask_index], y = x[n].
+                                # `while x = grad_sel_fp32_buf[mask_index], y = x[n].`
                                 with tik_instance.for_range(0, 1) as index_mask:
                                     map_index = idx_d * hi_batch * wi_batch * c0 + \
                                                 idx_h * wi_batch * c0 + idx_w * c0
@@ -2854,12 +2854,12 @@ class MaxPool3DGradCompute:
                                             param.grad_sel_fp16_size, "float16")
 
                                 # ---rewrite grad_sel_fp32 to f_map_fp32
-                                # do = 1, ho = 1
+                                # `do = 1, ho = 1`
                                 # map_index has two part: begin_index of kernel,
                                 # begin_index of child kernel
                                 # must use tik variable as index of grad_sel_fp32_buf,
                                 # python variable is not work in grad_sel_fp32_buf[mask_index],
-                                # while x = grad_sel_fp32_buf[mask_index], y = x[n].
+                                # `while x = grad_sel_fp32_buf[mask_index], y = x[n].`
                                 with tik_instance.for_range(0, 1) as index_mask:
                                     map_index = idx_d * hi_batch * wi_batch * c0 + \
                                                 idx_h * wi_batch * c0 + idx_w * c0
@@ -3761,12 +3761,12 @@ class MaxPool3DGradCompute:
                                             param.grad_sel_fp16_size, "float16")
 
                                 # ---rewrite grad_sel_fp32 to f_map_fp32
-                                # do = 1, ho = 1
+                                # `do = 1, ho = 1`
                                 # map_index has two part: begin_index of kernel,
                                 # begin_index of child kernel
                                 # must use tik variable as index of grad_sel_fp32_buf,
                                 # python variable is not work in grad_sel_fp32_buf[mask_index],
-                                # while x = grad_sel_fp32_buf[mask_index], y = x[n].
+                                # `while x = grad_sel_fp32_buf[mask_index], y = x[n].`
                                 with tik_instance.for_range(0, 1) as index_mask:
                                     map_index = idx_d * map_hi * map_wi * c0 + \
                                                 idx_h * map_wi * c0 + idx_w * c0

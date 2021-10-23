@@ -649,7 +649,8 @@ def op_select_format(x, y, output, kernel_name="mul"):
             dtype_total = dtype_total + [dtype] * len(format_list)
         format_list = format_list * len_format_list
         unknownshape_format_list = ["ND"] * len(format_list)
-        param_list = _gen_para(dtype_total, format_list, format_list, format_list, unknownshape_format_list, shape_x, shape_y)
+        param_list = _gen_para(dtype_total, format_list, format_list, format_list, unknownshape_format_list, shape_x,
+                               shape_y)
 
     # 5HD+scalar,ND+ND,FZ+scalar,6D+scalar,NZ+ND
     elif len(shape_x) >= 2 and len(shape_y) == 1 and shape_y[0] == 1:
@@ -916,8 +917,8 @@ def mul(x, y, output, kernel_name="mul"):
     -------
     None
     """
-    # format_pattern = 1  Nz and vector
-    # format_pattern = 2  vector and Nz
+    # `format_pattern = 1  Nz and vector`
+    # `format_pattern = 2  vector and Nz`
     # format_pattern = 0  Nz scalar  Nz Nz  ND ND
     format_pattern = _mul_check_format(x, y)
     shape_x, shape_y = _infer_shape(format_pattern, x, y)

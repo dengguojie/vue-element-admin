@@ -689,7 +689,7 @@ def min_data_block(dtype):
 
 
 def total_num(shape):
-    """return total_num"""
+    """total_num"""
     shape_total_num = functools_reduce(lambda a, b: a * b, shape)
     return shape_total_num
 

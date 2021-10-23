@@ -51,8 +51,8 @@ def _compare_value_float(data_x, data_y, shape_dz):
     """
     # The smallest positive subnormal number of float32 is 2**(-126)
     min_value = tvm.const(2 ** (-126), dtype="float32")
-    # (2**(-126))*(2**(62))*(2**(62))*(2**(2)) = 1
-    # so min_value*max_value*max_value*max_value_1 = 1
+    # `(2**(-126))*(2**(62))*(2**(62))*(2**(2)) = 1`
+    # `so min_value*max_value*max_value*max_value_1 = 1`
     max_value = tvm.const(2 ** (62), dtype="float32")
     max_value_1 = tvm.const(2 ** (2), dtype="float32")
 

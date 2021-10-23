@@ -42,7 +42,7 @@ def poisson_nll_loss_compute(input_x,
     ----------
     input_x: shape dtype
     target: shape dtype
-    log_input: scalar parameter, default value = True
+    log_input: scalar parameter, default `value = True``
     full: scalar parameter, dafault value = False
     eps: scalar parameter, dafault value = 1e-8
     reduction: scalar parameter, dafault value = "mean"
@@ -117,10 +117,10 @@ def poisson_nll_loss(input_x,
     ----------
     input_x: shape dtype
     target: shape dtype
-    log_input: scalar parameter, default value = True
-    full: scalar parameter, dafault value = False
-    eps: scalar parameter, dafault value = 1e-8
-    reduction: scalar parameter, dafault value = "mean"
+    log_input: scalar parameter, default value True
+    full: scalar parameter, dafault value False
+    eps: scalar parameter, dafault value 1e-8
+    reduction: scalar parameter, dafault value "mean"
     kernel name, default value is "poisson_nll_loss"
     """
     shape_input = input_x.get("shape")

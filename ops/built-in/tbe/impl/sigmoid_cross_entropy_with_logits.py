@@ -60,14 +60,14 @@ def sigmoid_cross_entropy_with_logits_compute(predict,
     dtype_predict = predict.dtype
     shape_predict = shape_util.shape_to_list(predict.shape)
 
-    const_zero = tvm.const(SCALAR_ZREO, dtype=dtype_predict)
+    const_zero = tvm.const(0, dtype=dtype_predict)
     max_predict_zero = tbe.vmaxs(predict, const_zero)
 
     abs_predict = tbe.vabs(predict)
     const_zero_broadcast = tbe.broadcast(const_zero, shape_predict)
     reverse_abs_predict = tbe.vsub(const_zero_broadcast, abs_predict)
     vexp_predict = tbe.vexp(reverse_abs_predict)
-    const_one = tvm.const(SCALAR_ONE, dtype=dtype_predict)
+    const_one = tvm.const(1, dtype=dtype_predict)
     vadds_res = tbe.vadds(vexp_predict, const_one)
     vlog_res = tbe.vlog(vadds_res, priority_flag=1)
     vmul_res = tbe.vmul(predict, target)

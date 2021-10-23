@@ -40,8 +40,8 @@ TAN_2X_TIMES = 6
 
 def _tan_expand(input_x):
     """
-    calculating tan x = x + x^3/3 + 2*x^5/15 + 17*x^7/315 +
-                        62*x^9/2835 + 1382*x^11/155925...(|x|<pi/2)
+    calculating `tan x = x + x^3/3 + 2*x^5/15 + 17*x^7/315 +`
+                        `62*x^9/2835 + 1382*x^11/155925...(|x|<pi/2)`
     """
     # Taylor expansion coefficient
     factors = [1 / 3, 2 / 15, 17 / 315, 62 / 2835, 1382 / 155925]
@@ -68,7 +68,7 @@ def _tan_2x_multi(input_x, times):
     res = _tan_expand(input_x_divide)
 
     while times != 0:
-        # using double angle formula: tan 2x = 2*tan x/(1-tan x*tan x)
+        # `using double angle formula: tan 2x = 2*tan x/(1-tan x*tan x)`
         res_denominator = tbe.vmuls(res, 2.0)
         tanx_square = tbe.vmul(res, res)
         res_numerator = tbe.vadds(tbe.vmuls(tanx_square, -1.0), 1.0)
@@ -112,7 +112,7 @@ def tan_compute(x, y, kernel_name="tan"):
         if has_improve_precision:
             x = tbe.cast_to(x, FLOAT_32)
 
-    # adjust x to [-pi/2,pi/2] using x = x-round(x/pi)*pi
+    # `adjust x to [-pi/2,pi/2] using x = x-round(x/pi)*pi`
     round_pi_div = tbe.round(tbe.vmuls(x, tvm.const(1.0 / PI, cast_dtype)))
     if has_improve_precision:
         round_pi_div = tbe.cast_to(round_pi_div, FLOAT_32)

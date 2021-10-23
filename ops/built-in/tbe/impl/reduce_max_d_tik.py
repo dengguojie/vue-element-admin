@@ -19,18 +19,18 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
 
-# define a scalar, value = -(2**16 - 1)
-SCALAR_MIN_FP16 = -(2**16 - 1)
-# define a scalar, value = -3402823424.0
-SCALAR_MIN_FP32 = -3402823424.0
-# define a scalar, value = -(2**31 - 1)
-SCALAR_MIN_INT32 = -(2**31 - 1)
-# max set_mask_int64 value
-MAX_MASK_INT64 = 2**64 - 1
-# max segment len
-MAX_SEGMENT_LEN = 2048 * 7
-# int32 num in 8*block
-OUT_MASK = 64
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    SCALAR_MIN_FP16 = -(2**16 - 1)
+    SCALAR_MIN_FP32 = -3402823424.0
+    SCALAR_MIN_INT32 = -(2**31 - 1)
+    MAX_MASK_INT64 = 2**64 - 1
+    MAX_SEGMENT_LEN = 2048 * 7
+    OUT_MASK = 64
 
 
 # pylint: disable=super-with-arguments,no-self-use
@@ -214,8 +214,8 @@ class Argmax(ArgmaxBase):
         self.gm_result_size = 0
         self.full_mask = self.data_each_vector
 
-        self.segment = MAX_SEGMENT_LEN
-        self.out_mask = OUT_MASK
+        self.segment = Constant.MAX_SEGMENT_LEN
+        self.out_mask = Constant.OUT_MASK
 
         self.c_align_ubsize = shape_x[-1]
         if axis < len(self.shape_x) - 1:
@@ -243,7 +243,7 @@ class Argmax(ArgmaxBase):
             self.gm_result_size = \
                 self.first_dim_size + 2 * self.repeat_times + 15
 
-        self.minest_value = SCALAR_MIN_FP32 if self.dtype_x == "float32" else SCALAR_MIN_INT32
+        self.minest_value = Constant.SCALAR_MIN_FP32 if self.dtype_x == "float32" else Constant.SCALAR_MIN_INT32
         self.thread_num = 1
         if self.first_dim_size != 1:
             self.thread_num = 2
@@ -291,7 +291,7 @@ class Argmax(ArgmaxBase):
             buf_size, loop_times, over_size, align_flag
         """
         if self.dtype_x == "float16":
-            self.segment = MAX_SEGMENT_LEN * 3
+            self.segment = Constant.MAX_SEGMENT_LEN * 3
         segment_size = self.segment
         align_flag = ((self.c_align_ubsize % segment_size) != 0)
         if segment_size <= self.c_align_ubsize:
@@ -355,13 +355,13 @@ class Argmax(ArgmaxBase):
         """
         ub_buf_size, loop_times, over_size, align_flag = self.get_tiling_info()
         self.ub_result_64 = self.tik_instance.Tensor(self.dtype_x, (64, ), name="ub_result_8", scope=tik.scope_ubuf)
-        self.ub_result_value = self.tik_instance.Tensor(self.dtype_x, (MAX_SEGMENT_LEN, ),
+        self.ub_result_value = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN, ),
                                                         name="ub_result_value",
                                                         scope=tik.scope_ubuf)
 
         def _run(segment_len, segment_index):
             with self.tik_instance.for_range(0, segment_len) as core_i:
-                index = core_i + MAX_SEGMENT_LEN * segment_index
+                index = core_i + Constant.MAX_SEGMENT_LEN * segment_index
                 offset = n_i * segment_core + index
                 self.result_out_scalar = self.tik_instance.Scalar(self.dtype_x)
 
@@ -380,15 +380,15 @@ class Argmax(ArgmaxBase):
                 self.result_out_scalar.set_as(self.ub_result_64[0])
                 self.ub_result_value[core_i] = self.result_out_scalar
             gm_out_offset = n_i * segment_core + \
-                            MAX_SEGMENT_LEN * segment_index
+                            Constant.MAX_SEGMENT_LEN * segment_index
             out_nbust = _get_ceil_int(segment_len, self.data_each_block)
             self.tik_instance.data_move(self.result_gm_value[gm_out_offset], self.ub_result_value, 0, 1, out_nbust, 0,
                                         0)
 
-        _loop_segment = core_segment // MAX_SEGMENT_LEN
-        _loop_segment_tail = core_segment % MAX_SEGMENT_LEN
+        _loop_segment = core_segment // Constant.MAX_SEGMENT_LEN
+        _loop_segment_tail = core_segment % Constant.MAX_SEGMENT_LEN
         with self.tik_instance.for_range(0, _loop_segment) as _loop:
-            _run(MAX_SEGMENT_LEN, _loop)
+            _run(Constant.MAX_SEGMENT_LEN, _loop)
         if _loop_segment_tail != 0:
             _run(_loop_segment_tail, _loop_segment)
 
@@ -436,7 +436,7 @@ class Argmax(ArgmaxBase):
         if tail != 0:
             mask_h = 0
             mask = 2**tail - 1
-            mask_l = MAX_MASK_INT64 - mask
+            mask_l = Constant.MAX_MASK_INT64 - mask
             _offset = ub_buf_size // self.data_each_vector
             self.tik_instance.vector_dup([mask_h, mask_l], ub_data[_offset * self.data_each_vector], self.minest_value,
                                          1, 1, 8)

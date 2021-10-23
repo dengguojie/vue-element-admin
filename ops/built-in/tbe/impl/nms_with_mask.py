@@ -691,7 +691,7 @@ class _NMSHelper(object):
         self._tailing_handle_vec_conv(self.valid_mask_int8_ub, self.valid_mask_fp16_ub, self.valid_mask_size_int8,
                                       INT8_SIZE, FP16_SIZE, 'round')
 
-        # update valid mask, here float16 fixed, ensure 32b aligned. note: size below = valid_mask_size_int8
+        # update valid mask, here float16 fixed, ensure 32b aligned. note: size `below = valid_mask_size_int8`
         self.tmp_valid_mask_float16 = self.tik_instance.Tensor('float16', (self.valid_mask_size_int8,), tik.scope_ubuf,
                                                                'tmp_valid_mask_float16')
         self.tmp_mask_float16 = self.tmp_tensor_ub_fp16
@@ -1383,11 +1383,11 @@ class _NMSHelper(object):
         self.x2i.set_as(self.x2_ub[cur])
         self.y2i.set_as(self.y2_ub[cur])
 
-        # xx1 = max(x1[i], x1[1:]),  yy1 = max(y1[i], y1[1:]), xx2=min(x2[i], x2[1:]),  yy2=min(y2[i], y2[1:])
+        # `xx1 = max(x1[i], x1[1:]),  yy1 = max(y1[i], y1[1:]), xx2=min(x2[i], x2[1:]),  yy2=min(y2[i], y2[1:])`
         self._tailing_handle_vmaxs(self.xx1, self.x1_ub, self.x1i, self.ceil_N)
         self._tailing_handle_vmins(self.xx2, self.x2_ub, self.x2i, self.ceil_N)
 
-        # w = max(0, xx2-xx1+offset), h = max(0, yy2-yy1+offset), offset=0 here
+        # `w = max(0, xx2-xx1+offset), h = max(0, yy2-yy1+offset), offset=0 here`
         self._tailing_handle_vsub(self.xx1, self.xx2, self.xx1, self.ceil_N, self.bytes_each_elem,
                                   self.bytes_each_elem, self.bytes_each_elem)
         # w stores in xx1
@@ -1665,7 +1665,7 @@ def _tik_func_nms_multi_core_basic_api(input_shape, input_dtype, thresh, total_o
     out_mask_gm = tik_instance.Tensor("uint8", (total_output_proposal_num,), name="out_mask_gm", scope=tik.scope_gm)
 
     tik_instance.data_move(out_proposals_gm, output_proposals_ub, 0, nburst=1,
-                           # max. burst is 65535, unit is 32B, so support: 65535*32/2/8=131070 proposals if fp16.
+                           # `max. burst is 65535, unit is 32B, so support: 65535*32/2/8=131070 proposals if fp16.`
                            burst=(nms_helper.ceil_N * VALID_COLUMN_NUM * \
                                   nms_helper.bytes_each_elem // CONFIG_DATA_ALIGN),
                            src_stride=0, dst_stride=0)

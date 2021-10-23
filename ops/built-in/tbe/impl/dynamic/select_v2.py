@@ -27,10 +27,6 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import error_manager_vector as error_manager
 
 
-# define a VALUE, value = 1
-VALUE_ONE = 1
-
-
 # pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 # pylint: disable=too-many-locals, invalid-name, unused-argument
 # pylint: disable=unused-variable
@@ -71,7 +67,7 @@ def select_v2_compute(condition, x1, x2, y, kernel_name="select_v2"):
         x1 = tbe.broadcast(x1, shape_max)
         x2 = tbe.broadcast(x2, shape_max)
         condition = tbe.broadcast(condition, shape_max)
-        ones = tbe.broadcast(tvm.const(VALUE_ONE, dtype="float32"), shape_max, output_dtype="float32")
+        ones = tbe.broadcast(tvm.const(1, dtype="float32"), shape_max, output_dtype="float32")
         res = tbe.vcmpsel(condition, rhs=ones, operation='eq', slhs=x1, srhs=x2)
         if num_dtype != "float32":
             res = tbe.cast_to(res, num_dtype)
@@ -88,7 +84,7 @@ def select_v2_compute(condition, x1, x2, y, kernel_name="select_v2"):
         x1 = tbe.broadcast(x1, shape_max)
         x2 = tbe.broadcast(x2, shape_max)
         condition = tbe.broadcast(condition, shape_max)
-        ones = tbe.broadcast(tvm.const(VALUE_ONE, dtype="float16"), shape_max, output_dtype="float16")
+        ones = tbe.broadcast(tvm.const(1, dtype="float16"), shape_max, output_dtype="float16")
         res = tbe.vcmpsel(condition, rhs=ones, operation='eq', slhs=x1, srhs=x2)
         if num_dtype != "float16":
             res = tbe.cast_to(res, num_dtype)

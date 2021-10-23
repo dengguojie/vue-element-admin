@@ -331,7 +331,7 @@ class PadInit:
         self.prod_new_in = malloc_tiling_scalar(tik_instance, "int64", "prod_new_in_", self.axis_amount)
         self.prod_new_out = malloc_tiling_scalar(tik_instance, "int64", "prod_new_out_", self.axis_amount)
 
-        # avoid exceed axis: prod_value = 1
+        # avoid exceed axis: `prod_value = 1`
         self.prod_new_out.append(1)
         self.prod_new_in.append(1)
 

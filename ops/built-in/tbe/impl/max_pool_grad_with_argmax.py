@@ -75,11 +75,11 @@ def check_supported(x, grad, argmax, y, ksize, strides,
 
     # caculate output size in VALID mode
     if padding == "VALID":
-        # Hout = ceil(Hi - Fh + 1, Sh), Wout = ceil(Wi - Fw + 1, Sw)
+        # `Hout = ceil(Hi - Fh + 1, Sh), Wout = ceil(Wi - Fw + 1, Sw)`
         out_size_h = (in_size_h - window_h + 1 + (stride_h - 1)) // stride_h
         out_size_w = (in_size_w - window_w + 1 + (stride_w - 1)) // stride_w
     if padding == "SAME":
-        # Hout = ceil(Hi, Sh), Wout = ceil(Wi, Sw)
+        # `Hout = ceil(Hi, Sh), Wout = ceil(Wi, Sw)`
         out_size_h = (in_size_h + stride_h - 1) // stride_h
         out_size_w = (in_size_w + stride_w - 1) // stride_w
     if out_size_w == 1 and out_size_h > 1:

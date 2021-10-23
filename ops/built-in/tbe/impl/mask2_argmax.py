@@ -232,7 +232,7 @@ class Mask2Argmax():
         pad_l, pad_r, pad_t, pad_b = 0, 0, 0, 0
 
         if self.padding == "SAME":
-            # Hout = ceil(Hi, Sh), Wout = ceil(Wi, Sw)
+            # `Hout = ceil(Hi, Sh), Wout = ceil(Wi, Sw)`
             out_size_h = (self.in_size_h + self.stride_h - 1) // self.stride_h
             out_size_w = (self.in_size_w + self.stride_w - 1) // self.stride_w
 
@@ -271,7 +271,7 @@ class Mask2Argmax():
 
         # caculate output size in VALID mode
         if self.padding == "VALID":
-            # Hout = ceil(Hi - Fh + 1, Sh), Wout = ceil(Wi - Fw + 1, Sw)
+            # `Hout = ceil(Hi - Fh + 1, Sh), Wout = ceil(Wi - Fw + 1, Sw)`
             out_size_h = (self.in_size_h - self.window_h + 1 +
                           (self.stride_h - 1)) // self.stride_h
             out_size_w = (self.in_size_w - self.window_w + 1 +

@@ -74,7 +74,6 @@ def _init_coordinate_dy(tik_instance, pad_x_top, xi_coordinate):
     """
     xi_coord = tik_instance.Scalar(dtype='int64', name='xi_coord')
     with tik_instance.if_scope(pad_x_top != 0):
-        # if pad_x_top != 0:
         with tik_instance.if_scope(xi_coordinate < 0):
             xi_coord.set_as(0)
         with tik_instance.else_scope():
@@ -2388,7 +2387,6 @@ class MaxPoolGradCompute:
                     # ---rewrite grad_sel_fp32 to f_map_fp32
                     config = (self.sw * 2, self.sw * 2, 2, self.params.sh_wi_2, self.params.sh_wi_2, self.params.wo_2)
                     with tik_instance.if_scope(self.params.config == 1):
-                        # with tik_instance.for_range(0, 1) as ho_idx:
                         map_index = idx_h * self.params.map_wi * c0 + idx_w * c0
                         mask_index = 0
                         shape_map_hw = [self.params.map_hi, self.params.map_wi, c0]
@@ -2874,7 +2872,6 @@ class MaxPoolGradCompute:
                     with tik_instance.for_range(0, self.kw, thread_num=1) as idx_w:
                         src_l1 = 0
 
-                        # with tik_instance.if_scope(load3d_mark != 1):
                         tik_instance.load3dv1(col_in_buf[0], l1_in_buf[src_l1], pad_hw_list, hi_val, wi_val, 0, idx_w,
                                               idx_h, -w_top, -h_top, self.sw, self.sh, self.kw, self.kh, 1, 1, 1, 1,
                                               repeat_times, 0, Constant.MIN_VALUE_FP16)
@@ -2891,12 +2888,12 @@ class MaxPoolGradCompute:
                                        repeat_max_time, remain_repeat_time, remain_ele, grad_size)
 
                         # ---rewrite grad_sel_fp32 to f_map_fp32
-                        # do = 1, ho = 1
+                        # `do = 1, ho = 1`
                         # map_index has two part: begin_index of kernel,
                         # begin_index of child kernel
                         # must use tik variable as index of grad_sel_fp32_buf,
                         # python variable is not work in grad_sel_fp32_buf[mask_index],
-                        # while x = grad_sel_fp32_buf[mask_index], y = x[n].
+                        # `while x = grad_sel_fp32_buf[mask_index], y = x[n].`
                         map_index = idx_h * self.params.map_wi * c0 + idx_w * c0
                         mask_index = 0
 

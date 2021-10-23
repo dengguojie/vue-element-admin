@@ -218,7 +218,7 @@ class NonMaxSuppression(object):
         -------
         iou_thresh
         """
-        # iou_threshold = iou_thres_gm[0]/(iou_thres_gm[0] + 1)
+        # `iou_threshold = iou_thres_gm[0]/(iou_thres_gm[0] + 1)`
         iou_thres_gm = self.input_gm_list[3]
         with self.tik_instance.new_stmt_scope():
             if self.is_lhisi:
@@ -484,7 +484,7 @@ class NonMaxSuppression(object):
 
 
 def total_num(shape):
-    """return total_num"""
+    """total_num"""
     shape_total_num = functools.reduce(lambda a, b: a * b, shape)
     return shape_total_num
 
@@ -1055,7 +1055,6 @@ def do_nms_compute(tik_instance, nms_var_dict, thresh):
         # and get suppression vector 16 by 16 proposal
         length = tik_instance.Scalar(dtype="uint16")
         length.set_as(selected_ceil * 16)
-        # length.set_as(selected_proposals_cnt)
         with tik_instance.if_scope(selected_proposals_cnt < total_output_proposal_num):
             with tik_instance.new_stmt_scope():
                 with tik_instance.for_range(0, handling_ceil) as i:
@@ -1065,7 +1064,7 @@ def do_nms_compute(tik_instance, nms_var_dict, thresh):
                     tik_instance.viou(temp_iou_ub[0, 0], ub_selected_proposals[0],
                                       temp_proposals_ub[i * 16 * 8], selected_ceil)
                     # calculate intersection of tempReducedProposals and
-                    # tempReducedProposals(include itself)
+                    # `tempReducedProposals(include itself)`
                     tik_instance.viou(temp_iou_ub[selected_ceil * 16, 0],
                                       temp_proposals_ub[0], temp_proposals_ub[i * 16 * 8], i + 1)
                     # calculate join of tempReducedProposals
@@ -1073,7 +1072,7 @@ def do_nms_compute(tik_instance, nms_var_dict, thresh):
                     tik_instance.vaadd(temp_join_ub[0, 0], ub_selected_area[0], temp_area_ub[i * 16],
                                        selected_ceil)
                     # calculate intersection of tempReducedProposals and
-                    # tempReducedProposals(include itself)
+                    # `tempReducedProposals(include itself)`
                     tik_instance.vaadd(temp_join_ub[selected_ceil * 16, 0],
                                        temp_area_ub, temp_area_ub[i * 16], i + 1)
                     # calculate join*(thresh/(1+thresh))
@@ -1630,7 +1629,7 @@ def non_max_suppression_v7(boxes, scores, max_output_size,
     def _run_one_core(_real_batch_idx, _real_core_idx):
 
         with tik_instance.for_range(0, class_num) as _class_idx:
-            # for each class, init selected_proposals_cnt = 0
+            # for each class, init `selected_proposals_cnt = 0`
             nms.selected_proposals_cnt.set_as(0)
             with tik_instance.new_stmt_scope():
                 nms_for_single_class(

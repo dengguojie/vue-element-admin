@@ -26,19 +26,16 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-# define a scalar , value = 1
-SCALAR_ONE = 1
-# minimun num of float32 2**(-126)
-MININUM_NUM_FLOAT = 2 ** (-126)
-# minimun num of float16 2**(-24)
-MININUM_NUM_HALF = 2 ** (-24)
-# max num of float32 is 2**126, but cce can only support 2**62,
-# so use 62/62/2 to adaptor 149
-MAX_ONE_CONST_FLOAT = 2 ** 62
-MAX_TWO_CONST_FLOAT = 2 ** 2
-# max num of float16 is 2**24, but cce can only support 2**12,
-# so use 12/12 to adaptor 24
-MAX_CONST_HALF = 2 ** 12
+class Constant:
+    """
+    The class for constant.
+    """
+    SCALAR_ONE = 1
+    MININUM_NUM_FLOAT = 2 ** (-126)
+    MININUM_NUM_HALF = 2 ** (-24)
+    MAX_ONE_CONST_FLOAT = 2 ** 62
+    MAX_TWO_CONST_FLOAT = 2 ** 2
+    MAX_CONST_HALF = 2 ** 12
 
 
 # pylint: disable=locally-disabled,too-many-locals,unused-argument
@@ -73,32 +70,32 @@ def xdivy_compute(input_x, input_y, output_z, kernel_name="xdivy"):
 
     broadcast_x = tbe.broadcast(input_x, shape_list[2])
     broadcast_y = tbe.broadcast(input_y, shape_list[2])
-    broadcast_one = tbe.broadcast(tvm.const(SCALAR_ONE, dtype), shape_list[2], dtype)
+    broadcast_one = tbe.broadcast(tvm.const(Constant.SCALAR_ONE, dtype), shape_list[2], dtype)
 
     abs_x = tbe.vabs(broadcast_x)
     abs_y = tbe.vabs(broadcast_y)
     add_x_y = tbe.vadd(abs_x, abs_y)
 
     if dtype == "float32":
-        data_min = tbe.broadcast(tvm.const(MININUM_NUM_FLOAT, dtype=dtype),
+        data_min = tbe.broadcast(tvm.const(Constant.MININUM_NUM_FLOAT, dtype=dtype),
                                  shape_list[2], dtype)
     elif dtype == "float16":
-        data_min = tbe.broadcast(tvm.const(MININUM_NUM_HALF, dtype=dtype),
+        data_min = tbe.broadcast(tvm.const(Constant.MININUM_NUM_HALF, dtype=dtype),
                                  shape_list[2], dtype)
 
     zero_x_y = tbe.vmin(add_x_y, data_min)
 
     if dtype == "float32":
-        data_mul1 = tbe.vmuls(zero_x_y, tvm.const(MAX_ONE_CONST_FLOAT,
+        data_mul1 = tbe.vmuls(zero_x_y, tvm.const(Constant.MAX_ONE_CONST_FLOAT,
                                                   dtype=dtype))
-        data_mul2 = tbe.vmuls(data_mul1, tvm.const(MAX_ONE_CONST_FLOAT,
+        data_mul2 = tbe.vmuls(data_mul1, tvm.const(Constant.MAX_ONE_CONST_FLOAT,
                                                    dtype=dtype))
-        mul_data = tbe.vmuls(data_mul2, tvm.const(MAX_TWO_CONST_FLOAT,
+        mul_data = tbe.vmuls(data_mul2, tvm.const(Constant.MAX_TWO_CONST_FLOAT,
                                                   dtype=dtype))
     elif dtype == "float16":
-        data_mul1 = tbe.vmuls(zero_x_y, tvm.const(MAX_CONST_HALF,
+        data_mul1 = tbe.vmuls(zero_x_y, tvm.const(Constant.MAX_CONST_HALF,
                                                   dtype=dtype))
-        mul_data = tbe.vmuls(data_mul1, tvm.const(MAX_CONST_HALF,
+        mul_data = tbe.vmuls(data_mul1, tvm.const(Constant.MAX_CONST_HALF,
                                                   dtype=dtype))
 
     sub_x_y_zero = tbe.vsub(mul_data, broadcast_one)

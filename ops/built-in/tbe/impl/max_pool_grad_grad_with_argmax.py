@@ -409,10 +409,12 @@ def max_pool_grad_grad_with_argmax_compute(placeholders,
     stride = (stride_h, stride_w)
 
     # howo must be multiple of 16
-    howo = _ceil_to(shape_max_pool_h * shape_max_pool_w, BLOCK_SIZE)
+    howo = _ceil_to(shape_max_pool_h * shape_max_pool_w, tbe_platform.BLOCK_REDUCE)
 
     # copy argmax from ub to gm
-    shape_argmax_ub = (grad_n, grad_c1 * kernel_h * kernel_w, howo // BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE)
+    shape_argmax_ub = (
+    grad_n, grad_c1 * kernel_h * kernel_w, howo // tbe_platform.BLOCK_REDUCE, tbe_platform.BLOCK_REDUCE,
+    tbe_platform.BLOCK_REDUCE)
     argmax_ub = tvm.compute(shape_argmax_ub, lambda *i: argmax_tensor(*i), name='argmax_ub')
 
     # load3d compute
@@ -429,24 +431,30 @@ def max_pool_grad_grad_with_argmax_compute(placeholders,
         stride,
     )
     # n hw c1 kh kw c0  ->  n c1 kh kw hw c0
-    shape_fractal = (grad_n, howo // BLOCK_SIZE, grad_c1 * kernel_h * kernel_w, BLOCK_SIZE, BLOCK_SIZE)
+    shape_fractal = (
+    grad_n, howo // tbe_platform.BLOCK_REDUCE, grad_c1 * kernel_h * kernel_w, tbe_platform.BLOCK_REDUCE,
+    tbe_platform.BLOCK_REDUCE)
     grad_fractal = tbe.te_compute.common.im2col_fractal(shape_fractal, grad_im2col, "ca", tag='')
 
     # (n, howo/16, c1khkw, 16, c0) -> (n, c1khkw, howo/16, 16, c0)
-    shape_grad_fratical_transp = (grad_n, grad_c1 * kernel_h * kernel_w, howo // BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE)
+    shape_grad_fratical_transp = (
+    grad_n, grad_c1 * kernel_h * kernel_w, howo // tbe_platform.BLOCK_REDUCE, tbe_platform.BLOCK_REDUCE,
+    tbe_platform.BLOCK_REDUCE)
     grad_fractal_transp = tvm.compute(shape_grad_fratical_transp,
                                       lambda i, j, k, l, m: grad_fractal[i, k, j, l, m],
                                       name='grad_fractal_transp')
 
     # declare a zero tensor, and move to ub for vsel
     dtype_tensor_zero = grad_tensor.dtype
-    shape_tensor_zero = (BLOCK_SIZE, )
+    shape_tensor_zero = (tbe_platform.BLOCK_REDUCE, )
     tensor_zero_ub = tvm.compute(shape_tensor_zero,
                                  lambda *i: tvm.const(0, dtype=dtype_tensor_zero),
                                  name='tensor_zero_ub')
 
     # vsel compute
-    shape_grad_grad_col = (grad_n, grad_c1 * kernel_h * kernel_w, howo // BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE)
+    shape_grad_grad_col = (
+    grad_n, grad_c1 * kernel_h * kernel_w, howo // tbe_platform.BLOCK_REDUCE, tbe_platform.BLOCK_REDUCE,
+    tbe_platform.BLOCK_REDUCE)
     grad_grad_col = tvm.compute(shape_grad_grad_col,
                                 lambda i, j, k, l, m: tvm.select(argmax_ub[i, j, k, l, m], grad_fractal_transp[
                                     i, j, k, l, m], tensor_zero_ub[m]),
@@ -455,7 +463,8 @@ def max_pool_grad_grad_with_argmax_compute(placeholders,
     # reduce_sum
     # (n, c1khkw, howo/16, 16, c0) -> (n, c1, howo/16, 16, c0)
     m = tvm.reduce_axis((0, kernel_h * kernel_w), "m")
-    shape_grad_grad = (grad_n, grad_c1, howo // BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE)
+    shape_grad_grad = (
+    grad_n, grad_c1, howo // tbe_platform.BLOCK_REDUCE, tbe_platform.BLOCK_REDUCE, tbe_platform.BLOCK_REDUCE)
     grad_grad = tvm.compute(
         shape_grad_grad,
         lambda i, j, n, p, q: tvm.sum(grad_grad_col[i, j * kernel_h * kernel_w + m, n, p, q], axis=[m]),
@@ -488,7 +497,7 @@ def max_pool_grad_grad_with_argmax_compute(placeholders,
     }
 
     # UB to OUT
-    output_res = tvm.compute((grad_n, grad_c1, shape_max_pool_h * shape_max_pool_w, BLOCK_SIZE),
+    output_res = tvm.compute((grad_n, grad_c1, shape_max_pool_h * shape_max_pool_w, tbe_platform.BLOCK_REDUCE),
                              lambda i, j, l, m: grad_grad[i, j, l // 16, l % 16, m],
                              name="ub_to_out",
                              attrs={
@@ -568,8 +577,9 @@ def _max_pool_grad_grad_with_argmax_schedule(compute_list, sch_list):
     sch[grad_fractal_transp].compute_inline()
 
     # Last axis of grad_im2col instr has to be an integer multiple of 16
-    sch[grad_grad].buffer_align((1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE), (1, BLOCK_SIZE), (1, 1))
-    sch[grad_im2col].buffer_align((1, 1), (1, shape_max_pool_w), (1, 1), (1, 1), (1, 1), (1, BLOCK_SIZE))
+    sch[grad_grad].buffer_align((1, 1), (1, 1), (1, 1), (1, tbe_platform.BLOCK_REDUCE), (1, tbe_platform.BLOCK_REDUCE),
+                                (1, 1))
+    sch[grad_im2col].buffer_align((1, 1), (1, shape_max_pool_w), (1, 1), (1, 1), (1, 1), (1, tbe_platform.BLOCK_REDUCE))
 
     # get tiling shape value
     max_l1_valid_size = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)

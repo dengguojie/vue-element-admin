@@ -26,12 +26,13 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-# define a scaler , value = -1
-SCALER_NEGATIVE_ONE = -1
-# define a scaler , value = 0.5
-SCALER_ZERO_POINT_FIVE = 0.5
-# define a scaler , value = 2
-SCALAR_TWO = 2
+class Constant:
+    """
+    The class for constant.
+    """
+    SCALER_NEGATIVE_ONE = -1
+    SCALER_ZERO_POINT_FIVE = 0.5
+    SCALAR_TWO = 2
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
@@ -72,13 +73,13 @@ def sinh_compute(input_data, output_data, kernel_name="sinh"):
         dtype = "float16"
         has_improve_precision = True
 
-    data_mul = tbe.vmuls(input_data, tvm.const(SCALER_NEGATIVE_ONE, dtype))
+    data_mul = tbe.vmuls(input_data, tvm.const(Constant.SCALER_NEGATIVE_ONE, dtype))
     data_exp = tbe.vexp(data_mul)
-    data_exp_x = tbe.vmuls(data_exp, tvm.const(SCALER_ZERO_POINT_FIVE, dtype))
+    data_exp_x = tbe.vmuls(data_exp, tvm.const(Constant.SCALER_ZERO_POINT_FIVE, dtype))
 
-    tensor_two = tbe.broadcast(tvm.const(SCALAR_TWO, dtype), shape)
+    tensor_two = tbe.broadcast(tvm.const(Constant.SCALAR_TWO, dtype), shape)
     data_ln2 = tbe.vlog(tensor_two)
-    data_neg_ln2 = tbe.vmuls(data_ln2, tvm.const(SCALER_NEGATIVE_ONE, dtype))
+    data_neg_ln2 = tbe.vmuls(data_ln2, tvm.const(Constant.SCALER_NEGATIVE_ONE, dtype))
     data_x = tbe.vadd(input_data, data_neg_ln2)
     data_exp_data = tbe.vexp(data_x)
 

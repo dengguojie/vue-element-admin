@@ -74,8 +74,8 @@ def shape_broadcast(data_1, data_2):
 
 def compute_ratio(w_norm, g_norm):
     """
-    compute :ratio = array_ops.where(math_ops.greater(w_norm, 0), array_ops.where(math_ops.greater(g_norm, 0),
-    (w_norm / g_norm), 1.0), 1.0)
+    compute :`ratio = array_ops.where(math_ops.greater(w_norm, 0)`, `array_ops.where(math_ops.greater(g_norm, 0)`,
+    `(w_norm / g_norm), 1.0), 1.0)`
     :param w_norm:
     :param g_norm:
     :return: ratio

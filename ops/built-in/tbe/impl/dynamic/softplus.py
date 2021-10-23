@@ -26,10 +26,13 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-# define a scalar, value = 1
-SCALAR_ONE = 1
-NEG_LN_2 = - 0.69314718055994530941723212145818
-NEG_ONE = -1
+class Constant:
+    """
+    The class for constant.
+    """
+    SCALAR_ONE = 1
+    NEG_LN_2 = - 0.69314718055994530941723212145818
+    NEG_ONE = -1
 
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
@@ -64,33 +67,33 @@ def softplus_compute(input_x, y, kernel_name="softplus"):
     positive_part = tbe.vmaxs(input_x, tvm.const(0, dtype="float32"))
     negative_part = tbe.vmins(input_x, tvm.const(0, dtype="float32"))
     # calculate positive part softplus
-    pos_to_neg = tbe.vmuls(positive_part, tvm.const(NEG_ONE, dtype="float32"))
+    pos_to_neg = tbe.vmuls(positive_part, tvm.const(Constant.NEG_ONE, dtype="float32"))
     # dtype is float32 and tbe_platform not support float32
     if dtype == "float32" and not tbe_platform.api_check_support("te.lang.cce.vexp", "float32"):
         positive_part = tbe.cast_to(positive_part, "float16")
         pos_to_neg = tbe.cast_to(pos_to_neg, "float16")
         negative_part = tbe.cast_to(negative_part, "float16")
         exp_pos = tbe.vexp(pos_to_neg)
-        exp_add_one = tbe.vadds(exp_pos, SCALAR_ONE)
+        exp_add_one = tbe.vadds(exp_pos, Constant.SCALAR_ONE)
         log_pos = tbe.vlog(exp_add_one)
         res_positive = tbe.vadd(log_pos, positive_part)
         # calculate positive part softplus
         exp_neg = tbe.vexp(negative_part)
-        add_one = tbe.vadds(exp_neg, SCALAR_ONE)
+        add_one = tbe.vadds(exp_neg, Constant.SCALAR_ONE)
         res_negative = tbe.vlog(add_one)
     else:
         exp_pos = tbe.vexp(pos_to_neg)
-        exp_add_one = tbe.vadds(exp_pos, SCALAR_ONE)
+        exp_add_one = tbe.vadds(exp_pos, Constant.SCALAR_ONE)
         log_pos = tbe.vlog(exp_add_one)
         res_positive = tbe.vadd(log_pos, positive_part)
         # calculate positive part softplus
         exp_neg = tbe.vexp(negative_part)
-        add_one = tbe.vadds(exp_neg, SCALAR_ONE)
+        add_one = tbe.vadds(exp_neg, Constant.SCALAR_ONE)
         res_negative = tbe.vlog(add_one)
     res_positive = tbe.cast_to(res_positive, "float32")
     res_negative = tbe.cast_to(res_negative, "float32")
     res_tmp = tbe.vadd(res_positive, res_negative)
-    res = tbe.vadds(res_tmp, NEG_LN_2)
+    res = tbe.vadds(res_tmp, Constant.NEG_LN_2)
 
     if dtype == "float16":
         res = tbe.cast_to(res, "float16")

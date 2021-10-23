@@ -592,7 +592,7 @@ class ResizeNearestNeighbor:
                     double_buffer=True)
 
                 # from L1-UB b_out*c1;
-                # from UB-GM, n_burst=b_out*c1 burst_len=w_out
+                # from UB-GM, `n_burst=b_out*c1 burst_len=w_out`
                 with ib.for_range(
                         0, tvm.min(w_out, self.output_w -
                                    w_loop_idx * w_out)) as w_out_idx:
@@ -958,8 +958,9 @@ def check_supported(images,
             return False, reason
 
         if in_size_h < 1 or in_size_w < 1 or size[0] < 1 or size[1] < 1:
-            reason = "the images_shape or size are too small, images_shape[1]:%s, images_shape[1]:%s, size[0]:%s, size[1]:%s"\
-                      % (in_size_h, in_size_w, size[0], size[1])
+            reason = "the images_shape or size are too small, " \
+                     "images_shape[1]:%s, images_shape[1]:%s, size[0]:%s, size[1]:%s" \
+                     % (in_size_h, in_size_w, size[0], size[1])
             return False, reason
 
     except RuntimeError as e:

@@ -27,11 +27,6 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import OpImplMode
 from impl.util.platform_adapter import error_manager_vector
 
-# define a scalar, value = 1
-SCALAR_ONE = 1
-# define a scalar, value = 0
-SCALAR_ZREO = 0
-
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals,too-many-arguments,line-too-long
 @register_operator_compute("SigmoidCrossEntropyWithLogitsV2",
@@ -80,8 +75,8 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict, target, weight, pos_we
             pos_weight = tbe.cast_to(pos_weight, "float32")
 
     shape_predict = shape_util.shape_to_list(predict.shape)
-    const_zero = tvm.const(SCALAR_ZREO, dtype=predict.dtype)
-    const_one = tvm.const(SCALAR_ONE, dtype=predict.dtype)
+    const_zero = tvm.const(0, dtype=predict.dtype)
+    const_one = tvm.const(1, dtype=predict.dtype)
     const_zero_broadcast = tbe.broadcast(const_zero, shape_predict)
     const_one_broadcast = tbe.broadcast(const_one, shape_predict)
 

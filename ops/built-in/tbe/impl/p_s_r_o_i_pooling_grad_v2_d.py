@@ -790,7 +790,7 @@ class PSROIPoolingGradV2DClass(object):
                                                          name="bin_start_h_floor", scope=tbe_platform.scope_ubuf)
             bin_end_h_ceil = self.tik_instance.Tensor(INT32, (DIGIT_128,),
                                                       name="bin_end_h_ceil", scope=tbe_platform.scope_ubuf)
-            # vmax(,0)
+            # `vmax(,0)`
             dup_tmp_ub = self.tik_instance.Tensor(INT32, (DIGIT_64,),
                                                   name="dup_tmp_ub", scope=tbe_platform.scope_ubuf)
 
@@ -891,7 +891,7 @@ class PSROIPoolingGradV2DClass(object):
                                    REP_STRIDE_EIGHT, REP_STRIDE_EIGHT,
                                    STRIDE_ZERO)
 
-            # vmin(,width/height)
+            # `vmin(,width/height)`
             self.tik_instance.vector_dup(MASK64, dup_tmp_ub, self.fm_w,
                                          REPEAT_1, STRIDE_ONE, REP_STRIDE_EIGHT)
             self.tik_instance.vmin(MASK64, bin_start_w_floor, bin_start_w_floor,

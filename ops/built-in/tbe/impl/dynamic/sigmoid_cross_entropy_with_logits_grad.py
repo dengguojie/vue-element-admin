@@ -27,11 +27,6 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
 
-# define a scalar, value = 1
-SCALAR_ONE = 1
-# define a scalar, value = -1
-SCALAR_NEGTIVE_ONE = -1
-
 
 @register_operator_compute("SigmoidCrossEntropyWithLogitsGrad",
                            op_mode="dynamic", support_fusion=False)
@@ -68,11 +63,11 @@ def sigmoid_cross_entropy_with_logits_grad_compute(
     # e^x
     val1 = tbe.vexp(predict)
     # 1 + e^x
-    val2 = tbe.vadds(val1, tvm.const(SCALAR_ONE, dtype="float32"))
+    val2 = tbe.vadds(val1, tvm.const(1, dtype="float32"))
 
     val3 = tbe.vdiv(val1, val2)
     # -target
-    val4 = tbe.vmuls(target, tvm.const(SCALAR_NEGTIVE_ONE, dtype="float32"))
+    val4 = tbe.vmuls(target, tvm.const(-1, dtype="float32"))
 
     val5 = tbe.vadd(val3, val4)
 

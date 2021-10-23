@@ -48,8 +48,8 @@ class Constant:
 
 def _tan_expand(input_x):
     """
-    calculating tan x = x + x^3/3 + 2*x^5/15 + 17*x^7/315 +
-                        62*x^9/2835 + 1382*x^11/155925...(|x|<pi/2)
+    calculating `tan x = x + x^3/3 + 2*x^5/15 + 17*x^7/315 +`
+                        `62*x^9/2835 + 1382*x^11/155925...(|x|<pi/2)`
     """
     # Taylor expansion coefficient
     factors = [1 / 3, 2 / 15, 17 / 315, 62 / 2835, 1382 / 155925]
@@ -76,7 +76,7 @@ def _tan_2x_multi(input_x, times):
     res = _tan_expand(input_x_divide)
 
     while times != 0:
-        # using double angle formula: tan 2x = 2*tan x/(1-tan x*tan x)
+        # `using double angle formula: tan 2x = 2*tan x/(1-tan x*tan x)`
 
         res_denominator = tbe.vmuls(res, 2.0)
         tanx_square = tbe.vmul(res, res)

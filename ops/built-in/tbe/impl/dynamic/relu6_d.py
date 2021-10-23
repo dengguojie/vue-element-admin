@@ -14,7 +14,7 @@
 # ============================================================================
 """
 relu6_d
-f(x) = min(max(0,x), 6*scale)
+`f(x) = min(max(0,x), 6*scale)`
 """
 
 from impl.util.platform_adapter import tbe

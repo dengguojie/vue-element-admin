@@ -22,9 +22,6 @@ from te.utils import shape_util
 from te import tvm
 from te.utils.error_manager import error_manager_vector
 
-# define a scalar, value = 1
-SCALAR_ONE = 1
-
 
 # pylint: disable=locally-disabled,unused-argument,too-many-locals
 # pylint: disable=unused-variable
@@ -71,7 +68,7 @@ def softplus_grad_compute(input_gradients, input_features, output_backprops,
         input_features = tbe.cast_to(input_features, "float32")
 
     data_exp_tmp = tbe.vexp(input_features)
-    data_add_tmp = tbe.vadds(data_exp_tmp, SCALAR_ONE)
+    data_add_tmp = tbe.vadds(data_exp_tmp, 1)
     data_div_tmp = tbe.vdiv(data_exp_tmp, data_add_tmp)
     res_tmp = tbe.vmul(input_gradients, data_div_tmp)
 

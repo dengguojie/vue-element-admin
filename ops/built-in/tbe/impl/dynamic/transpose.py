@@ -2668,7 +2668,6 @@ class Transpose():
                                      tp.major_burst_len_out,
                                      tp.major_src_loop_out)
                     self._copy_out_tail_src_major_dst_s4(tp, ub_input)
-                    #tik_inst.data_move(self.data_out[0], ub_input[tp.offset_a], 0, 1, 4000, 0, 0)
 
             with tik_inst.if_scope(tik.all(is_dst_tail_in == 1, tp.pivot_dst_axis_dup == 0)):
                 with tik_inst.if_scope(tp.tail_burst_len_out != 0):
@@ -5456,130 +5455,6 @@ class Transpose():
                 self._copy_out_src_mode_s9(tp, ub_input, tp.repeat, tp.last_axis_burst_len,
                                            tp.dst_repeat_stride, ub_offset)
                 self._update_tuple(tp.trans_axis_num, tp.rt_tuple, tp.src_jump_factor)
-
-    # -------------------------------------------------------------------------------------------------
-    #                                    scenario_10
-    # -------------------------------------------------------------------------------------------------
-    #def _get_src_addr_s10(self, tp, ln, lc, lr):
-    #    tp.src_addr.set_as(tp.col_offset + lc * tp.col_per_mc + tp.row_offset * tp.col_vol + lr * tp.row_per_mr * tp.col_vol)
-    #    return tp.src_addr
-
-    #def _get_dst_addr_s10(self, tp, ln, lc, lr):
-    #    tp.dst_addr.set_as(tp.row_offset + lr * tp.row_per_mr + tp.col_offset * tp.row_vol + lc * tp.col_per_mc * tp.row_vol)
-    #    return tp.dst_addr
-
-    #def _copy_in_s10_mcmr(self, tp, ub_input, ub_offset, ln, lc, lr):
-    #    self.tik_inst.data_move(ub_input[0],
-    #                            self.data_in[self._get_src_addr_s10(tp, ln, lc, lr)],
-    #                            0,
-    #                            tp.row_per_mr,
-    #                            tp.col_block_per_mc,
-    #                            tp.src_stride_in,
-    #                            0)
-    #    ub_offset.set_as(tp.row_per_mr * tp.col_per_mc)
-
-    #def _copy_in_s10_mctr(self, tp, ub_input, ub_offset, ln, lc, lr):
-    #    self.tik_inst.data_move(ub_input[0],
-    #                            self.data_in[self._get_src_addr_s10(tp, ln, lc, lr)],
-    #                            0,
-    #                            tp.row_tr,
-    #                            tp.col_block_per_mc,
-    #                            tp.src_stride_in,
-    #                            0)
-    #    ub_offset.set_as(tp.row_tr * tp.col_per_mc)
-
-    #def _copy_in_s10_tcmr(self, tp, ub_input, ub_offset, ln, lc, lr):
-    #    self.tik_inst.data_move(ub_input[0],
-    #                            self.data_in[self._get_src_addr_s10(tp, ln, lc, lr)],
-    #                            0,
-    #                            tp.row_per_mr,
-    #                            tp.col_block_tc,
-    #                            tp.src_stride_in_tail,
-    #                            0)
-    #    ub_offset.set_as(tp.row_per_mr * tp.col_tc)
-
-    #def _copy_in_s10_tctr(self, tp, ub_input, ub_offset, ln, lc, lr):
-    #    self.tik_inst.data_move(ub_input[0],
-    #                            self.data_in[self._get_src_addr_s10(tp, ln, lc, lr)],
-    #                            0,
-    #                            tp.row_tr,
-    #                            tp.col_block_tc,
-    #                            tp.src_stride_in_tail,
-    #                            0)
-    #    ub_offset.set_as(tp.row_tr * tp.col_tc)
-
-    #def _copy_out_s10_mcmr(self, tp, ub_input, ub_offset, ln, lc, lr):
-    #    self.tik_inst.data_move(self.data_out[self._get_dst_addr_s10(tp, ln, lc, lr)],
-    #                            ub_input[tp.offset_b],
-    #                            0,
-    #                            tp.col_per_mc,
-    #                            tp.row_block_per_mr,
-    #                            ROW_UNIT // EPB16 - tp.row_block_per_mr,
-    #                            tp.dst_stride_out)
-
-    #def _copy_out_s10_mctr(self, tp, ub_input, ub_offset, ln, lc, lr):
-    #    self.tik_inst.data_move(self.data_out[self._get_dst_addr_s10(tp, ln, lc, lr)],
-    #                            ub_input[tp.offset_b],
-    #                            0,
-    #                            tp.col_per_mc,
-    #                            tp.row_block_tr,
-    #                            ROW_UNIT // EPB16 - tp.row_block_tr,
-    #                            tp.dst_stride_out_tail)
-
-    #def _copy_out_s10_tcmr(self, tp, ub_input, ub_offset, ln, lc, lr):
-    #    self.tik_inst.data_move(self.data_out[self._get_dst_addr_s10(tp, ln, lc, lr)],
-    #                            ub_input[tp.offset_b],
-    #                            0,
-    #                            tp.col_tc,
-    #                            tp.row_block_per_mr,
-    #                            ROW_UNIT // EPB16 - tp.row_block_per_mr,
-    #                            tp.dst_stride_out)
-
-    #def _copy_out_s10_tctr(self, tp, ub_input, ub_offset, ln, lc, lr):
-    #    self.tik_inst.data_move(self.data_out[self._get_dst_addr_s10(tp, ln, lc, lr)],
-    #                            ub_input[tp.offset_b],
-    #                            0,
-    #                            tp.col_tc,
-    #                            tp.row_block_tr,
-    #                            ROW_UNIT // EPB16 - tp.row_block_tr,
-    #                            tp.dst_stride_out_tail)
-
-    #def _reorder_s10(self, tp, ub_input, ub_offset, is_tc=False, is_tr=False):
-    #    with self.tik_inst.if_scope(self.fp16_times == 2):  # fp32/int32
-    #        self._reorder_s7_b32(tp, ub_input, ub_offset, is_tc, is_tr)
-    #    with self.tik_inst.else_scope():  # fp16/int16
-    #        self._reorder_s7_b16(tp, ub_input, ub_offset, is_tc, is_tr)
-
-    #def _move_data_s10(self, tp, ub_input_64):
-    #    ub_offset = self.tik_inst.Scalar("int32")  # unit : block
-    #    ub_input = ub_input_64.reinterpret_cast_to(self.x_dtype)
-
-    #    self._init_n_tuple(tp)
-
-    #    with self.tik_inst.for_range(0, tp.loop_on_n) as ln:
-    #        with self.tik_inst.for_range(0, tp.loop_on_mc) as lc:
-    #            with self.tik_inst.for_range(0, tp.loop_on_mr) as lr:
-    #                self._copy_in_s10_mcmr(tp, ub_input, ub_offset, ln, lc, lr)
-    #                self._reorder_s10(tp, ub_input, ub_offset, False, False)
-    #                self._copy_out_s10_mcmr(tp, ub_input, ub_offset, ln, lc, lr)
-
-    #            with self.tik_inst.if_scope(tp.row_tr != 0):
-    #                self._copy_in_s10_mctr(tp, ub_input, ub_offset, ln, lc, tp.loop_on_mr)
-    #                self._reorder_s10(tp, ub_input, ub_offset, False, True)
-    #                self._copy_out_s10_mctr(tp, ub_input, ub_offset, ln, lc, tp.loop_on_mr)
-
-    #        with self.tik_inst.if_scope(tp.col_tc != 0):
-    #            with self.tik_inst.for_range(0, tp.loop_on_mr) as lr:
-    #                self._copy_in_s10_tcmr(tp, ub_input, ub_offset, ln, tp.loop_on_mc, lr)
-    #                self._reorder_s10(tp, ub_input, ub_offset, True, False)
-    #                self._copy_out_s10_tcmr(tp, ub_input, ub_offset, ln, tp.loop_on_mc, lr)
-
-    #        with self.tik_inst.if_scope(tp.col_tc != 0):
-    #            with self.tik_inst.if_scope(tp.row_tr != 0):
-    #                self._copy_in_s10_tctr(tp, ub_input, ub_offset, ln, tp.loop_on_mc, tp.loop_on_mr)
-    #                self._reorder_s10(tp, ub_input, ub_offset, True, True)
-    #                self._copy_out_s10_tctr(tp, ub_input, ub_offset, ln, tp.loop_on_mc, tp.loop_on_mr)
-    #        #self._update_tuple(tp.n_axis_num, tp.rt_n_tuple, tp.n_jump_factor)
 
     def _reorder_s10_last_two_axis_16x16_b16(self, tp, ub_input, idx):
         ub_input_fp16 = ub_input.reinterpret_cast_to("float16")

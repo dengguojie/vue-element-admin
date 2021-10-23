@@ -649,5 +649,4 @@ def nchw_2_fractal_z_g(src, dst, src_format, dst_format, groups, kernel_name="nc
         instance.compute_c_le_16(tp, data_in, data_out)
     else:
         instance.compute_c_gt_16(tp, data_in, data_out)
-
     tik_inst.BuildCCE(kernel_name=kernel_name, inputs=[data_in], outputs=[data_out])

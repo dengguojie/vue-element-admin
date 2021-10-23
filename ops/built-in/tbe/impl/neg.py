@@ -25,10 +25,12 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 
-# define a scaler, value = -1
-SCALER_NEGATIVE_ONE = -1
-# define a float scaler, value = -1.0
-SCALER_NEGATIVE_ONE_FLOAT = -1.0
+class Constant:
+    """
+    The class for constant.
+    """
+    SCALER_NEGATIVE_ONE = -1
+    SCALER_NEGATIVE_ONE_FLOAT = -1.0
 
 
 # 'pylint: disable=locally-disabled,unused-argument
@@ -55,10 +57,10 @@ def neg_compute(input_x, output_y, kernel_name="neg"):
     shape = shape_util.shape_to_list(input_x.shape)
 
     if dtype == "int32":
-        data_tmp = tbe.broadcast(SCALER_NEGATIVE_ONE, shape)
+        data_tmp = tbe.broadcast(-1, shape)
         res = tbe.vmul(input_x, data_tmp)
     else:
-        res = tbe.vmuls(input_x, SCALER_NEGATIVE_ONE_FLOAT)
+        res = tbe.vmuls(input_x, Constant.SCALER_NEGATIVE_ONE_FLOAT)
 
     if dtype == "int8":
         res = tbe.cast_to(res, dtype, f1628IntegerFlag=True)

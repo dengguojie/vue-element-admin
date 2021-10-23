@@ -26,9 +26,6 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-# define a VALUE, value = 1
-VALUE_ONE = 1
-
 
 # pylint: disable=too-many-locals,invalid-name,unused-argument,too-many-statements
 def select_compute(condition, x1, x2, y, kernel_name="select"):
@@ -72,9 +69,9 @@ def select_compute(condition, x1, x2, y, kernel_name="select"):
     if num_dtype in ("int8", "uint8"):
         x1 = tbe.cast_to(x1, "float16")
         x2 = tbe.cast_to(x2, "float16")
-        ones = tbe.broadcast(tvm.const(VALUE_ONE, dtype="float16"), shape_max, output_dtype="float16")
+        ones = tbe.broadcast(tvm.const(1, dtype="float16"), shape_max, output_dtype="float16")
     else:
-        ones = tbe.broadcast(tvm.const(VALUE_ONE, dtype=num_dtype), shape_max, output_dtype=num_dtype)
+        ones = tbe.broadcast(tvm.const(1, dtype=num_dtype), shape_max, output_dtype=num_dtype)
 
     condition = tbe.broadcast(condition, shape_max)
     x1 = tbe.broadcast(x1, shape_max)

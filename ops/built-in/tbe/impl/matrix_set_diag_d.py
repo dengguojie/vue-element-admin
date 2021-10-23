@@ -27,10 +27,12 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-# define a scalar, value = -1
-SCALAR_NEGATIVE_ONE = -1
-# define a scalar, value = 2
-SCALAR_TWO = 2
+class Constant:
+    """
+    The class for constant.
+    """
+    SCALAR_NEGATIVE_ONE = -1
+    SCALAR_TWO = 2
 
 
 # 'pylint: disable = unused-argument
@@ -74,7 +76,7 @@ def _check_tensor_size(shape_x, shape_y):
     len_x = len(shape_x)
     len_y = len(shape_y)
 
-    if (len_x < SCALAR_TWO) or (len_y < SCALAR_TWO):
+    if (len_x < Constant.SCALAR_TWO) or (len_y < Constant.SCALAR_TWO):
         error_detail = "Only the rank of input tensors >= 2 are supported!"
         error_manager_vector.raise_err_two_input_shape_invalid("matrix_set_diag_d", "input_matrix", \
                                                                "input_help", error_detail)
@@ -128,7 +130,7 @@ def matrix_set_diag_d_compute(input_matrix, input_diagonal, input_help,
         input_help = tbe.cast_to(input_help, "float16")
 
     diag_tmp = tbe.broadcast(input_diagonal, shape_input)
-    help_tmp = tbe.vadds(input_help, SCALAR_NEGATIVE_ONE)
+    help_tmp = tbe.vadds(input_help, Constant.SCALAR_NEGATIVE_ONE)
     help_y = tbe.vabs(help_tmp)
 
     res_vmul_x = tbe.vmul(input_matrix, help_y)

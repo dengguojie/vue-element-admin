@@ -14,8 +14,8 @@
 # ============================================================================
 """
 selu
-if < 0:`scale * alpha * (exp(features) - 1)`
-otherwise:`scale * features`
+`if < 0:scale * alpha * (exp(features) - 1)`
+`otherwise:`scale * features`
 """
 import functools
 

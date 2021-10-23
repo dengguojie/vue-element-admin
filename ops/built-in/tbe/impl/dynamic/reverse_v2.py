@@ -27,16 +27,15 @@ from impl.util.util_common import div_align_scalar as div_align
 from impl.util.util_common import ceil_div_scalar as ceil_div
 
 
-# max int64
-MAX_INT64 = 2 ** 63 - 1
-# 1 byte = 8 bit
-EIGHT_BIT = 8
-# reserved ub size
-RESERVED_UB = 1024 * 8
-# min vnhw num
-VNHW_MIN_NUM = 256
-# tiling num
-TILING_NUM = 34
+class Constant:
+    """
+    The class for constant.
+    """
+    MAX_INT64 = 2 ** 63 - 1
+    EIGHT_BIT = 8
+    RESERVED_UB = 1024 * 8
+    VNHW_MIN_NUM = 256
+    TILING_NUM = 34
 
 
 # pylint: disable=too-many-lines,too-many-instance-attributes,too-many-statements,too-many-arguments,too-many-locals
@@ -66,11 +65,11 @@ class ReverseExt2:
         """
         self.tik_instance = tik.Tik()
         self.aicore_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB
+        self.ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - Constant.RESERVED_UB
         self.shape_x = list(shape_x)
         self.inner_dtype = "float16"
-        self.inner_bytes_size = tbe_platform.get_bit_len(self.inner_dtype) // EIGHT_BIT
-        self.input_bytes_size = tbe_platform.get_bit_len(dtype_x) // EIGHT_BIT
+        self.inner_bytes_size = tbe_platform.get_bit_len(self.inner_dtype) // Constant.EIGHT_BIT
+        self.input_bytes_size = tbe_platform.get_bit_len(dtype_x) // Constant.EIGHT_BIT
         self.ub_element_number = self.ub_size_bytes // self.inner_bytes_size
         self.avaliable_ub = self.ub_element_number // 2
         self.block_num = constant.BLOCK_SIZE // self.inner_bytes_size
@@ -78,14 +77,14 @@ class ReverseExt2:
         self.process_num = 0
 
         self.axis = axis
-        self.input_data = self.tik_instance.Tensor(self.inner_dtype, (MAX_INT64,), name="input_data",
+        self.input_data = self.tik_instance.Tensor(self.inner_dtype, (Constant.MAX_INT64,), name="input_data",
                                                    scope=tik.scope_gm)
-        self.input_axis = self.tik_instance.Tensor(self.axis.get("dtype"), (MAX_INT64,),
+        self.input_axis = self.tik_instance.Tensor(self.axis.get("dtype"), (Constant.MAX_INT64,),
                                                    name="input_axis",
                                                    scope=tik.scope_gm)
-        self.output_data = self.tik_instance.Tensor(self.inner_dtype, (MAX_INT64,), name="output_data",
+        self.output_data = self.tik_instance.Tensor(self.inner_dtype, (Constant.MAX_INT64,), name="output_data",
                                                     scope=tik.scope_gm)
-        self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_NUM,), name="tiling_gm", scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_NUM,), name="tiling_gm", scope=tik.scope_gm)
 
         # assist data for topk (1023, 1022, 1021 ......  2, 1, 0)
         assist_data = list(range(2048))
@@ -153,8 +152,9 @@ class ReverseExt2:
         execute_tilling, copy tiling and read
         """
         with self.tik_instance.new_stmt_scope():
-            tiling_ub = self.tik_instance.Tensor("int64", (TILING_NUM,), name="tiling_ub", scope=tik.scope_ubuf)
-            self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, ceil_div(TILING_NUM, 4), 0, 0)
+            tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_NUM,), name="tiling_ub",
+                                                 scope=tik.scope_ubuf)
+            self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, ceil_div(Constant.TILING_NUM, 4), 0, 0)
             self.set_tiling_param(tiling_ub)
         self.inner_total_num_list = []
         for i, _ in enumerate(self.inner_shape):
@@ -393,7 +393,7 @@ class ReverseExt2:
                 mid_split_num = self.inner_total_num_list[-2] // self.split_dim
                 last_dim_block = ceil_div(self.inner_shape[-1], self.block_num)
                 block_num_align = div_align(self.max_vnchw_block_num // last_dim_block,
-                                            VNHW_MIN_NUM, div_mode="floor")
+                                            Constant.VNHW_MIN_NUM, div_mode="floor")
                 max_split_part_num.set_as(block_num_align // mid_split_num)
                 self.tik_instance.scalar_min(self.split_part_num, self.split_dim, max_split_part_num)
                 with self.tik_instance.for_range(self.core_outer_start,
@@ -407,7 +407,7 @@ class ReverseExt2:
         with self.tik_instance.if_scope(self.tiling_key == 5):
             with self.tik_instance.new_stmt_scope():
                 mid_split_num = self.inner_total_num_list[-2] // self.split_dim
-                last_dim_block = div_align(self.inner_shape[-1], VNHW_MIN_NUM) // self.block_num
+                last_dim_block = div_align(self.inner_shape[-1], Constant.VNHW_MIN_NUM) // self.block_num
                 max_split_part_num.set_as(
                     div_align(self.max_vnchw_block_num // last_dim_block, 16, "floor") // mid_split_num)
                 self.tik_instance.scalar_min(self.split_part_num, self.split_dim, max_split_part_num)
@@ -944,7 +944,7 @@ class ReverseExt2:
 
         with self.tik_instance.if_scope(copy_tail != 0):
             copy_tail_vnchw_stride = self.tik_instance.Scalar("int32", name="copy_tail_vnchw_stride", init_value=16)
-            with self.tik_instance.if_scope(copy_tail // VNHW_MIN_NUM == 1):
+            with self.tik_instance.if_scope(copy_tail // Constant.VNHW_MIN_NUM == 1):
                 copy_tail_vnchw_stride.set_as(0)
             data_ub_tail_a = self.tik_instance.Tensor(self.inner_dtype, (self.process_num,),
                                                       name="data_ub_tail_a",
@@ -959,17 +959,18 @@ class ReverseExt2:
 
             src_list = [data_ub_tail_a[i * 16] for i in range(16)]
             dst_list = [data_ub_tail_b[i * 16] for i in range(15, -1, -1)]
-            self.tik_instance.vnchwconv(True, False, dst_list, src_list, copy_tail // VNHW_MIN_NUM,
+            self.tik_instance.vnchwconv(True, False, dst_list, src_list, copy_tail // Constant.VNHW_MIN_NUM,
                                         copy_tail_vnchw_stride, copy_tail_vnchw_stride)
 
             src_list = [data_ub_tail_b[i * 16] for i in range(16)]
             dst_list = [data_ub_tail_a[i * 16] for i in range(15, -1, -1)]
-            self.tik_instance.vnchwconv(True, False, dst_list, src_list, copy_tail // VNHW_MIN_NUM,
+            self.tik_instance.vnchwconv(True, False, dst_list, src_list, copy_tail // Constant.VNHW_MIN_NUM,
                                         copy_tail_vnchw_stride, copy_tail_vnchw_stride)
 
-            with self.tik_instance.for_range(0, copy_tail // VNHW_MIN_NUM) as reorder_index:
-                self.tik_instance.data_move(data_ub_tail_b[(copy_tail // VNHW_MIN_NUM - 1 - reorder_index) * 256],
-                                            data_ub_tail_a[reorder_index * VNHW_MIN_NUM], 0, 1, 16, 0, 0)
+            with self.tik_instance.for_range(0, copy_tail // Constant.VNHW_MIN_NUM) as reorder_index:
+                self.tik_instance.data_move(
+                    data_ub_tail_b[(copy_tail // Constant.VNHW_MIN_NUM - 1 - reorder_index) * 256],
+                    data_ub_tail_a[reorder_index * Constant.VNHW_MIN_NUM], 0, 1, 16, 0, 0)
 
             self.tik_instance.data_move(self.output_data[(outer_move_out + 1) * self.inner_shape[-1] - copy_tail],
                                         data_ub_tail_b, 0, 1, copy_tail // self.block_num, 0, 0)

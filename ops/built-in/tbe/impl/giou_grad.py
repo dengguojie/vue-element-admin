@@ -238,7 +238,7 @@ class GIoUGrad:
         # func: xyhw trans to xyxy
         self.data_trans()
 
-        # func: compute for inter/union/enclose, giou = inter/union + union/enclose - 1
+        # func: compute for inter/union/enclose, `giou = inter/union + union/enclose - 1`
         self.update_part()
 
         # func: compute for dinter/dunion/denclose

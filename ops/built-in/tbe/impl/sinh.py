@@ -22,9 +22,14 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te import tvm
 
-SCALER_NEGATIVE_ONE = -1
-SCALER_ZERO_POINT_FIVE = 0.5
-SCALAR_TWO = 2
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    SCALAR_NEGATIVE_ONE = -1
+    SCALAR_ZERO_POINT_FIVE = 0.5
+    SCALAR_TWO = 2
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("sinh")
@@ -58,13 +63,13 @@ def sinh_compute(input_data, output_data, kernel_name="sinh"):
         dtype = "float32"
         has_improve_precision = True
 
-    data_mul = tbe.vmuls(input_data, tvm.const(SCALER_NEGATIVE_ONE, dtype))
+    data_mul = tbe.vmuls(input_data, tvm.const(Constant.SCALAR_NEGATIVE_ONE, dtype))
     data_exp = tbe.vexp(data_mul)
-    data_exp_x = tbe.vmuls(data_exp, tvm.const(SCALER_ZERO_POINT_FIVE, dtype))
+    data_exp_x = tbe.vmuls(data_exp, tvm.const(Constant.SCALAR_ZERO_POINT_FIVE, dtype))
 
-    tensor_two = tbe.broadcast(tvm.const(SCALAR_TWO, dtype), shape)
+    tensor_two = tbe.broadcast(tvm.const(Constant.SCALAR_TWO, dtype), shape)
     data_ln2 = tbe.vlog(tensor_two)
-    data_neg_ln2 = tbe.vmuls(data_ln2, tvm.const(SCALER_NEGATIVE_ONE, dtype))
+    data_neg_ln2 = tbe.vmuls(data_ln2, tvm.const(Constant.SCALAR_NEGATIVE_ONE, dtype))
     data_x = tbe.vadd(input_data, data_neg_ln2)
     data_exp_data = tbe.vexp(data_x)
 

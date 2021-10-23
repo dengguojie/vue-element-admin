@@ -292,9 +292,9 @@ class Dbn2Conv2dBackpropFilter:
     def _cal_dbn_abc(self, mn_context):
         """
         channel_wise tensor calculation:
-        A = 1/sqrt(variance + episilion) * int_reduce * diff_scale
-        B = int_reduce * (diff_offset - 1/sqrt(variance + episilion) * diff_scale * mean)
-        C = scale/sqrt(variance + episilion)
+        `A = 1/sqrt(variance + episilion) * int_reduce * diff_scale`
+        `B = int_reduce * (diff_offset - 1/sqrt(variance + episilion) * diff_scale * mean)`
+        `C = scale/sqrt(variance + episilion)`
         diff_scale: dgamma
         scale: gamma
         diff_offset: dbeta

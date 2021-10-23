@@ -73,11 +73,11 @@ def check_supported(input_x, out_y, output_argmax, ksize, strides,
 
     # caculate output size in VALID mode
     if padding == "VALID":
-        # Hout = ceil(Hi - Fh + 1, Sh), Wout = ceil(Wi - Fw + 1, Sw)
+        # `Hout = ceil(Hi - Fh + 1, Sh), Wout = ceil(Wi - Fw + 1, Sw)`
         out_size_h = (in_size_h - window_h + 1 + (stride_h - 1)) // stride_h
         out_size_w = (in_size_w - window_w + 1 + (stride_w - 1)) // stride_w
     if padding == "SAME":
-        # Hout = ceil(Hi, Sh), Wout = ceil(Wi, Sw)
+        # `Hout = ceil(Hi, Sh), Wout = ceil(Wi, Sw)`
         out_size_h = (in_size_h + stride_h - 1) // stride_h
         out_size_w = (in_size_w + stride_w - 1) // stride_w
     if out_size_w == 1 and out_size_h > 1:
@@ -1366,7 +1366,7 @@ class MaxPoolWithargmax():
         pad_l, pad_r, pad_t, pad_b = 0, 0, 0, 0
 
         if self.padding == "SAME":
-            # Hout = ceil(Hi, Sh), Wout = ceil(Wi, Sw)
+            # `Hout = ceil(Hi, Sh), Wout = ceil(Wi, Sw)`
             out_size_h = (self.in_size_h + self.stride_h - 1) // self.stride_h
             out_size_w = (self.in_size_w + self.stride_w - 1) // self.stride_w
 
@@ -1403,7 +1403,7 @@ class MaxPoolWithargmax():
 
         # caculate output size in VALID mode
         if self.padding == "VALID":
-            # Hout = ceil(Hi - Fh + 1, Sh), Wout = ceil(Wi - Fw + 1, Sw)
+            # `Hout = ceil(Hi - Fh + 1, Sh), Wout = ceil(Wi - Fw + 1, Sw)`
             out_size_h = (self.in_size_h - self.window_h + 1 + (self.stride_h - 1)) // self.stride_h
             out_size_w = (self.in_size_w - self.window_w + 1 + (self.stride_w - 1)) // self.stride_w
         pad = (pad_l, pad_r, pad_t, pad_b)

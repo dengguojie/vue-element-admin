@@ -800,7 +800,7 @@ class PsroiClass():
             self.tik_instance.vconv(MASK64, 'ceil', bin_end_h_ceil, bin_start_h_ub, DIGIT_128 // DIGIT_64, STRIDE_ONE,
                                     STRIDE_ONE, REP_STRIDE_EIGHT, REP_STRIDE[self.dtype])
 
-            # vmax(,0)
+            # `vmax(,0)`
             dup_tmp_ub = self.tik_instance.Tensor(INT32, (DIGIT_64,), \
                                                   name="dup_tmp_ub", scope=tbe_platform.scope_ubuf)
             self.tik_instance.vector_dup(MASK64, dup_tmp_ub, 0, REPEAT_1, STRIDE_ONE, REP_STRIDE_EIGHT)

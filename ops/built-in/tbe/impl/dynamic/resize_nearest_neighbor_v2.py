@@ -440,8 +440,8 @@ class ResizeNearestNeighbor(OpBase):
         nc_tail.set_as(self.core_nc_num % nc_max_segment)
 
         if is_big_to_small:
-            # when nc_loop == 0, do not check the size of input_w * nc for nc_max_segment
-            # so change nc_max_segment = 0
+            # when nc_loop is 0, do not check the size of input_w * nc for nc_max_segment
+            # so change `nc_max_segment = 0`
             with self.tik_instance.if_scope(nc_loop == 0):
                 nc_max_segment.set_as(0)
             # mean: if input_w // output_w > 4, the input_w can not save in l1
@@ -770,7 +770,7 @@ class ResizeNearestNeighbor(OpBase):
 
     def _function_hw_to_nhnw_resize(self, is_w_equal=False):
         """
-        _function_hw_to_nhnw_resize, when tiling key = 111000, run this
+        _function_hw_to_nhnw_resize, when `tiling key = 111000, run this`
         """
         # h boardcast base input_h cut
         size_h_n = self.tiling_out_height // self.tiling_in_height
