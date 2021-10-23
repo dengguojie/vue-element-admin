@@ -88,7 +88,7 @@ Status TbeConv2DReluv2Pass::GetFusionNodes(const BufferFusionMapping& mapping, v
   FUSION_PASS_CHECK(conv2d_node[0]->GetOpDesc()->GetOutputDesc(0).GetDataType() != DT_FLOAT16,
                     OP_LOGD(fused_op_type_.c_str(), "conv2d node only supports float16!"),
                     return SUCCESS);
-  FUSION_PASS_CHECK((reluv2_node[0]->GetAllOutAnchors().size() != 2 || reluv2_node[0]->GetType() != "RelV2"),
+  FUSION_PASS_CHECK((reluv2_node[0]->GetAllOutAnchors().size() != 2 || reluv2_node[0]->GetType() != "ReluV2"),
                     OP_LOGD(fused_op_type_.c_str(), "reluv2 should have two output anchors"),
                     return SUCCESS);
   fusion_nodes = GetMatchedNodes(mapping);
