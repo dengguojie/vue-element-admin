@@ -1308,8 +1308,7 @@ REG_OP(CumprodD)
 
 *@par Inputs:
 * Two inputs, including:
-*@li x: A Tensor. Must be one of the following types: float32, float64, int32, uint8, int16, int8,
-* complex64, int64, qint8, quint8, qint32, uint16, complex128, float16, uint32, uint64.
+*@li x: A Tensor. Must be one of the following types: float32, int32, uint8, int8, float16.
 *@li axis A Tensor of type int32 or int64. Range is [-rank(x),rank(x)). Defaults to "0".
 *
 *@par Attributes:
@@ -1335,8 +1334,7 @@ REG_OP(Cumsum)
 *
 *@par Inputs:
 * One input:
-*x: A Tensor. Must be one of the following types: float32, float64, int32, uint8, int16, int8,
-* complex64, int64, qint8, quint8, qint32, uint16, complex128, float16, uint32, uint64.
+*x: A Tensor. Must be one of the following types: float32, int32, uint8, int8, float16.
 *
 *@par Attributes:
 *@li axis A Tensor of type int32 or int64. Range is [-rank(x),rank(x)). Defaults to "0".
