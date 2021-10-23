@@ -36,6 +36,7 @@ namespace ge {
 *@par Attributes:
 *@li batch_size: An optional int. Batch size.
 *@li queue_name: An optional string. Queue name.
+*@li queue_depth: An optional int. Queue depth.
 *@li pad_mode: An optional string from: '"REPLICATE", "ZERO"'. Defaults to
 "REPLICATE". Pad mode.
 */
@@ -46,6 +47,7 @@ REG_OP(BatchEnqueue)
     .OUTPUT(enqueue_count, TensorType({DT_INT32}))
     .ATTR(batch_size, Int, 8)
     .ATTR(queue_name, String, "")
+    .ATTR(queue_depth, Int, 100)
     .ATTR(pad_mode, String, "REPLICATE")
     .OP_END_FACTORY_REG(BatchEnqueue)
 
