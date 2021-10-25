@@ -185,7 +185,7 @@ REG_OP(BN3DTrainingReduceGrad)
 *@li This operator is a BatchNorm fusion operator for updating the moving
 averages for training.
 *This operator is used in conjunction with BNTrainingUpdate.
-*@li For Ascend 310, the result accuracy fails to reach 1‰ due to the square
+*@li For Ascend 310, the result accuracy fails to reach 1/1000 due to the square
 * root instruction.
 */
 REG_OP(BNTrainingUpdate)
@@ -238,7 +238,7 @@ REG_OP(BNTrainingUpdate)
 *@li This operator is a BatchNorm fusion operator for updating the moving
 averages for training.
 *This operator is used in conjunction with BN3DTrainingUpdate.
-*@li For Ascend 310, the result accuracy fails to reach 1‰ due to the square
+*@li For Ascend 310, the result accuracy fails to reach 1/1000 due to the square
 * root instruction.
 */
 REG_OP(BN3DTrainingUpdate)
@@ -277,7 +277,7 @@ REG_OP(BN3DTrainingUpdate)
 *y: A 5D Tensor of type float16 or float32 for the normalized "x" . \n
 
 *@attention Constraints:
-*For Ascend 310, the result accuracy fails to reach 1‰ due to the square root
+*For Ascend 310, the result accuracy fails to reach 1/1000 due to the square root
 * instruction.
 */
 REG_OP(BNInfer)
@@ -313,7 +313,7 @@ assignmoving average . \n
 
 *@attention Constraints:
 *This operator is used in conjunction with BNTrainingReduce.
-For Ascend 310, the result accuracy fails to reach 1‰ due to the square root instruction.
+For Ascend 310, the result accuracy fails to reach 1/1000 due to the square root instruction.
 */
 REG_OP(BNTrainingUpdateV2)
     .INPUT(x, TensorType({DT_FLOAT16,DT_FLOAT}))
@@ -351,7 +351,7 @@ assign moving average . \n
 
 *@attention Constraints:
 *@li This operator is used in conjunction with BNTrainingReduce.
-*@li For Ascend 310, the result accuracy fails to reach 1‰ due to the square root instruction.
+*@li For Ascend 310, the result accuracy fails to reach 1/1000 due to the square root instruction.
 */
 REG_OP(BNTrainingUpdateV3)
     .INPUT(x, TensorType({DT_FLOAT16,DT_FLOAT}))
@@ -1189,7 +1189,7 @@ for the updated variance.
 *@attention Constraints:
 *@li This operator is a InstanceNorm fusion operator for updating the moving averages for training.
 * This operator is used in conjunction with GNTrainingUpdate.
-*@li For Ascend 310, the result accuracy fails to reach 1‰ due to the square root instruction.
+*@li For Ascend 310, the result accuracy fails to reach 1/1000 due to the square root instruction.
 */
 REG_OP(GNTrainingUpdate)
     .INPUT(x, TensorType({DT_FLOAT16,DT_FLOAT}))

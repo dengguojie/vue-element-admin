@@ -375,7 +375,7 @@ void padCommon::SplitRL(int64_t& ptrR, int64_t& ptrL, int64_t maxCore, int64_t b
   }
 }
 
-void padCommon::_MaxDup(PadDTilingParams& params, int64_t idx) {
+void padCommon::DupTilingMax(PadDTilingParams& params, int64_t idx) {
   int64_t CirDupVol = 0;
   int64_t MovDupVol = 0;
   int64_t CirPos = 0;
@@ -509,7 +509,7 @@ void padCommon::GetRecurCore(PadDTilingParams& params, const std::vector<int64_t
   // Return recur_dup_mk (One-Time-Triggered)
   // Vec_dup in Circulation layer will decide situation of Vec_dup in Recursion layer.
   // Vec_dup in Rercursion_Mov will effect Vec_dup in Rercursion_Sort.
-  _MaxDup(params, index);
+  DupTilingMax(params, index);
 }
 
 void padCommon::GetRecurCorePro(PadDTilingParams& params, const std::vector<int64_t>& inShape,
@@ -650,7 +650,7 @@ void padCommon::GetRecurCorePro(PadDTilingParams& params, const std::vector<int6
   // Vec_dup in Recursion_Mov will effect Vec_dup in Recursion_Sort.
   // recur_dup_mk only effect Recursion_Sort.
   if (inShape[length] <= last_dim_limit) {
-    _MaxDup(params, index);
+    DupTilingMax(params, index);
   }
 }
 

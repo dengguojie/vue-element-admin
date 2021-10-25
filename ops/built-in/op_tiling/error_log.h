@@ -29,11 +29,11 @@ namespace optiling {
       REPORT_INNER_ERROR("E89999", "op[%s], " err_msg, get_op_name(op_name), ##__VA_ARGS__); \
   } while(0)
 
-#define OP_TILING_CHECK(cond, log_func, return_expr)   \
+#define OP_TILING_CHECK(cond, log_func, expr)   \
   do {                                                 \
     if (cond) {                                        \
       log_func;                                        \
-      return_expr;                                     \
+      expr;                                     \
     }                                                  \
   } while (0)
 }  // namespace optiling

@@ -49,7 +49,6 @@ const int32_t DEFAULT_CAPACITY_EMPTY = 0;
 const int32_t NO_DIM = 0;
 const int32_t TILINGKEY_NONE_REDUCE_AXIS = 2147483646;
 
-
 struct TilingInfoReduce {
   int32_t block_dim{-1};
   int32_t block_tiling_axis{-1};
@@ -62,7 +61,7 @@ struct ReorderInfoReduce {
   std::vector<int64_t> reorder_input_shape{std::vector<int64_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
   std::vector<int32_t> fused_block_tiling_axis;
   // pos after reorder : pos before reorder
-  //    vector.idx     :      vector[idx]
+  // vector.idx:vector[idx]
   std::vector<int32_t> reorderPos_oriPos{std::vector<int32_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
 };
 

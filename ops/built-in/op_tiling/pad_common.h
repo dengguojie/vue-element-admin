@@ -116,7 +116,7 @@ class padCommon {
 
   void SplitRL(int64_t& ptrR, int64_t& ptrL, int64_t maxCore, int64_t block, int64_t baseData, int64_t baseCore);
 
-  void _MaxDup(PadDTilingParams& params, int64_t idx);
+  void DupTilingMax(PadDTilingParams& params, int64_t idx);
 
   void GetRecurCore(PadDTilingParams& params, const std::vector<int64_t>& inShape, const std::vector<int64_t>& outShape,
                     const std::vector<std::vector<int64_t>>& padding, int maxCore, int numBit, int ubSize);

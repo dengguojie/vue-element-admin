@@ -346,6 +346,9 @@ def check_vector_impl(input_shape, ksize, pads):
 
 
 def correct_pads(input_shape, ksize, strides, pads):
+    """
+    calculate correct pads
+    """
     input_d = input_shape[1]
     input_h = input_shape[3]
     input_w = input_shape[4]

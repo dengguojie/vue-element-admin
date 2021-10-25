@@ -212,7 +212,7 @@ def _newton_exp_iter(input_x, input_y, input_z):
     Returns : A Tensor. Has the same type as input_z.
     -------
     """
-    # ``Newton begin:z(n+1) = z(n) - x(n) + x(n)*y(n)*e^(-z(n)*x(n)^-1)``
+    # Newton begin:`z(n+1) = z(n) - x(n) + x(n)*y(n)*e^(-z(n)*x(n)^-1)`
     input_x_mul = tbe.vmuls(input_x, tvm.const(Constant.SCALAR_NEG_ONE, "float32"))
     newton_exp = tbe.vadd(input_x_mul, input_z)
     input_xy = tbe.vmul(input_x, input_y)
@@ -240,7 +240,7 @@ def _newton_taylor_iter(input_x, input_y, input_z):
     Returns : A Tensor. Has the same type as input_z.
     -------
     """
-    # ``Newton begin:z(n+1) = z(n) - x(n) + x(n)*y(n)*e^(-z(n)*x(n)^-1)``
+    # Newton begin:`z(n+1) = z(n) - x(n) + x(n)*y(n)*e^(-z(n)*x(n)^-1)`
     input_x_mul = tbe.vmuls(input_x, tvm.const(Constant.SCALAR_NEG_ONE, "float32"))
     newton_taylor = tbe.vadd(input_x_mul, input_z)
     input_xy = tbe.vmul(input_x, input_y)

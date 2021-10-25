@@ -18,8 +18,8 @@
  * \file basic_lstm_cell.h
  * \brief
  */
-#ifndef OPS_BUILT_IN_OP_PROTO_INC_RNN_H_
-#define OPS_BUILT_IN_OP_PROTO_INC_RNN_H_
+#ifndef OPS_BUILT_IN_OP_PROTO_BAIC_LSTM_CELL_H_
+#define OPS_BUILT_IN_OP_PROTO_BAIC_LSTM_CELL_H_
 
 #include "graph/operator_reg.h"
 
@@ -72,4 +72,4 @@ REG_OP(BasicLSTMCell)
     .OP_END_FACTORY_REG(BasicLSTMCell)
 }  // namespace ge
 
-#endif  // OPS_BUILT_IN_OP_PROTO_INC_RNN_H_
+#endif  // OPS_BUILT_IN_OP_PROTO_BAIC_LSTM_CELL_H_

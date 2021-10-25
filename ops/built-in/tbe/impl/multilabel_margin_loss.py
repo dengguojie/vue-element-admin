@@ -173,8 +173,6 @@ class MultilabelMarginLoss:
         data_each_block : int
 
         dim: int
-
-        return
         """
         burse_len = (need_num + data_each_block) // data_each_block
         self.tik_instance.data_move(self.target_ub, self.target_gm[move_offset], 0, 1, burse_len, 0, 0)
@@ -257,9 +255,7 @@ class MultilabelMarginLoss:
         """
         compute_is_target_per_core
         Parameters
-        target_loop_index: int
-
-        return
+        target_loop_index: int 
         """
         block_bite_size = 32
 
