@@ -8,6 +8,7 @@ import tbe
 from tbe import tvm
 from tbe.common.utils import shape_util
 from tbe.common.register import register_operator
+from tbe.common.utils import para_check
 
 
 @register_operator("vmul")
@@ -16,6 +17,8 @@ def dsl_dynamic_vmul(x, y, z, kernel_name="dsl_dynamic_vmul"):
 
     ins = tbe.dsl.classify([x, y], "elewise")
     schedules, tensors = [], []
+
+    para_check.check_elewise_shape_range([x, y], support_broadcast=False)
 
     for (x, y) in ins:
         with tbe.dsl.compute():
@@ -36,11 +39,37 @@ def dsl_dynamic_vmul(x, y, z, kernel_name="dsl_dynamic_vmul"):
 
 ut_case = OpUT("vmul", "vmul.test_dynamic_vmul_impl", "dsl_dynamic_vmul")
 
+case1 = {
+    "params": [{
+        "shape": (-1, -1),
+        "dtype": "float32",
+        "range": [(1, None), (1, None)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "float32",
+        "range": [(1, None), (1, None)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "float32",
+        "range": [(1, None), (1, None)]
+    }],
+    "case_name":
+        "test_dync_vmul_1",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+ut_case.add_case(["Ascend910A", "Ascend310"], case1)
+
+
 def calc_expect_func(x, y, z):
     x_value = x.get("value")
     y_value = y.get("value")
     res = np.multiply(x_value, y_value)
     return (res, )
+
 
 ut_case.add_precision_case(
     "all", {

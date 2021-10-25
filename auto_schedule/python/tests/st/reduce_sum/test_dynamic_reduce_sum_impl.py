@@ -16,6 +16,7 @@ def dsl_dync_reduce_sum(x, y, axis, keepdims, kernel_name="dsl_dync_reduce_sum")
     x["rel_pos_to_reduce"] = 'before'
     input_axis = {"shape": [len(axis), ], "value": axis, "rel_pos_to_reduce": "axis"}
     ins = tbe.dsl.classify([x, input_axis], "reduce", {"keepdims": keepdims is True})
+
     schedules, tensors = [], []
 
     for (x, axis) in ins:
@@ -35,36 +36,73 @@ def dsl_dync_reduce_sum(x, y, axis, keepdims, kernel_name="dsl_dync_reduce_sum")
 
 ut_case = OpUT("reduce_sum", "reduce_sum.test_dynamic_reduce_sum_impl", "dsl_dync_reduce_sum")
 
+case_float32_1 = {
+    "params": [{
+        "shape": (-1, -1, -1, -1),
+        "dtype": "float32",
+        "range": [(1, None), (1, None), (1, None), (1, None)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "float32",
+        "range": [(1, None), (1, None)]
+    }, [1, 3], False],
+    "case_name":
+        "test_dync_reduce_sum_float32_1",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+case_float32_2 = {
+    "params": [{
+        "shape": (-1, -1, -1, -1),
+        "dtype": "float32",
+        "range": [(1, None), (1, None), (1, None), (1, None)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "float32",
+        "range": [(1, None), (1, None)]
+    }, [0, 2], False],
+    "case_name":
+        "test_dync_reduce_sum_float32_2",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+case_int32_1 = {
+    "params": [{
+        "shape": (-1, -1, -1, -1),
+        "dtype": "int32",
+        "range": [(1, None), (1, None), (1, None), (1, None)]
+    }, {
+        "shape": (-1, -1),
+        "dtype": "int32",
+        "range": [(1, None), (1, None)]
+    }, [0, 2], False],
+    "case_name":
+        "test_dync_reduce_sum_int32_1",
+    "expect":
+        "success",
+    "support_expect":
+        True
+}
+
+
 def calc_expect_func(x, y, axis, keepdims):
     x_value = x.get("value")
-    res = np.sum(x_value, axis=axis, keepdims=keepdims)
-    return (res, )
+    res = np.prod(x_value, axis=axis, keepdims=keepdims)
+    return (res,)
 
 
-ut_case.add_precision_case(
-    "all", {
-        "params": [
-            {
-                "shape": (-1, -1),
-                "dtype": "float32",
-                "range": [(1, None), (1, None)],
-                "run_shape": (16, 16),
-                "param_type": "input"
-            },
-            {
-                "shape": (-1, ),
-                "dtype": "float32",
-                "range": [(1, None)],
-                "run_shape": (16, ),
-                "param_type": "output"
-            },
-            (0, ),
-            False
-        ],
-        "calc_expect_func":
-        calc_expect_func,
-        "precision_standard":
-        precision_info.PrecisionStandard(0.0001, 0.0001),
-        "case_name":
-        "test_dync_reduce_sum_prec_01"
-    })
+compile_case_list = [
+    case_float32_1,
+    case_float32_2,
+    case_int32_1
+]
+
+for item in compile_case_list:
+    ut_case.add_case(["Ascend920A", "Ascend910A"], case=item)
+

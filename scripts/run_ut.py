@@ -80,7 +80,7 @@ def main(argv):
             [case_path, frame_path, python_path])
         run_file_path = os.path.join(root_path, "auto_schedule", "python",
                                      "tests", "sch_run_ut.py")
-        cmd = ["python3", run_file_path] + params
+        cmd = ["python3", run_file_path] + sch_params
         print("[INFO]cmd is ", str(cmd))
         res_msg = os.system(" ".join(cmd))
         if res_msg != 0:
