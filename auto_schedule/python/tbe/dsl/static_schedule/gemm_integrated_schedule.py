@@ -1787,7 +1787,7 @@ class GemmSchedule(object):
         else:
             self.dynamic_m, self.dynamic_k, self.dynamic_n = self.seed_shape
             self.dynamic_batch = None
-    
+
 
     def _get_trans_flag(self, transpose_a, transpose_b):
         trans_flag = 1
@@ -2678,7 +2678,7 @@ class GemmSchedule(object):
             else:
                 self.aub_attach_status = "c_gm"
                 sch_agent.attach_at(a_ub, self.root_tensor, affine_shape = aub_out_affine_shape)
-        
+
         same_attach_tensors = self.tensors_in_aub
         for tensor in same_attach_tensors:
             if tensor == a_ub:
@@ -2922,7 +2922,7 @@ class GemmSchedule(object):
                 self._buffer_align_func(TENSOR_MAP.get("cast_to_fp16"), have_batch, (1, 16), (1, 16))
             else:
                 self._buffer_align_func(TENSOR_MAP.get("cast_to_fp16"), have_batch, (1, 1), (1, 1), (1, 16), (1, 16))
-            
+
         self._buffer_align_func(TENSOR_MAP.get("c_ub_fract"), have_batch, (1, 1), (1, 1), (1, 16), (1, 16))
         self._buffer_align_func(TENSOR_MAP.get("bias_l0c"), have_batch, (1, 1), (1, 1), (1, 16), (1, 16))
         self._buffer_align_func(TENSOR_MAP.get("c_add_bias"), have_batch, (1, 1), (1, 1), (1, 16), (1, 16))
@@ -3408,7 +3408,7 @@ class GemmSchedule(object):
         elif tensor_a_reuse_local == self.ALLOCATE_HALF and tensor_b_reuse_local == self.ALLOCATE_HALF:
             l1_reuse_axis_outter = m_outer
             l1_reuse_axis_inner = n_outer
-        
+
         self._do_reorder_axis(l1_reuse_axis_outter, l1_reuse_axis_inner)
 
     def _do_reorder_axis(self, outer_axis, inner_axis):
@@ -3440,7 +3440,7 @@ class GemmSchedule(object):
 
     def _get_a_max_k_bound(self):
         """
-        This function is used to get the maximum k bound, which will be used in the 
+        This function is used to get the maximum k bound, which will be used in the
         following calculation to solve bank conflict and to set storage bound.
         """
         a_matrix_dim = [self._get_value(i) for i in self.TENSOR_MAP["a_l0a"].shape]
@@ -3450,7 +3450,7 @@ class GemmSchedule(object):
 
     def _get_b_max_k_bound(self):
         """
-        This function is used to get the maximum k bound, which will be used in the 
+        This function is used to get the maximum k bound, which will be used in the
         following calculation to solve bank conflict and to set storage bound.
         """
         b_matrix_dim = [self._get_value(i) for i in self.TENSOR_MAP["b_l0b"].shape]
@@ -3628,7 +3628,7 @@ class GemmSchedule(object):
             base_buffer_size += (aub_m * aub_k * a_fused_num *
                                     self.INPUT_SIZE.get(self.ops_data_flow_mode) * a_db)
             # if use storage_align, need UB size
-            a_add_size = (gap_value * (aub_k if a_trans else aub_m) * 
+            a_add_size = (gap_value * (aub_k if a_trans else aub_m) *
                             self.INPUT_SIZE.get(self.ops_data_flow_mode) * a_db)
         return base_buffer_size, a_add_size
 
@@ -4339,11 +4339,14 @@ class CalculateMultiUB(object):
         return
 
     def _can_merge(self, tensor_out, tensor_in):
+        if tensor_out.op.attrs is not None and "not_reuse_pre_tensors" in tensor_out.op.attrs:
+            if tensor_out.op.attrs["not_reuse_pre_tensors"].value:
+                return False
+
         tensor_out_dtype = tensor_out.dtype
         tensor_out_shape = self._get_shape_value(tensor_out.shape)
         tensor_in_dtype = tensor_in.dtype
         tensor_in_shape = self._get_shape_value(tensor_in.shape)
-
         if self._not_count(tensor_in):
             return False
         can_merge = (tensor_out_dtype == tensor_in_dtype) and (tensor_out_shape == tensor_in_shape)

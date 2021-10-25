@@ -46,7 +46,7 @@ class FormatCompute(object):
             block_reduce: the block_reduce of chip
         return:
             fract_shape: the shape after reshape
-            lambda_expression the expression of trans nd to nz 
+            lambda_expression the expression of trans nd to nz
         """
         ori_nd_shape = [self._get_value(i) for i in ori_tensor.shape]
         if len(ori_nd_shape) == 3:
@@ -77,7 +77,7 @@ class FormatCompute(object):
             block_reduce: the block_reduce of chip
         return:
             fract_shape: the shape after reshape
-            lambda_expression the expression of trans nd to nz 
+            lambda_expression the expression of trans nd to nz
         """
         ori_nd_shape = [self._get_value(i) for i in ori_tensor.shape]
         if len(ori_nd_shape) == 3:
@@ -650,7 +650,7 @@ class FormatCompute(object):
             )
             lambda_expression = lambda batch, i, j, k, l: tensor_a_transpose[batch,
                                                                              i * block_in + k, j * block_reduce + l]
-        
+
         res = tvm.compute(
             tensor_matrix_shape,
             lambda_expression,
@@ -733,7 +733,7 @@ class FormatCompute(object):
                     block_in,
                     block_reduce
                 )
-                lambda_expression = lambda batch, m1, k1, m0, k0: ori_tensor[batch, m1 * block_in + m0, 
+                lambda_expression = lambda batch, m1, k1, m0, k0: ori_tensor[batch, m1 * block_in + m0,
                                                                              k1 * block_reduce + k0]
         res = tvm.compute(
             tensor_matrix_shape,
@@ -1154,7 +1154,7 @@ class FormatCompute(object):
         ori_tensor_shape = [self._get_value(i) for i in ori_tensor.shape]
         block_out = ori_tensor_shape[-1]
         block_in = ori_tensor_shape[-2]
-        
+
         if len(ori_tensor_shape) == 5:
             if in_dynamic():
                 shape_trans = (ori_tensor_shape[0], ori_tensor_shape[2], block_in, ori_tensor_shape[1], block_out)
@@ -1199,8 +1199,11 @@ class FormatCompute(object):
                 ]
         if output_shape is not None:
             shapes = output_shape
-        if (res_tag != "") and (attrs_dict is not None):
+        if attrs_dict is None:
+            attrs_dict = dict()
+        attrs_dict["not_reuse_pre_tensors"] = True
+        if res_tag != "":
             tensor_c = tvm.compute(shapes, lambda_expression, name=tensor_name, tag=res_tag, attrs=attrs_dict)
         else:
-            tensor_c = tvm.compute(shapes, lambda_expression, name=tensor_name)
+            tensor_c = tvm.compute(shapes, lambda_expression, name=tensor_name, attrs=attrs_dict)
         return tensor_c
