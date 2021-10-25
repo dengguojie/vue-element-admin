@@ -27,7 +27,8 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
 
 
-class Constant(object):
+# 'pylint: disable=too-few-public-methods
+class Constant:
     """
     The class for Constant
     """
@@ -36,7 +37,7 @@ class Constant(object):
     CCE_PLAT = tbe_platform.get_soc_spec('SOC_VERSION')
 
 
-# 'pylint: disable=invalid-name,unused-argument,too-many-locals
+# 'pylint: disable=invalid-name,unused-argument,too-many-locals,too-many-arguments
 def lp_norm_inf_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
     """
     Compute norm for p = "inf" or p = "-inf"
@@ -72,7 +73,7 @@ def lp_norm_inf_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
     return res
 
 
-# 'pylint: disable=invalid-name,unused-argument,too-many-locals
+# 'pylint: disable=invalid-name,unused-argument,too-many-locals,too-many-arguments
 def lp_norm0_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     """
     Compute norm for p = 0.
@@ -96,7 +97,7 @@ def lp_norm0_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     return res
 
 
-# 'pylint: disable=invalid-name,unused-argument,too-many-locals
+# 'pylint: disable=invalid-name,unused-argument,too-many-locals,too-many-arguments
 def lp_norm1_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     """
     Compute norm for p = 1.
@@ -141,7 +142,7 @@ def lp_norm2_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     return res
 
 
-# 'pylint: disable=invalid-name,unused-argument,too-many-locals
+# 'pylint: disable=invalid-name,unused-argument,too-many-locals,too-many-arguments
 @register_operator_compute("LpNorm", op_mode="dynamic", support_fusion=False)
 def lp_norm_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
     """
@@ -176,6 +177,7 @@ def lp_norm_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
     return exp_div_x
 
 
+# 'pylint: disable=too-many-arguments
 @register_operator("LpNorm")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL,

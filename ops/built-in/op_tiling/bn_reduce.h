@@ -91,7 +91,6 @@ public:
 private:
   int32_t CalcPattern(const std::vector<int64_t>& input, const std::vector<int32_t>& axis);
   int64_t GetReorderInputShapeMul(const int32_t axis_index, const int32_t block_tiling_axis_in_reorder);
-  int64_t GetShapeMul(const std::vector<int64_t>& shape, const int32_t axis_index);
   int32_t CalcConstPattern(const std::vector<int32_t>& reduce_axis);
   bool IsInVector(const std::vector<int32_t>& input, const int32_t value);
   void EliminateOne();

@@ -98,7 +98,6 @@ Status RpnProposalsParams(const std::vector<const google::protobuf::Message*> in
     if (node_def->op() == kScoreTthresholdOp) {
       inputy_node_name = node_def->input(1);
 
-      float param = 0.0;
       if (node_def->name() == "task_0/generate_rpn_proposals/filtered_boxes" ||
           node_def->name() == "task_1/generate_rpn_proposals/filtered_boxes" ||
           node_def->name() == "task_2/generate_rpn_proposals/filtered_boxes" ||
@@ -108,6 +107,7 @@ Status RpnProposalsParams(const std::vector<const google::protobuf::Message*> in
           node_def->name() == "task_6/generate_rpn_proposals/filtered_boxes" ||
           node_def->name() == "task_7/generate_rpn_proposals/filtered_boxes" ||
           node_def->name() == "task_8/generate_rpn_proposals/filtered_boxes") {
+        float param = 0.0;
         if (ParseValueFromConstFloat(v_input_const, inputy_node_name, param) != SUCCESS) {
           OP_LOGE(op.GetName().c_str(), "Convert score_threshold data failed");
           return PARAM_INVALID;
@@ -126,7 +126,6 @@ Status RpnProposalsParams(const std::vector<const google::protobuf::Message*> in
     if (node_def->op() == kKOp) {
       inputy_node_name = node_def->input(0);
 
-      int param = 0;
       if (node_def->name() == "task_0/generate_rpn_proposals/Minimum" ||
           node_def->name() == "task_1/generate_rpn_proposals/Minimum" ||
           node_def->name() == "task_2/generate_rpn_proposals/Minimum" ||
@@ -136,6 +135,7 @@ Status RpnProposalsParams(const std::vector<const google::protobuf::Message*> in
           node_def->name() == "task_6/generate_rpn_proposals/Minimum" ||
           node_def->name() == "task_7/generate_rpn_proposals/Minimum" ||
           node_def->name() == "task_8/generate_rpn_proposals/Minimum") {
+        int param = 0;
         if (ParseValueFromConstInt(v_input_const, inputy_node_name, param) != SUCCESS) {
           OP_LOGE(op.GetName().c_str(), "Convert topk k data failed");
           return PARAM_INVALID;
@@ -154,7 +154,6 @@ Status RpnProposalsParams(const std::vector<const google::protobuf::Message*> in
     if (node_def->op() == kMinSizeOp) {
       inputy_node_name = node_def->input(1);
 
-      float param = 0.0;
       if (node_def->name() == "task_0/generate_rpn_proposals/Greater" ||
           node_def->name() == "task_1/generate_rpn_proposals/Greater" ||
           node_def->name() == "task_2/generate_rpn_proposals/Greater" ||
@@ -164,6 +163,7 @@ Status RpnProposalsParams(const std::vector<const google::protobuf::Message*> in
           node_def->name() == "task_6/generate_rpn_proposals/Greater" ||
           node_def->name() == "task_7/generate_rpn_proposals/Greater" ||
           node_def->name() == "task_8/generate_rpn_proposals/Greater") {
+        float param = 0.0;
         if (ParseValueFromConstFloat(v_input_const, inputy_node_name, param) != SUCCESS) {
           OP_LOGE(op.GetName().c_str(), "Convert min_size data failed");
           return PARAM_INVALID;

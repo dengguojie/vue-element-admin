@@ -65,11 +65,12 @@ static bool CheckParams(const string& op, const vector<vector<int64_t>>& input_s
   }
 
   auto shape_length = input_shapes[0].size();
-  for (const auto& input_shape : input_shapes) {
-    if (input_shape.size() != shape_length) {
+  auto not_equal_shape_length = [shape_length](const std::vector<int64_t> input_shape) {
+      return input_shape.size() != shape_length;
+  };
+  if (std::any_of(input_shapes.begin(), input_shapes.end(), not_equal_shape_length)) {
       VECTOR_INNER_ERR_REPORT_TILIING(op, "The length of each shape must be equal");
       return false;
-    }
   }
 
   int max_dim = static_cast<int32_t>(shape_length);

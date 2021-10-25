@@ -438,10 +438,12 @@ typedef struct tagFp16 {
     val = 0x0u;
   }
   /**
-   *@ingroup fp16_t constructor
-   *@brief   Constructor with an uint16_t value
+   *@ingroup all type constructor
+   *@brief   Constructor with all type
    */
-  tagFp16(const uint16_t& uiVal) : val(uiVal) {
+  template <typename T>
+  tagFp16(const T& value) {
+    *this = value;
   }
   /**
    *@ingroup fp16_t constructor

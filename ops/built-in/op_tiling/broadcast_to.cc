@@ -81,7 +81,7 @@ bool BroadcastToTiling(const std::string& op_type, const TeOpParas& op_paras, co
   TeOpParas op_paras_tmp = op_paras;
   // update new shape
   op_paras_tmp.inputs[1].tensor[0].shape = std::move(broadcast_shape);
-  op_paras_tmp.outputs[0].tensor[0].shape = std::move(broadcast_shape);
+  op_paras_tmp.outputs[0].tensor[0].shape = op_paras_tmp.inputs[1].tensor[0].shape;
 
   bool ret = EletwiseTiling(op_type, const_cast<TeOpParas&>(op_paras_tmp), op_info, run_info);
   return ret;

@@ -106,10 +106,10 @@ static void GetCoreParam(int32_t core_num, int32_t rois_data_each_block, int32_t
 
 void GetLoopParam(int32_t each_core_calcul_num, int32_t rois_data_each_block,
                   int32_t& loop_cycle, int32_t& start_block_address, int32_t& block_number_loop) {
-    int32_t block_number = 0;
     block_number_loop = each_core_calcul_num / rois_data_each_block;
     start_block_address = block_number_loop / loop_cycle;
     if (loop_cycle > 1) {
+        int32_t block_number = 0;
         if (block_number_loop % loop_cycle != 0) {
             block_number = block_number_loop - start_block_address * (loop_cycle - 1);
             while ((block_number * loop_cycle < block_number_loop) ||

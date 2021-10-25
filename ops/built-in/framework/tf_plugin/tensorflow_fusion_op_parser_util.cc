@@ -30,7 +30,7 @@ namespace domi {
 static const char* const TENSORFLOW_ATTR_TYPE_TENSOR = "tensor";
 static const char* const TENSORFLOW_ATTR_VALUE = "value";
 
-#define GET_CONST_VALUE(tensor, param, index, FIELD)                                 \
+#define GET_CONST_VALUE(tensor, param, index, FIELD, result)                         \
   do {                                                                               \
     google::protobuf::RepeatedField<FIELD> val_vec;                                  \
     int32_t val_size = 0;                                                            \
@@ -44,27 +44,30 @@ static const char* const TENSORFLOW_ATTR_VALUE = "value";
       FIELD* buf_v = reinterpret_cast<FIELD*>(buf);                                  \
       if (static_cast<uint32_t>(index) >= tensor_content.length() / sizeof(FIELD)) { \
         OP_LOGE("Const data size is smaller than index :%d,not supported!", index);  \
-        return FAILED;                                                               \
+        result = FAILED;                                                             \
+      } else {                                                                       \
+        param = buf_v[index];                                                        \
       }                                                                              \
-      param = buf_v[index];                                                          \
     } else {                                                                         \
       OP_LOGE("Const data size is smaller than index :%d,not supported!", index);    \
-      return PARAM_INVALID;                                                          \
+      result = PARAM_INVALID;                                                        \
     }                                                                                \
   } while (false)
 
 Status ParseParamFromConst(const domi::tensorflow::NodeDef* node_def, int32_t& param, int index) {
   domi::tensorflow::TensorProto tensor;
   TensorflowFusionOpParserUtil::GetTensorFromNode(node_def, tensor);
-  GET_CONST_VALUE(tensor, param, index, int);
-  return SUCCESS;
+  auto result = SUCCESS;
+  GET_CONST_VALUE(tensor, param, index, int, result);
+  return result;
 }
 
 Status ParseParamFromConst(const domi::tensorflow::NodeDef* node_def, float& param, int index) {
   domi::tensorflow::TensorProto tensor;
   TensorflowFusionOpParserUtil::GetTensorFromNode(node_def, tensor);
-  GET_CONST_VALUE(tensor, param, index, float);
-  return SUCCESS;
+  auto result = SUCCESS;
+  GET_CONST_VALUE(tensor, param, index, float, result);
+  return result;
 }
 
 Status TensorflowFusionOpParserUtil::GetTensorFromNode(const domi::tensorflow::NodeDef* node_def,
@@ -108,22 +111,25 @@ bool TensorflowFusionOpParserUtil::FindAttrValue(const domi::tensorflow::NodeDef
 Status TensorflowFusionOpParserUtil::CheckAttrHasType(const domi::tensorflow::AttrValue& attr_value,
                                                       const string& type) {
   uint32_t num_set = 0;
+  bool field_validate_result = true;
 #define VALIDATE_FIELD(name, type_string, oneof_case)                                                         \
   do {                                                                                                        \
     if (attr_value.has_list()) {                                                                              \
       if (attr_value.list().name##_size() > 0) {                                                              \
         if (type != "list(" type_string ")") {                                                                \
           OP_LOGE("GeAttrValue has value with type 'list(" type_string ")'when '%s' expected", type.c_str()); \
-          return FAILED;                                                                                      \
+          field_validate_result = FAILED;                                                                     \
+        } else {                                                                                              \
+            ++num_set;                                                                                        \
         }                                                                                                     \
-        ++num_set;                                                                                            \
       }                                                                                                       \
     } else if (attr_value.value_case() == domi::tensorflow::AttrValue::oneof_case) {                          \
-      if (type != (type_string)) {                                                                              \
+      if (type != type_string) {                                                                              \
         OP_LOGE("GeAttrValue has value with type '" type_string "' when '%s' expected", type.c_str());        \
-        return FAILED;                                                                                        \
+        field_validate_result = FAILED;                                                                       \
+      } else {                                                                                                \
+        ++num_set;                                                                                            \
       }                                                                                                       \
-      ++num_set;                                                                                              \
     }                                                                                                         \
   } while (false)
 
@@ -135,6 +141,10 @@ Status TensorflowFusionOpParserUtil::CheckAttrHasType(const domi::tensorflow::At
   VALIDATE_FIELD(shape, "shape", kShape);
   VALIDATE_FIELD(tensor, "tensor", kTensor);
   VALIDATE_FIELD(func, "func", kFunc);
+
+  if (!field_validate_result) {
+      return FAILED;
+  }
 
 #undef VALIDATE_FIELD
 

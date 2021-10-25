@@ -34,24 +34,20 @@ bool BitwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const 
 
     std::string shape_dtype = op_paras.inputs[0].tensor[0].dtype;
 
-    std::vector<int64_t> x1_broadcast_shape = {};
-    std::vector<int64_t> x2_broadcast_shape = {};
+    std::vector<int64_t> x1_broadcast_shape(x1_runtime_shape.size());
+    std::vector<int64_t> x2_broadcast_shape(x2_runtime_shape.size());
+
+    std::copy(x1_runtime_shape.begin(), x1_runtime_shape.end(), x1_broadcast_shape.begin());
+    std::copy(x2_runtime_shape.begin(), x2_runtime_shape.end(), x2_broadcast_shape.begin());
 
     int64_t len_diff = x1_runtime_shape.size() - x2_runtime_shape.size();
-
     if (len_diff > 0){
-        x2_broadcast_shape.assign(len_diff, 1);
+        x2_broadcast_shape.insert(x2_broadcast_shape.begin(), len_diff, 1);
     }
     else if (len_diff < 0){
-        x1_broadcast_shape.assign(std::abs(len_diff), 1);
+        x1_broadcast_shape.insert(x1_broadcast_shape.begin(), std::abs(len_diff), 1);
     }
 
-    for (auto dim:x1_runtime_shape){
-        x1_broadcast_shape.push_back(dim);
-    }
-    for (auto dim:x2_runtime_shape){
-        x2_broadcast_shape.push_back(dim);
-    }
     //make the shape as same as dsl, the shape should add a dim (2,) when dtype from int32 to int16
     if(shape_dtype == "int32"){
         x1_broadcast_shape.push_back(2);

@@ -45,9 +45,9 @@ bool BinaryCrossEntropyTiling(const std::string& op_type, const TeOpParas& op_pa
     return ret;
   }
 
-  float reduce_mean_cof = 1.0;
   if (op_info.count("reduce_mean_cof_dtype") > 0) {
     const std::string& reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<std::string>();
+    float reduce_mean_cof = 1.0;
     if (reduce_mean_cof_dtype == "float32") {
       for (uint32_t i = 0; i < input_shape.size(); i++) {
         if (IsInAxis(reduce_axis, i)) {
@@ -62,8 +62,7 @@ bool BinaryCrossEntropyTiling(const std::string& op_type, const TeOpParas& op_pa
           reduce_mean_cof = reduce_mean_cof / input_shape[i];
         }
       }
-      fe::fp16_t reduce_mean_cof_fp16;
-      reduce_mean_cof_fp16 = reduce_mean_cof;
+      fe::fp16_t reduce_mean_cof_fp16 = reduce_mean_cof;
       ByteBufferPut(run_info.tiling_data, (fe::fp16_t)reduce_mean_cof_fp16);
       ByteBufferPut(run_info.tiling_data, (uint16_t)0);
       OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);

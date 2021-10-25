@@ -83,6 +83,7 @@ def max_pool_grad_with_argmax_v1(x, grad, argmax, y, ksize, strides, pads,
     return maxpoolgard.tik_instance_function(kernel_name)
 
 
+# 'pylint: disable=too-few-public-methods
 class MaxpoolGard(MaxpoolGradCustom):
     """
     parameter for max_pool_grad_with_pool

@@ -25,10 +25,10 @@
 
 namespace ge {
 namespace {
-const char* const kScopeTypeBatchnorm = "batchnorm";
-const char* const kScopeTypeMoments = "moments";
-const char* const kScopeRltType = "LayerNorm";
-const char* const kOpType = "LayerNorm";
+const char* kScopeTypeBatchnorm = "batchnorm";
+const char* kScopeTypeMoments = "moments";
+const char* kScopeRltType = "LayerNorm";
+const char* kOpType = "LayerNorm";
 }  // namespace
 
 std::vector<ScopeFusionPatterns> ScopeLayerNormPass::DefinePatterns() {

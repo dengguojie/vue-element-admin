@@ -81,16 +81,6 @@ int64_t BNReduce::GetReorderInputShapeMul(const int32_t axis_index, const int32_
   return result;
 }
 
-int64_t BNReduce::GetShapeMul(const std::vector<int64_t>& shape, const int32_t axis_index) {
-  int64_t result = 1;
-  for (uint32_t i = axis_index + 1; i < shape.size(); i++) {
-    if (shape[i] != 0) {
-      result = result * shape[i];
-    }
-  }
-  return result;
-}
-
 int32_t BNReduce::CalcTilingKey() {
   using namespace std;
   int db = 0;
@@ -477,7 +467,7 @@ bool BNReduce::GetAtomicBlockTilingInfo() {
           (input_shape[i] + block_tiling_factor_outer - 1) / block_tiling_factor_outer;
         OP_LOGD(op_type, "get atomic block info, block axis = %d, block factor = %lld",
                 i, tilingInfo.block_tiling_factor);
-        return is_find_block_tiling;
+        return true;
       }
       left_mul = left_mul * input_shape[i];
     }
@@ -654,15 +644,13 @@ bool BNReduce::CustomisedGetUBTiling() {
   int64_t c0_size = input_shape_ori[4];
 
   int64_t hwc0_size = input_shape_ori[2] * input_shape_ori[3] * input_shape_ori[4];
-  int64_t ub_split_axis = 0;
-  int64_t ub_split_inner = 0;
   const int32_t core_num = compileInfo.core_num;
   const int32_t max_ub_count = compileInfo.max_ub_count;
 
   if(((max_ub_count / hwc0_size) >= 1) &&
        ((c1_size >= core_num && c1_size % core_num == 0) || (n_size >= core_num && n_size % core_num == 0))) {
-    ub_split_axis = 0;
-    ub_split_inner = 1;
+    int64_t ub_split_axis = 0;
+    int64_t ub_split_inner = 1;
 
     int32_t n_inner;
 
@@ -786,7 +774,6 @@ bool BNReduce::CustomisedGetBlockTiling() {
     block_split_axis = 0;
     block_split_factor = core_num;
 
-    int64_t c1_size = input_shape_ori[1];
     int64_t h_size = input_shape_ori[2];
     int64_t c0_size = input_shape_ori[3];
 

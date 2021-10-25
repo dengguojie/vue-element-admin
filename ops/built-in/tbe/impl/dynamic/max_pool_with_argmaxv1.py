@@ -146,7 +146,7 @@ def _check_param(x, ksize, strides, padding, dtype, dilation, ceil_mode, kernel_
         raise RuntimeError("invalid window params, kernel_h*kernel_w should be <= 255")
 
 
-class MaxPoolWithargmaxPytorch(object):
+class MaxPoolWithargmaxPytorch:
     """
     Function: use to finish MaxPoolWithargmax main functions
     Modify : 2021-03-10

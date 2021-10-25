@@ -22,24 +22,22 @@
 #include "register/register.h"
 
 namespace ge {
-static const char* const kScopeType = "DynamicRNN";
-static const char* const kLstmCellTanhType = "general_basic_lstm_cell_tanh";
-static const char* const kFwWhileType = "fw_while";
-static const char* const kBwWhileType = "bw_while";
-static const char* const kRnnWhileType = "rnn_while";
-static const char* const kFwWhile_noTranposeType = "fw_no_transpose_while";
-static const char* const kBwWhile_noTranposeType = "bw_no_transpose_while";
-static const char* const kKernelBiasType = "kernel_bias_in";
-static const char* const kWhileType = "while";
-static const char* const kOpType = "DynamicRNN";
-static const char* const kTranspose = "transpose";
-static const char* const kLstmTransType = "lstm_transpose_scope";
-static const char* const kLstmNoTransType = "lstm_no_transpose_scope";
-static const char* const kLstmTwoTransType = "lstm_two_transpose_scope";
-static const char* const kLstmCell = "ganeral_lstm_cell";
-static const char* const kMultiRNNCell = "ganeral_rnn_cell";
-static const char* const kRNNInWhile = "rnn_in_while";
-static const char* const kRNNTwoTransMaximumType = "lt_crnn_lstm";
+static const char* kScopeType = "DynamicRNN";
+static const char* kLstmCellTanhType = "general_basic_lstm_cell_tanh";
+static const char* kFwWhileType = "fw_while";
+static const char* kBwWhileType = "bw_while";
+static const char* kRnnWhileType = "rnn_while";
+static const char* kFwWhile_noTranposeType = "fw_no_transpose_while";
+static const char* kBwWhile_noTranposeType = "bw_no_transpose_while";
+static const char* kKernelBiasType = "kernel_bias_in";
+static const char* kWhileType = "while";
+static const char* kOpType = "DynamicRNN";
+static const char* kLstmTransType = "lstm_transpose_scope";
+static const char* kLstmNoTransType = "lstm_no_transpose_scope";
+static const char* kLstmTwoTransType = "lstm_two_transpose_scope";
+static const char* kLstmCell = "ganeral_lstm_cell";
+static const char* kMultiRNNCell = "ganeral_rnn_cell";
+static const char* kRNNTwoTransMaximumType = "lt_crnn_lstm";
 
 std::vector<ScopeFusionPatterns> ScopeDynamicRNNPass::DefinePatterns() {
   std::vector<ScopeFusionPatterns> patterns_list;

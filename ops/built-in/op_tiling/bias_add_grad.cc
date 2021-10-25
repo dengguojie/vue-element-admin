@@ -44,13 +44,13 @@ bool BiasAddGradTiling(const std::string& op_type, const ge::Operator& op_paras,
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
   std::unordered_map<char, int> zip_shape;
   std::vector<int64_t> new_shape = shape;
-  uint64_t target_shape = 4;
 
   OP_LOGI("BiasAddGrad",
           "input format [%s], ori_format [%s], shape: [%s], ori_shape: [%s], "
           "and ori_format lens not compare ori_shape lens.",
           to_string(format).c_str(), to_string(ori_format).c_str(), GetShape(shape).c_str(), GetShape(ori_shape).c_str());
   if (format == ge::FORMAT_FRACTAL_Z or format == ge::FORMAT_FRACTAL_Z_3D) {
+    uint64_t target_shape = 4;
     if (shape.size() == target_shape) {
       std::string str_ori_format = to_string(ori_format);
       if (str_ori_format.size() != ori_shape.size()) {
