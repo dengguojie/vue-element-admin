@@ -1709,7 +1709,7 @@ void ReshapeRangeInfer(const Operator &op, const std::vector<std::pair<int64_t, 
   if (max_input_dims < 0) {
     for (const auto dim : output_shape.GetDims()) {
       if (dim < 0) {
-        y_range.emplace_back(std::pair<int64_t, int64_t>(1, -1));
+        y_range.emplace_back(std::pair<int64_t, int64_t>(0, -1));
       } else {
         y_range.emplace_back(std::pair<int64_t, int64_t>(dim, dim));
       }

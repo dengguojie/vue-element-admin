@@ -855,7 +855,7 @@ IMPLEMT_INFERFUNC(ExpandDims, ExpandDimsInfer) {
       }
     }
     std::vector<std::pair<int64_t, int64_t>> y_range(x_shape_size + 1,
-                                                     std::pair<int64_t, int64_t>({1, max_range_value}));
+                                                     std::pair<int64_t, int64_t>({0, max_range_value}));
     y_desc->SetShapeRange(y_range);
     return GRAPH_SUCCESS;
   }

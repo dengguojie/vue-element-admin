@@ -83,13 +83,13 @@ IMPLEMT_COMMON_INFERFUNC(SplitInferShape) {
     OP_LOGD(op.GetName().c_str(), "Get constValue failed of [split_dim]");
     if (x_shape_range.size() == 1) {
       if (x_shape_range[0].second == -1) {
-        out_range.push_back(std::pair<int64_t, int64_t>(1, x_shape_range[0].second));
+        out_range.push_back(std::pair<int64_t, int64_t>(0, x_shape_range[0].second));
       } else {
-        out_range.push_back(std::pair<int64_t, int64_t>(1, ceil((float)x_shape_range[0].second / (float)num_split)));
+        out_range.push_back(std::pair<int64_t, int64_t>(0, ceil((float)x_shape_range[0].second / (float)num_split)));
       }
     } else {
       for(size_t i = 0; i < x_shape_range.size(); ++i) {
-        out_range.push_back(std::pair<int64_t, int64_t>(1, x_shape_range[i].second));
+        out_range.push_back(std::pair<int64_t, int64_t>(0, x_shape_range[i].second));
       }
     }
     if (num_split > 1) {
@@ -341,7 +341,7 @@ IMPLEMT_COMMON_INFERFUNC(SplitVInferShape) {
       x_shape.SetDim(i, -1);
     }
     for (size_t i = 0; i < x_shape_range.size(); ++i) {
-      out_range.push_back(std::pair<int64_t, int64_t>(1, x_shape_range[i].second));
+      out_range.push_back(std::pair<int64_t, int64_t>(0, x_shape_range[i].second));
     }
 
     td.SetShape(x_shape);
@@ -383,7 +383,7 @@ IMPLEMT_COMMON_INFERFUNC(SplitVInferShape) {
     x_shape.SetDim(split_dim, -1);
 
     for (size_t i = 0; i < x_shape_range.size(); ++i) {
-      out_range.push_back(std::pair<int64_t, int64_t>(1, x_shape_range[i].second));
+      out_range.push_back(std::pair<int64_t, int64_t>(0, x_shape_range[i].second));
     }
 
     td.SetShape(x_shape);
@@ -808,7 +808,7 @@ static graphStatus ConcatInferShapeCommon(Operator& op, const int64_t dy_input_s
     pair<int64_t, int64_t> output_concat_dim_range(0, 0);
     for (const auto& input_desc : input_x_desc) {
       if (IsUnknownRankShape(input_desc->MutableShape().GetDims())) {
-        output_concat_dim_range = {1, -1};
+        output_concat_dim_range = {0, -1};
         continue;
       }
 

@@ -134,8 +134,8 @@ TEST_F(Slice, slice_infer_dynamic_unknow_dim_shape2) {
   std::vector<int64_t> expected_output_shape = {-1, -1};
   EXPECT_EQ(output_shape, expected_output_shape);
   std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
-      {1, 38},
-      {1, 39},
+      {0, 38},
+      {0, 39},
   };
   EXPECT_EQ(output_range, expected_shape_range);
 }
@@ -148,8 +148,8 @@ TEST_F(Slice, slice_infer_dynamic_unknow_dim_shape3) {
   std::vector<int64_t> expected_output_shape = {-1, -1};
   EXPECT_EQ(output_shape, expected_output_shape);
   std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
-      {1, 38},
-      {1, 100},
+      {0, 38},
+      {0, 100},
   };
   EXPECT_EQ(output_range, expected_shape_range);
 }
@@ -162,8 +162,8 @@ TEST_F(Slice, slice_infer_dynamic_unknow_dim_shape4) {
   std::vector<int64_t> expected_output_shape = {-1, -1};
   EXPECT_EQ(output_shape, expected_output_shape);
   std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
-      {1, 38},
-      {1, 100},
+      {0, 38},
+      {0, 100},
   };
   EXPECT_EQ(output_range, expected_shape_range);
 }
@@ -176,8 +176,8 @@ TEST_F(Slice, slice_infer_dynamic_unknow_dim_shape5) {
   std::vector<int64_t> expected_output_shape = {-1, -1};
   EXPECT_EQ(output_shape, expected_output_shape);
   std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
-      {1, 36},
-      {1, 97},
+      {0, 36},
+      {0, 97},
   };
   EXPECT_EQ(output_range, expected_shape_range);
 }
@@ -202,7 +202,7 @@ TEST_F(Slice, slice_infer_dynamic_unknow_dim_shape7) {
   std::vector<int64_t> expected_output_shape = {-1, -1};
   EXPECT_EQ(output_shape, expected_output_shape);
   std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
-      {1, 38}, {1, 100}
+      {0, 38}, {0, 100}
   };
   EXPECT_EQ(output_range, expected_shape_range);
 }
@@ -215,7 +215,7 @@ TEST_F(Slice, slice_infer_dynamic_unknow_dim_shape8) {
   std::vector<int64_t> expected_output_shape = {5, -1};
   EXPECT_EQ(output_shape, expected_output_shape);
   std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
-      {5, 5}, {1, 100}
+      {5, 5}, {0, 100}
   };
   EXPECT_EQ(output_range, expected_shape_range);
 }
@@ -240,8 +240,8 @@ TEST_F(Slice, slice_infer_dynamic_unknow_rank_shape2) {
   std::vector<int64_t> expected_output_shape = {-1, -1};
   EXPECT_EQ(output_shape, expected_output_shape);
   std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
-      {1, -1},
-      {1, -1}
+      {0, -1},
+      {0, -1}
   };
   EXPECT_EQ(output_range, expected_shape_range);
 }
@@ -266,7 +266,7 @@ TEST_F(Slice, slice_infer_dynamic_unknow_rank_shape4) {
   std::vector<int64_t> expected_output_shape = {2, -1};
   EXPECT_EQ(output_shape, expected_output_shape);
   std::vector<std::pair<int64_t,int64_t>> expected_shape_range = {
-      {2, 2}, {1, -1}
+      {2, 2}, {0, -1}
   };
   EXPECT_EQ(output_range, expected_shape_range);
 }

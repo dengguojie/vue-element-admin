@@ -997,7 +997,7 @@ IMPLEMT_COMMON_INFERFUNC(GatherV2InferShape) {
       for (int i = 0; i < rank_x + rank_indices - 1; i++) {
         y_shape.push_back(-1);
         if (count_rank_x > 0 || count_rank_indices > 0) {
-          out_range.push_back(std::pair<int64_t, int64_t>(1, -1));
+          out_range.push_back(std::pair<int64_t, int64_t>(0, -1));
         } else {
           out_range.push_back(std::pair<int64_t, int64_t>(min_first, max_second));
         }
@@ -2195,13 +2195,13 @@ IMPLEMT_COMMON_INFERFUNC(SliceInferShape) {
   if (!has_size && !has_offsets) {
     for (size_t i = 0; i < dimNum; ++i) {
       outputList.push_back(-1);
-      ranges[i].first = 1;
+      ranges[i].first = 0;
     }
   } else if (!has_offsets && has_size) {
     for (size_t i = 0; i < dimNum; ++i) {
       if (input_size[i] == -1) {
         outputList.push_back(-1);
-        ranges[i].first = 1;
+        ranges[i].first = 0;
       } else {
         outputList.push_back(input_size[i]);
         ranges[i].first = input_size[i];
@@ -2211,7 +2211,7 @@ IMPLEMT_COMMON_INFERFUNC(SliceInferShape) {
   } else if (has_offsets && !has_size) {
     for (size_t i = 0; i < dimNum; ++i) {
       outputList.push_back(-1);
-      ranges[i].first = 1;
+      ranges[i].first = 0;
       if (ranges[i].second != -1) {
         if (shape_dims[i] != -1) {
           ranges[i].second = std::min(ranges[i].second, shape_dims[i]);
@@ -2228,7 +2228,7 @@ IMPLEMT_COMMON_INFERFUNC(SliceInferShape) {
           outputList.push_back(shape_dims[i] - input_begin[i]);
         }
 
-        ranges[i].first = 1;
+        ranges[i].first = 0;
       } else {
         outputList.push_back(input_size[i]);
         ranges[i].first = input_size[i];
