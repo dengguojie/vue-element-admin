@@ -22,6 +22,7 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tbe_platform as tbe_platform_adapter
 from impl import constant_util as constant
 
 
@@ -138,11 +139,10 @@ class GatherNd():
             error_manager_vector.raise_err_inputs_dtype_not_equal(kernel_name, "y", "x",
                                                                   self.y_dtype, self.params_dtype)
 
-        profile = tik.Dprofile()
-        self.ub_size = profile.get_unified_buffer_size()
-        self.l1_size = profile.get_l1_buffer_size()
-        self.core_num = profile.get_aicore_num()
-        self.tik_instance = tik.Tik(profile, disable_debug=True)
+        self.ub_size = tbe_platform_adapter.get_soc_spec(tbe_platform_adapter.UB_SIZE)
+        self.l1_size = tbe_platform_adapter.get_soc_spec(tbe_platform_adapter.L1_SIZE)
+        self.core_num = tbe_platform_adapter.get_soc_spec(tbe_platform_adapter.CORE_NUM)
+        self.tik_instance = tik.Tik()
         self.kernel_name = kernel_name
         self.available_size = self.ub_size - Constant.RESERVED_UB_SIZE
 

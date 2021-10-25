@@ -957,7 +957,7 @@ IMPLEMT_COMMON_INFERFUNC(GatherV2InferShape) {
       return GRAPH_FAILED;
     }
     for (int i = 0; i < batch_dims; i++) {
-      if (x_shape[i] != indices_shape[i]) {
+      if (x_shape[i] != indices_shape[i] && x_shape[i] > 0 && indices_shape[i] > 0) {
         std::string err_msg = OtherErrMsg(ConcatString("params.shape[", i, "]:", x_shape[i],
                                                        "should be equal to indices.shape[", i, "]:",
                                                        indices_shape[i]));
