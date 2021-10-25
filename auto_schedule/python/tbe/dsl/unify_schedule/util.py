@@ -42,8 +42,14 @@ from tbe.tvm.expr import Var
 from tbe.tvm.tensor import PlaceholderOp
 from tbe.tvm.tensor import Tensor
 
-from .constants import BROADCAST_INSNS, SUPPORT_SCALAR_INSNS, \
-    NEED_TEMP_SPACE_INSNS, VCMP_INSNS, VSEL_INSNS, VCMPSEL_INSNS, NEED_SPACE_WITH_DIFF_TYPE, NEED_EXTENT_NODE_INSNS
+from .constants import BROADCAST_INSNS
+from .constants import SUPPORT_SCALAR_INSNS
+from .constants import NEED_TEMP_SPACE_INSNS
+from .constants import VCMP_INSNS
+from .constants import VSEL_INSNS
+from .constants import VCMPSEL_INSNS
+from .constants import NEED_SPACE_WITH_DIFF_TYPE
+from .constants import NEED_EXTENT_NODE_INSNS
 
 VAR_BOUND_LIMIT = 2147483647
 
@@ -51,6 +57,7 @@ VAR_BOUND_LIMIT = 2147483647
 def is_true(expr, dict_args):
     if expr:
         raise RuntimeError(dict_args, get_error_message(dict_args))
+
 
 def shape_to_list(shape):
     """

@@ -22,7 +22,8 @@ from typing import Dict
 from typing import Optional
 import copy
 from functools import reduce
-from enum import Enum, auto
+from enum import Enum
+from enum import auto
 
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation

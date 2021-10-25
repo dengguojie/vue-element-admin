@@ -26,6 +26,7 @@ def is_true(expr, dict_args):
     if expr:
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
+
 def _te_expr2sympy_expr(te_expr):
     if isinstance(te_expr, (int, float)):
         return te_expr
@@ -42,6 +43,7 @@ def _te_expr2sympy_expr(te_expr):
     dict_args["detailed_cause"] = "Only accecpt (int, float, ConstExpr, Var, Mul, Max), " \
                                   "but now is [%s]" % type(te_expr)
     raise RuntimeError(dict_args, get_error_message(dict_args))
+
 
 def expr_equal(expr_a, expr_b, condition=None):
     is_true(condition is not None,

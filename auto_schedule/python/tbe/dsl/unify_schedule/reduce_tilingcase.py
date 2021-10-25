@@ -63,7 +63,7 @@ CONST = "const"
 ZERO = "zero"
 DEFAULT = "default"
 OP_TYPE_AUTO_TILING = "AutoTiling"
-TILINGKEY_NONE_REDUCE_AXIS = 2 ** 31 -2
+TILINGKEY_NONE_REDUCE_AXIS = 2 ** 31 - 2
 
 BlkOuter = "block_outer"
 BlkInner = "block_inner"

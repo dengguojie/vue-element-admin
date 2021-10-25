@@ -47,6 +47,7 @@ def is_true(expr, dict_args):
     if expr:
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
+
 def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None):
     """
     classify

@@ -872,6 +872,7 @@ def check_elewise_shape_range(inputs: list, support_broadcast=False):
     :return:
     """
     from tbe.dsl.base import operation
+
     def _has_intersection(range0, range1):
         _range0 = list(range0)
         _range1 = list(range1)

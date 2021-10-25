@@ -64,6 +64,7 @@ VTRANSPOSE_TEMP_SPACE = 8192
 # temp space for last axis broadcast use vnchwconv
 VNCHWCONV_TEMP_SPACE = 1024
 
+
 class CalcNormTilingCase(Computation):
     def __init__(self, outs, option):
         self.outs = outs

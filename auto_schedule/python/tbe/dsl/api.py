@@ -1471,6 +1471,7 @@ def matmul(tensor_a, tensor_b, trans_a=False, trans_b=False, format_a="ND", form
         "offset_b": offset_w,
         "kernel_name": kernel_name
         }
+
     def find_attr_and_add(attr_name):
         if attr_name in attrs:
             para_dict[attr_name] = attrs.get(attr_name)
@@ -1482,3 +1483,4 @@ def matmul(tensor_a, tensor_b, trans_a=False, trans_b=False, format_a="ND", form
     find_attr_and_add("compress_index")
     result = gemm_compute.gemm(tensor_a=tensor_a, tensor_b=tensor_b, para_dict=para_dict)
     return result
+

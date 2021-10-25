@@ -399,6 +399,7 @@ def check_shape_rule(shape, min_dim=None, max_dim=None, max_shape_num=None):
     from tbe.common.utils import check_shape_rule
     return check_shape_rule(shape, min_dim, max_dim, max_shape_num)
 
+
 def check_kernel_name(kernel_name):
     """
     check kernel_name

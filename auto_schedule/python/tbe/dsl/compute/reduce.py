@@ -74,6 +74,7 @@ def is_true(expr, dict_args):
     if expr:
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
+
 # pylint: disable=too-many-branches
 @decorator
 def _para_check_of_reduce(func, *args, **kwargs):

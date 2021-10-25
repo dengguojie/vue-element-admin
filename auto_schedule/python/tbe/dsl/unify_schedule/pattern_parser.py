@@ -18,7 +18,8 @@
 auto_schedule template, if user call auto_schedule, this file will choose a
 corresponding schedule template for user's compute
 """
-from enum import Enum, auto  # pylint: disable=E0611
+from enum import Enum
+from enum import auto
 from typing import Tuple
 
 from tbe import tvm

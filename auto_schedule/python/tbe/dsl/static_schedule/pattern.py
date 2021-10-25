@@ -620,7 +620,7 @@ data = {"layernorm_fp16_1980": layernorm_fp16_1980,
         "softmax_grad_ext_fp16_1980": softmax_grad_ext_fp16_1980,
         "softmax_grad_ext_fp32_1980": softmax_grad_ext_fp32_1980,
         "layernorm_fp16_nz_non16": layernorm_fp16_nz_non16,
-        "layernorm_fp32_nz_non16": layernorm_fp32_nz_non16,}
+        "layernorm_fp32_nz_non16": layernorm_fp32_nz_non16, }
 
 # modify total with to make full use ub size
 width = {"layernorm_fp16_nz_non16": 10,

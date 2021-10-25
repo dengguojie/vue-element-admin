@@ -522,12 +522,12 @@ def variable_shape(inputs: list, op_mode="elewise", attrs=None):
                 d_shape.append(_range[i][0])
             elif shape[i] == -1:
                 if _var is None or need_two_vars:
-                    _var = operation.var_inner("_dim_{}_{}".format(str(i), str(_suffix)) , _range[i])
+                    _var = operation.var_inner("_dim_{}_{}".format(str(i), str(_suffix)), _range[i])
                 d_shape.append(_var)
             elif shape[i] == -77:
                 # no broadcast
                 if _var is None:
-                    _var = operation.var_inner("_dim_{}_{}".format(str(i), str(_suffix)) , _range[i])
+                    _var = operation.var_inner("_dim_{}_{}".format(str(i), str(_suffix)), _range[i])
                 d_shape.append(_var)
             else:
                 d_shape.append(shape[i])
@@ -986,3 +986,4 @@ def shape_to_list(shape):
             tmp.append(i)
 
     return tmp
+

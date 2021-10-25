@@ -442,3 +442,4 @@ def cast_to_round(data, dtype):
         return cast_to(data, dtype)
 
     return round_half_up(data)
+
