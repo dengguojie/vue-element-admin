@@ -80,7 +80,7 @@ bool AvgPoolV2TilingCube(const std::string& opType, const ge::Operator& opParas,
   }
   GELOGD("optiling x_format is %s, nDim = %d, hDim = %d, wDim = %d", x_format.c_str(), nDim, hDim, wDim);
 
-  if(opCompileInfo.empty()) {
+  if (opCompileInfo.empty()) {
     GELOGD("op compile info is empty");
     return false;
   }

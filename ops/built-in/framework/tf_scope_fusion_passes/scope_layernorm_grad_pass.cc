@@ -383,7 +383,7 @@ void ScopeLayerNormGradPass::FindOutputdXNode(const std::vector<ge::OperatorPtr>
         // some input name contain "^", should be removed
         auto input_desc = node_def->GetInputDesc(i);
         std::string input_name = ScopeUtil::StringReplaceAll(input_desc.GetName(), "^", "");
-        if (input_name.find("/batchnorm/") == std::string::npos && 
+        if (input_name.find("/batchnorm/") == std::string::npos &&
             input_name.find("/moments/") == std::string::npos) {
           index = i;
           find_scope_external_input = true;

@@ -51,11 +51,11 @@ bool ConfusionSoftmaxGradTiling(const std::string& op_type, const TeOpParas& op_
     ByteBufferPut(run_info.tiling_data, c);
 
     int32_t ub_split_inner = 1;
-    for (int32_t i=d; i > 0; i--) {
-        if (d%i != 0) {
+    for (int32_t i = d; i > 0; i--) {
+        if (d % i != 0) {
             continue;
         }
-        if ((i*c) > 15360) {
+        if ((i * c) > 15360) {
             continue;
         }
 

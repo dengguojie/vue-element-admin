@@ -214,7 +214,7 @@ bool SparseApplyProximalAdagradTiling(const std::string& op_type, const TeOpPara
     int32_t var_idx = var_shape.size() - i;
     int32_t grad_idx = grad_shape.size() - i;
     if (var_shape[var_idx] != grad_shape[grad_idx]) {
-      VECTOR_INNER_ERR_REPORT_TILIING( op_type.c_str(), "second dimision in var_shape must be equal with  dimension in grad_shape");
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type.c_str(), "second dimision in var_shape must be equal with  dimension in grad_shape");
       return false;
     }
   }

@@ -15,8 +15,8 @@
 #include "../fusion_pass/common/fp16_t.hpp"
 
 namespace optiling {
-bool SmoothL1LossGradV2Tiling(const std::string& op_type, 
-                              const TeOpParas& op_paras, 
+bool SmoothL1LossGradV2Tiling(const std::string& op_type,
+                              const TeOpParas& op_paras,
                               const nlohmann::json& op_info,
                               OpRunInfo& run_info) {
   float reduce_mean_cof = 1.0;

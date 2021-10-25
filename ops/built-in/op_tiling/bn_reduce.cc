@@ -621,7 +621,7 @@ bool BNReduce::WriteTilingData() {
 
 int64_t BNReduce::CustomisedGetNearestFactor(const int64_t dim, const int64_t split_size) {
   int64_t nearest_factor = split_size;
-  while(dim % nearest_factor != 0) {
+  while (dim % nearest_factor != 0) {
     nearest_factor--;
   }
 
@@ -647,7 +647,7 @@ bool BNReduce::CustomisedGetUBTiling() {
   const int32_t core_num = compileInfo.core_num;
   const int32_t max_ub_count = compileInfo.max_ub_count;
 
-  if(((max_ub_count / hwc0_size) >= 1) &&
+  if (((max_ub_count / hwc0_size) >= 1) &&
        ((c1_size >= core_num && c1_size % core_num == 0) || (n_size >= core_num && n_size % core_num == 0))) {
     int64_t ub_split_axis = 0;
     int64_t ub_split_inner = 1;

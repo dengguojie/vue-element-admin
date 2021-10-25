@@ -151,8 +151,7 @@ int32_t GetBBTailOffset(int32_t bb_loop, int32_t& bb_tail, int32_t bbox_ub_segme
     int32_t bb_tail_offset = bb_loop * bbox_ub_segment + bb_tail - min_segment;
     bb_tail = min_segment;
     return bb_tail_offset;
-  } else if (bb_tail % min_segment !=0 && bb_loop != 0)
-  {
+  } else if (bb_tail % min_segment != 0 && bb_loop != 0) {
     int32_t bb_tail_offset = bb_loop * bbox_ub_segment + (bb_tail % min_segment) - min_segment;
     bb_tail = GetAlignInt32(bb_tail, min_segment);
     return bb_tail_offset;
@@ -215,7 +214,7 @@ int32_t GetCoreNumMode1(int32_t bboxes_num, int32_t point_per_core) {
 }
 
 int32_t GetTilingMode(int32_t gtboxes_num) {
-  if (gtboxes_num *4 <= GTBOX_SEGMENT) {
+  if (gtboxes_num * 4 <= GTBOX_SEGMENT) {
     return TILING_MODE_1;
   } else {
     return TILING_MODE_2;

@@ -127,9 +127,9 @@ bool CheckTensorShape(const std::string& opType, std::vector<int64_t> paramsShap
   return true;
 }
 
-int GetMaxApproximate(int x, int y){
+int GetMaxApproximate(int x, int y) {
   int z = y;
-  while(x % y != 0){
+  while (x % y != 0) {
     z = x % y;
     x = y;
     y = z;

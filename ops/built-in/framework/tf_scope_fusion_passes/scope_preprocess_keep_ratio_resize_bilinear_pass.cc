@@ -179,7 +179,7 @@ void ScopeKeepRatioResizeBilinearPass::GenerateFusionResult(const std::vector<Sc
                    .InsertOutput("shape_node", 0)
                    .BuildInnerNode();
     CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
-    CHECK_INNER_NODE_CONDITION(resizeNode->MutableOperator() != nullptr , fusion_rlt);
+    CHECK_INNER_NODE_CONDITION(resizeNode->MutableOperator() != nullptr, fusion_rlt);
     resizeNode->SetInputFormat("images", "NHWC");
     resizeNode->SetOutputFormat("y", "NHWC");
     resizeNode->MutableOperator()->SetAttr("align_corners", alignCorners);

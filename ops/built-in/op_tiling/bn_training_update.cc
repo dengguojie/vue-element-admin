@@ -31,7 +31,7 @@ namespace optiling {
 
         float batch_var_scalar = 1.0;
         float num_rec = 1.0;
-        int32_t num = N*H*W;
+        int32_t num = N * H * W;
         if (op_info.count("bn_update_num_rec_dtype") > 0) {
             num_rec = 1.0 / (float)num;
         }

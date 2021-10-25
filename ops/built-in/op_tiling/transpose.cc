@@ -313,8 +313,9 @@ static int64_t CalcVnchwconvFullColSize(int64_t coreNum, int64_t ubBlocks) {
 }
 
 static int GCD(int a, int b) {
-  if (b == 0)
+  if (b == 0) {
     return a;
+  }
   return GCD(b, a % b);
 }
 

@@ -106,8 +106,9 @@ static int GetAlignNum(int32_t dim_size, int32_t align_size) {
   int32_t align_num = align_size;
   for (int32_t i = 1; i <= align_size; i++) {
     align_num = i;
-    if (dim_size * i % align_size == 0)
+    if (dim_size * i % align_size == 0) {
       break;
+    }
   }
   return align_num;
 }
@@ -139,8 +140,9 @@ static void CalTilingParam(TilingParam& param, const ge::Shape& input_shape, con
 
     // calc core number at first dim size
     int32_t core_number = core_num;
-    if (param.first_dim_size < 8)
+    if (param.first_dim_size < 8) {
       core_number = 1;
+    }
     int32_t core_segment = GetCeilInt(param.first_dim_size, core_number);
     core_segment = GetCeilInt(core_segment, 8) * 8;
 
@@ -261,8 +263,9 @@ static void CalTilingParam(TilingParam& param, const ge::Shape& input_shape, con
     } else {
       // calc core number at last_dim
       int32_t core_number = core_num;
-      if (param.last_dim_size < data_each_vector)
+      if (param.last_dim_size < data_each_vector) {
         core_number = 1;
+      }
       int32_t core_segment = GetCeilInt(param.last_dim_size, core_number);
       core_segment = GetCeilInt(core_segment, data_each_vector) * data_each_vector;
 

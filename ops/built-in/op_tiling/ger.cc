@@ -42,7 +42,7 @@ bool GerTiling(const std::string& op_type, const TeOpParas& op_paras, const nloh
   shape_y_new.push_back(shape_x1[0]);
   shape_y_new.push_back(shape_x2[0]);
 
-  TeOpParas op_paras_tmp; 
+  TeOpParas op_paras_tmp;
   TeOpTensor x1_tensor, x2_tensor, y_tensor;
   TeOpTensorArg x1_arg, x2_arg, y_arg;
 

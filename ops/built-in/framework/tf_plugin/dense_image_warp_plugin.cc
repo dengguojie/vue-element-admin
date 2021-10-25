@@ -24,7 +24,7 @@
 #include "op_log.h"
 
 namespace domi {
-Status DenseImageWarpMappingFn(const Message* op_src, ge::Operator& op) {  
+Status DenseImageWarpMappingFn(const Message* op_src, ge::Operator& op) {
   AutoMappingFn(op_src, op);
   auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
   if (op_dsc == nullptr) {

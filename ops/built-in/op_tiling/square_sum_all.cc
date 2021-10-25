@@ -102,7 +102,9 @@ int32_t CalcReduceSumLoop(int32_t& calc_num, int64_t& data_each_block, int64_t& 
   while (remain_num > VECTOR_PROCESS_BYTES / dtype_bytes_size) {
     remain_num = ((remain_num / align_value) * align_value) / OP_INPUTS_SIZE;
     loop_num++;
-    if (remain_num <= VECTOR_PROCESS_BYTES / dtype_bytes_size) break;
+    if (remain_num <= VECTOR_PROCESS_BYTES / dtype_bytes_size) {
+      break;
+    }
   }
   return loop_num;
 }

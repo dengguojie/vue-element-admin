@@ -44,7 +44,7 @@ Status AutoMappingFnQuant(const google::protobuf::Message* op_src, ge::Operator&
       dst_type = ge::DT_INT4;
     }
   }
-  op.SetAttr("dst_type",dst_type);
+  op.SetAttr("dst_type", dst_type);
   return SUCCESS;
 }
 REGISTER_CUSTOM_OP("AscendQuant")

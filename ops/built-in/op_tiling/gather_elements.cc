@@ -43,7 +43,7 @@ const int64_t TILING_MODE_1 = 1;
 // B
 const int64_t TILING_MODE_4 = 4;
 
-// 
+//
 const int64_t TILING_MODE_2 = 2;
 // B C
 const int64_t TILING_MODE_5 = 5;
@@ -244,7 +244,7 @@ bool GatherElementsTiling(const std::string& opType, const TeOpParas& opParas, c
   int64_t paramsDSize = 0;
   int64_t indicesDSize = 0;
   int64_t axis = 0;
-  
+
   bool flag = GetCompileParams(opType, op_info, coreNum, ubSize, l1Size, paramsDSize, indicesDSize, axis);
 
   if (!flag) {
@@ -261,7 +261,7 @@ bool GatherElementsTiling(const std::string& opType, const TeOpParas& opParas, c
   if (axis < 0) {
     axis += paramsDims;
   }
-  
+
   bool ret = checkTensorShape(opType, indicesShape, yShape);
   if (!ret) {
     OP_LOGE(opType.c_str(), "op GatherElementsTiling: [checkTensorShape] failed.");
@@ -316,7 +316,7 @@ bool GatherElementsTiling(const std::string& opType, const TeOpParas& opParas, c
       if (indicesBlockNum >= runParams.indices_num_remaining){
         runParams.tilingMode = TILING_MODE_3;
       }
-      else{
+      else {
         runParams.tilingMode = TILING_MODE_6;
         runParams.remaining_block_remain = runParams.indices_num_remaining % indicesBlockNum;
         runParams.remaining_block_num = runParams.indices_num_remaining / indicesBlockNum;
@@ -326,7 +326,7 @@ bool GatherElementsTiling(const std::string& opType, const TeOpParas& opParas, c
       if (indicesBlockNum >= runParams.indices_num_remaining){
         runParams.tilingMode = TILING_MODE_4;
       }
-      else{
+      else {
         runParams.tilingMode = TILING_MODE_5;
         runParams.remaining_block_remain = runParams.indices_num_remaining % indicesBlockNum;
         runParams.remaining_block_num = runParams.indices_num_remaining / indicesBlockNum;

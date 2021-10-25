@@ -91,14 +91,14 @@ static bool GetPaddingsConstValue(const TeOpParas& paras, const string& name,
   if (dtype == "int64") {
     int count = size / sizeof(int64_t);
     const int64_t *data_addr = reinterpret_cast<const int64_t*>(std::get<0>(paras.const_inputs.at(name)));
-    for (int i=0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
       values.push_back(*data_addr);
       data_addr++;
     }
   } else if (dtype == "int32") {
     int count = size / sizeof(int32_t);
     const int32_t *data_addr = reinterpret_cast<const int32_t*>(std::get<0>(paras.const_inputs.at(name)));
-    for (int i=0; i < count; i++) {
+    for (int i = 0; i < count; i++) {
       values.push_back(*data_addr);
       data_addr++;
     }
@@ -188,7 +188,7 @@ static int64_t get_core_num(std::vector<int64_t> x_shape, int64_t core_num) {
       ele_per_core = (nc_total - diff) / core_used + diff;
     }
   }
-  core_used = (nc_total - diff) / ele_per_core + diff; 
+  core_used = (nc_total - diff) / ele_per_core + diff;
   return core_used;
 }
 

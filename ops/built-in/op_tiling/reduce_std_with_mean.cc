@@ -56,7 +56,7 @@ bool ReduceStdWithMeanTiling(const std::string& op_type, const TeOpParas& op_par
     }
     if (reduce_mean_cof_dtype == "float32") {
       if (attr_unbiased == "true") {
-        reduce_mean_cof = reduce_mean_cof / (input_shape_mul-1);
+        reduce_mean_cof = reduce_mean_cof / (input_shape_mul - 1);
       } else {
         reduce_mean_cof = reduce_mean_cof / (input_shape_mul);
       }
@@ -64,7 +64,7 @@ bool ReduceStdWithMeanTiling(const std::string& op_type, const TeOpParas& op_par
       OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);
     } else if (reduce_mean_cof_dtype == "float16") {
         if (attr_unbiased == "true") {
-          reduce_mean_cof = reduce_mean_cof / (input_shape_mul-1);
+          reduce_mean_cof = reduce_mean_cof / (input_shape_mul - 1);
         } else {
           reduce_mean_cof = reduce_mean_cof / (input_shape_mul);
         }

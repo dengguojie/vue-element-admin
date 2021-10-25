@@ -126,7 +126,7 @@ namespace optiling {
         int32_t pad_h = compile_info.pad_h;
         int32_t dilation_h = compile_info.dilation_h;
         int32_t ceil_mode = compile_info.ceil_mode;
-        int32_t tmp_h = input_h + 2 * pad_h - dilation_h * (kernel_h -1) - 1;
+        int32_t tmp_h = input_h + 2 * pad_h - dilation_h * (kernel_h - 1) - 1;
 
         if (ceil_mode == 1) {
             output_h = Ceildiv(tmp_h, stride_h) + 1;
@@ -150,7 +150,7 @@ namespace optiling {
         int32_t pad_w = compile_info.pad_w;
         int32_t dilation_w = compile_info.dilation_w;
         int32_t ceil_mode = compile_info.ceil_mode;
-        int32_t tmp_w = input_w + 2 * pad_w - dilation_w * (kernel_w -1) - 1;
+        int32_t tmp_w = input_w + 2 * pad_w - dilation_w * (kernel_w - 1) - 1;
 
         if (ceil_mode == 1) {
             output_w = Ceildiv(tmp_w, stride_w) + 1;

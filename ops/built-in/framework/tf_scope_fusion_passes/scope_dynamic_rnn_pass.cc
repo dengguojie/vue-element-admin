@@ -776,7 +776,7 @@ void ScopeDynamicRNNPass::GenerateFusionResultForMultiNetease(const Scope* scope
   std::string scope_name = scope->Name();
   fusion_rlt->SetName(scope_name.substr(0, scope_name.length() - 1));
   fusion_rlt->SetDescription("");
-    
+
   std::string w_in_node_name = GetNodeNameFromScope(nodes_map, "/kernel");
   std::string w_recurrent_in_node_name = GetNodeNameFromScope(nodes_map, "/recurrent_kernel");
   std::string b_in_node_name = GetNodeNameFromScope(nodes_map, "/bias");
@@ -792,7 +792,7 @@ void ScopeDynamicRNNPass::GenerateFusionResultForMultiNetease(const Scope* scope
   Status ret = perm_0->InsertOutput("transpose_0", 1).BuildInnerNode();
   CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
   DynamicRNNPassParserParams(nodes_map, transpose_perm_name, perm_0->GetType(), perm_0->MutableOperator());
-    
+
   // transpose to dynamicrnn
   auto transpose_0 = fusion_rlt->AddInnerNode("transpose_0", "Transpose");
   CHECK_INNER_NODE_CONDITION(transpose_0 != nullptr, fusion_rlt);
@@ -815,7 +815,7 @@ void ScopeDynamicRNNPass::GenerateFusionResultForMultiNetease(const Scope* scope
   ret = weight_1->InsertOutput("concat_0", 0).BuildInnerNode();
   CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
   DynamicRNNPassParserParams(nodes_map, w_recurrent_in_node_name, weight_1->GetType(), weight_1->MutableOperator());
-    
+
   auto concat_axis = fusion_rlt->AddInnerNode("concat_axis", "Const");
   CHECK_INNER_NODE_CONDITION(concat_axis != nullptr, fusion_rlt);
   ret = concat_axis->InsertOutput("concat_0", 1).BuildInnerNode();

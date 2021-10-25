@@ -81,7 +81,7 @@ bool GetBNGradTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0
     int32_t ub_split_inner = 0;
 
     const int DB = 2;
-    if (max_ub_count / (h*w*c0) >= DB && ((c1 >= core_num && c1 % core_num == 0) || 
+    if (max_ub_count / (h * w * c0) >= DB && ((c1 >= core_num && c1 % core_num == 0) || 
         (n >= core_num && n % core_num == 0))) {
         ub_split_axis = 0;
         ub_split_inner = 1;
@@ -96,7 +96,7 @@ bool GetBNGradTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0
             if (n_inner % i != 0) {
                 continue;
             }
-            if (h*w*c0*i > max_ub_count) {
+            if (h * w * c0 * i > max_ub_count) {
                 continue;
             }
 
@@ -128,7 +128,7 @@ bool GetBNGradTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0
 
     int32_t split_size = 1;
     if (need_split) {
-        for (int32_t i = 1; i < input_shape[split_axis]+1; i++) {
+        for (int32_t i = 1; i < input_shape[split_axis] + 1; i++) {
             if (temp_size * i > bound_size) {
                 split_size = i - 1;
                 split_size = get_nearest_factor(input_shape[split_axis], split_size);

@@ -98,7 +98,7 @@ Status ParseParamsAvgPool3dGrad(const Message* op_src, ge::Operator& op) {
         CUBE_INNER_ERR_REPORT_PLUGIN(op.GetName().c_str(), "TF padding pattern is incorrected."),
         return FAILED);
 
-  std::vector<int64_t> pads = {0,0,0,0,0,0};
+  std::vector<int64_t> pads = {0, 0, 0, 0, 0, 0};
   op.SetAttr("pads", pads);
   op.SetAttr("ceil_mode", false);
   op.SetAttr("count_include_pad", false);

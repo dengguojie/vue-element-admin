@@ -37,7 +37,7 @@ namespace optiling{
         params.last_core_index = 0;
     }
 
-    bool GetCompileInfo(const std::string &op_type, const nlohmann::json &op_compile_info, 
+    bool GetCompileInfo(const std::string &op_type, const nlohmann::json &op_compile_info,
                         int32_t &total_core_num, int32_t &axis)
     {
         OP_LOGD("GetCompileInfo is running");
@@ -53,7 +53,7 @@ namespace optiling{
         return true;
     }
 
-    bool MergeAxis(int32_t axis, int32_t depth, std::vector<int64_t> x_shape, 
+    bool MergeAxis(int32_t axis, int32_t depth, std::vector<int64_t> x_shape,
                    std::vector<int64_t> &merged_x_shape)
     {
         OP_LOGD("MergeAxis is running");
@@ -234,12 +234,12 @@ namespace optiling{
             {
                 tiling_mode = 10;
             }
-            else if (per_core_numel * last_dim_x <= 19792 && per_core_numel * 
+            else if (per_core_numel * last_dim_x <= 19792 && per_core_numel *
                 last_dim_x * depth > 39584 && last_dim_x >= 1 && last_dim_x <= 39584)
             {
                 tiling_mode = 11;
             }
-            else if (per_core_numel * last_dim_x > 19792 && per_core_numel * last_dim_x * depth > 39584 && 
+            else if (per_core_numel * last_dim_x > 19792 && per_core_numel * last_dim_x * depth > 39584 &&
                      last_dim_x >= 1 && last_dim_x <= 39584)
             {
                 tiling_mode = 12;

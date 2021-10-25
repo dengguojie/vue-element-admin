@@ -63,10 +63,10 @@ bool CalSparseApplyCommonTiling(const std::string& op_type, const nlohmann::json
         if (num_indices * 2 <= core_num and each_row_data_num >= 1024){
             need_core_num = core_num / num_indices * num_indices;
             if (need_core_num > core_num){
-                need_core_num=core_num;
+                need_core_num = core_num;
             }
-            if(need_core_num <= 0) {
-                need_core_num=1;
+            if (need_core_num <= 0) {
+                need_core_num = 1;
             }
         }
     }

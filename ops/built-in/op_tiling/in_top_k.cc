@@ -28,7 +28,7 @@ struct InTopKTilingParams {
   int32_t need_core_num_input_scalar;
 };
 
-void InTopKWriteTilingParams (const InTopKTilingParams& params, OpRunInfo& run_info) {
+void InTopKWriteTilingParams(const InTopKTilingParams& params, OpRunInfo& run_info) {
   ByteBufferPut(run_info.tiling_data, params.row_num_input_scalar);
   ByteBufferPut(run_info.tiling_data, params.col_num_input_scalar);
   ByteBufferPut(run_info.tiling_data, params.need_core_num_input_scalar);

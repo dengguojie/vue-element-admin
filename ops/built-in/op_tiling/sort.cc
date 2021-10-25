@@ -77,7 +77,7 @@ namespace optiling
     return level + 1;
   }
 
-  // set tiling para 
+  // set tiling para
   void WriteTilingParams(const SortTilingParams& params, OpRunInfo& run_info) {
     OP_LOGD("WriteTilingParams is running");
     ByteBufferPut(run_info.tiling_data, params.tiling_mode_scalar);
@@ -181,7 +181,7 @@ namespace optiling
 
     cols_padding = ((col + 15) / 16) * 16;
     col_block_padding = ((col + 2047) / 2048) * 2048;
-    if(col > 2048) {
+    if (col > 2048) {
        tiling_mode = 2;
        col_tail_loop = GetSortLoopTimes(cols_padding - COL_PER_PART);
     }
@@ -195,7 +195,7 @@ namespace optiling
       rows_per_core = row / core_max;
       remain = row % core_max;
     }
-    SortTilingParams params{tiling_mode, need_core, row, col, cols_padding, loop_times, rows_per_core, remain, col_tail_loop,col_block_padding};
+    SortTilingParams params{tiling_mode, need_core, row, col, cols_padding, loop_times, rows_per_core, remain, col_tail_loop, col_block_padding};
     // write tiling params to run_info
     WriteTilingParams(params, run_info);
     // cout tiling params
