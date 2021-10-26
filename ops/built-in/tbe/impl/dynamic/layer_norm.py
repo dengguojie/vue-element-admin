@@ -15,11 +15,9 @@
 """
 layer_norm
 """
+from copy import deepcopy
 from tbe import tvm
-
 from tbe.dsl.base import operation
-from tbe.dsl.unify_schedule.constants import Pattern
-
 from tbe.common.utils.errormgr import error_manager_vector
 from tbe.common.platform import get_soc_spec
 from impl.util import util_select_op_base
@@ -32,21 +30,22 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tbe_context
-from copy import deepcopy
-
+from impl import constant_util as constant
 from .layer_norm_tik import layer_normalize
 from .layer_norm_tik import if_tik_support
 from .layer_norm_tik import _check_input_mode
 
-# General limitation of the size for input shape: 2**31
-SHAPE_SIZE_LIMIT = 2147483648
 
-SIZE_SIXTEEN = 16
-LAST_DIM_RANGE_SET = ((1, 1), (2, 64), (65, 2000), (2001, None))
+# pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    LAST_DIM_RANGE_SET = ((1, 1), (2, 64), (65, 2000), (2001, None))
 
 
-# pylint: disable = unused-argument
-# pylint: disable=too-many-arguments,too-many-locals
+# pylint: disable=unused-argument,too-many-lines,invalid-name
+# pylint: disable=too-many-arguments,too-many-locals,unused-variable
 def get_op_support_info(input_x,
                         input_gamma,
                         input_beta,
@@ -94,6 +93,9 @@ def get_op_support_info(input_x,
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # pylint: disable=too-many-locals,too-many-statements,too-many-branches
 def _division_sixteen(shape):
+    """
+    division_sixteen
+    """
     if len(shape) < 2:
         if shape[-1] == 0:
             error_detail = "value of shape_x is illegal"
@@ -104,7 +106,7 @@ def _division_sixteen(shape):
         error_detail = "value of shape_x is illegal"
         error_manager_vector.raise_err_input_shape_invalid("layer_norm", "input_x", error_detail)
 
-    if shape[-1] % SIZE_SIXTEEN == 0 and shape[-2] % SIZE_SIXTEEN == 0:
+    if shape[-1] % constant.C0_SIZE == 0 and shape[-2] % constant.C0_SIZE == 0:
         return True
     return False
 
@@ -329,6 +331,9 @@ def to_frac_z_axis(ori_shape, ori_axis):
 
 
 def _broadcast_nz(tensor, shape):
+    """
+    broadcast_nz
+    """
     broadcast_axes = []
     src_shape = shape_util.shape_to_list(tensor.shape)
     for i, _ in enumerate(shape):
@@ -400,7 +405,7 @@ def layer_norm_compute_nz(input_x, input_gamma, input_beta,
     for i in reduce_axis:
         reduce_elts *= shape_x[i]
     if isinstance(reduce_elts, float):
-        mean_cofs = reduce_elts**(-1)
+        mean_cofs = reduce_elts ** (-1)
         mean_cof = tvm.const(mean_cofs, dtype=cast_dtype)
     else:
         mean_cof = tbe.var("mean_cof", dtype=cast_dtype)
@@ -458,8 +463,8 @@ def layer_norm_compute_nz(input_x, input_gamma, input_beta,
     if is_cast:
         res = tbe.cast_to(res, "float16")
         return mean_16, variance_16, res
-    else:
-        return mean, variance, res
+
+    return mean, variance, res
 
 
 def layer_norm_compute(input_x,
@@ -521,14 +526,11 @@ def layer_norm_compute(input_x,
         input_beta = tbe.cast_to(input_beta, "float32")
         is_cast = True
 
-    # Calculate the scaling ratio of the average
-    index_list = tuple(index for index, _ in enumerate(shape_x))
-
     reduce_elts = 1.0
     for i in reduce_axis:
         reduce_elts *= shape_x[i]
     if isinstance(reduce_elts, float):
-        mean_cofs = reduce_elts**(-1)
+        mean_cofs = reduce_elts ** (-1)
         mean_cof = tvm.const(mean_cofs, dtype=cast_dtype)
     else:
         mean_cof = tbe.var("mean_cof", dtype=cast_dtype)
@@ -584,8 +586,8 @@ def layer_norm_compute(input_x,
     if is_cast:
         res = tbe.cast_to(res, "float16")
         return mean_16, variance_16, res
-    else:
-        return mean, variance, res
+
+    return mean, variance, res
 
 
 @register_operator("LayerNorm", pattern="LayerNorm")
@@ -773,10 +775,10 @@ def layer_norm(input_x,
             if x_last_dim_range[0] == x_last_dim_range[-1]:
                 x_last_dim_range_set = [x_last_dim_range]
             else:
-                x_last_dim_range_set = LAST_DIM_RANGE_SET
+                x_last_dim_range_set = Constant.LAST_DIM_RANGE_SET
             for _, rn in enumerate(x_last_dim_range_set):
                 with tbe.compute():
-                    x_var, gamma_var, beta_var, reduce_axis_var = _reduce_variable_shape(
+                    x_var, gamma_var, beta_var, _ = _reduce_variable_shape(
                         [dy_shape_x, dy_shape_gamma, dy_shape_beta, dy_reduce_axis], var_list, rn, input_format)
                     data_x = tvm.placeholder(x_var, name="x", dtype=dtype)
                     data_gamma = tvm.placeholder(gamma_var, name="gamma", dtype=dtype)
@@ -784,15 +786,15 @@ def layer_norm(input_x,
 
                     if input_format == "FRACTAL_NZ":
                         mean, variance, res = layer_norm_compute_nz(data_x, data_gamma, data_beta,
-                                                                    output_y, output_mean, output_variance, ori_reduce_axis,
-                                                                    dy_reduce_axis.get(
-                                                                        "value"), begin_params_axis, epsilon,
+                                                                    output_y, output_mean, output_variance,
+                                                                    ori_reduce_axis, dy_reduce_axis.get("value"),
+                                                                    begin_params_axis, epsilon,
                                                                     kernel_name, impl_mode)
                     else:
                         mean, variance, res = layer_norm_compute(data_x, data_gamma, data_beta,
                                                                  output_y, output_mean, output_variance,
-                                                                 dy_reduce_axis.get(
-                                                                     "value"), begin_params_axis, epsilon,
+                                                                 dy_reduce_axis.get("value"),
+                                                                 begin_params_axis, epsilon,
                                                                  kernel_name, impl_mode)
                     tensors.append([data_x, data_gamma, data_beta, res, mean, variance])
                 with tvm.target.cce():
@@ -816,13 +818,26 @@ def _add_compile_info_ops(add_compile_info_dict):
 
 
 def _classify(input_x, input_gamma, input_beta, reduce_axis, broadcast_axis, input_format):
+    """
+     Parameters
+    ----------
+    input_x : dict
+        shape and dtype of input x, only support float16, float32
+    input_gamma: dict
+        shape and dtype of input gamma, only support float16, float32
+    input_beta: dict
+        shape and dtype of input beta, only support float16, float32
+    reduce_axis: index_list[begin_norm_axis:]
+    broadcast_axis: index_list[:begin_params_axis]
+    input_format: format of input_x
+    """
     input_x, input_gamma, input_beta = generate_reduce_input((input_x, input_gamma, input_beta), input_format)
     x_range = input_x.get("range")
     gamma_shape = input_gamma.get("shape")
     dynamic_index = []
-    for id, val in enumerate(gamma_shape):
+    for i, val in enumerate(gamma_shape):
         if val == -1:
-            dynamic_index.append(id)
+            dynamic_index.append(i)
     gamma_range = input_gamma.get("range")
     beta_shape = input_beta.get("shape")
     beta_range = input_beta.get("range")
@@ -831,9 +846,9 @@ def _classify(input_x, input_gamma, input_beta, reduce_axis, broadcast_axis, inp
     for ix in input_x_list:
         new_gamma_shape = deepcopy(gamma_shape)
         new_beta_shape = deepcopy(beta_shape)
-        for id in dynamic_index:
-            new_gamma_shape[id] = ix[id]
-            new_beta_shape[id] = ix[id]
+        for i in dynamic_index:
+            new_gamma_shape[i] = ix[i]
+            new_beta_shape[i] = ix[i]
         if -1 not in ix and -2 not in ix:
             mode = para_check.CONST
         else:
@@ -844,25 +859,15 @@ def _classify(input_x, input_gamma, input_beta, reduce_axis, broadcast_axis, inp
         ibd = {'shape': new_beta_shape, 'range': beta_range, 'mode': mode, 'rel_pos_to_reduce': 'before'}
         outs.append([ixd, igd, ibd])
 
-    res_fuse_axis, fused_reduce_axis, fused_reduce_axis_label = _fuse_axis_operation(
-        input_x, reduce_axis, broadcast_axis)
     for ins in outs:
-        # if set(ins[0]["shape"]) == {1}:
-        #     for x in ins:
-        #         x["shape"] = [1]
-        #         x["range"] = [(1,1),]
-        #     ins.append({"shape":[],"value":[],"rel_pos_to_reduce":"axis"})
-        #     continue
-        """
-        for x in ins:
-            x = _fuse_shape_operation(x, res_fuse_axis)
-        ins.append({'shape': fused_reduce_axis, 'value': fused_reduce_axis, 'rel_pos_to_reduce': 'axis'})
-        """
         ins.append({'shape': reduce_axis, 'value': reduce_axis, 'rel_pos_to_reduce': 'axis'})
     return outs
 
 
 def _fuse_shape_operation(x_dict, res_fuse_axis):
+    """
+    fuse_shape_operation
+    """
     x_shape = x_dict.get("shape")
     x_range = x_dict.get("range")
     for fx in res_fuse_axis:
@@ -877,41 +882,13 @@ def _fuse_shape_operation(x_dict, res_fuse_axis):
     return x_dict
 
 
-def _fuse_axis_operation(input_x, reduce_axis, broadcast_axis):
-    inter_rb_axis = list(set(reduce_axis) & set(broadcast_axis))
-    diff_reduce_axis = list(set(reduce_axis) - set(inter_rb_axis))
-    fuse_axis = []
-    for index in inter_rb_axis:
-        if not fuse_axis:
-            fuse_axis.append([index])
-        else:
-            if index - fuse_axis[-1][-1] == 1:
-                fuse_axis[-1].append(index)
-            else:
-                if len(fuse_axis[-1]) < 2:
-                    fuse_axis.append([index])
-    fused_reduce_axis = []
-    fused_reduce_axis_label = []
-    res_fuse_axis = []
-    skip_num = 0
-    for fx in fuse_axis:
-        fused_reduce_axis.append(fx[0] - skip_num)
-        skip_num += len(fx[1:])
-        fused_reduce_axis_label.append("rb")
-        if len(fx) > 1:
-            res_fuse_axis.append(fx)
-    fused_reduce_axis += [i - skip_num for i in diff_reduce_axis]
-    fused_reduce_axis_label += ["r"] * len(diff_reduce_axis)
-    return res_fuse_axis, fused_reduce_axis, fused_reduce_axis_label
-
-
 def _process_all_unknown_shape(shape_list, range_list):
     """
     process input include shape -2
     """
     all_unknown_shape_len = 8
     for single_shape in shape_list:
-        if tuple(single_shape) != (-2, ):
+        if tuple(single_shape) != (-2,):
             all_unknown_shape_len = len(single_shape)
             break
 
@@ -923,7 +900,9 @@ def _process_all_unknown_shape(shape_list, range_list):
 
 
 def generate_reduce_input(inputs_before_reduce, input_format):
-
+    """
+    generate_reduce_input
+    """
     shape_local = [list(x["shape"]) for x in inputs_before_reduce]
     range_local = [
         list(x.get("range")) if list(x.get("range")) else [(1, None)] * len(shape_local[0])
@@ -941,20 +920,23 @@ def generate_reduce_input(inputs_before_reduce, input_format):
         new_range_local = [[(1, None)] * (max_len - len(x_range)) + x_range if len(x_range) != max_len else x_range
                            for x_range in range_list]
 
-    for index in range(len(new_shape_local)):
-        for idx, val in enumerate(new_shape_local[index]):
+    for index, _ in enumerate(new_shape_local):
+        for idx, _ in enumerate(new_shape_local[index]):
             if new_range_local[index][idx][0] == new_range_local[index][idx][1]:
                 new_shape_local[index][idx] = new_range_local[index][idx][0]
     for xid, xval in enumerate(new_shape_local[0]):
         if xval != -1:
             new_range_local[0][xid] = (xval, xval)
-    for id, x in enumerate(inputs_before_reduce):
-        x["shape"] = new_shape_local[id]
-        x["range"] = new_range_local[id]
+    for i, x in enumerate(inputs_before_reduce):
+        x["shape"] = new_shape_local[i]
+        x["range"] = new_range_local[i]
     return inputs_before_reduce
 
 
 def _generate_all_ins(inputx):
+    """
+    generate_all_ins
+    """
     x_shape = inputx["shape"]
     x_range = inputx["range"]
     x_len = len(x_shape)
@@ -978,7 +960,7 @@ def _generate_all_ins(inputx):
         if dim == -1 and list(dim_range)[0] == 1:
             itern = (-1, 1)
         else:
-            itern = (dim, )
+            itern = (dim,)
         outs = _generate_all_combination(itern, outs)
     return outs
 
@@ -997,9 +979,7 @@ def _reduce_variable_shape(inputs, var_list, dim_ln_range, x_dtype=None):
         else:
             inputs_before_reduce.append(single_input)
 
-    axis = input_axis[0].get("value")
-
-    if len(inputs) < 1:
+    if not inputs:
         return []
     mode = inputs_before_reduce[0].get("mode")
     if mode is None:
@@ -1017,14 +997,12 @@ def _reduce_variable_shape(inputs, var_list, dim_ln_range, x_dtype=None):
             current_compute.add("axis_dtype", axis_dtype)
 
     shape_local = [x["shape"] for x in inputs_before_reduce]
-    range_local = [x.get("range") if x.get("range") else [(1, None)] * len(shape_local[0])
-                   for x in inputs_before_reduce]
     current_compute.add("dim_ln_range", dim_ln_range)
     current_compute.add("input_format", x_dtype)
 
     shape_before_reduce = []
 
-    for i in range(len(shape_local)):
+    for i, _ in enumerate(shape_local):
         single_shape_before_reduce = []
         for index in range(len(shape_local[i])):
             if shape_local[i][index] == -1:
@@ -1035,10 +1013,10 @@ def _reduce_variable_shape(inputs, var_list, dim_ln_range, x_dtype=None):
         shape_before_reduce.append(single_shape_before_reduce)
 
     shape_out = []
-    for id, single_input in enumerate(inputs):
+    for i, single_input in enumerate(inputs):
         input_type = single_input.get("rel_pos_to_reduce")
         if input_type == "before":
-            shape_out.append(shape_before_reduce[id][:])
+            shape_out.append(shape_before_reduce[i][:])
         else:
             shape_out.append(input_axis[0].get("shape")[:])
     return shape_out
