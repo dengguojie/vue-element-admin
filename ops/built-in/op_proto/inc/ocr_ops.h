@@ -132,6 +132,22 @@ REG_OP(OCRIdentifyPreHandle)
     .ATTR(data_format, String, "NHWC")
     .OP_END_FACTORY_REG(OCRIdentifyPreHandle)
 
+/**
+*@brief batch dialte polys acording to expands_cale.
+*@par Inputs:
+*@li polys_data: A Tensor of type int32. point data of every poly. \n
+*@li polys_offset:A Tensor of type int32. Offset of every poly . \n
+*@li polys_size:A Tensor of type int32. Size of every poly. \n
+*@li score:A Tensor of type float. Score of every point in img. \n
+*@li min_border:A Tensor of type int32. Minimum width of each polygon. \n
+*@li score_thr:A Tensor of type int32. Minimum confidence score of each polygon. \n
+*@li expands_cale:A Tensor of type int32. Polygon expansion multiple. \n
+
+*@par Outputs:
+*@li dilated_polys_data: A Tensor of type int32. point data of every dilated poly. \n
+*@li dilated_polys_offset: A Tensor of type int32. Offset of every dilated poly . \n
+*@li dilated_polys_size: A Tensor of type int32. Size of every dilated poly. \n
+*/
 REG_OP(BatchDilatePolys)
     .INPUT(polys_data, TensorType({DT_INT32}))
     .INPUT(polys_offset, TensorType({DT_INT32}))
@@ -146,6 +162,16 @@ REG_OP(BatchDilatePolys)
     .OUTPUT(dilated_polys_size, TensorType({DT_INT32}))
     .OP_END_FACTORY_REG(BatchDilatePolys)
 
+/**
+*@brief find contours acording to img.
+*@par Inputs:
+*@li img: A Tensor of type uint8. Img data value. \n
+
+*@par Outputs:
+*@li polys_data: A Tensor of type int32. Point data of every contours. \n
+*@li polys_offset:A Tensor of type int32. Offset of every contours . \n
+*@li polys_size:A Tensor of type int32. Size of every contours. \n
+*/
 REG_OP(OCRFindContours)
     .INPUT(img, TensorType({DT_UINT8}))
     .OUTPUT(polys_data, TensorType({DT_INT32}))
