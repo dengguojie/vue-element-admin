@@ -66,4 +66,8 @@ TEST_F(SHAPE_SHAPEN_UT, InferShapeValueRange) {
     output_value_range.push_back(pair.second);
   }
   EXPECT_EQ(output_value_range, target_value_range);
+
+  ASSERT_EQ(op_desc->CallInferFormatFunc(op), ge::GRAPH_SUCCESS);
+  ASSERT_EQ(op_desc->MutableOutputDesc(0)->GetFormat(), ge::FORMAT_ND);
+  ASSERT_EQ(op_desc->MutableOutputDesc(0)->GetOriginFormat(), ge::FORMAT_ND);
 }

@@ -1458,32 +1458,47 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
 
 INFER_FUNC_REG(Reshape, ReshapeInfer);
 
+bool IsFormatMatchRank(const Format format, const size_t rank) {
+  static std::unordered_map<Format, size_t> format_to_rank = {
+    {FORMAT_NCHW, DIM_SIZE4},
+    {FORMAT_NHWC, DIM_SIZE4},
+    {FORMAT_CHWN, DIM_SIZE4},
+    {FORMAT_HWCN, DIM_SIZE4},
+    {FORMAT_NDHWC, DIM_SIZE5},
+    {FORMAT_NCDHW, DIM_SIZE5},
+    {FORMAT_DHWCN, DIM_SIZE5},
+    {FORMAT_DHWNC, DIM_SIZE5},
+  };
+  auto it = format_to_rank.find(format);
+  return ((it != format_to_rank.end()) && (it->second == rank));
+}
+
 IMPLEMT_INFERFORMAT_FUNC(Reshape, ReshapeInferFormat) {
   GE_OP_LOGI(op.GetName().c_str(), "Reshape infer format start");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto input_descs = op_desc->GetAllInputsDescPtr();
   auto output_descs = op_desc->GetAllOutputsDescPtr();
   for (const auto& input_desc : input_descs) {
-    if (input_desc->GetShape().GetDimNum() < 4) {
+    if (!IsFormatMatchRank(input_desc->GetFormat(), input_desc->GetShape().GetDimNum())) {
       input_desc->SetOriginFormat(FORMAT_ND);
       input_desc->SetFormat(FORMAT_ND);
     }
   }
   for (const auto& output_desc : output_descs) {
-    if (output_desc->GetShape().GetDimNum() < 4) {
+    if (!IsFormatMatchRank(output_desc->GetFormat(), output_desc->GetShape().GetDimNum())) {
       output_desc->SetOriginFormat(FORMAT_ND);
       output_desc->SetFormat(FORMAT_ND);
     }
   }
   (void)op_desc->DefaultInferFormat();
   for (const auto& input_desc : input_descs) {
-    if (input_desc->GetShape().GetDimNum() < 4) {
+    if (!IsFormatMatchRank(input_desc->GetFormat(), input_desc->GetShape().GetDimNum())) {
       input_desc->SetOriginFormat(FORMAT_ND);
       input_desc->SetFormat(FORMAT_ND);
     }
   }
   for (const auto& output_desc : output_descs) {
-    if (output_desc->GetShape().GetDimNum() < 4) {
+    if (!IsFormatMatchRank(output_desc->GetFormat(), output_desc->GetShape().GetDimNum())) {
       output_desc->SetOriginFormat(FORMAT_ND);
       output_desc->SetFormat(FORMAT_ND);
     }
@@ -1941,6 +1956,18 @@ IMPLEMT_INFERFUNC(PlaceholderWithDefault, PlaceholderWithDefaultInfer) {
 }
 
 INFER_FUNC_REG(PlaceholderWithDefault, PlaceholderWithDefaultInfer);
+
+IMPLEMT_INFERFORMAT_FUNC(Shape, ShapeInferFormat) {
+  GE_OP_LOGI(op.GetName().c_str(), "Shape infer format start");
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto output_descs = op_desc->GetAllOutputsDescPtr();
+  for (const auto& output_desc : output_descs) {
+    output_desc->SetOriginFormat(FORMAT_ND);
+    output_desc->SetFormat(FORMAT_ND);
+  }
+  return GRAPH_SUCCESS;
+}
+INFER_FORMAT_FUNC_REG(Shape, ShapeInferFormat);
 
 IMPLEMT_INFERFUNC(Shape, ShapeInfer) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);

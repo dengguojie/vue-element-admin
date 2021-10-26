@@ -300,3 +300,20 @@ TEST_F(RESHAPE_UNKNOWN_SHAPE_UT, UnKnownShapeInferShape) {
   op.SetAttr("allowzero", 0);
   EXPECT_EQ(op.InferShapeAndType(), ge::GRAPH_SUCCESS);
 }
+
+TEST_F(RESHAPE_UNKNOWN_SHAPE_UT, Reshape_infer_format_5D) {
+  ge::TensorDesc desc0(ge::Shape({3, 2, 2, 256}), ge::FORMAT_NDHWC, ge::DT_INT32);
+  ge::TensorDesc desc1(ge::Shape({5}), ge::FORMAT_NDHWC, ge::DT_INT32);
+  ge::op::Reshape op("Reshape");
+  op.UpdateInputDesc("x", desc0);
+  op.UpdateInputDesc("shape", desc1);
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  ASSERT_EQ(op_desc->CallInferFormatFunc(op), ge::GRAPH_SUCCESS);
+  ASSERT_EQ(op_desc->MutableInputDesc(0)->GetFormat(), ge::FORMAT_ND);
+  ASSERT_EQ(op_desc->MutableInputDesc(0)->GetOriginFormat(), ge::FORMAT_ND);
+  ASSERT_EQ(op_desc->MutableInputDesc(1)->GetFormat(), ge::FORMAT_ND);
+  ASSERT_EQ(op_desc->MutableInputDesc(1)->GetOriginFormat(), ge::FORMAT_ND);
+  ASSERT_EQ(op_desc->MutableOutputDesc(0)->GetFormat(), ge::FORMAT_ND);
+  ASSERT_EQ(op_desc->MutableOutputDesc(0)->GetOriginFormat(), ge::FORMAT_ND);
+}
