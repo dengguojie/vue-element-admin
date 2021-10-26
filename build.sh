@@ -68,6 +68,7 @@ set_env(){
   echo  "#This is the environment variable set for ASCEND" >> ~/.bashrc
   echo  " ">> ~/.bashrc
   
+  echo unset PYTHONPATH >> ~/.bashrc
   echo  export ASCEND_CODE_HOME=$(cd "$(dirname $0)"; pwd) >> ~/.bashrc
   if [ $UID -ne 0 ];then
     echo  export ASCEND_HOME=~/Ascend >> ~/.bashrc
@@ -86,15 +87,19 @@ set_env(){
   else
     echo  export PYTHONPATH=\$ASCEND_HOME/ops/op_impl/built-in/ai_core/tbe:\$ASCEND_HOME/atc/python/site-packages:\$ASCEND_HOME/toolkit/python/site-package:\$PYTHONPATH >> ~/.bashrc
   fi
-  
-  echo  export LD_LIBRARY_PATH=\$ASCEND_HOME/atc/lib64:\$ASCEND_CODE_HOME/lib:\$LD_LIBRARY_PATH >> ~/.bashrc
-  echo  export PATH=\$ASCEND_HOME/atc/ccec_compiler/bin:\$PATH >> ~/.bashrc
+  echo "if [[ ! \$LD_LIBRARY_PATH =~ \$ASCEND_HOME/atc/lib64:\$ASCEND_CODE_HOME/lib ]];then" >> ~/.bashrc
+  echo  "  export LD_LIBRARY_PATH=\$ASCEND_HOME/atc/lib64:\$ASCEND_CODE_HOME/lib:\$LD_LIBRARY_PATH" >> ~/.bashrc
+  echo  fi >> ~/.bashrc
+
+  echo "if [[ ! \$PATH =~ \$ASCEND_HOME/atc/ccec_compiler/bin ]];then" >> ~/.bashrc
+  echo  "  export PATH=\$ASCEND_HOME/atc/ccec_compiler/bin:\$PATH" >> ~/.bashrc
+  echo  fi >> ~/.bashrc
   
   echo  " ">> ~/.bashrc
   echo   $star_line >> ~/.bashrc
   echo   $star_line
   echo   ""
-  echo   Please relogin shell to make sure environment variable correct.
+  echo   'You must execute ----> source ~/.bashrc'
   echo   ""
   echo   $star_line
 }
