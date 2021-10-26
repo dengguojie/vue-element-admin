@@ -21,6 +21,7 @@ source ${CUR_PATH}/util/modules/generate_related_ops.sh
 source ${CUR_PATH}/util/modules/generate_related_sch.sh
 
 OPS_TESTCASE_DIR="ops_testcase"
+SCH_TESTCASE_DIR="ops_testcase_schedule"
 TEST_BIN_PATH="${BUILD_PATH}/${OPS_TESTCASE_DIR}"
 ST_INSTALL_PATH="${TEST_BIN_PATH}/st"
 UT_INSTALL_PATH="${TEST_BIN_PATH}/ut"
@@ -117,6 +118,7 @@ main() {
   elif [[ "${pr_file}" == "auto_schedule" ]];then
       install_sch_all_stest
       install_sch_script
+      TEST_TARGET="${CANN_OUTPUT}/${SCH_TESTCASE_DIR}.tar"
   else
     ops_str=`cat ${pr_file} | awk -F\/ '{print $1}' | grep -v "auto_schedule"`
     if [[ -n "${ops_str}" ]]; then
@@ -125,6 +127,7 @@ main() {
     else
       install_sch_stest "${task_type}" "${pr_file}"
       install_sch_script
+      TEST_TARGET="${CANN_OUTPUT}/${SCH_TESTCASE_DIR}.tar"
     fi
   fi
   install_package
