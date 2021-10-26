@@ -23,8 +23,8 @@ from te import platform as tbe_platform
 from te.utils import para_check
 from impl.util import util_tik_comm_func
 
-# pylint: disable=too-many-lines,too-many-instance-attributes,too-many-statements
-# pylint: disable=too-many-arguments,unused-argument,too-many-locals,too-many-branches
+# 'pylint: disable=too-many-lines,too-many-instance-attributes,too-many-statements
+# 'pylint: disable=too-many-arguments,unused-argument,too-many-locals,too-many-branches
 
 # process each batch
 BATCH_SIZE = 10000

@@ -89,7 +89,7 @@ def _align_value(value, factor):
     return (value + factor - 1) // factor*factor
 
 
-# pylint: disable=too-many-instance-attributes, too-few-public-methods
+# 'pylint: disable=too-many-instance-attributes, too-few-public-methods
 class SwapParams():
     """
     Function: class that set swap_ci Parameters
@@ -152,8 +152,8 @@ class SwapParams():
         self.s3_burst_len_l = 0
 
 
-# pylint: disable=invalid-name, too-many-arguments
-# pylint: disable=too-many-locals, too-many-instance-attributes
+# 'pylint: disable=invalid-name, too-many-arguments
+# 'pylint: disable=too-many-locals, too-many-instance-attributes
 class SwapClass():
     """
     Function: class that execute swap_ci

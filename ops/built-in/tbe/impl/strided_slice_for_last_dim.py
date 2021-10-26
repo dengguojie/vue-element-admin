@@ -49,9 +49,9 @@ def strided_slice_last_dim(input_shape, dtype, output_shape, begin, end, stride,
 
     return strided_slice_last_dim_with_scalar(input_shape, dtype, output_shape, begin, end, stride, kernel_name)
 
-# pylint: disable=invalid-name, too-many-locals, unused-argument
-# pylint: disable=too-many-arguments, unused-variable, too-many-return-statements
-# pylint: disable=too-many-branches, too-many-statements
+# 'pylint: disable=invalid-name, too-many-locals, unused-argument
+# 'pylint: disable=too-many-arguments, unused-variable, too-many-return-statements
+# 'pylint: disable=too-many-branches, too-many-statements
 def strided_slice_last_dim_with_scalar(input_shape, dtype, output_shape, begin, end, stride, kernel_name):
     """
     strided slice for only last dim to slice with scalar
@@ -303,9 +303,9 @@ def _can_do_with_vnchw_conv(input_shape, dtype, begin, end, stride):
     return need_ub_size * element_each_block * double_buffer_mutil_times <= total_ub_size and input_out_dims > 2
 
 
-# pylint: disable=invalid-name, too-many-locals, unused-argument
-# pylint: disable=too-many-arguments, unused-variable, too-many-return-statements
-# pylint: disable=too-many-branches, too-many-statements
+# 'pylint: disable=invalid-name, too-many-locals, unused-argument
+# 'pylint: disable=too-many-arguments, unused-variable, too-many-return-statements
+# 'pylint: disable=too-many-branches, too-many-statements
 def strided_slice_last_dim_with_vnchw_conv(input_shape, dtype, begin, end, stride, kernel_name):
     """
     strided slice for only last dim to slice with vnchw_conv

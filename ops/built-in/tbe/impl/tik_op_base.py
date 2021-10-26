@@ -17,7 +17,7 @@
 """
 tik_op_base
 """
-# pylint: disable=too-many-arguments,no-self-use
+# 'pylint: disable=too-many-arguments,no-self-use
 import functools
 import impl.constant_util as constant
 from impl import common_util

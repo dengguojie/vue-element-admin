@@ -39,8 +39,8 @@ VNCHW_ELEMENT_FP16 = VNCHW_BLOCK_SIZE // 2
 TRANS_MIN_BLKS = 16
 
 
-# pylint: disable=unused-argument
-# pylint: disable=consider-using-in,unnecessary-pass
+# 'pylint: disable=unused-argument
+# 'pylint: disable=consider-using-in,unnecessary-pass
 def check_supported(dy, output, shape, begin, end, strides, begin_mask=0,
                     end_mask=0, ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,
                     kernel_name="strided_slice_grad_d"):
@@ -69,12 +69,12 @@ def check_supported(dy, output, shape, begin, end, strides, begin_mask=0,
     return check_result
 
 
-# pylint: disable=invalid-name, too-many-instance-attributes
-# pylint: disable=too-many-arguments, useless-object-inheritance
-# pylint: disable=too-many-locals, too-many-statements
-# pylint: disable=attribute-defined-outside-init, unused-argument
-# pylint: disable=attribute-defined-outside-init, chained-comparison
-# pylint: disable=consider-using-in,protected-access
+# 'pylint: disable=invalid-name, too-many-instance-attributes
+# 'pylint: disable=too-many-arguments, useless-object-inheritance
+# 'pylint: disable=too-many-locals, too-many-statements
+# 'pylint: disable=attribute-defined-outside-init, unused-argument
+# 'pylint: disable=attribute-defined-outside-init, chained-comparison
+# 'pylint: disable=consider-using-in,protected-access
 class StridedSliceGradLastDimCompute(object):
     """
     the compute for stridedslicegrad in last dim situation
@@ -1023,7 +1023,7 @@ def _check_is_not_aligned_shape(shape, begin, ellipsis_mask, shrink_axis_mask):
     return is_check_pass, begin
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,

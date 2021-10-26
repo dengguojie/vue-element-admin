@@ -31,8 +31,8 @@ NEG_ONE = -1
 POS_TWO = 2
 
 
-# pylint: disable=too-many-instance-attributes,too-many-statements
-# pylint: disable=no-else-return
+# 'pylint: disable=too-many-instance-attributes,too-many-statements
+# 'pylint: disable=no-else-return
 class ToAbsoluteBBox:
     """
     Absolute the box that passes through the NormalizeBBox in Prediction
@@ -729,7 +729,7 @@ class ToAbsoluteBBox:
         return self.tik_instance
 
 
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=unused-argument,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_BOOL, para_check.KERNEL_NAME)
 def to_absolute_bbox(normalized_boxes, shape_hw, y, reversed_box=False, kernel_name="to_absolute_bbox"):

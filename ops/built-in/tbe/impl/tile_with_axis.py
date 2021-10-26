@@ -15,7 +15,7 @@
 """
 tile_with_axis
 """
-# pylint: disable=import-error
+# 'pylint: disable=import-error
 import te.lang.cce
 from te import tvm
 from te import platform as tbe_platform
@@ -50,7 +50,7 @@ def tile_with_axis_compute(data, shape_y):
     return res
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def op_select_format(input_x, output_y, tiles, axis=1, kernel_name="tile_with_axis"):
     """
     select format dynamically
@@ -123,7 +123,7 @@ def op_select_format(input_x, output_y, tiles, axis=1, kernel_name="tile_with_ax
     return param_dynamic_in_json
 
 
-# pylint: disable = unused-argument
+# 'pylint: disable = unused-argument
 def get_op_support_info(input_x, output_y, tiles, axis, kernel_name="tile_with_axis"):
     """
     get_op_support_info
@@ -198,7 +198,7 @@ def tile_with_axis(input_x, output_y, tiles, axis=1, kernel_name="tile_with_axis
     te.lang.cce.cce_build_code(sch, config)
 
 
-# pylint: disable=too-many-locals,too-many-branches,too-many-statements
+# 'pylint: disable=too-many-locals,too-many-branches,too-many-statements
 def check_param_range(param_name, min_value, max_value, real_value, op_name='tile_with_axis'):
     """
     check_param_range
@@ -207,7 +207,7 @@ def check_param_range(param_name, min_value, max_value, real_value, op_name='til
                                                              str(min_value), str(max_value), str(real_value))
 
 
-# pylint: disable=too-many-locals,too-many-branches,too-many-statements
+# 'pylint: disable=too-many-locals,too-many-branches,too-many-statements
 def check_param(input_x, output_y, tiles, axis, kernel_name):
     """
     Check the input parameter

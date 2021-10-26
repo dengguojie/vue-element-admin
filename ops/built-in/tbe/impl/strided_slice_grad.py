@@ -15,14 +15,14 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 strided_slice_grad
 """
-# pylint: disable=invalid-name, too-many-instance-attributes
-# pylint: disable=too-many-arguments, useless-object-inheritance
-# pylint: disable=too-many-locals, too-many-statements
-# pylint: disable=attribute-defined-outside-init, unused-argument
-# pylint: disable=attribute-defined-outside-init, chained-comparison
+# 'pylint: disable=invalid-name, too-many-instance-attributes
+# 'pylint: disable=too-many-arguments, useless-object-inheritance
+# 'pylint: disable=too-many-locals, too-many-statements
+# 'pylint: disable=attribute-defined-outside-init, unused-argument
+# 'pylint: disable=attribute-defined-outside-init, chained-comparison
 
-# pylint: disable=unused-argument
-# pylint: disable=consider-using-in,unnecessary-pass
+# 'pylint: disable=unused-argument
+# 'pylint: disable=consider-using-in,unnecessary-pass
 def check_supported(shape, begin, end, strides, dy, output, begin_mask=0,
                     end_mask=0, ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,
                     kernel_name="strided_slice_grad"):
@@ -56,8 +56,7 @@ def check_supported(shape, begin, end, strides, dy, output, begin_mask=0,
 
     return check_result
 
-
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals
 def strided_slice_grad(shape, begin, end, strides, dy, output, begin_mask=0,
                        end_mask=0, ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,
                        kernel_name="strided_slice_grad"):

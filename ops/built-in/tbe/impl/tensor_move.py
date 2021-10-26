@@ -24,7 +24,7 @@ from impl.util.util_select_op_base import get_op_cal_info
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable = unused-argument
+# 'pylint: disable = unused-argument
 def get_op_support_info(src, dst, kernel_name="tensor_move"):
     """
     get_op_support_info
@@ -68,7 +68,7 @@ def _get_ceil_int(int1, int2):
     return _result + 1
 
 
-# pylint: disable=locally-disabled,too-many-instance-attributes
+# 'pylint: disable=locally-disabled,too-many-instance-attributes
 class TensorMove():
     """Function: use to finish TensorMove main functions
     """

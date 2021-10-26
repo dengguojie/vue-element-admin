@@ -51,7 +51,7 @@ SCALAR_MUL_FP16 = 2 ** SCALAR_MUL_EXP_FP16
 SCALAR_ONE = 1
 
 
-# pylint: disable=too-many-locals,unused-argument
+# 'pylint: disable=too-many-locals,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("tensor_equal")
 def tensor_equal_compute_use_sub(input_x, input_y, output_y, kernel_name="tensor_equal"):
     '''

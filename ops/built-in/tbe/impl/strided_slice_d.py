@@ -17,7 +17,7 @@
 """
 strided_slice_d
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 import copy
 import math
 import functools
@@ -48,7 +48,7 @@ NEW_AXIS = -2
 AICORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
 
-# pylint: disable = unused-argument,too-many-arguments,too-many-locals
+# 'pylint: disable = unused-argument,too-many-arguments,too-many-locals
 def get_op_support_info(input_x,
                         output_x,
                         begin,
@@ -165,7 +165,7 @@ def _build_dense_spec(sparse: dict, dense: dict):
             full_index += 1
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-branches,too-many-statements
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-branches,too-many-statements
 def _infer_shape(shape, begin, end, stride, begin_mask, end_mask, ellipsis_mask, new_axis_mask, shrink_axis_mask):
     """
     inference output shape, begin value, end value and strides.
@@ -250,7 +250,7 @@ def _infer_shape(shape, begin, end, stride, begin_mask, end_mask, ellipsis_mask,
         masks = (dense_spec["begin_mask"] & bit_value, dense_spec["end_mask"] & bit_value)
         valid_range = (0 if stride[i] > 0 else -1, dim_i if stride[i] > 0 else dim_i - 1)
 
-        # pylint: disable=invalid-name,cell-var-from-loop
+        # 'pylint: disable=invalid-name,cell-var-from-loop
         def canonical(x, c):
             if masks[c] != 0:
                 return valid_range[c] if stride[i] > 0 else valid_range[(c + 1) & 1]
@@ -348,8 +348,8 @@ def _infer_shape(shape, begin, end, stride, begin_mask, end_mask, ellipsis_mask,
 
     return tuple(final_shape), final_input_shape, final_input_begin, final_input_end, final_input_stride
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-branches,too-many-statements
-# pylint: disable=unused-variable
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-branches,too-many-statements
+# 'pylint: disable=unused-variable
 def _init_parameter(input_list, begin_shape, end_shape, stride_shape,
                     begin_mask, end_mask, ellipsis_mask, new_axis_mask,
                     shrink_axis_mask):
@@ -369,7 +369,7 @@ def _init_parameter(input_list, begin_shape, end_shape, stride_shape,
     return final_input_shape, final_input_begin, final_input_end, final_input_stride
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-branches,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-branches,unused-argument
 def strided_slice_d_compute(input_data,
                             output_x,
                             begin,
@@ -461,7 +461,7 @@ def strided_slice_d_compute(input_data,
     return [output, output_shape]
 
 
-# pylint: disable=locally-disabled,too-many-return-statements
+# 'pylint: disable=locally-disabled,too-many-return-statements
 def _check_parameter(input_shape, begin, end, strides, ellipsis_mask, new_axis_mask, shrink_axis_mask):
     """
     check if the input parameters shape
@@ -663,8 +663,8 @@ def _get_core_num_last_axis(input_shape, dtype):
     return axis_inner, axis_inner2, input_shape[1], cores, compute_axis
 
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=unused-argument,too-many-locals, unused-variable
+# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=unused-argument,too-many-locals, unused-variable
 def _schedule_last_axis(sch, shape, in_data, output, dtype):
     """
     schedule for the last axis situation
@@ -1104,7 +1104,7 @@ def make_perf_params(output_shape, input_shape, input_begin, input_end, input_st
     return output_shape, input_shape, input_begin, input_end, input_strides
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,
@@ -1211,7 +1211,7 @@ def strided_slice_d(input_x,
                                                   shrink_axis_mask,
                                                   kernel_name=kernel_name)
 
-    # pylint: disable=locally-disabled,unnecessary-lambda
+    # 'pylint: disable=locally-disabled,unnecessary-lambda
     out_tensor = tvm.compute(out_shape,
                              lambda *i: output(*i),
                              name='out_tensor',
@@ -1341,7 +1341,7 @@ def strided_slice_d(input_x,
                                                   shrink_axis_mask,
                                                   kernel_name=kernel_name)
 
-    # pylint: disable=locally-disabled,unnecessary-lambda
+    # 'pylint: disable=locally-disabled,unnecessary-lambda
     out_tensor = tvm.compute(out_shape,
                              lambda *i: output(*i),
                              name='out_tensor',

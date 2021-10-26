@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# coding: utf-8
 # Copyright 2020 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,7 +48,8 @@ FULL_MASK_INT32 = 64
 FULL_MASK_INT64 = 32
 
 
-# pylint: disable = unused-argument,redefined-builtin
+# 'pylint: disable=unused-argument,redefined-builtin
+# 'pylint: disable=too-many-arguments
 def get_op_support_info(input_tensor,
                         indices_tensor,
                         out_tensor,
@@ -75,7 +78,7 @@ def get_op_support_info(input_tensor,
     return op_cal_info_in_json
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 @unique
 class Mode(Enum):
     """Mode for Region proposal"""
@@ -85,7 +88,7 @@ class Mode(Enum):
     Y2 = 3
     Score = 4
 
-
+# 'pylint: disable=too-many-public-methods
 class GlobalVar:
     """GlobalVar Class Defination"""
     def __init__(self):
@@ -386,7 +389,7 @@ class GlobalVar:
 
 GLOBAL_VAR = GlobalVar()
 
-
+# 'pylint: disable=too-many-arguments
 def _emit_copy_ubuf_to_gm(tik_instance,
                           dtype,
                           dst,
@@ -489,7 +492,7 @@ def _copy_ubuf_to_gm_k_less_16(tik_instance,
                               dst_offset=k * (num_rows - 1) + gm_offset + k - blocklen,
                               src_offset=0)
 
-
+# 'pylint: disable=too-many-arguments
 def _copy_ubuf_to_gm(tik_instance,
                      dtype,
                      dst,
@@ -558,7 +561,7 @@ def _copy_ubuf_to_gm(tik_instance,
                               dst_offset=k * (num_rows - 1) + gm_offset,
                               src_offset=cols_padding * (num_rows - 1))
 
-
+# 'pylint: disable=too-many-arguments
 def _add(tik_instance, dst, src1, src2, rows, cols_padding):
     # process 256B data per repeat for vsub
     vadd_len = 64
@@ -570,7 +573,7 @@ def _add(tik_instance, dst, src1, src2, rows, cols_padding):
         tik_instance.vadd(remain, dst[repeat * vadd_len], src1[repeat * vadd_len], src2[repeat * vadd_len], 1, 1, 1, 1,
                           8, 8, 8)
 
-
+# 'pylint: disable=too-many-arguments
 def _emit_vmul(tik_instance, dtype, dst, src1, src2, cnt):
     """
     _emit_vmul
@@ -597,7 +600,7 @@ def _emit_vmul(tik_instance, dtype, dst, src1, src2, cnt):
         tik_instance.vmul(repeat_remain, dst[repeat_255 * calc_num_each_times], src1[repeat_255 * calc_num_each_times],
                           src2, 1, 1, 1, 0, 8, 8, 0)
 
-
+# 'pylint: disable=too-many-arguments
 def _conv_fp162s32(tik_instance, s32ub, s32ub_offset, fp16ub, fp16ub_offset, num):
     """
     fp16 to int32
@@ -610,7 +613,7 @@ def _conv_fp162s32(tik_instance, s32ub, s32ub_offset, fp16ub, fp16ub_offset, num
         tik_instance.vconv(remain, "round", s32ub[s32ub_offset + repeat * 64], fp16ub[fp16ub_offset + repeat * 64], 1,
                            1, 1, 8, 4)
 
-
+# 'pylint: disable=too-many-arguments
 def _emit_vextract(tik_instance, dst, src, mode, cnt, dst_offset=0, src_offset=0):
     """
     _emit_vextract
@@ -626,7 +629,7 @@ def _emit_vextract(tik_instance, dst, src, mode, cnt, dst_offset=0, src_offset=0
         tik_instance.vextract(dst[dst_offset + 255 * 16 * repeat_255], src[src_offset + 255 * 16 * 8 * repeat_255],
                               repeat_remain, mode)
 
-
+# 'pylint: disable=too-many-arguments
 def _merge_two_sorted_region(tik_instance, dst, src_region_k, src_region_sorted, len_region_k, len_region_sorted,
                              len_region_k_limit, merge_num):
     """
@@ -653,7 +656,9 @@ def _copy_region(tik_instance, dst, src, num, dst_offset=0):
     burstlen = (num * 2 * 8 + 31) // 32
     tik_instance.data_move(dst[dst_offset], src, 0, 1, burstlen, 0, 0)
 
-
+# 'pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-local-variables
+# 'pylint: disable=too-many-statements
 def _merge_recur(tik_instance, src_ub, dst_ub, last_dim, total_region_list, level, region_offset=0):
     """
     _merge_recur
@@ -742,7 +747,7 @@ def _merge_region(tik_instance, dst, src, rows, cols):
         result_ub = _merge_recur(tik_instance, src, dst, cols, (cols + 15) // 16, 1, region_offset=i * cols_padding * 8)
     return result_ub
 
-
+# 'pylint: disable=too-many-arguments
 def _emit_vbitsort(tik_instance, dst, src, cnt, dst_offset=0, src_offset=0):
     """
     _emit_vbitsort
@@ -769,7 +774,7 @@ def _sort_region(tik_instance, dst, src, rows, cols):
         result_ub = dst
     return result_ub
 
-
+# 'pylint: disable=too-many-arguments
 def _emit_vconcat(tik_instance, dst, src, mode, cnt, dst_offset=0, src_offset=0):
     """
     _emit_vconcat
@@ -783,7 +788,7 @@ def _emit_vconcat(tik_instance, dst, src, mode, cnt, dst_offset=0, src_offset=0)
         tik_instance.vconcat(dst[dst_offset + 255 * 16 * 8 * repeat_255], src[src_offset + 255 * 16 * repeat_255],
                              repeat_remain, mode)
 
-
+# 'pylint: disable=too-many-arguments
 def _emit_copy_gm_to_ubuf(tik_instance,
                           dtype,
                           dst,
@@ -818,7 +823,7 @@ def _emit_vmuls(tik_instance, dst, src, cnt):
     if repeat_remain > 0:
         tik_instance.vmuls(repeat_remain, dst[repeat_255 * 128], src[repeat_255 * 128], -1, 1, 1, 1, 8, 8)
 
-
+# 'pylint: disable=too-many-arguments
 def _copy_gm_to_ubuf_func(tik_instance, dst, src, num_rows, cols, col_start, gm_offset, largest):
     """
     _copy_gm_to_ubuf copy data from gm to ubuf
@@ -843,7 +848,7 @@ def _copy_gm_to_ubuf_func(tik_instance, dst, src, num_rows, cols, col_start, gm_
         with tik_instance.for_range(0, cols_padding - cols) as j:
             dst[cols_padding * i + cols + j].set_as(reg_min_number)
 
-
+# 'pylint: disable=too-many-arguments
 def _copy_gm_to_ubuf(tik_instance, dst, src, num_rows, cols, col_start, gm_offset):
     """
     _copy_gm_to_ubuf copy data from gm to ubuf
@@ -862,7 +867,9 @@ def _copy_gm_to_ubuf(tik_instance, dst, src, num_rows, cols, col_start, gm_offse
                               dst_offset=cols_padding * i,
                               src_offset=cols * i + col_start + gm_offset)
 
-
+# 'pylint: disable=too-many-arguments
+# 'pylint: disable=too-local-variables
+# 'pylint: disable=too-many-statements
 def _topk_a_row_by_part(tik_instance, row_start_in_core, cols, k, core_rows_start, multi_core, largest, soc_version):
     """
     _topk_a_row_by_part
@@ -1080,7 +1087,8 @@ def _topk_a_row_by_part(tik_instance, row_start_in_core, cols, k, core_rows_star
                          gm_offset=row_start_in_core * k + core_rows_start * k,
                          multi_core=multi_core)
 
-
+# 'pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-local-variables
 def _topk_rows(tik_instance, row_start_in_core, rows, cols, k, core_rows_start, multi_core, largest):
     """
     _topk_rows do topk action muilti rows
@@ -1237,7 +1245,8 @@ def _tiling(rows, cols, cols_limit):
 
     return ret, turning, batch
 
-
+# 'pylint: disable=too-many-local-variables
+# 'pylint: disable=too-many-statements
 def _kernel_ir(tik_instance, ins, outs, k, largest, soc_version):
     """
     Funtion for common process in top_k op
@@ -1433,7 +1442,7 @@ def _kernel_ir(tik_instance, ins, outs, k, largest, soc_version):
                                largest=largest)
 
 
-# pylint: disable=unused-argument,redefined-builtin
+# 'pylint: disable=unused-argument,redefined-builtin
 def check_supported(input_tensor,
                     indices_tensor,
                     out_tensor,
@@ -1509,7 +1518,8 @@ def check_supported(input_tensor,
         return False, reason
     return True, ""
 
-
+# 'pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-local-variables
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)

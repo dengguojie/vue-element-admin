@@ -60,8 +60,8 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=locally-disabled,redefined-builtin,too-many-statements
-# pylint: disable=too-many-arguments
+# 'pylint: disable=locally-disabled,redefined-builtin,too-many-statements
+# 'pylint: disable=too-many-arguments
 def check_whether_2d(format, input_dict):
     """Check whether the 4D is 2D extend to 4D
 
@@ -100,7 +100,7 @@ def _ceil_and_divide(dividend, factor, divisor=16):
         ((dividend + factor - 1) // factor * factor) // divisor
 
 
-# pylint: disable=locally-disabled,too-many-branches
+# 'pylint: disable=locally-disabled,too-many-branches
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_STR,
                             para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def trans_data(src, dst, src_format, dst_format, groups=1,
@@ -226,7 +226,7 @@ def trans_data(src, dst, src_format, dst_format, groups=1,
     else:
         error_manager_vector.raise_err_specific_reson("trans_data", "not support the format transfer!")
 
-
+# 'pylint: disable=too-many-local-variables
 @tbe_platform.fusion_manager.register("trans_data")
 def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='transdata'):
     """

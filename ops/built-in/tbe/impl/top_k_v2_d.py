@@ -16,6 +16,8 @@
 top_k_v2
 """
 
+# 'pylint: disable=unused-argument
+# 'pylint: disable=too-many-arguments
 def check_supported(input_tensor,
                     indices_tensor,
                     out_tensor,

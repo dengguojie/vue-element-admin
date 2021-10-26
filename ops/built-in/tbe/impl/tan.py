@@ -78,7 +78,7 @@ def _tan_2x_multi(input_x, times):
     return res
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("tan")
 def tan_compute(x, y, kernel_name="tan"):
     """

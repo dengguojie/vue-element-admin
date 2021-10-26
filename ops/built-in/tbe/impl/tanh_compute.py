@@ -15,14 +15,14 @@
 """
 tanh_compute
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 from te import tvm
 import te.platform.cce_params as cce
 import topi
 
 
-# pylint: disable=too-many-statements
-# pylint: disable=no-else-return,too-many-locals
+# 'pylint: disable=too-many-statements
+# 'pylint: disable=no-else-return,too-many-locals
 def tanh_compute(shape, input_x, symbol, impl_mode="high_performance"):
     """
     tanh compute
@@ -37,7 +37,7 @@ def tanh_compute(shape, input_x, symbol, impl_mode="high_performance"):
         return tanh_compute_high_precision(shape, input_x, symbol)
 
 
-# pylint: disable=too-many-statements
+# 'pylint: disable=too-many-statements
 def tanh_compute_high_precision(shape, input_x, symbol):
     """
     the function of tanh
@@ -156,7 +156,7 @@ def tanh_compute_high_precision(shape, input_x, symbol):
     return res, operation, scope
 
 
-# pylint: disable=too-many-statements
+# 'pylint: disable=too-many-statements
 def tanh_compute_high_performance(shape, input_x, symbol):
     """
     the function of tanh
@@ -284,7 +284,7 @@ def tanh_compute_high_performance(shape, input_x, symbol):
     return res, operation, scope
 
 
-# pylint: disable=too-many-statements
+# 'pylint: disable=too-many-statements
 def tanh_split_input_by_val(shape, input_x, symbol):
     """
     split input into two tensor by 0.5
@@ -377,7 +377,7 @@ def tanh_split_input_by_val(shape, input_x, symbol):
     return res, operation, scope
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def newton_iteration(shape, tensor_x_rec, tensor_x, symbol, iter_num):
     """
     the function of newton_iteration

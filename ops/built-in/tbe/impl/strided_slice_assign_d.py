@@ -32,7 +32,7 @@ def _check_num_is_power_of_two(num):
     return num & (num - 1) == 0
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-statements
+# 'pylint: disable=too-many-arguments,too-many-branches,too-many-statements
 def _check_parameter(input_shape, begin, end, strides, ellipsis_mask, new_axis_mask, shrink_axis_mask):
     """
     check the input parameters
@@ -112,7 +112,7 @@ def _update_begin_end_strides_by_ellipsis_mask(input_shape, begin, end, strides,
             strides[i] = 1
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-statements
+# 'pylint: disable=too-many-arguments,too-many-branches,too-many-statements
 def _update_slice_params(input_shape, begin, end, strides, new_axis_mask, shrink_axis_mask):
     """
     1. update the begin,end and strides parameters according to new_axis_mask.
@@ -208,7 +208,7 @@ def _tilling_axis(shape, dtype):
     return split_axis, split_factor, not_storage_align
 
 
-# pylint: disable=too-many-statements,unnecessary-lambda
+# 'pylint: disable=too-many-statements,unnecessary-lambda
 @tbe_platform.fusion_manager.fusion_manager.register("strided_slice_assign_d")
 def strided_slice_assign_compute(data_ref, data_value, slice_params):
     """
@@ -266,7 +266,7 @@ def strided_slice_assign_compute(data_ref, data_value, slice_params):
     return input_value_ub, out
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def _strided_slice_assign_schedule(schedule_list, out, input_value_shape, input_shape, data_dtype):
     """
     strided_slice_assign schedule function
@@ -346,7 +346,7 @@ def _strided_slice_assign_schedule(schedule_list, out, input_value_shape, input_
     return sch
 
 
-# pylint: disable=too-many-arguments,unused-argument,too-many-locals
+# 'pylint: disable=too-many-arguments,unused-argument,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,

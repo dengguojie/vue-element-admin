@@ -28,8 +28,8 @@ BLOCK_SIZE = 32
 DTYPE_BYTES = {"float16": 2, "float32": 4}
 
 
-# pylint: disable=invalid-name,too-many-arguments,useless-return
-# pylint: disable=too-many-instance-attributes,attribute-defined-outside-init
+# 'pylint: disable=invalid-name,too-many-arguments,useless-return
+# 'pylint: disable=too-many-instance-attributes,attribute-defined-outside-init
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_INT,
                             para_check.KERNEL_NAME)

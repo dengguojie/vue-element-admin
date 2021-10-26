@@ -27,7 +27,7 @@ from impl.util.platform_adapter import error_manager_vector
 STRIDED_WRITE_TAG = "strided_write"
 
 
-# pylint: disable=invalid-name,unnecessary-lambda,unused-argument,unused-variable
+# 'pylint: disable=invalid-name,unnecessary-lambda,unused-argument,unused-variable
 def check_params(x, y, axis):
     """
     check the parameters including x, y, axis.

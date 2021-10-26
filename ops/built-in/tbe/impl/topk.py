@@ -17,11 +17,11 @@
 """
 topk
 """
-# pylint: disable=C0302
-# pylint: disable=E0401
-# pylint: disable=W0603
-# pylint: disable=R0914
-# pylint: disable=W0612
+# 'pylint: disable=C0302
+# 'pylint: disable=E0401
+# 'pylint: disable=W0603
+# 'pylint: disable=R0914
+# 'pylint: disable=W0612
 import math
 
 from te import tik
@@ -189,7 +189,7 @@ def tik_topk(tik_inst, topk_in, topk_out):
             topk_out)
 
 
-# pylint: disable=too-many-statements
+# 'pylint: disable=too-many-statements
 def tik_topk_filter_by_score_threshold(tik_inst, filter_input, top_output):
     """
     filter invalid score

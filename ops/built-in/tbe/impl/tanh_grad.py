@@ -29,8 +29,8 @@ from te.utils.error_manager import error_manager_vector
 SHAPE_SIZE_LIMIT = 2147483648
 
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("tanh_grad")
 def tanh_grad_compute(y, dy, z, kernel_name="tanh_grad"):
     """

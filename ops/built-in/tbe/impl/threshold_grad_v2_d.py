@@ -26,7 +26,7 @@ from te.utils import shape_util
 from te.utils.cce import auto_schedule
 
 
-# pylint: disable=too-many-locals,unused-argument
+# 'pylint: disable=too-many-locals,unused-argument
 @fusion_manager.register("threshold_grad_v2_d")
 def threshold_grad_v2_d_compute(input_gradients, input_features,
                                 output_backprops, threshold,

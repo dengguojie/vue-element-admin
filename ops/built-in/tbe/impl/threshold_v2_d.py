@@ -27,7 +27,7 @@ from te.utils.cce import auto_schedule
 
 
 @fusion_manager.register("threshold_v2_d")
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def threshold_v2_d_compute(x, y, threshold, value,
                            kernel_name="threshold_v2_d_cce"):
     """
@@ -62,7 +62,7 @@ def threshold_v2_d_compute(x, y, threshold, value,
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
                  para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def threshold_v2_d(x, y, threshold, value, kernel_name="threshold_v2_d_cce"):
     """
     Thresholds each element of the input Tensor

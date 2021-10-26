@@ -19,7 +19,7 @@ from te import tik
 from te.utils import para_check
 
 
-# pylint: disable=invalid-name,unused-argument
+# 'pylint: disable=invalid-name,unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def tensor_redirect(x, output_x, kernel_name="tensor_redirect"):
     """

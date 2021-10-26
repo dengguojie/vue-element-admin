@@ -52,8 +52,8 @@ def _get_ceil_int(int1, int2):
     return _result + 1
 
 
-# pylint: disable=locally-disabled,too-many-instance-attributes
-# pylint: disable=locally-disabled,too-few-public-methods
+# 'pylint: disable=locally-disabled,too-many-instance-attributes
+# 'pylint: disable=locally-disabled,too-few-public-methods
 class TransData2D():
     """
        Function: use to finish Iou main functions

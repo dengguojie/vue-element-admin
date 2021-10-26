@@ -28,7 +28,7 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-# pylint: disable = unused-argument
+# 'pylint: disable = unused-argument
 def get_op_support_info(input_x, output_x, multiples, kernel_name="tile_d"):
     """
     get_op_support_info
@@ -74,8 +74,8 @@ def get_op_support_info(input_x, output_x, multiples, kernel_name="tile_d"):
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals
-# pylint: disable=locally-disabled,too-many-branches,too-many-statements
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-branches,too-many-statements
 def op_select_format(input_x, output_x, multiples, kernel_name="tile_d"):
     """TileD: to do boradcast with multiples
 
@@ -244,7 +244,7 @@ def tile_d_compute(data, output_x, multiples, kernel_name="tile_d"):
     return res
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_LIST_INT,
                             para_check.KERNEL_NAME)
 def tile_d(input_x, output_x, multiples, kernel_name="tile_d"):
