@@ -42,6 +42,7 @@ from .compute import inplace
 from .compute import pooling2d as pooling2d_compute
 from .compute import pooling3d as pooling3d_compute
 from .compute import pooling3d_max_grad_grad as pooling3d_max_grad_grad_compute
+from .compute import gather as gather_compute
 from .unify_schedule import auto_schedule as tbe_auto_schedule
 from .unify_schedule.build import build as tbe_build
 from .base import shape_classifier
@@ -1484,3 +1485,23 @@ def matmul(tensor_a, tensor_b, trans_a=False, trans_b=False, format_a="ND", form
     result = gemm_compute.gemm(tensor_a=tensor_a, tensor_b=tensor_b, para_dict=para_dict)
     return result
 
+
+def gather(params, indices, axis=None, batch_dims=0):
+    """
+    :param params: The tensor from which to gather values. Must be at least rank axis + 1
+    :param indices: The index tensor. Must be one of the following types: int32, int64. The values must be in range [0, params.shape[axis]].
+    :param axis: The axis in params to gather indices from. Must be greater than or equal to batch_dims. Defaults to fisrt non-batch dimension.
+    :param batch_dims: An integer. The number of batch dimensions. Must be less than or equal to rank(indices).
+    :return:
+    """
+    return gather_compute.gather(params, indices, axis, batch_dims)
+
+
+def gather_nd(params, indices, batch_dims=0):
+    """
+    :param params: The tensor from which to gather values.
+    :param indices: The index tensor. Must be one of the following types: int32, int64.
+    :param batch_dims: An integer. The number of batch dimensions.
+    :return:
+    """
+    return gather_compute.gather_nd(params, indices, batch_dims)

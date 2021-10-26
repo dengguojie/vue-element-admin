@@ -102,3 +102,6 @@ from .api import dilation
 from .api import gemm
 from .api import matmul
 
+#gather
+from .api import gather
+from .api import gather_nd

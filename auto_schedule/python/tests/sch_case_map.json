@@ -126,6 +126,9 @@
         "pooling2d",
         "dsl_cpu/test_pooling2d_cpu_impl.py"
     ],
+    "auto_schedule/python/tbe/dsl/compute/gather.py":[
+        "gather"
+    ],
     "auto_schedule/python/tbe/dsl/static_schedule/pure_broadcast_schedule.py":[
         "broadcast"
     ],

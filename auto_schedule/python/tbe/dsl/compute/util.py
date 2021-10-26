@@ -587,6 +587,30 @@ DSL_CHECK_SUPPORT_MAP = {
         ASCEND_615: ("int16", "float16", "float32"),
         ASCEND_SHISI: ("int16", "float16",),
     },
+    "gather": {
+        "AllSoc": ("float16",),
+        ASCEND_310: ("float16", "float32", "int8", "uint8", "int16",
+                     "uint16", "int32", "uint32", "int64", "uint64", "bool"),
+        ASCEND_910: ("float16", "float32", "int8", "uint8", "int16",
+                     "uint16", "int32", "uint32", "int64", "uint64", "bool"),
+        ASCEND_920A: ("float16", "float32", "int8", "uint8", "int16",
+                      "uint16", "int32", "uint32", "int64", "uint64", "bool"),
+        ASCEND_710: ("float16", "float32", "int8", "uint8", "int16",
+                     "uint16", "int32", "uint32", "int64", "uint64", "bool"),
+        ASCEND_610: ("float16", "float32", "int8", "uint8", "int16",
+                     "uint16", "int32", "uint32", "int64", "uint64", "bool"),
+        ASCEND_615: ("float16", "float32", "int8", "uint8", "int16",
+                     "uint16", "int32", "uint32", "int64", "uint64", "bool"),
+    },
+    "gather_nd": {
+        "AllSoc": ("float16",),
+        ASCEND_310: ("float16", "float32", "int8", "uint8", "int32", "bool"),
+        ASCEND_910: ("float16", "float32", "int8", "uint8", "int32", "bool"),
+        ASCEND_920A: ("float16", "float32", "int8", "uint8", "int32", "bool"),
+        ASCEND_710: ("float16", "float32", "int8", "uint8", "int32", "bool"),
+        ASCEND_610: ("float16", "float32", "int8", "uint8", "int32", "bool"),
+        ASCEND_615: ("float16", "float32", "int8", "uint8", "int32", "bool"),
+    },
 
     # common
     "clip": {

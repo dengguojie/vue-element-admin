@@ -143,3 +143,7 @@ def dilation(tensor_x, dilations, pads=None, padding_value=0.0):
 def gemm(tensor_a, tensor_b, para_dict):
 
 def matmul(tensor_a, tensor_b, trans_a=False, trans_b=False, format_a="ND", format_b="ND", alpha_num=1.0, beta_num=1.0, dst_dtype="float16", tensor_bias=None, quantize_params=None, format_out=None, compress_index=None, attrs={}, kernel_name="MatMul"):
+
+def gather(params, indices, axis=None, batch_dims=0):
+
+def gather_nd(params, indices, batch_dims=0):
