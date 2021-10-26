@@ -26,11 +26,12 @@ from impl.ascend import VecExecutor
 from impl.util.util_tik_comm_func import ceil_div
 
 
-class GridAssignPositive(object):
+class GridAssignPositive:
     """
     The class for GridAssignPositive.
     """
 
+    # 'pylint: disable=too-many-arguments
     def __init__(self, k_num, n_num, pos_iou_thr, min_pos_iou, gt_max_assign_all,
                  data_type, flag_type, int_type, kernel_name, cont):
         self.k_num = k_num
@@ -77,7 +78,8 @@ class GridAssignPositive(object):
         self.assigned_gt_inds_pos = self.tik_inst.Tensor(
             self.data_type, flag_shape, self.tik.scope_gm, "assigned_gt_inds_pos")
 
-    def get_loop_info(self, all_data_num, each_loop_num):
+    @staticmethod
+    def get_loop_info(all_data_num, each_loop_num):
         """
         The function is get loop info.
         """
@@ -85,7 +87,8 @@ class GridAssignPositive(object):
         last_loop_num = all_data_num - each_loop_num * (loop_times - 1)
         return loop_times, last_loop_num
 
-    def get_align_num(self, input_num, align_num, ceil=True):
+    @staticmethod
+    def get_align_num(input_num, align_num, ceil=True):
         """
         The function is get align num.
         """
@@ -105,6 +108,9 @@ class GridAssignPositive(object):
         return data_size, block_data_num, repeat_data_num
 
     def mode_compute(self):
+        """
+        The function is mode compute.
+        """
         if self.gt_max_assign_all:
             each_core_n_num = ceil_div(self.n_num, self.ai_core_use)
             each_core_n_num = self.get_align_num(each_core_n_num, self.data_repeat_data_num)
@@ -149,6 +155,7 @@ class GridAssignPositive(object):
         block_num = ceil_div(n_num, self.data_block_data_num)
         self.tik_inst.data_move(self.assigned_gt_inds_pos[n_index_start], assigned_gt_inds_ub, 0, 1, block_num, 0, 0)
 
+    # 'pylint: disable=too-many-locals,too-many-arguments
     def _mode_1_assign_positive(self, assigned_gt_inds_ub, flag_ub, k_index, n_index_start, n_num, n_num_align):
         data_shape = (n_num_align,)
         gt_max_overlaps_scalar = self.tik_inst.Scalar(self.data_type)
@@ -315,9 +322,9 @@ class GridAssignPositive(object):
         """
         algorithm:
             `pos_inds = (max_overlaps > pos_iou_thr & box_responsible_flags)`
-            assigned_gt_inds_ub_new[pos_inds] = argmax_overlaps[pos_inds] + 1
-            assigned_gt_inds_ub_new = assigned_gt_inds_ub_new.astype(data_type)
-            flag_ub = box_responsible_flags.astype(data_type)
+            `assigned_gt_inds_ub_new[pos_inds] = argmax_overlaps[pos_inds] + 1`
+            `assigned_gt_inds_ub_new = assigned_gt_inds_ub_new.astype(data_type)`
+            `flag_ub = box_responsible_flags.astype(data_type)`
         """
         n_num_align = self.data_repeat_data_num
         data_shape = (n_num_align,)
@@ -344,6 +351,7 @@ class GridAssignPositive(object):
                                   argmax_overlaps_ub, assigned_gt_inds_ub, repeat_num, 8, 8, 8)
         return assigned_gt_inds_ub_new, flag_ub
 
+    # 'pylint: disable=too-many-arguments
     def _get_flag_ub(self, flag_ub, n_index_start, n_num, zero_tensor_ub, one_tensor_ub):
         """
         algorithm:
@@ -370,6 +378,7 @@ class GridAssignPositive(object):
             self.tik_inst.vcmpv_ne(flag_mask_ub, box_responsible_flags_fp16_ub, flag_false_ub, 1, 1, 1, 8, 8)
             self.tik_inst.vec_sel(n_num, 0, flag_ub, flag_mask_ub, one_tensor_ub, zero_tensor_ub, 1, 8, 8, 8)
 
+    # 'pylint: disable=too-many-arguments
     def _get_pos_iou_thr_ub(self, gt_pos_iou_thr_ub, n_index_start, n_num, zero_tensor_ub, one_tensor_ub):
         """
         algorithm:
@@ -415,6 +424,7 @@ class GridAssignPositive(object):
         self.tik_inst.vector_dup(data_shape[0], tensor_ub, data_val, 1, 1, 8)
         return tensor_ub
 
+    # 'pylint: disable=too-many-locals
     def _vconv_data(self, data_num, mode, tensor_all, offset_all=None):
         if offset_all is None:
             offset_all = (0,) * len(tensor_all)
@@ -441,6 +451,7 @@ class GridAssignPositive(object):
         VecExecutor.exec_vec_cmd(buf_all, cmd_vconv, drive_buf_name)
 
 
+# 'pylint: disable=too-many-arguments,too-many-locals
 def check_params(assigned_gt_inds, overlaps, box_responsible_flags,
                  max_overlaps, argmax_overlaps,
                  gt_max_overlaps, gt_argmax_overlaps,
@@ -487,7 +498,7 @@ def check_params(assigned_gt_inds, overlaps, box_responsible_flags,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_FLOAT,
                             para_check.REQUIRED_ATTR_BOOL, para_check.KERNEL_NAME)
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
 def grid_assign_positive(assigned_gt_inds, overlaps, box_responsible_flags,
                          max_overlaps, argmax_overlaps,
                          gt_max_overlaps, gt_argmax_overlaps,

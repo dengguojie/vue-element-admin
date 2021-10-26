@@ -21,6 +21,7 @@ from te import platform as tbe_platform
 from te.utils import para_check
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     This class for Constant.
@@ -33,33 +34,16 @@ class Constant:
     MAX_CORE_NUM = 32
 
 
-# purpose is not split one block into two
-# when src_c<=16, src_n_unit=lcm(cout_orig, 16) * K, 1<=cout_orig<=16, K is scale
-# lcm(cout_orig, 16) 1    2    3    4    5    6    7    8    9    10    11    12    13    14    15    16
-# ---------------------------------------------------------------------------------------------------------
-#                    16   16   48   16   80   48   112  16   144  80    176   48    208   112   240   16
-#                 K  20   20   5    20   3    5    2    20   2    3     2     5     1     2     1     20
-#                    320  320  240  320  240  240  224  320  288  240   352   240   208   224   240   320
-src_n_unit_dict = {1:320, 2:320, 3:240, 4:320, 5:240, 6:240, 7:224, 8:320,
-                   9:288, 10:240, 11:352, 12:240, 13:208, 14:224, 15:240, 16:320, 17:112}
-
-#eg, left_zero_cycle(3) eq 16
-#  3 3 3 3 3 1
-#  2 3 3 3 3 2
-#  1 3 3 3 3 3
-left_zero_cycle_dict = {1:16, 2:8, 3:16, 4:4, 5:16, 6:8, 7:16, 8:2, 9:16, 10:8, 11:16, 12:3, 13:16, 14:8, 15:16, 16:1}
-
-
-# pylint: disable=superfluous-parens,useless-object-inheritance
-# pylint: invalid-name,too-many-instance-attributes,too-many-arguments
-# pylint: unused-variable,too-few-public-methods,too-many-statements
-# pylint: no-self-use,consider-using-enumerate,unused-argument,too-many-locals
-# pylint: singleton-comparison,useless-return,protected-access
+# 'pylint: disable=superfluous-parens,useless-object-inheritance
+# 'pylint: disable=invalid-name,too-many-instance-attributes,too-many-arguments
+# 'pylint: disable=unused-variable,too-few-public-methods,too-many-statements
+# 'pylint: disable=no-self-use,consider-using-enumerate,unused-argument,too-many-locals
+# 'pylint: disable=singleton-comparison,useless-return,protected-access
 class Hwcn2Fractalzg(object):
     """
     Hwcn2Fractalzg
     """
-# pylint: disable= too-few-public-methods
+# 'pylint: disable=too-few-public-methods
     class TilingParam(object):
         """
         TilingParam
@@ -82,6 +66,7 @@ class Hwcn2Fractalzg(object):
                 self.loop_groups_base = []
                 self.loop_groups_repeat = []
 
+            # 'pylint: disable=too-many-arguments
             def composite_c_le_16(self, pf_kernel_base, pf_kernel_repeat, pf_src_c_base, pf_src_c_repeat,
                                   pf_src_n_base, pf_src_n_repeat, pf_src_n_tail):
                 """
@@ -213,6 +198,15 @@ class Hwcn2Fractalzg(object):
             tup = [x for x in tup if x != 0]
 
         def _calc_src_n_unit(self):
+            # purpose is not split one block into two
+            # `when src_c<=16, src_n_unit=lcm(cout_orig, 16) * K, 1<=cout_orig<=16, K is scale`
+            # lcm(cout_orig, 16) 1    2    3    4    5    6    7    8    9    10    11    12    13    14    15    16
+            # ---------------------------------------------------------------------------------------------------------
+            #                    16   16   48   16   80   48   112  16   144  80    176   48    208   112   240   16
+            #                 K  20   20   5    20   3    5    2    20   2    3     2     5     1     2     1     20
+            #                    320  320  240  320  240  240  224  320  288  240   352   240   208   224   240   320
+            src_n_unit_dict = {1:320, 2:320, 3:240, 4:320, 5:240, 6:240, 7:224, 8:320,
+                   9:288, 10:240, 11:352, 12:240, 13:208, 14:224, 15:240, 16:320, 17:112}
             if self.src_c <= Constant.EPB:
                 self.src_n_unit = src_n_unit_dict[self.src_c]
                 if (self.src_n != 17) and (self.src_n_unit > self.src_n):
@@ -229,6 +223,7 @@ class Hwcn2Fractalzg(object):
                 self.src_n_tail = self.src_n % self.src_n_unit
             self.burst_len_tail = math.ceil(self.src_n_tail / Constant.EPB)
 
+        # 'pylint: disable=too-many-arguments
         def _each_factor_process_num(self, total, factor, unit, base, repeat):
             if total < unit:
                 base.append(0)
@@ -270,7 +265,8 @@ class Hwcn2Fractalzg(object):
 
             # step 2: src_c factor
             if self.src_c > Constant.EPB:
-                factor_c = self.src_c // Constant.EPB if Constant.CORE_NUM // factor_k > self.src_c // Constant.EPB else Constant.CORE_NUM // factor_k
+                factor_c = self.src_c // Constant.EPB if Constant.CORE_NUM // factor_k > self.src_c // \
+                                                         Constant.EPB else Constant.CORE_NUM // factor_k
             unit = Constant.EPB
             self._each_factor_process_num(self.src_c, factor_c, unit, self.pf_src_c_base, self.pf_src_c_repeat)
 
@@ -303,6 +299,12 @@ class Hwcn2Fractalzg(object):
             self._each_factor_process_num(self.groups, factor_g, unit, self.pf_groups_base, self.pf_groups_repeat)
 
         def _calc_init_position_common(self, block_idx, loop_left_zero, loop_top_distance, loop_nc0_counter):
+            #eg, left_zero_cycle(3) eq 16
+            #  3 3 3 3 3 1
+            #  2 3 3 3 3 2
+            #  1 3 3 3 3 3
+            left_zero_cycle_dict = {1:16, 2:8, 3:16, 4:4, 5:16, 6:8, 7:16, 8:2, 9:16,
+                                    10:8, 11:16, 12:3, 13:16, 14:8, 15:16, 16:1}
             left_zero = 0
             consumed = 0
             cycle = left_zero_cycle_dict[self.src_c]
@@ -357,6 +359,7 @@ class Hwcn2Fractalzg(object):
         tp = self.TilingParam(shape_in, shape_out, groups)
         return tp
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _get_param_by_block_idx_le_16(self, block_idx, tp, pc_kernel_base, pc_kernel_repeat,
                                       pc_src_c_base, pc_src_c_repeat, pc_src_n_base, pc_src_n_repeat,
                                       left_zero, top_distance, nc0_counter,
@@ -377,6 +380,7 @@ class Hwcn2Fractalzg(object):
                 top_distance_tail.set_as(tp.loop_top_distance_tail[i])
                 nc0_counter_tail.set_as(tp.loop_nc0_counter_tail[i])
 
+    # 'pylint: disable=too-many-arguments
     def _get_param_by_block_idx_gt_16(self, block_idx, tp, pc_kernel_base, pc_kernel_repeat,
                                       pc_groups_base, pc_groups_repeat):
         for i in range(Constant.CORE_NUM):
@@ -394,6 +398,7 @@ class Hwcn2Fractalzg(object):
     def _calc_dst_addr_ws(tp, lk, lsn, dst_addr):
         dst_addr.set_as(lk * tp.src_n * Constant.EPB + lsn * tp.src_n_unit * Constant.EPB)
 
+    # 'pylint: disable=too-many-arguments
     def  _copy_in_ws(self, tp, ub_input, ub_offset, src_addr, is_tail):
         tik_inst = self.tik_inst
         ub_offset.set_as(0)
@@ -451,6 +456,7 @@ class Hwcn2Fractalzg(object):
         with tik_inst.else_scope():
             tik_inst.data_move(self.data_workspace[dst_addr], ub_input[Constant.OFFSET_1], 0, 1, src_n_tail, 0, 0)
 
+    # 'pylint: disable=too-many-arguments
     def _prepare_by_workspace(self, tp, ub_input, ub_offset, lk, lsn, is_tail):
         tik_inst = self.tik_inst
         src_addr = tik_inst.Scalar("int64", init_value=0)
@@ -465,6 +471,7 @@ class Hwcn2Fractalzg(object):
     def _calc_src_addr_new(tp, lk, lb, src_addr):
         src_addr.set_as(lk * tp.src_n * Constant.EPB + lb * tp.cout_orig * Constant.EPB)
 
+    # 'pylint: disable=too-many-arguments
     @staticmethod
     def _calc_dst_addr_new(tp, lk, top_distance, left_zero, nc0_counter, dst_addr):
         dst_addr.set_as(lk * tp.dst_n * Constant.EPB +\
@@ -472,6 +479,7 @@ class Hwcn2Fractalzg(object):
                         top_distance * Constant.EPB +\
                         left_zero)
 
+    # 'pylint: disable=too-many-arguments
     def _update_param(self, tp, top_distance, left_zero, nc0_counter, consumed):
         tik_inst = self.tik_inst
 
@@ -526,9 +534,11 @@ class Hwcn2Fractalzg(object):
             tik_inst.vector_dup(128, self.ub_input[Constant.OFFSET_1], 0, 1, 1, 8)
             dst_addr.set_as(dst_addr + (tp.cout_orig - 1) * Constant.EPB - (Constant.EPB - tp.cin_orig))
             with tik_inst.for_range(0, tp.cin_orig) as k:
-                self.ub_input[Constant.OFFSET_1 + Constant.EPB - tp.cin_orig + k] = self.ub_input[(tp.cout_orig - 1) * Constant.EPB + k]
+                self.ub_input[Constant.OFFSET_1 + Constant.EPB - tp.cin_orig + k] = \
+                    self.ub_input[(tp.cout_orig - 1) * Constant.EPB + k]
             tik_inst.data_move(self.data_out[dst_addr], self.ub_input[Constant.OFFSET_1], 0, 1, 1, 0, 0)
 
+    # 'pylint: disable=too-many-arguments
     def _copy_ws_out_aligned(self, tp, ub_input, lk, lb, left_zero, top_distance, nc0_counter, consumed):
         tik_inst = self.tik_inst
         src_addr = tik_inst.Scalar("int64", init_value=0)
@@ -540,6 +550,7 @@ class Hwcn2Fractalzg(object):
         self._move_out_wrapper(tp, ub_input, dst_addr, left_zero)
         self._update_param(tp, top_distance, left_zero, nc0_counter, consumed)
 
+    # 'pylint: disable=too-many-arguments
     def _copy_ws_out(self, tp, ub_input, lk, lb, left_zero, top_distance, nc0_counter, consumed):
         tik_inst = self.tik_inst
         src_addr = tik_inst.Scalar("int64", init_value=0)
@@ -561,6 +572,7 @@ class Hwcn2Fractalzg(object):
         with tik_inst.if_scope(consumed != 0):
             self._copy_ws_out_aligned(tp, ub_input, lk, lb, left_zero, top_distance, nc0_counter, consumed)
 
+    # 'pylint: disable=too-many-arguments
     @staticmethod
     def _calc_block_param(tp, pc_src_n_base, pc_src_n_repeat, block_base, block_repeat,
                           src_n_tail, block_base_tail, block_repeat_tail):
@@ -569,6 +581,7 @@ class Hwcn2Fractalzg(object):
         block_base_tail.set_as(((pc_src_n_base + pc_src_n_repeat) * tp.src_n_unit) // tp.cout_orig)
         block_repeat_tail.set_as(src_n_tail // tp.cout_orig)
 
+    # 'pylint: disable=too-many-arguments
     @staticmethod
     def _backup(left_zero, top_distance, nc0_counter,
                 left_zero_tail, top_distance_tail, nc0_counter_tail,
@@ -581,6 +594,7 @@ class Hwcn2Fractalzg(object):
         top_distance_tail_bk.set_as(top_distance_tail)
         nc0_counter_tail_bk.set_as(nc0_counter_tail)
 
+    # 'pylint: disable=too-many-arguments
     @staticmethod
     def _restore(left_zero, top_distance, nc0_counter,
                  left_zero_tail, top_distance_tail, nc0_counter_tail,
@@ -593,6 +607,7 @@ class Hwcn2Fractalzg(object):
         top_distance_tail.set_as(top_distance_tail_bk)
         nc0_counter_tail.set_as(nc0_counter_tail_bk)
 
+    # 'pylint: disable=too-many-statements,too-many-locals
     def compute_c_le_16(self, tp):
         """
         hwcn_2_fractal_z_g entrance function
@@ -689,6 +704,7 @@ class Hwcn2Fractalzg(object):
         dst_addr.set_as(lk * tp.dst_n * Constant.EPB + block_seq * tp.vol_hwnc0)
         dst_addr.set_as(dst_addr + (lg * tp.cout_orig) % tp.dst_n * Constant.EPB)
 
+    # 'pylint: disable=too-many-arguments
     def _copy_in_gt_16(self, tp, ub_input, ub_offset, lk, lg, pad_line, cur_line, consumed_line):
         tik_inst = self.tik_inst
         src_addr = tik_inst.Scalar("int64", init_value=0)
@@ -713,12 +729,14 @@ class Hwcn2Fractalzg(object):
 
         tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
 
+    # 'pylint: disable=too-many-arguments
     def _copy_out_gt_16(self, tp, ub_input, lk, lg, block_seq):
         tik_inst = self.tik_inst
         dst_addr = tik_inst.Scalar("int64", init_value=0)
         self._calc_dst_addr_gt_16(tp, lk, lg, block_seq, dst_addr)
         tik_inst.data_move(self.data_out[dst_addr], ub_input[Constant.OFFSET_2], 0, 1, tp.cout_orig, 0, 0)
 
+    # 'pylint: disable=too-many-arguments
     @staticmethod
     def _init_line_param(tp, lg, pad_line, last_line, cur_line, consumed_line, block_seq):
         pad_line.set_as((lg * tp.cin_orig) % Constant.EPB)
@@ -727,6 +745,7 @@ class Hwcn2Fractalzg(object):
         consumed_line.set_as(0)
         block_seq.set_as(lg * tp.cin_orig // Constant.EPB)
 
+    # 'pylint: disable=too-many-arguments
     def _update_line_param(self, tp, pad_line, last_line, cur_line, consumed_line, block_seq):
         tik_inst = self.tik_inst
         with tik_inst.if_scope(pad_line != 0):
@@ -744,6 +763,7 @@ class Hwcn2Fractalzg(object):
             cur_line.set_as(Constant.EPB)
         block_seq.set_as(block_seq + 1)
 
+    # 'pylint: disable=too-many-locals
     def compute_c_gt_16(self, tp):
         """
         hwcn_2_fractal_z_g entrance function
@@ -779,7 +799,7 @@ class Hwcn2Fractalzg(object):
                             self._update_line_param(tp, pad_line, last_line, cur_line, consumed_line, block_seq)
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
 @para_check.check_input_type(dict, dict, str, str, int, str)
 def hwcn_2_fractal_z_g(src, dst, src_format, dst_format, groups, kernel_name="hwcn_2_fractal_z_g"):
     """

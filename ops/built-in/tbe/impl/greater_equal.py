@@ -25,7 +25,7 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _greater_equal_compare(data, shape, dtype, data_min):
     """
     if x is greater than y or equals y, then return 1, else return 0.
@@ -74,7 +74,7 @@ def _greater_equal_compare(data, shape, dtype, data_min):
     return tbe.cast_to(res, "uint8", True)
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("greater_equal")
 def greater_equal_compute(input_x, input_y, output_z,
                           kernel_name="greater_equal"):

@@ -20,7 +20,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 
 
-#pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
 @fusion_manager.register("hard_sigmoid_grad")
 def hard_sigmoid_grad_compute(grads, input_x, y, alpha, kernel_name="hard_sigmoid_grad"):
     """
@@ -49,7 +49,7 @@ def hard_sigmoid_grad_compute(grads, input_x, y, alpha, kernel_name="hard_sigmoi
     return result
 
 
-#pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)

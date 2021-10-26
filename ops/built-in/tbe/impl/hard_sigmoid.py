@@ -22,7 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 import te.platform as tbe_platform
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-locals
 @fusion_manager.register("hard_sigmoid")
 def hard_sigmoid_compute(input_x, output_y, alpha, beta, kernel_name="hard_sigmoid"):
     """

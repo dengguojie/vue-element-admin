@@ -26,7 +26,7 @@ CONST_THREE = 3.0
 CONST_HALF = 0.5
 
 
-# pylint: disable=too-many-arguments,unused-argument
+# 'pylint: disable=too-many-arguments,unused-argument
 @fusion_manager.register("hard_swish_grad")
 def hard_swish_grad_compute(input_grad, input_x, output_y, kernel_name="hard_swish_grad"):
     """
@@ -59,7 +59,7 @@ def hard_swish_grad_compute(input_grad, input_x, output_y, kernel_name="hard_swi
     return tbe.vmul(input_grad, output_x)
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def hard_swish_grad(input_grad, input_x, output_y, kernel_name="hard_swish_grad"):

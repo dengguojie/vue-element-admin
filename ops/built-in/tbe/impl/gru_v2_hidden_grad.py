@@ -14,7 +14,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 lstm_grad
 """
 
-# pylint: disable=locally-disabled,import-error,unused-import,ungrouped-imports
+# 'pylint: disable=locally-disabled,import-error,unused-import,ungrouped-imports
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.platform import insn_cmd
@@ -22,7 +22,7 @@ from te import tik
 from te import tvm
 
 
-# pylint: disable=too-many-locals,too-many-arguments
+# 'pylint: disable=too-many-locals,too-many-arguments
 def copy_input_to_ub_compute(tensor_h1, tensor_n2,
                              tensor_i2, tensor_r2, tensor_n2_mid,
                              tensor_d_h2, tensor_dy,
@@ -126,8 +126,8 @@ def copy_input_to_ub_compute(tensor_h1, tensor_n2,
     return tensor_list, emit_list, scope_list
 
 
-# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
-# pylint: disable=too-many-locals,invalid-name,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
+# 'pylint: disable=too-many-locals,invalid-name,too-many-arguments
 def elewise_compute_for_gate(tensor_dh2_di2, tensor_dy_di2, tensor_h1, tensor_n2_di2,
                              tensor_i2_di2, tensor_dh2_dn2i, tensor_dy_dn2i, tensor_n2_dn2i,
                              tensor_i2_dn2i, tensor_r2_dn2h, tensor_n2_mid, tensor_r2_dr2,
@@ -283,8 +283,8 @@ def elewise_compute_for_gate(tensor_dh2_di2, tensor_dy_di2, tensor_h1, tensor_n2
     return tensor_list, emit_list, scope_list
 
 
-# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
-# pylint: disable=too-many-locals,invalid-name,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
+# 'pylint: disable=too-many-locals,invalid-name,too-many-arguments
 def matmul_compute(tensor_weight, tensor_d_h2, tensor_dy, tensor_i2, tensor_list, dst_type):
     """
     matmul_compute
@@ -350,7 +350,7 @@ def matmul_compute(tensor_weight, tensor_d_h2, tensor_dy, tensor_i2, tensor_list
     return tensor_list
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def basic_gru_cell_compute(tensor_weight, tensor_h1, tensor_n2, tensor_i2,
                            tensor_r2, tensor_n2_mid,
                            tensor_d_h2, tensor_dy, cast_type, gate_order):
@@ -416,7 +416,7 @@ def get_tiling(output_size):
     return tiling_info
 
 
-# pylint: disable=too-many-locals,too-many-statements
+# 'pylint: disable=too-many-locals,too-many-statements
 def schedule_for_cell(tensor_list, emit_list, scope_list, cast_type):
     """
     schedule_for_cell
@@ -570,7 +570,7 @@ def schedule_for_cell(tensor_list, emit_list, scope_list, cast_type):
     return sch
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def do_cell_process(input_list, is_extent_buffer):
     """
     do_cell_process
@@ -603,8 +603,8 @@ def do_cell_process(input_list, is_extent_buffer):
     return tensor_output_list, sch
 
 
-# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop
-# pylint: disable=unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop
+# 'pylint: disable=unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
 def gru_v2_hidden_grad(weight_hidden, init_h, h, dy, dh, update, reset, new,
                        hidden_new, dh_prev, dgate_h, dnt_x, gate_order="zrh",
                        kernel_name="gru_hidden_grad"):

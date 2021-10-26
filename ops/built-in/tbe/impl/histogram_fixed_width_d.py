@@ -15,7 +15,7 @@
 """
 histogram_fixed_width_d
 """
-# pylint: disable = too-many-lines
+# 'pylint: disable = too-many-lines
 from te import platform as tbe_platform
 import te.lang.cce
 import te.platform.cce_params as cce_params
@@ -31,6 +31,7 @@ from impl.util.util_select_op_base import ReduceOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     This class for Constant.
@@ -53,8 +54,8 @@ class Constant:
     SCALAR_ZERO = 0
 
 
-# pylint: disable = unused-argument,invalid-name,unused-variable
-# pylint: disable=too-many-lines,inconsistent-return-statements
+# 'pylint: disable = unused-argument,invalid-name,unused-variable
+# 'pylint: disable=too-many-lines,inconsistent-return-statements
 def get_op_support_info(x,
                         y,
                         nbins,
@@ -75,13 +76,13 @@ def get_op_support_info(x,
     return op_cal_info_in_json
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class IrParams:
     """
     IR Params, include all params
     """
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def __init__(self, ib_, dtype_list, shape_list, nbins):
         self.ir_builder = ib_
         self.input_dtype = dtype_list[0]
@@ -454,7 +455,7 @@ def _fuction_data_conv_ir(addr_info_list, data_info_list, params):
         _run_vconv(fuc_name, cce_cmd)
 
 
-# pylint: disable=too-many-statements
+# 'pylint: disable=too-many-statements
 def _fuction_calcu_one_segment(calc_ub_info,
                                data_info_list,
                                segment_index,
@@ -916,8 +917,8 @@ def _histogram_fixed_width_ir(dst, src, nbins, shape_list):
     return params.ir_builder.get()
 
 
-# pylint: disable=too-many-arguments,unused-argument
-# pylint: disable=invalid-name,redefined-builtin
+# 'pylint: disable=too-many-arguments,unused-argument
+# 'pylint: disable=invalid-name,redefined-builtin
 @fusion_manager.register("histogram_fixed_width_d")
 def histogram_fixed_width_d_compute(x,
                                     range,
@@ -960,7 +961,7 @@ def histogram_fixed_width_d_compute(x,
     return res
 
 
-# pylint: disable=too-many-arguments,redefined-builtin,too-many-locals
+# 'pylint: disable=too-many-arguments,redefined-builtin,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def histogram_fixed_width_d(x,

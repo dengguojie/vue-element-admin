@@ -21,6 +21,7 @@ from te import tik
 from impl.util.platform_adapter import para_check
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     This class for Constant.
@@ -45,8 +46,8 @@ class Constant:
     C0 = 4
 
 
-# pylint: disable=too-many-instance-attributes,too-many-locals,too-many-lines
-# pylint: disable=too-many-arguments,unused-argument
+# 'pylint: disable=too-many-instance-attributes,too-many-locals,too-many-lines
+# 'pylint: disable=too-many-arguments,unused-argument
 def _cal_core(tik_instance, total_core_loop_num, num_core, core_number):
     """
     calculate the loop number on each core

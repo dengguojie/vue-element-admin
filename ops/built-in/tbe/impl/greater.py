@@ -24,6 +24,7 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     This class for Constant.
@@ -34,8 +35,8 @@ class Constant:
     MIN_FP16 = 2**(-24)
 
 
-# pylint: disable=too-many-locals
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-locals
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 def _greater_compare(data, shape, dtype, data_min):
     """
     if x is greater than y, then return 1, else return 0.
@@ -138,7 +139,7 @@ def greater_compute(x, y, z, kernel_name="greater"):
     return _greater_compare((data_x, data_y), shape, dtype, data_min)
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def greater(x, y, z, kernel_name="greater"):

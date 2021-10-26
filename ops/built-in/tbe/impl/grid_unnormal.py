@@ -27,7 +27,7 @@ from tbe.common.utils.para_check import KERNEL_NAME
 from tbe.common.utils.para_check import check_op_params
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @fusion_manager.register("grid_unnormal")
 def grid_unnormal_compute(grid, assist, diff, position, align_corners=False, kernel_name="grid_unnormal"):
     """

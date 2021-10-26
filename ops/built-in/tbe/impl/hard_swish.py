@@ -29,7 +29,7 @@ CONST_SIX = 6
 CONST_ONE_IN_SIX = 1 / 6
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @fusion_manager.register("hard_swish")
 def hard_swish_compute(input_x, output_y, kernel_name="hard_swish"):
     """

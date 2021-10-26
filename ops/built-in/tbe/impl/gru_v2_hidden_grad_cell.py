@@ -14,7 +14,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 lstm_grad
 """
 
-# pylint: disable=locally-disabled,import-error,unused-import,ungrouped-imports
+# 'pylint: disable=locally-disabled,import-error,unused-import,ungrouped-imports
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
@@ -22,6 +22,7 @@ from te.utils.error_manager import error_manager_vector
 from impl.tik_op_base import TikOpBase
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     This class for Constant.
@@ -29,7 +30,7 @@ class Constant:
     OP_NAME = "GRUV2HiddenGradCell"
 
 
-# pylint: disable=too-many-arguments,invalid-name
+# 'pylint: disable=too-many-arguments,invalid-name
 def _check_dtype(dh_pre_t, h, dy, dh, update, reset, new, hidden_new):
     """
     check parameters type
@@ -44,7 +45,7 @@ def _check_dtype(dh_pre_t, h, dy, dh, update, reset, new, hidden_new):
     para_check.check_dtype(hidden_new["dtype"], ["float16", "float32"], "hidden_new")
 
 
-# pylint: disable=too-many-arguments,invalid-name
+# 'pylint: disable=too-many-arguments,invalid-name
 def _check_param(dh_pre_t, h, dy, dh, update, reset, new, hidden_new):
     """
     check parameters
@@ -68,12 +69,12 @@ def _check_attr(gate_order):
         error_manager_vector.raise_err_check_params_rules(Constant.OP_NAME, rule_desc, 'gate_order', gate_order)
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class GRUHiddenGradCell(TikOpBase):
     """ GRUHiddenGradCell
     """
-    # pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
-    # pylint: disable=too-many-locals,invalid-name,too-many-arguments
+    # 'pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
+    # 'pylint: disable=too-many-locals,invalid-name,too-many-arguments
     def __init__(self, tik_instance, h, dy, dnt_x, t_state, gate_order, kernel_name):
         """ init GRUHiddenGradCell
         """
@@ -125,7 +126,7 @@ class GRUHiddenGradCell(TikOpBase):
         output_list = (self.dh_prev, self.d_gate_h, self.dnt_x)
         self.tik_instance.BuildCCE(self.kernel_name, input_list, output_list, config=config_map)
 
-    # pylint: disable=too-many-locals,too-many-statements,invalid-name
+    # 'pylint: disable=too-many-locals,too-many-statements,invalid-name
     def _do_compute(self, input_offset, ele_num):
         """
         do compute
@@ -296,8 +297,8 @@ class GRUHiddenGradCell(TikOpBase):
                         self._do_compute(base_offset, tiling["tail_last_ele"])
 
 
-# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
-# pylint: disable=too-many-locals,invalid-name,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
+# 'pylint: disable=too-many-locals,invalid-name,too-many-arguments,unused-argument
 def gru_v2_hidden_grad_cell(dh_pre_t, h, dy, dh, update, reset, new, hidden_new,
                             dh_prev, dgate_h, dnt_x, t_state=0, gate_order="zrh",
                             kernel_name="gru_hidden_grad_cell"):

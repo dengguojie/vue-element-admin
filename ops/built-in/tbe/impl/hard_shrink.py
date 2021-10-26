@@ -21,7 +21,7 @@ from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
 
 
-# pylint: disable=superfluous-parens,unused-argument
+# 'pylint: disable=superfluous-parens,unused-argument
 @fusion_manager.register("hard_shrink")
 def hard_shrink_compute(input_x, output_y, lambd, kernel_name="hard_shrink"):
     """

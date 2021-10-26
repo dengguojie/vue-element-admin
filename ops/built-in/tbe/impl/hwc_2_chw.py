@@ -19,6 +19,7 @@ from te import tik
 from te import platform as tbe_platform
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     This class for Constant.
@@ -70,7 +71,7 @@ def _get_dtype_factor(dtype):
     return dtype_factor
 
 
-# pylint: disable=too-many-locals,too-many-statements
+# 'pylint: disable=too-many-locals,too-many-statements
 def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
     """
     do hwc to chw transfer by multiple core on axis hw
@@ -99,7 +100,7 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
 
     with tik_inst.for_range(0, core_num, block_num=core_num) as block_idx:
 
-        # pylint: disable=too-many-locals,too-many-statements
+        # 'pylint: disable=too-many-locals,too-many-statements
         def _hw_transfer_process(sub_hw_len):
             """
             process of hw transfer

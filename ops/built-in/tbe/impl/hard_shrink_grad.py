@@ -22,7 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 
 
-#pylint: disable=unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=unused-argument,too-many-locals,invalid-name
 @fusion_manager.register("hard_shrink_grad")
 def hard_shrink_grad_compute(gradients, features, backprops, lambd=0.5, kernel_name="hard_shrink_grad"):
     """
@@ -55,7 +55,7 @@ def hard_shrink_grad_compute(gradients, features, backprops, lambd=0.5, kernel_n
     return result
 
 
-#pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.KERNEL_NAME)
