@@ -1,4 +1,4 @@
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 # Copyright 2019 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,7 +55,7 @@ def _new_alloc(ir_build, dtype, shape, name, scope):
     return new_buffer
 
 
-# pylint: disable=unused-argument,too-many-arguments,too-many-locals
+# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
 def _indice_unit_tiling(dst, data, indices, step_indices, jump_step, shape_data, shape_indices, dict_out):
     """
     tiling indices into unit
@@ -90,7 +90,7 @@ def _indice_unit_tiling(dst, data, indices, step_indices, jump_step, shape_data,
     return ir_build.get()
 
 
-# pylint: disable=too-many-arguments,too-many-locals,too-many-statements,too-many-branches
+# 'pylint: disable=too-many-arguments,too-many-locals,too-many-statements,too-many-branches
 def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data, shape_indices, ele_unit, half_indices_ub,
                half_ele, half_data_ub, block_ub, ir_build):
     """
@@ -529,7 +529,7 @@ def _kernel_ir(dst, data, indices, step_indices, jump_step, shape_data, shape_in
                         half_data_ub.access_ptr("r"), 0, 1, burst_len_last, 0, 0))
 
 
-# pylint: disable=too-many-locals,too-many-arguments,unused-variable
+# 'pylint: disable=too-many-locals,too-many-arguments,unused-variable
 def _scalar_performence_indice_unit_tiling(dst, data, indices, step_indices, jump_step, shape_data, shape_indices,
                                            dict_out):
     """
@@ -554,7 +554,7 @@ def _scalar_performence_indice_unit_tiling(dst, data, indices, step_indices, jum
     return ir_build.get()
 
 
-# pylint: disable=too-many-arguments,too-many-locals,too-many-statements
+# 'pylint: disable=too-many-arguments,too-many-locals,too-many-statements
 def _scalar_performence_kernel_ir(dst, data, indices, jump_step, shape_data, shape_indices, half_ele, block_ub,
                                   ir_build):
     """
@@ -884,7 +884,7 @@ def _scalar_performence_kernel_ir(dst, data, indices, jump_step, shape_data, sha
                     1, param_ub_last_len, 0, 0))
 
 
-# pylint: disable=unused-argument,too-many-locals,too-many-arguments
+# 'pylint: disable=unused-argument,too-many-locals,too-many-arguments
 def _large_param_shape_performence_indice_unit_tiling(dst, data, indices, step_indices, jump_step, shape_data,
                                                       shape_indices, dict_out):
     """
@@ -899,7 +899,7 @@ def _large_param_shape_performence_indice_unit_tiling(dst, data, indices, step_i
     return ir_build.get()
 
 
-# pylint: disable=too-many-arguments,too-many-locals,too-many-statements
+# 'pylint: disable=too-many-arguments,too-many-locals,too-many-statements
 def _large_param_shape_performence_kernel_ir(dst, data, indices, jump_step, shape_data, shape_indices, step_indices,
                                              block_ub, ir_build):
     """
@@ -1299,7 +1299,7 @@ def _compute_repeat(indice_shape):
     return int(functools.reduce(lambda i, j: i * j, indice_shape[0:-1]))
 
 
-# pylint: disable=unnecessary-lambda,invalid-name
+# 'pylint: disable=unnecessary-lambda,invalid-name
 def _tvm_dummy_placeholder(input_dtype, indice_dtype, kernel_name="dummy_placeholder"):
     """
     do nothing in operator
@@ -1378,7 +1378,7 @@ def _just_dma(src_shape, indice_shape, dst_shape, dtype, kernel_name="_just_dma"
         tvm.build(s, build_list, "cce", name=kernel_name)
 
 
-# pylint: disable=unnecessary-lambda,too-many-boolean-expressions
+# 'pylint: disable=unnecessary-lambda,too-many-boolean-expressions
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def gather_nd(dict_data, dict_indices, dict_out, kernel_name='gather_nd'):

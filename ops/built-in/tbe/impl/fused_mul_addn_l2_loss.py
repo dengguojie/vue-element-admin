@@ -28,8 +28,8 @@ from impl.util.util_select_op_base import ReduceOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-# pylint: disable=unused-argument,too-many-locals,too-many-arguments
-# pylint: disable=unnecessary-comprehension
+# 'pylint: disable=unused-argument,too-many-locals,too-many-arguments
+# 'pylint: disable=unnecessary-comprehension
 def get_op_support_info(input_x,
                         input_y,
                         input_z,
@@ -97,7 +97,7 @@ def fused_mul_addn_l2loss_compute(weight, const_input, weight_grad):
     return data_addn, l2_loss
 
 
-# pylint: disable=too-many-locals,too-many-arguments,unused-argument
+# 'pylint: disable=too-many-locals,too-many-arguments,unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def fused_mul_addn_l2loss(input_x, input_y, input_z, output_x, output_y, kernel_name="fused_mul_addn_l2loss"):

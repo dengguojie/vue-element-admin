@@ -23,8 +23,8 @@ from impl.util.util_select_op_base import get_op_cal_info
 from impl.gather_v2_d import gather_v2_d
 
 
-# pylint: disable = unused-argument
-# pylint: disable=invalid-name
+# 'pylint: disable = unused-argument
+# 'pylint: disable=invalid-name
 def get_op_support_info(x, indices, y, validate_indices=True, kernel_name="gather"):
     """
     get_op_support_info
@@ -46,7 +46,7 @@ def get_op_support_info(x, indices, y, validate_indices=True, kernel_name="gathe
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL,
                             para_check.KERNEL_NAME)

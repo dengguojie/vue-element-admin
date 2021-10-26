@@ -27,7 +27,7 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-# pylint: disable=too-few-public-methods,invalid-name,unused-variable
+# 'pylint: disable=too-few-public-methods,invalid-name,unused-variable
 class Constant:
     """
     The class for constant.
@@ -38,7 +38,7 @@ class Constant:
     BBOX_SEGMENT = 4096 * 2
 
 
-# pylint: disable = unused-argument
+# 'pylint: disable = unused-argument, too-many-arguments, too-many-locals
 def get_op_support_info(bboxes, gtboxes, overlap, trans, is_cross, mode="iou", kernel_name="giou"):
     """
     get_op_support_info
@@ -105,12 +105,12 @@ def _get_ceil_int(int1, int2):
     return ceil_int
 
 
-# pylint: disable=too-many-instance-attributes,too-many-lines
+# 'pylint: disable=too-many-instance-attributes,too-many-lines
 class GIoU():
     """Function: use to finish Iou main functions
     """
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements,too-many-arguments
     def __init__(self, bboxes, gtboxes, trans, is_cross, mode):
         """
         init Iou parameters
@@ -226,7 +226,7 @@ class GIoU():
         if self.product is False:
             self.bb_ub_segment = self.bb_ub_segment // 2
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def giou_process(self):
         """do process and scedule
            main function
@@ -606,6 +606,7 @@ class GIoU():
                                            [self.gt_area_ub_size],
                                            "gt_boxes_area_ub")
 
+    # 'pylint: disable=too-many-locals, too-many-branches
     def _run_segment(self, run_bb_point_segment, gm_offset, gm_out_offset=0):
         """
         do a segment of bbox compute
@@ -1072,6 +1073,7 @@ class GIoU():
                     self.bboxes_y1[conv_index * 2 + i] \
                         .set_as(self.index_reg[i * 4 + 1] + self.index_reg[i * 4 + 3] / 2)
 
+    # 'pylint: disable=too-many-arguments
     def calcu_area(self, run_point, area_ub, inter_mode=False, outer_mode=False, gt_mode=False):
         """
         run_tik start tik process, and buid cce
@@ -1176,7 +1178,7 @@ def _box_shape_check(input_name, shape):
         error_manager_vector.raise_err_input_shape_invalid("GIoU", input_name, error_detail)
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments
 @register_operator("giou")
 def giou_compute(bboxes, gtboxes, overlap, trans, is_cross, mode, kernel_name):
     """
@@ -1216,6 +1218,7 @@ def giou_compute(bboxes, gtboxes, overlap, trans, is_cross, mode, kernel_name):
     return giou_res.run_tik(kernel_name)
 
 
+# 'pylint: disable=stoo-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_STR,

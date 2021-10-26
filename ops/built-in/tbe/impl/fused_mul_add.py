@@ -30,9 +30,9 @@ from impl.util.util_compute import check_batchmatmul_fuse
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=locally-disabled,unused-variable,unused-argument
-# pylint: disable=locally-disabled,too-many-locals,too-many-statements
-# pylint: disable=locally-disabled,too-many-branches,unused-variable
+# 'pylint: disable=locally-disabled,unused-variable,unused-argument
+# 'pylint: disable=locally-disabled,too-many-locals,too-many-statements
+# 'pylint: disable=locally-disabled,too-many-branches,unused-variable
 def _division_sixteen(shape):
     if len(shape) < 2:
         if shape[-1] == 0:
@@ -298,7 +298,7 @@ def check_ori_shape(input0, input1, input2):
                                     param_name_input2="input2")
 
 
-# pylint: disable=arguments-out-of-order
+# 'pylint: disable=arguments-out-of-order
 def _infer_shape_one(shape_input0, shape_input1, shape_input2, format_pattern):
     """
     shape_input0 : FRACTAL_NZ, [N,...,A,B,16,16]

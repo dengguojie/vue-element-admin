@@ -15,6 +15,7 @@
 """
 fsr_detection_output
 """
+# 'pylint: disable=too-many-lines
 
 import te.platform as tbe_platform
 from te import tik
@@ -26,16 +27,16 @@ from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=R0913
-# pylint: disable=R0914
-# pylint: disable=R0915
-# pylint: disable=W0201
-# pylint: disable=W0134
-# pylint: disable=C0111
-# pylint: disable=C0121
+# 'pylint: disable=R0913
+# 'pylint: disable=R0914
+# 'pylint: disable=R0915
+# 'pylint: disable=W0201
+# 'pylint: disable=W0134
+# 'pylint: disable=C0111
+# 'pylint: disable=C0121
 
 
-# pylint: disable=too-few-public-methods,invalid-name
+# 'pylint: disable=too-few-public-methods,invalid-name
 class Constant:
     """
     The class for constant.
@@ -56,7 +57,7 @@ class Constant:
     DATA_ONE = 1
 
 
-# pylint: disable=too-many-lines,unused-argument,too-many-instance-attributes,too-few-public-methods
+# 'pylint: disable=too-many-lines,unused-argument,too-many-instance-attributes,too-few-public-methods
 def get_op_support_info(rois_dic, bbox_delta_dic, score_dic, im_info_dic,
                         actual_rois_num_dic, actual_bbox_num_dic, box_dic,
                         num_classes, score_threshold, iou_threshold, batch_rois=1,

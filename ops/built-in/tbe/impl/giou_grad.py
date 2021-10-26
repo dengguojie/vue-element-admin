@@ -21,7 +21,7 @@ from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import para_check
 
 
-# pylint: disable=too-few-public-methods
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant.
@@ -34,10 +34,12 @@ class Constant:
     REP_STRIDE = 8
 
 
+# 'pylint: disable=too-many-statements,too-many-arguments
 @fusion_manager.register("giou_grad")
 class GIoUGrad:
     """GIoUGrad"""
 
+    # 'pylint: disable=too-many-statements,too-many-arguments
     def __init__(self, dy, bboxes, gtboxes, trans, is_cross, mode, kernel_name):
         """__init__"""
         self.tik_instance = tik.Tik(tik.Dprofile())
@@ -171,6 +173,7 @@ class GIoUGrad:
         self.batch_num_per_aicore = self.task_num // self.used_aicore_num
         self.batch_tail = self.task_num % self.used_aicore_num
 
+    # 'pylint: disable=too-many-arguments
     def paras_check(self, dy, bboxes, gtboxes, trans, is_cross, mode):
         """paras_check"""
         shape_dy = dy.get("shape")
@@ -256,6 +259,7 @@ class GIoUGrad:
         # func: resite res for attr_trans
         self.update_dboxes(task_idx)
 
+    # 'pylint: disable=too-many-statements
     def init_date(self):
         """init_date"""
         # func: create for the calculation cache of inter/union/enclose
@@ -879,7 +883,7 @@ class GIoUGrad:
             self.tik_instance.data_move(self.dgtboxes[idx * self.all_num], dgtboxes_tmp, 0, 1, self.move_rep, 0, 0)
 
 
-# pylint: disable=invalid-name,too-many-locals,too-many-arguments,unused-argument
+# 'pylint: disable=invalid-name,too-many-locals,too-many-arguments,unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)

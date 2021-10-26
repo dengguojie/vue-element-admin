@@ -28,7 +28,7 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-# pylint: disable=unused-argument,too-many-locals,too-many-arguments,invalid-name
+# 'pylint: disable=unused-argument,too-many-locals,too-many-arguments,invalid-name
 def get_op_support_info(var,
                         accum,
                         lr,
@@ -60,7 +60,7 @@ def get_op_support_info(var,
     return op_cal_info_in_json
 
 
-# pylint: disable=unused-argument,invalid-name,too-many-locals,too-many-arguments
+# 'pylint: disable=unused-argument,invalid-name,too-many-locals,too-many-arguments
 @tbe_platform.fusion_manager.fusion_manager.register("fused_mul_apply_momentum")
 def fused_mul_apply_momentum_compute(var,
                                      accum,
@@ -171,7 +171,7 @@ def _get_placeholder(dict_list, name_list):
     return list_placeholder
 
 
-# pylint: disable=unbalanced-tuple-unpacking,too-many-arguments
+# 'pylint: disable=unbalanced-tuple-unpacking,too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL,

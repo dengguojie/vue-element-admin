@@ -23,7 +23,7 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
-# pylint: disable=arguments-out-of-order
+# 'pylint: disable=arguments-out-of-order
 def _compare_value_int32(x_data, y_data, shape_dz):
     """
     The input data type of this function only support int32;
@@ -41,7 +41,7 @@ def _compare_value_int32(x_data, y_data, shape_dz):
     return result
 
 
-# pylint: disable = locally-disabled,too-many-locals
+# 'pylint: disable = locally-disabled,too-many-locals
 def _compare_value_float(x_data, y_data):
     """
     The input data type of the function only support float;
@@ -143,7 +143,7 @@ def _reduce_result(shape_x, shape_y, shape_dz, result_dx, result_dy):
     return result_dx, result_dy
 
 
-# pylint: disable = locally-disabled,invalid-name,too-many-arguments,unused-argument,no-member
+# 'pylint: disable = locally-disabled,invalid-name,too-many-arguments,unused-argument,no-member
 @tbe_platform.fusion_manager.fusion_manager.register("fused_minimum_or_maximum_grad_cce")
 def fused_minimum_or_maximum_grad_compute(placeholders, shape_x, shape_y, shape_dz, cmp_type,
                                           dtype,

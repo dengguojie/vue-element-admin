@@ -28,7 +28,7 @@ from te.utils import para_check
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=too-few-public-methods
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant.
@@ -40,8 +40,8 @@ class Constant:
     MIN_FP32 = 2**(-126)
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=too-many-locals
 def tanh_compute(input_x, output_y, kernel_name="tanh"):
     """
     algorithm: tanh
@@ -162,7 +162,7 @@ def _result_grad_compute(placeholders):
 
     return res_grad
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
 @tbe_platform.fusion_manager.fusion_manager.register("gelu_grad")
 def gelu_grad_compute(input_dy, input_x, input_y,
                       output_z, kernel_name="gelu_grad"):

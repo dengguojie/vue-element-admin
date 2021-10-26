@@ -15,7 +15,7 @@
 """
 gather_v2_d
 """
-# pylint: disable=locally-disabled,too-many-lines
+# 'pylint: disable=locally-disabled,too-many-lines
 import functools
 
 import te.lang.cce as tbe
@@ -32,7 +32,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_platform
 
 
-# pylint: disable=too-few-public-methods
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant.
@@ -47,8 +47,8 @@ class Constant:
     INDICES_LINE = 64
 
 
-# pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-branches
-# pylint: disable=superfluous-parens
+# 'pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-branches
+# 'pylint: disable=superfluous-parens
 def get_op_support_info(x, indices, y, axis=0, kernel_name="gather_v2_d"):
     """
     get_op_support_info
@@ -299,8 +299,8 @@ def _is_greater_than_32b(tensor_params, tensor_indices, row_num_each_core):
     return False
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals
-# pylint: disable=locally-disabled,too-many-statements
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-statements
 def _gather_v2_operation(tensor_params, tensor_indices, output, tvm_ib,
                          op_parameters, is_last):
     """ Describe the calculation process for gather, steps as bellow,
@@ -1103,7 +1103,7 @@ def _kernel_ir(output, tensor_params, tensor_indices, axis):
     return tvm_ib.get()
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @register_operator("gather_v2_d")
 def gather_v2_compute(tensor_params,
                       tensor_indices,

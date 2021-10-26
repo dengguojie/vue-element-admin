@@ -26,8 +26,8 @@ from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
-# pylint: disable=locally-disabled,redefined-builtin,too-many-arguments,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,redefined-builtin,too-many-arguments,too-many-locals
 def op_select_format(x, sum, square_sum, scale, offset, mean, variance,
                      y, batch_mean, batch_variance,
                      epsilon=0.0001, num_groups=2,

@@ -24,8 +24,8 @@ from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
-# pylint: disable=locally-disabled,redefined-builtin
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,redefined-builtin
 def op_select_format(x, sum, square_sum, num_groups,
                      kernel_name="gn_training_reduce"):
     """
@@ -73,8 +73,8 @@ def _shape_check(shape_x, data_format, num_groups):
     para_check.check_shape(shape_x, min_rank=4, max_rank=4, param_name="x")
     if shape_x[c_index_] % num_groups != 0:
         error_manager_vector.raise_err_check_params_rules("gn_training_reduce", "num_groups must divide C channel",
-                                                             "channel and num_groups",
-                                                              "{} and {}".format(shape_x[c_index_], num_groups))
+                                                          "channel and num_groups",
+                                                          "{} and {}".format(shape_x[c_index_], num_groups))
 
 
 @fusion_manager.register("gn_training_reduce")

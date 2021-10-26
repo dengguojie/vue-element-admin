@@ -23,7 +23,7 @@ from te.platform.fusion_manager import fusion_manager
 from impl import constant_util
 
 
-# pylint: disable=invalid-name, unused-argument
+# 'pylint: disable=invalid-name, unused-argument
 @fusion_manager.register("ger")
 def ger_compute(data_x1, data_x2, y, kernel_name="ger"):
     """
@@ -54,7 +54,7 @@ def ger_compute(data_x1, data_x2, y, kernel_name="ger"):
     return res
 
 
-# pylint: disable=invalid-name, unused-argument
+# 'pylint: disable=invalid-name, unused-argument, too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def ger(x1, x2, y, kernel_name="ger"):

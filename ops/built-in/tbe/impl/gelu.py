@@ -25,7 +25,7 @@ from te import platform as tbe_platform
 from te.utils import para_check
 
 
-# pylint: disable=too-many-locals,invalid-name
+# 'pylint: disable=too-many-locals,invalid-name
 def _tanh_parameter_compute(placeholders):
     """
     compute the parameter of tanh:
@@ -41,7 +41,7 @@ def _tanh_parameter_compute(placeholders):
     return result
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
 @tbe_platform.fusion_manager.fusion_manager.register("gelu")
 def gelu_compute(input_x, output_y, kernel_name="gelu",
                  impl_mode=None):
