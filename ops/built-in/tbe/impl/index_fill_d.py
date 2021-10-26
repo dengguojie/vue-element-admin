@@ -26,11 +26,11 @@ from te.utils import para_check
 def index_fill_d_compute(x, assist1, assist2):
     """
     Main compute logic of index_fill
-    Firstly, construct the tensor input of assist1 and assist2, 
+    Firstly, construct the tensor input of assist1 and assist2,
     where the shape and X of assist1 are the same, and the value is to remove,
-    the corresponding position to be filled is 0, and the other positions are 1; 
-    the shape and X of assist2 are the same, 
-    and the value is that the corresponding position to be filled is value, 
+    the corresponding position to be filled is 0, and the other positions are 1;
+    the shape and X of assist2 are the same,
+    and the value is that the corresponding position to be filled is value,
     and all other positions are 0.
     All of the above operations are done in the adaptation layer
     Multiply x and assist1, the add result and assist2.
@@ -58,7 +58,7 @@ def index_fill_d_compute(x, assist1, assist2):
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_STR)
-#pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
 def index_fill_d(x, assist1, assist2, y, dim, kernel_name="index_fill_d"):
     """
     Fills the elements of the self tensor with value val by selecting the indices in the order given in index.(PyTorch)
@@ -116,7 +116,7 @@ def index_fill_d(x, assist1, assist2, y, dim, kernel_name="index_fill_d"):
     shape_x_length = len(shape_x)
     if dim < -shape_x_length or dim >= shape_x_length:
         raise RuntimeError(
-            "Out of range, dim should be in [%d, %d], which is [%d]" %(-shape_x_length, shape_x_length - 1, dim))
+            "Out of range, dim should be in [%d, %d], which is [%d]" % (-shape_x_length, shape_x_length - 1, dim))
 
     data_input_x = tvm.placeholder(shape_x, name="data_input_x", dtype=dtype_x)
     data_input_as1 = tvm.placeholder(

@@ -22,11 +22,17 @@ from impl.util.platform_adapter import tuple_sum
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 
-# minimum positive number greater than 0
-EPSLON = 1e-6
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    This class for Constant.
+    """
+    # minimum positive number greater than 0
+    EPSLON = 1e-6
 
 
-# pylint: disable=too-many-locals,too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-locals,too-many-arguments,unused-argument,invalid-name
 def in_training_update_grad_compute(dy,
                                     x,
                                     variance,
@@ -77,7 +83,7 @@ def in_training_update_grad_compute(dy,
     mean_inverse_broadcast = tbe.broadcast(mean_inverse, shape_dy)
     x_sub = tbe.vadd(x, mean_inverse_broadcast)
 
-    data_adds = tbe.vadds(variance, EPSLON)
+    data_adds = tbe.vadds(variance, Constant.EPSLON)
     data_rsqrt = tbe.vsqrt(data_adds)
     data_one = tbe.broadcast(tvm.const(1, "float32"), shape_var)
 

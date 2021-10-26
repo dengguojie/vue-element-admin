@@ -23,6 +23,7 @@ from te.platform.fusion_manager import fusion_manager
 from impl.util.platform_adapter import para_check
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     This class for Constant.
@@ -41,6 +42,7 @@ class ScatterAxis():
     Modify : 2020-8
     """
 
+    # 'pylint: disable=too-many-arguments,too-many-statements
     def __init__(self, var, indices, updates, var_out, axis, kernel_name, compute_type):
         """
         Init scatter axis parameters
@@ -589,8 +591,8 @@ class ScatterAxis():
         # proc middle Elem data move
         with self.tik_instance.if_scope(self.mid_elem_count > 0):
             with self.tik_instance.for_range(0, self.mid_elem_count) as i:
-                self.proc_elem_data_move(dstbufaddr + self.head_elem_len + i * self.small_elem_num, self.small_elem_num,
-                                         self.head_elem_len + i * self.small_elem_num)
+                self.proc_elem_data_move(dstbufaddr + self.head_elem_len + i * self.small_elem_num,
+                                         self.small_elem_num, self.head_elem_len + i * self.small_elem_num)
 
         # proc end Elem data move
         with self.tik_instance.if_scope(self.end_elem_len > 0):
@@ -661,6 +663,7 @@ class ScatterAxis():
             self.tik_instance.data_move(self.out_gm[self.var_read_index + read_index_offset], self.var_ub, 0, 1,
                                         updates_burst_len, 0, 0)
 
+    # 'pylint: disable=too-many-arguments
     def compute_function(self, mask, dst_ub, src1_ub, src2_ub, repeat_times, compute_repeat_strid):
         """
         The function is compute function.
@@ -682,12 +685,12 @@ class ScatterAxis():
                                        compute_repeat_strid)
                 self.tik_instance.vmul(mask, src2_ub, src2_ub, tmp_tensor, repeat_times, 1, 1, 1, compute_repeat_strid,
                                        compute_repeat_strid, compute_repeat_strid)
-                self.tik_instance.vadds(mask, src2_ub, src2_ub, Constant.NEG_TWO, repeat_times, 1, 1, compute_repeat_strid,
-                                        compute_repeat_strid)
+                self.tik_instance.vadds(mask, src2_ub, src2_ub, Constant.NEG_TWO, repeat_times, 1, 1,
+                                        compute_repeat_strid, compute_repeat_strid)
                 self.tik_instance.vmul(mask, src2_ub, src2_ub, tmp_tensor, repeat_times, 1, 1, 1, compute_repeat_strid,
                                        compute_repeat_strid, compute_repeat_strid)
-                self.tik_instance.vmuls(mask, src2_ub, src2_ub, Constant.NEG_ONE, repeat_times, 1, 1, compute_repeat_strid,
-                                        compute_repeat_strid)
+                self.tik_instance.vmuls(mask, src2_ub, src2_ub, Constant.NEG_ONE, repeat_times, 1, 1,
+                                        compute_repeat_strid, compute_repeat_strid)
                 # mul src1_ub * (1/src2_ub)
                 self.tik_instance.vmul(mask, dst_ub, src1_ub, src2_ub, repeat_times, 1, 1, 1, compute_repeat_strid,
                                        compute_repeat_strid, compute_repeat_strid)
@@ -709,6 +712,7 @@ class ScatterAxis():
             raise RuntimeError("the operater [%s] is not supported" %
                                self.compute_type)
 
+    # 'pylint: disable=too-many-arguments
     def calc_process(self, mask, dest_addr, src_addr1, src_addr2, repeat_times, is_tile):
         """
         Execute the corresponding calculation instruction
@@ -744,8 +748,8 @@ class ScatterAxis():
                 dst_ub = self.var_tile_vconv_ub
                 mask = self.var_data_each_block
             else:
-                self.tik_instance.vconv(mask, "", self.var_vconv_ub[dest_addr], self.var_ub[src_addr1], repeat_times, 1,
-                                        1, 8, 4)
+                self.tik_instance.vconv(mask, "", self.var_vconv_ub[dest_addr], self.var_ub[src_addr1], repeat_times,
+                                        1, 1, 8, 4)
                 self.tik_instance.vconv(mask, "", self.updates_vconv_ub[dest_addr], self.updates_ub[src_addr2],
                                         repeat_times, 1, 1, 8, 4)
                 compute_repeat_strid = 8
@@ -772,8 +776,8 @@ class ScatterAxis():
             if is_tile:
                 self.tik_instance.vconv(mask, "", self.var_tile_ub, self.var_tile_vconv_ub, repeat_times, 1, 1, 4, 8)
             else:
-                self.tik_instance.vconv(mask, "", self.var_ub[src_addr1], self.var_vconv_ub[dest_addr], repeat_times, 1,
-                                        1, 4, 8)
+                self.tik_instance.vconv(mask, "", self.var_ub[src_addr1], self.var_vconv_ub[dest_addr], repeat_times,
+                                        1, 1, 4, 8)
 
     def scatter_axis_operator(self):
         """
@@ -804,6 +808,7 @@ class ScatterAxis():
         return self.tik_instance
 
 
+# 'pylint: disable=too-many-arguments
 @op_utils.check_op_params(dict, dict, dict, dict, int, str)
 def index_add(var, axis_indices, updates, var_out, axis=0, kernel_name="index_add"):
     """

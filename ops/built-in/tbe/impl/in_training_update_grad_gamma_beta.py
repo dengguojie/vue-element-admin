@@ -22,7 +22,7 @@ from impl.util.platform_adapter import tuple_sum
 from impl.util.platform_adapter import para_check
 
 
-# pylint: disable=too-many-locals,too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-locals,too-many-arguments,unused-argument,invalid-name
 def in_training_update_grad_gamma_beta_compute(res_gamma,
                                                res_beta,
                                                pd_gamma,

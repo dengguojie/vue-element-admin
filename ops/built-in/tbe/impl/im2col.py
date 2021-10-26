@@ -32,6 +32,7 @@ from impl.im2col_common_func import im2col_compute
 from impl.im2col_common_func import im2col_schedule
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     This class for Constant.
@@ -44,7 +45,7 @@ class Constant:
     SIZE_L1 = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
 
 
-# pylint: disable=unused-argument,too-many-locals,too-many-arguments
+# 'pylint: disable=unused-argument,too-many-locals,too-many-arguments
 def image_to_col_compute(fmap, c_in_real, ksizes, strides, dilates, pads, padding_mode):
     """
     ops compute
@@ -105,9 +106,10 @@ def image_to_col_compute(fmap, c_in_real, ksizes, strides, dilates, pads, paddin
     return output_res, workspace_res, workspace_shape
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name,too-many-statements,too-many-locals
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name,too-many-statements,too-many-locals
+# 'pylint: disable=too-many-branches
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
-                            para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_LIST_INT, 
+                            para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def im2col(images, y, ksizes, strides, dilates, padding_mode, pads, kernel_name="im2col"):
     """.

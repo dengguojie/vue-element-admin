@@ -23,7 +23,7 @@ from impl.util.platform_adapter import para_check
 from impl.util import util_tik_comm_func
 
 
-# pylint: disable=too-many-instance-attributes,too-many-locals
+# 'pylint: disable=too-many-instance-attributes,too-many-locals
 class Resization:
     """
     Function: store Resization params and compute resize
@@ -102,6 +102,7 @@ class Resization:
                 area_num = cut_last_core_num
                 _run_one_core(area_start, area_num)
 
+    # 'pylint: disable=too-many-statements
     def compute_bilinear(self, batch_idx, core_area_start, core_area_num):
         """
         compute_bilinear

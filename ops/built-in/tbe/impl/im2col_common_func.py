@@ -15,7 +15,7 @@
 """
 extract_image_patches
 """
-# pylint: disable=unused-import,too-many-lines
+# 'pylint: disable=unused-import,too-many-lines
 import math
 import os
 
@@ -23,6 +23,7 @@ import te.platform as tbe_platform
 from te import tvm
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     This class for Constant.
@@ -40,7 +41,7 @@ class Constant:
     DELTA = 0.000001  # aviod div zero, fp32 precision
 
 
-# pylint: disable = unused-argument,redefined-builtin,too-many-arguments,invalid-name
+# 'pylint: disable = unused-argument,redefined-builtin,too-many-arguments,invalid-name
 def _ceil_div(value, block):
     """
     integrate the input value by block
@@ -59,7 +60,7 @@ def _prod(val_list):
 
 
 def _ub_split_c1(ub_split_c1_shape, tensor, ksize):
-    # pylint: disable=invalid-name
+    # 'pylint: disable=invalid-name
     def _ub_split_c1_indices(indices, tensor):
         n, howo, co1, khw, howo0, co0 = indices
         n_index = n
@@ -73,7 +74,7 @@ def _ub_split_c1(ub_split_c1_shape, tensor, ksize):
 
 
 def _ub_transpose(ub_transpose_shape, tensor):
-    # pylint: disable=invalid-name
+    # 'pylint': disable=invalid-name
     def _ub_transpose_indices(indices, tensor):
         n, howo, howo0, khw, co1, co0 = indices
         n_index = n
@@ -91,7 +92,7 @@ def _ub_transpose(ub_transpose_shape, tensor):
 
 
 def _ub_merge_hw(ub_merge_shape, tensor):
-    # pylint: disable=invalid-name
+    # 'pylint: disable=invalid-name
     def _ub_merge_hw_indices(indices, tensor):
         _, _, in_hw0, _, _, _ = tensor.shape
         n, howo, khw, co1, co0 = indices
@@ -107,7 +108,7 @@ def _ub_merge_hw(ub_merge_shape, tensor):
 
 
 def _ub_merge_co(ub_merge_co_shape, tensor):
-    # pylint: disable=invalid-name
+    # 'pylint: disable=invalid-name
     def _ub_merge_co_indices(indices, tensor):
         _, _, _, _, in_c0 = tensor.shape
         n, howo, khw, co = indices
@@ -121,7 +122,7 @@ def _ub_merge_co(ub_merge_co_shape, tensor):
     return tvm.compute(ub_merge_co_shape, lambda *indices: _ub_merge_co_indices(indices, tensor), name='_ub_merge_co')
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def _im2col_row_major_v2(feature_map, im2col_vm_shape, kernel_h, kernel_w, padding, stride, dilate, compute_dtype):
     """
     calculate im2col_row_major tensor
@@ -146,7 +147,7 @@ def _im2col_row_major_v2(feature_map, im2col_vm_shape, kernel_h, kernel_w, paddi
     Returns : A_im2col_row_major tensor
     """
 
-    # pylint: disable=unused-argument,invalid-name,too-many-locals,too-many-arguments
+    # 'pylint: disable=unused-argument,invalid-name,too-many-locals,too-many-arguments
     def _im2col_row_major_indices(indices, feature_map, kernel_h, kernel_w, padding, stride, dilate):
         """
         calculate im2col_row_major tvm lambda function
@@ -211,7 +212,7 @@ def _im2col_fractal_v2(im2col_shape, feature_map, config, compute_dtype):
     Returns : A_im2col_fractal tensor
     """
 
-    # pylint: disable=invalid-name,too-many-locals
+    # 'pylint: disable=invalid-name,too-many-locals
     def _im2col_fractal_indices(indices, feature_map):
         """
         calculate im2col_fractal tvm lambda function
@@ -250,7 +251,7 @@ def _im2col_fractal_v2(im2col_shape, feature_map, config, compute_dtype):
                        tag='im2col_fractal')
 
 
-# pylint: disable=unused-argument,too-many-locals,too-many-arguments
+# 'pylint: disable=unused-argument,too-many-locals,too-many-arguments,too-many-statements
 @tbe_platform.fusion_manager.fusion_manager.register("extract_image_patches")
 def im2col_compute(fmap, c_in_real, ksizes, strides, dilates, pad, out_h, out_w):
     """
@@ -309,7 +310,8 @@ def im2col_compute(fmap, c_in_real, ksizes, strides, dilates, pad, out_h, out_w)
     fmap_im2col = _im2col_row_major_v2(fmap_in_l1, fmap_vm_shape, kernel_h, kernel_w, pad, stride, dilate, dtype_input)
 
     howo = ((out_h * out_w + Constant.BLOCK_SIZE - 1) // Constant.BLOCK_SIZE) * Constant.BLOCK_SIZE
-    fractal_shape = (fmap_n, howo // Constant.BLOCK_SIZE, fmap_c1 * kernel_h * kernel_w, Constant.BLOCK_SIZE, align_block_size)
+    fractal_shape = (fmap_n, howo // Constant.BLOCK_SIZE, fmap_c1 * kernel_h * kernel_w,
+                     Constant.BLOCK_SIZE, align_block_size)
 
     config = {"mac": [16, align_block_size, 16]}
 
@@ -337,9 +339,11 @@ def im2col_compute(fmap, c_in_real, ksizes, strides, dilates, pad, out_h, out_w)
         "conv_fm_w": fmap_w,
     }
 
-    ub_split_c1_shape = (fmap_n, howo // Constant.BLOCK_SIZE, fmap_c1, kernel_h * kernel_w, Constant.BLOCK_SIZE, align_block_size)
+    ub_split_c1_shape = (fmap_n, howo // Constant.BLOCK_SIZE, fmap_c1, kernel_h * kernel_w,
+                         Constant.BLOCK_SIZE, align_block_size)
     ub_split_c1_res = _ub_split_c1(ub_split_c1_shape, fmap_fractal, kernel_h * kernel_w)
-    ub_transpose_shape = (fmap_n, howo // Constant.BLOCK_SIZE, Constant.BLOCK_SIZE, kernel_h * kernel_w, fmap_c1, align_block_size)
+    ub_transpose_shape = (fmap_n, howo // Constant.BLOCK_SIZE, Constant.BLOCK_SIZE, kernel_h * kernel_w,
+                          fmap_c1, align_block_size)
     ub_transpose_res = _ub_transpose(ub_transpose_shape, ub_split_c1_res)
 
     ub_merge_hw_shape = (fmap_n, howo, kernel_h * kernel_w, fmap_c1, align_block_size)
@@ -375,7 +379,7 @@ def im2col_compute(fmap, c_in_real, ksizes, strides, dilates, pad, out_h, out_w)
     return output_res, workspace_res, workspace_shape
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def _get_tiling_param_cut_howo_col(used_ub_size, lcm_out_w, khkw, cut_h_col, fmap_w, fmap_c0, type_size, c_in_real,
                                    align_block_size):
     """
@@ -397,7 +401,7 @@ def _get_tiling_param_cut_howo_col(used_ub_size, lcm_out_w, khkw, cut_h_col, fma
     return max_v_ub, move_rate
 
 
-# pylint: disable=too-many-locals,too-many-arguments
+# 'pylint: disable=too-many-locals,too-many-arguments
 def _get_tiling_param_cut_howo_row(khkw, fmap_w, fmap_c0, dilated_kernel_h, dilated_kernel_w, stride_h, type_size,
                                    avg_split_ub_size, cut_w_row, cut_h_row, c_in_real, align_block_size):
     # cut howo row
@@ -424,7 +428,7 @@ def _get_tiling_param_cut_howo_row(khkw, fmap_w, fmap_c0, dilated_kernel_h, dila
     return max_v_ub, move_rate
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def _get_tiling_param_cut_howo_partial_col(out_w, khkw, fmap_w, stride_h, type_size, avg_split_ub_size, cut_h_row,
                                            c_in_real, align_block_size, dilated_kernel_h):
     """"
@@ -465,7 +469,7 @@ def _get_tiling_param_cut_howo_min(fmap_w, fmap_c0, type_size, avg_split_ub_size
     return max_v_ub
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def _get_tiling_param(setfmatrix_dict, extract_params, used_ub_size, type_size, avg_split_ub_size, align_block_size):
     out_w = extract_params['out_w']
     fmap_shape = extract_params['fmap_shape']
@@ -500,7 +504,7 @@ def _get_tiling_param(setfmatrix_dict, extract_params, used_ub_size, type_size, 
             move_rate_cut_col_p]
 
 
-# pylint: disable=too-many-statements,too-many-branches,too-many-locals
+# 'pylint: disable=too-many-statements,too-many-branches,too-many-locals
 def im2col_schedule(res, sch_list):
     """
     :param res: the multi-results in the operator
@@ -606,8 +610,8 @@ def im2col_schedule(res, sch_list):
         """
         split multi core, when 32B is not aligned
         """
-        res_axis_list = list(res.op.axis).copy()
-        workspace_axis_list = list(workspace_res.op.axis).copy()
+        res_axis_list = list(res.op.axis)
+        workspace_axis_list = list(workspace_res.op.axis)
 
         res_bind_axis_list = [0 for _ in range(dma_split_axis_id)]
         workspace_bind_axis_list = [0 for _ in range(dma_split_axis_id)]
@@ -647,7 +651,7 @@ def im2col_schedule(res, sch_list):
 
         pre_core_n, pre_core_c, pre_core_howo = [1], [1], [1]
         for i in range(1, device_core_num + 1):
-            multi_core_factor = _get_core_factor(out_shape.copy(), i, i, i)
+            multi_core_factor = _get_core_factor(out_shape, i, i, i)
             pre_core_n.append(_ceil_div(out_shape[0], multi_core_factor[0]))
             pre_core_howo.append(_ceil_div(out_shape[1], multi_core_factor[1]))
             pre_core_c.append(_ceil_div(out_shape[3], multi_core_factor[3]))
@@ -656,9 +660,9 @@ def im2col_schedule(res, sch_list):
                                                               _ceil_div(out_shape[3], tiling_factor[3]),
                                                               _ceil_div(out_shape[1], tiling_factor[1]),
                                                               pre_core_n, pre_core_c, pre_core_howo)
-        multi_core_factor = _get_core_factor(out_shape.copy(), core_n, core_howo, core_c)
+        multi_core_factor = _get_core_factor(out_shape, core_n, core_howo, core_c)
 
-        res_axis_list = list(res.op.axis).copy()
+        res_axis_list = list(res.op.axis)
         res_bind_axis_list = [0 for _ in res_axis_list]
         for i, _ in enumerate(res_bind_axis_list):
             res_bind_axis_list[i], res_axis_list[i] = sch[res].split(res_axis_list[i], factor=multi_core_factor[i])
@@ -753,37 +757,37 @@ def im2col_schedule(res, sch_list):
         """
         get multi core split factor
         """
-        multi_core_factor = out_shape.copy()
+        multi_core_factor = out_shape
         if dma_split_axis_id == 0:  # n
             return multi_core_factor
-        elif dma_split_axis_id == 1:  # howo
+        if dma_split_axis_id == 1:  # howo
             used_core_num = min(device_core_num, _ceil_div(out_shape[0], tiling_factor[0]))
             multi_core_factor[0] = max(_ceil_div(out_shape[0], used_core_num), tiling_factor[0])
             return multi_core_factor
+        
+        if Constant.SIZE_L1 >= fmap_h * fmap_w * fmap_c0 * fmap_c1 * type_size * Constant.DOUBLE_BUFFER:
+            howo_align = Constant.BLOCK_SIZE
+        elif Constant.SIZE_L1 >= cut_h_col * fmap_w * fmap_c0 * fmap_c1 * type_size * Constant.DOUBLE_BUFFER:
+            howo_align = lcm_out_w
         else:
-            if Constant.SIZE_L1 >= fmap_h * fmap_w * fmap_c0 * fmap_c1 * type_size * Constant.DOUBLE_BUFFER:
-                howo_align = Constant.BLOCK_SIZE
-            elif Constant.SIZE_L1 >= cut_h_col * fmap_w * fmap_c0 * fmap_c1 * type_size * Constant.DOUBLE_BUFFER:
-                howo_align = lcm_out_w
-            else:
-                howo_align = howo
+            howo_align = howo
 
-            def _get_core_factor(multi_core_factor, core_n, core_howo):
-                multi_core_factor[0] = max(_ceil_div(out_shape[0], core_n), tiling_factor[0])
-                multi_core_factor[1] = _ceil_div(max(_ceil_div(out_shape[1], core_howo), tiling_factor[1]),
-                                                 howo_align) * howo_align
-                return multi_core_factor
+        def _get_core_factor(multi_core_factor, core_n, core_howo):
+            multi_core_factor[0] = max(_ceil_div(out_shape[0], core_n), tiling_factor[0])
+            multi_core_factor[1] = _ceil_div(max(_ceil_div(out_shape[1], core_howo), tiling_factor[1]),
+                                             howo_align) * howo_align
+            return multi_core_factor
 
-            pre_core_n, pre_core_howo = [1], [1]
-            for i in range(1, device_core_num + 1):
-                multi_core_factor = _get_core_factor(out_shape.copy(), i, i)
-                pre_core_n.append(_ceil_div(out_shape[0], multi_core_factor[0]))
-                pre_core_howo.append(_ceil_div(out_shape[1], multi_core_factor[1]))
+        pre_core_n, pre_core_howo = [1], [1]
+        for i in range(1, device_core_num + 1):
+            multi_core_factor = _get_core_factor(out_shape, i, i)
+            pre_core_n.append(_ceil_div(out_shape[0], multi_core_factor[0]))
+            pre_core_howo.append(_ceil_div(out_shape[1], multi_core_factor[1]))
 
-            core_n, core_howo = _cal_multi_core_factor(_ceil_div(out_shape[0], tiling_factor[0]),
-                                                       _ceil_div(out_shape[1], tiling_factor[1]),
-                                                       pre_core_n, pre_core_howo)
-            multi_core_factor = _get_core_factor(out_shape.copy(), core_n, core_howo)
+        core_n, core_howo = _cal_multi_core_factor(_ceil_div(out_shape[0], tiling_factor[0]),
+                                                   _ceil_div(out_shape[1], tiling_factor[1]),
+                                                   pre_core_n, pre_core_howo)
+        multi_core_factor = _get_core_factor(out_shape, core_n, core_howo)
 
         return multi_core_factor
 
@@ -843,7 +847,7 @@ def im2col_schedule(res, sch_list):
         if allow_multi_core:
             multi_core_factor = _get_multi_core_factor(dma_split_axis_id, tiling_factor)
         else:
-            multi_core_factor = out_shape.copy()
+            multi_core_factor = out_shape
 
         split_multi_core_axis_list = _split_multi_core_32b_not_aligned(multi_core_factor, dma_split_axis_id,
                                                                        dma_split_factor)

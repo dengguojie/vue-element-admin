@@ -15,7 +15,7 @@
 """
 in_top_k
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
@@ -25,6 +25,7 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     This class for Constant.
@@ -41,7 +42,7 @@ class Constant:
     MAX_BLOCK_NUM = 65535
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def get_op_support_info(predictions, targets, precision, k, kernel_name="in_top_k"):
     """
     get unpack slice info
@@ -58,7 +59,7 @@ def get_op_support_info(predictions, targets, precision, k, kernel_name="in_top_
     return op_cal_info_in_json
 
 
-# pylint: disable=unused-argument,too-many-locals
+# 'pylint: disable=unused-argument,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def in_top_k(predictions, targets, precision, k, kernel_name="in_top_k"):
@@ -129,7 +130,7 @@ def in_top_k(predictions, targets, precision, k, kernel_name="in_top_k"):
     return _in_top_k_tiling_column(predictions, targets, k, kernel_name)
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def _in_top_k_special_k(predictions, targets, k, kernel_name):
     """
     the _in_top_k_special_k function of the in_top_k
@@ -199,11 +200,11 @@ def _in_top_k_special_k(predictions, targets, k, kernel_name):
     with tik_instance.for_range(0, copy_repeat_times) as i:
         if k >= column:
             tik_instance.data_move(target_ub, target_tensor[i * Constant.BLOCK_SIZE], 0, 1, 4, 0, 0)
-            invalid_mask = calc_invalid_mask(tik_instance, target_ub, Constant.BLOCK_SIZE, column, src, dst_ub, dst_ub1,
-                                             0)
+            invalid_mask = calc_invalid_mask(tik_instance, target_ub, Constant.BLOCK_SIZE, column,
+                                             src, dst_ub, dst_ub1, 0)
             tik_instance.vsel(Constant.BLOCK_SIZE, 0, tensor_ub_sel, invalid_mask, tensor_zeros, tensor_ub, 1, 1, 1, 1)
-            invalid_mask = calc_invalid_mask(tik_instance, target_ub, Constant.BLOCK_SIZE, column, src, dst_ub, dst_ub1,
-                                             1)
+            invalid_mask = calc_invalid_mask(tik_instance, target_ub, Constant.BLOCK_SIZE, column,
+                                             src, dst_ub, dst_ub1, 1)
             tik_instance.vsel(Constant.BLOCK_SIZE, 0, tensor_ub_sel, invalid_mask, tensor_zeros, tensor_ub_sel, 1, 1, 1,
                               1)
             tik_instance.vconv(Constant.BLOCK_SIZE, '', tensor_output_ub, tensor_ub_sel, 1, 1, 1, 8, 8)
@@ -212,6 +213,7 @@ def _in_top_k_special_k(predictions, targets, k, kernel_name):
     return tik_instance
 
 
+# 'pylint: disable=too-many-arguments
 def calc_invalid_mask(tik_instance, target_ub, mask_len, column, src, dst_ub, dst_ub1, flag):
     """
     the calc_invalid_mask function
@@ -252,7 +254,7 @@ def calc_invalid_mask(tik_instance, target_ub, mask_len, column, src, dst_ub, ds
         return mask
 
 
-# pylint: disable=too-many-locals,too-many-branches,too-many-statements
+# 'pylint: disable=too-many-locals,too-many-branches,too-many-statements
 def _in_top_k_inter_process(shape_info, tensor, tik_instance, k):
     """
     the _in_top_k_inter_process function
@@ -343,8 +345,8 @@ def _in_top_k_inter_process(shape_info, tensor, tik_instance, k):
                 scalar_target.set_as(0)
             scalar_value = tik_instance.Scalar(prediction_dtype)
             scalar_value.set_as(prediction_tensor_ub[i, scalar_target])
-            tik_instance.vector_dup(half_mask_value, data_ub[i * column_aligned], scalar_value, column_reduce_times, 1,
-                                    8, 0)
+            tik_instance.vector_dup(half_mask_value, data_ub[i * column_aligned], scalar_value,
+                                    column_reduce_times, 1, 8, 0)
             if column_reduce_remainder != 0:
                 tik_instance.vector_dup(column_reduce_remainder,
                                         data_ub[i * column_aligned + column_reduce_times * half_mask_value],
@@ -481,17 +483,17 @@ def _in_top_k_inter_process(shape_info, tensor, tik_instance, k):
                                                             column_reduce_times * mask_value],
                                                    data_zeros, 1, 1)
                     tik_instance.vsel(column_reduce_remainder, 0,
-                                      data_sign[i * column_aligned * carry + column_reduce_times * mask_value], srcmask,
-                                      data_ones, data_zeros, 1, 1, 1, 1)
+                                      data_sign[i * column_aligned * carry + column_reduce_times * mask_value],
+                                      srcmask, data_ones, data_zeros, 1, 1, 1, 1)
         else:
             with tik_instance.for_range(0, core_row_num) as i:
                 srcmask = tik_instance.vcmp_gt(column_reduce_remainder, half_sub[i * column_aligned * carry],
                                                data_zeros, 1, 1)
-                tik_instance.vsel(column_reduce_remainder, 0, data_sign[i * column_aligned * carry], srcmask, data_ones,
-                                  data_zeros, 1, 1, 1, 1)
+                tik_instance.vsel(column_reduce_remainder, 0, data_sign[i * column_aligned * carry],
+                                  srcmask, data_ones, data_zeros, 1, 1, 1, 1)
 
-        # step 4: do reduce sum in each row of data_sign to count the number which larger than the element indexing from
-        # the target.
+        # step 4: do reduce sum in each row of data_sign to count the number which larger than the element indexing
+        # from the target.
         column_reduce_times = int(column_aligned // half_mask_value)
         column_reduce_remainder = int(column_aligned % half_mask_value)
 
@@ -654,13 +656,13 @@ def _in_top_k_inter_process(shape_info, tensor, tik_instance, k):
             invalid_mask = calc_invalid_mask(tik_instance, target_ub[i * Constant.BLOCK_SIZE], Constant.BLOCK_SIZE,
                                              column, src, dst_ub,
                                              dst_ub1, 0)
-            tik_instance.vsel(Constant.BLOCK_SIZE, 0, data_bool_ub[i * Constant.BLOCK_SIZE], invalid_mask, tensor_zeros,
-                              data_bool_ub[i * Constant.BLOCK_SIZE], 1, 1, 1, 1)
+            tik_instance.vsel(Constant.BLOCK_SIZE, 0, data_bool_ub[i * Constant.BLOCK_SIZE], invalid_mask,
+                              tensor_zeros, data_bool_ub[i * Constant.BLOCK_SIZE], 1, 1, 1, 1)
             invalid_mask = calc_invalid_mask(tik_instance, target_ub[i * Constant.BLOCK_SIZE], Constant.BLOCK_SIZE,
                                              column, src, dst_ub,
                                              dst_ub1, 1)
-            tik_instance.vsel(Constant.BLOCK_SIZE, 0, data_bool_ub[i * Constant.BLOCK_SIZE], invalid_mask, tensor_zeros,
-                              data_bool_ub[i * Constant.BLOCK_SIZE], 1, 1, 1, 1)
+            tik_instance.vsel(Constant.BLOCK_SIZE, 0, data_bool_ub[i * Constant.BLOCK_SIZE], invalid_mask,
+                              tensor_zeros, data_bool_ub[i * Constant.BLOCK_SIZE], 1, 1, 1, 1)
             tik_instance.vconv(Constant.BLOCK_SIZE, '', tensor_output_ub[i * Constant.BLOCK_SIZE],
                                data_bool_ub[i * Constant.BLOCK_SIZE], 1, 1, 1,
                                8, 8)
@@ -670,14 +672,12 @@ def _in_top_k_inter_process(shape_info, tensor, tik_instance, k):
         tik_instance.vsel(cmp_rem, 0, data_bool_ub[cmp_times * Constant.BLOCK_SIZE], cmp_mask, tensor_ones,
                           tensor_zeros, 1, 1,
                           1, 1)
-        invalid_mask = calc_invalid_mask(tik_instance, target_ub[cmp_times * Constant.BLOCK_SIZE], cmp_rem, column, src,
-                                         dst_ub,
-                                         dst_ub1, 0)
-        tik_instance.vsel(cmp_rem, 0, data_bool_ub[cmp_times * Constant.BLOCK_SIZE], invalid_mask, tensor_zeros,
-                          data_bool_ub[cmp_times * Constant.BLOCK_SIZE], 1, 1, 1, 1)
-        invalid_mask = calc_invalid_mask(tik_instance, target_ub[cmp_times * Constant.BLOCK_SIZE], cmp_rem, column, src,
-                                         dst_ub,
-                                         dst_ub1, 1)
+        invalid_mask = calc_invalid_mask(tik_instance, target_ub[cmp_times * Constant.BLOCK_SIZE], cmp_rem,
+                                         column, src, dst_ub, dst_ub1, 0)
+        tik_instance.vsel(cmp_rem, 0, data_bool_ub[cmp_times * Constant.BLOCK_SIZE], invalid_mask,
+                          tensor_zeros, data_bool_ub[cmp_times * Constant.BLOCK_SIZE], 1, 1, 1, 1)
+        invalid_mask = calc_invalid_mask(tik_instance, target_ub[cmp_times * Constant.BLOCK_SIZE], cmp_rem, column,
+                                         src, dst_ub, dst_ub1, 1)
         tik_instance.vsel(cmp_rem, 0, data_bool_ub[cmp_times * Constant.BLOCK_SIZE], invalid_mask, tensor_zeros,
                           data_bool_ub[cmp_times * Constant.BLOCK_SIZE], 1, 1, 1, 1)
         tik_instance.vconv(cmp_rem, '', tensor_output_ub[cmp_times * Constant.BLOCK_SIZE],
@@ -686,7 +686,7 @@ def _in_top_k_inter_process(shape_info, tensor, tik_instance, k):
     return tensor_output_ub
 
 
-# pylint: disable=too-many-locals,too-many-branches,too-many-statements
+# 'pylint: disable=too-many-locals,too-many-branches,too-many-statements
 def _in_top_k_column_process(shape_info, tensor, tik_instance):
     """
     the _in_top_k_column_process function
@@ -781,8 +781,8 @@ def _in_top_k_column_process(shape_info, tensor, tik_instance):
                 srcmask = tik_instance.vcmp_gt(column_reduce_remainder,
                                                prediction_tensor_ub[column_reduce_times * half_mask_value],
                                                data_ub[column_reduce_times * half_mask_value], 1, 1)
-                tik_instance.vsel(column_reduce_remainder, 0, data_sign[column_reduce_times * half_mask_value], srcmask,
-                                  data_ones, data_zeros, 1, 1, 1, 1)
+                tik_instance.vsel(column_reduce_remainder, 0, data_sign[column_reduce_times * half_mask_value],
+                                  srcmask, data_ones, data_zeros, 1, 1, 1, 1)
         else:
             srcmask = tik_instance.vcmp_gt(column_reduce_remainder, prediction_tensor_ub, data_ub, 1, 1)
             tik_instance.vsel(column_reduce_remainder, 0, data_sign, srcmask, data_ones, data_zeros, 1, 1, 1, 1)
@@ -921,7 +921,7 @@ def _in_top_k_column_process(shape_info, tensor, tik_instance):
     return data_bool
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def _in_top_k_single_core(predictions, targets, k, kernel_name):
     """
     the _in_top_k_single_core function
@@ -992,7 +992,7 @@ def _in_top_k_single_core(predictions, targets, k, kernel_name):
     return tik_instance
 
 
-# pylint: disable=too-many-locals,too-many-statements
+# 'pylint: disable=too-many-locals,too-many-statements
 def _in_top_k_mul_core(predictions, targets, k, kernel_name):
     """
     the _in_top_k_mul_core function
@@ -1101,7 +1101,7 @@ def _in_top_k_mul_core(predictions, targets, k, kernel_name):
     return tik_instance
 
 
-# pylint: disable=too-many-locals,too-many-statements
+# 'pylint: disable=too-many-locals,too-many-statements
 def _in_top_k_mul_core_v2(predictions, targets, k, kernel_name):
     """
     the _in_top_k_mul_core_v2 function
@@ -1222,7 +1222,7 @@ def _in_top_k_mul_core_v2(predictions, targets, k, kernel_name):
     return tik_instance
 
 
-# pylint: disable=too-many-locals,too-many-statements
+# 'pylint: disable=too-many-locals,too-many-statements
 def _in_top_k_column_inner_loop(shape_info, tensor, tik_instance, k):
     """
     the _in_top_k_column_inner_loop function
@@ -1336,7 +1336,7 @@ def _in_top_k_column_inner_loop(shape_info, tensor, tik_instance, k):
     return tensor_output_ub_temp
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def _in_top_k_tiling_column(predictions, targets, k, kernel_name):
     """
     the _in_top_k_tiling_column function

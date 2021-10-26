@@ -20,8 +20,10 @@ from functools import reduce as functools_reduce
 from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
+from impl import common_util
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     This class for Constant.
@@ -35,18 +37,19 @@ class Constant:
     # Some basic global params
     ONE_BLOCK_SIZE = 32
     ONE_VECTOR_CALC_SIZE = 256
-    TYPE_BYTES_MAP = {"float16": 2, "float32": 4, "int8": 2, "uint8": 2, "int16": 2, "int32": 4}
     BITS_OF_ONE_BYTE = 8
     MAX_REPEAT_TIMES = 255
     MAX_UBSIZE_USE_RATE = 0.9
 
 
+# 'pylint: disable=too-few-public-methods
 class Scatter():
     """
     Function: use to store scatter base parameters
     Modify : 2019-10-28
     """
 
+    # 'pylint: disable=too-many-arguments,too-many-statements
     def __init__(self, var, indices, updates, var_out, nd_flag, axis, kernel_name,
                  compute_type):
         """
@@ -107,7 +110,7 @@ class Scatter():
         self.get_some_basic_info()
 
         # decide the mask of computation
-        self.max_num_one_repeat = Constant.ONE_VECTOR_CALC_SIZE // Constant.TYPE_BYTES_MAP[self.var_dtype]
+        self.max_num_one_repeat = Constant.ONE_VECTOR_CALC_SIZE // common_util.get_data_size(self.var_dtype)
 
         # open multi-cores even if update_data_num less than 32B, cause the operation keep distances
         # if the pre_loops muls indices num ge than 32B
@@ -142,6 +145,9 @@ class Scatter():
         self.indices_loop_index = None
         self.indices_tmp = None
         self.outer_loop_start_index_every_block = None
+        self.outer_loops_ub_per_block = None
+        self.outer_loop_start_index_of_var = None
+        self.outer_loop_start_index_of_updates = None
 
     def get_some_basic_info(self):
         """
@@ -608,6 +614,7 @@ class Scatter():
             self.calc_process(self.max_num_one_repeat, index_offset,
                               index_offset, index_offset, last_loop, False)
 
+    # 'pylint: disable=too-many-arguments
     def compute_mask(self, read_index_offset, element_num, tail_ele_num, updates_burst_len, align_offset):
         """
         compute the var and update data according every repeat
@@ -646,6 +653,7 @@ class Scatter():
                 self.out_gm[self.var_read_index + read_index_offset],
                 self.var_ub, 0, 1, updates_burst_len, 0, 0)
 
+    # 'pylint: disable=too-many-arguments
     def calc_process(self, mask, dest_addr, src_addr1, src_addr2, repeat_times,
                      is_tail):
         """
@@ -679,6 +687,7 @@ class Scatter():
                                         self.var_vconv_ub[dest_addr],
                                         repeat_times, 1, 1, 4, 8)
 
+    # 'pylint: disable=too-many-arguments
     def compute_paras(self, mask, dest_addr, src_addr1, src_addr2, repeat_times,
                       is_tail):
         """
@@ -870,6 +879,7 @@ class Scatter():
         return self.tik_instance
 
 
+# 'pylint: disable=too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def inplace_index_add(var, axis_indices, updates, var_out, axis, kernel_name="index_add"):

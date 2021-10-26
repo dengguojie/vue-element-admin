@@ -16,7 +16,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 ifmr
 """
 
-# pylint: disable=import-error
+# 'pylint: disable=import-error
 from math import ceil
 import functools
 from te import tik
@@ -29,12 +29,13 @@ from te.platform import cce_params
 from te.platform.cce_runtime import PIPELINES
 from te.utils import para_check
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=too-many-branches, too-many-statements, too-many-locals, attribute-defined-outside-init
-# pylint: disable=too-many-instance-attributes, no-self-use, too-many-instance-attributes, protected-access
-# pylint: disable=too-few-public-methods
+# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=too-many-branches, too-many-statements, too-many-locals, attribute-defined-outside-init
+# 'pylint: disable=too-many-instance-attributes, no-self-use, too-many-instance-attributes, protected-access
+# 'pylint: disable=too-few-public-methods
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     This class for Constant.
@@ -46,10 +47,11 @@ class Constant:
     ESP = 1.192092896e-07
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 class Barrier:
     """this class should be part of tik."""
-    def emit(self, tik_inst, stmt):
+    @staticmethod
+    def emit(tik_inst, stmt):
         """Emit a statement to the end of current scope.
 
         Parameters
@@ -90,7 +92,9 @@ class Barrier:
                 'int32', 'pipe_barrier', tvm.call_pure_intrin('int32', 'tvm_cce_string_print', 'PIPE_MTE3')))
 
     def sync(self):
-        """ barrier sync func"""
+        """
+        barrier sync func
+        """
         # add pipe_barrier MTE3 here manually
         self.emit(
             self.tik_instance, tvm.call_extern(

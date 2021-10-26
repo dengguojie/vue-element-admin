@@ -24,6 +24,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import error_manager_vector
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     This class for Constant.
@@ -32,7 +33,7 @@ class Constant:
     EPSLON = 1e-6
 
 
-# pylint: disable=too-many-locals,too-many-arguments,unused-argument,invalid-name,too-many-function-args
+# 'pylint: disable=too-many-locals,too-many-arguments,unused-argument,invalid-name,too-many-function-args
 def _check_params(params):
     """
     check parameters

@@ -22,9 +22,9 @@ from te import platform as tbe_platform
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable = locally-disabled,invalid-name,too-many-arguments
-# pylint: disable = unused-argument,no-member
-# pylint: disable=too-many-locals
+# 'pylint: disable = locally-disabled,invalid-name,too-many-arguments
+# 'pylint: disable = unused-argument,no-member
+# 'pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("inplace_add_d")
 def inplace_add_d_compute(x, v, y, indices, kernel_name="inplace_add_d"):
     """

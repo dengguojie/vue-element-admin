@@ -24,7 +24,7 @@ from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name,redefined-builtin
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name,redefined-builtin
 def op_select_format(x, sum, square_sum, kernel_name="in_training_reduce_v2"):
     """
     select format dynamically

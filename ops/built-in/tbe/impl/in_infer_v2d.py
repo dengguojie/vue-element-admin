@@ -25,10 +25,16 @@ from te.utils import para_check
 from te.platform.fusion_manager import fusion_manager
 from impl.util.platform_adapter import error_manager_vector
 
-NONETYPE = type(None)
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    This class for Constant.
+    """
+    NONETYPE = type(None)
 
 
-# pylint: disable=too-many-statements,unused-argument,unused-variable
+# 'pylint: disable=too-many-statements,unused-argument,unused-variable
 def _check_shape(shape, data_format="NC1HWC0", param_name="x"):
     """
      Function to check input tensors dims.
@@ -88,7 +94,7 @@ def _check_dims_equal(shape_x, shape):
                    "H,W")
 
 
-# pylint: disable=locally-disabled,too-many-arguments,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,invalid-name
 def _output_data_y_compute(x, mean, scale, offset, y_sqrt):
     """
     Function to calculate the y, which is a public function
@@ -127,7 +133,7 @@ def _output_data_y_compute(x, mean, scale, offset, y_sqrt):
     return res
 
 
-# pylint: disable=locally-disabled,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-locals
 @fusion_manager.register("in_infer_v2d")
 def instance_norm_inf_compute(x, scale, offset, mean, variance,
                               y_sqrt, kernel_name="in_infer_v2"):

@@ -24,6 +24,7 @@ from te.utils import para_check
 from impl.util.platform_adapter import error_manager_vector
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     This class for Constant.
@@ -31,8 +32,8 @@ class Constant:
     NONETYPE = type(None)
 
 
-# pylint: disable=locally-disabled,too-many-arguments,redefined-builtin
-# pylint: disable=locally-disabled,invalid-name,too-many-locals,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,redefined-builtin
+# 'pylint: disable=locally-disabled,invalid-name,too-many-locals,unused-argument
 
 
 def _check_shape(shape, data_format="NC1HWC0", param_name="x"):
@@ -177,7 +178,7 @@ def in_infer_compute(x,
     return res
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_OUTPUT, para_check.OPTION_OUTPUT,
