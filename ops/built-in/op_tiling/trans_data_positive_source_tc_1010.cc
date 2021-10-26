@@ -42,7 +42,7 @@ int64_t GetCeilFillB(int64_t u_value, int64_t d_value) {
 }
 
 bool GetMcInfoPositive1010(int64_t& dst_cl_lp_cnt, int64_t& vnc_row_cl_left, int64_t& ll_dst_cl_left, int64_t& c_lp_cnt,
-                           int64_t& c_left, int64_t& dst_cr_lp_cnt, int64_t& vnc_row_left, int64_t& ll_dst_cr_left,
+                           int64_t c_left, int64_t& dst_cr_lp_cnt, int64_t vnc_row_left, int64_t ll_dst_cr_left,
                            int64_t& core_num, TransDataMode1010Param& params) {
   int64_t tmp_full_loop_cnt_cr = GetFloorDiv(dst_cr_lp_cnt, core_num) > 0 ? core_num : 0;
   
@@ -132,7 +132,7 @@ bool GetMcInfoPositive1010(int64_t& dst_cl_lp_cnt, int64_t& vnc_row_cl_left, int
   return true;
 }
 
-bool GetCommonParam(int64_t& ub_size, int64_t& block_elem_cnt, int64_t& c0_len, int64_t& axis_c_size,
+bool GetCommonParam(int64_t ub_size, int64_t block_elem_cnt, int64_t c0_len, int64_t axis_c_size,
                     TransDataMode1010Param& params) {
   int64_t half_ub_size;
   if (c0_len == C0_16) {

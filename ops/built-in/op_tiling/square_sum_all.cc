@@ -95,7 +95,7 @@ void PrintRunParams(const SquareSumAllTilingParams& params) {
   OP_LOGD("SquareSumAll", "op [SquareSumAllTiling] : burstLenTailRemainCore=%d.", params.burst_len_tail_remain_core);
 }
 
-int32_t CalcReduceSumLoop(int32_t& calc_num, int64_t& data_each_block, int64_t& dtype_bytes_size) {
+int32_t CalcReduceSumLoop(int32_t calc_num, int64_t data_each_block, int64_t dtype_bytes_size) {
   int64_t remain_num = calc_num;
   int64_t align_value = data_each_block * OP_INPUTS_SIZE;
   int32_t loop_num = 0;
@@ -109,8 +109,8 @@ int32_t CalcReduceSumLoop(int32_t& calc_num, int64_t& data_each_block, int64_t& 
   return loop_num;
 }
 
-void CalcProcessParams(int64_t& ub_size, int64_t& dtype_bytes_size, int64_t& data_each_block,
-                       int32_t& data_num_remain_core, SquareSumAllTilingParams& params) {
+void CalcProcessParams(int64_t ub_size, int64_t dtype_bytes_size, int64_t data_each_block,
+                       int32_t data_num_remain_core, SquareSumAllTilingParams& params) {
   int64_t ub_max_num = ub_size / dtype_bytes_size;
   int32_t process_data_num_each_core = params.data_num_each_core;
   int32_t every_process_data_num = (process_data_num_each_core > (ub_max_num / OP_INPUTS_SIZE)) ?

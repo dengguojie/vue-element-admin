@@ -41,8 +41,8 @@ int64_t GetCeilFillC(int64_t u_value, int64_t d_value) {
   return res_value;
 }
 
-bool GetMcInfoPositive1011(int64_t& axis_dst_r2nd_lp_cnt, int64_t& axis_dst_r2nd_left, int64_t& c_lp_cnt, int64_t& c_left,
-                           int64_t& axis_src_cl_lp_cnt, int64_t& axis_src_cl_left, int64_t& core_num,
+bool GetMcInfoPositive1011(int64_t& axis_dst_r2nd_lp_cnt, int64_t axis_dst_r2nd_left, int64_t& c_lp_cnt, int64_t c_left,
+                           int64_t& axis_src_cl_lp_cnt, int64_t axis_src_cl_left, int64_t& core_num,
                            TransDataMode1011Param& params) {
   int64_t tmp_full_loop_cnt_r2nd = GetFloorDiv(axis_dst_r2nd_lp_cnt, core_num) > 0 ? core_num : 0;
   
@@ -121,7 +121,7 @@ bool GetMcInfoPositive1011(int64_t& axis_dst_r2nd_lp_cnt, int64_t& axis_dst_r2nd
   }
   return true;
 }
-bool GetCommonParam(int64_t& ub_size, int64_t& block_elem_cnt, int64_t& c0_len, int64_t& axis_c_size,
+bool GetCommonParam(int64_t ub_size, int64_t block_elem_cnt, int64_t c0_len, int64_t axis_c_size,
                     TransDataMode1011Param& params) {
   int64_t half_ub_size;
   if (c0_len == C0_16) {

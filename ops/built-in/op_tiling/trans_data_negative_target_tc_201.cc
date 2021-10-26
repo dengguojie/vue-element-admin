@@ -32,8 +32,8 @@ namespace optiling {
 
 const int32_t TC_FRAME_LEVEL = 2;
 
-bool GetMcInfoNegative201(int64_t& dst_r2nd_lp_cnt, int64_t& dst_r2nd_left, int64_t& src_cl_lp_cnt,
-                          int64_t& src_cl_left, int64_t& src_left_lp_cnt, int64_t& src_left_left,
+bool GetMcInfoNegative201(int64_t& dst_r2nd_lp_cnt, int64_t dst_r2nd_left, int64_t& src_cl_lp_cnt,
+                          int64_t src_cl_left, int64_t& src_left_lp_cnt, int64_t src_left_left,
                           int64_t& core_num, TransDataTc201Param& params) {
   int64_t tmp_full_loop_cnt_r2nd;
   if (GetFloorDiv(dst_r2nd_lp_cnt, core_num) > 0) {

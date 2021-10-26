@@ -448,7 +448,7 @@ bool TillingPositiveMode1011(vector<int64_t>& in_shape, vector<int64_t>& out_sha
 
 bool TilingNegativeNtc200(vector<int64_t>& in_shape, vector<int64_t>& out_shape, std::string& src_format,
                             std::string& dst_format, int64_t& core_num, int64_t& block_elem_cnt, DataType& dtype,
-                            int64_t& ub_size, int64_t& vnc_fp32_flag, TransDataNtc200Param& params);
+                            int64_t ub_size, int64_t& vnc_fp32_flag, TransDataNtc200Param& params);
 
 bool TilingNegativeTc201(vector<int64_t>& in_shape, vector<int64_t>& out_shape, std::string& src_format,
                             std::string& dst_format, int64_t& core_num, int64_t& block_elem_cnt, DataType& dtype,

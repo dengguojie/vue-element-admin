@@ -43,8 +43,8 @@ int64_t GetCeilFillA(int64_t u_value, int64_t d_value) {
   return res_value;
 }
 
-bool GetMcInfoNegative200(int64_t& dst_cr_lp_cnt, int64_t& dst_cr_left, int64_t& src_c_lp_cnt, int64_t& src_c_left,
-                          int64_t& dst_cl_lp_cnt, int64_t& dst_cl_left, int64_t& core_num, TransDataNtc200Param& params) {
+bool GetMcInfoNegative200(int64_t& dst_cr_lp_cnt, int64_t dst_cr_left, int64_t& src_c_lp_cnt, int64_t src_c_left,
+                          int64_t& dst_cl_lp_cnt, int64_t dst_cl_left, int64_t& core_num, TransDataNtc200Param& params) {
   int64_t tmp_full_loop_cnt_cr;
   if (GetFloorDiv(dst_cr_lp_cnt, core_num) > 0) {
     tmp_full_loop_cnt_cr = core_num;
@@ -146,7 +146,7 @@ bool GetMcInfoNegative200(int64_t& dst_cr_lp_cnt, int64_t& dst_cr_left, int64_t&
 
 bool TilingNegativeNtc200(vector<int64_t>& in_shape, vector<int64_t>& out_shape, std::string& src_format,
                             std::string& dst_format, int64_t& core_num, int64_t& block_elem_cnt, DataType& dtype,
-                            int64_t& ub_size, int64_t& vnc_fp32_flag, TransDataNtc200Param& params) {
+                            int64_t ub_size, int64_t& vnc_fp32_flag, TransDataNtc200Param& params) {
   if (src_format.length() < 2 || dst_format.length() < 1) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "TilingNegativeNtc200 Failed.");
     return false;
