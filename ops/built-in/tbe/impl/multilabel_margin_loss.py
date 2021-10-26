@@ -255,7 +255,7 @@ class MultilabelMarginLoss:
         """
         compute_is_target_per_core
         Parameters
-        target_loop_index: int 
+        target_loop_index: int
         """
         block_bite_size = 32
 

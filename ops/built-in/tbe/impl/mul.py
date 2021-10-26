@@ -837,7 +837,7 @@ def mul_compute(input_x, input_y, output_data, is_scene_1d=False, kernel_name="m
     return res
 
 
-# 'pylint: disable=too-many-arguments,unused-argument,bad-continuation
+# 'pylint: disable=too-many-arguments, unused-argument, bad-continuation
 def _mul_compute_ex(input_x, input_y, shape_x, shape_y, shape_max):
     """
     _mul_compute_ex

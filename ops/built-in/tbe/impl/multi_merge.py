@@ -23,6 +23,7 @@ from impl.merge_sort import CommonMethod
 from impl.merge_sort import MergeSort
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class MultiMerge:
     """
     MultiMerge
