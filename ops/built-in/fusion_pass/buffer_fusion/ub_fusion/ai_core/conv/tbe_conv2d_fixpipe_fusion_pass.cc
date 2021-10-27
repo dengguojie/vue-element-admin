@@ -17,6 +17,7 @@
 #include "tbe_conv2d_fixpipe_fusion_pass.h"
 #include <string>
 #include <vector>
+#include <unordered_set>
 #include "op_log.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/buffer_fusion/buffer_fusion_pass_registry.h"
@@ -34,7 +35,7 @@ static const int kFusionOpNumMax = 10;
 static const string kFusedOpType = "FusedOp";
 
 // white list of OP_PATTERN_ELEMWISE
-static const vector<string> kWhiteListOfElemwiseNode = { "LeakyRelu", "Relu", "PRelu" };
+static const std::unordered_set<string> kWhiteListOfElemwiseNode = { "LeakyRelu", "Relu", "PRelu" };
 
 /*
  * @brief: define transdata_cube fusion pattern
@@ -78,14 +79,14 @@ vector<BufferFusionPattern *> TbeConv2DFixpipeFusionPass::DefinePatterns() {
 }
 
 bool TbeConv2DFixpipeFusionPass::IsInWhiteListOfElemwiseOp(const vector<ge::NodePtr> &elemwise_nodes) {
-  for (auto elemwise_node : elemwise_nodes) {
+  for (auto &elemwise_node : elemwise_nodes) {
     string op_type = elemwise_node->GetType();
-    auto iter = find(kWhiteListOfElemwiseNode.begin(), kWhiteListOfElemwiseNode.end(), op_type);
-    if (iter == kWhiteListOfElemwiseNode.end()) {
+    auto count = kWhiteListOfElemwiseNode.count(op_type);
+    if (count == 0) {
       OP_LOGD(kFusedOpType.c_str(), "node:%s[type:%s] not in elemwise white_list.",
               elemwise_node->GetName().c_str(), op_type.c_str());
       return false;
-    }else if (op_type == "LeakyRelu" or op_type == "PRelu") {
+    } else if (op_type == "LeakyRelu" or op_type == "PRelu") {
       if (elemwise_node->GetOpDesc()->GetInputDesc(0).GetDataType() != ge::DT_FLOAT16) {
         OP_LOGD(kFusedOpType.c_str(), "node:%s[type:%s] only support fp16.",
                 elemwise_node->GetName().c_str(), op_type.c_str());
@@ -123,9 +124,9 @@ void TbeConv2DFixpipeFusionPass::CheckCubeSupportTransNodes(const vector<ge::Nod
     return;
   }
   ge::NodePtr cube_node = cube_nodes.at(0);
-  int64_t group = -1;
+  int64_t group = 1;
   (void)ge::AttrUtils::GetInt(cube_node->GetOpDesc(), "groups", group);
-  bool no_group = group == 1;
+  bool no_group = (group == 1);
   if (cube_node->GetType() == "Conv2D") {
     if (!transdata1_nodes.empty()) {
       bool weight_trans = true;
@@ -169,9 +170,8 @@ Status TbeConv2DFixpipeFusionPass::GetFusionNodes(const BufferFusionMapping &map
     OP_LOGW(kFusedOpType.c_str(), "Get platform info failed, not fusion.");
     return SUCCESS;
   }
-  if (optionalInfo.soc_version != "Ascend920A") {
-    OP_LOGD(kFusedOpType.c_str(), "Fixpipe fusion pass not support this soc version[%s].",
-            optionalInfo.soc_version.c_str());
+  if (platformInfo.ai_core_spec.cube_vector_split != 1) {
+    OP_LOGD(kFusedOpType.c_str(), "Fusion pass not support cube vector split.");
     return SUCCESS;
   }
   fusion_nodes = GetMatchedNodes(mapping);

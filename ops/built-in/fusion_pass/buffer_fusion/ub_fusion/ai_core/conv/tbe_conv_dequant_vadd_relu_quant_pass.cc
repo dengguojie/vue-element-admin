@@ -489,9 +489,8 @@ Status ConvDequantVaddReluQuantFusionPass::GetFusionNodes(const BufferFusionMapp
     OP_LOGW(fused_op_type_.c_str(), "Get platform info failed, not fusion.");
     return SUCCESS;
   }
-  if (optionalInfo.soc_version == "Ascend920A") {
-    OP_LOGD(fused_op_type_.c_str(), "Fusion pass not support this soc version[%s].",
-            optionalInfo.soc_version.c_str());
+  if (platformInfo.ai_core_spec.cube_vector_split == 1) {
+    OP_LOGD(fused_op_type_.c_str(), "Fusion pass not support cube vector split.");
     return SUCCESS;
   }
   bool use_common_rules_flag = true;
