@@ -106,7 +106,11 @@ install_package() {
 main() {
   local task_type="$1"
   local pr_file="$2"
-  if [[ ! -f "${pr_file}" ]]; then
+  if [[ "${pr_file}" == "auto_schedule" ]];then
+      install_sch_all_stest
+      install_sch_script
+      TEST_TARGET="${CANN_OUTPUT}/${SCH_TESTCASE_DIR}.tar"
+  elif [[ ! -f "${pr_file}" ]]; then
     if [[ "${task_type}" == "st" ]]; then
       echo "[Info] pr_file contains nothing,install all st case"
       install_all_stest
@@ -115,10 +119,6 @@ main() {
       echo "[ERROR] A input file that contains files changed is required"
       exit $STATUS_SUCCESS
     fi
-  elif [[ "${pr_file}" == "auto_schedule" ]];then
-      install_sch_all_stest
-      install_sch_script
-      TEST_TARGET="${CANN_OUTPUT}/${SCH_TESTCASE_DIR}.tar"
   else
     ops_str=`cat ${pr_file} | awk -F\/ '{print $1}' | grep -v "auto_schedule"`
     if [[ -n "${ops_str}" ]]; then
