@@ -255,16 +255,15 @@ def roi_align_v200_001(test_arg):
 
 
 def roi_align_v200_002(test_arg):
-    set_current_compile_soc_info("Ascend710", core_type="VectorCore")
-    roi_align({"shape": (3, 1, 5, 5, 16), "dtype": "float16", "format": "NC1HWC0",
-               "ori_shape": (3, 1, 5, 5), "ori_format": "NHWC"},
-              {"shape": (3, 5), "dtype": "float16", "format": "NHWC",
-               "ori_shape": (3, 5), "ori_format": "NHWC"},
-              {"shape": (3,), "dtype": "float16", "format": "NHWC",
-               "ori_shape": (3,), "ori_format": "NHWC"},
-              {"shape": (1, 1, 10, 10, 16), "dtype": "float16", "format": "NC1HWC0",
-               "ori_shape": (1, 1, 10, 10), "ori_format": "NHWC"},
-              0.25, 5, 5, 2, 0)
+    set_current_compile_soc_info("Ascend610")
+    roi_align({"shape": (1, 1, 58, 90, 16), "dtype": "float16", "format": "NC1HWC0",
+               "ori_shape": (1, 16, 58, 90), "ori_format": "NHWC"},
+              {"shape": (96, 4), "dtype": "float16", "format": "NHWC",
+               "ori_shape": (96, 4), "ori_format": "NHWC"},
+              None,
+              {"shape": (96, 1, 7, 7, 16), "dtype": "float16", "format": "NC1HWC0",
+               "ori_shape": (96, 16, 7, 7), "ori_format": "NHWC"},
+              0.25, 7, 7, 2, 1)
 
     set_current_compile_soc_info(test_arg)
 
@@ -299,6 +298,6 @@ def roi_align_v200_004(test_arg):
 
 
 ut_case.add_cust_test_func(test_func=roi_align_v200_001)
-# ut_case.add_cust_test_func(test_func=roi_align_v200_002)
+ut_case.add_cust_test_func(test_func=roi_align_v200_002)
 ut_case.add_cust_test_func(test_func=roi_align_v200_003)
 ut_case.add_cust_test_func(test_func=roi_align_v200_004)

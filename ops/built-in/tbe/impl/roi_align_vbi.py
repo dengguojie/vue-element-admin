@@ -673,18 +673,19 @@ def _get_vbi_weights_1x1grid(tik_instance, point_weights_fp32, flag='None'):
                                       scope=tbe_platform.scope_ubuf)
     v_repeat_times = (POOL_H * POOL_W + SEVEN) // EIGHT
 
-    src_list1 = [vbi_tmp_weights_res[0, 0], vbi_tmp_weights_res[TWO, 0]]
-    src_list2 = [vbi_tmp_weights_res[ONE, 0], vbi_tmp_weights_res[THREE, 0]]
-
-    dst_list1 = [vbi_weights[0 * SIXTEEN, ], vbi_weights[ONE * SIXTEEN, ]]
-    dst_list2 = [vbi_weights[0 * SIXTEEN, ], vbi_weights[ONE * SIXTEEN, ]]
-
     tik_instance.vector_dup(VBI_NUM_ELEMENTS_ONEROW * TWO, vbi_weights[0, ],
                             0, TWO, ONE, SEVEN)
-    tik_instance.scatter_vconv(SIXTEEN, "", dst_list1, src_list1,
-                               v_repeat_times, TWO, ONE, None, False)
-    tik_instance.scatter_vconv(SIXTEEN, "", dst_list2, src_list2,
-                               v_repeat_times, TWO, ONE, None, True)
+    dst_ub = tik_instance.Tensor("float32", [VBI_NUM_ELEMENTS_ONEROW * FOUR, ],
+                                name="dst_ub", scope=tbe_platform.scope_ubuf)
+    tik_instance.data_move(dst_ub, vbi_tmp_weights_res[0, 0], 0,
+                            SEVEN, ONE, 0, THREE)
+    tik_instance.data_move(dst_ub[EIGHT], vbi_tmp_weights_res[ONE, 0], 
+                            0, SEVEN, ONE, 0, THREE)
+    tik_instance.data_move(dst_ub[TWO * EIGHT], vbi_tmp_weights_res[TWO, 0], 
+                            0, SEVEN, ONE, 0, THREE)
+    tik_instance.data_move(dst_ub[THREE * EIGHT], vbi_tmp_weights_res[THREE, 0], 
+                            0, SEVEN, ONE, 0, THREE)
+    tik_instance.vec_conv(TWO * SIXTEEN, "", vbi_weights, dst_ub, SEVEN, TWO, FOUR)
     return vbi_weights
 
 
