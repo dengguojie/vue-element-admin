@@ -138,6 +138,7 @@ set(_onnx_plugins
   reduce_log_sum_exp_plugin.cc
   trilu_plugin.cc
   maxunpool_plugin.cc
+  custom/col2im_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
