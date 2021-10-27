@@ -60,6 +60,7 @@ def get_op_support_info(input_x, # pylint: R0913,R0914,W0613
     get the batch_matmul_v2 split, which only split batch, m and n, cannot cut k with bias
 
     """
+
     format_a = input_x.get("format")
     format_b = input_y.get("format")
     a_shape = input_x.get("shape")
@@ -384,6 +385,11 @@ def check_supported(input_x,
     shape_a = input_x.get("ori_shape")
     shape_b = input_y.get("ori_shape")
     src_dtype = input_x.get("dtype")
+    if input_y.get("format") == "FRACTAL_ZN_RNN":
+        input_y["format"] = "FRACTAL_Z"
+        temp_ori_shape = input_y.get("shape")
+        shape_b = [temp_ori_shape[0] * 16, temp_ori_shape[1] * 16]
+        input_y["ori_shape"] = shape_b
 
     if any(v == 0 for v in shape_a) or any(v == 0 for v in shape_b):
         reason = "cannot support dim 0, shape_a:%s, shape_b:%s" \
@@ -670,6 +676,11 @@ def batch_matmul_v2(input_x, input_y, bias=None, offset_w={}, output_z={}, trans
     shape_b = input_y.get("ori_shape")
     shape_a_length = len(shape_a)
     shape_b_length = len(shape_b)
+    if input_y.get("format") == "FRACTAL_ZN_RNN":
+        input_y["format"] = "FRACTAL_Z"
+        temp_ori_shape = input_y.get("shape")
+        shape_b = [temp_ori_shape[0] * 16, temp_ori_shape[1] * 16]
+        input_y["ori_shape"] = shape_b
     if shape_a is not None:
         if shape_a_length < 2:
             shape_a = list(shape_a)

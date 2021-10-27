@@ -222,6 +222,17 @@ case18 = {"params": [{"shape": (128, 1, 16, 16), "dtype": "float16", "format": "
          "expect": "success",
          "support_expect": True}
 
+case19 = {"params": [{"shape": (128, 1, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (16, 2048),"ori_format": "ND"}, #x
+                    {"shape": (36, 128, 16, 16), "dtype": "float16", "format": "FRACTAL_ZN_RNN", "ori_shape": (576, 2048),"ori_format": "ND"},
+                    None,
+                    None,
+                    {"shape": (1, 36, 16, 16), "dtype": "float32", "format": "FRACTAL_NZ", "ori_shape": (1, 36, 16, 16),"ori_format": "FRACTAL_NZ"},
+                    False,True
+                    ],
+         "case_name": "BatchMatmulv2_19",
+         "expect": "success",
+         "support_expect": True}
+
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
@@ -233,6 +244,7 @@ ut_case.add_case(["Ascend920A"], case15)
 ut_case.add_case(["Ascend910A"], case16)
 ut_case.add_case(["Ascend910A"], case17)
 ut_case.add_case(["Ascend910A"], case18)
+ut_case.add_case(["Ascend910A"], case19)
 
 def test_split_batch_matmul_v2(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (16, 1, 2, 16, 16), "ori_shape": (16, 32, 16)}
@@ -261,6 +273,7 @@ def test_op_check_supported(test_arg):
     _test_supported(case9)
     _test_supported(case10)
     _test_supported(case15)
+    _test_supported(case19)
 
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 

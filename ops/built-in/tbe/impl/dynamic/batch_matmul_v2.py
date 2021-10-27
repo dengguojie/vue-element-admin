@@ -146,6 +146,8 @@ def base_op_select_format(src_fp16_flag):
                            (("int32", "ND"), ("int32", "ND"), ("int32", "ND"), ("int8", "ND"), ("int32", "ND")),]
 
     fp32_out_scenatio = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_NZ"), ("float", "ND"), ("int8", "ND"), ("float", "FRACTAL_NZ")),]
+    rnn_fp32_out_scenatio = [(("float16", "FRACTAL_NZ"), ("float16", "FRACTAL_ZN_RNN"), ("float", "ND"), ("int8", "ND"),
+                              ("float", "FRACTAL_NZ")), ]
 
     # ND input and output scenario
     nd_case_scenario = [(("float16", "ND"), ("float16", "ND"), ("float16", "ND"), ("int8", "ND"), ("float16", "ND")),
@@ -158,7 +160,8 @@ def base_op_select_format(src_fp16_flag):
     dyn_case_scenario_list = base_case_scenario + nd_case_scenario
     # Construct scenario list for static
     if src_fp16_flag:
-        full_case_scenario_list = base_case_scenario + fp32_out_scenatio + nd_case_scenario + nd_fp32out_scenario
+        full_case_scenario_list = base_case_scenario + fp32_out_scenatio + nd_case_scenario \
+                                  + nd_fp32out_scenario + rnn_fp32_out_scenatio
     else:
         full_case_scenario_list = base_case_scenario + base_quant_case_scenario + quant_case_scenario
     return dyn_case_scenario_list, full_case_scenario_list

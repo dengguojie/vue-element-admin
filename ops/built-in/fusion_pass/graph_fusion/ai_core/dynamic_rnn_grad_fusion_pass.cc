@@ -1517,6 +1517,13 @@ Status DynamicRNNGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mappin
     return NOT_CHANGED;
   }
 
+  int64_t  input_dim = dynamicRNNGradNode->GetOpDesc()->GetInputDesc(0).GetShape().GetDim(2);
+  int64_t  hidden_dim = dynamicRNNGradNode->GetOpDesc()->GetInputDesc(4).GetShape().GetDim(1);
+  if (hidden_dim % 16 != 0 || input_dim % 16 != 0) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "inputsize or hiddensize is not 16 align, will not changed");
+    return NOT_CHANGED;
+  }
+
   // add lstmInputGrad
   OP_LOGI(FUSED_OP_TYPE.c_str(), "start add lstmInputGradNode.");
   ge::NodePtr lstmInputGradNode = AddLSTMInputGradNode(dynamicRNNGradNode, graph, newNodes, failStatus);
