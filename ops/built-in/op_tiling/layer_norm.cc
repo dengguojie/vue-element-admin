@@ -112,7 +112,8 @@ int32_t CalcPatternKey(std::vector<int64_t> input, const std::vector<int32_t> &r
   return pattern;
 }
 
-int32_t CalcTilingKey(CompileInfo &commoninfo, std::vector<int64_t> input_x, TilingParams tilingparams,
+int32_t CalcTilingKey(const CompileInfo &commoninfo, const std::vector<int64_t> &input_x,
+                      const TilingParams tilingparams,
                       const std::vector<int32_t> &reduce_axis) {
   int32_t key = 0;
   int32_t block_split_axis = tilingparams.block_tiling_axis;
