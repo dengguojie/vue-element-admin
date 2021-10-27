@@ -59,6 +59,7 @@ set(local_kernels_src_files
     kernels/normalized/resize_bilinear.cc
     kernels/normalized/resize_bilinear_grad.cc
     kernels/normalized/round.cc
+    kernels/normalized/rsqrt.cc
     kernels/normalized/scatter_elements.cc
     kernels/normalized/search_sorted.cc
     kernels/normalized/sign.cc

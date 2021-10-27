@@ -132,6 +132,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/resize_bilinear.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/resize_bilinear_grad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/round.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/rsqrt.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/scatter_elements.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/search_sorted.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/sign.cc
@@ -286,6 +287,7 @@ set(_cpu_kernels_ut_files
   testcase/resize_bilinear/src/resize_bilinear_grad_utest.cpp
   testcase/resize_bilinear/src/resize_bilinear_utest.cpp
   testcase/round/src/round_utest.cpp
+  testcase/rsqrt/src/rsqrt_utest.cpp
   testcase/scatter_elements/src/scatter_elements_utest.cpp
   testcase/search_sorted/src/search_sorted_kernel_utest.cpp
   testcase/sign/src/sign_utest.cpp
