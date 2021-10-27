@@ -57,7 +57,7 @@ void InitROIAlignParams(ROIAlignTilingParams& params) {
   params.x_width = 1;
 }
 
-void SetROIAlignParams(ROIAlignTilingParams& Params, OpRunInfo& runInfo) {
+void SetROIAlignParams(const ROIAlignTilingParams& Params, OpRunInfo& runInfo) {
   // set tiling data
   ByteBufferPut(runInfo.tiling_data, Params.tilingMode);
   ByteBufferPut(runInfo.tiling_data, Params.real_core_num);

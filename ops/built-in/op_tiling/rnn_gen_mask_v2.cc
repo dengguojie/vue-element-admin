@@ -63,7 +63,7 @@ namespace optiling{
     return tiling_mode;
   }
     
-  static void CalCoreInfo(RnnGenMaskV2TilingParams &tiling_params, int32_t & core_num, std::vector<int64_t> & x_shape)
+  static void CalCoreInfo(RnnGenMaskV2TilingParams &tiling_params, int32_t core_num, const std::vector<int64_t> & x_shape)
   {
     OP_LOGD("CalCoreInfo is running");
     int32_t batch = x_shape[1];

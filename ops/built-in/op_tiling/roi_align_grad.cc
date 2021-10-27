@@ -57,7 +57,7 @@ void InitROIAlignGradParams(ROIAlignGradTilingParams& params) {
   params.x_width = 1;
 }
 
-void SetROIAlignGradParams(ROIAlignGradTilingParams& Params, OpRunInfo& runInfo) {
+void SetROIAlignGradParams(const ROIAlignGradTilingParams& Params, OpRunInfo& runInfo) {
   // set tiling data
   ByteBufferPut(runInfo.tiling_data, Params.tilingMode);
   ByteBufferPut(runInfo.tiling_data, Params.real_core_num);

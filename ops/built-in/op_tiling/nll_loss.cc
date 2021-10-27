@@ -229,7 +229,7 @@ void RecursiveTiling(int64_t& ub_max_line, int64_t& need_core_num, int64_t& n_si
                       last_core_loop_cnt, last_core_left_size);
 }
 
-void NLLLossCommonTiling(int64_t& bytes, int64_t& core_num, int64_t& ub_size, int64_t& need_core_num, int64_t& n_size,
+void NLLLossCommonTiling(int64_t& bytes, int64_t core_num, int64_t& ub_size, int64_t& need_core_num, int64_t& n_size,
                          int64_t& c_size, int64_t& per_core_size, int64_t& per_core_loop_cnt,
                          int64_t& per_core_left_size, int64_t& last_core_size, int64_t& last_core_loop_cnt,
                          int64_t& last_core_left_size, int64_t& ub_max_line, int64_t& min_aligned, bool is_left_data) {
