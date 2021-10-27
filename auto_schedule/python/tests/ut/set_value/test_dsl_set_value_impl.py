@@ -17,7 +17,7 @@ def dsl_dync_softmax(input_x, y, axis=-1, kernel_name="dsl_dync_softmax"):
     tbe_context.get_context().add_compile_info("kernel_name", "SoftmaxV2")
     if isinstance(axis, int):
         axis = [axis]
-    
+
     with tbe.dsl.compute():
         new_shape = []
         a = operation.var("a")
@@ -25,7 +25,7 @@ def dsl_dync_softmax(input_x, y, axis=-1, kernel_name="dsl_dync_softmax"):
         b = operation.var("b")
         new_shape.append(b)
         axis = [1]
-        
+
         data_input = tvm.placeholder(new_shape, dtype=dtype, name="data")
 
         a_shape = shape_util.shape_to_list(data_input.shape)
@@ -59,24 +59,18 @@ def dsl_dync_softmax(input_x, y, axis=-1, kernel_name="dsl_dync_softmax"):
     tbe.dsl.build(schedules, config)
 
 
+def test_dsl_set_value_interface_0(_):
+    input_x = tvm.placeholder([1, 2, 1, 1, 8], dtype="float32", name="input_x")
+    input_x_pad = tbe.dsl.set_value(input_x, lambda *i: tvm.all(i[1] > 0, i[4] > 1), 0)
+    return isinstance(input_x_pad, tvm.tensor.Tensor)
+
+def test_dsl_set_value_interface_1(_):
+    input_x = tvm.placeholder([1, 2, 1, 1, 8], dtype="float32", name="input_x")
+    input_x_pad = tbe.dsl.set_value(input_x, lambda *i: tvm.all(i[1] > 0, i[4] > 1), lambda *i: input_x[i[0], i[1], i[2], i[3], 0])
+    return isinstance(input_x_pad, tvm.tensor.Tensor)
+
+
 ut_case = OpUT("SoftmaxV2", "softmax.test_dynamic_softmax_schedule_op_impl", "dsl_dync_softmax")
+ut_case.add_cust_test_func(test_func=test_dsl_set_value_interface_0)
+ut_case.add_cust_test_func(test_func=test_dsl_set_value_interface_1)
 
-case1 = {
-    "params": [{
-        "shape": (-1,-1),
-        "dtype": "float16",
-        "range": [(1, None), (1, None)]
-    }, {
-        "shape": (-1, -1),
-        "dtype": "float16",
-        "range": [(1, None), (1, None)]
-    }, -1],
-    "case_name":
-        "test_dync_softmax_1",
-    "expect":
-        "success",
-    "support_expect":
-        True
-}
-
-ut_case.add_case(["Ascend910A"], case1)

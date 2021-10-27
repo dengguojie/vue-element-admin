@@ -82,7 +82,8 @@
         "vlrelu",
         "clip",
         "dsl_cpu/test_nn_cpu_impl.py",
-        "context/test_dynamic_nn_impl.py"
+        "context/test_dynamic_nn_impl.py",
+	"set_value"
     ],
     "auto_schedule/python/tbe/dsl/compute/reduce.py":[
         "reduce_max",

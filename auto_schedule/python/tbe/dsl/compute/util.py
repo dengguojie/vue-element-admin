@@ -611,6 +611,14 @@ DSL_CHECK_SUPPORT_MAP = {
         ASCEND_610: ("float16", "float32", "int8", "uint8", "int32", "bool"),
         ASCEND_615: ("float16", "float32", "int8", "uint8", "int32", "bool"),
     },
+    "set_value": {
+        "AllSoc": ("float16", "float32"),
+        ASCEND_910: ("float16", "float32"),
+        ASCEND_920A: ("float16", "float32"),
+        ASCEND_710: ("float16", "float32"),
+        ASCEND_610: ("float16", "float32"),
+        ASCEND_615: ("float16", "float32"),
+    },
 
     # common
     "clip": {

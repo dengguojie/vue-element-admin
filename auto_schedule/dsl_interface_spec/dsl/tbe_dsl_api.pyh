@@ -80,6 +80,8 @@ def clip(data, max_value, min_value):
 
 def broadcast(var, shape, output_dtype=None):
 
+def set_value(tensor, condition, value):
+
 def reduce_sum(raw_tensor, axis, keepdims=False):
 
 def reduce_min(raw_tensor, axis, keepdims=False, impl_mode="high_performance"):

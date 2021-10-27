@@ -746,6 +746,23 @@ def broadcast(var, shape, output_dtype=None):
     return nn.broadcast(var, shape, output_dtype)
 
 
+def set_value(tensor, condition, value):
+    """
+    set specified value.
+    Parameters
+    ----------
+    tensor: tvm.tensor
+
+    condition: lambda expr
+
+    value: const, variable or lambda expr
+    Returns
+    -------
+    wrapped_tensor: updated tensor
+    """
+    return nn.set_value(tensor, condition, value)
+
+
 def reduce_sum(raw_tensor, axis, keepdims=False):
     """
     calculate reduce_sum of raw_tensor, only support float16

@@ -59,6 +59,7 @@ from .api import vrelu
 from .api import vlrelu
 from .api import clip
 from .api import broadcast
+from .api import set_value
 
 from .api import reduce_sum
 from .api import reduce_min
