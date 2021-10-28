@@ -11,7 +11,10 @@ class TestUtilsMethods(unittest.TestCase):
         input_desc = {'format': 'NHWC', 'shape': [2], 'type': 'int32',
                       'value': [48, 48],
                       'is_const': True, 'name': 'x2'}
-        const_input.deal_with_const(input_desc)
+        for_fuzz = True
+        const_input.deal_with_const(input_desc, for_fuzz)
+        for_fuzz = False
+        const_input.deal_with_const(input_desc, for_fuzz)
 
     def test_get_acl_const_status_with_value(self):
         desc_dict = {'format': 'NHWC', 'shape': [2], 'type': 'int32',

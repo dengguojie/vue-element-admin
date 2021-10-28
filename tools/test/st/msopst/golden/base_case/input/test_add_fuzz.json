@@ -32,16 +32,9 @@
                 "type": [
                     "float16"
                 ],
-                "shape": "fuzz",
-                "data_distribute": [
-                    "uniform"
-                ],
-                "value_range": [
-                    [
-                        0.1,
-                        1.0
-                    ]
-                ],
+                "shape": [2],
+                "is_const": true,
+                "value": [1,2],
                 "name": "x2"
             }
         ],

@@ -19,11 +19,11 @@ OP_TEST(Add, Test_Add_001_fuzz_case_001)
     std::string opType = "Add";
     OpTestDesc opTestDesc(opType);
     // input parameter init
-    opTestDesc.inputShape = {{1, 2}, {1, 2}};
+    opTestDesc.inputShape = {{1, 2}, {2}};
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
     opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_fuzz_case_001_input_0", "test_data/data/Test_Add_001_fuzz_case_001_input_1"};
-    opTestDesc.inputConst = {false, false};
+    opTestDesc.inputConst = {false, true};
     // output parameter init
     opTestDesc.outputShape = {{1, 2}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
@@ -44,11 +44,11 @@ OP_TEST(Add, Test_Add_001_fuzz_case_002)
     std::string opType = "Add";
     OpTestDesc opTestDesc(opType);
     // input parameter init
-    opTestDesc.inputShape = {{1, 2}, {1, 2}};
+    opTestDesc.inputShape = {{1, 2}, {2}};
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
     opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_fuzz_case_002_input_0", "test_data/data/Test_Add_001_fuzz_case_002_input_1"};
-    opTestDesc.inputConst = {false, false};
+    opTestDesc.inputConst = {false, true};
     // output parameter init
     opTestDesc.outputShape = {{1, 2}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
@@ -69,11 +69,11 @@ OP_TEST(Add, Test_Add_001_fuzz_case_003)
     std::string opType = "Add";
     OpTestDesc opTestDesc(opType);
     // input parameter init
-    opTestDesc.inputShape = {{1, 2}, {1, 2}};
+    opTestDesc.inputShape = {{1, 2}, {2}};
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
     opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_fuzz_case_003_input_0", "test_data/data/Test_Add_001_fuzz_case_003_input_1"};
-    opTestDesc.inputConst = {false, false};
+    opTestDesc.inputConst = {false, true};
     // output parameter init
     opTestDesc.outputShape = {{1, 2}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
@@ -94,11 +94,11 @@ OP_TEST(Add, Test_Add_001_fuzz_case_004)
     std::string opType = "Add";
     OpTestDesc opTestDesc(opType);
     // input parameter init
-    opTestDesc.inputShape = {{1, 2}, {1, 2}};
+    opTestDesc.inputShape = {{1, 2}, {2}};
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
     opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_fuzz_case_004_input_0", "test_data/data/Test_Add_001_fuzz_case_004_input_1"};
-    opTestDesc.inputConst = {false, false};
+    opTestDesc.inputConst = {false, true};
     // output parameter init
     opTestDesc.outputShape = {{1, 2}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
@@ -119,11 +119,11 @@ OP_TEST(Add, Test_Add_001_fuzz_case_005)
     std::string opType = "Add";
     OpTestDesc opTestDesc(opType);
     // input parameter init
-    opTestDesc.inputShape = {{1, 2}, {1, 2}};
+    opTestDesc.inputShape = {{1, 2}, {2}};
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
     opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_fuzz_case_005_input_0", "test_data/data/Test_Add_001_fuzz_case_005_input_1"};
-    opTestDesc.inputConst = {false, false};
+    opTestDesc.inputConst = {false, true};
     // output parameter init
     opTestDesc.outputShape = {{1, 2}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
@@ -144,11 +144,11 @@ OP_TEST(Add, Test_Add_001_fuzz_case_006)
     std::string opType = "Add";
     OpTestDesc opTestDesc(opType);
     // input parameter init
-    opTestDesc.inputShape = {{1, 2}, {1, 2}};
+    opTestDesc.inputShape = {{1, 2}, {2}};
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
     opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_fuzz_case_006_input_0", "test_data/data/Test_Add_001_fuzz_case_006_input_1"};
-    opTestDesc.inputConst = {false, false};
+    opTestDesc.inputConst = {false, true};
     // output parameter init
     opTestDesc.outputShape = {{1, 2}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
@@ -169,11 +169,11 @@ OP_TEST(Add, Test_Add_001_fuzz_case_007)
     std::string opType = "Add";
     OpTestDesc opTestDesc(opType);
     // input parameter init
-    opTestDesc.inputShape = {{1, 2}, {1, 2}};
+    opTestDesc.inputShape = {{1, 2}, {2}};
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
     opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_fuzz_case_007_input_0", "test_data/data/Test_Add_001_fuzz_case_007_input_1"};
-    opTestDesc.inputConst = {false, false};
+    opTestDesc.inputConst = {false, true};
     // output parameter init
     opTestDesc.outputShape = {{1, 2}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
@@ -194,11 +194,11 @@ OP_TEST(Add, Test_Add_001_fuzz_case_008)
     std::string opType = "Add";
     OpTestDesc opTestDesc(opType);
     // input parameter init
-    opTestDesc.inputShape = {{1, 2}, {1, 2}};
+    opTestDesc.inputShape = {{1, 2}, {2}};
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
     opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_fuzz_case_008_input_0", "test_data/data/Test_Add_001_fuzz_case_008_input_1"};
-    opTestDesc.inputConst = {false, false};
+    opTestDesc.inputConst = {false, true};
     // output parameter init
     opTestDesc.outputShape = {{1, 2}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
@@ -219,11 +219,11 @@ OP_TEST(Add, Test_Add_001_fuzz_case_009)
     std::string opType = "Add";
     OpTestDesc opTestDesc(opType);
     // input parameter init
-    opTestDesc.inputShape = {{1, 2}, {1, 2}};
+    opTestDesc.inputShape = {{1, 2}, {2}};
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
     opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_fuzz_case_009_input_0", "test_data/data/Test_Add_001_fuzz_case_009_input_1"};
-    opTestDesc.inputConst = {false, false};
+    opTestDesc.inputConst = {false, true};
     // output parameter init
     opTestDesc.outputShape = {{1, 2}};
     opTestDesc.outputDataType = {ACL_FLOAT16};
@@ -244,11 +244,11 @@ OP_TEST(Add, Test_Add_001_fuzz_case_010)
     std::string opType = "Add";
     OpTestDesc opTestDesc(opType);
     // input parameter init
-    opTestDesc.inputShape = {{1, 2}, {1, 2}};
+    opTestDesc.inputShape = {{1, 2}, {2}};
     opTestDesc.inputDataType = {ACL_FLOAT16, ACL_FLOAT16};
     opTestDesc.inputFormat = {(aclFormat)2, (aclFormat)2};
     opTestDesc.inputFilePath = {"test_data/data/Test_Add_001_fuzz_case_010_input_0", "test_data/data/Test_Add_001_fuzz_case_010_input_1"};
-    opTestDesc.inputConst = {false, false};
+    opTestDesc.inputConst = {false, true};
     // output parameter init
     opTestDesc.outputShape = {{1, 2}};
     opTestDesc.outputDataType = {ACL_FLOAT16};

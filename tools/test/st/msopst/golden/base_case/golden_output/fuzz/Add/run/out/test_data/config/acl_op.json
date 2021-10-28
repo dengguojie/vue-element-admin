@@ -11,10 +11,14 @@
         "type": "float16"
       },
       {
+        "const_value": [
+          1,
+          2
+        ],
         "format": "ND",
+        "is_const": true,
         "name": "x2",
         "shape": [
-          1,
           2
         ],
         "type": "float16"

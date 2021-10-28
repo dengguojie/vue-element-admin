@@ -555,13 +555,16 @@ class ConstInput:
             raise OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
         return True
 
-    def deal_with_const(self, input_desc):
+    def deal_with_const(self, input_desc, for_fuzz):
         """
         Function: Update is_const field in input_desc dict.
         return:
         """
         if self._check_is_const():
-            input_desc.update({ConstManager.IS_CONST: [self.is_const]})
+            if for_fuzz:
+                input_desc.update({ConstManager.IS_CONST: self.is_const})
+            else:
+                input_desc.update({ConstManager.IS_CONST: [self.is_const]})
 
     @staticmethod
     def add_const_info_in_acl_json(desc_dict, res_desc_dic):
