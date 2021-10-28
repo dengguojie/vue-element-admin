@@ -15,7 +15,7 @@
 """
 tile_with_axis
 """
-# pylint: disable=import-error
+# 'pylint: disable=import-error
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import para_check
@@ -153,8 +153,8 @@ def tile_with_axis(input_x, output_y, tiles, axis=1, kernel_name="tile_with_axis
             if ori_axis_value != 1:
                 shape_y[axis + 1] = shape_x[axis + 1]
 
-            for i in range(len(shape_y)):
-                if shape_y[i] == -1:
+            for i, shape_value in enumerate(shape_y):
+                if shape_value == -1:
                     shape_y[i] = shape_x[i]
 
             data_x = tvm.placeholder(shape_x, name="data_x", dtype=dtype_x)

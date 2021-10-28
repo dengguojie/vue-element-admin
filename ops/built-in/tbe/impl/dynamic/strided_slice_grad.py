@@ -20,7 +20,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
 
-# 'pylint: disable=unused-argument,too-many-arguments
+# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
 def check_supported(shape, begin, end, strides, dy, output, begin_mask=0,
                     end_mask=0, ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,
                     kernel_name="strided_slice_grad_d"):
@@ -53,7 +53,7 @@ def check_supported(shape, begin, end, strides, dy, output, begin_mask=0,
                  % (shrink_axis_mask, supported_shrink_axis_mask)
         check_result = False, reason
 
-    if len(shape) == 0:
+    if "const_value" in shape.keys() and not shape.get("const_value"):
         reason = "should not be empty shape, shape:%s" % str(shape)
         check_result = False, reason
 

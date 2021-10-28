@@ -30,7 +30,7 @@ class Eye:
     Modify: 2020-12-17
     """
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def __init__(self, y, num_rows, num_columns, batch_shape, dtype="float32", kernel_name="eye"):
         """
         initialize the eye function
@@ -575,7 +575,7 @@ class Eye:
         return offset_list
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)

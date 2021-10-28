@@ -23,7 +23,6 @@ from te.utils import para_check
 
 _CONST_INF = 2147483647
 _CONST_EPSILON_FP16 = 1e-7
-_CCE_PLAT = tbe_platform.get_soc_spec('SOC_VERSION')
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -158,7 +157,8 @@ def lp_norm_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
         prod_x = tbe.vmul(prod_x, abs_x)
     sum_prod_x = tbe.sum(prod_x, axis=axes, keepdims=keepdim)
     # extraction can be transformed like x^p =  y --> x = exp(log(y)/p)
-    if "910" in _CCE_PLAT:
+    cce_plat = tbe_platform.get_soc_spec('SOC_VERSION')
+    if "910" in cce_plat:
         log_sum_x = tbe.vlog(sum_prod_x, priority_flag=1)
     else:
         log_sum_x = tbe.vlog(sum_prod_x)
