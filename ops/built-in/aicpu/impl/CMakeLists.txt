@@ -20,6 +20,7 @@ set(local_kernels_src_files
     kernels/normalized/check_numerics.cc
     kernels/normalized/compute_accidental_hits.cc
     kernels/normalized/concatv2.cc
+    kernels/normalized/conj.cc
     kernels/normalized/coordinates_1d_to_2d.cc
     kernels/normalized/cosh.cc
     kernels/normalized/diag.cc
