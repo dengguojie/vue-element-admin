@@ -61,7 +61,8 @@ namespace fe {
 vector<FusionPattern*> TransdataTransposeFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
   FusionPattern* pattern = new (std::nothrow) FusionPattern("TransdataReshapeTransdata");
-  FUSION_PASS_CHECK(pattern == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
+  FUSION_PASS_CHECK(pattern == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "new a pattern object failed."),
                     return patterns);
   pattern->AddOpDesc(PATTERN_TRANSDATA1, {"TransData"})
       .AddOpDesc(PATTERN_TRANSDATA2, {"TransData"})
@@ -211,9 +212,9 @@ Status TransdataTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   ge::GeTensorDesc transdataoutputtensor1 = transdata_desc1->GetOutputDesc(0);
   if (!(transdataoutputtensor1.GetFormat() == ge::FORMAT_ND &&
         ge::GetPrimaryFormat(transdatainputtensor1.GetFormat()) == ge::FORMAT_FRACTAL_NZ)) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(),
-            "node[TransData1]'s input format is not FRACTAL_NZ , not support fusion,"
-            "TransDataConfusionTransposeFusionPass fusion end");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                   "node[TransData1]'s input format is not FRACTAL_NZ , not support fusion,"
+                                   "TransDataConfusionTransposeFusionPass fusion end");
     return NOT_CHANGED;
   }
 
@@ -222,9 +223,9 @@ Status TransdataTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   ge::GeTensorDesc transdataoutputtensor2 = transdata_desc2->GetOutputDesc(0);
   if (!(transdataoutputtensor2.GetFormat() == ge::FORMAT_FRACTAL_NZ &&
         ge::GetPrimaryFormat(transdatainputtensor2.GetFormat()) == ge::FORMAT_ND)) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(),
-            "node[TransData2]'s input format is not FRACTAL_ND , not support fusion,"
-            "TransDataConfusionTransposeFusionPass fusion end");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                   "node[TransData2]'s input format is not FRACTAL_ND , not support fusion,"
+                                   "TransDataConfusionTransposeFusionPass fusion end");
     return NOT_CHANGED;
   }
   // perm vlaue
@@ -243,21 +244,16 @@ Status TransdataTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
 
   // transdata1 input length must be 5
   if (transdata_diminfo1_shape.size() != 5) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "Node[%s]'s dimsize is [%zu], cannot be applied to fusion pass.",
-            transdata_node1->GetName().c_str(), transdata_diminfo1_shape.size());
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                                   "Node[%s]'s dimsize is [%zu], cannot be applied to fusion pass.",
+                                   transdata_node1->GetName().c_str(), transdata_diminfo1_shape.size());
     return NOT_CHANGED;
   }
   if (transdata1_origin_shape[transdata1_origin_shape.size() - 1] % 16 != 0 ||
       transdata1_origin_shape[transdata1_origin_shape.size() - 2] % 16 != 0 ||
       reshapediminfo[reshapediminfo.size() - 1] % 16 != 0 || reshapediminfo[reshapediminfo.size() - 2] % 16 != 0) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(),
-            "Node[%s]'s dimsize is [%zu], last two dimension should be divisible by 16, 
-                but actually is[% ld] and
-                [% ld]
-                    .",
-                transdata_node1->GetName()
-                    .c_str(),
-            transdata1_origin_shape.size(), transdata1_origin_shape[transdata1_origin_shape.size() - 2],
+    OP_LOGW(FUSED_OP_TYPE.c_str(),"last two dimension should be divisible by 16, but actually is[% ld] and [% ld].",
+            transdata1_origin_shape[transdata1_origin_shape.size() - 2],
             transdata1_origin_shape[transdata1_origin_shape.size() - 1]);
     return NOT_CHANGED;
   }
@@ -283,7 +279,7 @@ Status TransdataTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   std::set<DataType> supported_perm_dtypes = {ge::DT_FLOAT, ge::DT_FLOAT16, ge::DT_INT32,
                                               ge::DT_INT16, ge::DT_UINT16,  ge::DT_UINT32};
   if (supported_perm_dtypes.count(datatype1) == 0) {
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "Dtype of input is not supported in transpose.");
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Dtype of input is not supported in transpose.");
     return NOT_CHANGED;
   }
   ge::NodePtr transpose_node = nullptr;
