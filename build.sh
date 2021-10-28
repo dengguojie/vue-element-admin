@@ -75,7 +75,7 @@ set_env(){
     echo  export ASCEND_CUSTOM_PATH=~/Ascend >> ~/.bashrc
   else
     echo  export ASCEND_HOME="/usr/local/Ascend" >> ~/.bashrc
-    unset ASCEND_CUSTOM_PATH
+    echo  unset ASCEND_CUSTOM_PATH >> ~/.bashrc
   fi
   
   echo  export OP_TEST_FRAME_INSTALL_HOME=\$ASCEND_CODE_HOME/tools/op_test_frame/python >> ~/.bashrc
