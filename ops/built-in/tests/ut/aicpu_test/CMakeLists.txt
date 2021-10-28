@@ -99,6 +99,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/conj.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/coordinates_1d_to_2d.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/cosh.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/cumsum.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/diag.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/dynamic_stitch.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/edit_distance.cc
@@ -252,6 +253,7 @@ set(_cpu_kernels_ut_files
   testcase/conj/src/conj_utest.cpp
   testcase/coordinates_1d_to_2d/src/coordinates_1d_to_2d_utest.cpp
   testcase/cosh/src/cosh_utest.cpp
+  testcase/cumsum/src/cumsum_utest.cpp
   testcase/diag/src/diag_utest.cpp
   testcase/dynamic_stitch/src/dynamic_stitch_kernel_utest.cpp
   testcase/edit_distance/src/edit_distance_kernel_utest.cpp

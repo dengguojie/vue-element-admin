@@ -1,0 +1,1406 @@
+[
+    {
+        "case_name": "Test_Cumsum_int64_512B",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2,32],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        1
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2,32]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_int64_1K",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2,32,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2,32,2]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_int64_4K",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2,128,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2,128,2]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_int64_8K",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2,128,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2,128,4]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_int64_16K",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2,1024,1],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2,1024,1]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_int64_32K",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2,1024,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2,1024,2]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_int64_64K",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2,1024,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [2,1024,4]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_int64_128K",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [4,1024,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [4,1024,4]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_int64_256K",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [8,1024,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [8,1024,4]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_int64_512K",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [8,1024,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [8,1024,8]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_int64_1M",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [16,1024,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [16,1024,8]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_int64_2M",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [16,1024,16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [16,1024,16]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_int64_8M",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [32,1024,32],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int64"],
+                "shape": [32,1024,32]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_double_512B",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,32],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        10.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        1
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,32]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_double_1K",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,32,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        10.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,32,2]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_double_4K",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,128,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        10.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,128,2]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_double_8K",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,128,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        10.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,128,4]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_double_16K",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,1024,1],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        10.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,1024,1]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_double_32K",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,1024,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        10.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,1024,2]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_double_64K",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,1024,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        10.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,1024,4]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_double_128K",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,1024,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        10.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,1024,8]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_double_256K",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [4,1024,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        10.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [4,1024,8]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_double_512K",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [8,1024,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        10.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [8,1024,8]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_double_1M",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [8,1024,16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        10.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [8,1024,16]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_double_2M",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [16,1024,16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        10.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [16,1024,16]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Cumsum_double_8M",
+        "op": "Cumsum",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [32,1024,32],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        10.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int32"],
+                "shape": [],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        0,
+                        2
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [32,1024,32]
+            }
+        ],
+        "attr":[
+            {
+                "name": "exclusive",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "reverse",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    }
+]
