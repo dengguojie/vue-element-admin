@@ -760,7 +760,7 @@ def set_value(tensor, condition, value):
     -------
     wrapped_tensor: updated tensor
     """
-    return nn.set_value(tensor, condition, value)
+    return array.set_value(tensor, condition, value)
 
 
 def reduce_sum(raw_tensor, axis, keepdims=False):

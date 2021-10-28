@@ -19,7 +19,6 @@ nn
 """
 from __future__ import absolute_import
 
-import types
 from tbe import tvm
 from tbe.common.platform import intrinsic_check_support
 from tbe.common.testing.dsl_source_info import source_info_decorator
@@ -462,35 +461,3 @@ def _tensor_broadcast(var, shape) -> tvm.tensor.Tensor:
         out = tvm.compute(shape, lambda_func, name=name)
 
     return out
-
-
-@source_info_decorator()
-@dtype_check_decorator
-def set_value(tensor, condition, value):
-    """
-    set specified value
-    Parameters
-    ----------
-    tensor: tvm.tensor
-
-    condition: lambda expr
-
-    value: const, variable or lambda expr
-    Returns
-    -------
-    wrapped_tensor: updated tensor
-    """
-    shape = shape_to_list(tensor.shape)
-    if isinstance(value, types.FunctionType):
-        lambda_func = lambda *indice: tvm.select(condition(*indice), value(*indice), tensor(*indice))
-    else:
-        lambda_func = lambda *indice: tvm.select(condition(*indice), value, tensor(*indice))
-
-    name = "set_value" + str(NAME_INDEX[0])
-    NAME_INDEX[0] += 1
-
-    with tvm.tag_scope("set_value"):
-        out = tvm.compute(shape, lambda_func, name=name)
-    
-    return out
-
