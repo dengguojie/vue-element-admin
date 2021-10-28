@@ -36,6 +36,32 @@ class TEST_MASKED_SELECT_UT : public testing::Test {};
     EXPECT_EQ(output[1], base_type(4));                                                          \
   }
 
+TEST_F(TEST_MASKED_SELECT_UT, TestMaskedSelect_SCALAR_TRUE) {
+    vector<vector<int64_t>> shapes = {{}, {}, {1}};
+    vector<DataType> data_types = {DT_INT32, DT_BOOL, DT_INT32};
+    int32_t input1[1] = {1};
+    bool input2[1] = {1};
+    int32_t output[1] = {0};
+    vector<void *> datas = { (void *)input1,
+                             (void *)input2,
+                             (void *)output };
+    CREATE_NODEDEF(shapes, data_types, datas);
+    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+}
+
+TEST_F(TEST_MASKED_SELECT_UT, TestMaskedSelect_SCALAR_FALSE) {
+    vector<vector<int64_t>> shapes = {{}, {}, {0}};
+    vector<DataType> data_types = {DT_INT32, DT_BOOL, DT_INT32};
+    int32_t input1[1] = {1};
+    bool input2[1] = {0};
+    int32_t output[1] = {0};
+    vector<void *> datas = { (void *)input1,
+                             (void *)input2,
+                             (void *)output };
+    CREATE_NODEDEF(shapes, data_types, datas);
+    RUN_KERNEL(node_def, HOST, KERNEL_STATUS_OK);
+}
+
 TEST_F(TEST_MASKED_SELECT_UT, UNDEFINED_DTYPE_EXCEPTION) {
     vector<vector<int64_t>> shapes = {{}, {}, {}};
     vector<DataType> data_types = {DT_UNDEFINED, DT_UNDEFINED, DT_UNDEFINED};

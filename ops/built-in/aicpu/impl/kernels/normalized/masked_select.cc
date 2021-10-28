@@ -41,7 +41,7 @@ uint32_t MaskedSelectCpuKernel::Compute(CpuKernelContext &ctx) {
   auto data_type1 =
       static_cast<DataType>(ctx.Input(kSecondInputIndex)->GetDataType());
   auto data_type2 =
-      static_cast<DataType>(ctx.Input(kFirstOutputIndex)->GetDataType());
+      static_cast<DataType>(ctx.Output(kFirstOutputIndex)->GetDataType());
   if (data_type1 != DT_BOOL) {
       KERNEL_LOG_ERROR("[%s] Data type of mask requires bool, but got data type [%s].",
                        ctx.GetOpType().c_str(), DTypeStr(data_type1).c_str());
@@ -98,6 +98,15 @@ uint32_t MaskedSelectCpuKernel::MaskedSelectCompute(CpuKernelContext &ctx) {
 
   auto input_shape_a = ctx.Input(0)->GetTensorShape()->GetDimSizes();
   auto input_shape_b = ctx.Input(1)->GetTensorShape()->GetDimSizes();
+  if (IsScalar(input_shape_a) && IsScalar(input_shape_b)) {
+    if (mask[0]) {
+      y[0] = x[0];
+      ctx.Output(0)->GetTensorShape()->SetDimSizes({1});
+    } else {
+      ctx.Output(0)->GetTensorShape()->SetDimSizes({0});
+    }
+    return KERNEL_STATUS_OK;
+  }
   std::vector<int64_t> output_shape;
   auto ret = GetBroadcastShape(input_shape_a, input_shape_b, output_shape);
   KERNEL_CHECK_FALSE(ret == KERNEL_STATUS_OK, KERNEL_STATUS_PARAM_INVALID,
