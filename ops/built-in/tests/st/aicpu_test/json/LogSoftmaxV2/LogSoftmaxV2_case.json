@@ -1,0 +1,1056 @@
+[
+    {
+        "case_name": "Test_LogSoftmaxV2_512B_001",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float16"],
+                "shape": [1,128,1],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float16"],
+                "shape": [1,128,1]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_512B_002",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [1,56,1],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [1,56,1]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_512B_003",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [1,56,1],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [1,56,1]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_1K_001",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float16"],
+                "shape": [1,128,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float16"],
+                "shape": [1,128,2]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_1k_002",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [1,128,1],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [1,128,1]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_1k_003",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [1,128,1],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [1,128,1]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_4k_001",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float16"],
+                "shape": [1,256,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float16"],
+                "shape": [1,256,4]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_4k_002",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [1,256,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [1,256,2]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_4k_003",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [1,256,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [1,256,2]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_8k_001",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float16"],
+                "shape": [1,1024,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float16"],
+                "shape": [1,1024,2]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_8k_002",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [1,1024,1],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [1,1024,1]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_8k_003",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [1,1024,1],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [1,1024,1]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_16k_001",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float16"],
+                "shape": [1,1024,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float16"],
+                "shape": [1,1024,4]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_16k_002",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [1,1024,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [1,1024,2]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_16k_003",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [1,1024,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [1,1024,2]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_32k_001",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float16"],
+                "shape": [2,1024,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float16"],
+                "shape": [2,1024,4]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_32k_002",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2,1024,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2,1024,2]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_32k_003",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,1024,2],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,1024,2]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_64k_001",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float16"],
+                "shape": [2,1024,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float16"],
+                "shape": [2,1024,8]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_64k_002",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2,1024,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2,1024,4]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_64k_003",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,1024,4],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,1024,4]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_128k_001",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float16"],
+                "shape": [4,1024,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float16"],
+                "shape": [4,1024,8]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_128k_002",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2,1024,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [2,1024,8]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_128k_003",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,1024,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [2,1024,8]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_256k_001",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float16"],
+                "shape": [8,1024,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float16"],
+                "shape": [8,1024,8]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_256k_002",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [4,1024,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["float"],
+                "shape": [4,1024,8]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_256k_003",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [4,1024,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [4,1024,8]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_512k",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [8,1024,8],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [8,1024,8]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_1M",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [8,1024,16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [8,1024,16]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_2M",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [16,1024,16],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [16,1024,16]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    },
+    {
+        "case_name": "Test_LogSoftmaxV2_8M",
+        "op": "LogSoftmaxV2",
+        "input_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [16,1024,64],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1,
+                        10
+                    ]
+                ]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["double"],
+                "shape": [16,1024,64]
+            }
+        ],
+        "attr":[
+            {
+                "name": "axes",
+                "type": "list_int",
+                "value": [1]
+            }
+        ]
+    }
+]

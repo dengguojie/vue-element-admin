@@ -47,6 +47,7 @@ set(local_kernels_src_files
     kernels/normalized/log_matrix_determinant.cc
     kernels/normalized/logging.cc
     kernels/normalized/log1p.cc
+    kernels/normalized/logsoftmaxv2.cc
     kernels/normalized/masked_select.cc
     kernels/normalized/masked_select_grad.cc
     kernels/normalized/mul.cc
