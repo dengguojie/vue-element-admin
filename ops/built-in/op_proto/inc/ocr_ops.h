@@ -180,14 +180,45 @@ REG_OP(OCRFindContours)
     .ATTR(value_mode, Int, 0)
     .OP_END_FACTORY_REG(OCRFindContours)
 
+/**
+*@brief dequeue data acording to queue_id and queue_name.
+*@par Inputs:
+*@li queue_id:An Tensor of type uint32, queue id. \n
+
+*@par Outputs:
+*data: A Tensor of type RealNumberType, dequeue tensor. \n
+
+*@par Attributes:
+*@li output_type: A required type. dequeue data type.
+*@li output_shape: A required listint. dequeue data shape.
+*@li queue_name: An optional string. Queue name.   \n
+*/
 REG_OP(Dequeue)
     .OPTIONAL_INPUT(queue_id, TensorType({DT_UINT32}))
-    .OUTPUT(data, TensorType::NumberType())
+    .OUTPUT(data, TensorType::RealNumberType())
     .REQUIRED_ATTR(output_type, Type)
     .REQUIRED_ATTR(output_shape, ListInt)
     .ATTR(queue_name, String, "")
     .OP_END_FACTORY_REG(Dequeue);
 
+/**
+*@brief ocr detection post handle.
+*@par Inputs:
+*@li img: A Tensor of type uint8. original image data.
+*@li polys_data: A Tensor of type int32. point data of every poly.
+*@li polys_offset:A Tensor of type int32. Offset of every poly.
+*@li polys_size:A Tensor of type int32. Size of every poly. \n
+
+*@par Outputs:
+*@li imgs_data: A Tensor of type int32. imgs_data of original image.
+*@li imgs_offset: A Tensor of type int32. Offset of every imgs data.
+*@li imgs_size: A Tensor of type int32. Shape of every imgs data.
+*@li rect_points: A Tensor of type int32. Rect points of every imgs. \n
+
+*@par Attributes:
+*@li data_format: An optional string from: '"NHWC", "NCHW"'. Defaults to
+"NHWC". Data format.
+*/
 REG_OP(OCRDetectionPostHandle)
     .INPUT(img, TensorType({DT_UINT8}))
     .INPUT(polys_data, TensorType({DT_INT32}))
@@ -200,6 +231,22 @@ REG_OP(OCRDetectionPostHandle)
     .ATTR(data_format, String, "NHWC")
     .OP_END_FACTORY_REG(OCRDetectionPostHandle);
 
+/**
+*@brief resize and clip polys.
+*@par Inputs:
+*@li polys_data: A Tensor of type int32. point data of every poly.
+*@li polys_offset:A Tensor of type int32. Offset of every poly .
+*@li polys_size:A Tensor of type int32. Size of every poly.
+*@li img_h:A Tensor of type int32. Height of original image.
+*@li img_w:A Tensor of type int32. Width of original image.
+*@li h_scale:A Tensor of type float. Expand scale of height.
+*@li w_scale:A Tensor of type float. Expand scale of width. \n
+
+*@par Outputs:
+*@li clipped_polys_data: A Tensor of type int32. point data of every clipped poly. \n
+*@li clipped_polys_offset: A Tensor of type int32. Offset of every clipped poly . \n
+*@li clipped_polys_size: A Tensor of type int32. Size of every clipped poly. \n
+*/
 REG_OP(ResizeAndClipPolys)
     .INPUT(polys_data, TensorType({DT_INT32}))
     .INPUT(polys_offset, TensorType({DT_INT32}))
