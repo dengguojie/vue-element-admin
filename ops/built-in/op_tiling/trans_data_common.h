@@ -33,13 +33,13 @@
 namespace optiling {
 using namespace ge;
 
-const int64_t BLOCK_BYTE_SIZE = 32;
-const int64_t VNC_LINES = 16;
-const int64_t NI_16 = 16;
-const int64_t C0_16 = 16;
-const int64_t C0_32 = 32;
-const int64_t CUBE_SIZE = 16;
-const int64_t STRIDE_LIMIT_MTE = 65535;
+constexpr int64_t BLOCK_BYTE_SIZE = 32;
+constexpr int64_t VNC_LINES = 16;
+constexpr int64_t NI_16 = 16;
+constexpr int64_t C0_16 = 16;
+constexpr int64_t C0_32 = 32;
+constexpr int64_t CUBE_SIZE = 16;
+constexpr int64_t STRIDE_LIMIT_MTE = 65535;
 const vector<int64_t> PAD_IDX_LIST = {0, 1};
 
 const std::map<ge::Format, int64_t> HW_IDX_MAP = {{FORMAT_NCHW, 2}, {FORMAT_NHWC, 1}, {FORMAT_NCDHW, 3},

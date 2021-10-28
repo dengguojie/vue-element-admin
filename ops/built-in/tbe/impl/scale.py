@@ -31,7 +31,7 @@ NONETYPE = type(None)
 def check_param_range(param_name, min_value, max_value, real_value, op_name='ssd_detection_output'):
     error_manager_vector.raise_err_input_param_range_invalid("scale", param_name, str(min_value),
                                                              str(max_value), str(real_value))
-                         
+
 
 # pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
 # pylint: disable=too-many-boolean-expressions,too-many-locals,unused-variable
@@ -46,7 +46,7 @@ def op_select_format(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True
     > the Op Scale can process with NC1HWC0:
     > x : Tensor of (shape=(16, 1, 16, 16, 16) ,"NC1HWC0")
     > scale : Tensor of (shape=(16, 1, 16, 16, 16) ,"NC1HWC0")
-    
+
     2. In other scenes, the Op Select can support ND.
     > for example:
     > x : Tensor of (shape=(2), "ND")
@@ -141,9 +141,9 @@ def param_scale_check(shape_x, shape_scale):
     Parameters
     ----------
     shape_x : list or tuple.
-        shape of x.
+    shape of x.
     shape_scale : list or tuple.
-        shape of scale.
+    shape of scale.
 
     Returns
     -------
@@ -158,7 +158,7 @@ def param_scale_check(shape_x, shape_scale):
             error_manager_vector.raise_err_specific_reson("scale", "the dims of input tensor x and tensor \
                                                           scale should be equal, but actually are \
                                                           [{}] and [{}]".format(str(length_x), str(length_scale)))
-        
+
         for i in range(length_scale):
             if shape_scale[i] != shape_x[i] and shape_scale[i] != 1:
                 error_manager_vector.raise_err_specific_reson("scale", "the inputs[{}][{}}] could not be broadcast \
@@ -173,9 +173,9 @@ def get_param_scale_shape(shape_x, shape_scale):
     Parameters
     ----------
     shape_x : list or tuple.
-        shape of x.
+    shape of x.
     shape_scale : list or tuple.
-        shape of scale.
+    shape of scale.
 
     Returns
     -------
@@ -301,20 +301,20 @@ def get_scale_shape(shape_x, shape_scale, axis_, num_axes, scale_from_blob):
     Parameters
     ----------
     shape_x: list or tuple
-        x's data shape
+    x's data shape
     shape_scale: list or tuple
-        scale's data shape
+    scale's data shape
     axis_ : int
-        A int num indicates shape of scale when scale is from bottom.
+    A int num indicates shape of scale when scale is from bottom.
     num_axes:
-        A int num indicates shape of scale when scale is from blob.
+    A int num indicates shape of scale when scale is from blob.
     scale_from_blob:
-        A bool value indicates scale is from blob or bottom.
+    A bool value indicates scale is from blob or bottom.
 
     Returns
     -------
     shape: list or tuple
-        the shape of scale
+    the shape of scale
     """
 
     length_x = len(shape_x)
@@ -488,27 +488,27 @@ def scale_compute(x, scale, bias, y, axis, num_axes, scale_from_blob,
     Parameters
     ----------
     x : TVM tensor
-        contains x data
+    contains x data
     scale : TVM tensor
-        contains scale data
+    contains scale data
     bias : TVM tensor
-        contains bias data
+    contains bias data
     y : dict
-        dict of output,
-        A Tensor for output, should be same shape and type as x.
+    dict of output,
+    A Tensor for output, should be same shape and type as x.
     axis : int
-        A int num indicates shape of scale when scale is from bottom.
+    A int num indicates shape of scale when scale is from bottom.
     num_axes: int
-        A int num indicates shape of scale when scale is from blob.
+    A int num indicates shape of scale when scale is from blob.
     scale_from_blob:
-        A bool value indicates scale is from blob or bottom.
+    A bool value indicates scale is from blob or bottom.
     kernel_name : str
-        kernel name, default value is "scale"
+    kernel name, default value is "scale"
 
     Returns
     -------
     res: TVM tensor list
-        the result of scale compute
+    the result of scale compute
     """
     tmp_y = {}
     tmp_y["addr_type"] = 0
@@ -542,24 +542,24 @@ def scale(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True,
     Parameters
     ----------
     x : dict
-        dict of input, A Tensor for input data.
+    dict of input, A Tensor for input data.
     scale : dict
-        dict of scale,
-        A Tensor for scaling factor, to scale the input data.
+    dict of scale,
+    A Tensor for scaling factor, to scale the input data.
     bias : dict
-        dict of bias,
-        A Tensor for bias, to shift to the input data.
+    dict of bias,
+    A Tensor for bias, to shift to the input data.
     y : dict
-        dict of output,
-        A Tensor for y, should be same shape and type as x.
+    dict of output,
+    A Tensor for y, should be same shape and type as x.
     axis : int
-        A int num indicates shape of scale when scale is from bottom.
+    A int num indicates shape of scale when scale is from bottom.
     num_axes: int
-        A int num indicates shape of scale when scale is from blob.
+    A int num indicates shape of scale when scale is from blob.
     scale_from_blob:
-        A bool value indicates scale is from blob or bottom.
+    A bool value indicates scale is from blob or bottom.
     kernel_name : str
-        kernel name, default value is "scale"
+    kernel name, default value is "scale"
 
     Returns
     -------
@@ -612,27 +612,26 @@ def scale(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True,
     name_list = ["x", "scale", "bias"]
     input_tensor_list = []
     is_l1_depth_fusion = False
-    for input_, input_shape, name_ in \
-        zip(input_list, input_shape_list, name_list):
-            if len(input_shape) > 0:
-                l1_fusion_type = -1
-                if fusion_manager.get_build_cfg() != "disable":
-                    l1_fusion_type = input_.get("L1_fusion_type", -1)
-                    if l1_fusion_type == 1:
-                        error_manager_vector.raise_err_specific_reson("scale",
-                                        "Scale does not support l1 width fusion")
-                is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
-                dtype = input_.get("dtype")
-                addr_type = input_.get("addr_type", 0)
-                valid_shape = input_.get("valid_shape", [])
-                slice_offset = input_.get("slice_offset", [])
-                attr_x = {"addr_type": addr_type,
-                          "valid_shape": valid_shape,
-                          "slice_offset": slice_offset,
-                          "L1_fusion_type": l1_fusion_type}
-                input_tensor = tvm.placeholder(input_shape, name=name_,
-                                               dtype=dtype, attrs=attr_x)
-                input_tensor_list.append(input_tensor)
+    for input_, input_shape, name_ in zip(input_list, input_shape_list, name_list):
+        if len(input_shape) > 0:
+            l1_fusion_type = -1
+            if fusion_manager.get_build_cfg() != "disable":
+                l1_fusion_type = input_.get("L1_fusion_type", -1)
+                if l1_fusion_type == 1:
+                    error_manager_vector.raise_err_specific_reson("scale",
+                                    "Scale does not support l1 width fusion")
+            is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
+            dtype = input_.get("dtype")
+            addr_type = input_.get("addr_type", 0)
+            valid_shape = input_.get("valid_shape", [])
+            slice_offset = input_.get("slice_offset", [])
+            attr_x = {"addr_type": addr_type,
+                      "valid_shape": valid_shape,
+                      "slice_offset": slice_offset,
+                      "L1_fusion_type": l1_fusion_type}
+            input_tensor = tvm.placeholder(input_shape, name=name_,
+                                           dtype=dtype, attrs=attr_x)
+            input_tensor_list.append(input_tensor)
 
     if len(shape_bias) == 0:
         input_tensor_list.append(None)

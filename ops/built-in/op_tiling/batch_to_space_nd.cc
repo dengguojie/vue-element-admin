@@ -280,7 +280,7 @@ bool BatchToSpaceNDTiling(const string& op_type, const TeOpParas& op_paras, cons
       return false;
     }
     const uint8_t* block_data = get<0>(op_paras.const_inputs.at("block_shape"));
-    size_t block_size = get<1>(op_paras.const_inputs.at("block_shape"));
+    block_size = get<1>(op_paras.const_inputs.at("block_shape"));
     string block_dtype = op_paras.inputs[1].tensor[0].dtype;
     GetConstDataBs(block_data, block_dtype, block_size, block_vec);
     const uint8_t* crops_data = get<0>(op_paras.const_inputs.at("crops"));

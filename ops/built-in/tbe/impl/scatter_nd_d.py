@@ -60,10 +60,8 @@ def scatter_nd_d(indices, x, y, shape, kernel_name="scatter_nd_d"):
     Parameters
     ----------
     indices: dict,shape and datatype,datatype supports int32
-    x: dict,shape and datatype,datatype supports float32,float16,int32,
-       int8,uint8
-    y: dict,shape and datatype,datatype supports float32,float16,int32,
-       int8,uint8
+    x: dict,shape and datatype,datatype supports float32,float16,int32,int8,uint8
+    y: dict,shape and datatype,datatype supports float32,float16,int32,int8,uint8
     shape: out put shape
     kernel_name: cce kernel name, default value is "scatter_nd_d"
 
@@ -126,10 +124,8 @@ def get_blockdim_and_loop_cycle(updates, shape_out, update_each_size):
 
     Parameters
     ----------
-    updates: dict,shape and datatype,datatype supports float32,float16,int32,
-       int8,uint8
-    shape_out: dict,shape and datatype,datatype supports float32,float16,int32,
-       int8,uint8
+    updates: dict,shape and datatype,datatype supports float32,float16,int32,int8,uint8
+    shape_out: dict,shape and datatype,datatype supports float32,float16,int32,int8,uint8
     update_each_size: the elements number of each update data
 
     Returns
@@ -158,10 +154,8 @@ def check_param(indices, updates, output_y, shape, kernel_name):
     Parameters
     ----------
     indices: dict,shape and datatype,datatype supports int32
-    updates: dict,shape and datatype,datatype supports float32,float16,int32,
-             int8,uint8
-    output_y: dict,shape and datatype,datatype supports float32,float16,int32,
-              int8,uint8
+    updates: dict,shape and datatype,datatype supports float32,float16,int32,int8,uint8
+    output_y: dict,shape and datatype,datatype supports float32,float16,int32,int8,uint8
     shape: out put shape
     kernel_name: cce kernel name, default value is "scatter_nd_d"
 

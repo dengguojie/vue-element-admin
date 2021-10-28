@@ -32,16 +32,16 @@ def round_compute(x, y, kernel_name="round"):
     Parameters
     ----------
     x: TVM tensor
-        the placeholder of input data
+    the placeholder of input data
     y: dict
-        shape and dtype of output, should be same shape and type as input
+    shape and dtype of output, should be same shape and type as input
     kernel_name: str
-        cce kernel name, default value is round
+    cce kernel name, default value is round
 
     Returns
     -------
     result: TVM tensor
-        the result of round
+    the result of round
     """
     dtype = x.dtype
     if dtype == "int32":
@@ -65,11 +65,11 @@ def round(x, y, kernel_name="round"):
     Parameters
     ----------
     x : dict
-        shape and dtype of input, only support float16,float32,int32
+    shape and dtype of input, only support float16,float32,int32
     y: dict
-        shape and dtype of output, should be same shape and type as input
+    shape and dtype of output, should be same shape and type as input
     kernel_name : str
-        cce kernel name, default value is round
+    cce kernel name, default value is round
 
     Returns
     -------

@@ -22,6 +22,7 @@ from te.platform import cce_conf as te_cnf
 import functools as fctool
 import math
 
+
 class Roll(object):
     """
     Implementation of roll
@@ -62,7 +63,7 @@ class Roll(object):
             self.dim = self.dims[0]
             self.shift = self.shifts[0]
             shape_dim = self.input_x_shape[self.dim]
-            if(self.shift < 0):
+            if self.shift < 0:
                 self.shift = self.shift + shape_dim
             self.shift = self.shift % shape_dim
             after_shape = shape_tmp[self.dim + 1:]
@@ -254,9 +255,10 @@ class Roll(object):
             self.input_x_ub[self.offset_this_dim - self.loop_first_offset
                             + n_id].set_as(self.tmp_ub[n_id])
 
+
 #pylint: disable=unused argument
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, 
-                            para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_LIST_INT, 
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_LIST_INT,
                             para_check.KERNEL_NAME)
 def roll(x, y, shifts, dims, kernel_name="roll"):
     """
@@ -265,15 +267,15 @@ def roll(x, y, shifts, dims, kernel_name="roll"):
     Parameters
     ----------
     x : dict
-        shape and dtype of input_x
+    shape and dtype of input_x
     y : dict
-        shape and dtype of output_y, should be same shape as input, dtype is same as the quantified type
+    shape and dtype of output_y, should be same shape as input, dtype is same as the quantified type
     shifts: list
-        the processed shifts
+    the processed shifts
     dims: list
-        the processed dim
+    the processed dim
     kernel_name : str
-        kernel name, default value is "roll"
+    kernel name, default value is "roll"
 
     Returns
     -------

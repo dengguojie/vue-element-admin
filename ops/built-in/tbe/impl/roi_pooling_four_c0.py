@@ -565,9 +565,9 @@ class RoiClass4C0(roi_pooling_base.RoiClass):
     def roi_pooling_main(self):
         """
         main process of roi pooling.
-         including calculate the coordinate of pooled
+        including calculate the coordinate of pooled
         edge and max pooling from the h direction
-         and the from the w direction
+        and the from the w direction
 
         Parameters
         ----------

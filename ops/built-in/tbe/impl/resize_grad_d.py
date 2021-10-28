@@ -28,6 +28,7 @@ SHAPE_SIZE_LIMIT = 2147483648
 ERROR_TOLERANCE = 0.0001
 UB_SIZE = tp.cce_conf.get_soc_spec(tp.cce_conf.UB_SIZE)
 
+
 #pylint: disable=unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
@@ -43,65 +44,67 @@ def resize_grad_d(grads, y, original_size, roi, scales, coordinate_transformatio
     Parameters
     ----------
     grads : dict
-        shape and dtype of input
+    shape and dtype of input
     y : dict
-        shape and dtype of output
+    shape and dtype of output
     roi : list_float
-        1-D tensor given as [start1, ..., startN, end1, ..., endN], where N is the rank of X.
-        The RoIs' coordinates are normalized in the coordinate system of the input image.
-        It only takes effect when coordinate_transformation_mode is "tf_crop_and_resize"
+    1-D tensor given as [start1, ..., startN, end1, ..., endN], where N is the rank of X.
+    The RoIs' coordinates are normalized in the coordinate system of the input image.
+    It only takes effect when coordinate_transformation_mode is "tf_crop_and_resize"
 
     original_size : list_int
-        shape of original_image
+    shape of original_image
 
     scales : list_float
-        The scale array along each dimension.
-        It takes value greater than 0.
-        If it's less than 1, it's sampling down, otherwise, it's upsampling.
-        The number of elements of 'scales' should be the same as the rank of input 'X'.
-        Only one of 'scales' and 'sizes' can be specified. If 'size' is specified,
-        then set scales to empty data (zero shape) in this operator's input list.
+    The scale array along each dimension.
+    It takes value greater than 0.
+    If it's less than 1, it's sampling down, otherwise, it's upsampling.
+    The number of elements of 'scales' should be the same as the rank of input 'X'.
+    Only one of 'scales' and 'sizes' can be specified. If 'size' is specified,
+    then set scales to empty data (zero shape) in this operator's input list.
 
     coordinate_transformation_mode : str
-        This attribute describes how to transform the coordinate in the resized tensor to the coordinate in the original tensor.
+    This attribute describes how to transform the coordinate in the resized tensor to the coordinate in the
+    original tensor.
 
     cubic_coeff_a : float
-        The coefficient 'a' used in cubic interpolation.
-        Two common choice are -0.5 (in some cases of TensorFlow) and -0.75 (in PyTorch).
-        This attribute is valid only if "mode" is "cubic".
+    The coefficient 'a' used in cubic interpolation.
+    Two common choice are -0.5 (in some cases of TensorFlow) and -0.75 (in PyTorch).
+    This attribute is valid only if "mode" is "cubic".
 
     exclude_outside : int
-        default is 0.
-        If set to 1, the weight of sampling locations outside the tensor will be set to 0
-        and the weight will be renormalized so that their sum is 1.0. The default value is 0.
+    default is 0.
+    If set to 1, the weight of sampling locations outside the tensor will be set to 0
+    and the weight will be renormalized so that their sum is 1.0. The default value is 0.
 
     exclude_outside : int
-        default is 0.
-        If set to 1, the weight of sampling locations outside the tensor will be set to 0
-        and the weight will be renormalized so that their sum is 1.0. The default value is 0.
+    default is 0.
+    If set to 1, the weight of sampling locations outside the tensor will be set to 0
+    and the weight will be renormalized so that their sum is 1.0. The default value is 0.
 
     extrapolation_value : float (default is 0.0)
-        When coordinate_transformation_mode is "tf_crop_and_resize" and x_original is outside
-        the range [0, length_original - 1], this value is used as the corresponding output value.
-        Default is 0.0f.
+    When coordinate_transformation_mode is "tf_crop_and_resize" and x_original is outside
+    the range [0, length_original - 1], this value is used as the corresponding output value.
+    Default is 0.0f.
 
     mode : string
-        default is nearest
-        Three interpolation modes: nearest (default), linear and cubic.
-        The "linear" mode includes linear interpolation for 1D tensor and N-linear interpolation
-        for N-D tensor (for example, bilinear interpolation for 2D tensor).
+    default is nearest
+    Three interpolation modes: nearest (default), linear and cubic.
+    The "linear" mode includes linear interpolation for 1D tensor and N-linear interpolation
+    for N-D tensor (for example, bilinear interpolation for 2D tensor).
 
-        The "cubic" mode includes cubic interpolation for 1D tensor and N-cubic interpolation
-        for N-D tensor (for example, bicubic interpolation for 2D tensor).
+    The "cubic" mode includes cubic interpolation for 1D tensor and N-cubic interpolation
+    for N-D tensor (for example, bicubic interpolation for 2D tensor).
     nearest_mode : string (default is round_prefer_floor)
-        Four modes: round_prefer_floor (default, as known as round half down), round_prefer_ceil (as known as round half up), floor, ceil.
-        Only used by nearest interpolation.
+    Four modes: round_prefer_floor (default, as known as round half down),
+    round_prefer_ceil (as known as round half up), floor, ceil.
+    Only used by nearest interpolation.
 
-        It indicates how to get "nearest" pixel in input tensor from x_original,
-        so this attribute is valid only if "mode" is "nearest".
+    It indicates how to get "nearest" pixel in input tensor from x_original,
+    so this attribute is valid only if "mode" is "nearest".
 
     kernel_name : str
-        kernel name, default value is "resize_grad_d"
+    kernel name, default value is "resize_grad_d"
 
     Returns
     -------
@@ -431,8 +434,7 @@ class UpSampleBicubic2dBackward(object):
                 return (input_size - 1) / (output_size - 1)
             else:
                 return self.compute_scales_value(scale, input_size, output_size)
-        else:
-            return 0
+        return 0
 
     @staticmethod
     def compute_scales_value(scale, input_size, output_size):
@@ -444,8 +446,7 @@ class UpSampleBicubic2dBackward(object):
         """
         if scale > 0.0:
             return 1.0 / scale
-        else:
-            return input_size / output_size
+        return input_size / output_size
 
     def area_pixel_compute_source_index(self, scale, dst_index, align_corners):
         """
@@ -459,8 +460,7 @@ class UpSampleBicubic2dBackward(object):
         """
         if align_corners:
             return scale * dst_index * 1.0
-        else:
-            return scale * (dst_index + 0.5) - 0.5
+        return scale * (dst_index + 0.5) - 0.5
 
     def get_cubic_upsample_coefficients(self, output_scalar, input_x, in_length, out_length, flag):
         """
@@ -707,14 +707,14 @@ class ResizeLinearBackward(object):
         Parameters
         ----------
         index : int
-            the index of required value in the input tensor
+        the index of required value in the input tensor
 
         Returns
         -------
         res : input.dtype
-            the value under the given index
+        the value under the given index
         """
-        max_offset=max(0, self.input_num - self.data_each_block)
+        max_offset = max(0, self.input_num - self.data_each_block)
 
         x_ub = self.tik_instance.Tensor(self.x_dtype, [self.data_each_block], name="x_ub", scope=tik.scope_ubuf)
 
@@ -736,40 +736,40 @@ class ResizeLinearBackward(object):
         compute helper backward
         """
         # Cal real
-        real_W = self.tik_instance.Scalar("float32", name="real_W")
+        real_w = self.tik_instance.Scalar("float32", name="real_w")
         k = self.tik_instance.Scalar("float32", init_value=output_block_offset)
-        temp_W = self.tik_instance.Scalar("float32")
+        temp_w = self.tik_instance.Scalar("float32")
         with self.tik_instance.if_scope(self.coordinate_transformation_mode == "align_corners"):
-            temp_W.set_as(scale_w * k)
+            temp_w.set_as(scale_w * k)
         with self.tik_instance.else_scope():
             temp = self.tik_instance.Scalar(dtype="float32", init_value=scale_w * (k + 0.5) - 0.5)
             with self.tik_instance.if_scope(temp < 0):
-                temp_W.set_as(0.)
+                temp_w.set_as(0.)
             with self.tik_instance.else_scope():
-                temp_W.set_as(temp)
-        real_W.set_as(temp_W)
+                temp_w.set_as(temp)
+        real_w.set_as(temp_w)
 
-        # Cal Integer of real_W
-        coefficient_W = self.tik_instance.Scalar("int32", name="coefficient_W")
-        self.tik_instance.scalar_conv('floor', coefficient_W, real_W)
+        # Cal Integer of real_w
+        coefficient_w = self.tik_instance.Scalar("int32", name="coefficient_w")
+        self.tik_instance.scalar_conv('floor', coefficient_w, real_w)
 
         # Cal Offset
         offset = self.tik_instance.Scalar(dtype="int32", init_value=1)
-        with self.tik_instance.if_scope(coefficient_W == (self.size - 1)):
+        with self.tik_instance.if_scope(coefficient_w == (self.size - 1)):
             offset.set_as(0)
 
-        # Cal Decimal of real_W
+        # Cal Decimal of real_w
         coefficient_lambda = self.tik_instance.Scalar("float32", name="coefficient_lambda")
-        coefficient_lambda.set_as(real_W - coefficient_W)
+        coefficient_lambda.set_as(real_w - coefficient_w)
 
-        # Cal 1.0 - Decimal of real_W
+        # Cal 1.0 - Decimal of real_w
         coefficient_lambda0 = self.tik_instance.Scalar("float32", name="coefficient_lambda0")
         coefficient_lambda0.set_as(1.0 - coefficient_lambda)
 
         _x = self.get_number_in_global_memory(index_in_gm)
 
-        self.set_output_as(input_dim_offset + coefficient_W, coefficient_lambda0 * _x)
-        self.set_output_as(input_dim_offset + coefficient_W + offset, coefficient_lambda * _x)
+        self.set_output_as(input_dim_offset + coefficient_w, coefficient_lambda0 * _x)
+        self.set_output_as(input_dim_offset + coefficient_w + offset, coefficient_lambda * _x)
 
     def set_output_as(self, index, num):
         """
@@ -787,7 +787,7 @@ class ResizeLinearBackward(object):
 
         self.tik_instance.data_move(temp_ub, self.output_gm[block_num * self.data_each_block], 0, 1, 1, 0, 0)
 
-        temp_scalar = self.tik_instance.Scalar(self.x_dtype, init_value= temp_ub[block_offset])
+        temp_scalar = self.tik_instance.Scalar(self.x_dtype, init_value=temp_ub[block_offset])
 
         temp_ub[block_offset].set_as(temp_scalar + num)
         self.tik_instance.data_move(self.output_gm[block_num * self.data_each_block], temp_ub, 0, 1, 1, 0, 0)
@@ -827,7 +827,7 @@ class ResizeLinearBackward(object):
         -------
         None
         """
-        temp = self.tik_instance.Scalar(self.x_dtype, init_value= 0.0)
+        temp = self.tik_instance.Scalar(self.x_dtype, init_value=0.0)
         with self.tik_instance.for_range(0, self.data_each_block) as i:
             ub[i].set_as(temp)
 
@@ -839,9 +839,9 @@ class ResizeLinearBackward(object):
         Parameters
         ----------
         in_size_w : int
-            the last dim of input
+        the last dim of input
         out_size_w : int
-            the output size
+        the output size
 
         Returns
         -------
@@ -864,9 +864,9 @@ class ResizeLinearBackward(object):
         Parameters
         ----------
         sizes : list
-            list with values of sizes
+        list with values of sizes
         scales : list
-            list with values of scales
+        list with values of scales
 
         Returns
         -------
@@ -880,3 +880,4 @@ class ResizeLinearBackward(object):
         #check scales value
         if scales is not None and (self.dim2 / sizes[-1] - scales[0]) > ERROR_TOLERANCE:
             raise RuntimeError("It is expected scales[0] equals to sizes[0] / x.shape[2].")
+

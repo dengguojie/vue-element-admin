@@ -978,7 +978,8 @@ def _convert_rois_data_to5n(tik_instance, rois_data_gm, rois_data_index, rois_nu
 def roi_align_grad_compute(tik_instance, y_diff, rois_data, x_diff, rois_n,
                            pooled_width, pooled_height, spatial_scale,
                            sample_num, core_bias):
-    """calc one block gradient
+    """
+    calc one block gradient
 
     Parameters
     ----------
@@ -1098,7 +1099,8 @@ def roi_align_grad_compute(tik_instance, y_diff, rois_data, x_diff, rois_n,
 def roi_align_grad_compute_align(tik_instance, y_diff, rois_data, x_diff, rois_n,
                                  pooled_width, pooled_height, spatial_scale,
                                  sample_num, core_bias):
-    """calc one block gradient when align
+    """
+    calc one block gradient when align
 
     Parameters
     ----------
@@ -1244,7 +1246,8 @@ def _calc_c1_segment(tik_instance, start, total_len, rois_index, c1_num):
 def roi_align_grad_compute_multicore(
         grad_shape, rois_shape, rois_n, pooled_width, pooled_height,
         spatial_scale, sample_num, output_grad_shape, kernel_name):
-    """calc one block gradient
+    """
+    calc one block gradient
 
     Parameters
     ----------
@@ -1340,26 +1343,26 @@ def roi_align_grad(y_diff,
     Parameters
     ----------
     y_diff: dict
-        dict with keys(shape and dtype) of y_diff
+    dict with keys(shape and dtype) of y_diff
     rois: dict
-        dict with keys(shape and dtype) of rois
+    dict with keys(shape and dtype) of rois
     rois_n: dict
-        dict with keys(shape and dtype) of rois_n
+    dict with keys(shape and dtype) of rois_n
     x_diff: dict
-        dict with keys(shape and dtype) of x_diff
+    dict with keys(shape and dtype) of x_diff
     xdiff_shape: list
-        list xdiff_shape
+    list xdiff_shape
     pooled_width: int
-        pooled_width
+    pooled_width
     pooled_height: int
-        pooled_height
+    pooled_height
     spatial_scale: float
-        spatial_scale
+    spatial_scale
     sample_num: int
-        sample_num
+    sample_num
     roi_end_mode: int
     kernel_name: str
-        kernel name
+    kernel name
 
     Returns
     -------
@@ -1376,7 +1379,7 @@ def roi_align_grad(y_diff,
 
     grad_shape = y_diff.get("shape")
     if len(grad_shape) != 5:
-        error_detail = "the length of grad_sharp must be 5, while it is: %d"% len(grad_shape)
+        error_detail = "the length of grad_sharp must be 5, while it is: %d" % len(grad_shape)
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "y_diff", error_detail)
 
     rois_shape = rois.get("shape")

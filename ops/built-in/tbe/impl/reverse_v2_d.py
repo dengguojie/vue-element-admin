@@ -135,15 +135,15 @@ def reverse_v2_d(input_x, output_y, axis, kernel_name="reverse_v2_d"):
     Parameters
     ----------
     input_x: dict
-        data of input.
-        source data type, support "int8", "int16", "int32", "int64", "uint8",
-            "uint16", "uint32", "uint64", "float16", "float32"
+    data of input.
+    source data type, support "int8", "int16", "int32", "int64", "uint8",
+    "uint16", "uint32", "uint64", "float16", "float32"
     output_y: dict
-        data of output.
+    data of output.
     axis: list
-        the axis list for reverse
+    the axis list for reverse
     kernel_name: str
-        kernel name, default value is "reverse_ext2"
+    kernel name, default value is "reverse_ext2"
 
     Returns:
     ----------
@@ -260,10 +260,10 @@ def omit_axis_point_to_dim_1(shape, axis):
     Parameters
     ----------
     shape: tuple or list
-        the shape of input tensor
+    the shape of input tensor
 
     axis: list
-        the original axis list for reverse
+    the original axis list for reverse
 
     Returns
     -------
@@ -280,9 +280,9 @@ def get_new_shape_axis(shape, axis):
     Parameters
     ----------
     shape: tuple or list
-        the original shape of input tensor
+    the original shape of input tensor
     axis: list
-        the axis list for reverse
+    the axis list for reverse
 
     Returns
     -------
@@ -331,8 +331,8 @@ def get_new_shape_axis(shape, axis):
 # pylint: disable=too-many-instance-attributes
 class ReverseExt2:
     """
-       Function: use to store reverse_ext2 schedule parameters
-       Modify : 2019-11-05
+    Function: use to store reverse_ext2 schedule parameters
+    Modify : 2019-11-05
     """
 
     def __init__(self, shape_x, dtype_x, axis, kernel_name):
@@ -579,13 +579,13 @@ class ReverseExt2:
         Parameters
         ----------
         out_shape:
-            the shape of outer loop
+        the shape of outer loop
         move_in_index:
-            index for moving input data from gm to ub
+        index for moving input data from gm to ub
         move_out_index:
-            index for moving output data from ub to gm
+        index for moving output data from ub to gm
         loop_axis:
-            loop index currently traversed
+        loop index currently traversed
 
         Returns
         -------
@@ -688,13 +688,13 @@ class ReverseExt2:
         Parameters
         ----------
         loop_shape:
-            loop shape that needs to be traversed
+        loop shape that needs to be traversed
         sorted_ub_index:
-            the offset to write data to sorted_ub
+        the offset to write data to sorted_ub
         data_x_ub_index:
-            the offset to read data from data_x_ub
+        the offset to read data from data_x_ub
         loop_axis:
-             the number of the axis currently traversed
+        the number of the axis currently traversed
 
         Returns
         -------
@@ -751,22 +751,22 @@ class ReverseExt2:
         Parameters
         ----------
         loop_axis:
-            the number of the axis currently traversed
+        the number of the axis currently traversed
         move_in_index:
-            the offset to read data from data_x_gm
+        the offset to read data from data_x_gm
         move_out_index:
-            the offset to write data to data_x_ub
+        the offset to write data to data_x_ub
         outer_loop_shape:
-            the outer loop shape of the current traversal
+        the outer loop shape of the current traversal
         index:
-            current traversed index
+        current traversed index
 
         Returns
         -------
         move_in_index:
-            the offset to read data from data_x_gm
+        the offset to read data from data_x_gm
         move_out_index:
-            the offset to write data to data_x_ub
+        the offset to write data to data_x_ub
         """
         if loop_axis in self.axis:
             move_in_index = move_in_index * outer_loop_shape[
@@ -785,11 +785,11 @@ class ReverseExt2:
         Parameters
         ----------
         inner_data_num:
-            number of elements that need to be transported
+        number of elements that need to be transported
         indices_loop_index:
-            loop index currently traversed
+        loop index currently traversed
         move_out_index:
-             the offset to write data to data_y_gm
+        the offset to write data to data_y_gm
 
         Returns
         -------
@@ -834,9 +834,9 @@ class ReverseExt2:
         Parameters
         ----------
         move_in_index:
-            the offset to read data from data_x_gm
+        the offset to read data from data_x_gm
         move_out_index:
-            the offset to write data to data_y_gm
+        the offset to write data to data_y_gm
 
         Returns
         -------
@@ -879,13 +879,13 @@ class ReverseExt2:
         Parameters
         ----------
         outer_loop_shape:
-            the shape of outer loop
+        the shape of outer loop
         move_in_index:
-            index for moving input data from gm to ub
+        index for moving input data from gm to ub
         move_out_index:
-            index for moving output data from ub to gm
+        index for moving output data from ub to gm
         loop_axis:
-            loop index currently traversed
+        loop index currently traversed
 
         Returns
         -------
@@ -948,9 +948,9 @@ class ReverseExt2:
         Parameters
         ----------
         indices_loop_index:
-            index for moving input data from gm to ub
+        index for moving input data from gm to ub
         move_out_index:
-            index for moving output data from ub to gm
+        index for moving output data from ub to gm
 
         Returns
         -------

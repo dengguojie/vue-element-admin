@@ -1051,7 +1051,7 @@ def _topk_rows(tvm_ir, row_start_in_core, rows, cols, k, core_rows_start, multi_
                      multi_core=multi_core)
 
 
-# 'pylint': disable=too-many-arguments,too-many-locals,too-many-statements
+# 'pylint: disable=too-many-arguments,too-many-locals,too-many-statements
 def _topk_a_row_by_part(tvm_ir, row_start_in_core, cols, k, core_rows_start, multi_core, largest):
     """
     _topk_a_row_by_part

@@ -18,13 +18,13 @@
  * \file broadcast_to.cc
  * \brief
  */
-#include <sstream>
 #include <cctype>
+#include <iostream>
+#include <sstream>
+#include "eletwise.h"
 #include "error_log.h"
 #include "graph/debug/ge_log.h"
-#include "eletwise.h"
 #include "vector_tiling.h"
-#include <iostream>
 
 namespace optiling {
 bool BroadcastToTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,

@@ -10,12 +10,12 @@
  * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  */
+#include <unordered_map>
 #include "error_log.h"
 #include "reduce_tiling.h"
 #include "op_tiling_util.h"
 #include "vector_tiling_profiling.h"
 #include "graph/utils/op_desc_utils.h"
-#include <unordered_map>
 
 namespace optiling {
 static std::string GetShape(std::vector<int64_t> shape) {

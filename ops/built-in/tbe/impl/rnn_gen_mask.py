@@ -25,7 +25,9 @@ from te.platform.fusion_manager import fusion_manager
 
 @fusion_manager.register("rnn_gen_mask")
 class RnnGenMask(object):
-    """class for rnn_gen_mask"""
+    """
+    class for rnn_gen_mask
+    """
 
     def __init__(self, seq_length, seq_mask, num_step, hidden_size, kernel_name):
         """__init__"""
@@ -59,11 +61,13 @@ class RnnGenMask(object):
         self.seq_mask_gm = self.tik_instance.Tensor(self.dtype_out, self.shape_out, name="seq_mask_gm",
                                                     scope=tik.scope_gm)
         self.temp_gm = self.tik_instance.Tensor(self.dtype_out,
-                                                [self.num_step, self.batch_size, self.hidden_size_block], 
+                                                [self.num_step, self.batch_size, self.hidden_size_block],
                                                 name="temp_gm", scope=tik.scope_gm, is_workspace=True)
 
     def para_rule(self):
-        """para_rule"""
+        """
+        para_rule
+        """
         para_check.check_dtype(self.dtype, ("int32"), param_name="seq_length")
         para_check.check_dtype(self.dtype_out, ("float16"), param_name="seq_mask")
 
@@ -71,10 +75,10 @@ class RnnGenMask(object):
         para_check.check_shape(self.shape_out, param_name="seq_mask")
 
         para_check.check_kernel_name(self.kernel_name)
-        
+
         if self.repeat > 255:
             raise RuntimeError("Hidden size is too big to compute.")
-        
+
         if self.shape_out[0] != self.num_step:
             raise RuntimeError("shape_out[0] != num_step.")
         if self.shape_out[1] != self.batch_size:
@@ -83,45 +87,51 @@ class RnnGenMask(object):
             raise RuntimeError("shape_out[2] != hidden_size.")
 
     def compute_core(self, task_id):
-        """compute_core"""
+        """
+        compute_core
+        """
         temp_ub = self.tik_instance.Tensor("int32", [self.block], name="temp_ub", scope=tik.scope_ubuf)
         self.tik_instance.data_move(temp_ub, self.seq_length_gm[task_id % self.batch_size], 0, 1, 1, 0, 0)
         valid_len = self.tik_instance.Scalar("int32", init_value=temp_ub[0])
         curre_len = self.tik_instance.Scalar("int32", init_value=task_id // self.batch_size)
-        
+
         mask_ub = self.tik_instance.Tensor(self.dtype_out, [self.hidden_size_block], name="mask_ub",
                                            scope=tik.scope_ubuf)
         with self.tik_instance.if_scope(valid_len > curre_len):
             self.tik_instance.vector_dup(self.block, mask_ub, 1, self.repeat, 1, 1)
         with self.tik_instance.else_scope():
             self.tik_instance.vector_dup(self.block, mask_ub, 0, self.repeat, 1, 1)
-            
+
         if self.hidden_size != self.hidden_size_block:
             self.tik_instance.data_move(self.temp_gm[task_id * self.hidden_size_block], mask_ub, 0, 1, self.repeat, 0,
                                         0)
         else:
             self.tik_instance.data_move(self.seq_mask_gm[task_id * self.hidden_size], mask_ub, 0, 1, self.repeat, 0, 0)
-    
-    def data_tune(self):  
-        """data_tune"""
+
+    def data_tune(self):
+        """
+        data_tune
+        """
         with self.tik_instance.for_range(0, self.rounds, thread_num=self.thread_num) as i:
             temp_ub = self.tik_instance.Tensor(self.dtype_out, [self.hidden_size_block], name="temp_ub",
                                                scope=tik.scope_ubuf)
             self.tik_instance.data_move(temp_ub, self.temp_gm[i * self.hidden_size_block], 0, 1, self.repeat, 0, 0)
-            self.tik_instance.data_move(self.seq_mask_gm[i * self.hidden_size], temp_ub, 0, 1, self.repeat, 0, 0)                
+            self.tik_instance.data_move(self.seq_mask_gm[i * self.hidden_size], temp_ub, 0, 1, self.repeat, 0, 0)
 
     def rnn_gen_mask_compute(self):
-        """rnn_gen_mask_compute"""
+        """
+        rnn_gen_mask_compute
+        """
         self.para_rule()
         with self.tik_instance.for_range(0, self.used_aicore_num, block_num=self.used_aicore_num) as i:
             with self.tik_instance.for_range(0, self.batch_num_per_aicore) as k:
                 self.compute_core(i + k * self.used_aicore_num)
             with self.tik_instance.if_scope(i < self.batch_tail):
                 self.compute_core(i + self.batch_num_per_aicore * self.used_aicore_num)
-        
+
         if self.hidden_size != self.hidden_size_block:
             self.data_tune()
-        
+
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name, inputs=[self.seq_length_gm],
                                    outputs=[self.seq_mask_gm])
         return self.tik_instance
@@ -138,16 +148,16 @@ def rnn_gen_mask(seq_length, seq_mask, num_step, hidden_size, kernel_name="rnn_g
     Parameters
     ----------
     input(seq_length): dict
-        data of input
+    data of input
     output(seq_mask): dict
-        data of output
+    data of output
     num_step): int
     hidden_size: int
     kernel_name: str
-        the name of the operator
+    the name of the operator
     ----------
     """
     op_obj = RnnGenMask(seq_length, seq_mask, num_step, hidden_size, kernel_name)
-    
+
     return op_obj.rnn_gen_mask_compute()
-   
+

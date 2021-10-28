@@ -34,7 +34,8 @@ SLICE_THRE = 160 * 1024 // (16 * 4)
 # pylint: disable-msg=invalid-name,unused-argument
 # pylint: disable=too-many-branches
 def clear_ub(tik_instance, dst_ub):
-    """clear ub to zero
+    """
+    clear ub to zero
 
     Parameters
     ----------
@@ -79,7 +80,8 @@ def _prod(values):
 
 
 def calc_slice_size(scale_w):
-    """calc one line gradient
+    """
+    calc one line gradient
 
     Parameters
     ----------
@@ -98,7 +100,8 @@ def calc_slice_size(scale_w):
 
 def calc_line_slice_bigscale(tik_instance, grads, y, grads_h, loc_h,
                              loc_w, n_index, start_c1, end_c1):
-    """calc one line gradient
+    """
+    calc one line gradient
     """
     in_w = grads.shape[3]
     grads_ub = tik_instance.Tensor(
@@ -132,7 +135,8 @@ def calc_line_slice_bigscale(tik_instance, grads, y, grads_h, loc_h,
 
 def calc_line_slice(tik_instance, grads, y, grads_h, loc_h,
                     loc_w, n_index, start_c1, end_c1, scale_w):
-    """calc one line calc_line_slice
+    """
+    calc one line calc_line_slice
     """
     in_w = grads.shape[3]
     in_slice_w, out_slice_w = calc_slice_size(scale_w)
@@ -182,7 +186,8 @@ def calc_line_slice(tik_instance, grads, y, grads_h, loc_h,
 
 def calc_line(tik_instance, grads, y, grads_h,
               loc_h, loc_w, n_index, start_c1, end_c1):
-    """calc one line gradient
+    """
+    calc one line gradient
     """
     in_w = grads.shape[3]
     out_w = y.shape[3]
@@ -217,7 +222,8 @@ def calc_line(tik_instance, grads, y, grads_h,
 
 
 def calc_location(tik_instance, grads, y, align_corners, half_pixel_centers):
-    """calc output location
+    """
+    calc output location
 
     Parameters
     ----------
@@ -258,7 +264,8 @@ def calc_location(tik_instance, grads, y, align_corners, half_pixel_centers):
 
 
 def set_0_n(tik_instance, dst):
-    """set ub as 0 to n
+    """
+    set ub as 0 to n
 
     Parameters
     ----------
@@ -290,7 +297,8 @@ def set_0_n(tik_instance, dst):
 
 def calc_loc_scale(tik_instance, src_loc, dst_loc,
                    scale, align_corners, half_pixel_centers, bound):
-    """calc location by scale
+    """
+    calc location by scale
 
     Parameters
     ----------
@@ -366,7 +374,8 @@ def calc_loc_scale(tik_instance, src_loc, dst_loc,
 
 
 def calc_scale(grads, y, align_corners):
-    """calc scale
+    """
+    calc scale
 
     Parameters
     ----------
@@ -392,7 +401,8 @@ def calc_scale(grads, y, align_corners):
 
 
 def calc_resize_scale(in_size, out_size, align_corners):
-    """calc resize scale
+    """
+    calc resize scale
 
     Parameters
     ----------
@@ -412,7 +422,8 @@ def calc_resize_scale(in_size, out_size, align_corners):
 
 
 def calc_segment(tik_instance, total_seg, seg_index, seg_len):
-    """calc one block gradient
+    """
+    calc one block gradient
 
     Parameters
     ----------
@@ -434,7 +445,8 @@ def calc_segment(tik_instance, total_seg, seg_index, seg_len):
 
 
 def calc_c1_segment(tik_instance, start, total_len, rois_index, c1_num):
-    """calc one block gradient
+    """
+    calc one block gradient
 
     Parameters
     ----------
@@ -466,7 +478,8 @@ def calc_c1_segment(tik_instance, start, total_len, rois_index, c1_num):
 
 def calc_one_image(tik_instance, grads, y, loc_h, loc_w,
                    n_index, start_c1, end_c1, scale_w):
-    """calc one image grad
+    """
+    calc one image grad
     """
     in_w = grads.shape[3]
     out_w = y.shape[3]
@@ -489,7 +502,8 @@ def calc_one_image(tik_instance, grads, y, loc_h, loc_w,
 def resize_nearest_neighbor_grad_compute(tik_instance, grads,
                                          y, align_corners, half_pixel_centers,
                                          block_n, core_bias):
-    """calc grad
+    """
+    calc grad
 
     Parameters
     ----------
@@ -525,7 +539,8 @@ def resize_nearest_neighbor_grad_compute(tik_instance, grads,
 
 def resize_nearest_neighbor_grad_multicore(grads_shape, y_shape,
                                            align_corners, half_pixel_centers, kernel_name):
-    """calc grad
+    """
+    calc grad
 
     Parameters
     ----------
@@ -584,15 +599,15 @@ def check_supported(grads, y, size, align_corners=False, half_pixel_centers=Fals
     Parameters
     ----------
     grads: dict
-        dict with keys(shape and dtype) of input grads
+    dict with keys(shape and dtype) of input grads
     y: dict
-        dict with keys(shape and dtype) of output y
+    dict with keys(shape and dtype) of output y
     size: list
-        (orig_height, orig_width)
+    (orig_height, orig_width)
     align_corners: bool
-        whether align_corners
+    whether align_corners
     kernel_name: str
-        kernel_name
+    kernel_name
 
     Returns
     -------
@@ -620,7 +635,7 @@ def check_supported(grads, y, size, align_corners=False, half_pixel_centers=Fals
         return False, e.args
 
     return True, ""
-    
+
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
@@ -634,17 +649,17 @@ def resize_nearest_neighbor_v2_grad_d(
     Parameters
     ----------
     grads: dict
-        dict with keys(shape and dtype) of input grads
+    dict with keys(shape and dtype) of input grads
     y: dict
-        dict with keys(shape and dtype) of output y
+    dict with keys(shape and dtype) of output y
     size: list
-        (orig_height, orig_width)
+    (orig_height, orig_width)
     align_corners: bool
-        whether align_corners
+    whether align_corners
     half_pixel_centers: bool
-        whether open half_pixel_centers
+    whether open half_pixel_centers
     kernel_name: str
-        kernel_name
+    kernel_name
 
     Returns
     -------

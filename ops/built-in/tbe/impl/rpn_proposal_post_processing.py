@@ -167,11 +167,11 @@ def tik_topk_vms4(tik_instance, dst_tensor, dest_pos, src_tensor, src_pos, count
     param tik_instance:
 
     param dst_tensor: the tensor to sort the results
-        param dest_pos: the offset of the dst_tensor
+    param dest_pos: the offset of the dst_tensor
 
     param src_tensor: the tensor of sorted lists
-        param src_pos:the offset of each list, a list or tuple of four
-        param count_list: the proposal num of each list, a list or tuple of four
+    param src_pos:the offset of each list, a list or tuple of four
+    param count_list: the proposal num of each list, a list or tuple of four
 
     param valid_bit: same to the  vmrgsort4, [3, 7, 15]
     param topk_k:
@@ -1092,6 +1092,7 @@ def clip_size_filter(tik_instance, input_tensor, proposal_num, input_param):
                                ceil_div(num_post_nms, CONFIG_MASK)*CONFIG_DATA_TRANS,
                                0, 0)
 
+
 def local_v4dtrans(tik_inst, dst, src, num):
     """
     transpose 4*num to num*4
@@ -1144,6 +1145,8 @@ def local_v4dtrans(tik_inst, dst, src, num):
                          CONFIG_THREE,
                          num // CONFIG_EIGHT,
                          CONFIG_ONE, CONFIG_EIGHT, 0)
+
+
 # =========>  NMS  here
 def nms_local(tik_instance, data_tensor, input_param):
     """
@@ -1719,8 +1722,8 @@ def check_input_param(input_para, kernel_name):
     """
     check other input of generate_rpn_proposals()
     img_size,  [h, w]
-        img_height: [0, 2000]
-        img_width: [0, 3000]
+    img_height: [0, 2000]
+    img_width: [0, 3000]
     score_threshold (-inf, inf)
     k: [0, 6000]
     min_size [0, 2000]
@@ -1781,19 +1784,19 @@ def check_input_dict(dict_list, param_list):
     Parameters
     ----------
     dict_list:
-      sorted_propsoal : dict
-        shape and dtype of input boxes
-      proposal_num : dict
-        shape and dtype of input probobilities
-      sorted_box: : dict
-        shape and dtype of output sorted boxes
+    sorted_propsoal : dict
+    shape and dtype of input boxes
+    proposal_num : dict
+    shape and dtype of input probobilities
+    sorted_box: : dict
+    shape and dtype of output sorted boxes
 
     param_list: a list of param
-         0 score_threshold
-         1 k
-         2 core_max_num
-         3 post_nms_num: Int      num of proposals after NMS
-     Returns: None
+    0 score_threshold
+    1 k
+    2 core_max_num
+    3 post_nms_num: Int      num of proposals after NMS
+    Returns: None
     -------
     None
     """
@@ -1900,11 +1903,11 @@ def rpn_proposal_post_processing(sorted_proposal, proposal_num, sorted_box,
     Parameters
     ----------
     sorted_proposal : dict
-        shape and dtype of input boxes
+    shape and dtype of input boxes
     proposal_num : dict
-        shape and dtype of input probobilities
+    shape and dtype of input probobilities
     sorted_box: : dict
-        shape and dtype of output sorted boxes
+    shape and dtype of output sorted boxes
 
     img_size: listfloat, size of image, [h, w]
     score_threshold : float, init=0,   score filter threshold
@@ -1916,7 +1919,7 @@ def rpn_proposal_post_processing(sorted_proposal, proposal_num, sorted_box,
     score_filter: bool,  True
     core_max_num : max core num.
     kernel_name : str
-        kernel name, default value is "generate_rpn_proposals"
+    kernel name, default value is "generate_rpn_proposals"
     Returns
     -------
     None

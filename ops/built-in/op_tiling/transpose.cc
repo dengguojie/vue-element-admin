@@ -14,22 +14,22 @@
 
 #include "transpose.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string>
-#include <vector>
-#include <memory>
+#include <math.h>
 #include <algorithm>
 #include <iostream>
-#include <math.h>
+#include <memory>
+#include <string>
+#include <stdio.h>
+#include <stdlib.h>
+#include <vector>
 #include <limits.h>
 
-#include "register/op_tiling.h"
+#include <nlohmann/json.hpp>
 #include "op_log.h"
 #include "op_tiling_util.h"
-#include "securec.h"
-#include <nlohmann/json.hpp>
+#include "register/op_tiling.h"
 #include "vector_tiling_profiling.h"
+#include "securec.h"
 
 using namespace std;
 
@@ -366,8 +366,8 @@ static string PadString(string& in, int width = 0) {
   if (width == 0) {
     return s;
   }
-  if ((int)s.size() < width) {
-    for (int i = 0; i < width - (int)in.size(); i++) {
+  if (static_cast<int>(s.size()) < width) {
+    for (int i = 0; i < width - static_cast<int>(in.size()); i++) {
       s += " ";
     }
   }
@@ -3769,6 +3769,8 @@ static void CalcRepetStride(const CompilerInfo& compilerInfo, const ShapeInfo& s
       break;
     case 0x10:
       RepeatStride10(compilerInfo, shapeInfo, runtimeInfo, step);
+      break;
+    default:
       break;
   }
 }

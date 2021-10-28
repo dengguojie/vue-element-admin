@@ -18,6 +18,8 @@
  * \file resize_common.h
  * \brief
  */
+#ifndef ASL_OPS_CANN_OPS_BUILT_IN_OP_TILING_RESIZE_COMMON_H
+#define ASL_OPS_CANN_OPS_BUILT_IN_OP_TILING_RESIZE_COMMON_H
 #include <string>
 #include <math.h>
 #include <algorithm>
@@ -37,11 +39,11 @@ namespace optiling {
 // 4. Reserved, default 0
 // 5. Reserved, default 0
 // 6. Reserved, default 0
-const int64_t DEFAULT_TILING_MODE = 100000;
-const int64_t HEIGHT_ALIGN_FLAG = 10000;
-const int64_t width_ALIGN_FLAG = 1000;
-const int64_t WIDTH_ALIGN_FLAG = 100;
-const int64_t BIG_TO_SMALL_FLAG = 10;
+constexpr int64_t DEFAULT_TILING_MODE = 100000;
+constexpr int64_t HEIGHT_ALIGN_FLAG = 10000;
+constexpr int64_t width_ALIGN_FLAG = 1000;
+constexpr int64_t WIDTH_ALIGN_FLAG = 100;
+constexpr int64_t BIG_TO_SMALL_FLAG = 10;
 
 // auto tune interface parameter name
 const char INNERTUNEPARAM[] = "_tune_param";
@@ -149,3 +151,4 @@ bool GetResizeNearestNeighborV2GradTiling(const ResizeClassCompileParams& compil
  */
 bool GetResizeBilinearV2Tiling(const ResizeClassCompileParams& compile_params, ResizeClassTilingParams& tiling_params);
 }  // namespace optiling
+#endif ASL_OPS_CANN_OPS_BUILT_IN_OP_TILING_RESIZE_COMMON_H

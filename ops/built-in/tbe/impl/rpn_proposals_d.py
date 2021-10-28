@@ -227,7 +227,7 @@ class InitGmTensor(InitScalar):
     def set_mem_swap(self, temp_tensor):
         """
         set the mem_swap tensor for topk
-         temp_tensor: the middle tensor in GM
+        temp_tensor: the middle tensor in GM
         return: None
         """
         self.mem_swap = temp_tensor
@@ -236,12 +236,12 @@ class InitGmTensor(InitScalar):
 class InitNmsTensor:
     """
     Init the GM tensor neede by NMS
-        param input_param:   nms_threshold, img_height, img_width,
-                              score_filter=True, score_threshold=0,
-                              k=6000,
-                              box_filter=True, min_height=0, min_width=0,
-                             score_sigmoid=True,
-        param input_dict:  rois[N,4], cls_bg_prob[N,1], sorted_box[M,4], sorted_scores[M,1]
+    param input_param:   nms_threshold, img_height, img_width,
+    score_filter=True, score_threshold=0,
+    k=6000,
+    box_filter=True, min_height=0, min_width=0,
+    score_sigmoid=True,
+    param input_dict:  rois[N,4], cls_bg_prob[N,1], sorted_box[M,4], sorted_scores[M,1]
     """
 
     def __init__(self, tik_instance, input_dict):
@@ -272,7 +272,7 @@ class InitNmsTensor:
     def set_sorted_scores(self, dict_in):
         """
         set the sorted score dict
-         dict_in: dict in
+        dict_in: dict in
         return: None
         """
         self.sorted_scores = dict_in
@@ -280,7 +280,7 @@ class InitNmsTensor:
     def set_post_nms_topn(self, num):
         """
         set the num of proposals after nms
-         num: num of post nms proposals
+        num: num of post nms proposals
         return: None
         """
         self.post_nms_topn = num
@@ -389,9 +389,9 @@ class InitFilterConst:
     init some const for the size filter using
     according to the input and output shape
     input_param : a list of attr
-            img_size, score_threshold, k,  min_size,
-            nms_threshold,
-            score_filter,  box_filter,   score_sigmoid
+    img_size, score_threshold, k,  min_size,
+    nms_threshold,
+    score_filter,  box_filter,   score_sigmoid
     """
 
     def __init__(self, input_param, input_dict):
@@ -408,7 +408,7 @@ class InitFilterConst:
     def set_dtype(self, dtype):
         """
         set the dtype
-         dtype: input
+        dtype: input
         return: None
         """
         self.dtype = dtype
@@ -492,10 +492,10 @@ class InitSigmoidTensor:
     """
     init tensors for sigmoid
     param input_param:   nms_threshold, img_height, img_width,
-                          score_filter=True, score_threshold=0,
-                          k=6000,
-                          box_filter=True, min_height=0, min_width=0,
-                         score_sigmoid=True,
+    score_filter=True, score_threshold=0,
+    k=6000,
+    box_filter=True, min_height=0, min_width=0,
+    score_sigmoid=True,
     param input_dict:  rois[N,4], cls_bg_prob[N,1], sorted_box[M,4], sorted_scores[M,1]
     """
 
@@ -625,9 +625,9 @@ def one_core_process(tik_instance, data_tensor, middle_tensor, tiling_para):
     ---------------------
     tik_instance: the tik container
     data_tensor: tensors in the DDR
-       rois_gm, prob_gm, box_gm, scores_gm,
-        proposal_gm, mem_swap, proposal_post_topk,
-         topk_output_actual_proposal_num
+    rois_gm, prob_gm, box_gm, scores_gm,
+    proposal_gm, mem_swap, proposal_post_topk,
+    topk_output_actual_proposal_num
 
     midle_tensor: tensors in UB
     rois_ub, prob_ub, rois_ub_trans, prob_ub_trans, proposal
@@ -637,7 +637,6 @@ def one_core_process(tik_instance, data_tensor, middle_tensor, tiling_para):
 
     off_set:
     the offset of the DDR adress, unit CONFIG_UNIT
-
     """
 
     num_offset = tiling_para.off_set
@@ -795,9 +794,9 @@ def one_core_process_tial(tik_instance, data_tensor, middle_tensor, tiling_para)
     ---------------------
     tik_instance: the tik container
     data_tensor: tensors in the DDR
-        rois_gm, prob_gm, box_gm, scores_gm,
-        proposal_gm, mem_swap, proposal_post_topk,
-         topk_output_actual_proposal_num
+    rois_gm, prob_gm, box_gm, scores_gm,
+    proposal_gm, mem_swap, proposal_post_topk,
+    topk_output_actual_proposal_num
 
     midle_tensor: tensors in UB
     rois_ub, prob_ub, rois_ub_trans, prob_ub_trans, proposal
@@ -969,18 +968,18 @@ def call_topk_sort(tik_instance, input_tensor, input_param, proposal_num):
     tik_instance: tik container
 
     data_tensor: tensors in the DDR
-      proposal_gm, proposal_post_topk, mem_swap, actual_proposal_num
+    proposal_gm, proposal_post_topk, mem_swap, actual_proposal_num
     input_tensor:
-       [0]: Tensors in DDR before Topk
-       [1]: Tensors in DDR used as temp
-       [2]: Tensors in DDR after Topk
+    [0]: Tensors in DDR before Topk
+    [1]: Tensors in DDR used as temp
+    [2]: Tensors in DDR after Topk
 
     input_param : a list of attr
     img_size, score_threshold, k,  min_size,   nms_threshold,
     score_filter,  box_filter,  score_sigmoid,
 
     proposal_num:
-       num of proposals
+    num of proposals
     output:
     :return:
     """
@@ -1011,14 +1010,14 @@ def call_topk_sort(tik_instance, input_tensor, input_param, proposal_num):
 def filter_with_height_weight(tik_instance, data_tensor, filter_tensor, input_param):
     """
     do the clipboxes and size filter
-        tik_instance:  tik container
-        data_tensor : data tensor in the DDR
-        filter_tensor: UB tensors needed here inited by InitFilterTensor
-        input_param : a list of attr
-            img_size, score_threshold, k,  min_size,  nms_threshold,
-            score_filter,  box_filter,   score_sigmoid,
+    tik_instance:  tik container
+    data_tensor : data tensor in the DDR
+    filter_tensor: UB tensors needed here inited by InitFilterTensor
+    input_param : a list of attr
+    img_size, score_threshold, k,  min_size,  nms_threshold,
+    score_filter,  box_filter,   score_sigmoid,
 
-        input_dict:  rois[N,4], cls_bg_prob[N,1], sorted_box[M,4], sorted_scores[M,1]
+    input_dict:  rois[N,4], cls_bg_prob[N,1], sorted_box[M,4], sorted_scores[M,1]
     return: None
     """
 
@@ -1277,15 +1276,15 @@ def call_nms_processing(tik_instance, data_tensor, nms_tensor, input_param, inpu
     used_in_proposal
 
     nms.cce_nms((input_dtype, ub_size,
-                     nms_threshold, batch_id,
-                     pre_nms_topn, post_nms_topn,
-                     input_offset, image_info,
-                     tik_instance, None, class_index,
-                     real_batch_index),
-                    temp_proposal_out,
-                    topk_output_proposal,
-                    topk_output_actual_proposal_num,
-                    nms_actual_rois_num, rois_tensor, False)
+    nms_threshold, batch_id,
+    pre_nms_topn, post_nms_topn,
+    input_offset, image_info,
+    tik_instance, None, class_index,
+    real_batch_index),
+    temp_proposal_out,
+    topk_output_proposal,
+    topk_output_actual_proposal_num,
+    nms_actual_rois_num, rois_tensor, False)
     return:
     """
 
@@ -1412,14 +1411,14 @@ def rpn_proposals_d_compute(input_dict,
     Parameters
     ----------
     input_dict : a list of input dict
-      rois, cls_bg_prob, sorted_box, sorted_scores
+    rois, cls_bg_prob, sorted_box, sorted_scores
 
     input_param : a list of attr
     img_size,  score_threshold,  k,  min_size,   nms_threshold,
     score_filter,  box_filter,     score_sigmoid, post_nms_num
 
     kernel_name : str
-        kernel name, default value is "generate_rpn_proposals"
+    kernel name, default value is "generate_rpn_proposals"
 
     Returns
     -------
@@ -1506,8 +1505,8 @@ def check_input_param(input_para, kernel_name):
     """
     check other input of generate_rpn_proposals()
     img_size,  [h, w]
-        img_height: [0, 2000]
-        img_width: [0, 3000]
+    img_height: [0, 2000]
+    img_width: [0, 3000]
     score_threshold (-inf, inf)
     k: [0, 6000]
     min_size [0, 2000]
@@ -1573,14 +1572,14 @@ def check_input_dict(rois, cls_bg_prob, sorted_box, post_nms_num):
     Parameters
     ----------
     rois : dict
-        shape and dtype of input boxes
+    shape and dtype of input boxes
     cls_bg_prob : dict
-        shape and dtype of input probobilities
+    shape and dtype of input probobilities
     sorted_box: : dict
-        shape and dtype of output sorted boxes
+    shape and dtype of output sorted boxes
     post_nms_num: Int
-        num of proposals after NMS
-     Returns
+    num of proposals after NMS
+    Returns
     -------
     None
     """
@@ -1699,11 +1698,11 @@ def rpn_proposals_d(rois, cls_bg_prob, sorted_box,
     Parameters
     ----------
     rois : dict
-        shape and dtype of input boxes
+    shape and dtype of input boxes
     cls_bg_prob : dict
-        shape and dtype of input probobilities
+    shape and dtype of input probobilities
     sorted_box: : dict
-        shape and dtype of output sorted boxes
+    shape and dtype of output sorted boxes
 
     img_size: listfloat, size of image, [h, w]
     score_threshold : float, init=0,   score filter threshold
@@ -1716,7 +1715,7 @@ def rpn_proposals_d(rois, cls_bg_prob, sorted_box,
     box_filter: bool,   True
     score_sigmoid: bool, False
     kernel_name : str
-        kernel name, default value is "generate_rpn_proposals"
+    kernel name, default value is "generate_rpn_proposals"
     Returns
     -------
     None

@@ -238,7 +238,7 @@ class RoiClass():
                                         self.roi_actual_num[batch_id, 0], \
                                         0, 1, 1, 0, 0, 0)
             self.roi_actual_num_ub.set_as(roi_actual_num_ub_tmp[0])
-        
+
         if self.mode == self.MODE_2D_ROIS:
             self.ouput_proposal_offset.set_as(0)
             self.roi_actual_num_ub.set_as(self.rois_shape[0])
@@ -377,8 +377,7 @@ class RoiClass():
 
         Parameters
         ----------
-        tiling_index: load time, if there too many proposals, we have to load
-                        them to ub particaly
+        tiling_index: load time, if there too many proposals, we have to load them to ub particaly
         blockid : number of aicore
 
         Returns
@@ -451,7 +450,7 @@ class RoiClass():
                     name="proposals_ub_no_transpose", scope=tbe_platform.scope_ubuf)
                 upper_range = self.proposal_num_per_tiling
 
-                if self.tiling_num == 1:        
+                if self.tiling_num == 1:
                     self.proposal_ub_validnum.set_as(self.rois_shape[0])
                     self.tik_instance.data_move(
                         proposals_ub_no_transpose[0, 0],
@@ -478,7 +477,7 @@ class RoiClass():
                                 TYPELEN_DICT[self.dtype]) // 32,
                             0,
                             0)
-                        upper_range =  self.rois_shape[0] -tiling_index * \
+                        upper_range =  self.rois_shape[0] - tiling_index * \
                             self.proposal_num_per_tiling
 
                     with self.tik_instance.else_scope():
@@ -574,8 +573,7 @@ class RoiClass():
 
         Parameters
         ----------
-        tiling_index: load time, if there too many proposals, we have to load
-                        them to ub particaly
+        tiling_index: load time, if there too many proposals, we have to load them to ub particaly
         blockid : number of aicore
 
         Returns
@@ -1231,9 +1229,9 @@ class RoiClass():
     def roi_pooling_main(self):
         """
         main process of roi pooling.
-         including calculate the coordinate of pooled
+        including calculate the coordinate of pooled
         egde and max poolinf from the h direction
-         and the from the w direction
+        and the from the w direction
 
         Parameters
         ----------

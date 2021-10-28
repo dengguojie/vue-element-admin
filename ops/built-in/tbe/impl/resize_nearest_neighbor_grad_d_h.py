@@ -44,7 +44,8 @@ def _ceil_div(value, factor):
 
 
 def calc_segment(tik_instance, total_seg, seg_index, seg_len):
-    """calc one block gradient
+    """
+    calc one block gradient
 
     Parameters
     ----------
@@ -66,7 +67,8 @@ def calc_segment(tik_instance, total_seg, seg_index, seg_len):
 
 
 def clear_ub(tik_instance, dst_ub):
-    """clear ub to zero
+    """
+    clear ub to zero
 
     Parameters
     ----------
@@ -111,17 +113,17 @@ def resize_nearest_neighbor_grad_d_h(
     Parameters
     ----------
     grads: dict
-        dict with keys(shape and dtype) of input grads
+    dict with keys(shape and dtype) of input grads
     y: dict
-        dict with keys(shape and dtype) of output y
+    dict with keys(shape and dtype) of output y
     size: list
-        (orig_height, orig_width)
+    (orig_height, orig_width)
     align_corners: bool
-        whether align_corners
+    whether align_corners
     half_pixel_centers: bool
-        whether open half_pixel_centers
+    whether open half_pixel_centers
     kernel_name: str
-        kernel_name
+    kernel_name
 
     Returns
     -------
@@ -138,8 +140,8 @@ def resize_nearest_neighbor_grad_d_h(
 # pylint: disable=too-many-instance-attributes
 class ResizeNearestGrad():
     """
-       Function: use to finish MaxPoolWithargmax main functions
-       Modify : 2019-11-06
+    Function: use to finish MaxPoolWithargmax main functions
+    Modify : 2019-11-06
     """
 
     def __init__(self, grads, images, align_corners=False, half_pixel_centers=False):
@@ -266,7 +268,7 @@ class ResizeNearestGrad():
         Parameters
         ----------
         kernel_name: str
-            kernel_name
+        kernel_name
 
         Returns
         -------
@@ -677,17 +679,17 @@ class ResizeNearestGrad():
         Parameters
         ----------
         core_index: int
-            index of core
+        index of core
         h_per_core: int
-            number of h in per core
+        number of h in per core
         h_in_index: int
-            index of h
+        index of h
         l1_xpos: tensor
-            x pos in l1
+        x pos in l1
         l1_xscale: tensor
-            x scale in l1
+        x scale in l1
         one_value_buf: tensor
-            tensor of one value
+        tensor of one value
 
         Returns
         -------

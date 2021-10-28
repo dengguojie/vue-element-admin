@@ -28,8 +28,8 @@ MAX_UB_ELEMENT_NUMBER = 10240
 # pylint: disable=super-with-arguments
 class ScatterNdBase(object):
     """
-       Function: use to store scatter_nd base parameters
-       Modify : 2019-09-27
+    Function: use to store scatter_nd base parameters
+    Modify : 2019-09-27
     """
 
     def __init__(self, input_param, tik_instance):
@@ -91,8 +91,8 @@ class ScatterNdBase(object):
 
 class ScatterNd(ScatterNdBase):
     """
-       Function: use to store scatter_nd  parameters
-       Modify : 2019-09-27
+    Function: use to store scatter_nd  parameters
+    Modify : 2019-09-27
     """
 
     def __init__(self, input_param, tik_instance):
@@ -162,8 +162,7 @@ class ScatterNd(ScatterNdBase):
         Parameters
         ----------
         shape: out put shape
-        oneburst_num: data move oneburst can move
-                                 the number of the elements
+        oneburst_num: data move oneburst can move the number of the elements
 
         Returns
         -------
@@ -508,8 +507,7 @@ class ScatterNd(ScatterNdBase):
         ----------
         process: ScatterProcess class,which used to store scatter nd parameters
         repeats: instructions repeats
-        input_ub_fp16: a ub tensor when process.input_ub.dtype is int8 or
-                       uint8 is effective
+        input_ub_fp16: a ub tensor when process.input_ub.dtype is int8 or uint8 is effective
         element_num: the number of elements
 
         Returns

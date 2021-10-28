@@ -262,15 +262,15 @@ bool BoundingBoxDecodeTiling(const string& op_type, const TeOpParas& op_paras,
 
     TilingInfo param;
     InitTilingParam(param);
-    if (true != GetCompileParam(op_type, op_info, param)) {
+    if (!GetCompileParam(op_type, op_info, param)) {
         return false;
     }
 
-    if (true != CheckParam(op_type, param)) {
+    if (!CheckParam(op_type, param)) {
         return false;
     }
 
-    if (true != GetParam(op_paras, param)) {
+    if (!GetParam(op_paras, param)) {
         return false;
     }
 

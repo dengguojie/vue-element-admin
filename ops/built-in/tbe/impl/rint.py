@@ -31,7 +31,7 @@ def rint_compute(input_x, output_y, kernel_name="rint"):
     calculating rint(x):
     returns the integer nearest to x by element-wise
     If the result is between two representable values,
-     the even number should be used.
+    the even number should be used.
     For example:
     x :    [0.9, 2.5, 2.3, 1.5, -4.5]
     res : [ 1.0, 2.0, 2.0, 2.0, -4.0 ]
@@ -39,16 +39,16 @@ def rint_compute(input_x, output_y, kernel_name="rint"):
     Parameters
     ----------
     input_x: TVM tensor
-        the placeholder of input_x
+    the placeholder of input_x
     output_y: dict
-        dict with keys(shape and dtype) of output_y
+    dict with keys(shape and dtype) of output_y
     kernel_name: str
-        kernel name, default value is "rint"
+    kernel name, default value is "rint"
 
     Returns
     -------
     res: TVM tensor
-        the result of rint compute
+    the result of rint compute
     """
     res = tbe.round(input_x)
     res = tbe.cast_to(res, input_x.dtype)
@@ -63,7 +63,7 @@ def rint(input_x, output_y, kernel_name="rint"):
     calculating rint(x):
     returns the integer nearest to x by element-wise
     If the result is between two representable values,
-     the even number should be used.
+    the even number should be used.
     For example:
     x :    [0.9, 2.5, 2.3, 1.5, -4.5]
     res : [ 1.0, 2.0, 2.0, 2.0, -4.0 ]
@@ -71,11 +71,11 @@ def rint(input_x, output_y, kernel_name="rint"):
     Parameters
     ----------
     input_x: dict
-        dict with keys(shape and dtype) of input_x
+    dict with keys(shape and dtype) of input_x
     output_y: dict
-        dict with keys(shape and dtype) of output_y
+    dict with keys(shape and dtype) of output_y
     kernel_name: str
-        kernel name, default value is "rint"
+    kernel name, default value is "rint"
 
     Returns
     -------

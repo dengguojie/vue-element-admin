@@ -38,18 +38,18 @@ def rsqrt_grad_compute(input_y, input_dy, output_z, kernel_name="rsqrt_grad"):
     Parameters
     ----------
     input_y: TVM tensor
-        the placeholder of input_y
+    the placeholder of input_y
     input_dy: TVM tensor
-        the placeholder of input_dy
+    the placeholder of input_dy
     output_z: dict
-        dict info of output_z
+    dict info of output_z
     kernel_name: str
-        cce kernel name, default value is "rsqrt_grad"
+    cce kernel name, default value is "rsqrt_grad"
 
     Returns
     -------
     res: TVM tensor
-        the result of compute
+    the result of compute
     """
     dtype_input_y = input_y.dtype
     rsqrt_const = tvm.const(Constant.SCALAR, dtype=dtype_input_y)
@@ -77,13 +77,13 @@ def rsqrt_grad(input_y, input_dy, output_z, kernel_name="rsqrt_grad"):
     Parameters
     ----------
     input_y: dict
-        dict of input_y, include keys(shape and dtype)
+    dict of input_y, include keys(shape and dtype)
     input_dy: dict
-        dict of input_dy, include keys(shape and dtype)
+    dict of input_dy, include keys(shape and dtype)
     output_z: dict
-        dict of  output
+    dict of  output
     kernel_name: str
-        cce kernel name, default value is "rsqrt_grad"
+    cce kernel name, default value is "rsqrt_grad"
 
     Returns
     -------

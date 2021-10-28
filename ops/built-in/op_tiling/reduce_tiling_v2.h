@@ -29,25 +29,25 @@
 
 namespace optiling {
 namespace utils {
-const int32_t SMALL_SHAPE_THRESHOLD = 1024;
-const int32_t FUSED_NON_REDUCE_AXIS = 0;
-const int32_t FUSED_REDUCE_AXIS = 1;
-const int32_t BASE_2 = 2;
-const int32_t BASE_4 = 4;
-const int32_t BASE_10 = 10;
-const int32_t EIGHTY_PERCENT = 0.8;
-const int32_t MAX_INTEGER = 2147483647;
-const int32_t EMPTY_SCHEDULE_UB_TILING_FACTOR_128 = 128;
-const int32_t ARRAY_INDEX_0 = 0;
-const int32_t ARRAY_INDEX_1 = 1;
-const int32_t ARRAY_INDEX_2 = 2;
-const int32_t ARRAY_INDEX_3 = 3;
-const int32_t ARRAY_INDEX_4 = 4;
-const int32_t DEFAULT_VECTOR_CAPACITY_10 = 10;
-const int32_t ARRAY_FIRST_POS = 0;
-const int32_t DEFAULT_CAPACITY_EMPTY = 0;
-const int32_t NO_DIM = 0;
-const int32_t TILINGKEY_NONE_REDUCE_AXIS = 2147483646;
+constexpr int32_t SMALL_SHAPE_THRESHOLD = 1024;
+constexpr int32_t FUSED_NON_REDUCE_AXIS = 0;
+constexpr int32_t FUSED_REDUCE_AXIS = 1;
+constexpr int32_t BASE_2 = 2;
+constexpr int32_t BASE_4 = 4;
+constexpr int32_t BASE_10 = 10;
+constexpr int32_t EIGHTY_PERCENT = 0.8;
+constexpr int32_t MAX_INTEGER = 2147483647;
+constexpr int32_t EMPTY_SCHEDULE_UB_TILING_FACTOR_128 = 128;
+constexpr int32_t ARRAY_INDEX_0 = 0;
+constexpr int32_t ARRAY_INDEX_1 = 1;
+constexpr int32_t ARRAY_INDEX_2 = 2;
+constexpr int32_t ARRAY_INDEX_3 = 3;
+constexpr int32_t ARRAY_INDEX_4 = 4;
+constexpr int32_t DEFAULT_VECTOR_CAPACITY_10 = 10;
+constexpr int32_t ARRAY_FIRST_POS = 0;
+constexpr int32_t DEFAULT_CAPACITY_EMPTY = 0;
+constexpr int32_t NO_DIM = 0;
+constexpr int32_t TILINGKEY_NONE_REDUCE_AXIS = 2147483646;
 
 struct TilingInfoReduce {
   int32_t block_dim{-1};

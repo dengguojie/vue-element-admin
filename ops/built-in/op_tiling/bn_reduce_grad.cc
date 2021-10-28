@@ -18,11 +18,11 @@
  * \file bn_reduce_grad.cpp
  * \brief
  */
-#include "eletwise.h"
 #include <algorithm>
-#include "vector_tiling.h"
-#include "error_log.h"
 #include "../fusion_pass/common/fp16_t.hpp"
+#include "eletwise.h"
+#include "error_log.h"
+#include "vector_tiling.h"
 
 namespace optiling {
 bool BnTrainingReduceGradTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
@@ -45,13 +45,13 @@ bool BnTrainingReduceGradTiling(const std::string& op_type, const TeOpParas& op_
             input_x_shapes[0], input_x_shapes[1], input_x_shapes[2], input_x_shapes[3], input_x_shapes[4]);
         return false;
     }
-    reduce_mean_cof = (float)(reduce_mean_cof / num);
+    reduce_mean_cof = static_cast<float>((reduce_mean_cof / num));
 
     if (op_info.count("reduce_mean_cof_dtype") > 0) {
         const std::string reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<std::string>();
 
-        ByteBufferPut(run_info.tiling_data, (float)reduce_mean_cof);
-        ByteBufferPut(run_info.tiling_data, (float)(-1.0 * reduce_mean_cof));
+        ByteBufferPut(run_info.tiling_data, reduce_mean_cof);
+        ByteBufferPut(run_info.tiling_data, static_cast<float>((-1.0 * reduce_mean_cof)));
 
         OP_LOGD(op_type, "bn_training_reduce_grad write tilingdata num_rec= %f", reduce_mean_cof);
     }

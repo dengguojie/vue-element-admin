@@ -10,10 +10,10 @@
  * Apache License for more details at
  * http://www.apache.org/licenses/LICENSE-2.0
  */
-#include "reduce_tiling.h"
-#include "eletwise.h"
-#include "../fusion_pass/common/fp16_t.hpp"
 #include <iostream>
+#include "../fusion_pass/common/fp16_t.hpp"
+#include "eletwise.h"
+#include "reduce_tiling.h"
 
 namespace optiling {
 

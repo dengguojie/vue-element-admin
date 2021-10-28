@@ -20,8 +20,8 @@
  */
 
 #include <algorithm>
-#include "reduce_tiling_v2.h"
 #include "error_log.h"
+#include "reduce_tiling_v2.h"
 #include "graph/utils/op_desc_utils.h"
 
 namespace optiling {

@@ -18,15 +18,15 @@
  * \file tile.cc
  * \brief
  */
-#include <sstream>
 #include <cctype>
+#include <iostream>
+#include <sstream>
 #include "error_log.h"
 #include "graph/debug/ge_log.h"
 #include "vector_tiling.h"
 #include "op_tiling_util.h"
 #include "vector_tiling_profiling.h"
 #include "graph/utils/op_desc_utils.h"
-#include <iostream>
 
 namespace optiling {
 bool TileTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,

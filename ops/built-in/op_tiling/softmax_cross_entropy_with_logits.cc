@@ -20,12 +20,12 @@
 #include <algorithm>
 #include <unordered_map>
 
-#include "graph/debug/ge_log.h"
-#include "error_log.h"
-#include "vector_tiling.h"
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <vector>
+#include "error_log.h"
+#include "graph/debug/ge_log.h"
+#include "vector_tiling.h"
 
 namespace optiling {
 static const size_t MAX_DIM_LEN = 8;

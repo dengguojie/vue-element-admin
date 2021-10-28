@@ -30,11 +30,11 @@
 
 namespace optiling {
 
-const int32_t SMALL_SHAPE_THRESHOLD = 1024;
-const int32_t FUSED_NON_REDUCE_AXIS = 0;
-const int32_t FUSED_REDUCE_AXIS = 1;
-const int32_t H_W_THRESHOLD = 100;
-const int32_t DEFAULT_VECTOR_CAPACITY_10 = 10;
+constexpr int32_t SMALL_SHAPE_THRESHOLD = 1024;
+constexpr int32_t FUSED_NON_REDUCE_AXIS = 0;
+constexpr int32_t FUSED_REDUCE_AXIS = 1;
+constexpr int32_t H_W_THRESHOLD = 100;
+constexpr int32_t DEFAULT_VECTOR_CAPACITY_10 = 10;
 
 struct TilingInfo {
   int32_t block_dim{-1};

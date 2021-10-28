@@ -100,7 +100,7 @@ static void PrintParam(const TilingParam& param) {
 static int32_t GetCeilInt(int32_t value1, int32_t value2) {
   OP_TILING_CHECK(value2 == 0, VECTOR_INNER_ERR_REPORT_TILIING("arg_max_with_value", "value2 must not be zero"),
                   return -1);
-  return (int32_t)(value1 + value2 - 1) / value2;
+  return static_cast<int32_t>((value1 + value2 - 1) / value2);
 }
 
 static int GetAlignNum(int32_t dim_size, int32_t align_size) {
@@ -171,15 +171,15 @@ static void CalTilingParam(TilingParam& param, const ge::GeShape& input_shape, c
         int32_t axis_size_one_time = 0;
         if (param.axis_size >= data_each_vector) {
           vector_size = GetCeilInt(param.axis_size, data_each_vector) * data_each_vector;
-          axis_size_one_time = (int32_t)(segment / vector_size);
+          axis_size_one_time = static_cast<int32_t>((segment / vector_size));
           axis_size_one_time = axis_size_one_time * param.align_num;
         } else {
           vector_size = GetCeilInt(param.axis_size, data_each_block) * data_each_block;
-          axis_size_one_time = (int32_t)(segment / vector_size);
+          axis_size_one_time = static_cast<int32_t>((segment / vector_size));
           axis_size_one_time = ((axis_size_one_time > 240) || (param.align_num == 1))
                                    ? 240
                                    : axis_size_one_time;  // 240: (int)(255 / 16) * 16
-          axis_size_one_time = (int32_t)(axis_size_one_time * param.align_num / 240) * 240;
+          axis_size_one_time = static_cast<int32_t>((axis_size_one_time * param.align_num / 240) * 240);
         }
         // change tiling at first dim
         param.axis_size_one_time = axis_size_one_time;

@@ -831,8 +831,8 @@ def tik_topk_internal_sort(tik_instance, data_gm, score_threshold, num_actual, t
     the proposals can be moved in at one time
     param tik_instance:
     param data_gm: a list
-            src_tensor = data_gm[0] : the tensor store the original proposals
-            dst_tensor = data_gm[1] : the tensor to store the results in DDR / L1
+    src_tensor = data_gm[0] : the tensor store the original proposals
+    dst_tensor = data_gm[1] : the tensor to store the results in DDR / L1
     score_threshold:  for dump
     param num_actual: actual num of the input proposals
     topk_k : the max num needed after topk
@@ -845,8 +845,6 @@ def tik_topk_internal_sort(tik_instance, data_gm, score_threshold, num_actual, t
     n_required = tik_instance.Scalar("uint32",
                                      name="n_required")
     tik_scalar_min(tik_instance, num_actual, topk_k, n_required)
-
-    tik_instance.tikdb.debug_print('"proposal_actual_num:"+str(num_actual)')
 
     with tik_instance.new_stmt_scope():
         with tik_instance.if_scope(num_actual > CONFIG_TOPK):
@@ -1005,11 +1003,11 @@ def tik_topk_vms4(tik_instance, dst_tensor, dest_pos, src_tensor, src_pos, count
     param tik_instance:
 
     param dst_tensor: the tensor to sort the results
-        param dest_pos: the offset of the dst_tensor
+    param dest_pos: the offset of the dst_tensor
 
     param src_tensor: the tensor of sorted lists
-        param src_pos:the offset of each list, a list or tuple of four
-        param count_list: the proposal num of each list, a list or tuple of four
+    param src_pos:the offset of each list, a list or tuple of four
+    param count_list: the proposal num of each list, a list or tuple of four
 
     param valid_bit: same to the  vmrgsort4, [3, 7, 15]
     param topk_k:
@@ -1511,11 +1509,11 @@ def tik_topk(tik_instance, data_tensor, proposal_num, k, score_threshold):
     do the topk
     param tik_instance:
     param data_tensor: a list
-        data_in = data_tensor[0]  : proposals to be sorted
-        data_out = data_tensor[1]  : the tensor to store the results
-        mem_swap = data_tensor[2]  :  the middle tensor to store the sorted list 6144,
-                                     the size of this tensor should be same as the data_in
-        mem_swap_2 = data_tensor[3] : the middle tensor for list combining, as least [k*2, 8]
+    data_in = data_tensor[0]  : proposals to be sorted
+    data_out = data_tensor[1]  : the tensor to store the results
+    mem_swap = data_tensor[2]  :  the middle tensor to store the sorted list 6144,
+    the size of this tensor should be same as the data_in
+    mem_swap_2 = data_tensor[3] : the middle tensor for list combining, as least [k*2, 8]
 
     param score_threshold: used for dump
     param k:  max num of proposals output
@@ -1548,22 +1546,22 @@ def call_topk_sort_v200(tik_instance, input_tensor, proposal_num, input_param):
     call the topk function to perform the topk
     param tik_instance:
     param input_tensor: data_gm
-           0 proposal_post_topk : the tensor to store the results
-           1 proposal_cb:  proposals in L1, num_total_cb
-           2 mem_swap:  the cache to storing the proposals in L1
-           3 proposal_gm:   proposals in DDR, num_total_gm
-           4 mem_swap_gm:  the tensor to cache the proposals results of L1
+    0 proposal_post_topk : the tensor to store the results
+    1 proposal_cb:  proposals in L1, num_total_cb
+    2 mem_swap:  the cache to storing the proposals in L1
+    3 proposal_gm:   proposals in DDR, num_total_gm
+    4 mem_swap_gm:  the tensor to cache the proposals results of L1
 
     param proposal_num:  data_tensor
-          0 flag_cb: whether the DDR tensor is used for the proposals storing
-                       0 the DDR is used; otherwise, not
-          1 num_total_cb
-          2 num_total_gm
+    0 flag_cb: whether the DDR tensor is used for the proposals storing
+    0 the DDR is used; otherwise, not
+    1 num_total_cb
+    2 num_total_gm
 
     param input_param:
-          0  k:
-          1  score_threshold:
-          2  data_type
+    0  k:
+    1  score_threshold:
+    2  data_type
     return:  None
     """
 
@@ -1650,16 +1648,16 @@ def clip_size_filter(tik_instance, input_tensor, proposal_num, input_param):
     perform the clip boxes and size filter
     param tik_instance:
     param input_tensor:
-        0  src_proposals
-        1  dst_proposals
+    0  src_proposals
+    1  dst_proposals
     param proposal_num:
-        0  k:
-        1  actual proposal_num, a scalar
+    0  k:
+    1  actual proposal_num, a scalar
     param input_param:
-            0   img_size: [h, w]
-            1   min_size: the threshold
-            2  data_type
-            3  score_filter
+    0   img_size: [h, w]
+    1   min_size: the threshold
+    2  data_type
+    3  score_filter
     return: None
     """
 
@@ -2363,14 +2361,14 @@ def rpn_proposals_d_compute_v200(input_dict,
     Parameters
     ----------
     input_dict : a list of input dict
-      rois, cls_bg_prob, sorted_box
+    rois, cls_bg_prob, sorted_box
 
     input_param : a list of attr
     img_size,  score_threshold,  k,  min_size,   nms_threshold,
     score_filter,     box_filter,     score_sigmoid,
 
     kernel_name : str
-        kernel name, default value is "generate_rpn_proposals"
+    kernel name, default value is "generate_rpn_proposals"
 
     Returns
     -------

@@ -36,7 +36,7 @@ static int64_t GetCeilInt(int64_t value1, int64_t value2) {
   OP_TILING_CHECK(value2 == 0,
     VECTOR_INNER_ERR_REPORT_TILIING("Flattern", "In the GetCeilInt function, the divisor is 0"),
     return value1);
-  return (int64_t)(value1 + value2 - 1) / value2; 
+  return static_cast<int64_t>((value1 + value2 - 1) / value2);
 }
 
 bool GetFlattenCompileParams(const nlohmann::json& op_compile_info, int64_t& core_num, int64_t& ub_size,

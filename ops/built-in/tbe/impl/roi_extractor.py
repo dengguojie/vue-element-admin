@@ -1,7 +1,6 @@
 from te import tik
 import te.platform as tbe_platform
 from te.utils import para_check
-import math
 from functools import reduce
 from impl.roi_align import roi_align_compute
 
@@ -159,10 +158,6 @@ def _get_roi_align_perf_scale_for_zero(tik_instance, proposal, proposals_ub_x0,
         "int32", [proposal_num_128], name="grid_w_int32", scope=tbe_platform.scope_ubuf)
     grid_h_int32 = tik_instance.Tensor(
         "int32", [proposal_num_128], name="grid_h_int32", scope=tbe_platform.scope_ubuf)
-    grid_w_int16 = tik_instance.Tensor(
-        "int16", [proposal_num_128], name="grid_w_int16", scope=tbe_platform.scope_ubuf)
-    grid_h_int16 = tik_instance.Tensor(
-        "int16", [proposal_num_128], name="grid_h_int16", scope=tbe_platform.scope_ubuf)
 
     # bin size
     tik_instance.vec_muls(64 * dtype_num, roi_bin_h_fp32_value[:],
@@ -240,16 +235,13 @@ def roi_align_tik(tik_instance, feature_map, rois, roisn, ret,
     rois_shape = rois.shape
     dtype = feature_map.dtype
     feature_shape = feature_map.shape
-    roisn_shape = roisn.shape
     roisn_dtype = roisn.dtype
 
     fm_c1 = feature_shape[1]
-    fm_c0 = 16
     proposal_num = tik_instance.Scalar("int32", name="proposal_num")
     proposal_num.set_as(roisn[0][0])
     grid_curr_h = tik_instance.Scalar(dtype="int32")
     grid_curr_w = tik_instance.Scalar(dtype="int32")
-    core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     block_num = proposal_num
     if dtype == "float32":
         n_bust = 2
@@ -442,7 +434,6 @@ class RoiExtractor:
         """
         dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(self.rois_dtype) // BIT_EACH_BYTE
         data_each_block = BLOCK_BIT_SIZE // dtype_bytes_size
-        vector_mask_max = 8 * data_each_block
 
         x1_fp16 = self.tik_instance.Tensor("float16", (ALIGN_LEN,), name="rois_x1_fp16", scope=tik.scope_ubuf)
         y1_fp16 = self.tik_instance.Tensor("float16", (ALIGN_LEN,), name="rois_y1_fp16", scope=tik.scope_ubuf)
@@ -457,9 +448,6 @@ class RoiExtractor:
         zero_ub = self.tik_instance.Tensor("float16", (128,), name="zero_ub", scope=tik.scope_ubuf)
         work_tensor0 = self.tik_instance.Tensor("float32", (4 * ALIGN_LEN,),
                                                 name="work_tensor0_ub", scope=tik.scope_ubuf)
-        work_tensor1 = self.tik_instance.Tensor("float16", (10 * ALIGN_LEN,),
-                                                name="work_tensor1_ub", scope=tik.scope_ubuf)
-        target_i32 = self.tik_instance.Tensor("int32", (ALIGN_LEN,), name="tgt_i32_ub", scope=tik.scope_ubuf)
         self.tik_instance.vector_dup(128, lvl_max, self.num_levels - 1, 1, 1, 8)
         self.tik_instance.vector_dup(128, one_ub, 1, 1, 1, 8)
         self.tik_instance.vector_dup(128, zero_ub, 0, 1, 1, 8)
@@ -471,14 +459,10 @@ class RoiExtractor:
                                            name="rois_ub", scope=tik.scope_ubuf)
         rois_ub_n5 = self.tik_instance.Tensor(self.rois_dtype, (ALIGN_LEN, 5),
                                               name="rois_ub_n5", scope=tik.scope_ubuf)
-        rois_fp16 = rois_ub
         if self.rois_dtype == "float32":
-            rois_fp16 = self.tik_instance.Tensor("float16", (ALIGN_LEN, C0_SIZE_FP16),
-                                                 name="rois_fp16_ub", scope=tik.scope_ubuf)
             n_burst = 2
         else:
             n_burst = 1
-        cce_product = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
         support_vextract = tbe_platform.api_check_support("tik.vextract", "float32")
 
         def inner_compute(offset):
@@ -515,10 +499,10 @@ class RoiExtractor:
             # calc levels
             self.tik_instance.vec_sub(64, x1_fp32, x2_fp32, x1_fp32, REPEAT_FP32, 8, 8, 8)  # x2_fp32 - x1_fp32
             self.tik_instance.vec_sub(64, y1_fp32, y2_fp32, y1_fp32, REPEAT_FP32, 8, 8, 8)  # y2_fp32 - y1_fp32
-            self.tik_instance.vec_mul(64, y1_fp32, x1_fp32, y1_fp32, REPEAT_FP32, 8, 8, 8)  # (x2_fp32 - x1_fp32) * (y2_fp32 - y1_fp32)
-            self.tik_instance.vec_rsqrt_high_preci(64, x1_fp32, y1_fp32, work_tensor0[0:], REPEAT_FP32, 8, 8)  # rsqrt(x)
+            self.tik_instance.vec_mul(64, y1_fp32, x1_fp32, y1_fp32, REPEAT_FP32, 8, 8, 8)
+            self.tik_instance.vec_rsqrt_high_preci(64, x1_fp32, y1_fp32, work_tensor0[0:], REPEAT_FP32, 8, 8)
             self.tik_instance.vec_rec_high_preci(64, y1_fp32, x1_fp32, work_tensor0[0:], REPEAT_FP32, 8, 8)  # sqrt(x)
-            self.tik_instance.vec_conv(64, "none", target_lvls[offset:offset + ALIGN_LEN], y1_fp32, REPEAT_FP32, 4, 8)  # fp32->fp16
+            self.tik_instance.vec_conv(64, "none", target_lvls[offset:offset + ALIGN_LEN], y1_fp32, REPEAT_FP32, 4, 8)
 
         if loop > 0:
             with self.tik_instance.for_range(0, loop) as loop_i:
@@ -549,8 +533,6 @@ class RoiExtractor:
 
     def where_and_nonzero(self, target_lvls, index_reg, inds, lvl):
         align_len = target_lvls.shape[0]
-        assert align_len % 128 == 0
-        # mask = target_lvls == i
         inds_buf = self.tik_instance.Tensor("int32", (align_len, ),
                                             name="inds_buf", scope=tik.scope_ubuf)
         i_ub = self.tik_instance.Tensor("float16", (128,), name="i_ub", scope=tik.scope_ubuf)
@@ -610,7 +592,6 @@ class RoiExtractor:
             index_reg = self.tik_instance.Scalar("int32", name="index_reg")  # valid rois number in current level
             idx = self.tik_instance.Scalar("int32", name="roi_idx")
 
-            # inds = (target_lvls == i).nonzero.squeeze(1)
             with self.tik_instance.new_stmt_scope():
                 target_lvls = self.tik_instance.Tensor("float16", (ceil_div(self.rois_total_num, 128) * 128,),
                                                    name="target_lvls_ub", scope=tik.scope_ubuf)

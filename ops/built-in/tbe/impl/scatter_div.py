@@ -35,19 +35,19 @@ def scatter_div(var,
     Parameters
     ----------
     var: dict
-        data of input.
-        source data type, support "int8", "uint8", "int32", "float16", "float32"
+    data of input.
+    source data type, support "int8", "uint8", "int32", "float16", "float32"
     indices: dict
-         A tensor of indices into var, support "int32"
+    A tensor of indices into var, support "int32"
     updates: dict
-        data of updates
-        source data type should ne same as var
+    data of updates
+    source data type should ne same as var
     var_out: dict
-        data of output.
+    data of output.
     use_locking: bool
-        not used in this compute
+    not used in this compute
     kernel_name: str
-        kernel name, default value is "scatter_div"
+    kernel name, default value is "scatter_div"
 
     Returns:
     None

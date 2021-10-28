@@ -62,7 +62,8 @@ def _apply_reg_buffer(ib, dtype, shape, name="reg_buf"):
 
 # pylint: disable=too-many-instance-attributes
 class ResizeNearestNeighbor:
-    """ResizeNearestNeighbor main functions
+    """
+    ResizeNearestNeighbor main functions
     """
 
     def __init__(self,
@@ -107,7 +108,8 @@ class ResizeNearestNeighbor:
         self.one_six_ub_ele = (self.ub_size - 1024) // self.dtype_size // 6
 
     def calculate_scale(self):
-        """calculate scale
+        """
+        calculate scale
         """
         if self.align_corners is True and self.output_h > 1:
             scale_h = float(self.input_h - 1) / float(self.output_h - 1)
@@ -123,7 +125,8 @@ class ResizeNearestNeighbor:
 
     def calculate_index(self, ib, scale, ub_int32, ub_fp16, ub_fp32, src_reg,
                         i):
-        """ calculate w_location
+        """
+        calculate w_location
         """
         flag = tbe_platform.intrinsic_check_support("Intrinsic_vconv",
                                                     "s322f32")
@@ -252,7 +255,8 @@ class ResizeNearestNeighbor:
                                 ub_int32.access_ptr("r", offset=0), 0))
 
     def tile_b_c1(self):
-        """tile b*c1
+        """
+        tile b*c1
         """
         b_c1 = self.batch * self.c1
         if self.half_ub_block % self.c0_block == 0:
@@ -274,7 +278,8 @@ class ResizeNearestNeighbor:
         return src_loop, src_loop_num, dst_loop, dst_loop_num
 
     def calculate_w_b(self):
-        """ calculate w and b for UB to GM
+        """
+        calculate w and b for UB to GM
         """
         w_out = 80
         ub_flag = False
@@ -322,7 +327,8 @@ class ResizeNearestNeighbor:
     def copy_src_to_dst_ub(self, ib, input_data, output_data, src_offset_h,
                            src_offset_w, dst_offset_h, dst_offset_w, loop,
                            loop_num):
-        """gm -> ub ->gm
+        """
+        gm -> ub ->gm
         """
         b_c1 = self.batch * self.c1
 
@@ -433,7 +439,8 @@ class ResizeNearestNeighbor:
 
     def copy_src_to_dst_l1(self, ib, core_idx, core_number, input_data,
                            output_data, loop_idx):
-        """gm -> l1 -> ub ->gm
+        """
+        gm -> l1 -> ub ->gm
         """
         w_out, w_in, b_out, _, _ = self.calculate_w_b()
         b_loop = (self.batch + b_out - 1) // b_out
@@ -661,8 +668,9 @@ class ResizeNearestNeighbor:
                                 0))
 
     def copy_src_h_w_to_dst_nh_nw_sh(self):
-        """when src shape is [h,w]; dst shape is [n*h,n*w];
-           gm -> ub -> ub -> gm
+        """
+        when src shape is [h,w]; dst shape is [n*h,n*w];
+        gm -> ub -> ub -> gm
         """
         scale_h = self.output_h // self.input_h
         scale_w = self.output_w // self.input_w
@@ -790,8 +798,9 @@ class ResizeNearestNeighbor:
             enable_l2=False)
 
     def copy_src_h_w_to_dst_nh_nw_sw(self):
-        """when src shape is [h,w]; dst shape is [n*h,n*w];
-           gm -> ub -> ub -> gm
+        """
+        when src shape is [h,w]; dst shape is [n*h,n*w];
+        gm -> ub -> ub -> gm
         """
         scale_h = self.output_h // self.input_h
         scale_w = self.output_w // self.input_w
@@ -1055,7 +1064,7 @@ def resize_nearest_neighbor_v2_d_compute(images,
 
         with ib.for_range(0, one_core_loop) as loop_idx:
             scalar_dtype = "int32" if tvm.api_config.query_bit_width() == 32 else "int64"
-            src_reg = _apply_reg_buffer(ib, scalar_dtype, [2], name="src_reg")    
+            src_reg = _apply_reg_buffer(ib, scalar_dtype, [2], name="src_reg")
             ub_int32_h = _apply_store_buffer(
                 ib,
                 "int32", [resize.c0],
@@ -1202,24 +1211,25 @@ def resize_nearest_neighbor_v2_d(images,
                                  align_corners=False,
                                  half_pixel_centers=False,
                                  kernel_name="resize_nearest_neighbor"):
-    """Resize `images` to `size` using nearest neighbor interpolation.
+    """
+    Resize `images` to `size` using nearest neighbor interpolation.
 
     Parameters
     ----------
     images: dict
-        the dict of input, include shape of input_tensor which layout
-        only support 5HD and dtype supports 'float16', 'float32'
+    the dict of input, include shape of input_tensor which layout
+    only support 5HD and dtype supports 'float16', 'float32'
     y: dict
-        the dict of output, include shape of input_tensor which layout
-        only support 5HD and dtype supports 'float16', 'float32'
+    the dict of output, include shape of input_tensor which layout
+    only support 5HD and dtype supports 'float16', 'float32'
     size: list or tuple
-        the height and width of output tensor
+    the height and width of output tensor
     align_corners: bool
-        whether align_corners
+    whether align_corners
     half_pixel_centers: bool
-        whether half_pixel_centers
+    whether half_pixel_centers
     kernel_name: str
-        cce kernel name, default value is `resize_nearest_neighbor`
+    cce kernel name, default value is `resize_nearest_neighbor`
 
     Returns
     -------
@@ -1242,7 +1252,7 @@ def resize_nearest_neighbor_v2_d(images,
 
     if align_corners and half_pixel_centers:
         rule_desc = "if half_pixel_centers is True, align_corners must be False"
-        param_value = "%s and %s"%(align_corners, half_pixel_centers)
+        param_value = "%s and %s" % (align_corners, half_pixel_centers)
         error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, \
                                                           "align_corners and half_pixel_centers", param_value)
 

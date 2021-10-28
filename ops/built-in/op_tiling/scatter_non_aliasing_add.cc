@@ -80,7 +80,7 @@ static int64_t GetCeilTwoInt(int64_t value1, int64_t value2) {
   if (value2 == 0) {
     return value1;
   }
-  return (int64_t)(value1 + value2 - 1) / value2;
+  return static_cast<int64_t>((value1 + value2 - 1) / value2);
 }
 
 void CalRunningParams(ScatterNonAliasingAddTilingParams& runParams, int64_t indicesNum, int64_t addsNum,

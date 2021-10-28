@@ -35,7 +35,9 @@ const int64_t MINIMUM_DATA_NUM_EACH_CORE = 1024;
 const int64_t VECTOR_PROCESS_BYTES = 256;
 const int64_t OP_INPUTS_SIZE = 2;
 
-static int64_t GetCeilInt(int64_t value1, int64_t value2) { return (int64_t)(value1 + value2 - 1) / value2; }
+static int64_t GetCeilInt(int64_t value1, int64_t value2) {
+  return static_cast<int64_t>((value1 + value2 - 1) / value2);
+}
 
 struct SquareSumAllTilingParams {
   int32_t need_core_num_input_scalar = 0;

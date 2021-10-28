@@ -20,7 +20,6 @@
 #include <string>
 #include <vector>
 #include "register/scope/scope_fusion_pass_register.h"
-#include "register/register_types.h"
 #include "graph/operator.h"
 
 namespace ge {
