@@ -54,15 +54,13 @@ def _less_compare_float32(data_x, data_y):
     """
 
     # minimum num of float32 2**(-126)
-    min_value = tvm.const(MIN_FLOAT, dtype="float32")
-
     if tbe_platform.api_check_support("tbe.dsl.vmaxs", data_x.dtype):
         res_sub = tbe.vsub(data_y, data_x)
-        res_min = tbe.vmins(res_sub, min_value)
+        res_min = tbe.vmins(res_sub, tvm.const(MIN_FLOAT, dtype="float32"))
         res_max = tbe.vmaxs(res_min, tvm.const(0, dtype="float32"))
     else:
         data_zero = tbe.vmuls(data_x, 0)
-        data_min = tbe.vadds(data_zero, min_value)
+        data_min = tbe.vadds(data_zero, tvm.const(MIN_FLOAT, dtype="float32"))
         res_sub = tbe.vsub(data_y, data_x)
         res_min = tbe.vmin(res_sub, data_min)
         res_max = tbe.vmax(res_min, data_zero)
@@ -93,9 +91,7 @@ def _bool_both_zero_compute(juduged_min, juduged_max):
     res : tensor
         a tensor for judge compute
     """
-
-    dtype = juduged_min.dtype
-    tensor_zero = tbe.vmuls(juduged_min, tvm.const(0, dtype))
+    tensor_zero = tbe.vmuls(juduged_min, tvm.const(0, juduged_min.dtype))
     min_abs = tbe.vabs(juduged_min)
     max_abs = tbe.vabs(juduged_max)
     min_max_replace = tbe.vadd(min_abs, max_abs)
@@ -129,13 +125,13 @@ def _nudged_min_max_compute(zero_point_from_min, quant_min, quant_max, scale, mi
     res: list
         the calculation results
     """
+    shape = shape_util.shape_to_list(quant_min.shape)
+    tensor_one = tbe.broadcast(tvm.const(1, "float32"), shape)
 
-    tensor_zero = tbe.vmuls(min, tvm.const(0, "float32"))
     bool_less_quant_min_float = _less_compare_float32(zero_point_from_min, quant_min)
     bool_more_quant_max_float = _less_compare_float32(quant_max, zero_point_from_min)
     less_quant_min_float = tbe.vmul(quant_min, bool_less_quant_min_float)
     more_quant_max_float = tbe.vmul(quant_max, bool_more_quant_max_float)
-    tensor_one = tbe.vadds(tensor_zero, tvm.const(1, "float32"))
     bool_not_less_quant_min_float = tbe.vsub(tensor_one, bool_less_quant_min_float)
     bool_not_more_quant_max_float = tbe.vsub(tensor_one, bool_more_quant_max_float)
     bool_between_min_max = tbe.vmul(bool_not_less_quant_min_float, bool_not_more_quant_max_float)
@@ -218,7 +214,7 @@ def fake_quant_with_min_max_vars_compute(x, min, max, y, num_bits, narrow_range)
 
     result_tmp = tbe.floor(clamped_scaled)
     result_tmp_fp32 = tbe.cast_to(result_tmp, "float32")
-    result = tbe.vadd(tbe.vmul(result_tmp_fp32, scale), nudged_min)
+    result = tbe.vmla(result_tmp_fp32, scale, nudged_min)
 
     bool_both_zero_value = _bool_both_zero_compute(min, max)
     res = tbe.vmul(result, bool_both_zero_value)
@@ -287,7 +283,7 @@ def fake_quant_with_min_max_vars(x, min, max, y, num_bits=8, narrow_range=False,
     para_check.check_dtype(max_dtype, check_tuple, param_name="max")
 
     ins = classify([x, min, max], OpPatternMode.ELEWISE_WITH_BROADCAST,
-                   extra_params={"disable_optimization": True})
+                   extra_params={"disable_optimization": False})
     schedules, tensors = [], []
 
     for (_x, _min, _max) in ins:
