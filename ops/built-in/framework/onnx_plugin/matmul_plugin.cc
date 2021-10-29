@@ -28,18 +28,7 @@ Status ParseParamsMatMul(const Message* op_src, ge::Operator& op_dest) {
   op_dest.SetAttr("adj_x1", trans_a);
   op_dest.SetAttr("adj_x2", trans_b);
 
-  auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
-  if (op_dsc == nullptr) {
-    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Get op desc failed. " );
-    return FAILED;
-  }
-
-  ge::GeTensorDesc org_tensor_y = op_dsc->GetOutputDesc(0);
-  org_tensor_y.SetOriginFormat(ge::FORMAT_NCHW);
-  org_tensor_y.SetFormat(ge::FORMAT_NCHW);
-  auto ret_y = op_dsc->UpdateOutputDesc(0, org_tensor_y);
-  if (ret_y != ge::GRAPH_SUCCESS) {
-    ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "Update output format failed. " );
+  if (ChangeFormatFromOnnx(op_dest, 0, ge::FORMAT_NCHW, false) != SUCCESS) {
     return FAILED;
   }
   return SUCCESS;

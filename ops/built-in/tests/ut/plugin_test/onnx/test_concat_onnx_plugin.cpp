@@ -111,5 +111,5 @@ TEST_F(concat_onnx_plugin_test, concat_onnx_plugin_test_case_5) {
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 3);
+  EXPECT_EQ(nodes.size(), 4);
 }

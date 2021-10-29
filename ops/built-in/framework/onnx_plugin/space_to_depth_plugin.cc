@@ -29,13 +29,13 @@ Status ParseParamsSpaceToDepth(const Message* op_src, ge::Operator& op_dest) {
     }
   }
   
-  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
-  if (op_desc == nullptr) {
+  if (ChangeFormatFromOnnx(op_dest, 0, ge::FORMAT_NCHW, false) != SUCCESS) {
+    return FAILED;
+  }
+  if (ChangeFormatFromOnnx(op_dest, 0, ge::FORMAT_NCHW, true) != SUCCESS) {
     return FAILED;
   }
 
-  ChangeFormatFromOnnx(op_desc, 0, ge::FORMAT_NCHW, false);
-  ChangeFormatFromOnnx(op_desc, 0, ge::FORMAT_NCHW, true);
   op_dest.SetAttr("block_size", blocksize_val);
   op_dest.SetAttr("data_format", "NCHW");
   return SUCCESS;

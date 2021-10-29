@@ -109,29 +109,6 @@ Status SetAttrToOp(const ge::onnx::NodeProto* node, ge::Operator& op) {
   return SUCCESS;
 }
 
-Status ChangeFormat(OpDesc& op_dsc, const int idx, ge::Format format, bool is_input) {
-  if (is_input) {
-    ge::GeTensorDesc org_tensor = op_dsc->GetInputDesc(idx);
-    org_tensor.SetOriginFormat(format);
-    org_tensor.SetFormat(format);
-    auto ret = op_dsc->UpdateInputDesc(idx, org_tensor);
-    if (ret != ge::GRAPH_SUCCESS) {
-      ONNX_PLUGIN_LOGE("Conv", "change input format failed.");
-      return FAILED;
-    }
-  } else {
-    ge::GeTensorDesc org_tensor_y = op_dsc->GetOutputDesc(idx);
-    org_tensor_y.SetOriginFormat(format);
-    org_tensor_y.SetFormat(format);
-    auto ret_y = op_dsc->UpdateOutputDesc(idx, org_tensor_y);
-    if (ret_y != ge::GRAPH_SUCCESS) {
-      ONNX_PLUGIN_LOGE("Conv", "change output format failed.");
-      return FAILED;
-    }
-  }
-  return SUCCESS;
-}
-
 /*!
  * @brief Replace GE ParseParams fuction to process graph conv node attrs
  * @param op_src the source op info from onnx.
@@ -162,45 +139,40 @@ Status ParseParamsConv(const Message* op_src, ge::Operator& op) {
 }
 
 Status SetFormat(ge::Operator& op, const int& dims) {
-  OpDesc op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  if (op_dsc == nullptr) {
-    ONNX_PLUGIN_LOGE("Conv", "get op desc failed.");
-    return FAILED;
-  }
   if (dims == INPUT_4D) {
     // The fmap should be NCHW
-    auto ret_x = ChangeFormat(op_dsc, 0, ge::FORMAT_NCHW, true);
+    auto ret_x = ChangeFormatFromOnnx(op, 0, ge::FORMAT_NCHW, true);
     if (ret_x != ge::GRAPH_SUCCESS) {
       ONNX_PLUGIN_LOGE("Conv", "update fmap format failed.");
       return FAILED;
     }
     // The filter should be NCHW
-    auto ret_w = ChangeFormat(op_dsc, 1, ge::FORMAT_NCHW, true);
+    auto ret_w = ChangeFormatFromOnnx(op, 1, ge::FORMAT_NCHW, true);
     if (ret_w != ge::GRAPH_SUCCESS) {
       ONNX_PLUGIN_LOGE("Conv", "update filter format failed.");
       return FAILED;
     }
     // The output should be NCHW
-    auto ret_y = ChangeFormat(op_dsc, 0, ge::FORMAT_NCHW, false);
+    auto ret_y = ChangeFormatFromOnnx(op, 0, ge::FORMAT_NCHW, false);
     if (ret_y != ge::GRAPH_SUCCESS) {
       ONNX_PLUGIN_LOGE("Conv", "update output format failed.");
       return FAILED;
     }
   } else if (dims == INPUT_5D) {
     // The fmap should be NCDHW
-    auto ret_x = ChangeFormat(op_dsc, 0, ge::FORMAT_NCDHW, true);
+    auto ret_x = ChangeFormatFromOnnx(op, 0, ge::FORMAT_NCDHW, true);
     if (ret_x != ge::GRAPH_SUCCESS) {
       ONNX_PLUGIN_LOGE("Conv", "update fmap format failed.");
       return FAILED;
     }
     // The filter should be NCDHW
-    auto ret_w = ChangeFormat(op_dsc, 1, ge::FORMAT_NCDHW, true);
+    auto ret_w = ChangeFormatFromOnnx(op, 1, ge::FORMAT_NCDHW, true);
     if (ret_w != ge::GRAPH_SUCCESS) {
       ONNX_PLUGIN_LOGE("Conv", "update filter format failed.");
       return FAILED;
     }
     // The output should be NCDHW
-    auto ret_y = ChangeFormat(op_dsc, 0, ge::FORMAT_NCDHW, false);
+    auto ret_y = ChangeFormatFromOnnx(op, 0, ge::FORMAT_NCDHW, false);
     if (ret_y != ge::GRAPH_SUCCESS) {
       ONNX_PLUGIN_LOGE("Conv", "update output format failed.");
       return FAILED;

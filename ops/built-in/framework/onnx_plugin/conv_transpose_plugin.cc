@@ -197,45 +197,40 @@ Status ParseParamsConvTranspose(const Message* op_src, ge::Operator& op) {
 }
 
 Status SetFormatConvTranspose(ge::Operator& op, const int& dims) {
-  OpDesc op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  if (op_dsc == nullptr) {
-    CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "get op desc failed.");
-    return FAILED;
-  }
   if (dims == INPUT_4D) {
     // The fmap should be NCHW
-    auto ret_x = ChangeFormatFromOnnx(op_dsc, 1, ge::FORMAT_NCHW, true);
+    auto ret_x = ChangeFormatFromOnnx(op, 1, ge::FORMAT_NCHW, true);
     if (ret_x != ge::GRAPH_SUCCESS) {
       CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "update fmap format failed.");
       return FAILED;
     }
     // The filter should be NCHW
-    auto ret_w = ChangeFormatFromOnnx(op_dsc, 2, ge::FORMAT_NCHW, true);
+    auto ret_w = ChangeFormatFromOnnx(op, 2, ge::FORMAT_NCHW, true);
     if (ret_w != ge::GRAPH_SUCCESS) {
       CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "update filter format failed.");
       return FAILED;
     }
     // The output should be NCHW
-    auto ret_y = ChangeFormatFromOnnx(op_dsc, 0, ge::FORMAT_NCHW, false);
+    auto ret_y = ChangeFormatFromOnnx(op, 0, ge::FORMAT_NCHW, false);
     if (ret_y != ge::GRAPH_SUCCESS) {
       CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "update output format failed.");
       return FAILED;
     }
   } else if (dims == INPUT_5D) {
     // The fmap should be NCDHW
-    auto ret_x = ChangeFormatFromOnnx(op_dsc, 1, ge::FORMAT_NCDHW, true);
+    auto ret_x = ChangeFormatFromOnnx(op, 1, ge::FORMAT_NCDHW, true);
     if (ret_x != ge::GRAPH_SUCCESS) {
       CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "update fmap format failed.");
       return FAILED;
     }
     // The filter should be NCDHW
-    auto ret_w = ChangeFormatFromOnnx(op_dsc, 2, ge::FORMAT_NCDHW, true);
+    auto ret_w = ChangeFormatFromOnnx(op, 2, ge::FORMAT_NCDHW, true);
     if (ret_w != ge::GRAPH_SUCCESS) {
       CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "update filter format failed.");
       return FAILED;
     }
     // The output should be NCDHW
-    auto ret_y = ChangeFormatFromOnnx(op_dsc, 0, ge::FORMAT_NCDHW, false);
+    auto ret_y = ChangeFormatFromOnnx(op, 0, ge::FORMAT_NCDHW, false);
     if (ret_y != ge::GRAPH_SUCCESS) {
       CUBE_INNER_ERR_REPORT_PLUGIN("ConvTranspose", "update output format failed.");
       return FAILED;

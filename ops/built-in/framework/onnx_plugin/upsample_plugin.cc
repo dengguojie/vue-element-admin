@@ -19,23 +19,6 @@ namespace domi {
 using NodeProto = ge::onnx::NodeProto;
 using OpDesc = std::shared_ptr<ge::OpDesc>;
 
-Status ChangeFormatUpsample(const ge::Operator& op, const int idx, ge::Format format) {
-  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  if (op_desc == nullptr) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "Get op_desc from operator failed.");
-    return FAILED;
-  } 
-  ge::GeTensorDesc org_tensor_y = op_desc->GetOutputDesc(idx);
-  org_tensor_y.SetOriginFormat(format);
-  org_tensor_y.SetFormat(format);
-  auto ret_y = op_desc->UpdateOutputDesc(idx, org_tensor_y);
-  if (ret_y != ge::GRAPH_SUCCESS) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "change output format failed.");
-    return FAILED;
-  }
-  return SUCCESS;
-}
-
 Status ParseParamsUpsample(const Message *op_src, ge::Operator &op_dest) {
   const NodeProto *node = reinterpret_cast<const NodeProto *>(op_src);
   if (node == nullptr) {
@@ -68,7 +51,7 @@ Status ParseOpToGraphUpsample(const ge::Operator& op, Graph& graph) {
   const vector<int64_t> dims = {len};
   ge:: Tensor const_value = Vec2Tensor(pads_vector, dims, DT_FLOAT, ge::FORMAT_ND);
   auto const_op = op::Const("const_data").set_attr_value(const_value);
-  auto ret_x = ChangeFormatUpsample(data0, 0, ge::FORMAT_NCHW);
+  auto ret_x = ChangeFormatFromOnnx(data0, 0, ge::FORMAT_NCHW, false);
   if (ret_x != ge::GRAPH_SUCCESS) {
     ONNX_PLUGIN_LOGE(op.GetName().c_str(), "update upsample_x format failed.");
     return FAILED;

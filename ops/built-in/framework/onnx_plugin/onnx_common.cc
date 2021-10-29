@@ -48,7 +48,13 @@ ge::DataType GetOmDtypeFromOnnxDtype(int onnx_type) {
   return onnx2om_dtype_map[dto_type];
 }
 
-Status ChangeFormatFromOnnx(std::shared_ptr<ge::OpDesc>& op_dsc, const int idx, ge::Format format, bool is_input) {
+Status ChangeFormatFromOnnx(ge::Operator& op, const int idx, ge::Format format, bool is_input) {
+  auto op_dsc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  if (op_dsc == nullptr) {
+    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "Get op_desc from operator failed.");
+    return FAILED;
+  }
+
   if (is_input) {
     ge::GeTensorDesc org_tensor = op_dsc->GetInputDesc(idx);
     org_tensor.SetOriginFormat(format);

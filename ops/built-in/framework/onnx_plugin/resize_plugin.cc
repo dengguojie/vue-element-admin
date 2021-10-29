@@ -15,34 +15,6 @@
 
 using namespace ge;
 namespace domi {
-Status ChangeFormatResize(const ge::Operator& op, const int idx, ge::Format format, bool is_input) {
-  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
-  if (op_desc == nullptr) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "Get op_desc from operator failed.");
-    return FAILED;
-  }
-  if (is_input) {
-    ge::GeTensorDesc org_tensor = op_desc->GetInputDesc(idx);
-    org_tensor.SetOriginFormat(format);
-    org_tensor.SetFormat(format);
-    auto ret = op_desc->UpdateInputDesc(idx, org_tensor);
-    if (ret != ge::GRAPH_SUCCESS) {
-      ONNX_PLUGIN_LOGE(op.GetName().c_str(), "change input format failed.");
-      return FAILED;
-    }
-  } else {
-    ge::GeTensorDesc org_tensor_y = op_desc->GetOutputDesc(idx);
-    org_tensor_y.SetOriginFormat(format);
-    org_tensor_y.SetFormat(format);
-    auto ret_y = op_desc->UpdateOutputDesc(idx, org_tensor_y);
-    if (ret_y != ge::GRAPH_SUCCESS) {
-      ONNX_PLUGIN_LOGE(op.GetName().c_str(), "change output format failed.");
-      return FAILED;
-    }
-  }
-  return SUCCESS;
-}
-
 Status ParseParamsResize(const Message *op_src, Operator &op_dst) {
   const ge::onnx::NodeProto *node = reinterpret_cast<const ge::onnx::NodeProto *>(op_src);
   if (node == nullptr) {
@@ -132,7 +104,7 @@ static Status ParseOpToGraphResize(const Operator& op, Graph& graph) {
 
   auto size = op::Slice().set_input_x(sizes).set_input_offsets(data_offsets).set_input_size(data_size);
   inputs.push_back(size);
-  auto ret_resize_x = ChangeFormatResize(resize_x, 0, ge::FORMAT_NCHW, false);
+  auto ret_resize_x = ChangeFormatFromOnnx(resize_x, 0, ge::FORMAT_NCHW, false);
   if (ret_resize_x != ge::GRAPH_SUCCESS) {
     ONNX_PLUGIN_LOGE(op.GetName().c_str(), "update resize_x format failed.");
     return FAILED;
@@ -150,8 +122,8 @@ static Status ParseOpToGraphResize(const Operator& op, Graph& graph) {
     if (input_size == 4) {
       resizeout_1.AddControlInput(resize_scales);
     }
-    ChangeFormatResize(resizeout_1, 0, ge::FORMAT_NCHW, false);
-    ChangeFormatResize(resizeout_1, 0, ge::FORMAT_NCHW, true);
+    ChangeFormatFromOnnx(resizeout_1, 0, ge::FORMAT_NCHW, false);
+    ChangeFormatFromOnnx(resizeout_1, 0, ge::FORMAT_NCHW, true);
     output_indexs.emplace_back(resizeout_1, vector<std::size_t>{0});
   } else if (mode_value == "linear") {
     auto resizeout_2 = op::ResizeBilinearV2().set_input_x(resize_x)
@@ -162,8 +134,8 @@ static Status ParseOpToGraphResize(const Operator& op, Graph& graph) {
     if (input_size == 4) {
       resizeout_2.AddControlInput(resize_scales);
     }
-    ChangeFormatResize(resizeout_2, 0, ge::FORMAT_NCHW, false);
-    ChangeFormatResize(resizeout_2, 0, ge::FORMAT_NCHW, true);
+    ChangeFormatFromOnnx(resizeout_2, 0, ge::FORMAT_NCHW, false);
+    ChangeFormatFromOnnx(resizeout_2, 0, ge::FORMAT_NCHW, true);
     output_indexs.emplace_back(resizeout_2, vector<std::size_t>{0});
   } else {
     ONNX_PLUGIN_LOGE(op.GetName().c_str(), "Unsupported interpolation mode");

@@ -117,39 +117,19 @@ Status ParseParamsDeformableConv2D(const Message* op_src, ge::Operator& op_dest)
   op_dest.SetAttr("deformable_groups", deformable_groups);
   op_dest.SetAttr("modulated", modulated);
 
-  ge::TensorDesc input_tensorx = op_dest.GetInputDesc("x");
-  input_tensorx.SetOriginFormat(ge::FORMAT_NCHW);
-  input_tensorx.SetFormat(ge::FORMAT_NCHW);
-  auto ret = op_dest.UpdateInputDesc("x", input_tensorx);
-  if (ret != ge::GRAPH_SUCCESS) {
-    ONNX_PLUGIN_LOGE("DeformableConv2D", "update x format failed");
+  if (ChangeFormatFromOnnx(op_dest, 0, ge::FORMAT_NCHW, true) != SUCCESS) {
+    return FAILED;
+  }
+ 
+  if (ChangeFormatFromOnnx(op_dest, 1, ge::FORMAT_NCHW, true) != SUCCESS) {
+    return FAILED;
+  }
+  
+  if (ChangeFormatFromOnnx(op_dest, 2, ge::FORMAT_NCHW, true) != SUCCESS) {
     return FAILED;
   }
 
-  ge::TensorDesc input_tensor_offsets = op_dest.GetInputDesc("offsets");
-  input_tensor_offsets.SetOriginFormat(ge::FORMAT_NCHW);
-  input_tensor_offsets.SetFormat(ge::FORMAT_NCHW);
-  ret = op_dest.UpdateInputDesc("offsets", input_tensor_offsets);
-  if (ret != ge::GRAPH_SUCCESS) {
-    ONNX_PLUGIN_LOGE("DeformableConv2D", "update offsets format failed");
-    return FAILED;
-  }
-
-  ge::TensorDesc input_tensor_filter = op_dest.GetInputDesc("filter");
-  input_tensor_filter.SetOriginFormat(ge::FORMAT_NCHW);
-  input_tensor_filter.SetFormat(ge::FORMAT_NCHW);
-  ret = op_dest.UpdateInputDesc("filter", input_tensor_filter);
-  if (ret != ge::GRAPH_SUCCESS) {
-    ONNX_PLUGIN_LOGE("DeformableConv2D", "update filter format failed");
-    return FAILED;
-  }
-
-  ge::TensorDesc output_tensor = op_dest.GetOutputDesc("y");
-  output_tensor.SetOriginFormat(ge::FORMAT_NCHW);
-  output_tensor.SetFormat(ge::FORMAT_NCHW);
-  auto ret_output = op_dest.UpdateOutputDesc("y", output_tensor);
-  if (ret_output != ge::GRAPH_SUCCESS) {
-    ONNX_PLUGIN_LOGE("DeformableConv2D", "update output format failed");
+  if (ChangeFormatFromOnnx(op_dest, 0, ge::FORMAT_NCHW, false) != SUCCESS) {
     return FAILED;
   }
   return SUCCESS;

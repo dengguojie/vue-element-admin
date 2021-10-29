@@ -35,14 +35,9 @@ Status ParseParamsDepthToSpace(const Message* op_src, ge::Operator& op_dest) {
     return FAILED;
   }
   
-  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op_dest);
-  if (op_desc == nullptr) {
+  if (ChangeFormatFromOnnx(op_dest, 0, ge::FORMAT_NCHW, true) != SUCCESS) {
     return FAILED;
   }
-  ge::GeTensorDesc input_desc = op_desc->GetInputDesc(0);
-  input_desc.SetOriginFormat(ge::FORMAT_NCHW);
-  input_desc.SetFormat(ge::FORMAT_NCHW);
-  op_desc->UpdateInputDesc(0, input_desc);
   
   op_dest.SetAttr("block_size", block_size);
   op_dest.SetAttr("mode", mode);

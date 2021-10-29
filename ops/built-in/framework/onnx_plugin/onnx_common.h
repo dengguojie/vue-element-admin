@@ -50,6 +50,6 @@ ge::Tensor Scalar2Tensor(T val, const vector<int64_t>& dims, ge::DataType dtype,
 }
 
 ge::DataType GetOmDtypeFromOnnxDtype(int onnx_type);
-Status ChangeFormatFromOnnx(std::shared_ptr<ge::OpDesc>& op_dsc, const int idx, ge::Format format, bool is_input);
+Status ChangeFormatFromOnnx(ge::Operator& op, const int idx, ge::Format format, bool is_input);
 }  // namespace domi
 #endif  //  OPS_BUILT_IN_FRAMEWORK_ONNX_PLUGIN_ONNX_COMMON_H_
