@@ -247,7 +247,7 @@ def aipp_compute_single(input_tensor, input_shape, input_format, output_data, ai
 
         cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
 
-        if cur_cce_product not in ["Ascend310", "Ascend910", "Ascend610", "Ascend710",
+        if cur_cce_product not in ["Ascend920", "Ascend310", "Ascend910", "Ascend610", "Ascend710",
                                    "Ascend615", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
             cause_desc = "Only support is Ascend310,Ascend610,Ascend710,Ascend615," \
                         "Hi3796CV300ES,Hi3796CV300CS, SD3403." \
@@ -907,12 +907,13 @@ def aipp(input_data, input_dync_param, output_data, aipp_config_json, kernel_nam
     para_check.check_format(input_format, input_format_list, param_name="input")
 
     cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
-    if cur_cce_product in ('Ascend920',):
+    if output_format == "NC1HWC0" and cur_cce_product in ('Ascend920',):
         new_aipp_compute(input_data, input_dync_param, output_data, aipp_config, kernel_name)
         return
 
     if output_format == "NC1HWC0_C04":
-        if cur_cce_product not in ["Ascend610", "Ascend710", "Ascend615", "Hi3796CV300CS", "SD3403"]:
+        if cur_cce_product not in ["Ascend610", "Ascend710", "Ascend615",
+                                   "Hi3796CV300CS", "SD3403", "Ascend920"]:
             cause_desc = "output_format is NC1HWC0_C04 only support Ascend610, Ascend710, " \
                          "Ascend615, Hi3796CV300CS, SD3403!"
             aipp_comm.raise_runtime_error(cause_desc)

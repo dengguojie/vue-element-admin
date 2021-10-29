@@ -82,6 +82,9 @@ ut_case.add_case(["Ascend910"],
                  gen_static_aipp_case((1,3,418,416), (1,1,418,416,32),
                                       "uint8", "uint8", "NCHW", "NC1HWC0", aipp_config, "aipp_2", RuntimeError))
 
+ut_case.add_case(["Ascend310"],
+                 gen_static_aipp_case((1,3,418,416), (1,1,418,416,4),
+                                      "uint8", "uint8", "NCHW", "NC1HWC0_C04", aipp_config, "aipp_c04_1", RuntimeError))
 
 aipp_config_dict["crop"] = 1
 aipp_config_dict["padding"] = 1
@@ -100,6 +103,9 @@ aipp_config4 = json.dumps(aipp_config_dict)
 ut_case.add_case(["Ascend310", "Ascend710"],
                  gen_static_aipp_case((1,3,418,416), (1,1,258,240,32),
                                       "uint8", "uint8", "NCHW", "NC1HWC0", aipp_config4, "aipp_4", "success"))
+ut_case.add_case(["Ascend710"],
+                 gen_static_aipp_case((1,3,418,416), (1,1,258,240,4),
+                                      "uint8", "uint8", "NCHW", "NC1HWC0_C04", aipp_config4, "aipp_c04_2", "success"))
 
 aipp_config_dict["input_format"] = "RGB888_U8"
 aipp_config5 = json.dumps(aipp_config_dict)
@@ -139,6 +145,6 @@ ut_case.add_case(["Ascend310", "Ascend710"],
 
 
 if __name__ == '__main__':
-    # ut_case.run("Ascend710")
+    #ut_case.run("Ascend310")
     ut_case.run()
 
