@@ -95,33 +95,17 @@ def _s16_to_s8_normal_compute(x, x1, req_scale, x_shape, align_shape, c1_index, 
             res_s16 = tvm.compute(x_shape, lambda *indices: x(*indices), name="res_s16", tag="requant_s16")
     x_shape_list = shape_util.shape_to_list(x_shape)
     if tensor_flag:
-        res_ub_1 = tvm.compute(align_shape,
-                               _deq_cast_compute(
-                                   res_s16, req_scale, align_shape, c1_index, tensor_flag, x_shape_list, True),
-                               name="s16_to_s8_1", tag="requant_s16_vector_1")
-        res_ub_2 = tvm.compute(align_shape,
-                               _deq_cast_compute(
-                                   res_s16, req_scale, align_shape, c1_index, tensor_flag, x_shape_list, False),
-                               name="s16_to_s8_2", tag="requant_s16_vector_2")
         res_ub = tvm.compute(align_shape,
-                             lambda *indice: res_ub_1(*indice) + res_ub_2(*indice),
+                             _deq_cast_compute(res_s16, req_scale, align_shape, c1_index, tensor_flag, x_shape_list),
                              name="s16_to_s8", tag="requant_s16_vector")
     else:
-        res_ub_1 = tvm.compute(align_shape,
-                               _deq_cast_compute(
-                                   res_s16, req_scale, align_shape, c1_index, tensor_flag, x_shape_list, True),
-                               name="s16_to_s8_1", tag="requant_s16_scale_1")
-        res_ub_2 = tvm.compute(align_shape,
-                               _deq_cast_compute(
-                                   res_s16, req_scale, align_shape, c1_index, tensor_flag, x_shape_list, False),
-                               name="s16_to_s8_2", tag="requant_s16_scale_2")
         res_ub = tvm.compute(align_shape,
-                             lambda *indice: res_ub_1(*indice) + res_ub_2(*indice),
+                             _deq_cast_compute(res_s16, req_scale, align_shape, c1_index, tensor_flag, x_shape_list),
                              name="s16_to_s8", tag="requant_s16_scale")
     return res_s16, res_ub
 
 
-def _deq_cast_compute(res_s16, req_scale, align_shape, c1_index, tensor_flag, x_shape_list, is_select_zero):
+def _deq_cast_compute(res_s16, req_scale, align_shape, c1_index, tensor_flag, x_shape_list):
     """
     generate lambda func
     """
@@ -134,12 +118,9 @@ def _deq_cast_compute(res_s16, req_scale, align_shape, c1_index, tensor_flag, x_
             new_indice[4] = indice[c0_index]
             new_indice[1] = indice[c1_index]
 
-        if is_select_zero:
-            res = tvm.select(indice[c1_index] >= x_shape_list[c1_index], tvm.const(0, dtype="int8"))
-        else:
-            res = tvm.select(indice[c1_index] < x_shape_list[c1_index],
-                             tvm.conv_vdeq(res_s16(*indice), req_scale(*new_indice)).astype("int8"))
-        return res
+        return tvm.select(indice[c1_index] < x_shape_list[c1_index],
+                          tvm.conv_vdeq(res_s16(*indice), req_scale(*new_indice)).astype("int8"),
+                          tvm.const(0, dtype="int8"))
 
     return lambda_func
 

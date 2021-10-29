@@ -109,31 +109,19 @@ def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend
         align_shape[0] = x_shape_list[0]
 
         if tensor_flag:
-            res_ub_1 = tvm.compute(align_shape,
-                                   lambda i, j, a, k, l:
-                                   tvm.select(j < valid_c1,
-                                              tvm.vdeq_cast(x(i, j // 2, j % 2, k, l), req_scale(0, j, 0, 0, l), "int8",
-                                                            do_relu=relu_flag)),
-                                   name="s32_to_s8_1", tag="requant_vector_1")
-            res_ub_2 = tvm.compute(align_shape,
-                                   lambda i, j, a, k, l: tvm.select(j >= valid_c1, tvm.const(0, dtype="int8")),
-                                   name="s32_to_s8_2", tag="requant_vector_2")
             res_ub = tvm.compute(align_shape,
-                                 lambda *indice: res_ub_1(*indice) + res_ub_2(*indice),
-                                 name="s32_to_s8", tag="requant_vector")
+                                 lambda i, j, a, k, l:
+                                 tvm.select(j < valid_c1,
+                                            tvm.vdeq_cast(x(i, j // 2, j % 2, k, l), req_scale(0, j, 0, 0, l), "int8",
+                                                          do_relu=relu_flag),
+                                            tvm.const(0, dtype="int8")), name="s32_to_s8", tag="requant_vector")
 
         else:
-            res_ub_1 = tvm.compute(align_shape,
-                                   lambda i, j, a, k, l:
-                                   tvm.select(j < valid_c1,
-                                              tvm.deq_cast(x(i, j // 2, j % 2, k, l), req_scale(0, 0, 0, 0, 0), "int8")),
-                                   name="s32_to_s8_1", tag="requant_scale_1")
-            res_ub_2 = tvm.compute(align_shape,
-                                   lambda i, j, a, k, l: tvm.select(j >= valid_c1, tvm.const(0, dtype="int8")),
-                                   name="s32_to_s8_2", tag="requant_scale_2")
             res_ub = tvm.compute(align_shape,
-                                 lambda *indice: res_ub_1(*indice) + res_ub_2(*indice),
-                                 name="s32_to_s8", tag="requant_scale")
+                                 lambda i, j, a, k, l:
+                                 tvm.select(j < valid_c1,
+                                            tvm.deq_cast(x(i, j // 2, j % 2, k, l), req_scale(0, 0, 0, 0, 0), "int8"),
+                                            tvm.const(0, dtype="int8")), name="s32_to_s8", tag="requant_scale")
     else:
         align_shape[c1_index] = (align_shape[c1_index] + 1) // 2 * 2
         if util.is_nz_format(x) and len(align_shape) == 4 and align_shape[1] == 1 and align_shape[2] == 1:
@@ -172,42 +160,26 @@ def _s32_to_s8_normal_compute(x, req_scale, align_shape, c1_index, tensor_flag, 
     generate s32_to_s8 compute
     """
     if tensor_flag:
-        res_ub_1 = tvm.compute(align_shape,
-                               _deq_cast_compute(
-                                   x, req_scale, align_shape, c1_index, tensor_flag, relu_flag, conv_flag, True),
-                               name="s32_to_s8_1", tag="requant_vector_1")
-        res_ub_2 = tvm.compute(align_shape,
-                               _deq_cast_compute(
-                                   x, req_scale, align_shape, c1_index, tensor_flag, relu_flag, conv_flag, False),
-                               name="s32_to_s8_2", tag="requant_vector_2")
         res_ub = tvm.compute(align_shape,
-                             lambda *indice: res_ub_1(*indice) + res_ub_2(*indice),
+                             _deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_flag, conv_flag),
                              name="s32_to_s8", tag="requant_vector")
     else:
-        res_ub_1 = tvm.compute(align_shape,
-                               _deq_cast_compute(
-                                   x, req_scale, align_shape, c1_index, tensor_flag, relu_flag, conv_flag, True),
-                               name="s32_to_s8_1", tag="requant_scale_1")
-        res_ub_2 = tvm.compute(align_shape,
-                               _deq_cast_compute(
-                                   x, req_scale, align_shape, c1_index, tensor_flag, relu_flag, conv_flag, False),
-                               name="s32_to_s8_2", tag="requant_scale_2")
         res_ub = tvm.compute(align_shape,
-                             lambda *indice: res_ub_1(*indice) + res_ub_2(*indice),
+                             _deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_flag, conv_flag),
                              name="s32_to_s8", tag="requant_scale")
     return res_ub
 
 
-def _deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_flag, conv_flag, is_select_zero):
+def _deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_flag, conv_flag):
     """
     generate lambda func
     """
     if conv_flag:
-        return _conv_deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_flag, is_select_zero)
-    return _normal_deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_flag, is_select_zero)
+        return _conv_deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_flag)
+    return _normal_deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_flag)
 
 
-def _conv_deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_flag, is_select_zero):
+def _conv_deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_flag):
     group = x.op.input_tensors[0].shape[0].value
     x_shape_list = shape_util.shape_to_list(x.op.input_tensors[0].shape)
     cout1_opt = x_shape_list[2]
@@ -221,32 +193,29 @@ def _conv_deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, rel
             new_indice[1] = cout1
 
         if tensor_flag:
-            if is_select_zero:
-                res = tvm.select(cout1 >= true_cout1, tvm.const(0, dtype="int8"))
-            else:
-                res = tvm.select(
+            res = tvm.select(
                     cout1 < true_cout1,
                     tvm.vdeq_cast(
                         x.op.input_tensors[0](0 if group == 1 else cout1 // cout1_opt,
                                               batch,
                                               cout1 if group == 1 else cout1 % cout1_opt, howo, cout0),
-                        req_scale(*new_indice), "int8", do_relu=relu_flag))
+                        req_scale(*new_indice), "int8", do_relu=relu_flag),
+                    tvm.const(0, dtype="int8"))
+
         else:
-            if is_select_zero:
-                res = tvm.select(cout1 >= true_cout1, tvm.const(0, dtype="int8"))
-            else:
-                res = tvm.select(cout1 < true_cout1,
-                                 tvm.deq_cast(
-                                     x.op.input_tensors[0](0 if group == 1 else cout1 // cout1_opt,
-                                                           batch,
-                                                           cout1 if group == 1 else cout1 % cout1_opt, howo, cout0),
-                                     req_scale(*new_indice), "int8"))
+            res = tvm.select(cout1 < true_cout1,
+                              tvm.deq_cast(
+                                  x.op.input_tensors[0](0 if group == 1 else cout1 // cout1_opt,
+                                                        batch,
+                                                        cout1 if group == 1 else cout1 % cout1_opt, howo, cout0),
+                                  req_scale(*new_indice), "int8"),
+                              tvm.const(0, dtype="int8"))
         return res
 
     return lambda_func
 
 
-def _normal_deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_flag, is_select_zero):
+def _normal_deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, relu_flag):
     n_dim = len(align_shape)
     c0_index = n_dim - 1
     x_shape_list = shape_util.shape_to_list(x.shape)
@@ -258,17 +227,13 @@ def _normal_deq_cast_compute(x, req_scale, align_shape, c1_index, tensor_flag, r
             new_indice[1] = indice[c1_index]
 
         if tensor_flag:
-            if is_select_zero:
-                res = tvm.select(indice[c1_index] >= x_shape_list[c1_index], tvm.const(0, dtype="int8"))
-            else:
-                res = tvm.select(indice[c1_index] < x_shape_list[c1_index],
-                                 tvm.vdeq_cast(x(*indice), req_scale(*new_indice), "int8", do_relu=relu_flag))
+            res = tvm.select(indice[c1_index] < x_shape_list[c1_index],
+                             tvm.vdeq_cast(x(*indice), req_scale(*new_indice), "int8", do_relu=relu_flag),
+                             tvm.const(0, dtype="int8"))
         else:
-            if is_select_zero:
-                res = tvm.select(indice[c1_index] >= x_shape_list[c1_index], tvm.const(0, dtype="int8"))
-            else:
-                res = tvm.select(indice[c1_index] < x_shape_list[c1_index],
-                                 tvm.deq_cast(x(*indice), req_scale(*new_indice), "int8"))
+            res = tvm.select(indice[c1_index] < x_shape_list[c1_index],
+                             tvm.deq_cast(x(*indice), req_scale(*new_indice), "int8"),
+                             tvm.const(0, dtype="int8"))
         return res
 
     return lambda_func

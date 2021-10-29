@@ -228,5 +228,10 @@ def test_avg_pool_v2_compute(test_arg):
     c=tvm.placeholder((4,1,16,16), name="filter", dtype="float16", attrs={"shape":(4,1,16,16),"ori_shape":(16,1,2,2), "format":"FRACTAL_Z", "ori_format":"NCHW"})
     out1={"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,1,1), "shape": (1,1,1,1,16)}
     avg_pool_v2_compute(b,c,out1,[1,1,2,2],[1,1,2,2],"VALID",(0,0,0,0),"NCHW",False,False,True)
+
+    d=tvm.placeholder((1,1,3,3,16), name="fmap", dtype="float16", attrs={"shape":(1,1,3,3,16),"ori_shape":(1,16,3,3), "format":"NC1HWC0", "ori_format":"NCHW"})
+    e=tvm.placeholder((4,1,16,16), name="filter", dtype="float16", attrs={"shape":(4,1,16,16),"ori_shape":(16,1,2,2), "format":"FRACTAL_Z", "ori_format":"NCHW"})
+    out1={"dtype": "float16", "format": "NC1HWC0", "ori_format": "NCHW", "ori_shape": (1,16,1,1), "shape": (1,1,1,1,16)}
+    avg_pool_v2_compute(d,e,out1,[1,1,2,2],[1,1,2,2],"CALCULATED",(0,0,0,0),"NCHW",False,False,False)
 ut_case.add_cust_test_func(test_func=test_check_support)
 ut_case.add_cust_test_func(test_func=test_avg_pool_v2_compute)

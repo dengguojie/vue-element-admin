@@ -1,0 +1,77 @@
+[
+  {
+    "op": "AscendRequant",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "req_scale",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "y",
+        "type": "int8"
+      }
+    ],
+    "attr": [
+      {
+        "name": "relu_flag",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_AscendRequant_000"
+  }
+]

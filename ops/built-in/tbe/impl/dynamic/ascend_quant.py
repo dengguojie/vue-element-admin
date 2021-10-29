@@ -82,7 +82,9 @@ def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round
                       attrs={"scale": scale,
                              "sqrt_mode": sqrt_mode,
                              "offset": offset,
-                             "round_mode": round_mode})
+                             "round_mode": round_mode,
+                             "c1_dim": c1_dim,
+                             "c1_transform": 2})
     return res
 
 
@@ -141,20 +143,15 @@ def _input_compute_generate(x, in_shape, read_shape, c1_dim, c1_index):
     generate lambda func
     """
     dtype = x.dtype
-    zero = tvm.const(0, dtype=dtype)
     c1_is_var = bool(isinstance(c1_dim, tvm.expr.Var))
     if not c1_is_var and c1_dim % 2 == 0:
         res = tvm.compute(in_shape, lambda *i: x(*i),
                           name="input_ub", tag="input_ub", attrs={"c_out": c1_dim, "c1_transform": 2})
     else:
-        input_ub = tvm.compute(read_shape,
-                               lambda *indice: tvm.select(indice[c1_index] <= in_shape[c1_index] - 1, x(*indice)),
-                               name="input_ub", tag="input_ub", attrs={"c_out": c1_dim, "c1_transform": 2})
-        padding_ub = tvm.compute(read_shape,
-                                 lambda *indice: tvm.select(indice[c1_index] > in_shape[c1_index] - 1, zero),
-                                 name="padding_ub", tag="quant_padding", attrs={"c_out": c1_dim, "c1_transform": 2})
-        res = tvm.compute(read_shape, lambda *indice: padding_ub(*indice) + input_ub(*indice),
-                          name="add_ub", tag="quant_add", attrs={"c_out": c1_dim, "c1_transform": 2})
+        zero = tvm.const(0, dtype=dtype)
+        res = tvm.compute(read_shape,
+                          lambda *indice: tvm.select(indice[c1_index] <= in_shape[c1_index] - 1, x(*indice), zero),
+                          name='input_ub', tag="input_ub", attrs={"c_out": c1_dim, "c1_transform": 2})
     return res
 
 

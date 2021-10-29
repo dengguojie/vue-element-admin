@@ -1,0 +1,102 @@
+[
+  {
+    "op": "AscendRequantS16",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "x0",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "req_scale",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "y0",
+        "type": "int8"
+      },
+      {
+        "shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          1,
+          2,
+          4,
+          4,
+          16
+        ],
+        "ori_format": "NC1HWC0",
+        "name": "y1",
+        "type": "int16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dual_output",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "relu_flag",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_AscendRequantS16_000"
+  }
+]

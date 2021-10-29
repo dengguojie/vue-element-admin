@@ -29,8 +29,6 @@ from .ascend_quant_tilingcase import QuantTilingCase
 
 CAST_F16_NAME = "cast_f16_ub"
 INPUT_NAME = "input_ub"
-PADDING_NAME = "padding_ub"
-ADD_NAME = "add_ub"
 VMULS_REFORM_NAME = "reform_by_vmuls"
 SQRT_NAME = "scale_sqrt_ub"
 OFFSET_NAME = "offset_ub"
@@ -125,6 +123,8 @@ class AscendQuantSchedule:
         self._attr_dic["sqrt_mode"] = self._res.op.attrs['sqrt_mode']
         self._attr_dic["offset"] = self._res.op.attrs['offset']
         self._attr_dic["round_mode"] = self._res.op.attrs['round_mode']
+        self._attr_dic["input_c1"] = self._res.op.attrs['c1_dim']
+        self._attr_dic["c1_transform"] = self._res.op.attrs['c1_transform']
 
     def _reorder_buffer(self):
         """
@@ -203,12 +203,7 @@ class AscendQuantSchedule:
             sch[res].bind(multi_core_bind_axis, block)
 
         # open db
-        if INPUT_NAME in self._tensor_map:
-            sch[self._tensor_map.get(INPUT_NAME)].double_buffer()
-        if PADDING_NAME in self._tensor_map:
-            sch[self._tensor_map.get(PADDING_NAME)].double_buffer()
-        if ADD_NAME in self._tensor_map:
-            sch[self._tensor_map.get(ADD_NAME)].double_buffer()
+        sch[self._tensor_map.get(INPUT_NAME)].double_buffer()
 
     def _set_buffer_compute_at(self):
         """
@@ -229,6 +224,12 @@ class AscendQuantSchedule:
         tensor_map = self._tensor_map
         ub_inner = self._ub_split_result[1]
         round_emit_insn = _round_emit_insn(self._attr_dic.get("round_mode"))
+        input_c1 = self._attr_dic.get("input_c1")
+        c1_transform = self._attr_dic.get("c1_transform")
+        if input_c1 % c1_transform == 0:
+            in_dma = "dma_copy"
+        else:
+            in_dma = "dma_padding"
 
         if CAST_F16_NAME in tensor_map:
             sch[tensor_map.get(CAST_F16_NAME)].emit_insn(
@@ -249,23 +250,10 @@ class AscendQuantSchedule:
             sch[tensor_map.get(CAST_I8_NAME)].emit_insn(
                 sch[tensor_map.get(CAST_I8_NAME)].op.axis[0], round_emit_insn)
 
-        if INPUT_NAME in tensor_map:
-            sch[tensor_map.get(INPUT_NAME)].emit_insn(
-                sch[tensor_map.get(INPUT_NAME)].op.axis[0], 'dma_copy')
-        if PADDING_NAME in tensor_map:
-            sch[tensor_map.get(PADDING_NAME)].emit_insn(
-                sch[tensor_map.get(PADDING_NAME)].op.axis[0], 'vector_dup')
-        if ADD_NAME in tensor_map:
-            sch[tensor_map.get(ADD_NAME)].emit_insn(
-                sch[tensor_map.get(ADD_NAME)].op.axis[0], 'phony_insn')
+        sch[tensor_map.get(INPUT_NAME)].emit_insn(
+            sch[tensor_map.get(INPUT_NAME)].op.axis[0], in_dma)
 
         sch[res].emit_insn(ub_inner, 'dma_copy')
-
-    def _do_mem_reuse(self):
-        sch = self._schedule
-        tensor_map = self._tensor_map
-        if PADDING_NAME in tensor_map and ADD_NAME in tensor_map:
-            sch[tensor_map.get(INPUT_NAME)].reused_by(tensor_map.get(PADDING_NAME), tensor_map.get(ADD_NAME))
 
     def do_schedule(self):
         """
@@ -288,8 +276,6 @@ class AscendQuantSchedule:
         self._do_tiling()
 
         self._set_buffer_compute_at()
-
-        self._do_mem_reuse()
 
         self._set_buffer_emit_insn()
 

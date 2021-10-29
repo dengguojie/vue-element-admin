@@ -278,8 +278,8 @@ def _calculate_pads(padding, input_h, input_w, stride_h, stride_w, ksize_h, ksiz
         else:
             ho = (input_h - ksize_h + pad_top + pad_bottom) // stride_h + 1
             wo = (input_w - ksize_w + pad_left + pad_right) // stride_w + 1
-            pad_bottom = _get_corrected_pad((ho - 1) * stride_h + ksize_h - input_h - pad_top)
-            pad_right = _get_corrected_pad((wo - 1) * stride_w + ksize_w - input_w - pad_left)
+            pad_bottom = _get_corrected_pad(int((ho - 1) * stride_h + ksize_h - input_h - pad_top))
+            pad_right = _get_corrected_pad(int((wo - 1) * stride_w + ksize_w - input_w - pad_left))
 
         pad = (pad_top, pad_bottom, pad_left, pad_right)
 
