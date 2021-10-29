@@ -25,11 +25,11 @@ from te.platform import cce_intrin as intrin
 from te.platform import cce_util
 
 
-# ’pylint: disable=too-many-lines,too-many-statements,too-few-public-methods
-# ’pylint: disable=too-many-locals,too-many-arguments,superfluous-parens
-# ’pylint: disable=too-many-branches,unnecessary-comprehension
+# 'pylint: disable=too-many-lines,too-many-statements,too-few-public-methods
+# 'pylint: disable=too-many-locals,too-many-arguments,superfluous-parens
+# 'pylint: disable=too-many-branches,unnecessary-comprehension
 
-# ’pylint: disable=too-few-public-methods
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     common constants
@@ -55,7 +55,7 @@ class FormatTransferParams():
         self.ib_.scope_attr(self.block, "thread_extent", self.device_core_num)
 
 
-# ’pylint: disable=too-many-boolean-expressions
+# 'pylint: disable=too-many-boolean-expressions
 def compute_four_2_five(input_tensor, output_tensor, raw_shape_4d, src_format,
                         dst_format):
     '''

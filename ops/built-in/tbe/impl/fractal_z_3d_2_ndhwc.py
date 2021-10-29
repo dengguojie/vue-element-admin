@@ -814,4 +814,5 @@ def fractal_z_3d_2_ndhwc(src, dst, src_format, dst_format,
     if template_fp16.check_branch() != "not_support":
         return template_fp16.get_tik_instance()
     else:
-        return trans_data_negative_target_tc.trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name)
+        return trans_data_negative_target_tc.trans_data_negative_target_tc(src, dst, src_format, dst_format,
+                                                                           kernel_name)

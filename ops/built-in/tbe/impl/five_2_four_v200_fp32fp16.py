@@ -15,17 +15,17 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 five_2_four_v200_32b
 """
-# ’pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 from te import tik
 
 
-# ’pylint: disable=too-many-instance-attributes,too-few-public-methods
-class VnchwConv(object):
+# 'pylint: disable=too-many-instance-attributes,too-few-public-methods
+class VnchwConv:
     """
     VnchwConv
     """
 
-    # ’pylint: disable=no-self-use,
+    # 'pylint: disable=no-self-use,
     @staticmethod
     def _align16(value):
         """
@@ -38,7 +38,7 @@ class VnchwConv(object):
 
         return (value + 15) // 16 * 16
 
-    # ’pylint: disable=invalid-name
+    # 'pylint: disable=invalid-name
     def __init__(self, src_dict, dst_dict, kernel_name_value):
         """
         init class VnchwConv
@@ -118,7 +118,7 @@ class VnchwConv(object):
         self.hw = self.dst_height * self.dst_width
         self.w = self.dst_width
 
-    # ’pylint: disable=too-many-nested-blocks,too-many-branches,too-many-statements
+    # 'pylint: disable=too-many-nested-blocks,too-many-branches,too-many-statements
     def compute_slice(self):
         """
         Calculate the split parameters according to different shapes
@@ -343,7 +343,7 @@ class VnchwConv(object):
                             0,
                             0)
 
-    # ’pylint: disable=too-many-locals,invalid-name,too-many-statements
+    # 'pylint: disable=too-many-locals,invalid-name,too-many-statements
     def _compute_core_hw_fp32(self, hw_st, hw_tail):
         """
         Calculate five 2 four result cut input shape at hw dimension
@@ -569,7 +569,7 @@ class VnchwConv(object):
                                 1,
                                 1)
 
-    # ’pylint: disable=too-many-locals,invalid-name,too-many-statements
+    # 'pylint: disable=too-many-locals,invalid-name,too-many-statements
     def _compute_core_c1_fp16(self, c1_st, c1_one_slice, dst_channel):
         """
         Calculate five 2 four result cut input shape at c1 dimension
@@ -669,7 +669,7 @@ class VnchwConv(object):
                         0,
                         0)
 
-    # ’pylint: disable=too-many-locals,invalid-name,too-many-statements
+    # 'pylint: disable=too-many-locals,invalid-name,too-many-statements
     def _compute_core_c1_fp32(self, c1_st, c1_one_slice, dst_channel):
         """
         Calculate five 2 four result cut input shape at c1 dimension
@@ -960,8 +960,8 @@ class VnchwConv(object):
                         0,
                         0)
 
-    # ’pylint: disable=too-many-locals,too-many-statements
-    # ’pylint: disable=invalid-name
+    # 'pylint: disable=too-many-locals,too-many-statements
+    # 'pylint: disable=invalid-name
     def _compute_core_all_fp16(self):
         """
         Calculate five 2 four result without cutting input shape
@@ -1051,7 +1051,7 @@ class VnchwConv(object):
                         0,
                         0)
 
-    # ’pylint: disable=too-many-locals,invalid-name,too-many-statements
+    # 'pylint: disable=too-many-locals,invalid-name,too-many-statements
     def _compute_core_all_fp32(self):
         """
         Calculate five 2 four result without cutting input shape
@@ -1299,8 +1299,8 @@ class VnchwConv(object):
                                 1,
                                 1)
 
-    # ’pylint: disable=too-many-locals,too-many-statements,too-many-arguments
-    # ’pylint: disable=invalid-name
+    # 'pylint: disable=too-many-locals,too-many-statements,too-many-arguments
+    # 'pylint: disable=invalid-name
     def _move_slice(self, dst_n, dst_c, dst_h, dst_w,
                     src_c, src_hw,
                     dst_hw_nbrust, output_ub_fp32):
@@ -1357,7 +1357,7 @@ class VnchwConv(object):
                 1,
                 1)
 
-    # ’pylint: disable=unused-argument
+    # 'pylint: disable=unused-argument
     def _chk_mov(self, dst_c_st, dst_c_end,
                  index_n, index_cm, dst_hw_nbrust, output_ub_fp32):
         """
@@ -1399,7 +1399,7 @@ class VnchwConv(object):
                          src_c, src_hw, dst_hw_nbrust, output_ub_fp32)
 
 
-# ’pylint:disable=unused-argument
+# 'pylint:disable=unused-argument
 def five_2_four_v200_fp32fp16(src_dict, dst_dict,
                               src_format, dst_format,
                               kernel_name="five_2_four"):

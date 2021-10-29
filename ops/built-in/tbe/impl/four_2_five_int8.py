@@ -31,7 +31,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.util_common import write_code
 
 
-# ’pylint: disable=too-few-public-methods
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     common constants
@@ -41,9 +41,9 @@ class Constant:
     UB_NAME_SUFFIX = [0]
 
 
-# ’pylint: disable=too-many-lines,too-many-statements,too-few-public-methods
-# ’pylint: disable=too-many-locals,too-many-arguments,superfluous-parens
-# ’pylint: disable=too-many-branches
+# 'pylint: disable=too-many-lines,too-many-statements,too-few-public-methods
+# 'pylint: disable=too-many-locals,too-many-arguments,superfluous-parens
+# 'pylint: disable=too-many-branches
 class FormatTransferParams():
     """
     :param object
@@ -60,7 +60,7 @@ class FormatTransferParams():
         self.ib_.scope_attr(self.block, "thread_extent", self.device_core_num)
 
 
-# ’pylint: disable=too-many-boolean-expressions, unnecessary-lambda
+# 'pylint: disable=too-many-boolean-expressions, unnecessary-lambda
 def compute_four_2_five(input_tensor, output_tensor, raw_shape_4d, src_format,
                         dst_format):
     '''
@@ -622,7 +622,7 @@ def _clean_ubuf(ib_, src, src_offset, dup_len):
                             uint64_all_one))
 
 
-# ’pylint: disable=unnecessary-comprehension
+# 'pylint: disable=unnecessary-comprehension
 def _mov_data_p2p(args):
     """
     :param args:
@@ -2792,7 +2792,7 @@ def _four2five_ir_nchw(input_tensor, shape_4d, output):
     return ib_.get()
 
 
-#pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def four_2_five_compute(src, dst, src_format, dst_format,
                         kernel_name="four_2_five"):
     """

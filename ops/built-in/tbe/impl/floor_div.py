@@ -23,8 +23,8 @@ from te.utils import shape_util
 from impl.util.platform_adapter import error_manager_vector
 
 
-# ’pylint: disable=locally-disabled,unused-argument
-# ’pylint: disable=too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("floor_div")
 def floor_div_compute(input_x, input_y, output_z, kernel_name='floor_div'):
     """

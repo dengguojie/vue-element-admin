@@ -38,7 +38,7 @@ from te.utils import shape_util
 from te.utils import para_check
 
 
-# ’pylint: disable=invalid-name,unused-argument
+# 'pylint: disable=invalid-name,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("fills")
 def fills_compute(x, value, dtype, kernel_name="fills"):
     """

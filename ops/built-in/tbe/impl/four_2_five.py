@@ -15,7 +15,7 @@
 """
 four_2_five
 """
-# ’pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 from __future__ import absolute_import
 
 from functools import reduce as functools_reduce
@@ -33,7 +33,7 @@ from impl import trans_data_positive_source_tc
 from impl import trans_data_positive_source_ntc
 
 
-# ’pylint: disable=too-few-public-methods
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     common constants
@@ -42,7 +42,7 @@ class Constant:
     AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
 
 
-# ’pylint: disable=locally-disabled, unused-argument, too-many-lines
+# 'pylint: disable=locally-disabled, unused-argument, too-many-lines
 @fusion_manager.register("four_2_five")
 def four_2_five_compute(src, dst, src_format, dst_format,
                         kernel_name="four_2_five"):
@@ -86,7 +86,7 @@ def _new_alloc(tvm_ib, dtype, shape, name, scope):
     return new_buffer
 
 
-# ’pylint: disable=locally-disabled, too-many-locals, too-many-statements
+# 'pylint: disable=locally-disabled, too-many-locals, too-many-statements
 def _move_full(dst, data):
     """
     move for full shape
@@ -735,7 +735,7 @@ def _clean_ubuf(ib_, src, src_offset, dup_len):
                             uint64_all_one))
 
 
-# ’pylint: disable=locally-disabled,too-many-return-statements
+# 'pylint: disable=locally-disabled,too-many-return-statements
 def _func_vadds_for_vconv(args):
     """
     function of moving data with vadds function
