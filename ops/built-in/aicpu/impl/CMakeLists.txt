@@ -41,6 +41,7 @@ set(local_kernels_src_files
     kernels/normalized/image_warp_offsets.cc
     kernels/normalized/index_to_addr.cc
     kernels/normalized/inplace_top_k_distance.cc
+    kernels/normalized/invgrad.cc
     kernels/normalized/is_inf.cc
     kernels/normalized/is_nan.cc
     kernels/normalized/less.cc
