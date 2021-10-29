@@ -24,17 +24,19 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
 
-TYPE_LEN_DICT = {"float16": 2, "float32": 4, "int8": 1, "uint8": 1,
-                 "int16": 2, "uint16": 2, "int32": 4, "uint32": 4,
-                 "int64": 8, "uint64": 8}
-BLOCK_SIZE = 32
 
 class GenADC(object):
     """
     Class for Dynamic shape operator GenADC
     """
+    TYPE_LEN_DICT = {"float16": 2, "float32": 4, "int8": 1, "uint8": 1,
+                    "int16": 2, "uint16": 2, "int32": 4, "uint32": 4,
+                    "int64": 8, "uint64": 8}
+    BLOCK_SIZE = 32
+    DISTANCE_TYPE_L2SQR = "l2sqr"
+    DISTANCE_TYPE_INNER_PRODUCT = "inner_product"
 
-    def __init__(self, query, code_book, centroids, bucket_list, adc_tables, kernel_name):
+    def __init__(self, query, code_book, centroids, bucket_list, adc_tables, distance_type, kernel_name):
         self.kernel_name = kernel_name
 
         self.tik_inst = tik.Tik(tik.Dprofile)
@@ -49,7 +51,7 @@ class GenADC(object):
         self.centroids_shape = centroids.get("shape")
 
         self.bucket_list_dtype = bucket_list.get("dtype").lower()
-        self.bucket_list_dsize = TYPE_LEN_DICT.get(self.bucket_list_dtype)
+        self.bucket_list_dsize = GenADC.TYPE_LEN_DICT.get(self.bucket_list_dtype)
         self.bucket_list_shape = bucket_list.get("shape")
 
         self.adc_tables_dtype = adc_tables.get("dtype").lower()
@@ -59,6 +61,11 @@ class GenADC(object):
         para_check.check_dtype(self.centroids_dtype, ("float16"), param_name="centroids")
         para_check.check_dtype(self.bucket_list_dtype, ("int32", "int64"), param_name="bucket_list")
         para_check.check_dtype(self.adc_tables_dtype, ("float16"), param_name="adc_tables")
+
+        self.distance_type = distance_type
+        if self.distance_type not in (GenADC.DISTANCE_TYPE_L2SQR, GenADC.DISTANCE_TYPE_INNER_PRODUCT):
+            rule = "Distance type should be l2sqr or inner_product"
+            error_manager_vector.raise_err_check_params_rules(self.distance_type, rule)
 
         self.dim_d = self.query_shape[0]
         self.dim_m = self.code_book_shape[0]
@@ -82,7 +89,7 @@ class GenADC(object):
 
         self.op_query_data_type = query.get("dtype").lower()
         self.op_data_type = code_book.get("dtype").lower()
-        self.op_data_size = TYPE_LEN_DICT.get(self.op_data_type)
+        self.op_data_size = GenADC.TYPE_LEN_DICT.get(self.op_data_type)
 
         self.tiling_dtype = "int64"
         self.tiling_para_num = 16
@@ -231,9 +238,8 @@ class GenADC(object):
         with self.tik_inst.for_range(0, self.ai_core_num, block_num=self.ai_core_num) as block_i:
             self.tiling_ub = self.tik_inst.Tensor("int64", (self.tiling_para_num,), name="tiling_ub",
                                                   scope=tik.scope_ubuf)
-            self.tik_inst.data_move(self.tiling_ub, self.tiling_gm, 0, 1,
-                                    math.ceil(self.tiling_para_num * TYPE_LEN_DICT.get(self.tiling_dtype) / BLOCK_SIZE),
-                                    0, 0)
+            burst = math.ceil(self.tiling_para_num * GenADC.TYPE_LEN_DICT.get(self.tiling_dtype) / GenADC.BLOCK_SIZE)
+            self.tik_inst.data_move(self.tiling_ub, self.tiling_gm, 0, 1, burst, 0, 0)
             self._tiling_args()
 
             self._init_ub_data()
@@ -273,7 +279,7 @@ class GenADC(object):
             self.tik_inst.data_move(self.centroids_ub[i * self.dim_d], self.centroids_gm[tmp_data * self.dim_d],
                                     0, 1, gather_len, 0, 0)
 
-        rep_stride = self.dim_d * TYPE_LEN_DICT.get(self.op_data_type) // BLOCK_SIZE
+        rep_stride = self.dim_d * GenADC.TYPE_LEN_DICT.get(self.op_data_type) // GenADC.BLOCK_SIZE
         src_add = self.query_ub
         if self.op_data_type != self.op_query_data_type:
             src_add = self.query_fp16_ub
@@ -327,42 +333,74 @@ class GenADC(object):
                                                                     k_repeat * self.dim_dsub) // 2
                                                                    + insn_nums * self.dim_dsub // 2 + ele_nums])
                         for insn_nums in range(0, bro_times):
-                            self.tik_inst.vsub(128, self.code_book_local_ub[insn_nums * 128],
-                                               self.code_book_local_ub[insn_nums * 128],
-                                               self.tmp_buf,
-                                               bro_repeat_times, 1, 1, 0,
-                                               group_block,
-                                               group_block, 1)
+                            if self.distance_type == GenADC.DISTANCE_TYPE_L2SQR:
+                                self.tik_inst.vsub(128, self.code_book_local_ub[insn_nums * 128],
+                                                   self.code_book_local_ub[insn_nums * 128],
+                                                   self.tmp_buf,
+                                                   bro_repeat_times, 1, 1, 0,
+                                                   group_block,
+                                                   group_block, 1)
+                            elif self.distance_type == GenADC.DISTANCE_TYPE_INNER_PRODUCT:
+                                self.tik_inst.vmul(128, self.code_book_local_ub[insn_nums * 128],
+                                                   self.code_book_local_ub[insn_nums * 128],
+                                                   self.tmp_buf,
+                                                   bro_repeat_times, 1, 1, 0,
+                                                   group_block,
+                                                   group_block, 1)
 
                     def _compute_residual_for_greater_block():
                         if self.dim_dsub == 16:
                             bro_times = self.dim_m_stride
                             bro_repeat_times = self.dim_ksub_stride // 8
                             for insn_nums in range(0, bro_times):
-                                self.tik_inst.vsub(128, self.code_book_local_ub[insn_nums * self.dim_ksub_stride * 16],
-                                                   self.code_book_local_ub[insn_nums * self.dim_ksub_stride * 16],
-                                                   self.centroids_ub[i * self.dim_m + dim_m_i * self.dim_m_stride + insn_nums * 16],
-                                                   bro_repeat_times, 1, 1, 0, 8, 8, 0)
+                                if self.distance_type == GenADC.DISTANCE_TYPE_L2SQR:
+                                    self.tik_inst.vsub(128,
+                                                       self.code_book_local_ub[insn_nums * self.dim_ksub_stride * 16],
+                                                       self.code_book_local_ub[insn_nums * self.dim_ksub_stride * 16],
+                                                       self.centroids_ub[i * self.dim_m + dim_m_i * self.dim_m_stride +
+                                                                         insn_nums * 16],
+                                                       bro_repeat_times, 1, 1, 0, 8, 8, 0)
+                                elif self.distance_type == GenADC.DISTANCE_TYPE_INNER_PRODUCT:
+                                    self.tik_inst.vmul(128,
+                                                       self.code_book_local_ub[insn_nums * self.dim_ksub_stride * 16],
+                                                       self.code_book_local_ub[insn_nums * self.dim_ksub_stride * 16],
+                                                       self.centroids_ub[i * self.dim_m + dim_m_i * self.dim_m_stride +
+                                                                         insn_nums * 16],
+                                                       bro_repeat_times, 1, 1, 0, 8, 8, 0)
                         else:
                             vector_nums = self.dim_dsub // 16
                             sub_mask = self.dim_m_stride * 16
                             bro_repeat_times = self.dim_ksub_stride
                             for insn_nums in range(0, vector_nums):
-                                self.tik_inst.vsub(sub_mask, self.code_book_local_ub[insn_nums * 16],
-                                                   self.code_book_local_ub[insn_nums * 16],
-                                                   self.centroids_ub[i * self.dim_m + dim_m_i * self.dim_m_stride + insn_nums * 16],
-                                                   bro_repeat_times,
-                                                   vector_nums * self.dim_ksub_stride,
-                                                   vector_nums * self.dim_ksub_stride, vector_nums,
-                                                   vector_nums, vector_nums, 2)
+                                if self.distance_type == GenADC.DISTANCE_TYPE_L2SQR:
+                                    self.tik_inst.vsub(sub_mask, self.code_book_local_ub[insn_nums * 16],
+                                                       self.code_book_local_ub[insn_nums * 16],
+                                                       self.centroids_ub[i * self.dim_m + dim_m_i * self.dim_m_stride +
+                                                                         insn_nums * 16],
+                                                       bro_repeat_times,
+                                                       vector_nums * self.dim_ksub_stride,
+                                                       vector_nums * self.dim_ksub_stride, vector_nums,
+                                                       vector_nums, vector_nums, 2)
+                                elif self.distance_type == GenADC.DISTANCE_TYPE_INNER_PRODUCT:
+                                    self.tik_inst.vmul(sub_mask, self.code_book_local_ub[insn_nums * 16],
+                                                       self.code_book_local_ub[insn_nums * 16],
+                                                       self.centroids_ub[i * self.dim_m + dim_m_i * self.dim_m_stride +
+                                                                         insn_nums * 16],
+                                                       bro_repeat_times,
+                                                       vector_nums * self.dim_ksub_stride,
+                                                       vector_nums * self.dim_ksub_stride, vector_nums,
+                                                       vector_nums, vector_nums, 2)
 
                     if self.dim_dsub < 16:
                         _compute_residual_for_less_block()
                     else:
                         _compute_residual_for_greater_block()
 
-                    self.tik_inst.vmul(128, self.code_book_local_ub, self.code_book_local_ub, self.code_book_local_ub,
-                                       self.dim_m_stride * self.dim_ksub_stride * self.dim_dsub // 128, 1, 1, 1, 8, 8, 8)
+                    if self.distance_type == GenADC.DISTANCE_TYPE_L2SQR:
+                        self.tik_inst.vmul(128, self.code_book_local_ub, self.code_book_local_ub,
+                                           self.code_book_local_ub,
+                                           self.dim_m_stride * self.dim_ksub_stride * self.dim_dsub // 128,
+                                           1, 1, 1, 8, 8, 8)
 
                     def _compute_reduce_for_two_eles():
                         vcpadd_repeat_times = self.dim_m_stride * self.dim_ksub_stride * self.dim_dsub // 128
@@ -414,7 +452,8 @@ class GenADC(object):
                                                      i * self.dim_m * self.dim_ksub +
                                                      dim_m_i * self.dim_m_stride * self.dim_ksub +
                                                      dim_ksub_i * self.dim_m_stride * self.dim_ksub_stride],
-                                                addr_list[src_index], 0, 1, self.dim_m_stride * self.dim_ksub_stride * 2 // 32, 0, 0)
+                                                addr_list[src_index], 0, 1,
+                                                self.dim_m_stride * self.dim_ksub_stride * 2 // 32, 0, 0)
 
                     if self.dim_dsub == 2:
                         _compute_reduce_for_two_eles()
@@ -424,35 +463,39 @@ class GenADC(object):
 
 @register_operator("GenADC")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
-def gen_adc(query, code_book, centroids, bucket_list, adc_tables, kernel_name="gen_adc"):
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR,
+                            para_check.KERNEL_NAME)
+def gen_adc(query, code_book, centroids, bucket_list, adc_tables, distance_type=GenADC.DISTANCE_TYPE_L2SQR,
+            kernel_name="gen_adc"):
     """
     Compute ADC tables for query vector.
 
     Parameters
     ----------
     query : dict
-        shape and dtype of input data_query
+        shape and dtype of input data query
         The shape is like (d,).
         The support value of d in range(start=16, end=1024, step=16).
         If d is greater than 128, it should be a multiple of 128.
     code_book : dict
-        shape and dtype of input data_code_book
+        shape and dtype of input data code_book
         The shape is like (M, ksub, dsub). Support values are as follows:
             M = d / dsub, and M is a multiple of 8
             ksub in {256, 512}
             dsub in {2, 4, 8}
     centroids : dict
-        shape and dtype of output data_centroids
+        shape and dtype of input data centroids
         The shape is like (nc, d).
         The value of nc in range(start=1, end=1e7, step=1).
         The value of d is the same as query.
     bucket_list : dict
-        shape and dtype of output data_bucket_list
+        shape and dtype of input data bucket_list
         The shape is like (ns,). The value of ns in range(start=1, end=nc, step=1).
     adc_tables : dict
-        shape and dtype of output data_adc_tables
+        shape and dtype of output data adc_tables
         The shape is like (ns, ksub, dsub). Values of dimensions are the same as input tensors' dictionary.
+    distance_type: string
+        The distance type to compute. Value is "l2sqr" or "inner_product".
     kernel_name : str
         cce kernel name, default value is "gen_adc"
 
@@ -465,13 +508,17 @@ def gen_adc(query, code_book, centroids, bucket_list, adc_tables, kernel_name="g
     bucket_centroids = gather(centroids, bucket_list)
     residual_vect = query - bucket_centroids
     residual_vect_list = residual_vect.reshape(size=(ns, M, 1, dsub))
-    distance = code_book - residual_vect_list
-    square_distance = square(distance)
-    adc_tables = sum(square_distance, axis=-1)
+    if distance_type == "l2sqr":
+        distance = code_book - residual_vect_list
+        square_distance = square(distance)
+        adc_tables = sum(square_distance, axis=-1)
+    elif distance_type == "inner_product":
+        distance = code_book * residual_vect_list
+        adc_tables = sum(distance, axis=-1)
 
     Returns
     -------
     None
     """
-    obj = GenADC(query, code_book, centroids, bucket_list, adc_tables, kernel_name)
+    obj = GenADC(query, code_book, centroids, bucket_list, adc_tables, distance_type, kernel_name)
     obj.gen_adc_compute()

@@ -100,8 +100,128 @@ def test_gen_adc_case004(test_args):
     set_current_compile_soc_info(test_args)
 
 
-test_gen_adc_case101 = {"params": [{"shape": (32,), "dtype": "float16", "format": "ND",
-                                    "ori_shape": (32,), "ori_format": "ND", "range": ((32, 32),)},
+def test_gen_adc_case005(test_args):
+    """
+    Compute adc distance.
+    """
+    set_current_compile_soc_info("Ascend710")
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        gen_adc({"shape": (128,), "dtype": "float32", "format": "ND",
+                 "ori_shape": (128,), "ori_format": "ND", "range": ((128, 128),)},
+                {"shape": (32, 512, 4), "dtype": "float16", "format": "ND",
+                 "ori_shape": (32, 512, 4), "ori_format": "ND", "range": ((32, 32), (512, 512), (4, 4))},
+                {"shape": (1000000, 128), "dtype": "float16", "format": "ND",
+                 "ori_shape": (1000000, 128), "ori_format": "ND", "range": ((1000000, 1000000), (128, 128))},
+                {"shape": (384,), "dtype": "int64", "format": "ND",
+                 "ori_shape": (384,), "ori_format": "ND", "range": ((384, 384),)},
+                {"shape": (384, 32, 512), "dtype": "float16", "format": "ND",
+                 "ori_shape": (384, 32, 512), "ori_format": "ND", "range": ((384, 384), (32, 32), (512, 512))},
+                "l2sqr")
+    set_current_compile_soc_info(test_args)
+
+
+def test_gen_adc_case006(test_args):
+    """
+    Compute adc distance.
+    """
+    set_current_compile_soc_info("Ascend710")
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        gen_adc({"shape": (128,), "dtype": "float32", "format": "ND",
+                 "ori_shape": (128,), "ori_format": "ND", "range": ((128, 128),)},
+                {"shape": (32, 512, 4), "dtype": "float16", "format": "ND",
+                 "ori_shape": (32, 512, 4), "ori_format": "ND", "range": ((32, 32), (512, 512), (4, 4))},
+                {"shape": (1000000, 128), "dtype": "float16", "format": "ND",
+                 "ori_shape": (1000000, 128), "ori_format": "ND", "range": ((1000000, 1000000), (128, 128))},
+                {"shape": (384,), "dtype": "int64", "format": "ND",
+                 "ori_shape": (384,), "ori_format": "ND", "range": ((384, 384),)},
+                {"shape": (384, 32, 512), "dtype": "float16", "format": "ND",
+                 "ori_shape": (384, 32, 512), "ori_format": "ND", "range": ((384, 384), (32, 32), (512, 512))},
+                "inner_product")
+    set_current_compile_soc_info(test_args)
+
+
+def test_gen_adc_case007(test_args):
+    """
+    Compute adc distance.
+    """
+    set_current_compile_soc_info("Ascend710")
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        gen_adc({"shape": (256,), "dtype": "float32", "format": "ND",
+                 "ori_shape": (256,), "ori_format": "ND", "range": ((256, 256),)},
+                {"shape": (16, 512, 16), "dtype": "float16", "format": "ND",
+                 "ori_shape": (16, 512, 16), "ori_format": "ND", "range": ((16, 16), (512, 512), (16, 16))},
+                {"shape": (1000000, 256), "dtype": "float16", "format": "ND",
+                 "ori_shape": (1000000, 256), "ori_format": "ND", "range": ((1000000, 1000000), (256, 256))},
+                {"shape": (10,), "dtype": "int64", "format": "ND",
+                 "ori_shape": (10,), "ori_format": "ND", "range": ((10, 10),)},
+                {"shape": (10, 16, 512), "dtype": "float16", "format": "ND",
+                 "ori_shape": (10, 16, 512), "ori_format": "ND", "range": ((10, 10), (16, 16), (512, 512))},
+                "l2sqr")
+    set_current_compile_soc_info(test_args)
+
+
+def test_gen_adc_case008(test_args):
+    """
+    Compute adc distance.
+    """
+    set_current_compile_soc_info("Ascend710")
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        gen_adc({"shape": (256,), "dtype": "float32", "format": "ND",
+                 "ori_shape": (256,), "ori_format": "ND", "range": ((256, 256),)},
+                {"shape": (16, 512, 16), "dtype": "float16", "format": "ND",
+                 "ori_shape": (16, 512, 16), "ori_format": "ND", "range": ((16, 16), (512, 512), (16, 16))},
+                {"shape": (1000000, 256), "dtype": "float16", "format": "ND",
+                 "ori_shape": (1000000, 256), "ori_format": "ND", "range": ((1000000, 1000000), (256, 256))},
+                {"shape": (10,), "dtype": "int64", "format": "ND",
+                 "ori_shape": (10,), "ori_format": "ND", "range": ((10, 10),)},
+                {"shape": (10, 16, 512), "dtype": "float16", "format": "ND",
+                 "ori_shape": (10, 16, 512), "ori_format": "ND", "range": ((10, 10), (16, 16), (512, 512))},
+                "inner_product")
+    set_current_compile_soc_info(test_args)
+
+
+def test_gen_adc_case009(test_args):
+    """
+    Compute adc distance.
+    """
+    set_current_compile_soc_info("Ascend710")
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        gen_adc({"shape": (512,), "dtype": "float32", "format": "ND",
+                 "ori_shape": (512,), "ori_format": "ND", "range": ((512, 512),)},
+                {"shape": (16, 512, 32), "dtype": "float16", "format": "ND",
+                 "ori_shape": (16, 512, 32), "ori_format": "ND", "range": ((16, 16), (512, 512), (32, 32))},
+                {"shape": (1000000, 512), "dtype": "float16", "format": "ND",
+                 "ori_shape": (1000000, 512), "ori_format": "ND", "range": ((1000000, 1000000), (512, 512))},
+                {"shape": (10,), "dtype": "int64", "format": "ND",
+                 "ori_shape": (10,), "ori_format": "ND", "range": ((10, 10),)},
+                {"shape": (10, 16, 512), "dtype": "float16", "format": "ND",
+                 "ori_shape": (10, 16, 512), "ori_format": "ND", "range": ((10, 10), (16, 16), (512, 512))},
+                "l2sqr")
+    set_current_compile_soc_info(test_args)
+
+
+def test_gen_adc_case010(test_args):
+    """
+    Compute adc distance.
+    """
+    set_current_compile_soc_info("Ascend710")
+    with tbe.common.context.op_context.OpContext("dynamic"):
+        gen_adc({"shape": (512,), "dtype": "float32", "format": "ND",
+                 "ori_shape": (512,), "ori_format": "ND", "range": ((512, 512),)},
+                {"shape": (16, 512, 32), "dtype": "float16", "format": "ND",
+                 "ori_shape": (16, 512, 32), "ori_format": "ND", "range": ((16, 16), (512, 512), (32, 32))},
+                {"shape": (1000000, 512), "dtype": "float16", "format": "ND",
+                 "ori_shape": (1000000, 512), "ori_format": "ND", "range": ((1000000, 1000000), (512, 512))},
+                {"shape": (10,), "dtype": "int64", "format": "ND",
+                 "ori_shape": (10,), "ori_format": "ND", "range": ((10, 10),)},
+                {"shape": (10, 16, 512), "dtype": "float16", "format": "ND",
+                 "ori_shape": (10, 16, 512), "ori_format": "ND", "range": ((10, 10), (16, 16), (512, 512))},
+                "inner_product")
+    set_current_compile_soc_info(test_args)
+
+
+test_gen_adc_case101 = {"params": [{"shape": (32,), "dtype": "float16", "format": "ND", "ori_shape": (32,),
+                                    "ori_format": "ND", "range": ((32, 32),)},
                                    {"shape": (16, 256, 2), "dtype": "float16", "format": "ND",
                                     "ori_shape": (16, 256, 2), "ori_format": "ND",
                                     "range": ((16, 16), (256, 256), (2, 2))},
@@ -123,6 +243,12 @@ ut_case.add_cust_test_func(test_func=test_gen_adc_case001)
 ut_case.add_cust_test_func(test_func=test_gen_adc_case002)
 ut_case.add_cust_test_func(test_func=test_gen_adc_case003)
 ut_case.add_cust_test_func(test_func=test_gen_adc_case004)
+ut_case.add_cust_test_func(test_func=test_gen_adc_case005)
+ut_case.add_cust_test_func(test_func=test_gen_adc_case006)
+ut_case.add_cust_test_func(test_func=test_gen_adc_case007)
+ut_case.add_cust_test_func(test_func=test_gen_adc_case008)
+ut_case.add_cust_test_func(test_func=test_gen_adc_case009)
+ut_case.add_cust_test_func(test_func=test_gen_adc_case010)
 
 ut_case.add_case(["Ascend710", "Ascend910"], test_gen_adc_case101)
 

@@ -35,6 +35,10 @@ namespace ge {
 *
 * @par Outputs:
 * adc_tables: A Tensor. Must be one of the following types: float16, float32.
+*
+* @par Attributes:
+* distance_type: The string indicates the distance type of ADC tables. Examples: `"l2sqr", "inner_product"`.
+The default value is "l2sqr".
 */
 REG_OP(GenADC)
     .INPUT(query, TensorType({DT_FLOAT16, DT_FLOAT}))
@@ -42,6 +46,7 @@ REG_OP(GenADC)
     .INPUT(centroids, TensorType({DT_FLOAT16, DT_FLOAT}))
     .INPUT(bucket_list, TensorType({DT_INT32, DT_INT64}))
     .OUTPUT(adc_tables, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .ATTR(distance_type, String, "l2sqr")
     .OP_END_FACTORY_REG(GenADC)
 
 /**
