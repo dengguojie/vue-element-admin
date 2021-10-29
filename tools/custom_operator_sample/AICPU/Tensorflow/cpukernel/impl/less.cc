@@ -217,6 +217,29 @@ uint32_t LessCpuKernel::LessCompute(CpuKernelContext &ctx) {
   auto input1_shape = input1_tensor->GetTensorShape()->GetDimSizes();
   int64_t input1_elements_nums = input1_tensor->NumElements();
 
+/*
+Procedure for multi-core concurrent computing:
+1. Call the CpuKernelUtils::GetCPUNum function to obtain the number of AI CPUs (max_core_num).
+2. Calculate the computing data size on each AI CPU (per_unit_size) by dividing the total data size by the number of AI CPUs.
+3. Implement the working process function shard of each compute unit, and compile the computing logic that needs to be
+   concurrently executed in the function.
+4. Call the CpuKernelUtils::ParallelFor function and input parameters such as the CpuKernelContext object (ctx), total
+   data size (data_num), computing data size on each AI CPU (per_unit_size), and working process function shard of each
+   compute unit. Then execute multi-core concurrent computing.
+For example:
+uint32_t min_core_num = 1;
+int64_t max_core_num =
+      std::max(min_core_num, CpuKernelUtils::GetCPUNum(ctx));
+per_unit_size = data_num / max_core_num;
+auto shard = [&](size_t start, size_t end) {
+    for (size_t i = start; i < end; i++) {
+    // Execution process
+     ... ...
+    }
+};
+CpuKernelUtils::ParallelFor(ctx, data_num, per_unit_size, shard);
+*/
+
   bool isNeedBcast = (input0_shape == input1_shape) ||
                      (input0_elements_nums == 1) ||
                      (input1_elements_nums == 1);
