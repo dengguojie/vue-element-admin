@@ -28,6 +28,7 @@ from impl.util import util_select_op_base
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from impl.util.platform_adapter import tbe as tbe_adapter
 
 
 # 'pylint: disable = unused-argument,invalid-name,too-many-locals,too-many-arguments,too-many-branches
@@ -246,7 +247,11 @@ def layer_norm_beta_gamma_backprop_v2_compute(data_dy, res_for_gamma, output_pd_
 
     data_x = tbe.vmul(res_for_gamma, data_dy)
     if param_axis:
-        pd_gamma, pd_beta = tbe.tuple_sum([data_x, data_dy], param_axis, keepdims=True)
+        if tbe_platform.api_check_support("tik.vgatherb"):
+            pd_gamma = tbe_adapter.reduce_sum(data_x, aixs=param_axis)
+            pd_beta = tbe_adapter.reduce_sum(data_dy, aixs=param_axis)
+        else:
+            pd_gamma, pd_beta = tbe.tuple_sum([data_x, data_dy], param_axis, keepdims=True)
     else:
         pd_beta = tbe.vadds(data_dy, tvm.const(0, dtype=dtype))
         pd_gamma = tbe.vadds(data_x, tvm.const(0, dtype=dtype))
