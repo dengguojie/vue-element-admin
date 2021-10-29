@@ -19,7 +19,6 @@ util
 """
 # pylint: disable=import-error
 from decorator import decorator
-from functools import wraps
 from te import tvm
 from te.platform import intrinsic_check_support
 from te.platform.cce_conf import VERSION_CLOUD
@@ -815,7 +814,7 @@ def shape_to_list(shape):
     """
     import warnings
     warnings.warn(
-        "te.lang.cce.te_compute.shape_to_list is deprecated, please replace it with tbe.common.utils.shape_to_list", 
+        "te.lang.cce.te_compute.shape_to_list is deprecated, please replace it with tbe.common.utils.shape_to_list",
         DeprecationWarning)
     import tbe.common.utils
     return tbe.common.utils.shape_to_list(shape)

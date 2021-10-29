@@ -18,9 +18,9 @@
 import abc
 import copy
 
-from tbe import tvm
 from tvm.tensor import Tensor
 
+from tbe import tvm
 from tbe.common.platform import ASCEND_920A
 from tbe.common.platform import SOC_VERSION
 from tbe.common.platform import scope_ubuf

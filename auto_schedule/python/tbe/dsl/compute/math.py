@@ -32,7 +32,6 @@ from tbe.dsl.base.expr_compare import expr_equal as equal
 
 from .cast import _cast
 from .util import auto_cast_tensor
-from .util import dsl_check_support
 from .util import dtype_check_decorator
 from .util import get_tvm_scalar
 from .util import in_dynamic_and_static_unify
@@ -100,29 +99,29 @@ def _auto_cast_of_elewise(func, *args, **kwargs):
     if len(args) == 2:
         if isinstance(args[1], tvm.tensor.Tensor):
             def _cast_two_input_tensor(args, intr, is_support_fp32):
-                    lhs = args[0]
-                    rhs = args[1]
-                    dtype_l = lhs.dtype
-                    dtype_r = rhs.dtype
+                lhs = args[0]
+                rhs = args[1]
+                dtype_l = lhs.dtype
+                dtype_r = rhs.dtype
 
-                    lhs_t = lhs
-                    rhs_t = rhs
-                    is_support_ldtype = intrinsic_check_support("Intrinsic_"+intr,
-                                                                dtype_l)
-                    is_support_rdtype = intrinsic_check_support("Intrinsic_"+intr,
-                                                                dtype_r)
-                    if not is_support_ldtype \
-                            or not is_support_rdtype or dtype_l != dtype_r:
-                        if is_support_fp32 \
-                                and is_cast_support(dtype_l, "float32") \
-                                and is_cast_support(dtype_r, "float32"):
-                            lhs_t = _cast(lhs, "float32")
-                            rhs_t = _cast(rhs, "float32")
-                        else:
-                            lhs_t = _cast(lhs, "float16")
-                            rhs_t = _cast(rhs, "float16")
+                lhs_t = lhs
+                rhs_t = rhs
+                is_support_ldtype = intrinsic_check_support("Intrinsic_"+intr,
+                                                            dtype_l)
+                is_support_rdtype = intrinsic_check_support("Intrinsic_"+intr,
+                                                            dtype_r)
+                if not is_support_ldtype \
+                        or not is_support_rdtype or dtype_l != dtype_r:
+                    if is_support_fp32 \
+                            and is_cast_support(dtype_l, "float32") \
+                            and is_cast_support(dtype_r, "float32"):
+                        lhs_t = _cast(lhs, "float32")
+                        rhs_t = _cast(rhs, "float32")
+                    else:
+                        lhs_t = _cast(lhs, "float16")
+                        rhs_t = _cast(rhs, "float16")
 
-                    return lhs_t, rhs_t
+                return lhs_t, rhs_t
 
             lhs_t, rhs_t = _cast_two_input_tensor(args, intr, is_support_fp32)
             return func(lhs_t, rhs_t)

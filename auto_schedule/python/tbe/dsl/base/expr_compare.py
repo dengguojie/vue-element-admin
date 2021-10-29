@@ -52,4 +52,3 @@ def expr_equal(expr_a, expr_b, condition=None):
     sympy_a = _te_expr2sympy_expr(expr_a)
     sympy_b = _te_expr2sympy_expr(expr_b)
     return sympy_a == sympy_b
-

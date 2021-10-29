@@ -17,7 +17,6 @@
 """
 elewise mutil out schedule
 """
-import math
 from tbe import tvm
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils import log
@@ -233,7 +232,7 @@ class ElewiseMultiSchedule(ElewiseSchedule):
                 emit_insn_axis = block_split_axis
             else:
                 emit_insn_axis = ub_split_axis
-                
+            
             para = {"scope": tensor.op.axis[emit_insn_axis],
                     "instruction": 'dma_copy'}
             self._emit_insn_map[tensor] = para

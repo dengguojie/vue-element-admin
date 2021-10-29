@@ -17,7 +17,6 @@
 """
 error manager vector.
 """
-import json
 from .error_manager_util import get_error_message
 
 

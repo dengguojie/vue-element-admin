@@ -43,7 +43,7 @@ def get_op_info(outs):
     op_info
     """
     warnings.warn(
-        "te.lang.cce.get_op_info is deprecated, please replace it with tbe.dsl.static_schedule.get_op_info", 
+        "te.lang.cce.get_op_info is deprecated, please replace it with tbe.dsl.static_schedule.get_op_info",
         DeprecationWarning)
     from tbe.dsl.static_schedule.cce_schedule import get_op_info
     return get_op_info(outs)
@@ -58,7 +58,8 @@ def verify_compute_tensor(tensors):
     tensors: target tensor which needs to verify
     """
     warnings.warn(
-        "te.lang.cce.verify_compute_tensor is deprecated, please replace it with tbe.dsl.static_schedule.verify_compute_tensor", 
+        "te.lang.cce.verify_compute_tensor is deprecated, "
+        "please replace it with tbe.dsl.static_schedule.verify_compute_tensor",
         DeprecationWarning)
     from tbe.dsl.static_schedule.cce_schedule import verify_compute_tensor
     return verify_compute_tensor(tensors)
@@ -69,7 +70,7 @@ def schedule_cce(outs, option=None):
     schedule cce
     """
     warnings.warn(
-        "te.lang.cce.schedule_cce is deprecated, please replace it with tbe.dsl.static_schedule.schedule_cce", 
+        "te.lang.cce.schedule_cce is deprecated, please replace it with tbe.dsl.static_schedule.schedule_cce",
         DeprecationWarning)
     from tbe.dsl.static_schedule.cce_schedule import schedule_cce
     return schedule_cce(outs, option)
@@ -88,7 +89,8 @@ def check_is_need_cast(out):
     Bool : true or false
     """
     warnings.warn(
-        "te.lang.cce.check_is_need_cast is deprecated, please replace it with tbe.dsl.static_schedule.check_is_need_cast", 
+        "te.lang.cce.check_is_need_cast is deprecated, "
+        "please replace it with tbe.dsl.static_schedule.check_is_need_cast",
         DeprecationWarning)
     from tbe.dsl.static_schedule.cce_schedule import check_is_need_cast
     return check_is_need_cast(out)
