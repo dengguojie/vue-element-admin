@@ -308,8 +308,7 @@ def _get_input_shape(fmap_nchw, dedy_nchw, dedw_nchw):
         error_manager_cube.raise_err_scene_equal_limitation("conv2d_backprop_filter", "Fmap's N",
                                                   "Dedy's N")
     if DYNAMIC_FLAG not in fmap_nchw:
-        error_manager_cube.raise_err_specific_user(
-            "conv2d_backprop_filter", "need at least one dimension is a variable.")
+        fmap_n = -1
     if DYNAMIC_FLAG in dedw_nchw:
         error_manager_cube.raise_err_specific_user(
             "conv2d_backprop_filter", "dynamic weight is not supported yet.")
