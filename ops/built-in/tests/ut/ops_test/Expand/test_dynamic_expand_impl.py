@@ -44,5 +44,15 @@ ut_case.add_case("Ascend910A", gen_dynamic_broadcast_to_case((1, 3, -1), ((1, 1)
                                                 "dynamic_expand_5",
                                                 "success"))
 
+ut_case.add_case("Ascend910A", gen_dynamic_broadcast_to_case((1, 3, -1), ((1, 1),(3, 3), (0, 5)), [3, 1, 5],
+                                                "int8",
+                                                "dynamic_expand_6",
+                                                "success"))
+
+ut_case.add_case("Ascend910A", gen_dynamic_broadcast_to_case((1, 3, -1), ((1, 1),(3, 3), (0, 5)), [3, 1, 5],
+                                                "int32",
+                                                "dynamic_expand_7",
+                                                "success"))
+
 if __name__ == "__main__":
     ut_case.run("Ascend910A")

@@ -39,16 +39,19 @@ def expand_compute(x, shape):
     -------
     output_tensor : tensor after expand.
     """
-    shape_in = x.shape
     dtype = x.dtype
+    compute_dtype = dtype
     if dtype in ('int8', 'uint8'):
         x = tbe.cast_to(x, 'float16')
+        compute_dtype = 'float16'
 
+    shape_in = x.shape
     python_shape_in = [int(x) for x in shape_in]
     if list(python_shape_in) == list(shape):
-        output_tensor = tbe.vmuls(x, 1)
+        zero_tensor = tbe.broadcast(tvm.const(0, compute_dtype), shape)
+        output_tensor = tbe.vadd(x, zero_tensor)
     else:
-        output_tensor = tbe.broadcast(x, shape, dtype)
+        output_tensor = tbe.broadcast(x, shape, compute_dtype)
 
     if dtype in ('int8', 'uint8'):
         return tbe.cast_to(output_tensor, dtype, f1628IntegerFlag=True)

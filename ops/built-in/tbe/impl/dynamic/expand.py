@@ -25,7 +25,7 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 
- 
+
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @register_operator_compute("Expand", op_mode="dynamic", support_fusion=False)
 def expand_compute(x, shape):
@@ -44,16 +44,24 @@ def expand_compute(x, shape):
     -------
     res
     """
+    dtype = x.dtype
+    compute_dtype = dtype
+    if dtype in ('uint8', 'int8'):
+        x = tbe.cast_to(x, 'float16')
+        compute_dtype = 'float16'
+        
     shape_in = x.shape
     _, _, shape_max = shape_util.broadcast_shapes(shape_in, shape)
 
-    dtype = x.dtype
-
-    output_tensor = tbe.broadcast(x, shape_max, dtype)
-    
     # func: to avoid null compute process
     if shape_max == shape_in:
-        output_tensor = tbe.vadds(output_tensor, 0)
+        zero_tensor = tbe.broadcast(tvm.const(0, compute_dtype), shape)
+        output_tensor = tbe.vadd(x, zero_tensor)
+    else:
+        output_tensor = tbe.broadcast(x, shape_max, compute_dtype)
+
+    if dtype in ('uint8', 'int8'):
+        return tbe.cast_to(output_tensor, dtype, f1628IntegerFlag=True)
 
     return output_tensor
 
