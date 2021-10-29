@@ -133,20 +133,21 @@ REG_OP(OCRIdentifyPreHandle)
     .OP_END_FACTORY_REG(OCRIdentifyPreHandle)
 
 /**
-*@brief batch dialte polys acording to expands_cale.
+*@brief batch dilate polygons according to expand_scale.
 *@par Inputs:
-*@li polys_data: A Tensor of type int32. point data of every poly. \n
-*@li polys_offset:A Tensor of type int32. Offset of every poly . \n
-*@li polys_size:A Tensor of type int32. Size of every poly. \n
-*@li score:A Tensor of type float. Score of every point in img. \n
+*@li polys_data: A Tensor of type int32. point data of every polygon. \n
+*@li polys_offset:A Tensor of type int32. Offset of every polygon . \n
+*@li polys_size:A Tensor of type int32. Size of every polygon. \n
+*@li score:A Tensor of type float. Score of every point in image. \n
 *@li min_border:A Tensor of type int32. Minimum width of each polygon. \n
-*@li score_thr:A Tensor of type int32. Minimum confidence score of each polygon. \n
-*@li expands_cale:A Tensor of type int32. Polygon expansion multiple. \n
+*@li min_area_thr:A Tensor of type int32. Minimum area of each polygon. \n
+*@li score_thr:A Tensor of type float. Minimum confidence score of each polygon. \n
+*@li expands_cale:A Tensor of type float. Polygon expansion multiple. \n
 
 *@par Outputs:
-*@li dilated_polys_data: A Tensor of type int32. point data of every dilated poly. \n
-*@li dilated_polys_offset: A Tensor of type int32. Offset of every dilated poly . \n
-*@li dilated_polys_size: A Tensor of type int32. Size of every dilated poly. \n
+*@li dilated_polys_data: A Tensor of type int32. Point data of every dilated polygon. \n
+*@li dilated_polys_offset: A Tensor of type int32. Offset of every dilated polygon . \n
+*@li dilated_polys_size: A Tensor of type int32. Size of every dilated polygon. \n
 */
 REG_OP(BatchDilatePolys)
     .INPUT(polys_data, TensorType({DT_INT32}))
