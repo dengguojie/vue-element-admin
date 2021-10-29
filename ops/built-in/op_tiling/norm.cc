@@ -177,8 +177,8 @@ bool Norm::GetCompileInfo()
 {
   try {
     const auto& common_info = op_info.at("_common_info").get<std::vector<int32_t>>();
-    V_CHECK_EQ(common_info.size(), 5,
-               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "size of common_info should be 5"),
+    V_CHECK_EQ(common_info.size(), 7,
+               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "size of common_info should be 7"),
                return false);
     // Get Data
     compileInfo.core_num = common_info[0];
@@ -186,7 +186,8 @@ bool Norm::GetCompileInfo()
     compileInfo.is_keep_dims = (bool)common_info[2];
     compileInfo.max_ub_count = common_info[3];
     compileInfo.workspace_max_ub_count = common_info[4];
-
+    compileInfo.pad_max_ub_count = common_info[5];
+    compileInfo.pad_max_entire_size = common_info[6];
     // CHECK VALUE
     V_OP_TILING_CHECK(compileInfo.core_num > 0,
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num is %d that is illegal",
@@ -197,12 +198,20 @@ bool Norm::GetCompileInfo()
                                                       compileInfo.min_block_size),
                       return false);
     V_OP_TILING_CHECK(compileInfo.max_ub_count > 0,
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "max_ub_count is %ld that is illegal",
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "max_ub_count is %d that is illegal",
                                                       compileInfo.max_ub_count),
                       return false);
     V_OP_TILING_CHECK(compileInfo.workspace_max_ub_count > 0,
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "workspace_max_ub_count is %ld that is illegal",
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "workspace_max_ub_count is %d that is illegal",
                                                       compileInfo.workspace_max_ub_count),
+                      return false);
+    V_OP_TILING_CHECK(compileInfo.pad_max_ub_count > 0,
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "pad_max_ub_count is %d that is illegal",
+                                                      compileInfo.pad_max_ub_count),
+                      return false);
+    V_OP_TILING_CHECK(compileInfo.pad_max_entire_size > 0,
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "pad_max_entire_size is %d that is illegal",
+                                                      compileInfo.pad_max_entire_size),
                       return false);
   } catch (const std::exception &e) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Func: GetCompileInfo error. Error message: %s", e.what());
@@ -271,15 +280,14 @@ bool Norm::GetWorkspaceBlockTilingInfo()
       continue;
     }
     // the A after reduce can not put in ub
-    if (right_align_product / input_align_shape[i] > compileInfo.workspace_max_ub_count) {
+    if (right_align_product / input_align_shape[i] > ub_size) {
       left_product = left_product * input_shape[i];
       right_product = right_product / input_shape[i];
       right_align_product = right_align_product / input_align_shape[i];
       continue;
     }
     // max_block_tiling_factor: UB can store m * inner_ub_count
-    int64_t max_block_tiling_factor =
-        compileInfo.workspace_max_ub_count / (right_align_product / input_align_shape[i]);
+    int64_t max_block_tiling_factor = ub_size / (right_align_product / input_align_shape[i]);
 
     if (right_product / input_shape[i] <= block_size && left_product * input_shape[i] < compileInfo.core_num) {
       int64_t cur_block_factor =
@@ -351,6 +359,7 @@ bool Norm::GetBlockTilingInfo()
     tilingInfo.block_tiling_factor = input_shape[first_a_axis_index];
     is_need_workspace = true;
     sch_type = 2;
+    ub_size = compileInfo.workspace_max_ub_count;
     return true;
   }
   if (is_need_workspace) {
@@ -564,8 +573,8 @@ bool Norm::PartialReorderUbTiling()
                                    1:
                                    std::accumulate(input_align_shape.begin() + i + 1, input_align_shape.end(), 1,
                                                    std::multiplies<int64_t>()));
-    if (right_product_align <= compileInfo.workspace_max_ub_count) {
-      int64_t cur_ub_factor = compileInfo.workspace_max_ub_count / right_product_align;
+    if (right_product_align <= ub_size) {
+      int64_t cur_ub_factor = ub_size / right_product_align;
       tilingInfo.ub_tiling_axis = (int32_t)i;
       tilingInfo.ub_tiling_factor = cur_ub_factor > input_shape[i] ? input_shape[i] : cur_ub_factor;
       return true;
@@ -608,8 +617,8 @@ bool Norm::GetUbTilingInfo()
       int64_t current_dim_tail = (i == block_tiling_axis_in_reorder) ?
                                  (reorderInfo.reorder_input_shape[i] % tilingInfo.block_tiling_factor):
                                  reorderInfo.reorder_input_shape[i];
-      if (right_product_align <= compileInfo.max_ub_count) {
-        int64_t cur_ub_factor = compileInfo.max_ub_count / right_product_align;
+      if (right_product_align <= ub_size) {
+        int64_t cur_ub_factor = ub_size / right_product_align;
         for (; cur_ub_factor >= 1; cur_ub_factor--) {
           int64_t tail_ub_factor =
               current_dim % cur_ub_factor == 0 ? cur_ub_factor : current_dim % cur_ub_factor;
@@ -621,13 +630,13 @@ bool Norm::GetUbTilingInfo()
             tilingInfo.ub_tiling_axis = reorderInfo.reorderPos_oriPos[i];
             int64_t ub_loop = cur_ub_factor > current_dim ? 1 : (current_dim + cur_ub_factor - 1) / cur_ub_factor;
             tilingInfo.ub_tiling_factor = (current_dim + ub_loop - 1) / ub_loop;
-            if (tilingInfo.ub_tiling_factor > compileInfo.max_ub_count / right_product_align) {
+            if (tilingInfo.ub_tiling_factor > ub_size / right_product_align) {
               tilingInfo.ub_tiling_factor = cur_ub_factor > current_dim ? current_dim : cur_ub_factor;
             }
             // storage align last A when is nlast reduce, but align_factor * right_product is larger than max_ub
             if (!(!is_last_axis_reduce && i == (int32_t)reorderInfo.reorder_input_shape.size() - 1 &&
                   (tilingInfo.ub_tiling_factor + block_size - 1) / block_size * block_size * right_product_align >
-                  compileInfo.max_ub_count)) {
+                  ub_size)) {
               return true;
             }
           }
@@ -649,8 +658,8 @@ bool Norm::GetUbTilingInfo()
       right_product = CalcReorderShapeProduct(i, block_tiling_axis_in_reorder);
       right_product_align = CalcReorderShapeProductAlign(i, block_tiling_axis_in_reorder);
       int64_t current_dim = reorderInfo.reorder_input_shape[i];
-      if (right_product_align <= compileInfo.workspace_max_ub_count) {
-        int64_t cur_ub_factor = compileInfo.workspace_max_ub_count / right_product_align;
+      if (right_product_align <= ub_size) {
+        int64_t cur_ub_factor = ub_size / right_product_align;
         for (; cur_ub_factor >= 1; cur_ub_factor--) {
           int64_t tail_ub_factor =
               current_dim % cur_ub_factor == 0 ? cur_ub_factor : current_dim % cur_ub_factor;
@@ -659,13 +668,13 @@ bool Norm::GetUbTilingInfo()
             tilingInfo.ub_tiling_axis = reorderInfo.reorderPos_oriPos[i];
             int64_t ub_loop = cur_ub_factor > current_dim ? 1 : (current_dim + cur_ub_factor - 1) / cur_ub_factor;
             tilingInfo.ub_tiling_factor = (current_dim + ub_loop - 1) / ub_loop;
-            if (tilingInfo.ub_tiling_factor > compileInfo.workspace_max_ub_count / right_product_align) {
+            if (tilingInfo.ub_tiling_factor > ub_size / right_product_align) {
               tilingInfo.ub_tiling_factor = cur_ub_factor > current_dim ? current_dim : cur_ub_factor;
             }
             // storage align last R when is last reduce, but align_factor * right_product is larger than max_ub
             if (!(is_last_axis_reduce && i == (int32_t)reorderInfo.reorder_input_shape.size() - 1 &&
                   (tilingInfo.ub_tiling_factor + block_size - 1) / block_size * block_size * right_product_align >
-                   compileInfo.max_ub_count)) {
+                  ub_size)) {
               return true;
             }
           }
@@ -684,7 +693,7 @@ bool Norm::NeedRefineBlockTiling()
   }
   int64_t refined_block_tiling_factor = (tilingInfo.block_tiling_factor + block_size - 1) / block_size * block_size;
   if (is_need_workspace) {
-    if (refined_block_tiling_factor > compileInfo.workspace_max_ub_count) {
+    if (refined_block_tiling_factor > ub_size) {
       return false;
     }
   }
@@ -812,9 +821,20 @@ bool Norm::DoTiling()
   is_last_axis_reduce = last_r_axis_index == (int32_t)input_shape.size() - 1;
   is_split_block = !(reduce_axis.size() == input_shape.size());
   is_partial_reorder = reduce_axis.size() > 1 && input_shape.back() < block_size && is_split_block;
-
   pattern = CalcPattern(input_shape, reduce_axis);
   is_need_workspace = IsNeedWorkspace();
+  is_align_and_remove_pad = !is_need_workspace && input_shape.size() == 2 && is_last_axis_reduce &&
+      input_shape.back() % block_size != 0 &&
+      compileInfo.pad_max_ub_count / compileInfo.pad_max_entire_size >= input_align_shape.back();
+  // determine ub size
+  if (is_need_workspace) {
+    ub_size = compileInfo.workspace_max_ub_count;
+  } else if (is_align_and_remove_pad) {
+    ub_size = compileInfo.pad_max_ub_count;
+    sch_type = 4;
+  } else {
+    ub_size = compileInfo.max_ub_count;
+  }
   // calculate tiling info
   ret = ret && ProcessTiling();
   // calculate workspace size
@@ -849,17 +869,17 @@ bool Norm::CalcTilingKey()
 
 bool Norm::CalcWorkspace()
 {
-    const auto& workspace_type = op_info.at("_workspace_info").at("_workspace_type").get<std::vector<int32_t>>();
-    const auto& workspace_bytes = op_info.at("_workspace_info").at("_workspace_bytes").get<std::vector<int32_t>>();
-    const auto& workspace_diff_count = op_info.at("_workspace_info").at("_workspace_diff_count").get<int32_t>();
-    // CHECK VALUE
-    V_CHECK_EQ(workspace_type.size(), workspace_bytes.size(),
-               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "size of workspace_type and workspace_bytes should be equal"),
-               return false);
-    V_OP_TILING_CHECK(workspace_diff_count >= 0 && (uint32_t)workspace_diff_count <= workspace_type.size(),
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "workspace_diff_count is %d that is illegal",
-                                                      workspace_diff_count),
-                      return false);
+  const auto& workspace_type = op_info.at("_workspace_info").at("_workspace_type").get<std::vector<int32_t>>();
+  const auto& workspace_bytes = op_info.at("_workspace_info").at("_workspace_bytes").get<std::vector<int32_t>>();
+  const auto& workspace_diff_count = op_info.at("_workspace_info").at("_workspace_diff_count").get<int32_t>();
+  // CHECK VALUE
+  V_CHECK_EQ(workspace_type.size(), workspace_bytes.size(),
+             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "size of workspace_type and workspace_bytes should be equal"),
+             return false);
+  V_OP_TILING_CHECK((workspace_diff_count >= 0 && (uint32_t)workspace_diff_count <= workspace_type.size()),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "workspace_diff_count is %d that is illegal",
+                                                    workspace_diff_count),
+                    return false);
 
   std::size_t workspace_count = workspace_type.size();
   if (workspace_count != 0) {

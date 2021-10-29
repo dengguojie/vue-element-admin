@@ -50,8 +50,10 @@ struct CompileInfoNorm {
   bool is_const_post{false};
   bool is_keep_dims{false};
   bool is_fuse_axis{true};
-  int64_t max_ub_count{-1};
-  int64_t workspace_max_ub_count{-1};
+  int32_t max_ub_count{-1};
+  int32_t workspace_max_ub_count{-1};
+  int32_t pad_max_ub_count{-1};
+  int32_t pad_max_entire_size{-1};
   int32_t core_num{-1};
   int32_t min_block_size{-1};
 };
@@ -116,6 +118,7 @@ class Norm {
     bool is_need_workspace{false};
     bool is_partial_reorder{false};
     bool is_split_block{true};
+    bool is_align_and_remove_pad{false};
     int64_t shape_after_reduce_product{-1};
     int64_t reduce_product{-1};
     int32_t last_r_axis_index{-1};
@@ -125,8 +128,9 @@ class Norm {
     int32_t sch_type{0};
     int32_t db{0};
     int32_t block_size{-1};
+    int64_t ub_size{0};
     int32_t tiling_key{-1};
-  };
+};
 }  // namespace optiling
 
 #endif  // NORM_TILING_H
