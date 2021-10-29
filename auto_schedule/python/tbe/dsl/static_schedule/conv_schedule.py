@@ -1919,7 +1919,8 @@ class CceConvOp:
                 # al1
                 if double_buffer_flag["AL1_pbuffer"] == 2:
                     sch[al1].double_buffer()
-                    if self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag or self._al1_preload_flag:
+                    if self.conv_pool_fused_flag or self.conv_pool_2_2_fused_flag or self._al1_preload_flag or (
+                            c0_optim_flg and self._convbn1_flag):
                         sch[al1].preload()
                 # aub
                 if self._pre_relu_fused_flag and double_buffer_flag["AUB_pbuffer"] == 2:
