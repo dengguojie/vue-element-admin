@@ -2720,6 +2720,56 @@ IMPLEMT_INFERFUNC(NonZero, NonZeroInfer) {
 INFER_FUNC_REG(NonZero, NonZeroInfer);
 // ----------------NonZero End-------------------
 
+// ----------------NonZeroWithValue Begin-------------------
+IMPLEMT_INFERFUNC(NonZeroWithValue, NonZeroWithValueInfer) {
+  OpDescPtr op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  GeTensorDescPtr x_input = op_desc->MutableInputDesc(0);
+  GeShape x_shape = x_input->GetShape();
+  vector<int64_t> shape_dims = x_shape.GetDims();
+  GeTensorDescPtr value_desc = op_desc->MutableOutputDesc(0);
+  GeTensorDescPtr y_desc = op_desc->MutableOutputDesc(1);
+  GeTensorDescPtr shape_desc = op_desc->MutableOutputDesc(2);
+  // get and set output dtype
+  DataType dtype = DT_INT32;
+  DataType shape_dtype = DT_INT32;
+  op.GetAttr("dtype", dtype);
+  y_desc->SetDataType(dtype);
+  value_desc->SetDataType(x_input->GetDataType());
+  shape_desc->SetDataType(shape_dtype);
+  OP_LOGD(op.GetName().c_str(), "set output dtype");
+  bool transpose = false;
+  if (op.GetAttr("transpose", transpose) != GRAPH_SUCCESS) {
+    OP_LOGW(op.GetName().c_str(),
+            "Failed to get attr[transpose]. Set attr[transpose] to false.");
+  }
+  std::vector<int64_t> y_dims;
+  std::vector<int64_t> nums_dims;
+  std::vector<int64_t> value_dims;
+  value_dims.push_back(shape_dims[0] * shape_dims[1]);
+  y_dims.push_back(2 * shape_dims[0] * shape_dims[1]);
+  nums_dims.push_back(1);
+  if (x_shape.GetDims() == UNKNOWN_RANK) {
+    y_desc->SetShape(x_shape);
+    y_desc->SetOriginShape(x_shape);
+    value_desc->SetShape(x_shape);
+    value_desc->SetOriginShape(x_shape);
+    shape_desc->SetShape(x_shape);
+    shape_desc->SetOriginShape(x_shape);
+  } else {
+    y_desc->SetShape(GeShape(y_dims));
+    y_desc->SetOriginShape(GeShape(y_dims));
+    value_desc->SetShape(GeShape(value_dims));
+    value_desc->SetOriginShape(GeShape(value_dims));
+    shape_desc->SetShape(GeShape(nums_dims));
+    shape_desc->SetOriginShape(GeShape(nums_dims));
+  }
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(NonZeroWithValue, NonZeroWithValueInfer);
+// ----------------NonZeroWithValue End-------------------
+
+
 // ----------------ExpandD Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(ExpandDInferShape) {
   Shape x_shape = op.GetInputDesc("x").GetShape();

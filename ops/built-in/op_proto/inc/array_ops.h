@@ -1276,6 +1276,35 @@ REG_OP(NonZero)
     .OP_END_FACTORY_REG(NonZero)
 
 /**
+*@Returns a tensor containing the indices of all non-zero elements of input. \n
+
+*@par Inputs:
+*x: A Tensor. Must be one of the following types: float16, float32, int32, int64.
+
+*@par Attributes:
+* transpose: the output tensor will be transposed if true. \n
+
+*@par Outputs:
+* value: A Tensor. Has the same type as "x" . \n
+* index: A Tensor. The type is INT32, means index for input. \n
+* count: A Scalar. The type is INT32, means count for non_zero ele in input. \n
+
+*@par Third-party framework compatibility
+*Compatible with the PyTorch operator NonZeroWithValue.
+*/
+
+REG_OP(NonZeroWithValue)
+    .INPUT(x, TensorType({DT_DOUBLE, DT_FLOAT, DT_FLOAT16, DT_INT8, DT_UINT8, DT_INT16, \
+           DT_UINT16, DT_INT32, DT_UINT32, DT_INT64, DT_UINT64, DT_BOOL}))
+    .OUTPUT(value, TensorType({DT_DOUBLE, DT_FLOAT, DT_FLOAT16, DT_INT8, DT_UINT8, DT_INT16, \
+            DT_UINT16, DT_INT32, DT_UINT32, DT_INT64, DT_UINT64, DT_BOOL}))
+    .OUTPUT(index, TensorType({DT_INT32}))
+    .OUTPUT(count, TensorType({DT_INT32}))
+    .ATTR(transpose, Bool, false)
+    .ATTR(dtype, Type, DT_INT32)
+    .OP_END_FACTORY_REG(NonZeroWithValue)
+
+/**
 * @brief Expand the input tensor to a compatible shape. \n
 
 * @par Inputs:

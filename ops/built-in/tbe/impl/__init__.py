@@ -146,6 +146,7 @@ from .trans_data_2d import trans_data_2d
 from .trans_data_rnn import trans_data_rnn
 from .bn_infer_grad import bn_infer_grad
 from .bn_training_update_v3 import bn_training_update_v3
+from .non_zero_with_value import non_zero_with_value
 
 # tbe it9
 from .scatter_max import scatter_max
