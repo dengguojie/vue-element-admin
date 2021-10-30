@@ -615,6 +615,13 @@ def simplify_axis_shape(shape, axis):
     length = shape[0]
 
     for i in range(len(axis)):
+        if axis[i] < 0:
+            axis_i = axis[i] + length(shape)
+            if axis_i < 0:
+                dict_args = {"errCode": "E90001",
+                             "detailed_cause": "input axis[%d] is %d, which is out of range." % (i, axis[i])}
+                raise RuntimeError(dict_args, get_error_message(dict_args))
+            axis[i] = axis_i
         if i == 0:
             length = shape[axis[0]]
             axis1.append(axis[0])
