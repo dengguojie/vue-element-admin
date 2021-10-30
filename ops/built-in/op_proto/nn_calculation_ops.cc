@@ -75,6 +75,8 @@ namespace {
   // Conv2d
   const int32_t kConv2dDimSizeLimit = 4;
   const size_t kConv2dPadSizeLimit = 4;
+  const size_t kConv2dStridesSizeLimit = 4;
+  const size_t kConv2dDilationSizeLimit = 4;
   const size_t kConv2dInputSizeLimit = 4;
   const size_t kConv2dPadUpIdx = 0;
   const size_t kConv2dPadDownIdx = 1;
@@ -544,7 +546,7 @@ bool CorrectConv2DRangeStart(ge::Operator& op, ge::GeTensorDescPtr& x_tensor,
   std::vector<int32_t> pads_list;
   op.GetAttr("pads", pads_list);
   CHECK_INFO(pads_list.size() != kConv2dDimSizeLimit, return false,
-	     "size of pads list(%zu) is not 4", pads_list.size());
+        "size of pads list(%zu) is not 4", pads_list.size());
 
   int64_t low_h = kh_dilate;
   int64_t low_w = kw_dilate;
@@ -3953,7 +3955,7 @@ static bool GetAttrsConv2D(ge::Operator& op, Format refer, int32_t& strh,
   std::vector<int32_t> stride_list;
   op.GetAttr("strides", stride_list);
   auto s_size = stride_list.size();
-  if (stride_list.empty() || s_size != 4) {
+  if (stride_list.empty() || s_size != kConv2dStridesSizeLimit) {
     OP_LOGE(op_name.GetString(), "strides list should be 4D. actual is: %u.", s_size);
     map<string, string> err_map;
     err_map["param_name"] = "strides";
@@ -3967,7 +3969,7 @@ static bool GetAttrsConv2D(ge::Operator& op, Format refer, int32_t& strh,
   std::vector<int32_t> dilation_list;
   op.GetAttr("dilations", dilation_list);
   auto d_size = dilation_list.size();
-  if (dilation_list.empty() || d_size != 4) {
+  if (dilation_list.empty() || d_size != kConv2dDilationSizeLimit) {
     OP_LOGE(op_name.GetString(), "dilations list should be 4D. actual is: %u.", d_size);
     map<string, string> err_map;
     err_map["param_name"] = "dilations";
@@ -4069,13 +4071,13 @@ static bool SetConv2dOutShapeRange(op::Conv2D& op,
   size_t idx_w = 0;
   size_t idx_c = 0;
   if (x_format == FORMAT_NHWC) {
-    idx_h = 1;
-    idx_w = 2;
-    idx_c = 3;
+    idx_h = kHDimNHWCIdx;
+    idx_w = kWDimNHWCIdx;
+    idx_c = kCDimNHWCIdx;
   } else if (x_format == FORMAT_NCHW) {
-    idx_c = 1;
-    idx_h = 2;
-    idx_w = 3;
+    idx_c = kCDimNCHWIdx;
+    idx_h = kHDimNCHWIdx;
+    idx_w = kWDimNCHWIdx;
   }
 
   // update pads if padding is SAME
@@ -5038,7 +5040,7 @@ static bool GetAttrsDfmConv2D(ge::Operator& op, Format refer, int32_t& strh, int
   std::vector<int32_t> stride_list;
   op.GetAttr("strides", stride_list);
   auto s_size = stride_list.size();
-  if (stride_list.empty() || s_size != 4) {
+  if (stride_list.empty() || s_size != kConv2dStridesSizeLimit) {
     OP_LOGE(op_name.GetString(), "strides list should be 4D. actual is: %u.", s_size);
     map<string, string> err_map;
     err_map["param_name"] = "strides";
@@ -5052,7 +5054,7 @@ static bool GetAttrsDfmConv2D(ge::Operator& op, Format refer, int32_t& strh, int
   std::vector<int32_t> dilation_list;
   op.GetAttr("dilations", dilation_list);
   auto d_size = dilation_list.size();
-  if (dilation_list.empty() || d_size != 4) {
+  if (dilation_list.empty() || d_size != kConv2dDilationSizeLimit) {
     OP_LOGE(op_name.GetString(), "dilations list should be 4D. actual is: %u.", d_size);
     map<string, string> err_map;
     err_map["param_name"] = "dilations";
@@ -5068,23 +5070,23 @@ static bool GetAttrsDfmConv2D(ge::Operator& op, Format refer, int32_t& strh, int
   int32_t diln = 0;
   int32_t dilc = 0;
   if (refer == FORMAT_NCHW) {
-    strn = stride_list[0];
-    strc = stride_list[1];
-    strh = stride_list[2];
-    strw = stride_list[3];
-    diln = dilation_list[0];
-    dilc = dilation_list[1];
-    dilh = dilation_list[2];
-    dilw = dilation_list[3];
+    strn = stride_list[kNDimIdx];
+    strc = stride_list[kCDimNCHWIdx];
+    strh = stride_list[kHDimNCHWIdx];
+    strw = stride_list[kWDimNCHWIdx];
+    diln = dilation_list[kNDimIdx];
+    dilc = dilation_list[kCDimNCHWIdx];
+    dilh = dilation_list[kHDimNCHWIdx];
+    dilw = dilation_list[kWDimNCHWIdx];
   } else if (refer == FORMAT_NHWC) {
-    strn = stride_list[0];
-    strc = stride_list[3];
-    strh = stride_list[1];
-    strw = stride_list[2];
-    diln = dilation_list[0];
-    dilc = dilation_list[3];
-    dilh = dilation_list[1];
-    dilw = dilation_list[2];
+    strn = stride_list[kNDimIdx];
+    strc = stride_list[kCDimNHWCIdx];
+    strh = stride_list[kHDimNHWCIdx];
+    strw = stride_list[kWDimNHWCIdx];
+    diln = dilation_list[kNDimIdx];
+    dilc = dilation_list[kCDimNHWCIdx];
+    dilh = dilation_list[kHDimNHWCIdx];
+    dilw = dilation_list[kWDimNHWCIdx];
   }
   if (strh <= 0 || strw <= 0) {
     OP_LOGE(op_name.GetString(),
@@ -5135,7 +5137,7 @@ static bool GetAttrsDfmConv2D(ge::Operator& op, Format refer, int32_t& strh, int
   std::vector<int32_t> pads_list;
   op.GetAttr("pads", pads_list);
   auto p_size = pads_list.size();
-  if (pads_list.empty() || p_size != 4) {
+  if (pads_list.empty() || p_size != kConv2dPadSizeLimit) {
     OP_LOGE(op_name.GetString(), "pads list should be 4D. actual is: %u.", p_size);
     map<string, string> err_map;
     err_map["param_name"] = "pads";
@@ -5146,10 +5148,10 @@ static bool GetAttrsDfmConv2D(ge::Operator& op, Format refer, int32_t& strh, int
     ErrorManager::GetInstance().ReportErrMessage(report_error_code, err_map);
     return false;
   }
-  padt = pads_list[0];
-  padb = pads_list[1];
-  padl = pads_list[2];
-  padr = pads_list[3];
+  padt = pads_list[kConv2dPadUpIdx];
+  padb = pads_list[kConv2dPadDownIdx];
+  padl = pads_list[kConv2dPadLeftIdx];
+  padr = pads_list[kConv2dPadRightIdx];
   if (padt < 0 || padb < 0 || padl < 0 || padr < 0) {
     OP_LOGE(op_name.GetString(),
             "pads should be positive, "
@@ -6713,7 +6715,7 @@ static graphStatus VerifyDataSlice(const ge::Operator& op, const vector<vector<i
       continue;
     }
     CHECK_OP_FUNC(data_slice[i].size() != kDataSliceLen, return GRAPH_FAILED,
-		  "data slice format input size should be 2.");
+        "data slice format input size should be 2.");
     valid_cnt ++;
   }
   if (valid_cnt == 0) {
