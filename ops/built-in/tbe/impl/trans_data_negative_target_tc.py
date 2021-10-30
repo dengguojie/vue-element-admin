@@ -1168,7 +1168,7 @@ def _func_transform_201(tensor_args, tp_args):
                     is_last_c1.set_as(0)
                 is_c1_back.set_as(0)
             with tik_inst.else_scope():
-                with tik_inst.if_scope(tik.all(used_core_cnt > 1, lc_src_c1_left == 1,
+                with tik_inst.if_scope(tik.all(src_c1_left == 1,
                                                c_mod_c0 > 0, c_mod_c0 < ele_per_block)):
                     c1_pl_size.set_as(lc_src_c1_left + 1)
                     is_c1_back.set_as(1)
@@ -1190,7 +1190,7 @@ def _func_transform_201(tensor_args, tp_args):
                         r2nd_pl_size.set_as(dst_r2nd_lp_unit)
                     is_r2nd_back.set_as(0)
                 with tik_inst.else_scope():
-                    with tik_inst.if_scope(tik.all(used_core_cnt > 1, lc_dst_r2nd_left * sub_c_size < ele_per_block)):
+                    with tik_inst.if_scope(tik.all(dst_r2nd_left > 0, dst_r2nd_left * sub_c_size < ele_per_block)):
                         r2nd_pl_size.set_as(lc_dst_r2nd_left + ele_per_block)
                         is_r2nd_back.set_as(1)
                     with tik_inst.else_scope():
@@ -1211,7 +1211,7 @@ def _func_transform_201(tensor_args, tp_args):
                             left_pl_size.set_as(src_left_lp_unit)
                         is_left_back.set_as(0)
                     with tik_inst.else_scope():
-                        with tik_inst.if_scope(tik.all(used_core_cnt > 1, lc_src_left_left > 0,
+                        with tik_inst.if_scope(tik.all(src_left_left > 0,
                                                        lc_src_left_left * r2nd_c_size < ele_per_block)):
                             left_pl_size.set_as(lc_src_left_left + left_back)
                             is_left_back.set_as(1)
