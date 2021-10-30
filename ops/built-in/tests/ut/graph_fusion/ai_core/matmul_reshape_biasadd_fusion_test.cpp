@@ -321,3 +321,61 @@ TEST_F(matmul_reshape_biasadd_fusion_test, matmul_reshape_add_fusion_test1) {
   }
   EXPECT_EQ(add_match, false);
 }
+
+TEST_F(matmul_reshape_biasadd_fusion_test, matmul_reshape_biasadd_fusion_test5) {
+  // The first part: using IR for composition, pay attention to the attribute description of input and output
+  ge::Graph graph("matmul_reshape_biasadd_fusion_test5");
+  std::vector<int64_t> dims_a{4, 4};
+  ge::Shape shape_a(dims_a);
+  ge::TensorDesc tensorDesc_a(shape_a, ge::FORMAT_ND, ge::DT_FLOAT);
+  auto matmul_input_data1 = op::Data("matmul_input_data1");
+  matmul_input_data1.update_input_desc_x(tensorDesc_a);
+  matmul_input_data1.update_output_desc_y(tensorDesc_a);
+
+  std::vector<int64_t> dims_b{4, 6};
+  ge::Shape shape_b(dims_b);
+  ge::TensorDesc tensorDesc_b(shape_b, ge::FORMAT_ND, ge::DT_FLOAT);
+  auto matmul_input_data2 = op::Data("matmul_input_data2").set_attr_index(1);
+  matmul_input_data2.update_input_desc_x(tensorDesc_a);
+  matmul_input_data2.update_output_desc_y(tensorDesc_a);
+
+  auto matmul_op = ge::op::MatMul("matmul")
+                                 .set_input_x1(matmul_input_data1)
+                                 .set_input_x2(matmul_input_data2)
+                                 .set_attr_transpose_x1(false)
+                                 .set_attr_transpose_x2(false);
+
+
+  std::vector<int64_t> dims{2, 2, 6};
+  ge::Shape reshape_shape(dims);
+  ge::TensorDesc tensorDesc_reshape(reshape_shape, ge::FORMAT_ND, ge::DT_FLOAT);
+  auto reshape_op = op::Reshape("reshape")
+                               .set_input_x(matmul_op);
+  reshape_op.update_output_desc_y(tensorDesc_reshape);
+
+  auto bias_shape = vector<int64_t>({6});
+  ge::TensorDesc bias_desc(ge::Shape(bias_shape), ge::FORMAT_NHWC, ge::DT_FLOAT16);
+  auto data_bias = op::Data("data_bias");
+  data_bias.update_input_desc_x(bias_desc);
+  data_bias.update_output_desc_y(bias_desc);
+
+  auto bias_add = op::BiasAdd("bias_add")
+        .set_input_x(reshape_op)
+        .set_input_bias(data_bias)
+        .set_attr_data_format("NHWC");
+
+
+  std::vector<Operator> inputs{matmul_input_data1, matmul_input_data2, data_bias};
+  std::vector<Operator> outputs{bias_add};
+  graph.SetInputs(inputs).SetOutputs(outputs);
+  ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+  fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+  fe::FusionPassTestUtils::RunGraphFusionPass("MatMulReshapeBiasAddFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+  bool matmul_match = false;
+  for (auto node : compute_graph_ptr->GetAllNodes()) {
+    if (node->GetType() == "MatMul") {
+      matmul_match = true;
+    }
+  }
+  EXPECT_EQ(matmul_match, true);
+}

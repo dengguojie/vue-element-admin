@@ -158,6 +158,15 @@ Status MatMulReshapeBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "now don't support fusion Bias with over 1 output"),
                     return fe::NOT_CHANGED);
   
+  auto node_biasadd_output_desc = node_biasadd->GetOpDesc()->GetOutputDesc(0);
+  auto node_reshape_output_desc = node_reshape->GetOpDesc()->GetOutputDesc(0);
+  // check output dtype
+  auto node_biasadd_output_dtype = node_biasadd_output_desc.GetDataType();
+  auto node_reshape_output_dtype = node_reshape_output_desc.GetDataType();
+  FUSION_PASS_CHECK((node_biasadd_output_dtype != node_reshape_output_dtype),
+                    OP_LOGW(FUSED_OP_TYPE.c_str(), "The output dtype of reshape and biasadd is different."),
+                    return fe::NOT_CHANGED);
+
   if (node_biasadd->GetType() == ADD) {
     auto bias_op_desc = node_bias->GetOpDesc();
     FUSION_PASS_CHECK((bias_op_desc == nullptr),
@@ -249,6 +258,26 @@ Status MatMulReshapeBiasAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& 
       CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Replace edge src Failed.");
       return fe::FAILED;
     }
+  }
+
+  // ensure the format of output does not change
+  auto node_biasadd_output_format = node_biasadd_output_desc.GetFormat();
+  auto node_reshape_output_format = node_reshape_output_desc.GetFormat();
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "node bias_add output format is [%s]",
+          ge::TypeUtils::FormatToSerialString(node_biasadd_output_format).c_str());
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "node reshape output format is [%s]", 
+          ge::TypeUtils::FormatToSerialString(node_reshape_output_format).c_str());
+
+  if (node_biasadd_output_format != node_reshape_output_format){
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "The output format of biasadd and reshape is different");
+    node_reshape_output_desc.SetFormat(node_biasadd_output_format);
+    node_reshape_output_desc.SetOriginFormat(node_biasadd_output_format);
+    OP_LOGD(FUSED_OP_TYPE.c_str(), "Now the format of reshape output is [%s]",
+            ge::TypeUtils::FormatToSerialString(node_reshape_output_desc.GetFormat()).c_str());
+    FUSION_PASS_CHECK(node_reshape->GetOpDesc()->UpdateOutputDesc(0, node_reshape_output_desc) != ge::GRAPH_SUCCESS,
+                      CUBE_CALL_ERR_REPORT(FUSED_OP_TYPE.c_str(), "update reshape output desc of [%s] not success.",
+                            node_reshape->GetName().c_str()),
+                      return fe::FAILED);
   }
 
   // delete BiasAdd node
