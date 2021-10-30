@@ -27,47 +27,54 @@
 using domi::tensorflow::DataType;
 
 namespace domi {
-static const char* const TENSORFLOW_ATTR_TYPE_TENSOR = "tensor";
-static const char* const TENSORFLOW_ATTR_VALUE = "value";
+static const char* TENSORFLOW_ATTR_TYPE_TENSOR = "tensor";
+static const char* TENSORFLOW_ATTR_VALUE = "value";
 
-#define GET_CONST_VALUE(tensor, param, index, FIELD, result)                         \
-  do {                                                                               \
-    google::protobuf::RepeatedField<FIELD> val_vec;                                  \
-    int32_t val_size = 0;                                                            \
-    val_vec = tensor.FIELD##_val();                                                  \
-    val_size = val_vec.size();                                                       \
-    if (index < val_size) {                                                          \
-      param = val_vec.Get(index);                                                    \
-    } else if (tensor.has_tensor_shape()) {                                          \
-      const std::string tensor_content = tensor.tensor_content();                    \
-      char* buf = const_cast<char*>(tensor_content.data());                          \
-      FIELD* buf_v = reinterpret_cast<FIELD*>(buf);                                  \
-      if (static_cast<uint32_t>(index) >= tensor_content.length() / sizeof(FIELD)) { \
-        OP_LOGE("Const data size is smaller than index :%d,not supported!", index);  \
-        result = FAILED;                                                             \
-      } else {                                                                       \
-        param = buf_v[index];                                                        \
-      }                                                                              \
-    } else {                                                                         \
-      OP_LOGE("Const data size is smaller than index :%d,not supported!", index);    \
-      result = PARAM_INVALID;                                                        \
-    }                                                                                \
-  } while (false)
+bool is_index_less_than_val(const domi::tensorflow::TensorProto& tensor, int index, int& value) {
+    google::protobuf::RepeatedField<int> val_vec = tensor.int_val();
+    int32_t val_size = val_vec.size();
+    value =  val_vec.Get(index);
+    return index < val_size;
+}
+
+bool is_index_less_than_val(const domi::tensorflow::TensorProto& tensor, int index, float& value) {
+    google::protobuf::RepeatedField<float> val_vec = tensor.float_val();
+    int32_t val_size = val_vec.size();
+    value = val_vec.Get(index);
+    return index < val_size;
+}
+
+template<typename T>
+Status get_const_value(const domi::tensorflow::TensorProto& tensor, int index, T& param) {
+    T value = 0;
+    if (is_index_less_than_val(tensor, index, value)) {
+        param = value;
+    } else if (tensor.has_tensor_shape()) {
+        const std::string tensor_content = tensor.tensor_content();
+        char* buf = const_cast<char*>(tensor_content.data());
+        T* buf_v = reinterpret_cast<T*>(buf);
+        if (static_cast<uint32_t>(index) >= tensor_content.length() / sizeof(T)) {
+            OP_LOGE("Const data size is smaller than index :%d,not supported!", index);
+            return FAILED;
+        }
+        param = buf_v[index];
+    } else {
+        OP_LOGE("Const data size is smaller than index :%d,not supported!", index);
+        return PARAM_INVALID;
+    }
+    return SUCCESS;
+}
 
 Status ParseParamFromConst(const domi::tensorflow::NodeDef* node_def, int32_t& param, int index) {
   domi::tensorflow::TensorProto tensor;
   TensorflowFusionOpParserUtil::GetTensorFromNode(node_def, tensor);
-  auto result = SUCCESS;
-  GET_CONST_VALUE(tensor, param, index, int, result);
-  return result;
+  return get_const_value(tensor, index, param);
 }
 
 Status ParseParamFromConst(const domi::tensorflow::NodeDef* node_def, float& param, int index) {
   domi::tensorflow::TensorProto tensor;
   TensorflowFusionOpParserUtil::GetTensorFromNode(node_def, tensor);
-  auto result = SUCCESS;
-  GET_CONST_VALUE(tensor, param, index, float, result);
-  return result;
+  return get_const_value(tensor, index, param);
 }
 
 Status TensorflowFusionOpParserUtil::GetTensorFromNode(const domi::tensorflow::NodeDef* node_def,

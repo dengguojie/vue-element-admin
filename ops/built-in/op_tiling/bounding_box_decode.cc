@@ -109,8 +109,8 @@ void GetLoopParam(int32_t each_core_calcul_num, int32_t rois_data_each_block,
     block_number_loop = each_core_calcul_num / rois_data_each_block;
     start_block_address = block_number_loop / loop_cycle;
     if (loop_cycle > 1) {
-        int32_t block_number = 0;
         if (block_number_loop % loop_cycle != 0) {
+            int32_t block_number = 0;
             block_number = block_number_loop - start_block_address * (loop_cycle - 1);
             while ((block_number * loop_cycle < block_number_loop) ||
                    (block_number * rois_data_each_block > MAX_UB_ELEMENT_NUMBER_FP16)) {

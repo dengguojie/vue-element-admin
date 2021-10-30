@@ -43,7 +43,7 @@ class Constant:
 
 
 # 'pylint: disable=too-many-lines,too-many-instance-attributes,too-many-arguments,unused-argument,too-many-statements
-# 'pylint: too-many-locals,simplifiable-if-statement,too-many-branches
+# 'pylint: disable=too-many-locals
 class MaxpoolGradBase:
     """
     parameter for max_pool_grad_with_pool

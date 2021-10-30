@@ -447,6 +447,12 @@ typedef struct tagFp16 {
   }
   /**
    *@ingroup fp16_t constructor
+   *@brief   Constructor with an uint16_t value
+   */
+  tagFp16(const uint16_t& uiVal) : val(uiVal) {
+  }
+  /**
+   *@ingroup fp16_t constructor
    *@brief   Constructor with a fp16_t object(copy constructor)
    */
   tagFp16(const tagFp16& fp) : val(fp.val) {
