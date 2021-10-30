@@ -901,6 +901,12 @@ def filter_case(tensor_a, tensor_b, kernel_name):
         "Ascend910ProB": [
             # nmt_bs128 matmul_op
             "96_8_16_16_128_96_16_16_float16"
+        ],
+        "Ascend910B": [
+            "192_960_16_16_48_960_16_16_float16",
+            "192_960_16_16_192_48_16_16_float16",
+            "48_960_16_16_192_960_16_16_float16",
+            "48_960_16_16_48_960_16_16_float16"
         ]
     }
     soc_version = tbe_platform.get_soc_spec("FULL_SOC_VERSION")
