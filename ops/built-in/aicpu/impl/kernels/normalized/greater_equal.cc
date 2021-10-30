@@ -15,138 +15,204 @@
  */
 #include "greater_equal.h"
 
-#include <complex>
-#include <iostream>
-
 #include "cpu_kernel_utils.h"
-#include "kernel_util.h"
-#include "log.h"
-#include "status.h"
-
-using namespace std;
+#include "utils/eigen_tensor.h"
+#include "utils/kernel_util.h"
 
 namespace {
-const char *kGreaterEqual = "GreaterEqual";
-const uint32_t kInputNum = 2;
-const uint32_t kOutputNum = 1;
+constexpr uint32_t kOutputNum = 1;
+constexpr uint32_t kInputNum = 2;
+constexpr char const *kGreaterEqual = "GreaterEqual";
+// when input data size is more than kParallelDataNum, use Parallel func
+constexpr int64_t kParallelDataNum = 8 * 1024;
+constexpr int64_t kParallelDataNumSameShape = 32 * 1024;
+
+#define GREATER_EQUAL_COMPUTE_CASE(DTYPE, TYPE, CTX)           \
+  case (DTYPE): {                                              \
+    uint32_t result = GreaterEqualCompute<TYPE>(CTX);          \
+    if (result != KERNEL_STATUS_OK) {                          \
+      KERNEL_LOG_ERROR("GreaterEqual kernel compute failed."); \
+      return result;                                           \
+    }                                                          \
+    break;                                                     \
+  }
 }  // namespace
+
 namespace aicpu {
-template <typename T, int32_t RANK>
-uint32_t GreaterEqualCpuKernel::BroadcastCompute(TensorMap<T> &x,
-                                                 TensorMap<T> &y,
-                                                 TensorMap<bool> &out,
-                                                 Bcast &bcast) {
-  Eigen::DSizes<Eigen::DenseIndex, RANK> x_reshape;
-  Eigen::DSizes<Eigen::DenseIndex, RANK> y_reshape;
-  Eigen::DSizes<Eigen::DenseIndex, RANK> result_shape;
-  Eigen::array<Eigen::DenseIndex, RANK> x_bcast;
-  Eigen::array<Eigen::DenseIndex, RANK> y_bcast;
-
-  for (int32_t i = 0; i < RANK; i++) {
-    x_reshape[i] = bcast.x_reshape()[i];
-    y_reshape[i] = bcast.y_reshape()[i];
-    result_shape[i] = bcast.result_shape()[i];
-    x_bcast[i] = bcast.x_bcast()[i];
-    y_bcast[i] = bcast.y_bcast()[i];
-  }
-  out.reshape(result_shape) = x.reshape(x_reshape).broadcast(x_bcast) >=
-                              y.reshape(y_reshape).broadcast(y_bcast);
-  return KERNEL_STATUS_OK;
-}
-template <typename T>
-uint32_t GreaterEqualCpuKernel::DoCompute(CpuKernelContext &ctx) {
-  auto input0_tensor = ctx.Input(kFirstInputIndex);
-  auto input1_tensor = ctx.Input(kSecondInputIndex);
-  DataType input0_data_type = input0_tensor->GetDataType();
-  DataType input1_data_type = input1_tensor->GetDataType();
-  KERNEL_CHECK_FALSE(
-      (input0_data_type == input1_data_type), KERNEL_STATUS_PARAM_INVALID,
-      "Input[x1] data type[%s] and input[x2] data type[%s] must be same",
-      DTypeStr(input0_data_type).c_str(), DTypeStr(input1_data_type).c_str());
-  auto input0_shape_sizes = input0_tensor->GetTensorShape()->GetDimSizes();
-  auto input0_elements_num = input0_tensor->NumElements();
-  TensorMap<T> input0(reinterpret_cast<T *>(input0_tensor->GetData()),
-                      input0_elements_num);
-  auto input1_shape_sizes = input1_tensor->GetTensorShape()->GetDimSizes();
-  auto input1_elements_num = input1_tensor->NumElements();
-  TensorMap<T> input1(reinterpret_cast<T *>(input1_tensor->GetData()),
-                      input1_elements_num);
-
-  auto output_tensor = ctx.Output(kFirstOutputIndex);
-  auto output_shape_sizes = output_tensor->GetTensorShape()->GetDimSizes();
-  auto output_elements_num = output_tensor->NumElements();
-  TensorMap<bool> output(reinterpret_cast<bool *>(output_tensor->GetData()),
-                         output_elements_num);
-
-  Bcast bcast(input0_shape_sizes, input1_shape_sizes);
-  if (!bcast.IsValid()) {
-    KERNEL_LOG_ERROR("[%s] broadcast failed.", ctx.GetOpType().c_str());
-    return KERNEL_STATUS_PARAM_INVALID;
-  }
-  int32_t rank = static_cast<int32_t>(bcast.x_reshape().size());
-  switch (rank) {
-    case 1:
-      return BroadcastCompute<T, 1>(input0, input1, output, bcast);
-    case 2:
-      return BroadcastCompute<T, 2>(input0, input1, output, bcast);
-    case 3:
-      return BroadcastCompute<T, 3>(input0, input1, output, bcast);
-    case 4:
-      return BroadcastCompute<T, 4>(input0, input1, output, bcast);
+uint32_t GreaterEqualCpuKernel::Compute(CpuKernelContext &ctx) {
+  // check params
+  KERNEL_HANDLE_ERROR(GreaterEqualParamCheck(ctx),
+                      "GreaterEqual check params failed.");
+  auto data_type = ctx.Input(0)->GetDataType();
+  switch (data_type) {
+    GREATER_EQUAL_COMPUTE_CASE(DT_INT8, int8_t, ctx)
+    GREATER_EQUAL_COMPUTE_CASE(DT_INT16, int16_t, ctx)
+    GREATER_EQUAL_COMPUTE_CASE(DT_INT32, int32_t, ctx)
+    GREATER_EQUAL_COMPUTE_CASE(DT_INT64, int64_t, ctx)
+    GREATER_EQUAL_COMPUTE_CASE(DT_UINT8, uint8_t, ctx)
+    GREATER_EQUAL_COMPUTE_CASE(DT_UINT16, uint16_t, ctx)
+    GREATER_EQUAL_COMPUTE_CASE(DT_UINT32, uint32_t, ctx)
+    GREATER_EQUAL_COMPUTE_CASE(DT_UINT64, uint64_t, ctx)
+    GREATER_EQUAL_COMPUTE_CASE(DT_FLOAT16, Eigen::half, ctx)
+    GREATER_EQUAL_COMPUTE_CASE(DT_FLOAT, float, ctx)
+    GREATER_EQUAL_COMPUTE_CASE(DT_DOUBLE, double, ctx)
     default:
+      KERNEL_LOG_ERROR("GreaterEqual kernel data type [%s] not support.",
+                       DTypeStr(data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
+  return KERNEL_STATUS_OK;
 }
 
-uint32_t GreaterEqualCpuKernel::Compute(CpuKernelContext &ctx) {
+uint32_t GreaterEqualCpuKernel::GreaterEqualParamCheck(CpuKernelContext &ctx) {
   KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum),
-                      "Check GreaterEqual params failed.");
-  DataType input0_data_type = ctx.Input(0)->GetDataType();
-  KERNEL_LOG_DEBUG("%s op input[x1] data type is [%s].", kGreaterEqual,
-                   DTypeStr(input0_data_type).c_str());
-  uint32_t ret = KERNEL_STATUS_OK;
-  switch (input0_data_type) {
-    case DT_FLOAT:
-      ret = DoCompute<float>(ctx);
+                      "GreaterEqual check input and output number failed.");
+  Tensor *input_0 = ctx.Input(0);
+  Tensor *input_1 = ctx.Input(1);
+  Tensor *output = ctx.Output(0);
+  DataType input0_type = input_0->GetDataType();
+  DataType input1_type = input_1->GetDataType();
+  DataType output_type = output->GetDataType();
+  KERNEL_CHECK_FALSE((input0_type == input1_type), KERNEL_STATUS_PARAM_INVALID,
+                     "The data type of input0 [%s] should be same with "
+                     "input1 [%s].",
+                     DTypeStr(input0_type).c_str(),
+                     DTypeStr(input1_type).c_str());
+  KERNEL_LOG_DEBUG(
+      "GreaterEqualCpuKernel[%s], input0: size[%llu] dtype[%s]; "
+      "input1: size[%llu] dtype[%s], output: size[%llu] dtype[%s].",
+      ctx.GetOpType().c_str(), input_0->GetDataSize(),
+      DTypeStr(input0_type).c_str(), input_1->GetDataSize(),
+      DTypeStr(input1_type).c_str(), output->GetDataSize(),
+      DTypeStr(output_type).c_str());
+
+  return KERNEL_STATUS_OK;
+}
+
+// special compute is used in the following situations.
+// 1. the shapes of input1 and input2 are the same
+// 2. input1 is a 1D tensor with only one element or input1 is scalar
+// 3. input2 is a 1D tensor with only one element or input2 is scalar
+// 4. the shapes of input1 and input2 are different
+template <typename T>
+void GreaterEqualCpuKernel::SpecialCompute(BcastShapeType type, int64_t start,
+                                           int64_t end, const T *input1,
+                                           const T *input2, bool *output) {
+  switch (type) {
+    case SAME_SHAPE:
+      for (int64_t i = start; i < end; ++i) {
+        output[i] = input1[i] >= input2[i];
+      }
       break;
-    case DT_DOUBLE:
-      ret = DoCompute<double>(ctx);
+    case X_ONE_ELEMENT:
+      for (int64_t i = start; i < end; ++i) {
+        output[i] = *input1 >= input2[i];
+      }
       break;
-    case DT_FLOAT16:
-      ret = DoCompute<Eigen::half>(ctx);
-      break;
-    case DT_INT16:
-      ret = DoCompute<int16_t>(ctx);
-      break;
-    case DT_INT32:
-      ret = DoCompute<int32_t>(ctx);
-      break;
-    case DT_INT64:
-      ret = DoCompute<int64_t>(ctx);
-      break;
-    case DT_INT8:
-      ret = DoCompute<int8_t>(ctx);
-      break;
-    case DT_UINT16:
-      ret = DoCompute<uint16_t>(ctx);
-      break;
-    case DT_UINT32:
-      ret = DoCompute<uint32_t>(ctx);
-      break;
-    case DT_UINT64:
-      ret = DoCompute<uint64_t>(ctx);
-      break;
-    case DT_UINT8:
-      ret = DoCompute<uint8_t>(ctx);
+    case Y_ONE_ELEMENT:
+      for (int64_t i = start; i < end; ++i) {
+        output[i] = input1[i] >= *input2;
+      }
       break;
     default:
-      KERNEL_LOG_ERROR("Unsupported input[x1] data type[%s]",
-                       DTypeStr(input0_data_type).c_str());
-      ret = KERNEL_STATUS_PARAM_INVALID;
+      KERNEL_LOG_WARN("Invalid type [%d]", static_cast<int32_t>(type));
+      break;
   }
-  return ret;
+}
+
+template <typename T>
+uint32_t GreaterEqualCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
+  auto input0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
+  auto input1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
+  auto output = reinterpret_cast<bool *>(ctx.Output(0)->GetData());
+  const int64_t input0_elements_nums = ctx.Input(0)->NumElements();
+  const int64_t input1_elements_nums = ctx.Input(1)->NumElements();
+  const int64_t data_num = ctx.Output(0)->NumElements();
+  BcastShapeType type =
+      (input0_elements_nums == input1_elements_nums)
+          ? SAME_SHAPE
+          : ((input0_elements_nums == 1) ? X_ONE_ELEMENT : Y_ONE_ELEMENT);
+
+  if (data_num >= kParallelDataNumSameShape) {
+    const int64_t min_core_num = 4;
+    const int64_t max_core_num = std::max(
+        min_core_num,
+        static_cast<int64_t>(aicpu::CpuKernelUtils::GetCPUNum(ctx) - 2));
+    const int64_t per_unit_size = data_num / std::min(data_num, max_core_num);
+
+    auto sharder_less = [&](int64_t start, int64_t end) {
+      SpecialCompute<T>(type, start, end, input0, input1, output);
+    };
+
+    KERNEL_HANDLE_ERROR(
+        CpuKernelUtils::ParallelFor(ctx, data_num, per_unit_size, sharder_less),
+        "GreaterEqual Compute failed.")
+  } else {
+    SpecialCompute<T>(type, 0, data_num, input0, input1, output);
+  }
+
+  return KERNEL_STATUS_OK;
+}
+
+template <typename T>
+uint32_t GreaterEqualCpuKernel::BcastCompute(CpuKernelContext &ctx,
+                                             Bcast &bcast) {
+  auto input0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
+  auto input1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
+  auto output = reinterpret_cast<bool *>(ctx.Output(0)->GetData());
+  const int64_t data_num = ctx.Output(0)->NumElements();
+
+  if (data_num >= kParallelDataNum) {
+    const int64_t min_core_num = 4;
+    const int64_t max_core_num = std::max(
+        min_core_num,
+        static_cast<int64_t>(aicpu::CpuKernelUtils::GetCPUNum(ctx) - 2));
+    const int64_t per_unit_size = data_num / std::min(data_num, max_core_num);
+
+    auto sharder_less = [&](int64_t start, int64_t end) {
+      for (int64_t i = start; i < end; ++i) {
+        output[i] = input0[bcast.GetBroadcastXIndex(i)] >=
+                    input1[bcast.GetBroadcastYIndex(i)];
+      }
+    };
+
+    KERNEL_HANDLE_ERROR(
+        CpuKernelUtils::ParallelFor(ctx, data_num, per_unit_size, sharder_less),
+        "GreaterEqual Compute failed.")
+  } else {
+    for (int64_t i = 0; i < data_num; ++i) {
+      output[i] = input0[bcast.GetBroadcastXIndex(i)] >=
+                  input1[bcast.GetBroadcastYIndex(i)];
+    }
+  }
+  return KERNEL_STATUS_OK;
+}
+
+template <typename T>
+uint32_t GreaterEqualCpuKernel::GreaterEqualCompute(CpuKernelContext &ctx) {
+  Tensor *input0_tensor = ctx.Input(0);
+  auto input0_shape = input0_tensor->GetTensorShape()->GetDimSizes();
+  int64_t input0_elements_nums = input0_tensor->NumElements();
+
+  Tensor *input1_tensor = ctx.Input(1);
+  auto input1_shape = input1_tensor->GetTensorShape()->GetDimSizes();
+  int64_t input1_elements_nums = input1_tensor->NumElements();
+
+  // choose generate broadcast information or not
+  const bool is_need_call_bcast =
+      !((input0_shape == input1_shape) || (input0_elements_nums == 1) ||
+        (input1_elements_nums == 1));
+  if (is_need_call_bcast) {
+    Bcast bcast(input0_shape, input1_shape);
+    KERNEL_CHECK_FALSE(bcast.IsValid(), KERNEL_STATUS_PARAM_INVALID,
+                       "GreaterEqual broadcast failed.");
+    return BcastCompute<T>(ctx, bcast);
+  } else {
+    return NoBcastCompute<T>(ctx);
+  }
+
+  return KERNEL_STATUS_OK;
 }
 
 REGISTER_CPU_KERNEL(kGreaterEqual, GreaterEqualCpuKernel);
-
 }  // namespace aicpu
