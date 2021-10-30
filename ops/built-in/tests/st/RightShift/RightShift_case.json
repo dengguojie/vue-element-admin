@@ -1,0 +1,212 @@
+[
+    {
+        "case_name": "Test_RightShift_4K",
+        "op": "RightShift",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int8","int16","int32","int64","uint8","uint16","uint32","uint64"],
+                "shape": [40,10,10],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        100.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int8","int16","int32","int64","uint8","uint16","uint32","uint64"],
+                "shape": [40,10,10],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        10.0
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int8","int16","int32","int64","uint8","uint16","uint32","uint64"],
+                "shape": [40,10,10]
+            }
+        ]
+    }, 
+    {
+        "case_name": "Test_RightShift_64K",
+        "op": "RightShift",
+        "input_desc": [
+            {
+                "format": ["ND"],            
+                "type": ["int8","int16","int32","int64","uint8","uint16","uint32","uint64"],
+                "shape": [40,40,40],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        100.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int8","int16","int32","int64","uint8","uint16","uint32","uint64"],
+                "shape": [40,40,40],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        10.0
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int8","int16","int32","int64","uint8","uint16","uint32","uint64"],
+                "shape": [40,40,40]
+            }
+        ]
+    },
+	{
+        "case_name": "Test_RightShift_1M",
+        "op": "RightShift",
+        "input_desc": [
+            {
+                "format": ["ND"],           
+                "type": ["int8","int16","int32","int64","uint8","uint16","uint32","uint64"],
+                "shape": [100,100,100],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        100.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int8","int16","int32","int64","uint8","uint16","uint32","uint64"],
+                "shape": [100,100,100],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        10.0
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int8","int16","int32","int64","uint8","uint16","uint32","uint64"],
+                "shape": [100,100,100]
+            }
+        ]
+    },
+	{
+        "case_name": "Test_RightShift_2M",
+        "op": "RightShift",
+        "input_desc": [
+            {
+                "format": ["ND"],           
+                "type": ["int8","int16","int32","int64","uint8","uint16","uint32","uint64"],
+                "shape": [200,100,100],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        100.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int8","int16","int32","int64","uint8","uint16","uint32","uint64"],
+                "shape": [200,100,100],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        10.0
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int8","int16","int32","int64","uint8","uint16","uint32","uint64"],
+                "shape": [200,100,100]
+            }
+        ]
+    },
+	{
+        "case_name": "Test_RightShift_8M",
+        "op": "RightShift",
+        "input_desc": [
+            {
+                "format": ["ND"],           
+                "type": ["int8","int16","int32","int64","uint8","uint16","uint32","uint64"],
+                "shape": [800,100,100],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        100.0
+                    ]
+                ]
+            },
+            {
+                "format": ["ND"],
+                "type": ["int8","int16","int32","int64","uint8","uint16","uint32","uint64"],
+                "shape": [800,100,100],
+                "data_distribute": [
+                    "uniform"
+                ],
+                "value_range": [
+                    [
+                        1.0,
+                        10.0
+                    ]
+                ]
+            }
+
+        ],
+        "output_desc": [
+            {
+                "format": ["ND"],
+                "type": ["int8","int16","int32","int64","uint8","uint16","uint32","uint64"],
+                "shape": [800,100,100]
+            }
+        ]
+    }
+]

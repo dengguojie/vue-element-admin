@@ -62,6 +62,7 @@ set(local_kernels_src_files
     kernels/normalized/reshape.cc
     kernels/normalized/resize_bilinear.cc
     kernels/normalized/resize_bilinear_grad.cc
+    kernels/normalized/rightshift.cc
     kernels/normalized/round.cc
     kernels/normalized/rsqrt.cc
     kernels/normalized/scatter_elements.cc
