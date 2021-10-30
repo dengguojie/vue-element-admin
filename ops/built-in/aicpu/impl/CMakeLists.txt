@@ -74,6 +74,7 @@ set(local_kernels_src_files
     kernels/normalized/sparse_to_dense.cc
     kernels/normalized/spatial_transformer.cc
     kernels/normalized/split_v.cc
+    kernels/normalized/square.cc
     kernels/normalized/squareddifference.cc
     kernels/normalized/strided_slice.cc
     kernels/normalized/strided_slice_v2.cc
