@@ -1325,6 +1325,20 @@ REG_OP(CalcBucketsLimitAndOffset)
     .REQUIRED_ATTR(total_limit, Int)
     .OP_END_FACTORY_REG(CalcBucketsLimitAndOffset)
 
+/**
+*@brief Get dim number in tensordesc. \n
+
+*@par Inputs:
+*x: A Tensor. \n
+
+*@par Outputs:
+*y: A 1D tensor. The data type must be int32. \n
+*/
+REG_OP(GetShape)
+    .DYNAMIC_INPUT(x, TensorType({DT_DOUBLE, DT_FLOAT, DT_FLOAT16, DT_INT8, DT_UINT8, DT_INT16, \
+        DT_UINT16, DT_INT32, DT_UINT32, DT_INT64, DT_UINT64, DT_BOOL}))
+    .OUTPUT(y, TensorType({DT_INT32}))
+    .OP_END_FACTORY_REG(GetShape)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_ARRAY_OPS_H_

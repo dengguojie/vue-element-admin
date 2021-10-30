@@ -2773,4 +2773,51 @@ IMPLEMT_COMMON_INFERFUNC(CalcBucketsLimitAndOffsetInferShape) {
 
 COMMON_INFER_FUNC_REG(CalcBucketsLimitAndOffset, CalcBucketsLimitAndOffsetInferShape);
 // ----------------CalcBucketsLimitAndOffset END---------------------
+
+// ----------------GetShape Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(GetShapeInferShape) {
+  auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
+  auto tensorDescOutput = opDesc->MutableOutputDesc("y");
+  size_t inputSize = op.GetInputsSize();
+  int64_t sumSize = 0;
+  for (size_t i = 0; i < inputSize; i++) {
+    auto inputIDesc = opDesc->MutableInputDesc(i);
+    auto inputDims = inputIDesc->MutableShape().GetDims();
+    sumSize += static_cast<int64_t>(inputDims.size());
+  }
+  if (sumSize == 0) {
+    OP_LOGE(op.GetName().c_str(), "The input shape is illegal.");
+    return GRAPH_FAILED;
+  } else {
+    std::vector<int64_t> outputYDims{sumSize};
+    tensorDescOutput->SetShape(ge::GeShape(outputYDims));
+    tensorDescOutput->SetOriginShape(ge::GeShape(outputYDims));
+  }
+  tensorDescOutput->SetDataType(ge::DT_INT32);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(GetShape, GetShapeVerify) {
+  auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
+  size_t inputSize = op.GetInputsSize();
+  for (size_t i = 0; i < inputSize; i++) {
+    auto inputIDesc = opDesc->MutableInputDesc(i);
+    auto inputDims = inputIDesc->MutableShape().GetDims();
+    if (inputDims == UNKNOWN_RANK) {
+      string reason = "input shape do not support -2";
+      REPORT_INNER_ERROR("E19999", "[Node:%s] Check shape range failed, as %s",
+                         op.GetName().c_str(), reason.c_str());
+      GE_OP_LOGE(op.GetName().c_str(),
+                 "[InferShape][Check] Check shape range failed, as %s",reason.c_str());
+      return GRAPH_FAILED;
+    }
+  }
+  return GRAPH_SUCCESS;
+}
+
+// Registered inferfunction
+COMMON_INFER_FUNC_REG(GetShape, GetShapeInferShape);
+// Registered verify function
+VERIFY_FUNC_REG(GetShape, GetShapeVerify);
+// ----------------GetShape End---------------------
 }  // namespace ge
