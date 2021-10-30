@@ -735,7 +735,7 @@ def aipp_compute(input_tensor, input_shape, input_format,
         cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
 
         if cur_cce_product not in ["Ascend310", "Ascend910", "Ascend610", "Ascend710",
-                                   "Ascend615", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"
+                                   "Ascend615", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403",
                                    "Ascend920"]:
             cause_dec = "Only support is Ascend310, Ascend610, Ascend710, Ascend615 " \
                         "Hi3796CV300ES, Hi3796CV300CS and SD3403" \
