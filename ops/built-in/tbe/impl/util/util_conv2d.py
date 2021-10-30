@@ -697,7 +697,7 @@ def check_soc_and_dtype(op_params):
         if op_name not in support_info:
             err_man.raise_err_message_cube(f"op_name should be in {list(support_info.keys())}, actual is {op_name}")
         # >>> start: soc version support check
-        support_soc = support_info[op_name]["soc_version"]
+        support_soc = support_info[op_name].get("soc_version")
         valid = "All" in support_soc or version in support_soc
         if not valid:
             err_man.raise_err_common(op_name, f"only support {support_soc}", version)
@@ -711,7 +711,7 @@ def check_soc_and_dtype(op_params):
                 type_list.append(tensor.get("dtype"))
             elif isinstance(tensor, (tvm.tensor.Tensor, tvm.var)):
                 type_list.append(tensor.dtype)
-        support_dtype = support_info[op_name]["data_type"]
+        support_dtype = support_info[op_name].get("data_type")
         # confirm whether tensor dtype as expected or not
         valid = type_list in support_dtype
         if not valid:

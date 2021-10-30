@@ -15,7 +15,6 @@
 """
 depthwise_conv2d
 """
-import math
 from tbe import tvm
 from tbe.common import register as tbe_register
 from tbe.common.utils import para_check
@@ -148,7 +147,7 @@ def depthwise_conv2d_generalization(x, filter, bias, offset_w, y, strides, dilat
         err_man.raise_err_specific_user("depthwise_conv2d", "invalid generalize mode {}, only support {}".format(
             str(generalize_config.get("mode")), str(support_mode)))
     result = []
-    if generalize_config["mode"] == "keep_rank": # fuzz build situation
+    if generalize_config.get("mode") == "keep_rank": # fuzz build situation
         # unknow_rank inputs ori_shape is [-2], others' shape length is 4
         unknow_rank = len(x["ori_shape"]) == 1 and x["ori_shape"][0] == -2
         if unknow_rank:

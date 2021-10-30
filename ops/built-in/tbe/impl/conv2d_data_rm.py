@@ -23,6 +23,7 @@ from tbe.common.utils.errormgr import error_manager_cube as err_man_cube
 
 COMPUTE_INDEX = [0]
 
+
 @fusion_manager.register("conv2d_data_rm")
 def conv2d_data_rm_compute(input_tensor, res_tensor=None):
     """

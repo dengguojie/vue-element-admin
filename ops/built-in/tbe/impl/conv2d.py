@@ -572,6 +572,7 @@ def _conv_layer_cce(shape_in, shape_w, in_dtype, w_dtype, res_dtype,
 
     build(sch, config)
 
+
 def get_op_support_info(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
                         groups=1, data_format='NCHW', offset_x=0, kernel_name="conv2d"):
     """
