@@ -577,9 +577,28 @@ def test_nbuffer_case3(test_arg):
         }
         cce_build_code(sch, config)
 
+
+def test_auto_tiling(test_arg):
+
+    with cce():
+        x1 = tvm.placeholder((4, 641, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (10256, 64)}, dtype="float16")
+        x2 = tvm.placeholder((32, 4, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (64, 512)}, dtype="float16")
+        output_y = {"shape": (32, 641, 16, 16), "dtype": "float16", "ori_shape": (10256, 512), "format": "ND", "ori_format": "ND"}
+        matmul_out = mat_mul_compute(x1, x2, None, None, output_y, kernel_name="matmul_auto_tiling")
+        tensor_list = [x1, x2, matmul_out]
+        sch = auto_schedule(matmul_out)
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "matmul_auto_tiling",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+
 ut_case.add_cust_test_func(test_func=test_nbuffer_case1)
 ut_case.add_cust_test_func(test_func=test_nbuffer_case2)
 ut_case.add_cust_test_func(test_func=test_nbuffer_case3)
+ut_case.add_cust_test_func(test_func=test_auto_tiling)
 
 if __name__ == '__main__':
     ut_case._case_info_map = {}

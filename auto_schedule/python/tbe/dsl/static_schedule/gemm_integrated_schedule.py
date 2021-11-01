@@ -18,6 +18,7 @@
 gemm schedule
 """
 import os
+import math
 import functools
 from queue import Queue
 from enum import Enum
@@ -39,6 +40,7 @@ from tbe.dsl.compute import cube_util
 from tbe.dsl.compute.gemm_integrated_compute import GEMMComputeParam
 from tbe.dsl.instrinsic import cce_emitinsn_params
 from tbe.dsl.static_schedule.util import L1CommonParam
+from tbe.dsl.static_schedule.util import parse_tbe_compile_para
 
 
 def gemm_schedule(res, sch_list, dynamic_para=None):
@@ -156,6 +158,7 @@ class GemmSchedule(object):
     FRACTAL_Z_M_INDEX = -4
     FRACTAL_Z_N_INDEX = -3
     FRACTAL_Z_KA_INDEX = -3
+    FRACTAL_LEN_WITH_BATCH = 5
     BLOCK_BATCH_DIM_INDEX = 0
     BLOCK_N_DIM_INDEX = 1
     BLOCK_M_DIM_INDEX = 2
@@ -406,6 +409,7 @@ class GemmSchedule(object):
         self._solve_bank_conflict()
         a_run_once, b_run_once = self._allocate_axis(over_head_flag)
         self._double_buffer(a_run_once, b_run_once)
+        self._handle_tbe_compile_para()
         self._reorder_axis(over_head_flag, a_run_once, b_run_once)
         self._do_compute_inline()
         self._mem_process()
@@ -1696,17 +1700,29 @@ class GemmSchedule(object):
             return True
         return False
 
+    def _get_tiling_form_repository(self, current_tiling_type, info_dict):
+        set_tiling_type("repository_tiling")
+        tiling_res = get_tiling(info_dict)
+        set_tiling_type(current_tiling_type)
+        is_from_repository = not self._get_zero_tiling(tiling_res)
+        return tiling_res, is_from_repository
+
     def _get_tiling_after_cmp(self, info_dict, new_fused_num):
         tiling_res = None
         current_tiling_type = get_tiling_type()
         repeat_tune_mode = os.environ.get("REPEAT_TUNE", False)
         if current_tiling_type == "auto_tiling" and (not repeat_tune_mode):
-            set_tiling_type("repository_tiling")
-            tiling_res = get_tiling(info_dict)
-            set_tiling_type(current_tiling_type)
-
-            if not self._get_zero_tiling(tiling_res):
+            tiling_res, is_from_repository = self._get_tiling_form_repository(current_tiling_type, info_dict)
+            if is_from_repository:
                 return tiling_res
+            # the op gemm not use auto tiling
+            if self.TENSOR_MAP.get("alpha") is None:
+                info_dict["fused_double_operand_num"] = new_fused_num
+                tiling_res, is_from_repository = self._get_tiling_form_repository(current_tiling_type, info_dict)
+                if is_from_repository:
+                    return tiling_res
+                else:
+                    return self._auto_tiling(self.fuse_num_group[0], self.fuse_num_group[1], self.fuse_num_group[2])
 
         info_dict["fused_double_operand_num"] = new_fused_num
         tiling_res = get_tiling(info_dict)
@@ -4276,6 +4292,59 @@ class GemmSchedule(object):
             batch_shape = self.TENSOR_MAP.get("c_l0c").shape[0]
             self.sch.set_var_range(batch_shape, *batch_range)
 
+    def _auto_tiling(self, aub_num, bub_num, cub_num):
+        # a_ub_byte b_ub_byte ub_res_byte l1a_byte l1b_byte l0a_byte l0b_byte l0c_byte
+        bytes_info = self._get_bytes_info(aub_num, bub_num, cub_num)
+        m_shape = self.TENSOR_MAP.get("a_l0a").shape[self.FRACTAL_Z_M_INDEX].value * self.block_in
+        mkn_shape = (m_shape,
+                     self.TENSOR_MAP.get("a_l0a").shape[self.FRACTAL_Z_KA_INDEX].value * self.block_reduce,
+                     self.TENSOR_MAP.get("b_l0b").shape[self.FRACTAL_Z_N_INDEX].value * self.block_out)
+        schedule_info_dict = dict()
+        schedule_info_dict["l1_fusion_type"] = self.l1_fusion_type
+        schedule_info_dict["dequant_fusion"] = self.dequant_fusion
+        schedule_info_dict["date_transfer_fusion"] = self.quant_fusion or self.requant_fusion
+        schedule_info_dict["mmad_mode"] = self.mmad_mode
+        schedule_info_dict["is_b_nz"] = self.format_b == "FRACTAL_NZ"
+        schedule_info_dict["block_in"] = self.block_in
+        schedule_info_dict["block_out"] = self.block_out
+        schedule_info_dict["block_reduce"] = self.block_reduce
+        schedule_info_dict["b_trans"] = self.transpose_b
+        l0c_shape = self.TENSOR_MAP.get("c_l0c").shape
+        batch_shape = 0
+        if len(l0c_shape) == self.FRACTAL_LEN_WITH_BATCH:
+            batch_shape = self._get_value(l0c_shape[0])
+
+        compute_tiling = ComputeTiling(bytes_info, mkn_shape, schedule_info_dict, batch_shape)
+        return compute_tiling.compute_tiling_enter()
+
+    def _get_bytes_info(self, aub_num, bub_num, cub_num):
+        ub_fused_num_multi = 10
+        double_multi = 2
+        a_ub_byte = 0
+        if self.TENSOR_MAP.get("a_ub") is not None:
+            a_ub_byte = ((aub_num // ub_fused_num_multi + 1)
+                * int(self.DTYPE_WIDTH_MAP[self.TENSOR_MAP["a_placehold"].dtype] * double_multi))
+        b_ub_byte = 0
+        if self.TENSOR_MAP.get("b_ub") is not None:
+            b_ub_byte = ((bub_num // ub_fused_num_multi + 1)
+                * int(self.DTYPE_WIDTH_MAP[self.TENSOR_MAP["b_placehold"].dtype] * double_multi))
+        ub_res_byte = (cub_num + 1) * int(self.DTYPE_WIDTH_MAP[self.root_tensor.dtype] * double_multi)
+        l1a_byte = int(self.DTYPE_WIDTH_MAP[self.TENSOR_MAP["a_l1"].dtype] * double_multi)
+        l1b_byte = int(self.DTYPE_WIDTH_MAP[self.TENSOR_MAP["b_l1"].dtype] * double_multi)
+        l0a_byte = int(self.DTYPE_WIDTH_MAP[self.TENSOR_MAP["a_l0a"].dtype] * double_multi)
+        l0b_byte = int(self.DTYPE_WIDTH_MAP[self.TENSOR_MAP["b_l0b"].dtype] * double_multi)
+        l0c_byte = int(self.DTYPE_WIDTH_MAP[self.TENSOR_MAP["c_l0c"].dtype] * double_multi)
+        return [a_ub_byte, b_ub_byte, ub_res_byte, l1a_byte, l1b_byte,
+                l0a_byte, l0b_byte, l0c_byte]
+
+    def _handle_tbe_compile_para(self):
+        tbe_compile_para = self.tiling.get("tbe_compile_para")
+        if tbe_compile_para:
+            _, preload = parse_tbe_compile_para(tbe_compile_para)
+            if preload and (self.tiling.get("manual_pingpong_buffer").get("CL0_pbuffer") == 2):
+                for tensor in self.tensors_in_l0c:
+                    self.sch[tensor].preload()
+
 
 class CalculateMultiUB(object):
 
@@ -4365,3 +4434,441 @@ class CalculateMultiUB(object):
         if shape_size == 1:
             return True
         return False
+
+
+class ComputeTiling(object):
+    DOUBLE_VALUE = 2
+    CORE_NUM_THRITY = 30
+    CORE_NUM_THRITY_TWO = 32
+    CORE_NUM_EIGHT = 8
+    MKN_M_INDEX = 0
+    MKN_K_INDEX = 1
+    MKN_N_INDEX = 2
+    def __init__(self, bytes_info, mkn_shape, schedule_info_dict, batch_shape=0):
+        self.mkn_shape = mkn_shape
+        self.batch_shape = batch_shape
+        self.bytes_info = bytes_info
+        self.l1_fusion_type = schedule_info_dict.get("l1_fusion_type")
+        self.dequant_fusion = schedule_info_dict.get("dequant_fusion")
+        self.date_transfer_fusion = schedule_info_dict.get("date_transfer_fusion")
+        self.mmad_mode = schedule_info_dict.get("mmad_mode")
+        self.is_b_nz = schedule_info_dict.get("is_b_nz")
+        self.block_in = schedule_info_dict.get("block_in")
+        self.block_out = schedule_info_dict.get("block_out")
+        self.block_reduce = schedule_info_dict.get("block_reduce")
+        self.b_trans = schedule_info_dict.get("b_trans")
+
+    @staticmethod
+    def _get_l1fusion_device_core_num(is_l1fusion):
+        """
+        get the device core num
+        :param is_l1fusion: is l1 fusion
+        :return: device core num
+        """
+        if is_l1fusion:
+            device_core_num = 1
+        else:
+            device_core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
+        return device_core_num
+
+    @staticmethod
+    def _get_core_map():
+        """
+        the knowledge of matmul schedule core tiling
+        """
+        shape_map = {(1024, 20480, 1024): (4, 7),
+                    (4096, 20480, 1024): (7, 4),
+                    (20480, 4096, 1024): (15, 2),
+                    (1024, 20480, 4096): (4, 7),
+                    (1024, 12288, 4096): (4, 7),
+                    (4096, 12288, 1024): (7, 4)
+                    }
+        return shape_map
+
+    @staticmethod
+    def get_shape_map():
+        """
+        the knowledge of matmul schedule tiling
+        """
+        shape_map = {(1664, 4096, 1024, -1, 2): "176_320_176_176_80_176_2_2",
+                    (1664, 4096, 1024, -1, 4): "176_320_176_176_80_176_2_2",
+                    (1664, 1024, 4096, -1, 2): "240_512_128_240_64_128_2_2",
+                    (1664, 1024, 4096, -1, 8): "240_512_64_240_64_64_2_2",
+                    (1664, 16, 1024, -1, 2): "832_16_128_832_16_32_1_2",
+                    (1664, 1024, 1024, -1, 2): "240_512_128_240_64_128_2_2",
+                    (1664, 1024, 1024, -1, 4): "240_512_128_240_64_128_2_2",
+                    (832, 4096, 1024, -1, 2): "176_320_176_176_80_176_2_2",
+                    (832, 4096, 1024, -1, 4): "176_320_176_176_80_176_2_2",
+                    (832, 1024, 4096, -1, 2): "240_512_128_240_64_128_2_2",
+                    (832, 1024, 4096, -1, 8): "240_512_64_240_64_64_2_2",
+                    (832, 1024, 1024, -1, 2): "240_512_128_240_64_128_2_2",
+                    (832, 1024, 1024, -1, 4): "240_512_128_240_64_128_2_2",
+                    (832, 16, 1024, -1, 2): "832_16_128_832_16_32_1_2",
+                    (1280, 16, 768, -1, 2): "640_16_192_640_16_48_1_2",
+                    (1280, 768, 768, -1, 2): "336_384_96_336_48_96_2_2",
+                    (320, 64, 320, -1, 2): "320_64_192_320_48_96_1_2",
+                    (1280, 768, 3072, -1, 2): "336_384_96_336_48_96_2_2",
+                    (1280, 16, 768, -1, 2): "640_16_192_640_16_48_1_2",
+                    (320, 64, 320, -1, 2): "320_64_192_320_48_96_1_2",
+                    (1280, 768, 768, -1, 4): "320_384_96_320_48_96_2_2",
+                    (16, -1, 4096, 0, 2): "16_16_1024_16_16_1024_2_2"
+                    }
+
+        return shape_map
+
+    @staticmethod
+    def get_mini_frac_shape_map():
+        """
+        the knowledge of matmul schedule tiling
+        """
+        shape_map = {(304, -1, 4096, -1, 2): "304_80_192_304_80_192_2_2",
+                    (304, -1, 4096, -1, 4): "304_80_192_304_80_192_2_2",
+                    (304, -1, 4096, -1, 6): "304_80_192_304_80_192_2_2"
+                    }
+
+        return shape_map
+
+    @staticmethod
+    def get_cloud_shape_map(core_num, core_num_thrity):
+        """
+        the knowledge of matmul schedule tiling
+        """
+        if core_num == core_num_thrity:
+            shape_map = {(1024, 20480, 1024, -1, 4): "256_512_160_256_64_160_2_2",
+                        (12288, 1024, 4096, -1, 2): "208_512_128_208_64_128_2_2",
+                        (12288, 4096, 1024, -1, 2): "208_512_128_208_64_128_2_2",
+                        (1024, 12288, 1024, -1, 4): "208_512_176_208_64_176_2_2",
+                        (12288, 1024, 1024, -1, 2): "208_512_128_208_64_128_2_2",
+                        (12288, 1024, 1024, -1, 4): "208_512_128_208_64_128_2_2"
+                        }
+        else:
+            shape_map = {(18432, 1024, 1024, 1, 2): "144_512_256_144_64_256_2_2"
+            }
+
+        return shape_map
+
+    @staticmethod
+    def get_mdc_shape_map():
+        """
+        the knowledge of matmul schedule tiling
+        """
+        shape_map = {(1024, 768, 768, -1, 4): "256_768_384_128_256_128_2_2",
+                    (1024, 768, 3072, 1, 6): "128_384_32_128_96_32_3_2",
+                    (2048, 768, 3072, 1, 6): "128_384_32_128_96_32_3_2",
+                    (1024, 768, 768, -1, 6): "256_768_384_128_256_128_2_2",
+                    (512, 768, 768, 1, 2): "128_96_192_128_96_192_2_2"
+                    }
+
+        return shape_map
+
+    def compute_tiling_enter(self):
+
+        # compute the core num of m and n
+        m_factors, n_factors = self._get_perfect_core_num()
+        m_factors, n_factors = self._get_knowledge_core(self.mkn_shape, m_factors, n_factors)
+        m_var = [self.mkn_shape[self.MKN_M_INDEX], m_factors]
+        n_var = [self.mkn_shape[self.MKN_N_INDEX], n_factors]
+        batch, core_inner_m, core_inner_n = self._get_batch_factors(m_var, n_var)
+        m_factors, n_factors = self._get_refresh_core_factors(m_factors, n_factors, batch)
+        ub_reserve_buff = 0
+        if self.dequant_fusion:
+            # quant parameter is fixed float16, it's 2 bytes
+            # just support scalar now, not support vector yet
+            ub_reserve_buff = tbe_platform.BLOCK_OUT * 2
+
+        n_cut_even = self._is_need_n_cut_even(core_inner_n)
+        a_ub_byte, b_ub_byte, ub_res_byte, l1a_byte, l1b_byte, l0a_byte, l0b_byte, l0c_byte = self.bytes_info
+        ub_res_byte = int(math.ceil(ub_res_byte))
+        if self.mmad_mode != "gemm":
+            core_inner_m = 1
+        get_tiling_shape = tvm.get_global_func("cce.matmul_tiling_gen")
+        tiling_shape = get_tiling_shape(core_inner_m, self.mkn_shape[1], core_inner_n,
+                                        a_ub_byte, b_ub_byte, l1a_byte, l1b_byte, l0a_byte,
+                                        l0b_byte, l0c_byte, ub_res_byte, ub_reserve_buff,
+                                        n_cut_even, int(self.is_b_nz))
+
+        m_shape, k_shape, n_shape = self.mkn_shape
+        b_trans = self.b_trans
+        shape_tiling_args = (m_shape, k_shape, n_shape, b_trans, ub_res_byte)
+        tiling_shape = self._get_knowledge_tiling(shape_tiling_args, self.is_b_nz, tiling_shape)
+        tiled_shape = tiling_shape.split('_')
+        m_l1_shape, k_l1_shape, n_l1_shape, m_l0_shape, k_l0_shape, n_l0_shape = [int(i) for i in tiled_shape[:6]]
+
+        m_l0_shape, k_l0_shape, n_l0_shape = self._get_special_l0_factor(self.mkn_shape, m_l0_shape, k_l0_shape, n_l0_shape)
+        m_l1_shape, k_l1_shape, n_l1_shape = m_l0_shape, k_l0_shape, n_l0_shape
+
+        # compute L1 to L0 tiling params
+        m_l0_tile = (m_l0_shape + self.block_in - 1) // self.block_in
+        k_l0_tile = (k_l0_shape + self.block_reduce - 1) // self.block_reduce
+        n_l0_tile = (n_l0_shape + self.block_out - 1) // self.block_out
+
+        # compute GM to L1 tiling params
+        m_l1_tile = (m_l1_shape + self.block_in - 1) // self.block_in
+        k_l1_tile = (k_l1_shape + self.block_reduce - 1) // self.block_reduce
+        n_l1_tile = (n_l1_shape + self.block_out - 1) // self.block_out
+
+        is_l1fusion = self.l1_fusion_type in (0, 1)
+        core_num = self._get_l1fusion_device_core_num(is_l1fusion)
+        batch_factor = 1
+        if batch > 1:
+            batch_factor = batch
+            if batch > core_num:
+                batch_factor = core_num
+
+        tiling_factors = [
+            batch_factor, m_factors, n_factors,
+            m_l1_tile, k_l1_tile, n_l1_tile,
+            m_l0_tile, k_l0_tile, n_l0_tile]
+        double_buffers = self._get_double_buffer(tiling_factors, l0c_byte)
+        return self._assembly_tiling(tiling_factors, double_buffers)
+
+    def _assembly_tiling(self, tiling_factors, double_buffers):
+
+        block_reduce = self.block_reduce
+        block_in = self.block_in
+        block_out = self.block_out
+        [batch_factor, m_factor, n_factor,
+        m_l1_tile, k_l1_tile, n_l1_tile,
+        m_l0_tile, k_l0_tile, n_l0_tile] = tiling_factors
+        tiling = {
+            'AUB_shape': [k_l1_tile * block_reduce, m_l1_tile, 1, 1],
+            'BUB_shape': [k_l1_tile * block_reduce, n_l1_tile, 1, 1],
+            'AL1_shape': [k_l1_tile * block_reduce, m_l1_tile // m_l0_tile, 1, 1],
+            'BL1_shape': [k_l1_tile * block_reduce, n_l1_tile // n_l0_tile, 1, 1],
+            'AL0_matrix': [m_l0_tile, k_l0_tile, block_in, block_reduce, 1, 1],
+            'BL0_matrix': [k_l0_tile, n_l0_tile, block_out, block_reduce, 1, 1],
+            'CL0_matrix': [n_l0_tile, m_l0_tile, block_in, block_out, 1, 1],
+            'CUB_matrix': [n_l0_tile, m_l0_tile, block_in, block_out, 1, 1],
+            'block_dim': [batch_factor, n_factor, m_factor, 1],
+            'n_bef_batch_flag': 0,
+            'n_bef_group_flag': 0,
+            'batch_bef_group_flag': 0,
+            'A_overhead_opt_flag': 1,
+            'B_overhead_opt_flag': 1,
+            'AUB_channel_wise_flag': None,
+            'BUB_channel_wise_flag': None,
+            'CUB_channel_wise_flag': 0,
+            'manual_pingpong_buffer':
+            {'AUB_pbuffer': double_buffers[0],
+            'BUB_pbuffer': double_buffers[1],
+            'AL1_pbuffer': double_buffers[2],
+            'BL1_pbuffer': double_buffers[3],
+            'AL0_pbuffer': double_buffers[4],
+            'BL0_pbuffer': double_buffers[5],
+            'CL0_pbuffer': double_buffers[6],
+            'CUB_pbuffer': double_buffers[7],
+            'UBG_pbuffer': 1
+            }
+        }
+
+        return tiling
+
+    def _get_double_buffer(self, tiling_factors, l0c_byte):
+        m_shape, k_shape, n_shape = self.mkn_shape
+        [_, _, _,
+         m_l1_tile, k_l1_tile, n_l1_tile,
+         m_l0_tile, _, n_l0_tile] = tiling_factors
+
+        al1_db = 2
+        if m_l1_tile * self.block_in == m_shape and k_l1_tile * self.block_reduce == k_shape:
+            al1_db = 1
+        bl1_db = 2
+        if n_l1_tile * self.block_out == n_shape and k_l1_tile * self.block_reduce == k_shape:
+            bl1_db = 1
+
+        l0c_db = 2
+        l0c_size = tbe_platform_info.get_soc_spec("L0C_SIZE")
+        if m_l0_tile * n_l0_tile * self.block_in * self.block_out * l0c_byte * self.DOUBLE_VALUE > l0c_size:
+            l0c_db = 1
+
+        return [2, 2, al1_db, bl1_db, 2, 2, l0c_db, 2]
+
+    def _get_perfect_core_num(self):
+        """
+        :param input_shape_1:the tensor_a shape
+        :param input_shape_2:the tensor_b shape
+        :return:core_num
+        """
+        m_shape, k_shape, n_shape = self.mkn_shape
+        frac_size = self.block_in
+        is_l1fusion = self.l1_fusion_type in (0, 1)
+        core_num = self._get_l1fusion_device_core_num(is_l1fusion)
+        m_axis_outer = (m_shape + frac_size - 1) // frac_size
+        if m_shape == 1:
+            m_axis_outer = 1
+            n_axis_outer = (n_shape + frac_size - 1) // frac_size
+            if n_axis_outer > core_num:
+                return 1, core_num
+            return 1, 1
+
+        m_axis_outer = m_shape // frac_size
+        n_axis_outer = n_shape // frac_size
+        if (m_axis_outer * n_axis_outer) <= core_num:
+            return m_axis_outer, n_axis_outer
+        tensor_a_size = m_shape * k_shape
+        tensor_b_size = n_shape * k_shape
+        min_copy_size = core_num * (tensor_a_size + tensor_b_size)
+        m_factor = 1
+        n_factor = 1
+
+        for i in range(1, core_num + 1):
+            # judge cur_factor
+            if core_num % i != 0:
+                continue
+
+            cur_m_factor = i
+            cur_n_factor = core_num // i
+            if cur_m_factor > m_axis_outer or (m_axis_outer // cur_m_factor) == 0:
+                continue
+            if cur_n_factor > n_axis_outer or (n_axis_outer // cur_n_factor) == 0:
+                continue
+
+            cur_copy_size = cur_n_factor * tensor_a_size + cur_m_factor * \
+                tensor_b_size
+            temp_m_shape = m_shape
+            temp_n_shape = n_shape
+            if m_axis_outer % m_factor != 0:
+                temp_m_shape = (((m_axis_outer // cur_m_factor) + 1) *
+                                cur_m_factor) * frac_size
+
+            if n_shape % n_factor != 0:
+                temp_n_shape = (((n_axis_outer // cur_n_factor) + 1) *
+                                cur_n_factor) * frac_size
+
+            cur_copy_size = cur_n_factor * (temp_m_shape * k_shape) + \
+                cur_m_factor * (temp_n_shape * k_shape)
+            if cur_copy_size < min_copy_size:
+                min_copy_size = cur_copy_size
+                m_factor = cur_m_factor
+                n_factor = cur_n_factor
+
+        return m_factor, n_factor
+
+    def _get_knowledge_core(self, shape_mkn_args, m_factors, n_factors):
+        """
+        get knowledge of core set
+
+        Parameters
+        ----------
+        shape_mkn_args : list, shape info
+
+        m_factors: core split in m_factor
+
+        n_factors: core split in n_factors
+
+        Returns
+        -------
+        m_factors, n_factors, value of m, n core split
+        """
+        shape_map = {}
+        core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
+        if core_num == self.CORE_NUM_THRITY:
+            shape_map = self._get_core_map()
+
+        if shape_map.get(shape_mkn_args) is not None:
+            m_factors, n_factors = shape_map[shape_mkn_args]
+
+        return m_factors, n_factors
+
+    @staticmethod
+    def _get_refresh_core_factors(m_factors, n_factors, batch):
+        """
+        get refresh
+        """
+        if batch > 1:
+            m_factors = 1
+            n_factors = 1
+
+        return m_factors, n_factors
+
+    def _get_batch_factors(self, m_var, n_var):
+        """
+        get batch vars
+        """
+        m_shape = m_var[0]
+        m_factors = m_var[1]
+        n_shape = n_var[0]
+        n_factors = n_var[1]
+        core_inner_m = m_shape
+        core_inner_n = n_shape
+        batch = self.batch_shape
+        if batch in (0, 1):
+            block_in = self.block_in
+            block_out = self.block_out
+            if m_shape != 1:
+                core_inner_m = (((m_shape + block_in - 1) // block_in +
+                                (m_factors - 1)) // m_factors) * block_in
+            core_inner_n = (((n_shape + block_out - 1) // block_out +
+                            (n_factors - 1)) // n_factors) * block_out
+
+        return batch, core_inner_m, core_inner_n
+
+    def _is_need_n_cut_even(self, core_inner_n):
+        if not self.date_transfer_fusion:
+            return False
+        if core_inner_n == 16:
+            return False
+        return True
+
+    def _get_knowledge_tiling(self, shape_tiling_args, is_b_nz, tiling_shape):
+        """
+        get knowledge tiling for matmul schedule
+        """
+        m_shape, k_shape, n_shape, b_trans, ub_res_byte = shape_tiling_args
+        b_trans_val = -1
+        if b_trans is not None:
+            b_trans_val = 1 if b_trans else 0
+        shape_args = (m_shape, k_shape, n_shape, b_trans_val, ub_res_byte)
+
+        shape_map = {}
+        core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
+        if core_num == self.DOUBLE_VALUE:
+            if is_b_nz:
+                shape_map = self.get_shape_map()
+            else:
+                shape_map = self.get_mini_frac_shape_map()
+        elif core_num in (self.CORE_NUM_THRITY, self.CORE_NUM_THRITY_TWO):
+            shape_map = self.get_cloud_shape_map(core_num, self.CORE_NUM_THRITY)
+        elif core_num == self.CORE_NUM_EIGHT:
+            shape_map = self.get_mdc_shape_map()
+        if shape_map.get(shape_args) is not None:
+            tiling_shape = shape_map[shape_args]
+        else:
+            shape_args = (m_shape, k_shape, n_shape, -1, ub_res_byte)
+            if shape_map.get(shape_args) is not None:
+                tiling_shape = shape_map[shape_args]
+            else:
+                shape_args = (m_shape, -1, n_shape, b_trans_val, ub_res_byte)
+                if shape_map.get(shape_args) is not None:
+                    tiling_shape = shape_map[shape_args]
+                else:
+                    shape_args = (m_shape, -1, n_shape, -1, ub_res_byte)
+                    if shape_map.get(shape_args) is not None:
+                        tiling_shape = shape_map[shape_args]
+
+        return tiling_shape
+
+    @staticmethod
+    def _get_special_l0_factor(src_shape, m_l0_shape, k_l0_shape, n_l0_shape):
+        """
+        get temp factors
+        """
+        m_shape = src_shape[0]
+        k_shape = src_shape[1]
+        n_shape = src_shape[2]
+        if m_shape * n_shape * k_shape == m_l0_shape * n_l0_shape * k_l0_shape and \
+                m_l0_shape != 1:
+            m_l0_shape = int((m_l0_shape // 2))
+            if int((m_l0_shape % 16)) != 0:
+                m_l0_shape = int((m_l0_shape + 15) // 16 * 16)
+
+        src_shape = [m_shape, k_shape, n_shape]
+        if src_shape == [256, 64, 256]:
+            m_l0_shape = 256
+            k_l0_shape = 64
+            n_l0_shape = 128
+        elif src_shape == [256, 256, 64]:
+            m_l0_shape = 64
+            k_l0_shape = 256
+            n_l0_shape = 64
+        return m_l0_shape, k_l0_shape, n_l0_shape
