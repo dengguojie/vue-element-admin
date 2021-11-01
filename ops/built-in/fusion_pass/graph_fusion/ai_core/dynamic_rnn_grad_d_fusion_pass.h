@@ -101,6 +101,9 @@ class DynamicRNNGradDFusionPass : public PatternFusionBasePass {
   ge::NodePtr DynamicAddInputReshapeNode(ge::NodePtr dynamicRNNGradNode, string reshapeName,
                                          ge::GeTensorDesc inputDesc, ge::ComputeGraph& graph,
                                          vector<ge::NodePtr>& newNodes, bool& failStatus);
+  ge::NodePtr DynamicAddInithReshapeNode(ge::NodePtr dynamicRNNGradNode, string reshapeName,
+                                         ge::GeTensorDesc inputDesc, ge::ComputeGraph& graph,
+                                         vector<ge::NodePtr>& newNodes, bool& failStatus);
   vector<ge::OpDescPtr> GetDynamicBodyReshapeNode(std::string& reshapeNodeName, std::string& reshapeConstNodeName,
                                                   ge::NodePtr dynamicRNNGradNode, ge::GeTensorDesc inputDesc,
                                                   ge::GeTensorDesc outputDesc,

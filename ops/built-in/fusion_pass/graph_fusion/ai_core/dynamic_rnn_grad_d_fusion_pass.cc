@@ -651,6 +651,8 @@ vector<ge::OpDescPtr> GetDynamicBodySplitNode(std::string splitNodeName, std::st
   dimSplitOpDesc->SetName(splitDimNodeName);
 
   ge::AttrUtils::SetInt(lstmSplitDesc, "num_split", 2);
+  vector<string> depend_names = {"size_splits", "split_dim"};
+  lstmSplitDesc->SetOpInferDepends(depend_names);
   vector<ge::OpDescPtr> result = {lstmSplitDesc, sizeSplitOpDesc, dimSplitOpDesc};
 
   return result;
@@ -1525,8 +1527,22 @@ ge::NodePtr DynamicRNNGradDFusionPass::DynamicAddHConcatNode(ge::NodePtr dynamic
   ge::NodePtr concatNode = graph.AddNode(concatDesc);
   newNodes.push_back(concatNode);
 
-  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(4)->GetPeerOutAnchor(),
-                          concatNode->GetInDataAnchor(idxInitH));
+  if (dynamicRNNGradNode->GetOpDesc()->GetInputDesc(RNN_GRAD_NODE_INPUT_INDEX["init_h"]).GetShape().GetDims().size() ==
+      2) {
+    std::string reshapeHName = DynamicRNNGradName + "_initHReshapeNode";
+    reshapeInitH = DynamicAddInithReshapeNode(
+        dynamicRNNGradNode, reshapeHName,
+        dynamicRNNGradNode->GetOpDesc()->GetInputDesc(RNN_GRAD_NODE_INPUT_INDEX["init_h"]).Clone(), graph, newNodes,
+        failStatus);
+    ge::GraphUtils::AddEdge(
+        dynamicRNNGradNode->GetInDataAnchor(RNN_GRAD_NODE_INPUT_INDEX["init_h"])->GetPeerOutAnchor(),
+        reshapeInitH->GetInDataAnchor(0));
+    ge::GraphUtils::AddEdge(reshapeInitH->GetOutDataAnchor(0), concatNode->GetInDataAnchor(idxInitH));
+  } else {
+    ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(4)->GetPeerOutAnchor(),
+                            concatNode->GetInDataAnchor(idxInitH));
+  }
+
   ge::GraphUtils::AddEdge(splitNode->GetOutDataAnchor(0), concatNode->GetInDataAnchor(idxSplit));
 
   return concatNode;
@@ -1625,6 +1641,43 @@ ge::NodePtr DynamicRNNGradDFusionPass::DynamicAddInputReshapeNode(ge::NodePtr dy
   ge::NodePtr myReshape_node = graph.AddNode(reshape_desc);
 
   FUSION_PASS_CHECK(myReshape_node==nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create node error"), return nullptr);
+
+  return myReshape_node;
+}
+
+ge::NodePtr DynamicRNNGradDFusionPass::DynamicAddInithReshapeNode(ge::NodePtr dynamicRNNGradNode, string reshapeName,
+                                                                  ge::GeTensorDesc inputDesc, ge::ComputeGraph& graph,
+                                                                  vector<ge::NodePtr>& newNodes, bool& failStatus) {
+  auto reshapeOp = ge::OperatorFactory::CreateOperator(dynamicRNNGradNode->GetName() + "/" + reshapeName, "Unsqueeze");
+  FUSION_PASS_CHECK(reshapeOp.IsEmpty(), OP_LOGE("Create Reshape Op operator error"), return nullptr);
+  auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshapeOp);
+  reshapeOp.BreakConnect();
+
+  vector<int64_t> outputReshapeDims = {1, inputDesc.GetShape().GetDim(0), inputDesc.GetShape().GetDim(1)};
+  ge::GeShape outputReshapeShape(outputReshapeDims);
+
+  ge::GeTensorDesc reshapeCellOutputDesc = ge::GeTensorDesc(outputReshapeShape, ge::FORMAT_ND, inputDesc.GetDataType());
+  reshapeCellOutputDesc.SetOriginShape(outputReshapeShape);
+  reshapeCellOutputDesc.SetOriginFormat(ge::FORMAT_ND);
+
+  // shape range
+  std::vector<std::pair<int64_t, int64_t>> x1_range;
+  x1_range.insert(x1_range.begin(), std::make_pair(hidden_size, hidden_size));
+  x1_range.insert(x1_range.begin(), std::make_pair(1, -1));
+  inputDesc.SetShapeRange(x1_range);
+  inputDesc.SetOriginShapeRange(x1_range);
+
+  FUSION_PASS_CHECK(SUCCESS != reshape_desc->UpdateInputDesc("x", inputDesc),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Reshape node update outputDesc failed!"), return nullptr);
+  FUSION_PASS_CHECK(SUCCESS != reshape_desc->UpdateOutputDesc("y", reshapeCellOutputDesc),
+                    OP_LOGE(FUSED_OP_TYPE.c_str(), "Reshape node update outputDesc failed!"), return nullptr);
+
+  // set attr
+  ge::AttrUtils::SetListInt(reshape_desc, "axes", {0});
+
+  ge::NodePtr myReshape_node = graph.AddNode(reshape_desc);
+
+  FUSION_PASS_CHECK(myReshape_node == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "Create node error"), return nullptr);
 
   return myReshape_node;
 }

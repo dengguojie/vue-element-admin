@@ -81,6 +81,64 @@ class DynamicRNNGradAlignFusionPass : public PatternFusionBasePass {
   int64_t tSizeJudge = 0;
   int64_t cIdx0 = 0;
   int64_t cIdx1 = 1;
+
+  void AddBatchMatMulForCell(const ge::GeShape &output_origin_shape, ge::OpDescPtr &lstmBatchMatMulDesc,
+                             vector<int64_t> &outputy_dims) const;
+
+  ge::OpDescPtr &AddSpiltForCell(vector<int64_t> &outputy_dims, ge::OpDescPtr &lstmSplitDesc) const;
+
+  void SetInputDescForGradCell(const ge::OpDescPtr &dynamicRNNGradDesc, const ge::GeTensorDesc &inputC,
+                               const ge::GeTensorDesc &inputDy, const ge::GeTensorDesc &inputI, int64_t i,
+                               ge::OpDescPtr &basicLstmCellStateGradDesc) const;
+
+  void SetOutputDescForGradCell(const ge::GeTensorDesc &inputI, ge::OpDescPtr &basicLstmCellStateGradDesc,
+                                vector<int64_t> &output_dims, ge::GeShape &output_origin_shape,
+                                ge::GeTensorDesc &output_tensor_desc) const;
+
+  void SetReshapeDescForCell(const vector<int64_t> &output_dims, const ge::GeTensorDesc &output_tensor_desc,
+                             ge::OpDescPtr &reshape_desc) const;
+
+  ge::OpDescPtr &SetDescForSplitVDI(const ge::OpDescPtr &dynamicRNNGradDesc, const ge::GeTensorDesc &split_tensor_desc,
+                                    int64_t num_split_x, ge::OpDescPtr &lstmSplitIDesc) const;
+
+  ge::OpDescPtr &SetDescForSplitVDJ(const ge::OpDescPtr &dynamicRNNGradDesc, const ge::GeTensorDesc &split_tensor_desc,
+                                    int64_t num_split_x, ge::OpDescPtr &lstmSplitJDesc) const;
+
+  ge::OpDescPtr &SetDescForSplitVDF(const ge::OpDescPtr &dynamicRNNGradDesc, const ge::GeTensorDesc &split_tensor_desc,
+                                    int64_t num_split_x, ge::OpDescPtr &lstmSplitFDesc) const;
+
+  ge::OpDescPtr &SetDescForSplitVDO(const ge::OpDescPtr &dynamicRNNGradDesc, const ge::GeTensorDesc &split_tensor_desc,
+                                    int64_t num_split_x, ge::OpDescPtr &lstmSplitODesc) const;
+
+  ge::OpDescPtr &
+  SetDescForSplitVDTanh(const ge::OpDescPtr &dynamicRNNGradDesc, const ge::GeTensorDesc &split_tensor_desc,
+                        int64_t num_split_x, ge::OpDescPtr &lstmSplitTanhDesc) const;
+
+  ge::OpDescPtr &SetDescForSplitVDC(const ge::OpDescPtr &dynamicRNNGradDesc, const ge::GeTensorDesc &split_tensor_desc,
+                                    int64_t num_split_x, ge::OpDescPtr &lstmSplitCDesc) const;
+
+  ge::OpDescPtr &SetDescForSplitVDdy(const ge::OpDescPtr &dynamicRNNGradDesc, const ge::GeTensorDesc &split_tensor_desc,
+                                     int64_t num_split_x, ge::OpDescPtr &lstmSplitDyDesc) const;
+
+  ge::OpDescPtr &
+  SetDescForDgateConcatD(const vector<vector<ge::NodePtr>> &result_node, const ge::OpDescPtr &dynamicRNNGradDesc,
+                         int64_t num_split_x, ge::OpDescPtr &lstmGageConcatDDesc) const;
+
+  ge::OpDescPtr &
+  SetDescForxConcatD(const vector<vector<ge::NodePtr>> &result_node, const ge::OpDescPtr &dynamicRNNGradDesc,
+                     int64_t num_split_x, ge::OpDescPtr &lstmXConcatDDesc) const;
+
+  void AddEdgeForSplitNode(const ge::NodePtr &dynamicRNNGradNode, const ge::NodePtr &lstmSplitC,
+                           const ge::NodePtr &lstmSplitDy, const ge::NodePtr &lstmSplitI, const ge::NodePtr &lstmSplitJ,
+                           const ge::NodePtr &lstmSplitF, const ge::NodePtr &lstmSplitO,
+                           const ge::NodePtr &lstmSplitTanh) const;
+
+  ge::GeTensorDesc CreateTensorDescForSplit(const ge::OpDescPtr &dynamicRNNGradDesc) const;
+
+  ge::GeTensorDesc SetOutputDescForGradCell(const ge::GeTensorDesc &inputI, ge::OpDescPtr &basicLstmCellStateGradDesc,
+                                            const ge::GeShape &output_shape) const;
+
+  vector<int64_t> getOutputDimsForGradCell(const ge::OpDescPtr &basicLstmCellStateGradDesc) const;
 };
 
 }  // namespace fe

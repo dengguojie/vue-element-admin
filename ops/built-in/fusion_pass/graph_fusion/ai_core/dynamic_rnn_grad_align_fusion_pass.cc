@@ -119,105 +119,18 @@ vector<vector<ge::NodePtr>> DynamicRNNGradAlignFusionPass::AddTLoopNode(ge::Node
              "BasicLSTMCellCStateGradV2")),
         failStatus = true;
         return result);
-    // add state_gate op input
-    vector<int64_t> cur_tensor_dims;
-    cur_tensor_dims.push_back(1);
-    cur_tensor_dims.push_back(inputC.GetShape().GetDim(1));
-    cur_tensor_dims.push_back(inputC.GetShape().GetDim(2));
-    ge::GeShape cur_tensorc_shape(cur_tensor_dims);
-    ge::GeShape cur_tensorc_original_shape(cur_tensor_dims);
-    ge::GeTensorDesc cur_tensorc = ge::GeTensorDesc(cur_tensorc_shape, ge::FORMAT_ND, ge::DT_FLOAT);
-    cur_tensorc.SetOriginShape(cur_tensorc_original_shape);
-    cur_tensorc.SetOriginFormat(ge::FORMAT_ND);
-    basicLstmCellStateGradDesc->AddInputDesc("c", cur_tensorc);
+    // set state_gate op input
+    SetInputDescForGradCell(dynamicRNNGradDesc, inputC, inputDy, inputI, i, basicLstmCellStateGradDesc);
 
-    vector<int64_t> cur_tensor_dy_dims;
-    cur_tensor_dy_dims.push_back(1);
-    cur_tensor_dy_dims.push_back(inputDy.GetShape().GetDim(1));
-    cur_tensor_dy_dims.push_back(inputDy.GetShape().GetDim(2));
-    ge::GeShape cur_tensor_dy_shape(cur_tensor_dy_dims);
-    ge::GeShape cur_tensor_dy_original_shape(cur_tensor_dy_dims);
-    ge::GeTensorDesc cur_tensor_dy = ge::GeTensorDesc(cur_tensor_dy_shape, ge::FORMAT_ND, ge::DT_FLOAT);
-    cur_tensor_dy.SetOriginShape(cur_tensor_dy_original_shape);
-    cur_tensor_dy.SetOriginFormat(ge::FORMAT_ND);
-    basicLstmCellStateGradDesc->AddInputDesc("dy", cur_tensor_dy);
-
-    if (i != 0) {
-      vector<int64_t> cur_tensor_dh_dims;
-      cur_tensor_dh_dims.push_back(1);
-      cur_tensor_dh_dims.push_back(dynamicRNNGradDesc->GetInputDesc(9).GetShape().GetDim(0));
-      cur_tensor_dh_dims.push_back(dynamicRNNGradDesc->GetInputDesc(9).GetShape().GetDim(1));
-      ge::GeShape cur_tensor_dh_shape(cur_tensor_dh_dims);
-      ge::GeTensorDesc dh_input_tensor_desc = ge::GeTensorDesc(cur_tensor_dh_shape, ge::FORMAT_ND, ge::DT_FLOAT);
-      dh_input_tensor_desc.SetOriginShape(cur_tensor_dh_shape);
-      dh_input_tensor_desc.SetOriginFormat(ge::FORMAT_ND);
-      basicLstmCellStateGradDesc->AddInputDesc("dh", dh_input_tensor_desc);
-    } else {
-      ge::GeTensorDesc dh_input_tensor_desc =
-          ge::GeTensorDesc(dynamicRNNGradDesc->GetInputDesc(9).GetShape(), ge::FORMAT_ND, ge::DT_FLOAT);
-      dh_input_tensor_desc.SetOriginShape(dynamicRNNGradDesc->GetInputDesc(9).GetShape());
-      dh_input_tensor_desc.SetOriginFormat(ge::FORMAT_ND);
-      basicLstmCellStateGradDesc->AddInputDesc("dh", dh_input_tensor_desc);
-    }
-
-    ge::GeTensorDesc dc_input_tensor_desc =
-        ge::GeTensorDesc(dynamicRNNGradDesc->GetInputDesc(10).GetShape(), ge::FORMAT_ND, ge::DT_FLOAT);
-    dc_input_tensor_desc.SetOriginShape(dynamicRNNGradDesc->GetInputDesc(10).GetShape());
-    dc_input_tensor_desc.SetOriginFormat(ge::FORMAT_ND);
-    basicLstmCellStateGradDesc->AddInputDesc("dc", dc_input_tensor_desc);
-
-    vector<int64_t> cur_tensori_dims;
-    cur_tensori_dims.push_back(1);
-    cur_tensori_dims.push_back(inputI.GetShape().GetDim(1));
-    cur_tensori_dims.push_back(inputI.GetShape().GetDim(2));
-    ge::GeShape cur_tensori_shape(cur_tensori_dims);
-    ge::GeTensorDesc cur_tensori = ge::GeTensorDesc(cur_tensori_shape, ge::FORMAT_ND, ge::DT_FLOAT);
-    cur_tensori.SetOriginShape(cur_tensorc_original_shape);
-    cur_tensori.SetOriginFormat(ge::FORMAT_ND);
-    basicLstmCellStateGradDesc->AddInputDesc("i", cur_tensori);
-
-    ge::GeTensorDesc cur_tensorj = ge::GeTensorDesc(cur_tensori_shape, ge::FORMAT_ND, ge::DT_FLOAT);
-    cur_tensorj.SetOriginShape(cur_tensorc_original_shape);
-    cur_tensorj.SetOriginFormat(ge::FORMAT_ND);
-    basicLstmCellStateGradDesc->AddInputDesc("j", cur_tensorj);
-
-    ge::GeTensorDesc cur_tensorf = ge::GeTensorDesc(cur_tensori_shape, ge::FORMAT_ND, ge::DT_FLOAT);
-    cur_tensorf.SetOriginShape(cur_tensorc_original_shape);
-    cur_tensorf.SetOriginFormat(ge::FORMAT_ND);
-    basicLstmCellStateGradDesc->AddInputDesc("f", cur_tensorf);
-
-    ge::GeTensorDesc cur_tensoro = ge::GeTensorDesc(cur_tensori_shape, ge::FORMAT_ND, ge::DT_FLOAT);
-    cur_tensoro.SetOriginShape(cur_tensorc_original_shape);
-    cur_tensoro.SetOriginFormat(ge::FORMAT_ND);
-    basicLstmCellStateGradDesc->AddInputDesc("o", cur_tensoro);
-
-    ge::GeTensorDesc cur_tensor_tanhct = ge::GeTensorDesc(cur_tensori_shape, ge::FORMAT_ND, ge::DT_FLOAT);
-    cur_tensor_tanhct.SetOriginShape(cur_tensorc_original_shape);
-    cur_tensor_tanhct.SetOriginFormat(ge::FORMAT_ND);
-    basicLstmCellStateGradDesc->AddInputDesc("tanhct", cur_tensor_tanhct);
-
-    // add state_gate op output
-    ge::GeTensorDesc input_tensor_desc_c = basicLstmCellStateGradDesc->GetInputDesc(3);
-    vector<int64_t> output_dims;
-    output_dims.push_back(input_tensor_desc_c.GetShape().GetDim(0));
-    output_dims.push_back(4 * ((((input_tensor_desc_c.GetShape().GetDim(1)) + 15) / 16) * 16));
-    ge::GeShape output_origin_shape(output_dims);
+    // set state_gate op output
+    vector<int64_t> output_dims = getOutputDimsForGradCell(basicLstmCellStateGradDesc);
     ge::GeShape output_shape(output_dims);
-    ge::GeTensorDesc output_tensor_desc = ge::GeTensorDesc(output_shape, ge::FORMAT_ND, ge::DT_FLOAT16);
-    output_tensor_desc.SetOriginShape(output_origin_shape);
-    output_tensor_desc.SetOriginFormat(ge::FORMAT_ND);
-    basicLstmCellStateGradDesc->AddOutputDesc("dgate", output_tensor_desc);
+    GeTensorDesc output_tensor_desc = SetOutputDescForGradCell(inputI, basicLstmCellStateGradDesc, output_shape);
 
-    vector<int64_t> dc_prev_tensor_dims;
-    dc_prev_tensor_dims.push_back(inputI.GetShape().GetDim(1));
-    dc_prev_tensor_dims.push_back(inputI.GetShape().GetDim(2));
-    ge::GeShape dc_prev_tensor_shape(dc_prev_tensor_dims);
-    ge::GeTensorDesc tensor_dc_prew = ge::GeTensorDesc(dc_prev_tensor_shape, ge::FORMAT_ND, ge::DT_FLOAT);
-    tensor_dc_prew.SetOriginShape(dc_prev_tensor_shape);
-    tensor_dc_prew.SetOriginFormat(ge::FORMAT_ND);
-    basicLstmCellStateGradDesc->AddOutputDesc("dc_prev", tensor_dc_prew);
+    // set state_gate op attr
     ge::AttrUtils::SetFloat(basicLstmCellStateGradDesc, "forget_bias", 1.0);
     ge::AttrUtils::SetStr(basicLstmCellStateGradDesc, "activation", "Tanh");
+
     // add reshape
     auto reshapeOp = ge::OperatorFactory::CreateOperator(
         dynamicRNNGradNode->GetName() + "/cellReshape" + std::to_string(i), "Reshape");
@@ -227,26 +140,7 @@ vector<vector<ge::NodePtr>> DynamicRNNGradAlignFusionPass::AddTLoopNode(ge::Node
     auto reshape_desc = ge::OpDescUtils::GetOpDescFromOperator(reshapeOp);
     reshapeOp.BreakConnect();
 
-    vector<int64_t> inputTensorDescCellDgateDims = {(output_dims[1] + 15) / 16, (output_dims[0] + 15) / 16, 16, 16};
-    vector<int64_t> inputTensorDescCellDgateOriDims = {output_dims[0], output_dims[1]};
-    ge::GeShape inputTensorDescCellDgateShape(inputTensorDescCellDgateDims);
-
-    ge::GeTensorDesc reshapeCellInputDesc =
-        ge::GeTensorDesc(inputTensorDescCellDgateShape, ge::FORMAT_FRACTAL_NZ, output_tensor_desc.GetDataType());
-    reshapeCellInputDesc.SetOriginShape(GeShape(inputTensorDescCellDgateOriDims));
-    reshapeCellInputDesc.SetOriginFormat(ge::FORMAT_ND);
-
-    vector<int64_t> outputTensorDescCellDgateDims = {1, (output_dims[1] + 15) / 16, (output_dims[0] + 15) / 16, 16, 16};
-    vector<int64_t> outputTensorDescCellDgateOriDims = {1, output_dims[0], output_dims[1]};
-    ge::GeShape outputTensorDescCellDgateShape(outputTensorDescCellDgateDims);
-
-    ge::GeTensorDesc reshapeCellOutputDesc =
-        ge::GeTensorDesc(outputTensorDescCellDgateShape, ge::FORMAT_FRACTAL_NZ, output_tensor_desc.GetDataType());
-    reshapeCellOutputDesc.SetOriginShape(GeShape(outputTensorDescCellDgateOriDims));
-    reshapeCellOutputDesc.SetOriginFormat(ge::FORMAT_ND);
-
-    reshape_desc->UpdateInputDesc("x", reshapeCellInputDesc);
-    reshape_desc->UpdateOutputDesc("y", reshapeCellOutputDesc);
+    SetReshapeDescForCell(output_dims, output_tensor_desc, reshape_desc);
 
     ge::NodePtr myReshape_node = graph.AddNode(reshape_desc);
     FUSION_PASS_CHECK(myReshape_node == nullptr,
@@ -263,105 +157,18 @@ vector<vector<ge::NodePtr>> DynamicRNNGradAlignFusionPass::AddTLoopNode(ge::Node
              dynamicRNNGradDesc->GetName() + "/LstmInputGrad/Matmul" + std::to_string(i), "BatchMatMulV2")),
         failStatus = true;
         return result);
-    // add matmul input
-    int64_t batch_nz_dim = (dynamicRNNGradDesc->GetInputDesc(0).GetShape().GetDim(1) + 15) / 16;
-    vector<int64_t> LeftDims{hidden_nz_dim * 4, batch_nz_dim, 16, 16};
-    ge::GeTensorDesc left_tensor_desc = ge::GeTensorDesc(GeShape(LeftDims), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
-    left_tensor_desc.SetOriginShape(output_origin_shape);
-    left_tensor_desc.SetOriginFormat(ge::FORMAT_ND);
-    lstmBatchMatMulDesc->AddInputDesc("dgate", left_tensor_desc);
-
-    // lstmBatchMatMulDesc->AddInputDesc("w", dynamicRNNGradDesc->GetInputDesc(1));
-    vector<int64_t> WeightDims{input_nz_dim + hidden_nz_dim, hidden_nz_dim * 4, 16, 16};
-    vector<int64_t> WeightoriDims{input_dim + hidden_dim, 4 * hidden_dim};
-    ge::GeTensorDesc weight_tensor_desc =
-        ge::GeTensorDesc(GeShape(WeightDims), ge::FORMAT_FRACTAL_ZN_RNN, ge::DT_FLOAT16);
-    weight_tensor_desc.SetOriginShape(GeShape(WeightoriDims));
-    weight_tensor_desc.SetOriginFormat(ge::FORMAT_ND);
-    lstmBatchMatMulDesc->AddInputDesc("w", weight_tensor_desc);
-
-    // add matmul output
     vector<int64_t> outputy_dims;
-    outputy_dims = {input_nz_dim + hidden_nz_dim, batch_nz_dim, 16, 16};
-    ge::GeShape outputy_origin_shape(outputy_dims);
-    ge::GeShape outputy_shape(outputy_dims);
-    ge::GeTensorDesc outputy_tensor_desc = ge::GeTensorDesc(outputy_shape, ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT);
-    outputy_tensor_desc.SetOriginShape(outputy_origin_shape);
-    outputy_tensor_desc.SetOriginFormat(ge::FORMAT_FRACTAL_NZ);
-    lstmBatchMatMulDesc->AddOutputDesc("y", outputy_tensor_desc);
-    // attr
-    ge::AttrUtils::SetBool(lstmBatchMatMulDesc, "adj_x1", false);
-    ge::AttrUtils::SetBool(lstmBatchMatMulDesc, "adj_x2", true);
-    ge::AttrUtils::SetInt(lstmBatchMatMulDesc, "input_size", input_dim);
-    ge::AttrUtils::SetInt(lstmBatchMatMulDesc, "hidden_size", hidden_dim);
+    AddBatchMatMulForCell(output_shape, lstmBatchMatMulDesc, outputy_dims);
 
     OP_LOGD(FUSED_OP_TYPE.c_str(), "start add splitVD node for loop:%d.", i);
     // add split op
     ge::OpDescPtr lstmSplitDesc = nullptr;
-
     FUSION_PASS_MAKE_SHARED(
         (lstmSplitDesc = std::make_shared<ge::OpDesc>(
              dynamicRNNGradNode->GetName() + "/LstmInputGrad/SplitVD" + std::to_string(i), "SplitVD")),
         failStatus = true;
         return result);
-
-    //    vector<int64_t> input_split_dims{input_nz_dim + hidden_nz_dim, batch_nz_dim, 16, 16};;
-    //    ge::GeShape input_split_origin_shape(outputy_dims);
-    //    ge::GeShape input_split_shape(input_split_dims);
-    ge::GeTensorDesc split_input_tensor_desc =
-        ge::GeTensorDesc(GeShape(outputy_dims), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT);
-    split_input_tensor_desc.SetOriginShape(GeShape(outputy_dims));
-    split_input_tensor_desc.SetOriginFormat(ge::FORMAT_FRACTAL_NZ);
-
-    lstmSplitDesc->AddInputDesc("y", split_input_tensor_desc);
-
-    vector<int64_t> dx_dims;
-    dx_dims.push_back(1);
-    dx_dims.push_back(input_nz_dim);
-    dx_dims.push_back(batch_nz_dim);
-    dx_dims.push_back(16);
-    dx_dims.push_back(16);
-    ge::GeShape dx_shape(dx_dims);
-    vector<int64_t> dx_ori_dims;
-    dx_ori_dims.push_back(1);
-    dx_ori_dims.push_back(batch_dim);
-    dx_ori_dims.push_back(input_dim);
-    ge::GeShape dx_original_shape(dx_ori_dims);
-    ge::GeTensorDesc tensor_dx = ge::GeTensorDesc(dx_shape, ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT);
-
-    if (tSizeJudge == 1) {
-      tensor_dx.SetOriginShape(dx_original_shape);
-      tensor_dx.SetOriginFormat(ge::FORMAT_ND);
-    } else {
-      tensor_dx.SetOriginShape(dx_shape);
-      tensor_dx.SetOriginFormat(ge::FORMAT_FRACTAL_NZ);
-    }
-
-    lstmSplitDesc->AddOutputDesc("dx", tensor_dx);
-
-    vector<int64_t> dh_dims;
-    dh_dims.push_back(1);
-    dh_dims.push_back(hidden_nz_dim);
-    dh_dims.push_back(batch_nz_dim);
-    dh_dims.push_back(16);
-    dh_dims.push_back(16);
-    ge::GeShape dh_shape(dh_dims);
-    ge::GeTensorDesc dh_tensor_desc = ge::GeTensorDesc(dh_shape, ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT);
-    vector<int64_t> dh_ori_dims;
-    dh_ori_dims.push_back(1);
-    dh_ori_dims.push_back(batch_dim);
-    dh_ori_dims.push_back(hidden_dim);
-    ge::GeShape dh_ori_shape(dh_ori_dims);
-    dh_tensor_desc.SetOriginShape(dh_ori_shape);
-    dh_tensor_desc.SetOriginFormat(ge::FORMAT_ND);
-    lstmSplitDesc->AddOutputDesc("dh_prev", dh_tensor_desc);
-
-    vector<int64_t> size_splits;
-    size_splits.push_back(input_nz_dim);
-    size_splits.push_back(hidden_nz_dim);
-    ge::AttrUtils::SetListInt(lstmSplitDesc, "size_splits", size_splits);
-    ge::AttrUtils::SetInt(lstmSplitDesc, "split_dim", 0);
-    ge::AttrUtils::SetInt(lstmSplitDesc, "num_split", 2);
+    lstmSplitDesc = AddSpiltForCell(outputy_dims, lstmSplitDesc);
 
     ge::NodePtr basicLstmCellStateGradNode = graph.AddNode(basicLstmCellStateGradDesc);
     FUSION_PASS_CHECK(basicLstmCellStateGradNode == nullptr,
@@ -394,6 +201,229 @@ vector<vector<ge::NodePtr>> DynamicRNNGradAlignFusionPass::AddTLoopNode(ge::Node
   result.push_back(reshape_nodes);
 
   return result;
+}
+
+vector<int64_t> DynamicRNNGradAlignFusionPass::getOutputDimsForGradCell(
+    const OpDescPtr& basicLstmCellStateGradDesc) const {
+  GeTensorDesc input_tensor_desc_c = basicLstmCellStateGradDesc->GetInputDesc(3);
+  vector<int64_t> output_dims;
+  output_dims.push_back(input_tensor_desc_c.GetShape().GetDim(0));
+  output_dims.push_back(4 * ((((input_tensor_desc_c.GetShape().GetDim(1)) + 15) / 16) * 16));
+  return output_dims;
+}
+
+GeTensorDesc DynamicRNNGradAlignFusionPass::SetOutputDescForGradCell(const GeTensorDesc& inputI,
+                                                                     OpDescPtr& basicLstmCellStateGradDesc,
+                                                                     const GeShape& output_shape) const {
+  GeTensorDesc output_tensor_desc = GeTensorDesc(output_shape, FORMAT_ND, DT_FLOAT16);
+  output_tensor_desc.SetOriginShape(output_shape);
+  output_tensor_desc.SetOriginFormat(FORMAT_ND);
+  basicLstmCellStateGradDesc->AddOutputDesc("dgate", output_tensor_desc);
+
+  vector<int64_t> dc_prev_tensor_dims;
+  dc_prev_tensor_dims.push_back(inputI.GetShape().GetDim(1));
+  dc_prev_tensor_dims.push_back(inputI.GetShape().GetDim(2));
+  GeShape dc_prev_tensor_shape(dc_prev_tensor_dims);
+  GeTensorDesc tensor_dc_prew = GeTensorDesc(dc_prev_tensor_shape, FORMAT_ND, DT_FLOAT);
+  tensor_dc_prew.SetOriginShape(dc_prev_tensor_shape);
+  tensor_dc_prew.SetOriginFormat(FORMAT_ND);
+  basicLstmCellStateGradDesc->AddOutputDesc("dc_prev", tensor_dc_prew);
+  return output_tensor_desc;
+}
+
+void DynamicRNNGradAlignFusionPass::SetReshapeDescForCell(const vector<int64_t>& output_dims,
+                                                          const GeTensorDesc& output_tensor_desc,
+                                                          OpDescPtr& reshape_desc) const {
+  vector<int64_t> inputTensorDescCellDgateDims = {(output_dims[1] + 15) / 16, (output_dims[0] + 15) / 16, 16, 16};
+  vector<int64_t> inputTensorDescCellDgateOriDims = {output_dims[0], output_dims[1]};
+  GeShape inputTensorDescCellDgateShape(inputTensorDescCellDgateDims);
+
+  GeTensorDesc reshapeCellInputDesc =
+      GeTensorDesc(inputTensorDescCellDgateShape, FORMAT_FRACTAL_NZ, output_tensor_desc.GetDataType());
+  reshapeCellInputDesc.SetOriginShape(GeShape(inputTensorDescCellDgateOriDims));
+  reshapeCellInputDesc.SetOriginFormat(FORMAT_ND);
+
+  vector<int64_t> outputTensorDescCellDgateDims = {1, (output_dims[1] + 15) / 16, (output_dims[0] + 15) / 16, 16, 16};
+  vector<int64_t> outputTensorDescCellDgateOriDims = {1, output_dims[0], output_dims[1]};
+  GeShape outputTensorDescCellDgateShape(outputTensorDescCellDgateDims);
+
+  GeTensorDesc reshapeCellOutputDesc =
+      GeTensorDesc(outputTensorDescCellDgateShape, FORMAT_FRACTAL_NZ, output_tensor_desc.GetDataType());
+  reshapeCellOutputDesc.SetOriginShape(GeShape(outputTensorDescCellDgateOriDims));
+  reshapeCellOutputDesc.SetOriginFormat(FORMAT_ND);
+
+  reshape_desc->UpdateInputDesc("x", reshapeCellInputDesc);
+  reshape_desc->UpdateOutputDesc("y", reshapeCellOutputDesc);
+}
+
+void DynamicRNNGradAlignFusionPass::SetInputDescForGradCell(
+    const OpDescPtr& dynamicRNNGradDesc, const GeTensorDesc& inputC, const GeTensorDesc& inputDy,
+    const GeTensorDesc& inputI, int64_t i,
+    OpDescPtr& basicLstmCellStateGradDesc) const {  // add state_gate op input
+  vector<int64_t> cur_tensor_dims;
+  cur_tensor_dims.push_back(1);
+  cur_tensor_dims.push_back(inputC.GetShape().GetDim(1));
+  cur_tensor_dims.push_back(inputC.GetShape().GetDim(2));
+  GeShape cur_tensorc_shape(cur_tensor_dims);
+  GeShape cur_tensorc_original_shape(cur_tensor_dims);
+  GeTensorDesc cur_tensorc = GeTensorDesc(cur_tensorc_shape, FORMAT_ND, DT_FLOAT);
+  cur_tensorc.SetOriginShape(cur_tensorc_original_shape);
+  cur_tensorc.SetOriginFormat(FORMAT_ND);
+  basicLstmCellStateGradDesc->AddInputDesc("c", cur_tensorc);
+
+  vector<int64_t> cur_tensor_dy_dims;
+  cur_tensor_dy_dims.push_back(1);
+  cur_tensor_dy_dims.push_back(inputDy.GetShape().GetDim(1));
+  cur_tensor_dy_dims.push_back(inputDy.GetShape().GetDim(2));
+  GeShape cur_tensor_dy_shape(cur_tensor_dy_dims);
+  GeShape cur_tensor_dy_original_shape(cur_tensor_dy_dims);
+  GeTensorDesc cur_tensor_dy = GeTensorDesc(cur_tensor_dy_shape, FORMAT_ND, DT_FLOAT);
+  cur_tensor_dy.SetOriginShape(cur_tensor_dy_original_shape);
+  cur_tensor_dy.SetOriginFormat(FORMAT_ND);
+  basicLstmCellStateGradDesc->AddInputDesc("dy", cur_tensor_dy);
+
+  if (i != 0) {
+    vector<int64_t> cur_tensor_dh_dims;
+    cur_tensor_dh_dims.push_back(1);
+    cur_tensor_dh_dims.push_back(dynamicRNNGradDesc->GetInputDesc(9).GetShape().GetDim(0));
+    cur_tensor_dh_dims.push_back(dynamicRNNGradDesc->GetInputDesc(9).GetShape().GetDim(1));
+    GeShape cur_tensor_dh_shape(cur_tensor_dh_dims);
+    GeTensorDesc dh_input_tensor_desc = GeTensorDesc(cur_tensor_dh_shape, FORMAT_ND, DT_FLOAT);
+    dh_input_tensor_desc.SetOriginShape(cur_tensor_dh_shape);
+    dh_input_tensor_desc.SetOriginFormat(FORMAT_ND);
+    basicLstmCellStateGradDesc->AddInputDesc("dh", dh_input_tensor_desc);
+  } else {
+    GeTensorDesc dh_input_tensor_desc =
+        GeTensorDesc(dynamicRNNGradDesc->GetInputDesc(9).GetShape(), FORMAT_ND, DT_FLOAT);
+    dh_input_tensor_desc.SetOriginShape(dynamicRNNGradDesc->GetInputDesc(9).GetShape());
+    dh_input_tensor_desc.SetOriginFormat(FORMAT_ND);
+    basicLstmCellStateGradDesc->AddInputDesc("dh", dh_input_tensor_desc);
+  }
+
+  GeTensorDesc dc_input_tensor_desc =
+      GeTensorDesc(dynamicRNNGradDesc->GetInputDesc(10).GetShape(), FORMAT_ND, DT_FLOAT);
+  dc_input_tensor_desc.SetOriginShape(dynamicRNNGradDesc->GetInputDesc(10).GetShape());
+  dc_input_tensor_desc.SetOriginFormat(FORMAT_ND);
+  basicLstmCellStateGradDesc->AddInputDesc("dc", dc_input_tensor_desc);
+
+  vector<int64_t> cur_tensori_dims;
+  cur_tensori_dims.push_back(1);
+  cur_tensori_dims.push_back(inputI.GetShape().GetDim(1));
+  cur_tensori_dims.push_back(inputI.GetShape().GetDim(2));
+  GeShape cur_tensori_shape(cur_tensori_dims);
+  GeTensorDesc cur_tensori = GeTensorDesc(cur_tensori_shape, FORMAT_ND, DT_FLOAT);
+  cur_tensori.SetOriginShape(cur_tensorc_original_shape);
+  cur_tensori.SetOriginFormat(FORMAT_ND);
+  basicLstmCellStateGradDesc->AddInputDesc("i", cur_tensori);
+
+  GeTensorDesc cur_tensorj = GeTensorDesc(cur_tensori_shape, FORMAT_ND, DT_FLOAT);
+  cur_tensorj.SetOriginShape(cur_tensorc_original_shape);
+  cur_tensorj.SetOriginFormat(FORMAT_ND);
+  basicLstmCellStateGradDesc->AddInputDesc("j", cur_tensorj);
+
+  GeTensorDesc cur_tensorf = GeTensorDesc(cur_tensori_shape, FORMAT_ND, DT_FLOAT);
+  cur_tensorf.SetOriginShape(cur_tensorc_original_shape);
+  cur_tensorf.SetOriginFormat(FORMAT_ND);
+  basicLstmCellStateGradDesc->AddInputDesc("f", cur_tensorf);
+
+  GeTensorDesc cur_tensoro = GeTensorDesc(cur_tensori_shape, FORMAT_ND, DT_FLOAT);
+  cur_tensoro.SetOriginShape(cur_tensorc_original_shape);
+  cur_tensoro.SetOriginFormat(FORMAT_ND);
+  basicLstmCellStateGradDesc->AddInputDesc("o", cur_tensoro);
+
+  GeTensorDesc cur_tensor_tanhct = GeTensorDesc(cur_tensori_shape, FORMAT_ND, DT_FLOAT);
+  cur_tensor_tanhct.SetOriginShape(cur_tensorc_original_shape);
+  cur_tensor_tanhct.SetOriginFormat(FORMAT_ND);
+  basicLstmCellStateGradDesc->AddInputDesc("tanhct", cur_tensor_tanhct);
+}
+
+OpDescPtr& DynamicRNNGradAlignFusionPass::AddSpiltForCell(vector<int64_t>& outputy_dims,
+                                                          OpDescPtr& lstmSplitDesc) const {
+  GeTensorDesc split_input_tensor_desc = GeTensorDesc(GeShape(outputy_dims), FORMAT_FRACTAL_NZ, DT_FLOAT);
+  split_input_tensor_desc.SetOriginShape(GeShape(outputy_dims));
+  split_input_tensor_desc.SetOriginFormat(FORMAT_FRACTAL_NZ);
+
+  lstmSplitDesc->AddInputDesc("y", split_input_tensor_desc);
+
+  vector<int64_t> dx_dims;
+  dx_dims.push_back(1);
+  dx_dims.push_back(input_nz_dim);
+  dx_dims.push_back(batch_nz_dim);
+  dx_dims.push_back(16);
+  dx_dims.push_back(16);
+  GeShape dx_shape(dx_dims);
+  vector<int64_t> dx_ori_dims;
+  dx_ori_dims.push_back(1);
+  dx_ori_dims.push_back(batch_dim);
+  dx_ori_dims.push_back(input_dim);
+  GeShape dx_original_shape(dx_ori_dims);
+  GeTensorDesc tensor_dx = GeTensorDesc(dx_shape, FORMAT_FRACTAL_NZ, DT_FLOAT);
+
+  if (tSizeJudge == 1) {
+    tensor_dx.SetOriginShape(dx_original_shape);
+    tensor_dx.SetOriginFormat(FORMAT_ND);
+  } else {
+    tensor_dx.SetOriginShape(dx_shape);
+    tensor_dx.SetOriginFormat(FORMAT_FRACTAL_NZ);
+  }
+
+  lstmSplitDesc->AddOutputDesc("dx", tensor_dx);
+
+  vector<int64_t> dh_dims;
+  dh_dims.push_back(1);
+  dh_dims.push_back(hidden_nz_dim);
+  dh_dims.push_back(batch_nz_dim);
+  dh_dims.push_back(16);
+  dh_dims.push_back(16);
+  GeShape dh_shape(dh_dims);
+  GeTensorDesc dh_tensor_desc = GeTensorDesc(dh_shape, FORMAT_FRACTAL_NZ, DT_FLOAT);
+  vector<int64_t> dh_ori_dims;
+  dh_ori_dims.push_back(1);
+  dh_ori_dims.push_back(batch_dim);
+  dh_ori_dims.push_back(hidden_dim);
+  GeShape dh_ori_shape(dh_ori_dims);
+  dh_tensor_desc.SetOriginShape(dh_ori_shape);
+  dh_tensor_desc.SetOriginFormat(FORMAT_ND);
+  lstmSplitDesc->AddOutputDesc("dh_prev", dh_tensor_desc);
+
+  vector<int64_t> size_splits;
+  size_splits.push_back(input_nz_dim);
+  size_splits.push_back(hidden_nz_dim);
+  AttrUtils::SetListInt(lstmSplitDesc, "size_splits", size_splits);
+  AttrUtils::SetInt(lstmSplitDesc, "split_dim", 0);
+  AttrUtils::SetInt(lstmSplitDesc, "num_split", 2);
+  return lstmSplitDesc;
+}
+
+void DynamicRNNGradAlignFusionPass::AddBatchMatMulForCell(const GeShape& output_origin_shape,
+                                                          OpDescPtr& lstmBatchMatMulDesc,
+                                                          vector<int64_t>& outputy_dims) const {  // add matmul input
+  vector<int64_t> LeftDims{hidden_nz_dim * 4, batch_nz_dim, 16, 16};
+  GeTensorDesc left_tensor_desc = GeTensorDesc(GeShape(LeftDims), FORMAT_FRACTAL_NZ, DT_FLOAT16);
+  left_tensor_desc.SetOriginShape(output_origin_shape);
+  left_tensor_desc.SetOriginFormat(FORMAT_ND);
+  lstmBatchMatMulDesc->AddInputDesc("dgate", left_tensor_desc);
+
+  vector<int64_t> WeightDims{input_nz_dim + hidden_nz_dim, hidden_nz_dim * 4, 16, 16};
+  vector<int64_t> WeightoriDims{input_dim + hidden_dim, 4 * hidden_dim};
+  GeTensorDesc weight_tensor_desc = GeTensorDesc(GeShape(WeightDims), FORMAT_FRACTAL_ZN_RNN, DT_FLOAT16);
+  weight_tensor_desc.SetOriginShape(GeShape(WeightoriDims));
+  weight_tensor_desc.SetOriginFormat(FORMAT_ND);
+  lstmBatchMatMulDesc->AddInputDesc("w", weight_tensor_desc);
+
+  // add matmul output
+  outputy_dims = {input_nz_dim + hidden_nz_dim, batch_nz_dim, 16, 16};
+  GeShape outputy_origin_shape(outputy_dims);
+  GeShape outputy_shape(outputy_dims);
+  GeTensorDesc outputy_tensor_desc = GeTensorDesc(outputy_shape, FORMAT_FRACTAL_NZ, DT_FLOAT);
+  outputy_tensor_desc.SetOriginShape(outputy_origin_shape);
+  outputy_tensor_desc.SetOriginFormat(FORMAT_FRACTAL_NZ);
+  lstmBatchMatMulDesc->AddOutputDesc("y", outputy_tensor_desc);
+  // attr
+  AttrUtils::SetBool(lstmBatchMatMulDesc, "adj_x1", false);
+  AttrUtils::SetBool(lstmBatchMatMulDesc, "adj_x2", true);
+  AttrUtils::SetInt(lstmBatchMatMulDesc, "input_size", input_dim);
+  AttrUtils::SetInt(lstmBatchMatMulDesc, "hidden_size", hidden_dim);
 }
 
 Status DynamicRNNGradAlignFusionPass::AddEdgeForCell(ge::NodePtr dynamicRNNGradNode, ge::ComputeGraph& graph,
@@ -646,16 +676,7 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::AddLSTMInputGradNode(ge::NodePtr dyna
   // add split for inputs
   ge::OpDescPtr dynamicRNNGradDesc = dynamicRNNGradNode->GetOpDesc();
 
-  vector<int64_t> splitc_dims;
-  splitc_dims.push_back(1);
-  splitc_dims.push_back(dynamicRNNGradDesc->GetInputDesc(5).GetShape().GetDim(cIdx0));
-  splitc_dims.push_back(dynamicRNNGradDesc->GetInputDesc(5).GetShape().GetDim(cIdx1));
-  ge::GeShape splitc_origin_shape(splitc_dims);
-  ge::GeShape splitc_shape(splitc_dims);
-
-  ge::GeTensorDesc split_tensor_desc = ge::GeTensorDesc(splitc_shape, ge::FORMAT_ND, ge::DT_FLOAT);
-  split_tensor_desc.SetOriginShape(splitc_origin_shape);
-  split_tensor_desc.SetOriginFormat(ge::FORMAT_ND);
+  GeTensorDesc split_tensor_desc = CreateTensorDescForSplit(dynamicRNNGradDesc);
 
   int64_t num_split_x = dynamicRNNGradDesc->GetInputDesc(7).GetShape().GetDim(0);
   ge::OpDescPtr lstmSplitCDesc = nullptr;
@@ -665,19 +686,7 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::AddLSTMInputGradNode(ge::NodePtr dyna
                           failStatus = true;
                           return nullptr);
 
-  ge::GeTensorDesc c_input_tensor_desc =
-      ge::GeTensorDesc(dynamicRNNGradDesc->GetInputDesc(7).GetShape(), ge::FORMAT_ND, ge::DT_FLOAT);
-  c_input_tensor_desc.SetOriginShape(dynamicRNNGradDesc->GetInputDesc(7).GetShape());
-  c_input_tensor_desc.SetOriginFormat(ge::FORMAT_ND);
-  lstmSplitCDesc->AddInputDesc("c", c_input_tensor_desc);
-  std::vector<int64_t> size_splitsc = {};
-  for (int64_t i = 0; i < num_split_x; i++) {
-    lstmSplitCDesc->AddOutputDesc("split_c" + std::to_string(i + 1), split_tensor_desc);
-    size_splitsc.push_back(1);
-  }
-  ge::AttrUtils::SetListInt(lstmSplitCDesc, "size_splits", size_splitsc);
-  ge::AttrUtils::SetInt(lstmSplitCDesc, "split_dim", 0);
-  ge::AttrUtils::SetInt(lstmSplitCDesc, "num_split", num_split_x);
+  lstmSplitCDesc = SetDescForSplitVDC(dynamicRNNGradDesc, split_tensor_desc, num_split_x, lstmSplitCDesc);
 
   ge::OpDescPtr lstmSplitDyDesc = nullptr;
   OP_LOGD(FUSED_OP_TYPE.c_str(), "add splitVD for dy.");
@@ -685,19 +694,7 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::AddLSTMInputGradNode(ge::NodePtr dyna
                                dynamicRNNGradNode->GetName() + "/LstmInputGrad/SplitVDdy", "SplitVD")),
                           failStatus = true;
                           return nullptr);
-  ge::GeTensorDesc dy_input_tensor_desc =
-      ge::GeTensorDesc(dynamicRNNGradDesc->GetInputDesc(8).GetShape(), ge::FORMAT_ND, ge::DT_FLOAT);
-  dy_input_tensor_desc.SetOriginShape(dynamicRNNGradDesc->GetInputDesc(8).GetShape());
-  dy_input_tensor_desc.SetOriginFormat(ge::FORMAT_ND);
-  lstmSplitDyDesc->AddInputDesc("dy", dy_input_tensor_desc);
-  std::vector<int64_t> size_splits_dy = {};
-  for (int64_t i = 0; i < num_split_x; i++) {
-    lstmSplitDyDesc->AddOutputDesc("split_c" + std::to_string(i + 1), split_tensor_desc);
-    size_splits_dy.push_back(1);
-  }
-  ge::AttrUtils::SetListInt(lstmSplitDyDesc, "size_splits", size_splits_dy);
-  ge::AttrUtils::SetInt(lstmSplitDyDesc, "split_dim", 0);
-  ge::AttrUtils::SetInt(lstmSplitDyDesc, "num_split", num_split_x);
+  lstmSplitDyDesc = SetDescForSplitVDdy(dynamicRNNGradDesc, split_tensor_desc, num_split_x, lstmSplitDyDesc);
 
   ge::OpDescPtr lstmSplitTanhDesc = nullptr;
   ge::OpDescPtr lstmSplitODesc = nullptr;
@@ -710,183 +707,49 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::AddLSTMInputGradNode(ge::NodePtr dyna
                                  dynamicRNNGradNode->GetName() + "/LstmInputGrad/SplitVDI", "SplitVD")),
                             failStatus = true;
                             return nullptr);
-    ge::GeTensorDesc i_input_tensor_desc =
-        ge::GeTensorDesc(dynamicRNNGradDesc->GetInputDesc(11).GetShape(), ge::FORMAT_ND, ge::DT_FLOAT);
-    i_input_tensor_desc.SetOriginShape(dynamicRNNGradDesc->GetInputDesc(11).GetShape());
-    i_input_tensor_desc.SetOriginFormat(ge::FORMAT_ND);
-    lstmSplitIDesc->AddInputDesc("I", i_input_tensor_desc);
-    std::vector<int64_t> size_splits_i = {};
-    for (int64_t i = 0; i < num_split_x; i++) {
-      lstmSplitIDesc->AddOutputDesc("split_c" + std::to_string(i + 1), split_tensor_desc);
-      size_splits_i.push_back(1);
-    }
-    ge::AttrUtils::SetListInt(lstmSplitIDesc, "size_splits", size_splits_i);
-    ge::AttrUtils::SetInt(lstmSplitIDesc, "split_dim", 0);
-    ge::AttrUtils::SetInt(lstmSplitIDesc, "num_split", num_split_x);
+    lstmSplitIDesc = SetDescForSplitVDI(dynamicRNNGradDesc, split_tensor_desc, num_split_x, lstmSplitIDesc);
 
     FUSION_PASS_MAKE_SHARED((lstmSplitJDesc = std::make_shared<ge::OpDesc>(
                                  dynamicRNNGradNode->GetName() + "/LstmInputGrad/SplitVDJ", "SplitVD")),
                             failStatus = true;
                             return nullptr);
-    ge::GeTensorDesc j_input_tensor_desc =
-        ge::GeTensorDesc(dynamicRNNGradDesc->GetInputDesc(12).GetShape(), ge::FORMAT_ND, ge::DT_FLOAT);
-    j_input_tensor_desc.SetOriginShape(dynamicRNNGradDesc->GetInputDesc(12).GetShape());
-    j_input_tensor_desc.SetOriginFormat(ge::FORMAT_ND);
-    lstmSplitJDesc->AddInputDesc("J", j_input_tensor_desc);
-    std::vector<int64_t> size_splits_j = {};
-    for (int64_t i = 0; i < num_split_x; i++) {
-      lstmSplitJDesc->AddOutputDesc("split_c" + std::to_string(i + 1), split_tensor_desc);
-      size_splits_j.push_back(1);
-    }
-    ge::AttrUtils::SetListInt(lstmSplitJDesc, "size_splits", size_splits_j);
-    ge::AttrUtils::SetInt(lstmSplitJDesc, "split_dim", 0);
-    ge::AttrUtils::SetInt(lstmSplitJDesc, "num_split", num_split_x);
+    lstmSplitJDesc = SetDescForSplitVDJ(dynamicRNNGradDesc, split_tensor_desc, num_split_x, lstmSplitJDesc);
 
     FUSION_PASS_MAKE_SHARED((lstmSplitFDesc = std::make_shared<ge::OpDesc>(
                                  dynamicRNNGradNode->GetName() + "/LstmInputGrad/SplitVDF", "SplitVD")),
                             failStatus = true;
                             return nullptr);
-    ge::GeTensorDesc f_input_tensor_desc =
-        ge::GeTensorDesc(dynamicRNNGradDesc->GetInputDesc(13).GetShape(), ge::FORMAT_ND, ge::DT_FLOAT);
-    f_input_tensor_desc.SetOriginShape(dynamicRNNGradDesc->GetInputDesc(13).GetShape());
-    f_input_tensor_desc.SetOriginFormat(ge::FORMAT_ND);
-    lstmSplitFDesc->AddInputDesc("F", f_input_tensor_desc);
-    std::vector<int64_t> size_splits_f = {};
-    for (int64_t i = 0; i < num_split_x; i++) {
-      lstmSplitFDesc->AddOutputDesc("split_c" + std::to_string(i + 1), split_tensor_desc);
-      size_splits_f.push_back(1);
-    }
-    ge::AttrUtils::SetListInt(lstmSplitFDesc, "size_splits", size_splits_f);
-    ge::AttrUtils::SetInt(lstmSplitFDesc, "split_dim", 0);
-    ge::AttrUtils::SetInt(lstmSplitFDesc, "num_split", num_split_x);
+    lstmSplitFDesc = SetDescForSplitVDF(dynamicRNNGradDesc, split_tensor_desc, num_split_x, lstmSplitFDesc);
 
     FUSION_PASS_MAKE_SHARED((lstmSplitODesc = std::make_shared<ge::OpDesc>(
                                  dynamicRNNGradNode->GetName() + "/LstmInputGrad/SplitVDO", "SplitVD")),
                             failStatus = true;
                             return nullptr);
-    ge::GeTensorDesc o_input_tensor_desc =
-        ge::GeTensorDesc(dynamicRNNGradDesc->GetInputDesc(14).GetShape(), ge::FORMAT_ND, ge::DT_FLOAT);
-    o_input_tensor_desc.SetOriginShape(dynamicRNNGradDesc->GetInputDesc(14).GetShape());
-    o_input_tensor_desc.SetOriginFormat(ge::FORMAT_ND);
-    lstmSplitODesc->AddInputDesc("O", o_input_tensor_desc);
-    std::vector<int64_t> size_splits_o = {};
-    for (int64_t i = 0; i < num_split_x; i++) {
-      lstmSplitODesc->AddOutputDesc("split_c" + std::to_string(i + 1), split_tensor_desc);
-      size_splits_o.push_back(1);
-    }
-    ge::AttrUtils::SetListInt(lstmSplitODesc, "size_splits", size_splits_o);
-    ge::AttrUtils::SetInt(lstmSplitODesc, "split_dim", 0);
-    ge::AttrUtils::SetInt(lstmSplitODesc, "num_split", num_split_x);
+    lstmSplitODesc = SetDescForSplitVDO(dynamicRNNGradDesc, split_tensor_desc, num_split_x, lstmSplitODesc);
 
     FUSION_PASS_MAKE_SHARED((lstmSplitTanhDesc = std::make_shared<ge::OpDesc>(
                                  dynamicRNNGradNode->GetName() + "/LstmInputGrad/SplitVDTanh", "SplitVD")),
                             failStatus = true;
                             return nullptr);
-    ge::GeTensorDesc tan_input_tensor_desc =
-        ge::GeTensorDesc(dynamicRNNGradDesc->GetInputDesc(15).GetShape(), ge::FORMAT_ND, ge::DT_FLOAT);
-    tan_input_tensor_desc.SetOriginShape(dynamicRNNGradDesc->GetInputDesc(15).GetShape());
-    tan_input_tensor_desc.SetOriginFormat(ge::FORMAT_ND);
-    lstmSplitTanhDesc->AddInputDesc("Tanh", tan_input_tensor_desc);
-    std::vector<int64_t> size_splits_tanh = {};
-    for (int64_t i = 0; i < num_split_x; i++) {
-      lstmSplitTanhDesc->AddOutputDesc("split_c" + std::to_string(i + 1), split_tensor_desc);
-      size_splits_tanh.push_back(1);
-    }
-    ge::AttrUtils::SetListInt(lstmSplitTanhDesc, "size_splits", size_splits_tanh);
-    ge::AttrUtils::SetInt(lstmSplitTanhDesc, "split_dim", 0);
-    ge::AttrUtils::SetInt(lstmSplitTanhDesc, "num_split", num_split_x);
+    lstmSplitTanhDesc = SetDescForSplitVDTanh(dynamicRNNGradDesc, split_tensor_desc, num_split_x, lstmSplitTanhDesc);
   }
 
-  // add concat for output
-  OP_LOGD(FUSED_OP_TYPE.c_str(), "add concat for output.");
-  vector<ge::NodePtr> split_node = result_node[2];
-  int64_t split_concat_dim_o = split_node[0]->GetOpDesc()->GetOutputDesc(0).GetOriginShape().GetDim(1);
-  int64_t split_concat_dim1 = split_node[0]->GetOpDesc()->GetOutputDesc(0).GetOriginShape().GetDim(0);
-  vector<int64_t> split_concat_dims;
-  split_concat_dims.push_back((split_concat_dim_o + 15) / 16);
-  split_concat_dims.push_back((split_concat_dim1 + 15) / 16);
-  split_concat_dims.push_back(16);
-  split_concat_dims.push_back(16);
-  ge::GeShape split_concat_shape(split_concat_dims);
-  ge::GeTensorDesc concat_x_input_tensor_desc =
-      ge::GeTensorDesc(split_node[0]->GetOpDesc()->GetOutputDesc(0).GetShape(), ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT);
-  concat_x_input_tensor_desc.SetOriginShape(split_node[0]->GetOpDesc()->GetOutputDesc(0).GetShape());
-  concat_x_input_tensor_desc.SetOriginFormat(ge::FORMAT_FRACTAL_NZ);
   OP_LOGD(FUSED_OP_TYPE.c_str(), "add ConcatD for dx.");
   ge::OpDescPtr lstmXConcatDDesc = nullptr;
   FUSION_PASS_MAKE_SHARED((lstmXConcatDDesc = std::make_shared<ge::OpDesc>(
                                dynamicRNNGradNode->GetName() + "/LstmInputGrad/xConcatD", "ConcatD")),
                           failStatus = true;
                           return nullptr);
-  for (int64_t i = 0; i < num_split_x; i++) {
-    lstmXConcatDDesc->AddInputDesc("dx" + std::to_string(i + 1), concat_x_input_tensor_desc);
-  }
+  lstmXConcatDDesc = SetDescForxConcatD(result_node, dynamicRNNGradDesc, num_split_x, lstmXConcatDDesc);
 
-  vector<int64_t> split_concat_output_dims;
-  int64_t split_concat_output_dim_o = dynamicRNNGradDesc->GetOutputDesc(2).GetShape().GetDim(2);
-  int64_t split_concat_output_dim1 = dynamicRNNGradDesc->GetOutputDesc(2).GetShape().GetDim(1);
-  split_concat_output_dims.push_back(dynamicRNNGradDesc->GetOutputDesc(2).GetShape().GetDim(0));
-  split_concat_output_dims.push_back(((split_concat_output_dim_o + 15) / 16));
-  split_concat_output_dims.push_back((split_concat_output_dim1 + 15) / 16);
-  split_concat_output_dims.push_back(16);
-  split_concat_output_dims.push_back(16);
-  ge::GeShape split_concat_output_shape(split_concat_output_dims);
-  ge::GeTensorDesc dx_output_tensor_desc =
-      ge::GeTensorDesc(split_concat_output_shape, ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT);
-  dx_output_tensor_desc.SetOriginShape(dynamicRNNGradDesc->GetOutputDesc(2).GetShape());
-  dx_output_tensor_desc.SetOriginFormat(ge::FORMAT_ND);
-  lstmXConcatDDesc->AddOutputDesc("dx", dx_output_tensor_desc);
-  ge::AttrUtils::SetInt(lstmXConcatDDesc, "concat_dim", 0);
-  ge::AttrUtils::SetInt(lstmXConcatDDesc, "N", num_split_x);
-
-  vector<ge::NodePtr> matmul_node = result_node[1];
-  int64_t dgage_dims0 = matmul_node[0]->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDim(1);
-  int64_t dgage_dims1 = matmul_node[0]->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDim(0);
-  vector<int64_t> dgate_concat_dims;
-  dgate_concat_dims.push_back(1);
-  dgate_concat_dims.push_back((dgage_dims0 + 15) / 16);
-  dgate_concat_dims.push_back((dgage_dims1 + 15) / 16);
-  dgate_concat_dims.push_back(16);
-  dgate_concat_dims.push_back(16);
-  ge::GeShape dgate_concat_shape(dgate_concat_dims);
-  ge::GeTensorDesc concat_gate_input_tensor_desc =
-      ge::GeTensorDesc(dgate_concat_shape, ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
-  vector<int64_t> dgate_concat_ori_dims = matmul_node[0]->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
-  dgate_concat_ori_dims = {1, dgate_concat_ori_dims[0], dgate_concat_ori_dims[1]};
-  concat_gate_input_tensor_desc.SetOriginShape(GeShape(dgate_concat_ori_dims));
-  concat_gate_input_tensor_desc.SetOriginFormat(ge::FORMAT_ND);
   ge::OpDescPtr lstmGageConcatDDesc = nullptr;
   OP_LOGD(FUSED_OP_TYPE.c_str(), "add ConcatD for dgate.");
   FUSION_PASS_MAKE_SHARED((lstmGageConcatDDesc = std::make_shared<ge::OpDesc>(
                                dynamicRNNGradNode->GetName() + "/LstmInputGrad/dgateConcatD", "ConcatD")),
                           failStatus = true;
                           return nullptr);
-  for (int64_t i = 0; i < num_split_x; i++) {
-    lstmGageConcatDDesc->AddInputDesc("dgate" + std::to_string(i + 1), concat_gate_input_tensor_desc);
-  }
-  vector<int64_t> output_dgate_dims;
-  ge::GeTensorDesc c_desc = dynamicRNNGradDesc->GetInputDesc(7);
 
-  output_dgate_dims.push_back(c_desc.GetShape().GetDim(0));
-  output_dgate_dims.push_back(c_desc.GetShape().GetDim(1));
-  output_dgate_dims.push_back(4 * hidden_nz_dim * 16);
-  ge::GeShape output_dgate_origin_shape(output_dgate_dims);
-
-  vector<int64_t> output_dgate_nz_dims;
-  output_dgate_nz_dims.push_back(c_desc.GetShape().GetDim(0));
-  output_dgate_nz_dims.push_back((dgage_dims0 + 15) / 16);
-  output_dgate_nz_dims.push_back((dgage_dims1 + 15) / 16);
-  output_dgate_nz_dims.push_back(16);
-  output_dgate_nz_dims.push_back(16);
-  ge::GeShape output_dgate_shape(output_dgate_nz_dims);
-
-  ge::GeTensorDesc output_dgate_tensor_desc =
-      ge::GeTensorDesc(output_dgate_shape, ge::FORMAT_FRACTAL_NZ, ge::DT_FLOAT16);
-  output_dgate_tensor_desc.SetOriginShape(output_dgate_origin_shape);
-  output_dgate_tensor_desc.SetOriginFormat(ge::FORMAT_ND);
-  lstmGageConcatDDesc->AddOutputDesc("dgate", output_dgate_tensor_desc);
-  ge::AttrUtils::SetInt(lstmGageConcatDDesc, "concat_dim", 0);
-  ge::AttrUtils::SetInt(lstmGageConcatDDesc, "N", num_split_x);
+  lstmGageConcatDDesc = SetDescForDgateConcatD(result_node, dynamicRNNGradDesc, num_split_x, lstmGageConcatDDesc);
 
   ge::NodePtr lstmSplitC = graph.AddNode(lstmSplitCDesc);
   FUSION_PASS_CHECK(lstmSplitC == nullptr,
@@ -964,20 +827,8 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::AddLSTMInputGradNode(ge::NodePtr dyna
   }
   // add c
   OP_LOGD(FUSED_OP_TYPE.c_str(), "add Edge for split node.");
-  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(7)->GetPeerOutAnchor(), lstmSplitC->GetInDataAnchor(0));
-  ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(8)->GetPeerOutAnchor(), lstmSplitDy->GetInDataAnchor(0));
-  if (tSizeJudge != 1) {
-    ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(11)->GetPeerOutAnchor(),
-                            lstmSplitI->GetInDataAnchor(0));
-    ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(12)->GetPeerOutAnchor(),
-                            lstmSplitJ->GetInDataAnchor(0));
-    ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(13)->GetPeerOutAnchor(),
-                            lstmSplitF->GetInDataAnchor(0));
-    ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(14)->GetPeerOutAnchor(),
-                            lstmSplitO->GetInDataAnchor(0));
-    ge::GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(15)->GetPeerOutAnchor(),
-                            lstmSplitTanh->GetInDataAnchor(0));
-  }
+  AddEdgeForSplitNode(dynamicRNNGradNode, lstmSplitC, lstmSplitDy, lstmSplitI, lstmSplitJ, lstmSplitF, lstmSplitO,
+                      lstmSplitTanh);
 
   // add edge for cell
   OP_LOGD(FUSED_OP_TYPE.c_str(), "add Edge for loop cell node.");
@@ -985,6 +836,250 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::AddLSTMInputGradNode(ge::NodePtr dyna
                  lstmSplitJ, lstmSplitF, lstmSplitO, lstmSplitTanh, lstmXConcatD, lstmGageConcatD);
 
   return lstmGageConcatD;
+}
+
+GeTensorDesc DynamicRNNGradAlignFusionPass::CreateTensorDescForSplit(const OpDescPtr& dynamicRNNGradDesc) const {
+  vector<int64_t> splitc_dims;
+  splitc_dims.push_back(1);
+  splitc_dims.push_back(dynamicRNNGradDesc->GetInputDesc(5).GetShape().GetDim(cIdx0));
+  splitc_dims.push_back(dynamicRNNGradDesc->GetInputDesc(5).GetShape().GetDim(cIdx1));
+  GeShape splitc_origin_shape(splitc_dims);
+  GeShape splitc_shape(splitc_dims);
+
+  GeTensorDesc split_tensor_desc = GeTensorDesc(splitc_shape, FORMAT_ND, DT_FLOAT);
+  split_tensor_desc.SetOriginShape(splitc_origin_shape);
+  split_tensor_desc.SetOriginFormat(FORMAT_ND);
+  return split_tensor_desc;
+}
+
+void DynamicRNNGradAlignFusionPass::AddEdgeForSplitNode(const NodePtr& dynamicRNNGradNode, const NodePtr& lstmSplitC,
+                                                        const NodePtr& lstmSplitDy, const NodePtr& lstmSplitI,
+                                                        const NodePtr& lstmSplitJ, const NodePtr& lstmSplitF,
+                                                        const NodePtr& lstmSplitO, const NodePtr& lstmSplitTanh) const {
+  GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(7)->GetPeerOutAnchor(), lstmSplitC->GetInDataAnchor(0));
+  GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(8)->GetPeerOutAnchor(), lstmSplitDy->GetInDataAnchor(0));
+  if (tSizeJudge != 1) {
+    GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(11)->GetPeerOutAnchor(), lstmSplitI->GetInDataAnchor(0));
+    GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(12)->GetPeerOutAnchor(), lstmSplitJ->GetInDataAnchor(0));
+    GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(13)->GetPeerOutAnchor(), lstmSplitF->GetInDataAnchor(0));
+    GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(14)->GetPeerOutAnchor(), lstmSplitO->GetInDataAnchor(0));
+    GraphUtils::AddEdge(dynamicRNNGradNode->GetInDataAnchor(15)->GetPeerOutAnchor(), lstmSplitTanh->GetInDataAnchor(0));
+  }
+}
+
+OpDescPtr& DynamicRNNGradAlignFusionPass::SetDescForxConcatD(
+    const vector<vector<ge::NodePtr>>& result_node, const OpDescPtr& dynamicRNNGradDesc, int64_t num_split_x,
+    OpDescPtr& lstmXConcatDDesc) const {  // add concat for output
+  OP_LOGD(FUSED_OP_TYPE.c_str(), "add concat for output.");
+  vector<NodePtr> split_node = result_node[2];
+  int64_t split_concat_dim_o = split_node[0]->GetOpDesc()->GetOutputDesc(0).GetOriginShape().GetDim(1);
+  int64_t split_concat_dim1 = split_node[0]->GetOpDesc()->GetOutputDesc(0).GetOriginShape().GetDim(0);
+  vector<int64_t> split_concat_dims;
+  split_concat_dims.push_back((split_concat_dim_o + 15) / 16);
+  split_concat_dims.push_back((split_concat_dim1 + 15) / 16);
+  split_concat_dims.push_back(16);
+  split_concat_dims.push_back(16);
+  GeShape split_concat_shape(split_concat_dims);
+  GeTensorDesc concat_x_input_tensor_desc =
+      GeTensorDesc(split_node[0]->GetOpDesc()->GetOutputDesc(0).GetShape(), FORMAT_FRACTAL_NZ, DT_FLOAT);
+  concat_x_input_tensor_desc.SetOriginShape(split_node[0]->GetOpDesc()->GetOutputDesc(0).GetShape());
+  concat_x_input_tensor_desc.SetOriginFormat(FORMAT_FRACTAL_NZ);
+  for (int64_t i = 0; i < num_split_x; i++) {
+    lstmXConcatDDesc->AddInputDesc("dx" + to_string(i + 1), concat_x_input_tensor_desc);
+  }
+
+  vector<int64_t> split_concat_output_dims;
+  int64_t split_concat_output_dim_o = dynamicRNNGradDesc->GetOutputDesc(2).GetShape().GetDim(2);
+  int64_t split_concat_output_dim1 = dynamicRNNGradDesc->GetOutputDesc(2).GetShape().GetDim(1);
+  split_concat_output_dims.push_back(dynamicRNNGradDesc->GetOutputDesc(2).GetShape().GetDim(0));
+  split_concat_output_dims.push_back(((split_concat_output_dim_o + 15) / 16));
+  split_concat_output_dims.push_back((split_concat_output_dim1 + 15) / 16);
+  split_concat_output_dims.push_back(16);
+  split_concat_output_dims.push_back(16);
+  GeShape split_concat_output_shape(split_concat_output_dims);
+  GeTensorDesc dx_output_tensor_desc = GeTensorDesc(split_concat_output_shape, FORMAT_FRACTAL_NZ, DT_FLOAT);
+  dx_output_tensor_desc.SetOriginShape(dynamicRNNGradDesc->GetOutputDesc(2).GetShape());
+  dx_output_tensor_desc.SetOriginFormat(FORMAT_ND);
+  lstmXConcatDDesc->AddOutputDesc("dx", dx_output_tensor_desc);
+  AttrUtils::SetInt(lstmXConcatDDesc, "concat_dim", 0);
+  AttrUtils::SetInt(lstmXConcatDDesc, "N", num_split_x);
+  return lstmXConcatDDesc;
+}
+
+OpDescPtr& DynamicRNNGradAlignFusionPass::SetDescForDgateConcatD(const vector<vector<ge::NodePtr>>& result_node,
+                                                                 const OpDescPtr& dynamicRNNGradDesc,
+                                                                 int64_t num_split_x,
+                                                                 OpDescPtr& lstmGageConcatDDesc) const {
+  vector<NodePtr> matmul_node = result_node[1];
+  int64_t dgage_dims0 = matmul_node[0]->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDim(1);
+  int64_t dgage_dims1 = matmul_node[0]->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDim(0);
+  vector<int64_t> dgate_concat_dims;
+  dgate_concat_dims.push_back(1);
+  dgate_concat_dims.push_back((dgage_dims0 + 15) / 16);
+  dgate_concat_dims.push_back((dgage_dims1 + 15) / 16);
+  dgate_concat_dims.push_back(16);
+  dgate_concat_dims.push_back(16);
+  GeShape dgate_concat_shape(dgate_concat_dims);
+  GeTensorDesc concat_gate_input_tensor_desc = GeTensorDesc(dgate_concat_shape, FORMAT_FRACTAL_NZ, DT_FLOAT16);
+  vector<int64_t> dgate_concat_ori_dims = matmul_node[0]->GetOpDesc()->GetInputDesc(0).GetOriginShape().GetDims();
+  dgate_concat_ori_dims = {1, dgate_concat_ori_dims[0], dgate_concat_ori_dims[1]};
+  concat_gate_input_tensor_desc.SetOriginShape(GeShape(dgate_concat_ori_dims));
+  concat_gate_input_tensor_desc.SetOriginFormat(FORMAT_ND);
+
+  for (int64_t i = 0; i < num_split_x; i++) {
+    lstmGageConcatDDesc->AddInputDesc("dgate" + to_string(i + 1), concat_gate_input_tensor_desc);
+  }
+  vector<int64_t> output_dgate_dims;
+  GeTensorDesc c_desc = dynamicRNNGradDesc->GetInputDesc(7);
+
+  output_dgate_dims.push_back(c_desc.GetShape().GetDim(0));
+  output_dgate_dims.push_back(c_desc.GetShape().GetDim(1));
+  output_dgate_dims.push_back(4 * hidden_nz_dim * 16);
+  GeShape output_dgate_origin_shape(output_dgate_dims);
+
+  vector<int64_t> output_dgate_nz_dims;
+  output_dgate_nz_dims.push_back(c_desc.GetShape().GetDim(0));
+  output_dgate_nz_dims.push_back((dgage_dims0 + 15) / 16);
+  output_dgate_nz_dims.push_back((dgage_dims1 + 15) / 16);
+  output_dgate_nz_dims.push_back(16);
+  output_dgate_nz_dims.push_back(16);
+  GeShape output_dgate_shape(output_dgate_nz_dims);
+
+  GeTensorDesc output_dgate_tensor_desc = GeTensorDesc(output_dgate_shape, FORMAT_FRACTAL_NZ, DT_FLOAT16);
+  output_dgate_tensor_desc.SetOriginShape(output_dgate_origin_shape);
+  output_dgate_tensor_desc.SetOriginFormat(FORMAT_ND);
+  lstmGageConcatDDesc->AddOutputDesc("dgate", output_dgate_tensor_desc);
+  AttrUtils::SetInt(lstmGageConcatDDesc, "concat_dim", 0);
+  AttrUtils::SetInt(lstmGageConcatDDesc, "N", num_split_x);
+  return lstmGageConcatDDesc;
+}
+
+OpDescPtr& DynamicRNNGradAlignFusionPass::SetDescForSplitVDdy(const OpDescPtr& dynamicRNNGradDesc,
+                                                              const GeTensorDesc& split_tensor_desc,
+                                                              int64_t num_split_x, OpDescPtr& lstmSplitDyDesc) const {
+  GeTensorDesc dy_input_tensor_desc = GeTensorDesc(dynamicRNNGradDesc->GetInputDesc(8).GetShape(), FORMAT_ND, DT_FLOAT);
+  dy_input_tensor_desc.SetOriginShape(dynamicRNNGradDesc->GetInputDesc(8).GetShape());
+  dy_input_tensor_desc.SetOriginFormat(FORMAT_ND);
+  lstmSplitDyDesc->AddInputDesc("dy", dy_input_tensor_desc);
+  vector<int64_t> size_splits_dy = {};
+  for (int64_t i = 0; i < num_split_x; i++) {
+    lstmSplitDyDesc->AddOutputDesc("split_c" + to_string(i + 1), split_tensor_desc);
+    size_splits_dy.push_back(1);
+  }
+  AttrUtils::SetListInt(lstmSplitDyDesc, "size_splits", size_splits_dy);
+  AttrUtils::SetInt(lstmSplitDyDesc, "split_dim", 0);
+  AttrUtils::SetInt(lstmSplitDyDesc, "num_split", num_split_x);
+  return lstmSplitDyDesc;
+}
+
+OpDescPtr& DynamicRNNGradAlignFusionPass::SetDescForSplitVDC(const OpDescPtr& dynamicRNNGradDesc,
+                                                             const GeTensorDesc& split_tensor_desc, int64_t num_split_x,
+                                                             OpDescPtr& lstmSplitCDesc) const {
+  GeTensorDesc c_input_tensor_desc = GeTensorDesc(dynamicRNNGradDesc->GetInputDesc(7).GetShape(), FORMAT_ND, DT_FLOAT);
+  c_input_tensor_desc.SetOriginShape(dynamicRNNGradDesc->GetInputDesc(7).GetShape());
+  c_input_tensor_desc.SetOriginFormat(FORMAT_ND);
+  lstmSplitCDesc->AddInputDesc("c", c_input_tensor_desc);
+  vector<int64_t> size_splitsc = {};
+  for (int64_t i = 0; i < num_split_x; i++) {
+    lstmSplitCDesc->AddOutputDesc("split_c" + to_string(i + 1), split_tensor_desc);
+    size_splitsc.push_back(1);
+  }
+  AttrUtils::SetListInt(lstmSplitCDesc, "size_splits", size_splitsc);
+  AttrUtils::SetInt(lstmSplitCDesc, "split_dim", 0);
+  AttrUtils::SetInt(lstmSplitCDesc, "num_split", num_split_x);
+  return lstmSplitCDesc;
+}
+
+OpDescPtr& DynamicRNNGradAlignFusionPass::SetDescForSplitVDTanh(const OpDescPtr& dynamicRNNGradDesc,
+                                                                const GeTensorDesc& split_tensor_desc,
+                                                                int64_t num_split_x,
+                                                                OpDescPtr& lstmSplitTanhDesc) const {
+  GeTensorDesc tan_input_tensor_desc =
+      GeTensorDesc(dynamicRNNGradDesc->GetInputDesc(15).GetShape(), FORMAT_ND, DT_FLOAT);
+  tan_input_tensor_desc.SetOriginShape(dynamicRNNGradDesc->GetInputDesc(15).GetShape());
+  tan_input_tensor_desc.SetOriginFormat(FORMAT_ND);
+  lstmSplitTanhDesc->AddInputDesc("Tanh", tan_input_tensor_desc);
+  vector<int64_t> size_splits_tanh = {};
+  for (int64_t i = 0; i < num_split_x; i++) {
+    lstmSplitTanhDesc->AddOutputDesc("split_c" + to_string(i + 1), split_tensor_desc);
+    size_splits_tanh.push_back(1);
+  }
+  AttrUtils::SetListInt(lstmSplitTanhDesc, "size_splits", size_splits_tanh);
+  AttrUtils::SetInt(lstmSplitTanhDesc, "split_dim", 0);
+  AttrUtils::SetInt(lstmSplitTanhDesc, "num_split", num_split_x);
+  return lstmSplitTanhDesc;
+}
+
+OpDescPtr& DynamicRNNGradAlignFusionPass::SetDescForSplitVDO(const OpDescPtr& dynamicRNNGradDesc,
+                                                             const GeTensorDesc& split_tensor_desc, int64_t num_split_x,
+                                                             OpDescPtr& lstmSplitODesc) const {
+  GeTensorDesc o_input_tensor_desc = GeTensorDesc(dynamicRNNGradDesc->GetInputDesc(14).GetShape(), FORMAT_ND, DT_FLOAT);
+  o_input_tensor_desc.SetOriginShape(dynamicRNNGradDesc->GetInputDesc(14).GetShape());
+  o_input_tensor_desc.SetOriginFormat(FORMAT_ND);
+  lstmSplitODesc->AddInputDesc("O", o_input_tensor_desc);
+  vector<int64_t> size_splits_o = {};
+  for (int64_t i = 0; i < num_split_x; i++) {
+    lstmSplitODesc->AddOutputDesc("split_c" + to_string(i + 1), split_tensor_desc);
+    size_splits_o.push_back(1);
+  }
+  AttrUtils::SetListInt(lstmSplitODesc, "size_splits", size_splits_o);
+  AttrUtils::SetInt(lstmSplitODesc, "split_dim", 0);
+  AttrUtils::SetInt(lstmSplitODesc, "num_split", num_split_x);
+  return lstmSplitODesc;
+}
+
+OpDescPtr& DynamicRNNGradAlignFusionPass::SetDescForSplitVDF(const OpDescPtr& dynamicRNNGradDesc,
+                                                             const GeTensorDesc& split_tensor_desc, int64_t num_split_x,
+                                                             OpDescPtr& lstmSplitFDesc) const {
+  GeTensorDesc f_input_tensor_desc = GeTensorDesc(dynamicRNNGradDesc->GetInputDesc(13).GetShape(), FORMAT_ND, DT_FLOAT);
+  f_input_tensor_desc.SetOriginShape(dynamicRNNGradDesc->GetInputDesc(13).GetShape());
+  f_input_tensor_desc.SetOriginFormat(FORMAT_ND);
+  lstmSplitFDesc->AddInputDesc("F", f_input_tensor_desc);
+  vector<int64_t> size_splits_f = {};
+  for (int64_t i = 0; i < num_split_x; i++) {
+    lstmSplitFDesc->AddOutputDesc("split_c" + to_string(i + 1), split_tensor_desc);
+    size_splits_f.push_back(1);
+  }
+  AttrUtils::SetListInt(lstmSplitFDesc, "size_splits", size_splits_f);
+  AttrUtils::SetInt(lstmSplitFDesc, "split_dim", 0);
+  AttrUtils::SetInt(lstmSplitFDesc, "num_split", num_split_x);
+  return lstmSplitFDesc;
+}
+
+OpDescPtr& DynamicRNNGradAlignFusionPass::SetDescForSplitVDJ(const OpDescPtr& dynamicRNNGradDesc,
+                                                             const GeTensorDesc& split_tensor_desc, int64_t num_split_x,
+                                                             OpDescPtr& lstmSplitJDesc) const {
+  GeTensorDesc j_input_tensor_desc = GeTensorDesc(dynamicRNNGradDesc->GetInputDesc(12).GetShape(), FORMAT_ND, DT_FLOAT);
+  j_input_tensor_desc.SetOriginShape(dynamicRNNGradDesc->GetInputDesc(12).GetShape());
+  j_input_tensor_desc.SetOriginFormat(FORMAT_ND);
+  lstmSplitJDesc->AddInputDesc("J", j_input_tensor_desc);
+  vector<int64_t> size_splits_j = {};
+  for (int64_t i = 0; i < num_split_x; i++) {
+    lstmSplitJDesc->AddOutputDesc("split_c" + to_string(i + 1), split_tensor_desc);
+    size_splits_j.push_back(1);
+  }
+  AttrUtils::SetListInt(lstmSplitJDesc, "size_splits", size_splits_j);
+  AttrUtils::SetInt(lstmSplitJDesc, "split_dim", 0);
+  AttrUtils::SetInt(lstmSplitJDesc, "num_split", num_split_x);
+  return lstmSplitJDesc;
+}
+
+OpDescPtr& DynamicRNNGradAlignFusionPass::SetDescForSplitVDI(const OpDescPtr& dynamicRNNGradDesc,
+                                                             const GeTensorDesc& split_tensor_desc, int64_t num_split_x,
+                                                             OpDescPtr& lstmSplitIDesc) const {
+  GeTensorDesc i_input_tensor_desc = GeTensorDesc(dynamicRNNGradDesc->GetInputDesc(11).GetShape(), FORMAT_ND, DT_FLOAT);
+  i_input_tensor_desc.SetOriginShape(dynamicRNNGradDesc->GetInputDesc(11).GetShape());
+  i_input_tensor_desc.SetOriginFormat(FORMAT_ND);
+  lstmSplitIDesc->AddInputDesc("I", i_input_tensor_desc);
+  vector<int64_t> size_splits_i = {};
+  for (int64_t i = 0; i < num_split_x; i++) {
+    lstmSplitIDesc->AddOutputDesc("split_c" + to_string(i + 1), split_tensor_desc);
+    size_splits_i.push_back(1);
+  }
+  AttrUtils::SetListInt(lstmSplitIDesc, "size_splits", size_splits_i);
+  AttrUtils::SetInt(lstmSplitIDesc, "split_dim", 0);
+  AttrUtils::SetInt(lstmSplitIDesc, "num_split", num_split_x);
+  return lstmSplitIDesc;
 }
 
 ge::NodePtr DynamicRNNGradAlignFusionPass::AddSplitNode(ge::NodePtr dynamicRNNGradNode, ge::ComputeGraph& graph,
