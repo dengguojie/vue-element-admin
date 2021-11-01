@@ -450,3 +450,5 @@ from .act_ulq_clamp_min_grad import act_ulq_clamp_min_grad
 from .acts_ulq_input_grad import acts_ulq_input_grad
 from .acts_ulq import acts_ulq
 from .ifmr import ifmr
+
+from .update_tensor_desc import update_tensor_desc

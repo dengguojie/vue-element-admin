@@ -2870,4 +2870,21 @@ COMMON_INFER_FUNC_REG(GetShape, GetShapeInferShape);
 // Registered verify function
 VERIFY_FUNC_REG(GetShape, GetShapeVerify);
 // ----------------GetShape End---------------------
+
+// ----------------UpdateTensorDesc Begin-------------------
+IMPLEMT_INFERFUNC(UpdateTensorDesc, UpdateTensorDescInfer) {
+  std::vector<int64_t> y_shape;
+  if (op.GetAttr("shape", y_shape) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[shape] value failed"));
+    return GRAPH_FAILED;
+  }
+
+  TensorDesc y_desc = op.GetOutputDesc("y");
+  y_desc.SetShape(Shape(y_shape));
+  y_desc.SetDataType(DT_INT64);
+  return op.UpdateOutputDesc("y", y_desc);
+}
+
+INFER_FUNC_REG(UpdateTensorDesc, UpdateTensorDescInfer);
+// ----------------UpdateTensorDesc End-------------------
 }  // namespace ge
