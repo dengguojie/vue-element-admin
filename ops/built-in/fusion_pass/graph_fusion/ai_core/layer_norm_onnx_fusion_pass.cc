@@ -29,11 +29,11 @@
 #include "graph/debug/ge_attr_define.h"
 #include "op_log.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
-#include "pattern_fusion_util.h"
 #include "fp16_t.hpp"
-
+using namespace ge;
 namespace fe {
 static const char* REDUCEMEAN = "ReduceMeanD";
+static const char* REDUCEMEANDY = "ReduceMean";
 static const char* SUB = "Sub";
 static const char* CAST = "Cast";
 static const char* POW = "Pow";
@@ -95,10 +95,10 @@ vector<FusionPattern*> LayerNormONNXFusionPass::DefinePatterns() {
   FusionPattern* case1 = new (std::nothrow) FusionPattern("LayerNormOnnxFusionPass");
   FUSION_PASS_CHECK(case1 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."), return patterns);
   case1->AddOpDesc(PATTERN_INPUT)
-      .AddOpDesc(PATTERN_REDUCEMEAN0, {REDUCEMEAN})
+      .AddOpDesc(PATTERN_REDUCEMEAN0, {REDUCEMEAN, REDUCEMEANDY})
       .AddOpDesc(PATTERN_SUB0, {SUB})
       .AddOpDesc(PATTERN_POW0, {POW})
-      .AddOpDesc(PATTERN_REDUCEMEAN1, {REDUCEMEAN})
+      .AddOpDesc(PATTERN_REDUCEMEAN1, {REDUCEMEAN, REDUCEMEANDY})
       .AddOpDesc(PATTERN_ADD0, {ADD})
       .AddOpDesc(PATTERN_SQRT0, {SQRT})
       .AddOpDesc(PATTERN_DIV0, {REALDIV, DIV})
@@ -118,10 +118,10 @@ vector<FusionPattern*> LayerNormONNXFusionPass::DefinePatterns() {
   FusionPattern* case2 = new (std::nothrow) FusionPattern("LayerNormOnnxFusionPass");
   FUSION_PASS_CHECK(case2 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."), return patterns);
   case2->AddOpDesc(PATTERN_INPUT)
-      .AddOpDesc(PATTERN_REDUCEMEAN0, {REDUCEMEAN})
+      .AddOpDesc(PATTERN_REDUCEMEAN0, {REDUCEMEAN, REDUCEMEANDY})
       .AddOpDesc(PATTERN_SUB0, {SUB})
       .AddOpDesc(PATTERN_POW0, {POW})
-      .AddOpDesc(PATTERN_REDUCEMEAN1, {REDUCEMEAN})
+      .AddOpDesc(PATTERN_REDUCEMEAN1, {REDUCEMEAN, REDUCEMEANDY})
       .AddOpDesc(PATTERN_ADD0, {ADD})
       .AddOpDesc(PATTERN_SQRT0, {SQRT})
       .AddOpDesc(PATTERN_DIV0, {REALDIV, DIV})
@@ -137,11 +137,11 @@ vector<FusionPattern*> LayerNormONNXFusionPass::DefinePatterns() {
   FusionPattern* case3 = new (std::nothrow) FusionPattern("LayerNormOnnxFusionPass");
   FUSION_PASS_CHECK(case3 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."), return patterns);
   case3->AddOpDesc(PATTERN_INPUT)
-      .AddOpDesc(PATTERN_REDUCEMEAN0, {REDUCEMEAN})
+      .AddOpDesc(PATTERN_REDUCEMEAN0, {REDUCEMEAN, REDUCEMEANDY})
       .AddOpDesc(PATTERN_SUB0, {SUB})
       .AddOpDesc(PATTERN_CAST0, {CAST})
       .AddOpDesc(PATTERN_POW0, {POW})
-      .AddOpDesc(PATTERN_REDUCEMEAN1, {REDUCEMEAN})
+      .AddOpDesc(PATTERN_REDUCEMEAN1, {REDUCEMEAN, REDUCEMEANDY})
       .AddOpDesc(PATTERN_ADD0, {ADD})
       .AddOpDesc(PATTERN_SQRT0, {SQRT})
       .AddOpDesc(PATTERN_DIV0, {REALDIV, DIV})
@@ -162,11 +162,11 @@ vector<FusionPattern*> LayerNormONNXFusionPass::DefinePatterns() {
   FusionPattern* case4 = new (std::nothrow) FusionPattern("LayerNormOnnxFusionPass");
   FUSION_PASS_CHECK(case4 == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), "new a pattern object failed."), return patterns);
   case4->AddOpDesc(PATTERN_INPUT)
-      .AddOpDesc(PATTERN_REDUCEMEAN0, {REDUCEMEAN})
+      .AddOpDesc(PATTERN_REDUCEMEAN0, {REDUCEMEAN, REDUCEMEANDY})
       .AddOpDesc(PATTERN_SUB0, {SUB})
       .AddOpDesc(PATTERN_CAST0, {CAST})
       .AddOpDesc(PATTERN_POW0, {POW})
-      .AddOpDesc(PATTERN_REDUCEMEAN1, {REDUCEMEAN})
+      .AddOpDesc(PATTERN_REDUCEMEAN1, {REDUCEMEAN, REDUCEMEANDY})
       .AddOpDesc(PATTERN_ADD0, {ADD})
       .AddOpDesc(PATTERN_SQRT0, {SQRT})
       .AddOpDesc(PATTERN_DIV0, {REALDIV, DIV})
@@ -206,7 +206,6 @@ Status LayerNormONNXFusionPass::CreatNode(ge::ComputeGraph& graph, const ge::Nod
   FUSION_PASS_MAKE_SHARED((new_desc_ptr = std::make_shared<ge::OpDesc>(opname, optype)),
                           OP_LOGE(FUSED_OP_TYPE.c_str(), "create %s_desc_ptr failed.", opname.c_str());
                           new_desc_ptr = nullptr; return INTERNAL_ERROR);
-
   ge::GeTensorDesc input_descs = previous_node->GetOpDesc()->GetInputDesc(0);
   new_desc_ptr->AddInputDesc(input_descs);
   new_desc_ptr->AddOutputDesc(input_descs);
@@ -233,7 +232,8 @@ Status LayerNormONNXFusionPass::CreatNode(ge::ComputeGraph& graph, const ge::Nod
   FUSION_PASS_MAKE_SHARED((const_desc_ptr = std::make_shared<ge::GeTensor>(
                                input_descs, reinterpret_cast<uint8_t*>(const_array.get()), const_numel * sizeof(T))),
                           const_desc_ptr = nullptr;
-                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "const_desc_ptr failed."); return PARAM_INVALID);
+                          VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "const_desc_ptr failed.");
+                          return PARAM_INVALID);
   ge::OpDescUtils::SetWeights(cur_node, {const_desc_ptr});
   auto const_nodes = OpDescUtils::GetConstInputs(cur_node);
   FUSION_PASS_CHECK(const_nodes.size() < 1, OP_LOGE(FUSED_OP_TYPE.c_str(), " const node size less than 1."),
@@ -247,6 +247,47 @@ Status LayerNormONNXFusionPass::CreatNode(ge::ComputeGraph& graph, const ge::Nod
   std::map<string, uint32_t> input_name_idx = {{"x1", 0}, {"x2", 1}};
   new_desc_ptr->UpdateInputName(input_name_idx);
   return SUCCESS;
+}
+
+bool LayerNormONNXFusionPass::CheckDynamic(const ge::NodePtr node, int32_t index) {
+  auto dims = node->GetOpDesc()->GetInputDesc(index).GetShape().GetDims();
+  size_t dim_size = dims.size();
+  for (size_t i = 0; i < dim_size; ++i) {
+    if (PatternFusionUtil::IsUnknownShape(dims.at(i))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool LayerNormONNXFusionPass::GetConstValue(const Operator& op, const Tensor& const_tensor, const DataType& dtype,
+                                            std::vector<int64_t>& const_data) {
+  size_t size = 0;
+  if (dtype == ge::DT_INT32) {
+    int32_t* const_data_ptr = (int32_t*)const_tensor.GetData();
+    FUSION_PASS_CHECK(const_data_ptr == nullptr, OP_LOGW(op.GetName().c_str(), "Get const data failed."), return false);
+    if (const_data_ptr == nullptr) {
+      VECTOR_FUSION_INNER_ERR_REPORT(op.GetName().c_str(), "const_data_ptr is null");
+    }
+    size = const_tensor.GetSize() / sizeof(int32_t);
+    for (size_t i = 0; i < size; ++i) {
+      const_data.push_back((int32_t)((*(const_data_ptr + i))));
+      OP_LOGD(op.GetName().c_str(), "const data int32 fusion pass ====== %d", (int32_t)(*(const_data_ptr + i)));
+    }
+  } else if (dtype == ge::DT_INT64) {
+    int64_t* const_data_ptr = (int64_t*)const_tensor.GetData();
+    FUSION_PASS_CHECK(const_data_ptr == nullptr, OP_LOGW(op.GetName().c_str(), "Get const data failed."), return false);
+    size = const_tensor.GetSize() / sizeof(int64_t);
+    for (size_t i = 0; i < size; ++i) {
+      const_data.push_back(((int64_t)(*(const_data_ptr + i))));
+      OP_LOGD(op.GetName().c_str(), "const data int64 fusion pass ====== %d", (int64_t)(*(const_data_ptr + i)));
+    }
+  } else {
+    VECTOR_FUSION_INNER_ERR_REPORT(op.GetName().c_str(), "not support this type");
+    return false;
+  }
+
+  return true;
 }
 
 Status LayerNormONNXFusionPass::CreateMulAndAddNode(ge::ComputeGraph& graph, const ge::NodePtr div0_node,
@@ -434,24 +475,26 @@ Status LayerNormONNXFusionPass::CheckValue(std::map<std::string, ge::NodePtr>& n
     return NOT_CHANGED;
   }
 
+  ge::GeTensorDesc input_desc = nodes_map[PATTERN_REDUCEMEAN0]->GetOpDesc()->GetInputDesc(0);
+  std::vector<int64_t> expect = input_desc.GetShape().GetDims();
+  if (nodes_map[PATTERN_MUL0] != nullptr && !gamma_dynamic) {
+    FUSION_PASS_CHECK(SUCCESS != CheckShape(nodes_map[PATTERN_MUL0], axes, expect),
+                      OP_LOGW(FUSED_OP_TYPE.c_str(), "The shape of %s is not as expect.", PATTERN_MUL0.c_str()),
+                      return NOT_CHANGED);
+  }
+
+  if (nodes_map[PATTERN_ADD1] != nullptr && !beta_dynamic) {
+    FUSION_PASS_CHECK(SUCCESS != CheckShape(nodes_map[PATTERN_ADD1], axes, expect),
+                      OP_LOGW(FUSED_OP_TYPE.c_str(), "The shape of %s is not as expect.", PATTERN_ADD1.c_str()),
+                      return NOT_CHANGED);
+  }
+
   FUSION_PASS_CHECK(SUCCESS != GetScalarFromOp(nodes_map[PATTERN_ADD0], epsilon),
                     OP_LOGW(FUSED_OP_TYPE.c_str(), "Fail to get epsilon from const node of %s.", PATTERN_ADD0.c_str()),
                     return NOT_CHANGED);
   if (epsilon > 0.1) {
     OP_LOGW("LayerNorm", "the epsilon of Add0 is %f, which should be close to 0, not change", epsilon);
     return NOT_CHANGED;
-  }
-  ge::GeTensorDesc input_desc = nodes_map[PATTERN_REDUCEMEAN0]->GetOpDesc()->GetInputDesc(0);
-  std::vector<int64_t> expect = input_desc.GetShape().GetDims();
-  if (nodes_map[PATTERN_MUL0] != nullptr) {
-    FUSION_PASS_CHECK(SUCCESS != CheckShape(nodes_map[PATTERN_MUL0], axes, expect),
-                      OP_LOGW(FUSED_OP_TYPE.c_str(), "The shape of %s is not as expect.", PATTERN_MUL0.c_str()),
-                      return NOT_CHANGED);
-  }
-  if (nodes_map[PATTERN_ADD1] != nullptr) {
-    FUSION_PASS_CHECK(SUCCESS != CheckShape(nodes_map[PATTERN_ADD1], axes, expect),
-                      OP_LOGW(FUSED_OP_TYPE.c_str(), "The shape of %s is not as expect.", PATTERN_ADD1.c_str()),
-                      return NOT_CHANGED);
   }
 
   return SUCCESS;
@@ -464,17 +507,15 @@ static Status CheckNodeInputSame(std::map<std::string, ge::NodePtr>& nodes_map) 
     if (nodes_map[PATTERN_DIV0]->GetInDataAnchor(0) != nullptr &&
         nodes_map[PATTERN_CAST0]->GetInDataAnchor(0) != nullptr) {
       FUSION_PASS_CHECK(nodes_map[PATTERN_DIV0]->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode() !=
-                        nodes_map[PATTERN_CAST0]->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode(),
-                        OP_LOGD("LayerNorm", "The input of div0 and cast0 is not same"),
-      return NOT_CHANGED);
+                            nodes_map[PATTERN_CAST0]->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode(),
+                        OP_LOGD("LayerNorm", "The input of div0 and cast0 is not same"), return NOT_CHANGED);
     }
   } else if (check_nodes_not_null) {
     if (nodes_map[PATTERN_DIV0]->GetInDataAnchor(0) != nullptr &&
         nodes_map[PATTERN_POW0]->GetInDataAnchor(0) != nullptr) {
       FUSION_PASS_CHECK(nodes_map[PATTERN_DIV0]->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode() !=
-                        nodes_map[PATTERN_POW0]->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode(),
-                        OP_LOGD("LayerNorm", "The input of div0 and cast0 is not same"),
-      return NOT_CHANGED);
+                            nodes_map[PATTERN_POW0]->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode(),
+                        OP_LOGD("LayerNorm", "The input of div0 and cast0 is not same"), return NOT_CHANGED);
     }
   } else {
     return SUCCESS;
@@ -485,9 +526,8 @@ static Status CheckNodeInputSame(std::map<std::string, ge::NodePtr>& nodes_map) 
                                nodes_map[PATTERN_SUB0]->GetInDataAnchor(0) != nullptr;
   if (check_indata_not_null) {
     FUSION_PASS_CHECK(nodes_map[PATTERN_SUB0]->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode() !=
-                      nodes_map[PATTERN_REDUCEMEAN0]->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode(),
-                      OP_LOGD("LayerNorm", "The input of sub0 and reducemean0 is not same"),
-    return NOT_CHANGED);
+                          nodes_map[PATTERN_REDUCEMEAN0]->GetInDataAnchor(0)->GetPeerOutAnchor()->GetOwnerNode(),
+                      OP_LOGD("LayerNorm", "The input of sub0 and reducemean0 is not same"), return NOT_CHANGED);
   }
   return SUCCESS;
 }
@@ -516,19 +556,40 @@ Status LayerNormONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
                     OP_LOGW(FUSED_OP_TYPE.c_str(),
                             "The input of sub0 and reducemean0, div0 and (pow0 or cast0) have different input node,\
                            fusion failed."),
-  return NOT_CHANGED);
-
+                    return NOT_CHANGED);
+  // check dynamic
+  if (CheckDynamic(nodes_map[PATTERN_REDUCEMEAN0], 0)) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "the input is dynamic shape.");
+    x_dynamic = true;
+  }
   // step2: get axes from reducemean0, which is used by CreateMulAndAddNode and CheckValue
   ge::Operator op_reducemean0 = ge::OpDescUtils::CreateOperatorFromNode(nodes_map[PATTERN_REDUCEMEAN0]);
-  if (op_reducemean0.GetAttr("axes", axes) != GRAPH_SUCCESS) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to get axes from %s.", nodes_map[PATTERN_REDUCEMEAN0]->GetName().c_str());
-    return GRAPH_FAILED;
-  }
   size_t dims_size = nodes_map[PATTERN_REDUCEMEAN0]->GetOpDesc()->GetInputDesc(0).GetShape().GetDims().size();
+  ge::Tensor const_tensor;
   if (dims_size < 1) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "input shape must be greater than one, not change");
     return NOT_CHANGED;
   }
+  if (op_reducemean0.GetOpType() == "ReduceMean") {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "op_reducemean0 type is ReduceMean.");
+    if (ge::GRAPH_SUCCESS != op_reducemean0.GetInputConstData("axes", const_tensor)) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to get axes from %s.", nodes_map[PATTERN_REDUCEMEAN0]->GetName().c_str());
+      return GRAPH_FAILED;
+    }
+    DataType dtype = op_reducemean0.GetInputDesc("axes").GetDataType();
+    if (!GetConstValue(op_reducemean0, const_tensor, dtype, axes)) {
+      VECTOR_FUSION_INNER_ERR_REPORT(op_reducemean0.GetName().c_str(), "Get Const Value failed ");
+      return GRAPH_FAILED;
+    };
+
+  } else {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "op_reducemean0 type is ReduceMeanD.");
+    if (op_reducemean0.GetAttr("axes", axes) != GRAPH_SUCCESS) {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "Fail to get axes from %s.", nodes_map[PATTERN_REDUCEMEAN0]->GetName().c_str());
+      return GRAPH_FAILED;
+    }
+  }
+  
   for (size_t i = 0; i < axes.size(); i++) {
     axes[i] = axes[i] > 0 ? axes[i] : axes[i] + dims_size;
   }
@@ -541,6 +602,16 @@ Status LayerNormONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   } else if ((nodes_map[PATTERN_MUL0] == nullptr) || (nodes_map[PATTERN_ADD1] == nullptr)) {
     OP_LOGW(FUSED_OP_TYPE.c_str(), "Either mul0_node or add1_node is null, fusion failed.");
     return NOT_CHANGED;
+  } else {
+    // check gamma and beta dynamic
+    if (CheckDynamic(nodes_map[PATTERN_MUL0], 0) || CheckDynamic(nodes_map[PATTERN_MUL0], 1)) {
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "the gamma is dynamic shape.");
+      gamma_dynamic = true;
+    }
+    if (CheckDynamic(nodes_map[PATTERN_ADD1], 0) || CheckDynamic(nodes_map[PATTERN_ADD1], 1)) {
+      OP_LOGI(FUSED_OP_TYPE.c_str(), "the beta is dynamic shape.");
+      beta_dynamic = true;
+    }
   }
 
   // step3: check the connection relationship and value of attr or const node
@@ -554,11 +625,14 @@ Status LayerNormONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
                     return NOT_CHANGED);
 
   // step4: creat mul and add op, convert the without affine scene into the with affine scene.
-  if (!with_affine) {
+  if (!with_affine && (!(x_dynamic))) {
     FUSION_PASS_CHECK(SUCCESS != CreateMulAndAddNode(graph, nodes_map[PATTERN_DIV0], nodes_map[PATTERN_MUL0],
                                                      nodes_map[PATTERN_ADD1], fusionNodes),
                       OP_LOGW(FUSED_OP_TYPE.c_str(), "Fail to create mul0_node and add1_node, fusion failed."),
                       return NOT_CHANGED);
+  } else if (x_dynamic && !with_affine) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "The scene is dynamic and without affine, not change.");
+    return NOT_CHANGED;
   }
 
   // step5: create(copy) output Opdesc
@@ -588,6 +662,7 @@ Status LayerNormONNXFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping
   ge::GeTensorDesc var_desc = nodes_map[PATTERN_REDUCEMEAN1]->GetOpDesc()->GetOutputDesc(0);
   FUSION_PASS_CHECK(layer_desc->AddOutputDesc("variance", var_desc) != SUCCESS,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "add var_desc failed."), return FAILED);
+
 
   // step7: add layer_norm node and set value for attr
   ge::NodePtr layer_node = graph.AddNode(layer_desc);

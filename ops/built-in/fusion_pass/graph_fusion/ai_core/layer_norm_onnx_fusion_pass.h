@@ -22,7 +22,9 @@
 #define OPS_BUILT_IN_FUSION_PASS_GRAPH_FUSION_AI_CORE_LAYER_NORM_ONNX_FUSION_PASS_H_
 
 #include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
-
+#include "graph/tensor.h"
+#include "pattern_fusion_util.h"
+#include "graph_optimizer/fusion_common/pattern_fusion_base_pass.h"
 namespace fe {
 
 class LayerNormONNXFusionPass : public PatternFusionBasePass {
@@ -33,19 +35,24 @@ class LayerNormONNXFusionPass : public PatternFusionBasePass {
  private:
   const std::string FUSED_OP_TYPE = "LayerNorm";
   bool with_affine = true;
+  bool x_dynamic = false;
+  bool gamma_dynamic = false;
+  bool beta_dynamic = false;
   float epsilon = 0.0000001;
   int begin_norm_axis = 0;
   std::vector<int64_t> axes;
 
   Status CheckEdges(std::map<std::string, ge::NodePtr>& nodes_map);
-  Status CheckConstInput(ge::NodePtr node, const std::string node_name);
   Status CheckValue(std::map<std::string, ge::NodePtr>& nodes_map);
-  template<class T>
+  template <class T>
   Status CreatNode(ge::ComputeGraph& graph, const ge::NodePtr& previous_node, ge::NodePtr& cur_node, std::string opname,
                    std::string optype, T value, vector<ge::NodePtr>& fusionNodes);
   Status CreateMulAndAddNode(ge::ComputeGraph& graph, const ge::NodePtr div0_node, ge::NodePtr& mul0_node,
                              ge::NodePtr& add1_node, vector<ge::NodePtr>& fusionNodes);
   Status AddEdge(const ge::NodePtr& pre_node, int pre_idx, const ge::NodePtr& cur_node, int cur_idx);
+  bool GetConstValue(const Operator& op, const Tensor& const_tensor, const DataType& dtype,
+                     std::vector<int64_t>& const_data);
+  bool CheckDynamic(const ge::NodePtr node, int32_t index);
 };
 }  // namespace fe
 
