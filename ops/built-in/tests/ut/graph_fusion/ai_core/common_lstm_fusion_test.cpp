@@ -86,6 +86,7 @@ TEST_F(common_lstm_fusion_test, common_lstm_fusion_test_1) {
 
   bool findDynamicRNN = false;
   bool findReshape = false;
+  bool findExpandDims = false;
 
   for (auto node: computeGraphPtr->GetAllNodes()) {
     if (node->GetType() == "DynamicRNN") {
@@ -93,11 +94,16 @@ TEST_F(common_lstm_fusion_test, common_lstm_fusion_test_1) {
     }
 
     if (node->GetType() == "Reshape") {
-    findReshape = true;
+      findReshape = true;
+    }
+
+    if (node->GetType() == "ExpandDims") {
+      findExpandDims = true;
     }
   }
   EXPECT_EQ(findDynamicRNN, true);
-  EXPECT_EQ(findReshape, true);
+  EXPECT_EQ(findReshape, false);
+  EXPECT_EQ(findExpandDims, true);
 }
 
 TEST_F(common_lstm_fusion_test, common_lstm_fusion_test_2) {
@@ -152,6 +158,7 @@ TEST_F(common_lstm_fusion_test, common_lstm_fusion_test_2) {
 
   bool findDynamicRNN = false;
   bool findReshape = false;
+  bool findExpandDims = false;
 
   for (auto node: computeGraphPtr->GetAllNodes()) {
     if (node->GetType() == "DynamicRNN") {
@@ -161,9 +168,14 @@ TEST_F(common_lstm_fusion_test, common_lstm_fusion_test_2) {
     if (node->GetType() == "Reshape") {
     findReshape = true;
     }
+
+    if (node->GetType() == "ExpandDims") {
+      findExpandDims = true;
+    }
   }
   EXPECT_EQ(findDynamicRNN, true);
-  EXPECT_EQ(findReshape, true);
+  EXPECT_EQ(findReshape, false);
+  EXPECT_EQ(findExpandDims, true);
 }
 
 TEST_F(common_lstm_fusion_test, common_lstm_fusion_test_3) {
