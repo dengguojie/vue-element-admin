@@ -233,7 +233,7 @@ down_third_libs(){
       fi
     done
 
-  expect_md5=("193f0ca5246c1dd84920db34d2d8249f" #is secure_c
+  expect_md5=("ae4865cec1bfb52f7dca03f5c05ac98a" #is secure_c
               "1a6274bc4a65b55a6fa70e264d796490" #is protobuf
               "9e30f67e8531477de4117506fe44669b" #is eigen
               "16877098823401d1bf2ed7891d7dce36" #is gtest
