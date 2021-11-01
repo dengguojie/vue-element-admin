@@ -85,13 +85,10 @@ Status ParseOpToGraphConcat(const ge::Operator& op, Graph& graph) {
   } else {
     int concat_dim = DEFAULT_CONCAT_DIM;
     op.GetAttr("concat_dim", concat_dim);
-    std::vector<int64_t> dims = {};
-    auto tensor = Scalar2Tensor(concat_dim, dims, ge::DT_INT32);
-    auto const_dims = op::Const().set_attr_value(tensor);
 
-    auto concat_op = op::Concat("Concat")
+    auto concat_op = op::ConcatD("ConcatD")
                          .create_dynamic_input_x(input_size)
-                         .set_input_concat_dim(const_dims)
+                         .set_attr_concat_dim(concat_dim)
                          .set_attr_N(input_size);
                          
     std::string input_name = "";
