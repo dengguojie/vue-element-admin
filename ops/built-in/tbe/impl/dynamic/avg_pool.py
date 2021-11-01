@@ -78,6 +78,7 @@ class AvgPool:
         self.ub_ele = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE) // self.dtype_size
         self.one_fourth_ub_ele = self.ub_ele // 4
         self.init_gm_tensor()
+
     def tiling_args(self):
         self.tiling_mode = self.tik_instance.Scalar("int32", name="tiling_mode")
         self.tiling_mode.set_as(self.tiling_ub[0])
@@ -476,7 +477,8 @@ class AvgPool:
         self.size_loop.set_as(repeat_o * self.size_w // C_ZERO)
         with self.tik_instance.for_range(0, self.size_loop) as size_loop_idx:
             self.size_offset.set_as(size_loop_idx * C_ZERO)
-            self.tik_instance.vmuls(C_ZERO, ub_x[self.size_offset], ub_x[self.size_offset], self.factor_total, 1, 1, 1, 1, 1)
+            self.tik_instance.vmuls(C_ZERO, ub_x[self.size_offset], ub_x[self.size_offset],
+                                    self.factor_total, 1, 1, 1, 1, 1)
 
     def tiling_c_dim_core_nc(self, core_idx, core_ele):
         '''Tiling c1 dim
@@ -503,7 +505,7 @@ class AvgPool:
             self.src_stride.set_as(self.input_w - self.pad_w)
             self.dst_stride.set_as(0)
         with self.tik_instance.else_scope():
-            self.repeat_3.set_as(self.pad_h -1)
+            self.repeat_3.set_as(self.pad_h - 1)
             self.burst_len_in.set_as(self.input_w)
             self.src_stride.set_as(0)
             self.dst_stride.set_as(self.pad_r + self.pad_l)
@@ -536,7 +538,7 @@ class AvgPool:
                 _inner(ele_idx * 2, self.ub_a, self.ub_b)
                 _inner(ele_idx * 2 + 1,  self.ub_c, self.ub_d)
             with self.tik_instance.if_scope(core_ele % 2 == 1):
-                _inner(core_ele -1,  self.ub_a, self.ub_b)
+                _inner(core_ele - 1,  self.ub_a, self.ub_b)
 
     def tiling_h_dim_core_nc(self, core_idx, core_ele, loop_num, loop_left):
         with self.tik_instance.for_range(0, loop_num) as loop_idx:
@@ -565,10 +567,10 @@ class AvgPool:
                 self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
                 self.nburst.set_as(self.after_h - self.pad_t)
             with self.tik_instance.else_scope():
-                self.offset_2.set_as((self.pad_h - self.pad_b - self.before_h)*self.pad_w*C_ZERO -
-                                    self.pad_r*C_ZERO)
-                self.size_2.set_as((self.after_h - (self.pad_h - self.pad_b))*self.pad_w*C_ZERO +
-                                  self.pad_r*C_ZERO)
+                self.offset_2.set_as((self.pad_h - self.pad_b - self.before_h) * self.pad_w * C_ZERO -
+                                    self.pad_r * C_ZERO)
+                self.size_2.set_as((self.after_h - (self.pad_h - self.pad_b)) * self.pad_w * C_ZERO +
+                                  self.pad_r * C_ZERO)
                 self.repeat_3.set_as(self.input_h-1)
                 self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
                 self.nburst.set_as(self.input_h)
@@ -583,10 +585,10 @@ class AvgPool:
                 self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
                 self.nburst.set_as(self.len_h)
             with self.tik_instance.else_scope():
-                self.offset_2.set_as((self.pad_h - self.pad_b - self.before_h)*self.pad_w*C_ZERO -
-                                    self.pad_r*C_ZERO)
-                self.size_2.set_as((self.after_h - (self.pad_h - self.pad_b))*self.pad_w*C_ZERO +
-                                  self.pad_r*C_ZERO)
+                self.offset_2.set_as((self.pad_h - self.pad_b - self.before_h) * self.pad_w * C_ZERO -
+                                    self.pad_r * C_ZERO)
+                self.size_2.set_as((self.after_h - (self.pad_h - self.pad_b)) * self.pad_w * C_ZERO +
+                                  self.pad_r * C_ZERO)
                 self.repeat_3.set_as(self.pad_h - self.pad_b - self.before_h - 1)
                 self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
                 self.nburst.set_as(self.pad_h - self.pad_b - self.before_h)
@@ -653,7 +655,7 @@ class AvgPool:
             self.after_h = self.before_h + self.ksize_h
             with self.tik_instance.if_scope(self.before_h < self.pad_t):
                 #
-                self.size_1.set_as((self.pad_t - self.before_h) * self.len_w* C_ZERO)
+                self.size_1.set_as((self.pad_t - self.before_h) * self.len_w * C_ZERO)
                 self.offset_2.set_as(0)
                 self.size_2.set_as(0)
                 self.repeat_3.set_as(self.after_h - self.pad_t)
