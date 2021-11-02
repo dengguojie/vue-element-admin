@@ -48,7 +48,8 @@ def _check_params(ref_shape, value_shape, dtype, kernel_name):
     para_check.check_dtype(dtype, check_list, param_name="ref")
 
     if operator.ne(list(ref_shape), list(value_shape)):
-        error_detail = "Shape of ref and value should be same"
+        error_detail = "Shape of ref " + str(list(ref_shape)) + " and value " + str(
+            list(value_shape)) + " should be same"
         error_manager_vector.raise_err_two_input_shape_invalid("assign", "ref", "value", error_detail)
 
     para_check.check_shape(ref_shape, param_name="ref")
@@ -88,6 +89,7 @@ def _assign_schedule(res, tensor_val):
         total_ele = ((total_ele + block_ele) // block_ele) * block_ele
         fused_factor = min(fused_axis_factor, total_ele)
         return fused_axis_factor, fused_factor
+
     # set ub
     tensor_input = tensor_val
     x_shape = [i.value for i in tensor_input.shape]
@@ -147,7 +149,9 @@ def assign(ref, value, output, kernel_name="assign"):
     res_num = 1
     for i in range(len(ref_shape)):
         res_num = res_num * ref_shape[i]
-    reshape = [res_num,]
+    reshape = [
+        res_num,
+    ]
 
     tensor_val = tvm.placeholder(reshape, dtype=dtype, name='tensor_val')
     res = tvm.compute(reshape, lambda *i: tensor_val(*i), name='res')

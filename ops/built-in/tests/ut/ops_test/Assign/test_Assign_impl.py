@@ -51,13 +51,20 @@ case4 = {"params": [{"shape": (128981,), "dtype": "float32", "format": "ND", "or
          "expect": "success",
          "support_expect": True}
 
-
+case5 = {"params": [{"shape": (10000,), "dtype": "float32", "format": "ND", "ori_shape": (10000,),"ori_format": "ND"}, #x
+                    {"shape": (1000,), "dtype": "float32", "format": "ND", "ori_shape": (1000,),"ori_format": "ND"}, #h
+                    {"shape": (10000,), "dtype": "float32", "format": "ND", "ori_shape": (10000,),"ori_format": "ND"}, 
+                    ],
+         "case_name": "Assign_5",
+         "expect": RuntimeError,
+         "support_expect": False}
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case4)
- 
+ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case5)
+
 def calc_expect_func(ref, value, output):
     my_dtype = ref['dtype']
     shape = value['shape']
