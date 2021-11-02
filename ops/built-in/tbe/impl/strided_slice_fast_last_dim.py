@@ -168,12 +168,14 @@ def strided_slice_last_dim_only(input_shape, dtype, output_shape, begin, kernel_
         with tik_instance.for_range(0, core_num, block_num=core_num) as total_cycle:
             with tik_instance.if_scope(total_cycle < core_num - 1):
                 with tik_instance.for_range(0, expect_cycle) as group:
-                    tik_instance.data_move(input_ub_data[group * consecutive],
-                                           input_data[total_cycle * input_pre_data
-                                                      + group * len_burst+start],
-                                           0, one_move, ub_block_dim, src_stride, dst_stride)
-                tik_instance.data_move(output_data[total_cycle * output_ub_size],
-                                       input_ub_data, 0, 1, output_length_stride, 0, 0)
+                    if one_move != 0:
+                        tik_instance.data_move(input_ub_data[group * consecutive],
+                                               input_data[total_cycle * input_pre_data
+                                                          + group * len_burst+start],
+                                               0, one_move, ub_block_dim, src_stride, dst_stride)
+                if output_length_stride != 0:
+                    tik_instance.data_move(output_data[total_cycle * output_ub_size],
+                                           input_ub_data, 0, 1, output_length_stride, 0, 0)
             with tik_instance.if_scope(total_cycle == core_num - 1):
                 with tik_instance.for_range(0, expect_cycle) as group:
                     if tail_one_move != 0:
