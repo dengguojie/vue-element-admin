@@ -654,17 +654,22 @@ class CaseGenerator:
 
     def _generate_input_desc(self, value, base_case):
         input_name = value.get('name')
+        input_format = [] if len(value['format']) == 0 else \
+            list(set(value['format'].split(',')))
+        input_dtype = [] if len(value['dtype']) == 0 else \
+            list(set(value['dtype'].split(',')))
         if value.get('paramType') == 'optional':
-            input_format = ["UNDEFINED"]
-            input_dtype = ["UNDEFINED"]
-        else:
-            if value.get('paramType') == 'dynamic':
-                # dynamic input has "name": input_name0
-                input_name = "".join([input_name, '0'])
-            input_format = [] if len(value['format']) == 0 else \
-                list(set(value['format'].split(',')))
-            input_dtype = [] if len(value['dtype']) == 0 else \
-                list(set(value['dtype'].split(',')))
+            input_format_len = len(input_format)
+            input_dtype_len = len(input_dtype)
+            input_format.clear()
+            input_dtype.clear()
+            for _ in range(input_format_len):
+                input_format.append("UNDEFINED")
+            for _ in range(input_dtype_len):
+                input_dtype.append("UNDEFINED")
+        if value.get('paramType') == 'dynamic':
+            # dynamic input has "name": input_name0
+            input_name = "".join([input_name, '0'])
 
         if self.input_file_path.endswith(".py"):
             input_desc = {'type': input_dtype,
