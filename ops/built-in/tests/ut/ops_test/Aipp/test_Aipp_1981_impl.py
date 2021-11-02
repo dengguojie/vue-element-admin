@@ -4,6 +4,7 @@ from op_test_frame.ut import OpUT
 import json
 import te.platform as tbe_platform
 from impl.aipp_stc_dyn import new_aipp_compute
+from impl import aipp_comm
 
 ut_case = OpUT("Aipp", "impl.aipp", "aipp")
 
@@ -92,16 +93,21 @@ def test_aipp_static_1(test_arg):
     input_dync_param = param_dict["params"][1]
     output_data = param_dict["params"][2]
     try:
-        new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict, kernel_name="aipp")
+        new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict, "Ascend920", kernel_name="aipp")
     except Exception as e:
         print("1981 aipp test mock")
 
+    try:
+        new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict, "Ascend320", kernel_name="aipp")
+    except Exception as e:
+        print("1911 aipp test mock")
 
 ut_case.add_cust_test_func(test_func=test_aipp_static_1)
 
 
 def test_aipp_static_2(test_arg):
-    aipp_config_dict["input_format"] = "RGB888_U8"
+    aipp_config_dict_tmp = aipp_config_dict.copy()
+    aipp_config_dict_tmp["input_format"] = "RGB888_U8"
     param_dict = gen_static_aipp_case(
         (1, 3, 418, 416),
         (1, 1, 258, 240, 32),
@@ -109,7 +115,7 @@ def test_aipp_static_2(test_arg):
         "uint8",
         "NCHW",
         "NC1HWC0",
-        aipp_config_dict,
+        aipp_config_dict_tmp,
         "aipp_1",
         "success",
     )
@@ -117,16 +123,21 @@ def test_aipp_static_2(test_arg):
     input_dync_param = param_dict["params"][1]
     output_data = param_dict["params"][2]
     try:
-        new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict, kernel_name="aipp")
+        new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend920", kernel_name="aipp")
     except Exception as e:
         print("1981 aipp test mock")
 
+    try:
+        new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend320", kernel_name="aipp")
+    except Exception as e:
+        print("1911 aipp test mock")
 
 ut_case.add_cust_test_func(test_func=test_aipp_static_2)
 
 
 def test_aipp_static_3(test_arg):
-    aipp_config_dict["input_format"] = "YUV422SP_U8"
+    aipp_config_dict_tmp = aipp_config_dict.copy()
+    aipp_config_dict_tmp["input_format"] = "YUV422SP_U8"
     param_dict = gen_static_aipp_case(
         (1, 3, 418, 416),
         (1, 1, 258, 240, 32),
@@ -134,7 +145,7 @@ def test_aipp_static_3(test_arg):
         "uint8",
         "NCHW",
         "NC1HWC0",
-        aipp_config_dict,
+        aipp_config_dict_tmp,
         "aipp_1",
         "success",
     )
@@ -142,12 +153,104 @@ def test_aipp_static_3(test_arg):
     input_dync_param = param_dict["params"][1]
     output_data = param_dict["params"][2]
     try:
-        new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict, kernel_name="aipp")
+        new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend920", kernel_name="aipp")
     except Exception as e:
         print("1981 aipp test mock")
 
+    try:
+        new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend320", kernel_name="aipp")
+    except Exception as e:
+        print("1911 aipp test mock")
 
 ut_case.add_cust_test_func(test_func=test_aipp_static_3)
+
+
+def test_aipp_static_4(test_arg):
+    aipp_config_dict_tmp = aipp_config_dict.copy()
+    aipp_config_dict_tmp["crop_size_h"] = 10
+    aipp_config_dict_tmp["crop_size_w"] = 10
+    param_dict = gen_static_aipp_case(
+        (1, 3, 418, 416),
+        (1, 1, 44, 26, 32),
+        "uint8",
+        "uint8",
+        "NCHW",
+        "NC1HWC0",
+        aipp_config_dict_tmp,
+        "aipp_1",
+        "success",
+    )
+    input_data = param_dict["params"][0]
+    input_dync_param = param_dict["params"][1]
+    output_data = param_dict["params"][2]
+    try:
+        new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend920", kernel_name="aipp")
+    except Exception as e:
+        print("1981 aipp test mock")
+
+    try:
+        new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend320", kernel_name="aipp")
+    except Exception as e:
+        print("1911 aipp test mock")
+
+ut_case.add_cust_test_func(test_func=test_aipp_static_4)
+
+
+def test_aipp_static_5(test_arg):
+    aipp_config_dict_tmp = aipp_config_dict.copy()
+    aipp_config_dict_tmp["crop_size_h"] = 10
+    aipp_config_dict_tmp["crop_size_w"] = 10
+    param_dict = gen_static_aipp_case(
+        (1, 3, 418, 416),
+        (1, 1, 44, 26, 32),
+        "uint8",
+        "float16",
+        "NCHW",
+        "NC1HWC0",
+        aipp_config_dict_tmp,
+        "aipp_1",
+        "success",
+    )
+    input_data = param_dict["params"][0]
+    input_dync_param = param_dict["params"][1]
+    output_data = param_dict["params"][2]
+    try:
+        new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend920", kernel_name="aipp")
+    except Exception as e:
+        print("1981 aipp test mock")
+
+    try:
+        new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend320", kernel_name="aipp")
+    except Exception as e:
+        print("1911 aipp test mock")
+
+ut_case.add_cust_test_func(test_func=test_aipp_static_5)
+
+
+def test_aipp_format_support(test_arg):
+    aipp_config_dict_tmp = aipp_config_dict.copy()
+    aipp_config_dict_tmp["input_format"] = "RAW8"
+    param_dict = gen_static_aipp_case(
+        (1, 3, 418, 416),
+        (1, 1, 258, 240, 32),
+        "uint8",
+        "uint8",
+        "NCHW",
+        "NC1HWC0",
+        aipp_config_dict_tmp,
+        "aipp_1",
+        "success",
+    )
+    input_data = param_dict["params"][0]
+    output_data = param_dict["params"][2]
+    for cce_product in aipp_comm.SUPPORT_IMAGE_FORMAT_MAP:
+        try:
+            aipp_comm.check_aipp_static_config(input_data.get("shape"), input_data.get("format"), 
+                                               output_data, aipp_config_dict_tmp, cce_product)
+        except Exception as e:
+            print("Aipp format support test mock")
+
+ut_case.add_cust_test_func(test_func=test_aipp_format_support)
 
 
 def gen_dynamic_aipp_case(

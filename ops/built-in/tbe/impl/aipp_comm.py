@@ -100,6 +100,38 @@ BATCH_OFFSET_DTC_VAR_C3 = 78 # uint16
 
 AIPP_OP_ERROR_CODE = 'E81012'
 
+STC_AIPP_SUPPORT_SOC_VERSION_SET = ("Ascend310", "Ascend910", "Ascend610", "Ascend710",
+                                   "Ascend615", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403",
+                                   "Ascend920", "Ascend320")
+
+DYN_AIPP_SUPPORT_SOC_VERSION_SET = ("Ascend310", "Ascend910", "Ascend610", "Ascend710", "Ascend615",
+                                   "Hi3796CV300ES", "Hi3796CV300CS", "SD3403")
+
+C04_AIPP_SUPPORT_SOC_VERSION_SET = ("Ascend610", "Ascend710", "Ascend615", "Hi3796CV300CS", "SD3403",
+                                   "Ascend920", "Ascend320")
+
+SUPPORT_IMAGE_FORMAT_MAP = {
+    "Ascend310": ("YUV420SP_U8", "XRGB8888_U8", "NC1HWC0DI_FP16",
+                 "NC1HWC0DI_S8", "RGB888_U8", "YUV400_U8"),
+    "Ascend320": ("YUV420SP_U8", "XRGB8888_U8", "RGB888_U8", "YUV400_U8",
+                 "RAW8", "RAW10", "RAW12", "RAW14", "RAW16"),
+    "Ascend910": ("YUV420SP_U8", "XRGB8888_U8", "RGB888_U8", "YUV400_U8"),
+    "Ascend920": ("YUV420SP_U8", "XRGB8888_U8", "RGB888_U8", "YUV400_U8"),
+    "Ascend610": ("YUV420SP_U8", "XRGB8888_U8", "NC1HWC0DI_FP16", "NC1HWC0DI_S8",
+                 "RGB888_U8", "YUV400_U8"),
+    "Ascend710": ("YUV420SP_U8", "XRGB8888_U8", "NC1HWC0DI_FP16", "NC1HWC0DI_S8",
+                 "RGB888_U8", "YUV400_U8"),
+    "Ascend615": ("YUV420SP_U8", "XRGB8888_U8", "NC1HWC0DI_FP16", "NC1HWC0DI_S8",
+                 "RGB888_U8", "YUV400_U8", "RGB16", "RGB20", "RGB24", "RGB8_IR",
+                 "RGB16_IR", "RGB24_IR"),
+    "Hi3796CV300ES-Hi3796CV300CS-SD3403": (
+            "YUV420SP_U8", "RGB888_U8", "XRGB8888_U8", "ARGB8888_U8", "YUYV_U8",
+            "YUV422SP_U8", "AYUV444_U8", "YUV400_U8", "RAW10", "RAW12", "RAW16",
+            "uint16")
+}
+
+V300_SOC_VERSION_LIST = ("Ascend320",)
+
 
 def get_fp16(value):
     """
@@ -107,12 +139,24 @@ def get_fp16(value):
     :return:
     """
     if value != 0:
-        reslut = 0x3c00
         data = numpy.float16(value).tobytes()
+        result = int((data[0] & 0xff) | (data[1] & 0xff) << 8)
+        return result
 
-        reslut = int((data[0] & 0xff) | (data[1] & 0xff) << 8)
+    return 0
 
-        return reslut
+
+def get_bin_value_from_fp32(value):
+    """
+    Description:
+        Convert input value of fp32 to binary form, and get the int value of it.
+    :param value: float form of given num
+    :return: int value of the binary form
+    """
+    if value != 0:
+        data = numpy.float32(value).tobytes()
+        result = int((data[0] & 0xff) | (data[1] & 0xff) << 8 | (data[2] & 0xff) << 16 | (data[3] & 0xff) << 24)
+        return result
 
     return 0
 
@@ -1252,6 +1296,59 @@ def set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product, output_format="NC1HWC
                             tvm.const(spr9, dtype="uint64")))
 
 
+def set_spr18_spr21(ib, aipp_config, dtype):
+    """
+    :param ib: ir builder
+    :param aipp_config: config dict of aipp
+    :param dtype: output dtype of aipp
+    :return: None
+    """
+    chn_offset = 32
+    data_mask = 0xffffffff
+    spr18 = 0
+    spr19 = 0
+    if 'var_reci_chn_0' in aipp_config:
+        var_reci_chn_0 = get_bin_value_from_fp32(float(aipp_config.get('var_reci_chn_0')))
+        spr18 = spr18 | (var_reci_chn_0 & data_mask)
+    if 'var_reci_chn_1' in aipp_config:
+        var_reci_chn_1 = get_bin_value_from_fp32(float(aipp_config.get('var_reci_chn_1')))
+        spr18 = spr18 | ((var_reci_chn_1) & data_mask) << chn_offset
+    if 'var_reci_chn_2' in aipp_config:
+        var_reci_chn_2 = get_bin_value_from_fp32(float(aipp_config.get('var_reci_chn_2')))
+        spr19 = spr19 | ((var_reci_chn_2) & data_mask)
+    if 'var_reci_chn_3' in aipp_config:
+        var_reci_chn_3 = get_bin_value_from_fp32(float(aipp_config.get('var_reci_chn_3')))
+        spr19 = spr19 | (var_reci_chn_3 & data_mask) << chn_offset
+    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_18",
+                            tvm.const(spr18, dtype="uint64")))
+    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_19",
+                            tvm.const(spr19, dtype="uint64")))
+    spr20 = 0
+    spr21 = 0
+    if dtype == "float16":
+        mean_chn_0 = get_bin_value_from_fp32(float(aipp_config.get('mean_chn_0', 0) + aipp_config.get('min_chn_0', 0)))
+        spr20 = spr20 | (mean_chn_0 & data_mask)
+        mean_chn_1 = get_bin_value_from_fp32(float(aipp_config.get('mean_chn_1', 0) + aipp_config.get('min_chn_1', 0)))
+        spr20 = spr20 | (mean_chn_1 & data_mask) << chn_offset
+        mean_chn_2 = get_bin_value_from_fp32(float(aipp_config.get('mean_chn_2', 0) + aipp_config.get('min_chn_2', 0)))
+        spr21 = spr21 | (mean_chn_2 & data_mask)
+        mean_chn_3 = get_bin_value_from_fp32(float(aipp_config.get('mean_chn_3', 0) + aipp_config.get('min_chn_3', 0)))
+        spr21 = spr21 | (mean_chn_3 & data_mask) << chn_offset
+    else:
+        if 'mean_chn_0' in aipp_config:
+            spr20 = spr20 | (aipp_config.get('mean_chn_0') & data_mask)
+        if 'mean_chn_1' in aipp_config:
+            spr20 = spr20 | (aipp_config.get('mean_chn_1') & data_mask) << chn_offset
+        if 'mean_chn_2' in aipp_config:
+            spr21 = spr21 | (aipp_config.get('mean_chn_2') & data_mask)
+        if 'mean_chn_3' in aipp_config:
+            spr21 = spr21 | (aipp_config.get('mean_chn_3') & data_mask) << chn_offset
+    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_20",
+                            tvm.const(spr20, dtype="uint64")))
+    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_21",
+                            tvm.const(spr21, dtype="uint64")))
+
+
 def get_spr2_spr9(aipp_config, dtype, cur_cce_product, output_format,
                   aipp_map):
     """
@@ -1913,7 +2010,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                               aipp_config.get("src_image_size_w"))
                 raise_runtime_error(cause_desc)
 
-            if aipp_config.get('input_format') in ["YUV420SP_U8"]:
+            if cur_cce_product not in ("Ascend320") and aipp_config.get('input_format') in ["YUV420SP_U8"]:
                 if aipp_config.get("load_start_pos_h") % 2 != 0 or \
                         aipp_config.get("load_start_pos_w") % 2 != 0:
                     cause_desc = "when input_format is YUV420SP_U8, " \
@@ -1930,7 +2027,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                                  (aipp_config.get("crop_size_h"), aipp_config.get("crop_size_w"))
                     raise_runtime_error(cause_desc)
 
-            if aipp_config.get('input_format') in ["YUYV_U8", "YUV422SP_U8"]:
+            if  cur_cce_product not in ("Ascend320") and aipp_config.get('input_format') in ["YUYV_U8", "YUV422SP_U8"]:
                 if aipp_config.get("load_start_pos_w") % 2 != 0:
                     cause_desc = "when input_format is %s, " \
                                  "load_start_pos_w[%d] must be even" % \
@@ -2051,7 +2148,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                 raise_runtime_error(cause_desc)
 
         if ('padding' in aipp_config and aipp_config.get('padding') == 1):
-            if cur_cce_product in ("Ascend310", "Ascend910", "Ascend610", "Ascend710"):
+            if cur_cce_product in ("Ascend310", "Ascend910", "Ascend610", "Ascend710", "Ascend920", "Ascend320"):
                 if w > 1080:
                     cause_desc = "after padding, aipp output w[%d] should " \
                                  "be less than or eaqual to 1080" % w
@@ -2176,57 +2273,54 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                               top_padding_size, bottom_padding_size, h)
                 raise_runtime_error(cause_desc)
 
+
     if cur_cce_product in ["Ascend310"]:
-        if aipp_config.get('input_format') not in \
-                ["YUV420SP_U8", "XRGB8888_U8", "NC1HWC0DI_FP16",
-                 "NC1HWC0DI_S8", "RGB888_U8", "YUV400_U8"]:
-            cause_desc = "Ascend310 only support YUV420SP_U8, " \
-                         "XRGB8888_U8, NC1HWC0DI_FP16, NC1HWC0DI_S8, " \
-                         "RGB888_U8, YUV400_U8, current input format is %s" % \
-                         aipp_config.get('input_format')
+        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP["Ascend310"]:
+            cause_desc = "Ascend310 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP["Ascend310"]) + \
+                         ", current input format is %s" % aipp_config.get('input_format')
+            raise_runtime_error(cause_desc)
+
+    if cur_cce_product in ["Ascend320"]:
+        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP["Ascend320"]:
+            cause_desc = "Ascend320 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP["Ascend320"]) + \
+                         ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
     if cur_cce_product in ["Ascend910"]:
-        if aipp_config.get('input_format') not in ["YUV420SP_U8", "XRGB8888_U8", "RGB888_U8", "YUV400_U8"]:
-            cause_desc = "Ascend910 only support YUV420SP_U8, XRGB8888_U8, RGB888_U8, YUV400_U8, " \
-                         "current input format is %s" % aipp_config.get('input_format')
+        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP["Ascend910"]:
+            cause_desc = "Ascend910 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP["Ascend910"]) + \
+                         ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
-    if cur_cce_product in ["Ascend610", "Ascend710"]:
-        if aipp_config.get('input_format') not in ["YUV420SP_U8", "XRGB8888_U8",
-                                                   "NC1HWC0DI_FP16",
-                                                   "NC1HWC0DI_S8",
-                                                   "RGB888_U8", "YUV400_U8"]:
-            cause_desc = "Ascend610 and Ascend710 only support YUV420SP_U8, " \
-                         "XRGB8888_U8, NC1HWC0DI_FP16, NC1HWC0DI_S8, " \
-                         "RGB888_U8, YUV400_U8, " \
-                         "current input format is %s" % aipp_config.get('input_format')
+    if cur_cce_product in ["Ascend920"]:
+        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP["Ascend920"]:
+            cause_desc = "Ascend920 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP["Ascend920"]) + \
+                         ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
+
+    if cur_cce_product in ["Ascend610"]:
+        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP["Ascend610"]:
+            cause_desc = "Ascend610 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP["Ascend610"]) + \
+                         ", current input format is %s" % aipp_config.get('input_format')
+            raise_runtime_error(cause_desc)
+
+    if cur_cce_product in ["Ascend710"]:
+        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP["Ascend710"]:
+            cause_desc = "Ascend710 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP["Ascend710"]) + \
+                         ", current input format is %s" % aipp_config.get('input_format')
+            raise_runtime_error(cause_desc)
+
     if cur_cce_product in ["Ascend615"]:
-        if aipp_config.get('input_format') not in ["YUV420SP_U8", "XRGB8888_U8",
-                                                   "NC1HWC0DI_FP16",
-                                                   "NC1HWC0DI_S8",
-                                                   "RGB888_U8", "YUV400_U8",
-                                                   "RGB16", "RGB20", "RGB24",
-                                                   "RGB8_IR", "RGB16_IR", "RGB24_IR"]:
-            cause_desc = "Ascend615 only support YUV420SP_U8, " \
-                         "XRGB8888_U8, NC1HWC0DI_FP16, NC1HWC0DI_S8, " \
-                         "RGB888_U8, YUV400_U8, " \
-                         "RGB16, RGB20, RGB24, " \
-                         "RGB8_IR, RGB16_IR, RGB24_IR" \
-                         "current input format is %s" % aipp_config.get('input_format')
+        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP["Ascend615"]:
+            cause_desc = "Ascend615 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP["Ascend615"]) + \
+                         ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
     if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
-        if aipp_config.get('input_format') not in \
-                ("YUV420SP_U8", "RGB888_U8", "XRGB8888_U8", "ARGB8888_U8",
-                 "YUYV_U8", "YUV422SP_U8", "AYUV444_U8", "YUV400_U8", "RAW10",
-                 "RAW12", "RAW16", "uint16"):
-            cause_desc = "Hi3796CV300ES, Hi3796CV300CS and SD3403 only support " \
-                         "YUV420SP_U8, RGB888_U8, XRGB8888_U8, XRGB8888_U8, " \
-                         "YUYV_U8, YUV422SP_U8, AYUV444_U8, YUV400_U8, " \
-                         "RAW10, RAW12, RAW16, current input format is %s" % \
-                         aipp_config.get('input_format')
+        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP["Hi3796CV300ES-Hi3796CV300CS-SD3403"]:
+            cause_desc = "Hi3796CV300ES, Hi3796CV300CS and SD3403 only support " + \
+                         ", ".join(SUPPORT_IMAGE_FORMAT_MAP["Hi3796CV300ES-Hi3796CV300CS-SD3403"]) + \
+                         ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
     if (("crop") not in aipp_config or aipp_config.get("crop") == 0) and \
@@ -2490,7 +2584,7 @@ def get_crop_info(aipp_config, src_h, src_w):
            crop_size_h, crop_size_w
 
 
-def get_actual_col_size(aipp_config, h, w):
+def get_actual_col_size(aipp_config, h, w, support_vertical_padding=False):
     """
     :param aipp_config:
     :param h:
@@ -2517,7 +2611,10 @@ def get_actual_col_size(aipp_config, h, w):
             top_padding_size = aipp_config.get("top_padding_size")
         if "bottom_padding_size" in aipp_config:
             bottom_padding_size = aipp_config.get("bottom_padding_size")
-        output_h = h - top_padding_size - bottom_padding_size
+        if not support_vertical_padding:
+            output_h = h - top_padding_size - bottom_padding_size
+        else:
+            output_h = h
         output_w = w
         actual_col_size = output_h * output_w
 
