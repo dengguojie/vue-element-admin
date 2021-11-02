@@ -154,6 +154,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/strided_slice_v2.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/sub.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/tan.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/tanhgrad.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/top_k.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/top_k_pq_distance.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/zeroslike.cc
@@ -317,6 +318,7 @@ set(_cpu_kernels_ut_files
   testcase/strided_slice_v2/src/strided_slice_v2_utest.cpp
   testcase/sub/src/sub_utest.cpp
   testcase/tan/src/tan_utest.cpp
+  testcase/tanhgrad/src/tanhgrad_utest.cpp
   testcase/top_k/src/top_k_utest.cpp
   testcase/top_k_pq_distance/src/top_k_pq_distance_utest.cpp
   testcase/trans_data/src/format_transfer_hwcn_fractalz_utest.cpp

@@ -81,6 +81,7 @@ set(local_kernels_src_files
     kernels/normalized/strided_slice_v2.cc
     kernels/normalized/sub.cc
     kernels/normalized/tan.cc
+    kernels/normalized/tanhgrad.cc
     kernels/normalized/top_k.cc
     kernels/normalized/top_k_pq_distance.cc
     kernels/normalized/top_k_v2_d.cc
