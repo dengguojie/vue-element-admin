@@ -28,6 +28,7 @@ from impl.util.util_conv2d_dynamic import modify_input_range
 from impl.util.util_conv2d_dynamic import check_l1_size
 from impl.util.util_conv2d_dynamic import create_fuzz_range
 from impl.util.util_conv2d_dynamic import correct_input_range
+from impl.util.util_conv2d_dynamic import get_format_attr
 
 NONETYPE = type(None)
 ORI_SHAPE_LEN = 4
@@ -64,34 +65,20 @@ def gen_depthwise_conv2d_range(inputs, weights, strides, pads, dilations):
 
     # x_range instance when empty
     if not x_range:
-        x_range = list()
+        x_range = []
         for idx in range(len(x_shape)):
             if x_shape[idx] == DYNAMIC_VALUE:
                 x_range.append([1, -1])
             else:
                 x_range.append([x_shape[idx], x_shape[idx]])
 
-    if w_format == "NCHW":
-        kh = w_shape[2]
-        kw = w_shape[3]
-    elif w_format == "NHWC":
-        kh = w_shape[1]
-        kw = w_shape[2]
-    elif w_format == "HWCN":
-        kh = w_shape[0]
-        kw = w_shape[1]
-    else:
-        err_man.raise_err_specific_user(op_type, "input filter format only support NCHW, NHWC or HWCN")
-
+    kh, kw = get_format_attr(w_shape, w_format)
     kh_dilate = dilh*(kh - 1) + 1
     kw_dilate = dilw*(kw - 1) + 1
     grade_n = [0, 1, 3, 7, 15, 31, ((1 << 31) - 1)]
     grade_h = [0, 3, 15, 63, 127, 191, 255, 511, 767, 1023, 4096]
     grade_w = [0, 3, 15, 63, 127, 191, 255, 511, 767, 1023, 4096]
-    grade_map = dict()
-    grade_map[idx_n] = grade_n
-    grade_map[idx_h] = grade_h
-    grade_map[idx_w] = grade_w
+    grade_map = {idx_n : grade_n, idx_h : grade_h, idx_w : grade_w}
     input_range = [[], [], [], []]
 
     for idx, grade_item in grade_map.items():

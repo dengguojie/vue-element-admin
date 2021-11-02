@@ -45,6 +45,25 @@ DYNAMIC_FLAG = -1
 SHAPE_LEN = 5
 ORI_SHAPE_LEN = 4
 
+
+def get_format_attr(w_shape, w_format):
+    """
+    get format attr
+    """
+    if w_format == "NCHW":
+        kh = w_shape[2]
+        kw = w_shape[3]
+    elif w_format == "NHWC":
+        kh = w_shape[1]
+        kw = w_shape[2]
+    elif w_format == "HWCN":
+        kh = w_shape[0]
+        kw = w_shape[1]
+    else:
+        err_man.raise_err_specific_user(op_type, "input filter format only support NCHW, NHWC or HWCN.")
+
+    return kh, kw
+
 def modify_input_range(in_range_nchw, data_type, idx_h, idx_w, strides, hk_dilation, wk_dilation, pads):
     '''
     check for not bigger than L1

@@ -312,6 +312,7 @@ class AvgPool:
             self.size_left.set_as(size % MASK)
             self.repeat_loop.set_as(repeat // REPEAT_LIMIT)
             self.repeat_left.set_as(repeat % REPEAT_LIMIT)
+
             def _inner(dst, src0, src1, mask_len):
                 with self.tik_instance.for_range(0, self.repeat_loop) as repeat_loop_idx:
                     self.repeat_offset.set_as(repeat_loop_idx * REPEAT_LIMIT * dst_rep * C_ZERO)
@@ -346,6 +347,7 @@ class AvgPool:
             self.size_left.set_as(size % MASK)
             self.repeat_loop.set_as(repeat // REPEAT_LIMIT)
             self.repeat_left.set_as(repeat % REPEAT_LIMIT)
+
             def _inner(dst, src0, src1, mask_len):
                 with self.tik_instance.for_range(0, self.repeat_loop) as repeat_loop_idx:
                     self.repeat_offset.set_as(repeat_loop_idx * REPEAT_LIMIT * dst_rep * C_ZERO)
@@ -485,7 +487,7 @@ class AvgPool:
         '''
         #common params
         self.size_1.set_as(self.pad_t * self.pad_w * C_ZERO + self.pad_l * C_ZERO)
-        self.offset_2.set_as((self.pad_h - self.pad_b) * self.pad_w *C_ZERO - self.pad_r * C_ZERO)
+        self.offset_2.set_as((self.pad_h - self.pad_b) * self.pad_w * C_ZERO - self.pad_r * C_ZERO)
         self.size_2.set_as(self.pad_b * self.pad_w * C_ZERO + self.pad_r * C_ZERO)
         self.offset_3.set_as(self.size_1 + self.input_w * C_ZERO)
         self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
@@ -549,7 +551,7 @@ class AvgPool:
     def tiling_h_dim_core_nc_process(self, core_idx, core_ele, loop_idx, ele):
         #common params
         self.before_h.set_as(loop_idx * self.h_factor * self.strides_h)
-        self.after_h.set_as((loop_idx * self.h_factor +ele -1) * self.strides_h + self.ksize_h)
+        self.after_h.set_as((loop_idx * self.h_factor + ele -1) * self.strides_h + self.ksize_h)
         self.len_h.set_as(self.after_h - self.before_h)
         self.size_w.set_as(self.output_w * C_ZERO)
         self.burst_len_out.set_as(ele * self.output_w)
@@ -557,11 +559,11 @@ class AvgPool:
         self.size.set_as(self.len_h * self.pad_w * C_ZERO)
         #
         with self.tik_instance.if_scope(self.before_h < self.pad_t):
-            self.size_1.set_as((self.pad_t -self.before_h) * self.pad_w * C_ZERO + self.pad_l * C_ZERO)
+            self.size_1.set_as((self.pad_t - self.before_h) * self.pad_w * C_ZERO + self.pad_l * C_ZERO)
             self.offset_3.set_as(self.size_1 + self.input_w * C_ZERO)
             self.offset.set_as(0)
             with self.tik_instance.if_scope(self.after_h <= self.pad_h -self.pad_b):
-                self.offset_2.set_as(self.len_h * self.pad_w *C_ZERO - self.pad_r * C_ZERO)
+                self.offset_2.set_as(self.len_h * self.pad_w * C_ZERO - self.pad_r * C_ZERO)
                 self.size_2.set_as(self.pad_r * C_ZERO)
                 self.repeat_3.set_as(self.after_h - self.pad_t -1)
                 self.size_3.set_as((self.pad_r + self.pad_l) * C_ZERO)
@@ -809,76 +811,6 @@ class AvgPool:
         )
         return self.tik_instance
 
-
-def correct_fuzz_build_range(x, ksize, strides, padding, data_format):
-    """
-    get input w range within L1 size
-
-    Notice
-    ------
-    the proper range are not smaller then shape value
-
-    Parameters
-    ----------
-    same to avg_pool
-
-    Returns
-    -------
-    None
-    """
-    valid = isinstance(x.get("range"), (list, tuple)) and len(x.get("range")) >= 4
-    if not valid:
-        return
-    proper_range = list(map(list, x["range"]))
-    pos_h = 2
-    pos_w = 3
-    if x["ori_format"] == "NHWC":
-        pos_h = 1
-        pos_w = 2
-    pos_range_h = pos_h
-    pos_range_w = pos_w
-    if len(proper_range) > 4:
-        pos_range_h = 2
-        pos_range_w = 3
-    # -1 shape range is set by user, should not change
-    invaild = (None in proper_range[pos_range_h]) \
-              or (None in proper_range[pos_range_w]) \
-              or x["ori_shape"][pos_w] == -1
-    if invaild:
-        return
-    # >>> start: get the max proper w right range, at least same to shape value
-    type_byte = int(re.findall(r'\d+', x["dtype"])[0]) // 8
-    filter_h = ksize[data_format.find("H")]
-    filter_w = ksize[data_format.find("W")]
-    l1_size = tbe_platform.get_soc_spec("L1_SIZE")
-    proper_w = proper_range[pos_range_w][1]
-    for i in list(range(proper_w, x["ori_shape"][pos_w] - 1, -1)):
-        if padding == "SAME":
-            w_out = i + strides[pos_w] - 1 // strides[pos_w]
-        else:
-            w_out = (i - filter_w) // strides[pos_w] + 1
-        limit_h_out = math.floor(tbe_platform.CUBE_MKN[x["dtype"]]['mac'][0] / w_out) + 2
-        limit_size = ((limit_h_out - 1) * strides[pos_h] + filter_h) * i
-        limit_size = limit_size * tbe_platform.CUBE_MKN[x["dtype"]]['mac'][1] * type_byte
-        proper_w = i
-        if limit_size < l1_size:
-            break
-    # <<< end: get the max proper w right range, at least same to shape value
-    # >>> start: change input range and ori_range if exists
-    if proper_w != proper_range[pos_range_w][1]:
-        proper_range[pos_range_w][1] = proper_w
-        to_print = "avg_pool fuzz build range changed from {} to {}".format(x["range"], proper_range)
-        x["range"] = proper_range
-        valid = isinstance(x.get("ori_range"), (list, tuple)) and len(x["ori_range"]) == 4
-        if valid:
-            ori_range = list(map(list, x["ori_range"]))
-            ori_range[pos_w][1] = proper_w
-            to_print = "{}, ori_range changed from {} to {}".format(to_print, x["ori_range"], ori_range)
-            x["ori_range"] = ori_range
-        warnings.warn(to_print)
-    # <<< end: change input range and ori_range if exists
-
-
 def gen_avg_pool_range(inputs, ksize, strides, padding):
     """
     fuzz input range
@@ -903,7 +835,7 @@ def gen_avg_pool_range(inputs, ksize, strides, padding):
 
     # x_range instance when empty
     if not x_range:
-        x_range = list()
+        x_range = []
         for idx in range(len(x_shape)):
             if x_shape[idx] == DYNAMIC_VALUE:
                 x_range.append([1, -1])
@@ -916,13 +848,10 @@ def gen_avg_pool_range(inputs, ksize, strides, padding):
         pads = [-1, -1, -1, -1]
     else:
         pads = [0, 0, 0, 0]
-    grade_n = [0, 1, 3, 7, 15, 31, ((1<<31) - 1)]
+    grade_n = [0, 1, 3, 7, 15, 31, ((1 << 31) - 1)]
     grade_h = [0, 3, 15, 63, 127, 191, 255, 511, 767, 1023, 4096]
     grade_w = [0, 3, 15, 63, 127, 191, 255, 511, 767, 1023, 4096]
-    grade_map = dict()
-    grade_map[idx_n] = grade_n
-    grade_map[idx_h] = grade_h
-    grade_map[idx_w] = grade_w
+    grade_map = {idx_n : grade_n, idx_h : grade_h, idx_w : grade_w}
     input_range = [[], [], [], []]
 
     for idx, grade_item in grade_map.items():
