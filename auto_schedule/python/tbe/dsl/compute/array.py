@@ -25,6 +25,7 @@ import types
 
 from tbe import tvm
 from tbe.common.testing.dsl_source_info import source_info_decorator
+from tbe.common.utils.errormgr import get_error_message
 from .util import dtype_check_decorator
 from .util import check_input_tensor_shape
 from .util import shape_to_list
@@ -247,3 +248,45 @@ def set_value(tensor, condition, value):
     
     return out
 
+
+@source_info_decorator()
+@dtype_check_decorator
+def transpose(tensor, axes):
+    """
+    transpose a tensor by permute
+
+    Parameters
+    ----------
+    tensor : tvm.tensor
+        Original tensor
+    axes : list[int]
+        Permutes the dimensions according to the value of axes
+    Returns
+    -------
+    tvm.tensor: A transposed Tensor
+    """
+    def check_input():
+        input_shape = shape_to_list(tensor.shape)
+        for shape in input_shape:
+            if (isinstance(shape, int) and shape < 0) or not isinstance(shape, (tvm.expr.Expr, int)):
+                dict_args = {"errCode": "E90001",
+                             "detailed_cause": "The input shape value [%s] must be a positive integer or tvm expr"}
+                raise RuntimeError(dict_args, get_error_message(dict_args))
+        if not isinstance(axes, (list, tuple)):
+            dict_args = {"errCode": "E90001", "detailed_cause": "The axes must be list or tuple"}
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+        sorted_axes = sorted(axes)
+        base_axes = [i for i, _ in enumerate(axes)]
+        if sorted_axes != base_axes:
+            dict_args = {"errCode": "E90001", "detailed_cause": "The input axes error, cannot transpose"}
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    check_input()
+    with tvm.tag_scope("transpose"):
+        src_shape = tensor.shape
+        dst_shape = tuple(src_shape[i] for i in axes)
+        attrs = {"permute": axes}
+        transpose = tvm.compute(dst_shape,
+                                lambda *index: tensor(*(x for _, x in sorted(zip(axes, index)))),
+                                attrs=attrs, name="transpose")
+    return transpose

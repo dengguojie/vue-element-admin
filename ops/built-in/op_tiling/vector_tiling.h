@@ -97,6 +97,17 @@ bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, co
 bool NormTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
                 utils::OpRunInfo& run_info);
 
+/*
+ * @brief: tiling function of transpose operator
+ * @param [in] op_type: op_type of the transpose operator
+ * @param [in] op_paras: inputs/outputs/atts of the transpose operator
+ * @param [in] op_info: compile time generated info of the transpose operator
+ * @param [out] run_info: result data
+ * @return bool: success or not
+ */
+bool TransposeDsl(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& compile_info,
+                  utils::OpRunInfo& run_info);
+
 #define REGISTER_OP_TILING_FUNC_BUFFERED_CUSTOM(optype, opfunc, parserfunc)                                       \
 bool g_##optype##_TilingEntry(const TeOpParas& para, const OpCompileInfo& cinfo, OpRunInfo& rinfo) {              \
     static std::map<std::string, ParsedOpCompileInfo> parsed_compile_info_storage;                                \

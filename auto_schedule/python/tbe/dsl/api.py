@@ -763,6 +763,22 @@ def set_value(tensor, condition, value):
     return array.set_value(tensor, condition, value)
 
 
+def transpose(tensor, axes):
+    """
+    transpose a tensor by permute.
+    Parameters
+    ----------
+    tensor : tvm.tensor
+        Original tensor
+    axes : list[int]
+        Permutes the dimensions according to the value of axes
+    Returns
+    -------
+    tvm.tensor: A transposed tensor
+    """
+    return array.transpose(tensor, axes)
+
+
 def reduce_sum(raw_tensor, axis, keepdims=False):
     """
     calculate reduce_sum of raw_tensor, only support float16

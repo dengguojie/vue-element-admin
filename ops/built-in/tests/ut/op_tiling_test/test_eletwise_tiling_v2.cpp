@@ -1156,7 +1156,7 @@ TEST_F(EletwiseTilingV2, Eletwise_custom_empty_tensor) {
   std::vector<std::vector<int64_t>> input_shapes{inputA, inputB};
   optiling::OpInfo c_op_info(input_shapes, DT_FLOAT);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(optiling::EletwiseTiling("CustomOP", add_op, op_info, runInfo, c_op_info));\
+  ASSERT_TRUE(optiling::EletwiseTiling("CustomOP", add_op, op_info, runInfo, c_op_info));
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "");
 }

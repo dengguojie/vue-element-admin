@@ -376,6 +376,22 @@ def _cube_variable_shape(inputs: list, attrs=None):
     return shape_out
 
 
+def _transpose_variable_shape(inputs: list):
+    if len(inputs) != 1:
+        dict_args = {"errCode": "E90001", "detailed_cause": "input numbers error"}
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+    shape_x = inputs[0].get("shape")
+    range_x = inputs[0].get("range")
+    shape_out = []
+    for i, x in enumerate(shape_x):
+        if x == -1:
+            _var = operation.var_inner("_dim_" + str(i), range_x[i])
+            shape_out.append(_var)
+        else:
+            shape_out.append(x)
+    return shape_out
+
+
 def variable_shape(inputs: list, op_mode="elewise", attrs=None):
     """
     :param inputs: all inputs
@@ -388,6 +404,9 @@ def variable_shape(inputs: list, op_mode="elewise", attrs=None):
 
     if op_mode in ("reduce", "norm"):
         return _reduce_and_norm_variable_shape(inputs)
+
+    if op_mode == "transpose":
+        return _transpose_variable_shape(inputs)
 
     def _get_range_intersection(ranges):
         def _range_intersection(range_a, range_b):

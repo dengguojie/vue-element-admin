@@ -28,6 +28,7 @@ class Pattern:
     BROADCAST = "Broadcast"
     REDUCE = "CommReduce"
     NORM = "Norm"
+    TRANSPOSE = "Transpose"
     OPAQUE = "Opaque"
     SOFTMAX = "Softmax"
     ASCEND_QUANT = "quant"
@@ -92,6 +93,15 @@ class NormPattern:
     """
     # generic
     N_0 = "N_0"
+
+
+class TransposePattern:
+    """
+    Transpose sub pattern.
+    Each sub-pattern has a corresponding schedule, for function or performance.
+    """
+    # generic
+    T_0 = "T_0"
 
 
 class CompileInfo:

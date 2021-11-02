@@ -130,6 +130,7 @@ set(_optiling_files
   space_to_batch_nd.cc
   drop_out_do_mask.cc
   tiling_dispatch.cc
+  transpose_dsl.cc
   top_k.cc
   transpose.cc
   trans_data.cc

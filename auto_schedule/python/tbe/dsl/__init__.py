@@ -61,6 +61,8 @@ from .api import clip
 from .api import broadcast
 from .api import set_value
 
+from .api import transpose
+
 from .api import reduce_sum
 from .api import reduce_min
 from .api import reduce_max

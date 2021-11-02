@@ -55,6 +55,8 @@ bool AutoTiling(const std::string& op_type, const ge::Operator& op_paras, const 
     ret = EletwiseTiling(op_type, op_paras, op_info, run_info);
   } else if (pattern == "Norm") {
     ret = NormTiling(op_type, op_paras, op_info, run_info);
+  }  else if (pattern == "Transpose") {
+    ret = TransposeDsl(op_type, op_paras, op_info, run_info);
   } else {
     ret = false;
     GELOGI("Auto tiling not supported patten: %s.", pattern.c_str());

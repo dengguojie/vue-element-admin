@@ -66,6 +66,10 @@ REDUCE_COMPUTE = {
     "reduce_prod", "tuple_reduce_sum",
 }
 
+TRANSPOSE_COMPUTE = {
+    "transpose"
+}
+
 CONV2D_COMPUTE = {
     "conv_vector_remove_pad",
     "convolution_C",
@@ -110,6 +114,7 @@ class ComputeType(Enum):
     ELEWISE = auto()
     BROADCAST = auto()
     REDUCE = auto()
+    TRANSPOSE = auto()
     CAST = auto()
     CONV2D = auto()
     CONV2D_BP_INPUT = auto()
@@ -179,6 +184,8 @@ def _parse_pattern(outs):
         return Pattern.REDUCE
     if _is_norm(outs, compute_type_size_map, compute_type_tensor_map):
         return Pattern.NORM
+    if _is_transpose(compute_type_size_map):
+        return Pattern.TRANSPOSE
     if ComputeType.CONV3D_BP_FILTER in compute_type_size_map:
         return Pattern.CONV3D_BACKPROP_FILTER
 
@@ -291,6 +298,13 @@ def _is_norm(outs, compute_type_size_map, compute_type_tensor_map):
     return True
 
 
+def _is_transpose(compute_type_size_map: dict):
+    ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
+    transpose_size = compute_type_size_map.get(ComputeType.TRANSPOSE, 0)
+    total = compute_type_size_map.get(ComputeType.ANY, 0)
+    return ph_size + transpose_size == total
+
+
 def _dfs_compute(outs) -> Tuple[dict, dict]:
     outs = list(outs) if isinstance(outs, (tuple, list)) else [outs]
     visited = set()
@@ -338,6 +352,7 @@ def _get_compute_type(tensor: tvm.tensor.Tensor) -> ComputeType:
         (BROADCAST_COMPUTE, ComputeType.BROADCAST),
         (CAST_COMPUTE, ComputeType.CAST),
         (REDUCE_COMPUTE, ComputeType.REDUCE),
+        (TRANSPOSE_COMPUTE, ComputeType.TRANSPOSE),
         (CONV3D_COMPUTE, ComputeType.CONV3D),
         (CONV2D_COMPUTE, ComputeType.CONV2D),
         (CONV2D_BP_INPUT_COMPUTE, ComputeType.CONV2D_BP_INPUT),

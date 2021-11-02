@@ -21,3 +21,4 @@ from . import broadcast
 from . import elewise
 from . import norm
 from . import reduce
+from . import transpose
