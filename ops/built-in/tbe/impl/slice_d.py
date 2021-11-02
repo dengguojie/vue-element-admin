@@ -401,8 +401,7 @@ class SliceDiffLastDimCompute():
             loops = tik_instance.Scalar(dtype="int64")
             loops.set_as(dim_product_size // max_dim_product)
             input_ele = self.dim_product * self.input_dim_last
-            with tik_instance.if_scope(
-                dim_product_size % max_dim_product == 0):
+            with tik_instance.if_scope(dim_product_size % max_dim_product == 0):
                 loops.set_as(loops - 1)
 
             with tik_instance.for_range(0, loops) as i:
@@ -497,8 +496,8 @@ def _check_parameters(shape, dtype, begin, size, kernel_name):
 
     """
     para_check.check_dtype(dtype, ("int8", "int16", "int32", "int64", "uint8",
-                        "uint16", "uint32", "uint64",
-                        "float16", "float32"), param_name="x")
+                                   "uint16", "uint32", "uint64",
+                                   "float16", "float32"), param_name="x")
     para_check.check_shape(shape, param_name="x")
 
     if not (len(shape) == len(begin) and len(shape) == len(size)):
@@ -527,7 +526,7 @@ def _check_parameters(shape, dtype, begin, size, kernel_name):
     for i, (shape_i, end_i) in enumerate(zip(shape, end)):
         if end[i] <= 0 or end_i > shape_i:
             error_manager_vector.raise_err_input_value_invalid("slice_d", "value of end",
-                                                                "[0, shape]", end[i])
+                                                               "[0, shape]", end[i])
 
 
 def _get_end(shape, begin, size):
@@ -638,7 +637,6 @@ def _get_factor(ele_zero, ele_cnt, total_ele, no_remainder):
 def _tilling_axis(shape, dtype, no_remainder):
     """
     calculate the split parameters according to different shapes
-
     """
     # size of ub
     ub_size_bytes = UB_SIZE_B - 1024
@@ -686,9 +684,8 @@ def _tilling_axis(shape, dtype, no_remainder):
 
     if no_remainder:
         device_core_num = AICORE_NUM
-        if len(shape) >= 2 and split_axis == 0\
-                and shape[0] >= device_core_num\
-                and shape[0] < (2 * device_core_num)\
+        if len(shape) >= 2 and split_axis == 0 \
+                and  device_core_num <= shape[0] < (2 * device_core_num) \
                 and shape[0] < BURST_LEN:
             split_factor = 1
 
@@ -757,8 +754,7 @@ def slice_d_compute(x, y, begin, size, kernel_name="slice_d"):
 
         return index_org
 
-    data_ub = tvm.compute(size, lambda *i: x(*_map_index_norm(*i)),
-                          name='data_ub')
+    data_ub = tvm.compute(size, lambda *i: x(*_map_index_norm(*i)), name='data_ub')
     res = tvm.compute(size, lambda *i: data_ub(*i), name='res')
     sch = tvm.create_schedule(res.op)
     sch[data_ub].set_scope(cce.scope_ubuf)
@@ -768,22 +764,18 @@ def slice_d_compute(x, y, begin, size, kernel_name="slice_d"):
 
     if size[-1] < element_align:
         split_axis, split_factor = _tilling_axis(size, x.dtype, False)
-        axis_outer, axis_inner = sch[res].split(res.op.axis[split_axis],
-                                                factor=split_factor)
+        axis_outer, axis_inner = sch[res].split(res.op.axis[split_axis], factor=split_factor)
     else:
         split_axis, split_factor = _tilling_axis(size, x.dtype, True)
         if split_axis == 0:
             core_num = size[split_axis] // split_factor
         else:
             core_num = size[0]
-        if (split_axis == len(size) - 1 and split_factor < element_align)\
-                or core_num > BURST_LEN:
+        if (split_axis == len(size) - 1 and split_factor < element_align) or core_num > BURST_LEN:
             split_axis, split_factor = _tilling_axis(size, x.dtype, False)
-            axis_outer, axis_inner = sch[res].split(res.op.axis[split_axis],
-                                                    factor=split_factor)
+            axis_outer, axis_inner = sch[res].split(res.op.axis[split_axis], factor=split_factor)
         else:
-            axis_outer, axis_inner = sch[res].split(res.op.axis[split_axis],
-                                                    factor=split_factor)
+            axis_outer, axis_inner = sch[res].split(res.op.axis[split_axis], factor=split_factor)
             if split_axis == 0:
                 sch[res].bind(axis_outer, tvm.thread_axis('blockIdx.x'))
             else:
@@ -7426,83 +7418,22 @@ def op_select_format(x, y, begin, size, kernel_name="slice_d"):
     return param_dynamic_in_json
 
 
-def _use_strided_slice(ori_x, ori_begin, ori_size, ori_y):
-    """can use strided_slice"""
-    dtype = ori_x.get("dtype")
-    input_shape = list(ori_x.get("ori_shape"))
-    ori_y_shape = list(ori_y.get("ori_shape"))
-    if len(input_shape) != len(ori_begin) or len(input_shape) != len(ori_size):
+def _use_strided_slice(ori_x, ori_y):
+    """
+    can use strided_slice
+    """
+    input_format = ori_x.get("format")
+    if input_format not in ("NDC1HWC0", "NHWC", "NCHW", "ND", "NCDHW", "NDHWC"):
         return False
 
-    output_shape = list(ori_size)
+    dtype = ori_x.get("dtype")
+    input_shape = ori_x.get("ori_shape")
+    output_shape = ori_y.get("ori_shape")
+    type_size = cce.cce_intrin.get_bit_len(dtype) // 8
+    if input_shape and output_shape and output_shape[-1] % type_size == 0:
+        return False
 
-    # dtype, input_shape, output_shape
-    supported_params = [
-        ["float16", [128, 80, 896], [128, 80, 1]],
-        ["float16", [8, 3, 76, 76, 85], [8, 3, 76, 76, 1]],
-        ["float16", [8, 3, 38, 38, 85], [8, 3, 38, 38, 1]],
-        ["float16", [8, 3, 19, 19, 85], [8, 3, 19, 19, 1]],
-        ["float16", [32, 3, 76, 76, 85], [32, 3, 76, 76, 1]],
-        ["float16", [32, 3, 38, 38, 85], [32, 3, 38, 38, 1]],
-        ["float16", [32, 3, 19, 19, 85], [32, 3, 19, 19, 1]],
-        ["float16", [32, 3, 80, 80, 85], [32, 3, 80, 80, 1]],
-        ["float16", [32, 3, 40, 40, 85], [32, 3, 40, 40, 1]],
-        ["float16", [32, 3, 20, 20, 85], [32, 3, 20, 20, 1]],
-        ["float32", [128, 4], [128, 1]],
-        ["float32", [6300, 4], [6300, 1]],
-        ["float32", [8, 300, 85], [8, 300, 1]],
-        ["float32", [8, 300, 85], [8, 300, 2]],
-        ["float32", [8, 1200, 85], [8, 1200, 1]],
-        ["float32", [8, 1200, 85], [8, 1200, 2]],
-        ["float32", [8, 4800, 85], [8, 4800, 1]],
-        ["float32", [8, 4800, 85], [8, 4800, 2]],
-        ["float32", [128, 300, 85], [128, 300, 1]],
-        ["float32", [128, 300, 85], [128, 300, 2]],
-        ["float32", [128, 1200, 85], [128, 1200, 1]],
-        ["float32", [128, 1200, 85], [128, 1200, 2]],
-        ["float32", [128, 4800, 85], [128, 4800, 1]],
-        ["float32", [128, 4800, 85], [128, 4800, 2]],
-        ["float16", [15360, 85], [15360, 2]],
-        ["float32", [32, 300, 85], [32, 300, 1]],
-        ["float32", [32, 300, 85], [32, 300, 2]],
-        ["float32", [32, 1200, 85], [32, 1200, 1]],
-        ["float32", [32, 1200, 85], [32, 1200, 2]],
-        ["float32", [32, 4800, 85], [32, 4800, 1]],
-        ["float32", [32, 4800, 85], [32, 4800, 2]],
-        ["float32", [64, 300, 85], [64, 300, 1]],
-        ["float32", [64, 300, 85], [64, 300, 2]],
-        ["float32", [64, 1200, 85], [64, 1200, 1]],
-        ["float32", [64, 1200, 85], [64, 1200, 2]],
-        ["float32", [64, 4800, 85], [64, 4800, 1]],
-        ["float32", [64, 4800, 85], [64, 4800, 2]],
-        ["float16", [104, 80, 896], [104, 80, 1]],
-        ["float32", [2560, 17], [2560, 2]],
-        ["float16", [2176, 71], [2176, 2]],
-        ["float32", [544, 2, 67, 52], [544, 2, 67, 2]],
-        ["int32", [928, 19, 11, 84], [928, 19, 11, 2]],
-        ["float32", [38, 27, 3, 112, 192], [38, 27, 3, 112, 2]],
-        ["int32", [2, 10, 31, 12, 3, 6, 752], [2, 10, 31, 12, 3, 6, 2]],
-        ["float16", [19, 14, 3, 1104, 128], [19, 14, 3, 1104, 2]],
-        ["float16", [1552, 19, 56, 84], [1552, 19, 56, 2]],
-        ["int32", [83, 2, 97, 304, 32], [83, 2, 97, 304, 2]],
-        ["float16", [77, 74, 5, 16, 384], [77, 74, 5, 16, 2]],
-        ["int32", [1200, 41, 67, 61], [1200, 41, 67, 2]],
-        ["float16", [11, 14, 3, 7, 2, 34, 1040], [11, 14, 3, 7, 2, 34, 2]],
-        ["int32", [5, 17, 23, 3, 2, 54, 23, 17], [5, 17, 23, 3, 2, 54, 23, 2]],
-        ["int32", [224, 37, 2, 71, 44, 5], [224, 37, 2, 71, 44, 2]],
-        ["float16", [1104, 5, 2, 11, 36, 69], [1104, 5, 2, 11, 36, 2]],
-        ["int32", [9, 26, 2, 752, 864], [9, 26, 2, 752, 2]],
-        ["float32", [1, 10, 53, 256, 2336], [1, 10, 53, 256, 2]],
-        ["float16", [2, 19, 73, 7, 4, 27, 15, 12], [2, 19, 73, 7, 4, 27, 15, 2]],
-        ["int32", [23, 23, 11, 5, 7, 6, 320], [23, 23, 11, 5, 7, 6, 2]],
-        ["float32", [41, 3, 31, 2, 17, 35, 96], [41, 3, 31, 2, 17, 35, 2]],
-        ["float32", [96, 5, 2, 89, 70, 77], [96, 5, 2, 89, 70, 2]],
-        ["int32", [464, 13, 53, 2, 12, 62], [464, 13, 53, 2, 12, 2]],
-        ["float32", [23, 5, 11, 50, 26, 13, 1, 23], [23, 5, 11, 50, 26, 13, 1, 2]],
-    ]
-    support = ([dtype, input_shape, output_shape] in supported_params) or \
-              ([dtype, input_shape, ori_y_shape] in supported_params)
-    return support
+    return True
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
@@ -7995,8 +7926,7 @@ def slice_d(x, y, begin, size, kernel_name="slice_d"):
             sch = tvm.create_schedule(res.op)
             with build_config:
                 tvm.build(sch, tensor_list, "cce", name=kernel_name)
-        elif input_format in ("NDC1HWC0", "NHWC", "NCHW", "ND", "NCDHW") and _use_strided_slice(ori_x, ori_begin,
-                                                                                                ori_size, ori_y):
+        elif _use_strided_slice(ori_x, ori_y):
             strides = [1] * len(ori_begin)
             end_new = _get_end(ori_x.get("ori_shape"), ori_begin, ori_size)
             strided_slice_d(ori_x, ori_y, ori_begin, end_new, strides, 0, 0, 0, 0, 0, kernel_name)

@@ -123,7 +123,7 @@ def strided_slice_last_dim_one(input_shape, dtype, output_shape, begin, kernel_n
 
     if max_ub_data > ub_number:
         if input_ub_len_one <= max_ub_number and len_burst_one > max_ub_number:
-            input_ub_data_one = tik_instance.Tensor(dtype, (input_ub_len_one, ),
+            input_ub_data_one = tik_instance.Tensor(dtype, (input_ub_len_one,),
                                                     name="input_ub_data_one", scope=tik.scope_ubuf)
             input_ub_length = input_ub_len_one // type_block_num
 
@@ -173,6 +173,7 @@ def strided_slice_last_dim_one(input_shape, dtype, output_shape, begin, kernel_n
                 last_core_output_ub_data_length = (last_core_output_ub_data // type_block_num) + 1
 
         if input_ub_len_one > max_ub_number and len_burst_one > max_ub_number:
+            sub_num = -1
             for i in range(0, max_ub_number):
                 max_ub_size = max_ub_number - i
                 can_div_max_ub_size = max_ub_size // len_burst
@@ -180,6 +181,8 @@ def strided_slice_last_dim_one(input_shape, dtype, output_shape, begin, kernel_n
                     if can_div_max_ub_size % type_block_num == 0:
                         sub_num = i
                         break
+            if sub_num == -1:
+                return False
             max_ub_size_last = max_ub_number - sub_num
             input_ub_data = tik_instance.Tensor(dtype, (max_ub_size_last,),
                                                 name="input_ub_data", scope=tik.scope_ubuf)
@@ -191,7 +194,7 @@ def strided_slice_last_dim_one(input_shape, dtype, output_shape, begin, kernel_n
             max_out_ub_size = max_ub_size_last // len_burst * consecutive
             max_out_ub_size_stride = max_out_ub_size // type_block_num
 
-            input_ub_data_one = tik_instance.Tensor(dtype, (max_ub_size_last_one, ),
+            input_ub_data_one = tik_instance.Tensor(dtype, (max_ub_size_last_one,),
                                                     name="input_ub_data_one", scope=tik.scope_ubuf)
             loop_index = len_burst_one // max_ub_size_last
 
@@ -220,7 +223,7 @@ def strided_slice_last_dim_one(input_shape, dtype, output_shape, begin, kernel_n
                 last_core_tail_output_data_length = \
                     (last_core_tail_output_ub_number // type_block_num) + 1
 
-    input_data = tik_instance.Tensor(dtype, (input_size, ),
+    input_data = tik_instance.Tensor(dtype, (input_size,),
                                      name="input_data", scope=tik.scope_gm)
     output_data = tik_instance.Tensor(dtype, (output_size,),
                                       name="output_data", scope=tik.scope_gm)

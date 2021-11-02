@@ -1,0 +1,108 @@
+[
+    {
+      "op": "SliceD",
+      "case_name" : "test_slice_d_001",
+      "calc_expect_func_file" : "test_slice_d_golden.py:calc_expect_func",
+      "input_desc": [
+        {
+          "format": "ND",
+          "shape": [5, 13, 4],
+          "type": ["int32"],
+          "value_range": [[-5, 5]],
+          "data_distribute" : "uniform",
+          "name": "x"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": "ND",
+          "shape": [2, 12, 3],
+          "type": ["int32"],
+          "name": "y"
+        }
+      ],
+      "attr": [
+        {
+          "name": "offsets",
+          "value": [0, 1, 1],
+          "type": "list_int"
+        },
+        {
+            "name": "size",
+            "value": [2, -1, -1],
+            "type": "list_int"
+        }
+      ]
+    },
+    {
+        "op": "SliceD",
+        "case_name" : "test_slice_d_002",
+        "calc_expect_func_file" : "test_slice_d_golden.py:calc_expect_func",
+        "input_desc": [
+          {
+            "format": "ND",
+            "shape": [13, 7, 5, 5],
+            "type": ["int8"],
+            "value_range": [[-5, 5]],
+            "data_distribute" : "uniform",
+            "name": "x"
+          }
+        ],
+        "output_desc": [
+          {
+            "format": "ND",
+            "shape": [1, 1, 1, 1],
+            "type": ["int8"],
+            "name": "y"
+          }
+        ],
+        "attr": [
+          {
+            "name": "offsets",
+            "value": [0, 0, 0, 0],
+            "type": "list_int"
+          },
+          {
+              "name": "size",
+              "value": [1, 1, 1, 1],
+              "type": "list_int"
+          }
+        ]
+    },
+    {
+        "op": "SliceD",
+        "case_name" : "test_slice_d_003",
+        "calc_expect_func_file" : "test_slice_d_golden.py:calc_expect_func",
+        "input_desc": [
+        {
+            "format": "ND",
+            "shape": [65, 75],
+            "type": ["float32"],
+            "value_range": [[-5, 5]],
+            "data_distribute" : "uniform",
+            "name": "x"
+        }
+        ],
+        "output_desc": [
+        {
+            "format": "ND",
+            "shape": [15, 33],
+            "type": ["float32"],
+            "name": "y"
+        }
+        ],
+        "attr": [
+        {
+            "name": "offsets",
+            "value": [13, 25],
+            "type": "list_int"
+        },
+        {
+            "name": "size",
+            "value": [15, 33],
+            "type": "list_int"
+        }
+        ]
+    }
+  ]
+  
