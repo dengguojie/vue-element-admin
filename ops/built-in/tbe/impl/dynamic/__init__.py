@@ -377,5 +377,6 @@ from .swish_grad import swish_grad
 from .hard_swish_grad import hard_swish_grad
 from .dynamic_gru_v2 import dynamic_gru_v2
 from .sync_batch_norm_backward_reduce import sync_batch_norm_backward_reduce
+from .sync_batch_norm_backward_elemt import sync_batch_norm_backward_elemt
 from .fake_quant_with_min_max_vars import fake_quant_with_min_max_vars
 from .get_shape import get_shape

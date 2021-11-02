@@ -167,6 +167,33 @@ REG_OP(SyncBatchNormBackwardReduce)
     .OP_END_FACTORY_REG(SyncBatchNormBackwardReduce)
 
 /**
+*@brief part of SyncBatchNormBackward . \n
+
+*@par Inputs:
+* Three inputs, including:
+*@li grad_output: A Tensor. Must be one of the following types: float16, float32 .
+*@li save_input: A Tensor. Must be one of the following types: float16, float32 .
+*@li mean: A Tensor. Must be one of the following types: float16, float32 .
+*@li invstd: A Tensor. Must be one of the following types: float16, float32 .
+*@li weight: A Tensor. Must be one of the following types: float16, float32 .
+*@li mean_dy: A Tensor. Must be one of the following types: float16, float32 .
+*@li mean_dy_xmu: A Tensor. Must be one of the following types: float16, float32 . \n
+
+*@par Outputs:
+*@li grad_input: A Tensor. Has the same type and format as input "grad_output" . \n
+*/
+REG_OP(SyncBatchNormBackwardElemt)
+    .INPUT(grad_output, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(save_input, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(mean, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(invstd, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(weight, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(mean_dy, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(mean_dy_xmu, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(grad_input, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OP_END_FACTORY_REG(SyncBatchNormBackwardElemt)
+    
+/**
 *@brief Performs batch normalization . \n
 
 *@par Inputs:

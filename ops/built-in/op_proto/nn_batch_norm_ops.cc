@@ -123,6 +123,25 @@ INFER_FUNC_REG(SyncBatchNormBackwardReduce, SyncBatchNormBackwardReduceInferShap
 VERIFY_FUNC_REG(SyncBatchNormBackwardReduce, SyncBatchNormBackwardReduceVerify);
 // ----------------SyncBatchNormBackwardReduce END-------------------
 
+// ----------------SyncBatchNormBackwardElemt Op-------------------
+IMPLEMT_VERIFIER(SyncBatchNormBackwardElemt, SyncBatchNormBackwardElemtVerify) {
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(SyncBatchNormBackwardElemt, SyncBatchNormBackwardElemtInferShape) {
+  auto x_shape = op.GetInputDesc("grad_output").GetShape().GetDims();
+  DataType x_dtype = op.GetInputDesc("grad_output").GetDataType();
+  TensorDesc grad_input_desc = op.GetOutputDesc("grad_input");
+  grad_input_desc.SetShape(ge::Shape(x_shape));
+  grad_input_desc.SetDataType(x_dtype);
+  (void)op.UpdateOutputDesc("grad_input", grad_input_desc);
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(SyncBatchNormBackwardElemt, SyncBatchNormBackwardElemtInferShape);
+VERIFY_FUNC_REG(SyncBatchNormBackwardElemt, SyncBatchNormBackwardElemtVerify);
+// ----------------SyncBatchNormBackwardElemt END-------------------
+
 // -----------------------------BatchNormExt2------------------------------
 IMPLEMT_VERIFIER(BatchNormExt2, BatchNormExt2Verify) {
   if (!CheckTwoInputDtypeSame(op, "input_scale", "input_offset")) {
