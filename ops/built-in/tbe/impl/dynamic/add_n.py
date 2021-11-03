@@ -162,13 +162,12 @@ def add_n(inputs, output, tensor_num, kernel_name="add_n"):
 
             # add_n_compute
             res = add_n_compute(datas, output, kernel_name)
-
+            datas.append(res)
             tensors.append(datas)
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
         schedules.append(sch)
 
     # build
-    datas.append(res)
     config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)
