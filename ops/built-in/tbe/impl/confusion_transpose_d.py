@@ -501,31 +501,31 @@ def op_select_format(x, y, perm, shape, transpose_first,
                                                datatype="float16,float,int8,int16,int32,int64,"
                                                         "uint8,uint16,uint32,uint64,"
                                                         "float16,float,int8,int16,int32,int64,"
-                                                        "uint8,uint16,uint32,uint64",
+                                                        "uint8,uint16,uint32,uint64,bool,bool",
                                                format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,"
                                                       "FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,"
                                                       "FRACTAL_NZ,FRACTAL_NZ,"
-                                                      "ND,ND,ND,ND,ND,ND,ND,ND,ND,ND")
+                                                      "ND,ND,ND,ND,ND,ND,ND,ND,ND,ND,FRACTAL_NZ,ND")
         output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                 datatype="float16,float,int8,int16,int32,int64,"
                                                          "uint8,uint16,uint32,uint64,"
                                                          "float16,float,int8,int16,int32,int64,"
-                                                         "uint8,uint16,uint32,uint64",
+                                                         "uint8,uint16,uint32,uint64,bool,bool",
                                                 format="FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,"
                                                        "FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,"
                                                        "FRACTAL_NZ,FRACTAL_NZ,FRACTAL_NZ,"
                                                        "FRACTAL_NZ,"
-                                                       "ND,ND,ND,ND,ND,ND,ND,ND,ND,ND")
+                                                       "ND,ND,ND,ND,ND,ND,ND,ND,ND,ND,FRACTAL_NZ,ND")
     else:
         # ND+ND
         input0 = util_select_op_base.gen_param(classify="input0", name="x",
                                                datatype="float16,float,int8,int16,int32,int64,"
-                                                        "uint8,uint16,uint32,uint64",
-                                               format="ND,ND,ND,ND,ND,ND,ND,ND,ND,ND")
+                                                        "uint8,uint16,uint32,uint64,bool",
+                                               format="ND,ND,ND,ND,ND,ND,ND,ND,ND,ND,ND")
         output0 = util_select_op_base.gen_param(classify="output0", name="y",
                                                 datatype="float16,float,int8,int16,int32,int64,"
-                                                         "uint8,uint16,uint32,uint64",
-                                                format="ND,ND,ND,ND,ND,ND,ND,ND,ND,ND")
+                                                         "uint8,uint16,uint32,uint64,bool",
+                                                format="ND,ND,ND,ND,ND,ND,ND,ND,ND,ND,ND")
 
     param_list = [input0, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
