@@ -13,7 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-resize_bilinear_v2_grad.py
+sync_resize_bilinear_v2_grad.py
 """
 
 from impl.util.platform_adapter import tik
@@ -22,7 +22,6 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import error_manager_vector
-from impl.dynamic.sync_resize_bilinear_v2_grad import SyncResizeBilinearV2Grad
 
 MAX_INT32 = 2 ** 31 - 1
 TILING_NUM = 64
@@ -57,7 +56,7 @@ def _check_param(grads, images, align_corners, half_pixel_centers):
     None
     """
     if align_corners and half_pixel_centers:
-        error_manager_vector.raise_err_specific_reson("resize_bilinear_v2_grad",
+        error_manager_vector.raise_err_specific_reson("sync_resize_bilinear_v2_grad",
                                                       "align_corners and half_pixel_centers \
                                                       can not be set to true at the same time.")
     grads_dtype = grads.get("dtype")
@@ -66,13 +65,13 @@ def _check_param(grads, images, align_corners, half_pixel_centers):
     para_check.check_dtype(images_dtype, ["float32"])
 
 
-class ResizeBilinearV2Grad(object):
+class SyncResizeBilinearV2Grad(object):
     """
-    The class of ResizeBilinearV2Grad op
+    The class of SyncResizeBilinearV2Grad op
     """
 
-    def __init__(self, grads, images, align_corners=False, half_pixel_centers=False,
-                 kernel_name="resize_bilinear_v2_grad"):
+    def __init__(self, grads, images, size, ori_image_size, src_start_w, dst_start_w, align_corners=False,
+                 half_pixel_centers=False, kernel_name="sync_resize_bilinear_v2_grad"):
 
         self.tik_instance = tik.Tik(tik.Dprofile("v100", "cloud"))
 
@@ -82,6 +81,12 @@ class ResizeBilinearV2Grad(object):
         self.align_corner = align_corners
         self.half_pixel_centers = half_pixel_centers
         self.kernel_name = kernel_name
+        self.src_start_w = src_start_w
+        self.dst_start_w = dst_start_w
+        self.ori_h, self.ori_w = ori_image_size
+        self.resize_h, self.resize_w = size
+        self.scale_h = self.get_scale(self.ori_h, self.resize_h)
+        self.scale_w = self.get_scale(self.ori_w, self.resize_w)
 
         self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
         self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
@@ -112,8 +117,6 @@ class ResizeBilinearV2Grad(object):
         self.h_last_core = None
         self.grads_h, self.grads_w = None, None
         self.images_h, self.images_w = None, None
-        self.scale_h = None
-        self.scale_w = None
         self.grad_each_core = None
         self.output_each_core = None
         self.grad_move_num = None
@@ -184,7 +187,7 @@ class ResizeBilinearV2Grad(object):
 
         with self.tik_instance.for_range(0, self.w_loop) as loop_idx:
             with self.tik_instance.for_range(0, 256) as num_idx:
-                self.tik_instance.vec_dup(8, index_256[num_idx * 8], loop_idx * 256 + num_idx, 1, 8)
+                self.tik_instance.vec_dup(8, index_256[num_idx * 8], loop_idx * 256 + num_idx + self.dst_start_w, 1, 8)
 
             if self.half_pixel_centers:
                 self.tik_instance.vec_adds(MASK, index_256, index_256, 0.5, 32, 8, 8)
@@ -194,6 +197,7 @@ class ResizeBilinearV2Grad(object):
             else:
                 self.tik_instance.vec_muls(MASK, index_256, index_256, self.scale_w, 32, 8, 8)
 
+            self.tik_instance.vec_adds(MASK, index_256, index_256, float(-self.src_start_w), 32, 8, 8)
             self.tik_instance.vec_conv(MASK, "floor", int_index, index_256, 32, 8, 8)
             self.tik_instance.vec_conv(MASK, "", float_index, int_index, 32, 8, 8)
 
@@ -219,7 +223,7 @@ class ResizeBilinearV2Grad(object):
         tmp_src = self.tik_instance.Scalar("int32", name="tmp")
 
         with self.tik_instance.for_range(0, self.grads_w) as dst_w:
-            tmp_index[dst_w] = dst_w
+            tmp_index[dst_w] = dst_w + self.dst_start_w
 
         if self.half_pixel_centers:
             self.tik_instance.vec_adds(MASK, tmp_index, tmp_index, 0.5, 64, 8, 8)
@@ -229,6 +233,7 @@ class ResizeBilinearV2Grad(object):
         else:
             self.tik_instance.vec_muls(MASK, tmp_index, tmp_index, self.scale_w, 64, 8, 8)
 
+        self.tik_instance.vec_adds(MASK, tmp_index, tmp_index, float(-self.src_start_w), 64, 8, 8)
         self.tik_instance.vec_conv(MASK, "floor", tmp_int_index, tmp_index, 64, 8, 8)
         self.tik_instance.vec_dup(MASK, count_num, 0, 10, 8)
 
@@ -266,8 +271,6 @@ class ResizeBilinearV2Grad(object):
         self.grads_w = self.tik_instance.Scalar("int32", name="grads_w")
         self.images_h = self.tik_instance.Scalar("int32", name="images_h")
         self.images_w = self.tik_instance.Scalar("int32", name="images_w")
-        self.scale_h = self.tik_instance.Scalar("float32", name="scale_h")
-        self.scale_w = self.tik_instance.Scalar("float32", name="scale_w")
         self.grad_each_core = self.tik_instance.Scalar("int32", name="grad_each_core")
         self.output_each_core = self.tik_instance.Scalar("int32", name="output_eah_core")
         self.grad_move_num = self.tik_instance.Scalar("int32", name="grad_move_num")
@@ -297,9 +300,6 @@ class ResizeBilinearV2Grad(object):
             self.nc1.set_as(tiling_ub[14])
             self.w_loop.set_as(tiling_ub[15])
             self.w_tail.set_as(tiling_ub[16])
-
-        self.get_scale(self.scale_h, self.images_h, self.grads_h)
-        self.get_scale(self.scale_w, self.images_w, self.grads_w)
 
     def tiling_compute(self):
         """
@@ -354,28 +354,20 @@ class ResizeBilinearV2Grad(object):
         dtype_byte_size = tbe_platform.get_bit_len(dtype) // 8
         return dtype_byte_size
 
-    def get_scale(self, scale_scalar, image_size, grad_size):
+    def get_scale(self, image_size, resize_size):
         """
         :param scale_scalar: scalar of scale
         :param image_size: scalar of image_size
         :param grad_size: scalar of grad_size
         :return:
         """
-        image_float = self.tik_instance.Scalar("float32", name="image_float")
-        grad_float = self.tik_instance.Scalar("float32", name="grad_float")
-        self.tik_instance.scalar_conv("", image_float, image_size)
-        self.tik_instance.scalar_conv("", grad_float, grad_size)
-
+        if resize_size < 2:
+            return 0
         if self.align_corner:
-            with self.tik_instance.if_scope(grad_float < 2):
-                scale_scalar.set_as(0)
-            with self.tik_instance.else_scope():
-                scale_scalar.set_as((image_float - 1) / (grad_float - 1))
+            scale = (image_size - 1) / (resize_size - 1)
         else:
-            with self.tik_instance.if_scope(grad_float < 2):
-                scale_scalar.set_as(0)
-            with self.tik_instance.else_scope():
-                scale_scalar.set_as(image_float / grad_float)
+            scale = image_size / resize_size
+        return scale
 
     def get_src_index(self, scale, dst_index_scalar, src_scalar):
         """
@@ -473,8 +465,9 @@ class ResizeBilinearV2Grad(object):
         """
         calculate source w
         """
-        scalar.dst_w.set_as(dst_w)
+        scalar.dst_w.set_as(dst_w + self.dst_start_w)
         self.get_src_index(self.scale_w, scalar.dst_w, scalar.src_w)
+        scalar.src_w.set_as(scalar.src_w - self.src_start_w)
         self.tik_instance.scalar_conv("floor", scalar.w_idx, scalar.src_w)
         self.get_stride(scalar.w_idx, scalar.w_stride, self.images_w)
         self.get_ratio(scalar.src_w, scalar.w_idx, scalar.wl_ratio, scalar.wr_ratio)
@@ -1142,48 +1135,3 @@ class ResizeBilinearV2Grad(object):
 
             src_stride = mask // self.data_each_block
             self.tik_instance.vec_add(mask, src, src[num], src, repeat_time, 0, src_stride, 0)
-
-
-@register_operator("ResizeBilinearV2Grad")
-# pylint: disable=unused-argument
-def resize_bilinear_v2_grad(grads, images, y, size=None, ori_image_size=None, src_start_w=None, dst_start_w=None,
-                            align_corners=False, half_pixel_centers=False, kernel_name="resize_bilinear_v2_grad"):
-    """
-    algorithm:resize_bilinear_v2_grad
-    Operation for resize_bilinear_v2_grad
-
-    Parameters
-    ----------
-    grads : dict
-        dict with keys(range and dtype) of grads
-    images : dict
-        dict with keys(range and dtype) of images
-    y : dict
-        dict with keys(range and dtype) of output
-    size : list or tuple
-        resize size, include H, W, default to None
-    ori_image_size: list or tuple
-        origin image size before split, include H, W, default to None
-    src_start_w: int
-        start w of src image, default to None
-    dst_start_w: int
-        start w of dst image, default to None
-    align_corners : bool
-        decide how to calculate for scale
-    half_pixel_centers : bool
-        decide how to calculate for location
-    kernel_name : str
-        kernel name, default value is "resize_bilinear_v2_grad"
-
-    Returns
-    -------
-    None
-    """
-    _check_param(grads, images, align_corners, half_pixel_centers)
-    if ori_image_size is not None and len(ori_image_size) == 2:
-        obj = SyncResizeBilinearV2Grad(grads, images, size, ori_image_size, src_start_w, dst_start_w, align_corners,
-                                       half_pixel_centers, kernel_name)
-    else:
-        obj = ResizeBilinearV2Grad(grads, images, align_corners, half_pixel_centers, kernel_name)
-    instance = obj.compute()
-    return instance

@@ -586,6 +586,14 @@ REG_OP(ResizeNearestNeighborV2GradD)
 channels], The image tensor that was resized . \n
 
 *@par Attributes:
+*@li size: An optional listint. Defaults to {}.
+*@par Attributes:
+*@li ori_image_size: An optional listint. Defaults to {}.
+*@par Attributes:
+*@li src_start_w: An optional int. Defaults to 0.
+*@par Attributes:
+*@li dst_start_w: An optional int. Defaults to 0.
+*@par Attributes:
 *@li align_corners: An optional bool. Defaults to False. If true, the centers of
 the 4 corner pixels of the input and grad tensors are aligned. Defaults to
 false .
@@ -606,6 +614,10 @@ REG_OP(ResizeBilinearV2Grad)
     .INPUT(grads, TensorType({DT_FLOAT}))
     .INPUT(original_image, TensorType::FloatingDataType())
     .OUTPUT(y, TensorType({DT_FLOAT}))
+    .ATTR(size, ListInt, {})
+    .ATTR(ori_image_size, ListInt, {})
+    .ATTR(src_start_w, Int, 0)
+    .ATTR(dst_start_w, Int, 0)
     .ATTR(align_corners, Bool, false)
     .ATTR(half_pixel_centers, Bool, false)
     .OP_END_FACTORY_REG(ResizeBilinearV2Grad)

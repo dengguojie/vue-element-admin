@@ -1,0 +1,116 @@
+[
+    {
+        "op": "ResizeBilinearV2Grad",
+        "case_name": "test_resize_bilinear_v2_grad_001",
+        "calc_expect_func_file": "",
+        "input_desc": [
+            {
+                "format": "NCHW",
+                "shape": [-1, -1, -1, -1],
+                "typical_shape": [4, 16, 16, 16],
+                "shape_range": [[1, 2240],[1, 2240],[1, 2240],[1, 2240]],
+                "type": "float",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "grads"
+            },
+            {
+                "format": "NCHW",
+                "shape": [-1, -1, -1, -1],
+                "typical_shape": [4, 16, 8, 8],
+                "shape_range": [[1, 2240],[1, 2240],[1, 2240],[1, 2240]],
+                "type": "float",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "ori_image_size"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NCHW",
+                "shape": [4, 16, 8, 8],
+                "type": "float",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "align_corners",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "half_pixel_centers",
+                "value": false,
+                "type": "bool"
+            },
+			{
+                "name": "size",
+                "value": [],
+                "type": "list_int"
+            },
+			{
+                "name": "ori_image_size",
+                "value": [],
+                "type": "list_int"
+            },
+			{
+                "name": "src_start_w",
+                "value": 0,
+                "type": "int"
+            },
+			{
+                "name": "dst_start_w",
+                "value": 0,
+                "type": "int"
+            }
+        ]
+    },
+    {
+        "op": "ResizeBilinearV2Grad",
+        "case_name": "test_resize_bilinear_v2_grad_002",
+        "calc_expect_func_file": "",
+        "input_desc": [
+            {
+                "format": "NCHW",
+                "shape": [-1, -1, -1, -1],
+                "typical_shape": [4, 16, 16, 16],
+                "shape_range": [[1, 2240],[1, 2240],[1, 2240],[1, 2240]],
+                "type": "float",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "grads"
+            },
+            {
+                "format": "NCHW",
+                "shape": [-1, -1, -1, -1],
+                "typical_shape": [4, 16, 8, 8],
+                "shape_range": [[1, 2240],[1, 2240],[1, 2240],[1, 2240]],
+                "type": "float",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "ori_image_size"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NCHW",
+                "shape": [4, 16, 8, 8],
+                "type": "float",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "align_corners",
+                "value": true,
+                "type": "bool"
+            },
+            {
+                "name": "half_pixel_centers",
+                "value": false,
+                "type": "bool"
+            }
+        ]
+    }
+]
