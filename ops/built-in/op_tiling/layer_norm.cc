@@ -450,7 +450,7 @@ void CalcUbFuseFactor(const int32_t block_axis, std::vector<int64_t> input_x, Ti
 void TilingCommonSplitUB(const int32_t ub_block_inner, const int32_t block_axis, std::vector<int64_t> input_x,
                          TilingParams &tilingparams, const std::vector<int32_t> &reduce_axis, const int32_t core_num,
                          const int32_t max_ub_size, CompileInfo &compileinfo, const int32_t block,
-                         const int32_t block_inner) {
+                         int32_t &block_inner) {
   // open multi-core block and split ub axis
   std::vector<int32_t> ubtilingdata =
       GetUbTilingData(ub_block_inner, block_axis, input_x, max_ub_size, reduce_axis, block);
@@ -459,6 +459,27 @@ void TilingCommonSplitUB(const int32_t ub_block_inner, const int32_t block_axis,
   bool normal2workspace = ubtilingdata[2];
   if (normal2workspace) {
     tilingparams.ub_tiling_axis_reduce = 0;
+    // judge ub_fuse_factor*a1*a2 ... < max_ub_size
+    int32_t fuse_num = 1;
+    for (size_t i = 0; i < input_x.size(); i++) {
+      if (i == block_axis) {
+        fuse_num *= block_inner;
+      } else {
+        fuse_num *= IsInVector(reduce_axis, i) ? 1 : input_x[i];
+      }
+    }
+    bool reset_switch = false;
+    while (fuse_num > max_ub_size) {
+      fuse_num = fuse_num / 2;
+      block_inner = block_inner / 2;
+      reset_switch = true;
+    }
+    if (reset_switch) {
+      tilingparams.block_factor = block_inner;
+      tilingparams.block_dim = (input_x[block_axis] % block_inner == 0)
+                                   ? input_x[block_axis] / block_inner
+                                   : (input_x[block_axis] + block_inner - 1) / block_inner;
+    }
     tilingparams.ub_fuse_factor = block_inner;
     compileinfo.is_normal = false;
   } else {
@@ -488,12 +509,36 @@ void TilingCommonSplitUB(const int32_t ub_block_inner, const int32_t block_axis,
 
 void TilingCommonGenerate(const int32_t block_axis, std::vector<int64_t> input_x, TilingParams &tilingparams,
                           const std::vector<int32_t> &reduce_axis, const int32_t core_num, const int32_t max_ub_size,
-                          CompileInfo &compileinfo, const int32_t block, const int32_t block_inner) {
+                          CompileInfo &compileinfo, const int32_t block, int32_t &block_inner) {
   // judge exceed ub_size and do workspace
   int32_t ub_block_inner = (input_x[block_axis] > core_num) ? block_inner : block;
   bool isworkspace = CheckWorkspaceCase(input_x, reduce_axis, max_ub_size);
   bool isexceedub = CheckExceedUbSize(block_inner, input_x, block_axis, max_ub_size);
   if (isworkspace && isexceedub) {
+    CalcUbFuseFactor(block_axis, input_x, tilingparams, core_num, max_ub_size, block, block_inner);
+    // judge ub_fuse_factor*a1*a2 ... < max_ub_size
+    int32_t fuse_num = 1;
+    for (size_t i = 0; i < input_x.size(); i++) {
+      if (i == block_axis) {
+        fuse_num *= block_inner;
+      } else {
+        fuse_num *= IsInVector(reduce_axis, i) ? 1 : input_x[i];
+      }
+    }
+    bool reset_switch = false;
+    while (fuse_num > max_ub_size) {
+      fuse_num = fuse_num / 2;
+      block_inner = block_inner / 2;
+      ub_block_inner = block_inner;
+      reset_switch = true;
+    }
+    if (reset_switch) {
+      tilingparams.block_factor = block_inner;
+      tilingparams.block_dim = (input_x[block_axis] % block_inner == 0)
+                                   ? input_x[block_axis] / block_inner
+                                   : (input_x[block_axis] + block_inner - 1) / block_inner;
+      CalcUbFuseFactor(block_axis, input_x, tilingparams, core_num, max_ub_size, block, block_inner);
+    }
     // workspace
     // not open and open multi-core block
     std::vector<int32_t> ubtilingdata =
@@ -502,8 +547,6 @@ void TilingCommonGenerate(const int32_t block_axis, std::vector<int64_t> input_x
     tilingparams.ub_factor = ubtilingdata[1];
     int32_t ub_tiling_axis_reduce = GetUbReduceAxis(input_x, max_ub_size, reduce_axis);
     tilingparams.ub_tiling_axis_reduce = ub_tiling_axis_reduce;
-    CalcUbFuseFactor(block_axis, input_x, tilingparams, core_num, max_ub_size, block, block_inner);
-
     compileinfo.is_normal = false;
   } else if (isexceedub && !isworkspace) {
     // open multi-core block and split ub axis
@@ -812,25 +855,23 @@ bool LayerNormTiling(const string &op_type, const TeOpParas &op_paras, const nlo
       ByteBufferPut(run_info.tiling_data, (int32_t)input_x[i]);
       OP_LOGD(op_type.c_str(), "input_x shape:%d.", input_x[i]);
     }
-
-    TilingParams tilingparams;
-    CompileInfo compileinfo;
-    bool compileflag = GetCompileInfo(op_type, op_info, compileinfo, reduce_axis, input_x, run_info);
-    if (!compileflag) {
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo failed.");
-    }
-
     // update last dim align block
     std::vector<int64_t> old_input_x = input_x;
     if ((input_x[input_x.size() - 1] != LAST_DIM_RANGE_ONE) && (input_x.size() > 1)) {
       input_x[input_x.size() - 1] = (input_x[input_x.size() - 1] + block - 1) / block * block;
     }
 
+    TilingParams tilingparams;
+    CompileInfo compileinfo;
     GetTilingData(input_x, tilingparams, reduce_axis, core_num, max_ub_size, compileinfo, input_dtype, input_format);
     // tiling_key
     int32_t tiling_key = CalcTilingKey(compileinfo, old_input_x, tilingparams, reduce_axis);
     // rwrite ByteBuffer
     WriteByteBuffer(mode, tiling_key, workspace_sub1, tilingparams, compileinfo, run_info);
+    bool compileflag = GetCompileInfo(op_type, op_info, compileinfo, reduce_axis, input_x, run_info);
+    if (!compileflag) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo failed.");
+    }
   }
   OP_LOGI(op_type.c_str(), "LayerNormTiling end.");
   return true;

@@ -34,13 +34,12 @@ from tbe.common.utils import shape_util
 from ..base import operation
 from ..base.operation import get_context
 from ..base.operation import register_schedule
-from ..base.operation import var
+from ..base.operation import var_inner
 from .constants import Pattern
 from .constants import INSN_MAPPING
 from .layer_norm_tilingcase import LayerNormInfo
 from .layer_norm_tilingcase import LayerNormTilingCase
 from .layer_norm_workspace_schedule import WorkspaceLayerNormSchedule
-from . import util
 from .util import get_dsl_insn
 
 MAX_NODE_COUNT = 12
@@ -217,8 +216,11 @@ class NormalLayerNormSchedule:
 
             # reused_by mid_tensor
             for mid_ten in self.graph_info.mid_output_tensor_set:
+                consumers_tensor_list = [self.sub_tensor_ub] if self.sub_gm_tensor in \
+                    self.forward_compute_graph_map[mid_ten] else self.forward_compute_graph_map[mid_ten]
+
                 mid_tensor = self.schedule.cache_read(mid_ten, tbe_platform_info.scope_ubuf,
-                                                      self.forward_compute_graph_map[mid_ten])
+                                                      consumers_tensor_list)
 
                 self.schedule[mid_tensor].reused_by(self.tensor2stage[mid_ten])
                 self.input_tensor_stage_list_1.append(mid_tensor)
@@ -323,20 +325,20 @@ class NormalLayerNormSchedule:
 
         # Get tiling params
         block_factor = case.block_factor
-        block_inner = block_factor if block_factor is not None else var(
-            "block_factor", (1, None))
+        block_inner = block_factor if block_factor is not None else var_inner(
+            "_block_factor", (1, None))
         block_factor_1 = case.block_factor_1
-        block_inner_1 = block_factor_1 if block_factor_1 is not None else var(
-            "block_factor_1", (1, None))
+        block_inner_1 = block_factor_1 if block_factor_1 is not None else var_inner(
+            "_block_factor_1", (1, None))
 
         res_axis = []
         for d_i in range(len(res_tensor.shape)):
             res_axis.append(res_tensor.op.axis[d_i])
 
         ub_factor = case.ub_factor
-        ub_inner = ub_factor if ub_factor is not None else var(
-            "ub_factor", ub_factor_range)
-        ub_fuse_inner = ub_fuse_factor if ub_fuse_factor is not None else var("ub_fuse_factor", (0, 0))
+        ub_inner = ub_factor if ub_factor is not None else var_inner(
+            "_ub_factor", ub_factor_range)
+        ub_fuse_inner = ub_fuse_factor if ub_fuse_factor is not None else var_inner("_ub_fuse_factor", (0, 0))
         ub_inner = ub_inner + ub_fuse_inner
 
         # block tiling

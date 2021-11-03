@@ -391,7 +391,7 @@ def layer_norm_compute_nz(input_x, input_gamma, input_beta,
     is_cast = False
     is_support_vexp = tbe_platform.api_check_support("te.lang.cce.vexp", "float32")
     tbe_context.get_context().add_compile_info("is_support_vexp", is_support_vexp)
-    if dtype == "float16" and ((is_support_vexp and impl_mode == "high_performance") or impl_mode == "high_precision"):
+    if dtype == "float16" and is_support_vexp and impl_mode == "high_performance":
         cast_dtype = "float32"
         cast_dtype_precision = "float32"
         input_x = tbe.cast_to(input_x, "float32")
@@ -517,7 +517,7 @@ def layer_norm_compute(input_x,
     is_cast = False
     is_support_vexp = tbe_platform.api_check_support("te.lang.cce.vexp", "float32")
     tbe_context.get_context().add_compile_info("is_support_vexp", is_support_vexp)
-    if dtype == "float16" and ((is_support_vexp and impl_mode == "high_performance") or impl_mode == "high_precision"):
+    if dtype == "float16" and is_support_vexp and impl_mode == "high_performance":
         cast_dtype = "float32"
         cast_dtype_precision = "float32"
         input_x = tbe.cast_to(input_x, "float32")
@@ -766,9 +766,9 @@ def layer_norm(input_x,
         schedules, tensors = [], []
         var_list = []
         for i in range(len(shape_x) - 1):
-            dim_axis = operation.var("dim_" + str(i), range_x[i])
+            dim_axis = operation.var_inner("_dim_" + str(i), range_x[i])
             var_list.append(dim_axis)
-        var_list.append(operation.var("dim_" + str(len(shape_x) - 1)))
+        var_list.append(operation.var_inner("_dim_" + str(len(shape_x) - 1)))
 
         for (dy_shape_x, dy_shape_gamma, dy_shape_beta, dy_reduce_axis) in ins[:1]:
             x_last_dim_range = dy_shape_x["range"][-1]

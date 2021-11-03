@@ -32,14 +32,9 @@ from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.utils import shape_util
 from ..base import operation
-from ..base.operation import get_context
-from ..base.operation import register_schedule
-from ..base.operation import var
-from .constants import Pattern
+from ..base.operation import var_inner
 from .constants import INSN_MAPPING
-from .layer_norm_tilingcase import LayerNormInfo
 from .layer_norm_tilingcase import LayerNormTilingCase
-from . import util
 from .util import get_dsl_insn
 
 MAX_NODE_COUNT = 12
@@ -192,21 +187,22 @@ class WorkspaceLayerNormSchedule:
                 self.tensor2tensorub[output_tensor] = output_tensor_ub
 
         def _do_reused_by():
-            # reused_by mid_tensor
-            # middle_output cache_read
-            for mid_tensor in self.graph_info.mid_output_tensor_set:
-                mid_tensor_ub_back = self.schedule.cache_read(mid_tensor, tbe_platform_info.scope_ubuf,
-                                                              self.forward_compute_graph_map[mid_tensor])
-                self.schedule[mid_tensor_ub_back].reused_by(self.tensor2tensorub[mid_tensor])
-                self.input_tensor_ub_list.append(mid_tensor_ub_back)
-                self.mid_tensor_ub_back_dict[mid_tensor] = [self.tensor2tensorub[mid_tensor], mid_tensor_ub_back]
-
             # find the first sub tensor
             # the first sub tensor in workspace
             sub_1_ub = self.schedule.cache_write(
                 self.sub_gm_tensor,
                 tbe_platform_info.scope_ubuf
             )
+            # reused_by mid_tensor
+            # middle_output cache_read
+            for mid_tensor in self.graph_info.mid_output_tensor_set:
+                consumers_tensor_list = [sub_1_ub] if self.sub_gm_tensor in self.forward_compute_graph_map[mid_tensor] \
+                    else self.forward_compute_graph_map[mid_tensor]
+                mid_tensor_ub_back = self.schedule.cache_read(mid_tensor, tbe_platform_info.scope_ubuf,
+                                                              consumers_tensor_list)
+                self.schedule[mid_tensor_ub_back].reused_by(self.tensor2tensorub[mid_tensor])
+                self.input_tensor_ub_list.append(mid_tensor_ub_back)
+                self.mid_tensor_ub_back_dict[mid_tensor] = [self.tensor2tensorub[mid_tensor], mid_tensor_ub_back]
 
             self.mid_tensor_ub_back_dict[self.sub_gm_tensor] = [sub_1_ub]
             for tensor in tuple(self.forward_compute_graph_map[self.sub_gm_tensor]):
@@ -294,12 +290,12 @@ class WorkspaceLayerNormSchedule:
         ub_factor = case.ub_factor
         ub_fuse_factor = case.ub_fuse_factor
 
-        block_inner = block_factor if block_factor is not None else var("block_factor", (1, None))
+        block_inner = block_factor if block_factor is not None else var_inner("_block_factor", (1, None))
         block_factor_1 = case.block_factor_1
-        block_inner_1 = block_factor_1 if block_factor_1 is not None else var(
-            "block_factor_1", (1, None))
-        ub_inner = ub_factor if ub_factor is not None else var("ub_factor", (1, None))
-        ub_fuse_inner = ub_fuse_factor if ub_fuse_factor is not None else var("ub_fuse_factor", (1, None))
+        block_inner_1 = block_factor_1 if block_factor_1 is not None else var_inner(
+            "_block_factor_1", (1, None))
+        ub_inner = ub_factor if ub_factor is not None else var_inner("_ub_factor", (1, None))
+        ub_fuse_inner = ub_fuse_factor if ub_fuse_factor is not None else var_inner("_ub_fuse_factor", (1, None))
 
         # subgraph 0 tiling case
         def do_tiling_subgraph0():
