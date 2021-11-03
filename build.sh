@@ -274,7 +274,7 @@ install_python_libs(){
   for p in numpy decorator sympy wheel psutil attrs
     do
       if [[ "$python_libs" =~ "$p" ]];then
-        echo $p
+	echo "Requirement already satisfied: $p"
       else
          pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple $p
       fi
