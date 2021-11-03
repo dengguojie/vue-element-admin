@@ -18,6 +18,7 @@ layer_norm_tik.py
 
 from te.platform import get_soc_spec
 from te.platform import cce_conf
+from te.utils import shape_util
 from impl.ascend import AContainer
 from impl.ascend import TensorOperatorParam
 from impl.ascend import VecCmd
@@ -925,7 +926,10 @@ def if_tik_support(input_x, input_gamma, input_beta,
     params = (input_x, input_gamma, input_beta, output_y, output_mean, output_variance)
     support_version = ("Ascend910",)
     support_dtype = (input_x.get("dtype").lower(),)
-    support_format = ("NCHW", "ND")
+    support_format = ("NCHW", "ND", "NHWC")
+    shape_length = len(input_x.get("shape"))
+    begin_norm_axis = shape_util.axis_check(shape_length, begin_norm_axis)
+    begin_params_axis = shape_util.axis_check(shape_length, begin_params_axis)
 
     soc_version = get_soc_spec(cce_conf.SOC_VERSION)
     aicore_num = get_soc_spec(cce_conf.CORE_NUM)
@@ -945,6 +949,7 @@ def if_tik_support(input_x, input_gamma, input_beta,
     elif not if_support_shape(input_x, input_gamma, input_beta, output_y,
                               output_mean, output_variance, begin_norm_axis):
         if_support = False
+
     return if_support
 
 
