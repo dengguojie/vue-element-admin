@@ -51,6 +51,9 @@ class CommonLSTMFusionPass : public PatternFusionBasePass {
   Status AddExpandDimsNode(ge::ComputeGraph &graph, ge::NodePtr fusedNode, ge::NodePtr dynamicRnnNode,
                            ge::GeTensorDesc dynamicRnnOutputDesc, vector<ge::NodePtr> &newNodes, std::string nodeName,
                            int nodeIndex);
+  Status AddSliceNode(ge::ComputeGraph &graph, ge::NodePtr fusedNode,
+                      ge::NodePtr dynamicRnnNode, ge::GeTensorDesc dynamicRnnOutputDesc,
+                      vector<ge::NodePtr> &newNodes, std::string nodeName, int nodeIndex);
   Status AddRNNMaskNode(ge::NodePtr fusedNode, ge::NodePtr dynamicRnnNode, ge::ComputeGraph &graph,
                         int32_t hiddenSize, vector<ge::NodePtr> &newNodes);
   Status AddSliceConcatNode(ge::ComputeGraph &graph, ge::NodePtr fusedNode, ge::NodePtr dynamicRnnForwardNode,
