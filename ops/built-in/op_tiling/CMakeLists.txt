@@ -264,6 +264,9 @@ elseif(UT_TEST_ALL OR TILING_UT)
     ${compile_opt_mode}
     -Dgoogle=ascend_private
   )
+  target_compile_definitions(optiling_llt PRIVATE
+    ASCEND_OPTILING_UT
+  )
   target_link_libraries(optiling_llt
     PRIVATE
       $<BUILD_INTERFACE:intf_llt_pub>

@@ -12,6 +12,7 @@
 #include "graph/utils/attr_utils.h"
 #include "nn_norm_ops.h"
 #include "array_ops.h"
+#include "op_tiling/vector_tiling.h"
 
 using namespace std;
 using namespace ge;
@@ -64,14 +65,14 @@ TEST_F(NormTiling, NormTiling1) {
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
-  std::string op_name = "AutoTiling";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  
+  
+  
   std::string compileInfo = R"({ "_fuse_axis": true, "_ori_axis": [2], "_pattern": "Norm", "_common_info": [32, 16, 1, 16080, 16120, 16080, 128], "_workspace_info": {"_workspace_type": [1], "_workspace_bytes": [4], "_workspace_diff_count": 0}, "_norm_vars": {"40000400": [100, 101, 200, 300]}, "_vars": {"40000400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"]}})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second.tiling_func_v2_(softmax_op, op_compile_info, runInfo));
+  ASSERT_TRUE(optiling::NormTiling(this->test_info_->name(), softmax_op, nlohmann::json::parse(compileInfo), runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "20992 41 656 328 ");
 }
@@ -100,14 +101,14 @@ TEST_F(NormTiling, NormTiling2) {
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
-  std::string op_name = "AutoTiling";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  
+  
+  
   std::string compileInfo = R"({ "_fuse_axis": true, "_ori_axis": [2], "_pattern": "Norm", "_common_info": [32, 8, 1, 12896, 12896, 12896, 128], "_workspace_info": {"_workspace_type": [1], "_workspace_bytes": [4], "_workspace_diff_count": 0}, "_norm_vars": {"100400": [100, 101, 200, 300]}, "_vars": {"100400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"]}})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second.tiling_func_v2_(softmax_op, op_compile_info, runInfo));
+  ASSERT_TRUE(optiling::NormTiling(this->test_info_->name(), softmax_op, nlohmann::json::parse(compileInfo), runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 10);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "80 15003 8 7502 ");
 }
@@ -136,14 +137,14 @@ TEST_F(NormTiling, NormTiling3) {
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
-  std::string op_name = "AutoTiling";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  
+  
+  
   std::string compileInfo = R"({ "_fuse_axis": true, "_ori_axis": [1], "_pattern": "Norm", "_common_info": [32, 8, 1, 16336, 16360, 16336, 128], "_workspace_info": {"_workspace_type": [1], "_workspace_bytes": [4], "_workspace_diff_count": 0}, "_norm_vars": {"2100900": [100, 101, 102, 200, 300]}, "_vars": {"2100900": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second.tiling_func_v2_(softmax_op, op_compile_info, runInfo));
+  ASSERT_TRUE(optiling::NormTiling(this->test_info_->name(), softmax_op, nlohmann::json::parse(compileInfo), runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 5 15003 7504 2 ");
 }
@@ -172,14 +173,14 @@ TEST_F(NormTiling, NormTiling4) {
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
-  std::string op_name = "AutoTiling";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  
+  
+  
   std::string compileInfo = R"({ "_fuse_axis": true, "_ori_axis": [0], "_pattern": "Norm", "_common_info": [32, 8, 1, 16336, 16360, 16336, 128], "_workspace_info": {"_workspace_type": [1], "_workspace_bytes": [4], "_workspace_diff_count": 0}, "_norm_vars": {"1000500": [100, 101, 200, 300]}, "_vars": {"1000500": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"]}})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second.tiling_func_v2_(softmax_op, op_compile_info, runInfo));
+  ASSERT_TRUE(optiling::NormTiling(this->test_info_->name(), softmax_op, nlohmann::json::parse(compileInfo), runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 30);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "31 2400 80 31 ");
 }
@@ -208,14 +209,14 @@ TEST_F(NormTiling, NormTiling5) {
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
-  std::string op_name = "AutoTiling";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  
+  
+  
   std::string compileInfo = R"({ "_fuse_axis": true, "_ori_axis": [0, 2], "_pattern": "Norm", "_common_info": [32, 8, 1, 16216, 16248, 16216, 128], "_workspace_info": {"_workspace_type": [1, 0, 0], "_workspace_bytes": [4, 4, 4], "_workspace_diff_count": 2}, "_norm_vars": {"21001200": [100, 101, 102, 200, 300]}, "_vars": {"21001200": ["_dim_0", "_dim_1", "_dim_2", "_block_factor", "_ub_factor"]}})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second.tiling_func_v2_(softmax_op, op_compile_info, runInfo));
+  ASSERT_TRUE(optiling::NormTiling(this->test_info_->name(), softmax_op, nlohmann::json::parse(compileInfo), runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1968 3 3 3 677 ");
 }
@@ -244,14 +245,14 @@ TEST_F(NormTiling, NormTiling6) {
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
-  std::string op_name = "AutoTiling";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  
+  
+  
   std::string compileInfo = R"({ "_fuse_axis": true, "_ori_axis": [3], "_pattern": "Norm", "_common_info": [32, 8, 1, 16216, 16248, 16216, 128], "_workspace_info": {"_workspace_type": [1], "_workspace_bytes": [4], "_workspace_diff_count": 0}, "_reduce_shape_known": true, "_const_shape_post": true, "_const_workspace_size": [], "_const_tiling_key": 10000400, "_block_dims": 32, "_vars": {"10000400": []}})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second.tiling_func_v2_(softmax_op, op_compile_info, runInfo));
+  ASSERT_TRUE(optiling::NormTiling(this->test_info_->name(), softmax_op, nlohmann::json::parse(compileInfo), runInfo));
 }
 
 TEST_F(NormTiling, NormTiling7) {
@@ -278,14 +279,14 @@ TEST_F(NormTiling, NormTiling7) {
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
-  std::string op_name = "AutoTiling";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  
+  
+  
   std::string compileInfo = R"({ "_fuse_axis": false, "_ori_axis": [0, 1, 2, 3, 4], "_pattern": "Norm", "_common_info": [32, 8, 1, 21624, 21664, 16216, 128], "_workspace_info": {"_workspace_type": [1], "_workspace_bytes": [4], "_workspace_diff_count": 0}, "_norm_vars": {"62000": [100, 101, 102, 103, 104, 300]}, "_vars": {"62000": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_ub_factor"]}})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second.tiling_func_v2_(softmax_op, op_compile_info, runInfo));
+  ASSERT_TRUE(optiling::NormTiling(this->test_info_->name(), softmax_op, nlohmann::json::parse(compileInfo), runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 10 2 3 7 2 ");
 }
@@ -314,14 +315,14 @@ TEST_F(NormTiling, NormTiling8) {
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
-  std::string op_name = "AutoTiling";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  
+  
+  
   std::string compileInfo = R"({ "_fuse_axis": true, "_ori_axis": [1], "_pattern": "Norm", "_common_info": [32, 8, 1, 21448, 21496, 16216, 128], "_workspace_info": {"_workspace_type": [1], "_workspace_bytes": [4], "_workspace_diff_count": 0}, "_reduce_shape_known": true, "_const_shape_post": false})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second.tiling_func_v2_(softmax_op, op_compile_info, runInfo));
+  ASSERT_TRUE(optiling::NormTiling(this->test_info_->name(), softmax_op, nlohmann::json::parse(compileInfo), runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "0 2 0 2 ");
 }
 
@@ -349,13 +350,13 @@ TEST_F(NormTiling, NormTiling9) {
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
-  std::string op_name = "AutoTiling";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  
+  
+  
   std::string compileInfo = R"({ "_fuse_axis": false, "_ori_axis": [1], "_pattern": "Norm", "_common_info": [32, 8, 1, 21448, 21496, 16216, 128], "_workspace_info": {"_workspace_type": [1], "_workspace_bytes": [4], "_workspace_diff_count": 0}, "_reduce_shape_known": true, "_const_shape_post": false})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second.tiling_func_v2_(softmax_op, op_compile_info, runInfo));
+  ASSERT_TRUE(optiling::NormTiling(this->test_info_->name(), softmax_op, nlohmann::json::parse(compileInfo), runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "0 2 0 2 ");
 }

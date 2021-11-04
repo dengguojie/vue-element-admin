@@ -75,14 +75,14 @@ TEST_F(ReduceTilingV2, ReduceTiling1) {
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
 
-  std::string op_name = "AutoTiling";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  
+  
+  
   std::string compileInfo = R"({ "_ori_axis": [0], "_pattern": "CommReduce","push_status": 0,"_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5], "_ub_info": [16256], "_ub_info_rf": [16256], "_vars": {"-1000500": ["_dim_1_0", "_block_factor", "_ub_factor"]}})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second.tiling_func_v2_(reduce_sum_d_op, op_compile_info, runInfo));
+  ASSERT_TRUE(optiling::ReduceTiling(this->test_info_->name(), reduce_sum_d_op, nlohmann::json::parse(compileInfo), runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 1 ");
 }
@@ -110,14 +110,14 @@ TEST_F(ReduceTilingV2, ReduceTiling2) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
-  std::string op_name = "AutoTiling";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  
+  
+  
   std::string compileInfo = R"({ "_ori_axis": [2], "_pattern": "CommReduce", "push_status": 0, "_zero_ub_factor": 25600, "_vars": {"10": ["_dim_1", "_ub_factor"]}})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second.tiling_func_v2_(reduce_sum_d_op, op_compile_info, runInfo));
+  ASSERT_TRUE(optiling::ReduceTiling(this->test_info_->name(), reduce_sum_d_op, nlohmann::json::parse(compileInfo), runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "78 25600 ");
 }
@@ -145,14 +145,14 @@ TEST_F(ReduceTilingV2, ReduceTiling3) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
-  std::string op_name = "AutoTiling";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  
+  
+  
   std::string compileInfo = R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_zero_ub_factor": 32128, "_vars": {"110": ["_dim_2", "_ub_factor"]}})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second.tiling_func_v2_(reduce_sum_d_op, op_compile_info, runInfo));
+  ASSERT_TRUE(optiling::ReduceTiling(this->test_info_->name(), reduce_sum_d_op, nlohmann::json::parse(compileInfo), runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 128 ");
 }
@@ -180,16 +180,16 @@ TEST_F(ReduceTilingV2, ReduceTiling4) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
-  std::string op_name = "AutoTiling";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  
+  
+  
   std::string compileInfo = R"({"_ori_axis": [0],"_pattern": "CommReduce", "push_status": 0, "_zero_ub_factor": 32512, "_common_info": [32,1,8,1,1], "_pattern_info": [1], "_ub_info":[32512], "_ub_info_rf": [32512], "_reduce_shape_known": true, "_const_shape_post": true, "_compile_pattern": 1, "_block_dims":{"1":32},
      "_atomic_flags":{"1": true},
      "_vars": {"1": []}})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second.tiling_func_v2_(reduce_sum_d_op, op_compile_info, runInfo));
+  ASSERT_TRUE(optiling::ReduceTiling(this->test_info_->name(), reduce_sum_d_op, nlohmann::json::parse(compileInfo), runInfo));
 }
 
 TEST_F(ReduceTilingV2, ReduceTiling5) {
@@ -215,14 +215,14 @@ TEST_F(ReduceTilingV2, ReduceTiling5) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
-  std::string op_name = "AutoTiling";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  
+  
+  
   std::string compileInfo = R"({ "_ori_axis": [0], "_pattern": "CommReduce","push_status": 0,"common_info": [32, 1, 8, 1, 1], "pattern_info": [20000], "ub_info": [16256], "_ub_info_rf": [16256], "_vars": {"-1000500": ["dim_1_0", "block_factor", "ub_factor"]}})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(!iter->second.tiling_func_v2_(reduce_sum_d_op, op_compile_info, runInfo));
+  ASSERT_TRUE(!optiling::ReduceTiling(this->test_info_->name(), reduce_sum_d_op, nlohmann::json::parse(compileInfo), runInfo));
 }
 
 TEST_F(ReduceTilingV2, ReduceTiling6) {
@@ -248,14 +248,14 @@ TEST_F(ReduceTilingV2, ReduceTiling6) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
-  std::string op_name = "AutoTiling";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  
+  
+  
   std::string compileInfo = R"({ "axes_idx": 0, "_pattern": "CommReduce","push_status": 0,"common_info": [32, 1, 8, 1, 1], "pattern_info": [20000], "ub_info": [16256], "_ub_info_rf": [16256], "_vars": {"-1000500": ["dim_1_0", "block_factor", "ub_factor"]}})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(!iter->second.tiling_func_v2_(reduce_sum_d_op, op_compile_info, runInfo));
+  ASSERT_TRUE(!optiling::ReduceTiling(this->test_info_->name(), reduce_sum_d_op, nlohmann::json::parse(compileInfo), runInfo));
 }
 
 // ReduceTiling7 const_tensor
@@ -284,19 +284,19 @@ TEST_F(ReduceTilingV2, ReduceTiling8) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
-  std::string op_name = "AutoTiling";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  
+  
+  
   std::string compileInfo = R"({"_ori_axis": [0],"_pattern": "CommReduce", "push_status": 0,
                                "_zero_ub_factor": 32512, "_common_info": [32,1,16,0,1],
                                "_pattern_info": [5,4,9], "_ub_info":[21632, 21376, 21632],
                                "_ub_info_rf": [21632,16000,21632],
                                "_pattern": "CommReduce",
                                "_vars": {"1": []}})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second.tiling_func_v2_(reduce_sum_d_op, op_compile_info, runInfo));
+  ASSERT_TRUE(optiling::ReduceTiling(this->test_info_->name(), reduce_sum_d_op, nlohmann::json::parse(compileInfo), runInfo));
 }
 
 // FineTuning tune1
@@ -323,19 +323,19 @@ TEST_F(ReduceTilingV2, ReduceTiling9) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
-  std::string op_name = "AutoTiling";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
-  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  
+  
+  
   std::string compileInfo = R"({"_ori_axis": [0,2,3,4,5],"_pattern": "CommReduce",
                                "_common_info": [32,1,8,1,1],
                                "_pattern_info": [5,4,9], "_ub_info":[32512, 32128, 16128],
                                "_ub_info_rf": [32512, 21376, 32512],
                                "_pattern": "CommReduce",
                                "_vars": {"1": []}})";
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(iter->second.tiling_func_v2_(reduce_sum_d_op, op_compile_info, runInfo));
+  ASSERT_TRUE(optiling::ReduceTiling(this->test_info_->name(), reduce_sum_d_op, nlohmann::json::parse(compileInfo), runInfo));
 }
 
 // for new interface
@@ -362,7 +362,7 @@ TEST_F(ReduceTilingV2, ReduceTiling10) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
-  std::string op_name = "AutoTiling";
+  
   std::string compileInfo = R"({"_ori_axis": [0],"_pattern": "CommReduce", "push_status": 0, "_zero_ub_factor": 32512, "_common_info": [32,1,8,1,1], "_pattern_info": [1], "_ub_info":[32512], "_ub_info_rf": [32512], "_reduce_shape_known": true, "_const_shape_post": true, "_compile_pattern": 1, "_block_dims":{"1":32},
        "_atomic_flags":{"1": true},
        "_vars": {"1": []}})";
@@ -399,7 +399,7 @@ TEST_F(ReduceTilingV2, ReduceTiling11) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
-  std::string op_name = "AutoTiling";
+  
   std::string compileInfo = R"({"_ori_axis": [0],
                                 "_pattern": "CommReduce",
                                 "_common_info": [32, 1, 8, 1, 1],
@@ -439,7 +439,7 @@ TEST_F(ReduceTilingV2, ReduceTiling12) {
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
 
-  std::string op_name = "AutoTiling";
+  
   std::string compileInfo = R"({"_ori_axis": [-2],"_pattern": "CommReduce", "_zero_ub_factor": 32512, "_common_info": [32,1,8,1,1], "_pattern_info": [1], "_ub_info":[32512], "_ub_info_rf": [32512], "_reduce_shape_known": true, "_compile_pattern": 1, "_block_dims":{"1":32},
          "_atomic_flags":{"1": true},
          "_vars": {"1": []}})";
@@ -469,7 +469,7 @@ static void ReduceSumCompute(std::vector<int64_t> inputA, std::vector<int64_t> i
   tensor_output.SetShape(ge::Shape(output));
   tensor_output.SetDataType(dtypeOutput);
 
-  auto opParas = op::ReduceSum(caseName);
+  auto opParas = op::ReduceSum(caseName.c_str());
   TENSOR_INPUT(opParas, tensor_inputA, x);
   TENSOR_INPUT_CONST(opParas, tensor_inputB, axes, (const uint8_t*)axes.data(), axes.size() * 4);
   TENSOR_OUTPUT(opParas, tensor_output, y);

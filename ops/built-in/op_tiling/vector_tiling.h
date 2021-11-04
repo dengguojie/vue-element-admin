@@ -22,12 +22,31 @@
 #define OPS_BUILT_IN_OP_TILING_VECTOR_TILING_H_
 
 #include <string>
-
+#include <map>
+#include <chrono>
+#include <memory>
+#include <string>
+#include <cstdlib>
 #include <nlohmann/json.hpp>
-#include "op_tiling.h"
+
+#include "register/op_tiling_registry.h"
+#include "op_log.h"
+#include "error_log.h"
+#include "graph/debug/ge_log.h"
 #include "vector_tiling_log.h"
 
+#include "op_tiling.h"
+
 namespace optiling {
+
+struct AutoTilingCompileInfo {
+  AutoTilingCompileInfo(const std::string& o,
+                        const std::string& p,
+                        const std::shared_ptr<void> c) : op_type(o), pattern(p), compile_info(c) {}
+  std::string op_type;
+  std::string pattern;
+  std::shared_ptr<void> compile_info;
+};
 
 class OpInfo {
 public:
@@ -61,7 +80,7 @@ private:
 /*
  * @brief: tiling function of reduce operator
  * @param [in] op_type: op_type of the reduce operator
- * @param [in] op_paras: inputs/outputs/atts of the reduce operator
+ * @param [in] op_paras: inputs/outputs/attrs of the reduce operator
  * @param [in] op_info: compile time generated info of the reduce operator
  * @param [out] run_info: result data
  * @return bool: success or not
@@ -73,10 +92,10 @@ bool ReduceTiling(const std::string& op_type, const ge::Operator& op_paras, cons
 bool ReduceTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
                   utils::OpRunInfo& run_info, const OpInfo& opInfo);
 /*
- * @brief: tiling function of elementwise operator
- * @param [in] op_type: op_type of the elementwise operator
- * @param [in] op_paras: inputs/outputs/atts of the elementwise operator
- * @param [in] op_info: compile time generated info of the elementwise operator
+ * @brief: tiling function of element-wise operator
+ * @param [in] op_type: op_type of the element-wise operator
+ * @param [in] op_paras: inputs/outputs/attrs of the element-wise operator
+ * @param [in] op_info: compile time generated info of the element-wise operator
  * @param [out] run_info: result data
  * @return bool: success or not
  */
@@ -89,8 +108,8 @@ bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, co
 /*
  * @brief: tiling function of norm operator
  * @param [in] op_type: op_type of the norm operator
- * @param [in] op_paras: inputs/outputs/atts of the norm operator
- * @param [in] op_info: compile time generated info of the norm operator
+ * @param [in] op_paras: inputs/outputs/attrs of the norm operator
+ * @param [in] op_compile_info: compile time generated info of the norm operator
  * @param [out] run_info: result data
  * @return bool: success or not
  */
@@ -108,24 +127,6 @@ bool NormTiling(const std::string& op_type, const ge::Operator& op_paras, const 
 bool TransposeDsl(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& compile_info,
                   utils::OpRunInfo& run_info);
 
-#define REGISTER_OP_TILING_FUNC_BUFFERED_CUSTOM(optype, opfunc, parserfunc)                                       \
-bool g_##optype##_TilingEntry(const TeOpParas& para, const OpCompileInfo& cinfo, OpRunInfo& rinfo) {              \
-    static std::map<std::string, ParsedOpCompileInfo> parsed_compile_info_storage;                                \
-    std::string hash_key = cinfo.key;                                                                             \
-    std::string cinfo_str = cinfo.str;                                                                            \
-    if (!hash_key.empty() && parsed_compile_info_storage.find(hash_key) != parsed_compile_info_storage.end()) {   \
-        ParsedOpCompileInfo& parsed_compile_info = parsed_compile_info_storage.at(hash_key);                      \
-        void* parsed_object_ptr = parsed_compile_info.parsed_object;                                              \
-        return opfunc(para.op_type, para, parsed_object_ptr, rinfo);                                              \
-    }                                                                                                             \
-    void* parsed_object_ptr = parserfunc(cinfo_str);                                                              \
-    ParsedOpCompileInfo* parsed_compile_info = new ParsedOpCompileInfo();                                         \
-    parsed_compile_info->value = cinfo_str;                                                                       \
-    parsed_compile_info->parsed_object = parsed_object_ptr;                                                       \
-    parsed_compile_info_storage.emplace(hash_key, *parsed_compile_info);                                          \
-    return opfunc(para.op_type, para, parsed_object_ptr, rinfo);                                                  \
-}                                                                                                                 \
-REGISTER_OP_TILING(optype, g_##optype##_TilingEntry)
 }  // namespace optiling
 
 #endif  // OPS_BUILT_IN_OP_TILING_VECTOR_TILING_H_
