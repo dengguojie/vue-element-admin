@@ -133,9 +133,61 @@ def make_resize_error():
     onnx.save(model, "./test_resize_case_error.onnx")
 
 
+def make_resize_v10():
+    """v11"""
+    x = helper.make_tensor_value_info('x', TensorProto.FLOAT, [1, 1, 2, 2])
+    scales = helper.make_tensor('scales', TensorProto.FLOAT, [4], [1, 1, 1, 1])
+    y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [1, 1, 4, 4])
+    node_def = helper.make_node(
+        'Resize',
+        inputs=['x', 'scales'],
+        outputs=['y'],
+        coordinate_transformation_mode='pytorch_half_pixel',
+        mode='linear'
+    )
+
+    graph = helper.make_graph(
+        [node_def],
+        'Resize_v10',
+        [x],
+        [y],
+        [scales]
+    )
+
+    model = helper.make_model(graph, producer_name="onnx-parser_test")
+    model.opset_import[0].version = 10
+    onnx.save(model, "./test_resize_case_v10.onnx")
+
+def make_resize_v10_1():
+    """v11"""
+    x = helper.make_tensor_value_info('x', TensorProto.FLOAT, [1, 1, 2, 2])
+    scales = helper.make_tensor('scales', TensorProto.FLOAT, [4], [1, 1, 1, 1])
+    y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [1, 1, 4, 4])
+    node_def = helper.make_node(
+        'Resize',
+        inputs=['x', 'scales'],
+        outputs=['y'],
+        coordinate_transformation_mode='pytorch_half_pixel',
+        mode='nearest'
+    )
+
+    graph = helper.make_graph(
+        [node_def],
+        'Resize_v10',
+        [x],
+        [y],
+        [scales]
+    )
+
+    model = helper.make_model(graph, producer_name="onnx-parser_test")
+    model.opset_import[0].version = 10
+    onnx.save(model, "./test_resize_case_v10_1.onnx")
+
 if __name__ == '__main__':
     make_resize_v11()
     make_resize_v12()
     make_resize_v11_dong()
     make_resize_v12_dong()
     make_resize_error()
+    make_resize_v10_1()
+    make_resize_v10()
