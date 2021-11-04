@@ -92,9 +92,22 @@ download_run(){
     fi
     rm -rf index.html
     eval net=$(echo ${net}${day}/${arch}/)
+    set +e
     wget -q --http-user=$username --http-passwd=$pwsswd $net
     #http://121.36.71.102/package/daily/202107/20210727/x86/
     #    master_20210727002645_ae990a97a4571341a59efad0a8cf9a7d01e6ce71_newest/
+    
+    if [[ ! -f ./index.html ]];then
+      echo $dotted_line
+      echo " "
+      echo "Today's daily package does not exist, you have the following options"
+      echo "(Recommended)       ./build.sh --install_etrans 'username' 'password' "
+      echo "(Specify any date)  ./build.sh --install_etrans 'username' 'password' 20210101 "
+      echo " "
+      echo $dotted_line
+      exit 1
+    fi
+    set -e
     res_net=`echo $?`
     test_net_addr=$net
     network_test $res_net $test_net_addr
