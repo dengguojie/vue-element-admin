@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,7 +61,6 @@ int32_t Reduce::CalcConstPattern(std::vector<int32_t>& reduce_axis) {
   if (reduce_axis.size() == 0) {
     return TILINGKEY_NONE_REDUCE_AXIS;
   }
-
   int32_t dict_key = 0;
   for (auto& i : reduce_axis) {
     // dict_key: 1234 -> reduce [0,1,2,3]
@@ -893,7 +892,8 @@ bool Reduce::GetCompileInfoForProcessControl() {
   compileInfo.idx_before_reduce =
           json_info.count("_idx_before_reduce") > 0 ? json_info.at("_idx_before_reduce").get<uint32_t>() : 0;
   compileInfo.is_const = json_info.count("_reduce_shape_known") > 0 && json_info.at("_reduce_shape_known").get<bool>();
-  compileInfo.zero_ub_factor = json_info.count("_zero_ub_factor") > 0 ? json_info.at("_zero_ub_factor").get<int64_t>() : -1;
+  compileInfo.zero_ub_factor =
+    json_info.count("_zero_ub_factor") > 0 ? json_info.at("_zero_ub_factor").get<int64_t>() : -1;
   compileInfo.is_const_post = json_info.count("_const_shape_post") > 0 && json_info.at("_const_shape_post").get<bool>();
 
   if (json_info.count("_ori_axis") > 0) {
@@ -986,7 +986,9 @@ bool Reduce::GetGeInfo() {
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetInputConstData Failed"),
                       return false);
     V_OP_TILING_CHECK(!(geInfo.axes_type != ge::DT_INT32 && geInfo.axes_type != ge::DT_INT64),
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "axes_type is %d, not belong to [int32, int64]", geInfo.axes_type),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type,
+                                                      "axes_type is %d, not belong to [int32, int64]",
+                                                      geInfo.axes_type),
                       return false);
   }
   return true;
@@ -1111,7 +1113,9 @@ bool Reduce::NewDoTiling(const OpInfo& op_info) {
      2. input(unknown):
         do all process
   */
-  V_OP_TILING_CHECK(GetCompileInfoForProcessControl(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfoForProcessControl Failed"), return false);
+  V_OP_TILING_CHECK(GetCompileInfoForProcessControl(),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfoForProcessControl Failed"),
+                    return false);
 
   // Get Input
   if (op_info.GetInputShape().size() > 0) {
@@ -1124,7 +1128,8 @@ bool Reduce::NewDoTiling(const OpInfo& op_info) {
     V_OP_TILING_CHECK(!(inputs_num <= compileInfo.idx_before_reduce),
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "idx is invalid index for inputs"),
                       return false);
-    input_shape_ori = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(compileInfo.idx_before_reduce)->GetShape().GetDims();
+    input_shape_ori = ge::OpDescUtils::GetOpDescFromOperator(
+      op_paras)->MutableInputDesc(compileInfo.idx_before_reduce)->GetShape().GetDims();
   }
 
   if (op_info.GetReduceAxes().size() > 0) {
@@ -1146,7 +1151,9 @@ bool Reduce::NewDoTiling(const OpInfo& op_info) {
                         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetInputConstData Failed"),
                         return false);
       V_OP_TILING_CHECK(!(geInfo.axes_type != ge::DT_INT32 && geInfo.axes_type != ge::DT_INT64),
-                        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "axes_type is %d, not belong to [int32, int64]", geInfo.axes_type),
+                        VECTOR_INNER_ERR_REPORT_TILIING(op_type,
+                                                        "axes_type is %d, not belong to [int32, int64]",
+                                                        geInfo.axes_type),
                         return false);
     }
 
@@ -1197,14 +1204,15 @@ bool Reduce::NewDoTiling(const OpInfo& op_info) {
   }
 
   // common process
-  V_OP_TILING_CHECK(GetCompileInfoForCalculate(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfoForCalculate Failed"), return false);
+  V_OP_TILING_CHECK(GetCompileInfoForCalculate(),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfoForCalculate Failed"),
+                    return false);
   V_OP_TILING_CHECK(MatchPattern(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "MatchPattern Failed"), return false);
   V_OP_TILING_CHECK(TilingProcess(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "TilingProcess Failed"), return false);
   V_OP_TILING_CHECK(FineTuning(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "FineTuning Failed"), return false);
 
   return true;
 }
-
 }  // namespace utils
 
 bool ReduceTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& json_info,

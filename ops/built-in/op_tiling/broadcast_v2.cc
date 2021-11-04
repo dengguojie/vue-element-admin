@@ -75,6 +75,7 @@ static const std::int32_t SPLIT_FACTOR_STEP = 2;
 
 static const std::int32_t BASE_KEY_NUM = 200000000;
 static const std::int32_t ORIGINAL_NO_DB_TILING_LEN = 7;
+static const std::int32_t TILING_LEN = 8;
 
 static const std::int32_t MIN_BLOCK_CUT_INDEX = 20000;
 }
@@ -488,6 +489,9 @@ std::tuple<bool, int64_t> LastFuseOutput(const std::string& op_type,
 
 void Broadcast::GenerateAllUnknown(const std::vector<int64_t>& out_shape, const std::vector<bool>& brc_axis,
                                    const int64_t split_axis, const int64_t split_factor) {
+  OP_TILING_CHECK(split_factor == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "split_factor cannot be zero."),
+                  return);
   int64_t shape_len = fusion_shapes[0].size();
   int64_t fusion_len = output_shape.size();
   output_shape.clear();
@@ -535,6 +539,9 @@ bool Broadcast::TryMatchAllUnknown() {
   GenOutputAndBrcAxis(out_shape, brc_axis, fusion_shapes, shape_len);
   output_size = std::accumulate(output_shape.begin(), output_shape.end(), 1LL, std::multiplies<int64_t>());
   int64_t ele_in_block = BGetElementByType(in_type);
+  OP_TILING_CHECK(ele_in_block == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ele_in_block cannot be zero."),
+                  return false);
   bool ret = true;
   if ((output_shape.size() - 1) > shape_len && shape_len > NUM_TWO && output_size % ele_in_block == 0) {
     ret = CalcSplitFactor(out_shape, brc_axis, ele_in_block, split_axis, split_factor);
@@ -839,6 +846,9 @@ bool Broadcast::MilanUbTiling() {
   int64_t shape_len = static_cast<int64_t>(output_shape.size()) - 1;
   int64_t under_ub_shape = 1;
   int64_t ele_in_block = BGetElementByType(out_type);
+  OP_TILING_CHECK(ele_in_block == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ele_in_block cannot be zero."),
+                  return false);
   for (int64_t i = shape_len; i >= block_axis; i--) {
     int64_t cur_shape = output_shape[i];
     if (i == shape_len) {
@@ -870,6 +880,9 @@ bool Broadcast::DefaultUbTiling() {
   int64_t shape_len = static_cast<int64_t>(output_shape.size()) - 1;
   int64_t max_ub_shape = 1;
   int64_t ele_in_block = BGetElementByType(in_type);
+  OP_TILING_CHECK(ele_in_block == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ele_in_block cannot be zero."),
+                  return false);
   bool has_ub_align = false;
   for (int64_t i = shape_len; i >= block_axis; i--) {
     if (output_shape[i] >= limit) {
@@ -1006,11 +1019,12 @@ void Broadcast::CheckUpdateUbTiling() {
 
 void Broadcast::CalcKey() {
   int64_t base_key = 0;
-  int64_t doubleBufferKey = 10000;
   if (s_pattern != Pattern::ORIGINAL) {
-    base_key = BASE_KEY_NUM + static_cast<int64_t>(s_pattern) * 100000;
+    int64_t s_pattern_key_num = 100000;
+    base_key = BASE_KEY_NUM + static_cast<int64_t>(s_pattern) * s_pattern_key_num;
   }
   if (need_double_buffer) {
+    int64_t doubleBufferKey = 10000;
     base_key += doubleBufferKey;
   }
   key = base_key;
@@ -1043,7 +1057,7 @@ bool Broadcast::WriteTilingData(OpRunInfo& run_info) const {
              VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Tiling key error, it is [%lu], please check it", key),
              return false);
   int64_t cur_key = key;
-  int64_t key_len = cur_key == 0 ? ORIGINAL_NO_DB_TILING_LEN : 8;
+  int64_t key_len = cur_key == 0 ? ORIGINAL_NO_DB_TILING_LEN : TILING_LEN;
   char keys[10] = {'0', '0', '0', '0', '0', '0', '0', '0', '0', '\0'};
   while (cur_key && key_len >= 0) {
     keys[key_len] = '0' + cur_key % NUM_TEN;

@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@
 #include "error_log.h"
 
 namespace optiling {
-
 std::vector<int64_t> Reduce::GetInputShape() {
   return input_shape;
 }
@@ -43,12 +42,15 @@ bool Reduce::IsInVector(std::vector<int32_t>& input, int32_t value) {
 }
 
 int32_t Reduce::CalcPattern(std::vector<int64_t>& input, std::vector<int32_t>& axis) {
+  const int64_t axis_calc_paras = 2;
+  const int64_t pattern_base_num = 2;
   int32_t pattern = 0;
   for (size_t i = 0; i < input.size(); i++) {
     if (IsInVector(axis, i)) {
-      pattern += 2 << (input.size() - i - 1);
+      pattern += pattern_base_num << (input.size() - i - 1);
     } else {
-      pattern += ((int)input.size() - 2 - (int)i) >= 0 ? 2 << (input.size() - 2 - i) : 1;
+      pattern += ((int)input.size() - axis_calc_paras - (int)i) >= 0 ?
+                 pattern_base_num << (input.size() - axis_calc_paras - i) : 1;
     }
   }
   return pattern;
@@ -117,6 +119,9 @@ int64_t Reduce::GetShapeMul(std::vector<int64_t>& shape, int32_t axis_index) {
 }
 
 int32_t Reduce::GetBlockDim(std::vector<int64_t>& out, int32_t tiling_axis, int64_t tiling_factor) {
+  OP_TILING_CHECK(tiling_factor == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "tiling_factor cannot be zero."),
+                  return -1);
   int32_t block_dim = 1;
   for (int32_t i = 0; i <= tiling_axis; i++) {
     if (out[i] != 0) {
@@ -313,18 +318,23 @@ bool Reduce::GetCompileInfo() {
                return false);
 
     // Get Data
+    const int64_t min_block_size_index = 2;
+    const int64_t atomic_index = 3;
+    const int64_t coef_index = 4;
     compileInfo.core_num = common_info[0];
     compileInfo.is_keep_dims = (bool)common_info[1];
-    compileInfo.min_block_size = common_info[2];
-    compileInfo.atomic = (bool)common_info[3];
-    compileInfo.coef = common_info[4];
+    compileInfo.min_block_size = common_info[min_block_size_index];
+    compileInfo.atomic = (bool)common_info[atomic_index];
+    compileInfo.coef = common_info[coef_index];
 
     // CHECK VALUE
     V_OP_TILING_CHECK(!(compileInfo.coef <= 0),
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "coef is %d that is illegal", compileInfo.coef),
                       return false);
     V_OP_TILING_CHECK(!(compileInfo.min_block_size <= 0),
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "min_block_size is %d that is illegal", compileInfo.min_block_size),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type,
+                                                      "min_block_size is %d that is illegal",
+                                                      compileInfo.min_block_size),
                       return false);
     V_OP_TILING_CHECK(!(compileInfo.core_num <= 0),
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num is %d that is illegal", compileInfo.core_num),
@@ -369,10 +379,11 @@ bool Reduce::ChooseAtomic() {
   bool atomic_available = compileInfo.atomic;
   // Layer 1 Check if output is large enough (> SMALL_SHAPE_THRESHOLD)
   //         Check normal atomic rules
+  const int64_t atomic_div_paras = 2;
   compileInfo.atomic = total_output_count <= ubSizeB &&
                        total_output_count * total_reduce_count > SMALL_SHAPE_THRESHOLD &&
-                       total_output_count < (int64_t)compileInfo.core_num * block_size / 2 &&
-                       total_reduce_count > (int64_t)compileInfo.core_num / 2;
+                       total_output_count < (int64_t)compileInfo.core_num * block_size / atomic_div_paras &&
+                       total_reduce_count > (int64_t)compileInfo.core_num / atomic_div_paras;
   // Layer 2 Check if it is nlast_reduce
   //         Check if it is in a0, r, a1 pattern and a0 is 0
   bool is_outermost_nlast_reduce = std::find(reduce_axis.begin(), reduce_axis.end(),
@@ -385,7 +396,8 @@ bool Reduce::ChooseAtomic() {
   // Check if outermost reduce axis is larger than or equal to core_num
   bool input_shape_limitation = input_shape[1] >= compileInfo.core_num && ubSizeA > SMALL_SHAPE_THRESHOLD * 4;
   // Check nlast_reduce again
-  bool n_last_reduce_shape_limitation = (((uint32_t)pattern & 1) == 1) && (input_shape[input_shape.size() - 1] < ubSizeB);
+  bool n_last_reduce_shape_limitation = (((uint32_t)pattern & 1) == 1) &&
+                                        (input_shape[input_shape.size() - 1] < ubSizeB);
   // AND expression for all checks
   bool shape_limitation = output_shape_limitation && input_shape_limitation && n_last_reduce_shape_limitation;
   // check extracted here because of 120 characters per line static check rule
@@ -808,8 +820,9 @@ bool Reduce::FineTuning() {
   // tune_1
   bool tune_1 = split_same_dim && (blk_factor % ub_factor != 0);
   if (tune_1) {
-    float tailPercent = (float)(blk_factor%ub_factor) / (float)ub_factor;
-    if (tailPercent >= 0.8) {
+    float tail_percent = (float)(blk_factor%ub_factor) / (float)ub_factor;
+    float fine_tuning_threshold = 0.8;
+    if (tail_percent >= fine_tuning_threshold) {
       return true;
     }
     int loop = blk_factor / ub_factor + 1;
@@ -844,9 +857,6 @@ bool Reduce::Init() {
       if (op_info.count("axes_idx") > 0) {
         int axes_idx = op_info.at("axes_idx").get<int>();
         std::string axes_name = op_paras.inputs[axes_idx].tensor[0].name;
-        for (auto &item: op_paras.const_inputs) {
-            const std::string key = item.first;
-        }
         reduce_axis_info = op_paras.const_inputs.at(axes_name);
       } else {
         reduce_axis_info = op_paras.const_inputs.at("axes");

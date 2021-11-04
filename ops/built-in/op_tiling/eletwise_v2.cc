@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -546,7 +546,7 @@ bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, co
   bool is_empty_tensor = utils::IsEmptyTensor(op_type, op_paras);
   bool is_multi_output = op_paras.GetOutputsSize() > 1;
   bool is_pure_elementwise = true;
-  ret = ret&& utils::CheckInputs(op_type, input_shapes, dim_len, input_num, is_pure_elementwise);
+  ret = ret && utils::CheckInputs(op_type, input_shapes, dim_len, input_num, is_pure_elementwise);
   if (!ret) {
     return ret;
   }
@@ -560,10 +560,13 @@ bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, co
   bool is_const = false;
   bool is_support_broadcast = true;
   bool use_special_pattern = true;
-  if (flag_info.size() > 3) {
+  const int64_t flag_info_threshold = 3;
+  const int64_t support_broadcast_index = 2;
+  const int64_t use_special_pattern_index = 3;
+  if (flag_info.size() > flag_info_threshold) {
     is_const = flag_info[1];
-    is_support_broadcast = flag_info[2];
-    use_special_pattern = flag_info[3];
+    is_support_broadcast = flag_info[support_broadcast_index];
+    use_special_pattern = flag_info[use_special_pattern_index];
   }
   if (is_const) {
     int64_t key{0};
@@ -586,5 +589,4 @@ bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, co
   }
   return ret;
 }
-
 }  // namespace optiling
