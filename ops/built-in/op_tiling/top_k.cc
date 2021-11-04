@@ -223,11 +223,10 @@ bool TopkTiling(const std::string &op_type, const TeOpParas &op_paras, const nlo
   GetConstValue(op_paras, "k", op_paras.inputs[1].tensor[0].dtype, values);
   if (values.size() != 0) {
     int32_t k_element = values[0];
-    OP_LOGW(
-        "k is %d, AICORE does not support k > %d, should be transfered to "
-        "AICPU.",
-        k_element, max_k);
     if (k_element > max_k) {
+      OP_LOGW(op_type,
+              "AICORE does not support k[%d] > max_k[%d], should be transfered to AICPU.",
+              k_element, max_k);
       return false;
     }
   }
