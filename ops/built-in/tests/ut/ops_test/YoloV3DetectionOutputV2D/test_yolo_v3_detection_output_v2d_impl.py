@@ -14,6 +14,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 YoloV3DetectionOutputV2 ut case
 """
 from op_test_frame.ut import OpUT
+from impl.yolo_v3_detection_output_v2d import get_op_support_info
 ut_case = OpUT("YoloV3DetectionOutputV2D", "impl.yolo_v3_detection_output_v2d", "yolo_v3_detection_output_v2d")
 
 TEST_BIASES = [116, 90, 156, 198, 373, 326, 30, 61, 62, 45, 59, 119,
@@ -53,15 +54,17 @@ def common_cce(batch, box_info, dtype, boxes, classes, relative, obj_threshold,
     box_out_num_dict = {"shape": (), "dtype": dtype, "format": "NCHW",
                         "ori_shape": (), "ori_format": "NCHW"}
 
-
-    x = coord_data+obj_data+classes_data+[img_info_dict]+windex+hindex
-    print("588888",x, box_out_dict, box_out_num_dict, biases)
+    x = coord_data + obj_data + classes_data + [img_info_dict] + windex + hindex
+    print("588888", x, box_out_dict, box_out_num_dict, biases)
+    split_info = get_op_support_info(x, box_out_dict, box_out_num_dict, biases)
+    print(split_info)
     return{"params": [x,
                       box_out_dict, box_out_num_dict, biases
                       ],
            "case_name": "case1",
            "expect": "success",
            "support_expect": True}
+
 
 case1 = common_cce(2, [[6, 6], [6, 6], [6, 6]], "float16", 1, 2, True,
                    0.5, 0.5, 0.45, TEST_BIASES, True,
