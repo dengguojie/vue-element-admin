@@ -29,6 +29,7 @@ from tbe.common.utils.errormgr import get_error_message
 from .util import dtype_check_decorator
 from .util import check_input_tensor_shape
 from .util import shape_to_list
+from .util import in_dynamic_and_static_unify
 
 NAME_INDEX = [0]
 
@@ -132,6 +133,9 @@ def concat(raw_tensors, axis):
         axis = axis + len(raw_tensors[0].shape)
     _concat_para_check(raw_tensors, axis)
 
+    if in_dynamic_and_static_unify():
+        return _unify_concat(raw_tensors, axis)
+
     def _get_input_tensors():
         shapes = []
         for in_tensor in list(raw_tensors):
@@ -182,6 +186,40 @@ def concat(raw_tensors, axis):
     res = tvm.compute(res_shape, compute_func, name="concat", tag="concat")
 
     return res
+
+
+def _unify_concat(input_tensors, axis):
+    """
+    concat shapes at axis,  support int8, uint8, int16, int32, float16, float32, int64, uint64
+    :param input_tensors: list[tvm.tensor]
+    list of input tensors
+    :param axis: int
+    concat axis
+    :return: tvm.tensor: A concat Tensor
+    """
+    def concat_func(*indices):
+        func = None
+        concat_axis_size = sum(t.shape[axis] for t in input_tensors)
+        for tensor in reversed(input_tensors):
+            index = []
+            for i, _ in enumerate(dst_shape):
+                if i == axis:
+                    index.append(indices[i] - (concat_axis_size - tensor.shape[axis]))
+                else:
+                    index.append(indices[i])
+            if func is None:
+                func = tensor(*index)
+            else:
+                func = tvm.select(indices[axis] < concat_axis_size, tensor(*index), func)
+            concat_axis_size -= tensor.shape[axis]
+        return func
+
+    with tvm.tag_scope("concat"):
+        dst_shape = list(input_tensors[0].shape)
+        concat_axis_size = sum(t.shape[axis] for t in input_tensors)
+        dst_shape[axis] = concat_axis_size
+        concat = tvm.compute(dst_shape, concat_func, name="concat")
+    return concat
 
 
 def _concat_para_check(raw_tensors, axis):
