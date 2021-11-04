@@ -28,3 +28,7 @@ class OpInfo:
     def extra_params(self):
 
     def extra_params(self, extra_params):
+
+    def precision_mode(self):
+
+    def precision_mode(self, precision_mode):

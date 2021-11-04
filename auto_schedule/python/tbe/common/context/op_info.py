@@ -40,6 +40,7 @@ class OpInfo:
         self._attrs = {}  # type: dict
         self._kernel_name = None  # type: Optional[str]
         self._extra_params = {}  # type: dict
+        self._precision_mode = None # type: Optional[str]
 
     @property
     def op_name(self):
@@ -172,3 +173,22 @@ class OpInfo:
         :return:
         """
         self._extra_params = extra_params
+
+    @property
+    def precision_mode(self):
+        # type: () -> Optional[str]
+        """
+
+        :return:
+        """
+        return self._precision_mode
+
+    @precision_mode.setter
+    def precision_mode(self, precision_mode):
+        # type: (str) -> None
+        """
+
+        :param precision_mode:
+        :return:
+        """
+        self._precision_mode = precision_mode
