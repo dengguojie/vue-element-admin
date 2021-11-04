@@ -23,9 +23,9 @@ set(local_kernels_src_files
     kernels/normalized/conj.cc
     kernels/normalized/coordinates_1d_to_2d.cc
     kernels/normalized/cosh.cc
+    kernels/normalized/crop_and_resize.cc
     kernels/normalized/cumsum.cc
     kernels/normalized/diag.cc
-    kernels/normalized/crop_and_resize.cc
     kernels/normalized/dynamic_stitch.cc
     kernels/normalized/edit_distance.cc
     kernels/normalized/elugrad.cc
@@ -46,9 +46,9 @@ set(local_kernels_src_files
     kernels/normalized/is_inf.cc
     kernels/normalized/is_nan.cc
     kernels/normalized/less.cc
+    kernels/normalized/log1p.cc
     kernels/normalized/log_matrix_determinant.cc
     kernels/normalized/logging.cc
-    kernels/normalized/log1p.cc
     kernels/normalized/logsoftmaxv2.cc
     kernels/normalized/masked_select.cc
     kernels/normalized/masked_select_grad.cc
@@ -57,19 +57,19 @@ set(local_kernels_src_files
     kernels/normalized/non_max_suppression_v3_kernels.cc
     kernels/normalized/not_equal.cc
     kernels/normalized/ones_like.cc
-    kernels/normalized/reverse_sequence.cc
     kernels/normalized/random_uniform.cc
     kernels/normalized/realdiv.cc
     kernels/normalized/reshape.cc
     kernels/normalized/resize_bilinear.cc
     kernels/normalized/resize_bilinear_grad.cc
+    kernels/normalized/reverse_sequence.cc
     kernels/normalized/rightshift.cc
     kernels/normalized/round.cc
     kernels/normalized/rsqrt.cc
     kernels/normalized/scatter_elements.cc
     kernels/normalized/search_sorted.cc
-    kernels/normalized/sign.cc
     kernels/normalized/sigmoid.cc
+    kernels/normalized/sign.cc
     kernels/normalized/slice_write.cc
     kernels/normalized/softmaxv2.cc
     kernels/normalized/sparse_to_dense.cc
@@ -86,6 +86,7 @@ set(local_kernels_src_files
     kernels/normalized/top_k_pq_distance.cc
     kernels/normalized/top_k_v2_d.cc
     kernels/normalized/zeroslike.cc
+    kernels/normalized/zeta.cc
     utils/allocator_utils.cc
     utils/bcast.cc
     utils/broadcast_iterator.cc
