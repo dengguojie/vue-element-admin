@@ -48,6 +48,22 @@ TEST_F(OCRTest, OCRDetectionPreHandleInferShape) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
+TEST_F(OCRTest, OCRDetectionPreHandleInferShape1) {
+  ge::op::OCRDetectionPreHandle op;
+  op.UpdateInputDesc("img", create_desc({3,-1,-1}, ge::DT_UINT8));
+  op.SetAttr("data_format", "NCHW");
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(OCRTest, OCRDetectionPreHandleInferShapeFail) {
+  ge::op::OCRDetectionPreHandle op;
+  op.UpdateInputDesc("img", create_desc({2,2,2}, ge::DT_UINT8));
+  op.SetAttr("data_format", "NHWC");
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
 TEST_F(OCRTest, OCRIdentifyPreHandleInferShape) {
   ge::op::OCRIdentifyPreHandle op;
   op.UpdateInputDesc("imgs_data", create_desc({3}, ge::DT_UINT8));
@@ -58,6 +74,67 @@ TEST_F(OCRTest, OCRIdentifyPreHandleInferShape) {
   op.SetAttr("size", {1,1});
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(OCRTest, OCRIdentifyPreHandleInferShape1) {
+  ge::op::OCRIdentifyPreHandle op;
+  op.UpdateInputDesc("imgs_data", create_desc({-1}, ge::DT_UINT8));
+  op.UpdateInputDesc("imgs_offset", create_desc({-1}, ge::DT_INT32));
+  op.UpdateInputDesc("imgs_size", create_desc_shape_range({-1,3}, ge::DT_INT32, ge::FORMAT_ND, {-1, 3},
+    ge::FORMAT_ND, {{1, 3}, {3, 3}}));
+  
+  op.SetAttr("data_format", "NHWC");
+  op.SetAttr("size", {1,1});
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(OCRTest, OCRIdentifyPreHandleInferShapeFail1) {
+  ge::op::OCRIdentifyPreHandle op;
+  op.UpdateInputDesc("imgs_data", create_desc({3,2}, ge::DT_UINT8));
+  op.UpdateInputDesc("imgs_offset", create_desc({1}, ge::DT_INT32));
+  op.UpdateInputDesc("imgs_size", create_desc({1,3}, ge::DT_INT32));
+  
+  op.SetAttr("data_format", "NHWC");
+  op.SetAttr("size", {1,1});
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(OCRTest, OCRIdentifyPreHandleInferShapeFail2) {
+  ge::op::OCRIdentifyPreHandle op;
+  op.UpdateInputDesc("imgs_data", create_desc({3}, ge::DT_UINT8));
+  op.UpdateInputDesc("imgs_offset", create_desc({1,2}, ge::DT_INT32));
+  op.UpdateInputDesc("imgs_size", create_desc({1,3}, ge::DT_INT32));
+  
+  op.SetAttr("data_format", "NHWC");
+  op.SetAttr("size", {1,1});
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(OCRTest, OCRIdentifyPreHandleInferShapeFail3) {
+  ge::op::OCRIdentifyPreHandle op;
+  op.UpdateInputDesc("imgs_data", create_desc({3}, ge::DT_UINT8));
+  op.UpdateInputDesc("imgs_offset", create_desc({1}, ge::DT_INT32));
+  op.UpdateInputDesc("imgs_size", create_desc({-1,2}, ge::DT_INT32));
+  
+  op.SetAttr("data_format", "NHWC");
+  op.SetAttr("size", {1,1});
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(OCRTest, OCRIdentifyPreHandleInferShapeFail4) {
+  ge::op::OCRIdentifyPreHandle op;
+  op.UpdateInputDesc("imgs_data", create_desc({3}, ge::DT_UINT8));
+  op.UpdateInputDesc("imgs_offset", create_desc({1}, ge::DT_INT32));
+  op.UpdateInputDesc("imgs_size", create_desc({-1,3}, ge::DT_INT32));
+  
+  op.SetAttr("data_format", "NHWC");
+  op.SetAttr("size", {1});
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
 
 TEST_F(OCRTest, OCRIdentifyPreHandleInferShapeUnknown) {

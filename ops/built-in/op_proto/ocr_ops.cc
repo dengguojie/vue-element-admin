@@ -149,20 +149,28 @@ bool SetConstImage(Operator &op, const std::vector<int64_t> &images_shape,
                    std::vector<int64_t> &size_out,
                    const std::string &input_format) {
   std::vector<int64_t> y_shape;
+  int64_t channelNum;
   TensorDesc td = op.GetOutputDescByName("resized_img");
   if (input_format == "NCHW") {
-    y_shape.push_back(images_shape[0]);
+    channelNum = images_shape[0];
+    y_shape.push_back(channelNum);
     y_shape.push_back(960);
     y_shape.push_back(960);
   } else {
+    channelNum = images_shape[2];
     y_shape.push_back(960);
     y_shape.push_back(960);
-    y_shape.push_back(images_shape[2]);
+    y_shape.push_back(channelNum);
+  }
+  if (channelNum != kChannelNum) {
+    GE_OP_LOGE(op.GetName().c_str(), "Img channel must be 3, but got ",
+	    channelNum);
+    return GRAPH_FAILED;
   }
   td.SetShape(ge::Shape(y_shape));
   td.SetDataType(DT_UINT8);
   (void)op.UpdateOutputDesc("resized_img", td);
-  return true;
+  return GRAPH_SUCCESS;
 }
 
 IMPLEMT_COMMON_INFERFUNC(OCRDetectionPreHandleInferShape) {
@@ -183,28 +191,7 @@ IMPLEMT_COMMON_INFERFUNC(OCRDetectionPreHandleInferShape) {
   std::string data_format;
   (void)op.GetAttr("data_format", data_format);
 
-  if (img_desc.GetShape().GetShapeSize() == UNKNOWN_DIM) {
-    std::vector<int64_t> y_shape;
-    if (data_format == "NCHW") {
-      y_shape.push_back(3);
-      y_shape.push_back(960);
-      y_shape.push_back(960);
-    } else {
-      y_shape.push_back(960);
-      y_shape.push_back(960);
-      y_shape.push_back(3);
-    }
-
-    resized_img_desc.SetShape(ge::Shape(y_shape));
-    resized_img_desc.SetDataType(DT_UINT8);
-    (void)op.UpdateOutputDesc("resized_img", resized_img_desc);
-    return GRAPH_SUCCESS;
-  }
-
-  if (SetConstImage(op, image_shape, size_out, data_format)) {
-    return GRAPH_SUCCESS;
-  }
-  return GRAPH_FAILED;
+  return SetConstImage(op, image_shape, size_out, data_format);
 }
 
 COMMON_INFER_FUNC_REG(OCRDetectionPreHandle, OCRDetectionPreHandleInferShape);
@@ -217,8 +204,36 @@ IMPLEMT_COMMON_INFERFUNC(OCRIdentifyPreHandleInferShape) {
   std::vector<int64_t> list_out_size;
   (void)op.GetAttr("size", list_out_size);
   if (list_out_size.size() != 2) {
+    GE_OP_LOGE(op.GetName().c_str(), "The size of size attr must be 2, but got ",
+	    list_out_size.size());
     return GRAPH_FAILED;
   }
+
+  if (imgs_data_desc.GetShape().GetDimNum() != 1) {
+    GE_OP_LOGE(op.GetName().c_str(), "Imgs data shape dims size must be 1, but got ",
+      imgs_data_desc.GetShape().GetDimNum());
+    return GRAPH_FAILED;
+  }
+
+  if (imgs_offset_desc.GetShape().GetDimNum() != 1) {
+    GE_OP_LOGE(op.GetName().c_str(), "Imgs offset shape dims size must be 1, but got ",
+      imgs_offset_desc.GetShape().GetDimNum());
+    return GRAPH_FAILED;
+  }
+
+  if (imgs_size_desc.GetShape().GetDimNum() != 2) {
+    GE_OP_LOGE(op.GetName().c_str(), "Imgs size shape dims size must be 2, but got ",
+      imgs_size_desc.GetShape().GetDimNum());
+    return GRAPH_FAILED;
+  }
+
+  /* dim 1 is the shape of image, must be 3 */
+  if (imgs_size_desc.GetShape().GetDim(1) != 3) {
+    GE_OP_LOGE(op.GetName().c_str(), "Imgs size shape dim[1] must be 3, but got ",
+      imgs_size_desc.GetShape().GetDim(1));
+    return GRAPH_FAILED;
+  }
+
   std::string data_format = "NHWC";
   (void)op.GetAttr("data_format", data_format);
   std::vector<std::pair<int64_t, int64_t>> imgs_data_range;

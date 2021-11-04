@@ -128,7 +128,7 @@ REG_OP(OCRIdentifyPreHandle)
     .INPUT(imgs_offset, TensorType({DT_INT32}))
     .INPUT(imgs_size, TensorType({DT_INT32}))
     .OUTPUT(resized_imgs, TensorType({DT_UINT8}))
-    .ATTR(size, ListInt, {})
+    .REQUIRED_ATTR(size, ListInt)
     .ATTR(data_format, String, "NHWC")
     .OP_END_FACTORY_REG(OCRIdentifyPreHandle)
 
