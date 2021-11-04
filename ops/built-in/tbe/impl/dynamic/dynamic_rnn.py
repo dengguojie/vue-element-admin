@@ -14,6 +14,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 dynamic_rnn
 """
 # pylint: disable=too-many-lines
+import copy
 import operator
 
 import numpy as np
@@ -31,6 +32,7 @@ from te.lang.cce import vmul
 from te.lang.cce import vmuls
 from te.lang.cce import vrec
 from te.lang.cce import vsub
+from tbe.common.buildcfg.default_buildcfg import dynamic_build_config_dict
 from tbe.common.register import register_param_generalization
 from tbe.common.rl_bank import rl_bank
 from te.domain.rl_bank import bank_manager
@@ -1148,14 +1150,11 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
     }
 
     if is_dynamic:
-        from tbe.common.buildcfg.default_buildcfg import dynamic_build_config_dict
-
-        dynamic_config_a = dynamic_build_config_dict
+        dynamic_config_a = copy.deepcopy(dynamic_build_config_dict)
         dynamic_config_a["dump_cce_code"] = False
         dynamic_config_a["sync_mode"] = 2
         dynamic_config_a["debug_message"] = False
         dynamic_config_a["save_temp_cce_file"] = False
-
 
         tik_instance.BuildCCE(kernel_name,
                             build_input_list,
