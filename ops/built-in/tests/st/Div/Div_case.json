@@ -1,0 +1,699 @@
+[
+  {
+    "op": "Div",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          3,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,
+          16,
+          16
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,
+          16,
+          16
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "output",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Div_005"
+  },
+  {
+    "op": "Div",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,
+          16,
+          16
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,
+          16,
+          16
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Div_006"
+  },
+  {
+    "op": "Div",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float"
+      },
+      {
+        "shape": [
+          3,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,
+          16,
+          16
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,
+          16,
+          16
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "output",
+        "type": "float"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Div_012"
+  },
+  {
+    "op": "Div",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,
+          16,
+          16
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,
+          16,
+          16
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Div_013"
+  },
+  {
+    "op": "Div",
+    "input_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          3,
+          16,
+          16,
+          16
+        ],
+        "format": "FRACTAL_NZ",
+        "ori_shape": [
+          3,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "FRACTAL_NZ",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Div_014"
+  },
+  {
+    "op": "Div",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Div_015"
+  },
+  {
+    "op": "Div",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Div_016"
+  },
+  {
+    "op": "Div",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Div_017"
+  },
+  {
+    "op": "Div",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          16,
+          16,
+          1
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          16,
+          16,
+          1
+        ],
+        "ori_format": "NCHW",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "format": "NCHW",
+        "ori_shape": [
+          16,
+          16,
+          16,
+          16
+        ],
+        "ori_format": "NCHW",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Div_018"
+  },
+  {
+    "op": "Div",
+    "input_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Div_019"
+  },
+  {
+    "op": "Div",
+    "input_desc": [
+      {
+        "shape": [
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Div_020"
+  },
+  {
+    "op": "Div",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Div_021"
+  },
+  {
+    "op": "Div",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          16
+        ],
+        "ori_format": "ND",
+        "name": "output",
+        "type": "float16"
+      }
+    ],
+    "attr": [],
+    "case_name": "test_Div_022"
+  }
+]
