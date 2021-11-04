@@ -753,6 +753,11 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/single_instance_norm_grad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/single_instance_norm_grad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/splitd_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/splitd_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/splitv_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/splitv_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/splitvd_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/splitvd_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/square_sum_v2_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/square_sum_v2_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/tbe_fusion_pass_util.h
@@ -1274,6 +1279,10 @@ vector_B:
       - ops/built-in/tests/ut/graph_fusion/ai_core/single_batch_norm_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/single_instance_norm_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/single_instance_norm_grad_fusion_test.cpp
+      - ops/built-in/tests/ut/graph_fusion/ai_core/splitd_fusion_test.cpp
+      - ops/built-in/tests/ut/graph_fusion/ai_core/splitv_fusion_test.cpp
+      - ops/built-in/tests/ut/graph_fusion/ai_core/splitvd_fusion_test.cpp
+      - ops/built-in/tests/ut/graph_fusion/ai_core/square_sum_v2_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/strided_slice_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/transdata_cast_fusion_pass_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/transdata_confusion_transpose_fusion_pass_test.cpp
