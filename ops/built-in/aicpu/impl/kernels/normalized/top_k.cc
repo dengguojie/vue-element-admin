@@ -648,7 +648,7 @@ uint32_t TopKCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   KERNEL_CHECK_NULLPTR(k_tensor->GetData(), KERNEL_STATUS_PARAM_INVALID,
                        "Get input[1], name[k] failed");
   k_ = *static_cast<int32_t *>(k_tensor->GetData());
-  if (k_ <= 0) {
+  if (k_ < 0) {
     KERNEL_LOG_ERROR("K[%d] must be greater than 0", k_);
     return KERNEL_STATUS_PARAM_INVALID;
   }
