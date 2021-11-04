@@ -825,6 +825,7 @@ bool Norm::DoTiling()
   is_need_workspace = IsNeedWorkspace();
   is_align_and_remove_pad = !is_need_workspace && input_shape.size() == 2 && is_last_axis_reduce &&
       input_shape.back() % block_size != 0 &&
+      input_shape[0] != 1 && input_shape[1] != 1 &&
       compileInfo.pad_max_ub_count / compileInfo.pad_max_entire_size >= input_align_shape.back();
   // determine ub size
   if (is_need_workspace) {
