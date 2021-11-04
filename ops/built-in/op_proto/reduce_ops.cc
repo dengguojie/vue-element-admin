@@ -1952,4 +1952,33 @@ IMPLEMT_INFERFUNC(ReduceStdWithMean, ReduceStdWithMeanInferShape) {
 INFER_FUNC_REG(ReduceStdWithMean, ReduceStdWithMeanInferShape);
 // ----------------ReduceStdWithMean END---------------------
 
+// ----------------ReduceMeanVariance Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(ReduceMeanVarianceInferShape) {
+    OP_LOGI(op.GetName().c_str(), "Enter ReduceMeanVariance infer function!");
+    ge::TensorDesc result_desc;
+    ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+    if (!InferReduceDShape(op, "x", "axes", "keep_dims", result_desc)) {
+      return GRAPH_FAILED;
+    }
+
+    ge::GeTensorDescPtr output_mean_desc = op_desc->MutableOutputDesc(0);
+    ge::GeTensorDescPtr output_var_desc = op_desc->MutableOutputDesc(1);
+    if (output_mean_desc == nullptr || output_var_desc == nullptr) {
+      OP_LOGE(op.GetName().c_str(), "get output desc failed");
+      return GRAPH_FAILED;
+    }
+    std::vector<int64_t> input_shape = result_desc.GetShape().GetDims();
+    output_mean_desc->SetShape(GeShape(input_shape));
+    output_var_desc->SetShape(GeShape(input_shape));
+
+    auto dtype = result_desc.GetDataType();
+    output_mean_desc->SetDataType(dtype);
+    output_var_desc->SetDataType(dtype);
+
+    return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(ReduceMeanVariance, ReduceMeanVarianceInferShape);
+// ------------------ReduceMeanVariance END-----------------
+
 }  // namespace ge

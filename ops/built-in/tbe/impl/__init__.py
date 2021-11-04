@@ -452,3 +452,4 @@ from .acts_ulq import acts_ulq
 from .ifmr import ifmr
 
 from .update_tensor_desc import update_tensor_desc
+from .reduce_mean_variance import reduce_mean_variance

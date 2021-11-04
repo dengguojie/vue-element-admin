@@ -1,0 +1,84 @@
+[
+  {
+    "op": "ReduceMeanVariance",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          112,
+          4,
+          112,
+          80,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_shape": [
+          1,
+          112,
+          112,
+          80,
+          64
+        ],
+        "ori_format": "NDHWC",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_shape": [
+          1,
+          1,
+          1,
+          1,
+          64
+        ],
+        "ori_format": "NDHWC",
+        "name": "mean",
+        "type": "float"
+      },
+      {
+        "shape": [
+          1,
+          1,
+          4,
+          1,
+          1,
+          16
+        ],
+        "format": "NDC1HWC0",
+        "ori_shape": [
+          1,
+          1,
+          1,
+          1,
+          64
+        ],
+        "ori_format": "NDHWC",
+        "name": "variance",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axes",
+        "type": "list_int",
+        "value": [
+          1,
+          2,
+          3
+        ]
+      }
+    ],
+    "case_name": "test_reduce_mean_variance01"
+  }
+]
