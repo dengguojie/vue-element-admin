@@ -341,8 +341,8 @@ def check_supported(input_x, input_y, bias=None, output_z={}, trans_a=False,
     get the op supported situation
     """
 
-    shape_a = input_x.get("shape")
-    shape_b = input_y.get("shape")
+    shape_a = input_x.get("ori_shape")
+    shape_b = input_y.get("ori_shape")
     src_dtype = input_x.get("dtype")
 
     if any(v == 0 for v in shape_a) or any(v == 0 for v in shape_b):
