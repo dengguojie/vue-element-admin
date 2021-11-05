@@ -346,4 +346,17 @@ IMPLEMT_COMMON_INFERFUNC(ScanPQCodesShape) {
 COMMON_INFER_FUNC_REG(ScanPQCodes, ScanPQCodesShape);
 VERIFY_FUNC_REG(ScanPQCodes, ScanPQCodesVerify);
 // ----------------ScanPQCodes END---------------------
+
+// ----------------CalcBucketsLimitAndOffset Begin-------------------
+IMPLEMT_COMMON_INFERFUNC(CalcBucketsLimitAndOffsetInferShape) {
+  TensorDesc td = op.GetInputDesc("bucket_list");
+  (void)op.UpdateOutputDesc("buckets_limit", td);
+  TensorDesc td_ivf_offset = op.GetInputDesc("ivf_offset");
+  td.SetDataType(td_ivf_offset.GetDataType());
+  (void)op.UpdateOutputDesc("buckets_offset", td);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(CalcBucketsLimitAndOffset, CalcBucketsLimitAndOffsetInferShape);
+// ----------------CalcBucketsLimitAndOffset END---------------------
 }  // namespace ge
