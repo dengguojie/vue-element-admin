@@ -42,6 +42,15 @@ ut_case.add_case("all",
                                        "dynamic_muls_int32_ND",
                                        "failed"))
 
+ut_case.add_case("all",
+                 gen_dynamic_muls_case(shape_x=(-1,),
+                                       range_x=[(1,None)],
+                                       dtype_val="float32",
+                                       value=1.0,
+                                       format_val="ND",
+                                       ori_shape_x=(-1,),
+                                       kernel_name_val="dynamic_muls_none_ND",
+                                       expect="success"))
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
     ut_case.run("Ascend310")
