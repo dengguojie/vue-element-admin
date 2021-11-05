@@ -2734,6 +2734,8 @@ static void CalcLeftVol(const CompilerInfo& ci, const ShapeInfo& si, RuntimeInfo
 
   int64_t leftVol = ubSize / reservedVol;
 
+  leftVol = (leftVol == 0 ? 1 : leftVol);
+  
   // since block align padding may result ub size not enough
   // loop 10 is ok for lastAxisLen from 1 to 256
   if (si.isLastTwoAlignedAndTrans) {
@@ -2748,6 +2750,8 @@ static void CalcLeftVol(const CompilerInfo& ci, const ShapeInfo& si, RuntimeInfo
     if (vol * AlignX(vol * (lastAxisTrans ? 1 : si.lastAxisLen), si.elePerBlock) * ci.fp16Times <= ubSize) {
       runtimeInfo.borrowInfo.srcVol = vol - 1;
       runtimeInfo.borrowInfo.dstVol = vol - 1;
+      runtimeInfo.borrowInfo.srcVol = runtimeInfo.borrowInfo.srcVol > 0 ? runtimeInfo.borrowInfo.srcVol : 1;
+      runtimeInfo.borrowInfo.dstVol = runtimeInfo.borrowInfo.dstVol > 0 ? runtimeInfo.borrowInfo.dstVol : 1;
       break;
     } else {
       continue;
