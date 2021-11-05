@@ -1436,6 +1436,9 @@ class DetectionOutput(ClsProbComputer):
         -------
         None
         """
+        if cce_conf.get_soc_spec("SOC_VERSION") in (
+                "Ascend910", "Ascend710", "Ascend610", "Ascend615", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
+            self.instance.set_rpn_offset(1.0)
         iou_num = PRE_NMS_TOPN
         if cce_conf.get_soc_spec("SOC_VERSION") in (
                 "Hi3796CV300ES", "Hi3796CV300CS", "SD3403") or \
