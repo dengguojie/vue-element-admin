@@ -19,8 +19,7 @@ using namespace ge;
 using json = nlohmann::json;
 namespace domi {
 void GetAttrListFromJson(json& attr, std::vector<int32_t>& val) {
-  int num = attr["ints"].size();
-  for (int i = 0; i < num; ++i) {
+  for (size_t i = 0; i < attr["ints"].size(); ++i) {
     val.push_back(attr["ints"][i].get<int32_t>());
   }
 }
@@ -31,7 +30,7 @@ Status ParseOnnxParamsCol2im(const ge::Operator& op_src, ge::Operator& op_dest) 
   std::vector<int32_t> dilation;
   std::vector<int32_t> padding;
   std::vector<int32_t> stride;
-  if (ge::GRAPH_SUCCESS == op_src.GetAttr("attribute", attrs_string)) {
+  if (op_src.GetAttr("attribute", attrs_string) == ge::GRAPH_SUCCESS) {
     json attrs = json::parse(attrs_string.GetString());
     for (json& attr : attrs["attribute"]) {
       if (attr["name"] == "kernel_size") {
@@ -50,6 +49,11 @@ Status ParseOnnxParamsCol2im(const ge::Operator& op_src, ge::Operator& op_dest) 
     ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "node must have attr kernel_size/dilation/padding/stride");
     return FAILED;
   }
+  if (ChangeFormatFromOnnx(op_dest, 0, ge::FORMAT_NCHW, true) != SUCCESS ||
+      ChangeFormatFromOnnx(op_dest, 0, ge::FORMAT_NCHW, false) != SUCCESS) {
+    return FAILED;
+  }
+
   op_dest.SetAttr("kernel_size", kernel_size);
   op_dest.SetAttr("dilation", dilation);
   op_dest.SetAttr("padding", padding);
