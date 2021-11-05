@@ -78,13 +78,6 @@ def _shape_check(shape_a, shape_b, shape_bias, src_dtype, trans_a, trans_b):
     shape_len = len(shape_a)
     src_dtype = src_dtype.lower()
 
-    check_list = ["float16"]
-    cube_vector_split_flag = tbe_platform.get_soc_spec("CUBE_VECTOR_SPLIT")
-    if cube_vector_split_flag:
-        check_list += ["float32", "bfloat16"]
-    if src_dtype not in check_list:
-        error_manager_vector.raise_err_input_dtype_not_supported(
-            "mat_mul", "x1", "float16", src_dtype)
     if shape_len != len(shape_b):
         error_detail = "length of x1 and x2 should be same"
         error_manager_vector.raise_err_two_input_shape_invalid("mat_mul", "x1",
@@ -447,13 +440,12 @@ def mat_mul_compute(input_x1,
     """
     format_a = input_x1.op.attrs["format"].value
     format_b = input_x2.op.attrs["format"].value
-    cube_vector_split = tbe_platform.get_soc_spec("CUBE_VECTOR_SPLIT")
-    if format_a == 'FRACTAL_NZ' and not cube_vector_split:
+    if format_a == 'FRACTAL_NZ':
         trans_a_local = False if trans_a else True
     else:
         trans_a_local = trans_a
 
-    if format_b == 'FRACTAL_NZ' and not cube_vector_split:
+    if format_b == 'FRACTAL_NZ':
         trans_b_local = False if trans_b else True
     else:
         trans_b_local = trans_b
@@ -527,15 +519,14 @@ def mat_mul_compute_self(input_x1,
     -------
     None
     """
-    cube_vector_split = tbe_platform.get_soc_spec("CUBE_VECTOR_SPLIT")
     format_a = input_x1.op.attrs["format"].value
     format_b = input_x2.op.attrs["format"].value
-    if format_a == 'FRACTAL_NZ' and not cube_vector_split:
+    if format_a == 'FRACTAL_NZ':
         trans_a_local = False if trans_a else True
     else:
         trans_a_local = trans_a
 
-    if format_b == 'FRACTAL_NZ' and not cube_vector_split:
+    if format_b == 'FRACTAL_NZ':
         trans_b_local = False if trans_b else True
     else:
         trans_b_local = trans_b

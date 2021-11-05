@@ -13,7 +13,6 @@ from te import tvm
 from impl.util.platform_adapter import tbe
 from te.platform.cce_conf import te_set_version
 from impl.trans_data import trans_data_compute
-from impl.trans_data import _ceil_and_divide
 from tbe.common.context import op_context
 
 
@@ -247,11 +246,6 @@ def _test_nd2nz_format_err1(test_arg):
     try:
         fmap_nhwc = tvm.placeholder((1, 7, 7, 16), name="fmap_nhwc", dtype="float16")
         fmap_5hd = trans_data_compute(fmap_nhwc, None, "NHWCXX", "NC1HWC0")
-    except RuntimeError as e:
-        print(e)
-
-    try:
-        result = _ceil_and_divide(16, 0, 0)
     except RuntimeError as e:
         print(e)
 

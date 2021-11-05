@@ -623,24 +623,6 @@ def test_shape_check(test_args):
     te_set_version('Ascend910A')
 
 
-def test_matmul_error(test_args):
-    te_set_version("Ascend920A")
-    from impl.trans_data import _ceil_and_divide
-    try:
-        _ceil_and_divide(32, 0, 0)
-    except Exception:
-        pass
-    try:
-        test_matmul_trans_data_fusion_920_error_case_1(0)
-    except Exception:
-        pass
-    try:
-        test_matmul_trans_data_fusion_920_error_case_2(0)
-    except Exception:
-        pass
-    te_set_version('Ascend910A')        
-
-    
 #ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_1)
 #ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_2)
 #ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_3)
@@ -721,7 +703,58 @@ def test_matmul_trans_data_fusion_920_mock(test_args):
             trans_out = {"shape": (16, 16), "ori_shape": (16, 16), "format": "ND", "ori_format": "ND", "dtype": "float16"}
             out = trans_data_compute(dx_res, trans_out, "FRACTAL_NZ", "ND")
             sch = auto_schedule(out)
+def test_matmul_trans_data_fusion_920_mock_1(test_args):
+    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
+        with cce():
+            x1 = tvm.placeholder((1, 2, 16, 16), name="x1", dtype="float16", attrs={"ori_shape": (32, 16), "format": "FRACTAL_NZ", "ori_format": "ND"})
+            x2 = tvm.placeholder((1, 2, 16, 16), name="x2", dtype="float16", attrs={"ori_shape": (32, 16), "format": "FRACTAL_NZ", "ori_format": "ND"})
+            y = {"shape": (2, 2, 16, 16), "ori_shape": (32, 32), "format": "FRACTAL_NZ", "ori_format": "ND", "dtype": "float16"}
+            dx_res = mat_mul_compute(x1, x2, None, None, y, False, True, 0)
+            trans_out = {"shape": (32, 32), "ori_shape": (32, 32), "format": "ND", "ori_format": "ND", "dtype": "float16"}
+            out = trans_data_compute(dx_res, trans_out, "FRACTAL_NZ", "ND")
+            sch = auto_schedule(out)
+def test_matmul_trans_data_fusion_920_mock_2(test_args):
+    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
+        with cce():
+            x1 = tvm.placeholder((64, 1024), name="x1", dtype="float16", attrs={"ori_shape": (64, 1024), "format": "ND", "ori_format": "ND"})
+            x2 = tvm.placeholder((1024, 32), name="x2", dtype="float16", attrs={"ori_shape": (1024, 32), "format": "ND", "ori_format": "ND"})
+            x1_trans = trans_data_compute(x1, None, "ND", "FRACTAL_NZ")
+            x2_trans = trans_data_compute(x2, None, "ND", "FRACTAL_NZ")
+            y = {"shape": (2, 4, 16, 16), "ori_shape": (64, 32), "format": "FRACTAL_NZ", "ori_format": "ND", "dtype": "float16"}
+            bias = tvm.placeholder((32,), name="bias", dtype="float32", attrs={"ori_shape": (32,), "format": "ND", "ori_format": "ND"})
+            out = mat_mul_compute(x1_trans, x2_trans, bias, None, y, False, False, 0)
+            sch = auto_schedule(out)
+def test_matmul_trans_data_fusion_920_mock_3(test_args):
+    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
+        with cce():
+            x1 = tvm.placeholder((64, 1, 16, 32), name="tensor_a", dtype="int8", attrs={"ori_shape": (2, 2048), "format": "FRACTAL_NZ", "ori_format": "ND"})
+            x2 = tvm.placeholder((32, 128, 16, 32), name="tensor_b", dtype="int8", attrs={"ori_shape": (2048, 1001), "format": "FRACTAL_NZ", "ori_format": "ND"})
+            bias = tvm.placeholder((1008,), name="tensor_bias", dtype="int32", attrs={"format": "ND", "ori_format": "ND", "ori_shape": (1001,)})
+            output_y = {"shape": (63, 1, 16, 16), "dtype": "int32", "ori_shape": (2, 1001), "format": "FRACTAL_NZ", "ori_format": "ND"}
+            matmul_out = mat_mul_compute(x1, x2, bias, None, output_y, False, False, 0)
+            deq_scale = tvm.placeholder((1, 63, 1, 1, 16), name='deq_scale', dtype="uint64", attrs={"ori_shape": (1001, ), "format": "NC1HWC0", "ori_format": "ND"})
+            res = ascend_dequant_compute(matmul_out, deq_scale, None, sqrt_mode=False, relu_flag=False, kernel_name="ascend_dequant")
+            tensor_list = [x1, x2, bias, deq_scale, res]
+            sch = auto_schedule(res)
+def test_matmul_trans_data_fusion_920_mock_4(test_args):
+    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
+        with cce():
+            x1 = tvm.placeholder((32, 2, 16, 32), name="tensor_a", dtype="int8", attrs={"ori_shape": (32, 1024), "format": "FRACTAL_NZ", "ori_format": "ND"})
+            x2 = tvm.placeholder((1, 2, 16, 32), name="tensor_b", dtype="int8", attrs={"ori_shape": (32, 32), "format": "FRACTAL_Z", "ori_format": "ND"})
+            bias = tvm.placeholder((32,), name="tensor_bias", dtype="int32", attrs={"format": "ND", "ori_format": "ND", "ori_shape": (32,)})
+            output_y = {"shape": (2, 64, 16, 16), "dtype": "int32", "ori_shape": (1024, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
+            matmul_out = mat_mul_compute(x1, x2, bias, None, output_y, True, False, 0)
+            deq_scale = tvm.placeholder((1, 2, 1, 1, 16), name='deq_scale', dtype="uint64", attrs={"ori_shape": (32, ), "format": "NC1HWC0", "ori_format": "ND"})
+            res = ascend_dequant_compute(matmul_out, deq_scale, None, sqrt_mode=False, relu_flag=False, kernel_name="ascend_dequant")
+            tensor_list = [x1, x2, bias, deq_scale, res]
+            sch = auto_schedule(res)
+
+
 ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_mock)
+ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_mock_1)
+ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_mock_2)
+ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_mock_3)
+ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_mock_4)
 ut_case.add_case(["Ascend310", "Ascend920A"], not_align_bias_case2)
 
 

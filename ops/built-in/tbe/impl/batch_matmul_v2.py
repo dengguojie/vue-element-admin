@@ -587,15 +587,14 @@ def batch_matmul_compute_self(input_x, input_y, bias=None,  offset_w={}, output_
     ------
     None
     """
-    cube_vector_split = tbe_platform.get_soc_spec("CUBE_VECTOR_SPLIT")
     format_a = input_x.op.attrs["format"].value
     format_b = input_y.op.attrs["format"].value
-    if format_a == 'FRACTAL_NZ' and not cube_vector_split:
+    if format_a == 'FRACTAL_NZ':
         trans_a_local = False if trans_a else True
     else:
         trans_a_local = trans_a
 
-    if format_b == 'FRACTAL_NZ' and not cube_vector_split:
+    if format_b == 'FRACTAL_NZ':
         trans_b_local = False if trans_b else True
     else:
         trans_b_local = trans_b
