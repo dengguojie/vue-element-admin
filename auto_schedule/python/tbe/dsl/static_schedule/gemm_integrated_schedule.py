@@ -165,6 +165,12 @@ class GemmSchedule(object):
     ALLOCATE_OFF = 0
     ALLOCATE_HALF = 1
     ALLOCATE_FULL = 2
+    KBL1_LARGER_FLAG = 2
+    TILING_RANGE = {
+        "range_block_dim": (1, 32),
+        "range_64": (1, 64),
+        "range_1024": (1, 1024)
+    }
 
     is_dynamic = False
 
@@ -264,6 +270,22 @@ class GemmSchedule(object):
         self.cgm_ka_storage_change = False
         self.cgm_kb_stotage_change = False
         self.l1_fusion_type = 0
+        self.dyn_shape_in = None
+        self.cache_tiling = None
+        self.split_mode = {"ceil_mode": True}
+        self.attach_at_flag = None
+        self.status_ori_dict = {
+            0: Compare.EQUAL,
+            1: Compare.LESS_EQ,
+            2: Compare.LESS_EQ,
+            3: Compare.LESS_EQ
+        }
+        self.status_dict = {
+            0: Compare.EQUAL,
+            1: Compare.EQUAL,
+            2: Compare.LESS_EQ,
+            3: Compare.GREATE_EQ
+        }
 
     @staticmethod
     def _get_all_tags(res):
@@ -387,7 +409,6 @@ class GemmSchedule(object):
         self._get_global_para_phase_1(self.ori_tensors)
         self._get_seed_shape()
         self._set_data_layout(self.res)
-        self._set_var_range_for_dynamic()
         self._print_ir_matmul("after data layout", self.sch)
         self._get_batch_info()
         self._set_buffer_reuse_dict()
@@ -408,11 +429,13 @@ class GemmSchedule(object):
         self._do_buffer_align()
         self._solve_bank_conflict()
         a_run_once, b_run_once = self._allocate_axis(over_head_flag)
+        self._cache_tiling_full_load(self.TENSOR_MAP.get("c_gm"))
         self._double_buffer(a_run_once, b_run_once)
         self._handle_tbe_compile_para()
         self._reorder_axis(over_head_flag, a_run_once, b_run_once)
         self._do_compute_inline()
         self._mem_process()
+        self._set_var_range_for_dynamic()
         self._print_ir_matmul("finial", self.sch)
         self.tiling.clear()
         self.TENSOR_MAP.clear()
@@ -1515,6 +1538,148 @@ class GemmSchedule(object):
             return compute_tensors
         return list()
 
+    def _config_cache_tiling(self, tiling):
+        """
+        config base tiling information for cache tiling
+        """
+        m_name = GEMMComputeParam.m_var_name
+        k_name = GEMMComputeParam.k_var_name
+        n_name = GEMMComputeParam.n_var_name
+        self.dyn_shape_in = {
+            k_name: get_te_var(k_name).get_tvm_var(),
+            m_name: get_te_var(m_name).get_tvm_var(),
+            n_name: get_te_var(n_name).get_tvm_var(),
+        }
+        if self.have_batch:
+            self.dyn_shape_in["batch"] = get_te_var("batch").get_tvm_var()
+
+        if -1 not in tiling['block_dim']:
+            return tiling
+
+        self.split_mode = {"ceil_mode": False, "round_mode": "round_up"}
+
+        self.cache_tiling = {
+            "batch_dim": get_te_var("batch_dim").get_tvm_var(),
+            "batch_single_core": get_te_var("batch_single_core").get_tvm_var(),
+            "n_single_core": get_te_var("n_single_core").get_tvm_var(),
+            "n_dim": get_te_var("n_dim").get_tvm_var(),
+            "n_bl1": get_te_var("n_bl1").get_tvm_var(),
+            "n_ub_l0_time": get_te_var("n_ub_l0_time").get_tvm_var(),
+            "cub_n1": get_te_var("cub_n1").get_tvm_var(),
+            "m_dim": get_te_var("m_dim").get_tvm_var(),
+            "m_single_core": get_te_var("m_single_core").get_tvm_var(),
+            "m_al1": get_te_var("m_al1").get_tvm_var(),
+            "m_l0": get_te_var("m_l0").get_tvm_var(),
+            "k_l0": get_te_var("k_l0").get_tvm_var(),
+            "k_al0": get_te_var("k_l0").get_tvm_var(),
+            "k_bl0": get_te_var("k_l0").get_tvm_var(),
+            "kal1_factor": get_te_var("kal1_factor").get_tvm_var(),
+            "kbl1_factor": get_te_var("kbl1_factor").get_tvm_var(),
+            "kal0_factor": get_te_var("kal0_factor").get_tvm_var(),
+            "kbl0_factor": get_te_var("kbl0_factor").get_tvm_var(),
+            "kal1_16": get_te_var("kal1_16").get_tvm_var(),
+            "kbl1_16": get_te_var("kbl1_16").get_tvm_var(),
+            "kl1_times": get_te_var("kl1_times").get_tvm_var(),
+        }
+
+        self.cache_tiling["kal1_16"] = self.cache_tiling["kal0_factor"] * self.cache_tiling["k_l0"]
+        self.cache_tiling["kbl1_16"] = self.cache_tiling["kbl0_factor"] * self.cache_tiling["k_l0"]
+
+        abkl1_attach_flag = tiling["attach_at_flag"].get("abkl1_attach_flag")
+        if abkl1_attach_flag == 0:
+            self.sch.set_var_value(self.cache_tiling["kl1_times"], 1)
+            self._norange_kal1_kbl1_equal(tiling)
+        elif abkl1_attach_flag == 1:
+            self._norange_kal1(tiling)
+        else:
+            self._norange_kbl1(tiling)
+
+        tiling = self._tiling_infer_norange(tiling)
+
+        return tiling
+
+    def _norange_kal1_kbl1_equal(self, tiling):
+        """
+        config k related tiling variable when kal1 equals kbl1
+        """
+        kal0_factor = self.cache_tiling["kal0_factor"]
+        kal1_factor = self.cache_tiling["kal1_factor"]
+        k_l0 = self.cache_tiling["k_l0"]
+        if not tiling["attach_at_flag"].get("min_kl1_cmp_kl0"):
+            self.cache_tiling["k_al0"] = kal0_factor * k_l0
+            self.cache_tiling["k_bl0"] = kal0_factor * k_l0
+            if tiling["attach_at_flag"].get("al1_attach_flag") == 0:
+                self.cache_tiling["k_al0"] = kal1_factor * kal0_factor * k_l0
+                self.cache_tiling["k_bl0"] = self.cache_tiling["k_al0"]
+
+        self.cache_tiling["kal1_16"] = kal0_factor * k_l0
+        self.cache_tiling["kbl1_16"] = kal0_factor * k_l0
+        self.sch.set_var_value(self.dyn_shape_in[GEMMComputeParam.k_var_name],
+                               kal1_factor * kal0_factor * k_l0)
+
+    def _norange_kal1(self, tiling):
+        """
+        config k related tiling variable when kal1 large than kbl1
+        """
+        kbl0_factor = self.cache_tiling["kbl0_factor"]
+        k_l0 = self.cache_tiling["k_l0"]
+        kl1_times = self.cache_tiling["kl1_times"]
+        if not tiling["attach_at_flag"].get("min_kl1_cmp_kl0"):
+            self.sch.set_var_value(kbl0_factor, 1)
+            self.cache_tiling["k_al0"] = kbl0_factor * k_l0
+            self.cache_tiling["k_bl0"] = kbl0_factor * k_l0
+        if tiling["attach_at_flag"].get("al1_attach_flag") == 0:
+            self.sch.set_var_value(self.dyn_shape_in[GEMMComputeParam.k_var_name],
+                                   self.cache_tiling["kbl1_factor"] * kbl0_factor * k_l0)
+        else:
+            self.cache_tiling["kal1_16"] = kl1_times * kbl0_factor * k_l0
+            self.sch.set_var_value(self.dyn_shape_in[GEMMComputeParam.k_var_name],
+                                   self.cache_tiling["kal1_factor"] * kl1_times * kbl0_factor * k_l0)
+
+    def _norange_kbl1(self, tiling):
+        """
+        config k related tiling variable when kal1 smaller than kbl1
+        """
+        kal0_factor = self.cache_tiling["kal0_factor"]
+        k_l0 = self.cache_tiling["k_l0"]
+        kl1_times = self.cache_tiling["kl1_times"]
+        if not tiling["attach_at_flag"].get("min_kl1_cmp_kl0"):
+            self.sch.set_var_value(kal0_factor, 1)
+            self.cache_tiling["k_al0"] = kal0_factor * k_l0
+            self.cache_tiling["k_bl0"] = kal0_factor * k_l0
+        if tiling["attach_at_flag"].get("bl1_attach_flag") == 0:
+            self.sch.set_var_value(self.dyn_shape_in[GEMMComputeParam.k_var_name],
+            self.cache_tiling["kal1_factor"] * kal0_factor * k_l0)
+        else:
+            self.cache_tiling["kbl1_16"] = kl1_times * kal0_factor * k_l0
+            self.sch.set_var_value(self.dyn_shape_in[GEMMComputeParam.k_var_name],
+            self.cache_tiling["kbl1_factor"] * kl1_times * kal0_factor * k_l0)
+
+    def _tiling_infer_norange(self, tiling):
+        """
+        config tiling variable for cache tiling
+        """
+        tiling['block_dim'] = [self.cache_tiling['batch_dim'],
+                               self.cache_tiling["n_dim"],
+                               self.cache_tiling["m_dim"],
+                               1]
+        tiling['AL1_shape'][0] = self.cache_tiling["kal1_16"] * 16
+        if tiling['AL1_shape'][1] == -1:
+            tiling['AL1_shape'][1] = self.cache_tiling["m_al1"]
+        tiling['BL1_shape'][0] = self.cache_tiling["kbl1_16"] * 16
+        if tiling['BL1_shape'][1] == -1:
+            tiling['BL1_shape'][1] = self.cache_tiling["n_bl1"]
+        tiling['AL0_matrix'][0] = self.cache_tiling["m_l0"]
+        tiling['CL0_matrix'][1] = self.cache_tiling["m_l0"]
+        tiling['CUB_matrix'][1] = self.cache_tiling["m_l0"]
+        tiling['CUB_matrix'][0] = self.cache_tiling["cub_n1"]
+        tiling['AL0_matrix'][1] = self.cache_tiling["k_al0"]
+        tiling['BL0_matrix'][0] = self.cache_tiling["k_bl0"]
+        tiling['BL0_matrix'][1] = self.cache_tiling["n_ub_l0_time"] * self.cache_tiling["cub_n1"]
+        tiling['CL0_matrix'][0] = tiling['BL0_matrix'][1]
+
+        return tiling
+
     def _no_solution_tiling(self, tiling):
         """Determining that there is no solution to tilling
         and change tiling to default
@@ -1566,7 +1731,8 @@ class GemmSchedule(object):
                 'CL0_pbuffer': 1,
                 'CUB_pbuffer': 1,
                 'UBG_pbuffer': 2
-                }
+                },
+                "attach_same_to_static": False
             }
             if self.mmad_mode in ("gemv", "gevm") and (not self.only_use_gevm_gemv_flow):
                 tiling["AUB_shape"] = [block_reduce * block_in, 1, 1, 1]
@@ -1677,6 +1843,7 @@ class GemmSchedule(object):
         over_head_flag = False
         if self.is_dynamic:
             tiling = self.dynamic_para.get("tiling_strategy")
+            tiling = self._config_cache_tiling(tiling)
         else:
             tiling = self._get_tiling_after_cmp(info_dict, new_fused_num)
             over_head_flag = bool(tiling.get("A_overhead_opt_flag"))
@@ -1691,6 +1858,7 @@ class GemmSchedule(object):
             }
             raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
         self.tiling = tiling
+        self.attach_at_flag = tiling.get("attach_at_flag")
         self._print_debug(tiling, "auto tiling result")
         return over_head_flag
 
@@ -1729,7 +1897,7 @@ class GemmSchedule(object):
         return tiling_res
 
     def _check_k_full_load(self, tiling):
-        if not self.is_dynamic:
+        if not self.is_dynamic or self.cache_tiling:
             return tiling
         l0a_k = tiling.get("AL0_matrix")[1]
         l0c_n, l0c_m, _, _, _, _ = tiling.get("CL0_matrix")
@@ -1791,18 +1959,19 @@ class GemmSchedule(object):
         return a_shape, b_shape
 
     def _get_seed_shape(self):
-        if not self.is_dynamic:
+        if not self.is_dynamic or self.cache_tiling:
             return
         self.seed_shape = list(self.dynamic_para.get("m_k_n_shape"))
         self._print_debug(self.seed_shape, "seed_shape:")
         if self.mmad_mode == "gemv":
             self.seed_shape[0], self.seed_shape[2] = self.seed_shape[2], self.seed_shape[0]
 
-        if len(self.seed_shape) == 4:
-            self.dynamic_m, self.dynamic_k, self.dynamic_n, self.dynamic_batch = self.seed_shape
-        else:
-            self.dynamic_m, self.dynamic_k, self.dynamic_n = self.seed_shape
-            self.dynamic_batch = None
+        if self.seed_shape:
+            if len(self.seed_shape) == 4:
+                self.dynamic_m, self.dynamic_k, self.dynamic_n, self.dynamic_batch = self.seed_shape
+            else:
+                self.dynamic_m, self.dynamic_k, self.dynamic_n = self.seed_shape
+                self.dynamic_batch = None
 
 
     def _get_trans_flag(self, transpose_a, transpose_b):
@@ -1966,9 +2135,12 @@ class GemmSchedule(object):
 
     def _get_dynamic_cub_shape(self, cub_shape):
         if self.is_dynamic:
-            dynamic_n = self._int_ceil_div(self.dynamic_n, self.tiling.get("block_dim")[1])
-            dynamic_m = self._int_ceil_div(self.dynamic_m, self.tiling.get("block_dim")[2])
-            cub_shape = [dynamic_n, dynamic_m, self.block_in, self.block_out]
+            if self.cache_tiling:
+                cub_shape = [self.dynamic_n, self.dynamic_m] + cub_shape[:-2]
+            else:
+                dynamic_n = self._int_ceil_div(self.dynamic_n, self.tiling.get("block_dim")[1])
+                dynamic_m = self._int_ceil_div(self.dynamic_m, self.tiling.get("block_dim")[2])
+                cub_shape = [dynamic_n, dynamic_m, self.block_in, self.block_out]
             if self.have_batch:
                 dynamic_batch = self._int_ceil_div(self.dynamic_batch, self.tiling.get("block_dim")[0])
                 cub_shape.insert(0, dynamic_batch)
@@ -1976,7 +2148,6 @@ class GemmSchedule(object):
 
     def _cub_process(self):
         self._print_debug("-------debug info in cub_process-------")
-        sch = self.sch
         cub_tiling = self.tiling.get("CUB_matrix")
         cub_tiling_nc_factor, cub_tiling_mc_factor, cub_tiling_m0, cub_tiling_n0, cub_tiling_batch, _ = cub_tiling
         if self.res.dtype == "int8":
@@ -2004,7 +2175,11 @@ class GemmSchedule(object):
 
         if self.mmad_mode in ("gemv", "gevm"):
             c_ub_tiling_shape[-2] = 1
-        status = Compare.compare(c_ub_tiling_shape, c_ub_shape)
+        if self.attach_at_flag:
+            cub_attach_flag = self.attach_at_flag.get("cub_attach_flag")
+            status = self.status_dict.get(cub_attach_flag)
+        else:
+            status = Compare.compare(c_ub_tiling_shape, c_ub_shape)
         self._print_debug([c_ub_tiling_shape, c_ub_shape], "c_ub_tiling_shape with c_ub_shape")
         self._print_debug([affine_cub, self.root_tensor.shape], "affine_cub with root_tensor's shape")
         self._do_attach_cub(status, c_ub_fract, affine_cub)
@@ -2017,7 +2192,7 @@ class GemmSchedule(object):
             self.tensors_in_cub += self.fusion_tensor_cub
         same_attach_cub = self.tensors_in_cub
 
-        if self.is_dynamic:
+        if self.is_dynamic and not self.cache_tiling:
             status = Compare.LESS_EQ
 
         if status == Compare.EQUAL:
@@ -2026,7 +2201,8 @@ class GemmSchedule(object):
             if self.quant_fusion or self.requant_fusion:
                 affine_cub[-1] *= 2
                 self._print_debug(affine_cub, "affine_cub in quant_fusion and requant_fusion")
-            sch_agent.attach_at(c_ub_fract, self.root_tensor, affine_shape = affine_cub)
+            sch_agent.attach_at(
+                c_ub_fract, self.root_tensor, affine_shape = affine_cub, split_mode=self.split_mode)
             self.c_ub_attach_status = "c_gm"
 
             for tensor in same_attach_cub:
@@ -2046,9 +2222,12 @@ class GemmSchedule(object):
 
     def _get_dynamic_l0c_shape(self, l0c_shape, have_batch):
         if self.is_dynamic:
-            dynamic_n = self._int_ceil_div(self.dynamic_n, self.tiling.get("block_dim")[1])
-            dynamic_m = self._int_ceil_div(self.dynamic_m, self.tiling.get("block_dim")[2])
-            l0c_shape = [dynamic_n, dynamic_m, self.block_in, self.block_out]
+            if self.cache_tiling:
+                l0c_shape = [self.dynamic_n, self.dynamic_m] + l0c_shape[:-2]
+            else:
+                dynamic_n = self._int_ceil_div(self.dynamic_n, self.tiling.get("block_dim")[1])
+                dynamic_m = self._int_ceil_div(self.dynamic_m, self.tiling.get("block_dim")[2])
+                l0c_shape = [dynamic_n, dynamic_m, self.block_in, self.block_out]
             if have_batch:
                 dynamic_batch = self._int_ceil_div(self.dynamic_batch, self.tiling.get("block_dim")[0])
                 l0c_shape.insert(0, dynamic_batch)
@@ -2066,6 +2245,8 @@ class GemmSchedule(object):
             affine_l0c = [cl0_tiling_mc * cl0_tiling_m0, cl0_tiling_nc * cl0_tiling_n0]
         else:
             affine_l0c = [cl0_tiling_nc, cl0_tiling_mc, cl0_tiling_m0, cl0_tiling_n0]
+            if self.cache_tiling:
+                affine_l0c[0] = self.cache_tiling["n_ub_l0_time"] * self.cache_tiling["cub_n1"]
 
         cl0_tiling_shape = [cl0_tiling_nc, cl0_tiling_mc, cl0_tiling_m0, cl0_tiling_n0]
 
@@ -2076,11 +2257,17 @@ class GemmSchedule(object):
         c_l0c = self.TENSOR_MAP.get("c_l0c")
         c_l0c_shape = list(self._get_value(i) for i in c_l0c.shape)
         c_l0c_shape = self._get_dynamic_l0c_shape(c_l0c_shape, self.have_batch)
-        status_ori = Compare.compare(cl0_tiling_shape, c_l0c_shape)
+
         if self.mmad_mode in ("gemv", "gevm"):
             # add for dsl_mat_d_elm-eltwise-ut8_NZ_0054
             c_ub_tiling_shape[-2] = 16
-        status = Compare.compare(cl0_tiling_shape, c_ub_tiling_shape)
+        if self.attach_at_flag:
+            cl0_attach_flag = self.attach_at_flag.get("cl0_attach_flag")
+            status_ori = self.status_ori_dict.get(cl0_attach_flag)
+            status = self.status_dict.get(cl0_attach_flag)
+        else:
+            status_ori = Compare.compare(cl0_tiling_shape, c_l0c_shape)
+            status = Compare.compare(cl0_tiling_shape, c_ub_tiling_shape)
         self._print_debug([cl0_tiling_shape, c_l0c_shape], "cl0_tiling_shape with c_l0c_shape")
         self._print_debug([cl0_tiling_shape, c_ub_tiling_shape], "cl0_tiling_shape with c_ub_tiling_shape")
         self._print_debug([affine_l0c, self.root_tensor.shape], "affine_l0c with root_tensor.shape")
@@ -2091,7 +2278,7 @@ class GemmSchedule(object):
         sch_agent = self.sch_agent
         self.c_l0c_attach_status = "full_load"
 
-        if self.is_dynamic:
+        if self.is_dynamic and not self.cache_tiling:
             status_ori = Compare.LESS_EQ
 
         if status_ori == Compare.MISC:
@@ -2114,7 +2301,8 @@ class GemmSchedule(object):
                 affine_l0c[-1] *= 2
                 affine_l0c[-4] //= 2
 
-            sch_agent.attach_at(c_l0c, self.root_tensor, affine_shape = affine_l0c)
+            sch_agent.attach_at(
+                c_l0c, self.root_tensor, affine_shape = affine_l0c, split_mode=self.split_mode)
             self.c_l0c_attach_status = "c_gm"
         else:
             args_dict = {
@@ -2133,8 +2321,11 @@ class GemmSchedule(object):
 
     def _get_dynamic_l0a_shape(self, l0a_shape):
         if self.is_dynamic:
-            dynamic_m = self._int_ceil_div(self.dynamic_m, self.tiling.get("block_dim")[2])
-            l0a_shape = [dynamic_m, self.dynamic_k, self.block_in, self.block_reduce]
+            if self.cache_tiling:
+                l0a_shape = [self.dynamic_m, self.dynamic_k] + l0a_shape[:-2]
+            else:
+                dynamic_m = self._int_ceil_div(self.dynamic_m, self.tiling.get("block_dim")[2])
+                l0a_shape = [dynamic_m, self.dynamic_k, self.block_in, self.block_reduce]
             if self.have_batch_a:
                 dynamic_batch = self._int_ceil_div(self.dynamic_batch, self.tiling.get("block_dim")[0])
                 l0a_shape.insert(0, dynamic_batch)
@@ -2204,8 +2395,13 @@ class GemmSchedule(object):
         if self.mmad_mode in ("gevm", "gemv") and not self.only_use_gevm_gemv_flow:
             tiling_ori_l0a[-2] = 1
 
-        status_ori = Compare.compare(tiling_ori_l0a, a_l0a_shape)
-        status = Compare.compare(al0_tiling_shape, cl0_tiling_shape)
+        if self.attach_at_flag:
+            l0a_attach_flag = self.attach_at_flag.get("al0_attach_flag")
+            status_ori = self.status_ori_dict.get(l0a_attach_flag)
+            status = self.status_dict.get(l0a_attach_flag)
+        else:
+            status_ori = Compare.compare(tiling_ori_l0a, a_l0a_shape)
+            status = Compare.compare(al0_tiling_shape, cl0_tiling_shape)
         self._print_debug([tiling_ori_l0a, a_l0a_shape], "tiling_ori_l0a with a_l0a_shape")
         self._print_debug([al0_tiling_shape, cl0_tiling_shape], "al0_tiling_shape with cl0_tiling_shape")
         self._do_attach_l0a(status_ori, status, a_l0a, l0a2l0c_affine_shape, l0a2out_affine_shape)
@@ -2213,7 +2409,7 @@ class GemmSchedule(object):
 
     def _do_attach_l0a(self, status_ori, status, a_l0a, l0a2l0c_affine_shape, l0a2out_affine_shape):
         sch_agent = self.sch_agent
-        if self.is_dynamic:
+        if self.is_dynamic and not self.cache_tiling:
             status_ori = Compare.LESS_EQ
             status = Compare.LESS_EQ
 
@@ -2231,9 +2427,11 @@ class GemmSchedule(object):
         elif status == Compare.EQUAL:
             sch_agent.same_attach(a_l0a, self.TENSOR_MAP.get("c_l0c"))
         elif status == Compare.LESS_EQ:
-            sch_agent.attach_at(a_l0a, self.TENSOR_MAP.get("c_l0c"), affine_shape = l0a2l0c_affine_shape)
+            sch_agent.attach_at(
+                a_l0a, self.TENSOR_MAP.get("c_l0c"), affine_shape = l0a2l0c_affine_shape, split_mode=self.split_mode)
         elif status == Compare.GREATE_EQ:
-            sch_agent.attach_at(a_l0a, self.root_tensor, affine_shape = l0a2out_affine_shape)
+            sch_agent.attach_at(
+                a_l0a, self.root_tensor, affine_shape = l0a2out_affine_shape, split_mode=self.split_mode)
         else:
             args_dict = {
                 "errCode": "E60114",
@@ -2246,8 +2444,11 @@ class GemmSchedule(object):
 
     def _get_dynamic_l0b_shape(self, l0b_shape):
         if self.is_dynamic:
-            dynamic_n = self._int_ceil_div(self.dynamic_n, self.tiling.get("block_dim")[1])
-            l0b_shape = [self.dynamic_k, dynamic_n, self.block_out, self.block_reduce]
+            if self.cache_tiling:
+                l0b_shape = [self.dynamic_k, self.dynamic_n, self.block_out, self.block_reduce]
+            else:
+                dynamic_n = self._int_ceil_div(self.dynamic_n, self.tiling.get("block_dim")[1])
+                l0b_shape = [self.dynamic_k, dynamic_n, self.block_out, self.block_reduce]
             if self.have_batch_b:
                 dynamic_batch = self._int_ceil_div(self.dynamic_batch, self.tiling.get("block_dim")[0])
                 l0b_shape.insert(0, dynamic_batch)
@@ -2295,14 +2496,19 @@ class GemmSchedule(object):
 
         self._print_debug([tiling_ori_l0b, b_l0b_shape], "tiling_ori_l0b, b_l0b_shape")
         self._print_debug([bl0_tiling_shape, cl0_tiling_shape], "bl0_tiling_shape, cl0_tiling_shape")
-        status_ori = Compare.compare(tiling_ori_l0b, b_l0b_shape)
-        status = Compare.compare(bl0_tiling_shape, cl0_tiling_shape)
+        if self.attach_at_flag:
+            l0b_attach_flag = self.attach_at_flag.get("bl0_attach_flag")
+            status_ori = self.status_ori_dict.get(l0b_attach_flag)
+            status = self.status_dict.get(l0b_attach_flag)
+        else:
+            status_ori = Compare.compare(tiling_ori_l0b, b_l0b_shape)
+            status = Compare.compare(bl0_tiling_shape, cl0_tiling_shape)
         self._do_attach_l0b(status_ori, status, b_l0b, l0b2l0c_affine_shape, l0b2out_affine_shape)
         self._print_debug("-------debug info in l0b_process end-------")
 
     def _do_attach_l0b(self, status_ori, status, b_l0b, l0b2l0c_affine_shape, l0b2out_affine_shape):
         sch_agent = self.sch_agent
-        if self.is_dynamic:
+        if self.is_dynamic and not self.cache_tiling:
             status_ori = Compare.LESS_EQ
             status = Compare.LESS_EQ
 
@@ -2320,10 +2526,12 @@ class GemmSchedule(object):
         elif status == Compare.EQUAL:
             sch_agent.same_attach(b_l0b, self.TENSOR_MAP.get("c_l0c"))
         elif status == Compare.LESS_EQ:
-            sch_agent.attach_at(b_l0b, self.TENSOR_MAP.get("c_l0c"), affine_shape = l0b2l0c_affine_shape)
+            sch_agent.attach_at(
+                b_l0b, self.TENSOR_MAP.get("c_l0c"), affine_shape = l0b2l0c_affine_shape, split_mode=self.split_mode)
         elif status == Compare.GREATE_EQ:
             l0b2out_affine_shape = self._fix_affine_out_int8(b_l0b.dtype, l0b2out_affine_shape)
-            sch_agent.attach_at(b_l0b, self.root_tensor, affine_shape = l0b2out_affine_shape)
+            sch_agent.attach_at(
+                b_l0b, self.root_tensor, affine_shape = l0b2out_affine_shape, split_mode=self.split_mode)
         else:
             args_dict = {
                 "errCode": "E60114",
@@ -2333,6 +2541,12 @@ class GemmSchedule(object):
             raise RuntimeError(
                 args_dict, error_manager_util.get_error_message(args_dict)
             )
+
+    def _ceil_div(self, a, b):
+        if self.cache_tiling:
+            return (a // b)
+        else:
+            return (a + b - 1) // b
 
     def _al1_process(self):
         self.al1_attach_status = "full_load"
@@ -2349,7 +2563,7 @@ class GemmSchedule(object):
         cl0_tiling_m0, cl0_tiling_n0 = self.cl0_tiling_m0, self.cl0_tiling_n0
 
         l1_ma = al1_tiling_m
-        l1_ka = (al1_tiling_k + al0_tiling_k0 - 1) // al0_tiling_k0
+        l1_ka = self._ceil_div(al1_tiling_k, al0_tiling_k0)
 
         a_l1 = self.TENSOR_MAP.get("b_l1") if self.mmad_mode == "gemv" else self.TENSOR_MAP.get("a_l1")
         tiling_ori_al1 = [l1_ma, l1_ka]
@@ -2396,16 +2610,27 @@ class GemmSchedule(object):
             l1a2l0c_affine_shape.insert(0, None)
             l1a2out_affine_shape.insert(0, None)
 
-        status = Compare.compare(al1_tiling_shape, cl0_tiling_shape)
-        status_ori = Compare.compare(tiling_ori_al1, al1_shape)
+        status_ori, status = self._al1_attach_modus(al1_tiling_shape, cl0_tiling_shape,
+                                                    tiling_ori_al1, al1_shape)
         self._print_debug([al1_tiling_shape, cl0_tiling_shape], "al1_tiling_shape with cl0_tiling_shape")
         self._print_debug([tiling_ori_al1, al1_shape], "tiling_ori_al1 with al1_shape")
         self._do_attach_al1(status_ori, status, a_l1, l1a2l0c_affine_shape, l1a2out_affine_shape)
         self._print_debug("-------debug info in al1_process end-------")
 
+    def _al1_attach_modus(self, al1_tiling_shape, cl0_tiling_shape, tiling_ori_al1, al1_shape):
+        if self.attach_at_flag:
+            al1_attach_flag = self.attach_at_flag.get("al1_attach_flag")
+            status_ori = self.status_ori_dict.get(al1_attach_flag)
+            status = self.status_dict.get(al1_attach_flag)
+        else:
+            status = Compare.compare(al1_tiling_shape, cl0_tiling_shape)
+            status_ori = Compare.compare(tiling_ori_al1, al1_shape)
+
+        return status_ori, status
+
     def _do_attach_al1(self, status_ori, status, a_l1, l1a2l0c_affine_shape, l1a2out_affine_shape):
         sch_agent = self.sch_agent
-        if self.is_dynamic and not self.tiling["attach_same_to_static"]:
+        if self.is_dynamic and not self.cache_tiling and not self.tiling["attach_same_to_static"]:
             status_ori = Compare.LESS_EQ
             status = Compare.LESS_EQ
 
@@ -2425,10 +2650,12 @@ class GemmSchedule(object):
             sch_agent.same_attach(a_l1, self.TENSOR_MAP.get("c_l0c"))
         elif status == Compare.LESS_EQ:
             self.al1_attach_status = "c_l0c"
-            sch_agent.attach_at(a_l1, self.TENSOR_MAP.get("c_l0c"), affine_shape = l1a2l0c_affine_shape)
+            sch_agent.attach_at(
+                a_l1, self.TENSOR_MAP.get("c_l0c"), affine_shape = l1a2l0c_affine_shape, split_mode=self.split_mode)
         elif status == Compare.GREATE_EQ:
             self.al1_attach_status = "c_gm"
-            sch_agent.attach_at(a_l1, self.root_tensor, affine_shape = l1a2out_affine_shape)
+            sch_agent.attach_at(
+                a_l1, self.root_tensor, affine_shape = l1a2out_affine_shape, split_mode=self.split_mode)
         else:
             args_dict = {
                 "errCode": "E60114",
@@ -2454,7 +2681,7 @@ class GemmSchedule(object):
         cl0_tiling_m0, cl0_tiling_n0 = self.cl0_tiling_m0, self.cl0_tiling_n0
 
         l1_nb = bl1_tiling_n
-        l1_kb = (bl1_tiling_k + bl0_tiling_k0 - 1) // bl0_tiling_k0
+        l1_kb = self._ceil_div(bl1_tiling_k, bl0_tiling_k0)
 
         l1b2l0c_affine_shape = [
             l1_nb,
@@ -2467,10 +2694,12 @@ class GemmSchedule(object):
 
         bl1_tiling_shape = [l1_nb, bl0_tiling_n0, l1_kb, bl0_tiling_k0]
 
-        if self.format_out == "ND":
-            l1b2out_affine_shape = [None, l1_nb * bl0_tiling_n0]
-        else:
+        l1b2out_affine_shape = [None, l1_nb * bl0_tiling_n0]
+        if self.format_out != "ND":
             l1b2out_affine_shape = [l1_nb, None, None, bl0_tiling_n0]
+            template_bl1_full_load = self.cache_tiling and self.attach_at_flag.get("bl1_attach_flag") == 0
+            if template_bl1_full_load:
+                l1b2out_affine_shape[1] = self.al1_tiling_m
         cl0_tiling_shape = [cl0_tiling_nc, cl0_tiling_n0, self.c_col_k1, self.c_col_k0]
 
         b_l1 = self.TENSOR_MAP.get("a_l1") if self.mmad_mode == "gemv" else self.TENSOR_MAP.get("b_l1")
@@ -2502,14 +2731,25 @@ class GemmSchedule(object):
 
         self._print_debug([bl1_tiling_shape, cl0_tiling_shape], "bl1_tiling_shape with cl0_tiling_shape")
         self._print_debug([tiling_ori_bl1, bl1_shape], "tiling_ori_bl1 with bl1_shape")
-        status = Compare.compare(bl1_tiling_shape, cl0_tiling_shape)
-        status_ori = Compare.compare(tiling_ori_bl1, bl1_shape)
+        status_ori, status = self._bl1_attach_modus(bl1_tiling_shape, cl0_tiling_shape,
+                             tiling_ori_bl1, bl1_shape)
         self._do_attach_bl1(status_ori, status, b_l1, l1b2l0c_affine_shape, l1b2out_affine_shape)
         self._print_debug("-------debug info in bl1_process end-------")
 
+    def _bl1_attach_modus(self, bl1_tiling_shape, cl0_tiling_shape, tiling_ori_bl1, bl1_shape):
+        if self.attach_at_flag:
+            bl1_attach_flag = self.attach_at_flag.get("bl1_attach_flag")
+            status_ori = self.status_ori_dict.get(bl1_attach_flag)
+            status = self.status_dict.get(bl1_attach_flag)
+        else:
+            status = Compare.compare(bl1_tiling_shape, cl0_tiling_shape)
+            status_ori = Compare.compare(tiling_ori_bl1, bl1_shape)
+
+        return status_ori, status
+
     def _do_attach_bl1(self, status_ori, status, b_l1, l1b2l0c_affine_shape, l1b2out_affine_shape):
         sch_agent = self.sch_agent
-        if self.is_dynamic and not self.tiling["attach_same_to_static"]:
+        if self.is_dynamic and not self.cache_tiling and not self.tiling["attach_same_to_static"]:
             status_ori = Compare.LESS_EQ
             status = Compare.LESS_EQ
 
@@ -2525,15 +2765,24 @@ class GemmSchedule(object):
         elif status_ori == Compare.EQUAL:
             pass
         elif status == Compare.EQUAL:
-            self.bl1_attach_status = self.c_l0c_attach_status
-            sch_agent.same_attach(b_l1, self.TENSOR_MAP.get("c_l0c"))
+            if self.cache_tiling:
+                self.bl1_attach_status = self.c_l0c_attach_status
+                l1b2out_affine_shape[-3] = self.cache_tiling["m_single_core"] \
+                * self.cache_tiling["m_al1"] * self.cache_tiling["m_l0"]
+                sch_agent.attach_at(
+                    b_l1, self.root_tensor, affine_shape=l1b2out_affine_shape, split_mode=self.split_mode)
+            else:
+                self.bl1_attach_status = self.c_l0c_attach_status
+                sch_agent.same_attach(b_l1, self.TENSOR_MAP.get("c_l0c"))
         elif status == Compare.LESS_EQ:
             self.bl1_attach_status = "c_l0c"
-            sch_agent.attach_at(b_l1, self.TENSOR_MAP.get("c_l0c"), affine_shape = l1b2l0c_affine_shape)
+            sch_agent.attach_at(
+                b_l1, self.TENSOR_MAP.get("c_l0c"), affine_shape = l1b2l0c_affine_shape, split_mode=self.split_mode)
         elif status == Compare.GREATE_EQ:
             self.bl1_attach_status = "c_gm"
             l1b2out_affine_shape = self._fix_affine_out_int8(b_l1.dtype, l1b2out_affine_shape)
-            sch_agent.attach_at(b_l1, self.root_tensor, affine_shape = l1b2out_affine_shape)
+            sch_agent.attach_at(
+                b_l1, self.root_tensor, affine_shape = l1b2out_affine_shape, split_mode=self.split_mode)
         else:
             args_dict = {
                 "errCode": "E60114",
@@ -2683,17 +2932,20 @@ class GemmSchedule(object):
             sch_agent.same_attach(a_ub, self.TENSOR_MAP.get("a_l1"))
         elif status_l1 == Compare.LESS_EQ:
             self.aub_attach_status = "a_l1"
-            sch_agent.attach_at(a_ub, self.TENSOR_MAP.get("a_l1"), aub_l1_affine_shape)
+            sch_agent.attach_at(
+                a_ub, self.TENSOR_MAP.get("a_l1"), aub_l1_affine_shape, split_mode=self.split_mode)
         else:
             if status_l0c == Compare.EQUAL:
                 self.aub_attach_status = "c_gm"
                 sch_agent.same_attach(a_ub, self.TENSOR_MAP.get("c_l0c"))
             elif status_l0c == Compare.LESS_EQ:
                 self.aub_attach_status = "c_l0c"
-                sch_agent.attach_at(a_ub, self.TENSOR_MAP.get("c_l0c"), affine_shape = aub_l0c_affine_shape)
+                sch_agent.attach_at(
+                    a_ub, self.TENSOR_MAP.get("c_l0c"), affine_shape = aub_l0c_affine_shape, split_mode=self.split_mode)
             else:
                 self.aub_attach_status = "c_gm"
-                sch_agent.attach_at(a_ub, self.root_tensor, affine_shape = aub_out_affine_shape)
+                sch_agent.attach_at(
+                    a_ub, self.root_tensor, affine_shape = aub_out_affine_shape, split_mode=self.split_mode)
 
         same_attach_tensors = self.tensors_in_aub
         for tensor in same_attach_tensors:
@@ -2829,7 +3081,8 @@ class GemmSchedule(object):
             sch_agent.same_attach(b_ub, self.TENSOR_MAP.get("b_l1"))
         elif status_l1 == Compare.LESS_EQ:
             self.bub_attach_status = "b_l1"
-            sch_agent.attach_at(b_ub, self.TENSOR_MAP.get("b_l1"), bub_l1_affine_shape)
+            sch_agent.attach_at(
+                b_ub, self.TENSOR_MAP.get("b_l1"), bub_l1_affine_shape, split_mode=self.split_mode)
         else:
             if status_l0c == Compare.EQUAL:
                 self.bub_attach_status = "c_gm"
@@ -2837,11 +3090,12 @@ class GemmSchedule(object):
             elif status_l0c == Compare.LESS_EQ:
                 self.bub_attach_status = "c_l0c"
                 sch_agent.attach_at(
-                    b_ub, self.TENSOR_MAP.get("c_l0c"), affine_shape=bub_l0c_affine_shape)
+                    b_ub, self.TENSOR_MAP.get("c_l0c"), affine_shape=bub_l0c_affine_shape, split_mode=self.split_mode)
             else:
                 self.bub_attach_status = "c_gm"
                 bub_out_affine_shape = self._fix_affine_out_int8(b_ub.dtype, bub_out_affine_shape)
-                sch_agent.attach_at(b_ub, self.root_tensor, affine_shape = bub_out_affine_shape)
+                sch_agent.attach_at(
+                    b_ub, self.root_tensor, affine_shape = bub_out_affine_shape, split_mode=self.split_mode)
 
         for tensor in self.tensors_in_bub:
             if tensor == b_ub:
@@ -2849,25 +3103,32 @@ class GemmSchedule(object):
             sch_agent.same_attach(tensor, b_ub)
 
     def _do_l1_ub_process(self):
-        # get order
-        k_dict = {
-            "aub": self.aub_tiling_k // self.block_reduce,
-            "bub": self.bub_tiling_k // self.block_reduce,
-            "al1": self.al1_tiling_k // int(self.al0_tiling_k0),
-            "bl1": self.bl1_tiling_k // int(self.bl0_tiling_k0)
-        }
-        tmp_order = sorted(k_dict.items(), key=lambda d: d[1], reverse=True)
-        axis_order = [i[0] for i in tmp_order]
+        if self.attach_at_flag:
+            abkl1_attach_flag = self.attach_at_flag.get("abkl1_attach_flag")
+            if abkl1_attach_flag == self.KBL1_LARGER_FLAG:
+                axis_order = ["bl1", "al1"]
+            else:
+                axis_order = ["al1", "bl1"]
+        else:
+            # get order
+            k_dict = {
+                "aub": self.aub_tiling_k // self.block_reduce,
+                "bub": self.bub_tiling_k // self.block_reduce,
+                "al1": self.al1_tiling_k // int(self.al0_tiling_k0),
+                "bl1": self.bl1_tiling_k // int(self.bl0_tiling_k0)
+            }
+            tmp_order = sorted(k_dict.items(), key=lambda d: d[1], reverse=True)
+            axis_order = [i[0] for i in tmp_order]
 
-        def _adjust_order(axis_order, ub_tag, l1_tag):
-            if axis_order.index(ub_tag) > axis_order.index(l1_tag) and k_dict.get(ub_tag) == k_dict.get(l1_tag):
-                index_ub = axis_order.index(ub_tag)
-                index_l1 = axis_order.index(l1_tag)
-                axis_order[index_ub] = l1_tag
-                axis_order[index_l1] = ub_tag
+            def _adjust_order(axis_order, ub_tag, l1_tag):
+                if axis_order.index(ub_tag) > axis_order.index(l1_tag) and k_dict.get(ub_tag) == k_dict.get(l1_tag):
+                    index_ub = axis_order.index(ub_tag)
+                    index_l1 = axis_order.index(l1_tag)
+                    axis_order[index_ub] = l1_tag
+                    axis_order[index_l1] = ub_tag
 
-        _adjust_order(axis_order, "aub", "al1")
-        _adjust_order(axis_order, "bub", "bl1")
+            _adjust_order(axis_order, "aub", "al1")
+            _adjust_order(axis_order, "bub", "bl1")
 
         for tag in axis_order[::-1]:
             if tag == "bl1":
@@ -2879,10 +3140,42 @@ class GemmSchedule(object):
             else:
                 self._aub_process()
 
+    def _bind_core_cache_tiling(self, root_tensor, ax_batch, ax_n, ax_m):
+        """
+        bind multi core for cache tiling
+        """
+        batch_dim, n_dim, m_dim, _ = self.tiling.get("block_dim")
+        if self.split_mode.get("round_mode"):
+            ax_m_out, ax_m_inner = self.sch[root_tensor].split(
+                ax_m, nparts=m_dim, tail_strategy=self.split_mode["round_mode"]
+            )
+            ax_n_out, ax_n_inner = self.sch[root_tensor].split(
+                ax_n, nparts=n_dim, tail_strategy=self.split_mode["round_mode"]
+            )
+        else:
+            ax_m_out, ax_m_inner = self.sch[root_tensor].split(ax_m, nparts=m_dim)
+            ax_n_out, ax_n_inner = self.sch[root_tensor].split(ax_n, nparts=n_dim)
+        if self.have_batch:
+            if self.split_mode.get("round_mode"):
+                ax_batch_out, ax_batch_inner = self.sch[root_tensor].split(
+                    ax_batch, nparts=batch_dim, tail_strategy=self.split_mode["round_mode"]
+                    )
+            else:
+                ax_batch_out, ax_batch_inner = self.sch[root_tensor].split(ax_batch, nparts=batch_dim)
+            self.sch[root_tensor].reorder(ax_batch_out, ax_n_out, ax_m_out,
+                                          ax_batch_inner, ax_n_inner, ax_m_inner)
+            axes_list = [ax_batch_out, ax_n_out, ax_m_out]
+        else:
+            self.sch[root_tensor].reorder(ax_n_out, ax_m_out,
+                                          ax_n_inner, ax_m_inner)
+            axes_list = [ax_n_out, ax_m_out]
+        return axes_list
+
     def _bind_multi_core(self):
         root_tensor = self.res
         axis_mn = self.sch_agent[root_tensor].get_active_scopes()
         root_tensor_len = len(root_tensor.shape)
+        ax_batch = 1
         if self.reduce_fusion:
             root_tensor_len += 1
         if root_tensor_len in (2, 4):
@@ -2898,11 +3191,16 @@ class GemmSchedule(object):
         batch_dim, n_dim, m_dim, _ = self.tiling.get("block_dim")
         if self.reduce_fusion:
             batch_dim = self._get_value(self.TENSOR_MAP.get("c_l0c").shape)[0]
-        if root_tensor_len in (2, 4):
-            ax_core = self.sch_agent[root_tensor].bind_core([ax_m, ax_n], [m_dim, n_dim])
+        if self.cache_tiling:
+            axes_list = self._bind_core_cache_tiling(root_tensor, ax_batch, ax_n, ax_m)
+            block = tvm.thread_axis("blockIdx.x")
+            self.sch.bind_axes(axes_list, block)
         else:
-            ax_core = self.sch_agent[root_tensor].bind_core([ax_batch, ax_m, ax_n], [batch_dim, m_dim, n_dim])
-        self.sch_agent.root_stage_at(root_tensor, ax_core)
+            if root_tensor_len in (2, 4):
+                ax_core = self.sch_agent[root_tensor].bind_core([ax_m, ax_n], [m_dim, n_dim])
+            else:
+                ax_core = self.sch_agent[root_tensor].bind_core([ax_batch, ax_m, ax_n], [batch_dim, m_dim, n_dim])
+            self.sch_agent.root_stage_at(root_tensor, ax_core)
 
     def _buffer_align_func(self, tensor, have_batch=False, *align_args):
 
@@ -4250,48 +4548,74 @@ class GemmSchedule(object):
         bl1_bound = n_bound * k_bound
         return bl1_bound
 
+    def _cache_tiling_full_load(self, c_gm):
+        if self.cache_tiling:
+            if self.tiling["attach_at_flag"].get("bl1_attach_flag") == 0:
+                self.sch.set_var_value(self.cache_tiling["n_single_core"], 1)
+                bl1 = self.TENSOR_MAP.get("b_l1")
+                iter_axis = 1 if len(bl1.shape) == 4 else 3
+                self.sch[bl1].compute_at(self.sch[c_gm], self.sch[c_gm].leaf_iter_vars[iter_axis])
+            if self.tiling["attach_at_flag"].get("al1_attach_flag") == 0:
+                self.sch.set_var_value(self.cache_tiling["m_single_core"], 1)
+                al1 = self.TENSOR_MAP.get("a_l1")
+                iter_axis = 1 if len(al1.shape) == 4 else 3
+                self.sch[al1].compute_at(self.sch[c_gm], self.sch[c_gm].leaf_iter_vars[3])
+
     def _set_var_range_for_dynamic(self):
         if not self.is_dynamic:
             return
-        var_range_dict = self.dynamic_para.get("var_range")
-        m_name = GEMMComputeParam.m_var_name
-        k_name = GEMMComputeParam.k_var_name
-        n_name = GEMMComputeParam.n_var_name
-        # Get Shape Variables
-        if self.format_a == "ND":
-            m_index = -1 if self.transpose_a else -2
-            k_index = -2 if self.transpose_a else -1
-            m_shape_src_tensor = self.TENSOR_MAP.get("a_placehold")
-            k_shape_src_tensor = self.TENSOR_MAP.get("a_placehold")
+        if not self.cache_tiling:
+            var_range_dict = self.dynamic_para.get("var_range")
+            m_name = GEMMComputeParam.m_var_name
+            k_name = GEMMComputeParam.k_var_name
+            n_name = GEMMComputeParam.n_var_name
+
+            m_shape_range = var_range_dict.get(m_name)
+            k_shape_range = var_range_dict.get(k_name)
+            n_shape_range = var_range_dict.get(n_name)
+
+            self.sch.set_var_range(self.dyn_shape_in[m_name], *m_shape_range)
+            self.sch.set_var_range(self.dyn_shape_in[k_name], *k_shape_range)
+            self.sch.set_var_range(self.dyn_shape_in[n_name], *n_shape_range)
+
+            batch_range = var_range_dict.get("batch")
+            if self.have_batch and (batch_range is not None):
+                self.sch.set_var_range(self.dyn_shape_in["batch"], *batch_range)
         else:
-            m_index = -4
-            k_index = -3
-            m_shape_src_tensor = self.TENSOR_MAP.get("a_l0a")
-            k_shape_src_tensor = self.TENSOR_MAP.get("a_l0a")
+            range_1024 = self.TILING_RANGE.get("range_1024")
+            range_64 = self.TILING_RANGE.get("range_64")
+            range_block_dim = self.TILING_RANGE.get("range_block_dim")
+            var_range_dict = {
+                "batch_dim": range_block_dim,
+                "n_dim": range_block_dim,
+                "m_dim": range_block_dim,
+                "m_single_core": range_1024,
+                "n_single_core": range_1024,
+                "m_al1": range_1024,
+                "n_bl1": range_1024,
+                "cub_n1": range_64,
+                "m_l0": range_64,
+                "k_l0": range_64,
+                "n_ub_l0_time": range_64,
+                "kal0_factor": range_64,
+                "kbl0_factor": range_64,
+                "kal1_factor": range_64,
+                "kbl1_factor": range_64,
+                "kl1_times": range_64
+            }
+            for var, var_range in var_range_dict.items():
+                self.sch.set_var_range(self.cache_tiling[var], *var_range)
+            self.sch.set_var_value(self.dyn_shape_in[GEMMComputeParam.m_var_name],
+                                   self.cache_tiling["m_dim"] * self.cache_tiling["m_single_core"]
+                                   * self.cache_tiling["m_al1"] * self.cache_tiling["m_l0"])
 
-        if self.format_b == "ND":
-            n_index = -2 if self.transpose_b else -1
-            n_shape_src_tensor = self.TENSOR_MAP.get("b_placehold")
-        else:
-            n_index = -3
-            n_shape_src_tensor = self.TENSOR_MAP.get("b_l0b")
-
-        m_shape = m_shape_src_tensor.shape[m_index]
-        k_shape = k_shape_src_tensor.shape[k_index]
-        n_shape = n_shape_src_tensor.shape[n_index]
-
-        m_shape_range = var_range_dict.get(m_name)
-        k_shape_range = var_range_dict.get(k_name)
-        n_shape_range = var_range_dict.get(n_name)
-
-        self.sch.set_var_range(m_shape, *m_shape_range)
-        self.sch.set_var_range(k_shape, *k_shape_range)
-        self.sch.set_var_range(n_shape, *n_shape_range)
-        batch_range = var_range_dict.get("batch")
-        if self.have_batch and (batch_range is not None):
-            batch_shape = self.TENSOR_MAP.get("c_l0c").shape[0]
-            self.sch.set_var_range(batch_shape, *batch_range)
-
+            self.sch.set_var_value(self.dyn_shape_in[GEMMComputeParam.n_var_name],
+                                   self.cache_tiling["n_dim"] * self.cache_tiling["n_single_core"]
+                                   * self.cache_tiling["n_bl1"] * self.cache_tiling["n_ub_l0_time"] *
+                                   self.cache_tiling["cub_n1"])
+            if self.have_batch:
+                self.sch.set_var_value(self.dyn_shape_in["batch"],
+                                       self.cache_tiling["batch_dim"] * self.cache_tiling["batch_single_core"])
     def _auto_tiling(self, aub_num, bub_num, cub_num):
         # a_ub_byte b_ub_byte ub_res_byte l1a_byte l1b_byte l0a_byte l0b_byte l0c_byte
         bytes_info = self._get_bytes_info(aub_num, bub_num, cub_num)

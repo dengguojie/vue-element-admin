@@ -34,6 +34,57 @@ matmul_ND_case = [
     (((1, 5),), (16, 32), (16, 32), (16, 32), "float16", "float16", "ND", True, True, False, True, "dynamic_matmul_ND_format_1"),
 ]
 
+matmul_none_range_case = [
+    ("float16", "float16", "FRACTAL_NZ", False, False, False, False),
+    ("float16", "float16", "FRACTAL_NZ", False, False, False, True),
+    ("float16", "float16", "FRACTAL_NZ", False, False, True, False),
+    ("float16", "float16", "FRACTAL_NZ", False, False, True, True),
+]
+
+def gen_batch_matmul_dynamic_none_range(
+    src_dtype, dst_dtype, format, trans_a, trans_b, bias_flag, batch_b):
+    """
+    gen the error case for ut test
+    """
+
+    block_range = [] if format == "ND" else [[CUBE_BLOCK, CUBE_BLOCK], [CUBE_BLOCK, CUBE_BLOCK]]
+
+
+    x_range_case1 = None
+    x1_range_case2 = [(1, None), (1, None), (1, None), (1, None), (1, None)]
+    x2_range_case2 = x1_range_case2[1:] if batch_b is False else x1_range_case2
+    y_range = x1_range_case2
+
+    x1_shape_len = 3 if format == "ND" else 5
+    x2_shape_len = x1_shape_len if batch_b else x1_shape_len - 1
+    x1_ori_shape = (-1,) * 3
+    x2_ori_shape = x1_ori_shape if batch_b else (-1,) * 2
+    x1_shape = x1_ori_shape if format == "ND" else x1_ori_shape + (CUBE_BLOCK, CUBE_BLOCK)
+    x2_shape = x2_ori_shape if format == "ND" else x2_ori_shape + (CUBE_BLOCK, CUBE_BLOCK)
+
+    x1 = {"ori_shape": x1_ori_shape, "dtype": src_dtype, "shape": x1_shape,
+          "format": format , "ori_format": "ND", "range": x1_range_case2
+    }
+    x2 = {"ori_shape": x2_ori_shape, "dtype": src_dtype, "shape": x2_shape,
+          "format": format , "ori_format": "ND", "range": x2_range_case2
+    }
+    y = {"ori_shape": x1_ori_shape, "dtype": dst_dtype, "shape": x1_shape,
+         "format": format , "ori_format": "ND", "range": y_range
+    }
+
+    if bias_flag:
+        bias_n_range = [16, None]
+        bias = {"ori_shape": (-1, ), "dtype": dst_dtype, "shape": (-1,),
+                "format": "ND", "ori_format": "ND", "range": (bias_n_range,)}
+    else:
+        bias = None
+
+    return {
+        "params": [x1, x2, bias, y, trans_a, trans_b],
+        "case_name": "none_range_" + str(bias_flag) + "_" + str(batch_b),
+        "expect": "success"
+    }
+
 def gen_batch_matmul_dynamic(batch_range, m_range, k_range, n_range, src_dtype, dst_dtype,
                              format, trans_a, trans_b, bias_flag, batchb_flag, case_name, error_mode=None):
     """
@@ -267,6 +318,9 @@ for case in matmul_case:
 
 for case in matmul_ND_case:
     ut_case.add_case("Ascend910A", gen_batch_matmul_dynamic(*case))
+
+for case in matmul_none_range_case:
+    ut_case.add_case("Ascend910A", gen_batch_matmul_dynamic_none_range(*case))
 
 for case in common_cases:
     for param in gen_cases_by_shape_and_range(case):

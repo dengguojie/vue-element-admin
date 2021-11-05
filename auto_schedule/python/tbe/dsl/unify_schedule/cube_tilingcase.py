@@ -21,6 +21,7 @@ cube ops tiling case base class
 import itertools
 import copy
 import math
+import numpy as np
 from functools import reduce
 from collections import defaultdict
 from collections import deque
@@ -228,6 +229,26 @@ class TilingSelection:
                     raise RuntimeError("Only dynamic N/D/H/W is supported")
             return tiling_cases
 
+        def _handle_block_dim():
+            tiling_blockdim = {}
+            correct_range_flag = False
+            for case in tiling_cases:
+                if (self.op.op_type in ("conv3d_backprop_input") and
+                    case['tiling_strategy']['BUB_shape'] is not None):
+                    tiling_blockdim[case['key']] = (case["block_dim"] if "block_dim" in case else
+                                                    int(reduce(lambda x, y: x * y,
+                                                    case['tiling_strategy']['block_dim'])) *
+                                                    case['tiling_strategy']['BUB_shape'][0])
+                elif (self.op.op_type in ("matmul", "batch_matmul") and
+                    -1 in case['tiling_strategy']['block_dim']):
+                    tiling_blockdim[case['key']] = 32
+                else:
+                    tiling_blockdim[case['key']] = (case["block_dim"] if "block_dim" in case else
+                                                    int(reduce(lambda x, y: x * y, case['tiling_strategy']['block_dim'])))
+                correct_range_flag = case.get("correct_range_flag")
+            add_compile_info("block_dim", tiling_blockdim)
+            add_compile_info("correct_range_flag", correct_range_flag)
+
         if self.op.op_type in ("conv2d", "conv2d_bp_input", "conv2d_bp_filter"):
             tiling_cases = _handle_dynamic_nhw()
         elif self.op.op_type in ("conv3d_backprop_input", "convolution_3d", "conv3d_bp_filter"):
@@ -239,22 +260,7 @@ class TilingSelection:
             else:
                 raise RuntimeError("Only dynamic_hw/dynamic_batch "
                                    "is supported")
-
-        tiling_blockdim = {}
-        correct_range_flag = False
-        for case in tiling_cases:
-            if (self.op.op_type in ("conv3d_backprop_input") and
-                case['tiling_strategy']['BUB_shape'] is not None):
-                tiling_blockdim[case['key']] = (case["block_dim"] if "block_dim" in case else
-                                                int(reduce(lambda x, y: x * y,
-                                                case['tiling_strategy']['block_dim'])) *
-                                                case['tiling_strategy']['BUB_shape'][0])
-            else:
-                tiling_blockdim[case['key']] = (case["block_dim"] if "block_dim" in case else
-                                                int(reduce(lambda x, y: x * y, case['tiling_strategy']['block_dim'])))
-            correct_range_flag = case.get("correct_range_flag")
-        add_compile_info("block_dim", tiling_blockdim)
-        add_compile_info("correct_range_flag", correct_range_flag)
+        _handle_block_dim()
         return tiling_cases
 
     def _modify_core_num(self, seed):
@@ -330,9 +336,7 @@ class TilingSelection:
         cost_cases = self._select_tiling(tgt_area, candidates)
         tiling_cases = [self.op.assembly_case(v[1], v[0], k) for k, v in candidates.items()]
 
-        add_compile_info("repo_seeds", {k: v[-1] for k, v in candidates.items()})
-
-        repo_range = {k: v[0] for k, v in candidates.items()}
+        self._add_repo_compile_info(candidates)
 
         # call cost model
         cost_tilings, cost_range = self._calc_costmodel(cost_cases)
@@ -340,9 +344,16 @@ class TilingSelection:
         if not tiling_cases:
             raise RuntimeError("No tiling generated for this shape and range")
 
-        add_compile_info("repo_range", repo_range)
         add_compile_info("cost_range", cost_range)
         return tiling_cases
+
+    def _add_repo_compile_info(self, candidates):
+        add_compile_info("repo_seeds", {k: v[-1] for k, v in candidates.items()})
+        repo_range = {k: v[0] for k, v in candidates.items()}
+        add_compile_info("repo_range", repo_range)
+        if "trans_a" in self.op.tiling_info and "trans_b" in self.op.tiling_info:
+            add_compile_info("attrs", {"transpose_a": self.op.tiling_info["trans_a"],
+            "transpose_b": self.op.tiling_info["trans_b"]})
 
     def _calc_gear_costmodel_matmul(self, cost_cases, gear_repo_shapes):
         """
@@ -374,7 +385,7 @@ class TilingSelection:
 
         return cost_tiling_seeds,cost_tiling_range
 
-    def _calc_gear_matmul(self, target_area):
+    def _calc_gear_matmul(self, target_area, fuzzy_build=False, use_cost_model=False):
         """
         calculate tilingcase depends on gear and repository
 
@@ -424,23 +435,18 @@ class TilingSelection:
                 seed_chaged["tiling"]["attach_same_to_static"] = False
                 candidates[next(self.seed_cnt)] = [seed_gear_range, seed_chaged["tiling"], gear_shape]
 
-        cost_tiling_seeds, cost_range = self._calc_gear_costmodel_matmul(cost_cases, gear_repo_shapes)
+        self._add_repo_compile_info(candidates)
 
         tiling_cases = [
             self.op.assembly_case(v[2], v[1], v[0], k) for k, v in candidates.items()]
-        tiling_cases += cost_tiling_seeds
 
-        if not tiling_cases:
-            raise RuntimeError("No tiling generated for this shape and range")
-
-        add_compile_info("repo_seeds", {k: v[-1] for k, v in candidates.items()})
-        repo_range = {k: v[0] for k, v in candidates.items()}
-
-        add_compile_info("cost_range", cost_range)
-        add_compile_info("repo_range", repo_range)
-        if "trans_a" in self.op.tiling_info and "trans_b" in self.op.tiling_info:
-            add_compile_info("attrs", {"transpose_a": self.op.tiling_info["trans_a"],
-            "transpose_b": self.op.tiling_info["trans_b"]})
+        cost_range = []
+        if fuzzy_build or use_cost_model:
+            cost_tiling_seeds, cost_range = self._calc_gear_costmodel_matmul(cost_cases, gear_repo_shapes)
+            add_compile_info("cost_range", cost_range)
+            tiling_cases += cost_tiling_seeds
+            if not tiling_cases:
+                raise RuntimeError("No tiling generated for this shape and range")
 
         return tiling_cases, cost_range, candidates
 
@@ -456,7 +462,7 @@ class TilingSelection:
         key_list = ["ha_var_range", "ca1_var_range", "cb1_var_range", "batch_var_range"]
         for index, value in enumerate(target_area):
             self.op.tiling_info[key_list[index]] = value
-        tiling_cases, cost_ranges, candidates = self._calc_gear_matmul(target_area)
+        tiling_cases, cost_ranges, candidates = self._calc_gear_matmul(target_area, fuzzy_build=True)
         exist_cost_ranges = get_compile_info().get("cost_range", {})
         exist_cost_ranges.update(cost_ranges)
         add_compile_info("cost_range", exist_cost_ranges)
@@ -471,6 +477,34 @@ class TilingSelection:
 
         return tiling_cases
 
+    def _calc_gear_repo_none_range(self, target_area):
+        candidates = {}
+
+        gear_repo_shapes = self.op._get_gear_repo_shapes(target_area)
+
+        for gear_shape in gear_repo_shapes:
+            key_list = ["ha_var_range", "ca1_var_range", "cb1_var_range", "batch_var_range"]
+            for index, value in enumerate(gear_shape):
+                self.op.tiling_info[key_list[index]] = [value, value]
+            gear_repo_seeds = self.op.get_repo_tiling()
+
+            for seed in gear_repo_seeds:
+                if self.op.check_tiling_special_value(seed["tiling"]):
+                    seed["tiling"]["attach_same_to_static"] = True
+                    seed_range = np.array(gear_shape).repeat(2).tolist()
+                    candidates[next(self.seed_cnt)] = [seed_range, seed["tiling"], gear_shape]
+                else:
+                    seed_changed = copy.deepcopy(seed)
+                    seed_changed = self.op.change_full_load_to_value([seed_changed])[0]
+                    seed_changed["tiling"]["attach_same_to_static"] = False
+                    seed_range = np.array(gear_shape).repeat(2).tolist()
+                    candidates[next(self.seed_cnt)] = [seed_range, seed_changed["tiling"], gear_shape]
+
+        tiling_cases = [self.op.assembly_case(v[2], v[1], v[0], k) for k, v in candidates.items()]
+
+        self._add_repo_compile_info(candidates)
+
+        return tiling_cases
 
     def _calc_matmul(self, target_area):
         """
@@ -486,16 +520,23 @@ class TilingSelection:
         -------
         tilings_cases: list, calculated tilings
         """
-        context = op_context.get_context()
-        fuzzy_build = (context.get_build_type() == "fuzzily_build")
-        if fuzzy_build:
+        if get_context().get_build_type() == "fuzzily_build":
             return self._calc_matmul_fuzzy(target_area)
 
-        range_area = tuple(target_area[0] + target_area[1] + target_area[2])
+        tiling_cases = []
+        if self.op.use_cache_tiling:
+            template_candidates = self.op._get_cache_tiling()
+            cache_tiling = [self.op.assembly_case(v[2], v[1], v[0], k) for k, v in template_candidates.items()]
+            tiling_cases = cache_tiling
 
+        if self.op.none_range_area:
+            tiling_cases += self._calc_gear_repo_none_range(target_area)
+            return tiling_cases
+
+        use_cost_model = not self.op.use_cache_tiling
         compile_time = self.op._get_compile_time(target_area)
         if compile_time > self.op.DEFAULT_COMPILE_TIME and self.op.dynamic_mode in ("dynamic_mkn", "dynamic_mknb"):
-            tiling_cases, _, _ = self._calc_gear_matmul(target_area)
+            tiling_cases += self._calc_gear_matmul(target_area, use_cost_model=use_cost_model)[0]
             return tiling_cases
 
         candidates = {}
@@ -505,23 +546,17 @@ class TilingSelection:
             seed["tiling"]["attach_same_to_static"] = False
             candidates[next(self.seed_cnt)] = self.op.get_repo_candidate(seed, target_area)
 
-        cost_cases = self._select_tiling_mkn(range_area, candidates)
-        tiling_cases = [
-            self.op.assembly_case(v[2], v[1], v[0], k) for k, v in candidates.items()]
-        add_compile_info("repo_seeds", {k: v[-1] for k, v in candidates.items()})
-        repo_range = {k: v[0] for k, v in candidates.items()}
-
-        # call cost model
-        cost_tilings, cost_range = self._calc_costmodel_matmul(cost_cases, target_area)
-        tiling_cases += cost_tilings
+        repo_tiling_cases = [self.op.assembly_case(v[2], v[1], v[0], k) for k, v in candidates.items()]
+        tiling_cases += repo_tiling_cases
+        self._add_repo_compile_info(candidates)
+        if use_cost_model:
+            range_area = tuple(target_area[0] + target_area[1] + target_area[2])
+            cost_cases = self._select_tiling_mkn(range_area, candidates)
+            cost_tilings, cost_range = self._calc_costmodel_matmul(cost_cases, target_area)
+            add_compile_info("cost_range", cost_range)
+            tiling_cases += cost_tilings
         if not tiling_cases:
             raise RuntimeError("No tiling generated for this shape and range")
-
-        add_compile_info("repo_range", repo_range)
-        add_compile_info("cost_range", cost_range)
-        if "trans_a" in self.op.tiling_info and "trans_b" in self.op.tiling_info:
-            add_compile_info("attrs", {"transpose_a": self.op.tiling_info["trans_a"],
-            "transpose_b": self.op.tiling_info["trans_b"]})
 
         return tiling_cases
 
@@ -571,8 +606,7 @@ class TilingSelection:
         cost_cases = self._select_tiling(tgt_area, candidates)
         tiling_cases = [
             self.op.assembly_case(v[1], v[0], k) for k, v in candidates.items()]
-        add_compile_info("repo_seeds", {k: v[-1] for k, v in candidates.items()})
-        repo_range = {k: v[0] for k, v in candidates.items()}
+        self._add_repo_compile_info(candidates)
 
         # call cost model
         cost_tilings, cost_range = self._calc_costmodel(cost_cases)
@@ -580,7 +614,6 @@ class TilingSelection:
         if not tiling_cases:
             raise RuntimeError("No tiling generated for this shape and range")
 
-        add_compile_info("repo_range", repo_range)
         add_compile_info("cost_range", cost_range)
         return tiling_cases
 
@@ -1059,8 +1092,14 @@ class TilingUtils:
     FP16_N = 16
     FP16_SIZE = 2
     CUBE_SIZE = 16
+    DB_ON = 2
+    DB_OFF = 1
     N_BASE = 2
     HW_MIN = 1
+    ATTACH_FULL_LOAD = 0
+    ATTACH_EQUAL = 1
+    ATTACH_LESS = 2
+    ATTACH_LARGE = 3
     NHW_MAX = 4096
 
     @staticmethod

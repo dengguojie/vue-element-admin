@@ -181,6 +181,7 @@ set(_optiling_files
   kl_div.cc
   vector_tiling.cc
   lru_cache_v2.cc
+  cache_tiling.cc
 )
 
 set(_op_tiling_include

@@ -16,6 +16,7 @@
 dynamic batch_matmul_v2
 """
 import math
+from enum import Enum
 from impl.util import util_gemm
 from impl.util import fusion_util
 from impl.util import util_select_op_base
@@ -44,8 +45,6 @@ ND_LENGTH = 2
 L1FUSION_INPUT_CTR = 2
 MKN_MIN = 1
 
-
-from enum import Enum
 
 class Format(str, Enum):
     FRACTAL_NZ = 'FRACTAL_NZ'
@@ -123,7 +122,6 @@ def get_op_support_info(input_x1, input_x2, bias=None, offset_w=None, output_z=N
         axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, min_l1space)
 
     return op_cal_info_in_json
-
 
 def base_op_select_format(src_fp16_flag):
     """
@@ -622,6 +620,46 @@ def _get_real_trans(format_a, format_b, trans_a, trans_b):
         trans_b = not trans_b
     return [trans_a, trans_b]
 
+def _define_template_tiling_var():
+    batch_single_core = operation.var("batch_single_core")
+    m_single_core = operation.var("m_single_core")
+    n_single_core = operation.var("n_single_core")
+    batch_dim_var = operation.var("batch_dim")
+    n_dim_var = operation.var("n_dim")
+    m_dim_var = operation.var("m_dim")
+    m_al1_var = operation.var("m_al1")
+    n_bl1_var = operation.var("n_bl1")
+    cub_n1_var = operation.var("cub_n1")
+    m_l0_var = operation.var("m_l0")
+    k_l0_var = operation.var("k_l0")
+    n_ub_l0_time_var = operation.var("n_ub_l0_time")
+    kal0_factor_var = operation.var("kal0_factor")
+    kbl0_factor_var = operation.var("kbl0_factor")
+    kal1_factor_var = operation.var("kal1_factor")
+    kbl1_factor_var = operation.var("kbl1_factor")
+    kal1_16_var = operation.var("kal1_16")
+    kbl1_16_var = operation.var("kbl1_16")
+    kl1_times_var = operation.var("kl1_times")
+
+def _config_build_args(args, input_x1, input_x2, bias):
+    if (input_x1.get("range") and input_x2.get("range")):
+        for dim_range in input_x1.get("range"):
+            if not dim_range or None in dim_range:
+                args["predicate_realize_bound"] = False
+                args["sync_mode"] = 8
+                args["enable_branch_eliminator_else_case"] = False
+                break
+        for dim_range in input_x2.get("range"):
+            if not dim_range or None in dim_range:
+                args["predicate_realize_bound"] = False
+                args["sync_mode"] = 8
+                args["enable_branch_eliminator_else_case"] = False
+                break
+    else:
+        args["predicate_realize_bound"] = False
+        args["sync_mode"] = 8
+        args["enable_branch_eliminator_else_case"] = False
+    return args
 
 def batch_matmul_compute(input_x1, input_x2, bias, offset_w, output_z, trans_a, trans_b, offset_x, kernel_name, op_type="BatchMatMulV2"):
     """
@@ -676,6 +714,7 @@ def batch_matmul_compute(input_x1, input_x2, bias, offset_w, output_z, trans_a, 
     m_var = operation.var(m_var_name, m_range)
     k_var = operation.var(k_var_name, k_range)
     n_var = operation.var(n_var_name, n_range)
+    _define_template_tiling_var()
 
     if op_type in ("BatchMatMulV2", "BatchMatMul"):
         batch_var = operation.var("batch", batch_range)
@@ -814,5 +853,6 @@ def batch_matmul_v2(input_x1, input_x2, bias=None, offset_w=None, output_z=None,
         "tensor_list": tensor_list,
         "build_args": {"constant_realize_extent_in_infer_bound": False}
     }
+    config["build_args"] = _config_build_args(config["build_args"], input_x1, input_x2, bias)
     tbe.build(sch, config)
     tbe_platform.fusion_manager.set_current_op_pattern("BatchMatmul")

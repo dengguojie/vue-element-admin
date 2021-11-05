@@ -23,6 +23,7 @@ import json
 import math
 import itertools
 from functools import reduce
+from itertools import product
 
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.tiling.get_tiling import get_tiling
@@ -37,6 +38,7 @@ from tbe.dsl.base.operation import register_tiling_case
 from .cube_tilingcase import CubeTilingOp
 from .cube_tilingcase import MAX_RANGE
 from .cube_tilingcase import TilingSelection
+from .cube_tilingcase import TilingUtils as utils
 from .constants import Pattern
 
 
@@ -70,6 +72,7 @@ def set_var_value(info, target_area):
     key_list = ["ha_var_range", "ca1_var_range", "cb1_var_range", "batch_var_range"]
     for index, value in enumerate(target_area):
         info[key_list[index]] = value
+    info["none_range_area"] = True if None in sum(target_area, []) else False
     return info
 
 
@@ -323,7 +326,6 @@ def _calc_tiling_case(mode, target_area, cnt):
     info = set_var_value(info, target_area)
 
     tiling_op = MatmulTiling(info, mode)
-
     if tiling_op.use_default_tiling_case(target_area):
         return set_default_tiling_case(target_area, tiling_op)
 
@@ -473,7 +475,7 @@ def calc_matmul(outs, option=None):
 
     var_names = {"dynamic_mkn": (m_name, k_name, n_name),
                  "dynamic_mknb": (m_name, k_name, n_name, "batch")}
-    
+
     target_area = copy.deepcopy([get_te_var(v).get_bound() for v in var_names[mode]])
     # process target_area result in ND mode. make it M1/ K1 / N1
     if GEMMComputeParam.format_a == "ND":
@@ -511,6 +513,8 @@ class MatmulTiling(CubeTilingOp):
     DEFAULT_COMPILE_TIME = 4096
     GEAR_M_N = [1, 4, 8, 16, 32, 64, 128, 192, 256, 512, 768, 1024]
     GEAR_BATCH = [1, 2, 4, 8, 16, 32]
+    NONE_RANGE_M_N = [1, 16, 32, 64, 128, 256]
+    NONE_RANGE_BATCH = [1, 16, 32]
 
     def __init__(self, tiling_info, dynamic_mode):
         super().__init__(tiling_info, dynamic_mode)
@@ -520,6 +524,12 @@ class MatmulTiling(CubeTilingOp):
         self.a_type = self.tiling_info["A_dtype"]
         self.b_type = self.tiling_info["B_dtype"]
         self.c_type = self.tiling_info["C_dtype"]
+        self.format_a = GEMMComputeParam.format_a
+        self.format_b = GEMMComputeParam.format_b
+        self.bias_flag = self.tiling_info["bias_flag"]
+        self.none_range_area = self.tiling_info["none_range_area"]
+        self.use_cache_tiling = True if (
+            self.format_a != "ND" and self.format_b != "ND" and not self.bias_flag) else False
 
         self._get_calc_info()
         self.key = ("A_shape", "B_shape")
@@ -588,16 +598,101 @@ class MatmulTiling(CubeTilingOp):
         cost_seeds = self.change_full_load_to_value(cost_seeds)
         tiling = cost_seeds[0]
 
-        # check whether the tiling is default
-        def _check_defualt_tiling(tiling):
-            if tiling.get("tiling").get("AL0_matrix")[2] == DEFAULT_K_VALUE:
-                return True
-            return False
-
-        if _check_defualt_tiling(tiling):
-            tiling = self._set_default_tiling()
         tiling["tiling"]["attach_same_to_static"] = False
         return tiling
+
+    def _get_cache_tiling(self):
+        '''
+        according to size in l1, generate 9 kind of templates, each subdivided into 132 different
+        templates as follows templates according to size in l1 sub template
+                                                    |
+        --------------------------------------------|-----
+        al1 @l0c and bl1 @l0c                       | 48
+        al1 @l0c and bl1 @ddr                       | 16
+        al1 @l0c and bl1 full load                  | 8
+        al1 @ddr and bl1 @l0c                       | 16
+        al1 @ddr and bl1 @ddr                       | 16
+        al1 @ddr and bl1 full load                  | 8
+        al1 full load and bl1 @l0c                  | 8
+        al1 full load and bl1 @ddr                  | 8
+        al1 full load and bl1 full load             | 4
+
+        Returns
+        ----------
+        cache_tiling_all: list, include 132 different tiling templates
+        '''
+
+        cache_tiling_all = {}
+        al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0 = (
+            [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON], [utils.DB_OFF, utils.DB_ON],
+            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
+            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
+            [utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL, utils.ATTACH_LESS],
+            [0, 1])
+        l1_choice = list(
+            product(al1_pb, bl1_pb, l0c_pb, abkl1_attach, al1_attach_flag, bl1_attach_flag, min_kl1_cmp_kl0))
+        for choice in l1_choice:
+            cache_tiling = {
+                'block_dim': [-1, -1, -1, 1],
+                'AL0_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
+                'BL0_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
+                'CL0_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
+                'CUB_matrix': [-1, -1, utils.CUBE_SIZE, utils.CUBE_SIZE, 1, 1],
+                'BUB_shape': None,
+                'AL1_shape': [-1, -1, 1, 1], 'BL1_shape': [-1, -1, 1, 1],
+                'AUB_shape': [],
+                'n_bef_batch_flag': 0, 'n_bef_group_flag': 0, 'batch_bef_group_flag': 0,
+                'A_overhead_opt_flag': 0, 'B_overhead_opt_flag': 0,
+                'AUB_channel_wise_flag': None, 'BUB_channel_wise_flag': None, 'CUB_channel_wise_flag': None,
+                'manual_pingpong_buffer': {'AUB_pbuffer': utils.DB_OFF, 'BUB_pbuffer': utils.DB_OFF,
+                'AL1_pbuffer': utils.DB_ON, 'BL1_pbuffer': utils.DB_ON,
+                'AL0_pbuffer': utils.DB_ON, 'BL0_pbuffer': utils.DB_ON, 'CL0_pbuffer': utils.DB_ON,
+                'CUB_pbuffer': utils.DB_ON, 'UBG_pbuffer': utils.DB_OFF},
+                'attach_at_flag': {'cub_attach_flag': utils.ATTACH_LESS,
+                'cl0_attach_flag': utils.ATTACH_LARGE, 'al0_attach_flag': utils.ATTACH_LESS, 'bl0_attach_flag': utils.ATTACH_LESS,
+                'al1_attach_flag': -1, 'bl1_attach_flag': -1, 'aub_attach_flag': utils.ATTACH_LESS,
+                'abkl1_attach_flag': -1}
+            }
+
+            # if bl1 attach at l0c, nbl1, should be 1
+            if choice[5] == utils.ATTACH_LESS:
+                cache_tiling["BL1_shape"][1] = 1
+            # if full load in l1 buffer, there is no need to open double buffer
+            if choice[5] == utils.ATTACH_FULL_LOAD and choice[1] == utils.DB_ON:
+                continue
+            # al1 full load
+            if choice[4] == utils.ATTACH_FULL_LOAD:
+                invalid_choice = choice[0] == utils.DB_ON or (
+                    choice[5] in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and choice[3] != 0) or (choice[5] == 2 and choice[3] != 1)
+                if invalid_choice:
+                    continue
+
+            # al1 attach at c_ddr
+            if choice[4] == utils.ATTACH_EQUAL:
+                invalid_choice = (choice[5] in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and
+                                  choice[3] != 0) or (choice[5] == utils.ATTACH_LESS and choice[3] != 1)
+                if invalid_choice:
+                    continue
+
+            # al1 attach at l0c
+            if choice[4] == utils.ATTACH_LESS:
+                # if al1 attach at l0c, mal1 should be 1
+                cache_tiling['AL1_shape'][1] = 1
+                # if full load in l1 buffer, there is no need to open double buffer
+                if (choice[5] in (utils.ATTACH_FULL_LOAD, utils.ATTACH_EQUAL) and choice[3] != 2):
+                    continue
+
+            cache_tiling['manual_pingpong_buffer']['AL1_pbuffer'] = choice[0]
+            cache_tiling['manual_pingpong_buffer']['BL1_pbuffer'] = choice[1]
+            cache_tiling['manual_pingpong_buffer']['CL0_pbuffer'] = choice[2]
+            cache_tiling['attach_at_flag']['abkl1_attach_flag'] = choice[3]
+            cache_tiling['attach_at_flag']['al1_attach_flag'] = choice[4]
+            cache_tiling['attach_at_flag']['bl1_attach_flag'] = choice[5]
+            cache_tiling['attach_at_flag']['min_kl1_cmp_kl0'] = choice[6]
+            name = int(''.join([str(i) for i in choice]))
+            cache_tiling_all[name] = [[], cache_tiling, []]
+
+        return cache_tiling_all
 
     def get_tiling_range(self, tiling_in, shape_info):
         """
@@ -758,7 +853,7 @@ class MatmulTiling(CubeTilingOp):
 
     def get_repo_candidate(self, seed, target_area):
         """
-        updata repository with tiling range
+        update repository with tiling range
         """
 
         def _correct_seed_range():
@@ -804,21 +899,22 @@ class MatmulTiling(CubeTilingOp):
         block_in = GEMMComputeParam.block_in
         block_out = GEMMComputeParam.block_out
         block_reduce = GEMMComputeParam.block_reduce
-        if GEMMComputeParam.format_a == "ND":
-            m_range = (coverage[0] * block_in, min(coverage[1] * block_in, INT_32_MAX))
-            k_range = (coverage[2] * block_reduce, min(coverage[3] * block_reduce, INT_32_MAX))
-        else:
-            m_range = (coverage[0], coverage[1])
-            k_range = (coverage[2], coverage[3])
-        if GEMMComputeParam.format_b == "ND":
-            n_range = (coverage[4] * block_out, min(coverage[5] * block_out, INT_32_MAX))
-        else:
-            n_range = (coverage[4], coverage[5])
-        var_range[m_name] = m_range
-        var_range[k_name] = k_range
-        var_range[n_name] = n_range
-        if self.dynamic_mode == "dynamic_mknb":
-            var_range["batch"] = (coverage[6], coverage[7])
+        if coverage:
+            if GEMMComputeParam.format_a == "ND":
+                m_range = (coverage[0] * block_in, min(coverage[1] * block_in, INT_32_MAX))
+                k_range = (coverage[2] * block_reduce, min(coverage[3] * block_reduce, INT_32_MAX))
+            else:
+                m_range = (coverage[0], coverage[1])
+                k_range = (coverage[2], coverage[3])
+            if GEMMComputeParam.format_b == "ND":
+                n_range = (coverage[4] * block_out, min(coverage[5] * block_out, INT_32_MAX))
+            else:
+                n_range = (coverage[4], coverage[5])
+            var_range[m_name] = m_range
+            var_range[k_name] = k_range
+            var_range[n_name] = n_range
+            if self.dynamic_mode == "dynamic_mknb":
+                var_range["batch"] = (coverage[6], coverage[7])
 
         return {"key": cnt, "tiling_strategy": tiling, "var_range": var_range, "m_k_n_shape": m_k_n_shape}
 
@@ -937,6 +1033,8 @@ class MatmulTiling(CubeTilingOp):
         -------
         element_list: list, element to cover the range_value
         """
+        if self.none_range_area:
+            return gear
         left = 0
         right = 0
         element_list = []
@@ -956,7 +1054,7 @@ class MatmulTiling(CubeTilingOp):
         return element_list
 
 
-    def _get_gear_repo_shapes(self, target_area):
+    def _get_gear_repo_shapes(self, target_area=None):
         """
         caculate all gear repo seeds during range
 
@@ -969,12 +1067,14 @@ class MatmulTiling(CubeTilingOp):
         gear_repo_shapes: list, [(m_value, k_value, n_value),...]
         """
         cls = self.__class__
+        target_mkn = cls.NONE_RANGE_M_N if self.none_range_area else cls.GEAR_M_N
+        target_batch = cls.NONE_RANGE_BATCH if self.none_range_area else cls.GEAR_BATCH
 
-        gear_m_list = self._get_gear_element(target_area[0], cls.GEAR_M_N)
-        gear_k_list = self._get_gear_element(target_area[1], cls.GEAR_M_N)
-        gear_n_list = self._get_gear_element(target_area[2], cls.GEAR_M_N)
+        gear_m_list = self._get_gear_element(target_area[0], target_mkn)
+        gear_k_list = self._get_gear_element(target_area[1], target_mkn)
+        gear_n_list = self._get_gear_element(target_area[2], target_mkn)
         if len(target_area) == 4:
-            gear_batch_list = self._get_gear_element(target_area[3], cls.GEAR_BATCH, True)
+            gear_batch_list = self._get_gear_element(target_area[3], target_batch, True)
         else:
             gear_batch_list = [1]
         return list(itertools.product(gear_m_list, gear_k_list, gear_n_list, gear_batch_list))
@@ -1044,24 +1144,27 @@ class MatmulTiling(CubeTilingOp):
 
     def use_default_tiling_case(self, target_area):
         """
-        check range value of target_area to determine whether to use default tiling case
+        check range value of target_area to determine whether to use default_tiling case
 
         Parameters
         ----------
-        target_area: range value of dymanic elements
+
+        target_area: range value of dynamic elements
 
         Returns
-        -------
+        ----------
+
         return True means use default tiling, else not
         """
-        cls = self.__class__
 
-        # None means range is -1
-        for value in target_area:
-            if value[1] is None:
-                return True
+        # cache tiling not support format ND and use bias yet
+        if self.use_cache_tiling:
+            return False
 
-        if len(self._get_gear_repo_shapes(target_area)) > (len(cls.GEAR_M_N)**2):
+        if self.none_range_area:
+            return True
+
+        if len(self._get_gear_repo_shapes(target_area)) > (len(self.__class__.GEAR_M_N)**2):
             return True
 
         return False
