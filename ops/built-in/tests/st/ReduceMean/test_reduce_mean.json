@@ -20,7 +20,7 @@
         "type": "float16",
         "value_range":[[0,1]],
         "data_distribute":"uniform",
-        "name": "x",
+        "name": "x"
       },
       {
         "format": "NHWC",
