@@ -162,8 +162,8 @@ def _check_overflows_count(data_compe):
             data_compe[np.isnan(data_compe)][0:10]))
 
 
-def _data_compare(npu_output, cpu_output, diff_thd=0.01, pct_thd=0.05,
-                  max_diff_hd=0.1):
+def _data_compare(npu_output, cpu_output, err_thd):
+    diff_thd, pct_thd, max_diff_hd = err_thd[0], err_thd[1], 0.1
     real_data = npu_output.flatten()
     data_compe = cpu_output.flatten()
     if real_data.size == 0 and real_data.size == data_compe.size:
@@ -241,11 +241,12 @@ def compare2(result_dir, expect_dir):
                          % (time.time() - start_time))
 
 
-def compare(report, run_dir):
+def compare(report, run_dir, err_thr):
     """
     compare output data with expect data by report
     :param report: the st report object
     :param run_dir: the run dir ,the parent dir of inc\run, etc ...
+    :param err_thr: Error threshold of result comparison
     :return:
     """
     start_time = time.time()
@@ -283,7 +284,7 @@ def compare(report, run_dir):
         is_compare = case_report.trace_detail.st_case_info.op_params.get(
             "calc_expect_func_file_func")
         if is_compare:
-            _get_compare_stage_result(result, index, case_name, case_report)
+            _get_compare_stage_result(result, index, case_name, case_report, err_thr)
         else:
             _get_run_stage_result(result, case_name, case_report)
     # exist expect func, print compare cost time.
@@ -307,7 +308,7 @@ def _get_run_stage_result(result, case_name, case_report):
                              "unsupported." % result)
 
 
-def _get_result_list(result_list, case_info):
+def _get_result_list(result_list, case_info, err_thr):
     for idx, expect_file in enumerate(case_info.expect_data_paths):
         result_file = case_info.planned_output_data_paths[idx]
         utils.print_info_log(
@@ -338,12 +339,13 @@ def _get_result_list(result_list, case_info):
         npu_output = np.fromfile(result_file, np_type)
         cpu_output = np.fromfile(expect_file, np_type)
         result, error_percent, max_error = _data_compare(npu_output,
-                                                         cpu_output)
+                                                         cpu_output,
+                                                         err_thr)
         result_list.append([result, error_percent, max_error])
     return result_list
 
 
-def _get_compare_stage_result(result, index, case_name, case_report):
+def _get_compare_stage_result(result, index, case_name, case_report, err_thr):
     if result == "[fail]":
         utils.print_info_log("Failed to run case '%s'. There is"
                              "no result data for comparison. "
@@ -372,7 +374,7 @@ def _get_compare_stage_result(result, index, case_name, case_report):
             _add_op_st_stage_result(
                 case_report, op_status.FAILED, "compare_data", None)
             return
-        result_list = _get_result_list(result_list, case_info)
+        result_list = _get_result_list(result_list, case_info, err_thr)
         # add compare report
         compare_status = op_status.SUCCESS
         if not result_list:

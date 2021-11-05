@@ -9,6 +9,7 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 import os
 import sys
 import argparse
+import ast
 from atexit import register
 
 from op_test_frame.st.interface import utils
@@ -38,6 +39,28 @@ def _check_device_id(device_id):
     return
 
 
+def _gen_error_threshold(err_thr):
+    if err_thr == "":
+        err_thr = [0.01, 0.05]
+    else:
+        try:
+            err_thr = ast.literal_eval(err_thr)
+        except ValueError:
+            utils.print_error_log("Error_threshold is unsupported. Example [0.01, 0.01].")
+            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_ERROR_THRESHOLD_ERROR)
+    return _check_error_threshold(err_thr)
+
+
+def _check_error_threshold(err_thr):
+    if isinstance(err_thr, list):
+        if len(err_thr) == 0:
+            return err_thr
+        if len(err_thr) == 2:
+            return utils.check_list_float(err_thr, "Error_threshold")
+    utils.print_error_log("Error_threshold is unsupported. Example [0.01, 0.01].")
+    raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_ERROR_THRESHOLD_ERROR)
+
+
 def _generate_op_project(args, report, machine_type):
     # design test case list from json file
     design = CaseDesign(args.input_file, args.case_name, report)
@@ -60,7 +83,7 @@ def _generate_op_project(args, report, machine_type):
     return case_list
 
 
-def _runner_and_compare(args, case_list, report, get_advance_args=None):
+def _runner_and_compare(args, case_list, report, err_thr, get_advance_args=None):
     output_path = os.path.realpath(args.output_path)
     # run operator
     path = os.path.join(output_path,
@@ -74,7 +97,7 @@ def _runner_and_compare(args, case_list, report, get_advance_args=None):
         runner.process()
 
         # compare
-        result_comparer.compare(report, path)
+        result_comparer.compare(report, path, err_thr)
 
 
 def _do_mi_cmd(args, cmd, report):
@@ -98,7 +121,8 @@ def _do_mi_cmd(args, cmd, report):
             report.load(report_path)
             utils.print_info_log("Load %s success." % args.report_path)
             run_dir = os.path.dirname(report_path)
-            result_comparer.compare(report, run_dir)
+            err_thr = _gen_error_threshold(args.error_threshold)
+            result_comparer.compare(report, run_dir, err_thr)
             report.save(report_path)
             utils.print_info_log('The st report saved in: %s.' % report_path)
             report.console_print()
@@ -118,13 +142,14 @@ def _do_run_cmd(args, report):
             sys.exit(ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
         # check device id invaild
         _check_device_id(args.device_id)
+        err_thr = _gen_error_threshold(args.error_threshold)
         if args.config_file != "":
             # check config_file invalid
             utils.check_path_valid(args.config_file)
-            _gen_build_convert_run(args, report)
+            _gen_build_convert_run(args, report, err_thr)
         else:
             case_list = _generate_op_project(args, report, False)
-            _runner_and_compare(args, case_list, report)
+            _runner_and_compare(args, case_list, report, err_thr)
 
     except utils.OpTestGenException as ex:
         sys.exit(ex.error_info)
@@ -132,7 +157,7 @@ def _do_run_cmd(args, report):
         pass
 
 
-def _gen_build_convert_run(args, report):
+def _gen_build_convert_run(args, report, err_thr):
     output_path = os.path.realpath(args.output_path)
     get_advance_args = AdvanceIniParser(args.config_file)
     get_advance_args.get_advance_args_option()
@@ -141,7 +166,7 @@ def _gen_build_convert_run(args, report):
             acl_mode == ConstManager.BOTH_GEN_AND_RUN_ACL_PROJ_PERFORMANCE:
         # gen op project and build & convert & execute the project.
         case_list = _generate_op_project(args, report, False)
-        _runner_and_compare(args, case_list, report, get_advance_args)
+        _runner_and_compare(args, case_list, report, err_thr, get_advance_args)
     elif acl_mode == ConstManager.ONLY_GEN_WITHOUT_RUN_ACL_PROJ:
         # only gen op project.
         _generate_op_project(args, report, False)
@@ -174,7 +199,7 @@ def _gen_build_convert_run(args, report):
                                  report, get_advance_args)
             runner.process()
             # compare
-            result_comparer.compare(report, path)
+            result_comparer.compare(report, path, err_thr)
             report.save(report_path)
             utils.print_info_log('The st report saved in: %s.' % report_path)
 
@@ -224,6 +249,11 @@ def _run_parser(run_parser):
     run_parser.add_argument(
         '-conf', "--config_file", dest="config_file", default="",
         help="<Optional> config_file, msopst advance config file.",
+        required=False)
+    run_parser.add_argument(
+        '-err_thr', "--error_threshold", dest="error_threshold", default="[0.01, 0.05]",
+        help="<Optional> error_threshold, Error threshold of result"
+             "comparison, like [0.001, 0.001].",
         required=False)
 
 
@@ -288,6 +318,11 @@ def _mi_parser(mi_parser):
     compare_parser.add_argument(
         "-out", "--output", dest="output_path", default="",
         help="<Optional> the output path", required=False)
+    compare_parser.add_argument(
+        '-err_thr', "--error_threshold", dest="error_threshold", default="[0.01, 0.05]",
+        help="<Optional> error_threshold, Error threshold of result"
+             "comparison, like [0.001, 0.001].",
+        required=False)
 
     # comapre2 parse
     compare2_parser.add_argument(

@@ -421,7 +421,8 @@ class TestUtilsMethods(unittest.TestCase):
         """
         report = OpSTReport()
         run_dir = "xxx.txt"
-        result_comparer.compare(report, run_dir)
+        err_thr = [0.01, 0.01]
+        result_comparer.compare(report, run_dir, err_thr)
 
     def test_compare_func_2(self):
         """
@@ -431,6 +432,7 @@ class TestUtilsMethods(unittest.TestCase):
         op_st = OpSTCase("AddN", {"calc_expect_func_file_func": 1})
         op_st_case_trace = OpSTCaseTrace(op_st)
         op_st_report = OpSTCaseReport(op_st_case_trace)
+        err_thr = [0.01, 0.01]
         with mock.patch('op_test_frame.st.interface.utils.check_path_valid'):
             with mock.patch(
                     'op_test_frame.st.interface.acl_op_runner'
@@ -447,7 +449,7 @@ class TestUtilsMethods(unittest.TestCase):
                                 runner = AclOpRunner('/home', 'ddd', report)
                                 runner.process()
                                 result_comparer.compare(
-                                    report, ST_GOLDEN_OP_RESULT_TXT)
+                                    report, ST_GOLDEN_OP_RESULT_TXT, err_thr)
 
     def test_compare_func_3(self):
         """
@@ -482,11 +484,12 @@ class TestUtilsMethods(unittest.TestCase):
         """
         verify the normal scene of data_compare function in result_comparer.py
         """
+        err_thr = [0.01, 0.01]
         npu_output = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
         cpu_output = [[10, 20, 30], [40, 50, 60], [70, 80, 90]]
         npu_output_array = np.array(npu_output)
         cpu_output_array = np.array(cpu_output)
-        result_comparer._data_compare(npu_output_array, cpu_output_array)
+        result_comparer._data_compare(npu_output_array, cpu_output_array, err_thr)
 
     def test_compare_func_5(self):
         """
@@ -1008,6 +1011,15 @@ class TestUtilsMethods(unittest.TestCase):
         self.assertTrue(compare_context(
             const_acl_op_json, ST_GOLDEN_SCALAR_INPUT_CONFIG_ACL_OP))
 
+    def test_check_list_float(self):
+        err_thr = utils.check_list_float([0.1, 0.1], "err_thr")
+        self.assertEqual(err_thr,[0.1, 0.1])
+
+    def test_check_list_float_error(self):
+        with pytest.raises(utils.OpTestGenException) as error:
+            utils.check_list_float(["A"], "err_thr")
+        self.assertEqual(error.value.args[0],
+                         ConstManager.OP_TEST_GEN_INVALID_ERROR_THRESHOLD_ERROR)
 
 if __name__ == '__main__':
     unittest.main()

@@ -67,7 +67,7 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
         except Exception as ex:
             utils.print_error_log(
                 'Failed to execute function "%s" in %s. %s' % (
-                    ConstManager.FUZZ_FUNCTION, fuzz_file, str(ex)))
+                    fuzz_func, fuzz_file, str(ex)))
             raise utils.OpTestGenException(
                 ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
         finally:

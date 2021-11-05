@@ -485,6 +485,25 @@ def fix_name_lower_with_under(name):
     return fix_name
 
 
+def check_list_float(input_list, param_name):
+    """
+    Check whether the list consists of floating point numbers
+    eg: [0.01, 0.1]
+    :param input_list: list to be check
+    :param param_name: list param name
+    :return: input_list
+    """
+    support_flag = True
+    for i in input_list:
+        if not isinstance(i, float) or i > 1 or i < 0:
+            support_flag = False
+            break
+    if support_flag:
+        return input_list
+    print_error_log("%s is unsupported. Example [0.01, 0.01]." % str(param_name))
+    raise OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_ERROR_THRESHOLD_ERROR)
+
+
 def add_new_key_to_cross_list(tensor, cross_key_list):
     """
     Function: Add new key in cross key list.
