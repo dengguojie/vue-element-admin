@@ -19,7 +19,7 @@
 #include "status.h"
 
 namespace {
-constexpr char *kAssign = "Assign";
+const char *kAssign = "Assign";
 }
 
 namespace aicpu {

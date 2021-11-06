@@ -40,7 +40,6 @@ uint32_t EmbeddingLookuptMsCpuKernel::Compute(CpuKernelContext &ctx) {
       break;
     }
     case DT_INT16: {
-      int16_t data_type = 0;
       EmbeddingLookuptMsCpuKernel::DoComputeForEachType<int16_t>(ctx);
       break;
     }

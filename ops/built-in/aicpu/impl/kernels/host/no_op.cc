@@ -18,7 +18,7 @@
 #include "status.h"
 
 namespace {
-constexpr char *kNoOp = "NoOp";
+const char *kNoOp = "NoOp";
 }
 
 namespace aicpu {

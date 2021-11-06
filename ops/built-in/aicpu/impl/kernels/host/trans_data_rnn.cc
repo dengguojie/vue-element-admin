@@ -25,7 +25,7 @@
 #include "utils/kernel_util.h"
 
 namespace {
-constexpr char *TRANS_DATA_RNN = "TransDataRNN";
+const char *TRANS_DATA_RNN = "TransDataRNN";
 constexpr int32_t ALIGN_16 = 16;
 }
 
@@ -70,7 +70,6 @@ uint32_t TransDataRNNCpuKernel::GenDataNdRnnBias(std::vector<int64_t> &dims, int
   int32_t hiddenCnt = shape0 / hiddenSize;
   int32_t hiddenSizeAlign = (hiddenSize + (ALIGN_16 - 1)) / ALIGN_16 * ALIGN_16;
   int32_t dstLen = hiddenSizeAlign * hiddenCnt;
-  int32_t dtSize = 0;
 
   auto srcData = srcTensor->GetData();
   KERNEL_CHECK_NULLPTR(srcData, KERNEL_STATUS_PARAM_INVALID, "TransDataRNN, get src data failed");

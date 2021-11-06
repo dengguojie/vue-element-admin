@@ -81,7 +81,7 @@ uint32_t IsInfCpuKernel::IsInfCompute(CpuKernelContext &ctx) {
   if ((data_type == DT_FLOAT16 && data_size <= kParallelDataNumsFloat16) ||
       (data_type == DT_FLOAT && data_size <= kParallelDataNumsFloat) ||
       (data_type == DT_DOUBLE && data_size <= kParallelDataNumsDouble)) {
-    for (size_t index = 0; index < data_num; index++) {
+    for (int64_t index = 0; index < data_num; index++) {
       *(output + index) = Eigen::numext::isinf(*(input + index));
     }
   } else {

@@ -183,7 +183,6 @@ uint32_t TransFormatToFzWithGroups(const TransArgs &args, TransResult &result,
   int64_t cout_opt = Ceil(e_mult * cout_ori, static_cast<int64_t>(kCubeSize)) *
                      static_cast<int64_t>(kCubeSize);
   int64_t c1_dim = cin_opt / cube_k;
-  int64_t dim_g = Ceil(groups, e_mult);
   int64_t data_size = GetSizeByDataType(args.src_data_type);
   int64_t dst_size = GetItemNumByShape(args.dst_shape) * data_size;
   //The input is empty tensor, we should return sucess directly.

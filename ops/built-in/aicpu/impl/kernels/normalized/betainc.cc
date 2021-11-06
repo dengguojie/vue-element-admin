@@ -101,7 +101,7 @@ template <typename T>
 uint32_t RunParallel(CpuKernelContext &ctx, std::vector<T *> data_pointers,
                      int data_num) {
   uint32_t min_core_num = 1;
-  size_t max_core_num =
+  int32_t max_core_num =
       std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - 2);
   if (max_core_num > data_num) {
     max_core_num = data_num;
@@ -150,7 +150,7 @@ uint32_t BetaincCpuKernel::BetaincCompute(CpuKernelContext &ctx) {
     bcast_shape = b_shape.empty() ? bcast_shape : b_shape;
     bcast_shape = x_shape.empty() ? bcast_shape : x_shape;
 
-    for (int i = 0; i < bcast_shape.size(); i++) {
+    for (size_t i = 0; i < bcast_shape.size(); i++) {
       bcast_size *= bcast_shape[i];
     }
     cout << "bcast_size = " << bcast_size << endl;

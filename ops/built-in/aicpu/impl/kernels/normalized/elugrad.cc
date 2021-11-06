@@ -86,7 +86,7 @@ uint32_t EluGradCpuKernel::EluGradCompute(CpuKernelContext &ctx) {
   if ((data_type == DT_FLOAT16 && data_size <= 128 * 1024) ||
       (data_type == DT_FLOAT && data_size <= 64 * 1024) ||
       (data_type == DT_DOUBLE && data_size <= 64 * 1024)) {
-    for (size_t index = 0; index < data_num; ++index) {
+    for (int64_t index = 0; index < data_num; ++index) {
       *(output + index) =
           (*(input_1 + index)) < num0
               ? ((*(input_1 + index)) + num1) * (*(input_0 + index))
