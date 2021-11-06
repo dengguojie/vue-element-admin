@@ -113,7 +113,8 @@ def compare_precision(actual_data_file: str, expect_data_file: str,
         rtol_cnt, max_atol_cnt = _compare_bool_tensor()
     else:
         rtol_cnt, max_atol_cnt = _compare_tensor()
-    print(rtol_cnt, max_atol_cnt, precision_standard.rtol * expect_data.size)
+    print("Error count: {}, Max atol error count: {}, Threshold count(rtol * data_size):{}"
+          .format(rtol_cnt, max_atol_cnt, precision_standard.rtol * expect_data.size))
 
     status = op_status.SUCCESS
     err_msg = ""
