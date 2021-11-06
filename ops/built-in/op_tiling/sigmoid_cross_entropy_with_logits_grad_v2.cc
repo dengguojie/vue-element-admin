@@ -59,8 +59,7 @@ bool SigmoidCrossEntropyWithLogitsGradV2Tiling(const std::string& op_type, const
           return false;
         }
       }
-      fe::fp16_t reduce_mean_cof_fp16;
-      reduce_mean_cof_fp16 = reduce_mean_cof;
+      fe::fp16_t reduce_mean_cof_fp16 = reduce_mean_cof;
       run_info.AddTilingData((fe::fp16_t)reduce_mean_cof_fp16);
       run_info.AddTilingData((uint16_t)0);
       OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);

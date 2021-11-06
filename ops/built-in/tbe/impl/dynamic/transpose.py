@@ -13,7 +13,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 transpose
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 
 from impl.util import util_common
 from impl.util.platform_adapter import tik
@@ -178,7 +178,7 @@ def _by_dynamic_static_union_version(shape, core_num):
     return False
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def check_supported(input_x, perm, output_y, kernel_name="dynamic_transpose"):
     """
     dynamic transpose is selected when any condition is true: \n
@@ -230,15 +230,15 @@ def _get_half_ub():
     return (UB_SIZE - RESERVED_UB * 1024) // 2 // 2
 
 
-# pylint: disable=unused-argument,invalid-name, too-many-arguments, unused-variable, too-many-locals
-# pylint: disable=too-many-statements, invalid-name, no-self-use, protected-access
-# pylint: disable=too-many-instance-attributes, too-few-public-methods
-class Transpose():
+# 'pylint: disable=unused-argument,invalid-name, too-many-arguments, unused-variable, too-many-locals
+# 'pylint: disable=too-many-statements, invalid-name, no-self-use, protected-access
+# 'pylint: disable=too-many-instance-attributes, too-few-public-methods
+class Transpose:
     """
     Transpose
     """
 
-    class TilingParamS0():
+    class TilingParamS0:
         """
         TilingParamS0
         """
@@ -269,7 +269,7 @@ class Transpose():
             self.tail_num.set_as(ub_input_64[4])
             self.not_align_ele.set_as(ub_input_64[5])
 
-    class TilingParamS1():
+    class TilingParamS1:
         """
         TilingParamS1
         """
@@ -340,7 +340,7 @@ class Transpose():
             self.src_addr = tiling_reg_list[reg_base]
             self.dst_addr = tiling_reg_list[reg_base + 1]
 
-    class TilingParamS2():
+    class TilingParamS2:
         """
         TilingParamS2
         """
@@ -440,7 +440,7 @@ class Transpose():
             self.src_addr = tiling_reg_list[reg_base]
             self.dst_addr = tiling_reg_list[reg_base + 1]
 
-    class TilingParamS3():
+    class TilingParamS3:
         """
         TilingParamS3
         """
@@ -507,7 +507,7 @@ class Transpose():
             self.src_addr = tiling_reg_list[reg_base]
             self.dst_addr = tiling_reg_list[reg_base + 1]
 
-    class TilingParamS4():
+    class TilingParamS4:
         """
         TilingParamS4
         """
@@ -675,7 +675,7 @@ class Transpose():
             self.offset_2.set_as(_get_half_ub())
             self.ub_res_addr.set_as(self.offset_1)
 
-    class TilingParamS5():
+    class TilingParamS5:
         """
         TilingParamS5
         """
@@ -873,10 +873,12 @@ class Transpose():
             self.ub_res_addr.set_as(self.offset_1)
 
     # 'pylint: disable=unused-variable
-    class TilingParamS7():
+    class TilingParamS7:
         """
         TilingParamS7
         """
+
+        # 'pylint: disable=too-many-branches
         def __init__(self, tiling_reg_list, ub_input_64_t, ub_input_64, tik_inst):
             """
             get tiling parameters
@@ -1032,7 +1034,7 @@ class Transpose():
             self.offset_a.set_as(0)
             self.offset_b.set_as(_get_half_ub())
 
-    class TilingParamS9():
+    class TilingParamS9:
         """
         TilingParamS9
         """
@@ -1101,7 +1103,7 @@ class Transpose():
             self.src_addr = tiling_reg_list[reg_base]
             self.dst_addr = tiling_reg_list[reg_base + 1]
 
-    class TilingParamS11():
+    class TilingParamS11:
         """
         TilingParamS11
         """
@@ -1500,7 +1502,7 @@ class Transpose():
     # -------------------------------------------------------------------------------------------------
     #                                    scenario_2
     # -------------------------------------------------------------------------------------------------
-    # pylint: disable=too-many-arguments, unused-argument, invalid-name
+    # 'pylint: disable=too-many-arguments, unused-argument, invalid-name
     def _reorder_s2(self, tp, ub_input, ub_offset, ub_offset_exclude_pad):
         if self.x_dtype in ("int8", "uint8", "bool"):
             b8_offset = _get_half_ub() * 2

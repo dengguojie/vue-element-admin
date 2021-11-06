@@ -61,11 +61,9 @@ int32_t Reduce::CalcConstPattern(std::vector<int32_t>& reduce_axis) {
   if (reduce_axis.size() == 0) {
     return TILINGKEY_NONE_REDUCE_AXIS;
   }
-  int32_t dict_key = 0;
-  for (auto& i : reduce_axis) {
-    // dict_key: 1234 -> reduce [0,1,2,3]
-    dict_key = BASE_10 * dict_key + i + 1;
-  }
+
+  int32_t dict_key = std::accumulate(reduce_axis.begin(), reduce_axis.end(), 0, \
+                                     [](int32_t i, int32_t j) -> int32_t {return BASE_10 * i + j + 1;});
 
   return dict_key;
 }
@@ -150,8 +148,8 @@ int32_t Reduce::CalcTilingKey() {
   using namespace std;
   int db = 0;
   int shape_type = 0;
-  vector<int> pos = {db, shape_type, tilingInfo.block_tiling_axis, tilingInfo.ub_tiling_axis, pattern};
-  vector<int> coefficient = {1000000000, 10000000, 1000000, 100000, 100};
+  std::vector<int> pos = {db, shape_type, tilingInfo.block_tiling_axis, tilingInfo.ub_tiling_axis, pattern};
+  std::vector<int> coefficient = {1000000000, 10000000, 1000000, 100000, 100};
   int32_t key = 0;
   for (size_t i = 0; i < coefficient.size(); i++) {
     key += pos[i] * coefficient[i];
@@ -232,7 +230,7 @@ void Reduce::FusedReduceAxis() {
    * if after fused, model is R while len(input_shape_ori) isn't 1, model will be AR by padding "1".
    * if after fused, model is A, model will be RA by padding "1".
    * */
-  vector<int32_t> pos(input_shape_ori.size());
+  std::vector<int32_t> pos(input_shape_ori.size());
   for (auto item : reduce_axis_ori) {
     pos[item] = 1;
   }
@@ -501,7 +499,7 @@ bool Reduce::GetAtomicBlockTilingInfo() {
 }
 
 void Reduce::GetNotMulCoreBlockTiling() {
-  if (input_shape.size() == 0) {
+  if (input_shape.empty()) {
     return;
   }
   tilingInfo.block_tiling_axis = 0;

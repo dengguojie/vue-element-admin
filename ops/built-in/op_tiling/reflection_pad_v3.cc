@@ -79,8 +79,8 @@ static void InitRunningParams(ReflectionPadV3TilingParams& params) {
   params.last_core_num = 1;
 }
 
-static bool GetPaddingsConstValue(const TeOpParas& paras, const string& name,
-                                  const string& dtype, vector<int64_t>& values) {
+static bool GetPaddingsConstValue(const TeOpParas& paras, const std::string& name,
+                                  const std::string& dtype, std::vector<int64_t>& values) {
   OP_LOGD("begin to GetPaddingsConstValue.");
   values.clear();
   if (paras.const_inputs.count(name) == 0 || std::get<0>(paras.const_inputs.at(name)) == nullptr) {
@@ -165,7 +165,7 @@ static void _printTensorValue(const ReflectionPadV3CompileParams& compile_params
                               const std::string& name) {
   using namespace std;
   OP_LOGD("begin to _printTensorValue.");
-  string vec_str;
+  std::string vec_str;
   for (auto item : in) {
     vec_str += to_string(item);
     vec_str += ",";

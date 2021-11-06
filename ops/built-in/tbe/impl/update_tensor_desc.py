@@ -28,7 +28,7 @@ class UpdateTensorDesc:
     UpdateTensorDesc
     """
 
-    def __init__(self, shape):
+    def __init__(self, input_x, shape):
         """
         constructor of class UpdateTensorDesc
 
@@ -44,6 +44,7 @@ class UpdateTensorDesc:
         self.tik_instance = tik.Tik()
         self.shape = shape
         self.dim_num = len(self.shape)
+        self.dtype_x = input_x.get("dtype")
 
     def tik_instance_fun(self, kernel_name):
         """
@@ -56,6 +57,7 @@ class UpdateTensorDesc:
         BLOCK_BYTE_SIZE = 32
 
         para_check.check_shape(self.shape, param_name="shape")
+        x_gm = self.tik_instance.Tensor(self.dtype_x, (DESC_SIZE,), tik.scope_gm, "x_gm")
         y_gm = self.tik_instance.Tensor("int64", (DESC_SIZE,), tik.scope_gm, "y_gm")
         y_ub = self.tik_instance.Tensor("int64", (DESC_SIZE,), tik.scope_ubuf, "y_ub")
 
@@ -69,17 +71,17 @@ class UpdateTensorDesc:
             dim_num_scalar.set_as(value)
             desc_idx = DIM_BASE_IDX + idx + 1
             y_ub[desc_idx].set_as(dim_num_scalar)
-        self.tik_instance.data_move(y_gm, y_ub, 0, 1, 32, 0, 0)
+        self.tik_instance.data_move(y_gm, y_ub, 0, 1, burst_len, 0, 0)
         self.tik_instance.BuildCCE(kernel_name=kernel_name,
-                                   inputs=[],
+                                   inputs=[x_gm],
                                    outputs=[y_gm])
         return self.tik_instance
 
 
 @register_operator("UpdateTensorDesc")
-@para_check.check_op_params(para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
-                            para_check.KERNEL_NAME)
-def update_tensor_desc(y, shape, kernel_name="UpdateTensorDesc"):
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
+def update_tensor_desc(x, y, shape, kernel_name="UpdateTensorDesc"):
     """
     update the y tensor_desc
     parameters
@@ -93,6 +95,5 @@ def update_tensor_desc(y, shape, kernel_name="UpdateTensorDesc"):
     -------
     compile info
     """
-    obj_update_tensor_desc = UpdateTensorDesc(shape)
+    obj_update_tensor_desc = UpdateTensorDesc(x, shape)
     obj_update_tensor_desc.tik_instance_fun(kernel_name)
-

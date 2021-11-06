@@ -41,7 +41,7 @@ def _get_tiling_params(tik_inst, tiling_ub, tiling_gm, tiling_params, tiling_dty
         tiling_params[reg_idx].set_as(tiling_ub[reg_idx])
 
 
-# pylint: disable=too-many-locals, too-many-statements
+# 'pylint: disable=too-many-locals, too-many-statements
 def _chtn_2_hctn_transfer(trans_args):
     """
     do chtn to hctn transpose for data in row and col line
@@ -617,7 +617,7 @@ def _copy_data_in_1(args):
                     _vor_data_move(cl_args)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable, too-many-locals
 def _copy_data_out(copy_out_args):
     """
     copy data from ub to gm
@@ -946,7 +946,7 @@ def _func_transform_201(tensor_args, tp_args):
         _inner_func(lc_args)
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def trans_data_negative_target_tc(src, dst, src_format, dst_format, kernel_name="trans_data_negative_target_tc"):
     """
     negative transform for last dimension of target format is c

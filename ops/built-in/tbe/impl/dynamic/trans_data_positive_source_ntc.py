@@ -636,7 +636,7 @@ def _func_transform_100(tensor_args, tp_args):
         _inner_func(lc_args)
 
 
-# 'pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals,unused-variable
 def trans_data_positive_source_ntc(src, dst, src_format, dst_format, kernel_name="trans_data_positive_source_ntc"):
     """
     positive transform for last dimension of source format is not c
@@ -664,7 +664,8 @@ def trans_data_positive_source_ntc(src, dst, src_format, dst_format, kernel_name
     in_dtype = src.get("dtype").lower() if src.get("dtype").lower() != "bfloat16" else "float16"
     in_dtype_bytes = tdc.get_dtype_len(in_dtype)
     tiling_dtype_bytes = tdc.get_dtype_len("int64")
-    ub_size = tdc.get_max_element_in_ub(in_dtype, 1, 256) - Constant.TILING_CTRL_PARAM[1] * tiling_dtype_bytes // in_dtype_bytes
+    ub_size = tdc.get_max_element_in_ub(in_dtype, 1, 256) - Constant.TILING_CTRL_PARAM[1] \
+              * tiling_dtype_bytes // in_dtype_bytes
     block_elem_cnt = tdc.BLOCK_BYTE_SIZE // tdc.get_dtype_len(in_dtype)
 
     tik_inst = tik.Tik()
@@ -673,11 +674,13 @@ def trans_data_positive_source_ntc(src, dst, src_format, dst_format, kernel_name
         dst_out_gm = tik_inst.Tensor(in_dtype, (tdc.MAX_INT64_VALUE,), tik.scope_gm, "dst_out_gm", is_atomic_add=False)
     else:
         dst_out_gm = tik_inst.Tensor(in_dtype, (tdc.MAX_INT64_VALUE,), tik.scope_gm, "dst_out_gm", is_atomic_add=True)
-    tiling_gm = tik_inst.Tensor(Constant.TILING_CTRL_PARAM[0], (Constant.TILING_CTRL_PARAM[1],), tik.scope_gm, "tiling_gm")
+    tiling_gm = tik_inst.Tensor(Constant.TILING_CTRL_PARAM[0], (Constant.TILING_CTRL_PARAM[1],),
+                                tik.scope_gm, "tiling_gm")
     half_ub = ub_size // 2
     src_ub = tik_inst.Tensor(in_dtype, (half_ub,), tik.scope_ubuf, "src_ub")
     dst_ub = tik_inst.Tensor(in_dtype, (half_ub,), tik.scope_ubuf, "dst_ub")
-    tiling_ub = tik_inst.Tensor(Constant.TILING_CTRL_PARAM[0], (Constant.TILING_CTRL_PARAM[1],), tik.scope_ubuf, "tiling_ub")
+    tiling_ub = tik_inst.Tensor(Constant.TILING_CTRL_PARAM[0], (Constant.TILING_CTRL_PARAM[1],),
+                                tik.scope_ubuf, "tiling_ub")
     tiling_params = [tik_inst.Scalar(Constant.TILING_CTRL_PARAM[0]) for i in range(Constant.TILING_CTRL_PARAM[1])]
     _get_tiling_params(tik_inst, tiling_ub, tiling_gm, tiling_params, tiling_dtype_bytes)
 

@@ -86,6 +86,11 @@ void InitRunningParams(SplitDTilingParams& params) {
 int64_t CalCeilDiv(const int64_t& uValue, const int64_t& dValue) {
   int64_t resValue = 0;
 
+  if (dValue == 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING("SplitDTiling", "dValue cannot be zero!");
+    return uValue;
+  }
+
   resValue = (uValue + dValue - 1) / dValue;
 
   return resValue;
@@ -114,8 +119,13 @@ bool CheckAttr(int64_t splitDim, int64_t numSplit, std::vector<int64_t> inputSha
     VECTOR_INNER_ERR_REPORT_TILIING("SplitDTiling", "split_dim is error");
     return false;
   }
+  if (numSplit == 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING("SplitDTiling", "numSplit cannot be zero!");
+    return false;
+  }
   if (inputShape[splitDim] % numSplit != 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING("SplitDTiling", "The num_split must be divisible by the length of inputShape[split_dim]");
+    VECTOR_INNER_ERR_REPORT_TILIING("SplitDTiling", "The num_split must be divisible by \
+                                    the length of inputShape[split_dim]");
     return false;
   }
   return true;
@@ -202,6 +212,10 @@ void CalRunningParams(SplitDTilingParams& runParams, int64_t inputNum, std::vect
   }
   runParams.inputNum = inputNum;
   runParams.inputSizeSplit = shapeAfter;
+  if (numSplit == 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING("SplitDTiling", "numSplit cannot be zero!");
+    return;
+  }
   runParams.outputSizeSplit = shapeAfter / numSplit;
   if (numSplit == 1) {
     runParams.tilingMode = 0;

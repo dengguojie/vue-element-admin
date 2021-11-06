@@ -21,20 +21,21 @@ bool SmoothL1LossV2Tiling(const std::string& op_type, const TeOpParas& op_paras,
                           OpRunInfo& run_info) {
   bool ret = false;
   std::vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
-  float reduce_mean_cof = 1.0;
   std::string reduction, reduce_mean_cof_dtype;
   
   if (op_info.count("reduction") > 0 && op_info.count("reduce_mean_cof_dtype") > 0) {
     reduction = op_info.at("reduction").get<std::string>();
     reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<std::string>();
   } else {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Compile_info[reduction] or Compile_info[reduce_mean_cof_dtype] not exist.");
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Compile_info[reduction] or Compile_info[reduce_mean_cof_dtype] \
+                                    not exist.");
     return false;
   }
 
   if (reduction == "sum" || reduction == "mean") {
     Reduce reduce(op_type, op_paras, op_info, run_info);
     ret = reduce.DoTiling() && reduce.WriteTilingData();
+    float reduce_mean_cof = 1.0;
     if (reduction == "mean" && reduce_mean_cof_dtype == "float32") {
       for (uint32_t i = 0; i < input_shape.size(); i++) {
         reduce_mean_cof = reduce_mean_cof / input_shape[i];
@@ -45,8 +46,7 @@ bool SmoothL1LossV2Tiling(const std::string& op_type, const TeOpParas& op_paras,
       for (uint32_t i = 0; i < input_shape.size(); i++) {
         reduce_mean_cof = reduce_mean_cof / input_shape[i];
       }
-      fe::fp16_t reduce_mean_cof_fp16;
-      reduce_mean_cof_fp16 = reduce_mean_cof;
+      fe::fp16_t reduce_mean_cof_fp16 = reduce_mean_cof;
       ByteBufferPut(run_info.tiling_data, (fe::fp16_t)reduce_mean_cof_fp16);
       ByteBufferPut(run_info.tiling_data, (uint16_t)0);
       OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);

@@ -31,6 +31,10 @@ bool KLDivTiling(const std::string& op_type, const ge::Operator& op_paras, const
   using namespace utils;
   utils::Reduce reduce(op_type, op_paras, op_info, run_info);
   bool ret = reduce.DoTiling();
+  if (!ret) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "DoTiling failed!");
+    return false;
+  }
   ret = ret && reduce.WriteTilingData();
 
   auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
@@ -49,16 +53,16 @@ bool KLDivTiling(const std::string& op_type, const ge::Operator& op_paras, const
     const std::string& reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<std::string>();
     if (reduce_mean_cof_dtype == "float32") {
       reduce_mean_cof = reduce_mean_cof / dim0;
-      run_info.AddTilingData((float)reduce_mean_cof);
+      run_info.AddTilingData(reduce_mean_cof);
     } else if (reduce_mean_cof_dtype == "float16") {
       reduce_mean_cof = reduce_mean_cof / dim0;
-      fe::fp16_t reduce_mean_cof_fp16;
-      reduce_mean_cof_fp16 = reduce_mean_cof;
-      run_info.AddTilingData((fe::fp16_t)reduce_mean_cof_fp16);
+      fe::fp16_t reduce_mean_cof_fp16 = reduce_mean_cof;
+      run_info.AddTilingData(reduce_mean_cof_fp16);
       run_info.AddTilingData((uint16_t)0);
     }
     OP_LOGD(op_type.c_str(), "reduce mean cof: %f", reduce_mean_cof);
   }
+  OP_LOGD(op_type, "Exit KLDivTiling");
   return ret;
 }
 

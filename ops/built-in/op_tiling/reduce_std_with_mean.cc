@@ -45,9 +45,9 @@ bool ReduceStdWithMeanTiling(const std::string& op_type, const TeOpParas& op_par
 
   const std::string& attr_unbiased = op_info.at("attr_unbiased").get<std::string>();
 
-  float reduce_mean_cof = 1.0;
-  float input_shape_mul = 1.0;
   if (op_info.count("reduce_mean_cof_dtype") > 0) {
+    float reduce_mean_cof = 1.0;
+    float input_shape_mul = 1.0;
     const std::string& reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<std::string>();
     for (uint32_t i = 0; i < input_shape.size(); i++) {
       if (IsInAxisReduceStdWithMean(reduce_axis, i)) {
@@ -68,11 +68,10 @@ bool ReduceStdWithMeanTiling(const std::string& op_type, const TeOpParas& op_par
         } else {
           reduce_mean_cof = reduce_mean_cof / (input_shape_mul);
         }
-      fe::fp16_t reduce_mean_cof_fp16;
-      reduce_mean_cof_fp16 = reduce_mean_cof;
       std::cout << "tiling std reduce_mean_cof is start " << std::endl;
       std::cout << reduce_mean_cof << std::endl;
       std::cout << "tiling std reduce_mean_cof is end " << std::endl;
+      fe::fp16_t reduce_mean_cof_fp16 = reduce_mean_cof;
       ByteBufferPut(run_info.tiling_data, (fe::fp16_t)reduce_mean_cof_fp16);
       ByteBufferPut(run_info.tiling_data, (uint16_t)0);
       OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);

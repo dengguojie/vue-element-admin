@@ -90,12 +90,20 @@ bool GetCompileInfo(const std::string& op_type, const nlohmann::json& op_compile
 
 int32_t CeilDiv(int32_t nc1_value, int32_t core_value) {
     int32_t res = 0;
+    if (core_value == 0) {
+      VECTOR_INNER_ERR_REPORT_TILIING("ResizeBilinearV2GradTiling", "CeilDiv, core_value cannot be zero");
+      return 0;
+    }
     res = (nc1_value + core_value - 1) / core_value;
     return res;
 }
 
 int32_t CalTail(int32_t grads_w, int32_t loop_num) {
     int32_t res = 0;
+    if (loop_num == 0) {
+      VECTOR_INNER_ERR_REPORT_TILIING("ResizeBilinearV2GradTiling", "CeilDiv, loop_num cannot be zero");
+      return 256;
+    }
     res = grads_w % loop_num;
     if (res == 0) {
         res = 256;
@@ -146,11 +154,8 @@ int32_t CalTilingMode(std::vector<int64_t> grads_shape, std::vector<int64_t> ima
 bool CoreType(int32_t tiling_mode) {
     int32_t tiling_array[4] = {1, 2, 3, 4};
     bool res = false;
-    for (auto mode: tiling_array) {
-        if (tiling_mode == mode) {
-            res = true;
-        }
-    }
+    res = std::any_of(std::begin(tiling_array), std::end(tiling_array), \
+                      [tiling_mode](int32_t mode){return mode == tiling_mode;});
     return res;
 }
 

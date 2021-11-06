@@ -31,11 +31,16 @@ namespace optiling {
 using namespace ge;
 using namespace std;
 const int64_t BLOCK_SIZE = 32;
+const int64_t C0_CONST = 16;
+const int64_t WIDTH_DIM_CONST = 80;
+const int64_t DIM_H = 2;
 
 // A. block tiling: indices tiling
 // 1. one params row size is smaller than 32B
 // params is not cache
 const int64_t TILING_MODE_1 = 1;
+const int64_t TILING_MODE_2 = 2;
+const int64_t TILING_MODE_3 = 3;
 
 struct ROIAlignGradTilingParams {
   int64_t tilingMode;
@@ -176,17 +181,17 @@ bool ROIAlignGradTiling(const std::string& opType, const TeOpParas& opParas, con
   runParams.c1_num = c1_num;
   runParams.rois_row_lenth = rois_shape[1];
   runParams.x_width = x_width;
-  runParams.x_height = x_diff_shape[2];
+  runParams.x_height = x_diff_shape[DIM_H];
 
-  if (c1_num == 16) {
-    if (x_width <= 80) {
-      runParams.tilingMode = 2;
+  if (c1_num == C0_CONST) {
+    if (x_width <= WIDTH_DIM_CONST) {
+      runParams.tilingMode = TILING_MODE_2;
     } else {
-      runParams.tilingMode = 1;
+      runParams.tilingMode = TILING_MODE_1;
     }
   }
   else {
-    runParams.tilingMode = 3;
+    runParams.tilingMode = TILING_MODE_3;
   }
 
   SetROIAlignGradParams(runParams, runInfo);

@@ -1354,6 +1354,8 @@ REG_OP(GetShape)
 * y: a tensor_desc, type is int.\n
 */
 REG_OP(UpdateTensorDesc)
+    .INPUT(x, TensorType({DT_BOOL, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT32, DT_UINT8,
+                          DT_INT64, DT_UINT64, DT_INT16, DT_UINT16, DT_DOUBLE}))
     .OUTPUT(y, TensorType({DT_BOOL, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT32, DT_UINT8,
                            DT_INT64, DT_UINT64, DT_INT16, DT_UINT16, DT_DOUBLE}))
     .REQUIRED_ATTR(shape, ListInt)

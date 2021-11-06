@@ -23,6 +23,7 @@ ut_case = OpUT("UpdateTensorDesc", "impl.update_tensor_desc", "update_tensor_des
 def test_1951_update_tensor_desc_001(test_arg):
     set_current_compile_soc_info('Ascend710')
     update_tensor_desc({'shape': (128, ), 'dtype': 'int64', 'format': 'ND', 'ori_shape': (128, ), 'ori_format': 'ND'},
+                       {'shape': (128, ), 'dtype': 'int64', 'format': 'ND', 'ori_shape': (128, ), 'ori_format': 'ND'},
                        [2, 4, 6, 16],
                        "test_1951_update_tensor_desc_001")
     set_current_compile_soc_info(test_arg)
