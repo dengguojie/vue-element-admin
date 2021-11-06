@@ -25,6 +25,12 @@
 #include "../../op_proto/util/error_util.h"
 
 namespace domi {
+const uint32_t CONV2D_AXIS_NUM = 4;
+const uint32_t MAX_PAD_SIZE = 2;
+const uint32_t MAX_STRIDE_SIZE = 2;
+const uint32_t MAX_DILATION_SIZE = 2;
+const uint32_t MAX_KERNEL_SIZE = 2;
+
 /*!
   * @brief Get covolution pad params from caffe proto and convert to tbe conv2d ir
   * @param conv_param the source conv param info from caffe.
@@ -33,7 +39,7 @@ namespace domi {
   */
 static bool SetPads(const caffe::ConvolutionParameter& conv_param, ge::Operator& op) {
   const int kDefaultPad = 0;
-  int64_t pad[2] = {kDefaultPad, kDefaultPad};
+  int64_t pad[MAX_PAD_SIZE] = {kDefaultPad, kDefaultPad};
   const int kPadSize = conv_param.pad_size();
   if (conv_param.has_pad_h() || conv_param.has_pad_w()) {
     if (kPadSize != 0) {
@@ -43,8 +49,8 @@ static bool SetPads(const caffe::ConvolutionParameter& conv_param, ge::Operator&
     pad[0] = conv_param.pad_h();
     pad[1] = conv_param.pad_w();
   } else {
-    if (kPadSize == 1 || kPadSize == 2) {
-      for (size_t i = 0; i < 2; i++) {
+    if (kPadSize == 1 || kPadSize == MAX_PAD_SIZE) {
+      for (size_t i = 0; i < MAX_PAD_SIZE; i++) {
         pad[i] = conv_param.pad((kPadSize == 1) ? 0 : i);
       }
     } else if (kPadSize != 0) {
@@ -71,7 +77,7 @@ static bool SetPads(const caffe::ConvolutionParameter& conv_param, ge::Operator&
   */
 static bool SetStrides(const caffe::ConvolutionParameter& conv_param, ge::Operator& op) {
   const int kDefaultStride = 1;
-  int64_t stride[2] = {kDefaultStride, kDefaultStride};
+  int64_t stride[MAX_STRIDE_SIZE] = {kDefaultStride, kDefaultStride};
   const int kStrideSize = conv_param.stride_size();
   if (conv_param.has_stride_h() || conv_param.has_stride_w()) {
     if (kStrideSize != 0) {
@@ -81,8 +87,8 @@ static bool SetStrides(const caffe::ConvolutionParameter& conv_param, ge::Operat
     stride[0] = conv_param.stride_h();
     stride[1] = conv_param.stride_w();
   } else {
-    if (kStrideSize == 1 || kStrideSize == 2) {
-      for (size_t i = 0; i < 2; i++) {
+    if (kStrideSize == 1 || kStrideSize == MAX_STRIDE_SIZE) {
+      for (size_t i = 0; i < MAX_STRIDE_SIZE; i++) {
         stride[i] = conv_param.stride((kStrideSize == 1) ? 0 : i);
       }
     } else if (kStrideSize != 0) {
@@ -110,9 +116,9 @@ static bool SetStrides(const caffe::ConvolutionParameter& conv_param, ge::Operat
 static bool SetDilations(const caffe::ConvolutionParameter& conv_param, ge::Operator& op) {
   const int kDefaultDilation = 1;
   const int kDilationSize = conv_param.dilation_size();
-  int64_t dilation[2] = {kDefaultDilation, kDefaultDilation};
-  if (kDilationSize == 1 || kDilationSize == 2) {
-    for (size_t i = 0; i < 2; i++) {
+  int64_t dilation[MAX_DILATION_SIZE] = {kDefaultDilation, kDefaultDilation};
+  if (kDilationSize == 1 || kDilationSize == MAX_DILATION_SIZE) {
+    for (size_t i = 0; i < MAX_DILATION_SIZE; i++) {
       dilation[i] = conv_param.dilation((kDilationSize == 1) ? 0 : i);
     }
   } else if (kDilationSize != 0) {
@@ -153,7 +159,7 @@ static bool ProcSpecParams(const caffe::ConvolutionParameter& conv_param, ge::Op
   op.SetAttr("groups", static_cast<int64_t>(group));
 
   const int kKernelSize = conv_param.kernel_size_size();
-  int kernel[2] = {0, 0};
+  int kernel[MAX_KERNEL_SIZE] = {0, 0};
   if (conv_param.has_kernel_h() || conv_param.has_kernel_w()) {
     if (kKernelSize != 0) {
       ge::OpsConvSetAttrErrReport(op.GetName(), "kernel_size", "kernel_h/w");
@@ -163,8 +169,8 @@ static bool ProcSpecParams(const caffe::ConvolutionParameter& conv_param, ge::Op
     kernel[0] = conv_param.kernel_h();
     kernel[1] = conv_param.kernel_w();
   } else {
-    if (kKernelSize == 1 || kKernelSize == 2) {
-      for (size_t i = 0; i < 2; i++) {
+    if (kKernelSize == 1 || kKernelSize == MAX_KERNEL_SIZE) {
+      for (size_t i = 0; i < MAX_KERNEL_SIZE; i++) {
         kernel[i] = conv_param.kernel_size((kKernelSize == 1) ? 0 : i);
       }
     } else {
@@ -174,7 +180,7 @@ static bool ProcSpecParams(const caffe::ConvolutionParameter& conv_param, ge::Op
     }
   }
 
-  for (size_t i = 0; i < 2; i++) {
+  for (size_t i = 0; i < MAX_KERNEL_SIZE; i++) {
     if (kernel[i] < 1) {
       ge::OpsConvAttrValueErrReport(op.GetName(), "kernel dimensions", ">0", std::to_string(kernel[i]));
       OP_LOGE(op.GetName().c_str(), "kernel dimensions should be positive.");
@@ -183,7 +189,7 @@ static bool ProcSpecParams(const caffe::ConvolutionParameter& conv_param, ge::Op
   }
 
   int channelAxis = conv_param.axis();
-  if ((channelAxis + 4) % 4 != 1) {
+  if ((channelAxis + CONV2D_AXIS_NUM) % CONV2D_AXIS_NUM != 1) {
     ge::OpsConvShapeErrReport(op.GetName(), "only support 2D convolution and C-channel on the second axis.");
     OP_LOGE(op.GetName().c_str(),
             "only support 2D convolution and C-channel on the second"

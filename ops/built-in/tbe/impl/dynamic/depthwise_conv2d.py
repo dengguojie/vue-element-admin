@@ -20,8 +20,6 @@ from tbe.common import register as tbe_register
 from tbe.common.utils import para_check
 from tbe.common.utils import log
 from tbe.common.utils.errormgr import error_manager_cube as err_man
-from .conv2d import conv2d
-from .conv2d import conv2d_fusion_compute
 from impl.util.util_cube_dynamic import BIT_RATIO_DICT
 from impl.util.platform_adapter import tbe_platform
 from impl.util.util_conv2d_dynamic import modify_input_range
@@ -29,6 +27,8 @@ from impl.util.util_conv2d_dynamic import check_l1_size
 from impl.util.util_conv2d_dynamic import create_fuzz_range
 from impl.util.util_conv2d_dynamic import correct_input_range
 from impl.util.util_conv2d_dynamic import get_format_attr
+from .conv2d import conv2d
+from .conv2d import conv2d_fusion_compute
 
 NONETYPE = type(None)
 ORI_SHAPE_LEN = 4
