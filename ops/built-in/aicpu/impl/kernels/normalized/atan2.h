@@ -15,14 +15,14 @@
  * limitations under the License.
  */
 
-#ifndef AICPU_KERNELS_NORMALIZED_ATAN2_H_
-#define AICPU_KERNELS_NORMALIZED_ATAN2_H_
+#ifndef AICPU_KERNELS_NORMALIZED_ATAN2_H
+#define AICPU_KERNELS_NORMALIZED_ATAN2_H
 
 #include "cpu_kernel.h"
 
 namespace aicpu {
 class Atan2CpuKernel final : public CpuKernel {
-  virtual std::uint32_t Compute(CpuKernelContext &ctx) override final;
+  std::uint32_t Compute(CpuKernelContext &ctx) override;
 };
 }  // namespace aicpu
 #endif

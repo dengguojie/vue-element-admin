@@ -198,13 +198,13 @@ int64_t Bcast::GetBroadcastYIndex(int64_t index) {
   return input_index;
 }
 
-uint32_t Bcast::GenerateBcastInfo(const BCalcInfo &calc_info) {
+uint32_t Bcast::GenerateBcastInfo(const BCalcInfo &calcInfo) {
   const std::vector<int64_t> &shape_x =
-      calc_info.input_0->GetTensorShape()->GetDimSizes();
+      calcInfo.input_0->GetTensorShape()->GetDimSizes();
   const std::vector<int64_t> &shape_y =
-      calc_info.input_1->GetTensorShape()->GetDimSizes();
+      calcInfo.input_1->GetTensorShape()->GetDimSizes();
   const std::vector<int64_t> &shape_out =
-      calc_info.output->GetTensorShape()->GetDimSizes();
+      calcInfo.output->GetTensorShape()->GetDimSizes();
   x_reshape_ = shape_x;
   y_reshape_ = shape_y;
   shape_out_ = shape_out;
@@ -264,12 +264,12 @@ uint32_t Bcast::GenerateBcastInfo(const BCalcInfo &calc_info) {
   return KERNEL_STATUS_OK;
 }
 
-void Bcast::GetBcastVec(BCalcInfo &calc_info) {
-  calc_info.reshape_0 = std::move(x_reshape_);
-  calc_info.reshape_1 = std::move(y_reshape_);
-  calc_info.shape_out = std::move(shape_out_);
-  calc_info.bcast_0 = std::move(x_bcast_);
-  calc_info.bcast_1 = std::move(y_bcast_);
+void Bcast::GetBcastVec(BCalcInfo &calcInfo) {
+  calcInfo.reshape_0 = std::move(x_reshape_);
+  calcInfo.reshape_1 = std::move(y_reshape_);
+  calcInfo.shape_out = std::move(shape_out_);
+  calcInfo.bcast_0 = std::move(x_bcast_);
+  calcInfo.bcast_1 = std::move(y_bcast_);
 }
 
 void Bcast::BCastIndexes(std::vector<int64_t> &x_indexes,

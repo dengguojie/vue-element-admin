@@ -69,101 +69,101 @@ uint32_t AddCpuKernel::Compute(CpuKernelContext &ctx) {
 
 template <typename T>
 uint32_t AddCpuKernel::AddCompute(CpuKernelContext &ctx) {
-  BCalcInfo calc_info;
-  calc_info.input_0 = ctx.Input(kFirstInputIndex);
-  calc_info.input_1 = ctx.Input(kSecondInputIndex);
-  calc_info.output = ctx.Output(kFirstOutputIndex);
+  BCalcInfo calcInfo;
+  calcInfo.input_0 = ctx.Input(kFirstInputIndex);
+  calcInfo.input_1 = ctx.Input(kSecondInputIndex);
+  calcInfo.output = ctx.Output(kFirstOutputIndex);
 
-  KERNEL_CHECK_NULLPTR(calc_info.input_0->GetData(),
+  KERNEL_CHECK_NULLPTR(calcInfo.input_0->GetData(),
                        KERNEL_STATUS_PARAM_INVALID, "[%s] Get input[0] data failed",
                        ctx.GetOpType().c_str())
-  KERNEL_CHECK_NULLPTR(calc_info.input_1->GetData(),
+  KERNEL_CHECK_NULLPTR(calcInfo.input_1->GetData(),
                        KERNEL_STATUS_PARAM_INVALID, "[%s] Get input[1] data failed",
                        ctx.GetOpType().c_str())
-  KERNEL_CHECK_NULLPTR(calc_info.output->GetData(), KERNEL_STATUS_PARAM_INVALID,
+  KERNEL_CHECK_NULLPTR(calcInfo.output->GetData(), KERNEL_STATUS_PARAM_INVALID,
                        "[%s] Get output data failed", ctx.GetOpType().c_str())
 
   KERNEL_LOG_INFO(
       "[%s] Input[0] data size is [%llu], input[1] data size is [%llu], "
       "output data size is [%llu].",
-      ctx.GetOpType().c_str(), calc_info.input_0->GetDataSize(),
-      calc_info.input_1->GetDataSize(), calc_info.output->GetDataSize());
+      ctx.GetOpType().c_str(), calcInfo.input_0->GetDataSize(),
+      calcInfo.input_1->GetDataSize(), calcInfo.output->GetDataSize());
   
   // broadcast input
   Bcast bcast;
-  if (bcast.GenerateBcastInfo(calc_info) != KERNEL_STATUS_OK) {
+  if (bcast.GenerateBcastInfo(calcInfo) != KERNEL_STATUS_OK) {
     KERNEL_LOG_ERROR("[%s] Generate broadcast info failed.", ctx.GetOpType().c_str());
     return KERNEL_STATUS_PARAM_INVALID;
   }
-  (void)bcast.GetBcastVec(calc_info);
-  int32_t rank = static_cast<int32_t>(calc_info.shape_out.size());
+  (void)bcast.GetBcastVec(calcInfo);
+  int32_t rank = static_cast<int32_t>(calcInfo.shape_out.size());
   switch (rank) {
     case 0:
     {
-      T v0 = *(reinterpret_cast<const T *>(calc_info.input_0->GetData()));
-      T v1 = *(reinterpret_cast<const T *>(calc_info.input_1->GetData()));
-      T *value_out = reinterpret_cast<T *>(calc_info.output->GetData());
+      T v0 = *(reinterpret_cast<const T *>(calcInfo.input_0->GetData()));
+      T v1 = *(reinterpret_cast<const T *>(calcInfo.input_1->GetData()));
+      T *value_out = reinterpret_cast<T *>(calcInfo.output->GetData());
       *(value_out) = v0 + v1;
       return KERNEL_STATUS_OK;
     }
     case 1:
-      return AddCalculateWithAlignedCheck<1, T>(ctx, calc_info);
+      return AddCalculateWithAlignedCheck<1, T>(ctx, calcInfo);
     case 2:
-      return AddCalculateWithAlignedCheck<2, T>(ctx, calc_info);
+      return AddCalculateWithAlignedCheck<2, T>(ctx, calcInfo);
     case 3:
-      return AddCalculateWithAlignedCheck<3, T>(ctx, calc_info);
+      return AddCalculateWithAlignedCheck<3, T>(ctx, calcInfo);
     case 4:
-      return AddCalculateWithAlignedCheck<4, T>(ctx, calc_info);
+      return AddCalculateWithAlignedCheck<4, T>(ctx, calcInfo);
     case 5:
-      return AddCalculateWithAlignedCheck<5, T>(ctx, calc_info);
+      return AddCalculateWithAlignedCheck<5, T>(ctx, calcInfo);
     case 6:
-      return AddCalculateWithAlignedCheck<6, T>(ctx, calc_info);
+      return AddCalculateWithAlignedCheck<6, T>(ctx, calcInfo);
     case 7:
-      return AddCalculateWithAlignedCheck<7, T>(ctx, calc_info);
+      return AddCalculateWithAlignedCheck<7, T>(ctx, calcInfo);
     case 8:
-      return AddCalculateWithAlignedCheck<8, T>(ctx, calc_info);
+      return AddCalculateWithAlignedCheck<8, T>(ctx, calcInfo);
     default:
       KERNEL_LOG_ERROR("[%s] Rank of output should less than 8 but get [%zu].",
-                       ctx.GetOpType().c_str(), calc_info.shape_out.size());
+                       ctx.GetOpType().c_str(), calcInfo.shape_out.size());
       return KERNEL_STATUS_PARAM_INVALID;
   }
 }
 
 template <int32_t RANK, typename T>
-uint32_t AddCpuKernel::AddCalculateWithAlignedCheck(const CpuKernelContext &ctx, BCalcInfo &calc_info) {
-  if (AlignedCheck(calc_info)) {
-    return AddCalculate<RANK, T, Eigen::Aligned>(ctx, calc_info);
+uint32_t AddCpuKernel::AddCalculateWithAlignedCheck(const CpuKernelContext &ctx, BCalcInfo &calcInfo) {
+  if (AlignedCheck(calcInfo)) {
+    return AddCalculate<RANK, T, Eigen::Aligned>(ctx, calcInfo);
   }
-  return AddCalculate<RANK, T, Eigen::Unaligned>(ctx, calc_info);
+  return AddCalculate<RANK, T, Eigen::Unaligned>(ctx, calcInfo);
 }
 
-bool AddCpuKernel::AlignedCheck(const BCalcInfo &calc_info) {
-  return AddrAlignedCheck(calc_info.input_0->GetData()) &&
-         AddrAlignedCheck(calc_info.input_1->GetData()) &&
-         AddrAlignedCheck(calc_info.output->GetData());
+bool AddCpuKernel::AlignedCheck(const BCalcInfo &calcInfo) {
+  return AddrAlignedCheck(calcInfo.input_0->GetData()) &&
+         AddrAlignedCheck(calcInfo.input_1->GetData()) &&
+         AddrAlignedCheck(calcInfo.output->GetData());
 }
 
 template <int32_t RANK, typename T, int32_t OPTION>
-uint32_t AddCpuKernel::AddCalculate(const CpuKernelContext &ctx, BCalcInfo &calc_info) {
+uint32_t AddCpuKernel::AddCalculate(const CpuKernelContext &ctx, BCalcInfo &calcInfo) {
   Eigen::TensorMap<Eigen::Tensor<T, 1>, OPTION> input0(
-      static_cast<T *>(calc_info.input_0->GetData()),
-      calc_info.input_0->GetTensorShape()->NumElements());
+      static_cast<T *>(calcInfo.input_0->GetData()),
+      calcInfo.input_0->GetTensorShape()->NumElements());
   Eigen::TensorMap<Eigen::Tensor<T, 1>, OPTION> input1(
-      static_cast<T *>(calc_info.input_1->GetData()),
-      calc_info.input_1->GetTensorShape()->NumElements());
+      static_cast<T *>(calcInfo.input_1->GetData()),
+      calcInfo.input_1->GetTensorShape()->NumElements());
   Eigen::TensorMap<Eigen::Tensor<T, 1>, OPTION> output(
-      static_cast<T *>(calc_info.output->GetData()),
-      calc_info.output->GetTensorShape()->NumElements());
-  auto input_shape_0 = calc_info.input_0->GetTensorShape()->GetDimSizes();
-  auto input_shape_1 = calc_info.input_1->GetTensorShape()->GetDimSizes();
+      static_cast<T *>(calcInfo.output->GetData()),
+      calcInfo.output->GetTensorShape()->NumElements());
+  auto input_shape_0 = calcInfo.input_0->GetTensorShape()->GetDimSizes();
+  auto input_shape_1 = calcInfo.input_1->GetTensorShape()->GetDimSizes();
   if (input_shape_0.empty()) {
-    T v0 = *(reinterpret_cast<const T *>(calc_info.input_0->GetData()));
+    T v0 = *(reinterpret_cast<const T *>(calcInfo.input_0->GetData()));
     output = v0 + input1;
     return KERNEL_STATUS_OK;
   }
 
   if (input_shape_1.empty()) {
-    T v1 = *(reinterpret_cast<const T *>(calc_info.input_1->GetData()));
+    T v1 = *(reinterpret_cast<const T *>(calcInfo.input_1->GetData()));
     output = input0 + v1;
     return KERNEL_STATUS_OK;
   }
@@ -175,11 +175,11 @@ uint32_t AddCpuKernel::AddCalculate(const CpuKernelContext &ctx, BCalcInfo &calc
   Eigen::array<Eigen::DenseIndex, RANK> bcast_1;
 
   for (int32_t i = 0; i < RANK; i++) {
-    reshape_0[RANK - i - 1] = calc_info.reshape_0[i];
-    reshape_1[RANK - i - 1] = calc_info.reshape_1[i];
-    shape_out[RANK - i - 1] = calc_info.shape_out[i];
-    bcast_0[RANK - i - 1] = calc_info.bcast_0[i];
-    bcast_1[RANK - i - 1] = calc_info.bcast_1[i];
+    reshape_0[RANK - i - 1] = calcInfo.reshape_0[i];
+    reshape_1[RANK - i - 1] = calcInfo.reshape_1[i];
+    shape_out[RANK - i - 1] = calcInfo.shape_out[i];
+    bcast_0[RANK - i - 1] = calcInfo.bcast_0[i];
+    bcast_1[RANK - i - 1] = calcInfo.bcast_1[i];
   }
   output.reshape(shape_out) =
       input0.reshape(reshape_0).broadcast(bcast_0) + input1.reshape(reshape_1).broadcast(bcast_1);

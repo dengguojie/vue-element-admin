@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef AICPU_KERNELS_NORMALIZED_MUL_H_
-#define AICPU_KERNELS_NORMALIZED_MUL_H_
+#ifndef AICPU_KERNELS_NORMALIZED_MUL_H
+#define AICPU_KERNELS_NORMALIZED_MUL_H
 #define EIGEN_USE_THREADS
 #define EIGEN_USE_SIMPLE_THREAD_POOL
 
@@ -41,13 +41,13 @@ class MulCpuKernel : public CpuKernel {
 
   /**
    * @brief Check if input&output addr is aligned
-   * @param calc_info data used to calculate
+   * @param calcInfo data used to calculate
    * @return true: aligned, false: not aligned
    */
-  bool AlignedCheck(const BCalcInfo &calc_info);
+  bool AlignedCheck(const BCalcInfo &calcInfo);
 
   template <int32_t RANK, typename T>
-  uint32_t MulCalculateWithAlignedCheck(const CpuKernelContext &ctx, BCalcInfo &calc_info);
+  uint32_t MulCalculateWithAlignedCheck(const CpuKernelContext &ctx, BCalcInfo &calcInfo);
 
   /**
    * @brief compute for all types
@@ -55,7 +55,7 @@ class MulCpuKernel : public CpuKernel {
    * @return status if success
    */
   template <int32_t RANK, typename T, int32_t OPTION>
-  uint32_t MulCalculate(const CpuKernelContext &ctx, BCalcInfo &calc_info);
+  uint32_t MulCalculate(const CpuKernelContext &ctx, BCalcInfo &calcInfo);
 };
 }  // namespace aicpu
 #endif  // AICPU_KERNELS_NORMALIZED_MUL_H_

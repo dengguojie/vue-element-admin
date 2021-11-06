@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#ifndef AICPU_KERNELS_NORMALIZED_ASIN_H_
-#define AICPU_KERNELS_NORMALIZED_ASIN_H_
+#ifndef AICPU_KERNELS_NORMALIZED_ASIN_H
+#define AICPU_KERNELS_NORMALIZED_ASIN_H
 
 #include "cpu_kernel.h"
 
 namespace aicpu {
 class AsinCpuKernel final : public CpuKernel {
-  virtual std::uint32_t Compute(CpuKernelContext &ctx) override final;
+  std::uint32_t Compute(CpuKernelContext &ctx) override;
 };
 }  // namespace aicpu
 #endif

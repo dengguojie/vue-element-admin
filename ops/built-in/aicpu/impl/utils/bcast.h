@@ -51,8 +51,8 @@ class Bcast {
   Bcast(std::vector<int64_t> &x_shape, std::vector<int64_t> &y_shape);
   ~Bcast() = default;
 
-  uint32_t GenerateBcastInfo(const BCalcInfo &calc_info);
-  void GetBcastVec(BCalcInfo &calc_info);
+  uint32_t GenerateBcastInfo(const BCalcInfo &calcInfo);
+  void GetBcastVec(BCalcInfo &calcInfo);
   void BCastIndexes(std::vector<int64_t> &x_indexes,
                     std::vector<int64_t> &y_indexes);
   int64_t GetBroadcastXIndex(int64_t index);

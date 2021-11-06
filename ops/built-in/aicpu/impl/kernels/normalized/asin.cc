@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,7 +46,6 @@ inline Eigen::half ScalarAsin(Eigen::half x) {
 
 namespace aicpu {
 namespace detail {
-
 template <typename T>
 inline std::uint32_t ComputeAsinKernel(const CpuKernelContext &ctx) {
   using i64 = std::int64_t;

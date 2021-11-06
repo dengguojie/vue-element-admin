@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef AICPU_KERNELS_NORMALIZED_ADD_H_
-#define AICPU_KERNELS_NORMALIZED_ADD_H_
+#ifndef AICPU_KERNELS_NORMALIZED_ADD_H
+#define AICPU_KERNELS_NORMALIZED_ADD_H
 #define EIGEN_USE_THREADS
 #define EIGEN_USE_SIMPLE_THREAD_POOL
 
@@ -40,20 +40,20 @@ class AddCpuKernel : public CpuKernel {
 
   /**
    * @brief Check if input&output addr is aligned
-   * @param calc_info data used to calculate
+   * @param calcInfo data used to calculate
    * @return true: aligned, false: not aligned
    */
-  bool AlignedCheck(const BCalcInfo &calc_info);
+  bool AlignedCheck(const BCalcInfo &calcInfo);
   
   template <int32_t RANK, typename T>
-  uint32_t AddCalculateWithAlignedCheck(const CpuKernelContext &ctx, BCalcInfo &calc_info);
+  uint32_t AddCalculateWithAlignedCheck(const CpuKernelContext &ctx, BCalcInfo &calcInfo);
 
   /**
    * @brief Eigen calculate for all types
-   * @param calc_info data used to calculate
+   * @param calcInfo data used to calculate
    */
   template <int32_t RANK, typename T, int32_t OPTION>
-  uint32_t AddCalculate(const CpuKernelContext &ctx, BCalcInfo &calc_info);
+  uint32_t AddCalculate(const CpuKernelContext &ctx, BCalcInfo &calcInfo);
 };
 }  // namespace aicpu
 #endif  // AICPU_KERNELS_NORMALIZED_ADD_H_
