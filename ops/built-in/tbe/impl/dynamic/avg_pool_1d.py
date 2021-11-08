@@ -15,6 +15,7 @@
 """
 avg_pool_1d
 """
+import copy
 
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
@@ -23,6 +24,8 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import buildcfg
+from tbe.tvm.cce_build_module import build_fatbin
+from tbe.tvm.build_module import build_config
 
 C0 = 16
 
@@ -355,8 +358,12 @@ def avg_pool_1d(x_dict,
         upper_config = buildcfg.get_current_build_config("all")
     upper_config.update(build_config_item)
 
-    with buildcfg.build_config(**upper_config):
-        tvm.build(sch_list, var_list, rules=rules, target="cce", name=kernel_name)
+    build_configs = []
+    for sch in sch_list:
+        dynamic_single_sch_build_config = copy.deepcopy(upper_config)
+        build_configs.append(build_config(**dynamic_single_sch_build_config))
+    build_fatbin(build_configs, sch_list, var_list, rules, kernel_name)
+
     tbe_context.get_context().add_compile_info("core_num", core_num)
     tbe_context.get_context().add_compile_info("max_w_in_ub", wo_ub_factor_max)
     tbe_context.get_context().add_compile_info("ksize", ksize)

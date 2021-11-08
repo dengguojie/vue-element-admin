@@ -19,6 +19,7 @@ dynamic unpack
 # pylint: disable=too-many-arguments,too-many-instance-attributes
 from enum import Enum
 from enum import unique
+import copy
 
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_platform
@@ -27,12 +28,15 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import buildcfg
+from tbe.tvm.cce_build_module import build_fatbin
+from tbe.tvm.build_module import build_config
+
 
 class Constant:
     """
     The class for constant.
     """
-    
+
     # When right_dim < MIN_RIGHT_DIM,Multi output go special tiling.
     MIN_RIGHT_DIM = 8
 
@@ -207,7 +211,8 @@ class Unpack:
         if not self.right_range[1]:
             self.special_tiling = self.axis_at_last_dim and self.output_num > 1
         else:
-            self.special_tiling = (self.axis_at_last_dim or self.right_range[1] < Constant.MIN_RIGHT_DIM) and self.output_num > 1
+            self.special_tiling = (
+                self.axis_at_last_dim or self.right_range[1] < Constant.MIN_RIGHT_DIM) and self.output_num > 1
 
     def _set_dim_var(self, dim_name, dim_range):
         """
@@ -523,8 +528,11 @@ class Unpack:
             upper_config = buildcfg.get_current_build_config("all")
         upper_config.update(build_config_items)
 
-        with buildcfg.build_config(**upper_config):
-            tvm.build(self.sch_list, self.arg_list, rules=self.rules, target="cce", name=self.kernel_name)
+        build_configs = []
+        for sch in self.sch_list:
+            dynamic_single_sch_build_config = copy.deepcopy(upper_config)
+            build_configs.append(build_config(**dynamic_single_sch_build_config))
+        build_fatbin(build_configs, self.sch_list, self.arg_list, self.rules, self.kernel_name)
 
         # Add compile info
         tbe_context.get_context().add_compile_info(
