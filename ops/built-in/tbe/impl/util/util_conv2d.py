@@ -66,7 +66,7 @@ def _shape_to_list(shape):
     return tmp
 
 
-def transform_shape_with_format(src_format, to_format, ori_shape, format_white_list):
+def transform_shape_with_format(src_format: str, to_format: str, ori_shape: list, format_white_list: list) ->list:
     # input format is not expected
     if ((src_format not in format_white_list) or
         (to_format not in format_white_list)):
@@ -754,7 +754,7 @@ def get_op_support_info_static_common(bias, bias_idx):
     return slice_info
 
 
-def v220_gen_param(inputs, weights, shape_fm, c0_optim_flag):
+def v220_gen_param(inputs: dict, weights: dict, shape_fm: list, c0_optim_flag: bool) ->list:
     """
     Gen op info in v220 situation.
     """
