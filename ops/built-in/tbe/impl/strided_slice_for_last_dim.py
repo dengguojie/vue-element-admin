@@ -193,7 +193,7 @@ def strided_slice_last_dim_with_scalar(input_shape, dtype, output_shape, begin, 
     output_ub_size = max(output_ub_size0, output_ub_size1)
 
     dtype_size = common_util.get_data_size(dtype)
-    total_ub_size = tik.Dprofile().get_unified_buffer_size()
+    total_ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     if input_ub_size + output_ub_size > total_ub_size // dtype_size:
         return False
 
@@ -284,7 +284,7 @@ def _can_do_with_vnchw_conv(input_shape, dtype, begin, end, stride):
     need_ub_size = (16 * input_inner_dims * 2) * float16_type_size
     element_each_block = common_util.constant.BLOCK_SIZE // float16_type_size
 
-    total_ub_size = tik.Dprofile().get_unified_buffer_size()
+    total_ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     if len(input_shape) < 2:
         return False
 
@@ -319,14 +319,13 @@ def strided_slice_last_dim_with_vnchw_conv(input_shape, dtype, begin, end, strid
     out_dims = functools.reduce(lambda x, y: x * y, input_shape[0:-1])
     begin_value = begin[-1] * multi_times
     end_value = end[-1] * multi_times
-    profile = tik.Dprofile()
-    total_ub_length = profile.get_unified_buffer_size() // float16_type_size
+    total_ub_length = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) // float16_type_size
     need_ub_size_one_row = 16 * input_inner_dims * 2
     element_each_block = common_util.constant.BLOCK_SIZE // float16_type_size
     thread_num = 2
     ub_size = floor_align(total_ub_length // 2 // thread_num, element_each_block)
     max_rows_in_ub = floor_align(ub_size // (input_inner_dims * 16), element_each_block)
-    aicore_num = profile.get_aicore_num()
+    aicore_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     output_32byes_align_rows = element_each_block
     if element_each_block % output_inner_dims == 0:
         output_32byes_align_rows = element_each_block // output_inner_dims
@@ -373,8 +372,8 @@ def strided_slice_last_dim_with_vnchw_conv(input_shape, dtype, begin, end, strid
                         rows_idx.set_as(rows_idx - roll_back_rows)
                         curr_rows.set_as(repeat_tail_count + roll_back_rows)
 
-                input_ub = tik_instance.Tensor("float16", (ub_size, ), scope=tik.scope_ubuf, name="input_ub")
-                vnchw_conv_ub = tik_instance.Tensor("float16", (ub_size, ), scope=tik.scope_ubuf, name="vnchw_conv_ub")
+                input_ub = tik_instance.Tensor("float16", (ub_size,), scope=tik.scope_ubuf, name="input_ub")
+                vnchw_conv_ub = tik_instance.Tensor("float16", (ub_size,), scope=tik.scope_ubuf, name="vnchw_conv_ub")
                 gm2ub(tik_instance, input_ub, input_gm[input_addr + rows_idx * input_inner_dims],
                       curr_rows * input_inner_dims)
                 dst_list = [vnchw_conv_ub[i * element_each_block] for i in range(16)]

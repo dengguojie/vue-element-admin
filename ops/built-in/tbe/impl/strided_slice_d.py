@@ -41,7 +41,6 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
-from impl.util.platform_adapter import tik
 
 SHRINK_AXIS = -1
 NEW_AXIS = -2
@@ -687,7 +686,7 @@ def _check_last_dim_with_vreducev2(input_shape, output_shape, begin, end, stride
         if input_shape[i] != output_shape[i]:
             return False
     dtype_size = common_util.get_data_size(dtype)
-    total_ub_length = tik.Dprofile().get_unified_buffer_size() // dtype_size
+    total_ub_length = UB_SIZE_B // dtype_size
     if len(input_shape) == 1:
         total_dim = input_shape[-1]
     else:

@@ -17,7 +17,7 @@ strided_slice_strides_larger_than_one
 """
 import functools
 import math
-
+from te import platform as tbe_platform
 from impl import common_util
 from impl.util.util_tik_comm_func import floor_align
 from impl.util.util_tik_comm_func import ceil_align
@@ -49,13 +49,12 @@ class StridedSliceStridesLargerThanOne:
 
         """
         self.tik_instance = tik.Tik()
-        self.profile = tik.Dprofile()
         self.kernel_name = kernel_name
         self.dtype = dtype
         self.scalar_type = "int64"
         self.dtype_size = common_util.get_data_size(dtype)
         self.float16_type_size = common_util.get_data_size("float16")
-        self.aicore_num = self.profile.get_aicore_num()
+        self.aicore_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         self.input_shape = input_shape
         self.begin = begin
         self.end = end
@@ -71,7 +70,7 @@ class StridedSliceStridesLargerThanOne:
             self.tensor_type = "float16"
             self.tensor_type_size = self.float16_type_size
             self.vnchwconv_column = 16
-        self.total_ub_length = self.profile.get_unified_buffer_size() // self.tensor_type_size
+        self.total_ub_length = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) // self.tensor_type_size
         self.element_each_block = common_util.constant.BLOCK_SIZE // self.tensor_type_size
         self.input_inner_need_count = ceil_align(end[-1] - begin[-1], strides[-1]) * self.multi_times
         self.input_inner_dim = ceil_align(self.input_inner_need_count, self.element_each_block)
@@ -217,7 +216,7 @@ class StridedSliceStridesLargerThanOne:
         None
         """
         if self.dtype_size % self.float16_type_size == 0:
-            self.total_ub_length = self.profile.get_unified_buffer_size() // self.dtype_size
+            self.total_ub_length = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) // self.dtype_size
             self.element_each_block = common_util.constant.BLOCK_SIZE // self.dtype_size
             self.input_inner_dim = ceil_align(ceil_align(self.end[-1] - self.begin[-1], self.strides[-1]),
                                               self.element_each_block)
