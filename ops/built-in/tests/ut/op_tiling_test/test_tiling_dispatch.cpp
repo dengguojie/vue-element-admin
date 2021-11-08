@@ -100,9 +100,9 @@ TEST_F(TilingDispatch, TilingDispatchNorm) {
   ASSERT_TRUE(tiling_func(op, op_compile_info, runInfo));
 }
 
-TEST_F(TilingDispatch, TilingDispatchTranspose) {
+TEST_F(TilingDispatch, TilingDispatchTransposeDsl) {
   using namespace optiling;
-  auto op = op::SoftmaxV2("TilingDispatchTranspose");
+  auto op = op::SoftmaxV2("TilingDispatchTransposeDsl");
   optiling::utils::OpRunInfo runInfo;
   std::string op_name = "AutoTiling";
 
@@ -112,7 +112,7 @@ TEST_F(TilingDispatch, TilingDispatchTranspose) {
   ASSERT_TRUE(op_func_info.IsFunctionV3());
   const OpTilingFuncV3& tiling_func = op_func_info.GetOpTilingFuncV3();
   const OpParseFuncV3& parse_func = op_func_info.GetOpParseFuncV3();
-  ge::AscendString compileInfo(R"({"_pattern": "Transpose"})");
+  ge::AscendString compileInfo(R"({"_pattern": "TransposeDsl"})");
   void* op_compile_info = parse_func(op, compileInfo);
   ASSERT_TRUE(op_compile_info != nullptr);
   ASSERT_TRUE(tiling_func(op, op_compile_info, runInfo));

@@ -25,7 +25,6 @@
 #include <map>
 #include <chrono>
 #include <memory>
-#include <string>
 #include <cstdlib>
 #include <nlohmann/json.hpp>
 
@@ -38,15 +37,6 @@
 #include "op_tiling.h"
 
 namespace optiling {
-
-struct AutoTilingCompileInfo {
-  AutoTilingCompileInfo(const std::string& o,
-                        const std::string& p,
-                        const std::shared_ptr<void> c) : op_type(o), pattern(p), compile_info(c) {}
-  std::string op_type;
-  std::string pattern;
-  std::shared_ptr<void> compile_info;
-};
 
 class OpInfo {
 public:
@@ -77,6 +67,18 @@ private:
     static const std::vector<std::vector<int32_t>> dummy_variable;
 };
 
+class AutoTilingCompileInfo {
+  public:
+  AutoTilingCompileInfo(const std::string& o, const std::string& p) : op_type(o), pattern(p) {}
+  virtual bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const = 0;
+  virtual bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const = 0;
+  virtual ~AutoTilingCompileInfo() = default;
+
+  protected:
+  const std::string op_type;
+  const std::string pattern;
+};
+
 /*
  * @brief: tiling function of reduce operator
  * @param [in] op_type: op_type of the reduce operator
@@ -105,28 +107,9 @@ bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, co
                     utils::OpRunInfo& run_info);
 bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& compile_info,
                     utils::OpRunInfo& run_info, const OpInfo& op_info);
-/*
- * @brief: tiling function of norm operator
- * @param [in] op_type: op_type of the norm operator
- * @param [in] op_paras: inputs/outputs/attrs of the norm operator
- * @param [in] op_compile_info: compile time generated info of the norm operator
- * @param [out] run_info: result data
- * @return bool: success or not
- */
-bool NormTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
-                utils::OpRunInfo& run_info);
 
-/*
- * @brief: tiling function of transpose operator
- * @param [in] op_type: op_type of the transpose operator
- * @param [in] op_paras: inputs/outputs/atts of the transpose operator
- * @param [in] op_info: compile time generated info of the transpose operator
- * @param [out] run_info: result data
- * @return bool: success or not
- */
-bool TransposeDsl(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& compile_info,
-                  utils::OpRunInfo& run_info);
-
+std::shared_ptr<AutoTilingCompileInfo> CreateAutoTilingHandler(const std::string& op_type, const std::string& pattern,
+                                                               const nlohmann::json& parsed_compile_info);
 }  // namespace optiling
 
 #endif  // OPS_BUILT_IN_OP_TILING_VECTOR_TILING_H_

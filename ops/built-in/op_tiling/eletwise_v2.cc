@@ -25,7 +25,6 @@
 #include <unordered_map>
 
 #include "graph/utils/op_desc_utils.h"
-#include "vector_tiling.h"
 #include "error_log.h"
 
 namespace optiling {
@@ -589,4 +588,20 @@ bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, co
   }
   return ret;
 }
+
+bool ElewiseCompileInfo::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const {
+  return EletwiseTiling(op_type, op_paras, compile_info, run_info);
+}
+
+bool ElewiseCompileInfo::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info,
+                                  const OpInfo& op_info) const {
+  return EletwiseTiling(op_type, op_paras, compile_info, run_info, op_info);
+}
+
+std::shared_ptr<AutoTilingCompileInfo> CreateElewiseTilingHandler(const std::string& op_type,
+                                                                  const std::string& pattern,
+                                                                  const nlohmann::json& parsed_compile_info) {
+  return std::make_shared<ElewiseCompileInfo>(op_type, pattern, parsed_compile_info);
+}
+
 }  // namespace optiling

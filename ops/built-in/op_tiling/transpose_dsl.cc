@@ -28,7 +28,6 @@
 
 #include "graph/utils/op_desc_utils.h"
 #include "vector_tiling_log.h"
-#include "vector_tiling.h"
 #include "error_log.h"
 
 namespace optiling {
@@ -817,6 +816,22 @@ bool TransposeDsl(const std::string& op_type, const ge::Operator& op_paras, cons
   bool ret = transpose.DoTiling();
   ret = ret && transpose.WriteTilingData(run_info);
   return ret;
+}
+
+bool TransposeDslCompileInfo::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const {
+  return TransposeDsl(op_type, op_paras, compile_info, run_info);
+}
+
+bool TransposeDslCompileInfo::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info,
+                                       const OpInfo& op_info) const {
+  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "TransposeDSL custom tiling is not supported yet");
+  return false;
+}
+
+std::shared_ptr<AutoTilingCompileInfo> CreateTransposeDslTilingHandler(const std::string& op_type,
+                                                                       const std::string& pattern,
+                                                                       const nlohmann::json& parsed_compile_info) {
+  return std::make_shared<TransposeDslCompileInfo>(op_type, pattern, parsed_compile_info);
 }
 
 }  // namespace optiling

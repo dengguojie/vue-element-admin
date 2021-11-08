@@ -131,6 +131,33 @@ class Norm {
     int64_t ub_size{0};
     int32_t tiling_key{-1};
 };
+
+/*
+ * @brief: tiling function of norm operator
+ * @param [in] op_type: op_type of the norm operator
+ * @param [in] op_paras: inputs/outputs/attrs of the norm operator
+ * @param [in] op_compile_info: compile time generated info of the norm operator
+ * @param [out] run_info: result data
+ * @return bool: success or not
+ */
+bool NormTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+                utils::OpRunInfo& run_info);
+
+class NormCompileInfo: public AutoTilingCompileInfo {
+  public:
+  NormCompileInfo(const std::string& o, const std::string& p, const nlohmann::json& c)
+    : AutoTilingCompileInfo(o, p), compile_info(c) {}
+  bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const override;
+  bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const override;
+
+  private:
+  const nlohmann::json compile_info;
+};
+
+std::shared_ptr<AutoTilingCompileInfo> CreateNormTilingHandler(const std::string& op_type,
+                                                               const std::string& pattern,
+                                                               const nlohmann::json& parsed_compile_info);
+
 }  // namespace optiling
 
 #endif  // NORM_TILING_H

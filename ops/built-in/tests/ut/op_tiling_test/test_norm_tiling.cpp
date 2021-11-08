@@ -12,10 +12,11 @@
 #include "graph/utils/attr_utils.h"
 #include "nn_norm_ops.h"
 #include "array_ops.h"
-#include "op_tiling/vector_tiling.h"
+#include "op_tiling/norm.h"
 
 using namespace std;
 using namespace ge;
+using namespace optiling;
 
 class NormTiling : public testing::Test {
 protected:
@@ -41,8 +42,23 @@ static string to_string(const std::stringstream &tiling_data) {
   return result;
 }
 
+TEST_F(NormTiling, NormTilingCustomUnsupported) {
+  std::string compileInfo = R"({ "_fuse_axis": true, "_ori_axis": [2], "_pattern": "Norm", "_common_info": [32, 16, 1, 16080, 16120, 16080, 128], "_workspace_info": {"_workspace_type": [1], "_workspace_bytes": [4], "_workspace_diff_count": 0}, "_norm_vars": {"40000400": [100, 101, 200, 300]}, "_vars": {"40000400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"]}})";
+  ge::Operator op_paras = ge::Operator(this->test_info_->name());
+
+  nlohmann::json op_info = nlohmann::json::parse(compileInfo.c_str());
+  optiling::utils::OpRunInfo runInfo;
+  std::vector<std::vector<int64_t>> input_shapes{};
+  optiling::OpInfo c_op_info(input_shapes, DT_FLOAT);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateNormTilingHandler(this->test_info_->name(),
+                            "Norm",
+                            op_info);
+  ASSERT_FALSE(outer_compile_info->DoTiling(op_paras, runInfo, c_op_info));
+}
+
 TEST_F(NormTiling, NormTiling1) {
-  using namespace optiling;
+  
 
   ge::Graph graph("NormTiling1");
   std::vector<int64_t> input{2, 10496, 41};
@@ -55,12 +71,12 @@ TEST_F(NormTiling, NormTiling1) {
   x.update_input_desc_x(tensor_input);
   x.update_output_desc_y(tensor_output);
 
-  auto softmax_op = op::SoftmaxV2("SoftmaxV2_1");
-  softmax_op.set_input_x(x);
-  softmax_op.update_output_desc_y(tensor_output);
+  auto _op = op::SoftmaxV2("SoftmaxV2_1");
+  _op.set_input_x(x);
+  _op.update_output_desc_y(tensor_output);
 
   std::vector<Operator> inputs{x};
-  std::vector<Operator> outputs{softmax_op};
+  std::vector<Operator> outputs{_op};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -71,14 +87,18 @@ TEST_F(NormTiling, NormTiling1) {
   std::string compileInfo = R"({ "_fuse_axis": true, "_ori_axis": [2], "_pattern": "Norm", "_common_info": [32, 16, 1, 16080, 16120, 16080, 128], "_workspace_info": {"_workspace_type": [1], "_workspace_bytes": [4], "_workspace_diff_count": 0}, "_norm_vars": {"40000400": [100, 101, 200, 300]}, "_vars": {"40000400": ["_dim_0", "_dim_1", "_block_factor", "_ub_factor"]}})";
   
   optiling::utils::OpRunInfo runInfo;
-
-  ASSERT_TRUE(optiling::NormTiling(this->test_info_->name(), softmax_op, nlohmann::json::parse(compileInfo), runInfo));
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateNormTilingHandler(this->test_info_->name(),
+                            "Norm",
+                            nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "20992 41 656 328 ");
 }
 
 TEST_F(NormTiling, NormTiling2) {
-  using namespace optiling;
+  
 
   ge::Graph graph("NormTiling2");
   std::vector<int64_t> input{16, 5, 15003};
@@ -91,12 +111,12 @@ TEST_F(NormTiling, NormTiling2) {
   x.update_input_desc_x(tensor_input);
   x.update_output_desc_y(tensor_output);
 
-  auto softmax_op = op::SoftmaxV2("SoftmaxV2_2");
-  softmax_op.set_input_x(x);
-  softmax_op.update_output_desc_y(tensor_output);
+  auto _op = op::SoftmaxV2("SoftmaxV2_2");
+  _op.set_input_x(x);
+  _op.update_output_desc_y(tensor_output);
 
   std::vector<Operator> inputs{x};
-  std::vector<Operator> outputs{softmax_op};
+  std::vector<Operator> outputs{_op};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -108,13 +128,18 @@ TEST_F(NormTiling, NormTiling2) {
   
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(optiling::NormTiling(this->test_info_->name(), softmax_op, nlohmann::json::parse(compileInfo), runInfo));
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateNormTilingHandler(this->test_info_->name(),
+                            "Norm",
+                            nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 10);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "80 15003 8 7502 ");
 }
 
 TEST_F(NormTiling, NormTiling3) {
-  using namespace optiling;
+  
 
   ge::Graph graph("NormTiling3");
   std::vector<int64_t> input{16, 5, 15003};
@@ -127,12 +152,12 @@ TEST_F(NormTiling, NormTiling3) {
   x.update_input_desc_x(tensor_input);
   x.update_output_desc_y(tensor_output);
 
-  auto softmax_op = op::SoftmaxV2("SoftmaxV2_3");
-  softmax_op.set_input_x(x);
-  softmax_op.update_output_desc_y(tensor_output);
+  auto _op = op::SoftmaxV2("SoftmaxV2_3");
+  _op.set_input_x(x);
+  _op.update_output_desc_y(tensor_output);
 
   std::vector<Operator> inputs{x};
-  std::vector<Operator> outputs{softmax_op};
+  std::vector<Operator> outputs{_op};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -144,13 +169,18 @@ TEST_F(NormTiling, NormTiling3) {
   
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(optiling::NormTiling(this->test_info_->name(), softmax_op, nlohmann::json::parse(compileInfo), runInfo));
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateNormTilingHandler(this->test_info_->name(),
+                            "Norm",
+                            nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16 5 15003 7504 2 ");
 }
 
 TEST_F(NormTiling, NormTiling4) {
-  using namespace optiling;
+  
 
   ge::Graph graph("NormTiling4");
   std::vector<int64_t> input{31, 2400};
@@ -163,12 +193,12 @@ TEST_F(NormTiling, NormTiling4) {
   x.update_input_desc_x(tensor_input);
   x.update_output_desc_y(tensor_output);
 
-  auto softmax_op = op::SoftmaxV2("SoftmaxV2_4");
-  softmax_op.set_input_x(x);
-  softmax_op.update_output_desc_y(tensor_output);
+  auto _op = op::SoftmaxV2("SoftmaxV2_4");
+  _op.set_input_x(x);
+  _op.update_output_desc_y(tensor_output);
 
   std::vector<Operator> inputs{x};
-  std::vector<Operator> outputs{softmax_op};
+  std::vector<Operator> outputs{_op};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -180,13 +210,18 @@ TEST_F(NormTiling, NormTiling4) {
   
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(optiling::NormTiling(this->test_info_->name(), softmax_op, nlohmann::json::parse(compileInfo), runInfo));
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateNormTilingHandler(this->test_info_->name(),
+                            "Norm",
+                            nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 30);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "31 2400 80 31 ");
 }
 
 TEST_F(NormTiling, NormTiling5) {
-  using namespace optiling;
+  
 
   ge::Graph graph("NormTiling5");
   std::vector<int64_t> input{1968, 3, 3};
@@ -199,12 +234,12 @@ TEST_F(NormTiling, NormTiling5) {
   x.update_input_desc_x(tensor_input);
   x.update_output_desc_y(tensor_output);
 
-  auto softmax_op = op::SoftmaxV2("SoftmaxV2_5");
-  softmax_op.set_input_x(x);
-  softmax_op.update_output_desc_y(tensor_output);
+  auto _op = op::SoftmaxV2("SoftmaxV2_5");
+  _op.set_input_x(x);
+  _op.update_output_desc_y(tensor_output);
 
   std::vector<Operator> inputs{x};
-  std::vector<Operator> outputs{softmax_op};
+  std::vector<Operator> outputs{_op};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -216,13 +251,18 @@ TEST_F(NormTiling, NormTiling5) {
   
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(optiling::NormTiling(this->test_info_->name(), softmax_op, nlohmann::json::parse(compileInfo), runInfo));
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateNormTilingHandler(this->test_info_->name(),
+                            "Norm",
+                            nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1968 3 3 3 677 ");
 }
 
 TEST_F(NormTiling, NormTiling6) {
-  using namespace optiling;
+  
 
   ge::Graph graph("NormTiling6");
   std::vector<int64_t> input{1, 7, 543, 76};
@@ -235,12 +275,12 @@ TEST_F(NormTiling, NormTiling6) {
   x.update_input_desc_x(tensor_input);
   x.update_output_desc_y(tensor_output);
 
-  auto softmax_op = op::SoftmaxV2("SoftmaxV2_6");
-  softmax_op.set_input_x(x);
-  softmax_op.update_output_desc_y(tensor_output);
+  auto _op = op::SoftmaxV2("SoftmaxV2_6");
+  _op.set_input_x(x);
+  _op.update_output_desc_y(tensor_output);
 
   std::vector<Operator> inputs{x};
-  std::vector<Operator> outputs{softmax_op};
+  std::vector<Operator> outputs{_op};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -252,11 +292,16 @@ TEST_F(NormTiling, NormTiling6) {
   
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(optiling::NormTiling(this->test_info_->name(), softmax_op, nlohmann::json::parse(compileInfo), runInfo));
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateNormTilingHandler(this->test_info_->name(),
+                            "Norm",
+                            nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo));
 }
 
 TEST_F(NormTiling, NormTiling7) {
-  using namespace optiling;
+  
 
   ge::Graph graph("NormTiling7");
   std::vector<int64_t> input{2, 10, 2, 3, 7};
@@ -269,12 +314,12 @@ TEST_F(NormTiling, NormTiling7) {
   x.update_input_desc_x(tensor_input);
   x.update_output_desc_y(tensor_output);
 
-  auto softmax_op = op::SoftmaxV2("SoftmaxV2_7");
-  softmax_op.set_input_x(x);
-  softmax_op.update_output_desc_y(tensor_output);
+  auto _op = op::SoftmaxV2("SoftmaxV2_7");
+  _op.set_input_x(x);
+  _op.update_output_desc_y(tensor_output);
 
   std::vector<Operator> inputs{x};
-  std::vector<Operator> outputs{softmax_op};
+  std::vector<Operator> outputs{_op};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -286,13 +331,18 @@ TEST_F(NormTiling, NormTiling7) {
   
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(optiling::NormTiling(this->test_info_->name(), softmax_op, nlohmann::json::parse(compileInfo), runInfo));
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateNormTilingHandler(this->test_info_->name(),
+                            "Norm",
+                            nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 10 2 3 7 2 ");
 }
 
 TEST_F(NormTiling, NormTiling8) {
-  using namespace optiling;
+  
 
   ge::Graph graph("NormTiling8");
   std::vector<int64_t> input{2, 3};
@@ -305,12 +355,12 @@ TEST_F(NormTiling, NormTiling8) {
   x.update_input_desc_x(tensor_input);
   x.update_output_desc_y(tensor_output);
 
-  auto softmax_op = op::SoftmaxV2("SoftmaxV2_8");
-  softmax_op.set_input_x(x);
-  softmax_op.update_output_desc_y(tensor_output);
+  auto _op = op::SoftmaxV2("SoftmaxV2_8");
+  _op.set_input_x(x);
+  _op.update_output_desc_y(tensor_output);
 
   std::vector<Operator> inputs{x};
-  std::vector<Operator> outputs{softmax_op};
+  std::vector<Operator> outputs{_op};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -322,12 +372,17 @@ TEST_F(NormTiling, NormTiling8) {
   
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(optiling::NormTiling(this->test_info_->name(), softmax_op, nlohmann::json::parse(compileInfo), runInfo));
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateNormTilingHandler(this->test_info_->name(),
+                            "Norm",
+                            nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "0 2 0 2 ");
 }
 
 TEST_F(NormTiling, NormTiling9) {
-  using namespace optiling;
+  
 
   ge::Graph graph("NormTiling9");
   std::vector<int64_t> input{2, 3};
@@ -340,12 +395,12 @@ TEST_F(NormTiling, NormTiling9) {
   x.update_input_desc_x(tensor_input);
   x.update_output_desc_y(tensor_output);
 
-  auto softmax_op = op::SoftmaxV2("SoftmaxV2_9");
-  softmax_op.set_input_x(x);
-  softmax_op.update_output_desc_y(tensor_output);
+  auto _op = op::SoftmaxV2("SoftmaxV2_9");
+  _op.set_input_x(x);
+  _op.update_output_desc_y(tensor_output);
 
   std::vector<Operator> inputs{x};
-  std::vector<Operator> outputs{softmax_op};
+  std::vector<Operator> outputs{_op};
   graph.SetInputs(inputs).SetOutputs(outputs);
 
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -357,6 +412,11 @@ TEST_F(NormTiling, NormTiling9) {
   
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(optiling::NormTiling(this->test_info_->name(), softmax_op, nlohmann::json::parse(compileInfo), runInfo));
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateNormTilingHandler(this->test_info_->name(),
+                            "Norm",
+                            nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "0 2 0 2 ");
 }

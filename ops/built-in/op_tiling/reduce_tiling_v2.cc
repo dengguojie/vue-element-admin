@@ -1233,4 +1233,20 @@ bool ReduceTiling(const std::string& op_type, const ge::Operator& op_paras, cons
   ret = ret && reduce.WriteTilingData();
   return ret;
 }
+
+bool ReduceCompileInfo::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const {
+  return ReduceTiling(op_type, op_paras, compile_info, run_info);
+}
+
+bool ReduceCompileInfo::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info,
+                                 const OpInfo& op_info) const {
+  return ReduceTiling(op_type, op_paras, compile_info, run_info, op_info);
+}
+
+std::shared_ptr<AutoTilingCompileInfo> CreateReduceTilingHandler(const std::string& op_type,
+                                                                 const std::string& pattern,
+                                                                 const nlohmann::json& parsed_compile_info) {
+  return std::make_shared<ReduceCompileInfo>(op_type, pattern, parsed_compile_info);
+}
+
 }  // namespace optiling

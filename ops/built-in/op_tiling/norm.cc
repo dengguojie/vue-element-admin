@@ -976,4 +976,20 @@ bool NormTiling(const std::string& op_type, const ge::Operator& op_paras, const 
   return ret;
 }
 
+bool NormCompileInfo::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const {
+  return NormTiling(op_type, op_paras, compile_info, run_info);
+}
+
+bool NormCompileInfo::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info,
+                               const OpInfo& op_info) const {
+  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Norm custom tiling is not supported yet");
+  return false;
+}
+
+std::shared_ptr<AutoTilingCompileInfo> CreateNormTilingHandler(const std::string& op_type,
+                                                               const std::string& pattern,
+                                                               const nlohmann::json& parsed_compile_info) {
+  return std::make_shared<NormCompileInfo>(op_type, pattern, parsed_compile_info);
+}
+
 }  // namespace optiling

@@ -158,6 +158,8 @@ auto_schedule:
       - utils/para_check.py
       - utils/shape_util.py
       - utils/tbe_log.py
+      - ops/built-in/op_tiling/auto_tiling.cc
+      - ops/built-in/op_tiling/auto_tiling.h
       - ops/built-in/op_tiling/broadcast.cc
       - ops/built-in/op_tiling/broadcast.h
       - ops/built-in/op_tiling/eletwise.cc
@@ -169,7 +171,6 @@ auto_schedule:
       - ops/built-in/op_tiling/op_tiling.h
       - ops/built-in/op_tiling/reduce_tiling.cc
       - ops/built-in/op_tiling/reduce_tiling.h
-      - ops/built-in/op_tiling/tiling_dispatch.cc
       - ops/built-in/op_tiling/vector_tiling.h
       - ops/built-in/op_tiling/vector_tiling_log.h
       - ops/built-in/op_tiling/broadcast_v2.cc

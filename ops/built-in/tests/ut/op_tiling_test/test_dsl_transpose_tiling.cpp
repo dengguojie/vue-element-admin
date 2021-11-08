@@ -6,8 +6,9 @@
 #include "graph/utils/op_desc_utils.h"
 #include "graph/graph.h"
 #include "register/op_tiling_registry.h"
-#include "op_tiling/vector_tiling.h"
+#include "op_tiling/transpose_dsl.h"
 
+using namespace optiling;
 class TransposeDslTiling : public testing::Test {
  protected:
   static void SetUpTestCase() {
@@ -52,6 +53,21 @@ static void AddParams(ge::OpDescPtr& op_desc, const std::vector<int64_t>& shape,
   }
 }
 
+TEST_F(TransposeDslTiling, transpose_dsl_tiling_custom_unsupported) {
+  std::string compile_info = R"({"_mergeable": [0, 0, 0, 0], "_pattern": "TransposeDsl", "_core_num": 32, "_ub_size": 262144, "_ori_permute": [1, 0, 3, 2], "_permute": [1, 0, 3, 2], "_transpose_vars": [true, true, true, true], "_only_const_tiling": false, "_is_const": false, "_vars": {"0": ["_dim_0", "_dim_1", "_dim_2", "_dim_3"], "2000000": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_0", "_ub_factor_0"], "2000001": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_0", "_ub_factor_0", "_ub_factor_1"], "2000022": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_0", "_ub_factor_2"], "2000023": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_0", "_ub_factor_2", "_ub_factor_3"], "2000033": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_0", "_ub_factor_3"], "2000101": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_1", "_ub_factor_0", "_ub_factor_1"], "2000111": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_1", "_ub_factor_1"], "2000122": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_1", "_ub_factor_2"], "2000123": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_1", "_ub_factor_2", "_ub_factor_3"], "2000133": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_1", "_ub_factor_3"], "2000222": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_2", "_ub_factor_2"], "2000223": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_2", "_ub_factor_2", "_ub_factor_3"], "2000323": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_3", "_ub_factor_2", "_ub_factor_3"], "2000333": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_3", "_ub_factor_3"], "3000000": ["_dim_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"0": ["_dim_0", "_dim_1", "_dim_2", "_dim_3"], "2000000": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_0", "_ub_factor_0"], "2000001": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_0", "_ub_factor_0", "_ub_factor_1"], "2000022": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_0", "_ub_factor_2"], "2000023": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_0", "_ub_factor_2", "_ub_factor_3"], "2000033": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_0", "_ub_factor_3"], "2000101": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_1", "_ub_factor_0", "_ub_factor_1"], "2000111": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_1", "_ub_factor_1"], "2000122": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_1", "_ub_factor_2"], "2000123": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_1", "_ub_factor_2", "_ub_factor_3"], "2000133": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_1", "_ub_factor_3"], "2000222": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_2", "_ub_factor_2"], "2000223": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_2", "_ub_factor_2", "_ub_factor_3"], "2000323": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_3", "_ub_factor_2", "_ub_factor_3"], "2000333": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_block_factor_3", "_ub_factor_3"], "3000000": ["_dim_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"0": [], "2000000": [], "2000001": [], "2000022": [], "2000023": [], "2000033": [], "2000101": [], "2000111": [], "2000122": [], "2000123": [], "2000133": [], "2000222": [], "2000223": [], "2000323": [], "2000333": [], "3000000": []}, "_custom_vars": {"0": [], "2000000": [], "2000001": [], "2000022": [], "2000023": [], "2000033": [], "2000101": [], "2000111": [], "2000122": [], "2000123": [], "2000133": [], "2000222": [], "2000223": [], "2000323": [], "2000333": [], "3000000": []}})";
+  ge::Operator op_paras = ge::Operator(this->test_info_->name());
+
+  nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
+  optiling::utils::OpRunInfo runInfo;
+  std::vector<std::vector<int64_t>> input_shapes{};
+  optiling::OpInfo c_op_info(input_shapes, ge::DT_FLOAT);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "TransposeDsl",
+                                    op_info);
+  ASSERT_FALSE(outer_compile_info->DoTiling(op_paras, runInfo, c_op_info));
+}
+
 TEST_F(TransposeDslTiling, transpose_dsl_tiling_case1) {
   // n last transpose, fp 32, last value > 128, [0, 2, 1, 3]
   std::vector<std::vector<int64_t>> inputs {
@@ -76,7 +92,11 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case1) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(optiling::TransposeDsl("AutoTiling", op_paras, op_info, runInfo));
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "TransposeDsl",
+                                    op_info);
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "32, 100, 18, 141, 1, 4");
 }
@@ -105,7 +125,11 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case2) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(optiling::TransposeDsl("AutoTiling", op_paras, op_info, runInfo));
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "TransposeDsl",
+                                    op_info);
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "32, 100, 18, 46, 1, 6, 6");
 }
@@ -134,7 +158,11 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case3) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(optiling::TransposeDsl("AutoTiling", op_paras, op_info, runInfo));
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "TransposeDsl",
+                                    op_info);
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "320, 29, 12, 5, 5, 2");
 }
@@ -163,7 +191,11 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case4) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(optiling::TransposeDsl("AutoTiling", op_paras, op_info, runInfo));
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "TransposeDsl",
+                                    op_info);
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "32, 100, 18, 46, 1, 9, 9");
 }
@@ -192,7 +224,11 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case5) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(optiling::TransposeDsl("AutoTiling", op_paras, op_info, runInfo));
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "TransposeDsl",
+                                    op_info);
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "32, 100, 18, 256, 1, 16, 16");
 }
@@ -221,7 +257,11 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case6) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(optiling::TransposeDsl("AutoTiling", op_paras, op_info, runInfo));
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "TransposeDsl",
+                                    op_info);
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 28);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "100, 780, 129, 7, 129, 4");
 }
@@ -250,7 +290,11 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case7) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(optiling::TransposeDsl("AutoTiling", op_paras, op_info, runInfo));
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "TransposeDsl",
+                                    op_info);
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 31);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "28, 1519, 25, 10, 5");
 }
@@ -279,7 +323,11 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case8) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(optiling::TransposeDsl("AutoTiling", op_paras, op_info, runInfo));
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "TransposeDsl",
+                                    op_info);
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 23);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "3000000, 2, 65536");
 }
@@ -308,7 +356,11 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case9) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(optiling::TransposeDsl("AutoTiling", op_paras, op_info, runInfo));
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "TransposeDsl",
+                                    op_info);
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 2);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "10, 200, 6, 9, 1, 6, 102");
 }
@@ -337,7 +389,11 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case10) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(optiling::TransposeDsl("AutoTiling", op_paras, op_info, runInfo));
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "TransposeDsl",
+                                    op_info);
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "9, 8, 200, 2, 1, 200, 8");
 }
@@ -366,7 +422,11 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case11) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(optiling::TransposeDsl("AutoTiling", op_paras, op_info, runInfo));
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "TransposeDsl",
+                                    op_info);
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "10, 1, 12, 14");
 }
@@ -395,7 +455,11 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case12) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(optiling::TransposeDsl("AutoTiling", op_paras, op_info, runInfo));
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "TransposeDsl",
+                                    op_info);
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 31);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "61, 333, 60, 1, 11, 1, 45");
 }
@@ -424,7 +488,11 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case13) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(optiling::TransposeDsl("AutoTiling", op_paras, op_info, runInfo));
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "TransposeDsl",
+                                    op_info);
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "60, 333, 61, 1, 21, 60, 1");
 }
@@ -453,7 +521,11 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case14) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(optiling::TransposeDsl("AutoTiling", op_paras, op_info, runInfo));
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "TransposeDsl",
+                                    op_info);
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 31);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "61, 333, 30, 1, 11, 1, 61");
 }
@@ -482,7 +554,11 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case15) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(optiling::TransposeDsl("AutoTiling", op_paras, op_info, runInfo));
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "TransposeDsl",
+                                    op_info);
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 31);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "30, 333, 61, 1, 11, 61, 1");
 }
@@ -511,7 +587,11 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case16) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(optiling::TransposeDsl("AutoTiling", op_paras, op_info, runInfo));
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "TransposeDsl",
+                                    op_info);
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "8, 660, 40, 5, 14, 27, 3");
 }
@@ -540,7 +620,11 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case17) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(optiling::TransposeDsl("AutoTiling", op_paras, op_info, runInfo));
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "TransposeDsl",
+                                    op_info);
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "32, 2, 18, 141, 1, 18");
 }
@@ -569,7 +653,11 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case18) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(optiling::TransposeDsl("AutoTiling", op_paras, op_info, runInfo));
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "TransposeDsl",
+                                    op_info);
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "88, 660, 8, 22, 21, 1, 21");
 }

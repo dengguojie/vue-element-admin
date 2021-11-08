@@ -16,7 +16,7 @@
 #include "graph/graph.h"
 #include "graph/compute_graph.h"
 #include "graph/utils/graph_utils.h"
-#include "op_tiling/vector_tiling.h"
+#include "op_tiling/reduce_tiling_v2.h"
 
 #include "reduce_ops.h"
 #include "array_ops.h"
@@ -64,12 +64,12 @@ TEST_F(ReduceTilingV2, ReduceTiling1) {
   x1.update_input_desc_x(tensor_input);
   x1.update_output_desc_y(tensor_input);
 
-  auto reduce_sum_d_op = op::ReduceSumD("ReduceSumD_1");
-  reduce_sum_d_op.set_input_x(x1);
-  reduce_sum_d_op.update_output_desc_y(tensor_output);
+  auto _op = op::ReduceSumD("ReduceSumD_1");
+  _op.set_input_x(x1);
+  _op.update_output_desc_y(tensor_output);
 
   std::vector<Operator> inputs{x1};
-  std::vector<Operator> outputs{reduce_sum_d_op};
+  std::vector<Operator> outputs{_op};
   ge::Graph graph("ReduceTiling1");
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -81,8 +81,12 @@ TEST_F(ReduceTilingV2, ReduceTiling1) {
   std::string compileInfo = R"({ "_ori_axis": [0], "_pattern": "CommReduce","push_status": 0,"_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5], "_ub_info": [16256], "_ub_info_rf": [16256], "_vars": {"-1000500": ["_dim_1_0", "_block_factor", "_ub_factor"]}})";
   
   optiling::utils::OpRunInfo runInfo;
-
-  ASSERT_TRUE(optiling::ReduceTiling(this->test_info_->name(), reduce_sum_d_op, nlohmann::json::parse(compileInfo), runInfo));
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateReduceTilingHandler(this->test_info_->name(),
+                              "CommReduce",
+                              nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 1 ");
 }
@@ -100,12 +104,12 @@ TEST_F(ReduceTilingV2, ReduceTiling2) {
   x1.update_input_desc_x(tensor_input);
   x1.update_output_desc_y(tensor_input);
 
-  auto reduce_sum_d_op = op::ReduceSumD("ReduceSumD_2");
-  reduce_sum_d_op.set_input_x(x1);
-  reduce_sum_d_op.update_output_desc_y(tensor_output);
+  auto _op = op::ReduceSumD("ReduceSumD_2");
+  _op.set_input_x(x1);
+  _op.update_output_desc_y(tensor_output);
 
   std::vector<Operator> inputs{x1};
-  std::vector<Operator> outputs{reduce_sum_d_op};
+  std::vector<Operator> outputs{_op};
   ge::Graph graph("ReduceTiling2");
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -117,7 +121,12 @@ TEST_F(ReduceTilingV2, ReduceTiling2) {
   
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(optiling::ReduceTiling(this->test_info_->name(), reduce_sum_d_op, nlohmann::json::parse(compileInfo), runInfo));
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateReduceTilingHandler(this->test_info_->name(),
+                              "CommReduce",
+                              nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "78 25600 ");
 }
@@ -135,12 +144,12 @@ TEST_F(ReduceTilingV2, ReduceTiling3) {
   x1.update_input_desc_x(tensor_input);
   x1.update_output_desc_y(tensor_input);
 
-  auto reduce_sum_d_op = op::ReduceSumD("ReduceSumD_3");
-  reduce_sum_d_op.set_input_x(x1);
-  reduce_sum_d_op.update_output_desc_y(tensor_output);
+  auto _op = op::ReduceSumD("ReduceSumD_3");
+  _op.set_input_x(x1);
+  _op.update_output_desc_y(tensor_output);
 
   std::vector<Operator> inputs{x1};
-  std::vector<Operator> outputs{reduce_sum_d_op};
+  std::vector<Operator> outputs{_op};
   ge::Graph graph("ReduceTiling3");
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -152,7 +161,12 @@ TEST_F(ReduceTilingV2, ReduceTiling3) {
   
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(optiling::ReduceTiling(this->test_info_->name(), reduce_sum_d_op, nlohmann::json::parse(compileInfo), runInfo));
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateReduceTilingHandler(this->test_info_->name(),
+                              "CommReduce",
+                              nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 128 ");
 }
@@ -170,12 +184,12 @@ TEST_F(ReduceTilingV2, ReduceTiling4) {
   x1.update_input_desc_x(tensor_input);
   x1.update_output_desc_y(tensor_input);
 
-  auto reduce_sum_d_op = op::ReduceSumD("ReduceSumD_4");
-  reduce_sum_d_op.set_input_x(x1);
-  reduce_sum_d_op.update_output_desc_y(tensor_output);
+  auto _op = op::ReduceSumD("ReduceSumD_4");
+  _op.set_input_x(x1);
+  _op.update_output_desc_y(tensor_output);
 
   std::vector<Operator> inputs{x1};
-  std::vector<Operator> outputs{reduce_sum_d_op};
+  std::vector<Operator> outputs{_op};
   ge::Graph graph("ReduceTiling4");
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -189,7 +203,12 @@ TEST_F(ReduceTilingV2, ReduceTiling4) {
   
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(optiling::ReduceTiling(this->test_info_->name(), reduce_sum_d_op, nlohmann::json::parse(compileInfo), runInfo));
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateReduceTilingHandler(this->test_info_->name(),
+                              "CommReduce",
+                              nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo));
 }
 
 TEST_F(ReduceTilingV2, ReduceTiling5) {
@@ -205,12 +224,12 @@ TEST_F(ReduceTilingV2, ReduceTiling5) {
   x1.update_input_desc_x(tensor_input);
   x1.update_output_desc_y(tensor_input);
 
-  auto reduce_sum_d_op = op::ReduceSumD("ReduceSumD_5");
-  reduce_sum_d_op.set_input_x(x1);
-  reduce_sum_d_op.update_output_desc_y(tensor_output);
+  auto _op = op::ReduceSumD("ReduceSumD_5");
+  _op.set_input_x(x1);
+  _op.update_output_desc_y(tensor_output);
 
   std::vector<Operator> inputs{x1};
-  std::vector<Operator> outputs{reduce_sum_d_op};
+  std::vector<Operator> outputs{_op};
   ge::Graph graph("ReduceTiling5");
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -222,7 +241,12 @@ TEST_F(ReduceTilingV2, ReduceTiling5) {
   
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(!optiling::ReduceTiling(this->test_info_->name(), reduce_sum_d_op, nlohmann::json::parse(compileInfo), runInfo));
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateReduceTilingHandler(this->test_info_->name(),
+                              "CommReduce",
+                              nlohmann::json::parse(compileInfo));
+  ASSERT_FALSE(outer_compile_info->DoTiling(_op, runInfo));
 }
 
 TEST_F(ReduceTilingV2, ReduceTiling6) {
@@ -238,12 +262,12 @@ TEST_F(ReduceTilingV2, ReduceTiling6) {
   x1.update_input_desc_x(tensor_input);
   x1.update_output_desc_y(tensor_input);
 
-  auto reduce_sum_d_op = op::ReduceSumD("ReduceSumD_6");
-  reduce_sum_d_op.set_input_x(x1);
-  reduce_sum_d_op.update_output_desc_y(tensor_output);
+  auto _op = op::ReduceSumD("ReduceSumD_6");
+  _op.set_input_x(x1);
+  _op.update_output_desc_y(tensor_output);
 
   std::vector<Operator> inputs{x1};
-  std::vector<Operator> outputs{reduce_sum_d_op};
+  std::vector<Operator> outputs{_op};
   ge::Graph graph("ReduceTiling6");
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -255,7 +279,12 @@ TEST_F(ReduceTilingV2, ReduceTiling6) {
   
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(!optiling::ReduceTiling(this->test_info_->name(), reduce_sum_d_op, nlohmann::json::parse(compileInfo), runInfo));
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateReduceTilingHandler(this->test_info_->name(),
+                              "CommReduce",
+                              nlohmann::json::parse(compileInfo));
+  ASSERT_FALSE(outer_compile_info->DoTiling(_op, runInfo));
 }
 
 // ReduceTiling7 const_tensor
@@ -274,12 +303,12 @@ TEST_F(ReduceTilingV2, ReduceTiling8) {
   x1.update_input_desc_x(tensor_input);
   x1.update_output_desc_y(tensor_input);
 
-  auto reduce_sum_d_op = op::ReduceSumD("ReduceSumD_8");
-  reduce_sum_d_op.set_input_x(x1);
-  reduce_sum_d_op.update_output_desc_y(tensor_output);
+  auto _op = op::ReduceSumD("ReduceSumD_8");
+  _op.set_input_x(x1);
+  _op.update_output_desc_y(tensor_output);
 
   std::vector<Operator> inputs{x1};
-  std::vector<Operator> outputs{reduce_sum_d_op};
+  std::vector<Operator> outputs{_op};
   ge::Graph graph("ReduceTiling8");
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -296,7 +325,12 @@ TEST_F(ReduceTilingV2, ReduceTiling8) {
   
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(optiling::ReduceTiling(this->test_info_->name(), reduce_sum_d_op, nlohmann::json::parse(compileInfo), runInfo));
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateReduceTilingHandler(this->test_info_->name(),
+                              "CommReduce",
+                              nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo));
 }
 
 // FineTuning tune1
@@ -313,12 +347,12 @@ TEST_F(ReduceTilingV2, ReduceTiling9) {
   x1.update_input_desc_x(tensor_input);
   x1.update_output_desc_y(tensor_input);
 
-  auto reduce_sum_d_op = op::ReduceSumD("ReduceSumD_9");
-  reduce_sum_d_op.set_input_x(x1);
-  reduce_sum_d_op.update_output_desc_y(tensor_output);
+  auto _op = op::ReduceSumD("ReduceSumD_9");
+  _op.set_input_x(x1);
+  _op.update_output_desc_y(tensor_output);
 
   std::vector<Operator> inputs{x1};
-  std::vector<Operator> outputs{reduce_sum_d_op};
+  std::vector<Operator> outputs{_op};
   ge::Graph graph("ReduceTiling9");
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -335,7 +369,12 @@ TEST_F(ReduceTilingV2, ReduceTiling9) {
   
   optiling::utils::OpRunInfo runInfo;
 
-  ASSERT_TRUE(optiling::ReduceTiling(this->test_info_->name(), reduce_sum_d_op, nlohmann::json::parse(compileInfo), runInfo));
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateReduceTilingHandler(this->test_info_->name(),
+                              "CommReduce",
+                              nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo));
 }
 
 // for new interface
@@ -352,12 +391,12 @@ TEST_F(ReduceTilingV2, ReduceTiling10) {
   x1.update_input_desc_x(tensor_input);
   x1.update_output_desc_y(tensor_input);
 
-  auto reduce_sum_d_op = op::ReduceSumD("ReduceSumD_4");
-  reduce_sum_d_op.set_input_x(x1);
-  reduce_sum_d_op.update_output_desc_y(tensor_output);
+  auto _op = op::ReduceSumD("ReduceSumD_4");
+  _op.set_input_x(x1);
+  _op.update_output_desc_y(tensor_output);
 
   std::vector<Operator> inputs{x1};
-  std::vector<Operator> outputs{reduce_sum_d_op};
+  std::vector<Operator> outputs{_op};
   ge::Graph graph("ReduceTiling4");
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -368,11 +407,15 @@ TEST_F(ReduceTilingV2, ReduceTiling10) {
        "_vars": {"1": []}})";
 
   // new interface
-  nlohmann::json json_info = nlohmann::json::parse(compileInfo.c_str());
   optiling::utils::OpRunInfo runInfo;
   std::vector<std::vector<int64_t>> input_shapes{input,};
   optiling::OpInfo c_op_info(input_shapes, DT_FLOAT);
-  ASSERT_TRUE(optiling::ReduceTiling("CustomOP", reduce_sum_d_op, json_info, runInfo, c_op_info));
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateReduceTilingHandler(this->test_info_->name(),
+                              "CommReduce",
+                              nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo, c_op_info));
 }
 
 
@@ -389,12 +432,12 @@ TEST_F(ReduceTilingV2, ReduceTiling11) {
   x1.update_input_desc_x(tensor_input);
   x1.update_output_desc_y(tensor_input);
 
-  auto reduce_sum_d_op = op::ReduceSumD("ReduceSumD_11");
-  reduce_sum_d_op.set_input_x(x1);
-  reduce_sum_d_op.update_output_desc_y(tensor_output);
+  auto _op = op::ReduceSumD("ReduceSumD_11");
+  _op.set_input_x(x1);
+  _op.update_output_desc_y(tensor_output);
 
   std::vector<Operator> inputs{x1};
-  std::vector<Operator> outputs{reduce_sum_d_op};
+  std::vector<Operator> outputs{_op};
   ge::Graph graph("ReduceTiling11");
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -409,11 +452,15 @@ TEST_F(ReduceTilingV2, ReduceTiling11) {
                                 "_vars": {"-1000500": ["_dim_1_0", "_block_factor", "_ub_factor"]}})";
 
   // new interface
-  nlohmann::json json_info = nlohmann::json::parse(compileInfo.c_str());
   optiling::utils::OpRunInfo runInfo;
   std::vector<std::vector<int64_t>> input_shapes{};
   optiling::OpInfo c_op_info(input_shapes, DT_FLOAT);
-  ASSERT_TRUE(optiling::ReduceTiling("CustomOP", reduce_sum_d_op, json_info, runInfo, c_op_info));
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateReduceTilingHandler(this->test_info_->name(),
+                              "CommReduce",
+                              nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo, c_op_info));
 }
 
 TEST_F(ReduceTilingV2, ReduceTiling12) {
@@ -429,12 +476,12 @@ TEST_F(ReduceTilingV2, ReduceTiling12) {
   x1.update_input_desc_x(tensor_input);
   x1.update_output_desc_y(tensor_input);
 
-  auto reduce_sum_d_op = op::ReduceSumD("ReduceSumD_12");
-  reduce_sum_d_op.set_input_x(x1);
-  reduce_sum_d_op.update_output_desc_y(tensor_output);
+  auto _op = op::ReduceSumD("ReduceSumD_12");
+  _op.set_input_x(x1);
+  _op.update_output_desc_y(tensor_output);
 
   std::vector<Operator> inputs{x1};
-  std::vector<Operator> outputs{reduce_sum_d_op};
+  std::vector<Operator> outputs{_op};
   ge::Graph graph("ReduceTiling12");
   graph.SetInputs(inputs).SetOutputs(outputs);
   ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
@@ -445,11 +492,15 @@ TEST_F(ReduceTilingV2, ReduceTiling12) {
          "_vars": {"1": []}})";
 
   // new interface
-  nlohmann::json json_info = nlohmann::json::parse(compileInfo.c_str());
   optiling::utils::OpRunInfo runInfo;
   std::vector<std::vector<int64_t>> input_shapes{input,};
   optiling::OpInfo c_op_info(input_shapes, DT_FLOAT);
-  ASSERT_TRUE(optiling::ReduceTiling("CustomOP", reduce_sum_d_op, json_info, runInfo, c_op_info));
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateReduceTilingHandler(this->test_info_->name(),
+                              "CommReduce",
+                              nlohmann::json::parse(compileInfo));
+  ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo, c_op_info));
 }
 
 static void ReduceSumCompute(std::vector<int64_t> inputA, std::vector<int64_t> inputB, std::vector<int32_t> axes,
@@ -469,19 +520,23 @@ static void ReduceSumCompute(std::vector<int64_t> inputA, std::vector<int64_t> i
   tensor_output.SetShape(ge::Shape(output));
   tensor_output.SetDataType(dtypeOutput);
 
-  auto opParas = op::ReduceSum(caseName.c_str());
-  TENSOR_INPUT(opParas, tensor_inputA, x);
-  TENSOR_INPUT_CONST(opParas, tensor_inputB, axes, (const uint8_t*)axes.data(), axes.size() * 4);
-  TENSOR_OUTPUT(opParas, tensor_output, y);
+  auto _op = op::ReduceSum(caseName.c_str());
+  TENSOR_INPUT(_op, tensor_inputA, x);
+  TENSOR_INPUT_CONST(_op, tensor_inputB, axes, (const uint8_t*)axes.data(), axes.size() * 4);
+  TENSOR_OUTPUT(_op, tensor_output, y);
 
-  nlohmann::json json_info = nlohmann::json::parse(compileInfo.c_str());
   optiling::utils::OpRunInfo runInfo;
+  const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
+  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+    CreateReduceTilingHandler(caseName,
+                              "CommReduce",
+                              nlohmann::json::parse(compileInfo));
   if (!isCustom) {
-    ASSERT_TRUE(optiling::ReduceTiling("AutoTiling", opParas, json_info, runInfo));
+    ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo));
   } else {
     std::vector<std::vector<int64_t>> input_shapes{inputA, inputB};
     optiling::OpInfo c_op_info(input_shapes, DT_FLOAT);
-    ASSERT_TRUE(optiling::ReduceTiling("AutoTiling", opParas, json_info, runInfo, c_op_info));
+    ASSERT_TRUE(outer_compile_info->DoTiling(_op, runInfo, c_op_info));
   }
 }
 

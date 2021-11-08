@@ -356,6 +356,7 @@ endif
 LOCAL_SRC_FILES := \
         built-in/fusion_pass/common/fp16_t.cc \
         built-in/op_proto/util/error_util.cc \
+        built-in/op_tiling/auto_tiling.cc \
         built-in/op_tiling/unsorted_segment_sum.cc \
         built-in/op_tiling/unsorted_segment.cc \
         built-in/op_tiling/gather_nd.cc \
@@ -375,7 +376,6 @@ LOCAL_SRC_FILES := \
         built-in/op_tiling/scatter_nd_update.cc \
         built-in/op_tiling/eletwise.cc \
         built-in/op_tiling/reduce_tiling.cc \
-        built-in/op_tiling/tiling_dispatch.cc \
         built-in/op_tiling/sparse_apply_ftrl_d.cc \
         built-in/op_tiling/deconvolution.cc \
         built-in/op_tiling/dynamic_atomic_addr_clean.cc \

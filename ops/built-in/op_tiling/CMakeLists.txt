@@ -23,6 +23,7 @@ set(_optiling_files
   bitwise.cc
   broadcast_to.cc
   assign.cc
+  auto_tiling.cc
   avg_pool.cc
   avg_poolv2.cc
   avg_pool_1d.cc
@@ -129,7 +130,6 @@ set(_optiling_files
   batch_to_space_nd.cc
   space_to_batch_nd.cc
   drop_out_do_mask.cc
-  tiling_dispatch.cc
   transpose_dsl.cc
   top_k.cc
   transpose.cc

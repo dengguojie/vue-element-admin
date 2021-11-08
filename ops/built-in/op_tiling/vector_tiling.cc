@@ -21,8 +21,45 @@
 #include "vector_tiling.h"
 
 namespace optiling {
-/*
- * @brief: define dummy variable of vector ops
- */
-  const std::vector<vector<int32_t>> OpInfo::dummy_variable;
+
+extern std::shared_ptr<AutoTilingCompileInfo> CreateNormTilingHandler(const std::string& op_type,
+                                                                      const std::string& pattern,
+                                                                      const nlohmann::json& parsed_compile_info);
+extern std::shared_ptr<AutoTilingCompileInfo> CreateTransposeDslTilingHandler(
+  const std::string& op_type,
+  const std::string& pattern,
+  const nlohmann::json& parsed_compile_info);
+extern std::shared_ptr<AutoTilingCompileInfo> CreateElewiseTilingHandler(const std::string& op_type,
+                                                                         const std::string& pattern,
+                                                                         const nlohmann::json& parsed_compile_info);
+extern std::shared_ptr<AutoTilingCompileInfo> CreateReduceTilingHandler(const std::string& op_type,
+                                                                        const std::string& pattern,
+                                                                        const nlohmann::json& parsed_compile_info);
+
+const std::vector<vector<int32_t>> OpInfo::dummy_variable;
+
+std::shared_ptr<AutoTilingCompileInfo> CreateAutoTilingHandler(const std::string& op_type, const std::string& pattern,
+                                                               const nlohmann::json& parsed_compile_info) {
+  OP_LOGI(op_type.c_str(), "Entering AutoTiling Compile Info Parser for pattern %s", pattern.c_str());
+  try {
+    if (pattern == "CommReduce") {
+      return CreateReduceTilingHandler(op_type, pattern, parsed_compile_info);
+    } else if (pattern == "ElemWise") {
+      return CreateElewiseTilingHandler(op_type, pattern, parsed_compile_info);
+    } else if (pattern == "Broadcast") {
+      return CreateElewiseTilingHandler(op_type, pattern, parsed_compile_info);
+    } else if (pattern == "Norm") {
+      return CreateNormTilingHandler(op_type, pattern, parsed_compile_info);
+    } else if (pattern == "TransposeDsl") {
+      return CreateTransposeDslTilingHandler(op_type, pattern, parsed_compile_info);
+    } else {
+      OP_LOGE(op_type.c_str(), "Pattern %s is not supported by AutoTiling Compile Info Parser", pattern.c_str());
+      return std::shared_ptr<AutoTilingCompileInfo>(nullptr);
+    }
+  } catch(...) {
+    OP_LOGE(op_type.c_str(), "Unknown Exception encountered when parsing Compile Info of pattern %s", pattern.c_str());
+    return std::shared_ptr<AutoTilingCompileInfo>(nullptr);
+  }
+}
+
 }  // namespace optiling

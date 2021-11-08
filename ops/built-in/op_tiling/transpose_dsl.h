@@ -25,7 +25,7 @@
 #include <string>
 
 #include <nlohmann/json.hpp>
-#include "op_tiling.h"
+#include "vector_tiling.h"
 #include "external/graph/operator.h"
 
 namespace optiling {
@@ -136,5 +136,32 @@ class Transpose {
 };
 
 }  // namespace utils
+
+/*
+ * @brief: tiling function of transpose operator
+ * @param [in] op_type: op_type of the transpose operator
+ * @param [in] op_paras: inputs/outputs/atts of the transpose operator
+ * @param [in] op_info: compile time generated info of the transpose operator
+ * @param [out] run_info: result data
+ * @return bool: success or not
+ */
+bool TransposeDsl(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& compile_info,
+                  utils::OpRunInfo& run_info);
+
+class TransposeDslCompileInfo: public AutoTilingCompileInfo {
+  public:
+  TransposeDslCompileInfo(const std::string& o, const std::string& p, const nlohmann::json& c)
+    : AutoTilingCompileInfo(o, p), compile_info(c) {}
+  bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const override;
+  bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const override;
+
+  private:
+  const nlohmann::json compile_info;
+};
+
+std::shared_ptr<AutoTilingCompileInfo> CreateTransposeDslTilingHandler(const std::string& op_type,
+                                                                       const std::string& pattern,
+                                                                       const nlohmann::json& parsed_compile_info);
+
 }  // namespace optiling
 #endif  // OPS_BUILT_IN_OP_TILING_TRANSPOSE_DSL_H_
