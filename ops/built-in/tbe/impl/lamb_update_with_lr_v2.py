@@ -402,8 +402,8 @@ def lamb_update_with_lr_v2_compute(input0,
     -------
     output tensor
     """
-    greater_0 = greater_compute(greater_y, input0, kernel_name="Geater")
-    greater_1 = greater_compute(greater_y, input1, kernel_name="Greater_1")
+    greater_0 = greater_compute(input0, greater_y, kernel_name="Geater")
+    greater_1 = greater_compute(input1, greater_y, kernel_name="Greater_1")
     truediv_0 = true_div_compute(input0, input1, kernel_name="truediv_3")
     select_0 = select_compute(greater_1,
                               truediv_0,

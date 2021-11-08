@@ -59,9 +59,9 @@ def calc_expect_func(input0, input1, input2, input3, input4, greater_y, select_e
     x6_value = greater_y.get("value")
     x7_value = select_e.get("value")
 
-    greater_0 = np.greater(x6_value, x1_value)
+    greater_0 = np.greater(x1_value, x6_value)
 
-    greater_1 = np.greater(x6_value, x2_value)
+    greater_1 = np.greater(x2_value, x6_value)
     truediv0 = np.true_divide(x1_value, x2_value)
 
     select_0 = np.select([greater_1, ~greater_1], [truediv0, x7_value])
@@ -96,7 +96,7 @@ ut_case.add_precision_case("all", {"params": [{"shape": (1,), "dtype": "float16"
                                               {"shape": (512, 1024), "dtype": "float16", "format": "NCHW", "ori_shape": (512, 1024),"ori_format": "NCHW", "param_type": "output"}, #ot
                                               ],
                                    "calc_expect_func": calc_expect_func,
-                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
+                                   "precision_standard": precision_info.PrecisionStandard(0.005, 0.005)
                                    })
 
 
