@@ -78,8 +78,8 @@ REG_OP(TopKPQDistance)
     .OUTPUT(topk_ivf, TensorType({DT_INT32}))
     .OUTPUT(topk_index, TensorType({DT_INT32}))
     .ATTR(order, String, "ASC")
-    .ATTR(k, Int, 0)
-    .ATTR(group_size, Int, 0)
+    .REQUIRED_ATTR(k, Int)
+    .REQUIRED_ATTR(group_size, Int)
     .OP_END_FACTORY_REG(TopKPQDistance)
 
 /**
