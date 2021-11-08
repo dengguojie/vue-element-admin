@@ -54,7 +54,7 @@ def check_supported(indices, x, shape, y, kernel_name="ScatterNd"):
     x_shape = list(x.get('ori_shape'))
     shape_shape = list(shape.get('ori_shape'))
 
-    if reduce(lambda a, b: a * b, indices_shape + x_shape + shape_shape) < 0:
+    if len(list(filter(lambda x: x < 0, indices_shape + x_shape + shape_shape))) > 0:
         return True, "dynamic shape support"
     if indices_shape[-1] == 1:
         return True,"indices last dim is 1, support dynamic shape"
