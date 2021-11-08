@@ -16,6 +16,7 @@
 # ============================================================================
 
 """op ut runner, apply run ut function"""
+import importlib
 import time
 import os
 import sys
@@ -142,11 +143,35 @@ class RunUTCaseFileArgs:  # 'pylint: disable=too-many-instance-attributes,too-fe
         self.dump_model_dir = dump_model_dir
 
 
+def get_cov_relate_source(module_name: str) -> list:
+    """
+    get relate source to generate coverage
+    Parameters:
+    -----------
+    module_name: related module
+    Returns:
+    -----------
+    List related source to generate coverage
+    """
+    module_spec = importlib.util.find_spec(module_name)
+    if module_spec is None:
+        for dir_item in sys.path:
+            impl_dir = os.path.join(dir_item, "impl")
+            if os.path.exists(impl_dir):
+                sys.path.append(impl_dir)
+        module_name = module_name.replace("impl.", "")
+    module_file = importlib.util.find_spec(module_name).origin
+    module_dir = os.path.split(module_file)[0]
+    return [module_name, module_dir]
+
+
 def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
     logger.log_info("start run: %s" % run_arg.case_file)
     res = True
+
     if run_arg.cov_report:
-        ut_cover = coverage.Coverage(source=[run_arg.op_module_name, "impl"], data_file=run_arg.cov_data_path)
+        cov_src = get_cov_relate_source(run_arg.op_module_name)
+        ut_cover = coverage.Coverage(source=cov_src, data_file=run_arg.cov_data_path)
         ut_cover.start()
 
     try:
