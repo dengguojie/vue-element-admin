@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef AICPU_KERNELS_NORMALIZED_CACHE_SWAP_TABLE_H_
-#define AICPU_KERNELS_NORMALIZED_CACHE_SWAP_TABLE_H_
+#ifndef AICPU_KERNELS_NORMALIZED_CACHE_SWAP_TABLE_H
+#define AICPU_KERNELS_NORMALIZED_CACHE_SWAP_TABLE_H
 
-#include <math.h>
+#include <cmath>
 #include <vector>
 #include "cpu_kernel.h"
 

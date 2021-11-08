@@ -1,6 +1,6 @@
 /**
  * Copyright 2021 Jilin University
- * Copyright 2020 Huawei Technologies Co., Ltd.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,14 +15,14 @@
  * limitations under the License.
  */
 
-#ifndef AICPU_KERNELS_NORMALIZED_ZETA_H_
-#define AICPU_KERNELS_NORMALIZED_ZETA_H_
+#ifndef AICPU_KERNELS_NORMALIZED_ZETA_H
+#define AICPU_KERNELS_NORMALIZED_ZETA_H
 
 #include "cpu_kernel.h"
 
 namespace aicpu {
 class ZetaCpuKernel final : public CpuKernel {
-  virtual std::uint32_t Compute(CpuKernelContext &ctx) override final;
+  std::uint32_t Compute(CpuKernelContext &ctx) override;
 };
 }  // namespace aicpu
 #endif

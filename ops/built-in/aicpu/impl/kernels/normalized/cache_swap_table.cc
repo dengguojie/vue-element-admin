@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,8 +44,8 @@ uint32_t CacheSwapTableTask(std::vector<Tensor *> &inputs,
 
   char *old_value = reinterpret_cast<char *>(outputs[0]->GetData());
 
-  auto ret = memset_s(old_value, output_size * type_size, 0x00,
-                      output_size * type_size);
+  errno_t ret = memset_s(old_value, output_size * type_size, 0x00,
+                         output_size * type_size);
   if (ret != EOK) {
     KERNEL_LOG_ERROR("Memset failed, result[%d]", ret);
     return KERNEL_STATUS_INNER_ERROR;
@@ -67,11 +67,11 @@ uint32_t CacheSwapTableTask(std::vector<Tensor *> &inputs,
     if (swap_cache_idx[i] < 0) {
       continue;
     }
-    int ret = memcpy_s(old_value + i * single_copy_size, old_value_size,
-                       cache_table + swap_cache_idx[i] * single_copy_size,
-                       single_copy_size);
+    ret = memcpy_s(old_value + i * single_copy_size, old_value_size,
+                   cache_table + swap_cache_idx[i] * single_copy_size,
+                   single_copy_size);
     old_value_size -= single_copy_size;
-    if (ret != 0) {
+    if (ret != EOK) {
       KERNEL_LOG_ERROR("CacheSwapTable memcpy failed, result [%d].", ret);
       return KERNEL_STATUS_INNER_ERROR;
     }
@@ -79,7 +79,7 @@ uint32_t CacheSwapTableTask(std::vector<Tensor *> &inputs,
                    cache_table_size, miss_value + i * single_copy_size,
                    single_copy_size);
     cache_table_size -= single_copy_size;
-    if (ret != 0) {
+    if (ret != EOK) {
       KERNEL_LOG_ERROR("CacheSwapTable memcpy failed, result [%d].", ret);
       return KERNEL_STATUS_INNER_ERROR;
     }

@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -135,7 +135,6 @@ uint32_t LogMatrixDeterminantCpuKernel::LogMatrixDeterminantCompute(
   if (size_mm > 0) {
     size_t martix_num = ctx.Input(0)->NumElements() / size_mm;
     int64_t data_size = ctx.Input(0)->NumElements() * sizeof(T);
-
     if (data_size <= kParallelDataNums) {
       RealT log_abs_det = 0;
       T sign = 1;

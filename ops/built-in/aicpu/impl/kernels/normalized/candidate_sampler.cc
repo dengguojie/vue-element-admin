@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,7 +53,6 @@ uint32_t CandidateSamplerMsCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   KERNEL_CHECK_NULLPTR(x_shape, KERNEL_STATUS_PARAM_INVALID,
                        "The value of x_shape is null.")
   x_shape_ = x_shape->GetDimSizes();
-
   if (x_shape_.size() != 2) {
     KERNEL_LOG_ERROR("The input:[0] must be a 2-D, but got [%zu]-D",
                      x_shape_.size());

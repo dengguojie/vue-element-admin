@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef AICPU_KERNELS_NORMALIZED_CANDIDATE_SAMPLER_H_
-#define AICPU_KERNELS_NORMALIZED_CANDIDATE_SAMPLER_H_
+#ifndef AICPU_KERNELS_NORMALIZED_CANDIDATE_SAMPLER_H
+#define AICPU_KERNELS_NORMALIZED_CANDIDATE_SAMPLER_H
 
 #include <utility>
 #include "cpu_kernel.h"
