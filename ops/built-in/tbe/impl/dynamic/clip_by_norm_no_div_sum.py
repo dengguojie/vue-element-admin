@@ -28,8 +28,8 @@ from impl.util.platform_adapter import tbe_platform
 SHAPE_SIZE_LIMIT = 2147483648
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
-# pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
 @register_operator_compute("ClipByNormNoDivSum", op_mode="dynamic", support_fusion=True)
 def clip_by_norm_no_div_sum_compute(data_input_x,
                                     data_greater_zeros,

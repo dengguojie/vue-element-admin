@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-# pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name,too-many-arguments,unused-variable,too-many-function-args
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name,too-many-arguments,unused-variable,too-many-function-args
 """
 dequantize op, Dequantize the 'input' tensor into a float tensor.
 """

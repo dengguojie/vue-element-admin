@@ -32,7 +32,7 @@ TILING_ARG_NUM = 16
 RESERVED_UB_SIZE = 8 * 1024
 
 
-# pylint: disable = invalid-name,unused-argument,too-many-instance-attributes
+# 'pylint: disable = invalid-name,unused-argument,too-many-instance-attributes
 def _get_ceil_int(int1, int2):
     """Get ceil
     """

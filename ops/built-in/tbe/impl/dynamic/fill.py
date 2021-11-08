@@ -25,7 +25,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=unused-argument,invalid-name,too-many-locals
 def fill_compute(dims, value, dtype, kernel_name="fill"):
     """
     calculating data

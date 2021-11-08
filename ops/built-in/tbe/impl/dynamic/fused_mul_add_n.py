@@ -37,7 +37,7 @@ def fused_mul_add_n_compute(data_x, data_y, data_z):
     return res
 
 
-# pylint: disable=unused-argument,too-many-locals
+# 'pylint: disable=unused-argument,too-many-locals
 @register_operator("FusedMulAddN")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)

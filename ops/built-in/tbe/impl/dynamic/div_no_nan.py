@@ -26,6 +26,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 
+# 'pylint: disable=too-many-locals
 def div_no_nan_compute(input_x, input_y, ):
     """
      div_no_nan_compute
@@ -95,6 +96,7 @@ def div_no_nan_compute(input_x, input_y, ):
     return res
 
 
+# 'pylint: disable=too-many-locals,unused-argument
 @register_operator("DivNoNan")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
@@ -132,9 +134,9 @@ def div_no_nan(input_x, input_y, output_z, kernel_name="div_no_nan"):
 
     ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
-    for (x1, x2) in ins:
+    for (classify_x, classify_y) in ins:
         with tbe.compute():
-            x_shape, y_shape = shape_util.variable_shape([x1, x2])
+            x_shape, y_shape = shape_util.variable_shape([classify_x, classify_y])
             data1 = tvm.placeholder(x_shape, x_dtype, "data1")
             data2 = tvm.placeholder(y_shape, y_dtype, "data2")
             res = div_no_nan_compute(data1, data2, )

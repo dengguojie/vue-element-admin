@@ -29,8 +29,7 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import get_current_build_config
 
 
-# pylint: too-many-locals
-# pylint: disable=unrecognized-inline-option,invalid-name,too-many-locals,unused-argument
+# 'pylint: disable=unrecognized-inline-option,invalid-name,too-many-locals,unused-argument
 def get_fusion_params(x_tensor, y, x_tensor_num):
     """
     Get L1 fusion_params
@@ -99,8 +98,8 @@ def get_fusion_params(x_tensor, y, x_tensor_num):
     return fusion_params
 
 
-# pylint: disable=unidiomatic-typecheck,too-many-branches,too-many-locals
-# pylint: disable=no-member,dangerous-default-value,invalid-name,len-as-condition
+# 'pylint: disable=unidiomatic-typecheck,too-many-branches,too-many-locals
+# 'pylint: disable=no-member,dangerous-default-value,invalid-name,len-as-condition
 @register_operator_compute("Eltwise", op_mode="dynamic", support_fusion=True)
 def eltwise_compute(x, y, mode=1, coeff=[], kernel_name="eltwise"):
     """
@@ -202,6 +201,7 @@ def _eltwise_check_para(x, y, mode=1, coeff=[],
         error_manager_vector.raise_err_check_params_rules("eltwise", "mode only support 0,1,2", "mode", mode)
 
 
+# 'pylint: disable=consider-using-f-string
 @register_operator("Eltwise")
 @para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_LIST_FLOAT, para_check.KERNEL_NAME)

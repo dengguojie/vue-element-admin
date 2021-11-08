@@ -15,16 +15,16 @@
 """
 gather_d
 """
-from . import gather_v2
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from . import gather_v2
 
 
-# pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-branches
-# pylint: disable=superfluous-parens
+# 'pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-branches
+# 'pylint: disable=superfluous-parens,too-many-arguments
 def get_op_support_info(x, indices, y, validate_indices=True, batch_dims=0, kernel_name="Gather"):
     """
     get_op_support_info
@@ -46,6 +46,7 @@ def get_op_support_info(x, indices, y, validate_indices=True, batch_dims=0, kern
     return op_cal_info_in_json
 
 
+# 'pylint: disable=too-many-arguments
 @register_operator("Gather")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)

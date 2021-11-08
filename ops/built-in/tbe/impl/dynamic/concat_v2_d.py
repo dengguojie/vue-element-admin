@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
 """
 Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
 
@@ -19,6 +17,7 @@ concat_v2_d: Concatenates tensors along one dimension.
             tf ConcactV2 op
 
 """
+# 'pylint: disable=too-many-lines,consider-using-f-string
 from __future__ import absolute_import
 import math
 
@@ -45,7 +44,7 @@ MAX_REPEAT_STRIDE = 255
 MAX_REPEAT_TIMES = 255
 
 
-# pylint: disable=too-many-lines,cell-var-from-loop
+# 'pylint: disable=cell-var-from-loop
 def ceil_32bytes_align_count(count, dtype):
     """
     ceil_32bytes_align_count
@@ -56,7 +55,7 @@ def ceil_32bytes_align_count(count, dtype):
     return block_count * block_elements
 
 
-# pylint: disable=too-many-arguments,too-many-locals
+# 'pylint: disable=too-many-arguments,too-many-locals
 def _get_mask2concat_ub(instance: tik.Tik, count, src_index, dtype):
     """
     get 128bit mask for concat ub
@@ -164,15 +163,15 @@ def _concat_ub_vadd(instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, dst_ind
     if dst.scope != tik.scope_ubuf or src.scope != tik.scope_ubuf:
         error_detail = "dst and src must be UB, but dst is {} and src is {}.".format(dst.scope, src.scope)
         error_manager_vector.raise_err_specific_reson("concat_v2_d", error_detail)
-     
+
     if dst.dtype != src.dtype:
         error_detail = "dst.dtype[{}] != src.dtype[{}].".format(dst.dtype, src.dtype)
         error_manager_vector.raise_err_specific_reson("concat_v2_d", error_detail)
-     
+
     if not tbe_platform.api_check_support("tik.vadd", dst.dtype):
         error_detail = "{} is not supported by vadd.".format(dst.dtype)
         error_manager_vector.raise_err_specific_reson("concat_v2_d", error_detail)
-     
+
     dtype_size = common_util.get_data_size(dst.dtype)
     block_element = constant.BLOCK_SIZE // dtype_size
 
@@ -230,7 +229,7 @@ def _data_move_all_align(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor
             ub2gm(inst, dst[out_addr:], src[ub_addr:], burst * block_element, burst)
 
 
-# pylint:disable=too-many-instance-attributes,too-few-public-methods
+# 'pylint:disable=too-many-instance-attributes,too-few-public-methods
 class ConcatV2:
     """
     ConcatV2
@@ -381,7 +380,7 @@ class ConcatV2:
             for _, dim_i in enumerate(self._dims):
                 dim_i.set_as(dim_i * src_type_size // dst_type_size)
 
-        # pylint: disable=no-self-use
+        # 'pylint: disable=no-self-use
         def need_ub_size(self):
             """
             :return: ub size needed by tiling
@@ -476,6 +475,13 @@ class ConcatV2:
                         self._concat_large_inner(i)
 
     def build(self):
+        """
+        build
+
+        Returns
+        -------
+        tik_instance
+        """
         inst = self.tik_instance
         opt_config = {"out_of_bound_sync_check": True,
                       "enable_const_fold": True}
@@ -498,7 +504,7 @@ class ConcatV2:
         ceil_num = ceil_div(count, self.ele_each_block)
         return ceil_num * self.ele_each_block
 
-    # pylint: disable=invalid-name,unused-variable,too-many-statements
+    # 'pylint: disable=invalid-name,unused-variable,too-many-statements
     def _concat_inner_dim_each_split(self, out_dim_idx, inner_dim_split_idx):
         """
         concat inner dim each split
@@ -1248,8 +1254,14 @@ def _check_shape(input_values, shape_name):
     for _, tensor_dict in enumerate(input_values):
         shape_input = tensor_dict.get(shape_name)
         if len(shape_input) != dim_num:
-            error_manager_vector.raise_err_inputs_shape_not_equal("concat_v2_d", "shape_input", "dim_num", len(shape_input), dim_num, dim_num)
+            error_manager_vector.raise_err_inputs_shape_not_equal("concat_v2_d",
+                                                                  "shape_input",
+                                                                  "dim_num",
+                                                                  len(shape_input),
+                                                                  dim_num,
+                                                                  dim_num)
 
+# 'pylint: disable=unused-argument
 def _check_params(input_values, axis):
     """
     check params
@@ -1268,7 +1280,7 @@ def _check_params(input_values, axis):
                                                            dtype_)
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @register_operator("ConcatV2D")
 @para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)

@@ -34,8 +34,8 @@ NUM_128 = 128
 # NUM_64
 NUM_64 = 64
 
-# pylint: disable=unused-argument,invalid-name,too-many-lines,line-too-long,no-self-use
-# pylint: disable=,too-many-locals,attribute-defined-outside-init,too-many-instance-attributes
+# 'pylint: disable=unused-argument,invalid-name,too-many-lines,line-too-long,no-self-use
+# 'pylint: disable=,too-many-locals,attribute-defined-outside-init,too-many-instance-attributes
 class DiagPart():
     """
     Function: class that execute diag_part

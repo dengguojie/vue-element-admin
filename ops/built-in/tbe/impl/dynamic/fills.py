@@ -39,7 +39,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=invalid-name,unused-argument
+# 'pylint: disable=invalid-name,unused-argument
 @register_operator_compute("Fills", op_mode="dynamic", support_fusion=True)
 def fills_compute(x, value, dtype, kernel_name="fills"):
     """

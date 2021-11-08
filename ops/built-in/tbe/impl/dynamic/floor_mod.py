@@ -26,8 +26,8 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
-# pylint: disable=too-many-locals,redefined-argument-from-local
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=too-many-locals,redefined-argument-from-local
 def floor_mod_compute(x1, x2, y, kernel_name="floor_mod"):
     """
     Compute remainder of division

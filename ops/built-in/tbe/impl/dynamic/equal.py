@@ -39,8 +39,8 @@ SCALAR_MUL_FP16 = 2 ** 12
 SCALAR_ONE = 1
 
 
-# pylint: disable=unused-argument,invalid-name
-# pylint: disable=too-many-locals,redefined-argument-from-local
+# 'pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=too-many-locals,redefined-argument-from-local
 def equal_compute(input_x, input_y, output_z, kernel_name="equal"):
     """
     compute for equal
@@ -144,7 +144,7 @@ def equal(input_x, input_y, output_z, kernel_name="equal"):
     para_check.check_elewise_shape_range([input_x, input_y], support_broadcast=True)
     if x_dtype != y_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal("equal", 'x_dtype', 'y_dtype', str(x_dtype), str(y_dtype))
-    
+
     ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (input_x, input_y) in ins:

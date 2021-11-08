@@ -26,14 +26,14 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
-@register_operator_compute("ClipByValue", 
-                            op_mode="dynamic", 
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
+@register_operator_compute("ClipByValue",
+                            op_mode="dynamic",
                             support_fusion=True)
 
-def clip_by_value_compute(input_t, 
-                          clip_value_min, 
-                          clip_value_max, 
+def clip_by_value_compute(input_t,
+                          clip_value_min,
+                          clip_value_max,
                           output_t,
                           kernel_name="clip_by_value"):
     """
@@ -67,8 +67,8 @@ def clip_by_value_compute(input_t,
                                     param_name_input2="clip_value_max")
 
     _, _, shape_broadcast2 = \
-        shape_util.broadcast_shapes(shape_min_org, 
-                                    shape_broadcast, 
+        shape_util.broadcast_shapes(shape_min_org,
+                                    shape_broadcast,
                                     param_name_input1="clip_value_min",
                                     param_name_input2="input_t_broadcast")
 
@@ -82,15 +82,15 @@ def clip_by_value_compute(input_t,
 
 
 @register_operator("ClipByValue")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, 
-                            para_check.REQUIRED_INPUT, 
+@para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_OUTPUT, 
+                            para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
-def clip_by_value(input_t, 
-                  clip_value_min, 
+def clip_by_value(input_t,
+                  clip_value_min,
                   clip_value_max,
-                  output_t, 
+                  output_t,
                   kernel_name="clip_by_value"):
     """
     algorithm: clip_by_value

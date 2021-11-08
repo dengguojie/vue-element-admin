@@ -26,7 +26,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=locally-disabled,unused-argument
 @register_operator_compute("Floor", op_mode="dynamic", support_fusion=True)
 def floor_compute(input_x, output_y, kernel_name="floor"):
     """
@@ -83,9 +83,9 @@ def floor(input_x, output_y, kernel_name="floor"):
 
     schedules, tensors = [], []
     ins = classify([input_x], OpPatternMode.ELEWISE)
-    for (input_x,) in ins:
+    for (classify_x,) in ins:
         with tbe.compute():
-            x_shape = shape_util.variable_shape([input_x])[0]
+            x_shape = shape_util.variable_shape([classify_x])[0]
             data_input = tvm.placeholder(x_shape, dtype=input_dtype, name="data_input")
             res = floor_compute(data_input, output_y, kernel_name)
             tensors.append([data_input, res])

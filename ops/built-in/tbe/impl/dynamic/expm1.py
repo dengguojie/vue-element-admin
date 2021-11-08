@@ -15,7 +15,6 @@
 """
 expm1
 """
-import functools
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
@@ -47,7 +46,7 @@ TAYLOR_SIXTH_ORDER_PARAM = 1 / 720.0
 TAYLOR_SEVENTH_ORDER_PARAM = 1 / 5040.0
 
 
-# pylint: disable=locally-disabled,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-locals
 def _expm1_taylor_compute(input_x):
     """
     Calculate e^x - 1, Use seventh order taylor expansion
@@ -146,7 +145,7 @@ def _expm1_mini_compute(mini_res, input_x, shape):
     return mini_res
 
 
-# pylint: disable=locally-disabled,too-many-locals,unused-argument
+# 'pylint: disable=locally-disabled,too-many-locals,unused-argument
 @register_operator_compute("Expm1", op_mode="dynamic", support_fusion=True)
 def expm1_compute(input_x, output_y, kernel_name="expm1"):
     """
@@ -218,9 +217,9 @@ def expm1(input_x, output_y, kernel_name="expm1"):
     schedules, tensors = [], []
     ins = classify([input_x], OpPatternMode.ELEWISE)
 
-    for (input_x,) in ins:
+    for (classify_x,) in ins:
         with tbe.compute():
-            x_shape = shape_util.variable_shape([input_x])[0]
+            x_shape = shape_util.variable_shape([classify_x])[0]
             data_input = tvm.placeholder(x_shape, dtype=input_dtype, name="data_input")
             res = expm1_compute(data_input, output_y, kernel_name)
             tensors.append([data_input, res])

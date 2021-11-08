@@ -46,7 +46,7 @@ from impl.util.platform_adapter import OpPatternMode
 NUM_ZERO = 0.0
 NUM_ONE = 1.0
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals
 @register_operator_compute("EluGrad", op_mode="dynamic", support_fusion=True)
 def elu_grad_compute(grads, activations, y, kernel_name="elu_grad"):
     """
@@ -96,7 +96,7 @@ def elu_grad_compute(grads, activations, y, kernel_name="elu_grad"):
     return res
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 @register_operator("EluGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)

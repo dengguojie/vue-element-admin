@@ -19,13 +19,12 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=unused-argument,invalid-name, too-many-locals,too-many-arguments
+# 'pylint: disable=unused-argument,invalid-name, too-many-locals,too-many-arguments
 def fused_mul_apply_momentum_compute(var,
                                      accum,
                                      lr,
@@ -104,7 +103,7 @@ def fused_mul_apply_momentum_compute(var,
     return res
 
 
-# pylint: disable=unbalanced-tuple-unpacking, too-many-arguments
+# 'pylint: disable=unbalanced-tuple-unpacking, too-many-arguments
 @register_operator("FusedMulApplyMomentum")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
@@ -168,21 +167,21 @@ def fused_mul_apply_momentum(var,
     data_lr = tvm.placeholder(shape_scalar, dtype=var_dtype, name="data_lr")
     data_momentum = tvm.placeholder(shape_scalar, dtype=var_dtype, name="data_momentum")
     data_x2 = tvm.placeholder(shape_scalar, dtype=var_dtype, name="data_x2")
-    
+
     ins = classify([var, accum, x1], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for (_var, _accum, _x1) in ins:
         with tbe.compute():
             shape_var, shape_accum, shape_x1 = shape_util.variable_shape([_var, _accum, _x1])
             data_var = tvm.placeholder(shape_var, dtype=var_dtype, name="data_var")
-            data_accum = tvm.placeholder(shape_accum, dtype=var_dtype, name="data_accum")           
-            data_x1 = tvm.placeholder(shape_x1, dtype=var_dtype, name="data_x1")            
+            data_accum = tvm.placeholder(shape_accum, dtype=var_dtype, name="data_accum")
+            data_x1 = tvm.placeholder(shape_x1, dtype=var_dtype, name="data_x1")
             res = fused_mul_apply_momentum_compute(data_var, data_accum,
                                                    data_lr, data_x1,
-                                                   data_momentum, data_x2, 
-                                                   out_var, out_accum, 
+                                                   data_momentum, data_x2,
+                                                   out_var, out_accum,
                                                    use_nesterov, kernel_name)
-            
+
             tensor_list = [data_var, data_accum, data_lr, data_x1,
                            data_momentum, data_x2] + list(res)
             tensors.append(tensor_list)

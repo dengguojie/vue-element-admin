@@ -91,7 +91,7 @@ def _check_format(format_input0, format_input1, format_input2):
     return format_pattern
 
 
-# pylint: disable=unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=unused-argument,too-many-locals,invalid-name
 @register_operator_compute("FusedMulAdd", op_mode="dynamic", support_fusion=True)
 def fused_mul_add_compute(data_input0, data_input1, data_input2,
                           output, kernel_name="fused_mul_add"):

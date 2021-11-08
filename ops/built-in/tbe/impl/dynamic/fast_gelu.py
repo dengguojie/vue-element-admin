@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
 """
 Copyright (C) 2021. Huawei Technologies Co., Ltd. All rights reserved.
 
@@ -15,7 +13,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 fast_gelu
 """
-import functools
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
@@ -32,8 +29,8 @@ from impl.util.platform_adapter import OpImplMode
 CONST_1 = 1
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
-# pylint: disable=too-many-locals,unused-variable
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
+# 'pylint: disable=too-many-locals,unused-variable
 @register_operator_compute("FastGelu", op_mode="dynamic", support_fusion=True)
 def fast_gelu_compute(input_x, output_y, kernel_name="fast_gelu", impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
@@ -78,7 +75,7 @@ def fast_gelu_compute(input_x, output_y, kernel_name="fast_gelu", impl_mode=OpIm
 
     div_down_rec = tbe.vrec(div_down, impl_mode)
     result = tbe.vmul(div_up, div_down_rec)
-    if check_support_flag == True:
+    if check_support_flag:
         result = tbe.cast_to(result, "float32")
 
     return result

@@ -25,7 +25,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_platform
 
 
-# pylint: disable=unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=unused-argument,too-many-locals,invalid-name
 def ceil_compute(input_x, output_x, kernel_name="ceil"):
     """
     ceil compute

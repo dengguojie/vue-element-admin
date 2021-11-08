@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
 """
 Copyright (C) 2021. Huawei Technologies Co., Ltd. All rights reserved.
 
@@ -30,8 +28,8 @@ from impl.util.platform_adapter import OpImplMode
 CONST_1 = 1
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
-# pylint: disable=too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
+# 'pylint: disable=too-many-locals
 @register_operator_compute("FastGeluGrad", op_mode="dynamic", support_fusion=True)
 def fast_gelu_grad_compute(input_dy, input_x, output_z, kernel_name="fast_gelu_grad",
                            impl_mode=OpImplMode.HIGH_PERFORMANCE):
@@ -97,7 +95,7 @@ def fast_gelu_grad_compute(input_dy, input_x, output_z, kernel_name="fast_gelu_g
     result_temp = tbe.vmul(div_up, div_down_rec)
 
     result = tbe.vmul(input_dy, result_temp)
-    if check_support_flag == True:
+    if check_support_flag:
         result = tbe.cast_to(result, "float32")
 
     return result

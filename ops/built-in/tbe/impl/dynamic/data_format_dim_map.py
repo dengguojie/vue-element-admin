@@ -91,7 +91,7 @@ def _dimension_index(data_mod, ind):
                                    ind[3]))), "int32")
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
 @register_operator_compute("DataFormatDimMap", op_mode="dynamic", support_fusion=True)
 def _data_format_dim_map_compute(x,
                                  y,
@@ -126,6 +126,7 @@ def _data_format_dim_map_compute(x,
     return _dimension_index(data_mod, ind)
 
 
+# 'pylint: disable=too-many-locals
 @register_operator("DataFormatDimMap")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_STR,

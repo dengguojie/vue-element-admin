@@ -1,8 +1,25 @@
+# Copyright 2020 Huawei Technologies Co., Ltd
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ============================================================================
+"""
+dynamic_lstm_grad_cell
+"""
+from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
 from tbe.dsl.base.operation import add_compile_info
 from te.utils import para_check
-from impl.util.platform_adapter import register_operator
 
 INT32_MAX_NUM = 2 * 32 - 1
 TILLING_ARG_NUM = 12
@@ -26,14 +43,14 @@ TILLING_PARA_INDEX_MAP = {
 }
 
 
-# pylint: disable=too-many-instance-attributes
-class LstmCellGradInput(object):
+# 'pylint: disable=too-many-instance-attributes
+class LstmCellGradInput:
     """
     Class: use to store LstmCellGradInput input parameters
     Modify : 2019-12-28
     """
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments,unused-argument
     def __init__(self, mask, init_c, cell_state, dht_out, dht, dct, input_gate, forget_gate,
                  update_gate, output_gate, tanh_ct, gate_order, direction, kernel_name):
         """
@@ -215,7 +232,7 @@ class LstmCellGrad(LstmCellGradInput):
     Modify : 2019-12-28
     """
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def __init__(self, mask, init_c, cell_state, dht_out, dht, dct, input_gate, forget_gate,
                  update_gate, output_gate, tanh_ct, gate_order, direction, kernel_name):
         """
@@ -249,7 +266,7 @@ class LstmCellGrad(LstmCellGradInput):
         -------
         None
         """
-        # pylint: disable=super-with-arguments
+        # 'pylint: disable=super-with-arguments
         super(LstmCellGrad, self).__init__(mask, init_c, cell_state, dht_out, dht, dct, input_gate,
                                            forget_gate, update_gate, output_gate, tanh_ct, gate_order,
                                            direction, kernel_name)
@@ -594,6 +611,15 @@ class LstmCellGrad(LstmCellGradInput):
             self.vector_compute(compute_index, tile_mask, 1)
 
     def calc_t_offset(self):
+        """
+        Calculate t_offset
+
+        Parameters
+        ----------
+
+        Returns:
+        t_offset
+        """
         self.ub_t_state = self.tik_instance.Tensor(
             INT32, (4,),
             name="ub_t_state",
@@ -772,10 +798,11 @@ class LstmCellGrad(LstmCellGradInput):
             enable_l2=False)
 
 
-# pylint: disable=unused-argument,too-many-arguments,invalid-name,too-many-locals
+# 'pylint: disable=unused-argument,too-many-arguments,invalid-name,too-many-locals
 @register_operator("DynamicLSTMGradCell")
-def dynamic_lstm_grad_cell(init_c, c, dy, dh, dc, i, j, f, o, tanhct, t_state, mask, dgate, dct1, forget_bias=1,
-                            activation="tanh", direction="UNIDIRECTIONAL", gate_order="ijfo", kernel_name="dynamic_lstm_grad_cell"):
+def dynamic_lstm_grad_cell(init_c, c, dy, dh, dc, i, j, f, o, tanhct, t_state, mask, dgate, dct1,
+                           forget_bias=1, activation="tanh", direction="UNIDIRECTIONAL",
+                           gate_order="ijfo", kernel_name="dynamic_lstm_grad_cell"):
     """
     Calculate the gradient of the four gates and the state of c at t-1
 

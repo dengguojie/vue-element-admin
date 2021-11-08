@@ -43,7 +43,7 @@ SCALER_FP16_MAX = 32768
 SCALER_FP16_MIN = 2 ** (-15)
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,too-many-statements
 @register_operator_compute("Erf", op_mode="dynamic", support_fusion=True)
 def erf_compute(input_x, output_y, kernel_name="erf"):
     """

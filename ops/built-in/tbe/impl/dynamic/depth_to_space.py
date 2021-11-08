@@ -33,6 +33,7 @@ MAX_INT64_VALUE = 2**64 - 1
 TILING_MAX_SIZE_GM = 2048  # 16KB
 
 
+# 'pylint: disable=invalid-name,unused-argument,too-many-arguments
 def get_op_support_info(x, y, block_size, data_format='NHWC', kernel_name="depth_to_space"):
     """
     get_op_support_info
@@ -51,7 +52,7 @@ def get_op_support_info(x, y, block_size, data_format='NHWC', kernel_name="depth
     return op_cal_info_in_json
 
 
-# pylint: disable=invalid-name,unused-argument,too-many-locals,protected-access
+# 'pylint: disable=invalid-name,unused-argument,too-many-locals,protected-access
 @register_operator("DepthToSpace")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
@@ -85,7 +86,7 @@ def depth_to_space(x, y, block_size, mode='DCR', data_format='NHWC', kernel_name
     para_check.check_dtype(input_dtype, check_list, param_name="x")
     # check mode
     if mode not in ('DCR', 'CRD'):
-        error_manager_vector.raise_err_input_value_invaliad(kernel_name, "mode", "DCR, CRD", mode)
+        error_manager_vector.raise_err_input_value_invalid(kernel_name, "mode", "DCR, CRD", mode)
 
     # run tick
     tik_inst = tik.Tik()

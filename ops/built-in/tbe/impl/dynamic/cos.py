@@ -29,7 +29,7 @@ from impl.util.platform_adapter import register_operator_compute
 TWO_PI = 2 * 3.14159265358979
 
 
-# pylint: disable=locally-disabled, unused-argument
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 @register_operator_compute("Cos", op_mode="dynamic", support_fusion=True)
 def cos_compute(input_x, output_y, kernel_name="cos"):
     """

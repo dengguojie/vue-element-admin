@@ -28,7 +28,7 @@ TILING_ARG_NUM = 4
 MAX_INPUT_RANK = 64
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
 def get_op_support_info(concat_dim, x, y, kernel_name="concat_offset_d"):
     """
     get_op_support_info
@@ -39,7 +39,7 @@ def get_op_support_info(concat_dim, x, y, kernel_name="concat_offset_d"):
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
 def check_supported(concat_dim, x, y, kernel_name="concat_offset"):
     """
     when input is more than 95, changed to aicpu
@@ -51,9 +51,9 @@ def check_supported(concat_dim, x, y, kernel_name="concat_offset"):
     return True, ""
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
-# pylint: disable=locally-disabled,too-many-instance-attributes
-# pylint: disable=useless-object-inheritance
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-instance-attributes
+# 'pylint: disable=useless-object-inheritance
 class ConcatOffsetCompute(object):
     """
     Function: use to store ConcatOffset base fuction

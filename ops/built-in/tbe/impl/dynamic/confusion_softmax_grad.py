@@ -15,17 +15,17 @@
 """
 confusion_softmax_grad
 """
+from impl.util import util_common
 from impl.util.platform_adapter import tbe
-from impl.util.platform_adapter import tvm 
+from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from tbe.common.utils import shape_util
-from impl.util import util_common
 from tbe.dsl.base.operation import var
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
 def _broadcast_nz(tensor, shape):
     broadcast_axes = []
     src_shape = shape_util.shape_to_list(tensor.shape)
@@ -81,10 +81,6 @@ def confusion_softmax_grad_compute(grad_dict, grad, x, y,
     if dtype == "float16":
         data_vmul = tbe.cast_to(data_vmul, "float32")
 
-    ori_shape = grad_dict.get("ori_shape")
-    ori_axis = -1
-    ori_format = grad_dict.get("ori_format").upper()
-    input_format = grad_dict.get("format").upper()
     axis = [-1]
 
     data_sum = tbe.reduce_sum(data_vmul, axis=axis, keepdims=True)
@@ -156,7 +152,7 @@ def confusion_softmax_grad(grad, x, y, kernel_name="confusion_softmax_grad"):
 
         res = confusion_softmax_grad_compute(grad, data_grad, data_x, y,
                                             kernel_name=kernel_name)
-        
+
         tensors.append([data_grad, data_x] + [res])
 
         with tvm.target.cce():
@@ -165,5 +161,5 @@ def confusion_softmax_grad(grad, x, y, kernel_name="confusion_softmax_grad"):
 
     config = {"name": kernel_name,
               "tensor_list": tensors}
-    
+
     tbe.build(schedules, config)

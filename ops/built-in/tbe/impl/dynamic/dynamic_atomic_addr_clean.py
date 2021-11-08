@@ -60,13 +60,13 @@ def _tik_get_ub_size(is_double_buffer=True):
     return ub_size
 
 
-# pylint: disable=too-many-instance-attributes,too-few-public-methods
+# 'pylint: disable=too-many-instance-attributes,too-few-public-methods
 class DynamicAtomicAddrClean():
     """
     DynamicAtomicAddrClean
     """
 
-    # pylint: disable=too-few-public-methods,too-many-statements
+    # 'pylint: disable=too-few-public-methods,too-many-statements
     def __init__(self, size_list):
         """
         constructor of class DynamicAtomicAddrClean
@@ -92,7 +92,7 @@ class DynamicAtomicAddrClean():
                                                   (MAX_TILING_PARAMS_NUM,),
                                                   tik.scope_gm, "tiling_gm")
 
-        # pylint: disable=too-few-public-methods
+        # 'pylint: disable=too-few-public-methods
         class CommonInputScalar():
             """
             CommonInputScalar
@@ -185,7 +185,7 @@ class DynamicAtomicAddrClean():
         self.ub_tensor = self.tik_instance.Tensor("float32", (
             MASK_FP32 * MAX_REPEAT_TIME,), tik.scope_ubuf, "ub_tensor")
 
-    # pylint: disable=unused-argument
+    # 'pylint: disable=unused-argument
     def addr_clean(self, workspace_addrs):
         """
         addr_clean
@@ -340,7 +340,7 @@ class DynamicAtomicAddrClean():
         return self.tik_instance
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @register_operator("DynamicAtomicAddrClean")
 @para_check.check_op_params(para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def dynamic_atomic_addr_clean(size_list, kernel_name="DynamicAtomicAddrClean"):

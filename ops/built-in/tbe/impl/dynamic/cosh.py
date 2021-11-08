@@ -34,7 +34,7 @@ SCALER_ZERO_POINT_FIVE = 0.5
 SCALAR_TWO = 2
 
 
-# pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 @register_operator_compute("Cosh", op_mode="dynamic", support_fusion=True)
 def cosh_compute(input_x, output_cosh, kernel_name="cosh"):
     """

@@ -15,7 +15,6 @@
 """
 dynamic erfc
 """
-import functools
 
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
@@ -45,7 +44,7 @@ SCALER_FP16_MAX = 32768
 SCALER_FP16_MIN = 2 ** (-15)
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,too-many-statements
 @register_operator_compute("Erfc", op_mode="dynamic", support_fusion=True)
 def erfc_compute(input_x, output_y, kernel_name="erfc"):
     """

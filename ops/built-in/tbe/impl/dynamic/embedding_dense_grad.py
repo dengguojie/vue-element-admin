@@ -13,7 +13,8 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 embedding_dense_grad
 """
-
+# 'pylint: disable=too-many-arguments,invalid-name,too-many-statements
+# 'pylint: disable=unused-argument,too-many-instance-attributes
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform as cce
 from impl.util.platform_adapter import para_check
@@ -26,7 +27,7 @@ SCALAR_TENSOR_SIZE = 32
 TILING_ARG_NUM = 64
 TILING_MODE_1 = 1
 GRAD_TENSOR_PART = 512
-TOTAL_PART = 513
+
 
 class EmbeddingDenseGrad():
     """
@@ -84,7 +85,7 @@ class EmbeddingDenseGrad():
         self.dtype_bytes_size_grad = cce.get_bit_len(
             self.dtype_grad) // 8
         self.grad_each_block = block_bite_size // self.dtype_bytes_size_grad
-        
+
         '''Calculate how many counts elements can be stored in a block according
         to the input data type'''
         self.dtype_bytes_size_tiling = cce.get_bit_len(
@@ -94,21 +95,21 @@ class EmbeddingDenseGrad():
             self.dtype_indices) // 8
         self.counts_each_block = block_bite_size // self.dtype_bytes_size_counts
 
-        '''Fix the space of self.num_weights*self.dtype_bytes_size_counts Bytes to counts on ub, 
-        so you only need to calculate how many elements are placed on ub for indicators and grad, 
+        '''Fix the space of self.num_weights*self.dtype_bytes_size_counts Bytes to counts on ub,
+        so you only need to calculate how many elements are placed on ub for indicators and grad,
         and perform 32B alignment'''
         if self.num_weights // self.aicore_num > 0:
             self.ub_indices_size = (self.ub_size_bytes - (self.num_weights // self.aicore_num + self.num_weights %
                                                           self.aicore_num) * self.dtype_bytes_size_counts
                                     - RESERVE_SIZE) \
-			// (GRAD_TENSOR_PART * self.dtype_bytes_size_grad + self.dtype_bytes_size_indices) // \
-			self.indices_each_block * self.indices_each_block
+            // (GRAD_TENSOR_PART * self.dtype_bytes_size_grad + self.dtype_bytes_size_indices) // \
+            self.indices_each_block * self.indices_each_block
             self.counts_size = self.num_weights // self.aicore_num + self.num_weights % self.aicore_num
         else:
             self.ub_indices_size = (self.ub_size_bytes - self.num_weights * self.dtype_bytes_size_counts
                                     - RESERVE_SIZE) \
-			    // (GRAD_TENSOR_PART * self.dtype_bytes_size_grad + self.dtype_bytes_size_indices) // \
-				self.indices_each_block * self.indices_each_block
+                // (GRAD_TENSOR_PART * self.dtype_bytes_size_grad + self.dtype_bytes_size_indices) // \
+                self.indices_each_block * self.indices_each_block
             self.counts_size = self.num_weights
             self.aicore_num = 1
         self.ub_grad_size = self.ub_indices_size * GRAD_TENSOR_PART

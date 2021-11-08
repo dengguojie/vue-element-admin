@@ -26,7 +26,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 @register_operator_compute("Expand", op_mode="dynamic", support_fusion=False)
 def expand_compute(x, shape):
     """
@@ -67,7 +67,7 @@ def expand_compute(x, shape):
 
 
 
-# pylint: disable=too-many-locals,too-many-statements
+# 'pylint: disable=too-many-locals,too-many-statements,invalid-name
 @register_operator("Expand")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
@@ -109,7 +109,6 @@ def expand(x, shape, y, kernel_name="expand"):
     if len(input_shape_shape) > 1:
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "shape", "shape should be 1D")
 
-    input_x_range = list(x.get("range"))
     dims_value = input_shape_shape[0]
 
     if dims_value < -1:
@@ -121,7 +120,7 @@ def expand(x, shape, y, kernel_name="expand"):
     else:
         shape["shape"] = [-1] * dims_value
         shape["range"] = [(1, None)] * dims_value
-    
+
     if len(x['range']) == 0:
         # x's range should not be empty when x is static.
         x['range'] = [(val, val) for val in x['shape']]

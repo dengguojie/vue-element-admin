@@ -15,7 +15,7 @@
 """
 drop_out_do_mask.py
 """
-# pylint: disable=too-many-arguments,too-few-public-methods,too-many-instance-attributes
+# 'pylint: disable=too-many-arguments,too-few-public-methods,too-many-instance-attributes
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check

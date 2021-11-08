@@ -27,7 +27,7 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=too-many-locals,redefined-argument-from-local
+# 'pylint: disable=too-many-locals,redefined-argument-from-local
 def isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
     """
     determines whether the values of two floating-point numbers are close or equal
@@ -35,7 +35,7 @@ def isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
     return math.isclose(valuex, valuey, rel_tol=rel_tol, abs_tol=abs_tol)
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-arguments
+# 'pylint: disable=locally-disabled,unused-argument,too-many-arguments
 def exp_compute(input_x, output_y, base=-1.0, scale=1.0, shift=0.0,
                 kernel_name="exp"):
     """

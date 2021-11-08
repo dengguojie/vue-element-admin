@@ -32,9 +32,9 @@ NUM_64 = 64
 #MAX BURST LEN
 MAX_BURST_LEN = 65535
 
-# pylint: disable=unused-argument,invalid-name,useless-object-inheritance,too-many-lines,too-many-arguments
-# pylint: disable=too-many-statements,too-many-locals,attribute-defined-outside-init,too-many-instance-attributes,too-many-function-args
-# pylint: disable=missing-class-docstring,missing-function-docstring
+# 'pylint: disable=unused-argument,invalid-name,useless-object-inheritance,too-many-lines,too-many-arguments
+# 'pylint: disable=too-many-statements,too-many-locals,attribute-defined-outside-init,too-many-instance-attributes,too-many-function-args
+# 'pylint: disable=missing-class-docstring,missing-function-docstring
 class Diag():
     """
     Function: class that execute Diag

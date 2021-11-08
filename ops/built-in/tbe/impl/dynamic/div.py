@@ -15,7 +15,7 @@
 """
 dynamic div
 """
-# pylint: disable=too-many-locals,unused-argument
+# 'pylint: disable=too-many-locals,unused-argument
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
@@ -72,7 +72,7 @@ def div_compute(input_x, input_y, output_z, kernel_name="div"):
     return res
 
 
-# pylint: disable=redefined-argument-from-local
+# 'pylint: disable=redefined-argument-from-local
 @register_operator("Div")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
@@ -108,7 +108,7 @@ def div(input_x, input_y, output_z, kernel_name="div"):
 
     if x_dtype != y_dtype:
         error_manager_vector.raise_err_inputs_dtype_not_equal("div", "input_x", "input_y", str(x_dtype), str(y_dtype))
-    
+
     ins = classify([input_x, input_y], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (input_x, input_y) in ins:

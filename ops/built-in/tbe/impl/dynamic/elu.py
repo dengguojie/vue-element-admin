@@ -62,7 +62,7 @@ def _elu_computer_precision(data, dtype):
     return negative_data, positive_data
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 @register_operator_compute("Elu", op_mode="dynamic", support_fusion=True)
 def elu_compute(x, y, alpha, kernel_name="elu"):
     """
@@ -119,7 +119,7 @@ def elu_compute(x, y, alpha, kernel_name="elu"):
     return res
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 @register_operator("Elu")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
 """
 Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
 
@@ -15,8 +13,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 cast_cce
 """
-# pylint: disable=too-many-locals
-from functools import reduce as reduce_ins
+# 'pylint: disable=too-many-locals,consider-using-f-string
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
@@ -30,7 +27,7 @@ MAX_SUPPORT_SHAPE = 1 << 30  # Limit of all dims' product
 SPECIAL_SHAPE_NUM = 10000000  # Limit of one dim
 
 
-# pylint: disable=inconsistent-return-statements
+# 'pylint: disable=inconsistent-return-statements
 def _int8_uint8_process(data, dst_type):
     """
     deal with src dtype=int8 and uint8 case
@@ -197,7 +194,7 @@ def _cast_dsttype_conversion(dst_type):
     return dst_type
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
     """
     verify the types of cast supported by tbe
@@ -231,7 +228,7 @@ def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
     return False, reason
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 
 def cast_compute(data, output_y, dst_type, kernel_name="cast"):
     """
