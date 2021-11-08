@@ -860,12 +860,10 @@ IMPLEMT_COMMON_INFERFUNC(DiagInferShape) {
       }
     }
     output_desc->SetShape(GeShape(assitDimInfo));
-  }
-  else {
+  } else {
     if (IsUnknownRankShape(shape_x)) {
       output_desc->SetShape(GeShape(shape_x));
-    }
-    else {
+    } else {
       std::vector<std::pair<int64_t, int64_t>> shape_range;
       input_x_desc->GetShapeRange(shape_range);
       for (size_t i = 0; i < 2; ++i) {

@@ -96,8 +96,10 @@ uint32_t TopKPQDistanceCpuKernel::GetInputAndCheck(CpuKernelContext &ctx,
       "data_batch_ is[%d]",
       order_.c_str(), is_min_heap_, data_batch_);
   k_ = ctx.GetAttr("k")->GetInt();
-  group_size_ = ctx.GetAttr("group_size")->GetInt();
+  KERNEL_CHECK_FALSE((k_ != 0), KERNEL_STATUS_PARAM_INVALID,
+    "k_[%d] should not be equal to zero.", k_);
 
+  group_size_ = ctx.GetAttr("group_size")->GetInt();
   for (uint32_t i = 0; i < data_batch_; i++) {
     Tensor *actual_count_tensor = ctx.Input(data_batch_ * 0 + i);
     int32_t actual_count =
@@ -121,6 +123,9 @@ uint32_t TopKPQDistanceCpuKernel::GetInputAndCheck(CpuKernelContext &ctx,
     input_data.pq_indexs.add(static_cast<int32_t *>(pq_index_tensor->GetData()),
                              actual_count);
   }
+
+  KERNEL_CHECK_FALSE((input_data.actual_count >= k_), KERNEL_STATUS_PARAM_INVALID,
+    "k_[%d] should not be greater than actual_count[%d].", k_, input_data.actual_count);
   return KERNEL_STATUS_OK;
 }
 
