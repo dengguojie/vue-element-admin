@@ -500,23 +500,11 @@ IMPLEMT_COMMON_INFERFUNC(OCRDetectionPostHandleInfer){
         if (size_known_shape) {
             size_range_max = input_polys_offset_dims[0]; 
         }
-        if (size_range_max == 0) {
-            std::string reason = "max shape range of polys_offset must be != 0";
-            REPORT_INNER_ERROR("E19999",
-                               "[Node:%s] Check polys_offset shape range failed, as %s",
-                               op.GetName().c_str(), reason.c_str());
-            GE_OP_LOGE(op.GetName().c_str(),
-                       "[InferShape] Check polys_offset shape range failed, as %s",
-                       reason.c_str());
-            return GRAPH_PARAM_INVALID;
-        }
 
         std::pair<int64_t, int64_t> imgs_offset_range({size_range_max, size_range_max});
         std::vector<std::pair<int64_t, int64_t>> imgs_offset_range_vec;
         imgs_offset_range_vec.push_back(imgs_offset_range);
         output_imgs_offset->SetShapeRange(imgs_offset_range_vec);
-        output_imgs_offset->SetShape(ge::GeShape(UNKNOWN_SHAPE));
-        output_imgs_offset->SetOriginShape(ge::GeShape(UNKNOWN_SHAPE));
 
         std::pair<int64_t, int64_t> imgs_size_range({size_range_max, size_range_max});
         const int64_t dims = 3;
@@ -525,9 +513,7 @@ IMPLEMT_COMMON_INFERFUNC(OCRDetectionPostHandleInfer){
         imgs_size_range_vec.push_back(imgs_size_range);
         imgs_size_range_vec.push_back(imgs_size_range_dims);
         output_imgs_size->SetShapeRange(imgs_size_range_vec);
-        output_imgs_size->SetShape(ge::GeShape({UNKNOWN_DIM, dims}));
-        output_imgs_size->SetOriginShape(ge::GeShape({UNKNOWN_DIM, dims}));
-
+        
         std::pair<int64_t, int64_t> rect_points_range({size_range_max, size_range_max});
         std::pair<int64_t, int64_t> rect_points_range_points_num({4, 4});
         std::pair<int64_t, int64_t> rect_points_range_coor_num({2, 2});
@@ -536,8 +522,22 @@ IMPLEMT_COMMON_INFERFUNC(OCRDetectionPostHandleInfer){
         rect_points_range_vec.push_back(rect_points_range_points_num);
         rect_points_range_vec.push_back(rect_points_range_coor_num);
         output_rect_points->SetShapeRange(rect_points_range_vec);
-        output_rect_points->SetShape(ge::GeShape({UNKNOWN_DIM, 4, 2}));
-        output_rect_points->SetOriginShape(ge::GeShape({UNKNOWN_DIM, 4, 2}));
+
+        if (size_known_shape) {
+            output_imgs_offset->SetShape(ge::GeShape({size_range_max}));
+            output_imgs_offset->SetOriginShape(ge::GeShape({size_range_max}));
+            output_imgs_size->SetShape(ge::GeShape({size_range_max, dims}));
+            output_imgs_size->SetOriginShape(ge::GeShape({size_range_max, dims}));
+            output_rect_points->SetShape(ge::GeShape({size_range_max, 4, 2}));
+            output_rect_points->SetOriginShape(ge::GeShape({size_range_max, 4, 2}));
+        } else {
+            output_imgs_offset->SetShape(ge::GeShape(UNKNOWN_SHAPE));
+            output_imgs_offset->SetOriginShape(ge::GeShape(UNKNOWN_SHAPE));
+            output_imgs_size->SetShape(ge::GeShape({UNKNOWN_DIM, dims}));
+            output_imgs_size->SetOriginShape(ge::GeShape({UNKNOWN_DIM, dims}));
+            output_rect_points->SetShape(ge::GeShape({UNKNOWN_DIM, 4, 2}));
+            output_rect_points->SetOriginShape(ge::GeShape({UNKNOWN_DIM, 4, 2}));
+        }
     }
 
     output_imgs_data->SetDataType(DT_UINT8);
@@ -584,7 +584,7 @@ IMPLEMT_COMMON_INFERFUNC(ResizeAndClipPolysInfer){
             return GRAPH_PARAM_INVALID;
         }
 
-        std::pair<int64_t, int64_t> clipped_polys_data_range({1, data_range_max});
+        std::pair<int64_t, int64_t> clipped_polys_data_range({0, data_range_max});
         std::vector<std::pair<int64_t, int64_t>> clipped_polys_data_range_vec;
         clipped_polys_data_range_vec.push_back(clipped_polys_data_range);
         output_clipped_polys_data->SetShapeRange(clipped_polys_data_range_vec);
@@ -596,23 +596,13 @@ IMPLEMT_COMMON_INFERFUNC(ResizeAndClipPolysInfer){
         if (size_known_shape) {
             size_range_max = input_polys_offset_dims[0]; 
         }
-        if (size_range_max == 0) {
-            std::string reason = "max shape range of polys_offset must be != 0";
-            REPORT_INNER_ERROR("E19999",
-                               "[Node:%s] Check polys_offset shape range failed, as %s",
-                               op.GetName().c_str(), reason.c_str());
-            GE_OP_LOGE(op.GetName().c_str(),
-                       "[InferShape] Check polys_offset shape range failed, as %s",
-                       reason.c_str());
-            return GRAPH_PARAM_INVALID;
-        }
 
-        std::pair<int64_t, int64_t> clipped_polys_offset_range({1, size_range_max});
+        std::pair<int64_t, int64_t> clipped_polys_offset_range({0, size_range_max});
         std::vector<std::pair<int64_t, int64_t>> clipped_polys_offset_range_vec;
         clipped_polys_offset_range_vec.push_back(clipped_polys_offset_range);
         output_clipped_polys_offset->SetShapeRange(clipped_polys_offset_range_vec);
 
-        std::pair<int64_t, int64_t> clipped_polys_size_range({1, size_range_max});
+        std::pair<int64_t, int64_t> clipped_polys_size_range({0, size_range_max});
         std::vector<std::pair<int64_t, int64_t>> clipped_polys_size_range_vec;
         clipped_polys_size_range_vec.push_back(clipped_polys_size_range);
         output_clipped_polys_size->SetShapeRange(clipped_polys_size_range_vec);
@@ -629,6 +619,11 @@ IMPLEMT_COMMON_INFERFUNC(ResizeAndClipPolysInfer){
     output_clipped_polys_size->SetDataType(DT_INT32);
     output_clipped_polys_size->SetShape(ge::GeShape(UNKNOWN_SHAPE));
     output_clipped_polys_size->SetOriginShape(ge::GeShape(UNKNOWN_SHAPE));
+    
+    GeTensorDescPtr td = op_desc->MutableOutputDesc("clipped_polys_num");
+    std::vector<int64_t> scalar;
+    td->SetShape(GeShape(scalar));
+    td->SetDataType(DT_INT32);
     return GRAPH_SUCCESS;
 }
 
