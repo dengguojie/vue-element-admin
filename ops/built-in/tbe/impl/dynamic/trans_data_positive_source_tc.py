@@ -971,10 +971,11 @@ def trans_data_positive_source_tc(src, dst, src_format, dst_format, kernel_name=
                 tp_args = tiling_params[1:38]
                 _func_transform_1011(tensor_args, tp_args)
 
+    # add compile info
+    tbe_context.get_context().add_compile_info("vars", {"ub_size": ub_size,
+                                                        "block_dim": tdc.CORE_DIM_NUM,
+                                                        "group": 1})
     # build cce
     tik_inst.BuildCCE(kernel_name=kernel_name,
                       inputs=[src_in_gm], outputs=[dst_out_gm], flowtable=[tiling_gm], enable_l2=False,
                       config={"dynamic_tik": True, "out_of_bound_sync_check": True})
-    tbe_context.get_context().add_compile_info("vars", {"ub_size": ub_size,
-                                                        "block_dim": tdc.CORE_DIM_NUM,
-                                                        "group": 1})

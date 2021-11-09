@@ -56,14 +56,21 @@ def is_do_with_positive_source_ntc_100(src_format, dst_format):
 # pylint: disable=unused-argument, too-many-arguments, too-many-locals, too-many-boolean-expressions
 # pylint: disable=inconsistent-return-statements
 @register_operator("TransData")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_STR,
-                            para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
-def trans_data(src, dst, src_format, dst_format, group=1, kernel_name="trans_data"):
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR,
+                            para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
+def trans_data(src, dst, src_format=None, dst_format=None, group=1, kernel_name="trans_data"):
     """
     format transform for rnn
     """
-    src_format = src_format.upper()
-    dst_format = dst_format.upper()
+    if src_format is None:
+        src_format = src.get("format").upper().split(":")[0]
+    else:
+        src_format = src_format.upper()
+
+    if dst_format is None:
+        dst_format = dst.get("format").upper().split(":")[0]
+    else:
+        dst_format = dst_format.upper()
 
     if ((src_format == "NC1HWC0" and dst_format == "NHWC") or
         (src_format == "FRACTAL_NZ" and dst_format in ("ND", "NHWC", "NCHW", "NC1HWC0")) or

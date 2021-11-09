@@ -32,6 +32,34 @@ def gen_transdata_case(dynamic_input_shapes, ori_input_shapes, dtype, srcFormat,
             "support_expect": True}
 
 
+def gen_transdata_case_binary(dynamic_input_shapes, ori_input_shapes, dtype, srcFormat, dstFormat,
+                              case_name_val, expect):
+    inputs = (
+        {"shape": dynamic_input_shapes,
+         "dtype": dtype,
+         "ori_shape": ori_input_shapes,
+         "ori_format": srcFormat,
+         "format": srcFormat,
+         'range': [[1, 100000]] * len(dynamic_input_shapes)},
+    )
+    outputs = (
+        {"shape": [-1],
+         "dtype": dtype,
+         "ori_shape": ori_input_shapes,
+         "ori_format": dstFormat,
+         "format": dstFormat,
+         'range': [[1, 100000]] * 1},
+    )
+    return {"params": [inputs[0],
+                       outputs[0],
+                       None,
+                       None 
+                       ],
+            "case_name": case_name_val,
+            "expect": expect,
+            "support_expect": True}
+
+
 ut_case.add_case(["Ascend910A"],
                  gen_transdata_case((-1, -1, -1, -1),
                                     (1, 16, 7, 7),
@@ -147,6 +175,11 @@ ut_case.add_case(["Ascend910A"],
                  gen_transdata_case((-1, -1, -1, -1, -1),
                                     (2, 11, 2673, 11, 16, 16),
                                     "float32", "NCDHW", "NDC1HWC0", "case_43", "success"))
+
+ut_case.add_case(["Ascend910A"],
+                 gen_transdata_case_binary((-2,),
+                                           (-2,),
+                                           "float32", "NCDHW", "NDC1HWC0", "binary_case_1", "success"))
                                     
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

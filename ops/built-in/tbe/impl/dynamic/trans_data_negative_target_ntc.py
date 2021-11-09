@@ -1112,11 +1112,12 @@ def trans_data_negative_target_ntc(src, dst, src_format, dst_format, kernel_name
             tp_args = tiling_params[0:56]
             _func_transform_200(tensor_args, tp_args)
 
-    # build cce
-    tik_inst.BuildCCE(kernel_name=kernel_name,
-                      inputs=[src_in_gm], outputs=[dst_out_gm], flowtable=[tiling_gm], enable_l2=False,
-                      config={"dynamic_tik": True, "out_of_bound_sync_check": True})
+    # add compile_info
     tbe_context.get_context().add_compile_info("vars", {"ub_size": ub_size,
                                                         "block_dim": tdc.CORE_DIM_NUM,
                                                         "group": 1,
                                                         "vnc_fp32_flag": is_vnc_support_float32})
+    # build cce
+    tik_inst.BuildCCE(kernel_name=kernel_name,
+                      inputs=[src_in_gm], outputs=[dst_out_gm], flowtable=[tiling_gm], enable_l2=False,
+                      config={"dynamic_tik": True, "out_of_bound_sync_check": True})
