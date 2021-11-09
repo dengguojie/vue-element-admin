@@ -16,13 +16,51 @@
 
 /*!
  * \file cache_tiling.cc
- * \brief function of cache_tiling
+ * \brief function of cacheTiling
  */
 
 #include "cache_tiling.h"
+using namespace std;
 
 namespace optiling {
-void Tiling::SetDoubleBufferParams(bool minKl1CmpKl0, std::map<std::string, int64_t> dbFlag)
+static const int64_t NONE = -LLONG_MAX;
+static const int64_t CORE_NUM = 32;
+static const int64_t L1_Size = (1024 * 1024);
+static const int64_t L0c_Size = (256 * 1024);
+static const int64_t Ub_Size = (256 * 1024);
+static const int32_t Attach_Label_Length = 7;
+static const int64_t BLOCK_SIZE = 16;
+static const int64_t DECIMAL = 10;
+static const int64_t MIN_FRACTAL_SIZE = BLOCK_SIZE * BLOCK_SIZE;
+static const int64_t DB_ON = 2;
+static const int64_t DB_OFF = 1;
+static const int64_t IDX_ZERO = 0;
+static const int64_t IDX_ONE = 1;
+static const int64_t IDX_TWO = 2;
+static const int64_t IDX_THREE = 3;
+static const int64_t IDX_FOUR = 4;
+static const int64_t IDX_FIVE = 5;
+static const int64_t IDX_SIX = 6;
+static const int64_t IDX_SEVEN = 7;
+static const int64_t IDX_EIGHT = 8;
+static const int64_t ATTACH_FLAG_ZERO = 0;
+static const int64_t ATTACH_FLAG_ONE = 1;
+static const int64_t ATTACH_FLAG_TWO = 2;
+static const int64_t KBYTES = 1024;
+static const int64_t MAX_FACTOR = 128;
+static const int64_t FP16_BYTES = 2;
+static const int64_t MIN_MTE1_LOAD = 32;
+static const int64_t L0_PARAS_COMBO_LEN = 8;
+static const int64_t LOAD_SIZE_RANGE_LOW = 1000;
+static const int64_t LOAD_SIZE_RANGE_HIGH = 4000;
+static const int64_t LOAD_SIZE_DIFF_RANGE = 400;
+static const int64_t M_LOW_RANGE = 5;
+static const int64_t M_HIGH_RANGE = 6;
+static const double BLOCKING_PCT_GATE = 0.5;
+static const double LOAD_SIZE_GATE = 0.13;
+static const int64_t CORE_USE_LOW_RANGE = 5;
+static const int64_t CORE_USE_HIGH_RANGE = 9;
+void Tiling::SetDoubleBufferParams(bool minKl1CmpKl0, map<string, int64_t> dbFlag)
 {
   pingpong["AUB_pbuffer"] = dbFlag["db_aub"];
   pingpong["BUB_pbuffer"] = DB_OFF;
@@ -41,12 +79,12 @@ void Tiling::SetDoubleBufferParams(bool minKl1CmpKl0, std::map<std::string, int6
   }
 }
 
-void Tiling::SetParams(const SingleCoreParas &singleCoreParas, const L0Status &l0Status, const L1Status &l1Status,
+void Tiling::SetParams(const L2Status &l2Status, const L0Status &l0Status, const L1Status &l1Status,
                        const UbStatus &ubStatus)
 {
-  batch_dim = singleCoreParas.batch_dim;
-  n_dim = singleCoreParas.n_dim;
-  m_dim = singleCoreParas.m_dim;
+  batch_dim = l2Status.batch_dim;
+  n_dim = l2Status.n_dim;
+  m_dim = l2Status.m_dim;
   m_l0 = l0Status.m_l0;
   k_l0 = l0Status.k_l0;
   n_l0 = l0Status.n_l0;
@@ -58,21 +96,21 @@ void Tiling::SetParams(const SingleCoreParas &singleCoreParas, const L0Status &l
   db_bl1 = l1Status.db_bl1;
   n_cub = ubStatus.n_cub;
   db_cub = ubStatus.db_cub;
-  k_org_dim = singleCoreParas.k * BLOCK_SIZE;
+  k_org_dim = l2Status.k * BLOCK_SIZE;
   db_l0c = l0Status.db_l0c;
   k_aub = ubStatus.k_aub;
   m_aub = ubStatus.m_aub;
   db_aub = ubStatus.db_aub;
-  mParam.emplace("block_dim", std::move(std::vector<int64_t>({batch_dim, n_dim, m_dim, 1})));
-  mParam.emplace("AL0_matrix", std::move(std::vector<int64_t>({m_l0, k_l0, BLOCK_SIZE, BLOCK_SIZE, 1, 1})));
-  mParam.emplace("BL0_matrix", std::move(std::vector<int64_t>({k_l0, n_l0, BLOCK_SIZE, BLOCK_SIZE, 1, 1})));
-  mParam.emplace("CL0_matrix", std::move(std::vector<int64_t>({n_l0, m_l0, BLOCK_SIZE, BLOCK_SIZE, 1, 1})));
-  mParam.emplace("CUB_matrix", std::move(std::vector<int64_t>({n_cub, m_l0, BLOCK_SIZE, BLOCK_SIZE, 1, 1})));
+  mParam.emplace("block_dim", move(vector<int64_t>({batch_dim, n_dim, m_dim, 1})));
+  mParam.emplace("AL0_matrix", move(vector<int64_t>({m_l0, k_l0, BLOCK_SIZE, BLOCK_SIZE, 1, 1})));
+  mParam.emplace("BL0_matrix", move(vector<int64_t>({k_l0, n_l0, BLOCK_SIZE, BLOCK_SIZE, 1, 1})));
+  mParam.emplace("CL0_matrix", move(vector<int64_t>({n_l0, m_l0, BLOCK_SIZE, BLOCK_SIZE, 1, 1})));
+  mParam.emplace("CUB_matrix", move(vector<int64_t>({n_cub, m_l0, BLOCK_SIZE, BLOCK_SIZE, 1, 1})));
 
   mParam["BUB_shape"] = {};
-  mParam.emplace("AL1_shape", std::move(std::vector<int64_t>({kal1_16 * BLOCK_SIZE, m_al1, 1, 1})));
-  mParam.emplace("BL1_shape", std::move(std::vector<int64_t>({kbl1_16 * BLOCK_SIZE, n_bl1, 1, 1})));
-  mParam.emplace("AUB_shape", std::move(std::vector<int64_t>({k_aub * BLOCK_SIZE, m_aub, 1, 1})));
+  mParam.emplace("AL1_shape", move(vector<int64_t>({kal1_16 * BLOCK_SIZE, m_al1, 1, 1})));
+  mParam.emplace("BL1_shape", move(vector<int64_t>({kbl1_16 * BLOCK_SIZE, n_bl1, 1, 1})));
+  mParam.emplace("AUB_shape", move(vector<int64_t>({k_aub * BLOCK_SIZE, m_aub, 1, 1})));
 
   mParam["n_bef_batch_flag"] = {0};
   mParam["n_bef_group_flag"] = {0};
@@ -84,16 +122,16 @@ void Tiling::SetParams(const SingleCoreParas &singleCoreParas, const L0Status &l
   mParam["CUB_channel_wise_flag"] = {};
 
   if (m_al1 == NONE) {
-    mParam["AL1_shape"] = std::vector<int64_t>({});
+    mParam["AL1_shape"] = vector<int64_t>({});
     db_al1 = 1;
   }
   if (n_bl1 == NONE) {
-    mParam["BL1_shape"] = std::vector<int64_t>({});
+    mParam["BL1_shape"] = vector<int64_t>({});
     db_bl1 = 1;
   }
-  std::map<std::string, int64_t> dbFlag = {
+  map<string, int64_t> dbFlag = {
     {"db_aub", db_aub}, {"db_al1", db_al1}, {"db_bl1", db_bl1}, {"db_l0c", db_l0c}, {"db_cub", db_cub}};
-  SetDoubleBufferParams(std::min(kal1_16, kbl1_16) == k_l0, dbFlag);
+  SetDoubleBufferParams(min(kal1_16, kbl1_16) == k_l0, dbFlag);
 }
 
 void Tiling::SetAttachFlag()
@@ -151,17 +189,17 @@ void Tiling::SetAttachFlag()
 
 void Tiling::GetTilingId()
 {
-  std::vector<std::string> tilingKeywords =
-    std::vector<std::string>({
-                               "AL1_pbuffer", "BL1_pbuffer", "CL0_pbuffer", "abkl1_attach_flag", "al1_attach_flag",
-                               "bl1_attach_flag", "min_kl1_cmp_kl0"
-                             });
+  string tilingKeywords[Attach_Label_Length] = {"AL1_pbuffer", "BL1_pbuffer", "CL0_pbuffer",
+                                                "abkl1_attach_flag", "al1_attach_flag", "bl1_attach_flag",
+                                                "min_kl1_cmp_kl0"};
+  int64_t tilingIDLongLong = 0;
   for (const auto &tilingKeyword: tilingKeywords) {
-    this->tiling_id += std::to_string(this->mPingpongBuff["manual_pingpong_buffer"][tilingKeyword]);
+    tilingIDLongLong = tilingIDLongLong * DECIMAL + this->mPingpongBuff["manual_pingpong_buffer"][tilingKeyword];
   }
+  this->tiling_id = to_string(tilingIDLongLong);
 }
 
-int64_t GetFactors(int64_t *cnt, int64_t *factorList, const int64_t &num, const int64_t &maxNum)
+void GetFactors(int64_t *cnt, int64_t *factorList, const int64_t &num, const int64_t &maxNum)
 {
   // get all factors of num which smaller or equal to maxNum
   for (int64_t i = 1; i < maxNum + 1; i++) {
@@ -169,10 +207,9 @@ int64_t GetFactors(int64_t *cnt, int64_t *factorList, const int64_t &num, const 
       factorList[(*cnt)++] = i;
     }
   }
-  return 0;
 }
 
-int64_t GetTwoFactors(int64_t *res, const int64_t &base, const int64_t &dim, const int64_t &maxNum = 32)
+void GetTwoFactors(int64_t *res, const int64_t &base, const int64_t &dim, const int64_t &maxNum = 32)
 {
   // for up bigger or equal to base + 1, find the smallest num which is a factor of dim
   // form down smaller or equal to base, find the biggest num which is a factor of dim
@@ -199,131 +236,121 @@ int64_t GetTwoFactors(int64_t *res, const int64_t &base, const int64_t &dim, con
     }
     down--;
   }
-  return 0;
 }
 
-int64_t GetNearestFactor(const int64_t &base, int64_t &factor)
+void GetNearestFactor(const int64_t &base, int64_t &factor)
 {
   while (factor > 0 && base % factor != 0) {
     factor--;
   }
-  return 0;
 }
 
-int64_t BL1FullLoadBlock(const SingleCoreParas &singleCoreParas, int64_t &n0, const int64_t &oriAMatrixSize,
-                         int64_t &amatSize, int64_t &bmatSize, int64_t &loadSize, int64_t &tmpValue)
+void BL1FullLoadBlock(const L2Status &l2Status, BlockDimCalculator &blockDimCalculator, int64_t &n0)
 {
   if (n0 >= 1) {
-    while (singleCoreParas.n % n0 != 0) {
+    while (l2Status.n % n0 != 0) {
       n0--;
     }
-    amatSize = oriAMatrixSize * (singleCoreParas.n / n0);
-    bmatSize = singleCoreParas.n;
-    loadSize = amatSize + bmatSize;
-    tmpValue = n0;
+    blockDimCalculator.amat_size = blockDimCalculator.ori_amat_size * (l2Status.n / n0);
+    blockDimCalculator.bmat_size = l2Status.n;
+    blockDimCalculator.total_load_size = blockDimCalculator.amat_size + blockDimCalculator.bmat_size;
+    blockDimCalculator.tmp_value = n0;
   }
-  return 0;
 }
 
-int64_t AL1FullLoadBlock(int64_t &m0, const int64_t &oriAMatrixSize, int64_t &tmpAmatSize, int64_t &tmpBmatSize,
-                         int64_t &tmpLoadSize, int64_t &amatSize, int64_t &bmatSize, int64_t &loadSize,
-                         int64_t &tmpValue, const SingleCoreParas &singleCoreParas)
+void AL1FullLoadBlock(const L2Status &l2Status, BlockDimCalculator &blockDimCalculator, int64_t &m0)
 {
   if (m0 >= 1) {
-    while (singleCoreParas.m % m0 != 0) {
+    while (l2Status.m % m0 != 0) {
       m0--;
     }
-    tmpAmatSize = oriAMatrixSize;
-    tmpBmatSize = singleCoreParas.n * (oriAMatrixSize / m0);
-    tmpLoadSize = tmpAmatSize + tmpBmatSize;
-    if (tmpLoadSize < loadSize) {
-      amatSize = tmpAmatSize;
-      bmatSize = tmpBmatSize;
-      loadSize = tmpLoadSize;
-      tmpValue = 0;
+    blockDimCalculator.tmp_amat_size = blockDimCalculator.ori_amat_size;
+    blockDimCalculator.tmp_bmat_size = l2Status.n * (blockDimCalculator.ori_amat_size / m0);
+    blockDimCalculator.tmp_load_size = blockDimCalculator.tmp_amat_size + blockDimCalculator.tmp_bmat_size;
+    if (blockDimCalculator.tmp_load_size < blockDimCalculator.total_load_size) {
+      blockDimCalculator.amat_size = blockDimCalculator.tmp_amat_size;
+      blockDimCalculator.bmat_size = blockDimCalculator.tmp_bmat_size;
+      blockDimCalculator.total_load_size = blockDimCalculator.tmp_load_size;
+      blockDimCalculator.tmp_value = 0;
     }
   }
-  return 0;
 }
 
-int64_t NeitherFullLoadBlock(const int64_t n0s[][2], const int64_t m0s[][2], int64_t &tmpAmatSize, int64_t &tmpBmatSize,
-                             int64_t &tmpLoadSize, const int64_t &j, const int64_t &mF, const int64_t &oriAMatrixSize,
-                             const SingleCoreParas &singleCoreParas, int64_t &amatSize, int64_t &bmatSize,
-                             int64_t &loadSize, int64_t &tmpValue)
+void NeitherFullLoadBlock(const L2Status &l2Status, BlockDimCalculator &blockDimCalculator,
+                          const int64_t nFactorTwoCandidates[][2], const int64_t mFactorTwoCandidates[][2],
+                          const int64_t &nFactor, const int64_t &mFactor)
 {
-  for (auto const &n0: n0s[j]) {
-    for (auto const &m0: m0s[mF]) {
+  for (auto const &n0: nFactorTwoCandidates[nFactor]) {
+    for (auto const &m0: mFactorTwoCandidates[mFactor]) {
       if (m0 <= 0 || n0 <= 0) {
         continue;
       }
       if (m0 * n0 * KBYTES <= L0c_Size) {
-        tmpAmatSize = oriAMatrixSize * (singleCoreParas.n / n0);
-        tmpBmatSize = singleCoreParas.n * (oriAMatrixSize / m0);
-        tmpLoadSize = tmpAmatSize + tmpBmatSize;
-        if (tmpLoadSize < loadSize) {
-          amatSize = tmpAmatSize;
-          bmatSize = tmpBmatSize;
-          loadSize = tmpLoadSize;
-          tmpValue = 0;
+        blockDimCalculator.tmp_amat_size = blockDimCalculator.ori_amat_size * (l2Status.n / n0);
+        blockDimCalculator.tmp_bmat_size = l2Status.n * (blockDimCalculator.ori_amat_size / m0);
+        blockDimCalculator.tmp_load_size = blockDimCalculator.tmp_amat_size + blockDimCalculator.tmp_bmat_size;
+        if (blockDimCalculator.tmp_load_size < blockDimCalculator.total_load_size) {
+          blockDimCalculator.amat_size = blockDimCalculator.tmp_amat_size;
+          blockDimCalculator.bmat_size = blockDimCalculator.tmp_bmat_size;
+          blockDimCalculator.total_load_size = blockDimCalculator.tmp_load_size;
+          blockDimCalculator.tmp_value = 0;
         }
       }
     }
   }
-  return 0;
 }
 
-int64_t GetBlockDimHelper(SingleCoreParas &singleCoreParas, BlockDimCalculator &blockDimCalculator,
-                          const int64_t *batchDimArray, const int64_t *mDimArray, const int64_t *nDimArray,
-                          const int64_t &iIdx, const int64_t &jIdx, const int64_t &mDimCnt, const int64_t &nDimCnt,
-                          const int64_t m0s[][2], const int64_t n0s[][2])
+void GetBlockDimHelper(L2Status &l2Status, BlockDimCalculator &blockDimCalculator, const int64_t m0s[][2],
+                       const int64_t n0s[][2])
 {
-  int64_t bFactor = batchDimArray[iIdx];
-  int64_t nFactor = nDimArray[jIdx];
-  for (int64_t mIdx = 0; mIdx < mDimCnt; mIdx++) {
-    int64_t mFactor = mDimArray[mIdx];
+  int64_t iIdx = blockDimCalculator.i_idx;
+  int64_t jIdx = blockDimCalculator.j_idx;
+  int64_t bFactor = blockDimCalculator.batch_dim_array[iIdx];
+  int64_t nFactor = blockDimCalculator.n_dim_array[jIdx];
+  for (int64_t mIdx = 0; mIdx < blockDimCalculator.m_dim_cnt; mIdx++) {
+    int64_t mFactor = blockDimCalculator.m_dim_array[mIdx];
     if (bFactor * nFactor * mFactor > CORE_NUM) {
       break;
     }
-    singleCoreParas.batch = blockDimCalculator.batch / bFactor;
-    singleCoreParas.m = blockDimCalculator.m / mFactor;
-    singleCoreParas.n = blockDimCalculator.n / nFactor;
-    int64_t oriAMatrixSize = singleCoreParas.batch * singleCoreParas.m;
-    int64_t oriBMatrixSize = singleCoreParas.n;
-    int64_t amatSize = oriAMatrixSize;
-    int64_t bmatSize = oriBMatrixSize;
-    int64_t totalLoadSize = amatSize + bmatSize;
-    int64_t tmpValue = 0;
-    if (totalLoadSize * blockDimCalculator.kBytes > L1_Size) {
-      totalLoadSize = LONG_LONG_MAX;
-      int64_t tmpAmatSize, tmpBmatSize, tmpLoadSize;
-      // BL1 k full load
-      int64_t n0 = std::min(
-        std::min((L1_Size / FP16_BYTES - MIN_FRACTAL_SIZE) / blockDimCalculator.kNum, singleCoreParas.n), MAX_FACTOR);
-      BL1FullLoadBlock(singleCoreParas, n0, oriAMatrixSize, amatSize, bmatSize, totalLoadSize, tmpValue);
+    l2Status.batch = blockDimCalculator.batch / bFactor;
+    l2Status.m = blockDimCalculator.m / mFactor;
+    l2Status.n = blockDimCalculator.n / nFactor;
+    // load size of A matrix is batch * m
+    // load size of B matrix is n
+    blockDimCalculator.ori_amat_size = l2Status.batch * l2Status.m;
+    blockDimCalculator.ori_bmat_size = l2Status.n;
+    blockDimCalculator.amat_size = blockDimCalculator.ori_amat_size;
+    blockDimCalculator.bmat_size = blockDimCalculator.ori_bmat_size;
+    blockDimCalculator.total_load_size = blockDimCalculator.amat_size + blockDimCalculator.bmat_size;
+    blockDimCalculator.tmp_value = 0;
+    if (blockDimCalculator.total_load_size * blockDimCalculator.k_bytes > L1_Size) {
+      blockDimCalculator.total_load_size = LONG_LONG_MAX;
+      // BL1 full load
+      int64_t n0 =
+        min(min((L1_Size / FP16_BYTES - MIN_FRACTAL_SIZE) / blockDimCalculator.k_num, l2Status.n), MAX_FACTOR);
+      BL1FullLoadBlock(l2Status, blockDimCalculator, n0);
       // AL1 full load
-      int64_t m0 = std::min(std::min((L1_Size / FP16_BYTES - MIN_FRACTAL_SIZE) /
-                                       (MIN_FRACTAL_SIZE * blockDimCalculator.k * oriAMatrixSize),
-                                     oriAMatrixSize),
-                            MAX_FACTOR);
-      AL1FullLoadBlock(m0, oriAMatrixSize, tmpAmatSize, tmpBmatSize, tmpLoadSize, amatSize, bmatSize, totalLoadSize,
-                       tmpValue, singleCoreParas);
+      int64_t m0 = min(min((L1_Size / FP16_BYTES - MIN_FRACTAL_SIZE) /
+                             (MIN_FRACTAL_SIZE * blockDimCalculator.k * blockDimCalculator.ori_amat_size),
+                           blockDimCalculator.ori_amat_size),
+                       MAX_FACTOR);
+      AL1FullLoadBlock(l2Status, blockDimCalculator, m0);
       // neither full load max_m max_n
       // closest m and n
-      NeitherFullLoadBlock(n0s, m0s, tmpAmatSize, tmpBmatSize, tmpLoadSize, nFactor, mFactor, oriAMatrixSize,
-                           singleCoreParas,
-                           amatSize, bmatSize, totalLoadSize, tmpValue);
+      NeitherFullLoadBlock(l2Status, blockDimCalculator, n0s, m0s, nFactor, mFactor);
     }
-    int64_t loadSizeKb = totalLoadSize * blockDimCalculator.kBytes / KBYTES;
-    int64_t minLoadSizeKb = blockDimCalculator.minLoadSize * blockDimCalculator.kBytes / KBYTES;
+    int64_t loadSizeKb = blockDimCalculator.total_load_size * blockDimCalculator.k_bytes / KBYTES;
+    int64_t minLoadSizeKb = blockDimCalculator.min_load_size * blockDimCalculator.k_bytes / KBYTES;
     double tmpBlockingPct;
     if (nFactor > mFactor) {
-      tmpBlockingPct = double(amatSize) / totalLoadSize;
+      tmpBlockingPct = double(blockDimCalculator.amat_size) / blockDimCalculator.total_load_size;
     } else if (nFactor < mFactor) {
-      tmpBlockingPct = double(bmatSize) / totalLoadSize;
+      tmpBlockingPct = double(blockDimCalculator.bmat_size) / blockDimCalculator.total_load_size;
     } else {
-      tmpBlockingPct = double(std::max(amatSize, bmatSize)) / totalLoadSize;
+      tmpBlockingPct =
+        double(max(blockDimCalculator.amat_size, blockDimCalculator.bmat_size)) / blockDimCalculator.total_load_size;
     }
-    bool tmpBlockingFlag = (loadSizeKb < LOAD_SIZE_RANGE_LOW && std::max(nFactor, mFactor) > M_LOW_RANGE);
+    bool tmpBlockingFlag = (loadSizeKb < LOAD_SIZE_RANGE_LOW && max(nFactor, mFactor) > M_LOW_RANGE);
 
     // updateSolution: bool whether update to a new block factor solution
     // use more coreNums or use same core num but has smaller loadsize
@@ -331,104 +358,119 @@ int64_t GetBlockDimHelper(SingleCoreParas &singleCoreParas, BlockDimCalculator &
     // when loadsize in a predetermined range, do not block factor solution
     // these predetermined range parameters is only suitable for cloud 60 platform
 
-    auto updateSolution = (totalLoadSize < blockDimCalculator.minLoadSize) ||
-      ((totalLoadSize == blockDimCalculator.minLoadSize) &&
-        ((blockDimCalculator.nDimFactor * blockDimCalculator.batchDimFactor < bFactor * nFactor) ||
-          (blockDimCalculator.nDimFactor * blockDimCalculator.batchDimFactor == bFactor * nFactor &&
-            blockDimCalculator.batchDimFactor < bFactor))) ||
-      (blockDimCalculator.finalBlockingFlag && (loadSizeKb - minLoadSizeKb) < LOAD_SIZE_DIFF_RANGE &&
-        std::max(nFactor, mFactor) < std::max(blockDimCalculator.nDimFactor, blockDimCalculator.mDimFactor));
+    auto updateSolution =
+      (blockDimCalculator.total_load_size < blockDimCalculator.min_load_size) ||
+        ((blockDimCalculator.total_load_size == blockDimCalculator.min_load_size) &&
+          ((blockDimCalculator.n_dim_factor * blockDimCalculator.batch_dim_factor < bFactor * nFactor) ||
+            (blockDimCalculator.n_dim_factor * blockDimCalculator.batch_dim_factor == bFactor * nFactor &&
+              blockDimCalculator.batch_dim_factor < bFactor))) ||
+        (blockDimCalculator.final_blocking_flag && (loadSizeKb - minLoadSizeKb) < LOAD_SIZE_DIFF_RANGE &&
+          max(nFactor, mFactor) < max(blockDimCalculator.n_dim_factor, blockDimCalculator.m_dim_factor));
     auto noUpdateSolution =
-      (((loadSizeKb >= LOAD_SIZE_RANGE_LOW && loadSizeKb < LOAD_SIZE_RANGE_HIGH
-        && std::max(nFactor, mFactor) > M_HIGH_RANGE
-        && tmpBlockingPct > BLOCKING_PCT_GATE) &&
-        std::max(nFactor, mFactor) > std::max(blockDimCalculator.nDimFactor, blockDimCalculator.mDimFactor) &&
-        double(blockDimCalculator.minLoadSize - totalLoadSize) / blockDimCalculator.minLoadSize < LOAD_SIZE_GATE &&
-        blockDimCalculator.coreUse >= CORE_USE_HIGH_RANGE) ||
-        ((loadSizeKb < LOAD_SIZE_RANGE_LOW && std::max(nFactor, mFactor) > M_LOW_RANGE) &&
-          (std::max(nFactor, mFactor) > std::max(blockDimCalculator.nDimFactor, blockDimCalculator.mDimFactor)) &&
-          ((minLoadSizeKb - loadSizeKb) < LOAD_SIZE_DIFF_RANGE && blockDimCalculator.coreUse > CORE_USE_LOW_RANGE)));
+      (((loadSizeKb >= LOAD_SIZE_RANGE_LOW && loadSizeKb < LOAD_SIZE_RANGE_HIGH &&
+        max(nFactor, mFactor) > M_HIGH_RANGE && tmpBlockingPct > BLOCKING_PCT_GATE) &&
+        max(nFactor, mFactor) > max(blockDimCalculator.n_dim_factor, blockDimCalculator.m_dim_factor) &&
+        double(blockDimCalculator.min_load_size - blockDimCalculator.total_load_size) /
+          blockDimCalculator.min_load_size <
+          LOAD_SIZE_GATE &&
+        blockDimCalculator.core_use >= CORE_USE_HIGH_RANGE) ||
+        ((loadSizeKb < LOAD_SIZE_RANGE_LOW && max(nFactor, mFactor) > M_LOW_RANGE) &&
+          (max(nFactor, mFactor) > max(blockDimCalculator.n_dim_factor, blockDimCalculator.m_dim_factor)) &&
+          ((minLoadSizeKb - loadSizeKb) < LOAD_SIZE_DIFF_RANGE && blockDimCalculator.core_use > CORE_USE_LOW_RANGE)));
     auto updateCondition = updateSolution && !noUpdateSolution;
     if (updateCondition) {
-      blockDimCalculator.minLoadSize = totalLoadSize;
-      blockDimCalculator.nDimFactor = nFactor;
-      blockDimCalculator.batchDimFactor = bFactor;
-      blockDimCalculator.mDimFactor = mFactor;
-      blockDimCalculator.finalBlockingFlag = tmpBlockingFlag;
-      blockDimCalculator.coreUse =
-        blockDimCalculator.nDimFactor * blockDimCalculator.batchDimFactor * blockDimCalculator.mDimFactor;
-      blockDimCalculator.finalValue = tmpValue;
+      blockDimCalculator.min_load_size = blockDimCalculator.total_load_size;
+      blockDimCalculator.n_dim_factor = nFactor;
+      blockDimCalculator.batch_dim_factor = bFactor;
+      blockDimCalculator.m_dim_factor = mFactor;
+      blockDimCalculator.final_blocking_flag = tmpBlockingFlag;
+      blockDimCalculator.core_use =
+        blockDimCalculator.n_dim_factor * blockDimCalculator.batch_dim_factor * blockDimCalculator.m_dim_factor;
+      blockDimCalculator.final_value = blockDimCalculator.tmp_value;
     }
   }
-  return 0;
 }
 
-int64_t GetBlockDim(SingleCoreParas &singleCoreParas, const int64_t &batch, const int64_t &m, const int64_t &k,
-                    const int64_t &n, const int64_t &coreNum = CORE_NUM)
+int64_t GetBlockDim(const string &op_type, const BatchmatmulParas &params, L2Status &l2Status,
+                    const int64_t &coreNum)
 {
-  if (batch * m * n < coreNum) {
-    singleCoreParas.batch_dim = batch;
-    singleCoreParas.n_dim = n;
-    singleCoreParas.m_dim = m;
-    singleCoreParas.batch = 1;
-    singleCoreParas.m = 1;
-    singleCoreParas.k = k;
-    singleCoreParas.n = 1;
+  // get batch_dim, m_dim and n_dim for single core
+  // not support multi cores slicing along k dim
+  // single core batch_dim, m_dim, n_dim is a factor of input batch, m, n
+
+  OP_LOGD(op_type.c_str(), "input batch dim:%lld", params.batch);
+  OP_LOGD(op_type.c_str(), "input m dim:%lld", params.m);
+  OP_LOGD(op_type.c_str(), "input k dim:%lld", params.k);
+  OP_LOGD(op_type.c_str(), "input n dim:%lld", params.n);
+  if (params.batch * params.m * params.n < coreNum) {
+    l2Status.batch_dim = params.batch;
+    l2Status.n_dim = params.n;
+    l2Status.m_dim = params.m;
+    l2Status.batch = 1;
+    l2Status.m = 1;
+    l2Status.k = params.k;
+    l2Status.n = 1;
+    OP_LOGD(op_type.c_str(), "singlecore batch dim factor:%lld", params.batch);
+    OP_LOGD(op_type.c_str(), "singlecore batch n dim factor:%lld", params.n);
+    OP_LOGD(op_type.c_str(), "singlecore m dim factor:%lld", params.m);
+    OP_LOGD(op_type.c_str(), "singlecore m block pnt point:%lld", 0);
     return 0;
   }
   BlockDimCalculator blockDimCalculator;
-  blockDimCalculator.batch = batch;
-  blockDimCalculator.m = m;
-  blockDimCalculator.k = k;
-  blockDimCalculator.n = n;
+  blockDimCalculator.batch = params.batch;
+  blockDimCalculator.m = params.m;
+  blockDimCalculator.k = params.k;
+  blockDimCalculator.n = params.n;
   int64_t batchDimArray[coreNum] = {0};
   int64_t nDimArray[coreNum] = {0};
   int64_t mDimArray[coreNum] = {0};
-  int64_t batchDimCnt = 0;
-  int64_t nDimCnt = 0;
-  int64_t mDimCnt = 0;
-  GetFactors(&batchDimCnt, batchDimArray, batch, coreNum);
-  GetFactors(&nDimCnt, nDimArray, n, coreNum);
-  GetFactors(&mDimCnt, mDimArray, m, coreNum);
+  GetFactors(&blockDimCalculator.batch_dim_cnt, batchDimArray, params.batch, coreNum);
+  GetFactors(&blockDimCalculator.n_dim_cnt, nDimArray, params.n, coreNum);
+  GetFactors(&blockDimCalculator.m_dim_cnt, mDimArray, params.m, coreNum);
   int64_t mnMaxPnt = 16;
   int64_t m0s[coreNum + 1][2] = {0};
   int64_t n0s[coreNum + 1][2] = {0};
-  for (int64_t idx = 0; idx < nDimCnt; idx++) {
+  for (int64_t idx = 0; idx < blockDimCalculator.n_dim_cnt; idx++) {
     int64_t tmpNDim = nDimArray[idx];
-    int64_t tmpNSingleCore = n / tmpNDim;
+    int64_t tmpNSingleCore = params.n / tmpNDim;
     GetTwoFactors(n0s[tmpNDim], mnMaxPnt, tmpNSingleCore, MAX_FACTOR);
   }
-  for (int64_t idx = 0; idx < mDimCnt; idx++) {
+  for (int64_t idx = 0; idx < blockDimCalculator.m_dim_cnt; idx++) {
     int64_t tmpMDim = mDimArray[idx];
-    int64_t tmpMSingleCore = m / tmpMDim;
+    int64_t tmpMSingleCore = params.m / tmpMDim;
     GetTwoFactors(m0s[tmpMDim], mnMaxPnt, tmpMSingleCore, MAX_FACTOR);
   }
-  blockDimCalculator.kNum = k * BLOCK_SIZE * BLOCK_SIZE;
-  blockDimCalculator.kBytes = blockDimCalculator.kNum * FP16_BYTES;
-  blockDimCalculator.nDimFactor = 1;
-  blockDimCalculator.batchDimFactor = 1;
-  blockDimCalculator.mDimFactor = 1;
-  blockDimCalculator.minLoadSize = L1_Size / FP16_BYTES;
-  blockDimCalculator.finalBlockingFlag = false;
-  blockDimCalculator.coreUse = 1;
-  blockDimCalculator.finalValue = 0;
-  for (int64_t iIdx = 0; iIdx < batchDimCnt; iIdx++) {
-    for (int64_t jIdx = 0; jIdx < nDimCnt; jIdx++) {
-      GetBlockDimHelper(singleCoreParas, blockDimCalculator, batchDimArray, mDimArray, nDimArray, iIdx, jIdx, mDimCnt,
-                        nDimCnt, m0s, n0s);
+  blockDimCalculator.k_num = params.k * BLOCK_SIZE * BLOCK_SIZE;
+  blockDimCalculator.k_bytes = blockDimCalculator.k_num * FP16_BYTES;
+  blockDimCalculator.n_dim_factor = 1;
+  blockDimCalculator.batch_dim_factor = 1;
+  blockDimCalculator.m_dim_factor = 1;
+  blockDimCalculator.min_load_size = L1_Size / FP16_BYTES;
+  blockDimCalculator.batch_dim_array = batchDimArray;
+  blockDimCalculator.m_dim_array = mDimArray;
+  blockDimCalculator.n_dim_array = nDimArray;
+  for (int64_t iIdx = 0; iIdx < blockDimCalculator.batch_dim_cnt; iIdx++) {
+    for (int64_t jIdx = 0; jIdx < blockDimCalculator.n_dim_cnt; jIdx++) {
+      blockDimCalculator.i_idx = iIdx;
+      blockDimCalculator.j_idx = jIdx;
+      GetBlockDimHelper(l2Status, blockDimCalculator, m0s, n0s);
     }
   }
-  singleCoreParas.batch_dim = blockDimCalculator.batchDimFactor;
-  singleCoreParas.n_dim = blockDimCalculator.nDimFactor;
-  singleCoreParas.m_dim = blockDimCalculator.mDimFactor;
-  singleCoreParas.m = m / blockDimCalculator.mDimFactor;
-  singleCoreParas.n = n / blockDimCalculator.nDimFactor;
-  singleCoreParas.k = k;
-  singleCoreParas.batch = batch / blockDimCalculator.batchDimFactor;
-  return blockDimCalculator.finalValue;
+  l2Status.batch_dim = blockDimCalculator.batch_dim_factor;
+  l2Status.n_dim = blockDimCalculator.n_dim_factor;
+  l2Status.m_dim = blockDimCalculator.m_dim_factor;
+  l2Status.m = params.m / blockDimCalculator.m_dim_factor;
+  l2Status.n = params.n / blockDimCalculator.n_dim_factor;
+  l2Status.k = params.k;
+  l2Status.batch = params.batch / blockDimCalculator.batch_dim_factor;
+  OP_LOGD(op_type.c_str(), "singlecore batch dim factor:%lld", l2Status.batch_dim);
+  OP_LOGD(op_type.c_str(), "singlecore batch n dim factor:%lld", l2Status.n_dim);
+  OP_LOGD(op_type.c_str(), "singlecore m dim factor:%lld", l2Status.m_dim);
+  OP_LOGD(op_type.c_str(), "singlecore m block pnt point:%lld", blockDimCalculator.final_value);
+  return blockDimCalculator.final_value;
 }
 
-int64_t CheckUbDb(L0Status &l0Status)
+void CheckUbDb(L0Status &l0Status)
 {
   int64_t nCub = 1;
   int64_t c0 = 16;
@@ -437,56 +479,55 @@ int64_t CheckUbDb(L0Status &l0Status)
   if (copyoutSize * l0Status.db_cub > ubFp16Size) {
     l0Status.db_cub = 1;
   }
-  return 0;
 }
 
-int64_t GetLoadSize(const SingleCoreParas &singleCoreParas, const L0Status &l0Status)
+int64_t GetLoadSize(const L2Status &l2Status, const L0Status &l0Status)
 {
   bool al1FullLoad =
-    ((singleCoreParas.m * singleCoreParas.k + l0Status.n_l0 * l0Status.k_l0) * BLOCK_SIZE * BLOCK_SIZE * FP16_BYTES <=
+    ((l2Status.m * l2Status.k + l0Status.n_l0 * l0Status.k_l0) * BLOCK_SIZE * BLOCK_SIZE * FP16_BYTES <=
       L1_Size);
   bool bl1FullLoad =
-    ((l0Status.m_l0 * l0Status.k_l0 + l0Status.n_l0 * singleCoreParas.k) * BLOCK_SIZE * BLOCK_SIZE * FP16_BYTES <=
+    ((l0Status.m_l0 * l0Status.k_l0 + l0Status.n_l0 * l2Status.k) * BLOCK_SIZE * BLOCK_SIZE * FP16_BYTES <=
       L1_Size);
-  bool bothFullLoad = ((singleCoreParas.m * singleCoreParas.k + l0Status.n_l0 * singleCoreParas.k) * BLOCK_SIZE *
-    BLOCK_SIZE * FP16_BYTES <= L1_Size);
+  bool bothFullLoad = ((l2Status.m * l2Status.k + l0Status.n_l0 * l2Status.k) * BLOCK_SIZE *
+    BLOCK_SIZE * FP16_BYTES <=
+    L1_Size);
   int64_t num0a =
-    bl1FullLoad ? singleCoreParas.n : ((singleCoreParas.m + l0Status.m_l0 - 1) / l0Status.m_l0) * singleCoreParas.n;
+    bl1FullLoad ? l2Status.n : ((l2Status.m + l0Status.m_l0 - 1) / l0Status.m_l0) * l2Status.n;
   int64_t num0b =
-    al1FullLoad ? singleCoreParas.m : ((singleCoreParas.n + l0Status.n_l0 - 1) / l0Status.n_l0) * singleCoreParas.m;
+    al1FullLoad ? l2Status.m : ((l2Status.n + l0Status.n_l0 - 1) / l0Status.n_l0) * l2Status.m;
   if ((al1FullLoad && bl1FullLoad) && !bothFullLoad) {
-    return std::min(singleCoreParas.n + ((singleCoreParas.n + l0Status.n_l0 - 1) / l0Status.n_l0) * singleCoreParas.m,
-                    singleCoreParas.m + ((singleCoreParas.m + l0Status.m_l0 - 1) / l0Status.m_l0) * singleCoreParas.n);
+    return min(l2Status.n + ((l2Status.n + l0Status.n_l0 - 1) / l0Status.n_l0) * l2Status.m,
+               l2Status.m + ((l2Status.m + l0Status.m_l0 - 1) / l0Status.m_l0) * l2Status.n);
   }
   return num0a + num0b;
 }
 
-int64_t GetFinalMkn(L0Status &l0Status, const SingleCoreParas &singleCoreParas)
+void GetFinalMkn(L0Status &l0Status, const L2Status &l2Status)
 {
   int64_t tmpL0cUse = l0Status.m_l0 * l0Status.n_l0 * l0Status.db_l0c * BLOCK_SIZE * BLOCK_SIZE * 4 * 100 / L0c_Size;
   int64_t tmpMte1Loop = ((l0Status.n_l0 != 1) ? l0Status.k_l0 : 1) + ((l0Status.k_l0 != 1) ? l0Status.m_l0 : 1);
   int64_t tmpMul = l0Status.m_l0 * l0Status.k_l0 * l0Status.n_l0;
-  int64_t tmpLoadSize = GetLoadSize(singleCoreParas, l0Status);
-  auto condition1 = l0Status.finalM0 == 0;
-  auto condition2 = tmpLoadSize < l0Status.finalLoadSize;
-  auto condition3 = tmpLoadSize == l0Status.finalLoadSize && tmpMul > l0Status.finalMul;
+  int64_t tmpLoadSize = GetLoadSize(l2Status, l0Status);
+  auto condition1 = l0Status.final_ml0 == 0;
+  auto condition2 = tmpLoadSize < l0Status.final_load_size;
+  auto condition3 = tmpLoadSize == l0Status.final_load_size && tmpMul > l0Status.final_mul;
   auto condition4 =
-    tmpMul == l0Status.finalMul && tmpLoadSize == l0Status.finalLoadSize && tmpMte1Loop < l0Status.finalMte1Loop;
+    tmpMul == l0Status.final_mul && tmpLoadSize == l0Status.final_load_size && tmpMte1Loop < l0Status.final_mte1Loop;
   if (condition1 || condition2 || condition3 || condition4) {
-    l0Status.finalM0 = l0Status.m_l0;
-    l0Status.finalK0 = l0Status.k_l0;
-    l0Status.finalN0 = l0Status.n_l0;
-    l0Status.finalLoadSize = tmpLoadSize;
-    l0Status.finalL0cUse = tmpL0cUse;
-    l0Status.finalMul = tmpMul;
-    l0Status.finalMte1Loop = tmpMte1Loop;
+    l0Status.final_ml0 = l0Status.m_l0;
+    l0Status.final_kl0 = l0Status.k_l0;
+    l0Status.final_nl0 = l0Status.n_l0;
+    l0Status.final_load_size = tmpLoadSize;
+    l0Status.final_l0c_use = tmpL0cUse;
+    l0Status.final_mul = tmpMul;
+    l0Status.final_mte1Loop = tmpMte1Loop;
   }
-  return 0;
 }
 
 MKNParasCombo GetParasCombo(const int64_t &index, const int64_t &blockValue)
 {
-  std::map<int64_t, MKNParasCombo> parasComboMap;
+  map<int64_t, MKNParasCombo> parasComboMap;
   if (blockValue == 0) {
     MKNParasCombo comboZero = {2, 2, 2, 64, 64, 128, 0, 64, 11};
     MKNParasCombo comboOne = {2, 2, 1, 64, 64, 256, 0, 64, 16};
@@ -496,8 +537,8 @@ MKNParasCombo GetParasCombo(const int64_t &index, const int64_t &blockValue)
     MKNParasCombo comboFive = {1, 2, 1, 128, 64, 256, 0, 128, 22};
     MKNParasCombo comboSix = {2, 1, 1, 64, 128, 256, 1, 128, 22};
     MKNParasCombo comboSeven = {1, 1, 1, 128, 128, 256, 0, 128, 16};
-    parasComboMap = {{0, comboZero}, {1, comboOne}, {2, comboTwo}, {3, comboThree}, {4, comboFour}, {5, comboFive},
-                     {6, comboSix}, {7, comboSeven}};
+    parasComboMap = {{0, comboZero}, {1, comboOne}, {2, comboTwo}, {3, comboThree},
+                     {4, comboFour}, {5, comboFive}, {6, comboSix}, {7, comboSeven}};
   } else {
     MKNParasCombo comboZero = {2, 2, 2, 64, 64, 128, 1, 64, blockValue};
     MKNParasCombo comboOne = {2, 2, 1, 64, 64, 256, 1, 64, blockValue};
@@ -507,75 +548,73 @@ MKNParasCombo GetParasCombo(const int64_t &index, const int64_t &blockValue)
     MKNParasCombo comboFive = {1, 2, 1, 128, 64, 256, 1, 128, blockValue};
     MKNParasCombo comboSix = {2, 1, 1, 64, 128, 256, 1, 128, blockValue};
     MKNParasCombo comboSeven = {1, 1, 1, 128, 128, 256, 1, 128, blockValue};
-    parasComboMap = {{0, comboZero}, {1, comboOne}, {2, comboTwo}, {3, comboThree}, {4, comboFour}, {5, comboFive},
-                     {6, comboSix}, {7, comboSeven}};
+    parasComboMap = {{0, comboZero}, {1, comboOne}, {2, comboTwo}, {3, comboThree},
+                     {4, comboFour}, {5, comboFive}, {6, comboSix}, {7, comboSeven}};
   }
   return parasComboMap[index];
 }
 
-int64_t GetL0StatusFromParasCombo(L0Status &l0Status, int64_t parasCombo[9])
+void GetL0StatusFromParasCombo(L0Status &l0Status, int64_t *parasCombo)
 {
   l0Status.SetInitLoadStatus();
   l0Status.db_l0a = parasCombo[IDX_ZERO];
   l0Status.db_l0b = parasCombo[IDX_ONE];
   l0Status.db_l0c = parasCombo[IDX_TWO];
-  l0Status.maxMK = parasCombo[IDX_THREE];
-  l0Status.maxNK = parasCombo[IDX_FOUR];
-  l0Status.maxMN = parasCombo[IDX_FIVE];
-  l0Status.maxAxisIdx = parasCombo[IDX_SIX];
-  l0Status.maxAxisNum = parasCombo[IDX_SEVEN];
-  l0Status.maxAxisPnt = parasCombo[IDX_EIGHT];
-  l0Status.maxAxisPnt = std::min(l0Status.maxAxisPnt, l0Status.maxAxisNum);
-  return 0;
+  l0Status.max_mk = parasCombo[IDX_THREE];
+  l0Status.max_nk = parasCombo[IDX_FOUR];
+  l0Status.max_mn = parasCombo[IDX_FIVE];
+  l0Status.max_axis_idx = parasCombo[IDX_SIX];
+  l0Status.max_axis_num = parasCombo[IDX_SEVEN];
+  l0Status.max_axis_pnt = parasCombo[IDX_EIGHT];
+  l0Status.max_axis_pnt = min(l0Status.max_axis_pnt, l0Status.max_axis_num);
 }
 
-int64_t SetResFactors(int64_t *resFactors, const L0Status &l0Status)
+void SetResFactors(int64_t *resFactors, const L0Status &l0Status)
 {
-  resFactors[IDX_ZERO] = l0Status.finalM0;
-  resFactors[IDX_ONE] = l0Status.finalK0;
-  resFactors[IDX_TWO] = l0Status.finalN0;
-  resFactors[IDX_THREE] = l0Status.finalLoadSize;
-  resFactors[IDX_FOUR] = l0Status.finalL0cUse;
-  resFactors[IDX_FIVE] = l0Status.finalMte1Loop;
-  resFactors[IDX_SIX] = l0Status.finalMul;
-  return 0;
+  resFactors[IDX_ZERO] = l0Status.final_ml0;
+  resFactors[IDX_ONE] = l0Status.final_kl0;
+  resFactors[IDX_TWO] = l0Status.final_nl0;
+  resFactors[IDX_THREE] = l0Status.final_load_size;
+  resFactors[IDX_FOUR] = l0Status.final_l0c_use;
+  resFactors[IDX_FIVE] = l0Status.final_mte1Loop;
+  resFactors[IDX_SIX] = l0Status.final_mul;
 }
 
-int64_t GetL0FactorsCand(int64_t *resFactors, const SingleCoreParas &singleCoreParas, int64_t parasCombo[9],
-                         L0Status &l0Status)
+void GetL0FactorsCand(int64_t *resFactors, const L2Status &l2Status, L0Status &l0Status,
+                      int64_t *parasCombo, int64_t sizeofParasCombo)
 {
   GetL0StatusFromParasCombo(l0Status, parasCombo);
-  int64_t majorDim = singleCoreParas.m;
-  int64_t minorDim = singleCoreParas.n;
-  int64_t majorDimK = l0Status.maxMK;
-  int64_t minorDimK = l0Status.maxNK;
-  if (l0Status.maxAxisIdx != 0) {
-    majorDim = singleCoreParas.n;
-    minorDim = singleCoreParas.m;
-    majorDimK = l0Status.maxNK;
-    minorDimK = l0Status.maxMK;
+  int64_t majorDim = l2Status.m;
+  int64_t minorDim = l2Status.n;
+  int64_t majorDimK = l0Status.max_mk;
+  int64_t minorDimK = l0Status.max_nk;
+  if (l0Status.max_axis_idx != 0) {
+    majorDim = l2Status.n;
+    minorDim = l2Status.m;
+    majorDimK = l0Status.max_nk;
+    minorDimK = l0Status.max_mk;
   }
   int64_t majorDimFactors[2] = {0};
-  GetTwoFactors(majorDimFactors, l0Status.maxAxisPnt, majorDim, l0Status.maxAxisNum);
+  GetTwoFactors(majorDimFactors, l0Status.max_axis_pnt, majorDim, l0Status.max_axis_num);
   for (auto &majorDimFactor: majorDimFactors) {
     if (majorDimFactor == 0) {
       continue;
     }
-    int64_t minorFactorMax = std::min(l0Status.maxMN / majorDimFactor, minorDimK);
+    int64_t minorFactorMax = min(l0Status.max_mn / majorDimFactor, minorDimK);
     int64_t minorDimFactors[2] = {0};
     GetTwoFactors(minorDimFactors, minorFactorMax, minorDim, minorFactorMax);
     for (auto &minorDimFactor: minorDimFactors) {
       if (minorDimFactor == 0) {
         continue;
       }
-      int64_t k0Max = std::min(majorDimK / majorDimFactor, minorDimK / minorDimFactor);
+      int64_t k0Max = min(majorDimK / majorDimFactor, minorDimK / minorDimFactor);
       int64_t k0Factors[2] = {0};
-      GetTwoFactors(k0Factors, k0Max, singleCoreParas.k, k0Max);
+      GetTwoFactors(k0Factors, k0Max, l2Status.k, k0Max);
       for (auto &k0: k0Factors) {
         if (k0 == 0) {
           continue;
         }
-        if (l0Status.maxAxisIdx == 0) {
+        if (l0Status.max_axis_idx == 0) {
           l0Status.m_l0 = majorDimFactor;
           l0Status.n_l0 = minorDimFactor;
         } else {
@@ -583,23 +622,27 @@ int64_t GetL0FactorsCand(int64_t *resFactors, const SingleCoreParas &singleCoreP
           l0Status.n_l0 = majorDimFactor;
         }
         l0Status.k_l0 = k0;
-        GetFinalMkn(l0Status, singleCoreParas);
+        GetFinalMkn(l0Status, l2Status);
       }
     }
   }
   SetResFactors(resFactors, l0Status);
-  return 0;
 }
 
-int64_t GetMKN(const SingleCoreParas &singleCoreParas, const int64_t &blockValue, L0Status &l0Status)
+void GetL0Factors(const string &op_type, const L2Status &l2Status, const int64_t &blockValue,
+                  L0Status &l0Status)
 {
+  // get m_l0, n_l0, k_l0 factor when singlecore m, n, k is know
+  // m_l0, n_l0, k_l0 is a factor of single core m, n, k
+
   int64_t dbAOnBOnCOnIdx = 0;
   int64_t dbAOnBOnCOffIdx = 1;
   int64_t resFactors[8][7] = {0};
   int64_t parasCombo[9];
-  for (int i = 0; i < L0_PARAS_COMBO_LEN; ++i) {
+  for (int32_t i = 0; i < L0_PARAS_COMBO_LEN; ++i) {
     MKNParasCombo mknParasCombo = GetParasCombo(i, blockValue);
-    GetL0FactorsCand(resFactors[i], singleCoreParas, mknParasCombo.parasCombo, l0Status);
+    GetL0FactorsCand(resFactors[i], l2Status, l0Status, mknParasCombo.parasCombo,
+                     sizeof(mknParasCombo.parasCombo));
   }
 
   // check both L0C utilization and loadsize to control LOC LOA LOB DB
@@ -610,8 +653,6 @@ int64_t GetMKN(const SingleCoreParas &singleCoreParas, const int64_t &blockValue
   int64_t n0L0cDbOn = resFactors[dbAOnBOnCOnIdx][IDX_TWO];
   int64_t loadSizeL0cDbOn = resFactors[dbAOnBOnCOnIdx][IDX_THREE];
   int64_t l0cUseL0cDbOn = resFactors[dbAOnBOnCOnIdx][IDX_FOUR];
-  int64_t mte1LoopL0cDbOn = resFactors[dbAOnBOnCOnIdx][IDX_FIVE];
-  int64_t mulL0cDbOn = resFactors[dbAOnBOnCOnIdx][IDX_SIX];
 
   int64_t dbL0aL0cDbOff = 2;
   int64_t dbL0bL0cDbOff = 2;
@@ -620,10 +661,8 @@ int64_t GetMKN(const SingleCoreParas &singleCoreParas, const int64_t &blockValue
   int64_t n0L0cDbOff = resFactors[dbAOnBOnCOffIdx][IDX_TWO];
   int64_t loadSizeL0cDbOff = resFactors[dbAOnBOnCOffIdx][IDX_THREE];
   int64_t l0cUseL0cDbOff = resFactors[dbAOnBOnCOffIdx][IDX_FOUR];
-  int64_t mte1LoopL0cDbOff = resFactors[dbAOnBOnCOffIdx][IDX_FIVE];
-  int64_t mulL0cDbOff = resFactors[dbAOnBOnCOffIdx][IDX_SIX];
 
-  if (l0cUseL0cDbOff > l0cUseL0cDbOn or loadSizeL0cDbOff < loadSizeL0cDbOn) {
+  if ((l0cUseL0cDbOff > l0cUseL0cDbOn) || (loadSizeL0cDbOff < loadSizeL0cDbOn)) {
     l0Status.db_l0c = DB_OFF;
     l0Status.db_l0a = dbL0aL0cDbOff;
     l0Status.db_l0b = dbL0bL0cDbOff;
@@ -640,7 +679,9 @@ int64_t GetMKN(const SingleCoreParas &singleCoreParas, const int64_t &blockValue
   }
   l0Status.db_cub = DB_ON;
   CheckUbDb(l0Status);
-  return 0;
+  OP_LOGD(op_type.c_str(), "tiling m_l0:%s, n_l0:%s, k_l0:%s", l0Status.m_l0, l0Status.n_l0, l0Status.k_l0);
+  OP_LOGD(op_type.c_str(), "tiling db_l0a:%s, db_l0b:%s, db_l0c:%s", l0Status.db_l0a, l0Status.db_l0b, l0Status.db_l0c);
+  OP_LOGD(op_type.c_str(), "tiling db_cub:%s", l0Status.db_cub);
 }
 
 int64_t GetL1Size(const L1Status &l1Status, const L0Status &l0Status)
@@ -652,14 +693,14 @@ int64_t GetL1Size(const L1Status &l1Status, const L0Status &l0Status)
   return curL1Size;
 }
 
-int64_t L1StatusBothFullLoad(const SingleCoreParas &singleCoreParas, const L0Status &l0Status, L1Status &l1Status,
-                             int64_t res[][7])
+void L1StatusBothFullLoad(const L2Status &l2Status, const L0Status &l0Status, L1Status &l1Status,
+                          int64_t res[][7])
 {
   int64_t curL1Size;
   curL1Size = GetL1Size(l1Status, l0Status);
   if (curL1Size <= L1_Size) {
     l1Status.both_full_load = true;
-    l1Status.load_size = singleCoreParas.m + singleCoreParas.n;
+    l1Status.load_size = l2Status.m + l2Status.n;
     res[IDX_ZERO][IDX_ZERO] = l1Status.kal1_16;
     res[IDX_ZERO][IDX_ONE] = l1Status.m_al1;
     res[IDX_ZERO][IDX_TWO] = l1Status.db_al1;
@@ -668,37 +709,36 @@ int64_t L1StatusBothFullLoad(const SingleCoreParas &singleCoreParas, const L0Sta
     res[IDX_ZERO][IDX_FIVE] = l1Status.db_bl1;
     res[IDX_ZERO][IDX_SIX] = l1Status.load_size;
   }
-  return 0;
 }
 
-int64_t L1StatusAl1FullLoad(const SingleCoreParas &singleCoreParas, const L0Status &l0Status, L1Status &l1Status,
-                            int64_t res[][7])
+void L1StatusAl1FullLoad(const L2Status &l2Status, const L0Status &l0Status, L1Status &l1Status,
+                         int64_t res[][7])
 {
   int64_t curL1Size;
-  int64_t mRepeat = singleCoreParas.m / l0Status.m_l0;
-  int64_t nRepeat = singleCoreParas.n / l0Status.n_l0;
+  int64_t mRepeat = l2Status.m / l0Status.m_l0;
+  int64_t nRepeat = l2Status.n / l0Status.n_l0;
   curL1Size = GetL1Size(l1Status, l0Status);
   if (curL1Size <= L1_Size) {
     l1Status.al1_full_load = true;
-    l1Status.al1_size = singleCoreParas.k * singleCoreParas.m * BLOCK_SIZE * BLOCK_SIZE * FP16_BYTES;
+    l1Status.al1_size = l2Status.k * l2Status.m * BLOCK_SIZE * BLOCK_SIZE * FP16_BYTES;
     l1Status.bl1_size = L1_Size - l1Status.al1_size;
     l1Status.db_bl1 = DB_ON;
     if (GetL1Size(l1Status, l0Status) > L1_Size) {
       l1Status.db_bl1 = DB_OFF;
     }
-    l1Status.kbl1_16 = std::min(
+    l1Status.kbl1_16 = min(
       l1Status.bl1_size / (l1Status.n_bl1 * l0Status.n_l0 * BLOCK_SIZE * l1Status.db_bl1 * FP16_BYTES * BLOCK_SIZE),
-      singleCoreParas.k);
-    l1Status.bl1_times = std::min(l1Status.kbl1_16 / l0Status.k_l0, l1Status.max_k_bl1);
+      l2Status.k);
+    l1Status.bl1_times = min(l1Status.kbl1_16 / l0Status.k_l0, l1Status.max_k_bl1);
     GetNearestFactor(l1Status.all_times, l1Status.bl1_times);
     l1Status.kbl1_16 = l1Status.bl1_times * l0Status.k_l0;
-    if (l1Status.kbl1_16 == singleCoreParas.k) {
-      l1Status.n_bl1 = std::min(l1Status.bl1_size / (l1Status.kbl1_16 * l0Status.n_l0 * BLOCK_SIZE * l1Status.db_bl1 *
-                                  FP16_BYTES * BLOCK_SIZE),
-                                l1Status.max_n_bl1);
+    if (l1Status.kbl1_16 == l2Status.k) {
+      l1Status.n_bl1 = min(l1Status.bl1_size / (l1Status.kbl1_16 * l0Status.n_l0 * BLOCK_SIZE * l1Status.db_bl1 *
+                             FP16_BYTES * BLOCK_SIZE),
+                           l1Status.max_n_bl1);
       GetNearestFactor(nRepeat, l1Status.n_bl1);
     }
-    l1Status.load_size = singleCoreParas.m + (l1Status.kbl1_16 == singleCoreParas.k ? 1 : mRepeat) * singleCoreParas.n;
+    l1Status.load_size = l2Status.m + (l1Status.kbl1_16 == l2Status.k ? 1 : mRepeat) * l2Status.n;
     res[IDX_ONE][IDX_ZERO] = l1Status.kal1_16;
     res[IDX_ONE][IDX_ONE] = l1Status.m_al1;
     res[IDX_ONE][IDX_TWO] = l1Status.db_al1;
@@ -707,40 +747,39 @@ int64_t L1StatusAl1FullLoad(const SingleCoreParas &singleCoreParas, const L0Stat
     res[IDX_ONE][IDX_FIVE] = l1Status.db_bl1;
     res[IDX_ONE][IDX_SIX] = l1Status.load_size;
   }
-  return 0;
 }
 
-int64_t L1StatusBl1FullLoad(const SingleCoreParas &singleCoreParas, const L0Status &l0Status, L1Status &l1Status,
-                            int64_t res[][7])
+void L1StatusBl1FullLoad(const L2Status &l2Status, const L0Status &l0Status, L1Status &l1Status,
+                         int64_t res[][7])
 {
   int64_t curL1Size;
-  int64_t mRepeat = singleCoreParas.m / l0Status.m_l0;
-  int64_t nRepeat = singleCoreParas.n / l0Status.n_l0;
+  int64_t mRepeat = l2Status.m / l0Status.m_l0;
+  int64_t nRepeat = l2Status.n / l0Status.n_l0;
   curL1Size = GetL1Size(l1Status, l0Status);
   if (curL1Size <= L1_Size) {
     l1Status.bl1_full_load = true;
-    l1Status.bl1_size = singleCoreParas.k * singleCoreParas.n * BLOCK_SIZE * BLOCK_SIZE * FP16_BYTES;
+    l1Status.bl1_size = l2Status.k * l2Status.n * BLOCK_SIZE * BLOCK_SIZE * FP16_BYTES;
     l1Status.al1_size = L1_Size - l1Status.bl1_size;
     l1Status.db_al1 = DB_ON;
     if (GetL1Size(l1Status, l0Status) > L1_Size) {
       l1Status.db_al1 = DB_OFF;
     }
-    l1Status.kal1_16 = std::min(
+    l1Status.kal1_16 = min(
       l1Status.al1_size / (l1Status.m_al1 * l0Status.m_l0 * BLOCK_SIZE * l1Status.db_al1 * FP16_BYTES * BLOCK_SIZE),
-      singleCoreParas.k);
-    l1Status.al1_times = std::min(l1Status.kal1_16 / l0Status.k_l0, l1Status.max_k_al1);
+      l2Status.k);
+    l1Status.al1_times = min(l1Status.kal1_16 / l0Status.k_l0, l1Status.max_k_al1);
     GetNearestFactor(l1Status.all_times, l1Status.al1_times);
     l1Status.kal1_16 = l1Status.al1_times * l0Status.k_l0;
-    if (l1Status.kal1_16 == singleCoreParas.k) {
-      l1Status.m_al1 = std::min(l1Status.al1_size / (l1Status.kal1_16 * l0Status.m_l0 * BLOCK_SIZE * l1Status.db_al1 *
-                                  FP16_BYTES * BLOCK_SIZE),
-                                l1Status.max_m_al1);
+    if (l1Status.kal1_16 == l2Status.k) {
+      l1Status.m_al1 = min(l1Status.al1_size / (l1Status.kal1_16 * l0Status.m_l0 * BLOCK_SIZE * l1Status.db_al1 *
+                             FP16_BYTES * BLOCK_SIZE),
+                           l1Status.max_m_al1);
       GetNearestFactor(mRepeat, l1Status.m_al1);
     }
     l1Status.load_size =
-      singleCoreParas.n +
-        ((singleCoreParas.m == l1Status.m_al1 * l0Status.m_l0 && l1Status.kal1_16 == singleCoreParas.k) ? 1 : nRepeat) *
-          singleCoreParas.m;
+      l2Status.n +
+        ((l2Status.m == l1Status.m_al1 * l0Status.m_l0 && l1Status.kal1_16 == l2Status.k) ? 1 : nRepeat) *
+          l2Status.m;
     res[IDX_TWO][IDX_ZERO] = l1Status.kal1_16;
     res[IDX_TWO][IDX_ONE] = l1Status.m_al1;
     res[IDX_TWO][IDX_TWO] = l1Status.db_al1;
@@ -749,11 +788,10 @@ int64_t L1StatusBl1FullLoad(const SingleCoreParas &singleCoreParas, const L0Stat
     res[IDX_TWO][IDX_FIVE] = l1Status.db_bl1;
     res[IDX_TWO][IDX_SIX] = l1Status.load_size;
   }
-  return 0;
 }
 
-int64_t NeitherFullLoadDb(const SingleCoreParas &singleCoreParas, const L0Status &l0Status, L1Status &l1Status,
-                          const int64_t &kbl1Db)
+void NeitherFullLoadDb(const L2Status &l2Status, const L0Status &l0Status, L1Status &l1Status,
+                       const int64_t &kbl1Db)
 {
   int64_t tmpKbl116 = l1Status.kbl1_16;
   l1Status.kbl1_16 = kbl1Db;
@@ -763,8 +801,8 @@ int64_t NeitherFullLoadDb(const SingleCoreParas &singleCoreParas, const L0Status
       l1Status.db_al1 = DB_OFF;
     }
   }
-  l1Status.kbl1_16 = singleCoreParas.k;
-  bool bothDoubleBuffer = singleCoreParas.m != l0Status.m_l0 && singleCoreParas.k > l0Status.k_l0 &&
+  l1Status.kbl1_16 = l2Status.k;
+  bool bothDoubleBuffer = l2Status.m != l0Status.m_l0 && l2Status.k > l0Status.k_l0 &&
     GetL1Size(l1Status, l0Status) > L1_Size;
   l1Status.kbl1_16 = tmpKbl116;
   if (bothDoubleBuffer) {
@@ -777,87 +815,85 @@ int64_t NeitherFullLoadDb(const SingleCoreParas &singleCoreParas, const L0Status
       }
     }
   }
-  return 0;
 }
 
-int64_t NeitherFullLoadMN(const SingleCoreParas &singleCoreParas, const L0Status &l0Status, L1Status &l1Status,
-                          const int64_t &batch, const int64_t &m, const int64_t &k, const int64_t &n)
+void NeitherFullLoadMN(const L2Status &l2Status, const L0Status &l0Status, L1Status &l1Status,
+                       const BatchmatmulParas &params)
 {
-  int64_t mRepeat = singleCoreParas.m / l0Status.m_l0;
-  int64_t nRepeat = singleCoreParas.n / l0Status.n_l0;
-  if (l0Status.k_l0 == k) {
-    if (m > n) {
-      l1Status.bl1_size = k * l0Status.n_l0 * BLOCK_SIZE * BLOCK_SIZE * l1Status.db_bl1 * FP16_BYTES;
+  int64_t mRepeat = l2Status.m / l0Status.m_l0;
+  int64_t nRepeat = l2Status.n / l0Status.n_l0;
+  if (l0Status.k_l0 == params.k) {
+    if (params.m > params.n) {
+      l1Status.bl1_size = params.k * l0Status.n_l0 * BLOCK_SIZE * BLOCK_SIZE * l1Status.db_bl1 * FP16_BYTES;
       l1Status.al1_size = L1_Size - l1Status.bl1_size;
-      l1Status.m_al1 = std::min(l1Status.al1_size / (l1Status.kal1_16 * l0Status.m_l0 * BLOCK_SIZE * l1Status.db_al1 *
-        FP16_BYTES * BLOCK_SIZE), l1Status.max_m_al1);
+      l1Status.m_al1 = min(l1Status.al1_size / (l1Status.kal1_16 * l0Status.m_l0 * BLOCK_SIZE * l1Status.db_al1 *
+                             FP16_BYTES * BLOCK_SIZE),
+                           l1Status.max_m_al1);
       GetNearestFactor(mRepeat, l1Status.m_al1);
       l1Status.al1_size =
         l1Status.kal1_16 * l1Status.m_al1 * l0Status.m_l0 * BLOCK_SIZE * BLOCK_SIZE * l1Status.db_al1 * FP16_BYTES;
       l1Status.bl1_size = L1_Size - l1Status.al1_size;
-      l1Status.n_bl1 = std::min(l1Status.bl1_size / (l1Status.kbl1_16 * l0Status.n_l0 * BLOCK_SIZE * l1Status.db_bl1 *
-                                  FP16_BYTES * BLOCK_SIZE),
-                                l1Status.max_n_bl1);
+      l1Status.n_bl1 = min(l1Status.bl1_size / (l1Status.kbl1_16 * l0Status.n_l0 * BLOCK_SIZE * l1Status.db_bl1 *
+                             FP16_BYTES * BLOCK_SIZE),
+                           l1Status.max_n_bl1);
       GetNearestFactor(nRepeat, l1Status.n_bl1);
     } else {
-      l1Status.al1_size = k * l0Status.m_l0 * BLOCK_SIZE * BLOCK_SIZE * l1Status.db_al1 * FP16_BYTES;
+      l1Status.al1_size = params.k * l0Status.m_l0 * BLOCK_SIZE * BLOCK_SIZE * l1Status.db_al1 * FP16_BYTES;
       l1Status.bl1_size = L1_Size - l1Status.al1_size;
-      l1Status.n_bl1 = std::min(l1Status.bl1_size / (l1Status.kbl1_16 * l0Status.n_l0 * BLOCK_SIZE * l1Status.db_bl1 *
-                                  FP16_BYTES * BLOCK_SIZE),
-                                l1Status.max_n_bl1);
+      l1Status.n_bl1 = min(l1Status.bl1_size / (l1Status.kbl1_16 * l0Status.n_l0 * BLOCK_SIZE * l1Status.db_bl1 *
+                             FP16_BYTES * BLOCK_SIZE),
+                           l1Status.max_n_bl1);
       GetNearestFactor(nRepeat, l1Status.n_bl1);
-      l1Status.bl1_size = k * l0Status.n_l0 * BLOCK_SIZE * BLOCK_SIZE * l1Status.db_bl1 * FP16_BYTES;
+      l1Status.bl1_size = params.k * l0Status.n_l0 * BLOCK_SIZE * BLOCK_SIZE * l1Status.db_bl1 * FP16_BYTES;
       l1Status.al1_size = L1_Size - l1Status.bl1_size;
-      l1Status.m_al1 = std::min(l1Status.al1_size / (l1Status.kal1_16 * l0Status.m_l0 * BLOCK_SIZE * l1Status.db_al1 *
-                                  FP16_BYTES * BLOCK_SIZE),
-                                l1Status.max_m_al1);
+      l1Status.m_al1 = min(l1Status.al1_size / (l1Status.kal1_16 * l0Status.m_l0 * BLOCK_SIZE * l1Status.db_al1 *
+                             FP16_BYTES * BLOCK_SIZE),
+                           l1Status.max_m_al1);
       GetNearestFactor(mRepeat, l1Status.m_al1);
     }
   }
-  return 0;
 }
 
-int64_t NeitherFullLoadK(const SingleCoreParas &singleCoreParas, const L0Status &l0Status, L1Status &l1Status,
-                         const int64_t &batch, const int64_t &m, const int64_t &k, const int64_t &n)
+void NeitherFullLoadK(const L2Status &l2Status, const L0Status &l0Status, L1Status &l1Status,
+                      const BatchmatmulParas &params)
 {
-  l1Status.kbl1_16 = k;
+  l1Status.kbl1_16 = params.k;
   if (GetL1Size(l1Status, l0Status) <= L1_Size) {
-    l1Status.bl1_size = k * l0Status.n_l0 * BLOCK_SIZE * BLOCK_SIZE * l1Status.db_bl1 * FP16_BYTES;
+    l1Status.bl1_size = params.k * l0Status.n_l0 * BLOCK_SIZE * BLOCK_SIZE * l1Status.db_bl1 * FP16_BYTES;
     l1Status.al1_size = L1_Size - l1Status.bl1_size;
-    l1Status.kal1_16 = std::min(
+    l1Status.kal1_16 = min(
       l1Status.al1_size / (l1Status.m_al1 * l0Status.m_l0 * BLOCK_SIZE * l1Status.db_al1 * FP16_BYTES * BLOCK_SIZE),
-      singleCoreParas.k);
-    l1Status.al1_times = std::min(l1Status.kal1_16 / l0Status.k_l0, l1Status.max_k_al1);
+      l2Status.k);
+    l1Status.al1_times = min(l1Status.kal1_16 / l0Status.k_l0, l1Status.max_k_al1);
     GetNearestFactor(l1Status.all_times, l1Status.al1_times);
     l1Status.kal1_16 = l1Status.al1_times * l0Status.k_l0;
   } else {
-    int64_t perK = std::min(L1_Size /
-                              (l0Status.m_l0 * BLOCK_SIZE * BLOCK_SIZE * l1Status.db_al1 * FP16_BYTES +
-                                BLOCK_SIZE * l0Status.n_l0 * BLOCK_SIZE * l1Status.db_bl1 * FP16_BYTES) /
-                              l0Status.k_l0 * l0Status.k_l0,
-                            singleCoreParas.k);
-    int64_t perTimes = std::min(perK / l0Status.k_l0, std::max(l1Status.max_k_al1, l1Status.max_k_bl1));
+    int64_t perK = min(L1_Size /
+                         (l0Status.m_l0 * BLOCK_SIZE * BLOCK_SIZE * l1Status.db_al1 * FP16_BYTES +
+                           BLOCK_SIZE * l0Status.n_l0 * BLOCK_SIZE * l1Status.db_bl1 * FP16_BYTES) /
+                         l0Status.k_l0 * l0Status.k_l0,
+                       l2Status.k);
+    int64_t perTimes = min(perK / l0Status.k_l0, max(l1Status.max_k_al1, l1Status.max_k_bl1));
     GetNearestFactor(l1Status.all_times, perTimes);
     perK = perTimes * l0Status.k_l0;
     l1Status.kal1_16 = perK;
     l1Status.kbl1_16 = perK;
   }
-  return 0;
 }
 
-int64_t L1StatusNeitherFullLoad(const SingleCoreParas &singleCoreParas, const L0Status &l0Status, L1Status &l1Status,
-                                int64_t res[][7], const int64_t &batch, const int64_t &m, const int64_t &k,
-                                const int64_t &n)
+void L1StatusNeitherFullLoad(const L2Status &l2Status, const BatchmatmulParas &params,
+                             const L0Status &l0Status, L1Status &l1Status, int64_t res[][7])
 {
-  int64_t mRepeat = singleCoreParas.m / l0Status.m_l0;
-  int64_t nRepeat = singleCoreParas.n / l0Status.n_l0;
-  int64_t kBl1Db = (singleCoreParas.m == l0Status.m_l0) ? l0Status.k_l0 : singleCoreParas.k;
-  NeitherFullLoadDb(singleCoreParas, l0Status, l1Status, kBl1Db);
-  NeitherFullLoadMN(singleCoreParas, l0Status, l1Status, batch, m, k, n);
-  NeitherFullLoadK(singleCoreParas, l0Status, l1Status, batch, m, k, n);
-  l1Status.load_size = ((singleCoreParas.m == l1Status.m_al1 * l0Status.m_l0 && l1Status.kal1_16 == k) ? 1 : nRepeat) *
-    singleCoreParas.m +
-    (l1Status.kbl1_16 == k ? 1 : mRepeat) * singleCoreParas.n;
+  int64_t mRepeat = l2Status.m / l0Status.m_l0;
+  int64_t nRepeat = l2Status.n / l0Status.n_l0;
+  int64_t kBl1Db = (l2Status.m == l0Status.m_l0) ? l0Status.k_l0 : l2Status.k;
+  NeitherFullLoadDb(l2Status, l0Status, l1Status, kBl1Db);
+  NeitherFullLoadMN(l2Status, l0Status, l1Status, params);
+  NeitherFullLoadK(l2Status, l0Status, l1Status, params);
+  l1Status.load_size =
+    ((l2Status.m == l1Status.m_al1 * l0Status.m_l0 && l1Status.kal1_16 == params.k) ? 1 : nRepeat) *
+      l2Status.m +
+      (l1Status.kbl1_16 == params.k ? 1 : mRepeat) * l2Status.n;
   res[IDX_THREE][IDX_ZERO] = l1Status.kal1_16;
   res[IDX_THREE][IDX_ONE] = l1Status.m_al1;
   res[IDX_THREE][IDX_TWO] = l1Status.db_al1;
@@ -865,33 +901,35 @@ int64_t L1StatusNeitherFullLoad(const SingleCoreParas &singleCoreParas, const L0
   res[IDX_THREE][IDX_FOUR] = l1Status.n_bl1;
   res[IDX_THREE][IDX_FIVE] = l1Status.db_bl1;
   res[IDX_THREE][IDX_SIX] = l1Status.load_size;
-  return 0;
 }
 
-int64_t GetL1Factors(const int64_t &batch, const int64_t &m, const int64_t &k, const int64_t &n,
-                     const SingleCoreParas &singleCoreParas, const L0Status &l0Status, L1Status &l1Status)
+void GetL1Factors(const string &op_type, const BatchmatmulParas &params, const L2Status &l2Status,
+                  const L0Status &l0Status, L1Status &l1Status)
 {
+  // get m_al1, n_bl1, kal1_16, kbl1_16 factors when L0, singlecore factor is know
+  // get al1, bl1 double buffer factors
+
   int64_t mte1Loop = 50 / ((l0Status.n_l0 == 1 ? 1 : l0Status.k_l0) + (l0Status.k_l0 == 1 ? 1 : l0Status.m_l0));
   int64_t res[4][7] = {0};
-  l1Status.all_times = singleCoreParas.k / l0Status.k_l0;
-  l1Status.max_m_al1 = (singleCoreParas.m + l0Status.m_l0 - 1) / l0Status.m_l0;
-  l1Status.max_n_bl1 = (singleCoreParas.n + l0Status.n_l0 - 1) / l0Status.n_l0;
+  l1Status.all_times = l2Status.k / l0Status.k_l0;
+  l1Status.max_m_al1 = (l2Status.m + l0Status.m_l0 - 1) / l0Status.m_l0;
+  l1Status.max_n_bl1 = (l2Status.n + l0Status.n_l0 - 1) / l0Status.n_l0;
   l1Status.max_k_al1 =
-    std::max(mte1Loop, ((MIN_MTE1_LOAD + l0Status.m_l0 - 1) / l0Status.m_l0 + l0Status.k_l0 - 1) / l0Status.k_l0);
+    max(mte1Loop, ((MIN_MTE1_LOAD + l0Status.m_l0 - 1) / l0Status.m_l0 + l0Status.k_l0 - 1) / l0Status.k_l0);
   l1Status.max_k_bl1 =
-    std::max(mte1Loop, ((MIN_MTE1_LOAD + l0Status.n_l0 - 1) / l0Status.n_l0 + l0Status.k_l0 - 1) / l0Status.k_l0);
+    max(mte1Loop, ((MIN_MTE1_LOAD + l0Status.n_l0 - 1) / l0Status.n_l0 + l0Status.k_l0 - 1) / l0Status.k_l0);
   // both AL1 and Bl1 full load
-  l1Status.SetStatus(singleCoreParas.k, singleCoreParas.k, l1Status.max_m_al1, l1Status.max_n_bl1, DB_OFF, DB_OFF);
-  L1StatusBothFullLoad(singleCoreParas, l0Status, l1Status, res);
+  l1Status.SetStatus(l2Status.k, l2Status.k, l1Status.max_m_al1, l1Status.max_n_bl1, DB_OFF, DB_OFF);
+  L1StatusBothFullLoad(l2Status, l0Status, l1Status, res);
   // only AL1 full load
-  l1Status.SetStatus(singleCoreParas.k, l0Status.k_l0, l1Status.max_m_al1, 1, DB_OFF, DB_OFF);
-  L1StatusAl1FullLoad(singleCoreParas, l0Status, l1Status, res);
+  l1Status.SetStatus(l2Status.k, l0Status.k_l0, l1Status.max_m_al1, 1, DB_OFF, DB_OFF);
+  L1StatusAl1FullLoad(l2Status, l0Status, l1Status, res);
   // only BL1 full load
-  l1Status.SetStatus(l0Status.k_l0, singleCoreParas.k, 1, l1Status.max_n_bl1, DB_OFF, DB_OFF);
-  L1StatusBl1FullLoad(singleCoreParas, l0Status, l1Status, res);
+  l1Status.SetStatus(l0Status.k_l0, l2Status.k, 1, l1Status.max_n_bl1, DB_OFF, DB_OFF);
+  L1StatusBl1FullLoad(l2Status, l0Status, l1Status, res);
   // neither AL1 nor Bl1 full load
   l1Status.SetStatus(l0Status.k_l0, l0Status.k_l0, 1, 1, DB_ON, DB_ON);
-  L1StatusNeitherFullLoad(singleCoreParas, l0Status, l1Status, res, batch, m, k, n);
+  L1StatusNeitherFullLoad(l2Status, params, l0Status, l1Status, res);
   // choose the final factors
   int64_t *tmpFactors;
   tmpFactors = res[IDX_THREE];
@@ -918,46 +956,51 @@ int64_t GetL1Factors(const int64_t &batch, const int64_t &m, const int64_t &k, c
   }
   l1Status.SetStatus(tmpFactors[IDX_ZERO], tmpFactors[IDX_THREE], tmpFactors[IDX_ONE], tmpFactors[IDX_FOUR],
                      tmpFactors[IDX_TWO], tmpFactors[IDX_FIVE]);
-  return 0;
+  OP_LOGD(op_type.c_str(), "tiling kal1_16:%s, kbl1_16:%s, k_l0:%s", l1Status.kal1_16, l1Status.kbl1_16);
+  OP_LOGD(op_type.c_str(), "tiling m_al1:%s, n_bl1:%s", l1Status.m_al1, l1Status.n_bl1);
+  OP_LOGD(op_type.c_str(), "tiling db_al1:%s, db_bl1:%s", l1Status.db_al1, l1Status.db_bl1);
 }
 
-int64_t GetUbFactors(const L0Status &l0Status, UbStatus &ubStatus)
+void GetUbFactors(const string &op_type, const L0Status &l0Status, UbStatus &ubStatus)
 {
   ubStatus.n_cub = l0Status.n_l0;
   ubStatus.db_cub = l0Status.db_cub;
-  return 0;
+  OP_LOGD(op_type.c_str(), "tiling n_cub:%s, db_cub:%s", l0Status.n_l0, l0Status.db_cub);
 }
 
-int64_t CheckSpecialTemplate(const SingleCoreParas &singleCoreParas, const L0Status &l0Status, L1Status &l1Status,
-                             const UbStatus &ubStatus)
+void CheckSpecialTemplate(const string &op_type, const L2Status &l2Status, const L0Status &l0Status,
+                          L1Status &l1Status, const UbStatus &ubStatus)
 {
-  if (singleCoreParas.m / (l1Status.m_al1 * l0Status.m_l0) == 1 && l1Status.kal1_16 == singleCoreParas.k) {
+  if (l2Status.m / (l1Status.m_al1 * l0Status.m_l0) == 1 && l1Status.kal1_16 == l2Status.k) {
     l1Status.m_al1 = NONE;
+    OP_LOGD(op_type.c_str(), "check special template, tiling al1 changed to full load");
   }
-  if (l1Status.n_bl1 * l0Status.n_l0 == singleCoreParas.n && l1Status.kbl1_16 == singleCoreParas.k) {
+  if (l1Status.n_bl1 * l0Status.n_l0 == l2Status.n && l1Status.kbl1_16 == l2Status.k) {
     l1Status.n_bl1 = NONE;
+    OP_LOGD(op_type.c_str(), "check special template, tiling bl1 changed to full load");
   }
-  return 0;
 }
 
-int64_t GenTiling(const int64_t &batch, const int64_t &m, const int64_t &k, const int64_t &n, Tiling &tiling,
-                  std::string &tilingId)
+void GenTiling(const string &op_type, const BatchmatmulParas &params, Tiling &tiling, string &tilingId)
 {
-  SingleCoreParas singleCoreParas;
+  OP_LOGD(op_type.c_str(), "cache tiling input shape batch:%s", params.batch);
+  OP_LOGD(op_type.c_str(), "cache tiling input shape m:%s", params.m);
+  OP_LOGD(op_type.c_str(), "cache tiling input shape k:%s", params.k);
+  OP_LOGD(op_type.c_str(), "cache tiling input shape n:%s", params.n);
+  L2Status l2Status;
   L0Status l0Status;
   L1Status l1Status;
   UbStatus ubStatus;
   l0Status.SetInitLoadStatus();
-  int64_t blockValue = GetBlockDim(singleCoreParas, batch, m, k, n, CORE_NUM);
-  GetMKN(singleCoreParas, blockValue, l0Status);
-  GetL1Factors(batch, m, k, n, singleCoreParas, l0Status, l1Status);
-  GetUbFactors(l0Status, ubStatus);
-  CheckSpecialTemplate(singleCoreParas, l0Status, l1Status, ubStatus);
-  tiling.SetParams(singleCoreParas, l0Status, l1Status, ubStatus);
+  int64_t blockValue = GetBlockDim(op_type, params, l2Status, CORE_NUM);
+  GetL0Factors(op_type, l2Status, blockValue, l0Status);
+  GetL1Factors(op_type, params, l2Status, l0Status, l1Status);
+  GetUbFactors(op_type, l0Status, ubStatus);
+  CheckSpecialTemplate(op_type, l2Status, l0Status, l1Status, ubStatus);
+  tiling.SetParams(l2Status, l0Status, l1Status, ubStatus);
   tiling.SetAttachFlag();
   tiling.GetTilingId();
   tilingId = tiling.tiling_id;
-  return 0;
+  OP_LOGD(op_type.c_str(), "get tiling id %s from cache tiling", tilingId);
 }
-
 } // namespace optiling
