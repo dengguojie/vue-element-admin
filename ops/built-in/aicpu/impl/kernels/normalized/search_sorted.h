@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef AICPU_KERNELS_NORMALIZED_SEARCH_SORTED_H_
-#define AICPU_KERNELS_NORMALIZED_SEARCH_SORTED_H_
+#ifndef AICPU_KERNELS_NORMALIZED_SEARCH_SORTED_H
+#define AICPU_KERNELS_NORMALIZED_SEARCH_SORTED_H
 
 #include <type_traits>
 #include "cpu_kernel.h"

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef AICPU_KERNELS_NORMALIZED_NEG_H_
-#define AICPU_KERNELS_NORMALIZED_NEG_H_
+#ifndef AICPU_KERNELS_NORMALIZED_NEG_H
+#define AICPU_KERNELS_NORMALIZED_NEG_H
 
 #include "cpu_kernel.h"
 #include "unsupported/Eigen/CXX11/Tensor"

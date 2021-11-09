@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef AICPU_KERNELS_NORMALIZED_RESIZE_BILINEAR_GRAD_H_
-#define AICPU_KERNELS_NORMALIZED_RESIZE_BILINEAR_GRAD_H_
+#ifndef AICPU_KERNELS_NORMALIZED_RESIZE_BILINEAR_GRAD_H
+#define AICPU_KERNELS_NORMALIZED_RESIZE_BILINEAR_GRAD_H
 
 #include <string>
 #include "Eigen/Core"

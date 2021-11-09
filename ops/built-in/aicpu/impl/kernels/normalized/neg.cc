@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All right reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,5 +88,4 @@ uint32_t NegCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 REGISTER_CPU_KERNEL(kNeg, NegCpuKernel);
-
 }  // namespace aicpu

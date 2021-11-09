@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef AICPU_KERNELS_NORMALIZED_RESHAPE_H_
-#define AICPU_KERNELS_NORMALIZED_RESHAPE_H_
+#ifndef AICPU_KERNELS_NORMALIZED_RESHAPE_H
+#define AICPU_KERNELS_NORMALIZED_RESHAPE_H
 
 #include "cpu_kernel.h"
 

@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef AICPU_KERNELS_NORMALIZED_ONES_LIKE_H_
-#define AICPU_KERNELS_NORMALIZED_ONES_LIKE_H_
+#ifndef AICPU_KERNELS_NORMALIZED_ONES_LIKE_H
+#define AICPU_KERNELS_NORMALIZED_ONES_LIKE_H
 
 #include "cpu_kernel.h"
 

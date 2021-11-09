@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All right reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -99,8 +99,8 @@ uint32_t RightShiftCpuKernel::RightShiftParamCheck(CpuKernelContext &ctx) {
 // 4. the shapes of input1 and input2 are different
 template <typename T>
 void RightShiftCpuKernel::SpecialCompute(BcastShapeType type, int64_t start,
-                                   int64_t end, const T *input1,
-                                   const T *input2, T *output) {
+                                         int64_t end, const T *input1,
+                                         const T *input2, T *output) {
   switch(type) {
     case SAME_SHAPE:
       for (int64_t i = start; i < end; ++i) {
@@ -169,7 +169,6 @@ uint32_t RightShiftCpuKernel::BcastCompute(CpuKernelContext &ctx, Bcast &bcast) 
   auto in1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
   auto out = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   int64_t data_num = ctx.Output(0)->NumElements();
-
   if (data_num >= kParallelDataNum) {
     uint32_t min_core_num = 1;
     uint32_t max_core_num =

@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All right reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,9 +61,8 @@ uint32_t SigmoidCpuKernel::Compute(CpuKernelContext &ctx) {
     SIGMOID_COMPUTE_CASE2(DT_COMPLEX64, std::complex<float>, ctx)
     SIGMOID_COMPUTE_CASE2(DT_COMPLEX128, std::complex<double>, ctx)
     default:
-      KERNEL_LOG_ERROR(
-                    "Sigmoid kernel data type [%s] not support.",
-                    DTypeStr(data_type).c_str());
+      KERNEL_LOG_ERROR("Sigmoid kernel data type [%s] not support.",
+                       DTypeStr(data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
   return KERNEL_STATUS_OK;
@@ -73,11 +72,11 @@ uint32_t SigmoidCpuKernel::SigmoidCheck(CpuKernelContext &ctx) {
   auto input_0 = ctx.Input(0);
   auto output_0 = ctx.Output(0);
   KERNEL_CHECK_NULLPTR(input_0->GetData(), KERNEL_STATUS_PARAM_INVALID,
-                        "Get input data failed.")
+                       "Get input data failed.")
   KERNEL_CHECK_NULLPTR(output_0->GetData(), KERNEL_STATUS_PARAM_INVALID,
-                        "Get output data failed")
+                       "Get output data failed")
   KERNEL_CHECK_NULLPTR(input_0->GetTensorShape(), KERNEL_STATUS_PARAM_INVALID,
-                        "Get input tensor shape failed.")
+                       "Get input tensor shape failed.")
   return KERNEL_STATUS_OK;
 }
 
@@ -91,8 +90,8 @@ uint32_t SigmoidCpuKernel::SigmoidCompute(CpuKernelContext &ctx) {
   if (data_size <= kParallelDataNums){
     for (size_t i = 0; i < data_num; i++) {
       *(output_y + i) = static_cast<T>(1) / 
-                            (static_cast<T>(1) + (static_cast<T>(1) / 
-                            exp(*(input_x + i))));
+                        (static_cast<T>(1) + (static_cast<T>(1) / 
+                        exp(*(input_x + i))));
     }
   }else{
     uint32_t min_core_num = 1;
@@ -104,12 +103,12 @@ uint32_t SigmoidCpuKernel::SigmoidCompute(CpuKernelContext &ctx) {
     auto shard_sigmoid = [&](size_t start, size_t end) {
       for (size_t i = start; i < end; i++) {
         *(output_y + i) = static_cast<T>(1) / 
-                            (static_cast<T>(1) + (static_cast<T>(1) / 
-                            exp(*(input_x + i))));;
+                          (static_cast<T>(1) + (static_cast<T>(1) / 
+                          exp(*(input_x + i))));;
       }
     };
     KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(ctx, data_num, data_num / max_core_num, shard_sigmoid),
-                                "Sigmoid Compute failed.")
+                        "Sigmoid Compute failed.")
   }
   return KERNEL_STATUS_OK;
 }
@@ -128,14 +127,14 @@ uint32_t SigmoidCpuKernel::SigmoidComputeComplex(CpuKernelContext &ctx) {
     if (data_type == DT_COMPLEX64){
       for (size_t i = 0; i < data_num; i++){
         *(output_y + i) = static_cast<T>(1) / 
-                            (static_cast<T>(1) + (static_cast<T>(1) / 
-                            Eigen::numext::exp(*(input_x + i))));
+                          (static_cast<T>(1) + (static_cast<T>(1) / 
+                          Eigen::numext::exp(*(input_x + i))));
       }
     }else{
       for (size_t i = 0; i < data_num; i++) {
         *(output_y + i) = static_cast<T>(1) / 
-                            (static_cast<T>(1) + (static_cast<T>(1) / 
-                            Eigen::numext::exp(*(input_x + i))));
+                          (static_cast<T>(1) + (static_cast<T>(1) / 
+                          Eigen::numext::exp(*(input_x + i))));
       }
     }
     return KERNEL_STATUS_OK;
@@ -160,7 +159,7 @@ uint32_t SigmoidCpuKernel::SigmoidComputeComplex(CpuKernelContext &ctx) {
       }
     };
     KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(ctx, data_num, data_num / max_core_num, shard_sigmoid),
-                                "Sigmoid Compute failed.")
+                        "Sigmoid Compute failed.")
     return KERNEL_STATUS_OK;
     }
 }

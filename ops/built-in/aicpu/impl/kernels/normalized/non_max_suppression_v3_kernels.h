@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef AICPU_KERNELS_NORMALIZED_NON_MAX_SUPPRESSION_V3_KERNELS_H_
-#define AICPU_KERNELS_NORMALIZED_NON_MAX_SUPPRESSION_V3_KERNELS_H_
+#ifndef AICPU_KERNELS_NORMALIZED_NON_MAX_SUPPRESSION_V3_KERNELS_H
+#define AICPU_KERNELS_NORMALIZED_NON_MAX_SUPPRESSION_V3_KERNELS_H
 
 #include "cpu_kernel.h"
 #include "cpu_types.h"

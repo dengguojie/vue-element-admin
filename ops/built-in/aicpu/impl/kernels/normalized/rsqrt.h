@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef AICPU_KERNELS_NORMALIZED_RSQRT_H_
-#define AICPU_KERNELS_NORMALIZED_RSQRT_H_
+#ifndef AICPU_KERNELS_NORMALIZED_RSQRT_H
+#define AICPU_KERNELS_NORMALIZED_RSQRT_H
 
 #include "cpu_kernel.h"
 
