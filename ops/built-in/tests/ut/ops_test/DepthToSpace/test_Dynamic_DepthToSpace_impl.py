@@ -57,7 +57,7 @@ case_mode_fail = {
             "ABC"
         ],
         "case_name": "depth_to_space_case_2",
-        "expect": AttributeError,
+        "expect": RuntimeError,
         "format_expect": [],
         "support_expect": True
     }
