@@ -160,8 +160,12 @@ def get_cov_relate_source(module_name: str) -> list:
             if os.path.exists(impl_dir):
                 sys.path.append(impl_dir)
         module_name = module_name.replace("impl.", "")
-    module_file = importlib.util.find_spec(module_name).origin
-    module_dir = os.path.split(module_file)[0]
+    module_spec = importlib.util.find_spec(module_name)
+    if module_spec is None:
+        logger.log_warn("fail to find module: %s" % module_name)
+        module_dir = "impl"
+    else:
+        module_dir = os.path.split(module_spec.origin)[0]
     return [module_name, module_dir]
 
 

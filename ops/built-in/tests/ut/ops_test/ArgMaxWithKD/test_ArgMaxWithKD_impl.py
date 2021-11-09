@@ -16,6 +16,7 @@ ArgMaxWithKd ut case
 from op_test_frame.ut import OpUT
 import numpy as np
 from op_test_frame.common import precision_info
+from tbe.common.platform import set_current_compile_soc_info
 import os
 ut_case = OpUT("ArgMaxWithKD", "impl.arg_max_with_kd", "arg_max_with_kd")
 
@@ -64,12 +65,115 @@ case5 = {"params": [{"shape": (2,16,16), "dtype": "float16", "format": "NCHW", "
          "expect": "success",
          "support_expect": True}
 
+case6 = {"params": [{"shape": (2, 3, 2, 16, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (2, 2,16,16),"ori_format": "NCHW"}, #x
+                    {"shape": (2, 3, 2, 16, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (2, 2,16,16),"ori_format": "NCHW"}, #h
+                    {"shape": (2, 3, 2, 16, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (2, 2,16,16),"ori_format": "NCHW"}, #h
+                    0, False, 1,
+                    ],
+         "case_name": "ArgMaxWithKd_6",
+         "expect": "success",
+         "support_expect": True}
+
+case7 = {"params": [{"shape": (10240, 2, 8, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (10240, 2, 8, 1),"ori_format": "NCHW"}, #x
+                    {"shape": (10240, 2, 8, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (10240, 2, 8, 1),"ori_format": "NCHW"}, #h
+                    {"shape": (10240, 2, 8, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (10240, 2, 8, 1),"ori_format": "NCHW"}, #h
+                    1, False, 1,
+                    ],
+         "case_name": "ArgMaxWithKd_7",
+         "expect": "success",
+         "support_expect": True}
+
+case8 = {"params": [{"shape": (16, 16, 1, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 1, 1),"ori_format": "NCHW"}, #x
+                    {"shape": (16, 16, 1, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 1, 1),"ori_format": "NCHW"}, #h
+                    {"shape": (16, 16, 1, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 1, 1),"ori_format": "NCHW"}, #h
+                    1, False, 1,
+                    ],
+         "case_name": "ArgMaxWithKd_8",
+         "expect": "success",
+         "support_expect": True}
+
+case9 = {"params": [{"shape": (16, 64, 256, 256), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 64, 256, 256),"ori_format": "NCHW"}, #x
+                    {"shape": (16, 64, 256, 256), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 64, 256, 256),"ori_format": "NCHW"}, #h
+                    {"shape": (16, 64, 256, 256), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 64, 256, 256),"ori_format": "NCHW"}, #h
+                    1, False, 1,
+                    ],
+         "case_name": "ArgMaxWithKd_9",
+         "expect": "success",
+         "support_expect": True}
+
+case10 = {"params": [{"shape": (16, 256, 256, 256), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 256, 256, 256),"ori_format": "NCHW"}, #x
+                    {"shape": (16, 256, 256, 256), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 256, 256, 256),"ori_format": "NCHW"}, #h
+                    {"shape": (16, 256, 256, 256), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 256, 256, 256),"ori_format": "NCHW"}, #h
+                    1, False, 1,
+                    ],
+         "case_name": "ArgMaxWithKd_10",
+         "expect": "success",
+         "support_expect": True}
+
+case11 = {"params": [{"shape": (16, 256, 30, 2), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 256, 30, 2),"ori_format": "NCHW"}, #x
+                    {"shape": (16, 256, 30, 2), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 256, 30, 2),"ori_format": "NCHW"}, #h
+                    {"shape": (16, 256, 30, 2), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 256, 30, 2),"ori_format": "NCHW"}, #h
+                    1, False, 1,
+                    ],
+         "case_name": "ArgMaxWithKd_11",
+         "expect": "success",
+         "support_expect": True}
+         
+case12 = {"params": [{"shape": (16, 256, 30, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 256, 30, 2),"ori_format": "NCHW"}, #x
+                    {"shape": (16, 256, 30, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 256, 30, 2),"ori_format": "NCHW"}, #h
+                    {"shape": (16, 256, 30, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 256, 30, 2),"ori_format": "NCHW"}, #h
+                    1, False, 1,
+                    ],
+         "case_name": "ArgMaxWithKd_12",
+         "expect": "success",
+         "support_expect": True}
+
+case13 = {"params": [{"shape": (16, 1, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 1, 16, 16),"ori_format": "NCHW"}, #x
+                    {"shape": (16, 1, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 1, 16, 16),"ori_format": "NCHW"}, #h
+                    {"shape": (16, 1, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 1, 16, 16),"ori_format": "NCHW"}, #h
+                    1, False, 1,
+                    ],
+         "case_name": "ArgMaxWithKd_13",
+         "expect": "success",
+         "support_expect": True}
+
+case14 = {"params": [{"shape": (10240, 2, 8, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (10240, 2, 8, 1),"ori_format": "NCHW"}, #x
+                    {"shape": (10240, 2, 8, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (10240, 2, 8, 1),"ori_format": "NCHW"}, #h
+                    {"shape": (10240, 2, 8, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (10240, 2, 8, 1),"ori_format": "NCHW"}, #h
+                    10000, False, 1,
+                    ],
+         "case_name": "ArgMaxWithKd_14",
+         "expect": "success",
+         "support_expect": True}
+
+case15 = {"params": [{"shape": (16, 16, 1, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 1, 1),"ori_format": "NCHW"}, #x
+                    {"shape": (16, 16, 1, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 1, 1),"ori_format": "NCHW"}, #h
+                    {"shape": (16, 16, 1, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 1, 1),"ori_format": "NCHW"}, #h
+                    10000, False, 1,
+                    ],
+         "case_name": "ArgMaxWithKd_15",
+         "expect": "success",
+         "support_expect": True}
+
+
 # TODO fix me, this comment, run failed
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend710"], case2)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case3)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case4)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case5)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case6)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case7)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case8)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case9)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case10)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case11)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case13)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case14)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case15)
+set_current_compile_soc_info('Ascend710')
+ut_case.add_case(["Ascend710"], case12)
+
 
 #precision cases
 def naive_arg_top_k(data, top_k, axis):

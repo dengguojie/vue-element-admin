@@ -47,7 +47,402 @@ case2 = {
     "expect": "success",
     "support_expect": True
 }
-
+case3 = {
+    "params": [{
+        "shape": (2, 8, 2, 2, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "NDHWC"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "NDHWC"
+    }, [1, 2, 2], [[0, 0], [1, 1], [1, 1]]],
+    "case_name": "space_to_batch_nd_d_3",
+    "expect": "success",
+    "support_expect": True
+}
+case4 = {
+    "params": [{
+        "shape": (2, 8, 2, 2, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "NDHWC"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "NDHWC"
+    }, [1, 1, 1], [[0, 0], [0, 0], [0, 0]]],
+    "case_name": "space_to_batch_nd_d_4",
+    "expect": "success",
+    "support_expect": True
+}
+case5 = {
+    "params": [{
+        "shape": (2, 8, 2, 2, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "NDHWC"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "NDHWC"
+    }, [1, 1, 1], [0, 0, 0, 0, 0, 0]],
+    "case_name": "space_to_batch_nd_d_5",
+    "expect": "success",
+    "support_expect": True
+}
+case6 = {
+    "params": [{
+        "shape": (2, 8, 2, 2, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "NCDHW"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "NCDHW"
+    }, [1, 1, 1, 1], [0, 0, 0, 0, 0, 0, 0, 0]],
+    "case_name": "space_to_batch_nd_d_6",
+    "expect": "success",
+    "support_expect": True
+}
+case7 = {
+    "params": [{
+        "shape": (2, 8, 2, 2, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "NCDHW"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "NCDHW"
+    }, [1, 1, 1, 1], [[0, 0], [0, 0], [1, 1], [1, 1]]],
+    "case_name": "space_to_batch_nd_d_7",
+    "expect": "success",
+    "support_expect": True
+}
+case8 = {
+    "params": [{
+        "shape": (2, 8, 2, 2, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "ND"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "ND"
+    }, [1], [1]],
+    "case_name": "space_to_batch_nd_d_8",
+    "expect": RuntimeError,
+    "support_expect": True
+}
+case9 = {
+    "params": [{
+        "shape": (8, 2, 2, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "ND"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "ND"
+    }, [1], [1]],
+    "case_name": "space_to_batch_nd_d_9",
+    "expect": RuntimeError,
+    "support_expect": True
+}
+case10 = {
+    "params": [{
+        "shape": (8, 2, 2, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "NDHWC"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "NDHWC"
+    }, [1], [1]],
+    "case_name": "space_to_batch_nd_d_10",
+    "expect": RuntimeError,
+    "support_expect": True
+}
+case11 = {
+    "params": [{
+        "shape": (2, 8, 2, 2, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "NCDHW"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "NCDHW"
+    }, [2, 1, 1, 1], [[0, 0], [0, 0], [1, 1], [1, 1]]],
+    "case_name": "space_to_batch_nd_d_11",
+    "expect": RuntimeError,
+    "support_expect": True
+}
+case12 = {
+    "params": [{
+        "shape": (2, 8, 2, 2, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "NCDHW"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "NCDHW"
+    }, [1, -1, 1, 1], [[0, 0], [0, 0], [1, 1], [1, 1]]],
+    "case_name": "space_to_batch_nd_d_12",
+    "expect": RuntimeError,
+    "support_expect": True
+}
+case13 = {
+    "params": [{
+        "shape": (2, 8, 2, 2, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "NCDHW"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "NCDHW"
+    }, [1, 1, 1, 1], [[0, 0], [0, 0], [-1, 1], [1, 1]]],
+    "case_name": "space_to_batch_nd_d_13",
+    "expect": RuntimeError,
+    "support_expect": True
+}
+case14 = {
+    "params": [{
+        "shape": (2, 8, 2, 2, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "NCDHW"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "NCDHW"
+    }, [1, 3, 1, 1], [[0, 0], [0, 0], [1, 1], [1, 1]]],
+    "case_name": "space_to_batch_nd_d_14",
+    "expect": RuntimeError,
+    "support_expect": True
+}
+case15 = {
+    "params": [{
+        "shape": (2, 8, 2, 2, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "NCDHW"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "NCDHW"
+    }, [1, 1, 3, 1], [[0, 0], [0, 0], [1, 1], [1, 1]]],
+    "case_name": "space_to_batch_nd_d_15",
+    "expect": RuntimeError,
+    "support_expect": True
+}
+case16 = {
+    "params": [{
+        "shape": (2, 8, 2, 2, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "NCDHW"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "NCDHW"
+    }, [1, 1, 3, 1], [[0, 0], [0, 0], [1, 1], [1, 1]]],
+    "case_name": "space_to_batch_nd_d_16",
+    "expect": RuntimeError,
+    "support_expect": True
+}
+case17 = {
+    "params": [{
+        "shape": (8, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "ND"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "ND"
+    }, [2], [[1, 1]]],
+    "case_name": "space_to_batch_nd_d_17",
+    "expect": RuntimeError,
+    "support_expect": True
+}
+case18 = {
+    "params": [{
+        "shape": (2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "NHWC"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "NHWC"
+    }, [2, 2], [[0, 0], [0, 0]]],
+    "case_name": "space_to_batch_nd_d_18",
+    "expect": RuntimeError,
+    "support_expect": True
+}
+case19 = {
+    "params": [{
+        "shape": (4, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "NHWC"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "NHWC"
+    }, [], [[0, 0], [0, 0]]],
+    "case_name": "space_to_batch_nd_d_19",
+    "expect": RuntimeError,
+    "support_expect": True
+}
+case20 = {
+    "params": [{
+        "shape": (4, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "NHWC"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "NHWC"
+    }, [1], [[0], [0, 0]]],
+    "case_name": "space_to_batch_nd_d_20",
+    "expect": RuntimeError,
+    "support_expect": True
+}
+case21 = {
+    "params": [{
+        "shape": (4, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "NHWC"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "NHWC"
+    }, [-1], [[0, 0], [0, 0]]],
+    "case_name": "space_to_batch_nd_d_21",
+    "expect": RuntimeError,
+    "support_expect": True
+}
+case22 = {
+    "params": [{
+        "shape": (4, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "NHWC"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "NHWC"
+    }, [1], [[-1, 0], [0, 0]]],
+    "case_name": "space_to_batch_nd_d_22",
+    "expect": RuntimeError,
+    "support_expect": True
+}
+case23 = {
+    "params": [{
+        "shape": (32, 32, 32, 30, 32, 640),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "NCDHW"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "NCDHW"
+    }, [1, 1, 1], [[8, 8], [8, 8], [8, 8]]],
+    "case_name": "space_to_batch_nd_d_23",
+    "expect": "success",
+    "support_expect": True
+}
+case24 = {
+    "params": [{
+        "shape": (32, 32, 32, 30, 32, 1024),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (8, 2, 32),
+        "ori_format": "NCDHW"
+    }, {
+        "shape": (16, 2, 1, 2, 16),
+        "dtype": "float16",
+        "format": "NDC1HWC0",
+        "ori_shape": (16, 2, 32),
+        "ori_format": "NCDHW"
+    }, [1, 1, 1], [[64, 64], [64, 64], [64, 64]]],
+    "case_name": "space_to_batch_nd_d_24",
+    "expect": "success",
+    "support_expect": True
+}
 
 def check_supported_1(test_arg):
     from impl.space_to_batch_nd_d import check_supported
@@ -85,10 +480,38 @@ def check_supported_2(test_arg):
         }, [1, 1], [0, 0, 0, 0])
 
 
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
-ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
+def get_op_support_info_001(test_arg):
+    from impl.space_to_batch_nd_d import get_op_support_info
+    get_op_support_info(None, None, None, None, "space_to_batch_nd_d")
+
+
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case6)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case8)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case9)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case10)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case11)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case12)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case13)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case14)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case15)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case16)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case17)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case18)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case19)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case20)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case21)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case22)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case23)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case24)
 ut_case.add_cust_test_func(test_func=check_supported_1)
 ut_case.add_cust_test_func(test_func=check_supported_2)
+ut_case.add_cust_test_func(test_func=get_op_support_info_001)
 
 
 # pylint: disable=invalid-name, unused-argument
@@ -193,3 +616,23 @@ ut_case.add_precision_case(
         "calc_expect_func": calc_expect_func_5hd,
         "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
     })
+
+def test_op_select_format_001(test_arg):
+    """
+    test_op_select_format_001
+    """
+    from impl.space_to_batch_nd_d import op_select_format
+    op_select_format(
+        {
+            "shape": (16, 1, 1, 16, 16, 16),
+            "dtype": "float16",
+            "format": "NDC1HWC0",
+            "ori_shape": (16, 1, 1, 16, 16, 16),
+            "ori_format": "NDHWC"
+        }, None, [1, 2, 2], [[0, 0], [1, 1], [1, 1]])
+
+
+ut_case.add_cust_test_func(test_func=test_op_select_format_001)
+
+if __name__ == '__main__':
+    ut_case.run("Ascend910A")

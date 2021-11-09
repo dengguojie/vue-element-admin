@@ -120,6 +120,42 @@ ut_case.add_case(["Ascend310", "Ascend710"],
                  gen_static_aipp_case((1,1,418,416), (1,1,258,240,16),
                                       "uint8", "float16", "NCHW", "NC1HWC0", aipp_config6, "aipp_5", "success"))
 
+aipp_config_dict["input_format"] = "NC1HWC0DI_S8"
+aipp_config_dict["csc_switch"] = 0
+aipp_config_dict["padding"] = 0
+aipp_config_dict["resize"] = 1
+aipp_config7 = json.dumps(aipp_config_dict)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"],
+                 gen_static_aipp_case((1, 1, 258, 240, 4), (1, 1, 258, 240, 4), "uint8", "float16", "NCHW", "NC1HWC0",
+                                      aipp_config7, "aipp_7", RuntimeError))
+
+aipp_config_dict["input_format"] = "NC1HWC0DI_S8"
+aipp_config_dict["csc_switch"] = 0
+aipp_config_dict["padding"] = 2
+aipp_config_dict["resize"] = 2
+aipp_config8 = json.dumps(aipp_config_dict)
+ut_case.add_case(["Ascend910A"],
+                 gen_static_aipp_case((1, 1, 258, 240, 4), (1, 1, 258, 240, 4), "uint8", "float16", "NCHW", "NC1HWC0",
+                                      aipp_config8, "aipp_8", RuntimeError))
+
+aipp_config_dict["input_format"] = "NC1HWC0DI_S8"
+aipp_config_dict["csc_switch"] = 0
+aipp_config_dict["padding"] = 2
+aipp_config_dict["resize"] = 2
+aipp_config9 = json.dumps(aipp_config_dict)
+ut_case.add_case(["Ascend910A"],
+                 gen_static_aipp_case((1, 1, 258, 240, 4), (1, 1, 258, 240, 4), "int8", "int8", "NCHW", "NC1HWC0",
+                                      aipp_config9, "aipp_9", RuntimeError))
+
+aipp_config_dict["input_format"] = "NC1HWC0DI_S8"
+aipp_config_dict["csc_switch"] = 0
+aipp_config_dict["padding"] = 2
+aipp_config_dict["resize"] = 2
+aipp_config10 = json.dumps(aipp_config_dict)
+ut_case.add_case(["Ascend310", "Ascend910A"],
+                 gen_static_aipp_case((1, 1, 258, 240, 4), (1, 1, 258, 240, 4), "int8", "int8", "NC1HWC0_C04",
+                                      "NC1HWC0", aipp_config10, "aipp_10", RuntimeError))
+
 
 def gen_dynamic_aipp_case(input_shape, output_shape, dtype_x, dtype_y, format, output_format,
                           aipp_config_json, case_name_val, expect):

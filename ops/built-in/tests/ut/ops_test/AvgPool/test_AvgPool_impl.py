@@ -147,6 +147,7 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case8)
 
 from impl.avg_pool import check_supported
 from impl.avg_pool import get_op_support_info
+from impl.avg_pool import avg_pool_compute
 
 def test_check_support(test_arg):
     check_supported({"shape": (1, 24, 1, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "input"},
@@ -175,7 +176,29 @@ def test_get_op_support_info(test_arg):
     None,None,{"shape": (1, 16, 24, 24, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 256, 24, 24),"ori_format": "NCHW", "param_type": "output"},
     [1,2,2,1],[1,4,4,1],"VALIED","NCHW")
 
-
+def test_avg_pool_compute_001(test_arg):
+    from te import tvm
+    attr = {"ori_shape": [1, 24, 24, 256]}
+    tensor_in = tvm.placeholder((1, 16, 24, 24, 16), name="tensor_in", dtype="float16", attrs=attr)
+    avg_pool_compute(
+        tensor_in, None, None, {
+            "shape": (1, 16, 24, 24, 16),
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "ori_shape": (1, 24, 24, 256),
+            "ori_format": "NHWC",
+            "param_type": "output"
+        }, [1, 2, 2, 1], [1, 4, 4, 1], "SAME", "NHWC")
+    avg_pool_compute(
+        tensor_in, None, None, {
+            "shape": (1, 16, 24, 24, 16),
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "ori_shape": (1, 24, 24, 256),
+            "ori_format": "NHWC",
+            "param_type": "output"
+        }, [1, 1, 3, 1], [1, 1, 4, 1], "SAME", "NC1HWC0")
+ut_case.add_cust_test_func(test_func=test_avg_pool_compute_001)
 ut_case.add_cust_test_func(test_func=test_check_support)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
