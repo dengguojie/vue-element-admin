@@ -1,0 +1,58 @@
+[
+    {
+      "op": "OneHot",
+      "case_name": "test_one_hot_001",
+      "input_desc": [
+        {
+          "shape": [-1,2048],
+          "format": "ND",
+          "typical_shape": [2,2048],
+          "value_range": [[-2, 2]],
+          "shape_range": [[0,2240]],
+          "data_distribute":"uniform",
+          "name": "x",
+          "type": "int32"
+        },
+        {
+          "shape": [1],
+          "format": "ND",
+          "is_const": true,
+          "type": "int32",
+          "value": [20],
+          "name": "depth"
+        },
+        {
+            "shape": [1],
+            "format": "ND",
+            "value_range": [[-2.0, 0.0]],
+            "name": "on_value",
+            "type": "float32"
+        },
+        {
+            "shape": [1],
+            "format": "ND",
+            "value_range": [[1.0, 2.0]],
+            "name": "off_value",
+            "type": "float32"
+        }
+      ],
+      "output_desc": [
+        {
+            "shape": [-1,2048,20],
+            "typical_shape": [2,2048,20],
+            "format": "ND",
+            "value_range": [[-2.0, 2.0]],
+            "shape_range": [[0,2240]],
+            "name": "y",
+            "type": "float32"
+        }
+      ],
+      "attr": [
+        {
+            "value": -1,
+            "name": "axis",
+            "type": "int"
+        }
+      ]
+    }
+]

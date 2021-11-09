@@ -140,6 +140,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/batch_multi_class_nms_fusion_pass.cc
   graph_fusion/ai_core/batchnorm_bninfer_fusion_pass.cc
   graph_fusion/ai_core/batchnorm_fusion_pass.cc
+  graph_fusion/ai_core/z_one_hot_fusion_pass.cc
   graph_fusion/ai_core/batchnormgrad_bninfergrad_fusion_pass.cc
   graph_fusion/ai_core/einsum_fusion_pass.cc
   graph_fusion/ai_core/biasadd_conv_fusion_pass.cc

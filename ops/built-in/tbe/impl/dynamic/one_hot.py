@@ -18,6 +18,7 @@ one_hot
 # pylint: disable=too-many-lines
 from impl.util.platform_adapter import tbe_platform as cce
 from impl.util.platform_adapter import tik
+from impl.util import util_common
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
@@ -216,16 +217,16 @@ class OneHot():
             self.dtype_on_value,
             (Constant.SCALAR_TENSOR_SIZE,
              ),
-            name='on_value_gm',
+            name='on_value',
             scope=tik.scope_gm)
         self.off_value_gm = self.tik_instance.Tensor(
             self.dtype_off_value,
             (Constant.SCALAR_TENSOR_SIZE,
              ),
-            name='off_value_gm',
+            name='off_value',
             scope=tik.scope_gm)
         self.depth_gm = self.tik_instance.Tensor(
-            self.dtype_depth, (Constant.SCALAR_TENSOR_SIZE,), name='depth_gm', scope=tik.scope_gm)
+            self.dtype_depth, (Constant.SCALAR_TENSOR_SIZE,), name='depth', scope=tik.scope_gm)
 
     def one_hot_compute_tiling(self):
         """
@@ -333,10 +334,10 @@ class OneHot():
         self.depth_ub = self.tik_instance.Tensor(
             self.dtype_depth, (Constant.SCALAR_TENSOR_SIZE,), name='depth_ub', scope=tik.scope_ubuf)
         self.on_value = self.tik_instance.Scalar(
-            self.dtype_on_value, name='on_value')
+            self.dtype_on_value, name='on_value_scalar')
         self.off_value = self.tik_instance.Scalar(
-            self.dtype_off_value, name='off_value')
-        self.depth = self.tik_instance.Scalar(self.dtype_depth, name='depth')
+            self.dtype_off_value, name='off_value_scalar')
+        self.depth = self.tik_instance.Scalar(self.dtype_depth, name='depth_scalar')
 
     def data_move(self):
         """
@@ -2450,6 +2451,59 @@ class OneHot():
                                         self.index_scalar *
                                         self.last_dim_x,
                                         id_number)
+
+
+def check_supported(x, depth, on_value, off_value, y, axis,
+                    kernel_name="one_hot"):
+    """
+    dynamic is support, static and shape[0] is 2048, and axis is 0,
+    onehot is support, else static not support, onehotd is support.
+    x : dict
+        dict with keys(range and dtype) of indices tensor
+    depth: dict
+        dict whith the scalar depth
+    on_value : dict
+        dict with the scalar on_value
+    off_value: dict
+        dict with the scalar off_value
+    axis: int
+        the axis which judge the mode of calculate
+    y : dict
+        dict with keys(range and dtype) of output
+    kernel_name : str
+        kernel name, default value is "one_hot"
+
+    Returns
+    -------
+    True or False
+    """
+    x_shape = x.get("ori_shape")
+    y_shape = y.get("ori_shape")
+    x_dtype = x.get("dtype").lower()
+    depth_dtype = depth.get("dtype").lower()
+    on_value_dtype = on_value.get("dtype").lower()
+    off_value_dtype = off_value.get("dtype").lower()
+
+    if x_dtype != "int32" or depth_dtype != "int32":
+        reason = "x and y dtype is not int32, but is %s" % x_dtype
+        return False, reason
+    if on_value_dtype != off_value_dtype:
+        reason = "on_value dtype is not the same as off_value dtype"
+        return False, reason
+    if on_value_dtype not in ("float16", "float32", "int32"):
+        reason = "on_value not in (\"float16\", \"float32\", \"int32\"), but is %s" % on_value_dtype
+        return False, reason
+    # when static and x shape[0] is 2048 and axis is 0, one_hot is support
+    shape_list = [(2048,),]
+    if not util_common.is_unknown([x, y]) and x_shape in shape_list and axis == 0:
+        reason = "when static and shape is 2048 and axis is 0"
+        return True, reason
+    elif not util_common.is_unknown([x, y]):
+        # when static and the input0_shape ends wtih 1, the compilestatic process dose not support
+        reason = "when static, x_shape[0] is not 2048 or axis is not 0, one_hot not support"
+        return False, reason
+
+    return True, ""
 
 
 def _check_param(x, depth, on_value, off_value):

@@ -523,7 +523,39 @@ case30 = {"params": [
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-
+def test_check_supported(test_arg):
+    from impl.dynamic.one_hot import check_supported
+    check_supported({"shape": (2048,), "dtype": "float16", "format": "NCHW", "ori_shape": (2048,),"ori_format": "NCHW"},
+                     {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                     {"shape": (2048,2), "dtype": "float32", "format": "NCHW", "ori_shape": (2048,2),"ori_format": "NCHW"},-1)
+    check_supported({"shape": (2048,), "dtype": "int32", "format": "NCHW", "ori_shape": (2048,),"ori_format": "NCHW"},
+                     {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                     {"shape": (1,), "dtype": "float16", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                     {"shape": (2048,2), "dtype": "float32", "format": "NCHW", "ori_shape": (2048,2),"ori_format": "NCHW"},-1)
+    check_supported({"shape": (2048,), "dtype": "int32", "format": "NCHW", "ori_shape": (2048,),"ori_format": "NCHW"},
+                     {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                     {"shape": (1,), "dtype": "int8", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                     {"shape": (1,), "dtype": "int8", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                     {"shape": (2048,2), "dtype": "int8", "format": "NCHW", "ori_shape": (2048,2),"ori_format": "NCHW"},-1)
+    check_supported({"shape": (-1,2048), "dtype": "int32", "format": "NCHW", "ori_shape": (-1,2048),"ori_format": "NCHW"},
+                     {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                     {"shape": (-1,2048,-1), "dtype": "float32", "format": "NCHW", "ori_shape": (-1,2048,-1),"ori_format": "NCHW"},-1)
+    check_supported({"shape": (2048,), "dtype": "int32", "format": "NCHW", "ori_shape": (2048,),"ori_format": "NCHW"},
+                     {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                     {"shape": (2,2048,), "dtype": "float32", "format": "NCHW", "ori_shape": (2,2048),"ori_format": "NCHW"},0)
+    check_supported({"shape": (2048,), "dtype": "int32", "format": "NCHW", "ori_shape": (2048,),"ori_format": "NCHW"},
+                     {"shape": (1,), "dtype": "int32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND"},
+                     {"shape": (2048,2), "dtype": "float32", "format": "NCHW", "ori_shape": (2048,2),"ori_format": "NCHW"},-1)
+ut_case.add_cust_test_func(test_func=test_check_supported)
 ut_case.add_case("all", case1)
 ut_case.add_case("all", case2)
 ut_case.add_case("all", case3)
