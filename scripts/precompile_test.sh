@@ -69,10 +69,16 @@ install_sch_stest() {
   install_related_sch "${pr_file}"
   for op_case in $(echo "${all_cases}" | tr ',' ' '); do
     echo "[INFO] install testcase: ${op_case}"
-    if [[ ! -d "${op_case}" ]]; then
-      echo "[ERROR] cannot find testcase ${op_case}"
-    else
+    if [[  -d "${op_case}" ]]; then
       cp -rf "${op_case}" "${TEST_INSTALL_PATH}"
+    elif [[ -f "${op_case}" ]]; then
+      case_dir=$(basename $(dirname ${op_case}))
+      if [[ ! -d "${TEST_INSTALL_PATH}/${case_dir}" ]];then
+          mkdir -p ${TEST_INSTALL_PATH}/${case_dir}
+      fi
+      cp -rf "${op_case}" "${TEST_INSTALL_PATH}/${case_dir}"
+    else
+      echo "[ERROR] cannot find testcase ${op_case}"
     fi
   done
 }

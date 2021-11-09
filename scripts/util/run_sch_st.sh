@@ -33,7 +33,7 @@ set_st_env() {
   local install_path="$1"
   # atc
   export PATH=$install_path/atc/ccec_compiler/bin:$install_path/atc/bin:$PATH
-  export PYTHONPATH=$install_path/atc/python/site-packages:${CANN_ST_SOURCE}:${PYTHONPATH}
+  export PYTHONPATH=$install_path/atc/python/site-packages:${install_path}/opp/op_impl/built-in/ai_core/tbe:${CANN_ST_SOURCE}:${PYTHONPATH}
   export LD_LIBRARY_PATH=$install_path/atc/lib64:$LD_LIBRARY_PATH
   export ASCEND_OPP_PATH=$install_path/opp
   # acl ascend310
@@ -44,6 +44,14 @@ set_st_env() {
   export DDK_PATH=$install_path
   export NPU_HOST_LIB=$install_path/fwkacllib/lib64/stub
   export LD_LIBRARY_PATH=$install_path/fwkacllib/lib64:$install_path/add-ons:$LD_LIBRARY_PATH
+}
+
+all_in_one_set_st_evn() {
+  local install_path="$1"
+  export PATH=$install_path/compiler/ccec_compiler/bin:$install_path/compiler/bin:$PATH
+  export PYTHONPATH=$install_path/compiler/python/site-packages:${install_path}/opp/op_impl/built-in/ai_core/tbe:${CANN_ST_SOURCE}:${PYTHONPATH}
+  export LD_LIBRARY_PATH=$install_path/compiler/lib64:$install_path/runtime/lib64:$LD_LIBRARY_PATH
+  export ASCEND_OPP_PATH=$install_path/opp
 }
 
 run_st() {
@@ -106,7 +114,7 @@ main() {
   fi
 
   gen_all_cases
-  set_st_env "${base_path}"
+  all_in_one_set_st_evn "${base_path}"
   run_st "${op_type}" "${soc_version}"
   get_results
 }

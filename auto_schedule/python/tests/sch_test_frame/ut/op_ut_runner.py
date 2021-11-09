@@ -34,6 +34,7 @@ from sch_test_frame.ut import op_ut
 from sch_test_frame.utils import file_util
 
 from sch_test_frame.ut.op_ut_case_info import CaseUsage
+import tbe
 
 DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
 
