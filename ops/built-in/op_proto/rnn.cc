@@ -242,10 +242,11 @@ IMPLEMT_INFERFUNC(DynamicLSTMGradCell, DynamicLSTMGradCellInferShape) {
     return GRAPH_FAILED;
   }
 
+  int64_t output_nz_dim_size = (output_dim_size + 15) / 16;
   TensorDesc outputDgateTensorDesc = op.GetOutputDesc("dgate");
   TensorDesc outputDct1TensorDesc = op.GetOutputDesc("dct_1");
 
-  vector<int64_t> outputDgateDims = {batch_size, 4 * output_dim_size};
+  vector<int64_t> outputDgateDims = {batch_size, 4 * output_nz_dim_size * 16};
   outputDgateTensorDesc.SetShape(ge::Shape(outputDgateDims));
   outputDgateTensorDesc.SetDataType(dtype);
 

@@ -651,7 +651,7 @@ bool SplitVTiling(const std::string& opType, const ge::Operator& opParas, const 
     int64_t size = sizeSplitsVec.size();
     if (input_format == ge::FORMAT_FRACTAL_NZ) {
       for (int in = 0; in < size; in++) {
-        sizeSplitsVec[in] = sizeSplitsVec[in] / 16;
+        sizeSplitsVec[in] = (sizeSplitsVec[in]  + 15) / 16;
       }
     }
     if (!CheckSplitVAttr(splitDim, numSplit, inputShape, sizeSplitsVec)) {
