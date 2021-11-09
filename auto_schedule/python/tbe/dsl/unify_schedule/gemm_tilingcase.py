@@ -529,7 +529,7 @@ class MatmulTiling(CubeTilingOp):
         self.bias_flag = self.tiling_info["bias_flag"]
         self.none_range_area = self.tiling_info["none_range_area"]
         self.use_cache_tiling = True if (
-            self.format_a != "ND" and self.format_b != "ND" and not self.bias_flag) else False
+            self.format_a != "ND" and self.format_b != "ND" and not self.bias_flag and self.none_range_area) else False
 
         self._get_calc_info()
         self.key = ("A_shape", "B_shape")

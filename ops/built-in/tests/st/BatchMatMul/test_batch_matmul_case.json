@@ -305,5 +305,138 @@
         "type": "bool"
       }
     ]
+  },
+  {
+    "op": "BatchMatMul",
+    "case_name": "test_BatchMatMul_none_range",
+    "input_desc": [
+      {
+        "format": "FRACTAL_NZ",
+        "shape": [
+          -1,
+          -1,
+          -1,
+          16,
+          16
+        ],
+        "typical_shape": [
+          1,
+          4,
+          4,
+          16,
+          16
+        ],
+        "shape_range": [
+          [
+            1,
+            -1
+          ],
+          [
+            1,
+            -1
+          ],
+          [
+            1,
+            -1
+          ]
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "FRACTAL_NZ",
+        "shape": [
+          -1,
+          -1,
+          -1,
+          16,
+          16
+        ],
+        "typical_shape": [
+          1,
+          4,
+          4,
+          16,
+          16
+        ],
+        "shape_range": [
+          [
+            1,
+            -1
+          ],
+          [
+            1,
+            -1
+          ],
+          [
+            1,
+            -1
+          ]
+        ],
+        "type": "float16",
+        "value_range": [
+          [
+            -1,
+            1
+          ]
+        ],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": "FRACTAL_NZ",
+        "shape": [
+          -1,
+          -1,
+          -1,
+          16,
+          16
+        ],
+        "typical_shape": [
+          1,
+          4,
+          4,
+          16,
+          16
+        ],
+        "shape_range": [
+          [
+            1,
+            -1
+          ],
+          [
+            1,
+            -1
+          ],
+          [
+            1,
+            -1
+          ]
+        ],
+        "type": "float16",
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "adj_x1",
+        "value": true,
+        "type": "bool"
+      },
+      {
+        "name": "adj_x2",
+        "value": true,
+        "type": "bool"
+      }
+    ]
   }
 ]
