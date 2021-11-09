@@ -13,7 +13,6 @@
 using namespace std;
 
 namespace aicpu {
-
 std::shared_ptr<NodeDef> NodeDefBuilder::CreateNodeDef() {
 	return CpuKernelUtils::CpuKernelUtils::CreateNodeDef();
 }
@@ -156,10 +155,10 @@ NodeDefBuilder& NodeDefBuilder::Attr(std::string name, const std::vector<int64_t
 	return *this;
 }
 
-NodeDefBuilder& NodeDefBuilder::Attr(std::string name, const std::vector<std::vector<int64_t>> &shapeLists, std::string type) {
+NodeDefBuilder& NodeDefBuilder::Attr(std::string name, const std::vector<std::vector<int64_t>> &shapeLists,
+                                    std::string type) {
 	if (type == "shape_list") {
 		auto shapeItems = CpuKernelUtils::CreateAttrValue();
-		vector<TensorShape *> shapes;
 		for (int i = 0; i < shapeLists.size(); i++) {
 			auto value = shapeItems->AddListTensorShape();
 			value->SetDimSizes(shapeLists[i]);

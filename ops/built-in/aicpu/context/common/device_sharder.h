@@ -13,20 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef AICPU_CONTEXT_COMMON_DEVICE_SHARDER_H_
-#define AICPU_CONTEXT_COMMON_DEVICE_SHARDER_H_
+#ifndef AICPU_CONTEXT_COMMON_DEVICE_SHARDER_H
+#define AICPU_CONTEXT_COMMON_DEVICE_SHARDER_H
 #include "sharder.h"
 
 namespace aicpu {
-typedef void (*ParallelForFunc)(
-    int64_t total, int64_t perUnitSize,
-    const std::function<void(int64_t, int64_t)> &work);
-typedef uint32_t (*GetCPUNumFunc)();
+using ParallelForFunc = void (*)(int64_t total, int64_t perUnitSize,
+                        const std::function<void(int64_t, int64_t)> &work);
+using GetCPUNumFunc = uint32_t (*)();
 class DeviceSharder : public Sharder {
  public:
   explicit DeviceSharder(DeviceType device);
 
-  ~DeviceSharder();
+  ~DeviceSharder() override;
 
   /*
    * ParallelFor shards the "total" units of work.
@@ -56,4 +55,4 @@ class DeviceSharder : public Sharder {
   GetCPUNumFunc get_cpu_num_;
 };
 }  // namespace aicpu
-#endif  // AICPU_CONTEXT_COMMON_DEVICE_SHARDER_H_
+#endif  // AICPU_CONTEXT_COMMON_DEVICE_SHARDER_H

@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef AICPU_CONTEXT_COMMON_LOG_H_
-#define AICPU_CONTEXT_COMMON_LOG_H_
+#ifndef AICPU_CONTEXT_COMMON_LOG_H
+#define AICPU_CONTEXT_COMMON_LOG_H
 
 #include <stdio.h>
 #include <sys/syscall.h>
@@ -85,4 +85,4 @@ const char KERNEL_MODULE[] = "AICPU";
   }                                                                       \
   (result) = ((A) * (B));
 
-#endif  // AICPU_CONTEXT_COMMON_LOG_H_
+#endif  // AICPU_CONTEXT_COMMON_LOG_H

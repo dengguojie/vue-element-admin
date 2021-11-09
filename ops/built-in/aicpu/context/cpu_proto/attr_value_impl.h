@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef AICPU_CONTEXT_CPU_PROTO_ATTR_VALUE_IMPL_H_
-#define AICPU_CONTEXT_CPU_PROTO_ATTR_VALUE_IMPL_H_
+#ifndef AICPU_CONTEXT_CPU_PROTO_ATTR_VALUE_IMPL_H
+#define AICPU_CONTEXT_CPU_PROTO_ATTR_VALUE_IMPL_H
 #include <functional>
 #include <memory>
 #include <string>
@@ -57,7 +57,7 @@ class AttrValueImpl {
    * attr add string value to list.
    * @param string: string value need to add to list
    */
-  void AddListString(const std::string &string);
+  void AddListString(const std::string &str);
 
   /*
    * get string list size of attr.
@@ -69,7 +69,7 @@ class AttrValueImpl {
    * set string value to attr.
    * @param string: string value need to set to attr
    */
-  void SetString(const std::string &string);
+  void SetString(const std::string &byte);
 
   /*
    * set string list value to attr.
@@ -306,4 +306,4 @@ class AttrValueImpl {
   std::shared_ptr<aicpuops::AttrValue> attr_value_{nullptr};
 };
 }  // namespace aicpu
-#endif  // AICPU_CONTEXT_CPU_PROTO_ATTR_VALUE_IMPL_H_
+#endif  // AICPU_CONTEXT_CPU_PROTO_ATTR_VALUE_IMPL_H

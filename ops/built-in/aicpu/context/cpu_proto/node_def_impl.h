@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef AICPU_CONTEXT_CPU_PROTO_NODE_DEF_IMPL_H_
-#define AICPU_CONTEXT_CPU_PROTO_NODE_DEF_IMPL_H_
+#ifndef AICPU_CONTEXT_CPU_PROTO_NODE_DEF_IMPL_H
+#define AICPU_CONTEXT_CPU_PROTO_NODE_DEF_IMPL_H
 #include <functional>
 #include <memory>
 #include <string>
@@ -122,4 +122,4 @@ class NodeDefImpl {
   std::shared_ptr<aicpuops::NodeDef> nodedef_{nullptr};
 };
 }  // namespace aicpu
-#endif  // AICPU_CONTEXT_CPU_PROTO_NODE_DEF_IMPL_H_
+#endif  // AICPU_CONTEXT_CPU_PROTO_NODE_DEF_IMPL_H

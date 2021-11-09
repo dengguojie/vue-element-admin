@@ -1,5 +1,5 @@
 ﻿/**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef AICPU_CONTEXT_COMMON_EIGEN_THREAD_POOL_H_
-#define AICPU_CONTEXT_COMMON_EIGEN_THREAD_POOL_H_
+#ifndef AICPU_CONTEXT_COMMON_EIGEN_THREAD_POOL_H
+#define AICPU_CONTEXT_COMMON_EIGEN_THREAD_POOL_H
 
 #include <functional>
 #include <memory>
@@ -32,13 +32,14 @@ class EigenThreadPool {
   /*
    * ParallelFor shards the "total" units of work.
    */
-  void ParallelFor(int64_t total, int64_t perUnitSize, const SharderWork &work);
+  void ParallelFor(int64_t total, int64_t per_unit_size, 
+                  const SharderWork &work) const;
 
   /*
    * Get CPU number
    * @return CPU number
    */
-  uint32_t GetCPUNum();
+  uint32_t GetCPUNum() const;
 
  private:
   EigenThreadPool() = default;
@@ -58,4 +59,4 @@ class EigenThreadPool {
   static std::unique_ptr<Eigen::ThreadPoolDevice> threadpool_device_;
 };
 };      // namespace aicpu
-#endif  // AICPU_CONTEXT_COMMON_EIGEN_THREAD_POOL_H_
+#endif  // AICPU_CONTEXT_COMMON_EIGEN_THREAD_POOL_H

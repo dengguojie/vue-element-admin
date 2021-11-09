@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -93,7 +93,7 @@ __attribute__((visibility("default"))) uint32_t RunCpuKernel(void *param) {
         param_head->extInfoLength, kMaxExtendLen);
     return KERNEL_STATUS_PARAM_INVALID;
   }
- 
+
   SessionInfo *session = nullptr;
   uint32_t ret = ParseExtSessionInfo(param_head, session);
   if (ret != KERNEL_STATUS_OK) {
@@ -117,7 +117,7 @@ __attribute__((visibility("default"))) uint32_t RunCpuKernel(void *param) {
   }
   uint64_t stream_id = atoi(stream_id_value.c_str());
   KERNEL_LOG_INFO(
-      "RunCpuKernel from cache, stream id[%llu], session id[%llu], session "
+      "RunCpuKernel from cache, stream id[%lu], session id[%lu], session "
       "flag[%d].",
       stream_id, session->sessionId, session->sessFlag);
   return SessionCache<CpuCacheData>::Instance().RunKernel<CpuKernelCache>(

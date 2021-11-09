@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,10 +21,7 @@
 #include "host_sharder.h"
 
 namespace aicpu {
-Device::Device(DeviceType device) {
-  device_ = device;
-  sharder_ = InitSharder(device);
-}
+Device::Device(DeviceType device) : device_(device), sharder_(InitSharder(device)){};
 
 Device::~Device() {
   if (sharder_ != nullptr) {
@@ -54,11 +51,11 @@ const Sharder *Device::GetSharder() const {
  * param device: type of device
  * @return Sharder *: not null->success, null->success
  */
-Sharder *Device::InitSharder(DeviceType device_) {
-  if (device_ == DEVICE) {
-    return new (std::nothrow) DeviceSharder(device_);
+Sharder *Device::InitSharder(DeviceType device_type) {
+  if (device_type == DEVICE) {
+    return new (std::nothrow) DeviceSharder(device_type);
   } else {
-    return new (std::nothrow) HostSharder(device_);
+    return new (std::nothrow) HostSharder(device_type);
   }
 }
 }  // namespace aicpu

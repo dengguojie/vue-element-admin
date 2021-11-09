@@ -1,5 +1,5 @@
 ﻿/**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,13 +64,13 @@ EigenThreadPool *EigenThreadPool::GetInstance() {
 }
 
 void EigenThreadPool::ParallelFor(int64_t total, int64_t per_unit_size,
-                                  const SharderWork &work) {
+                                  const SharderWork &work) const {
   KERNEL_LOG_INFO(
-      "Eigen threadpool parallel for begin, total[%lld], per_unit_size[%lld]",
+      "Eigen threadpool parallel for begin, total[%ld], per_unit_size[%ld]",
       total, per_unit_size);
   if ((total <= 0) || (work == nullptr) || (per_unit_size <= 0)) {
     KERNEL_LOG_ERROR(
-        "Invalid param: total[%lld] <= 0 or per_unit_size[%lld] <= 0 or work "
+        "Invalid param: total[%ld] <= 0 or per_unit_size[%ld] <= 0 or work "
         "is "
         "nullptr",
         total, per_unit_size);
@@ -80,7 +80,7 @@ void EigenThreadPool::ParallelFor(int64_t total, int64_t per_unit_size,
   int64_t total_check = static_cast<int64_t>(static_cast<Eigen::Index>(total));
   if (total_check != total) {
     KERNEL_LOG_ERROR(
-        "Invalid param: total[%lld], value[%lld] after eigen conversion", total,
+        "Invalid param: total[%ld], value[%ld] after eigen conversion", total,
         total_check);
     return;
   }
@@ -113,7 +113,7 @@ void EigenThreadPool::ParallelFor(int64_t total, int64_t per_unit_size,
 /*
  * Get CPU number
  */
-uint32_t EigenThreadPool::GetCPUNum() {
+uint32_t EigenThreadPool::GetCPUNum() const {
   return static_cast<uint32_t>(core_num_);
 }
 }  // namespace aicpu
