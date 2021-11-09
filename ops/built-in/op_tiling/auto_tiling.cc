@@ -35,11 +35,7 @@ static std::vector<std::shared_ptr<AutoTilingCompileInfo>> compile_info_containe
  */
 bool AutoTiling(const ge::Operator& op_paras, const void* compile_info,
                 utils::OpRunInfo& run_info) {
-#ifdef ASCEND_OPTILING_UT
   OP_LOGI("AutoTiling", "Entering AutoTiling Dispatcher.");
-#else
-  OP_LOGI("AutoTiling", "Entering AutoTiling Dispatcher UT Mode.");
-#endif
   if (compile_info == nullptr) {
     OP_LOGE("AutoTiling", "AutoTiling Dispatcher received nullptr, Compile Info Parser is not working properly.");
     return false;
@@ -54,11 +50,7 @@ bool AutoTiling(const ge::Operator& op_paras, const void* compile_info,
 
 void* AutoTilingCompileInfoParser(const ge::Operator& op_paras, const ge::AscendString& compile_info_str) {
   // Print Info Log and get Pattern+OpType
-#ifdef ASCEND_OPTILING_UT
   OP_LOGI("AutoTiling", "Entering AutoTiling Compile Info Parser.");
-#else
-  OP_LOGI("AutoTiling", "Entering AutoTiling Compile Info Parser UT Mode.");
-#endif
   ge::AscendString ascend_op_type;
   ge::graphStatus ret = op_paras.GetOpType(ascend_op_type);
   if (ret != ge::GRAPH_SUCCESS) {
