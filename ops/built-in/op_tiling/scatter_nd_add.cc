@@ -76,7 +76,7 @@ void InitRunningParams(ScatterNdAddTilingParams& params) {
 
 void CalRunningParams(ScatterNdAddTilingParams& runParams, int64_t indicesNum, int64_t addsNum, int64_t addDataNum,
                       int64_t maxIndice, int64_t ubSize, int64_t coreNum, int64_t varSize, int64_t indicesSize,
-                      int64_t varDataEachBlock, string VarDtype) {
+                      int64_t varDataEachBlock, const std::string& VarDtype) {
   int64_t addSizeByte = varSize * addsNum;
   int64_t halfUbSize = ubSize / 2;
   OP_TILING_CHECK(halfUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_nd_add", "halfUbSize = 0 is not support"),

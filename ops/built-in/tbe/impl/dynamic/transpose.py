@@ -895,7 +895,6 @@ class Transpose:
             """
             get tiling parameters
             """
-
             # part 2: fixed
             ub_offset = tik_inst.Scalar("int32", init_value=TILING_HEAD_LEN)
 

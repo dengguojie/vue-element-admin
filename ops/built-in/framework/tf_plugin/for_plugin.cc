@@ -22,6 +22,8 @@
 #include "graph/ge_attr_value.h"
 
 namespace domi {
+const int INDEX_2 = 2;
+
 Status AutoMappingFnFor(const google::protobuf::Message* op_src, ge::Operator& op) {
   map<string, pair<string, string>> value;
   value["in"] = pair<string, string>("input", "T");
@@ -34,7 +36,7 @@ Status AutoMappingFnFor(const google::protobuf::Message* op_src, ge::Operator& o
 
 Status ParseSubgraphPostFnFor(const std::string& subgraph_name, const ge::Graph& graph) {
   return AutoMappingSubgraphIndex(
-      graph, [](int data_index) { return (data_index == 0) ? 0 : data_index + 2; },
+      graph, [](int data_index) { return (data_index == 0) ? 0 : data_index + INDEX_2; },
       [](int retval_index) { return retval_index; });
 }
 REGISTER_CUSTOM_OP("For")

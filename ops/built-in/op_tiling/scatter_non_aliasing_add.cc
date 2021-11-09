@@ -85,7 +85,7 @@ static int64_t GetCeilTwoInt(int64_t value1, int64_t value2) {
 
 void CalRunningParams(ScatterNonAliasingAddTilingParams& runParams, int64_t indicesNum, int64_t addsNum,
                       int64_t addDataNum, int64_t maxIndice, int64_t ubSize, int64_t coreNum, int64_t varSize,
-                      int64_t indicesSize, int64_t varDataEachBlock, string VarDtype) {
+                      int64_t indicesSize, int64_t varDataEachBlock, const std::string& VarDtype) {
   int64_t addSizeByte = varSize * addsNum;
   int64_t halfUbSize = ubSize / 2;
   int64_t halfUbIndicesNum = halfUbSize / indicesSize;

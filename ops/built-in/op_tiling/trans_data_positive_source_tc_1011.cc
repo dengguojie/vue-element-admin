@@ -41,7 +41,7 @@ int64_t GetCeilFillC(int64_t u_value, int64_t d_value) {
   return res_value;
 }
 
-bool GetMcInfoPositive1011(int64_t& axis_dst_r2nd_lp_cnt, int64_t axis_dst_r2nd_left, int64_t& c_lp_cnt, int64_t c_left,
+void GetMcInfoPositive1011(int64_t& axis_dst_r2nd_lp_cnt, int64_t axis_dst_r2nd_left, int64_t& c_lp_cnt, int64_t c_left,
                            int64_t& axis_src_cl_lp_cnt, int64_t axis_src_cl_left, int64_t& core_num,
                            TransDataMode1011Param& params) {
   int64_t tmp_full_loop_cnt_r2nd = GetFloorDiv(axis_dst_r2nd_lp_cnt, core_num) > 0 ? core_num : 0;
@@ -119,9 +119,8 @@ bool GetMcInfoPositive1011(int64_t& axis_dst_r2nd_lp_cnt, int64_t axis_dst_r2nd_
     params.nlc_dst_r2nd_left = axis_dst_r2nd_left;
     params.lc_dst_r2nd_left = axis_dst_r2nd_left;
   }
-  return true;
 }
-bool GetCommonParam(int64_t ub_size, int64_t block_elem_cnt, int64_t c0_len, int64_t axis_c_size,
+void GetCommonParam(int64_t ub_size, int64_t block_elem_cnt, int64_t c0_len, int64_t axis_c_size,
                     TransDataMode1011Param& params) {
   int64_t half_ub_size;
   if (c0_len == C0_16) {
@@ -138,7 +137,6 @@ bool GetCommonParam(int64_t ub_size, int64_t block_elem_cnt, int64_t c0_len, int
   }
   params.c_mod_c0 = axis_c_size % c0_len;
   params.c0_size = c0_len;
-  return true;
 }
 
 bool TillingPositiveMode1011(vector<int64_t>& in_shape, vector<int64_t>& out_shape, std::string& src_format,
@@ -150,11 +148,7 @@ bool TillingPositiveMode1011(vector<int64_t>& in_shape, vector<int64_t>& out_sha
   }
   int64_t axis_c_size = in_shape[in_shape.size() - 1];
   int64_t c0_len = out_shape[out_shape.size() - 1];
-  bool ret = GetCommonParam(ub_size, block_elem_cnt, c0_len, axis_c_size, params);
-  if (!ret) {
-    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "TillingPositiveMode1011 GetCommonParam Failed.");
-    return false;
-  }
+  GetCommonParam(ub_size, block_elem_cnt, c0_len, axis_c_size, params);
 
   params.tiling_mode = 1011;
 
@@ -229,12 +223,8 @@ bool TillingPositiveMode1011(vector<int64_t>& in_shape, vector<int64_t>& out_sha
     }
   }
 
-  ret = GetMcInfoPositive1011(axis_dst_r2nd_lp_cnt, axis_dst_r2nd_left, c_lp_cnt, c_left, axis_src_cl_lp_cnt, axis_src_cl_left,
-                              core_num, params);
-  if (!ret) {
-    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetMcInfoPositive1011 Failed.");
-    return false;
-  }
+  GetMcInfoPositive1011(axis_dst_r2nd_lp_cnt, axis_dst_r2nd_left, c_lp_cnt, c_left, axis_src_cl_lp_cnt, axis_src_cl_left,
+                        core_num, params);
   return true;
 }
 

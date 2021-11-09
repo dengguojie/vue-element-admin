@@ -125,6 +125,7 @@ def sigmoid_cross_entropy_with_logits_grad_v2_compute(predict, target,
     return grad_output
 
 
+# 'pylint: disable=too-many-statements
 @register_operator("SigmoidCrossEntropyWithLogitsGradV2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,

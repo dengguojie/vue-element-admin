@@ -41,7 +41,7 @@ int64_t GetCeilFillB(int64_t u_value, int64_t d_value) {
   return res_value;
 }
 
-bool GetMcInfoPositive1010(int64_t& dst_cl_lp_cnt, int64_t& vnc_row_cl_left, int64_t& ll_dst_cl_left, int64_t& c_lp_cnt,
+void GetMcInfoPositive1010(int64_t& dst_cl_lp_cnt, int64_t& vnc_row_cl_left, int64_t& ll_dst_cl_left, int64_t& c_lp_cnt,
                            int64_t c_left, int64_t& dst_cr_lp_cnt, int64_t vnc_row_left, int64_t ll_dst_cr_left,
                            int64_t& core_num, TransDataMode1010Param& params) {
   int64_t tmp_full_loop_cnt_cr = GetFloorDiv(dst_cr_lp_cnt, core_num) > 0 ? core_num : 0;
@@ -129,10 +129,9 @@ bool GetMcInfoPositive1010(int64_t& dst_cl_lp_cnt, int64_t& vnc_row_cl_left, int
     params.nlc_last_line_cr_cnt = ll_dst_cr_left;
     params.lc_last_line_cr_cnt = ll_dst_cr_left;
   }
-  return true;
 }
 
-bool GetCommonParam(int64_t ub_size, int64_t block_elem_cnt, int64_t c0_len, int64_t axis_c_size,
+void GetCommonParam(int64_t ub_size, int64_t block_elem_cnt, int64_t c0_len, int64_t axis_c_size,
                     TransDataMode1010Param& params) {
   int64_t half_ub_size;
   if (c0_len == C0_16) {
@@ -149,7 +148,6 @@ bool GetCommonParam(int64_t ub_size, int64_t block_elem_cnt, int64_t c0_len, int
   }
   params.c_mod_c0 = axis_c_size % c0_len;
   params.c0_size = c0_len;
-  return true;
 }
 
 bool TillingPositiveMode1010(vector<int64_t>& in_shape, vector<int64_t>& out_shape, std::string& src_format,
@@ -161,11 +159,7 @@ bool TillingPositiveMode1010(vector<int64_t>& in_shape, vector<int64_t>& out_sha
   }
   int64_t axis_c_size = in_shape[in_shape.size() - 1];
   int64_t c0_len = out_shape[out_shape.size() - 1];
-  bool ret = GetCommonParam(ub_size, block_elem_cnt, c0_len, axis_c_size, params);
-  if (!ret) {
-    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "TillingPositiveMode1010 GetCommonParam Failed.");
-    return false;
-  }
+  GetCommonParam(ub_size, block_elem_cnt, c0_len, axis_c_size, params);
 
   params.tiling_mode = 1010;
   params.vnc_line_size = params.vnc_line_size / c0_len * c0_len;
@@ -303,12 +297,8 @@ bool TillingPositiveMode1010(vector<int64_t>& in_shape, vector<int64_t>& out_sha
     params.dst_cl_lp_step_out = params.dst_cl_step_out * per_vnc_dst_cl_cnt;
   }
 
-  ret = GetMcInfoPositive1010(dst_cl_lp_cnt, vnc_row_cl_left, ll_dst_cl_left, c_lp_cnt, c_left,
-                              dst_cr_lp_cnt, vnc_row_left, ll_dst_cr_left, core_num, params);
-  if (!ret) {
-    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetMcInfoPositive1010 Failed.");
-    return false;
-  }
+  GetMcInfoPositive1010(dst_cl_lp_cnt, vnc_row_cl_left, ll_dst_cl_left, c_lp_cnt, c_left,
+                        dst_cr_lp_cnt, vnc_row_left, ll_dst_cr_left, core_num, params);
   return true;
 }
 

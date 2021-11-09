@@ -339,7 +339,7 @@ void PrintTilingParams(const SplitDTilingParams& params) {
 }
 
 bool GetSplitDCompileParams(const nlohmann::json& opCompileInfo, int64_t& coreNum, int64_t& ubSize, int64_t& splitDim,
-                            int64_t& numSplit, std::vector<int64_t> inputShape) {
+                            int64_t& numSplit) {
   using namespace nlohmann;
   auto allVars = opCompileInfo["vars"];
   if (allVars.count("core_num") == 0) {
@@ -381,7 +381,7 @@ bool SplitDTiling(const std::string& opType, const TeOpParas& opParas, const nlo
   int64_t splitDim = 0;
   int64_t numSplit = 0;
   int64_t dataBlock = 0;
-  bool can_get_params = GetSplitDCompileParams(opCompileInfo, coreNum, ubSize, splitDim, numSplit, inputShape);
+  bool can_get_params = GetSplitDCompileParams(opCompileInfo, coreNum, ubSize, splitDim, numSplit);
   if (!can_get_params) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "SiplitDTiling: GetSplitDCompileParams error.");
     return false;

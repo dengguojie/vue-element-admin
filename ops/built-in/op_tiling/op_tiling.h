@@ -79,26 +79,28 @@ bool g_##optype##_TilingEntry(const TeOpParas& para, const OpCompileInfo& cinfo,
         return res;                                                                                                   \
     }                                                                                                                 \
     const std::string& cinfo_str = cinfo.str;                                                                         \
-    std::shared_ptr<nlohmann::json> parsed_object_cinfo(new nlohmann::json(nlohmann::json::parse(cinfo_str)));        \
-    if (!hash_key.empty()) {                                                                                          \
-        std::shared_ptr<ParsedOpCompileInfo> parsed_op_compile_info(new ParsedOpCompileInfo());                       \
-        parsed_op_compile_info->value = cinfo_str;                                                                    \
-        parsed_op_compile_info->parsed_object = std::static_pointer_cast<void>(parsed_object_cinfo);                  \
-        rwlock.wrlock();                                                                                              \
-        parsed_compile_info_storage.emplace(hash_key, parsed_op_compile_info);                                        \
-        rwlock.unlock();                                                                                              \
+    {                                                                                                                 \
+        std::shared_ptr<nlohmann::json> parsed_object_cinfo(new nlohmann::json(nlohmann::json::parse(cinfo_str)));    \
+        if (!hash_key.empty()) {                                                                                      \
+            std::shared_ptr<ParsedOpCompileInfo> parsed_op_compile_info(new ParsedOpCompileInfo());                   \
+            parsed_op_compile_info->value = cinfo_str;                                                                \
+            parsed_op_compile_info->parsed_object = std::static_pointer_cast<void>(parsed_object_cinfo);              \
+            rwlock.wrlock();                                                                                          \
+            parsed_compile_info_storage.emplace(hash_key, parsed_op_compile_info);                                    \
+            rwlock.unlock();                                                                                          \
+        }                                                                                                             \
+        if (prof_switch) {                                                                                            \
+            before_tiling = std::chrono::steady_clock::now();                                                         \
+        }                                                                                                             \
+        bool ret = opfunc(para.op_type, para, *parsed_object_cinfo, rinfo);                                           \
+        if (prof_switch) {                                                                                            \
+            after_tiling = std::chrono::steady_clock::now();                                                          \
+            uint64_t t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - start_tiling).count(); \
+            uint64_t t1 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - before_tiling).count();\
+            GEEVENT("[OPTILING_PROF] op_name: %s, total_us: %d, tiling_us: %d", para.op_type.c_str(), t0, t1);        \
+        }                                                                                                             \
+        return ret;                                                                                                   \
     }                                                                                                                 \
-    if (prof_switch) {                                                                                                \
-        before_tiling = std::chrono::steady_clock::now();                                                             \
-    }                                                                                                                 \
-    bool ret = opfunc(para.op_type, para, *parsed_object_cinfo, rinfo);                                               \
-    if (prof_switch) {                                                                                                \
-        after_tiling = std::chrono::steady_clock::now();                                                              \
-        uint64_t t0 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - start_tiling).count();     \
-        uint64_t t1 = std::chrono::duration_cast<std::chrono::microseconds>(after_tiling - before_tiling).count();    \
-        GEEVENT("[OPTILING_PROF] op_name: %s, total_us: %d, tiling_us: %d", para.op_type.c_str(), t0, t1);            \
-    }                                                                                                                 \
-    return ret;                                                                                                       \
 }                                                                                                                     \
 REGISTER_OP_TILING(optype, g_##optype##_TilingEntry)
 

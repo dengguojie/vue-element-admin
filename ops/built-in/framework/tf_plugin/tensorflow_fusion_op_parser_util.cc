@@ -51,8 +51,7 @@ Status get_const_value(const domi::tensorflow::TensorProto& tensor, int index, T
         param = value;
     } else if (tensor.has_tensor_shape()) {
         const std::string tensor_content = tensor.tensor_content();
-        char* buf = const_cast<char*>(tensor_content.data());
-        T* buf_v = reinterpret_cast<T*>(buf);
+        const T* buf_v = reinterpret_cast<const T*>(tensor_content.data());
         if (static_cast<uint32_t>(index) >= tensor_content.length() / sizeof(T)) {
             OP_LOGE("Const data size is smaller than index :%d,not supported!", index);
             return FAILED;

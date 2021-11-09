@@ -186,9 +186,8 @@ bool CheckMode6(std::vector<int64_t> sizeSplitsVec, int64_t dataBlock, int64_t s
 
   bool ret = true;
   bool flag = false;
-  int64_t splitSize = 0;
   for (size_t i = 0; i < sizeSplitsVec.size(); ++i) {
-    splitSize = sizeSplitsVec[i] * shapeAfterDim;
+    int64_t splitSize = sizeSplitsVec[i] * shapeAfterDim;
     if (splitSize >= dataBlock && splitSize % dataBlock != 0) {
       ret = false;
       break;

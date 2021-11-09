@@ -106,7 +106,7 @@ int32_t CalTail(int32_t grads_w, int32_t loop_num) {
     }
     res = grads_w % loop_num;
     if (res == 0) {
-        res = 256;
+        res = loop_num;
     }
     return res;
 }
