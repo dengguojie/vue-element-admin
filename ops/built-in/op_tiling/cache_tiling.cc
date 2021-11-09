@@ -398,10 +398,8 @@ int64_t GetBlockDim(const string &op_type, const BatchmatmulParas &params, L2Sta
   // not support multi cores slicing along k dim
   // single core batch_dim, m_dim, n_dim is a factor of input batch, m, n
 
-  OP_LOGD(op_type.c_str(), "input batch dim:%lld", params.batch);
-  OP_LOGD(op_type.c_str(), "input m dim:%lld", params.m);
-  OP_LOGD(op_type.c_str(), "input k dim:%lld", params.k);
-  OP_LOGD(op_type.c_str(), "input n dim:%lld", params.n);
+  OP_LOGD(op_type.c_str(), "input shape batch:%lld, m:%lld, k:%lld, n:%lld", params.batch, params.m, params.k,
+          params.n);
   if (params.batch * params.m * params.n < coreNum) {
     l2Status.batch_dim = params.batch;
     l2Status.n_dim = params.n;
@@ -410,10 +408,8 @@ int64_t GetBlockDim(const string &op_type, const BatchmatmulParas &params, L2Sta
     l2Status.m = 1;
     l2Status.k = params.k;
     l2Status.n = 1;
-    OP_LOGD(op_type.c_str(), "singlecore batch dim factor:%lld", params.batch);
-    OP_LOGD(op_type.c_str(), "singlecore batch n dim factor:%lld", params.n);
-    OP_LOGD(op_type.c_str(), "singlecore m dim factor:%lld", params.m);
-    OP_LOGD(op_type.c_str(), "singlecore m block pnt point:%lld", 0);
+    OP_LOGD(op_type.c_str(), "multi-core slicing factor batch dim:%lld, n dim:%lld, m dim:%lld, m block pnt point:0",
+            l2Status.batch_dim, l2Status.n_dim, l2Status.m_dim);
     return 0;
   }
   BlockDimCalculator blockDimCalculator;
@@ -463,10 +459,9 @@ int64_t GetBlockDim(const string &op_type, const BatchmatmulParas &params, L2Sta
   l2Status.n = params.n / blockDimCalculator.n_dim_factor;
   l2Status.k = params.k;
   l2Status.batch = params.batch / blockDimCalculator.batch_dim_factor;
-  OP_LOGD(op_type.c_str(), "singlecore batch dim factor:%lld", l2Status.batch_dim);
-  OP_LOGD(op_type.c_str(), "singlecore batch n dim factor:%lld", l2Status.n_dim);
-  OP_LOGD(op_type.c_str(), "singlecore m dim factor:%lld", l2Status.m_dim);
-  OP_LOGD(op_type.c_str(), "singlecore m block pnt point:%lld", blockDimCalculator.final_value);
+  OP_LOGD(op_type.c_str(),
+          "multi-core slicing factor batch dim:%lld, n dim:%lld, m dim:%lld, m block pnt point:%lld",
+          l2Status.batch_dim, l2Status.n_dim, l2Status.m_dim, blockDimCalculator.final_value);
   return blockDimCalculator.final_value;
 }
 
@@ -679,9 +674,10 @@ void GetL0Factors(const string &op_type, const L2Status &l2Status, const int64_t
   }
   l0Status.db_cub = DB_ON;
   CheckUbDb(l0Status);
-  OP_LOGD(op_type.c_str(), "tiling m_l0:%s, n_l0:%s, k_l0:%s", l0Status.m_l0, l0Status.n_l0, l0Status.k_l0);
-  OP_LOGD(op_type.c_str(), "tiling db_l0a:%s, db_l0b:%s, db_l0c:%s", l0Status.db_l0a, l0Status.db_l0b, l0Status.db_l0c);
-  OP_LOGD(op_type.c_str(), "tiling db_cub:%s", l0Status.db_cub);
+  OP_LOGD(op_type.c_str(), "tiling m_l0:%lld, n_l0:%lld, k_l0:%lld", l0Status.m_l0, l0Status.n_l0, l0Status.k_l0);
+  OP_LOGD(op_type.c_str(), "tiling db_l0a:%lld, db_l0b:%lld, db_l0c:%lld", l0Status.db_l0a, l0Status.db_l0b,
+          l0Status.db_l0c);
+  OP_LOGD(op_type.c_str(), "tiling db_cub:%lld", l0Status.db_cub);
 }
 
 int64_t GetL1Size(const L1Status &l1Status, const L0Status &l0Status)
@@ -956,16 +952,17 @@ void GetL1Factors(const string &op_type, const BatchmatmulParas &params, const L
   }
   l1Status.SetStatus(tmpFactors[IDX_ZERO], tmpFactors[IDX_THREE], tmpFactors[IDX_ONE], tmpFactors[IDX_FOUR],
                      tmpFactors[IDX_TWO], tmpFactors[IDX_FIVE]);
-  OP_LOGD(op_type.c_str(), "tiling kal1_16:%s, kbl1_16:%s, k_l0:%s", l1Status.kal1_16, l1Status.kbl1_16);
-  OP_LOGD(op_type.c_str(), "tiling m_al1:%s, n_bl1:%s", l1Status.m_al1, l1Status.n_bl1);
-  OP_LOGD(op_type.c_str(), "tiling db_al1:%s, db_bl1:%s", l1Status.db_al1, l1Status.db_bl1);
+  OP_LOGD(op_type.c_str(), "tiling kal1_16:%lld, kbl1_16:%lld, k_l0:%lld", l1Status.kal1_16, l1Status.kbl1_16,
+          l0Status.k_l0);
+  OP_LOGD(op_type.c_str(), "tiling m_al1:%lld, n_bl1:%lld", l1Status.m_al1, l1Status.n_bl1);
+  OP_LOGD(op_type.c_str(), "tiling db_al1:%lld, db_bl1:%lld", l1Status.db_al1, l1Status.db_bl1);
 }
 
 void GetUbFactors(const string &op_type, const L0Status &l0Status, UbStatus &ubStatus)
 {
   ubStatus.n_cub = l0Status.n_l0;
   ubStatus.db_cub = l0Status.db_cub;
-  OP_LOGD(op_type.c_str(), "tiling n_cub:%s, db_cub:%s", l0Status.n_l0, l0Status.db_cub);
+  OP_LOGD(op_type.c_str(), "tiling n_cub:%lld, db_cub:%lld", l0Status.n_l0, l0Status.db_cub);
 }
 
 void CheckSpecialTemplate(const string &op_type, const L2Status &l2Status, const L0Status &l0Status,
@@ -983,10 +980,8 @@ void CheckSpecialTemplate(const string &op_type, const L2Status &l2Status, const
 
 void GenTiling(const string &op_type, const BatchmatmulParas &params, Tiling &tiling, string &tilingId)
 {
-  OP_LOGD(op_type.c_str(), "cache tiling input shape batch:%s", params.batch);
-  OP_LOGD(op_type.c_str(), "cache tiling input shape m:%s", params.m);
-  OP_LOGD(op_type.c_str(), "cache tiling input shape k:%s", params.k);
-  OP_LOGD(op_type.c_str(), "cache tiling input shape n:%s", params.n);
+  OP_LOGD(op_type.c_str(), "cache tiling input shape batch:%lld, m:%lld, k:%lld, n:%lld", params.batch, params.m,
+          params.k, params.n);
   L2Status l2Status;
   L0Status l0Status;
   L1Status l1Status;
@@ -1001,6 +996,6 @@ void GenTiling(const string &op_type, const BatchmatmulParas &params, Tiling &ti
   tiling.SetAttachFlag();
   tiling.GetTilingId();
   tilingId = tiling.tiling_id;
-  OP_LOGD(op_type.c_str(), "get tiling id %s from cache tiling", tilingId);
+  OP_LOGD(op_type.c_str(), "the tiling id from cache tiling is: %s", tilingId.c_str());
 }
 } // namespace optiling
