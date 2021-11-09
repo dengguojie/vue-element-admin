@@ -755,8 +755,6 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/single_instance_norm_grad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/splitd_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/splitd_fusion_pass.h
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/splitv_fusion_pass.cc
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/splitv_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/splitvd_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/splitvd_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/square_sum_v2_fusion_pass.cc
@@ -771,7 +769,6 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_confusion_transpose_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_confusion_transpose_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_transdata_fusion_pass.cc
-      - ops/built-in/fusion_pass/graph_fusion/ai_core/transpose_inplaceupdate_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transpose_reshape_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/unsortedsegmentsumd_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/z_unsortedsegmentsum_update_fusion_pass.cc
@@ -1267,6 +1264,7 @@ vector_B:
       - ops/built-in/tests/ut/graph_fusion/ai_core/batch_norm_3d_grad_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/batch_norm_cast_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/common_lstm_fusion_test.cpp
+      - ops/built-in/tests/ut/graph_fusion/ai_core/confusion_matrix_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/const2attr_fusion_pass_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/layernorm_beta_gamma_backprop_v2_fusion_pass_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/layernorm_grad_fusion_pass_test.cpp
