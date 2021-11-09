@@ -273,7 +273,7 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
             return self.calculate_tiling(intermediate)
         # Rule 3: if ub exceeded, check if intermediate tiling is available, if not, schedule fails
         if total_size > self.device_ub_size:
-            if intermediate:
+            if len(intermediate) > 1:
                 # Disable multi-core
                 self.device_core_num = 1
                 split_axis = intermediate[1]
