@@ -92,26 +92,26 @@ def select_compute(condition, x1, x2, y, kernel_name="select"):
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def select(condition, x1, x2, y, kernel_name="select"):
     """
-      Selects elements from `x1` or `x2`, depending on `condition`.
-      And the x1 and x2 shape must be same.
-      Parameters
-      ----------
-      condition: dict
-          dict of condition, include keys(shape and dtype),
-          only support int8,int32
-      x1: dict
-          dict of x1, only support float16, float32, int32, int8, uint8
-      x2: dict
-          dict of x2, only support float16, float32, int32, int8, uint8
-      y: dict
-          dict of output
-      kernel_name: str
-          cce kernel name, default value is "select"
+    Selects elements from `x1` or `x2`, depending on `condition`.
+    And the x1 and x2 shape must be same.
+    Parameters
+    ----------
+    condition: dict
+        dict of condition, include keys(shape and dtype),
+        only support int8,int32
+    x1: dict
+        dict of x1, only support float16, float32, int32, int8, uint8
+    x2: dict
+        dict of x2, only support float16, float32, int32, int8, uint8
+    y: dict
+        dict of output
+    kernel_name: str
+        cce kernel name, default value is "select"
 
-      Returns
-      -------
-      None
-      """
+    Returns
+    -------
+    None
+    """
     shape_x1 = x1.get("shape")
     dtype_x1 = x1.get("dtype").lower()
     dtype_x2 = x2.get("dtype").lower()

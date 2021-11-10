@@ -69,9 +69,11 @@ def shrink_compute(input_x, output_y, lambd, bias, kernel_name="Shrink"):
         result = tbe.cast_to(result, ori_dtype)
     return result
 
+
 @register_operator("Shrink")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-    para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.KERNEL_NAME)
 def shrink(input_x, output_y, lambd=0.5, bias=0.0, kernel_name="Shrink"):
     """
     calculating data
@@ -103,9 +105,9 @@ def shrink(input_x, output_y, lambd=0.5, bias=0.0, kernel_name="Shrink"):
 
     ins = classify([input_x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
-    for _input_x, in ins:
+    for shrink_input_x, in ins:
         with tbe.compute():
-            shape_input_x, = shape_util.variable_shape([_input_x])
+            shape_input_x, = shape_util.variable_shape([shrink_input_x])
             data_input = tvm.placeholder(shape_input_x, name="data_input", dtype=input_dtype)
             res = shrink_compute(data_input, output_y, lambd, bias, kernel_name)
             tensors.append([data_input, res])

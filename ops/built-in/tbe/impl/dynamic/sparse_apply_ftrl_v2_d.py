@@ -19,6 +19,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.dynamic.sparse_apply_dynamic_common import SparseApplyDynamic
 
+
 # pylint: disable=too-many-instance-attributes
 class SparseApplyFtrl(SparseApplyDynamic):
     """

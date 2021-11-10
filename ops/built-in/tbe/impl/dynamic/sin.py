@@ -104,7 +104,7 @@ def sin_compute(x, y, kernel_name="sin"):
         x = tbe.cast_to(x, FLOAT_32)
 
     pai_multiple = tbe.vmuls(x, 1 / PI)
-    # pai_round = tbe.round(pai_multiple)
+    # `pai_round = tbe.round(pai_multiple)`
     if not tbe_platform.api_check_support("tbe.dsl.round", "float32") and cast_dtype == FLOAT_32:
         pai_16 = tbe.cast_to(pai_multiple, FLOAT_16)
         round_float = tbe.cast_to(tbe.round(pai_16), cast_dtype)
@@ -126,7 +126,7 @@ def sin_compute(x, y, kernel_name="sin"):
     # if odd, ceil*2-round is 1,if even, the value is 0
     tmp = tbe.cast_to(tbe.vmuls(ceil_value, tvm.const(2, dtype)), cast_dtype)
     sub_value = tbe.vsub(tmp, round_float)
-    # sub_value = tbe.vsub(tbe.vmuls(ceil_value, tvm.const(2, dtype)), round_float)
+    # `sub_value = tbe.vsub(tbe.vmuls(ceil_value, tvm.const(2, dtype)), round_float)`
 
     tensor_one = tbe.broadcast(tvm.const(1, cast_dtype), shape)
     odd_tensor = tbe.vsub(tensor_one, sub_value)

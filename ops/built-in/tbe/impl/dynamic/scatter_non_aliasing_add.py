@@ -35,7 +35,7 @@ BLOCK_BYTES = 32
 
 
 # pylint: disable=too-many-arguments,too-many-instance-attributes
-# pylint: disable=invalid-name,bad-continuation,attribute-defined-outside-init,unused-argument
+# pylint: disable=invalid-name,attribute-defined-outside-init,unused-argument
 class ScatterNonAliasingAdd():
     """
     Function: use to store scatter_non_aliasing_add base parameters
@@ -270,7 +270,7 @@ class ScatterNonAliasingAdd():
                 self.calc_indices(indices_ub_index)
                 with self.tik_instance.if_scope(self.core_loop_index * self.indice_step <= self.var_read_index):
                     with self.tik_instance.if_scope(
-                        (self.core_loop_index + 1) * self.indice_step > self.var_read_index):
+                            (self.core_loop_index + 1) * self.indice_step > self.var_read_index):
                         self.traversing_adds(indices_ub_index, indices_in_index, mode)
 
     def traversing_adds(self, indices_ub_index, indices_in_index, mode):
@@ -305,11 +305,11 @@ class ScatterNonAliasingAdd():
         loop = (update_num + mask - 1) // mask // 255
         last = (update_num + mask - 1) // mask % 255
         lastindex = loop * 255 + last - 1
-        lastmaskScalar = self.tik_instance.Scalar("int64", name="lastmask")
+        lastmaskscalar = self.tik_instance.Scalar("int64", name="lastmask")
         lastmask = update_num % mask
-        lastmaskScalar.set_as(lastmask)
-        with self.tik_instance.if_scope(lastmaskScalar == 0):
-            lastmaskScalar.set_as(mask)
+        lastmaskscalar.set_as(lastmask)
+        with self.tik_instance.if_scope(lastmaskscalar == 0):
+            lastmaskscalar.set_as(mask)
 
         with self.tik_instance.if_scope(loop > 0):
             with self.tik_instance.for_range(0, loop) as i:
@@ -318,7 +318,7 @@ class ScatterNonAliasingAdd():
         with self.tik_instance.if_scope(last > 0):
             self.tik_instance.vec_add(mask, self.adds_ub[loop * 255 * mask], self.adds_ub[loop * 255 * mask],
                                       self.var_ub[loop * 255 * mask], last - 1, 8, 8, 8)
-            self.tik_instance.vec_add(lastmaskScalar, self.adds_ub[lastindex * mask], self.adds_ub[lastindex * mask],
+            self.tik_instance.vec_add(lastmaskscalar, self.adds_ub[lastindex * mask], self.adds_ub[lastindex * mask],
                                       self.var_ub[lastindex * mask], 1, 8, 8, 8)
 
     def vec_add_with_addr(self, update_num, adds_addr, var_addr):
@@ -329,11 +329,11 @@ class ScatterNonAliasingAdd():
         loop = (update_num + mask - 1) // mask // 255
         last = (update_num + mask - 1) // mask % 255
         lastindex = loop * 255 + last - 1
-        lastmaskScalar = self.tik_instance.Scalar("int64", name="lastmask")
+        lastmaskscalar = self.tik_instance.Scalar("int64", name="lastmask")
         lastmask = update_num % mask
-        lastmaskScalar.set_as(lastmask)
-        with self.tik_instance.if_scope(lastmaskScalar == 0):
-            lastmaskScalar.set_as(mask)
+        lastmaskscalar.set_as(lastmask)
+        with self.tik_instance.if_scope(lastmaskscalar == 0):
+            lastmaskscalar.set_as(mask)
 
         with self.tik_instance.if_scope(loop > 0):
             with self.tik_instance.for_range(0, loop) as i:
@@ -344,7 +344,7 @@ class ScatterNonAliasingAdd():
             self.tik_instance.vec_add(mask, self.adds_ub[loop * 255 * mask + adds_addr],
                                       self.adds_ub[loop * 255 * mask + adds_addr],
                                       self.var_ub[loop * 255 * mask + var_addr], last - 1, 8, 8, 8)
-            self.tik_instance.vec_add(lastmaskScalar, self.adds_ub[lastindex * mask + adds_addr],
+            self.tik_instance.vec_add(lastmaskscalar, self.adds_ub[lastindex * mask + adds_addr],
                                       self.adds_ub[lastindex * mask + adds_addr],
                                       self.var_ub[lastindex * mask + var_addr], 1, 8, 8, 8)
 

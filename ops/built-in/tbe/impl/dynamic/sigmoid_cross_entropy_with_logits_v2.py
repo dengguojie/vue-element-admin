@@ -80,12 +80,12 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict, target, weight, pos_we
     const_zero_broadcast = tbe.broadcast(const_zero, shape_predict)
     const_one_broadcast = tbe.broadcast(const_one, shape_predict)
 
-    # info: max(-predict,0)
+    # info: `max(-predict,0)`
     reversed_predict = tbe.vsub(const_zero_broadcast, predict)
     max_predict_zero = tbe.vmaxs(reversed_predict, const_zero)
 
-    # info: max_val=max(-predict,0)
-    # info: ln(1+exp(-x))=max_val+np.log(np.exp(-max_val)+np.exp(-predict-max_val)))
+    # info: `max_val=max(-predict,0)`
+    # info: `ln(1+exp(-x))=max_val+np.log(np.exp(-max_val)+np.exp(-predict-max_val)))`
     reversed_max_predict_zero = tbe.vsub(const_zero_broadcast, max_predict_zero)
     exp_reversed_max_predict_zero = tbe.vexp(reversed_max_predict_zero)
     sub_reversed_max_predict_zero = tbe.vsub(reversed_max_predict_zero, predict)
@@ -94,13 +94,13 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict, target, weight, pos_we
     log_reversed_predict = tbe.vlog(add_reversed_predict, OpImplMode.HIGH_PRECISION)
     add_max_predict = tbe.vadd(log_reversed_predict, max_predict_zero)
 
-    # info: (1-target)*predict
+    # info: `(1-target)*predict`
     sub_target = tbe.vsub(const_one_broadcast, target)
     mul_predict_target = tbe.vmul(sub_target, predict)
 
     if pos_weight is not None:
-        # info: log_weight=(pos_weight - 1)*target+1
-        # info: loss=(1-target)*predict+(log_weight*(max_val+np.log(np.exp(-max_val)+np.exp(-predict-max_val))))
+        # info: `log_weight=(pos_weight - 1)*target+1`
+        # info: `loss=(1-target)*predict+(log_weight*(max_val+np.log(np.exp(-max_val)+np.exp(-predict-max_val))))`
         pos_weight = tbe.broadcast(pos_weight, shape_predict)
         sub_pos_weight = tbe.vsub(pos_weight, const_one_broadcast)
         mul_pos_weight = tbe.vmul(sub_pos_weight, target)
@@ -108,7 +108,7 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict, target, weight, pos_we
         mul_pos_weight_predict = tbe.vmul(add_pos_weight, add_max_predict)
         loss = tbe.vadd(mul_predict_target, mul_pos_weight_predict)
     else:
-        # info: loss=(1-target)*predict+max_val+np.log(np.exp(-max_val)+np.exp(-predict-max_val))
+        # info: `loss=(1-target)*predict+max_val+np.log(np.exp(-max_val)+np.exp(-predict-max_val))`
         loss = tbe.vadd(mul_predict_target, add_max_predict)
 
     if weight is not None:

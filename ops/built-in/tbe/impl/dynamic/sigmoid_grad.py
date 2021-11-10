@@ -15,7 +15,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 sigmoid_grad
 """
-from functools import reduce as reduceIns
 
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_platform

@@ -90,7 +90,8 @@ class ScatterUpdate():
         self.indices_ub_num = self.ub_size_bytes // 2 // self.indices_dtype_bytes_size
         self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
         self.var_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,), name="var_gm", scope=tik.scope_gm)
-        self.indices_gm = self.tik_instance.Tensor(self.indices_dtype, (MAX_INT64_VALUE,), name="indices_gm", scope=tik.scope_gm)
+        self.indices_gm = self.tik_instance.Tensor(self.indices_dtype, (MAX_INT64_VALUE,),
+                                                   name="indices_gm", scope=tik.scope_gm)
         self.updates_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,),
                                                    name="updates_gm",
                                                    scope=tik.scope_gm)
@@ -583,6 +584,7 @@ class ScatterUpdate():
                                    outputs=(self.out_gm),
                                    flowtable=[self.tiling_gm],
                                    config=opt_config)
+
 
 # pylint: disable=unused-argument
 @register_operator("ScatterUpdate")

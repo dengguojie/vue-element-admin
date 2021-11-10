@@ -93,7 +93,8 @@ class ScatterSub():
 
         self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
         self.var_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,), name="var_gm", scope=tik.scope_gm)
-        self.indices_gm = self.tik_instance.Tensor(self.indices_dtype, (MAX_INT64_VALUE,), name="indices_gm", scope=tik.scope_gm)
+        self.indices_gm = self.tik_instance.Tensor(self.indices_dtype, (MAX_INT64_VALUE,),
+                                                   name="indices_gm", scope=tik.scope_gm)
         self.updates_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,),
                                                    name="updates_gm",
                                                    scope=tik.scope_gm)

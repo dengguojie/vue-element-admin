@@ -197,9 +197,9 @@ def smooth_l1_loss_grad_v2(predict,
             tensor_dout = tvm.placeholder(shape_dout, name="tensor_dout", dtype=dtype_dout)
 
             res = smooth_l1_loss_grad_v2_compute(tensor_predict,
-                                                 tensor_label, 
+                                                 tensor_label,
                                                  tensor_dout,
-                                                 gradient, 
+                                                 gradient,
                                                  sigma,
                                                  reduction_type,
                                                  kernel_name)
