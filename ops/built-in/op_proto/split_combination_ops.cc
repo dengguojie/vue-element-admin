@@ -1227,7 +1227,8 @@ IMPLEMT_COMMON_INFERFUNC(PackInferShape) {
     }
   }
 
-  auto y_desc = op_info->MutableOutputDesc("y");
+  // get the output y desc use output idx 0
+  auto y_desc = op_info->MutableOutputDesc(0);
   DataType input_dtype = ge_tensor_desc->GetDataType();
   if (IsUnknownRankShape(output_shape_dims)) {
     y_desc->SetShape(ge::GeShape(UNKNOWN_RANK));
