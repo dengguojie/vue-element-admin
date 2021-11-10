@@ -19,7 +19,6 @@
  * \brief dynamic shape tiling of nll_loss_grad
  */
 #include <map>
-
 #include <nlohmann/json.hpp>
 #include "op_tiling_util.h"
 
@@ -38,6 +37,9 @@ static const int64_t DIM_2 = 2;
 static const int64_t NUM_4 = 4;
 static const int64_t NUM_8 = 8;
 static const int64_t NUM_64 = 64;
+// define the compile info num
+// {"reduction" "ub_size" "block_dim"}
+static const size_t COMPILE_INFO_NUM = 3;
 // define the redution mode for int64_t
 static const int64_t MODE_NONE = 0;
 static const int64_t MODE_SUM = 1;
@@ -45,6 +47,9 @@ static const int64_t MODE_MEAN = 2;
 // define a map format for string mode to int mode
 static const map<std::string, int64_t> REDUCE_MODE_STR_MAP = {
     {"none", MODE_NONE}, {"sum", MODE_SUM}, {"mean", MODE_MEAN}};
+// define ignore_idx attr idx and name
+static const std::pair<int64_t, std::string> IGNORE_IDX_ATTR_INFO{1, "ignore_index"};
+static const int64_t IGNORE_IDX_DEFAULT_VALUE = -100;
 
 static string to_string(const ByteBuffer& tiling_data) {
   auto data = tiling_data.str();
@@ -417,7 +422,7 @@ bool NLLLossGradParseFunc(const std::string& op_type,
   }
   const nlohmann::json& all_vars = compile_info["vars"];
 
-  compile_value.resize(4);
+  compile_value.resize(COMPILE_INFO_NUM);
   std::string reduction_str;
   // get reduction value
   OP_TILING_CHECK(!GetCompileValue(all_vars, "reduction", reduction_str),
@@ -430,18 +435,13 @@ bool NLLLossGradParseFunc(const std::string& op_type,
                   return false);
   compile_value[0] = mode_it->second;
 
-  // get ignore_idx value
-  OP_TILING_CHECK(!GetCompileValue(all_vars, "ignore_idx", compile_value[1]),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossGradParseFunc, get ignore_idx error"),
-                  return false);
-
   // get ub_size value
-  OP_TILING_CHECK(!GetCompileValue(all_vars, "ub_size", compile_value[2]),
+  OP_TILING_CHECK(!GetCompileValue(all_vars, "ub_size", compile_value[1]),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossGradParseFunc, get ub_size error"),
                   return false);
 
   // get block_dim value
-  OP_TILING_CHECK(!GetCompileValue(all_vars, "block_dim", compile_value[3]),
+  OP_TILING_CHECK(!GetCompileValue(all_vars, "block_dim", compile_value[2]),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossGradParseFunc, get block_dim error"),
                   return false);
 
@@ -492,13 +492,16 @@ bool NLLLossGradTiling(const std::string& opType, const ge::Operator& opParas, c
 
   // get compileinfo params
   OP_TILING_CHECK(
-      op_info.size() != 4,
-      VECTOR_INNER_ERR_REPORT_TILIING(opType, "the compile info num is not 4, is %zu", op_info.size()),
+      op_info.size() != COMPILE_INFO_NUM,
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "the compile info num is not %zu, is %zu",
+                                      COMPILE_INFO_NUM, op_info.size()),
       return false);
   const int64_t reduction = op_info[0];
-  const int64_t ignore_idx = op_info[1];
-  const int64_t ub_size = op_info[2];
-  const int64_t block_dim = op_info[3];
+  const int64_t ub_size = op_info[1];
+  const int64_t block_dim = op_info[2];
+
+  int64_t ignore_idx = 0;
+  ops::GetAttrValue(opParas, IGNORE_IDX_ATTR_INFO, ignore_idx, IGNORE_IDX_DEFAULT_VALUE);
 
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 

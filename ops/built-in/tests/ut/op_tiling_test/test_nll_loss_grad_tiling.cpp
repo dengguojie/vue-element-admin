@@ -21,7 +21,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-
+#include "op_log.h"
 #include <gtest/gtest.h>
 #define private public
 #include "register/op_tiling_registry.h"
@@ -99,7 +99,7 @@ TEST_F(NLLLossGradTiling, NLLLossGrad_tiling1) {
   TENSOR_INPUT(opParas, tensorInputTarget, target);
   TENSOR_INPUT(opParas, tensorInputWeight, weight);
   TENSOR_INPUT(opParas, tensorInputTotalWeight, total_weight);
-
+  opParas.SetAttr("ignore_index", 5);
   TensorDesc tensorOutput;
   tensorOutput.SetShape(ge::Shape(output_shape));
   tensorOutput.SetDataType(dtype);
@@ -150,7 +150,7 @@ TEST_F(NLLLossGradTiling, NLLLossGrad_tiling2) {
   TENSOR_INPUT(opParas, tensorInputTarget, target);
   TENSOR_INPUT(opParas, tensorInputWeight, weight);
   TENSOR_INPUT(opParas, tensorInputTotalWeight, total_weight);
-
+  opParas.SetAttr("ignore_index", 215907);
   TensorDesc tensorOutput;
   tensorOutput.SetShape(ge::Shape(output_shape));
   tensorOutput.SetDataType(dtype);
@@ -205,7 +205,7 @@ TEST_F(NLLLossGradTiling, NLLLossGrad_tiling3) {
   TENSOR_INPUT(opParas, tensorInputTarget, target);
   TENSOR_INPUT(opParas, tensorInputWeight, weight);
   TENSOR_INPUT(opParas, tensorInputTotalWeight, total_weight);
-
+  opParas.SetAttr("ignore_index", -1);
   TensorDesc tensorOutput;
   tensorOutput.SetShape(ge::Shape(output_shape));
   tensorOutput.SetDataType(dtype);
@@ -257,7 +257,7 @@ TEST_F(NLLLossGradTiling, NLLLossGrad_tiling4) {
   TENSOR_INPUT(opParas, tensorInputTarget, target);
   TENSOR_INPUT(opParas, tensorInputWeight, weight);
   TENSOR_INPUT(opParas, tensorInputTotalWeight, total_weight);
-
+  opParas.SetAttr("ignore_index", 1);
   TensorDesc tensorOutput;
   tensorOutput.SetShape(ge::Shape(output_shape));
   tensorOutput.SetDataType(dtype);
@@ -275,3 +275,56 @@ TEST_F(NLLLossGradTiling, NLLLossGrad_tiling4) {
             "1 1 1 1 1 1 114 114 "
             "906 906 64 2000 0 0 0 0 0 ");
 }
+
+TEST_F(NLLLossGradTiling, NLLLossGrad_tiling5) {
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("NLLLossGrad");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  auto opParas = op::NLLLossGrad("NLLLossGrad");
+  std::vector<int64_t> input_x_shape = {7, 7243};
+  std::vector<int64_t> input_y_grad_shape = {1};
+  std::vector<int64_t> input_target_shape = {7};
+  std::vector<int64_t> input_weight_shape = {7243};
+  std::vector<int64_t> input_total_weight_shape = {1};
+  std::vector<int64_t> output_shape = {7, 7243};
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::DataType dtype_target = ge::DT_INT32;
+
+  TensorDesc tensorInputX;
+  tensorInputX.SetShape(ge::Shape(input_x_shape));
+  tensorInputX.SetDataType(dtype);
+  TensorDesc tensorInputYGrad;
+  tensorInputYGrad.SetShape(ge::Shape(input_y_grad_shape));
+  tensorInputYGrad.SetDataType(dtype);
+  TensorDesc tensorInputTarget;
+  tensorInputTarget.SetShape(ge::Shape(input_target_shape));
+  tensorInputTarget.SetDataType(dtype_target);
+  TensorDesc tensorInputWeight;
+  tensorInputWeight.SetShape(ge::Shape(input_weight_shape));
+  tensorInputWeight.SetDataType(dtype);
+  TensorDesc tensorInputTotalWeight;
+  tensorInputTotalWeight.SetShape(ge::Shape(input_total_weight_shape));
+  tensorInputTotalWeight.SetDataType(dtype);
+  TENSOR_INPUT(opParas, tensorInputX, x);
+  TENSOR_INPUT(opParas, tensorInputYGrad, y_grad);
+  TENSOR_INPUT(opParas, tensorInputTarget, target);
+  TENSOR_INPUT(opParas, tensorInputWeight, weight);
+  TENSOR_INPUT(opParas, tensorInputTotalWeight, total_weight);
+  opParas.SetAttr("ignore_index", 1);
+  TensorDesc tensorOutput;
+  tensorOutput.SetShape(ge::Shape(output_shape));
+  tensorOutput.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutput, x_grad);
+  std::string compileInfo =
+      "{\"vars\": {\"reduction\": \"sum\", \"dtype\": \"float32\", \"dtype_weight\": \"int32\", \"ignore_idx\": "
+      "10000, "
+      "\"ub_size\": 260096, \"is_binary_compile\": 1, \"block_dim\": 32}}";
+
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  std::cout << "NLLLossGradTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
+            "7243 7 0 1 50701 50701 1 7 1 7243 0 7 1 1 1 1 0 7243 7243 7296 64 7296 64 64 906 "
+            "1 1 1 1 1 1 114 114 "
+            "906 906 64 2000 0 0 0 0 0 ");
+}
+

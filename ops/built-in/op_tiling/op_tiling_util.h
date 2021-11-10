@@ -26,6 +26,7 @@
 #include <nlohmann/json.hpp>
 #include "error_log.h"
 #include "op_tiling.h"
+#include "op_attr.h"
 #include "op_const.h"
 #include "external/graph/operator.h"
 #include "graph/utils/op_desc_utils.h"
