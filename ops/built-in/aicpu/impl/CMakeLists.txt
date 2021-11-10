@@ -175,6 +175,7 @@ if(BUILD_OPEN_PROJECT)
       -frename-registers
       -fpeel-loops
       -DEIGEN_NO_DEBUG
+	  -DEIGEN_MPL2_ONLY
       -DNDEBUG
       -DEIGEN_HAS_CXX11_MATH
       -DEIGEN_OS_GNULINUX
@@ -317,6 +318,7 @@ target_compile_options(cpu_kernels PRIVATE
     -frename-registers
     -fpeel-loops
     -DEIGEN_NO_DEBUG
+	-DEIGEN_MPL2_ONLY
     -DNDEBUG
     -DEIGEN_HAS_CXX11_MATH
     -DEIGEN_OS_GNULINUX

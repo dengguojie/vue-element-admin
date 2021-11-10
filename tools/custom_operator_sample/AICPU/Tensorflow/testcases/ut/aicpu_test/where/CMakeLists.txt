@@ -94,6 +94,7 @@ if (NOT "${IMPL}" STREQUAL "FALSE")
       $<$<COMPILE_LANGUAGE:CXX>:-std=c++11>
       $<$<STREQUAL:${ENABLE_ASAN},true>:-fsanitize=address -fno-omit-frame-pointer -static-libasan -fsanitize=undefined -static-libubsan>
       -fPIC
+	  -DEIGEN_MPL2_ONLY
     )
 
     set(AICPU_UTEST "${PROJECT_PATH}/out/bin/aicpu_where_ut_test")

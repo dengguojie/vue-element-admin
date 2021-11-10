@@ -47,7 +47,7 @@ LOCAL_SRC_FILES := $(local_context_src_files) \
                    $(local_context_stub_files)
 LOCAL_C_INCLUDES := $(local_context_inc_path)
 
-LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -ftrapv -std=c++11 -Dgoogle=ascend_private
+LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -ftrapv -std=c++11 -Dgoogle=ascend_private -DEIGEN_MPL2_ONLY
 LOCAL_LDFLAGS += -Wl,-z,relro,-z,now -s -ldl -shared
 LOCAL_SHARED_LIBRARIES := libslog libc_sec libascend_protobuf
 
@@ -62,7 +62,7 @@ LOCAL_SRC_FILES := $(local_context_src_files) \
                    $(local_context_stub_files)
 LOCAL_C_INCLUDES := $(local_context_inc_path)
 
-LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -ftrapv -DVISIBILITY -std=c++11 -Dgoogle=ascend_private
+LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -ftrapv -DVISIBILITY -std=c++11 -Dgoogle=ascend_private -DEIGEN_MPL2_ONLY
 LOCAL_CFLAGS += -fvisibility-inlines-hidden
 LOCAL_CFLAGS += -fvisibility=hidden
 
@@ -82,7 +82,7 @@ LOCAL_SRC_FILES := $(local_context_src_files) \
                    $(local_context_stub_files)
 LOCAL_C_INCLUDES := $(local_context_inc_path)
 
-LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -ftrapv -DVISIBILITY -std=c++11 -Dgoogle=ascend_private
+LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -ftrapv -DVISIBILITY -std=c++11 -Dgoogle=ascend_private -DEIGEN_MPL2_ONLY
 
 LOCAL_LDFLAGS += -Wl,-z,relro,-z,now -s -ldl -shared
 LOCAL_UNINSTALLABLE_MODULE := false
@@ -98,7 +98,7 @@ LOCAL_SRC_FILES := $(local_context_src_files) \
                    $(local_context_stub_files)
 LOCAL_C_INCLUDES := $(local_context_inc_path)
 
-LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -ftrapv -DVISIBILITY -std=c++11 -Dgoogle=ascend_private
+LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -ftrapv -DVISIBILITY -std=c++11 -Dgoogle=ascend_private -DEIGEN_MPL2_ONLY
 
 LOCAL_LDFLAGS += -Wl,-z,relro,-z,now -s -ldl -shared
 LOCAL_UNINSTALLABLE_MODULE := false

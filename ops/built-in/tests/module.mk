@@ -74,7 +74,7 @@ LOCAL_CLASSFILE_RULE := ops_cpp
 LOCAL_MODULE := ops_cpp_proto_utest
 LOCAL_C_INCLUDES := $(common_c_includes)
 LOCAL_SHARED_LIBRARIES := $(common_shared_libraries)
-LOCAL_CFLAGS += -DFWK_USE_SYSLOG=1 -DCFG_BUILD_DEBUG -DREUSE_MEMORY=1 -O0 -g3 -Dgoogle=ascend_private
+LOCAL_CFLAGS += -DFWK_USE_SYSLOG=1 -DCFG_BUILD_DEBUG -DREUSE_MEMORY=1 -O0 -g3 -Dgoogle=ascend_private -DEIGEN_MPL2_ONLY
 
 include $(BUILD_UT_TEST)
 
@@ -153,7 +153,7 @@ LOCAL_SRC_FILES += $(LOCAL_PLUGIN_SRC_TARGET_FILES)
 ######### LOCAT VARIABLE  #########
 LOCAL_C_INCLUDES := $(common_c_includes)
 LOCAL_SHARED_LIBRARIES := $(common_shared_libraries)
-LOCAL_CFLAGS += -DFWK_USE_SYSLOG=1 -DCFG_BUILD_DEBUG -DREUSE_MEMORY=1 -O0 -g3 -Dgoogle=ascend_private
+LOCAL_CFLAGS += -DFWK_USE_SYSLOG=1 -DCFG_BUILD_DEBUG -DREUSE_MEMORY=1 -O0 -g3 -Dgoogle=ascend_private -DEIGEN_MPL2_ONLY
 
 include $(BUILD_UT_TEST)
 
@@ -206,6 +206,6 @@ LOCAL_CLASSFILE_RULE := ops_cpp
 LOCAL_MODULE := ops_cpp_op_tiling_test
 LOCAL_C_INCLUDES := $(common_c_includes)
 LOCAL_SHARED_LIBRARIES := $(common_shared_libraries)
-LOCAL_CFLAGS += -DFWK_USE_SYSLOG=1 -DCFG_BUILD_DEBUG -DREUSE_MEMORY=1 -O0 -g3 -Dgoogle=ascend_private
+LOCAL_CFLAGS += -DFWK_USE_SYSLOG=1 -DCFG_BUILD_DEBUG -DREUSE_MEMORY=1 -O0 -g3 -Dgoogle=ascend_private -DEIGEN_MPL2_ONLY
 
 include $(BUILD_UT_TEST)

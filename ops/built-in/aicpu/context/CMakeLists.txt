@@ -77,6 +77,7 @@ if(BUILD_OPEN_PROJECT)
     -fPIC
     $<$<STREQUAL:${PRODUCT_SIDE},device>:-fvisibility-inlines-hidden>
     $<$<STREQUAL:${PRODUCT_SIDE},device>:-fvisibility=hidden>
+	-DEIGEN_MPL2_ONLY
   )
 
   target_link_libraries(cpu_kernels_context_static PRIVATE
@@ -111,6 +112,7 @@ if(BUILD_OPEN_PROJECT)
     -ftrapv
     -fstack-protector-all
     -fPIC
+	-DEIGEN_MPL2_ONLY
   )
 
   if("x${PRODUCT_SIDE}" STREQUAL "xdevice")
@@ -198,6 +200,7 @@ target_compile_options(cpu_kernels_context PRIVATE
     -ftrapv
     $<$<STREQUAL:${PRODUCT_SIDE},host>:-fvisibility-inlines-hidden>
     $<$<STREQUAL:${PRODUCT_SIDE},host>:-fvisibility=hidden>
+	-DEIGEN_MPL2_ONLY
 )
 
 target_link_options(cpu_kernels_context PRIVATE
@@ -223,6 +226,7 @@ target_compile_options(cpu_kernels_context_static PRIVATE
     -fstack-protector-all
     $<$<STREQUAL:${PRODUCT_SIDE},device>:-fvisibility-inlines-hidden>
     $<$<STREQUAL:${PRODUCT_SIDE},device>:-fvisibility=hidden>
+	-DEIGEN_MPL2_ONLY
 )
 
 target_link_libraries(cpu_kernels_context_static PRIVATE
@@ -257,6 +261,7 @@ target_compile_options(aicpu_nodedef_builder PRIVATE
     -ftrapv
     -fstack-protector-all
     -fPIC
+	-DEIGEN_MPL2_ONLY
 )
 
 if("x${PRODUCT}" STREQUAL "xascend310" OR "x${PRODUCT}" STREQUAL "xascend910" OR "x${PRODUCT}" STREQUAL "xascend710" OR "x${PRODUCT}" STREQUAL "xascend310rc")

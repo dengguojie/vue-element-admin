@@ -81,7 +81,9 @@ if (NOT "${IMPL}" STREQUAL "FALSE")
       $<$<COMPILE_LANGUAGE:CXX>:-std=c++11>
       $<$<STREQUAL:${ENABLE_ASAN},true>:-fsanitize=address -fno-omit-frame-pointer -static-libasan -fsanitize=undefined -static-libubsan>
       -fPIC
+	  -DEIGEN_MPL2_ONLY
     )
+	
 
     set(AICPU_UTEST "${PROJECT_PATH}/out/bin/aicpu_all_ut_test")
     set_target_properties(cpu_kernels_llt PROPERTIES OUTPUT_NAME "aicpu_all_ut" RUNTIME_OUTPUT_DIRECTORY  ${AICPU_UTEST})
