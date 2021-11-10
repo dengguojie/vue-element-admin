@@ -437,7 +437,8 @@ checkopts() {
          exit 0;;
       h) usage
          exit 0 ;;
-      j) THREAD_NUM=$OPTARG ;;
+      j) THREAD_NUM=$OPTARG 
+	 core_nums=$OPTARG ;;
       u) UT_TEST_ALL=TRUE 
 	     UT_MODE=TRUE ;;
       s) ST_TEST=TRUE ;;
