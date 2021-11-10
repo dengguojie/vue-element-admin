@@ -51,26 +51,6 @@ TEST_F(Conv2DBackpropFilterDProtoTest, Conv2DBackpropFilterDVerifyBaseTest) {
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
-// check fm type diff x type
-TEST_F(Conv2DBackpropFilterDProtoTest, Conv2DBackpropFilterDVerifyXDtypeTest) {
-    ge::op::Conv2DBackpropFilterD op;
-    op.UpdateInputDesc("out_backprop", create_desc({128, 512, 7, 7}, ge::DT_FLOAT16));
-    op.UpdateInputDesc("x", create_desc_with_ori({512, 256, 1, 1},
-        ge::DT_INT32, ge::FORMAT_NCHW, {512, 256, 1, 1}, ge::FORMAT_NCHW));
-    op.UpdateOutputDesc("y", create_desc_with_ori({128, 256, 14, 14},
-        ge::DT_FLOAT16, ge::FORMAT_NCHW, {128, 256, 14, 14}, ge::FORMAT_NCHW));
-    op.SetAttr("strides", {1, 1, 2, 2});
-    op.SetAttr("pads", {0, 0, 0, 0});
-    op.SetAttr("dilations", {1, 1, 1, 1});
-    op.SetAttr("groups", true);
-    op.SetAttr("data_format","NCHW");
-
-    auto status = op.VerifyAllAttr(true);
-    EXPECT_EQ(status, ge::GRAPH_FAILED);
-    auto ret = op.InferShapeAndType();
-    EXPECT_EQ(ret, ge::GRAPH_FAILED);
-}
-
 // check x out of size 4
 TEST_F(Conv2DBackpropFilterDProtoTest, Conv2DBackpropFilterDVerifyXDimTest1) {
     ge::op::Conv2DBackpropFilterD op;

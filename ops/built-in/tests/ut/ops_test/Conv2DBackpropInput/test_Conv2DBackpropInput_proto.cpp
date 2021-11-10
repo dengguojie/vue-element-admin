@@ -72,7 +72,7 @@ TEST_F(Conv2DBackpropInputProtoTest, Conv2DBackpropInputSplicDataTest2) {
 }
 
 //cut outback
-TEST_F(Conv2DBackpropInputProtoTest, Conv2DBackpropInputDSplicDataTest3) {
+TEST_F(Conv2DBackpropInputProtoTest, Conv2DBackpropInputSplicDataTest3) {
     ge::op::Conv2DBackpropInput op;
     op.UpdateInputDesc("out_backprop", create_desc_with_ori({4, 64, 10},
         ge::DT_FLOAT16, ge::FORMAT_NCHW, {4, 64, 10}, ge::FORMAT_NCHW));
@@ -167,7 +167,7 @@ TEST_F(Conv2DBackpropInputProtoTest, Conv2DBackpropInputSplicDataTest6) {
     op.SetAttr("data_format","HWCN");
     op.SetAttr("offset_x", 0);
 
-    auto status = op.InferShapeAndType();
+    auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
 
@@ -195,7 +195,7 @@ TEST_F(Conv2DBackpropInputProtoTest, Conv2DBackpropInputSplicDataTest7) {
     op.SetAttr("data_format","NCHW");
     op.SetAttr("offset_x", 0);
 
-    auto status = op.InferShapeAndType();
+    auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
 
@@ -223,7 +223,7 @@ TEST_F(Conv2DBackpropInputProtoTest, Conv2DBackpropInputSplicDataTest8) {
     op.SetAttr("data_format","NCHW");
     op.SetAttr("offset_x", 0);
 
-    auto status = op.InferShapeAndType();
+    auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
 
@@ -250,7 +250,7 @@ TEST_F(Conv2DBackpropInputProtoTest, Conv2DBackpropInputSplicDataTest9) {
     op.SetAttr("data_format","NCHW");
     op.SetAttr("offset_x", 0);
 
-    auto status = op.InferShapeAndType();
+    auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
 
@@ -278,7 +278,7 @@ TEST_F(Conv2DBackpropInputProtoTest, Conv2DBackpropInputSplicDataTest10) {
     op.SetAttr("data_format","NCHW");
     op.SetAttr("offset_x", 0);
 
-    auto status = op.InferShapeAndType();
+    auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
 

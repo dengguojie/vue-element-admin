@@ -279,6 +279,9 @@ TEST_F(Conv2DBackpropInputProtoTest, conv2dbackpropinputSpecialShape) {
     EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+    int32_t groups;
+    op.GetAttr("groups", groups);
+    EXPECT_EQ(groups, 1);
 }
 
 // dynamic opti ut outbackprop shape [-1, c, -1, -1] with no range
