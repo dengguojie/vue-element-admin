@@ -1,0 +1,43 @@
+[
+  {
+    "op": "Elu",
+    "input_desc": [
+      {
+        "shape": [
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          5
+        ],
+        "format": "ND",
+        "ori_shape": [
+          5
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+		{
+		"name":"alpha",
+		"type":"float",
+		"value":1.0
+		}
+	],
+    "case_name": "test_Elu_000"
+  }
+]

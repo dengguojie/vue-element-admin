@@ -84,37 +84,36 @@ def elu_compute(x, y, alpha, kernel_name="elu"):
     Returns : A Tensor. Has the same type as data_input.
     -------
     """
-
     data = x
-    dtype = data.dtype.lower()
-
+    dtype = data.dtype
     has_improve_precision = False
-    if tbe_platform.api_check_support("tbe.dsl.vrelu", "float32") and dtype == "float16":
+    if tbe_platform.api_check_support("tbe.dsl.vexp", "float32"):
         has_improve_precision = True
+    if dtype.lower() == "float16" and has_improve_precision:
         data = tbe.cast_to(data, "float32")
         cvt_dtype = "float32"
     else:
         cvt_dtype = dtype
 
-    if not tbe_platform.api_check_support("tbe.dsl.vrelu", "float32") and dtype == "float32":
-        has_improve_precision = True
-        data = tbe.cast_to(data, "float16")
-        cvt_dtype = "float16"
-    else:
-        cvt_dtype = dtype
-
     scalar_one_neg = tvm.const(NUM_ONE_NEG, cvt_dtype)
 
-    if has_improve_precision:
-        _negative_data, _positive_data = _elu_computer_precision(data, cvt_dtype)
-    else:
+    if not has_improve_precision and cvt_dtype == "float16":
         _negative_data, _positive_data = _elu_computer_performance(data, scalar_one_neg)
-    exp_res = tbe.vexp(_negative_data)
+        exp_res = tbe.vexp(_negative_data)
+    else:
+        _negative_data, _positive_data = _elu_computer_precision(data, cvt_dtype)
+        if not tbe_platform.api_check_support("tbe.dsl.vexp", "float32") and cvt_dtype == "float32":
+            _negative_data = tbe.cast_to(_negative_data, "float16")
+            exp_res = tbe.vexp(_negative_data)
+            exp_res = tbe.cast_to(exp_res, "float32")
+        else:
+            exp_res = tbe.vexp(_negative_data)
+
     exp_res = tbe.vadds(exp_res, scalar_one_neg)
     res = tbe.vaxpy(exp_res, _positive_data, tvm.const(alpha, cvt_dtype))
 
-    if dtype == cvt_dtype:
-        res = tbe.cast_to(res, dtype)
+    if dtype != cvt_dtype:
+        res = tbe.cast_to(res, "float16")
 
     return res
 
