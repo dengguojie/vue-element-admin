@@ -87,7 +87,7 @@ uint32_t CalReverseSequence(int seq_dim, int batch_dim,
   int n = total_size / (run_len * shape[seq_dim]);
   bool parallel_in = run_len > n;
   const int64_t kMaxCoreNum = std::max(
-      static_cast<uint32_t>(1), aicpu::CpuKernelUtils::GetCPUNum(ctx) - 2);
+      static_cast<uint32_t>(1), aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
 
   auto shard = [&](const int64_t start, const int64_t end) {
     for (int j = start; j < end; ++j) {  // 0~n

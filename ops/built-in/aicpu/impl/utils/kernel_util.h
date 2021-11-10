@@ -28,6 +28,7 @@
 #include "status.h"
 
 namespace aicpu {
+const uint32_t kResvCpuNum = 2;
 const uint32_t kThreadNum = 32;
 const uint32_t kFirstInputIndex = 0;
 const uint32_t kSecondInputIndex = 1;

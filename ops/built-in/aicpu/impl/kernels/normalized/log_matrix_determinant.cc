@@ -161,8 +161,8 @@ uint32_t LogMatrixDeterminantCpuKernel::LogMatrixDeterminantCompute(
       }
     } else {
       uint32_t min_core_num = 1;
-      int64_t max_core_num =
-          std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - 2);
+      int64_t max_core_num = std::max(
+        min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
       if (max_core_num > martix_num) {
         max_core_num = martix_num;
       }

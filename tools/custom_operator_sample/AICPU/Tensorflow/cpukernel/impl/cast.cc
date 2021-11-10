@@ -284,8 +284,8 @@ CpuKernelUtils::ParallelFor(ctx, data_num, per_unit_size, shard);
 */
 
   uint32_t min_core_num = 1;
-  uint64_t max_core_num =
-      std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - 2);
+  uint64_t max_core_num = std::max(
+    min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
   if (max_core_num > x_data_size_) {
     max_core_num = x_data_size_;
   }

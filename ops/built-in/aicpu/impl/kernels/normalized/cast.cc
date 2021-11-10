@@ -260,8 +260,8 @@ uint32_t CastCpuKernel::Compute(CpuKernelContext &ctx) {
     x_data_size_ = y_data_size_;
   }
   uint32_t min_core_num = 1;
-  uint64_t max_core_num =
-      std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - 2);
+  uint64_t max_core_num = std::max(
+    min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
   if (max_core_num > x_data_size_) {
     max_core_num = x_data_size_;
   }

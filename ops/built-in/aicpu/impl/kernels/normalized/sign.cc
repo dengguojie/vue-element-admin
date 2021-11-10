@@ -102,7 +102,7 @@ uint32_t SignCpuKernel::SignCompute(CpuKernelContext &ctx) {
   }else{
     uint32_t min_core_num = 1;
     size_t max_core_num =
-            std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - 2);
+    	std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
     if (max_core_num > data_num) {
       max_core_num = data_num;
     }
@@ -141,7 +141,7 @@ uint32_t SignCpuKernel::SignComputeComplex(CpuKernelContext &ctx) {
   }else{
     uint32_t min_core_num = 1;
     size_t max_core_num =
-            std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - 2);
+            std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
     if (max_core_num > data_num) {
       max_core_num = data_num;
     }

@@ -137,7 +137,7 @@ uint32_t GreaterEqualCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
     const int64_t min_core_num = 4;
     const int64_t max_core_num = std::max(
         min_core_num,
-        static_cast<int64_t>(aicpu::CpuKernelUtils::GetCPUNum(ctx) - 2));
+        static_cast<int64_t>(aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum));
     const int64_t per_unit_size = data_num / std::min(data_num, max_core_num);
 
     auto sharder_less = [&](int64_t start, int64_t end) {
@@ -166,7 +166,7 @@ uint32_t GreaterEqualCpuKernel::BcastCompute(CpuKernelContext &ctx,
     const int64_t min_core_num = 4;
     const int64_t max_core_num = std::max(
         min_core_num,
-        static_cast<int64_t>(aicpu::CpuKernelUtils::GetCPUNum(ctx) - 2));
+        static_cast<int64_t>(aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum));
     const int64_t per_unit_size = data_num / std::min(data_num, max_core_num);
 
     auto sharder_less = [&](int64_t start, int64_t end) {

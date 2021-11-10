@@ -136,8 +136,8 @@ uint32_t RightShiftCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
 
   if (data_num >= kParallelDataNumSameShape) {
     uint32_t min_core_num = 1;
-    uint32_t max_core_num =
-        std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - 2);
+    uint32_t max_core_num = std::max(
+      min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
 
     if (data_num <= kParallelDataNumSameShapeMid) {
       max_core_num = std::min(max_core_num, 4U);   // up to 4 cpu cores
@@ -171,8 +171,8 @@ uint32_t RightShiftCpuKernel::BcastCompute(CpuKernelContext &ctx, Bcast &bcast) 
   int64_t data_num = ctx.Output(0)->NumElements();
   if (data_num >= kParallelDataNum) {
     uint32_t min_core_num = 1;
-    uint32_t max_core_num =
-        std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - 2);
+    uint32_t max_core_num = std::max(
+      min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
 
     if (data_num <= kParallelDataNumMid) {
       max_core_num = std::min(max_core_num, 4U);   // up to 4 cpu cores

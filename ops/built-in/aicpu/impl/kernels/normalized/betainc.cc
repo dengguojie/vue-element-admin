@@ -101,8 +101,8 @@ template <typename T>
 uint32_t RunParallel(CpuKernelContext &ctx, std::vector<T *> data_pointers,
                      int data_num) {
   uint32_t min_core_num = 1;
-  int32_t max_core_num =
-      std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - 2);
+  int32_t max_core_num = std::max(
+    min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
   if (max_core_num > data_num) {
     max_core_num = data_num;
   }

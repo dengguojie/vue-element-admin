@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef AICPU_KERNELS_NORMALIZED_LOG_MATRIX_DETERMINANT_H_
-#define AICPU_KERNELS_NORMALIZED_LOG_MATRIX_DETERMINANT_H_
+#ifndef AICPU_KERNELS_NORMALIZED_LOG_MATRIX_DETERMINANT_H
+#define AICPU_KERNELS_NORMALIZED_LOG_MATRIX_DETERMINANT_H
 
 #include "cpu_kernel.h"
 
