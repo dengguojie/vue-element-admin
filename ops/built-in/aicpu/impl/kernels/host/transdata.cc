@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ constexpr int64_t kCubeN = 16;
 constexpr int64_t kGroupNum = 1;
 constexpr int64_t kMaxDimsNumC = 4;
 constexpr int32_t kCubeSize = 16;
+constexpr int32_t kShapeOffset = 2;
 
 template <typename T>
 std::string VectorToString(const std::vector<T> &vec) {
@@ -79,7 +80,7 @@ void GetShapeHead(const std::vector<int64_t> &shape,
                   std::vector<int64_t> &shape_head) {
   shape_head.resize(shape.size());
   shape_head[shape.size() - 1] = 1;
-  for (int i = shape.size() - 2; i >= 0; i--) {
+  for (int i = shape.size() - kShapeOffset; i >= 0; i--) {
     shape_head[i] = shape_head[i + 1] * shape[i + 1];
   }
 }
@@ -563,11 +564,11 @@ uint32_t TransDataCpuKernel::PaddingOne(TransArgs &args,
       for (int k = 0; k < c; k++) {
         auto dst_stride =
             ((i * w_padding + j) * c_padding + k) * n_padding * type_size;
-        auto ret = memcpy_s(dst_add + dst_stride, protect_size - dst_stride,
+        auto ret_cpy = memcpy_s(dst_add + dst_stride, protect_size - dst_stride,
                             src_add + ((i * w + j) * c + k) * n * type_size,
                             n * type_size);
-        if (ret != 0) {
-          KERNEL_LOG_ERROR("Memcpy failed, ret is [%d]", ret);
+        if (ret_cpy != 0) {
+          KERNEL_LOG_ERROR("Memcpy failed, ret is [%d]", ret_cpy);
           return KERNEL_STATUS_INNER_ERROR;
         }
       }
@@ -609,10 +610,10 @@ uint32_t TransDataCpuKernel::PaddingTwo(TransArgs &args,
   auto protect_size = n_padding * z_padding * type_size;
   for (int i = 0; i < n; i++) {
     auto dst_stride = i * z_padding * type_size;
-    auto ret = memcpy_s(dst_add + dst_stride, protect_size - dst_stride,
+    auto ret_cpy = memcpy_s(dst_add + dst_stride, protect_size - dst_stride,
                         src_add + i * z * type_size, z * type_size);
-    if (ret != 0) {
-      KERNEL_LOG_ERROR("Memcpy failed, ret is [%d]", ret);
+    if (ret_cpy != 0) {
+      KERNEL_LOG_ERROR("Memcpy failed, ret is [%d]", ret_cpy);
       return KERNEL_STATUS_INNER_ERROR;
     }
   }

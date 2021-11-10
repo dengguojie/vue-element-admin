@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -125,7 +125,7 @@ uint32_t GemmCpuKernel::DoCompute(CpuKernelContext &ctx) {
       output = alpha * input_a.transpose() * input_b + beta * input_c;
     }
   } else {
-    if (transpose_a) {
+    if (transpose_b) {
       output = alpha * input_a * input_b.transpose() + beta * input_c;
     } else {
       output = alpha * input_a * input_b + beta * input_c;

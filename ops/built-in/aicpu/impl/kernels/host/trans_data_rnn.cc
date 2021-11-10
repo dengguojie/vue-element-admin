@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,14 +27,14 @@
 namespace {
 const char *TRANS_DATA_RNN = "TransDataRNN";
 constexpr int32_t ALIGN_16 = 16;
+constexpr int32_t SCOPE_16 = 16;
 }
 
 namespace aicpu {
-
 TransDataRNNCpuKernel::TransDataRNNCpuKernel() {}
 
 template <typename T>
-static uint32_t DealBiasData(T *outputData, T *inputData, int32_t dstLen, 
+static uint32_t DealBiasData(T *outputData, T *inputData, int32_t dstLen,
                              int32_t hiddenSize, int32_t hiddenCnt, int32_t hiddenSizeAlign) {
   auto retMem = memset_s(outputData, dstLen * sizeof(T), 0, dstLen * sizeof(T));
   if (retMem != 0) {
@@ -103,8 +103,8 @@ uint32_t TransDataRNNCpuKernel::GenDataFractalZnCase1(std::vector<int64_t> &dims
 
   int32_t shape0Align = hiddenSizeAlign + inputSizeAlign;
   int32_t shape1Align = hiddenSizeAlign * hiddenCnt;
-  int32_t newShape0 = shape0Align / 16;
-  int32_t newShape1 = shape1Align / 16;
+  int32_t newShape0 = shape0Align / ALIGN_16;
+  int32_t newShape1 = shape1Align / ALIGN_16;
 
   auto srcData = srcTensor->GetData();
   KERNEL_CHECK_NULLPTR(srcData, KERNEL_STATUS_PARAM_INVALID, "GenDataFractalZnCase1, get src data failed");
@@ -118,7 +118,8 @@ uint32_t TransDataRNNCpuKernel::GenDataFractalZnCase1(std::vector<int64_t> &dims
   }
   for (int32_t i = 0; i < hiddenSize; i++) {
     for (int32_t j = 0; j < shape1; j++) {
-      outputData[i + inputSizeAlign][j / hiddenSize * hiddenSizeAlign + j % hiddenSize] = inputData[inputSize * shape1 + i * shape1 + j];
+      outputData[i + inputSizeAlign][j / hiddenSize * hiddenSizeAlign + j % hiddenSize] = 
+        inputData[inputSize * shape1 + i * shape1 + j];
     }
   }
 
@@ -132,9 +133,9 @@ uint32_t TransDataRNNCpuKernel::GenDataFractalZnCase1(std::vector<int64_t> &dims
   int32_t idx = 0;
   for (int32_t i = 0; i < newShape0; i++) {
     for (int32_t j = 0; j < newShape1; j++) {
-      for (int32_t jj = 0; jj < 16; jj++) {
-        for (int32_t ii = 0; ii < 16; ii++) {
-          dstData[idx] = outputData[i * 16 + ii][j * 16 + jj];
+      for (int32_t jj = 0; jj < SCOPE_16; jj++) {
+        for (int32_t ii = 0; ii < SCOPE_16; ii++) {
+          dstData[idx] = outputData[i * ALIGN_16 + ii][j * ALIGN_16 + jj];
           idx = idx + 1;
         }
       }
@@ -152,8 +153,8 @@ uint32_t TransDataRNNCpuKernel::GenDataFractalZnCase2(std::vector<int64_t> &dims
   int32_t hiddenSizeAlign = (hiddenSize + (ALIGN_16 - 1)) / ALIGN_16 * ALIGN_16;
   int32_t shape0Align = (shape0 + (ALIGN_16 - 1)) / ALIGN_16 * ALIGN_16;
   int32_t shape1Align = hiddenSizeAlign * hiddenCnt;
-  int32_t newShape0 = shape0Align / 16;
-  int32_t newShape1 = shape1Align / 16;
+  int32_t newShape0 = shape0Align / ALIGN_16;
+  int32_t newShape1 = shape1Align / ALIGN_16;
 
   int32_t dstLen = shape0Align * shape1Align;
 
@@ -178,9 +179,9 @@ uint32_t TransDataRNNCpuKernel::GenDataFractalZnCase2(std::vector<int64_t> &dims
   int32_t idx = 0;
   for (int32_t i = 0; i < newShape0; i++) {
     for (int32_t j = 0; j < newShape1; j++) {
-      for (int32_t jj = 0; jj < 16; jj++) {
-        for (int32_t ii = 0; ii < 16; ii++) {
-          dstData[idx] = outputData[i * 16 + ii][j * 16 + jj];
+      for (int32_t jj = 0; jj < SCOPE_16; jj++) {
+        for (int32_t ii = 0; ii < SCOPE_16; ii++) {
+          dstData[idx] = outputData[i * ALIGN_16 + ii][j * ALIGN_16 + jj];
           idx = idx + 1;
         }
       }
@@ -296,5 +297,4 @@ uint32_t TransDataRNNCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 REGISTER_CPU_KERNEL(TRANS_DATA_RNN, TransDataRNNCpuKernel);
-
 }  // namespace aicpu

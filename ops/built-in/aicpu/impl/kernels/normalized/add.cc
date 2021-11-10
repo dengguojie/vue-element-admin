@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,7 +88,6 @@ uint32_t AddCpuKernel::AddCompute(CpuKernelContext &ctx) {
       "output data size is [%llu].",
       ctx.GetOpType().c_str(), calcInfo.input_0->GetDataSize(),
       calcInfo.input_1->GetDataSize(), calcInfo.output->GetDataSize());
-  
   // broadcast input
   Bcast bcast;
   if (bcast.GenerateBcastInfo(calcInfo) != KERNEL_STATUS_OK) {

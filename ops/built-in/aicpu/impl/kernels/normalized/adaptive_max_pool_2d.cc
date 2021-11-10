@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <cmath>
 #include "adaptive_max_pool_2d.h"
+#include <cmath>
 #include "utils/eigen_tensor.h"
 #include "utils/kernel_util.h"
 #include "cpu_kernel_utils.h"
@@ -56,7 +56,7 @@ template <typename SCALAR_T, typename INDICES_T>
 void AdaptiveMaxPool2dSingleOutFrame(CpuKernelContext& ctx, AdaptiveCalcArgs<SCALAR_T, INDICES_T> args) {
   CpuKernelUtils::ParallelFor(ctx, args.in_size_d, 1, [&](int64_t start, int64_t end) {
     for (auto d = start; d < end; d++) {
-      // loop over output 
+      // loop over output
       for (int64_t offset_h = 0; offset_h < args.out_size_h; offset_h++) {
         int64_t in_start_h = StartIndex(offset_h, args.out_size_h, args.in_size_h);
         int64_t in_end_h = EndIndex(offset_h, args.out_size_h, args.in_size_h);
@@ -67,7 +67,7 @@ void AdaptiveMaxPool2dSingleOutFrame(CpuKernelContext& ctx, AdaptiveCalcArgs<SCA
           int64_t in_end_w = EndIndex(offset_w, args.out_size_w, args.in_size_w);
           int64_t step_w = in_end_w - in_start_w;
 
-          // local pointers 
+          // local pointers
           SCALAR_T *in_point =
               args.input_data + d * args.in_stride_d + in_start_h * args.in_stride_h + in_start_w * args.in_stride_w;
           SCALAR_T *out_point =
@@ -75,7 +75,7 @@ void AdaptiveMaxPool2dSingleOutFrame(CpuKernelContext& ctx, AdaptiveCalcArgs<SCA
           INDICES_T *indicse_point =
               args.indices_data + d * args.out_size_h * args.out_size_w + offset_h * args.out_size_w + offset_w;
 
-          // compute local max: 
+          // compute local max:
           int64_t ih = 0;
           int64_t iw = 0;
           INDICES_T max_index = (ih + in_start_h) * args.in_size_w + (iw + in_start_w);
@@ -90,10 +90,10 @@ void AdaptiveMaxPool2dSingleOutFrame(CpuKernelContext& ctx, AdaptiveCalcArgs<SCA
             }
           }
 
-          // set output to local max 
+          // set output to local max
           *out_point = max_val;
 
-          // store location of max 
+          // store location of max
           *indicse_point = max_index;
         }
       }
@@ -219,7 +219,7 @@ uint32_t AdaptiveMaxPool2dOutCpuTemplate(CpuKernelContext& ctx) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
-  // sizes 
+  // sizes
   if (input_dims == 4) {
     args.in_size_b = input_shape_ptr->GetDimSize(dim_b);
   }
@@ -227,19 +227,19 @@ uint32_t AdaptiveMaxPool2dOutCpuTemplate(CpuKernelContext& ctx) {
   args.in_size_h = input_shape_ptr->GetDimSize(dim_h);
   args.in_size_w = input_shape_ptr->GetDimSize(dim_w);
 
-  // strides 
+  // strides
   // The calculation does not overflow because max value is number of user input data, whitch less then int64_t range.
   args.in_stride_b = args.in_size_d * args.in_size_h * args.in_size_w;
   args.in_stride_d = args.in_size_h * args.in_size_w;
   args.in_stride_h = args.in_size_w;
   args.in_stride_w = 1;
 
-  // indices will contain i,j locations for each output point 
+  // indices will contain i,j locations for each output point
   args.input_data = static_cast<SCALAR_T *>(input.GetData());
   args.output_data = static_cast<SCALAR_T *>(ctx.Output(kFirstOutputIndex)->GetData());
   args.indices_data = static_cast<INDICES_T *>(ctx.Output(kSecondOutputIndex)->GetData());
 
-  // resize output 
+  // resize output
   if (input_dims == 3) {
     AdaptiveMaxPool2dSingleOutFrame<SCALAR_T>(ctx, args);
   } else {
