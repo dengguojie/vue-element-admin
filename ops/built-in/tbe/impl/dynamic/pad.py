@@ -27,6 +27,7 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
@@ -49,8 +50,8 @@ class Constant:
     MODE3 = 3
 
 
-# pylint: disable=too-many-instance-attributes,too-many-statements,too-many-locals,too-many-lines
-# pylint: disable=too-many-arguments,invalid-name,unused-argument
+# 'pylint: disable=too-many-instance-attributes,too-many-statements,too-many-locals,too-many-lines
+# 'pylint: disable=too-many-arguments,invalid-name,unused-argument
 def check_support_hd(input_x, paddings):
     """
     Check whether 5HD is supported.
@@ -424,8 +425,10 @@ class PadInit(OpBase):
         self.tik_instance.data_move(used_ub[copy_len * self.block_num:], ub_one_block[self.block_num:], 0, burst_num,
                                     burst_len, 0, 0)
         vnchw_src_list = [used_ub[i * Constant.TRANS_MIN_BLKS] for i in range(Constant.TRANS_MIN_BLKS)]
-        vnchw_dst_list = \
-            [used_ub[i * Constant.TRANS_MIN_BLKS + Constant.TRANS_MIN_BLKS * Constant.TRANS_MIN_BLKS] for i in range(Constant.TRANS_MIN_BLKS)]
+        vnchw_dst_list = [
+            used_ub[i * Constant.TRANS_MIN_BLKS + Constant.TRANS_MIN_BLKS * Constant.TRANS_MIN_BLKS]
+            for i in range(Constant.TRANS_MIN_BLKS)
+        ]
         self.tik_instance.vnchwconv(False, False, vnchw_dst_list, vnchw_src_list, 1, 0, 0)
         self.tik_instance.data_move(output_gm[output_offset],
                                     used_ub[Constant.TRANS_MIN_BLKS * Constant.TRANS_MIN_BLKS], 0, 1, bursn_len, 0, 0)
@@ -562,8 +565,8 @@ class PadInit(OpBase):
             # copy one block first
             if not is_last_align:
                 self.data_move_with_mask_less_block([self.input_gm, input_gm_offset],
-                                                    [self.output_gm, output_outer_offset], block_copy_num, data_ub_pang,
-                                                    ub_one_block)
+                                                    [self.output_gm, output_outer_offset], block_copy_num,
+                                                    data_ub_pang, ub_one_block)
             if not is_copy_one_loop:
                 with self.tik_instance.for_range(0, copy_loop_ceil // 2) as copy_idx:
                     ping_idx = copy_idx * 2
@@ -798,8 +801,8 @@ class PadInit(OpBase):
                         vnchw_output_data_ub_list = \
                             [vnchw_output_data_ub[i * 16 + (do_inner_num * third_dim_output_num - 16) * 16]
                              for i in range(0, Constant.TRANS_MIN_BLKS)]
-                        self.tik_instance.vnchwconv(False, False, origin_output_data_ub_list, vnchw_output_data_ub_list,
-                                                    1, 0, 0)
+                        self.tik_instance.vnchwconv(False, False, origin_output_data_ub_list,
+                                                    vnchw_output_data_ub_list, 1, 0, 0)
                         burst_len = 1
                         dst_offset = \
                             output_outer_offset \
@@ -833,7 +836,8 @@ class PadInit(OpBase):
             vnchw_output_data_ub_ping = self.tik_instance.Tensor(self.inner_dtype, (max_line_in_ub * max_output_size,),
                                                                  name="vnchw_output_data_ub_ping",
                                                                  scope=tik.scope_ubuf)
-            origin_output_data_ub_ping = self.tik_instance.Tensor(self.inner_dtype, (max_line_in_ub * max_output_size,),
+            origin_output_data_ub_ping = self.tik_instance.Tensor(self.inner_dtype,
+                                                                  (max_line_in_ub * max_output_size,),
                                                                   name="origin_output_data_ub_ping",
                                                                   scope=tik.scope_ubuf)
             origin_output_tail_data_ub_ping = self.tik_instance.Tensor(self.inner_dtype, (16 * 16,),
@@ -852,7 +856,8 @@ class PadInit(OpBase):
             vnchw_output_data_ub_pang = self.tik_instance.Tensor(self.inner_dtype, (max_line_in_ub * max_output_size,),
                                                                  name="vnchw_output_data_ub_ping",
                                                                  scope=tik.scope_ubuf)
-            origin_output_data_ub_pang = self.tik_instance.Tensor(self.inner_dtype, (max_line_in_ub * max_output_size,),
+            origin_output_data_ub_pang = self.tik_instance.Tensor(self.inner_dtype,
+                                                                  (max_line_in_ub * max_output_size,),
                                                                   name="origin_output_data_ub_ping",
                                                                   scope=tik.scope_ubuf)
             origin_output_tail_data_ub_pang = self.tik_instance.Tensor(self.inner_dtype, (16 * 16,),
@@ -1017,8 +1022,8 @@ class PadInit(OpBase):
                             + (self.tiling_pading_value[self.shape_len - 2][0] + second_dim_start) \
                             * self.output_offset[self.shape_len - 1]
                         self.tik_instance.data_move(self.output_gm[dst_offset],
-                                                    origin_output_data_ub[_copy_idx * max_output_size], 0, 1, burst_len,
-                                                    0, 0)
+                                                    origin_output_data_ub[_copy_idx * max_output_size], 0, 1,
+                                                    burst_len, 0, 0)
                     # is_last_output_algin = True
                     if not is_last_output_algin:
                         copy_tail_offset = self.tik_instance.Scalar(dtype="int64", name="copy_tail_offset")
@@ -1127,11 +1132,7 @@ class PadInit(OpBase):
         # input_dtype is fp16/int16 dtype_rate == 1
         # input_dtype is fp32/int32 dtype_rate == 2
         dtype_rate = self.input_bytes_size // self.inner_bytes_size
-        wr_compile_info = {
-            "ub_size": self.ub_number,
-            "core_num": self.core_nums,
-            "dtype_rate": dtype_rate
-        }
+        wr_compile_info = {"ub_size": self.ub_number, "core_num": self.core_nums, "dtype_rate": dtype_rate}
 
         # for StridedSliceGrad add attr to compile info
         if outer_compile_info is not None:

@@ -43,8 +43,8 @@ class Constant:
     PER2 = 2
 
 
-# pylint: disable=too-many-instance-attributes,too-many-statements,too-many-locals,too-many-lines
-# pylint: disable=too-many-arguments,invalid-name
+# 'pylint: disable=too-many-instance-attributes,too-many-statements,too-many-locals,too-many-lines
+# 'pylint: disable=too-many-arguments,invalid-name,useless-object-inheritance,unused-argument
 class ReflectionPadV3Init(object):
     """
     Function: class that execute reflection_pad_v3
@@ -165,11 +165,12 @@ class ReflectionPadV3Init(object):
         self.input_gm_list.append(x_gm)
         self.input_gm_list.append(paddings_gm)
         if self.constant_values:
-                constant_values_gm = self.tik_instance.Tensor(x_dtype, self.unknown_max_shape,
-                                                              name="constant_values", scope=tik.scope_gm)
-                self.input_gm_list.append(constant_values_gm)
+            constant_values_gm = self.tik_instance.Tensor(x_dtype,
+                                                          self.unknown_max_shape,
+                                                          name="constant_values",
+                                                          scope=tik.scope_gm)
+            self.input_gm_list.append(constant_values_gm)
 
-        y_dtype = output_dict_list[0].get("dtype")
         y_gm = self.tik_instance.Tensor(self.inner_dtype, self.unknown_max_shape, name="y", scope=tik.scope_gm)
         self.input_bytes_size = tbe_platform.get_bit_len(x_dtype) // Constant.EIGHT_BIT
         self.output_gm_list.append(y_gm)
@@ -1282,4 +1283,3 @@ def reflection_pad_v3(x, paddings, constant_values, y, mode, padding_contiguous=
                               kernel_name)
     obj.init_src_dst_gm((x, paddings, constant_values), (y,), pad_input_idx=0, pad_outnput_idx=0)
     return obj.pad_compute()
-

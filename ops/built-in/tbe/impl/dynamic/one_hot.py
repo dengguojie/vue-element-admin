@@ -15,7 +15,7 @@
 """
 one_hot
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 from impl.util.platform_adapter import tbe_platform as cce
 from impl.util.platform_adapter import tik
 from impl.util import util_common
@@ -24,6 +24,7 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
@@ -51,6 +52,8 @@ class Constant:
     TOTAL_PART = 3
 
 
+# 'pylint: disable=too-many-public-methods,too-many-instance-attributes,too-many-arguments
+# 'pylint: disable=unused-argument,too-many-statements,too-many-locals,invalid-name
 class OneHot():
     """
     The class of OneHot op
@@ -1645,7 +1648,7 @@ class OneHot():
                                                           self.depth *
                                                           self.last_dim_x +
                                                           self.index_scalar *
-                                                          self.last_dim_x], self.off_value_tensor_ub, 0, 1, 
+                                                          self.last_dim_x], self.off_value_tensor_ub, 0, 1,
                                                           self.last_dim_x // self.off_value_each_block, 0, 0)
                     self.align_to_32_last_block(
                         self.last_dim_x,
@@ -2539,7 +2542,7 @@ def _check_param(x, depth, on_value, off_value):
 
 # the register of OneHot op
 @register_operator('OneHot')
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def one_hot(x,
             depth,
             on_value,

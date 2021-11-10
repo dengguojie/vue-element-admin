@@ -25,7 +25,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 @register_operator_compute("OnesLike", op_mode="dynamic", support_fusion=True)
 def ones_like_compute(input_x, output_y, kernel_name="ones_like"):
     """
@@ -97,6 +97,5 @@ def ones_like(x, y, kernel_name="ones_like"):
         with tvm.target.cce():
             auto_sch = tbe.auto_schedule(res)
         schedules.append(auto_sch)
-    config = {"print_ir": False, "name": kernel_name,
-              "tensor_list": tensors}
+    config = {"print_ir": False, "name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)

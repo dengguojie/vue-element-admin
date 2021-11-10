@@ -27,7 +27,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def _is_equal_zero(x):
     """
     if x==0,then return 1,else return 0.
@@ -124,7 +124,7 @@ def _positive_compute(input_x, input_y):
     return res
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def _negative_compute(input_x, input_y):
     """
     compute result of pow when data_x is less than 0,
@@ -166,7 +166,7 @@ def _negative_compute(input_x, input_y):
     return res
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 @register_operator_compute("Pow", op_mode="dynamic", support_fusion=True)
 def pow_compute(input_x, input_y, output_z, kernel_name="pow"):
     """
@@ -240,7 +240,7 @@ def pow_compute(input_x, input_y, output_z, kernel_name="pow"):
     return res
 
 
-# pylint: disable=locally-disabled,redefined-builtin
+# 'pylint: disable=locally-disabled,redefined-builtin
 @register_operator("Pow")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)

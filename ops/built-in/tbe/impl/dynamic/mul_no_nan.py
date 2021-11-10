@@ -25,7 +25,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
 @register_operator_compute("MulNoNan", op_mode="dynamic", support_fusion=True)
 def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
     """
@@ -50,7 +50,8 @@ def mul_no_nan_compute(input_x1, input_x2, output_y, kernel_name="mul_no_nan"):
     shape_x1 = shape_util.shape_to_list(input_x1.shape)
     shape_x2 = shape_util.shape_to_list(input_x2.shape)
 
-    shape_x1, shape_x2, shape_max = shape_util.broadcast_shapes(shape_x1, shape_x2,
+    shape_x1, shape_x2, shape_max = shape_util.broadcast_shapes(shape_x1,
+                                                                shape_x2,
                                                                 param_name_input1="shape_x1",
                                                                 param_name_input2="shape_x2")
     input_x1 = tbe.broadcast(input_x1, shape_max)
@@ -87,8 +88,7 @@ def mul_no_nan(x1, x2, y, kernel_name="mul_no_nan"):
     inputx2_data_type = x2.get("dtype").lower()
     para_check.check_dtype(inputx1_data_type, check_tuple)
     para_check.check_dtype(inputx2_data_type, check_tuple)
-    para_check.check_elewise_shape_range([x1, x2],
-                                         support_broadcast=True)
+    para_check.check_elewise_shape_range([x1, x2], support_broadcast=True)
 
     shape_x1 = x1.get("shape")
     shape_x2 = x2.get("shape")

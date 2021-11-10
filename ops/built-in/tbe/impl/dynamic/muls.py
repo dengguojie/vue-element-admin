@@ -24,7 +24,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=too-many-locals,unused-argument
+# 'pylint: disable=too-many-locals,unused-argument
 def muls_compute(input_x, scalar, kernel_name="muls"):
     """
     calculating data
@@ -47,8 +47,8 @@ def muls_compute(input_x, scalar, kernel_name="muls"):
 
 
 @register_operator("Muls")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
+                            para_check.KERNEL_NAME)
 def muls(input_x, output_y, value, kernel_name="muls"):
     """
     calculating data

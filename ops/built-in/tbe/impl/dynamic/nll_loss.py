@@ -26,6 +26,7 @@ from impl.util.platform_adapter import tbe_context
 from impl import common_util
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
@@ -40,12 +41,12 @@ class Constant:
     # repeat up limit for mte
     REPEAT_LIMIT = 255
     # max int64 value
-    MAX_INT64_VALUE = 2 ** 64 - 1
+    MAX_INT64_VALUE = 2**64 - 1
     # parameters for moving tiling data
     TILING_CTRL_PARAM = ("int64", 64, 4)
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument, invalid-name, too-many-arguments
 def check_supported(x, target, weight, y, total_weight, reduction="mean", ignore_index=-100, kernel_name="nll_loss"):
     """
     check nllloss supported
@@ -91,14 +92,13 @@ def _dynamic_static_union(shape, reduction):
     """
     for dynamic and static union fully verified
     """
-    white_list_dict = {"none": [[10, 9973], [11, 9973], [11, 10000], [11, 42767],
-                                [12, 9151], [12, 9151], [12, 10000], [12, 42767],
-                                [14, 9973], [17, 10000], [19, 9973], [29, 355300],
-                                [30, 9973], [35, 777074], [37, 42767], [37, 216827],
-                                [38, 9973], [38, 10000], [41, 10000], [47, 655003],
-                                [51, 9973], [59, 8221], [67, 9043], [83, 7206],
-                                [84, 42767], [68483, 9973]],
-                       "sum": []}
+    white_list_dict = {
+        "none": [[10, 9973], [11, 9973], [11, 10000], [11, 42767], [12, 9151], [12, 9151], [12, 10000], [12, 42767],
+                 [14, 9973], [17, 10000], [19, 9973], [29, 355300], [30, 9973], [35, 777074], [37, 42767],
+                 [37, 216827], [38, 9973], [38, 10000], [41, 10000], [47, 655003], [51, 9973], [59, 8221], [67, 9043],
+                 [83, 7206], [84, 42767], [68483, 9973]],
+        "sum": []
+    }
 
     if reduction not in white_list_dict:
         return False
@@ -110,7 +110,7 @@ def _dynamic_static_union(shape, reduction):
     return False
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def _ceil_div(value_x, value_y):
     """
     do ceil division
@@ -155,6 +155,7 @@ def _get_reduce_sum_ub_work_space_size(dtype, ub_size):
     return repeat_num
 
 
+# 'pylint: disable=unused-argument, invalid-name, too-many-arguments
 def _check_input_params(x_dtype, target_dtype, weight_dtype, y_dtype, total_weight_dtype, reduction):
     """
     check whether the input parameters is valid or not
@@ -170,6 +171,7 @@ def _check_input_params(x_dtype, target_dtype, weight_dtype, y_dtype, total_weig
         error_manager_vector.raise_err_check_params_rules(Constant.OP_TYPE, reduction_rule, "reduction", reduction)
 
 
+# 'pylint: disable=unused-argument, invalid-name, too-many-arguments
 def scalar_vector_func(tik_inst, vec_func, dst, src, scalar, data_len, data_type):
     """
     do scalar vector operator (vmuls)
@@ -218,6 +220,7 @@ def vector_func(tik_inst, vec_func, dst, src1, src2, data_len, data_type):
         vec_func(repeat_tail, dst[offset], src1[offset], src2[offset], 1, 1, 1, 1, 8, 8, 8)
 
 
+# 'pylint: disable=unused-argument, invalid-name, too-many-arguments, too-many-locals
 def reduce_sum_compute(tik_inst, dst, src, work_space, data_len, data_type):
     """
     do reduce sum vector operator(vcadd,vadd)
@@ -306,6 +309,7 @@ def _get_tiling_params(tik_inst, ub_tiling, tiling_reg_list):
     tiling_reg_list[12].set_as(ub_tiling[12])
 
 
+# 'pylint: disable=unused-argument, invalid-name, too-many-arguments, too-many-locals
 def _init_scalar_params(block_idx, scalar_params_list, tiling_data_list):
     """
     init scalar params
@@ -351,6 +355,7 @@ def _init_scalar_params(block_idx, scalar_params_list, tiling_data_list):
     core_target_left_offset.set_as(_get_core_target_left_offset())
 
 
+# 'pylint: disable=unused-argument, invalid-name, too-many-arguments, too-many-locals
 def _get_scalar_params(tik_inst, block_idx, tiling_reg_list, target_dtype):
     """
     get scalar params
@@ -377,9 +382,11 @@ def _get_scalar_params(tik_inst, block_idx, tiling_reg_list, target_dtype):
     core_target_left_offset = tik_inst.Scalar("int64", "core_target_left_offset")
     target_index = tik_inst.Scalar(target_dtype, "target_index")
 
-    scalar_params = [need_core_num, c_size, per_core_size, core_loop_cnt, core_x_loop_size, core_target_loop_size,
-                     core_left_size, core_x_offset, core_target_offset, core_x_left_offset,
-                     core_target_left_offset, target_index, x_size, target_size, weight_size]
+    scalar_params = [
+        need_core_num, c_size, per_core_size, core_loop_cnt, core_x_loop_size, core_target_loop_size, core_left_size,
+        core_x_offset, core_target_offset, core_x_left_offset, core_target_left_offset, target_index, x_size,
+        target_size, weight_size
+    ]
 
     # last core
     with tik_inst.if_scope(block_idx == need_core_num - 1):
@@ -392,25 +399,22 @@ def _get_scalar_params(tik_inst, block_idx, tiling_reg_list, target_dtype):
     return scalar_params
 
 
+# 'pylint: disable=unused-argument, invalid-name, too-many-arguments, too-many-locals
 def _process_valid_data(tik_inst, data_x, data_weight, ub_x, ub_weight, ub_valid_x, ub_valid_weight, ub_work_space,
                         target_loop_size, reduction):
     """
     process valid data
     """
     # valid_x mul -1
-    scalar_vector_func(tik_inst, tik_inst.vmuls, ub_valid_x, ub_valid_x, -1, target_loop_size,
-                       data_x.dtype)
+    scalar_vector_func(tik_inst, tik_inst.vmuls, ub_valid_x, ub_valid_x, -1, target_loop_size, data_x.dtype)
 
     # valid_x mul valid_weight
-    vector_func(tik_inst, tik_inst.vmul, ub_valid_x, ub_valid_x, ub_valid_weight, target_loop_size,
-                data_x.dtype)
+    vector_func(tik_inst, tik_inst.vmul, ub_valid_x, ub_valid_x, ub_valid_weight, target_loop_size, data_x.dtype)
 
     # get sum of valid_weight
     if reduction == "sum":
-        reduce_sum_compute(tik_inst, ub_x, ub_valid_x, ub_work_space, target_loop_size,
-                           data_x.dtype)
-        reduce_sum_compute(tik_inst, ub_weight, ub_valid_weight, ub_work_space, target_loop_size,
-                           data_weight.dtype)
+        reduce_sum_compute(tik_inst, ub_x, ub_valid_x, ub_work_space, target_loop_size, data_x.dtype)
+        reduce_sum_compute(tik_inst, ub_weight, ub_valid_weight, ub_work_space, target_loop_size, data_weight.dtype)
 
 
 def _data_move_in_x(tik_inst, data_x, ub_x, x_offset, x_loop_size):
@@ -434,10 +438,11 @@ def _data_move_in_target(tik_inst, data_target, ub_target, target_offset, target
     do move target from out to ub
     """
     target_data_one_block = _get_element_cnt_one_block(data_target.dtype)
-    tik_inst.data_move(ub_target, data_target[target_offset], 0, 1,
-                       _ceil_div(target_loop_size, target_data_one_block), 0, 0)
+    tik_inst.data_move(ub_target, data_target[target_offset], 0, 1, _ceil_div(target_loop_size, target_data_one_block),
+                       0, 0)
 
 
+# 'pylint: disable=unused-argument, invalid-name, too-many-arguments, too-many-locals
 def _data_move_out_output(tik_inst, data_x, data_y, data_total_weight, ub_x, ub_weight, ub_valid_x, reduction,
                           target_offset, target_loop_size):
     """
@@ -453,8 +458,8 @@ def _data_move_out_output(tik_inst, data_x, data_y, data_total_weight, ub_x, ub_
         tik_inst.set_atomic_add(0)
     else:
         # move out valid_x
-        tik_inst.data_move(data_y[target_offset], ub_valid_x, 0, 1,
-                           _ceil_div(target_loop_size, x_data_one_block), 0, 0)
+        tik_inst.data_move(data_y[target_offset], ub_valid_x, 0, 1, _ceil_div(target_loop_size, x_data_one_block), 0,
+                           0)
 
 
 def _normal_weight_nll_loss(tik_inst, block_idx, scalar_params, trans_params):
@@ -472,10 +477,12 @@ def _normal_weight_nll_loss(tik_inst, block_idx, scalar_params, trans_params):
                                weight_size, reduction)
 
     with tik_inst.if_scope(block_idx < need_core_num):
+
         def _normal_weight(core_info, core_left_info):
             """
             detail process for normal weight
             """
+
             def _process_in_normal_weight(loop_cnt, x_loop_size, target_loop_size, x_offset, target_offset):
                 """
                 process data in normal weight
@@ -530,8 +537,7 @@ def _normal_weight_nll_loss(tik_inst, block_idx, scalar_params, trans_params):
             _process_in_normal_weight(*core_info)
             _process_left_data_in_normal_weight(*core_left_info)
 
-        per_core_info = (core_loop_cnt, core_x_loop_size, core_target_loop_size,
-                         core_x_offset, core_target_offset)
+        per_core_info = (core_loop_cnt, core_x_loop_size, core_target_loop_size, core_x_offset, core_target_offset)
         per_core_left_info = (core_left_size, core_x_left_offset, core_target_left_offset)
         _normal_weight(per_core_info, per_core_left_info)
 
@@ -551,6 +557,7 @@ def _large_weight_nll_loss(tik_inst, block_idx, scalar_params, trans_params):
                               weight_size, reduction)
 
     with tik_inst.if_scope(block_idx < need_core_num):
+
         def _large_weight(core_info, core_left_info):
             """
             detail process for large weight
@@ -659,8 +666,10 @@ def nll_loss_compute(tik_inst, tensor_list, reduction):
     data_x, data_target, data_weight, data_y, data_total_weight, data_tiling = tensor_list
 
     with tik_inst.for_range(0, Constant.CORE_NUM, block_num=Constant.CORE_NUM) as block_idx:
-        ub_tiling = tik_inst.Tensor(Constant.TILING_CTRL_PARAM[0], (Constant.TILING_CTRL_PARAM[1],), tik.scope_ubuf, "ub_tiling")
-        tik_inst.data_move(ub_tiling, data_tiling, 0, 1, Constant.TILING_CTRL_PARAM[1] // Constant.TILING_CTRL_PARAM[2], 0, 0)
+        ub_tiling = tik_inst.Tensor(Constant.TILING_CTRL_PARAM[0], (Constant.TILING_CTRL_PARAM[1],), tik.scope_ubuf,
+                                    "ub_tiling")
+        tik_inst.data_move(ub_tiling, data_tiling, 0, 1,
+                           Constant.TILING_CTRL_PARAM[1] // Constant.TILING_CTRL_PARAM[2], 0, 0)
         tiling_reg_list = [None] * Constant.TILING_CTRL_PARAM[1]
         _get_tiling_params(tik_inst, ub_tiling, tiling_reg_list)
         scalar_params = _get_scalar_params(tik_inst, block_idx, tiling_reg_list, data_target.dtype)
@@ -720,13 +729,17 @@ def nll_loss(x, target, weight, y, total_weight, reduction="mean", ignore_index=
     data_x = tik_inst.Tensor(x_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "data_x")
     data_target = tik_inst.Tensor(target_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "data_target")
     data_weight = tik_inst.Tensor(weight_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "data_weight")
-    data_tiling = tik_inst.Tensor(Constant.TILING_CTRL_PARAM[0], (Constant.TILING_CTRL_PARAM[1],), tik.scope_gm, "data_tiling")
+    data_tiling = tik_inst.Tensor(Constant.TILING_CTRL_PARAM[0], (Constant.TILING_CTRL_PARAM[1],), tik.scope_gm,
+                                  "data_tiling")
     if reduction == "none":
         data_y = tik_inst.Tensor(y_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "data_y")
-        data_total_weight = tik_inst.Tensor(total_weight_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "data_total_weight")
+        data_total_weight = tik_inst.Tensor(total_weight_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm,
+                                            "data_total_weight")
     else:
         data_y = tik_inst.Tensor(y_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "data_y", is_atomic_add=True)
-        data_total_weight = tik_inst.Tensor(total_weight_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "data_total_weight",
+        data_total_weight = tik_inst.Tensor(total_weight_dtype, (Constant.MAX_INT64_VALUE,),
+                                            tik.scope_gm,
+                                            "data_total_weight",
                                             is_atomic_add=True)
 
     tensor_list = [data_x, data_target, data_weight, data_y, data_total_weight, data_tiling]
@@ -734,12 +747,18 @@ def nll_loss(x, target, weight, y, total_weight, reduction="mean", ignore_index=
     nll_loss_compute(tik_inst, tensor_list, reduction)
 
     ub_size = _get_max_element_in_ub(x_dtype, 1)
-    tbe_context.get_context().add_compile_info("vars", {"ub_size": ub_size, "core_num": Constant.CORE_NUM,
-                                                        "reduction": reduction, "ignore_index": ignore_index})
+    tbe_context.get_context().add_compile_info("vars", {
+        "ub_size": ub_size,
+        "core_num": Constant.CORE_NUM,
+        "reduction": reduction,
+        "ignore_index": ignore_index
+    })
 
     opt_config = {"enable_const_fold": True}
     tik_inst.BuildCCE(kernel_name=kernel_name,
-                      inputs=[data_x, data_target, data_weight], outputs=[data_y, data_total_weight],
-                      flowtable=[data_tiling], config=opt_config)
+                      inputs=[data_x, data_target, data_weight],
+                      outputs=[data_y, data_total_weight],
+                      flowtable=[data_tiling],
+                      config=opt_config)
 
     return {"compile_info": tbe_context.get_context().get_compile_info()}

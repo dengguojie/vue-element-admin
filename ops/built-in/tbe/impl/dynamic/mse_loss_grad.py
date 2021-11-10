@@ -29,7 +29,7 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_context
 
 
-# pylint: disable=too-many-arguments,unused-argument,consider-using-in,len-as-condition,too-many-locals
+# 'pylint: disable=too-many-arguments,unused-argument,consider-using-in,len-as-condition,too-many-locals
 @register_operator_compute("MseLossGrad", op_mode="dynamic", support_fusion=False)
 def mse_loss_grad_compute(predict, label, dout, grad, reduction="mean", kernel_name="mse_loss_grad"):
     """
@@ -56,8 +56,7 @@ def mse_loss_grad_compute(predict, label, dout, grad, reduction="mean", kernel_n
     """
     ori_dtype = predict.dtype
     trans_dtype = ori_dtype
-    if ori_dtype == "float16" and tbe_platform.api_check_support(
-            "te.lang.cce.vmul", "float32"):
+    if ori_dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vmul", "float32"):
         predict = tbe.cast_to(predict, "float32")
         label = tbe.cast_to(label, "float32")
         dout = tbe.cast_to(dout, "float32")
@@ -80,7 +79,7 @@ def mse_loss_grad_compute(predict, label, dout, grad, reduction="mean", kernel_n
         for i in predict_shape:
             reduce_elts *= i
         if isinstance(reduce_elts, float):
-            cof = (reduce_elts ** (-1)) * 2.0
+            cof = (reduce_elts**(-1)) * 2.0
             cof = tvm.const(cof, dtype=calc_dtype)
         else:
             cof = tbe.var("cof", dtype=calc_dtype)
@@ -101,9 +100,8 @@ def mse_loss_grad_compute(predict, label, dout, grad, reduction="mean", kernel_n
 
 
 @register_operator("MseLossGrad")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
 def mse_loss_grad(predict, label, dout, grad, reduction="mean", kernel_name="mse_loss_grad"):
     """
     calculating data
@@ -143,22 +141,13 @@ def mse_loss_grad(predict, label, dout, grad, reduction="mean", kernel_name="mse
     para_check.check_dtype(label_dtype, check_list)
     para_check.check_dtype(dout_dtype, check_list)
 
-    predict_shape = predict.get("shape")
-    predict_range = list(predict.get("range"))
-
-    label_shape = label.get("shape")
-    label_range = list(label.get("range"))
-
-    dout_shape = dout.get("shape")
-    dout_range = list(dout.get("range"))
-
     para_check.check_kernel_name(kernel_name)
 
     ins = classify([predict, label, dout], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
     for (_predict, _label, _dout) in ins:
         with tbe.compute():
-            shape_predict, shape_label, shape_dout = shape_util.variable_shape([_predict, _label, _dout])
+            shape_predict, _, shape_dout = shape_util.variable_shape([_predict, _label, _dout])
             data_predict = tvm.placeholder(shape_predict, name="data_predict", dtype=predict_dtype)
             data_label = tvm.placeholder(shape_predict, name="data_label", dtype=label_dtype)
             data_dout = tvm.placeholder(shape_dout, name="data_dout", dtype=dout_dtype)

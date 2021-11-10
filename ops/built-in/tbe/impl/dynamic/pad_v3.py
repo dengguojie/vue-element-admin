@@ -49,7 +49,7 @@ class Constant:
     THRESHOLD_VALUE = 8192
     BLOCK = 32
 
-
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 def get_op_support_info(x,
                         paddings,
                         constant_values,
@@ -72,8 +72,8 @@ def get_op_support_info(x,
     return op_cal_info_in_json
 
 
-# pylint: disable=too-many-instance-attributes,too-many-statements,too-many-locals,too-many-lines
-# pylint: disable=too-many-arguments,invalid-name
+# 'pylint: disable=too-many-instance-attributes,too-many-statements,too-many-locals,too-many-lines
+# 'pylint: disable=too-many-arguments,invalid-name
 class PadV3Init(object):
     """
     Function: class that execute pad_v3
@@ -357,7 +357,6 @@ class PadV3Init(object):
         if self.constant_values is not None:
             self.input_gm_list.append(self.constant_values_gm)
 
-        y_dtype = output_dict_list[0].get("dtype")
         y_gm = self.tik_instance.Tensor(self.inner_dtype, self.unknown_max_shape, name="y", scope=tik.scope_gm)
         self.input_bytes_size = tbe_platform.get_bit_len(x_dtype) // Constant.EIGHT_BIT
         self.output_gm_list.append(y_gm)
@@ -1262,6 +1261,9 @@ class PadV3Init(object):
                     _run_one_outer(self.core_outer_num - 1, ping_ub_list)
 
     def do_tiling_key_mode_4(self, core_index):
+        """
+        do tiling key mode 4
+        """
         total_output_tensor = self.tik_instance.Scalar(dtype='int32', name='total_output_tensor', init_value=1)
         total_output_tensor_each_core = self.tik_instance.Scalar(dtype='int32', name='total_output_tensor_each_core')
         offset_gm = self.tik_instance.Scalar(dtype='int32', name='offset_gm')
@@ -1303,6 +1305,9 @@ class PadV3Init(object):
                         move_ub, 0, 1, align_burst, 0, 0)
 
     def do_tiling_key_mode_5(self):
+        """
+        do tiling key mode 5
+        """
         ranges = self.tik_instance.Scalar(dtype='int64', name='ranges')
         ranges.set_as(self.tiling_input_dim_2 * self.tiling_input_dim_3)
         ub_size_second_mode = 2

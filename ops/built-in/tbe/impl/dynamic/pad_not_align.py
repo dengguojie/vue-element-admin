@@ -16,20 +16,27 @@ http://www.apache.org/licenses/LICENSE-2.0
 PadD: Not Align
 """
 from impl.util.platform_adapter import tik
-# vector_repeat
-MAX_REPEAT = 255
-# block_size
-BLOCK_SIZE = 32
 
 
-# pylint: disable=too-many-locals,too-many-arguments,too-many-statements
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # vector_repeat
+    MAX_REPEAT = 255
+    # block_size
+    BLOCK_SIZE = 32
+
+
+# 'pylint: disable=too-many-locals,too-many-arguments,too-many-statements
 def set_vector_dup(obj, num_data, number):
     """
     Re:
     Func supports that num_data == N*mask(less than buf_size)
     """
     tik_instance = obj.tik_instance
-    unit = MAX_REPEAT * obj.mask
+    unit = Constant.MAX_REPEAT * obj.mask
     repeat_merchant = num_data // unit
     repeat_remainder = num_data % unit
     dst_blk_stride = 1
@@ -39,7 +46,7 @@ def set_vector_dup(obj, num_data, number):
         tik_instance.vector_dup(obj.mask,
                                 obj.buf[i*unit],
                                 number,
-                                MAX_REPEAT,
+                                Constant.MAX_REPEAT,
                                 dst_blk_stride,
                                 dst_rep_stride)
 
@@ -71,12 +78,12 @@ def copy_buf2gm_circulation(obj, ac_num, vir_num, dst_idx, pattern=None):
 
     tail = ac_num // vir_num
     tail_block = ac_num % vir_num
-    block_num = BLOCK_SIZE // num_bit
+    block_num = Constant.BLOCK_SIZE // num_bit
 
     def _copy_ub2gm(begin_idx, data_len, idx):
         idx += begin_idx
         n_burst = 1
-        burst_len = data_len * num_bit // BLOCK_SIZE
+        burst_len = data_len * num_bit // Constant.BLOCK_SIZE
         src_stride = 0
         dst_stride = 0
         tik_instance.data_move(dst[idx],
@@ -186,7 +193,7 @@ def _copy_gm2buf(obj, in_num, src_ub, src_gm):
     obj.tik_instance.data_move(obj.buf[src_ub],
                                obj.input_gm[src_gm],
                                0, 1,
-                               in_num * obj.num_bit // BLOCK_SIZE,
+                               in_num * obj.num_bit // Constant.BLOCK_SIZE,
                                0, 0)
 
 
@@ -207,7 +214,7 @@ def _copy_buf2gm(obj, in_num, dst_gm, max_num):
     Func requires in_num <= buf_size.
     """
     tik_instance = obj.tik_instance
-    block_num = BLOCK_SIZE // obj.num_bit
+    block_num = Constant.BLOCK_SIZE // obj.num_bit
 
     align_vol = in_num / block_num * block_num
     not_align_vol = in_num % block_num
@@ -216,7 +223,7 @@ def _copy_buf2gm(obj, in_num, dst_gm, max_num):
     def _move_out(begin_idx, data_len, dst_idx, buf):
         dst_idx += begin_idx
         n_burst = 1
-        burst_len = data_len * obj.num_bit // BLOCK_SIZE
+        burst_len = data_len * obj.num_bit // Constant.BLOCK_SIZE
         src_stride = 0
         dst_stride = 0
         tik_instance.data_move(obj.output_gm[dst_idx],
@@ -249,7 +256,7 @@ def _data_move_last_dim(obj, in_num, src_gm, dst_gm, max_num):
     Func requires in_num must >= 32(tiling.cpp)
     """
     tik_instance = obj.tik_instance
-    block_num = BLOCK_SIZE // obj.num_bit
+    block_num = Constant.BLOCK_SIZE // obj.num_bit
     vir_num = obj.buf_size
 
     # move align of in_num
@@ -259,7 +266,7 @@ def _data_move_last_dim(obj, in_num, src_gm, dst_gm, max_num):
     def _move_in(begin_idx, data_len, src_idx, buf):
         src_idx += begin_idx
         n_burst = 1
-        burst_len = data_len * obj.num_bit // BLOCK_SIZE
+        burst_len = data_len * obj.num_bit // Constant.BLOCK_SIZE
         src_stride = 0
         dst_stride = 0
         tik_instance.data_move(buf[0],
@@ -273,7 +280,7 @@ def _data_move_last_dim(obj, in_num, src_gm, dst_gm, max_num):
     def _move_out(begin_idx, data_len, dst_idx, buf):
         dst_idx += begin_idx
         n_burst = 1
-        burst_len = data_len * obj.num_bit // BLOCK_SIZE
+        burst_len = data_len * obj.num_bit // Constant.BLOCK_SIZE
         src_stride = 0
         dst_stride = 0
         tik_instance.data_move(obj.output_gm[dst_idx],
@@ -338,8 +345,8 @@ def tik_align(obj, in_num, max_num, align_vol):
     """
     in_num: vol of data
     max_num: scalar to save result of func.
-    align_vol: standard of align: (BLOCK_SIZE/num_bit) or mask.
-    buf_size: must be N*(BLOCK_SIZE/num_bit) or M*mask.
+    align_vol: standard of align: (Constant.BLOCK_SIZE/num_bit) or mask.
+    buf_size: must be N*(Constant.BLOCK_SIZE/num_bit) or M*mask.
     Re:
     In module of "not_align", some vars must be align in computation.
     """
@@ -415,8 +422,8 @@ def _recursion(obj, axis, dst_gm, src_gm, src_ub, dst_ub, max_num, mark):
         mark_gm2buf = obj.recur_gm2buf_mk[axis]
         with obj.tik_instance.if_scope(mark_gm2buf == 1):
             # init_align buf_src and num of moveIn.
-            tik_align(obj, obj.prod_new_out[axis], buf_src, BLOCK_SIZE/obj.num_bit)
-            tik_align(obj, obj.prod_new_in[axis], max_num, BLOCK_SIZE/obj.num_bit)
+            tik_align(obj, obj.prod_new_out[axis], buf_src, Constant.BLOCK_SIZE/obj.num_bit)
+            tik_align(obj, obj.prod_new_in[axis], max_num, Constant.BLOCK_SIZE/obj.num_bit)
             _copy_gm2buf(obj, max_num, buf_src, src_gm)
 
         # Go to next level until the last dim

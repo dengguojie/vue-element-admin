@@ -18,6 +18,7 @@ PadD: Align
 from impl.util.platform_adapter import tik
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
@@ -28,7 +29,7 @@ class Constant:
     BLOCK_SIZE = 32
 
 
-# pylint: disable=too-many-arguments,too-many-locals,too-many-statements
+# 'pylint: disable=too-many-arguments,too-many-locals,too-many-statements
 def set_vector_dup(obj, num_data, number):
     """
     num_data: volume of vec_dup.

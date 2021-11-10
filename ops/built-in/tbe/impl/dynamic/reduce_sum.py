@@ -13,7 +13,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 reduce sum
 """
-import te
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_platform
@@ -22,8 +21,6 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
-
-NONETYPE = type(None)
 
 
 # 'pylint: disable=unused-argument,invalid-name,redefined-argument-from-local

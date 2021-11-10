@@ -27,11 +27,8 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-# const value
-CONST_ZERO = 0
 
-
-# pylint: disable=invalid-name,unused-argument,redefined-argument-from-local
+# 'pylint: disable=invalid-name,unused-argument,redefined-argument-from-local
 @register_operator_compute("Relu", op_mode="dynamic", support_fusion=True)
 def relu_compute(x, y, kernel_name="relu"):
     """
@@ -62,7 +59,7 @@ def relu_compute(x, y, kernel_name="relu"):
         data_res = tbe.vrelu(x)
     else:
         tensor_zero = tbe.broadcast(
-            tvm.const(CONST_ZERO, compatible_dtype), shape)
+            tvm.const(0, compatible_dtype), shape)
         data_res = tbe.vmax(x, tensor_zero)
 
     data_res = tbe.cast_to(data_res, inp_dtype)

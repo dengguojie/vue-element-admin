@@ -20,6 +20,7 @@ from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
@@ -34,7 +35,7 @@ class Constant:
     INT64_BLOCK = 4
 
 
-# pylint: disable=too-many-statements,too-many-instance-attributes,too-many-arguments
+# 'pylint: disable=too-many-statements,too-many-instance-attributes,too-many-arguments
 def _prod(values):
     """
     Prod the input values by multiply.

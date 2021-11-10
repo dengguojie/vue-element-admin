@@ -28,19 +28,25 @@ from impl.auto_tune.resize_bilinear_v2 import tune_param_check_supported_resize_
 from tbe.common.register import register_tune_space
 from tbe.common.register import register_tune_param_check_supported
 
-# max uint16
-MAX_UINT16 = 2 ** 16 - 1
-# max int64
-MAX_INT64 = 2 ** 63 - 1
-# ting param num
-TILING_ARG_NUM = 16
-# reserved ub size
-RESERVED_UB_SIZE = 8 * 1024
-# the num of assist_gm size(0, 1, 2, ...., 255)
-ASSIST_NUM = 256
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # max uint16
+    MAX_UINT16 = 2**16 - 1
+    # max int64
+    MAX_INT64 = 2**63 - 1
+    # ting param num
+    TILING_ARG_NUM = 16
+    # reserved ub size
+    RESERVED_UB_SIZE = 8 * 1024
+    # the num of assist_gm size(0, 1, 2, ...., 255)
+    ASSIST_NUM = 256
 
 
-# pylint: disable=invalid-name,too-many-locals,too-many-arguments,too-many-statements,too-many-instance-attributes
+# 'pylint: disable=invalid-name,too-many-locals,too-many-arguments,too-many-statements,too-many-instance-attributes
 class ResizeBilinearV2(OpBase):
     """
     Function: use to store ResizeBilinearV2 base parameters
@@ -61,7 +67,7 @@ class ResizeBilinearV2(OpBase):
         para_check.check_dtype(self.images_dtype, ("float32", "float16"), param_name="images")
 
         self.kernel_name = kernel_name
-        self.ub_size_bytes = self.ub_size_bytes - RESERVED_UB_SIZE
+        self.ub_size_bytes = self.ub_size_bytes - Constant.RESERVED_UB_SIZE
 
         self.block_num = 16 if self.inner_dtype in ("float16",) else 8
         self.vector_num = self.block_num * 8
@@ -76,20 +82,21 @@ class ResizeBilinearV2(OpBase):
         self.height_idx_sigment_num = 512
         self.width_idx_sigment_num = 512
         # init gm addr
-        tiling_dict = {"dtype": "int64", "shape": (TILING_ARG_NUM,)}
+        tiling_dict = {"dtype": "int64", "shape": (Constant.TILING_ARG_NUM,)}
         self.op_init_gm([images, size], [y], tiling_info=tiling_dict, is_fused_1d=True)
         self.images_gm, self.size_gm = self.input_gm_list
         self.out_gm = self.output_gm_list[0]
 
         # gen assist ub for [0, 1, 2, ...., 255]
-        assist_value = list(range(ASSIST_NUM))
-        self.assist_gm = self.tik_instance.Tensor("float32", (ASSIST_NUM,),
+        assist_value = list(range(Constant.ASSIST_NUM))
+        self.assist_gm = self.tik_instance.Tensor("float32", (Constant.ASSIST_NUM,),
                                                   name="assist_gm",
                                                   scope=tik.scope_gm,
                                                   init_value=assist_value)
 
-        self.stride_threshold = MAX_UINT16 if self.images_dtype in ("float16",) else MAX_UINT16 // 2
-        self.dst_stride_threshold = MAX_UINT16 if self.output_dtype in ("float16",) else MAX_UINT16 // 2
+        self.stride_threshold = Constant.MAX_UINT16 if self.images_dtype in ("float16",) else Constant.MAX_UINT16 // 2
+        self.dst_stride_threshold = Constant.MAX_UINT16 if self.output_dtype in (
+            "float16",) else Constant.MAX_UINT16 // 2
         self.is_suport_vdiv = tbe_platform.api_check_support("tik.vdiv", "float32")
         # init tiling data
         self.resize_scale_h = self.tik_instance.Scalar("float32", name="resize_scale_h")
@@ -141,8 +148,10 @@ class ResizeBilinearV2(OpBase):
         init tiling_args
         """
         with self.tik_instance.new_stmt_scope():
-            tiling_ub = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_ub", scope=tik.scope_ubuf)
-            self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, (TILING_ARG_NUM + 3) // 4, 0, 0)
+            tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,),
+                                                 name="tiling_ub",
+                                                 scope=tik.scope_ubuf)
+            self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, (Constant.TILING_ARG_NUM + 3) // 4, 0, 0)
             self.tiling_key.set_as(tiling_ub[0])
             self.tiling_batch.set_as(tiling_ub[1])
             self.tiling_c1.set_as(tiling_ub[2])
@@ -373,8 +382,7 @@ class ResizeBilinearV2(OpBase):
                 if mem_info is not None:
                     # when the fp32_point < 0, will modify to 0
                     self.tik_instance.vmax(64, calcu_out_in_idx_tmp_ub, calcu_out_in_idx_tmp_ub,
-                                           mem_info["zero"]["fp32"], vector_repeat_num,
-                                           1, 1, 0, 8, 8, 0)
+                                           mem_info["zero"]["fp32"], vector_repeat_num, 1, 1, 0, 8, 8, 0)
             else:
                 # calcu: `idx * scale`
                 self.tik_instance.vmuls(64, calcu_out_in_idx_tmp_ub, src_idx_fp_ub, scale, vector_repeat_num, 1, 1, 8,
@@ -637,17 +645,35 @@ class ResizeBilinearV2(OpBase):
             util_tik_comm_func.tik_func_vconv(self.tik_instance, function_default_fp32_ub, function_default_int32_ub,
                                               64)
         mem_default = {
-            "zero": {"int32": function_default_int32_ub[0:], "fp32": function_default_fp32_ub[0:]},
-            "one": {"int32": function_default_int32_ub[8:], "fp32": function_default_fp32_ub[8:]},
-            "in_width": {"int32": function_default_int32_ub[16:], "fp32": function_default_fp32_ub[16:]},
-            "in_height": {"int32": function_default_int32_ub[24:], "fp32": function_default_fp32_ub[24:]},
-            "height_start": {"int32": function_default_int32_ub[32:], "fp32": function_default_fp32_ub[32:]},
-            "width_start": {"int32": function_default_int32_ub[40:], "fp32": function_default_fp32_ub[40:]}
+            "zero": {
+                "int32": function_default_int32_ub[0:],
+                "fp32": function_default_fp32_ub[0:]
+            },
+            "one": {
+                "int32": function_default_int32_ub[8:],
+                "fp32": function_default_fp32_ub[8:]
+            },
+            "in_width": {
+                "int32": function_default_int32_ub[16:],
+                "fp32": function_default_fp32_ub[16:]
+            },
+            "in_height": {
+                "int32": function_default_int32_ub[24:],
+                "fp32": function_default_fp32_ub[24:]
+            },
+            "height_start": {
+                "int32": function_default_int32_ub[32:],
+                "fp32": function_default_fp32_ub[32:]
+            },
+            "width_start": {
+                "int32": function_default_int32_ub[40:],
+                "fp32": function_default_fp32_ub[40:]
+            }
         }
 
         return mem_default
 
-    # pylint: disable=unused-argument
+    # 'pylint: disable=unused-argument
     def _function_resize_with_l1_default(self,
                                          is_src_stride_copy=False,
                                          is_dst_stride_copy=False,
@@ -1347,7 +1373,7 @@ class ResizeBilinearV2(OpBase):
             util_tik_comm_func.tik_func_vconv(self.tik_instance, function_default_fp32_ub, function_default_int32_ub,
                                               64)
 
-        mem_default = dict()
+        mem_default = {}
         mem_default["zero"] = {"int32": function_default_int32_ub[0:], "fp32": function_default_fp32_ub[0:]}
         mem_default["one"] = {"int32": function_default_int32_ub[8:], "fp32": function_default_fp32_ub[8:]}
         mem_default["in_width"] = {"int32": function_default_int32_ub[16:], "fp32": function_default_fp32_ub[16:]}
@@ -1403,7 +1429,7 @@ class ResizeBilinearV2(OpBase):
 
         return mem_default
 
-    # pylint: disable=unused-argument
+    # 'pylint: disable=unused-argument
     def _function_default_vbi_fp32(self,
                                    is_src_stride_copy=False,
                                    is_dst_stride_copy=False,
@@ -1763,7 +1789,7 @@ class ResizeBilinearV2(OpBase):
 
         _run_h_loop_default(0, self.core_height_num)
 
-    # pylint: disable=unused-argument
+    # 'pylint: disable=unused-argument
     def _function_default_vbi_fp16(self,
                                    is_src_stride_copy=False,
                                    is_dst_stride_copy=False,
@@ -2532,7 +2558,11 @@ def resize_bilinear_v2(images,
 
 
 @register_tune_space("ResizeBilinearV2")
-def tune_space_resize_bilinear_v2(images, size, y, align_corners=False, half_pixel_centers=False,
+def tune_space_resize_bilinear_v2(images,
+                                  size,
+                                  y,
+                                  align_corners=False,
+                                  half_pixel_centers=False,
                                   kernel_name="resize_bilinear_v2"):
     """
     get tune_param
@@ -2562,8 +2592,13 @@ def tune_space_resize_bilinear_v2(images, size, y, align_corners=False, half_pix
 
 
 @register_tune_param_check_supported("ResizeBilinearV2")
-def tune_param_check_supported_resize_bilinear_v2(images, size, y, align_corners=False, half_pixel_centers=False,
-                                                  kernel_name="resize_bilinear_v2", tune_param=None):
+def tune_param_check_supported_resize_bilinear_v2(images,
+                                                  size,
+                                                  y,
+                                                  align_corners=False,
+                                                  half_pixel_centers=False,
+                                                  kernel_name="resize_bilinear_v2",
+                                                  tune_param=None):
     """
     check tune_param
     Parameters

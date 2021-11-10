@@ -24,6 +24,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant

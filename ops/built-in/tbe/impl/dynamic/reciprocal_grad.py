@@ -25,8 +25,8 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=locally-disabled,unused-argument
-# pylint: disable=too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=too-many-locals
 def reciprocal_grad_compute(input_y, input_dy, output_data,
                             kernel_name="reciprocal_grad"):
     """

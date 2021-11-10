@@ -25,18 +25,25 @@ from impl.util.util_tik_comm_func import ceil_div
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import tbe_platform
 
-DIM2 = 2
-NUM_EIGHT = 8
-NUM_FOUR = 4
-NEGATIVE = -1
-MAX_REPEAT = 255
-BLOCK_BYTE_SIZE = 32
-NUM_SIXTYFOUR = MASK64
-MAX_INT64_VALUE = 2 ** 64 - 1
-# used for tiling data
-TILING_CTRL_PARAM = ("int64", 128)
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    DIM2 = 2
+    NUM_EIGHT = 8
+    NUM_FOUR = 4
+    NEGATIVE = -1
+    MAX_REPEAT = 255
+    BLOCK_BYTE_SIZE = 32
+    NUM_SIXTYFOUR = MASK64
+    MAX_INT64_VALUE = 2**64 - 1
+    # used for tiling data
+    TILING_CTRL_PARAM = ("int64", 128)
 
 
+# 'pylint: disable=unused-argument, invalid-name, too-many-arguments, too-many-locals
 def _shape_and_dtype_check(x, y_grad, target, weight, total_weight, reduction, x_grad):
     """
     check shape and dtype
@@ -65,7 +72,7 @@ def _shape_and_dtype_check(x, y_grad, target, weight, total_weight, reduction, x
     weight_shape = weight.get("shape")
     x_grad_shape = x_grad.get("shape")
 
-    if len(x_shape) > DIM2:
+    if len(x_shape) > Constant.DIM2:
         error_detail = "The dimension of x should be equal to or less than two."
         error_manager_vector.raise_err_input_shape_invalid("nll_loss_grad", "x", error_detail)
     if len(y_grad_shape) != 1:
@@ -88,6 +95,8 @@ def _shape_and_dtype_check(x, y_grad, target, weight, total_weight, reduction, x
         error_manager_vector.raise_err_specific_reson("nll_loss_grad", error_detail)
 
 
+# 'pylint: disable=unused-argument, invalid-name, too-many-arguments, too-many-locals
+# 'pylint: disable=too-many-instance-attributes
 class NllLossGradCompute:
     """
     NLLLOSSGRAD
@@ -97,7 +106,7 @@ class NllLossGradCompute:
         self.tik_instance = tik.Tik()
         self.tik_profiling = tik.Dprofile()
         self.real_core_num = self.tik_profiling.get_aicore_num()
-        self.tiling_dtype_bytes = get_data_size(TILING_CTRL_PARAM[0])
+        self.tiling_dtype_bytes = get_data_size(Constant.TILING_CTRL_PARAM[0])
         self.ub_size = self.tik_profiling.get_unified_buffer_size() - 2048
         self.reduction = reduction
         self.ignore_idx = ignore_index
@@ -105,22 +114,34 @@ class NllLossGradCompute:
         self.dtype = x.get("dtype").lower()
         self.dtype_target = target.get("dtype").lower()
 
-        self.data_x = self.tik_instance.Tensor(self.dtype, (MAX_INT64_VALUE,), name="data_x", scope=tik.scope_gm)
-        self.data_y_grad = self.tik_instance.Tensor(self.dtype, (MAX_INT64_VALUE,), name="data_y_grad",
+        self.data_x = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT64_VALUE,),
+                                               name="data_x",
+                                               scope=tik.scope_gm)
+        self.data_y_grad = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT64_VALUE,),
+                                                    name="data_y_grad",
                                                     scope=tik.scope_gm)
-        self.data_weight = self.tik_instance.Tensor(self.dtype, (MAX_INT64_VALUE,), name="data_weight",
+        self.data_weight = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT64_VALUE,),
+                                                    name="data_weight",
                                                     scope=tik.scope_gm)
-        self.data_target = self.tik_instance.Tensor(self.dtype_target, (MAX_INT64_VALUE,), name="data_target",
+        self.data_target = self.tik_instance.Tensor(self.dtype_target, (Constant.MAX_INT64_VALUE,),
+                                                    name="data_target",
                                                     scope=tik.scope_gm)
-        self.data_total_weight = self.tik_instance.Tensor(self.dtype, (MAX_INT64_VALUE,), name="data_total_weight",
+        self.data_total_weight = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT64_VALUE,),
+                                                          name="data_total_weight",
                                                           scope=tik.scope_gm)
-        self.output = self.tik_instance.Tensor(self.dtype, (MAX_INT64_VALUE,), name="output", scope=tik.scope_gm)
+        self.output = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT64_VALUE,),
+                                               name="output",
+                                               scope=tik.scope_gm)
 
-        self.tiling_gm = self.tik_instance.Tensor(TILING_CTRL_PARAM[0], (TILING_CTRL_PARAM[1],), name="tiling_gm",
+        self.tiling_gm = self.tik_instance.Tensor(Constant.TILING_CTRL_PARAM[0], (Constant.TILING_CTRL_PARAM[1],),
+                                                  name="tiling_gm",
                                                   scope=tik.scope_gm)
-        self.tiling_ub = self.tik_instance.Tensor(TILING_CTRL_PARAM[0], (TILING_CTRL_PARAM[1],), name="tiling_ub",
+        self.tiling_ub = self.tik_instance.Tensor(Constant.TILING_CTRL_PARAM[0], (Constant.TILING_CTRL_PARAM[1],),
+                                                  name="tiling_ub",
                                                   scope=tik.scope_ubuf)
-        self.tiling_params = [self.tik_instance.Scalar(TILING_CTRL_PARAM[0]) for i in range(TILING_CTRL_PARAM[1])]
+        self.tiling_params = [
+            self.tik_instance.Scalar(Constant.TILING_CTRL_PARAM[0]) for i in range(Constant.TILING_CTRL_PARAM[1])
+        ]
         self.get_tiling_params()
         self.init_tiling_params()
         self.y_grad_ub = None
@@ -183,9 +204,10 @@ class NllLossGradCompute:
         """
         get tiling parameters function
         """
-        ele_per_block = BLOCK_BYTE_SIZE // self.tiling_dtype_bytes
-        self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, TILING_CTRL_PARAM[1] // ele_per_block, 0, 0)
-        for reg_idx in range(TILING_CTRL_PARAM[1]):
+        ele_per_block = Constant.BLOCK_BYTE_SIZE // self.tiling_dtype_bytes
+        self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1,
+                                    Constant.TILING_CTRL_PARAM[1] // ele_per_block, 0, 0)
+        for reg_idx in range(Constant.TILING_CTRL_PARAM[1]):
             self.tiling_params[reg_idx].set_as(self.tiling_ub[reg_idx])
 
     def init_ub(self):
@@ -200,17 +222,23 @@ class NllLossGradCompute:
         None
         """
         self.y_grad_ub = self.tik_instance.Tensor(self.dtype, [self.y_grad_ub_size],
-                                                  name="y_grad_ub", scope=tik.scope_ubuf)
+                                                  name="y_grad_ub",
+                                                  scope=tik.scope_ubuf)
         self.target_ub = self.tik_instance.Tensor(self.dtype_target, [self.target_ub_size],
-                                                  name="target_ub", scope=tik.scope_ubuf)
+                                                  name="target_ub",
+                                                  scope=tik.scope_ubuf)
         self.weight_ub = self.tik_instance.Tensor(self.dtype, [self.weight_ub_size],
-                                                  name="weight_ub", scope=tik.scope_ubuf)
-        self.target_value_ub = self.tik_instance.Tensor(self.dtype_target, [NUM_EIGHT],
-                                                        name="target_value_ub", scope=tik.scope_ubuf)
+                                                  name="weight_ub",
+                                                  scope=tik.scope_ubuf)
+        self.target_value_ub = self.tik_instance.Tensor(self.dtype_target, [Constant.NUM_EIGHT],
+                                                        name="target_value_ub",
+                                                        scope=tik.scope_ubuf)
         self.refactor_weight_ub = self.tik_instance.Tensor(self.dtype, [self.refactor_weight_ub_size],
-                                                           name="refactor_weight_ub", scope=tik.scope_ubuf)
-        self.total_weight_ub = self.tik_instance.Tensor(self.dtype, [NUM_SIXTYFOUR],
-                                                        name="total_weight_ub", scope=tik.scope_ubuf)
+                                                           name="refactor_weight_ub",
+                                                           scope=tik.scope_ubuf)
+        self.total_weight_ub = self.tik_instance.Tensor(self.dtype, [Constant.NUM_SIXTYFOUR],
+                                                        name="total_weight_ub",
+                                                        scope=tik.scope_ubuf)
         self.dup_ub = self.tik_instance.Tensor(self.dtype, [self.dup_ub_size], name="dup_ub", scope=tik.scope_ubuf)
         self.index_x = self.tik_instance.Scalar(dtype="int32")
 
@@ -225,16 +253,19 @@ class NllLossGradCompute:
         -------
         None
         """
-        max_repeat_num = MAX_REPEAT * NUM_SIXTYFOUR
-        max_repeat_loop = ceil_div(repeat, MAX_REPEAT)
-        last_repeat = self.tik_instance.Scalar(dtype="int64", name="last_repeat", init_value=repeat % MAX_REPEAT)
+        max_repeat_num = Constant.MAX_REPEAT * Constant.NUM_SIXTYFOUR
+        max_repeat_loop = ceil_div(repeat, Constant.MAX_REPEAT)
+        last_repeat = self.tik_instance.Scalar(dtype="int64",
+                                               name="last_repeat",
+                                               init_value=repeat % Constant.MAX_REPEAT)
         with self.tik_instance.if_scope(last_repeat == 0):
-            last_repeat.set_as(MAX_REPEAT)
+            last_repeat.set_as(Constant.MAX_REPEAT)
         with self.tik_instance.for_range(0, max_repeat_loop - 1) as i:
-            self.tik_instance.vector_dup(MASK64, dup_up[i * max_repeat_num], 0, MAX_REPEAT, 1, NUM_EIGHT)
+            self.tik_instance.vector_dup(MASK64, dup_up[i * max_repeat_num], 0, Constant.MAX_REPEAT, 1,
+                                         Constant.NUM_EIGHT)
 
-        self.tik_instance.vector_dup(MASK64, dup_up[(max_repeat_loop - 1) * max_repeat_num], 0,
-                                     last_repeat, 1, NUM_EIGHT)
+        self.tik_instance.vector_dup(MASK64, dup_up[(max_repeat_loop - 1) * max_repeat_num], 0, last_repeat, 1,
+                                     Constant.NUM_EIGHT)
 
     def select_valid_value(self, line_num, line_size, dst, src, target, dst_need_index=True, src_need_index=True):
         """
@@ -295,40 +326,55 @@ class NllLossGradCompute:
             total_weight.set_as(self.total_weight_ub[0])
             self.tik_instance.vector_dup(MASK64, self.total_weight_ub, total_weight, 1, 1, 8)
         with self.tik_instance.if_scope(tik.all(self.reduction == "none", self.c_dim != 1)):
-            self.vector_dup_process(self.refactor_weight_ub, ceil_div(self.refactor_weight_ub_size, NUM_SIXTYFOUR))
-            self.select_valid_value(line_num, 1, self.refactor_weight_ub, self.weight_ub, self.target_ub,
+            self.vector_dup_process(self.refactor_weight_ub,
+                                    ceil_div(self.refactor_weight_ub_size, Constant.NUM_SIXTYFOUR))
+            self.select_valid_value(line_num,
+                                    1,
+                                    self.refactor_weight_ub,
+                                    self.weight_ub,
+                                    self.target_ub,
                                     dst_need_index=False)
         with self.tik_instance.else_scope():
             self.select_valid_value(line_num, self.c_dim, self.dup_ub, self.weight_ub, self.target_ub)
-        vmul_repeat_times = ceil_div(repeat, MAX_REPEAT)
-        max_repeat_num = MAX_REPEAT * NUM_SIXTYFOUR
+        vmul_repeat_times = ceil_div(repeat, Constant.MAX_REPEAT)
+        max_repeat_num = Constant.MAX_REPEAT * Constant.NUM_SIXTYFOUR
         last_vmul_offset = max_repeat_num
-        last_vmul_repeat = self.tik_instance.Scalar("int64", name="last_vmul_repeat", init_value=repeat % MAX_REPEAT)
+        last_vmul_repeat = self.tik_instance.Scalar("int64",
+                                                    name="last_vmul_repeat",
+                                                    init_value=repeat % Constant.MAX_REPEAT)
         with self.tik_instance.if_scope(last_vmul_repeat == 0):
-            last_vmul_repeat.set_as(MAX_REPEAT)
+            last_vmul_repeat.set_as(Constant.MAX_REPEAT)
         with self.tik_instance.if_scope(tik.all(self.reduction == "none", self.c_dim != 1)):
             with self.tik_instance.for_range(0, vmul_repeat_times - 1) as i:
-                self.compute_valid_value(self.refactor_weight_ub, self.y_grad_ub, i, max_repeat_num, MAX_REPEAT)
+                self.compute_valid_value(self.refactor_weight_ub, self.y_grad_ub, i, max_repeat_num,
+                                         Constant.MAX_REPEAT)
             self.compute_valid_value(self.refactor_weight_ub, self.y_grad_ub, vmul_repeat_times - 1, last_vmul_offset,
                                      last_vmul_repeat)
         with self.tik_instance.else_scope():
             with self.tik_instance.for_range(0, vmul_repeat_times - 1) as i:
-                self.compute_valid_value(self.dup_ub, self.y_grad_ub, i, max_repeat_num, MAX_REPEAT)
+                self.compute_valid_value(self.dup_ub, self.y_grad_ub, i, max_repeat_num, Constant.MAX_REPEAT)
             self.compute_valid_value(self.dup_ub, self.y_grad_ub, vmul_repeat_times - 1, last_vmul_offset,
                                      last_vmul_repeat)
         with self.tik_instance.if_scope(tik.all(self.reduction == "none", self.c_dim != 1)):
-            self.select_valid_value(line_num, self.c_dim, self.dup_ub, self.refactor_weight_ub, self.target_ub,
-                                    dst_need_index=True, src_need_index=False)
+            self.select_valid_value(line_num,
+                                    self.c_dim,
+                                    self.dup_ub,
+                                    self.refactor_weight_ub,
+                                    self.target_ub,
+                                    dst_need_index=True,
+                                    src_need_index=False)
         with self.tik_instance.if_scope(tik.any(line_num * self.c_dim % 8 == 0, self.core_num == 1)):
             self.tik_instance.data_move(self.output[core_offset * self.c_dim], self.dup_ub, 0, 1, output_burst, 8, 8)
         with self.tik_instance.else_scope():
-            temp_out_ub = self.tik_instance.Tensor(self.dtype, [NUM_EIGHT], name="temp_out_ub", scope=tik.scope_ubuf)
-            self.tik_instance.data_move(self.output[core_offset * self.c_dim], self.dup_ub, 0, 1,
-                                        output_burst - 1, 8, 8)
+            temp_out_ub = self.tik_instance.Tensor(self.dtype, [Constant.NUM_EIGHT],
+                                                   name="temp_out_ub",
+                                                   scope=tik.scope_ubuf)
+            self.tik_instance.data_move(self.output[core_offset * self.c_dim], self.dup_ub, 0, 1, output_burst - 1, 8,
+                                        8)
             for i in range(0, 8):
                 temp_out_ub[i].set_as(self.dup_ub[line_num * self.c_dim - 8 + i])
-            self.tik_instance.data_move(self.output[(core_offset + line_num) * self.c_dim - 8],
-                                        temp_out_ub, 0, 1, 1, 8, 8)
+            self.tik_instance.data_move(self.output[(core_offset + line_num) * self.c_dim - 8], temp_out_ub, 0, 1, 1,
+                                        8, 8)
 
     def compute_valid_value(self, dst, src, index, offset, repeat):
         """
@@ -347,16 +393,17 @@ class NllLossGradCompute:
             self.tik_instance.vmuls(MASK64, dst[index * offset], dst[index * offset], scalar, repeat, 1, 1, 8, 8)
         else:
             self.tik_instance.vmul(MASK64, dst[index * offset], dst[index * offset], src[index * offset], repeat, 1, 1,
-                                   1, NUM_EIGHT, NUM_EIGHT, NUM_EIGHT)
-        self.tik_instance.vmuls(MASK64, dst[index * offset], dst[index * offset], NEGATIVE, repeat, 1, 1, 8, 8)
+                                   1, Constant.NUM_EIGHT, Constant.NUM_EIGHT, Constant.NUM_EIGHT)
+        self.tik_instance.vmuls(MASK64, dst[index * offset], dst[index * offset], Constant.NEGATIVE, repeat, 1, 1, 8,
+                                8)
         if self.reduction == "mean":
             if tbe_platform.api_check_support("te.lang.cce.vdiv", "float32"):
-                self.tik_instance.vdiv(MASK64, dst[index * offset], dst[index * offset], self.total_weight_ub,
-                                       repeat, 1, 1, 1, 8, 8, 0)
+                self.tik_instance.vdiv(MASK64, dst[index * offset], dst[index * offset], self.total_weight_ub, repeat,
+                                       1, 1, 1, 8, 8, 0)
             else:
                 self.tik_instance.vrec(MASK64, dst[index * offset], dst[index * offset], repeat, 1, 1, 8, 8)
-                self.tik_instance.vmul(MASK64, dst[index * offset], dst[index * offset], self.total_weight_ub,
-                                       repeat, 1, 1, 1, 8, 8, 0)
+                self.tik_instance.vmul(MASK64, dst[index * offset], dst[index * offset], self.total_weight_ub, repeat,
+                                       1, 1, 1, 8, 8, 0)
 
     def normal_two_dim_compute(self, cycle):
         """
@@ -379,9 +426,11 @@ class NllLossGradCompute:
         self.tik_instance.data_move(self.weight_ub, self.data_weight, 0, 1, self.weight_burst, 0, 0)
         with self.tik_instance.for_range(0, self.loop_time) as loop:
             loop_offset = loop * self.max_line * self.core_num
-            compute_max_repeat = self.tik_instance.Scalar("int32", name="compute_max_repeat",
+            compute_max_repeat = self.tik_instance.Scalar("int32",
+                                                          name="compute_max_repeat",
                                                           init_value=self.core_dup_repeat)
-            compute_last_repeat = self.tik_instance.Scalar("int32", name="compute_last_repeat",
+            compute_last_repeat = self.tik_instance.Scalar("int32",
+                                                           name="compute_last_repeat",
                                                            init_value=self.last_dup_repeat)
             with self.tik_instance.if_scope(tik.all(self.reduction == "none", self.c_dim != 1)):
                 compute_max_repeat.set_as(self.max_vmul_repeat)
@@ -389,8 +438,8 @@ class NllLossGradCompute:
 
             with self.tik_instance.if_scope(self.loop_time == 1):
                 with self.tik_instance.if_scope(cycle < self.redundant_line):
-                    self._normal_two_tim_process(self.max_line, core_offset, compute_max_repeat,
-                                                 self.target_burst, self.max_out_burst)
+                    self._normal_two_tim_process(self.max_line, core_offset, compute_max_repeat, self.target_burst,
+                                                 self.max_out_burst)
                 with self.tik_instance.else_scope():
                     self._normal_two_tim_process(self.lower_line, lower_core_offset, compute_last_repeat,
                                                  self.lower_target_burst, self.last_out_burst)
@@ -399,8 +448,8 @@ class NllLossGradCompute:
                     self._normal_two_tim_process(self.max_line, loop_offset + core_offset, compute_max_repeat,
                                                  self.target_burst, self.max_out_burst)
                 with self.tik_instance.if_scope(loop * self.core_num + cycle == self.fake_core - 1):
-                    self._normal_two_tim_process(self.lower_line, loop_offset + core_offset,
-                                                 compute_last_repeat, self.last_target_burst, self.last_out_burst)
+                    self._normal_two_tim_process(self.lower_line, loop_offset + core_offset, compute_last_repeat,
+                                                 self.last_target_burst, self.last_out_burst)
 
     def tail_block_refactor(self, dst, src, valid_value, index, burst, start, offset):
         """
@@ -414,7 +463,9 @@ class NllLossGradCompute:
         None
         """
         self.tik_instance.data_move(dst[offset], src, 0, 1, burst - 1, 0, 0)
-        temp_out_ub = self.tik_instance.Tensor(self.dtype, [NUM_EIGHT], name="temp_out_ub", scope=tik.scope_ubuf)
+        temp_out_ub = self.tik_instance.Tensor(self.dtype, [Constant.NUM_EIGHT],
+                                               name="temp_out_ub",
+                                               scope=tik.scope_ubuf)
         self.tik_instance.vector_dup(8, temp_out_ub, 0, 1, 1, 0)
 
         with self.tik_instance.if_scope(tik.any(index < 0, index >= self.c_dim)):
@@ -461,21 +512,22 @@ class NllLossGradCompute:
                 self.tik_instance.data_move(self.total_weight_ub, self.data_total_weight, 0, 1, 1, 0, 0)
                 if self.reduction == "mean":
                     if tbe_platform.api_check_support("te.lang.cce.vdiv", "float32"):
-                        self.tik_instance.vdiv(1, self.weight_ub, self.weight_ub, self.total_weight_ub,
-                                               1, 1, 1, 1, NUM_EIGHT, NUM_EIGHT, NUM_EIGHT)
+                        self.tik_instance.vdiv(1, self.weight_ub, self.weight_ub, self.total_weight_ub, 1, 1, 1, 1,
+                                               Constant.NUM_EIGHT, Constant.NUM_EIGHT, Constant.NUM_EIGHT)
                     else:
                         self.tik_instance.vrec(1, self.weight_ub, self.weight_ub, 1, 1, 1, 8, 8)
-                        self.tik_instance.vmul(1, self.weight_ub, self.weight_ub, self.total_weight_ub,
-                                               1, 1, 1, 1, NUM_EIGHT, NUM_EIGHT, NUM_EIGHT)
+                        self.tik_instance.vmul(1, self.weight_ub, self.weight_ub, self.total_weight_ub, 1, 1, 1, 1,
+                                               Constant.NUM_EIGHT, Constant.NUM_EIGHT, Constant.NUM_EIGHT)
                 self.tik_instance.vmul(1, self.weight_ub, self.weight_ub, self.y_grad_ub, 1, 1, 1, 1,
-                                       NUM_EIGHT, NUM_EIGHT, NUM_EIGHT)
-                self.tik_instance.vmuls(1, self.weight_ub, self.weight_ub, NEGATIVE, 1, 1, 1, NUM_EIGHT, NUM_EIGHT)
+                                       Constant.NUM_EIGHT, Constant.NUM_EIGHT, Constant.NUM_EIGHT)
+                self.tik_instance.vmuls(1, self.weight_ub, self.weight_ub, Constant.NEGATIVE, 1, 1, 1,
+                                        Constant.NUM_EIGHT, Constant.NUM_EIGHT)
 
                 with self.tik_instance.for_range(0, self.move_out_time) as time:
                     out_put_offset = line_num * self.c_dim + time * self.offet
                     with self.tik_instance.if_scope(time < self.move_out_time - 1):
-                        self.tik_instance.data_move(self.output[out_put_offset], self.dup_ub, 0, 1,
-                                                    self.max_out_burst, 0, 0)
+                        self.tik_instance.data_move(self.output[out_put_offset], self.dup_ub, 0, 1, self.max_out_burst,
+                                                    0, 0)
                     with self.tik_instance.else_scope():
                         self.tail_block_refactor(self.output, self.dup_ub, self.weight_ub, self.index_x,
                                                  self.last_out_burst, line_num * self.c_dim, out_put_offset)
@@ -513,8 +565,15 @@ class NllLossGradCompute:
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
-def nll_loss_grad(x, y_grad, target, weight, total_weight, x_grad,
-                  reduction="mean", ignore_index=-100, kernel_name="nll_loss_grad"):
+def nll_loss_grad(x,
+                  y_grad,
+                  target,
+                  weight,
+                  total_weight,
+                  x_grad,
+                  reduction="mean",
+                  ignore_index=-100,
+                  kernel_name="nll_loss_grad"):
     """
     calculating data
 

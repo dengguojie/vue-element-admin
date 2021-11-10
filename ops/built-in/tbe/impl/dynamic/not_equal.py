@@ -30,6 +30,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
@@ -46,7 +47,7 @@ class Constant:
     SCALAR_MUL_FP16 = 2**(12)
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 @register_operator_compute("NotEqual", op_mode="dynamic", support_fusion=True)
 def not_equal_compute(input_x, input_y, output_z, kernel_name="not_equal"):
     """

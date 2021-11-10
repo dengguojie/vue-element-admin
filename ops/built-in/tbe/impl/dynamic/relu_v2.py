@@ -43,11 +43,8 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-# const value
-CONST_ZERO = 0
 
-
-# pylint: disable=locally-disabled,too-many-locals,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-locals,unused-argument,invalid-name
 @register_operator_compute("ReluV2", op_mode="dynamic", support_fusion=True)
 def relu_v2_compute(x, y, mask, kernel_name="relu_v2"):
     """
@@ -82,13 +79,13 @@ def relu_v2_compute(x, y, mask, kernel_name="relu_v2"):
     if tbe_platform.api_check_support('tbe.dsl.vrelu', compatible_dtype):
         data_res = tbe.vrelu(x)
     else:
-        tensor_zero = tbe.broadcast(tvm.const(CONST_ZERO,
+        tensor_zero = tbe.broadcast(tvm.const(0,
                                               compatible_dtype),
                                     shape)
         data_res = tbe.vmax(x, tensor_zero)
 
     data_res = tbe.cast_to(data_res, inp_dtype)
-    mask = tbe.vcmp(x, CONST_ZERO, "gt", "bit")
+    mask = tbe.vcmp(x, 0, "gt", "bit")
 
     return data_res, mask
 

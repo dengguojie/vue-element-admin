@@ -24,6 +24,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
@@ -65,6 +66,7 @@ def _ceiling(value, factor):
     return result
 
 
+# 'pylint: disable=unused-argument, invalid-name, too-many-arguments, too-many-locals
 def _cal_max_boxes_num():
     """
     Compute the maximum number of boxes that can be stored in the UB.
@@ -114,7 +116,7 @@ def _cal_max_boxes_num():
     return boxes_num_max_align16
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def _get_src_tensor(ib):
     """
     Produce two tensors with all zero or all one
@@ -138,7 +140,7 @@ def _get_src_tensor(ib):
     return src0_ub, src1_ub
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def _get_reduced_proposal(ib, out_proposal, output_proposals_final, in_proposal, coord_addr):
     """
     Reduce input proposal when input boxes out of range.
@@ -163,26 +165,30 @@ def _get_reduced_proposal(ib, out_proposal, output_proposals_final, in_proposal,
     if tbe_platform.api_check_support("tik.vreduce", "float16") and tbe_platform.api_check_support(
             "tik.v4dtrans", "float16"):
         with ib.for_range(0, Constant.VALID_COLUMN_NUM) as i:
-            ib.vextract(coord_addr[Constant.BURST_PROPOSAL_NUM * i], in_proposal, Constant.BURST_PROPOSAL_NUM // Constant.RPN_PROPOSAL_NUM, i)
+            ib.vextract(coord_addr[Constant.BURST_PROPOSAL_NUM * i], in_proposal,
+                        Constant.BURST_PROPOSAL_NUM // Constant.RPN_PROPOSAL_NUM, i)
         # transpose 5*burst_proposal_num to burst_proposal_num*5, output boxes and scores
         ib.v4dtrans(True, output_proposals_final, coord_addr, Constant.BURST_PROPOSAL_NUM, Constant.VALID_COLUMN_NUM)
     else:
         with ib.for_range(0, Constant.COORD_COLUMN_NUM) as i:
-            ib.vextract(coord_addr[Constant.BURST_PROPOSAL_NUM * i], in_proposal, Constant.BURST_PROPOSAL_NUM // Constant.RPN_PROPOSAL_NUM, i)
+            ib.vextract(coord_addr[Constant.BURST_PROPOSAL_NUM * i], in_proposal,
+                        Constant.BURST_PROPOSAL_NUM // Constant.RPN_PROPOSAL_NUM, i)
 
     # coordinate multiplied by down_factor to prevent out of range
     ib.vmuls(128, coord_addr, coord_addr, Constant.DOWN_FACTOR, 4, 1, 1, 8, 8)
 
     # add 1 for x1 and y1 because nms operate would reduces 1
     ib.vadds(128, coord_addr[0], coord_addr[0], 1.0, 1, 1, 1, 8, 8)
-    ib.vadds(128, coord_addr[Constant.BURST_PROPOSAL_NUM * 1], coord_addr[Constant.BURST_PROPOSAL_NUM * 1], 1.0, 1, 1, 1, 8, 8)
+    ib.vadds(128, coord_addr[Constant.BURST_PROPOSAL_NUM * 1], coord_addr[Constant.BURST_PROPOSAL_NUM * 1], 1.0, 1, 1,
+             1, 8, 8)
 
     # compose new proposals
     with ib.for_range(0, Constant.COORD_COLUMN_NUM) as i:
-        ib.vconcat(out_proposal, coord_addr[Constant.BURST_PROPOSAL_NUM * i], Constant.BURST_PROPOSAL_NUM // Constant.RPN_PROPOSAL_NUM, i)
+        ib.vconcat(out_proposal, coord_addr[Constant.BURST_PROPOSAL_NUM * i],
+                   Constant.BURST_PROPOSAL_NUM // Constant.RPN_PROPOSAL_NUM, i)
 
 
-# pylint: disable=too-many-locals,too-many-arguments
+# 'pylint: disable=too-many-locals,too-many-arguments,too-many-statements
 def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, proposal_num_align16, kernel_name_var):
     """
     Compute output boxes after non-maximum suppression.
@@ -227,8 +233,12 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
     out_mask = tik_instance.Tensor("uint8", (_ceiling(proposal_num_align16, Constant.CONFIG_DATA_ALIGN),),
                                    name="out_mask",
                                    scope=tik.scope_gm)
-    output_index_ub = tik_instance.Tensor("int32", (Constant.BURST_PROPOSAL_NUM,), name="output_index_ub", scope=tik.scope_ubuf)
-    output_mask_ub = tik_instance.Tensor("uint8", (Constant.BURST_PROPOSAL_NUM,), name="output_mask_ub", scope=tik.scope_ubuf)
+    output_index_ub = tik_instance.Tensor("int32", (Constant.BURST_PROPOSAL_NUM,),
+                                          name="output_index_ub",
+                                          scope=tik.scope_ubuf)
+    output_mask_ub = tik_instance.Tensor("uint8", (Constant.BURST_PROPOSAL_NUM,),
+                                         name="output_mask_ub",
+                                         scope=tik.scope_ubuf)
     output_proposals_ub = tik_instance.Tensor("float16", (Constant.BURST_PROPOSAL_NUM, Constant.VALID_COLUMN_NUM),
                                               name="output_proposals_ub",
                                               scope=tik.scope_ubuf)
@@ -255,7 +265,9 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
     tik_instance.vector_dup(16, sup_vec_ub[0], 1, 1, 1, 8)
 
     # init nms tensor
-    temp_area_ub = tik_instance.Tensor("float16", (Constant.BURST_PROPOSAL_NUM,), name="temp_area_ub", scope=tik.scope_ubuf)
+    temp_area_ub = tik_instance.Tensor("float16", (Constant.BURST_PROPOSAL_NUM,),
+                                       name="temp_area_ub",
+                                       scope=tik.scope_ubuf)
     temp_iou_ub = tik_instance.Tensor("float16", (proposal_num_align16, Constant.RPN_PROPOSAL_NUM),
                                       name="temp_iou_ub",
                                       scope=tik.scope_ubuf)
@@ -313,15 +325,17 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
     sup_vec_ub[0].set_as(scalar_zero)
 
     # handle 128 proposals every time
-    with tik_instance.for_range(0, _ceil_div(input_num_scalar, Constant.BURST_PROPOSAL_NUM), thread_num=1) as burst_index:
+    with tik_instance.for_range(0, _ceil_div(input_num_scalar, Constant.BURST_PROPOSAL_NUM),
+                                thread_num=1) as burst_index:
         # update counter
         with tik_instance.if_scope(left_proposal_cnt < Constant.BURST_PROPOSAL_NUM):
             handling_proposals_cnt.set_as(left_proposal_cnt)
         with tik_instance.else_scope():
             handling_proposals_cnt.set_as(Constant.BURST_PROPOSAL_NUM)
 
-        tik_instance.data_move(fresh_proposals_ub[0], proposals[burst_index * Constant.BURST_PROPOSAL_NUM * Constant.ELEMENT_NUM], 0, 1,
-                               _ceil_div(handling_proposals_cnt * Constant.RPN_PROPOSAL_NUM, Constant.CONFIG_DATA_ALIGN), 0, 0, 0)
+        tik_instance.data_move(
+            fresh_proposals_ub[0], proposals[burst_index * Constant.BURST_PROPOSAL_NUM * Constant.ELEMENT_NUM], 0, 1,
+            _ceil_div(handling_proposals_cnt * Constant.RPN_PROPOSAL_NUM, Constant.CONFIG_DATA_ALIGN), 0, 0, 0)
         # reduce fresh proposal
         _get_reduced_proposal(tik_instance, temp_reduced_proposals_ub, output_proposals_ub, fresh_proposals_ub,
                               coord_addr)
@@ -332,7 +346,8 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
         length = tik_instance.Scalar(dtype="uint16")
         length.set_as(_ceiling(selected_proposals_cnt, Constant.RPN_PROPOSAL_NUM))
         # clear temp_sup_vec_ub
-        tik_instance.vector_dup(128, temp_sup_vec_ub[0], 1, temp_sup_vec_ub.shape[0] // Constant.BURST_PROPOSAL_NUM, 1, 8)
+        tik_instance.vector_dup(128, temp_sup_vec_ub[0], 1, temp_sup_vec_ub.shape[0] // Constant.BURST_PROPOSAL_NUM, 1,
+                                8)
 
         with tik_instance.for_range(0, _ceil_div(handling_proposals_cnt, Constant.RPN_PROPOSAL_NUM)) as i:
             length.set_as(length + Constant.RPN_PROPOSAL_NUM)
@@ -342,18 +357,20 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
                               _ceil_div(selected_proposals_cnt, Constant.RPN_PROPOSAL_NUM))
             # calculate intersection of tempReducedProposals and tempReducedProposals(include itself)
             tik_instance.viou(temp_iou_ub[_ceiling(selected_proposals_cnt, Constant.RPN_PROPOSAL_NUM), 0],
-                              temp_reduced_proposals_ub, temp_reduced_proposals_ub[i * Constant.RPN_PROPOSAL_NUM, 0], i + 1)
+                              temp_reduced_proposals_ub, temp_reduced_proposals_ub[i * Constant.RPN_PROPOSAL_NUM,
+                                                                                   0], i + 1)
             # calculate join of tempReducedProposals and selReducedProposals
             tik_instance.vaadd(temp_join_ub, selected_area_ub, temp_area_ub[i * Constant.RPN_PROPOSAL_NUM],
                                _ceil_div(selected_proposals_cnt, Constant.RPN_PROPOSAL_NUM))
             # calculate intersection of tempReducedProposals and tempReducedProposals(include itself)
-            tik_instance.vaadd(temp_join_ub[_ceiling(selected_proposals_cnt, Constant.RPN_PROPOSAL_NUM), 0], temp_area_ub,
-                               temp_area_ub[i * Constant.RPN_PROPOSAL_NUM], i + 1)
+            tik_instance.vaadd(temp_join_ub[_ceiling(selected_proposals_cnt, Constant.RPN_PROPOSAL_NUM), 0],
+                               temp_area_ub, temp_area_ub[i * Constant.RPN_PROPOSAL_NUM], i + 1)
             # calculate join*(thresh/(1+thresh))
-            tik_instance.vmuls(128, temp_join_ub, temp_join_ub, thresh, _ceil_div(length, Constant.ELEMENT_NUM), 1, 1, 8, 8)
+            tik_instance.vmuls(128, temp_join_ub, temp_join_ub, thresh, _ceil_div(length, Constant.ELEMENT_NUM), 1, 1,
+                               8, 8)
             # compare and generate suppression matrix
-            tik_instance.vcmpv_gt(temp_sup_matrix_ub, temp_iou_ub, temp_join_ub, _ceil_div(length, Constant.ELEMENT_NUM), 1, 1,
-                                  8, 8)
+            tik_instance.vcmpv_gt(temp_sup_matrix_ub, temp_iou_ub, temp_join_ub,
+                                  _ceil_div(length, Constant.ELEMENT_NUM), 1, 1, 8, 8)
             # generate suppression vector
             rpn_cor_ir = tik_instance.set_rpn_cor_ir(0)
             # non-diagonal
@@ -361,7 +378,8 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
                                               _ceil_div(selected_proposals_cnt, Constant.RPN_PROPOSAL_NUM))
             with tik_instance.if_scope(i > 0):
                 rpn_cor_ir = tik_instance.rpn_cor(
-                    temp_sup_matrix_ub[_ceiling(selected_proposals_cnt, Constant.RPN_PROPOSAL_NUM)], temp_sup_vec_ub, 1, 1, i)
+                    temp_sup_matrix_ub[_ceiling(selected_proposals_cnt, Constant.RPN_PROPOSAL_NUM)], temp_sup_vec_ub,
+                    1, 1, i)
             # diagonal
             tik_instance.rpn_cor_diag(temp_sup_vec_ub[i * Constant.RPN_PROPOSAL_NUM],
                                       temp_sup_matrix_ub[length - Constant.RPN_PROPOSAL_NUM], rpn_cor_ir)
@@ -379,8 +397,8 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
             tik_instance.vreduce(128, selected_area_ub[selected_proposals_cnt], temp_area_ub, nms_tensor_pattern, 1, 1,
                                  8, 0, 0, num_nms, "counter")
             # sup_vec_ub set as 0
-            tik_instance.vector_dup(16, sup_vec_ub[selected_proposals_cnt], 0, _ceil_div(num_nms, Constant.RPN_PROPOSAL_NUM), 1,
-                                    1)
+            tik_instance.vector_dup(16, sup_vec_ub[selected_proposals_cnt], 0,
+                                    _ceil_div(num_nms, Constant.RPN_PROPOSAL_NUM), 1, 1)
 
             # save the filtered proposal for next nms use
             tik_instance.vector_dup(128, zoom_coord_reduce, 0, 4, 1, 8)
@@ -408,7 +426,8 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
                 with tik_instance.if_scope(temp_sup_vec_ub[i] == 0):
                     with tik_instance.for_range(0, Constant.ELEMENT_NUM) as j:
                         # update selected_reduced_proposals_ub
-                        selected_reduced_proposals_ub[selected_proposals_cnt, j].set_as(temp_reduced_proposals_ub[i, j])
+                        selected_reduced_proposals_ub[selected_proposals_cnt, j].set_as(temp_reduced_proposals_ub[i,
+                                                                                                                  j])
                     # update selected_area_ub
                     selected_area_ub[selected_proposals_cnt].set_as(temp_area_ub[i])
                     # update sup_vec_ub
@@ -423,8 +442,9 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
 
         left_proposal_cnt.set_as(left_proposal_cnt - handling_proposals_cnt)
         # mov target proposals to out - mte3
-        tik_instance.data_move(ret[burst_index * Constant.BURST_PROPOSAL_NUM, 0], output_proposals_ub, 0, 1,
-                               _ceil_div(handling_proposals_cnt * Constant.VALID_COLUMN_NUM, Constant.RPN_PROPOSAL_NUM), 0, 0, 0)
+        tik_instance.data_move(
+            ret[burst_index * Constant.BURST_PROPOSAL_NUM, 0], output_proposals_ub, 0, 1,
+            _ceil_div(handling_proposals_cnt * Constant.VALID_COLUMN_NUM, Constant.RPN_PROPOSAL_NUM), 0, 0, 0)
         tik_instance.data_move(out_index[burst_index * Constant.BURST_PROPOSAL_NUM], output_index_ub, 0, 1,
                                _ceil_div(handling_proposals_cnt, Constant.ELEMENT_NUM), 0, 0, 0)
         tik_instance.data_move(out_mask[burst_index * Constant.BURST_PROPOSAL_NUM], output_mask_ub, 0, 1,
@@ -438,7 +458,7 @@ def _nms_with_mask_compute(tik_instance, tiling_gm, input_num_scalar, thresh, pr
     return tik_instance
 
 
-# pylint: disable=unused-argument,too-many-locals,too-many-arguments
+# 'pylint: disable=unused-argument,too-many-locals,too-many-arguments
 @register_operator("NMSWithMask")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
@@ -481,15 +501,22 @@ def nms_with_mask(box_scores, selected_boxes, selected_idx, selected_mask, iou_t
     check_list = ("float16")
     para_check.check_dtype(input_dtype, check_list, param_name="box_scores")
     # check shape
-    para_check.check_shape(input_shape, min_rank=Constant.INPUT_DIM, max_rank=Constant.INPUT_DIM, param_name="box_scores")
+    para_check.check_shape(input_shape,
+                           min_rank=Constant.INPUT_DIM,
+                           max_rank=Constant.INPUT_DIM,
+                           param_name="box_scores")
 
     if input_shape[1] != Constant.ELEMENT_NUM:
         error_manager_vector.raise_err_check_params_rules(kernel_name, "the 2nd-dim of input boxes must be equal to 8",
                                                           "box_scores.shape", input_shape)
 
     tik_instance = tik.Tik()
-    tiling_gm = tik_instance.Tensor(Constant.DTYPE_INT32, (Constant.TILING_PARAMS_NUM,), name="tiling_gm", scope=tik.scope_gm)
-    tiling_ub = tik_instance.Tensor(Constant.TILING_PARAM_DTYPE, (Constant.TILING_PARAMS_NUM,), name="tiling_ub", scope=tik.scope_ubuf)
+    tiling_gm = tik_instance.Tensor(Constant.DTYPE_INT32, (Constant.TILING_PARAMS_NUM,),
+                                    name="tiling_gm",
+                                    scope=tik.scope_gm)
+    tiling_ub = tik_instance.Tensor(Constant.TILING_PARAM_DTYPE, (Constant.TILING_PARAMS_NUM,),
+                                    name="tiling_ub",
+                                    scope=tik.scope_ubuf)
     tik_instance.data_move(tiling_ub, tiling_gm, 0, 1, Constant.TILING_PARAMS_NUM // Constant.BLOCK_INT32, 0, 0)
     boxes_num_scalar = tik_instance.Scalar(dtype="int32", name="boxes_num_scalar")
     boxes_num_scalar.set_as(tiling_ub[0])
