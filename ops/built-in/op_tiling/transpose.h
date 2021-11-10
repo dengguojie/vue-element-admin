@@ -35,6 +35,7 @@
 namespace optiling {
 
 #define TRANSPOSE_MAX_AXIS_NUM 8
+#define MAX_CORE_NUM 96 
 #define BORROW_SRC_AXIS_NUM 2
 #define BORROW_DST_AXIS_NUM 2
 #define BORROW_MAX_AXIS_NUM (BORROW_SRC_AXIS_NUM + BORROW_DST_AXIS_NUM)
@@ -66,6 +67,10 @@ namespace optiling {
 #define TDTS 3
 #define COL_UNIT 240 
 #define ROW_UNIT 128 
+#define MAX_INFO_NUM 1000
+#define MAX_TILING_NUM 16 * 1024 
+#define TILING_HEAD_SIZE 4
+#define MAX_RETRY_SCENARIO 5
 
 /*
  * 4 * 32 block = 4KB, this value should be consistent with the variable in transpose.py
@@ -112,6 +117,7 @@ enum TransposeScenario {
   SCENARIO_9 = 9,    // last axis block aligned and not transpose
   SCENARIO_10 = 10,  // last two axis: block aligned & transpose & not huge
   SCENARIO_11 = 11,  // last two axis: block aligned & transpose & huge
+  SCENARIO_INIT = 99,// SCENARIO_INIT
 };
 
 enum SubScenarioLastAxisTrans {
@@ -135,10 +141,14 @@ struct SplitParam {
   int64_t colFactor;
   int64_t rowFactor;
 
-  SplitParam() {
+  void Reset() {
     nFactor = 1;
     colFactor = 1;
     rowFactor = 1;
+  }
+
+  SplitParam() {
+    Reset();
   }
 
   void Set(int64_t n, int64_t c, int64_t r) {
@@ -149,27 +159,79 @@ struct SplitParam {
 };
 
 struct NCR {
-  vector<int64_t> n;
-  vector<int64_t> col;
-  vector<int64_t> row;
+  int64_t n[TRANSPOSE_MAX_AXIS_NUM];
+  int64_t col[TRANSPOSE_MAX_AXIS_NUM];
+  int64_t row[TRANSPOSE_MAX_AXIS_NUM];
   int64_t nVol;
   int64_t cVol;
   int64_t rVol;
+  int64_t nSize;
+  int64_t colSize;
+  int64_t rowSize;
+
+  const NCR& operator = (const NCR& rhs) {
+    nVol = rhs.nVol;
+    cVol = rhs.cVol;
+    rVol = rhs.rVol;
+    nSize = rhs.nSize;
+    colSize = rhs.colSize;
+    rowSize = rhs.rowSize;
+    for (int64_t i = 0; i < nSize; i++) {
+      n[i] = rhs.n[i];
+    }
+    for (int64_t i = 0; i < colSize; i++) {
+      col[i] = rhs.col[i];
+    }
+    for (int64_t i = 0; i < rowSize; i++) {
+      row[i] = rhs.row[i];
+    }
+    return *this;
+  }
+  void Reset() {
+    nVol = 0;
+    cVol = 0;
+    rVol = 0;
+    nSize = 0;
+    colSize = 0;
+    rowSize = 0;
+  }
+
+  NCR() {
+    Reset();
+  }
 };
 
 class TilingModel {
- public:
+public:
+  TilingModel(){
+    Reset();
+  }
   TilingModel(int64_t p, int64_t c, int64_t u, SubScenarioLastAxisTrans scenario, std::string name)
-      : coreNum(c), ubBlocks(u), priority(p), maxCol(0), maxRow(0), subScenario(scenario), modelName(name) {
+      : coreNum(c), ubBlocks(u), priority(p), maxCol(0), maxRow(0), subScenario(scenario),
+        isf2t(false), ist2f(false) {
   }
   virtual ~TilingModel(){};
-  virtual void Decision(const NCR& ncr, int64_t dim) = 0;
-  virtual bool Isf2t() {
+  virtual bool Decision(const NCR& ncr, int64_t dim){
     return false;
   }
-  virtual bool Ist2f() {
-    return false;
+  void copy(const TilingModel& tm) {
+    sp = tm.sp;
+    ncr = tm.ncr;
+    coreNum = tm.coreNum;
+    ubBlocks = tm.ubBlocks;
+    priority = tm.priority;
+    maxCol = tm.maxCol;
+    maxRow = tm.maxRow;
+    subScenario = tm.subScenario;
+    isf2t = tm.isf2t;
+    ist2f = tm.ist2f;
   }
+  void Reset() {
+    priority = 0;
+    isf2t = false;
+    ist2f = false;
+  }
+
   SplitParam sp;
   NCR ncr;
   int64_t coreNum;
@@ -178,26 +240,25 @@ class TilingModel {
   int64_t maxCol;  // unit: bytes
   int64_t maxRow;
   SubScenarioLastAxisTrans subScenario;
-  std::string modelName;
-};
-
-struct TMCompare {
-  bool operator()(const std::shared_ptr<TilingModel>& lhs, const std::shared_ptr<TilingModel>& rhs) const {
-    return lhs->priority > rhs->priority;
-  }
+  bool isf2t;
+  bool ist2f;
 };
 
 struct ShapeInfo {
+  int64_t id;
   std::vector<int64_t> inShape;
   std::vector<int64_t> outShape;
   std::vector<int64_t> perm;
   std::vector<int64_t> reducedInShape;
   std::vector<int64_t> reducedOutShape;
   std::vector<int64_t> reducedPerm;
-  std::vector<int64_t> reducedPermGrad;
 
+  int64_t inShapeSize;
+  int64_t outShapeSize;
+  int64_t permSize;
+  
+  int64_t origDim;
   int64_t dim;
-  int64_t totalVolumeLogic;
   int64_t totalVolumeActual;
   int64_t identical;
   int64_t lastAxisLen;
@@ -211,9 +272,23 @@ struct ShapeInfo {
   TransposeScenario scenario;
   MteMode mteMode;
 
-  ShapeInfo() : reducedPermGrad(TRANSPOSE_MAX_AXIS_NUM, 0) {
+  ShapeInfo() {
+    inShape.resize(TRANSPOSE_MAX_AXIS_NUM);
+    outShape.resize(TRANSPOSE_MAX_AXIS_NUM);
+    perm.resize(TRANSPOSE_MAX_AXIS_NUM);
+    reducedInShape.resize(TRANSPOSE_MAX_AXIS_NUM);
+    reducedOutShape.resize(TRANSPOSE_MAX_AXIS_NUM);
+    reducedPerm.resize(TRANSPOSE_MAX_AXIS_NUM);
+    Reset();
+  }
+
+  void Reset() {
+    id = 0;
+    inShapeSize = 0;
+    outShapeSize = 0;
+    permSize = 0;
+    origDim = 0;
     dim = 0;
-    totalVolumeLogic = 0;
     totalVolumeActual = 0;
     identical = 0;
     lastAxisLen = 0;
@@ -263,19 +338,20 @@ struct LastAxisNTLoopInfo {
   int64_t tailMajorNum;
   int64_t tailTailNum;
 
-  LastAxisNTLoopInfo() {
+  void Reset() {
     headMajorLoop = 0;
     headMajorNum = 0;
     headTailNum = 0;
-
     bodyLoopNum = 0;
     bodyMajorLoop = 0;
     bodyMajorNum = 0;
     bodyTailNum = 0;
-
     tailMajorLoop = 0;
     tailMajorNum = 0;
     tailTailNum = 0;
+  }
+  LastAxisNTLoopInfo() {
+    Reset();
   }
 };
 
@@ -285,11 +361,15 @@ struct LastAxisNTHugeInfo {
   int64_t tailBlocks;
   int64_t backEle;
 
-  LastAxisNTHugeInfo() {
+  void Reset() {
     majorLoopNum = 0;
     majorBlocks = 0;
     tailBlocks = 0;
     backEle = 0;
+  }
+
+  LastAxisNTHugeInfo() {
+    Reset();
   }
 };
 
@@ -301,13 +381,16 @@ struct IdenticalInfo {
   int64_t tailNum;
   int64_t notAlignEle;
 
-  IdenticalInfo() {
+  void Reset() {
     base = 0;
     eleNum = 0;
     majorLoop = 0;
     majorNum = 0;
     tailNum = 0;
     notAlignEle = 0;
+  }
+  IdenticalInfo() {
+    Reset();
   }
 };
 
@@ -319,7 +402,8 @@ struct InfoPerCoreLastAxisNT {
   int64_t aggregateLoopTail;
   int64_t initTuple[TRANSPOSE_MAX_AXIS_NUM];
   LastAxisNTLoopInfo loopInfo;
-  InfoPerCoreLastAxisNT() {
+
+  void Reset() {
     base = 0;
     num = 0;
     aggregateLoopUnit = 0;
@@ -328,18 +412,30 @@ struct InfoPerCoreLastAxisNT {
     for (int64_t i = 0; i < TRANSPOSE_MAX_AXIS_NUM; i++) {
       initTuple[i] = 0;
     }
+    loopInfo.Reset();
+  }
+  InfoPerCoreLastAxisNT() {
+    Reset();
   }
 };
 
 struct InfoN {
   int64_t loopOnN;
   int64_t nOffsetLogic;
-  std::vector<int64_t> initNTuple;
+  int64_t initNTupleSize;
+  int64_t initNTuple[TRANSPOSE_MAX_AXIS_NUM];
 
-  InfoN() {
+  void Reset(int64_t coreNum = MAX_CORE_NUM) {
+    initNTupleSize = (coreNum == MAX_CORE_NUM) ? TRANSPOSE_MAX_AXIS_NUM : initNTupleSize;
+    for (int64_t i = 0; i < initNTupleSize; i++) {
+      initNTuple[i] = 0;
+    }
     loopOnN = 0;
     nOffsetLogic = 0;
-    initNTuple.resize(TRANSPOSE_MAX_AXIS_NUM, 0);
+    initNTupleSize = 0;
+  }
+  InfoN() {
+    Reset();
   }
 };
 
@@ -351,10 +447,20 @@ struct InfoCol {
   int64_t colBlockTC;
   int64_t colOffset;
   int64_t backStepLeft;
-  std::vector<int64_t> initDstTuple;
-  std::vector<int64_t> tailDstTuple;
+  int64_t initDstTupleSize;
+  int64_t tailDstTupleSize;
+  int64_t initDstTuple[TRANSPOSE_MAX_AXIS_NUM];
+  int64_t tailDstTuple[TRANSPOSE_MAX_AXIS_NUM];
 
-  InfoCol() {
+  void Reset(int64_t coreNum = MAX_CORE_NUM) {
+    initDstTupleSize = (coreNum == MAX_CORE_NUM) ? TRANSPOSE_MAX_AXIS_NUM : initDstTupleSize;
+    for (int64_t i = 0; i < initDstTupleSize; i++) {
+      initDstTuple[i] = 0;
+    }
+    tailDstTupleSize = (coreNum == MAX_CORE_NUM) ? TRANSPOSE_MAX_AXIS_NUM : tailDstTupleSize;
+    for (int64_t i = 0; i < tailDstTupleSize; i++) {
+      tailDstTuple[i] = 0;
+    }
     colPerMC = 0;
     colBlockPerMC = 0;
     loopOnMC = 0;
@@ -362,8 +468,11 @@ struct InfoCol {
     colBlockTC = 0;
     colOffset = 0;
     backStepLeft = 0;
-    initDstTuple.resize(TRANSPOSE_MAX_AXIS_NUM, 0);
-    tailDstTuple.resize(TRANSPOSE_MAX_AXIS_NUM, 0);
+    initDstTupleSize = 0;
+    tailDstTupleSize = 0;
+  }
+  InfoCol() {
+    Reset();
   }
 };
 
@@ -375,10 +484,20 @@ struct InfoRow {
   int64_t rowBlockTR;
   int64_t rowOffset;
   int64_t backStepUp;
-  std::vector<int64_t> initSrcTuple;
-  std::vector<int64_t> tailSrcTuple;
+  int64_t initSrcTupleSize;
+  int64_t tailSrcTupleSize;
+  int64_t initSrcTuple[TRANSPOSE_MAX_AXIS_NUM];
+  int64_t tailSrcTuple[TRANSPOSE_MAX_AXIS_NUM];
 
-  InfoRow() {
+  void Reset(int64_t coreNum = MAX_CORE_NUM) {
+    initSrcTupleSize = (coreNum == MAX_CORE_NUM) ? TRANSPOSE_MAX_AXIS_NUM : initSrcTupleSize;
+    for (int64_t i = 0; i < initSrcTupleSize; i++) {
+      initSrcTuple[i] = 0;
+    }
+    tailSrcTupleSize = (coreNum == MAX_CORE_NUM) ? TRANSPOSE_MAX_AXIS_NUM : tailSrcTupleSize;
+    for (int64_t i = 0; i < tailSrcTupleSize; i++) {
+      tailSrcTuple[i] = 0;
+    }
     rowPerMR = 0;
     rowBlockPerMR = 0;
     loopOnMR = 0;
@@ -386,8 +505,12 @@ struct InfoRow {
     rowBlockTR = 0;
     rowOffset = 0;
     backStepUp = 0;
-    initSrcTuple.resize(TRANSPOSE_MAX_AXIS_NUM, 0);
-    tailSrcTuple.resize(TRANSPOSE_MAX_AXIS_NUM, 0);
+    initSrcTupleSize = 0;
+    tailSrcTupleSize = 0;
+  }
+
+  InfoRow() {
+    Reset();
   }
 };
 
@@ -398,10 +521,18 @@ struct InfoCol2D {
   int64_t colTC;
   int64_t colBlockTC;
   int64_t colOffset;
-  InfoCol2D() {
+
+  void Reset() {
+    loopOnMC = 0;
+    colPerMC = 0;
+    colBlockPerMC = 0;
     colTC = 0;
     colBlockTC = 0;
     colOffset = 0;
+  }
+
+  InfoCol2D() {
+    Reset();
   }
 };
 
@@ -412,9 +543,18 @@ struct InfoRow2D {
   int64_t rowTR;
   int64_t rowBlockTR;
   int64_t rowOffset;
-  InfoRow2D() {
+
+  void Reset() {
+    loopOnMR = 0;
+    rowPerMR = 0;
+    rowBlockPerMR = 0;
     rowTR = 0;
     rowBlockTR = 0;
+    rowOffset = 0;
+  }
+
+  InfoRow2D() {
+    Reset();
   }
 };
 
@@ -422,12 +562,28 @@ struct InfoPerCore {
   InfoN infoN;
   InfoCol infoCol;
   InfoRow infoRow;
+
+  void Reset(int64_t coreNum = MAX_CORE_NUM) {
+    infoN.Reset(coreNum);
+    infoCol.Reset(coreNum);
+    infoRow.Reset(coreNum);
+  }
+
+  InfoPerCore() {
+    Reset();
+  }
 };
 
 struct InfoPerCore2D {
   InfoN infoN;
   InfoCol2D infoCol2D;
   InfoRow2D infoRow2D;
+
+  void Reset() {
+    infoN.Reset();
+    infoCol2D.Reset();
+    infoRow2D.Reset();
+  }
 };
 
 struct BorrowAxisPerCore {
@@ -465,14 +621,17 @@ struct IndexInfo {
   int64_t pivot;
   int64_t dup;
 
-  IndexInfo() {
+  void Reset() {
     idx_in = 0;
     idx_out = 0;
     loop = 0;
-    step = 0;
+    step = 1;
     tail = 0;
     pivot = 0;
     dup = 0;
+  }
+  IndexInfo() {
+    Reset();
   }
 };
 
@@ -488,6 +647,9 @@ struct LRSB {
   int64_t srcOffset;
   int64_t dstOffset;
   LRSB() {
+    Reset();
+  }
+  void Reset() {
     n = 0;
     vol = 0;
     loop = 0;
@@ -534,30 +696,24 @@ struct BorrowInfo {
   int64_t axisPerm;
   int64_t pivotSrcAxisDup;
   int64_t pivotDstAxisDup;
-
   int64_t majorDstLoop_in;
   int64_t tailDstLoop_in;
   int64_t majorSrcLoop_out;
   int64_t tailSrcLoop_out;
-
   int64_t majorBurstLen_in;
   int64_t tailBurstLen_in;
   int64_t majorBurstLen_out;
   int64_t tailBurstLen_out;
-
   int64_t majorInEle;
   int64_t tailInEle;
   int64_t majorInTailEle;
   int64_t tailInTailEle;
-
   int64_t majorOutEle;
   int64_t tailOutEle;
   int64_t majorOutTailEle;
   int64_t tailOutTailEle;
-
   int64_t srcStep;
   int64_t dstStep;
-
   int64_t xdxsVol[UB_REORDER_COMBINATION];
   int64_t lastTwoLoop;
   int64_t lastTwoRepeat;
@@ -566,6 +722,31 @@ struct BorrowInfo {
   int64_t lastTwosStride;
   int64_t lastTwodStride;
   int64_t lastTwoOffset;
+  int64_t loopPerCore[MAX_CORE_NUM];
+  int64_t srcJumpFactorLogic_in;
+  int64_t srcJumpFactorMod_in;
+  int64_t dstJumpFactorLogic_in;
+  int64_t dstJumpFactorMod_in;
+  int64_t dstStrideCopyIn[BORROW_DST_AXIS_NUM_LT];
+  int64_t dstFactorCopyIn[BORROW_DST_AXIS_NUM_LT];
+  int64_t srcFactorCopyOut[BORROW_SRC_AXIS_NUM_LT];
+  int64_t srcStrideCopyOut[BORROW_SRC_AXIS_NUM_LT];
+  int64_t otherJumpFactor_in[BORROW_OTHER_AXIS_NUM];
+  int64_t otherJumpStride_in[BORROW_OTHER_AXIS_NUM];
+  int64_t otherJumpFactorMod_in[BORROW_OTHER_AXIS_NUM];
+  int64_t otherInitTuple_in[BORROW_OTHER_AXIS_NUM];
+  int64_t srcJumpFactorMod_out;
+  int64_t dstJumpFactorMod_out;
+  int64_t dstJumpstride_out;
+  int64_t otherJumpFactor_out[BORROW_OTHER_AXIS_NUM];
+  int64_t otherJumpStride_out[BORROW_OTHER_AXIS_NUM];
+  int64_t otherJumpFactorMod_out[BORROW_OTHER_AXIS_NUM];
+  int64_t otherInitTuple_out[BORROW_OTHER_AXIS_NUM];
+  int64_t ubPermNum;
+  int64_t ubPermRaw[BORROW_MAX_AXIS_NUM_LT];
+  int64_t ubPerm[BORROW_MAX_AXIS_NUM_LT];
+  LRSB lrsb[UB_REORDER_COMBINATION][UB_REORDER_LOOP];
+  PermInfo permInfo;
 
   IndexInfo srcIndexIn[BORROW_SRC_AXIS_NUM_LT];
   IndexInfo srcIndexOut[BORROW_SRC_AXIS_NUM_LT];
@@ -577,42 +758,57 @@ struct BorrowInfo {
   IndexInfo dstIndexOutNoDup[BORROW_DST_AXIS_NUM_LT];
   IndexInfo otherIndex[BORROW_OTHER_AXIS_NUM];
 
-  LRSB lrsb[UB_REORDER_COMBINATION][UB_REORDER_LOOP];
+  BorrowAxisPerCore srcAxis_in[MAX_CORE_NUM];
+  BorrowAxisPerCore dstAxis_in[MAX_CORE_NUM];
+  OtherAxisPerCore otherAxis_in[MAX_CORE_NUM];
 
-  std::vector<int64_t> loopPerCore;
-  std::vector<BorrowAxisPerCore> srcAxis_in;
-  std::vector<BorrowAxisPerCore> dstAxis_in;
-  std::vector<OtherAxisPerCore> otherAxis_in;
+  void Reset(int64_t coreNum = MAX_CORE_NUM) {
+    int loop = (coreNum == MAX_CORE_NUM) ? BORROW_SRC_AXIS_NUM_LT : srcNum;
+    for (int i = 0; i < loop; i++) {
+      srcIndexIn[i].Reset();
+      srcIndexOut[i].Reset();
+      srcIndexInNoDup[i].Reset();
+      srcIndexOutNoDup[i].Reset();
+      srcFactorCopyOut[i] = 0;
+      srcStrideCopyOut[i] = 0;
+    }
 
-  int64_t srcJumpFactorLogic_in;
-  int64_t srcJumpFactorMod_in;
-  int64_t dstJumpFactorLogic_in;
-  int64_t dstJumpFactorMod_in;
-  int64_t dstStrideCopyIn[BORROW_DST_AXIS_NUM_LT];
-  int64_t dstFactorCopyIn[BORROW_DST_AXIS_NUM_LT];
-  int64_t srcFactorCopyOut[BORROW_SRC_AXIS_NUM_LT];
-  int64_t srcStrideCopyOut[BORROW_SRC_AXIS_NUM_LT];
+    loop = (coreNum == MAX_CORE_NUM) ? BORROW_DST_AXIS_NUM_LT : dstNum;
+    for (int i = 0; i < loop; i++) {
+      dstIndexIn[i].Reset();
+      dstIndexOut[i].Reset();
+      dstIndexInNoDup[i].Reset();
+      dstIndexOutNoDup[i].Reset();
+      dstFactorCopyIn[i] = 0;
+      dstStrideCopyIn[i] = 0;
+    }
 
-  int64_t otherJumpFactor_in[BORROW_OTHER_AXIS_NUM];
-  int64_t otherJumpStride_in[BORROW_OTHER_AXIS_NUM];
-  int64_t otherJumpFactorMod_in[BORROW_OTHER_AXIS_NUM];
-  int64_t otherInitTuple_in[BORROW_OTHER_AXIS_NUM];
+    loop = (coreNum == MAX_CORE_NUM) ? BORROW_OTHER_AXIS_NUM : otherNum;
+    for (int i = 0; i < loop; i++) {
+      otherIndex[i].Reset();
+      otherJumpFactor_in[i] = 0;
+      otherJumpStride_in[i] = 0;
+      otherJumpFactorMod_in[i] = 1;
+      otherInitTuple_in[i] = 0;
+      otherJumpFactor_out[i] = 0;
+      otherJumpStride_out[i] = 0;
+      otherJumpFactorMod_out[i] = 1;
+      otherInitTuple_out[i] = 0;
+    }
 
-  int64_t srcJumpFactorMod_out;
-  int64_t dstJumpFactorMod_out;
-  int64_t dstJumpstride_out;
+    memset_s(&ubPerm, sizeof(ubPerm), 0, sizeof(ubPerm));
+    memset_s(&ubPermRaw, sizeof(ubPermRaw), 0, sizeof(ubPermRaw));
+    memset_s(&lrsb, sizeof(lrsb), 0, sizeof(lrsb));
+    memset_s(&permInfo, sizeof(permInfo), 0, sizeof(permInfo));
+    memset_s(&loopPerCore, sizeof(loopPerCore), 0, sizeof(loopPerCore));
+    memset_s(&srcAxis_in, sizeof(srcAxis_in), 0, sizeof(srcAxis_in));
+    memset_s(&dstAxis_in, sizeof(dstAxis_in), 0, sizeof(dstAxis_in));
+    memset_s(&otherAxis_in, sizeof(otherAxis_in), 0, sizeof(otherAxis_in));
 
-  int64_t otherJumpFactor_out[BORROW_OTHER_AXIS_NUM];
-  int64_t otherJumpStride_out[BORROW_OTHER_AXIS_NUM];
-  int64_t otherJumpFactorMod_out[BORROW_OTHER_AXIS_NUM];
-  int64_t otherInitTuple_out[BORROW_OTHER_AXIS_NUM];
+    for (int i = 0; i < UB_REORDER_COMBINATION; i++) {
+      xdxsVol[i] = 1;
+    }
 
-  int64_t ubPermNum;
-  int64_t ubPermRaw[BORROW_MAX_AXIS_NUM_LT];
-  int64_t ubPerm[BORROW_MAX_AXIS_NUM_LT];
-  PermInfo permInfo;
-
-  BorrowInfo() {
     srcNum = 0;
     dstNum = 0;
     srcNumNoDup = 0;
@@ -626,7 +822,6 @@ struct BorrowInfo {
     axisPerm = 0x0;
     pivotSrcAxisDup = 0;
     pivotDstAxisDup = 0;
-
     majorDstLoop_in = 1;
     tailDstLoop_in = 1;
     majorSrcLoop_out = 1;
@@ -643,10 +838,8 @@ struct BorrowInfo {
     tailOutEle = 0;
     majorOutTailEle = 0;
     tailOutTailEle = 0;
-    ubPermNum = 0;
     srcStep = 1;
     dstStep = 1;
-
     lastTwoLoop = 0;
     lastTwoRepeat = 0;
     lastTwosListRepeat = 0;
@@ -662,63 +855,62 @@ struct BorrowInfo {
     srcJumpFactorMod_out = 0;
     dstJumpFactorMod_out = 0;
     dstJumpstride_out = 0;
+    ubPermNum = 0;
+  }
 
-    for (int i = 0; i < UB_REORDER_COMBINATION; i++) {
-      xdxsVol[i] = 1;
-    }
-
-    for (int i = 0; i < BORROW_DST_AXIS_NUM_LT; i++) {
-      dstFactorCopyIn[i] = 0;
-      dstStrideCopyIn[i] = 0;
-    }
-
-    for (int i = 0; i < BORROW_SRC_AXIS_NUM_LT; i++) {
-      srcFactorCopyOut[i] = 0;
-      srcStrideCopyOut[i] = 0;
-    }
-
-    for (int i = 0; i < BORROW_OTHER_AXIS_NUM; i++) {
-      otherJumpFactor_in[i] = 0;
-      otherJumpStride_in[i] = 0;
-      otherJumpFactorMod_in[i] = 1;
-      otherInitTuple_in[i] = 0;
-      otherJumpFactor_out[i] = 0;
-      otherJumpStride_out[i] = 0;
-      otherJumpFactorMod_out[i] = 1;
-      otherInitTuple_out[i] = 0;
-    }
-
-    for (int i = 0; i < BORROW_MAX_AXIS_NUM; i++) {
-      ubPerm[i] = 0;
-    }
+  BorrowInfo() {
+    Reset();
   }
 };
 
 struct TwoDInfo {
   int64_t nAxisNum;
-
   int64_t colPerMC;
   int64_t colBlockPerMC;
   int64_t colBlockTC;
-
   int64_t rowPerMR;
   int64_t rowBlockPerMR;
   int64_t rowBlockTR;
-
   int64_t srcStrideIn;
   int64_t srcStrideInTail;
   int64_t dstStrideOut;
   int64_t dstStrideOutTail;
-
   int64_t nUnit;
-  std::vector<int64_t> nFactor;
-  std::vector<int64_t> nSrcStride;
-  std::vector<int64_t> nDstStride;
 
-  std::vector<InfoPerCore2D> infoPerCore2D;
+  int64_t nFactor[TRANSPOSE_MAX_AXIS_NUM];
+  int64_t nSrcStride[TRANSPOSE_MAX_AXIS_NUM];
+  int64_t nDstStride[TRANSPOSE_MAX_AXIS_NUM];
+  InfoPerCore2D infoPerCore2D[MAX_CORE_NUM];
+  
+  int64_t nFactorSize;
+  int64_t nSrcStrideSize;
+  int64_t nDstStrideSize;
+  int64_t infoPerCore2DSize;
+
+  void Reset(int64_t coreNum = MAX_CORE_NUM) {
+    for (int64_t i = 0; i < coreNum; i++) {
+      infoPerCore2D[i].Reset();
+    }
+    nAxisNum = 0;
+    colPerMC = 0;
+    colBlockPerMC = 0;
+    colBlockTC = 0;
+    rowPerMR = 0;
+    rowBlockPerMR = 0;
+    rowBlockTR = 0;
+    srcStrideIn = 0;
+    srcStrideInTail = 0;
+    dstStrideOut = 0;
+    dstStrideOutTail = 0;
+    nUnit = 1;
+    nFactorSize = 0;
+    nSrcStrideSize = 0;
+    nDstStrideSize = 0;
+    infoPerCore2DSize = 0;
+  }
 
   TwoDInfo() {
-    nUnit = 1;
+    Reset();
   }
 };
 
@@ -726,6 +918,10 @@ struct RuntimeInfo {
   /*
    * last axis not transposed
    */
+  int64_t id;
+  int64_t coreNum;
+  int64_t scenarioSize;
+  TransposeScenario scenarios[MAX_RETRY_SCENARIO];
   int64_t ubReorderFactor;
   int64_t ubThreshold;  // unit: block number
   int64_t fp16Offset1;
@@ -738,21 +934,28 @@ struct RuntimeInfo {
   int64_t dstStride;
   int64_t backNum;
   int64_t skipEle;
-  std::vector<std::pair<int64_t, int64_t>> initRanges;
-  std::vector<std::pair<int64_t, int64_t>> extendRanges;
-  std::vector<int64_t> dstBaseAddr;
-  std::vector<int64_t> srcBaseAddr;
-  std::vector<int64_t> dirtyDataStartAddrPerCore;
+  int64_t colPermSize;
+  //int64_t rowPermSize;
+  int64_t ncrsSize;
+  int64_t nJumpAxisNum;
+  int64_t srcJumpAxisNum;
+  int64_t dstJumpAxisNum;
+  int64_t infoNSize;
+  int64_t infoColSize;
+  int64_t infoRowSize;
+  int64_t nRangeSize;
+  int64_t colRangeSize;
+  int64_t rowRangeSize;
 
   /*
    * scenario_0: identical
    */
-  std::vector<IdenticalInfo> infoPerCoreIdentical;
+  IdenticalInfo infoPerCoreIdentical[MAX_CORE_NUM];
 
   /*
    * scenario_1: last axis large not transposed
    */
-  std::vector<InfoPerCoreLastAxisNT> infoPerCoreLastAxisNT;
+  InfoPerCoreLastAxisNT infoPerCoreLastAxisNT[MAX_CORE_NUM];
 
   /*
    * scenario_3: last axis huge not transposed
@@ -765,7 +968,7 @@ struct RuntimeInfo {
   BorrowInfo borrowInfo;
 
   /*
-   * scenario_10: borrow axis scenario
+   * scenario_11: borrow axis scenario
    */
   TwoDInfo twoDInfo;
 
@@ -774,27 +977,21 @@ struct RuntimeInfo {
    * last axis transposed
    *
    */
-  std::vector<int64_t> colPerm;
-  std::vector<int64_t> rowPerm;
-  vector<NCR> ncrs;
+  int64_t colPerm[TRANSPOSE_MAX_AXIS_NUM];
+  //int64_t rowPerm[TRANSPOSE_MAX_AXIS_NUM];
+
+  NCR ncrs[TRANSPOSE_MAX_AXIS_NUM];
   NCR ncr;
   SplitParam sp;
-  // priority_queue top() return const reference, unique_ptr no copy ctro
-  std::priority_queue<std::shared_ptr<TilingModel>, std::vector<std::shared_ptr<TilingModel>>, TMCompare> pqtm;
+  TilingModel tilingModel;
 
-  int64_t nJumpAxisNum;
-  int64_t srcJumpAxisNum;
-  int64_t dstJumpAxisNum;
-
-  std::vector<InfoN> infoN;
-  std::vector<InfoCol> infoCol;
-  std::vector<InfoRow> infoRow;
-
-  std::vector<InfoPerCore> infoPerCore;
-
-  std::vector<std::pair<int64_t, int64_t>> nRange;
-  std::vector<std::pair<int64_t, int64_t>> colRange;
-  std::vector<std::pair<int64_t, int64_t>> rowRange;
+  InfoN infoN[MAX_CORE_NUM];
+  InfoCol infoCol[MAX_CORE_NUM];
+  InfoRow infoRow[MAX_CORE_NUM];
+  InfoPerCore infoPerCore[MAX_CORE_NUM];
+  int64_t nRange[MAX_CORE_NUM][2];
+  int64_t colRange[MAX_CORE_NUM][2];
+  int64_t rowRange[MAX_CORE_NUM][2];
 
   int64_t nJumpFactor[TRANSPOSE_MAX_AXIS_NUM];
   int64_t nJumpStrideIn[TRANSPOSE_MAX_AXIS_NUM];
@@ -809,7 +1006,10 @@ struct RuntimeInfo {
   int64_t dstJumpStride[TRANSPOSE_MAX_AXIS_NUM];
   int64_t dstJumpFactorMod[TRANSPOSE_MAX_AXIS_NUM];
 
-  RuntimeInfo() {
+  void ResetCommon() {
+    id = 0;
+    coreNum = MAX_CORE_NUM;
+    scenarioSize = 0; 
     ubReorderFactor = 1;
     ubThreshold = 1;
     fp16Offset1 = 0;
@@ -825,7 +1025,20 @@ struct RuntimeInfo {
     nJumpAxisNum = 0;
     srcJumpAxisNum = 0;
     dstJumpAxisNum = 0;
+    ncrsSize = 0;
+    colPermSize = 0;
+    infoNSize = 0;
+    infoColSize = 0;
+    infoRowSize = 0;
+    nRangeSize = 0;
+    colRangeSize = 0;
+    rowRangeSize = 0;
+  }
 
+  void ResetScenario0() {
+    for (int64_t i = 0; i < coreNum; i++) {
+      infoPerCoreIdentical[i].Reset();
+    }
     for (int i = 0; i < TRANSPOSE_MAX_AXIS_NUM; i++) {
       nJumpFactor[i] = 0;
       nJumpStrideIn[i] = 0;
@@ -839,7 +1052,196 @@ struct RuntimeInfo {
       dstJumpFactorMod[i] = 1;
     }
   }
+
+  void ResetScenario1() {
+    for (int64_t i = 0; i < coreNum; i++) {
+      infoPerCoreLastAxisNT[i].Reset();
+    }
+    for (int i = 0; i < TRANSPOSE_MAX_AXIS_NUM; i++) {
+      nJumpFactor[i] = 0;
+      nJumpStrideIn[i] = 0;
+      nJumpStrideOut[i] = 0;
+      nJumpFactorMod[i] = 1;
+      srcJumpFactor[i] = 0;
+      srcJumpStride[i] = 0;
+      srcJumpFactorMod[i] = 1;
+      dstJumpFactor[i] = 0;
+      dstJumpStride[i] = 0;
+      dstJumpFactorMod[i] = 1;
+    }
+  }
+
+  void ResetScenario2() {
+    for (int64_t i = 0; i < coreNum; i++) {
+      infoPerCoreLastAxisNT[i].Reset();
+    }
+    for (int i = 0; i < TRANSPOSE_MAX_AXIS_NUM; i++) {
+      nJumpFactor[i] = 0;
+      nJumpStrideIn[i] = 0;
+      nJumpStrideOut[i] = 0;
+      nJumpFactorMod[i] = 1;
+      srcJumpFactor[i] = 0;
+      srcJumpStride[i] = 0;
+      srcJumpFactorMod[i] = 1;
+      dstJumpFactor[i] = 0;
+      dstJumpStride[i] = 0;
+      dstJumpFactorMod[i] = 1;
+    }
+  }
+
+  void ResetScenario3() {
+    hugeInfo.Reset();
+    for (int64_t i = 0; i < coreNum; i++) {
+      infoPerCoreLastAxisNT[i].Reset();
+    }
+    for (int i = 0; i < TRANSPOSE_MAX_AXIS_NUM; i++) {
+      nJumpFactor[i] = 0;
+      nJumpStrideIn[i] = 0;
+      nJumpStrideOut[i] = 0;
+      nJumpFactorMod[i] = 1;
+      srcJumpFactor[i] = 0;
+      srcJumpStride[i] = 0;
+      srcJumpFactorMod[i] = 1;
+      dstJumpFactor[i] = 0;
+      dstJumpStride[i] = 0;
+      dstJumpFactorMod[i] = 1;
+    }
+  }
+
+  void ResetScenario4() {
+    borrowInfo.Reset(coreNum);
+  }
+
+  void ResetScenario5() {
+    borrowInfo.Reset(coreNum);
+  }
+
+  void ResetScenario6() {
+    ResetScenario2();
+  }
+
+  void ResetScenario7() {
+    for (int i = 0; i < TRANSPOSE_MAX_AXIS_NUM; i++) {
+      nJumpFactor[i] = 0;
+      nJumpStrideIn[i] = 0;
+      nJumpStrideOut[i] = 0;
+      nJumpFactorMod[i] = 1;
+      srcJumpFactor[i] = 0;
+      srcJumpStride[i] = 0;
+      srcJumpFactorMod[i] = 1;
+      dstJumpFactor[i] = 0;
+      dstJumpStride[i] = 0;
+      dstJumpFactorMod[i] = 1;
+      ncrs[i].Reset();
+    }
+    ncr.Reset();
+    sp.Reset();
+    tilingModel.Reset();
+    for (int64_t i = 0; i < coreNum; i++) {
+      infoN[i].Reset();
+    }
+    for (int64_t i = 0; i < coreNum; i++) {
+      infoCol[i].Reset();
+    }
+    for (int64_t i = 0; i < coreNum; i++) {
+      infoRow[i].Reset();
+    }
+    for (int64_t i = 0; i < coreNum; i++) {
+      infoPerCore[i].Reset(coreNum);
+    }
+  }
+
+  void ResetScenario9() {
+    for (int64_t i = 0; i < coreNum; i++) {
+      infoPerCoreLastAxisNT[i].Reset();
+    }
+    for (int i = 0; i < TRANSPOSE_MAX_AXIS_NUM; i++) {
+      nJumpFactor[i] = 0;
+      nJumpStrideIn[i] = 0;
+      nJumpStrideOut[i] = 0;
+      nJumpFactorMod[i] = 1;
+      srcJumpFactor[i] = 0;
+      srcJumpStride[i] = 0;
+      srcJumpFactorMod[i] = 1;
+      dstJumpFactor[i] = 0;
+      dstJumpStride[i] = 0;
+      dstJumpFactorMod[i] = 1;
+    }
+  }
+
+  void ResetScenario10() {
+    borrowInfo.Reset(coreNum);
+  }
+
+  void ResetScenario11() {
+    twoDInfo.Reset(coreNum);
+  }
+
+  void Reset() {
+
+    if (scenarioSize == 0) {
+        ResetScenario0();
+        ResetScenario1();
+        ResetScenario2();
+        ResetScenario3();
+        ResetScenario4();
+        ResetScenario5();
+        ResetScenario6();
+        ResetScenario7();
+        ResetScenario9();
+        ResetScenario10();
+        ResetScenario11();
+    } else {
+      for (int64_t i = 0; i < scenarioSize; i++) {
+        switch(scenarios[i]) {
+          case SCENARIO_0:
+            ResetScenario0();
+            break;
+          case SCENARIO_1:
+            ResetScenario1();
+            break;
+          case SCENARIO_2:
+            ResetScenario2();
+            break;
+          case SCENARIO_3:
+            ResetScenario3();
+            break;
+          case SCENARIO_4:
+            ResetScenario4();
+            break;
+          case SCENARIO_5:
+            ResetScenario5();
+            break;
+          case SCENARIO_6:
+            ResetScenario6();
+            break;
+          case SCENARIO_7:
+            ResetScenario7();
+            break;
+          case SCENARIO_9:
+            ResetScenario9();
+            break;
+          case SCENARIO_10:
+            ResetScenario10();
+            break;
+          case SCENARIO_11:
+            ResetScenario11();
+            break;
+          default:
+            break;
+        }
+      }
+    }
+
+    ResetCommon();
+  }
+
+  RuntimeInfo(): coreNum(MAX_CORE_NUM), scenarioSize(0) {
+    // set coreNum & scenarioSize before Reset for in Reset() will use them 
+    Reset();
+  }
 };
+
 
 void ReduceAxis(const std::string& opType, CompilerInfo& compilerInfo, ShapeInfo& shapeInfo);
 
