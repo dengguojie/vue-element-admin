@@ -5,7 +5,7 @@ from op_test_frame.ut import OpUT
 import numpy as np
 ut_case = OpUT("DynamicRNN", "impl.dynamic_rnn", "dynamic_rnn")
 
-def gen_dynamic_rnn_case(shape_x, shape_w, shape_b, shape_output, dtype, init_from_gm, gate_output, expect, case_name_val):
+def gen_dynamic_rnn_case(shape_x, shape_w, shape_b, shape_output, dtype, init_from_gm, gate_output, with_seq_mask, cell_clip, expect, case_name_val):
     if not init_from_gm:
         init_h = None
         init_c = None
@@ -16,6 +16,11 @@ def gen_dynamic_rnn_case(shape_x, shape_w, shape_b, shape_output, dtype, init_fr
         print(shape_init)
         init_h = {"shape": shape_init, "dtype": "float16", "ori_shape": shape_init, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
         init_c = {"shape": shape_init, "dtype": dtype, "ori_shape": shape_init, "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+    if with_seq_mask:
+        seq_mask = {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
+                    "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"}
+    else:
+        seq_mask = None
     if not gate_output:
         i = None
         j = None
@@ -40,17 +45,25 @@ def gen_dynamic_rnn_case(shape_x, shape_w, shape_b, shape_output, dtype, init_fr
                         "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"},
                        {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
                         "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"},
-                       i, j, f, o, tanhc],
+                       i, j, f, o, tanhc, "LSTM", "UNIDIRECTIONAL", 1, False, 1.0, cell_clip, 0, True, "tanh", 0.0, "ijfo", True],
             "case_name": case_name_val,
             "expect": expect,
             "format_expect": [],
             "support_expect": True}
 
-case1 = gen_dynamic_rnn_case((1,64,2,16,16), (96,128,16,16), (128*16,), (1,32,2,16,16), "float16", True, True,
+case1 = gen_dynamic_rnn_case((1,64,2,16,16), (96,128,16,16), (128*16,), (1,32,2,16,16), "float16", True, True, False, -1.0,
                              "success", "dynamic_rnn_1")
+case2 = gen_dynamic_rnn_case((1,64,2,16,16), (96,128,16,16), (128*16,), (1,32,2,16,16), "float32", True, True, False, -1.0,
+                             "success", "dynamic_rnn_2")
+case3 = gen_dynamic_rnn_case((1,64,2,16,16), (96,128,16,16), (128*16,), (1,32,2,16,16), "float16", True, True, False, 1.0,
+                             "success", "dynamic_rnn_3")
+case4 = gen_dynamic_rnn_case((1,64,2,16,16), (96,128,16,16), (128*16,), (1,32,2,16,16), "float32", True, True, False, 1.0,
+                             "success", "dynamic_rnn_4")
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
-
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
 
 x_data = np.ones([1,1,2,16,16], dtype = np.float16)
 w_data = np.ones([2,4,16,16], dtype = np.float16)

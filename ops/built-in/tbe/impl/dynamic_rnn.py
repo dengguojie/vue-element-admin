@@ -28,6 +28,7 @@ from te.lang.cce import vmul
 from te.lang.cce import vmuls
 from te.lang.cce import vrec
 from te.lang.cce import vsub
+from te.lang.cce import vmins
 from te.domain.rl_bank import rl_bank
 from te.domain.rl_bank import bank_manager
 from te.platform import scope_ca
@@ -516,7 +517,6 @@ def check_prama_dtype(input_x, weight, bias, init_h, init_c, y, output_h,
     check parameters dtype
     :return:
     """
-
     x_dtype = input_x.get("dtype").lower()
     para_check.check_dtype(x_dtype, ["float16"], param_name="x")
 
@@ -672,9 +672,6 @@ def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
     if keep_prob != 1.0:
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr keep_prob is not support, please check!")
 
-    if cell_clip != -1.0:
-        error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr cell_clip is not support, please check!")
-
     if num_proj != 0:
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr num_proj is not support, please check!")
 
@@ -683,7 +680,7 @@ def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
 
     if activation not in ["tanh"]:
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr activation only support tanh, please check!")
-    
+
     if gate_order not in ["ijfo", "ifjo"]:
         error_manager_vector.raise_err_check_params_rules("DynamicRNN",
                                                           "gate_order in ['ijfo', 'ifjo']",
@@ -945,7 +942,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                     input_list,
                     output_list,
                     [is_gate_output, is_first_round, is_global_init,
-                     forget_bias, gate_order])
+                     forget_bias, gate_order, cell_clip])
 
             with tik_instance.if_scope(loop_i > 0):
                 is_first_round = False
@@ -954,7 +951,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                     input_list,
                     output_list,
                     [is_gate_output, is_first_round, is_global_init,
-                     forget_bias, gate_order])
+                     forget_bias, gate_order, cell_clip])
 
     config_map = {
         "dump_cce_code": False,
@@ -986,11 +983,12 @@ def dynamic_rnn_tik(input_list, custom_list):
     is_global_init = custom_list[2]
     forget_bias = custom_list[3]
     gate_order = custom_list[4]
+    cell_clip = custom_list[5]
 
     return dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                             s_state_h_gm_last, s_state_c_gm_last, sync0, seq_mask_gm,
                             is_gate_output, is_first_round, is_global_init,
-                            forget_bias, gate_order)
+                            forget_bias, gate_order, cell_clip)
 
 
 # pylint: disable=too-many-arguments,too-many-locals,invalid-name
@@ -998,7 +996,7 @@ def dynamic_rnn_tik(input_list, custom_list):
 def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                      s_state_h_gm_last, s_state_c_gm_last, sync0, seq_mask_gm,
                      is_gate_output, is_first_round, is_global_init,
-                     forget_bias, gate_order):
+                     forget_bias, gate_order, cell_clip):
     """
     implement of dynamic rnn
     :return:
@@ -1032,7 +1030,6 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         fp16_input_output = True
 
     # compute
-
     if is_first_round:
         if is_global_init:
             s_state_h_ub = tvm.compute(shape_h,
@@ -1284,14 +1281,20 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     c_t_tmp1 = vmul(s_state_c_ub, f_t_sigmoid_ub)
     c_t_tmp2 = vmul(j_t_tanh_ub, i_t_sigmoid_ub)
     update_c = vadd(c_t_tmp1, c_t_tmp2)
-    
+
+    if cell_clip > 0:
+        dtype = update_c.dtype
+        clip_const = tvm.const(cell_clip, dtype)
+        update_c = vmins(update_c, clip_const)
+
     if seq_mask_gm is not None:
         seq_mask_ub = tvm.compute(shape_h, lambda _, i, j, k, l: seq_mask_gm[0, i, j, k, l],
                                     name="seq_mask_ub")
-        
+
         update_c_diff = vsub(update_c, s_state_c_ub)
         update_c_tmp = vmul(update_c_diff, seq_mask_ub)
         update_c = vadd(update_c_tmp, s_state_c_ub)
+        update_c = vmul(update_c, seq_mask_ub)
 
     # c_gm fp32 case need flag
     if bias_dtype == 'float16':
@@ -1374,7 +1377,6 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                                             lambda *indices: update_h_gm_as_y(*indices),
                                             name="update_h_gm_as_y_back",
                                             tag="out_to_ub")
- 
     else:
         update_h_gm_as_y = tvm.compute(shape_i,
                                        lambda *indices: update_h(*indices),
@@ -1390,7 +1392,8 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         update_h_diff = vsub(update_h_gm_as_y_back, s_state_h_ub_for_element)
         update_h_diff_mask = vmul(update_h_diff, seq_mask_ub)
         update_h_gm_as_y_back_mid = vadd(update_h_diff_mask, s_state_h_ub_for_element)
-    
+        update_h_gm_as_y_back_mid = vmul(update_h_gm_as_y_back_mid, seq_mask_ub)
+
     if fp16_input_output:
         update_h_gm = tvm.compute(shape_i,
                                   lambda *indices: update_h_gm_as_y_back_mid(*indices),
@@ -1407,7 +1410,6 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                                   tag="ub_to_out")
 
     # end compute
-
     if is_gate_output:
         return_list = [update_h_gm, update_c_gm, update_h_gm_as_y,
                        i_t_sigmoid_gm,

@@ -4,7 +4,8 @@ import numpy as np
 from op_test_frame.ut import OpUT
 ut_case = OpUT("DynamicRNN", "impl.dynamic.dynamic_rnn", "dynamic_rnn")
 
-def gen_dynamic_rnn_case(shape_x, shape_w, shape_b, shape_output, dtype, init_from_gm, gate_output, with_seq_mask, expect, case_name_val, range_x, range_w, range_b, range_out):
+def gen_dynamic_rnn_case(shape_x, shape_w, shape_b, shape_output, dtype, init_from_gm, gate_output, with_seq_mask, cell_clip,
+                         expect, case_name_val, range_x, range_w, range_b, range_out):
     if not init_from_gm:
         init_h = None
         init_c = None
@@ -44,25 +45,29 @@ def gen_dynamic_rnn_case(shape_x, shape_w, shape_b, shape_output, dtype, init_fr
                         "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ", "range": range_out},
                        {"shape": shape_output, "dtype": dtype, "ori_shape": shape_output,
                         "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ", "range": range_out},
-                       i, j, f, o, tanhc],
+                       i, j, f, o, tanhc, "LSTM", "UNIDIRECTIONAL", 1, False, 1.0, cell_clip, 0, True, "tanh", 0.0, "ijfo", True],
             "case_name": case_name_val,
             "expect": expect,
             "format_expect": [],
             "support_expect": True}
 
-case1 = gen_dynamic_rnn_case((1,1,2,16,16), (2,4,16,16), (4*16,), (1,1,2,16,16), "float16", True, True, False,
-                             "success", "dynamic_rnn_1", [(1,1),(1,1),(2,2),(16,16),(16,16)], [(2,2),(4,4),(16,16),(16,16)],
+case1 = gen_dynamic_rnn_case((1,1,2,16,16), (2,4,16,16), (4*16,), (1,1,2,16,16), "float16", True, True, False, -1.0,
+                             "success", "dynamic_dynamic_rnn_1", [(1,1),(1,1),(2,2),(16,16),(16,16)], [(2,2),(4,4),(16,16),(16,16)],
                              [(64,64)], [(1,1),(1,1),(2,2),(16,16),(16,16)])
-case2 = gen_dynamic_rnn_case((1,1,2,16,16), (2,4,16,16), (4*16,), (1,1,2,16,16), "float32", True, True, False,
-                             "success", "dynamic_rnn_2", [(1,1),(1,1),(2,2),(16,16),(16,16)], [(2,2),(4,4),(16,16),(16,16)],
+case2 = gen_dynamic_rnn_case((1,1,2,16,16), (2,4,16,16), (4*16,), (1,1,2,16,16), "float32", True, True, False, -1.0,
+                             "success", "dynamic_dynamic_rnn_2", [(1,1),(1,1),(2,2),(16,16),(16,16)], [(2,2),(4,4),(16,16),(16,16)],
                              [(64,64)], [(1,1),(1,1),(2,2),(16,16),(16,16)])
-case3 = gen_dynamic_rnn_case((1,1,2,16,16), (2,4,16,16), (4*16,), (1,1,2,16,16), "float16", True, True, True,
-                             "success", "dynamic_rnn_3", [(1,1),(1,1),(2,2),(16,16),(16,16)], [(2,2),(4,4),(16,16),(16,16)],
+case3 = gen_dynamic_rnn_case((1,1,2,16,16), (2,4,16,16), (4*16,), (1,1,2,16,16), "float16", True, True, True, -1.0,
+                             "success", "dynamic_dynamic_rnn_3", [(1,1),(1,1),(2,2),(16,16),(16,16)], [(2,2),(4,4),(16,16),(16,16)],
+                             [(64,64)], [(1,1),(1,1),(2,2),(16,16),(16,16)])
+case4 = gen_dynamic_rnn_case((1,1,2,16,16), (2,4,16,16), (4*16,), (1,1,2,16,16), "float16", True, True, True, 1.0,
+                             "success", "dynamic_dynamic_rnn_4", [(1,1),(1,1),(2,2),(16,16),(16,16)], [(2,2),(4,4),(16,16),(16,16)],
                              [(64,64)], [(1,1),(1,1),(2,2),(16,16),(16,16)])
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
 
 from impl.dynamic.dynamic_rnn import dynamic_rnn_np
 from impl.dynamic.dynamic_rnn import dynamic_rnn_generalization

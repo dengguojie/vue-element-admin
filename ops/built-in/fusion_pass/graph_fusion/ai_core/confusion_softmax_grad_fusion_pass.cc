@@ -75,7 +75,7 @@ after:
 
 vector<FusionPattern*> ConfusionSoftmaxGradFusionPass::DefinePatterns() {
 
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define ConfusionSoftmaxGrad pattern begin");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define ConfusionSoftmaxGrad pattern begin.");
 
   vector<FusionPattern*> patterns;
 
@@ -92,13 +92,13 @@ vector<FusionPattern*> ConfusionSoftmaxGradFusionPass::DefinePatterns() {
 
   patterns.push_back(pattern);
 
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define ConfusionSoftmaxGradFusionPass pattern end");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Define ConfusionSoftmaxGradFusionPass pattern end.");
 
   return patterns;
 }
 
 Status ConfusionSoftmaxGradFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter ConfusionSoftmaxGradFusionPass");
+  OP_LOGI(FUSED_OP_TYPE.c_str(), "Enter ConfusionSoftmaxGradFusionPass.");
 
   ge::NodePtr mulNode = GetNodeFromMapping(PATTERN_MUL, mapping);
   ge::NodePtr reduceSumNode = GetNodeFromMapping(PATTERN_SUM, mapping);

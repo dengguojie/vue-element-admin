@@ -433,6 +433,7 @@ set(_tf_plugins
   nonzero_with_value_plugin.cc
   k_means_centroids_plugin.cc
   k_means_centroids_v2_plugin.cc
+  block_lstm_plugin.cc
 )
 
 set(_tf_scope_fusion_passes
@@ -469,6 +470,7 @@ set(_ops_plugin_include
   ${GRAPHENGINE_INCLUDE}/external
   ${PROTO_BINARY_DIR}/opp
   ${Protobuf_INCLUDE}
+  ${OPS_DIR}/built-in/op_proto/inc
 )
 
 set(_ops_plugin_link_libs

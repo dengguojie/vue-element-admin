@@ -32,6 +32,7 @@ from te.lang.cce import vmul
 from te.lang.cce import vmuls
 from te.lang.cce import vrec
 from te.lang.cce import vsub
+from te.lang.cce import vmins
 from tbe.common.buildcfg.default_buildcfg import dynamic_build_config_dict
 from tbe.common.register import register_param_generalization
 from tbe.common.rl_bank import rl_bank
@@ -694,9 +695,6 @@ def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
     if keep_prob != 1.0:
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr keep_prob is not support, please check!")
 
-    if cell_clip != -1.0:
-        error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr cell_clip is not support, please check!")
-
     if num_proj != 0:
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "attr num_proj is not support, please check!")
 
@@ -1111,7 +1109,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                         output_tensors=output_list,
                         config_map={"tiling_key":tiling_index},
                         input_params=[is_gate_output, is_first_round, is_global_init,
-                                      forget_bias, gate_order, is_dynamic])
+                                      forget_bias, gate_order, is_dynamic, cell_clip])
 
                 with tik_instance.if_scope(loop_i > 0):
                     is_first_round = False
@@ -1121,7 +1119,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                         output_tensors=output_list,
                         config_map={"tiling_key":tiling_index},
                         input_params=[is_gate_output, is_first_round, is_global_init,
-                                      forget_bias, gate_order, is_dynamic])
+                                      forget_bias, gate_order, is_dynamic, cell_clip])
             else:
                 with tik_instance.if_scope(loop_i == 0):
                     is_first_round = True
@@ -1130,7 +1128,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                         input_list,
                         output_list,
                         [is_gate_output, is_first_round, is_global_init,
-                         forget_bias, gate_order, is_dynamic])
+                         forget_bias, gate_order, is_dynamic, cell_clip])
 
                 with tik_instance.if_scope(loop_i > 0):
                     is_first_round = False
@@ -1139,7 +1137,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                         input_list,
                         output_list,
                         [is_gate_output, is_first_round, is_global_init,
-                         forget_bias, gate_order, is_dynamic])
+                         forget_bias, gate_order, is_dynamic, cell_clip])
 
     tiling_key_value_list = []
     for idx in rl_idx_list_first:
@@ -1195,11 +1193,12 @@ def dynamic_rnn_tik(input_list, custom_list):
     forget_bias = custom_list[3]
     gate_order = custom_list[4]
     is_dynamic = custom_list[5]
+    cell_clip = custom_list[6]
 
     return dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                             s_state_h_gm_last, s_state_c_gm_last, sync0, seq_mask_gm,
                             is_gate_output, is_first_round, is_global_init,
-                            forget_bias, gate_order, is_dynamic)
+                            forget_bias, gate_order, cell_clip, is_dynamic)
 
 
 # 'pylint: disable=too-many-arguments,too-many-locals,invalid-name
@@ -1207,7 +1206,7 @@ def dynamic_rnn_tik(input_list, custom_list):
 def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                      s_state_h_gm_last, s_state_c_gm_last, sync0, seq_mask_gm,
                      is_gate_output, is_first_round, is_global_init,
-                     forget_bias, gate_order, is_dynamic):
+                     forget_bias, gate_order, cell_clip, is_dynamic):
     """
     implement of dynamic rnn
     :return:
@@ -1513,20 +1512,23 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     c_t_tmp1 = vmul(s_state_c_ub_temp, f_t_sigmoid_ub)
     c_t_tmp2 = vmul(j_t_tanh_ub, i_t_sigmoid_ub)
     update_c = vadd(c_t_tmp1, c_t_tmp2)
-    
+
+    if cell_clip > 0:
+        dtype = update_c.dtype
+        clip_const = tvm.const(cell_clip, dtype)
+        update_c = vmins(update_c, clip_const)
+
     if seq_mask_gm is not None:
         seq_mask_ub = tvm.compute(shape_h, lambda _, i, j, k, l: seq_mask_gm[0, i, j, k, l],
-                                    name="seq_mask_ub")
-        
+                                  name="seq_mask_ub")
         update_c_diff = vsub(update_c, s_state_c_ub_temp)
         seq_mask_ub_fp32 = tvm.compute(
                 shape_h,
                 lambda *indices: seq_mask_ub(*indices).astype('float32'),
                 name="seq_mask_ub_fp32_drnn_cast",
-                tag="elewise_single_cast")
-        # update_c_tmp = vmul(update_c_diff, seq_mask_ub)
-        update_c_tmp = vmul(update_c_diff, seq_mask_ub_fp32)
-        update_c = vadd(update_c_tmp, s_state_c_ub_temp)
+                tag="elewise_single_cast")   
+        update_c_tmp = vadd(update_c_diff, s_state_c_ub_temp)
+        update_c = vmul(update_c_tmp, seq_mask_ub_fp32)
 
     # c_gm fp32 case need flag
     if bias_dtype == 'float16':
@@ -1628,16 +1630,16 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     if seq_mask_gm is not None:
         if fp16_input_output:
             update_h_diff = vsub(update_h_gm_as_y_back, s_state_h_ub_for_element)
-            update_h_diff_mask = vmul(update_h_diff, seq_mask_ub)
-            update_h_gm_as_y_back_mid = vadd(update_h_diff_mask, s_state_h_ub_for_element)
+            update_h_diff_mask = vadd(update_h_diff, s_state_h_ub_for_element)
+            update_h_gm_as_y_back_mid = vmul(update_h_diff_mask, seq_mask_ub)
         else:
             s_state_h_ub_for_element_fp32 = tvm.compute(shape_h,
                                         lambda *indices: s_state_h_ub_for_element(*indices).astype('float32'),
                                         name="s_state_h_ub_for_element_cast",
                                         tag="elewise_single_cast")
             update_h_diff = vsub(update_h_gm_as_y_back, s_state_h_ub_for_element_fp32)
-            update_h_diff_mask = vmul(update_h_diff, seq_mask_ub_fp32)
-            update_h_gm_as_y_back_mid = vadd(update_h_diff_mask, s_state_h_ub_for_element_fp32)
+            update_h_diff_mask = vadd(update_h_diff, s_state_h_ub_for_element_fp32)
+            update_h_gm_as_y_back_mid = vmul(update_h_diff_mask, seq_mask_ub_fp32)
 
     if fp16_input_output:
         update_h_gm = tvm.compute(shape_i,
