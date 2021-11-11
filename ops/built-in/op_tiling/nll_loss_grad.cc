@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -123,7 +123,6 @@ static bool CheckParams(const string& op, const GeShape& x_shape, const GeShape&
     VECTOR_INNER_ERR_REPORT_TILIING(op, "The dimension of target should be 1D.");
     return false;
   }
-
   if (x_shape.GetDimNum() == 1 && y_grad_shape.GetDim(0) != 1) {
     VECTOR_INNER_ERR_REPORT_TILIING(op, "The shape of y_grad must be (1,), while input x is 1D.");
     return false;
@@ -471,7 +470,6 @@ bool NLLLossGradTiling(const std::string& opType, const ge::Operator& opParas, c
   auto input_y_grad_desc = operator_info->MutableInputDesc(1);
   auto input_target_desc = operator_info->MutableInputDesc(2);
   auto input_weight_desc = operator_info->MutableInputDesc(3);
-
   if (input_x_desc == nullptr || input_y_grad_desc == nullptr || input_target_desc == nullptr ||
       input_weight_desc == nullptr) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "get input_desc failed.");

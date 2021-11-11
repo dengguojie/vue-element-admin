@@ -54,7 +54,6 @@ const int32_t TILING_MODE_7 = 7;
 const int32_t TRANSPOSE_SIZE = 256;
 
 namespace optiling {
-
 struct SplitVTilingParams {
   int64_t tilingMode;
   int64_t needCoreNum;
@@ -329,7 +328,6 @@ bool CalSplitVRunningParams(SplitVTilingParams& runParams, int64_t inputElems, s
     GELOGD("op [SplitVTiling] : mode 0");
     runParams.tilingMode = TILING_MODE_0;
     runParams.needCoreNum = 1;
-
   } else if (numSplit == 1) {
     GELOGD("op [SplitVTiling] : mode 1");
     runParams.tilingMode = TILING_MODE_1;
@@ -402,7 +400,6 @@ bool CalSplitVRunningParams(SplitVTilingParams& runParams, int64_t inputElems, s
       runParams.lastCoreSeg = lastCoreSeg;
       runParams.segLoopNumLastCore = segLoopNumLastCore;
       runParams.lastSegLastCore = lastSegLastCore;
-
     } else if (CheckSizeSplitsSmall(sizeSplitsVec, dataBlock, shapeAfterDim, isSplitV)) {
       GELOGD("op [SplitVTiling] : mode 5");
       runParams.tilingMode = TILING_MODE_5;
@@ -435,13 +432,11 @@ bool CalSplitVRunningParams(SplitVTilingParams& runParams, int64_t inputElems, s
       if (runParams.dataLastCore > 0) {
         GetLastLoopParams(runParams, maxOneLoopRows, dataBlock);
       }
-
     } else if (isSplitV && CheckMode6(sizeSplitsVec, dataBlock, shapeAfterDim, shapeAfter)) {
       GELOGD("op [SplitVTiling] : mode 6");
       runParams.tilingMode = TILING_MODE_6;
 
       CalSpecialParams(runParams, coreNum, dataBlock, shapeBefore);
-
     } else if (isSplitV && inputDType == ge::DT_FLOAT16 && numSplit <= 16 &&
                CheckMode7(sizeSplitsVec, dataBlock, shapeAfterDim, shapeAfter, shapeBefore)) {
       // 16 is the max of numSplit, size_split[-1] is 32B align, sum of size_split[0:15] cannot exceed 32B
@@ -449,7 +444,6 @@ bool CalSplitVRunningParams(SplitVTilingParams& runParams, int64_t inputElems, s
       runParams.tilingMode = TILING_MODE_7;
 
       CalSpecialParams(runParams, coreNum, dataBlock, shapeBefore);
-
     } else {
       GELOGD("op [SplitVTiling] : mode 3");
       // shapeBefore > 1: mode 3
@@ -567,7 +561,6 @@ bool SplitVTiling(const std::string& opType, const ge::Operator& opParas, const 
   GELOGI("op[%s] SplitVTiling running.", opType.c_str());
   auto input0_desc = operator_info->MutableInputDesc(0);
   auto input1_desc = operator_info->MutableInputDesc(1);
-
   if (input0_desc == nullptr || input1_desc == nullptr) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "get input0_desc or input1_desc failed.");
     return false;
@@ -583,7 +576,6 @@ bool SplitVTiling(const std::string& opType, const ge::Operator& opParas, const 
     splitDimInputIndex = 2;
     xInput_desc = input0_desc;
     splitDimInput_desc = operator_info->MutableInputDesc(2);
-
     if (splitDimInput_desc == nullptr) {
       VECTOR_INNER_ERR_REPORT_TILIING(opType, "get splitDimInput_desc failed.");
       return false;

@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,6 @@
 #include "error_log.h"
 
 namespace optiling {
-
 const int32_t BLOCK_SIZE = 32;
 const int32_t PARAMS_SUFFIX_INDEX = 19;
 const int32_t PARAMS_CACHED_UB = 100 * 1024;
@@ -111,7 +110,6 @@ bool CheckTensorShape(const std::string& opType, std::vector<int64_t> paramsShap
   }
 
   calcOutputDims = outputShape.size();
-
   if (yDims != calcOutputDims) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherNdTiling] : CheckTensorShape, y Shape dim is invalid");
     return false;
@@ -258,7 +256,6 @@ bool GatherNdTiling(const std::string& opType, const TeOpParas& opParas, const n
   }
   if (opParas.inputs.empty() || opParas.inputs.size() < 2 || opParas.inputs[0].tensor.empty() ||
       opParas.inputs[1].tensor.empty()) {
-
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherNdTiling: input shape error.");
     return false;
   }
@@ -515,10 +512,8 @@ bool GatherNdTiling(const std::string& opType, const TeOpParas& opParas, const n
               runParams.innerLoopNum = runParams.innerLoopNum - 1;
               runParams.rowNumLastTailUb = ubParamsElem + runParams.rowNumLastTailUb;
             }
-
           }
         }
-
     }
   }
 
@@ -548,5 +543,4 @@ bool GatherNdTiling(const std::string& opType, const TeOpParas& opParas, const n
 
 // register tiling interface of the GatherNd op
 REGISTER_OP_TILING_FUNC_BUFFERED(GatherNd, GatherNdTiling);
-
 }  // namespace optiling

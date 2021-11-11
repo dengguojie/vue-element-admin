@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@
 #include "error_log.h"
 
 namespace optiling {
-
 bool Softmax::IsInVector(std::vector<int32_t>& input, int32_t value) {
   for (uint32_t i = 0; i < input.size(); i++) {
     if (input[i] == value) {
@@ -283,5 +282,4 @@ bool SoftmaxTiling(const std::string& op_type, const TeOpParas& op_paras, const 
   OP_LOGD(op_type.c_str(), "SoftmaxTiling end");
   return ret;
 }
-
 }  // namespace optiling

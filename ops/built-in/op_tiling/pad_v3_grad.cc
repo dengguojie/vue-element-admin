@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,6 @@
 #include "op_log.h"
 
 namespace optiling {
-
 static const int64_t TILING_MODE_0 = 0;
 static const int64_t TILING_MODE_1 = 1;
 static const int64_t PADDINGS_DIM_INDEX_2 = 4;

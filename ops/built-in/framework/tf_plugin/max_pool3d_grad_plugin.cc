@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@
 #include "common/util/error_manager/error_manager.h"
 
 namespace domi {
-
 const int INPUT_FILTER = 0;
 
 // Replace ge ParseParams fuction to process graph maxpool3dgrad node attrs

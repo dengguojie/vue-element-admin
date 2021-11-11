@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,6 @@
 #include "op_log.h"
 
 namespace optiling {
-
 static const int WORKSPACE_SIZE = 4096;
 static const int BLOCK_SIZE = 4096;
 
@@ -144,5 +143,4 @@ bool DynamicGruV2Tiling(const std::string& opType, const TeOpParas& opParas, con
 
 // register tiling interface of the DynamicGruV2 op
 REGISTER_OP_TILING_FUNC_BUFFERED(DynamicGRUV2, DynamicGruV2Tiling);
-
 }  // namespace optiling

@@ -18,7 +18,6 @@
 #include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
-
 bool IsInVector(const std::vector<int32_t>& input, int32_t value) {
   for (uint32_t i = 0; i < input.size(); i++) {
     if (input[i] == value) {

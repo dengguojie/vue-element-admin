@@ -118,5 +118,4 @@ void* ParseCompileToInt64Vec(const ge::Operator& op, const ge::AscendString comp
   TransJsonToVector(op, *json_object, compile_info_key, optional_key, *parsed_vector_ptr);
   return static_cast<void*>(parsed_vector_ptr);
 }
-
 }  // namespace optiling

@@ -27,7 +27,6 @@
 namespace optiling {
 bool BnTrainingReduceGradTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                                 OpRunInfo& run_info) {
-
     bool ret = EletwiseTiling(op_type, op_paras, op_info, run_info);
     if (!ret) {
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "bn_training_reduce_grad tiling failed.");

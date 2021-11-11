@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,6 @@
 #include "error_log.h"
 
 namespace optiling {
-
 const int64_t BLOCK_SIZE = 32;
 // 32b aligned, ub can store all var and updates
 const int64_t TILING_MODE_1 = 1;
@@ -108,9 +107,11 @@ void CalScatterMulBranchRunningParams(ScatterMulTilingParams& runParams, int64_t
                   return);
   OP_TILING_CHECK(varUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_mul", "varUbSize = 0 is not support"),
                   return); 
-  OP_TILING_CHECK(indicesUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_mul", "indicesUbSize = 0 is not support"),
+  OP_TILING_CHECK(indicesUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_mul", 
+		  "indicesUbSize = 0 is not support"),
                   return);
-  OP_TILING_CHECK(varDataEachBlock == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_mul", "varDataEachBlock = 0 is not support"),
+  OP_TILING_CHECK(varDataEachBlock == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_mul", 
+		  "varDataEachBlock = 0 is not support"),
                   return);
   runParams.varLoopNum = varNum / (varUbSize / varSize);
   runParams.varLastNum = varNum % (varUbSize / varSize);
@@ -301,8 +302,8 @@ bool ScatterMulTiling(const std::string& opType, const TeOpParas& opParas, const
   }
   if (coreNum <= ZERO || ubSize <= ZERO || varSize <= ZERO || indicesSize <= ZERO) {
     VECTOR_INNER_ERR_REPORT_TILIING(
-        opType, "coreNum, ubSize, varSize, indicesSize must be greater to 0, but got %ld, %ld, %ld, %ld", coreNum, ubSize,
-        varSize, indicesSize);
+        opType, "coreNum, ubSize, varSize, indicesSize must be greater to 0, but got %ld, %ld, %ld, %ld", coreNum, 
+	ubSize, varSize, indicesSize);
     return false;
   }
 

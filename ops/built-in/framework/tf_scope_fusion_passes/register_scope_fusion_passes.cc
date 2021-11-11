@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,5 +61,4 @@ REGISTER_SCOPE_FUSION_PASS("ScopeToAbsoluteBBoxPass", ScopeToAbsoluteBBoxPass, f
 REGISTER_SCOPE_FUSION_PASS("ScopeDynamicRNNPass", ScopeDynamicRNNPass, false);
 REGISTER_SCOPE_FUSION_PASS("ScopeDynamicGRUPass", ScopeDynamicGRUPass, false);
 REGISTER_SCOPE_FUSION_PASS("ScopeDynamicLSTMPass", ScopeDynamicLSTMPass, false);
-
 }  // namespace ge

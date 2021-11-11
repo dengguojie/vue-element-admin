@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,6 @@
 #include "resize_common.h"
 
 namespace optiling {
-
 static bool ResizeCommonTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
                                utils::OpRunInfo& run_info) {
   using namespace ge;

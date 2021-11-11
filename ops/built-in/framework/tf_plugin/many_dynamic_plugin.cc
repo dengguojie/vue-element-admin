@@ -1,5 +1,5 @@
 /**
- * Copyright 2018 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2018. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@
 #include "op_log.h"
 
 namespace domi {
-
 Status GetAttrValue(const domi::tensorflow::NodeDef* node, std::string& attr_name, int32_t& dynamic_tensor_num) {
   domi::tensorflow::AttrValue attr_num;
   if (!(ge::AutoMappingUtil::FindAttrValue(node, attr_name, attr_num))) {
@@ -333,5 +332,4 @@ REGISTER_CUSTOM_OP("SparseCross")
     .OriginOpType("SparseCross")
     .ParseParamsFn(SparseCrossMapping)
     .ImplyType(ImplyType::AI_CPU);
-
 }  // namespace domi

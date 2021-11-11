@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@
 #include "graph/operator.h"
 
 namespace domi {
-
 // parallel_concat is the type name of the operator in the OM model.
 // It can be specified randomly and cannot be the same as an existing type name.
 // It is case sensitive.

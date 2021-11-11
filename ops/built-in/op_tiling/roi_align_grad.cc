@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -203,10 +203,8 @@ bool ROIAlignGradTiling(const std::string& opType, const TeOpParas& opParas, con
   std::vector<int64_t> workspace;
   runInfo.workspaces = workspace;
   GELOGI("op[%s] tiling run success.", opType.c_str());
-
   return true;
 }
 // register tiling interface of the ROIAlignGrad op.
 REGISTER_OP_TILING_FUNC_BUFFERED(ROIAlignGrad, ROIAlignGradTiling);
-
 }  // namespace optiling

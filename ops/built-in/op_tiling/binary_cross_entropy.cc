@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021. Huawei Technologies Co., Ltd. All rights reserved.
+ * Copyright (c) 2021. Huawei Technologies Co., Ltd. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 #include "../fusion_pass/common/fp16_t.hpp"
 
 namespace optiling {
-
 bool IsInAxis(std::vector<int32_t>& input, int32_t value) {
   for (uint32_t i = 0; i < input.size(); i++) {
     if (input[i] == value) {

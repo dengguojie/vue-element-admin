@@ -32,7 +32,6 @@
 const int64_t CORE_MINEST_NUM = 128;
 
 namespace optiling {
-
 bool GetDropOutDoMaskCompileParams(const nlohmann::json& opCompileInfo, int64_t& coreNum) {
   using namespace nlohmann;
   auto allVars = opCompileInfo["vars"];
@@ -58,7 +57,8 @@ bool DropOutDoMaskTiling(const std::string& op_type, const ge::Operator& op_para
   PROFILING_TILING_INIT(op_type.c_str());
 
   auto operator_info = OpDescUtils::GetOpDescFromOperator(op_paras);
-  OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op_info failed."), return false);
+  OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op_info failed."), 
+		  return false);
 
   auto var_desc = operator_info->MutableInputDesc(0);
   OP_TILING_CHECK(var_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get var_desc failed."), return false);
@@ -67,7 +67,6 @@ bool DropOutDoMaskTiling(const std::string& op_type, const ge::Operator& op_para
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
   int64_t var_num =
       var_shape.size() == 0 ? 1 : std::accumulate(var_shape.begin(), var_shape.end(), 1, std::multiplies<int64_t>());
-
   int64_t core_num = 0;
   if (!GetDropOutDoMaskCompileParams(op_info, core_num)) {
     VECTOR_INNER_ERR_REPORT_TILIING("DropOutDoMaskTiling", "GetCompileParams, get core_num error");

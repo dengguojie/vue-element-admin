@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@
 #include "register/scope/scope_fusion_pass_register.h"
 
 namespace ge {
-
 std::vector<ScopeFusionPatterns> ScopeBatchMultiClassNMSPass::DefinePatterns() {
   std::vector<ScopeFusionPatterns> patterns;
   patterns.push_back(GenWhileScopePatterns());
@@ -160,9 +159,7 @@ bool ScopeBatchMultiClassNMSPass::MatchedSubScopes(const Scope* root_scope,
     }
     root = sub_scope;
   }
-
   OP_LOGI(kOpType.c_str(), "MatchedSubScopes:%s success.", root_scope->Name().c_str());
   return true;
 }
-
 }  // namespace ge

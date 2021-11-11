@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,6 @@
 
 using namespace ge;
 namespace optiling {
-
     const int64_t BLOCK_SIZE = 32;
     const int64_t OUTPUT_BYTE = 1;
 
@@ -205,7 +204,6 @@ namespace optiling {
         int64_t ub_usable_size = GetFloorDiv(ub_size, ub_part);
         int64_t data_one_block = GetFloorDiv(BLOCK_SIZE, input_data_byte);
         int64_t real_move_size = GetCeilDiv(total_element_size, data_one_block) * data_one_block;
-
         // all element can move into ub
         if (ub_usable_size >= real_move_size) {
             need_core_num = 1;
@@ -224,7 +222,8 @@ namespace optiling {
         OP_LOGD(op_type.c_str(), "IsFiniteTiling: need_core_num=%lld", need_core_num);
         OP_LOGD(op_type.c_str(), "IsFiniteTiling: per_core_size=%lld, per_core_loop_cnt=%lld, per_core_left_size=%lld",
                 per_core_size, per_core_loop_cnt, per_core_left_size);
-        OP_LOGD(op_type.c_str(), "IsFiniteTiling: last_core_size=%lld, last_core_loop_cnt=%lld, last_core_left_size=%lld",
+        OP_LOGD(op_type.c_str(), "IsFiniteTiling: last_core_size=%lld, last_core_loop_cnt=%lld, 
+		last_core_left_size=%lld",
                 last_core_size, last_core_loop_cnt, last_core_left_size);
 
         // set tiling data
@@ -246,5 +245,4 @@ namespace optiling {
 
     // register tiling inferface of the IsFinite op
     REGISTER_OP_TILING_FUNC_BUFFERED_V2(IsFinite, IsFiniteTiling);
-
 }  // namespace optiling

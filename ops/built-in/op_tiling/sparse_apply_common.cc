@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,6 @@
 #include "op_log.h"
 
 namespace optiling {
-
 bool CalSparseApplyCommonTiling(const std::string& op_type, const nlohmann::json& op_info, OpRunInfo& run_info,
                                 const std::vector<int64_t>& var_shape, const std::vector<int64_t>& grad_shape,
                                 const std::vector<int64_t>& indices_shape)
@@ -111,7 +110,6 @@ bool SparseApplyAdadeltaDTiling(const std::string& op_type, const TeOpParas& op_
     if (op_paras.inputs.size() < 4 || op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty() ||
     op_paras.inputs[2].tensor.empty() || op_paras.inputs[3].tensor.empty() || op_paras.inputs[4].tensor.empty() ||
     op_paras.inputs[5].tensor.empty() || op_paras.inputs[6].tensor.empty()) {
-
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape error.");
         return false;
     }
@@ -135,7 +133,6 @@ bool SparseApplyAdagradV2DTiling(const std::string& op_type, const TeOpParas& op
     }
     if (op_paras.inputs.size() < 4 || op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty() ||
     op_paras.inputs[2].tensor.empty() || op_paras.inputs[3].tensor.empty()) {
-
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape error.");
         return false;
     }
@@ -161,7 +158,6 @@ bool SparseApplyRMSPropDTiling(const std::string& op_type, const TeOpParas& op_p
     if (op_paras.inputs.size() < 4 || op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty() ||
     op_paras.inputs[2].tensor.empty() || op_paras.inputs[3].tensor.empty() || op_paras.inputs[4].tensor.empty() ||
     op_paras.inputs[5].tensor.empty()) {
-
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape error.");
         return false;
     }
@@ -185,7 +181,6 @@ bool SparseApplyFtrlV2DTiling(const std::string& op_type, const TeOpParas& op_pa
     }
     if (op_paras.inputs.size() < 4 || op_paras.inputs[0].tensor.empty() || op_paras.inputs[1].tensor.empty() ||
     op_paras.inputs[2].tensor.empty() || op_paras.inputs[3].tensor.empty() || op_paras.inputs[4].tensor.empty()) {
-
         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input shape error.");
         return false;
     }

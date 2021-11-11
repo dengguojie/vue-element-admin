@@ -19,7 +19,6 @@
 #include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
-
 bool BiasAddTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
                    utils::OpRunInfo& run_info) {
   PROFILING_TILING_INIT(op_type.c_str());

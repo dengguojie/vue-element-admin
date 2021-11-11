@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,10 +28,8 @@
 #include "vector_tiling.h"
 
 namespace optiling {
-
 bool ExpandTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                   OpRunInfo& run_info) {
-
   std::vector<int64_t> x_runtime_shape = op_paras.inputs[0].tensor[0].shape;
   std::vector<int64_t> shape_value;
 

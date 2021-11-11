@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +32,6 @@ using google::protobuf::Message;
 using std::vector;
 
 namespace domi {
-
 Status NormalizeBBoxParserParams(const std::vector<const google::protobuf::Message*>& inside_nodes, ge::Operator& op) {
   OP_LOGI(op.GetName().c_str(), "EnterNormalizeBBox fusion parser.");
   return SUCCESS;

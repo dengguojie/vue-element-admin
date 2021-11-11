@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 /*!
  * \file inplace_index_add.cpp
@@ -31,7 +31,6 @@
 
 
 namespace optiling {
-
 const int32_t BLOCK_SIZE = 32;
 const int32_t TILING_MODE_1 = 1;
 const int32_t TILING_MODE_2 = 2;

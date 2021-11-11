@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -198,5 +198,4 @@ bool ROIAlignTiling(const std::string& opType, const TeOpParas& opParas, const n
 }
 // register tiling interface of the ROIAlign op.
 REGISTER_OP_TILING_FUNC_BUFFERED(ROIAlign, ROIAlignTiling);
-
 }  // namespace optiling

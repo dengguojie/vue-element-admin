@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@
 #include "resize_common.h"
 
 namespace optiling {
-
 static void GetTilingForDefault(const ResizeClassCompileParams& compile_params, const bool is_w_nw,
                                 ResizeClassTilingParams& tiling_params) {
   auto h_max = (tiling_params.output_height + compile_params.core_num - 1) / compile_params.core_num;

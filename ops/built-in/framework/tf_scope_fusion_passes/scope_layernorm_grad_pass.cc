@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,9 +27,9 @@
 
 namespace ge {
 namespace {
-const char* const kScopeType = "layer_norm_grad";
-const char* const kScopeRltType = "LayerNormGrad";
-const char* const kOpType = "LayerNormGrad";
+const char * const kScopeType = "layer_norm_grad";
+const char * const kScopeRltType = "LayerNormGrad";
+const char * const kOpType = "LayerNormGrad";
 }  // namespace
 
 std::vector<ScopeFusionPatterns> ScopeLayerNormGradPass::DefinePatterns() {

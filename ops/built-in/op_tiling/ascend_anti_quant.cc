@@ -30,7 +30,6 @@
 
 using namespace ge;
 namespace optiling {
-
 struct TilingParams {
   int32_t block_dim{0};
   int32_t block_tiling_axis{-1};

@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,6 @@
 using namespace ge;
 using namespace std;
 namespace optiling{
-
 const int32_t TILING_MODE_1 = 1;
 const int32_t TILING_MODE_2 = 2;
 
@@ -295,7 +294,6 @@ bool CalCompileInfo(const string& op_type, const nlohmann::json& op_info,
 
 bool IouTiling(const string& op_type, const TeOpParas& op_paras, 
     const nlohmann::json& op_info, OpRunInfo& run_info) {
-  
   OP_LOGD(op_type.c_str(), "IouTiling running.");
 
   IouTilingParams tiling_params;

@@ -31,7 +31,6 @@
 #include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
-
 const int64_t BLOCK_SIZE = 32;
 const int64_t PARAMS_CACHED_UB = 100 * 1024;
 const int64_t RESERVED_UB_SIZE = 6 * 1024;
@@ -1126,7 +1125,6 @@ bool GatherV2Tiling(const std::string& op_type, const ge::Operator& op_paras, co
     axis = compile_params.batch_dims;
   }
 
-
   if (!CheckAxisAndBatchdims(op_type, shape_info, axis, compile_params)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op GatherV2Tiling: [CheckAxisAndBatchdims] failed.");
     return false;
@@ -1169,5 +1167,4 @@ static const std::map<std::string, std::int64_t> OPTIONAL_VALUE = {{"batch_dims"
 REGISTER_OP_TILING_V3_WITH_VECTOR(GatherV2, GatherV2Tiling, COMPILE_INFO_KEY, OPTIONAL_VALUE);
 // register tiling interface of the Gather op.
 REGISTER_OP_TILING_V3_WITH_VECTOR(Gather, GatherV2Tiling, COMPILE_INFO_KEY, OPTIONAL_VALUE);
-
 }  // namespace optiling

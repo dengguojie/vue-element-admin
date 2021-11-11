@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@
 #include "error_log.h"
 
 namespace optiling {
-
 bool GetPadDCompileParams(const nlohmann::json& opCompileInfo, std::vector<std::vector<int64_t>>& padding, int& coreNum,
                           int& ubSize, int length) {
   using namespace nlohmann;
@@ -41,7 +40,6 @@ bool GetPadDCompileParams(const nlohmann::json& opCompileInfo, std::vector<std::
   coreNum = allVars["core_num"].get<std::int64_t>();
   ubSize = allVars["ub_size"].get<std::int64_t>();
   padding = allVars["padding"].get<std::vector<std::vector<int64_t>>>();
-
   if (int64_t(padding.size()) != length) {
     VECTOR_INNER_ERR_REPORT_TILIING("PadDTiling", "GetCompileParams, get padding error");
     return false;
@@ -58,13 +56,11 @@ bool PadDTiling(const std::string& opType, const TeOpParas& opParas, const nlohm
   // Get inShape, outShape
   padCommon pad;
   if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty()) {
-
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [PadDTiling] : input shape error");
     return false;
   }
 
   if (opParas.outputs.empty() || opParas.outputs[0].tensor.empty()) {
-
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [PadDTiling] : output shape error");
     return false;
   }

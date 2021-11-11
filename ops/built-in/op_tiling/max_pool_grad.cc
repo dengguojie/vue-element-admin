@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1742,7 +1742,6 @@ bool MaxPoolGradTiling(const std::string& op_type, const TeOpParas& op_paras,
            forward_in_shape[3] * forward_in_shape[4] * (params.h - params.hi_val_tail)) *
           BYTE32 / BYTE_BLOCK;
     }
-
   } else if (params.select_key == CASE_SAME_NO_TILING) {
     params.total_num_div_core = params.total_num % params.core_num;
     params.total_num_div_core_1 = params.total_num % core_num_ys;
@@ -1803,7 +1802,6 @@ bool MaxPoolGradTiling(const std::string& op_type, const TeOpParas& op_paras,
     VectorDup3(w_2, DTYPE_FP32, params.repeat_max_loop_vadd, params.remain_max_loop_vadd, params.remain_ele_vadd);
     params.burst_len_over = params.wi_batch * C0 * BYTE32 / BYTE_BLOCK;
     params.src_stride_val = (params.pad_hw_left + params.pad_hw_right) * BYTE16;
-
   } else if (params.select_key == CASE_SAME_TILING_HO) {
     params.total_num_div_core = params.total_num % params.core_num;
     params.total_num_div_core_1 = params.total_num % core_num_ys;

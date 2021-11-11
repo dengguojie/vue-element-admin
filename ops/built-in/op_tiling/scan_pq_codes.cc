@@ -1,3 +1,19 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <nlohmann/json.hpp>
 #include <string>
 #include <algorithm>
@@ -74,7 +90,8 @@ bool ScanPQCodesTiling(const std::string& opType, const TeOpParas& op_paras, con
   int64_t coreUsedNum = 0;
   int64_t bucketStartBase = 0;
   if (splitCount > 1) {
-    bucketNumTotal = (splitIndex < splitCount - 1) ? (bucketShape[0] / splitCount) : (bucketShape[0] - (bucketShape[0] / splitCount));
+    bucketNumTotal = (splitIndex < splitCount - 1) ? (bucketShape[0] / splitCount) : 
+	              (bucketShape[0] - (bucketShape[0] / splitCount));
   } else {
     bucketNumTotal = bucketShape[0];
   }

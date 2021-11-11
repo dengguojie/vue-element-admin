@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,6 @@
 #include "error_log.h"
 
 namespace optiling {
-
 const int64_t BLOCK_SIZE = 32;
 const int64_t OUT_SPECIAL_DIM_0 = 640000;
 const int64_t OUT_SPECIAL_DIM_1 = 1;

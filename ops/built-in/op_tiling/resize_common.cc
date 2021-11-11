@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@
 #include "resize_common.h"
 
 namespace optiling {
-
 bool GetResizeClassCompileParams(const nlohmann::json& compile_info, ResizeClassCompileParams& compile_params) {
   using namespace nlohmann;
   auto allVars = compile_info["vars"];
@@ -149,5 +148,4 @@ void GetTilingForHW2MHNW(const ResizeClassCompileParams& compile_params, ResizeC
     tiling_params.cut_height_num = min(left_core_num, h_max);
   }
 }
-
 }  // namespace optiling

@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,6 @@
 #include "error_log.h"
 
 namespace optiling {
-
 const int64_t BLOCK_SIZE = 32;
 const int64_t PARAMS_CACHED_UB = 100 * 1024;
 const int64_t RESERVED_UB_SIZE = 6 * 1024;
@@ -132,7 +131,6 @@ bool checkTensorShape(const std::string& opType, std::vector<int64_t> indicesSha
   }
 
   int64_t outputDims = outputShape.size();
-
   if (yDims != outputDims) {
     ge::OpsOneInputShapeErrReport(opType.c_str(), "y", "the dim of y must be equal to the dim of output");
     OP_LOGE(opType.c_str(), "op [GatherElementsTiling] : CheckTensorShape, y Shape is invalid.");
@@ -246,7 +244,6 @@ bool GatherElementsTiling(const std::string& opType, const TeOpParas& opParas, c
   int64_t axis = 0;
 
   bool flag = GetCompileParams(opType, op_info, coreNum, ubSize, l1Size, paramsDSize, indicesDSize, axis);
-
   if (!flag) {
     OP_LOGE("op[%s] GatherElementsTiling: GetCompileParams error.", opType.c_str());
     return false;
@@ -332,7 +329,6 @@ bool GatherElementsTiling(const std::string& opType, const TeOpParas& opParas, c
         runParams.remaining_block_num = runParams.indices_num_remaining / indicesBlockNum;
       }
     }
-
   }
   else {
     runParams.need_core_num = 1;
@@ -366,5 +362,4 @@ bool GatherElementsTiling(const std::string& opType, const TeOpParas& opParas, c
 
 // register tiling interface of the GatherElements op.
 REGISTER_OP_TILING_FUNC_BUFFERED(GatherElements, GatherElementsTiling);
-
 }  // namespace optiling

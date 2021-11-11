@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@
 #include "op_log.h"
 
 namespace optiling {
-
 static const int32_t MAX_BLOCK_DIM = 32;
 
 struct DynamicRnnV2Param {
@@ -149,5 +148,4 @@ bool DynamicRnnV2Tiling(const std::string& opType, const TeOpParas& opParas, con
 
 // register tiling interface of the DynamicRnn op
 REGISTER_OP_TILING_FUNC_BUFFERED(DynamicRNNV2, DynamicRnnV2Tiling);
-
 }  // namespace optiling

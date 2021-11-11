@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,9 +24,9 @@
 #include "register/scope/scope_fusion_pass_register.h"
 
 namespace ge {
-static const char* const kScopeType = "ROIAlign";
-static const char* const kROIAlignType = "ROIAlign";
-static const char* const kOpType = "ROIAlign";
+static const char * const kScopeType = "ROIAlign";
+static const char * const kROIAlignType = "ROIAlign";
+static const char * const kOpType = "ROIAlign";
 
 std::vector<ScopeFusionPatterns> ScopeROIAlignPass::DefinePatterns() {
   std::vector<ScopeFusionPatterns> patternsList;
@@ -114,5 +114,4 @@ void ScopeROIAlignPass::GenerateFusionResult(const std::vector<Scope*>& scopes, 
   OP_LOGI(kOpType, "ROIalign Scope fusion success.");
   return;
 }
-
 }  // namespace ge

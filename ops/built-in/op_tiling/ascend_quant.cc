@@ -28,7 +28,6 @@
 #include "../op_proto/util/error_util.h"
 
 namespace optiling {
-
 struct CompileInfo {
   int64_t max_ub_count{0};
   int32_t core_num{1};

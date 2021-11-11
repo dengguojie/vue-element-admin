@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@
 const int32_t MINI_UNIT = 32;
 
 namespace optiling {
-
 int padCommon::_numBit(const std::string& dtype) {
   // Only Support FP16 and FP32.
   int numBit = 2;
@@ -561,7 +560,6 @@ void padCommon::GetRecurCorePro(PadDTilingParams& params, const std::vector<int6
     params.recur_inShape = inShape;
     params.recur_padding = padding;
     params.recur_outShape = outShape;
-
   } else {
     // A B C D
     // eg: depth = 3 size = 4

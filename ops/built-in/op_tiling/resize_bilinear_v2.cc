@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@
 #include "resize_common.h"
 
 namespace optiling {
-
 const int64_t TILING_100110_HW_THRESHOLD = 64;
 const int64_t TILING_100110_NC1_THRESHOLD = 32;
 const int64_t SHAPE_C0 = 16;

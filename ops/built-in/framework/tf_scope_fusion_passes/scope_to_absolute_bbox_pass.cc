@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@
 #include "op_log.h"
 
 namespace ge {
-
 std::vector<ScopeFusionPatterns> ScopeToAbsoluteBBoxPass::DefinePatterns() {
   std::vector<ScopeFusionPatterns> patterns;
   patterns.push_back(GenWhileScopePatterns());
@@ -148,5 +147,4 @@ bool ScopeToAbsoluteBBoxPass::MatchedSubScopes(const Scope* root_scope) const {
   OP_LOGI(kOpType.c_str(), "MatchedSubScopes:%s success.", root_scope->Name().c_str());
   return true;
 }
-
 }  // namespace ge

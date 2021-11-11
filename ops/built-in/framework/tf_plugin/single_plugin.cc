@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@
 #include "register/register.h"
 
 namespace domi {
-
 // register AccumulatorApplyGradient op to GE
 REGISTER_CUSTOM_OP("AccumulatorApplyGradient")
     .FrameworkType(TENSORFLOW)
@@ -1545,5 +1544,4 @@ REGISTER_CUSTOM_OP("FFT2D")
     .OriginOpType("FFT2D")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
-
 }  // namespace domi

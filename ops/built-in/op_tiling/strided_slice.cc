@@ -238,7 +238,6 @@ static void MakeSameDims(SliceParameters& parameters, const vector<int64_t>& sha
   bool same_size = parameters.input.size() == parameters.begin_list.size() &&
                    parameters.input.size() == parameters.end_list.size() &&
                    parameters.input.size() == parameters.stride_list.size();
-
   if (!same_size) {
     return;
   }

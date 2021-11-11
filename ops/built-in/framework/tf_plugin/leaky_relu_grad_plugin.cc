@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@
 #include "op_log.h"
 
 namespace domi {
-
 Status AutoMappingFnLeakyReluGrad(const google::protobuf::Message* op_src, ge::Operator& op) {
   Status ret = AutoMappingFn(op_src, op);
   if (ret != SUCCESS) {

@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 #include "register/register.h"
 
 namespace domi {
-//register DecodeJpeg nodeDef to IR
+// register DecodeJpeg nodeDef to IR
 REGISTER_CUSTOM_OP("DecodeJpeg")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("DecodeJpeg")

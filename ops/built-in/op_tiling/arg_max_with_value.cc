@@ -352,7 +352,6 @@ static bool ArgOpsTiling(const string& op_type, const ge::Operator& op_paras, co
   }
   ge::GeShape input_shape = input_desc->MutableShape();
   int64_t input_dims = input_shape.GetDimNum();
-
   if (axis < -input_dims || axis >= input_dims) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ArgOpsTiling: axis is invalid, axis:%d, dims:%ld", axis, input_dims);
     return false;

@@ -29,7 +29,6 @@
 #include "vector_tiling_profiling.h"
 
 namespace optiling {
-
 const string LOG_INFO = "[INFO] [AtomicAddrClean] ";
 const uint32_t MIN_ELE_SIZE_USING_ALL_CORE = 1024;
 const uint32_t BYTE_BLOCK = 32;

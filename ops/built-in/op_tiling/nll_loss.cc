@@ -29,7 +29,6 @@
 #include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
-
 const int64_t BLOCK_SIZE = 32;
 // define the redution mode for int64_t
 static const int64_t MODE_NONE = 0;
@@ -82,7 +81,6 @@ bool GetCompileParams(const std::string& op_type, const std::vector<int64_t>& op
 bool CheckTensorShape(const std::string& op_type, const vector<int64_t>& x_shape, const vector<int64_t>& target_shape,
                       const vector<int64_t>& weight_shape) {
   int64_t x_dims = x_shape.size();
-
   if (x_dims <= 0 || x_dims > 2) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: input tensor x should be 1D or 2D.");
     return false;
@@ -182,7 +180,6 @@ void RecursiveTiling(int64_t& ub_max_line, int64_t& need_core_num, int64_t& n_si
   per_core_size = GetFloorDiv(n_size, need_core_num);
   last_core_size = per_core_size;
   int64_t left_size = GetMod(n_size, need_core_num);
-
   // use last core data supplement per core
   if (left_size > 0) {
     last_core_size -= GetMod((need_core_num - 1 - left_size), (need_core_num - 1));
@@ -351,7 +348,6 @@ bool NLLLossTiling(const std::string& op_type, const ge::Operator& op_paras, con
   auto input_x_desc = operator_info->MutableInputDesc(0);
   auto input_target_desc = operator_info->MutableInputDesc(1);
   auto input_weight_desc = operator_info->MutableInputDesc(2);
-
   if (input_x_desc == nullptr || input_target_desc == nullptr || input_weight_desc == nullptr) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed.");
     return false;

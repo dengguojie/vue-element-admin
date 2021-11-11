@@ -457,7 +457,6 @@ bool PadTiling(const std::string& op_type, const ge::Operator& op_paras, const s
   if (op_type == OP_STRIDED_SLICE_GRAD) {
     OP_TILING_CHECK(!CalcuPaddingForStridedSliceGrad(op_paras, compile_params, paddings_const_values, input_shape),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "calcu paddings const value failed."), return false);
-
   } else {
     //the paddings input index is 1
     OP_TILING_CHECK(!ops::GetConstIntData(op_paras, 1, paddings_const_values),

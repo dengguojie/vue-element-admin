@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021. Huawei Technologies Co., Ltd. All rights reserved.
+ * Copyright (c) 2021. Huawei Technologies Co., Ltd. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@
 using namespace std;
 
 namespace optiling {
-
 static const int INPUT_SIZE = 12;
 static map<std::string, int64_t> TYPE_SIZE = {
     {
@@ -156,8 +155,6 @@ bool DynamicLSTMGradCellTiling(const std::string& op_type, const TeOpParas& op_p
   tilingPara["batchSize"] = batchSize * 16;
   tilingPara["useCoreNum"] = hiddenSize * batchSize >= deviceCoreNum ? deviceCoreNum : hiddenSize * batchSize;
   tilingPara["fuseSize"] = shapeSize;
-
-
   std::string cDType = op_paras.inputs[1].tensor[0].dtype;
   int64_t dataTypeSize = TYPE_SIZE[cDType];
   int64_t eachCoreHandNum = shapeSize / tilingPara["useCoreNum"];
@@ -174,8 +171,6 @@ bool DynamicLSTMGradCellTiling(const std::string& op_type, const TeOpParas& op_p
   }
   int64_t totalNumEachCore = ubTensorNum * eachCoreHandNum;
   GELOGD("op [%s] Enter DynamicLSTMGradCellTilling check input pass4", op_type.c_str());
-
-
   int64_t innerLoopNum = 0;
   int64_t innerLoopEleNum = 0;
   int64_t lastLoopEleNum = outLoopEleNum;
@@ -197,13 +192,10 @@ bool DynamicLSTMGradCellTiling(const std::string& op_type, const TeOpParas& op_p
 
   // set tSize
   tilingPara["tSize"] = op_paras.inputs[2].tensor[0].shape[0];
-
-
   PrintParams(tilingPara);
   run_info.block_dim = tilingPara["useCoreNum"];
   setRunInfo(tilingPara, run_info);
   std::vector <int64_t> workspace;
-
   run_info.workspaces = workspace;
   GELOGI("op[%s] tiling run success.", op_type.c_str());
   return true;

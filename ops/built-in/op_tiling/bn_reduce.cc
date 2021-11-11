@@ -879,7 +879,6 @@ bool BNReduce::DoCustomisedTiling()  {
   ret = ret && CustomisedGetUBTiling();
   ret = ret && CustomisedGetBlockTiling();
   return ret;
-
 }
 
 bool BNReduce::DoGeneralTiling()  {

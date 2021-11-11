@@ -25,7 +25,6 @@
 #include "error_log.h"
 
 namespace optiling {
-
 bool ConcatOffsetTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
                         utils::OpRunInfo& run_info) {
   using namespace ge;

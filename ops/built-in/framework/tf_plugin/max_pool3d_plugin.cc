@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@
 #include "op_log.h"
 
 namespace domi {
-
 const int POS_0 = 0;
 
 Status ParseParamsMaxPool3D(const Message* op_src, ge::Operator& op) {

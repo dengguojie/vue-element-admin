@@ -1,3 +1,19 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <string>
 #include <math.h>
 #include <nlohmann/json.hpp>
@@ -7,7 +23,6 @@
 #include "error_log.h"
 
 namespace optiling {
-
     struct MaxPoolGradWithArgmaxV1TilingParams
     {
         int32_t tiling_mode;
@@ -201,7 +216,6 @@ namespace optiling {
         int32_t dyw = tiling_params.dyw;
         int32_t woverlap = tiling_params.woverlap;
         int32_t col2img_w = 0;
-
         int32_t col2img_dyw = NumDiv(dyw, 16) * 16;
         int32_t col2img_h = kernel_h;
 
@@ -328,7 +342,6 @@ namespace optiling {
         } else {
             col2img_w = (wo_max - 1) * stride_w + kernel_w;
         }
-
         if (hoverlap == 0) {
             col2img_h = ho_max * stride_h;
         } else {
@@ -402,7 +415,6 @@ namespace optiling {
         int32_t ho_last = tiling_params.ho_last;
         int32_t flag = 0;
         int32_t flag_last = 0;
-
         int32_t wo_max = NumDiv(dyw, 16) * 16;
         int32_t ho_max_every = 2;
         int32_t col2img_w = (wo_max - 1) * stride_w + dilation_w * kernel_w;

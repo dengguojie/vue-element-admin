@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,7 +40,6 @@ const std::string DTYPE_INT64 = "int64";
 const std::string DTYPE_UINT64 = "uint64";
 
 namespace optiling {
-
 struct SplitDTilingParams {
   int64_t tilingMode;
   int64_t inputSizeSplit;

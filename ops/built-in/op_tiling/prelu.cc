@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021. Huawei Technologies Co., Ltd. All rights reserved.
+ * Copyright (c) 2021. Huawei Technologies Co., Ltd. All rights reserved.
 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the Apache License Version 2.0.You may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@
 using namespace std;
 
 namespace optiling {
-
 bool PReluTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                  OpRunInfo& run_info) {
     OP_LOGD(op_type, "Enter PReluTiling inputs size:%llu", op_paras.inputs.size());

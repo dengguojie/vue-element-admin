@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2019. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 /*!
  * \file ifmr.cc
@@ -31,9 +31,11 @@
 namespace optiling {
 using namespace ge;
 
-bool IFMRTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info, OpRunInfo& run_info) {
+bool IFMRTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info, 
+		OpRunInfo& run_info) {
     OP_LOGI(op_type.c_str(), "IFMRTiling running.");
-    OP_TILING_CHECK(op_paras.inputs.empty(), OP_LOGE(op_type.c_str(), "op_paras.inputs cannot be empty."), return false);
+    OP_TILING_CHECK(op_paras.inputs.empty(), OP_LOGE(op_type.c_str(), "op_paras.inputs cannot be empty."), 
+		    return false);
 
     const std::vector<int64_t> src_shape = op_paras.inputs[0].tensor[0].shape;
     const std::vector<int64_t> dst_shape = op_paras.outputs[0].tensor[0].shape;

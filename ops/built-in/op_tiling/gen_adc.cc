@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@
 #include "error_log.h"
 
 namespace optiling {
-
 const int64_t BLOCK_SIZE = 32;  // one block size is 32 Bytes
 
 const map<string, int64_t> BUCKET_LIST_DTYPES = {
@@ -196,5 +195,4 @@ bool GenADCTiling(const std::string& opType, const TeOpParas& opParas, const nlo
 
 // register tiling interface of the GenADC op.
 REGISTER_OP_TILING_FUNC_BUFFERED(GenADC, GenADCTiling);
-
 }  // namespace optiling
