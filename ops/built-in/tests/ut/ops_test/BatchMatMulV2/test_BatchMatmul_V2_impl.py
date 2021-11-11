@@ -288,6 +288,92 @@ def test_op_select_format(test_arg):
                      )
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 
+case_dequant_requant_sum = (
+    [{"shape": (198, 1, 3, 16, 32), "dtype": "int8", "format": "FRACTAL_NZ", "ori_shape": (198, 38, 29), "ori_format": "ND"},
+     {"shape": (1, 12, 16, 32), "dtype": "int8", "format": "FRACTAL_Z", "ori_shape": (29, 181), "ori_format": "ND"},
+     {"shape": (181,), "dtype": "int32", "format": "ND", "ori_shape": (181,), "ori_format": "ND"},
+     {"shape": (1, 12, 1, 1, 16), "dtype": "uint64", "format": "NC1HWC0", "ori_shape": (181,), "ori_format": "NCHW"},
+     {"shape": (198, 6, 3, 16, 32), "dtype": "int8", "format": "FRACTAL_NZ", "ori_shape": (198, 38, 181), "ori_format": "ND"},
+     False,
+     False,
+     "requant", "batch_matmul_v2_requant_test",
+     {"shape": (198, 12, 3, 16, 16), "dtype": "int32", "format": "FRACTAL_NZ", "ori_shape": (198, 38, 181), "ori_format": "ND"}],
+    [{"shape": (198, 6, 3, 16, 32), "dtype": "int8", "format": "FRACTAL_NZ", "ori_shape": (198, 38, 181), "ori_format": "ND"},
+     {"shape": (6, 3, 16, 32), "dtype": "int8", "format": "FRACTAL_Z", "ori_shape": (181, 47), "ori_format": "ND"},
+     {"shape": (47,), "dtype": "int32", "format": "ND", "ori_shape": (47,), "ori_format": "ND"},
+     {"shape": (1,1,1,1,16), "dtype": "uint64", "format": "NC1HWC0", "ori_shape": (1,), "ori_format": "NCHW"},
+     {"shape": (198, 3, 3, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (198, 38, 47), "ori_format": "ND"},
+     False,
+     False,
+     "dequant", "batch_matmul_v2_dequant_test",
+     {"shape": (198, 3, 3, 16, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (198, 38, 47), "ori_format": "ND"}], 
+)
+def test_op_fusion_func(case):
+    fusion_para = case[7]
+    from impl.batch_matmul_v2 import batch_matmul_compute
+    from impl.ascend_dequant import ascend_dequant_compute
+    from tbe.dsl import auto_schedule
+    from te.tvm.target import cce
+    from te.lang.cce import cce_build_code
+    from impl.ascend_requant import ascend_requant_compute
+    from te.platform.cce_conf import te_set_version
+    
+    def test_op_fusion(test_args):
+        te_set_version("Ascend710")
+        with cce():
+            
+            tensor_a = tvm.placeholder(case[0].get("shape"), name='tensor_a',
+                                    attrs={'format': case[0].get("format"),
+                                            "ori_shape": case[0].get("ori_shape")},
+                                    dtype=case[0].get("dtype"))
+
+            tensor_b = tvm.placeholder(case[1].get("shape"), name='tensor_b',
+                                    attrs={'format': case[1].get("format"),
+                                            "ori_shape": case[1].get("ori_shape")},
+                                    dtype=case[1].get("dtype"))
+            bias = tvm.placeholder(case[2].get("shape"), name='bias',
+                                    attrs={'format': case[2].get("format"),
+                                            "ori_shape": case[2].get("ori_shape")},
+                                    dtype=case[2].get("dtype"))
+            res = batch_matmul_compute(tensor_a, tensor_b, bias=bias, output_z=case[9], trans_a=case[5],
+                                trans_b=case[6], offset_x=0, kernel_name=case[8])
+            
+            if fusion_para == "dequant":
+                deq_tensor = tvm.placeholder(case[3].get("shape"), name='deq_tensor',
+                                            attrs={'format': case[3].get("format"),
+                                            "ori_shape": case[3].get("ori_shape")},
+                                            dtype=case[3].get("dtype"),
+                )
+                out = ascend_dequant_compute(res, deq_tensor, case[4], sqrt_mode=False, relu_flag=False, kernel_name=case[8])
+
+                tensor_list = [tensor_a, tensor_b, bias, deq_tensor, out]
+            elif fusion_para == "requant":
+                req_tensor = tvm.placeholder(case[3].get("shape"), name='deq_tensor',
+                                            attrs={'format': case[3].get("format"),
+                                            "ori_shape": case[3].get("ori_shape")},
+                                            dtype=case[3].get("dtype"),
+                )
+                out = ascend_requant_compute(res, req_tensor, case[4],  kernel_name=case[8])
+
+                tensor_list = [tensor_a, tensor_b, bias, req_tensor, out]
+
+            sch = auto_schedule(out)
+            config = {
+                    "print_ir": False,
+                    "need_build": True,
+                    "name": case[6],
+                    "tensor_list": tensor_list,
+            }
+            cce_build_code(sch, config)
+        te_set_version("Ascend310")
+    return test_op_fusion
+
+for fusion_case in case_dequant_requant_sum:
+    
+    ut_case.add_cust_test_func(["Ascend310"], test_func=test_op_fusion_func(fusion_case))
+# open this in local env
+#ut_case.run(["Ascend310"])
+
 if __name__ == '__main__':
     ut_case._case_info_map = {}
 #     ut_case.add_case(["Ascend920A"], case14)
@@ -299,7 +385,6 @@ if __name__ == '__main__':
 
     from case_nd_in_nd_out import cases
     for case in cases:
-        print(case)
+        #print(case)
         ut_case.add_case(["Ascend310"], case)
-
-    ut_case.run(["Ascend310", "Ascend910A", "Ascend920A"], simulator_mode="pv", simulator_lib_path="../../Ascend/toolkit/tools/simulator")
+    #ut_case.run(["Ascend310", "Ascend910A"], simulator_mode="pv", simulator_lib_path="../../Ascend/toolkit/tools/simulator")

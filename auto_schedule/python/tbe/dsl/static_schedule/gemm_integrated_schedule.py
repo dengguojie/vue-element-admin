@@ -937,7 +937,8 @@ class GemmSchedule(object):
         if tensor_reform is None:
             return
         insn = self.requant_fusion_insn_map.get(tensor_reform.op.name)
-        self.sch[tensor_reform].emit_insn(tensor_reform.op.axis[2], insn)
+        # axiss are batch，n1, m1, n0.outer(2), m0, n0.inner(16), the axis n0.outer should be out of emit_insn axis
+        self.sch[tensor_reform].emit_insn(tensor_reform.op.axis[-3], insn)
 
         return
 
@@ -1061,8 +1062,8 @@ class GemmSchedule(object):
                 tensor_reform.op.axis[tensor_len_c - 1], factor=16)
             sch[tensor_reform].reorder(
                 tensor_reform.op.axis[tensor_len_c - 4],
+                reform_c_outer, # emit_insn axis
                 tensor_reform.op.axis[tensor_len_c - 3],
-                reform_c_outer,
                 tensor_reform.op.axis[tensor_len_c - 2],
                 reform_c_inner)
 

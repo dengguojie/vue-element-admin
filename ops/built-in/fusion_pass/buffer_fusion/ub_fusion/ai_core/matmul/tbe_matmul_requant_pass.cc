@@ -51,7 +51,7 @@ vector<BufferFusionPattern *> TbeMatmulRequantFusionPass::DefinePatterns() {
   OP_LOGD(kFusedOpType.c_str(), "Start to define %s pass pattern.", pass_name.c_str());
   // define pattern rules Matmul-->AcendReQuant
   pattern
-      ->AddOpDesc(kPattternMatmul, {OP_PATTERN_MATMUL},
+      ->AddOpDesc(kPattternMatmul, {OP_PATTERN_MATMUL, OP_PATTERN_BATCH_MATMUL},
                   TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
       .AddOpDesc(kPattternRequant, {OP_PATTERN_REQUANT}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)
       .AddOpDesc(kPattternOtherInput, {TBE_PATTERN_INPUT_NODE}, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_NUM_DEFAULT, TBE_PATTERN_GROUPID_INVALID, IGNORE_SHAPE_TYPE)

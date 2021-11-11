@@ -775,5 +775,5 @@ ut_case.add_cust_test_func(test_func=test_matmul_api)
 
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend310", "Ascend920A"])
+    ut_case.run(["Ascend310", "Ascend910A"])
     sys.exit(0)
