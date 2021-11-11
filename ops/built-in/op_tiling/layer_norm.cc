@@ -21,10 +21,13 @@
 
 #include "../fusion_pass/common/fp16_t.hpp"
 #include "../op_proto/util/error_util.h"
+#include "../op_proto/util/op_common_util.h"
 #include "error_log.h"
 #include "graph/debug/ge_log.h"
+#include "graph/utils/op_desc_utils.h"
 #include "op_log.h"
 #include "op_tiling.h"
+#include "op_tiling_util.h"
 #include "vector_tiling_log.h"
 
 namespace optiling {
@@ -52,6 +55,27 @@ const int32_t TYPE_SIZE_32 = 4;
 const int32_t NUM_BSA = 100;
 const int32_t NUM_USA = 10;
 
+struct layerNormOpInfo {
+  /* data */
+  string input_format;
+  int32_t core_num;
+  int32_t begin_norm_axis;
+  int32_t begin_params_axis;
+  bool is_tik_support;
+  string tik_mode;
+  int32_t ub_max_byte;
+  bool atomic_clean_diff_shape;
+  bool is_support_vexp;
+  string reduce_mean_cof_dtype;
+  std::vector<int32_t> common_info;
+  std::vector<int32_t> pattern_info;
+  std::vector<int32_t> ub_info;
+  std::vector<int32_t> reduce_axis;
+  int32_t max_ub_size_normal_fp16;
+  int32_t max_ub_size_normal_fp32;
+  string mode;
+};
+
 struct TilingParams {
   /* data */
   int32_t block_dim;
@@ -77,6 +101,68 @@ struct CompileInfo {
   int32_t core_num;
   int32_t min_block_size;
 };
+
+bool LayerNormParseFunc(const std::string &op_type, const nlohmann::json &compile_info,
+                        layerNormOpInfo &compile_value) {
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "input_format", compile_value.input_format),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormParseFunc, get input_format error"), return false);
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "core_num", compile_value.core_num),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormParseFunc, get core_num error"), return false);
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "begin_norm_axis", compile_value.begin_norm_axis),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormParseFunc, get begin_norm_axis error"),
+                  return false);
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "begin_params_axis", compile_value.begin_params_axis),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormParseFunc, get begin_params_axis error"),
+                  return false);
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "is_tik_support", compile_value.is_tik_support),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormParseFunc, get is_tik_support error"),
+                  return false);
+  auto tik_iter_num = compile_info.find("tik_mode");
+  if (tik_iter_num != compile_info.end()) {
+    GetCompileValue(compile_info, "tik_mode", compile_value.tik_mode);
+  } else {
+    compile_value.tik_mode = TSDYNAMIC;
+  }
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "ub_max_byte", compile_value.ub_max_byte),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormParseFunc, get ub_max_byte error"), return false);
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "atomic_clean_diff_shape", compile_value.atomic_clean_diff_shape),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormParseFunc, get atomic_clean_diff_shape error"),
+                  return false);
+  if (!compile_value.is_tik_support) {
+    if (compile_info.count("reduce_mean_cof_dtype") > 0) {
+      GetCompileValue(compile_info, "reduce_mean_cof_dtype", compile_value.reduce_mean_cof_dtype);
+    }
+    OP_TILING_CHECK(!GetCompileValue(compile_info, "is_support_vexp", compile_value.is_support_vexp),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormParseFunc, get is_support_vexp error"),
+                    return false);
+    OP_TILING_CHECK(!GetCompileValue(compile_info, "common_info", compile_value.common_info),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormParseFunc, get common_info error"),
+                    return false);
+    OP_TILING_CHECK(!GetCompileValue(compile_info, "pattern_info", compile_value.pattern_info),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormParseFunc, get pattern_info error"),
+                    return false);
+    OP_TILING_CHECK(!GetCompileValue(compile_info, "ub_info", compile_value.ub_info),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormParseFunc, get ub_info error"), return false);
+
+    OP_TILING_CHECK(!GetCompileValue(compile_info, "reduce_axis", compile_value.reduce_axis),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormParseFunc, get reduce_axis error"),
+                    return false);
+    OP_TILING_CHECK(!GetCompileValue(compile_info, "max_ub_size_normal_fp16", compile_value.max_ub_size_normal_fp16),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormParseFunc, get max_ub_size_normal_fp16 error"),
+                    return false);
+    OP_TILING_CHECK(!GetCompileValue(compile_info, "max_ub_size_normal_fp32", compile_value.max_ub_size_normal_fp32),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormParseFunc, get max_ub_size_normal_fp32 error"),
+                    return false);
+    auto iter_num = compile_info.find("mode");
+    if (iter_num != compile_info.end()) {
+      GetCompileValue(compile_info, "mode", compile_value.mode);
+    } else {
+      compile_value.mode = TSDYNAMIC;
+    }
+  }
+  OP_LOGI(op_type.c_str(), "GetCompileParams success.");
+  return true;
+}
 
 bool IsInVector(std::vector<int32_t> input, const int32_t value) {
   for (int32_t i = 0; i < static_cast<int32_t>(input.size()); i++) {
@@ -143,13 +229,14 @@ int32_t CalcTilingKey(const CompileInfo &commoninfo, const std::vector<int64_t> 
   return key + range_key;
 }
 
-bool GetCompileInfo(const string &op_type, const nlohmann::json &op_info, CompileInfo &compileinfo,
-                    const std::vector<int32_t> &reduce_axis, std::vector<int64_t> input_shape, OpRunInfo &run_info) {
+bool GetCompileInfo(const string &op_type, const layerNormOpInfo &op_info, CompileInfo &compileinfo,
+                    const std::vector<int32_t> &reduce_axis, std::vector<int64_t> input_shape,
+                    utils::OpRunInfo &run_info) {
   std::vector<int32_t> common_info;
 
-  OP_TILING_CHECK((op_info.find("common_info") == op_info.end()),
+  OP_TILING_CHECK(op_info.common_info.empty(),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [common_info]"), return false);
-  common_info = op_info.at("common_info").get<std::vector<int32_t>>();
+  common_info = op_info.common_info;
 
   compileinfo.core_num = common_info[CI_CORE_NUM_INDEX];
   compileinfo.is_keep_dims = (bool)common_info[CI_CORE_KENEP_DIM_INDEX];
@@ -165,18 +252,18 @@ bool GetCompileInfo(const string &op_type, const nlohmann::json &op_info, Compil
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num is %d that is illegal", compileinfo.core_num),
                     return false);
 
-  if (op_info.count("reduce_mean_cof_dtype") > 0) {
+  if (!(op_info.reduce_mean_cof_dtype.empty())) {
     float reduce_mean_cof = 1.0;
     for (uint32_t i = 0; i < input_shape.size(); i++) {
       reduce_mean_cof = IsInVector(reduce_axis, i) ? reduce_mean_cof / input_shape[i] : reduce_mean_cof;
     }
-    const string &reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<string>();
+    const string &reduce_mean_cof_dtype = op_info.reduce_mean_cof_dtype;
     if (reduce_mean_cof_dtype == "float32") {
-      ByteBufferPut(run_info.tiling_data, (float)reduce_mean_cof);
+      run_info.AddTilingData((float)reduce_mean_cof);
       OP_LOGD(op_type.c_str(), "fp32 reduce mean cof:%f", reduce_mean_cof);
     } else if (reduce_mean_cof_dtype == "float16") {
-      ByteBufferPut(run_info.tiling_data, (fe::fp16_t)reduce_mean_cof);
-      ByteBufferPut(run_info.tiling_data, (uint16_t)0);
+      run_info.AddTilingData((fe::fp16_t)reduce_mean_cof);
+      run_info.AddTilingData((uint16_t)0);
       OP_LOGD(op_type.c_str(), "fp16 reduce mean cof:%f", reduce_mean_cof);
     }
   }
@@ -637,10 +724,10 @@ void GetTilingDataNonAllReduceNZ(std::vector<int64_t> input_x, TilingParams &til
 
 void GetTilingData(std::vector<int64_t> input_x, TilingParams &tilingparams, const std::vector<int32_t> &reduce_axis,
                    const int32_t core_num, const int32_t max_ub_size, CompileInfo &compileinfo,
-                   const string &input_dtype, const string &input_format) {
+                   const ge::DataType &input_dtype, const string &input_format) {
   // std::vector<int32_t> tiling_params;
   int32_t block = 1;
-  if (input_dtype == "float32") {
+  if (input_dtype == ge::DT_FLOAT) {
     block = BLOCK_NUM_32;
   } else {
     block = BLOCK_NUM_16;
@@ -671,26 +758,23 @@ std::vector<int32_t> split_shape(std::vector<int64_t> shape_split, int32_t dim_s
   return res;
 }
 
-void LayerNormTikTiling(std::vector<int64_t> input_x, int32_t begin_norm_axis, string gm_type, int32_t ub_max_byte,
-                        int32_t core_num, const string &tik_mode, OpRunInfo &run_info, bool atomic_clean_diff_shape) {
+void LayerNormTikTiling(std::vector<int64_t> input_x, int32_t begin_norm_axis, const ge::DataType &gm_type,
+                        int32_t ub_max_byte, int32_t core_num, const string &tik_mode, utils::OpRunInfo &run_info,
+                        bool atomic_clean_diff_shape) {
   int32_t tiling_mode = 1;
   std::vector<int32_t> res = split_shape(input_x, begin_norm_axis);
   int32_t batch_num = res[0];
   int32_t data_num = res[1];
   int32_t block_size = 32;
   int32_t const_vector_proc_byte = 256;
-  string ub_type = "float32";
-  map<string, int32_t> const_dtype_byte = {
-      {"float16", 2},
-      {"fp16", 2},
-      {"float32", 4},
-      {"fp32", 4},
+  ge::DataType ub_type = ge::DT_FLOAT;
+  map<ge::DataType, int32_t> const_dtype_byte = {
+      {ge::DT_FLOAT16, 2},
+      {ge::DT_FLOAT, 4},
   };
-  map<string, int32_t> const_per_block_num = {
-      {"float16", 16},
-      {"fp16", 16},
-      {"float32", 8},
-      {"fp32", 8},
+  map<ge::DataType, int32_t> const_per_block_num = {
+      {ge::DT_FLOAT16, 16},
+      {ge::DT_FLOAT, 8},
   };
   int32_t ub_size;
 
@@ -741,66 +825,75 @@ void LayerNormTikTiling(std::vector<int64_t> input_x, int32_t begin_norm_axis, s
   int32_t workspace_sync = core_num * 8;
   int32_t non_y_workspace = workspace_mean > workspace_sync ? workspace_mean : workspace_sync;
   non_y_workspace = (non_y_workspace + 32 - 1) / 32 * 32;
+  std::vector<int64_t> workspaces;
   if ((ub_type != gm_type) && atomic_clean_diff_shape) {
-    run_info.workspaces = {batch_num * data_num * ub_data_size, non_y_workspace, non_y_workspace, non_y_workspace};
+    workspaces = {batch_num * data_num * ub_data_size, non_y_workspace, non_y_workspace, non_y_workspace};
   } else if ((ub_type != gm_type) && (!atomic_clean_diff_shape)) {
-    run_info.workspaces = {non_y_workspace, non_y_workspace, non_y_workspace};
+    workspaces = {non_y_workspace, non_y_workspace, non_y_workspace};
+  }
+  for (auto ws : workspaces) {
+    run_info.AddWorkspace(ws);
   }
   if (tik_mode == TSCONST) {
-    run_info.block_dim = loop_times;
+    run_info.SetBlockDim(loop_times);
   } else {
-    run_info.block_dim = core_num;
+    run_info.SetBlockDim(core_num);
   }
-  run_info.clear_atomic = true;
+  run_info.SetClearAtomic(true);
 
-  ByteBufferPut(run_info.tiling_data, (int32_t)tiling_mode);
-  ByteBufferPut(run_info.tiling_data, (int32_t)batch_num);
-  ByteBufferPut(run_info.tiling_data, (int32_t)data_num);
-  ByteBufferPut(run_info.tiling_data, (int32_t)loop_times);
-  ByteBufferPut(run_info.tiling_data, (int32_t)each_core_batch_num);
-  ByteBufferPut(run_info.tiling_data, (int32_t)last_core_batch_num);
+  run_info.AddTilingData((int32_t)tiling_mode);
+  run_info.AddTilingData((int32_t)batch_num);
+  run_info.AddTilingData((int32_t)data_num);
+  run_info.AddTilingData((int32_t)loop_times);
+  run_info.AddTilingData((int32_t)each_core_batch_num);
+  run_info.AddTilingData((int32_t)last_core_batch_num);
   float reduce_mean_cof = 1.0 / data_num;
-  ByteBufferPut(run_info.tiling_data, (float)reduce_mean_cof);
+  run_info.AddTilingData((float)reduce_mean_cof);
 }
 
 void WriteByteBuffer(const string &mode, const int32_t tiling_key, const int32_t workspace_sub1,
-                     TilingParams &tilingparams, CompileInfo &compileinfo, OpRunInfo &run_info) {
+                     TilingParams &tilingparams, CompileInfo &compileinfo, utils::OpRunInfo &run_info) {
   std::vector<int64_t> workspaces = {workspace_sub1};
-  run_info.workspaces = workspaces;
-  run_info.block_dim = tilingparams.block_dim;
-  run_info.tiling_key = tiling_key;
+  for (auto ws : workspaces) {
+    run_info.AddWorkspace(ws);
+  }
+  run_info.SetBlockDim(tilingparams.block_dim);
+  run_info.SetTilingKey(tiling_key);
 
   if (mode == TSCONST) {
-    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.block_tiling_axis);
-    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.block_tiling_axis_1);
-    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_tiling_axis);
-    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_tiling_axis_reduce);
-    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.block_factor);
-    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.block_factor_1);
-    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_factor);
-    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_fuse_factor);
+    run_info.AddTilingData((int32_t)tilingparams.block_tiling_axis);
+    run_info.AddTilingData((int32_t)tilingparams.block_tiling_axis_1);
+    run_info.AddTilingData((int32_t)tilingparams.ub_tiling_axis);
+    run_info.AddTilingData((int32_t)tilingparams.ub_tiling_axis_reduce);
+    run_info.AddTilingData((int32_t)tilingparams.block_factor);
+    run_info.AddTilingData((int32_t)tilingparams.block_factor_1);
+    run_info.AddTilingData((int32_t)tilingparams.ub_factor);
+    run_info.AddTilingData((int32_t)tilingparams.ub_fuse_factor);
+
     if (compileinfo.is_normal) {
-      ByteBufferPut(run_info.tiling_data, (int32_t)1);
+      run_info.AddTilingData((int32_t)1);
     } else {
-      ByteBufferPut(run_info.tiling_data, (int32_t)0);
+      run_info.AddTilingData((int32_t)0);
     }
   } else {
-    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.block_factor);
-    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.block_factor_1);
-    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_factor);
-    ByteBufferPut(run_info.tiling_data, (int32_t)tilingparams.ub_fuse_factor);
+    run_info.AddTilingData((int32_t)tilingparams.block_factor);
+    run_info.AddTilingData((int32_t)tilingparams.block_factor_1);
+    run_info.AddTilingData((int32_t)tilingparams.ub_factor);
+    run_info.AddTilingData((int32_t)tilingparams.ub_fuse_factor);
   }
 }
 
-bool LayerNormTiling(const string &op_type, const TeOpParas &op_paras, const nlohmann::json &op_info,
-                     OpRunInfo &run_info) {
+bool LayerNormTiling(const string &op_type, const ge::Operator &op_paras, const layerNormOpInfo &op_info,
+                     utils::OpRunInfo &run_info) {
   OP_LOGI(op_type.c_str(), "LayerNormTiling running.");
-  std::vector<int64_t> input_x = op_paras.inputs[0].tensor[0].shape;
-  const string input_dtype = op_paras.inputs[0].tensor[0].dtype;
-  const int32_t core_num = op_info["core_num"].get<int32_t>();
-  const string input_format = op_info["input_format"].get<string>();
-  int32_t begin_norm_axis = op_info["begin_norm_axis"].get<int32_t>();
-  int32_t begin_params_axis = op_info["begin_params_axis"].get<int32_t>();
+  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
+  auto input0_desc = operator_info->MutableInputDesc(0);
+  std::vector<int64_t> input_x = input0_desc->MutableShape().GetDims();
+  ge::DataType input_dtype = op_paras.GetInputDesc(0).GetDataType();
+  const int32_t core_num = op_info.core_num;
+  const string input_format = op_info.input_format;
+  int32_t begin_norm_axis = op_info.begin_norm_axis;
+  int32_t begin_params_axis = op_info.begin_params_axis;
   int32_t len_input_x = input_x.size();
   if (begin_norm_axis < 0) {
     begin_norm_axis += len_input_x;
@@ -809,52 +902,53 @@ bool LayerNormTiling(const string &op_type, const TeOpParas &op_paras, const nlo
     begin_params_axis += len_input_x;
   }
 
-  bool if_tik_support = op_info["is_tik_support"].get<bool>();
+  bool if_tik_support = op_info.is_tik_support;
   if (if_tik_support) {
     OP_LOGI(op_type.c_str(), "LayerNormTikTiling running.");
     string tik_mode;
-    auto tik_iter_num = op_info.find("tik_mode");
-    if (tik_iter_num != op_info.end()) {
-      tik_mode = op_info["tik_mode"].get<string>();
+    auto tik_iter_num = op_info.tik_mode;
+    if (!(tik_iter_num.empty())) {
+      tik_mode = op_info.tik_mode;
     } else {
       tik_mode = TSDYNAMIC;
     }
-    bool atomic_clean_diff_shape = op_info["atomic_clean_diff_shape"].get<bool>();
-    int32_t ub_max_byte = op_info["ub_max_byte"].get<int32_t>();
+    bool atomic_clean_diff_shape = op_info.atomic_clean_diff_shape;
+    int32_t ub_max_byte = op_info.ub_max_byte;
     LayerNormTikTiling(input_x, begin_norm_axis, input_dtype, ub_max_byte, core_num, tik_mode, run_info,
                        atomic_clean_diff_shape);
   } else {
     OP_LOGI(op_type.c_str(), "LayerNormDslTiling running.");
     string mode;
-    auto iter_num = op_info.find("mode");
-    if (iter_num != op_info.end()) {
-      mode = op_info["mode"].get<string>();
+    auto iter_num = op_info.mode;
+    if (!(iter_num.empty())) {
+      mode = op_info.mode;
     } else {
       mode = TSDYNAMIC;
     }
-    std::vector<int32_t> reduce_axis = op_info["reduce_axis"].get<std::vector<int32_t>>();
+    std::vector<int32_t> reduce_axis = op_info.reduce_axis;
 
     int32_t max_ub_size;
     int32_t block = 1;
-    if (input_dtype == "float32" || input_dtype == "fp32") {
-      max_ub_size = op_info["max_ub_size_normal_fp32"].get<int32_t>();
+    if (input_dtype == ge::DT_FLOAT) {
+      max_ub_size = op_info.max_ub_size_normal_fp32;
       block = BLOCK_NUM_32;
     } else {
-      max_ub_size = op_info["max_ub_size_normal_fp16"].get<int32_t>();
+      max_ub_size = op_info.max_ub_size_normal_fp16;
       block = BLOCK_NUM_16;
     }
 
     int32_t workspace_sub1 = TYPE_SIZE_16;
-    bool is_support_vexp = op_info["is_support_vexp"].get<bool>();
-    if (is_support_vexp || (input_dtype == "float32")) {
+    bool is_support_vexp = op_info.is_support_vexp;
+    if (is_support_vexp || (input_dtype == ge::DT_FLOAT)) {
       workspace_sub1 = TYPE_SIZE_32;
     }
 
     for (uint32_t i = 0; i < input_x.size(); i++) {
       workspace_sub1 *= input_x[i];
-      ByteBufferPut(run_info.tiling_data, (int32_t)input_x[i]);
+      run_info.AddTilingData((int32_t)input_x[i]);
       OP_LOGD(op_type.c_str(), "input_x shape:%d.", input_x[i]);
     }
+
     // update last dim align block
     std::vector<int64_t> old_input_x = input_x;
     if ((input_x[input_x.size() - 1] != LAST_DIM_RANGE_ONE) && (input_x.size() > 1)) {
@@ -878,5 +972,5 @@ bool LayerNormTiling(const string &op_type, const TeOpParas &op_paras, const nlo
 }
 
 // register tiling interface of LayerNorm op.
-REGISTER_OP_TILING_FUNC_BUFFERED(LayerNorm, LayerNormTiling);
+REGISTER_OP_TILING_V3_CUSTOM(LayerNorm, LayerNormTiling, LayerNormParseFunc, layerNormOpInfo);
 }  // namespace optiling

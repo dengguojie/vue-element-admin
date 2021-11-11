@@ -11,63 +11,81 @@
  * http://www.apache.org/licenses/LICENSE-2.0
  */
 #include <algorithm>
+#include <iostream>
 #include <nlohmann/json.hpp>
 #include <string>
-#include <iostream>
 
 #include "../op_proto/util/error_util.h"
+#include "../op_proto/util/op_common_util.h"
 #include "graph/debug/ge_log.h"
+#include "graph/utils/op_desc_utils.h"
 #include "op_log.h"
 #include "op_tiling.h"
+#include "op_tiling_util.h"
 
 namespace optiling {
-  bool GetLayerNormXBackpropV2CompileParams(const std::string& op_type, const nlohmann::json& op_info,
-                                            int32_t& core_num, int32_t& ub_size, int32_t& max_dtype)
-  {
-    using namespace nlohmann;
-    if (op_info == nullptr) {
-      ge::OpsGetCompileParamsErrReport("LayerNormXBackpropV2", "op_info");
-      OP_LOGE(op_type.c_str(), "op_info is null");
-      return false;
-    }
-    if (op_info.count("CORE_NUM") == 0 || op_info.count("UB_SIZE") == 0 || op_info.count("MAX_DTYPE") == 0) {
-      ge::OpsGetCompileParamsErrReport("LayerNormXBackpropV2", "CORE_NUM_UB_SIZE_MAX_DTYPE");
-      OP_LOGE(op_type.c_str(), "CORE_NUM or UB_SIZE or MAX_DTYPE is null");
-      return false;
-    }
-    core_num = op_info["CORE_NUM"].get<std::int32_t>();
-    ub_size = op_info["UB_SIZE"].get<std::int32_t>();
-    max_dtype = op_info["MAX_DTYPE"].get<std::int32_t>();
+struct opInfo {
+  /* data */
+  int32_t UB_SIZE;
+  int32_t CORE_NUM;
+  int32_t MAX_DTYPE;
+  int32_t COEXISTING_QUANTITY;
+};
 
-    return true;
-  }
-
-  bool LayerNormXBackpropV2Tiling(const std::string &op_type, const TeOpParas &op_paras, const nlohmann::json &op_info,
-                                  OpRunInfo &run_info)
-  {
-    GELOGI("LayerNormXBackpropV2Tiling running.");
-    std::vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
-    int32_t fmap_x0 = input_shape[0];
-    int32_t fmap_x1 = input_shape[1];
-    int32_t core_num = 0;
-    int32_t ub_size = 0;
-    int32_t max_dtype = 0;
-    int32_t CUT_AXIS_ONE_TILING_KEY = 10000;
-
-    bool ret = GetLayerNormXBackpropV2CompileParams(op_type, op_info, core_num, ub_size, max_dtype);
-    if (!ret) {
-      OP_LOGE("op[%s] GetLayerNormXBackpropV2CompileParams failed.", op_type.c_str());
-      return false;
-    }
-    GELOGI("op[%s] GetLayerNormXBackpropV2CompileParams success.", op_type.c_str());
-
-    ByteBufferPut(run_info.tiling_data, fmap_x0);
-    ByteBufferPut(run_info.tiling_data, fmap_x1);
-
-    run_info.block_dim = core_num;
-    run_info.tiling_key = CUT_AXIS_ONE_TILING_KEY;
-    GELOGI("LayerNormXBackpropTilingV2 end.");
-    return true;
-  }
-    REGISTER_OP_TILING_FUNC_BUFFERED(LayerNormXBackpropV2, LayerNormXBackpropV2Tiling);
+bool LayerNormXBackpropV2ParseFunc(const std::string& op_type, const nlohmann::json& compile_info,
+                                   opInfo& compile_value) {
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "UB_SIZE", compile_value.UB_SIZE),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormXBackpropV2ParseFunc, get UB_SIZE error"),
+                  return false);
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "CORE_NUM", compile_value.CORE_NUM),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormXBackpropV2ParseFunc, get CORE_NUM error"),
+                  return false);
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "MAX_DTYPE", compile_value.MAX_DTYPE),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormXBackpropV2ParseFunc, get MAX_DTYPE error"),
+                  return false);
+  OP_TILING_CHECK(
+      !GetCompileValue(compile_info, "COEXISTING_QUANTITY", compile_value.COEXISTING_QUANTITY),
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "LayerNormXBackpropV2ParseFunc, get COEXISTING_QUANTITY error"),
+      return false);
+  OP_LOGI(op_type.c_str(), "GetCompileParams success.");
+  return true;
 }
+
+bool GetLayerNormXBackpropV2CompileParams(const std::string& op_type, const opInfo& op_info, int32_t& core_num,
+                                          int32_t& ub_size, int32_t& max_dtype) {
+  core_num = op_info.CORE_NUM;
+  ub_size = op_info.UB_SIZE;
+  max_dtype = op_info.MAX_DTYPE;
+
+  return true;
+}
+
+bool LayerNormXBackpropV2Tiling(const std::string& op_type, const ge::Operator& op_paras, const opInfo& op_info,
+                                utils::OpRunInfo& run_info) {
+  GELOGI("LayerNormXBackpropV2Tiling running.");
+  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
+  auto input0_desc = operator_info->MutableInputDesc(0);
+  std::vector<int64_t> input_shape = input0_desc->MutableShape().GetDims();
+  int32_t fmap_x0 = input_shape[0];
+  int32_t fmap_x1 = input_shape[1];
+  int32_t core_num = 0;
+  int32_t ub_size = 0;
+  int32_t max_dtype = 0;
+  int32_t CUT_AXIS_ONE_TILING_KEY = 10000;
+
+  bool ret = GetLayerNormXBackpropV2CompileParams(op_type, op_info, core_num, ub_size, max_dtype);
+  if (!ret) {
+    OP_LOGE("op[%s] GetLayerNormXBackpropV2CompileParams failed.", op_type.c_str());
+    return false;
+  }
+  GELOGI("op[%s] GetLayerNormXBackpropV2CompileParams success.", op_type.c_str());
+
+  run_info.AddTilingData(fmap_x0);
+  run_info.AddTilingData(fmap_x1);
+  run_info.SetBlockDim(core_num);
+  run_info.SetTilingKey(CUT_AXIS_ONE_TILING_KEY);
+  GELOGI("LayerNormXBackpropTilingV2 end.");
+  return true;
+}
+REGISTER_OP_TILING_V3_CUSTOM(LayerNormXBackpropV2, LayerNormXBackpropV2Tiling, LayerNormXBackpropV2ParseFunc, opInfo);
+}  // namespace optiling

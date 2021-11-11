@@ -14,17 +14,47 @@
 #include <string>
 
 #include "../op_proto/util/error_util.h"
+#include "../op_proto/util/op_common_util.h"
 #include "graph/debug/ge_log.h"
+#include "graph/utils/op_desc_utils.h"
 #include "op_log.h"
 #include "op_tiling.h"
+#include "op_tiling_util.h"
 
 namespace optiling {
 // CASE1 CASE2 CASE3 CASE7 CASE8 CASE9 cut nc1h axis for block parallel, CASE1 CASE3 CASE7 CASE8 CASE9 cut nc1h_in
 // and CASE2 cut wo.
 // CASE4 CASE5 cut wo for block parallel, CASE4 cut wo_block_in.
-enum tiling_case {CASE1, CASE2, CASE3, CASE4, CASE5, CASE6, CASE7, CASE8, CASE9};
+enum tiling_case { CASE1, CASE2, CASE3, CASE4, CASE5, CASE6, CASE7, CASE8, CASE9 };
+struct opInfo {
+  int32_t core_num;
+  int32_t max_w_in_ub;
+  int32_t ksize;
+  int32_t strides;
+  int32_t pad_l;
+  int32_t pad_r;
+  bool ceil_mode;
+};
 
-vector<int32_t> GetTilingData(int32_t nc1h, int32_t wo, int32_t max_w_in_ub, int32_t core_num, int32_t &block_dim) {
+bool AvgPool1DParseFunc(const std::string& op_type, const nlohmann::json& compile_info, opInfo& compile_value) {
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "core_num", compile_value.core_num),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "AvgPool1DParseFunc get core_num error"), return false);
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "max_w_in_ub", compile_value.max_w_in_ub),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "AvgPool1DParseFunc get max_w_in_ub error"), return false);
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "ksize", compile_value.ksize),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "AvgPool1DParseFunc get ksize error"), return false);
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "strides", compile_value.strides),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "AvgPool1DParseFunc get strides error"), return false);
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "pad_l", compile_value.pad_l),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "AvgPool1DParseFunc get pad_l error"), return false);
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "pad_r", compile_value.pad_r),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "AvgPool1DParseFunc get pad_r error"), return false);
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "ceil_mode", compile_value.ceil_mode),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "AvgPool1DParseFunc get ceil_mode error"), return false);
+  OP_LOGI(op_type.c_str(), "GetCompileParams success.");
+  return true;
+}
+vector<int32_t> GetTilingData(int32_t nc1h, int32_t wo, int32_t max_w_in_ub, int32_t core_num, int32_t& block_dim) {
   vector<int32_t> tiling_data;
   if (nc1h >= core_num) {
     // do not need to cut wo for block parallel
@@ -79,24 +109,25 @@ vector<int32_t> GetTilingData(int32_t nc1h, int32_t wo, int32_t max_w_in_ub, int
   return tiling_data;
 }
 
-bool AvgPool1DTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_compile_info_json,
-                     OpRunInfo& run_info) {
+bool AvgPool1DTiling(const std::string& op_type, const ge::Operator& op_paras, const opInfo& op_compile_info_json,
+                     utils::OpRunInfo& run_info) {
   GELOGI("AvgPool1DTiling running.");
-  std::vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
-  std::vector<int64_t> output_shape = op_paras.outputs[0].tensor[0].shape;
+  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
+  std::vector<int64_t> input_shape = operator_info->MutableInputDesc(0)->MutableShape().GetDims();
+  std::vector<int64_t> output_shape = operator_info->MutableOutputDesc(0)->MutableShape().GetDims();
   int32_t fmap_n = input_shape[0];
   int32_t fmap_c1 = input_shape[1];
   int32_t fmap_h = input_shape[2];
   int32_t fmap_w = input_shape[3];
   int32_t wo = output_shape[3];
   int32_t fmap_nc1h = fmap_n * fmap_c1 * fmap_h;
-  int32_t core_num = op_compile_info_json["core_num"].get<int32_t>();
-  int32_t max_w_in_ub = op_compile_info_json["max_w_in_ub"].get<int32_t>();
-  int32_t ksize = op_compile_info_json["ksize"].get<int32_t>();
-  int32_t strides = op_compile_info_json["strides"].get<int32_t>();
-  int32_t pad_l = op_compile_info_json["pad_l"].get<int32_t>();
-  int32_t pad_r = op_compile_info_json["pad_r"].get<int32_t>();
-  bool ceil_mode = op_compile_info_json["ceil_mode"].get<bool>();
+  int32_t core_num = op_compile_info_json.core_num;
+  int32_t max_w_in_ub = op_compile_info_json.max_w_in_ub;
+  int32_t ksize = op_compile_info_json.ksize;
+  int32_t strides = op_compile_info_json.strides;
+  int32_t pad_l = op_compile_info_json.pad_l;
+  int32_t pad_r = op_compile_info_json.pad_r;
+  bool ceil_mode = op_compile_info_json.ceil_mode;
   int32_t fmap_wo;
   if (ceil_mode) {
     fmap_wo = (fmap_w + pad_l + pad_r - ksize + strides - 1) / strides + 1;
@@ -111,18 +142,18 @@ bool AvgPool1DTiling(const std::string& op_type, const TeOpParas& op_paras, cons
 
   int32_t block_dim = 0;
   vector<int32_t> tiling_data = GetTilingData(fmap_nc1h, wo, max_w_in_ub, core_num, block_dim);
-  ByteBufferPut(run_info.tiling_data, fmap_nc1h);
-  ByteBufferPut(run_info.tiling_data, fmap_w);
-  ByteBufferPut(run_info.tiling_data, fmap_wo);
+  run_info.AddTilingData(fmap_nc1h);
+  run_info.AddTilingData(fmap_w);
+  run_info.AddTilingData(fmap_wo);
   for (size_t i = 1; i < tiling_data.size(); i++) {
-    ByteBufferPut(run_info.tiling_data, tiling_data[i]);
+    run_info.AddTilingData(tiling_data[i]);
   }
 
-  run_info.block_dim = block_dim;
-  run_info.tiling_key = tiling_data[0];
+  run_info.SetBlockDim(block_dim);
+  run_info.SetTilingKey(tiling_data[0]);
 
   GELOGI("AvgPool1DTiling end.");
   return true;
 }
-REGISTER_OP_TILING_FUNC_BUFFERED(AvgPool1DD, AvgPool1DTiling);
+REGISTER_OP_TILING_V3_CUSTOM(AvgPool1DD, AvgPool1DTiling, AvgPool1DParseFunc, opInfo);
 }  // namespace optiling

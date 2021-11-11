@@ -5,9 +5,16 @@
 #include <vector>
 
 #define private public
+#include "array_ops.h"
+#include "common/utils/ut_op_util.h"
+#include "nn_norm_ops.h"
+#include "op_tiling/op_tiling_util.h"
 #include "register/op_tiling_registry.h"
+#include "test_common.h"
 
 using namespace std;
+using namespace ge;
+using namespace ut_util;
 
 class LayerNormTiling : public testing::Test {
  protected:
@@ -30,7 +37,6 @@ static string to_string(const std::stringstream &tiling_data) {
 }
 
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_1) {
-  using namespace optiling;
   std::string op_name = "LayerNorm";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -45,48 +51,51 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_1) {
                         "ub_max_byte": 253952})";
 
   std::vector<std::vector<int64_t>> inputs{{11, 12, 512}, {512}, {512}};
-
   std::vector<std::vector<int64_t>> outputs{{11, 12, 512}, {11, 12, 1}, {11, 12, 1}};
+  std::vector<ge::DataType> input_types{ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
+  std::vector<ge::DataType> output_types{ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
+  ge::Format data_format = ge::FORMAT_NCHW;
 
-  std::vector<std::string> input_types{"float16", "float16", "float16"};
-  std::vector<std::string> output_types{"float16", "float16", "float16"};
-  std::string data_format = "NCHW";
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputs[0]));
+  tensor_inputA.SetDataType(input_types[0]);
+  tensor_inputA.SetFormat(data_format);
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputs[1]));
+  tensor_inputB.SetDataType(input_types[1]);
+  tensor_inputB.SetFormat(data_format);
+  TensorDesc tensor_inputC;
+  tensor_inputC.SetShape(ge::Shape(inputs[2]));
+  tensor_inputC.SetDataType(input_types[2]);
+  tensor_inputC.SetFormat(data_format);
+  TensorDesc tensor_outputA;
+  tensor_outputA.SetShape(ge::Shape(outputs[0]));
+  tensor_outputA.SetDataType(output_types[0]);
+  tensor_outputA.SetFormat(data_format);
+  TensorDesc tensor_outputB;
+  tensor_outputB.SetShape(ge::Shape(outputs[1]));
+  tensor_outputB.SetDataType(output_types[1]);
+  tensor_outputB.SetFormat(data_format);
+  TensorDesc tensor_outputC;
+  tensor_outputC.SetShape(ge::Shape(outputs[2]));
+  tensor_outputC.SetDataType(output_types[2]);
+  tensor_outputC.SetFormat(data_format);
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = data_format;
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  for (size_t i = 0; i < outputs.size(); i++) {
-    TeOpTensor tensor_output;
-    TeOpTensorArg tensor_arg;
-    tensor_output.shape = outputs[i];
-    tensor_output.dtype = output_types[i];
-    tensor_output.format = data_format;
-    tensor_arg.tensor.push_back(tensor_output);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.outputs.push_back(tensor_arg);
-  }
-  opParas.op_type = op_name;
+  auto opParas = op::LayerNorm(op_name);
+  TENSOR_INPUT(opParas, tensor_inputA, x);
+  TENSOR_INPUT(opParas, tensor_inputB, gamma);
+  TENSOR_INPUT(opParas, tensor_inputC, beta);
+  TENSOR_OUTPUT(opParas, tensor_outputA, y);
+  TENSOR_OUTPUT(opParas, tensor_outputB, mean);
+  TENSOR_OUTPUT(opParas, tensor_outputC, variance);
 
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "LayerNorm_tiling_test_1";
-
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "0 132 512 27 5 2 989855744 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "0 132 512 27 5 2 989855744 ");
 }
 
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_2) {
-  using namespace optiling;
   std::string op_name = "LayerNorm";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -176,49 +185,52 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_2) {
                         "ub_info":[16384]})";
 
   std::vector<std::vector<int64_t>> inputs{{1024, 30, 512}, {512}, {512}};
-
   std::vector<std::vector<int64_t>> outputs{{1024, 30, 512}, {1024, 1, 1}, {1024, 1, 1}};
+  std::vector<ge::DataType> input_types{ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT};
+  std::vector<ge::DataType> output_types{ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT};
+  ge::Format data_format = ge::FORMAT_NCHW;
 
-  std::vector<std::string> input_types{"float32", "float32", "float32"};
-  std::vector<std::string> output_types{"float32", "float32", "float32"};
-  std::string data_format = "NCHW";
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputs[0]));
+  tensor_inputA.SetDataType(input_types[0]);
+  tensor_inputA.SetFormat(data_format);
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputs[1]));
+  tensor_inputB.SetDataType(input_types[1]);
+  tensor_inputB.SetFormat(data_format);
+  TensorDesc tensor_inputC;
+  tensor_inputC.SetShape(ge::Shape(inputs[2]));
+  tensor_inputC.SetDataType(input_types[2]);
+  tensor_inputC.SetFormat(data_format);
+  TensorDesc tensor_outputA;
+  tensor_outputA.SetShape(ge::Shape(outputs[0]));
+  tensor_outputA.SetDataType(output_types[0]);
+  tensor_outputA.SetFormat(data_format);
+  TensorDesc tensor_outputB;
+  tensor_outputB.SetShape(ge::Shape(outputs[1]));
+  tensor_outputB.SetDataType(output_types[1]);
+  tensor_outputB.SetFormat(data_format);
+  TensorDesc tensor_outputC;
+  tensor_outputC.SetShape(ge::Shape(outputs[2]));
+  tensor_outputC.SetDataType(output_types[2]);
+  tensor_outputC.SetFormat(data_format);
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = data_format;
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  for (size_t i = 0; i < outputs.size(); i++) {
-    TeOpTensor tensor_output;
-    TeOpTensorArg tensor_arg;
-    tensor_output.shape = outputs[i];
-    tensor_output.dtype = output_types[i];
-    tensor_output.format = data_format;
-    tensor_arg.tensor.push_back(tensor_output);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.outputs.push_back(tensor_arg);
-  }
-  opParas.op_type = op_name;
+  auto opParas = op::LayerNorm(op_name);
+  TENSOR_INPUT(opParas, tensor_inputA, x);
+  TENSOR_INPUT(opParas, tensor_inputB, gamma);
+  TENSOR_INPUT(opParas, tensor_inputC, beta);
+  TENSOR_OUTPUT(opParas, tensor_outputA, y);
+  TENSOR_OUTPUT(opParas, tensor_outputB, mean);
+  TENSOR_OUTPUT(opParas, tensor_outputC, variance);
 
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "LayerNorm_tiling_test_2";
-
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(runInfo.tiling_key, 1480001);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1024 30 512 32 1 20 23 948471945 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(runInfo.GetTilingKey(), 1480001);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1024 30 512 32 1 20 23 948471945 ");
 }
 
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_3) {
-  using namespace optiling;
   std::string op_name = "LayerNorm";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -233,48 +245,51 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_3) {
                         "ub_max_byte": 253952})";
 
   std::vector<std::vector<int64_t>> inputs{{34, 309, 512}, {309, 512}, {309, 512}};
-
   std::vector<std::vector<int64_t>> outputs{{34, 309, 512}, {34, 1, 1}, {34, 1, 1}};
+  std::vector<ge::DataType> input_types{ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
+  std::vector<ge::DataType> output_types{ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
+  ge::Format data_format = ge::FORMAT_NCHW;
 
-  std::vector<std::string> input_types{"float16", "float16", "float16"};
-  std::vector<std::string> output_types{"float16", "float16", "float16"};
-  std::string data_format = "NCHW";
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputs[0]));
+  tensor_inputA.SetDataType(input_types[0]);
+  tensor_inputA.SetFormat(data_format);
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputs[1]));
+  tensor_inputB.SetDataType(input_types[1]);
+  tensor_inputB.SetFormat(data_format);
+  TensorDesc tensor_inputC;
+  tensor_inputC.SetShape(ge::Shape(inputs[2]));
+  tensor_inputC.SetDataType(input_types[2]);
+  tensor_inputC.SetFormat(data_format);
+  TensorDesc tensor_outputA;
+  tensor_outputA.SetShape(ge::Shape(outputs[0]));
+  tensor_outputA.SetDataType(output_types[0]);
+  tensor_outputA.SetFormat(data_format);
+  TensorDesc tensor_outputB;
+  tensor_outputB.SetShape(ge::Shape(outputs[1]));
+  tensor_outputB.SetDataType(output_types[1]);
+  tensor_outputB.SetFormat(data_format);
+  TensorDesc tensor_outputC;
+  tensor_outputC.SetShape(ge::Shape(outputs[2]));
+  tensor_outputC.SetDataType(output_types[2]);
+  tensor_outputC.SetFormat(data_format);
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = data_format;
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  for (size_t i = 0; i < outputs.size(); i++) {
-    TeOpTensor tensor_output;
-    TeOpTensorArg tensor_arg;
-    tensor_output.shape = outputs[i];
-    tensor_output.dtype = output_types[i];
-    tensor_output.format = data_format;
-    tensor_arg.tensor.push_back(tensor_output);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.outputs.push_back(tensor_arg);
-  }
-  opParas.op_type = op_name;
+  auto opParas = op::LayerNorm(op_name);
+  TENSOR_INPUT(opParas, tensor_inputA, x);
+  TENSOR_INPUT(opParas, tensor_inputB, gamma);
+  TENSOR_INPUT(opParas, tensor_inputC, beta);
+  TENSOR_OUTPUT(opParas, tensor_outputA, y);
+  TENSOR_OUTPUT(opParas, tensor_outputB, mean);
+  TENSOR_OUTPUT(opParas, tensor_outputC, variance);
 
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "LayerNorm_tiling_test_3";
-
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1 34 158208 17 2 2 919869235 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 34 158208 17 2 2 919869235 ");
 }
 
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_4) {
-  using namespace optiling;
   std::string op_name = "LayerNorm";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -411,49 +426,52 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_4) {
                         "ub_info":[16384]})";
 
   std::vector<std::vector<int64_t>> inputs{{34, 309, 512}, {512}, {512}};
-
   std::vector<std::vector<int64_t>> outputs{{34, 309, 512}, {1, 1, 1}, {1, 1, 1}};
+  std::vector<ge::DataType> input_types{ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT};
+  std::vector<ge::DataType> output_types{ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT};
+  ge::Format data_format = ge::FORMAT_NCHW;
 
-  std::vector<std::string> input_types{"float32", "float32", "float32"};
-  std::vector<std::string> output_types{"float32", "float32", "float32"};
-  std::string data_format = "NCHW";
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputs[0]));
+  tensor_inputA.SetDataType(input_types[0]);
+  tensor_inputA.SetFormat(data_format);
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputs[1]));
+  tensor_inputB.SetDataType(input_types[1]);
+  tensor_inputB.SetFormat(data_format);
+  TensorDesc tensor_inputC;
+  tensor_inputC.SetShape(ge::Shape(inputs[2]));
+  tensor_inputC.SetDataType(input_types[2]);
+  tensor_inputC.SetFormat(data_format);
+  TensorDesc tensor_outputA;
+  tensor_outputA.SetShape(ge::Shape(outputs[0]));
+  tensor_outputA.SetDataType(output_types[0]);
+  tensor_outputA.SetFormat(data_format);
+  TensorDesc tensor_outputB;
+  tensor_outputB.SetShape(ge::Shape(outputs[1]));
+  tensor_outputB.SetDataType(output_types[1]);
+  tensor_outputB.SetFormat(data_format);
+  TensorDesc tensor_outputC;
+  tensor_outputC.SetShape(ge::Shape(outputs[2]));
+  tensor_outputC.SetDataType(output_types[2]);
+  tensor_outputC.SetFormat(data_format);
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = data_format;
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  for (size_t i = 0; i < outputs.size(); i++) {
-    TeOpTensor tensor_output;
-    TeOpTensorArg tensor_arg;
-    tensor_output.shape = outputs[i];
-    tensor_output.dtype = output_types[i];
-    tensor_output.format = data_format;
-    tensor_arg.tensor.push_back(tensor_output);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.outputs.push_back(tensor_arg);
-  }
-  opParas.op_type = op_name;
+  auto opParas = op::LayerNorm(op_name);
+  TENSOR_INPUT(opParas, tensor_inputA, x);
+  TENSOR_INPUT(opParas, tensor_inputB, gamma);
+  TENSOR_INPUT(opParas, tensor_inputC, beta);
+  TENSOR_OUTPUT(opParas, tensor_outputA, y);
+  TENSOR_OUTPUT(opParas, tensor_outputB, mean);
+  TENSOR_OUTPUT(opParas, tensor_outputC, variance);
 
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "LayerNorm_tiling_test_4";
-
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 1);
-  EXPECT_EQ(runInfo.tiling_key, 2020001);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "34 309 512 34 1 20 34 877108573 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 1);
+  EXPECT_EQ(runInfo.GetTilingKey(), 2020001);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "34 309 512 34 1 20 34 877108573 ");
 }
 
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_5) {
-  using namespace optiling;
   std::string op_name = "LayerNorm";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -543,49 +561,52 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_5) {
                         "ub_info":[16384]})";
 
   std::vector<std::vector<int64_t>> inputs{{34, 309, 512}, {512}, {512}};
-
   std::vector<std::vector<int64_t>> outputs{{34, 309, 512}, {34, 1, 1}, {34, 1, 1}};
+  std::vector<ge::DataType> input_types{ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT};
+  std::vector<ge::DataType> output_types{ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT};
+  ge::Format data_format = ge::FORMAT_NCHW;
 
-  std::vector<std::string> input_types{"float32", "float32", "float32"};
-  std::vector<std::string> output_types{"float32", "float32", "float32"};
-  std::string data_format = "NCHW";
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputs[0]));
+  tensor_inputA.SetDataType(input_types[0]);
+  tensor_inputA.SetFormat(data_format);
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputs[1]));
+  tensor_inputB.SetDataType(input_types[1]);
+  tensor_inputB.SetFormat(data_format);
+  TensorDesc tensor_inputC;
+  tensor_inputC.SetShape(ge::Shape(inputs[2]));
+  tensor_inputC.SetDataType(input_types[2]);
+  tensor_inputC.SetFormat(data_format);
+  TensorDesc tensor_outputA;
+  tensor_outputA.SetShape(ge::Shape(outputs[0]));
+  tensor_outputA.SetDataType(output_types[0]);
+  tensor_outputA.SetFormat(data_format);
+  TensorDesc tensor_outputB;
+  tensor_outputB.SetShape(ge::Shape(outputs[1]));
+  tensor_outputB.SetDataType(output_types[1]);
+  tensor_outputB.SetFormat(data_format);
+  TensorDesc tensor_outputC;
+  tensor_outputC.SetShape(ge::Shape(outputs[2]));
+  tensor_outputC.SetDataType(output_types[2]);
+  tensor_outputC.SetFormat(data_format);
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = data_format;
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  for (size_t i = 0; i < outputs.size(); i++) {
-    TeOpTensor tensor_output;
-    TeOpTensorArg tensor_arg;
-    tensor_output.shape = outputs[i];
-    tensor_output.dtype = output_types[i];
-    tensor_output.format = data_format;
-    tensor_arg.tensor.push_back(tensor_output);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.outputs.push_back(tensor_arg);
-  }
-  opParas.op_type = op_name;
+  auto opParas = op::LayerNorm(op_name);
+  TENSOR_INPUT(opParas, tensor_inputA, x);
+  TENSOR_INPUT(opParas, tensor_inputB, gamma);
+  TENSOR_INPUT(opParas, tensor_inputC, beta);
+  TENSOR_OUTPUT(opParas, tensor_outputA, y);
+  TENSOR_OUTPUT(opParas, tensor_outputB, mean);
+  TENSOR_OUTPUT(opParas, tensor_outputC, variance);
 
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "LayerNorm_tiling_test_5";
-
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 5);
-  EXPECT_EQ(runInfo.tiling_key, 1480001);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "34 309 512 8 1 20 8 919869235 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 5);
+  EXPECT_EQ(runInfo.GetTilingKey(), 1480001);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "34 309 512 8 1 20 8 919869235 ");
 }
 
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_6) {
-  using namespace optiling;
   std::string op_name = "LayerNorm";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -662,49 +683,52 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_6) {
                         "ub_info":[16384]})";
 
   std::vector<std::vector<int64_t>> inputs{{20, 304, 512}, {512}, {512}};
-
   std::vector<std::vector<int64_t>> outputs{{20, 304, 512}, {20, 304, 1}, {20, 304, 1}};
+  std::vector<ge::DataType> input_types{ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
+  std::vector<ge::DataType> output_types{ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
+  ge::Format data_format = ge::FORMAT_NCHW;
 
-  std::vector<std::string> input_types{"float16", "float16", "float16"};
-  std::vector<std::string> output_types{"float16", "float16", "float16"};
-  std::string data_format = "NCHW";
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputs[0]));
+  tensor_inputA.SetDataType(input_types[0]);
+  tensor_inputA.SetFormat(data_format);
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputs[1]));
+  tensor_inputB.SetDataType(input_types[1]);
+  tensor_inputB.SetFormat(data_format);
+  TensorDesc tensor_inputC;
+  tensor_inputC.SetShape(ge::Shape(inputs[2]));
+  tensor_inputC.SetDataType(input_types[2]);
+  tensor_inputC.SetFormat(data_format);
+  TensorDesc tensor_outputA;
+  tensor_outputA.SetShape(ge::Shape(outputs[0]));
+  tensor_outputA.SetDataType(output_types[0]);
+  tensor_outputA.SetFormat(data_format);
+  TensorDesc tensor_outputB;
+  tensor_outputB.SetShape(ge::Shape(outputs[1]));
+  tensor_outputB.SetDataType(output_types[1]);
+  tensor_outputB.SetFormat(data_format);
+  TensorDesc tensor_outputC;
+  tensor_outputC.SetShape(ge::Shape(outputs[2]));
+  tensor_outputC.SetDataType(output_types[2]);
+  tensor_outputC.SetFormat(data_format);
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = data_format;
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  for (size_t i = 0; i < outputs.size(); i++) {
-    TeOpTensor tensor_output;
-    TeOpTensorArg tensor_arg;
-    tensor_output.shape = outputs[i];
-    tensor_output.dtype = output_types[i];
-    tensor_output.format = data_format;
-    tensor_arg.tensor.push_back(tensor_output);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.outputs.push_back(tensor_arg);
-  }
-  opParas.op_type = op_name;
+  auto opParas = op::LayerNorm(op_name);
+  TENSOR_INPUT(opParas, tensor_inputA, x);
+  TENSOR_INPUT(opParas, tensor_inputB, gamma);
+  TENSOR_INPUT(opParas, tensor_inputC, beta);
+  TENSOR_OUTPUT(opParas, tensor_outputA, y);
+  TENSOR_OUTPUT(opParas, tensor_outputB, mean);
+  TENSOR_OUTPUT(opParas, tensor_outputC, variance);
 
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "LayerNorm_tiling_test_6";
-
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(runInfo.tiling_key, 671001);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "20 304 512 2 16 19 0 989855744 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(runInfo.GetTilingKey(), 671001);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "20 304 512 2 16 19 0 989855744 ");
 }
 
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_7) {
-  using namespace optiling;
   std::string op_name = "LayerNorm";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -781,49 +805,52 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_7) {
                         "ub_info":[16384]})";
 
   std::vector<std::vector<int64_t>> inputs{{49, 304, 512}, {512}, {512}};
-
   std::vector<std::vector<int64_t>> outputs{{49, 304, 512}, {49, 304, 1}, {49, 304, 1}};
+  std::vector<ge::DataType> input_types{ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
+  std::vector<ge::DataType> output_types{ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
+  ge::Format data_format = ge::FORMAT_NCHW;
 
-  std::vector<std::string> input_types{"float16", "float16", "float16"};
-  std::vector<std::string> output_types{"float16", "float16", "float16"};
-  std::string data_format = "NCHW";
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputs[0]));
+  tensor_inputA.SetDataType(input_types[0]);
+  tensor_inputA.SetFormat(data_format);
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputs[1]));
+  tensor_inputB.SetDataType(input_types[1]);
+  tensor_inputB.SetFormat(data_format);
+  TensorDesc tensor_inputC;
+  tensor_inputC.SetShape(ge::Shape(inputs[2]));
+  tensor_inputC.SetDataType(input_types[2]);
+  tensor_inputC.SetFormat(data_format);
+  TensorDesc tensor_outputA;
+  tensor_outputA.SetShape(ge::Shape(outputs[0]));
+  tensor_outputA.SetDataType(output_types[0]);
+  tensor_outputA.SetFormat(data_format);
+  TensorDesc tensor_outputB;
+  tensor_outputB.SetShape(ge::Shape(outputs[1]));
+  tensor_outputB.SetDataType(output_types[1]);
+  tensor_outputB.SetFormat(data_format);
+  TensorDesc tensor_outputC;
+  tensor_outputC.SetShape(ge::Shape(outputs[2]));
+  tensor_outputC.SetDataType(output_types[2]);
+  tensor_outputC.SetFormat(data_format);
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = data_format;
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  for (size_t i = 0; i < outputs.size(); i++) {
-    TeOpTensor tensor_output;
-    TeOpTensorArg tensor_arg;
-    tensor_output.shape = outputs[i];
-    tensor_output.dtype = output_types[i];
-    tensor_output.format = data_format;
-    tensor_arg.tensor.push_back(tensor_output);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.outputs.push_back(tensor_arg);
-  }
-  opParas.op_type = op_name;
+  auto opParas = op::LayerNorm(op_name);
+  TENSOR_INPUT(opParas, tensor_inputA, x);
+  TENSOR_INPUT(opParas, tensor_inputB, gamma);
+  TENSOR_INPUT(opParas, tensor_inputC, beta);
+  TENSOR_OUTPUT(opParas, tensor_outputA, y);
+  TENSOR_OUTPUT(opParas, tensor_outputB, mean);
+  TENSOR_OUTPUT(opParas, tensor_outputC, variance);
 
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "LayerNorm_tiling_test_7";
-
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 784);
-  EXPECT_EQ(runInfo.tiling_key, 671001);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "49 304 512 49 16 19 0 989855744 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 784);
+  EXPECT_EQ(runInfo.GetTilingKey(), 671001);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "49 304 512 49 16 19 0 989855744 ");
 }
 
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_8) {
-  using namespace optiling;
   std::string op_name = "LayerNorm";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -900,49 +927,52 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_8) {
                         "ub_info":[16384]})";
 
   std::vector<std::vector<int64_t>> inputs{{34, 309, 512}, {512}, {512}};
-
   std::vector<std::vector<int64_t>> outputs{{34, 304, 512}, {34, 304, 1}, {34, 304, 1}};
+  std::vector<ge::DataType> input_types{ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT};
+  std::vector<ge::DataType> output_types{ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT};
+  ge::Format data_format = ge::FORMAT_NCHW;
 
-  std::vector<std::string> input_types{"float32", "float32", "float32"};
-  std::vector<std::string> output_types{"float32", "float32", "float32"};
-  std::string data_format = "NCHW";
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputs[0]));
+  tensor_inputA.SetDataType(input_types[0]);
+  tensor_inputA.SetFormat(data_format);
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputs[1]));
+  tensor_inputB.SetDataType(input_types[1]);
+  tensor_inputB.SetFormat(data_format);
+  TensorDesc tensor_inputC;
+  tensor_inputC.SetShape(ge::Shape(inputs[2]));
+  tensor_inputC.SetDataType(input_types[2]);
+  tensor_inputC.SetFormat(data_format);
+  TensorDesc tensor_outputA;
+  tensor_outputA.SetShape(ge::Shape(outputs[0]));
+  tensor_outputA.SetDataType(output_types[0]);
+  tensor_outputA.SetFormat(data_format);
+  TensorDesc tensor_outputB;
+  tensor_outputB.SetShape(ge::Shape(outputs[1]));
+  tensor_outputB.SetDataType(output_types[1]);
+  tensor_outputB.SetFormat(data_format);
+  TensorDesc tensor_outputC;
+  tensor_outputC.SetShape(ge::Shape(outputs[2]));
+  tensor_outputC.SetDataType(output_types[2]);
+  tensor_outputC.SetFormat(data_format);
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = data_format;
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  for (size_t i = 0; i < outputs.size(); i++) {
-    TeOpTensor tensor_output;
-    TeOpTensorArg tensor_arg;
-    tensor_output.shape = outputs[i];
-    tensor_output.dtype = output_types[i];
-    tensor_output.format = data_format;
-    tensor_arg.tensor.push_back(tensor_output);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.outputs.push_back(tensor_arg);
-  }
-  opParas.op_type = op_name;
+  auto opParas = op::LayerNorm(op_name);
+  TENSOR_INPUT(opParas, tensor_inputA, x);
+  TENSOR_INPUT(opParas, tensor_inputB, gamma);
+  TENSOR_INPUT(opParas, tensor_inputC, beta);
+  TENSOR_OUTPUT(opParas, tensor_outputA, y);
+  TENSOR_OUTPUT(opParas, tensor_outputB, mean);
+  TENSOR_OUTPUT(opParas, tensor_outputC, variance);
 
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "LayerNorm_tiling_test_8";
-
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(runInfo.tiling_key, 671001);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "34 309 512 2 16 20 0 989855744 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(runInfo.GetTilingKey(), 671001);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "34 309 512 2 16 20 0 989855744 ");
 }
 
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_9) {
-  using namespace optiling;
   std::string op_name = "LayerNorm";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -1019,49 +1049,52 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_9) {
                         "ub_info":[16384]})";
 
   std::vector<std::vector<int64_t>> inputs{{352, 4, 512}, {512}, {512}};
-
   std::vector<std::vector<int64_t>> outputs{{352, 4, 512}, {352, 4, 1}, {352, 4, 1}};
+  std::vector<ge::DataType> input_types{ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
+  std::vector<ge::DataType> output_types{ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
+  ge::Format data_format = ge::FORMAT_NCHW;
 
-  std::vector<std::string> input_types{"float16", "float16", "float16"};
-  std::vector<std::string> output_types{"float16", "float16", "float16"};
-  std::string data_format = "NCHW";
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputs[0]));
+  tensor_inputA.SetDataType(input_types[0]);
+  tensor_inputA.SetFormat(data_format);
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputs[1]));
+  tensor_inputB.SetDataType(input_types[1]);
+  tensor_inputB.SetFormat(data_format);
+  TensorDesc tensor_inputC;
+  tensor_inputC.SetShape(ge::Shape(inputs[2]));
+  tensor_inputC.SetDataType(input_types[2]);
+  tensor_inputC.SetFormat(data_format);
+  TensorDesc tensor_outputA;
+  tensor_outputA.SetShape(ge::Shape(outputs[0]));
+  tensor_outputA.SetDataType(output_types[0]);
+  tensor_outputA.SetFormat(data_format);
+  TensorDesc tensor_outputB;
+  tensor_outputB.SetShape(ge::Shape(outputs[1]));
+  tensor_outputB.SetDataType(output_types[1]);
+  tensor_outputB.SetFormat(data_format);
+  TensorDesc tensor_outputC;
+  tensor_outputC.SetShape(ge::Shape(outputs[2]));
+  tensor_outputC.SetDataType(output_types[2]);
+  tensor_outputC.SetFormat(data_format);
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = data_format;
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  for (size_t i = 0; i < outputs.size(); i++) {
-    TeOpTensor tensor_output;
-    TeOpTensorArg tensor_arg;
-    tensor_output.shape = outputs[i];
-    tensor_output.dtype = output_types[i];
-    tensor_output.format = data_format;
-    tensor_arg.tensor.push_back(tensor_output);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.outputs.push_back(tensor_arg);
-  }
-  opParas.op_type = op_name;
+  auto opParas = op::LayerNorm(op_name);
+  TENSOR_INPUT(opParas, tensor_inputA, x);
+  TENSOR_INPUT(opParas, tensor_inputB, gamma);
+  TENSOR_INPUT(opParas, tensor_inputC, beta);
+  TENSOR_OUTPUT(opParas, tensor_outputA, y);
+  TENSOR_OUTPUT(opParas, tensor_outputB, mean);
+  TENSOR_OUTPUT(opParas, tensor_outputC, variance);
 
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "LayerNorm_tiling_test_9";
-
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 1);
-  EXPECT_EQ(runInfo.tiling_key, 270001);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "352 4 512 352 1 5 0 989855744 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 1);
+  EXPECT_EQ(runInfo.GetTilingKey(), 270001);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "352 4 512 352 1 5 0 989855744 ");
 }
 
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_10) {
-  using namespace optiling;
   std::string op_name = "LayerNorm";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -1138,50 +1171,53 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_10) {
                         "ub_info":[16384]})";
 
   std::vector<std::vector<int64_t>> inputs{{32, 121, 768}, {768}, {768}};
-
   std::vector<std::vector<int64_t>> outputs{{32, 121, 768}, {32, 121, 1}, {32, 121, 768}};
+  std::vector<ge::DataType> input_types{ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
+  std::vector<ge::DataType> output_types{ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
+  ge::Format data_format = ge::FORMAT_NCHW;
 
-  std::vector<std::string> input_types{"float16", "float16", "float16"};
-  std::vector<std::string> output_types{"float16", "float16", "float16"};
-  std::string data_format = "NCHW";
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputs[0]));
+  tensor_inputA.SetDataType(input_types[0]);
+  tensor_inputA.SetFormat(data_format);
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputs[1]));
+  tensor_inputB.SetDataType(input_types[1]);
+  tensor_inputB.SetFormat(data_format);
+  TensorDesc tensor_inputC;
+  tensor_inputC.SetShape(ge::Shape(inputs[2]));
+  tensor_inputC.SetDataType(input_types[2]);
+  tensor_inputC.SetFormat(data_format);
+  TensorDesc tensor_outputA;
+  tensor_outputA.SetShape(ge::Shape(outputs[0]));
+  tensor_outputA.SetDataType(output_types[0]);
+  tensor_outputA.SetFormat(data_format);
+  TensorDesc tensor_outputB;
+  tensor_outputB.SetShape(ge::Shape(outputs[1]));
+  tensor_outputB.SetDataType(output_types[1]);
+  tensor_outputB.SetFormat(data_format);
+  TensorDesc tensor_outputC;
+  tensor_outputC.SetShape(ge::Shape(outputs[2]));
+  tensor_outputC.SetDataType(output_types[2]);
+  tensor_outputC.SetFormat(data_format);
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = data_format;
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  for (size_t i = 0; i < outputs.size(); i++) {
-    TeOpTensor tensor_output;
-    TeOpTensorArg tensor_arg;
-    tensor_output.shape = outputs[i];
-    tensor_output.dtype = output_types[i];
-    tensor_output.format = data_format;
-    tensor_arg.tensor.push_back(tensor_output);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.outputs.push_back(tensor_arg);
-  }
-  opParas.op_type = op_name;
+  auto opParas = op::LayerNorm(op_name);
+  TENSOR_INPUT(opParas, tensor_inputA, x);
+  TENSOR_INPUT(opParas, tensor_inputB, gamma);
+  TENSOR_INPUT(opParas, tensor_inputC, beta);
+  TENSOR_OUTPUT(opParas, tensor_outputA, y);
+  TENSOR_OUTPUT(opParas, tensor_outputB, mean);
+  TENSOR_OUTPUT(opParas, tensor_outputC, variance);
 
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "LayerNorm_tiling_test_10";
-
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(runInfo.tiling_key, 1940001);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "32 121 768 1 1 768 1 984263339 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(runInfo.GetTilingKey(), 1940001);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "32 121 768 1 1 768 1 984263339 ");
 }
 
 // static shape case
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_11) {
-  using namespace optiling;
   std::string op_name = "LayerNorm";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -1211,50 +1247,53 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_11) {
                         "ub_info":[16384]})";
 
   std::vector<std::vector<int64_t>> inputs{{20, 304, 512}, {512}, {512}};
-
   std::vector<std::vector<int64_t>> outputs{{20, 304, 512}, {20, 304, 1}, {20, 304, 1}};
+  std::vector<ge::DataType> input_types{ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
+  std::vector<ge::DataType> output_types{ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
+  ge::Format data_format = ge::FORMAT_NCHW;
 
-  std::vector<std::string> input_types{"float16", "float16", "float16"};
-  std::vector<std::string> output_types{"float16", "float16", "float16"};
-  std::string data_format = "NCHW";
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputs[0]));
+  tensor_inputA.SetDataType(input_types[0]);
+  tensor_inputA.SetFormat(data_format);
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputs[1]));
+  tensor_inputB.SetDataType(input_types[1]);
+  tensor_inputB.SetFormat(data_format);
+  TensorDesc tensor_inputC;
+  tensor_inputC.SetShape(ge::Shape(inputs[2]));
+  tensor_inputC.SetDataType(input_types[2]);
+  tensor_inputC.SetFormat(data_format);
+  TensorDesc tensor_outputA;
+  tensor_outputA.SetShape(ge::Shape(outputs[0]));
+  tensor_outputA.SetDataType(output_types[0]);
+  tensor_outputA.SetFormat(data_format);
+  TensorDesc tensor_outputB;
+  tensor_outputB.SetShape(ge::Shape(outputs[1]));
+  tensor_outputB.SetDataType(output_types[1]);
+  tensor_outputB.SetFormat(data_format);
+  TensorDesc tensor_outputC;
+  tensor_outputC.SetShape(ge::Shape(outputs[2]));
+  tensor_outputC.SetDataType(output_types[2]);
+  tensor_outputC.SetFormat(data_format);
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = data_format;
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  for (size_t i = 0; i < outputs.size(); i++) {
-    TeOpTensor tensor_output;
-    TeOpTensorArg tensor_arg;
-    tensor_output.shape = outputs[i];
-    tensor_output.dtype = output_types[i];
-    tensor_output.format = data_format;
-    tensor_arg.tensor.push_back(tensor_output);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.outputs.push_back(tensor_arg);
-  }
-  opParas.op_type = op_name;
+  auto opParas = op::LayerNorm(op_name);
+  TENSOR_INPUT(opParas, tensor_inputA, x);
+  TENSOR_INPUT(opParas, tensor_inputB, gamma);
+  TENSOR_INPUT(opParas, tensor_inputC, beta);
+  TENSOR_OUTPUT(opParas, tensor_outputA, y);
+  TENSOR_OUTPUT(opParas, tensor_outputB, mean);
+  TENSOR_OUTPUT(opParas, tensor_outputC, variance);
 
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "LayerNorm_tiling_test_11";
-
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(runInfo.tiling_key, 671001);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "20 304 512 0 1 1 0 2 16 19 0 1 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(runInfo.GetTilingKey(), 671001);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "20 304 512 0 1 1 0 2 16 19 0 1 ");
 }
 
 // NZ case
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_12) {
-  using namespace optiling;
   std::string op_name = "LayerNorm";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -1304,49 +1343,52 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_12) {
                         "ub_info":[16384]})";
 
   std::vector<std::vector<int64_t>> inputs{{32, 32, 16, 16}, {512}, {512}};
-
   std::vector<std::vector<int64_t>> outputs{{32, 32, 16, 16}, {512, 1}, {512, 1}};
+  std::vector<ge::DataType> input_types{ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
+  std::vector<ge::DataType> output_types{ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
+  ge::Format data_format = ge::FORMAT_FRACTAL_NZ;
 
-  std::vector<std::string> input_types{"float16", "float16", "float16"};
-  std::vector<std::string> output_types{"float16", "float16", "float16"};
-  std::string data_format = "FRACTAL_NZ";
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputs[0]));
+  tensor_inputA.SetDataType(input_types[0]);
+  tensor_inputA.SetFormat(data_format);
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputs[1]));
+  tensor_inputB.SetDataType(input_types[1]);
+  tensor_inputB.SetFormat(data_format);
+  TensorDesc tensor_inputC;
+  tensor_inputC.SetShape(ge::Shape(inputs[2]));
+  tensor_inputC.SetDataType(input_types[2]);
+  tensor_inputC.SetFormat(data_format);
+  TensorDesc tensor_outputA;
+  tensor_outputA.SetShape(ge::Shape(outputs[0]));
+  tensor_outputA.SetDataType(output_types[0]);
+  tensor_outputA.SetFormat(data_format);
+  TensorDesc tensor_outputB;
+  tensor_outputB.SetShape(ge::Shape(outputs[1]));
+  tensor_outputB.SetDataType(output_types[1]);
+  tensor_outputB.SetFormat(data_format);
+  TensorDesc tensor_outputC;
+  tensor_outputC.SetShape(ge::Shape(outputs[2]));
+  tensor_outputC.SetDataType(output_types[2]);
+  tensor_outputC.SetFormat(data_format);
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = data_format;
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  for (size_t i = 0; i < outputs.size(); i++) {
-    TeOpTensor tensor_output;
-    TeOpTensorArg tensor_arg;
-    tensor_output.shape = outputs[i];
-    tensor_output.dtype = output_types[i];
-    tensor_output.format = data_format;
-    tensor_arg.tensor.push_back(tensor_output);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.outputs.push_back(tensor_arg);
-  }
-  opParas.op_type = op_name;
+  auto opParas = op::LayerNorm(op_name);
+  TENSOR_INPUT(opParas, tensor_inputA, x);
+  TENSOR_INPUT(opParas, tensor_inputB, gamma);
+  TENSOR_INPUT(opParas, tensor_inputC, beta);
+  TENSOR_OUTPUT(opParas, tensor_outputA, y);
+  TENSOR_OUTPUT(opParas, tensor_outputB, mean);
+  TENSOR_OUTPUT(opParas, tensor_outputC, variance);
 
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "LayerNorm_tiling_test_12";
-
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 32);
-  EXPECT_EQ(runInfo.tiling_key, 5391000);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "32 32 16 16 1 1 1 0 989855744 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(runInfo.GetTilingKey(), 5391000);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "32 32 16 16 1 1 1 0 989855744 ");
 }
 
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_13) {
-  using namespace optiling;
   // tik case
   std::string op_name = "LayerNorm";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
@@ -1362,49 +1404,52 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_13) {
                         "ub_max_byte": 253952})";
 
   std::vector<std::vector<int64_t>> inputs{{11, 12, 512}, {512}, {512}};
-
   std::vector<std::vector<int64_t>> outputs{{11, 12, 512}, {11, 12, 1}, {11, 12, 1}};
+  std::vector<ge::DataType> input_types{ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
+  std::vector<ge::DataType> output_types{ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
+  ge::Format data_format = ge::FORMAT_NCHW;
 
-  std::vector<std::string> input_types{"float16", "float16", "float16"};
-  std::vector<std::string> output_types{"float16", "float16", "float16"};
-  std::string data_format = "NCHW";
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputs[0]));
+  tensor_inputA.SetDataType(input_types[0]);
+  tensor_inputA.SetFormat(data_format);
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputs[1]));
+  tensor_inputB.SetDataType(input_types[1]);
+  tensor_inputB.SetFormat(data_format);
+  TensorDesc tensor_inputC;
+  tensor_inputC.SetShape(ge::Shape(inputs[2]));
+  tensor_inputC.SetDataType(input_types[2]);
+  tensor_inputC.SetFormat(data_format);
+  TensorDesc tensor_outputA;
+  tensor_outputA.SetShape(ge::Shape(outputs[0]));
+  tensor_outputA.SetDataType(output_types[0]);
+  tensor_outputA.SetFormat(data_format);
+  TensorDesc tensor_outputB;
+  tensor_outputB.SetShape(ge::Shape(outputs[1]));
+  tensor_outputB.SetDataType(output_types[1]);
+  tensor_outputB.SetFormat(data_format);
+  TensorDesc tensor_outputC;
+  tensor_outputC.SetShape(ge::Shape(outputs[2]));
+  tensor_outputC.SetDataType(output_types[2]);
+  tensor_outputC.SetFormat(data_format);
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = data_format;
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  for (size_t i = 0; i < outputs.size(); i++) {
-    TeOpTensor tensor_output;
-    TeOpTensorArg tensor_arg;
-    tensor_output.shape = outputs[i];
-    tensor_output.dtype = output_types[i];
-    tensor_output.format = data_format;
-    tensor_arg.tensor.push_back(tensor_output);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.outputs.push_back(tensor_arg);
-  }
-  opParas.op_type = op_name;
+  auto opParas = op::LayerNorm(op_name);
+  TENSOR_INPUT(opParas, tensor_inputA, x);
+  TENSOR_INPUT(opParas, tensor_inputB, gamma);
+  TENSOR_INPUT(opParas, tensor_inputC, beta);
+  TENSOR_OUTPUT(opParas, tensor_outputA, y);
+  TENSOR_OUTPUT(opParas, tensor_outputB, mean);
+  TENSOR_OUTPUT(opParas, tensor_outputC, variance);
 
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "LayerNorm_tiling_test_13";
-
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 27);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "0 132 512 27 5 2 989855744 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 27);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "0 132 512 27 5 2 989855744 ");
 }
 
 // static shape case
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_14) {
-  using namespace optiling;
   std::string op_name = "LayerNorm";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -1435,50 +1480,53 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_14) {
                         "ub_info":[31744]})";
 
   std::vector<std::vector<int64_t>> inputs{{44, 545, 780}, {780}, {780}};
-
   std::vector<std::vector<int64_t>> outputs{{44, 545, 780}, {44, 545, 1}, {44, 545, 1}};
+  std::vector<ge::DataType> input_types{ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
+  std::vector<ge::DataType> output_types{ge::DT_FLOAT16, ge::DT_FLOAT16, ge::DT_FLOAT16};
+  ge::Format data_format = ge::FORMAT_NCHW;
 
-  std::vector<std::string> input_types{"float16", "float16", "float16"};
-  std::vector<std::string> output_types{"float16", "float16", "float16"};
-  std::string data_format = "NCHW";
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputs[0]));
+  tensor_inputA.SetDataType(input_types[0]);
+  tensor_inputA.SetFormat(data_format);
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputs[1]));
+  tensor_inputB.SetDataType(input_types[1]);
+  tensor_inputB.SetFormat(data_format);
+  TensorDesc tensor_inputC;
+  tensor_inputC.SetShape(ge::Shape(inputs[2]));
+  tensor_inputC.SetDataType(input_types[2]);
+  tensor_inputC.SetFormat(data_format);
+  TensorDesc tensor_outputA;
+  tensor_outputA.SetShape(ge::Shape(outputs[0]));
+  tensor_outputA.SetDataType(output_types[0]);
+  tensor_outputA.SetFormat(data_format);
+  TensorDesc tensor_outputB;
+  tensor_outputB.SetShape(ge::Shape(outputs[1]));
+  tensor_outputB.SetDataType(output_types[1]);
+  tensor_outputB.SetFormat(data_format);
+  TensorDesc tensor_outputC;
+  tensor_outputC.SetShape(ge::Shape(outputs[2]));
+  tensor_outputC.SetDataType(output_types[2]);
+  tensor_outputC.SetFormat(data_format);
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = data_format;
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  for (size_t i = 0; i < outputs.size(); i++) {
-    TeOpTensor tensor_output;
-    TeOpTensorArg tensor_arg;
-    tensor_output.shape = outputs[i];
-    tensor_output.dtype = output_types[i];
-    tensor_output.format = data_format;
-    tensor_arg.tensor.push_back(tensor_output);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.outputs.push_back(tensor_arg);
-  }
-  opParas.op_type = op_name;
+  auto opParas = op::LayerNorm(op_name);
+  TENSOR_INPUT(opParas, tensor_inputA, x);
+  TENSOR_INPUT(opParas, tensor_inputB, gamma);
+  TENSOR_INPUT(opParas, tensor_inputC, beta);
+  TENSOR_OUTPUT(opParas, tensor_outputA, y);
+  TENSOR_OUTPUT(opParas, tensor_outputB, mean);
+  TENSOR_OUTPUT(opParas, tensor_outputC, variance);
 
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "LayerNorm_tiling_test_14";
-
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 4);
-  EXPECT_EQ(runInfo.tiling_key, 1940001);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "44 545 780 0 0 2 0 11 1 784 11 0 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 4);
+  EXPECT_EQ(runInfo.GetTilingKey(), 1940001);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "44 545 780 0 0 2 0 11 1 784 11 0 ");
 }
 
 // static shape case
 TEST_F(LayerNormTiling, LayerNorm_tiling_test_15) {
-  using namespace optiling;
   std::string op_name = "LayerNorm";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -1509,43 +1557,47 @@ TEST_F(LayerNormTiling, LayerNorm_tiling_test_15) {
                         "ub_info":[15872]})";
 
   std::vector<std::vector<int64_t>> inputs{{16400, 8200}, {8200}, {8200}};
-
   std::vector<std::vector<int64_t>> outputs{{16400, 8200}, {16400, 1}, {16400, 1}};
+  std::vector<ge::DataType> input_types{ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT};
+  std::vector<ge::DataType> output_types{ge::DT_FLOAT, ge::DT_FLOAT, ge::DT_FLOAT};
+  ge::Format data_format = ge::FORMAT_NCHW;
 
-  std::vector<std::string> input_types{"float32", "float32", "float32"};
-  std::vector<std::string> output_types{"float32", "float32", "float32"};
-  std::string data_format = "NCHW";
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputs[0]));
+  tensor_inputA.SetDataType(input_types[0]);
+  tensor_inputA.SetFormat(data_format);
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputs[1]));
+  tensor_inputB.SetDataType(input_types[1]);
+  tensor_inputB.SetFormat(data_format);
+  TensorDesc tensor_inputC;
+  tensor_inputC.SetShape(ge::Shape(inputs[2]));
+  tensor_inputC.SetDataType(input_types[2]);
+  tensor_inputC.SetFormat(data_format);
+  TensorDesc tensor_outputA;
+  tensor_outputA.SetShape(ge::Shape(outputs[0]));
+  tensor_outputA.SetDataType(output_types[0]);
+  tensor_outputA.SetFormat(data_format);
+  TensorDesc tensor_outputB;
+  tensor_outputB.SetShape(ge::Shape(outputs[1]));
+  tensor_outputB.SetDataType(output_types[1]);
+  tensor_outputB.SetFormat(data_format);
+  TensorDesc tensor_outputC;
+  tensor_outputC.SetShape(ge::Shape(outputs[2]));
+  tensor_outputC.SetDataType(output_types[2]);
+  tensor_outputC.SetFormat(data_format);
 
-  TeOpParas opParas;
-  for (size_t i = 0; i < inputs.size(); i++) {
-    TeOpTensor tensor_input;
-    TeOpTensorArg tensor_arg;
-    tensor_input.shape = inputs[i];
-    tensor_input.dtype = input_types[i];
-    tensor_input.format = data_format;
-    tensor_arg.tensor.push_back(tensor_input);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensor_arg);
-  }
-  for (size_t i = 0; i < outputs.size(); i++) {
-    TeOpTensor tensor_output;
-    TeOpTensorArg tensor_arg;
-    tensor_output.shape = outputs[i];
-    tensor_output.dtype = output_types[i];
-    tensor_output.format = data_format;
-    tensor_arg.tensor.push_back(tensor_output);
-    tensor_arg.arg_type = TA_SINGLE;
-    opParas.outputs.push_back(tensor_arg);
-  }
-  opParas.op_type = op_name;
+  auto opParas = op::LayerNorm(op_name);
+  TENSOR_INPUT(opParas, tensor_inputA, x);
+  TENSOR_INPUT(opParas, tensor_inputB, gamma);
+  TENSOR_INPUT(opParas, tensor_inputC, beta);
+  TENSOR_OUTPUT(opParas, tensor_outputA, y);
+  TENSOR_OUTPUT(opParas, tensor_outputB, mean);
+  TENSOR_OUTPUT(opParas, tensor_outputC, variance);
 
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "LayerNorm_tiling_test_15";
-
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 4);
-  EXPECT_EQ(runInfo.tiling_key, 1000002);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "16400 8200 0 0 1 0 4100 1 8192 4091 0 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(runInfo.GetBlockDim(), 4);
+  EXPECT_EQ(runInfo.GetTilingKey(), 1000002);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "16400 8200 0 0 1 0 4100 1 8192 4091 0 ");
 }

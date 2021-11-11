@@ -1,22 +1,25 @@
-#include <iostream>
-#include <fstream>
-#include <vector>
-
 #include <gtest/gtest.h>
+
+#include <fstream>
+#include <iostream>
+#include <vector>
 #define private public
+#include "array_ops.h"
+#include "common/utils/ut_op_util.h"
+#include "nn_norm_ops.h"
+#include "op_tiling/op_tiling_util.h"
 #include "register/op_tiling_registry.h"
+#include "test_common.h"
 
 using namespace std;
+using namespace ge;
+using namespace ut_util;
 
 class ConfusionSoftmaxGradTiling : public testing::Test {
  protected:
-  static void SetUpTestCase() {
-    std::cout << "ConfusionSoftmaxGradTiling SetUp" << std::endl;
-  }
+  static void SetUpTestCase() { std::cout << "ConfusionSoftmaxGradTiling SetUp" << std::endl; }
 
-  static void TearDownTestCase() {
-    std::cout << "ConfusionSoftmaxGradTiling TearDown" << std::endl;
-  }
+  static void TearDownTestCase() { std::cout << "ConfusionSoftmaxGradTiling TearDown" << std::endl; }
 };
 
 static string to_string(const std::stringstream &tiling_data) {
@@ -33,12 +36,11 @@ static string to_string(const std::stringstream &tiling_data) {
 }
 
 TEST_F(ConfusionSoftmaxGradTiling, ConfusionSoftmaxGradTiling1) {
-    using namespace optiling;
-    std::string op_name = "ConfusionSoftmaxGrad";
-    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
-    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  std::string op_name = "ConfusionSoftmaxGrad";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-    std::string compileInfo = R"({"_pattern": "ConfusionSoftmaxGrad", 
+  std::string compileInfo = R"({"_pattern": "ConfusionSoftmaxGrad", 
                                   "_vars": {
                                   "10000000": ["dim_0_0", "dim_0_1", "dim_0_2"], 
                                   "10000002": ["dim_0_0", "dim_0_1", "dim_0_2", "block_factor", "ub_factor"]},
@@ -47,50 +49,29 @@ TEST_F(ConfusionSoftmaxGradTiling, ConfusionSoftmaxGradTiling1) {
                                   "_custom_vars": {"10000000": ["dim_0_0", "dim_0_1", "dim_0_2"],
                                                    "10000002": ["dim_0_0", "dim_0_1", "dim_0_2", "block_factor", "ub_factor"]}})";
 
-    std::vector<int64_t> inputA{1, 2 ,32};
-    std::vector<int64_t> inputB{1, 1, 32};
-    std::vector<int64_t> outputA{1, 2, 32};
+  std::vector<int64_t> inputA{1, 2, 32};
+  std::vector<int64_t> inputB{1, 1, 32};
+  std::vector<int64_t> outputA{1, 2, 32};
 
-    std::string in_dtype1 = "float32";
-    std::string in_dtype2 = "float32";
-    std::string dtype = "float32";
+  TensorDesc tensor_inputA;
+  tensor_inputA.SetShape(ge::Shape(inputA));
+  tensor_inputA.SetDataType(ge::DT_FLOAT);
+  TensorDesc tensor_inputB;
+  tensor_inputB.SetShape(ge::Shape(inputB));
+  tensor_inputB.SetDataType(ge::DT_FLOAT);
+  TensorDesc tensor_outputA;
+  tensor_outputA.SetShape(ge::Shape(outputA));
+  tensor_outputA.SetDataType(ge::DT_FLOAT);
 
-    TeOpTensor tensor_inputA;
-    tensor_inputA.shape = inputA;
-    tensor_inputA.dtype = in_dtype1;
-    TeOpTensor tensor_inputB;
-    tensor_inputB.shape = inputB;
-    tensor_inputB.dtype = in_dtype2;
+  auto opParas = op::ConfusionSoftmaxGrad(op_name);
+  TENSOR_INPUT(opParas, tensor_inputA, grad);
+  TENSOR_INPUT(opParas, tensor_inputB, x);
+  TENSOR_OUTPUT(opParas, tensor_outputA, y);
 
-    TeOpTensor tensor_outputA;
-    tensor_outputA.shape = outputA;
-    tensor_outputA.dtype = dtype;
-
-    TeOpTensorArg tensor_argA;
-    tensor_argA.tensor.push_back(tensor_inputA);
-    tensor_argA.arg_type = TA_SINGLE;
-    TeOpTensorArg tensor_argB;
-    tensor_argB.tensor.push_back(tensor_inputB);
-    tensor_argB.arg_type = TA_SINGLE;
-
-    TeOpTensorArg tensor_arg_outputA;
-    tensor_arg_outputA.tensor.push_back(tensor_outputA);
-    tensor_arg_outputA.arg_type = TA_SINGLE;
-
-    TeOpParas opParas;
-    opParas.inputs.push_back(tensor_argA);
-    opParas.inputs.push_back(tensor_argB);
-    opParas.outputs.push_back(tensor_arg_outputA);
-    opParas.op_type = op_name;
-
-    OpCompileInfo op_compile_info;
-    op_compile_info.str = compileInfo;
-    op_compile_info.key = "123456";
-    OpRunInfo runInfo;
-    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-    EXPECT_EQ(runInfo.block_dim, 32);
-    EXPECT_EQ(runInfo.tiling_key, 10000002);
-    EXPECT_EQ(to_string(runInfo.tiling_data), "1 2 32 1 2 ");
-    
-
+  optiling::utils::OpRunInfo runInfo;
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(runInfo.GetTilingKey(), 10000002);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 2 32 1 2 ");
 }

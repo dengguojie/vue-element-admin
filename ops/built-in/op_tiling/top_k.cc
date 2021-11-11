@@ -21,10 +21,13 @@
 #include <string>
 
 #include "../op_proto/util/error_util.h"
+#include "../op_proto/util/op_common_util.h"
 #include "error_log.h"
 #include "graph/debug/ge_log.h"
+#include "graph/utils/op_desc_utils.h"
 #include "op_log.h"
 #include "op_tiling.h"
+#include "op_tiling_util.h"
 
 namespace optiling {
 const std::string TOPK_OP_TYPE = "Topk";
@@ -41,15 +44,51 @@ struct TilingParams {
   int32_t turning_num_input_scalar;
 };
 
-void WriteTilingParams(const TilingParams &params, OpRunInfo &run_info) {
-  ByteBufferPut(run_info.tiling_data, params.need_core_num_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.row_num_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.col_num_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.k_num_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.loops_time_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.batch_num_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.rows_per_core_num_input_scalar);
-  ByteBufferPut(run_info.tiling_data, params.turning_num_input_scalar);
+struct opInfo {
+  int32_t core_num;
+  int32_t k_num;
+  int32_t max_k;
+  int32_t batch_cols_padding;
+  int32_t ub_size;
+};
+
+bool TopkParseFunc(const std::string &op_type, const nlohmann::json &compile_info, opInfo &compile_value) {
+  using namespace nlohmann;
+  OP_TILING_CHECK(compile_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_compile_info_json is null"),
+                  return false);
+
+  const auto &all_vars = compile_info["vars"];
+  // core num
+  OP_TILING_CHECK(!GetCompileValue(all_vars, "core_num", compile_value.core_num),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "TopkParseFunc get core_num error"), return false);
+  OP_TILING_CHECK(!GetCompileValue(all_vars, "k_num", compile_value.k_num),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "TopkParseFunc get k_num error"), return false);
+  // k num
+  OP_TILING_CHECK(!GetCompileValue(all_vars, "max_k", compile_value.max_k),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "TopkParseFunc get max_k error"), return false);
+  OP_TILING_CHECK(!GetCompileValue(all_vars, "k_num", compile_value.k_num),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "TopkParseFunc get k_num error"), return false);
+
+  // batch_cols_padding num
+  OP_TILING_CHECK(!GetCompileValue(all_vars, "batch_cols_padding", compile_value.batch_cols_padding),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "TopkParseFunc get batch_cols_padding error"), return false);
+
+  // ub size
+  OP_TILING_CHECK(!GetCompileValue(all_vars, "ub_size", compile_value.ub_size),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "TopkParseFunc get ub_size error"), return false);
+  OP_LOGI(op_type.c_str(), "GetCompileParams success.");
+  return true;
+}
+
+void WriteTilingParams(const TilingParams &params, utils::OpRunInfo &run_info) {
+  run_info.AddTilingData(params.need_core_num_input_scalar);
+  run_info.AddTilingData(params.row_num_input_scalar);
+  run_info.AddTilingData(params.col_num_input_scalar);
+  run_info.AddTilingData(params.k_num_input_scalar);
+  run_info.AddTilingData(params.loops_time_input_scalar);
+  run_info.AddTilingData(params.batch_num_input_scalar);
+  run_info.AddTilingData(params.rows_per_core_num_input_scalar);
+  run_info.AddTilingData(params.turning_num_input_scalar);
 }
 
 void PrintTilingParams(const std::string &op_type, const TilingParams &params) {
@@ -81,43 +120,18 @@ int32_t GetLoopTimes(int32_t cols) {
   return level;
 }
 
-bool GetTopkCompileParams(const std::string &op_type, const nlohmann::json &op_compile_info_json, int32_t &core_num,
+bool GetTopkCompileParams(const std::string &op_type, const opInfo &op_compile_info_json, int32_t &core_num,
                           int32_t &k_num, int32_t &batch_cols_padding, int32_t &ub_size, int32_t &max_k) {
-  using namespace nlohmann;
-  if (op_compile_info_json == nullptr) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_compile_info_json is null");
-    return false;
-  }
-
-  const auto &all_vars = op_compile_info_json["vars"];
   // core num
-  if (all_vars.count("core_num") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num is null");
-    return false;
-  }
-  core_num = all_vars["core_num"].get<std::int32_t>();
-
-  // k num
-  if (all_vars.count("k_num")) {
-    k_num = all_vars["k_num"].get<std::int32_t>();
-  }
-  if (all_vars.count("max_k")) {
-    max_k = all_vars["max_k"].get<std::int32_t>();
-  }
+  core_num = op_compile_info_json.core_num;
+  k_num = op_compile_info_json.k_num;
+  max_k = op_compile_info_json.max_k;
 
   // batch_cols_padding num
-  if (all_vars.count("batch_cols_padding") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "batch_cols_padding is null");
-    return false;
-  }
-  batch_cols_padding = all_vars["batch_cols_padding"].get<std::int32_t>();
+  batch_cols_padding = op_compile_info_json.batch_cols_padding;
 
   // ub size
-  if (all_vars.count("ub_size") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ub_size is null");
-    return false;
-  }
-  ub_size = all_vars["ub_size"].get<std::int32_t>();
+  ub_size = op_compile_info_json.ub_size;
   GELOGD(
       "op [%s] : GetTopkCompileParams, core_num[%d], k_num[%d], "
       "batch_cols_padding[%d], ub_size[%d].",
@@ -125,34 +139,17 @@ bool GetTopkCompileParams(const std::string &op_type, const nlohmann::json &op_c
   return true;
 }
 
-bool GetConstValue(const TeOpParas &paras, const string &name, const string &dtype, vector<int64_t> &values) {
+bool GetConstValue(const ge::Operator &paras, const int32_t &idx, const ge::DataType &dtype, vector<int64_t> &values) {
   values.clear();
-  if (paras.const_inputs.count(name) == 0 || std::get<0>(paras.const_inputs.at(name)) == nullptr) {
+  if (!ops::GetConstIntData(paras, idx, values)) {
     return false;
-  }
-
-  auto size = std::get<1>(paras.const_inputs.at(name));
-  if (dtype == "int64") {
-    int count = size / sizeof(int64_t);
-    const int64_t *data_addr = reinterpret_cast<const int64_t *>(std::get<0>(paras.const_inputs.at(name)));
-    for (int i = 0; i < count; i++) {
-      values.push_back(*data_addr);
-      data_addr++;
-    }
-  } else if (dtype == "int32") {
-    int count = size / sizeof(int32_t);
-    const int32_t *data_addr = reinterpret_cast<const int32_t *>(std::get<0>(paras.const_inputs.at(name)));
-    for (int i = 0; i < count; i++) {
-      values.push_back(*data_addr);
-      data_addr++;
-    }
   }
 
   return true;
 }
 
 void TopkTilingBase(const int32_t row, const int32_t col, const int32_t batch_cols_padding, const int32_t k_num,
-                    const int32_t core_max, const std::string &op_type, OpRunInfo &run_info) {
+                    const int32_t core_max, const std::string &op_type, utils::OpRunInfo &run_info) {
   int32_t rows_per_core;
   int32_t turning;
   int32_t need_core;
@@ -193,13 +190,14 @@ void TopkTilingBase(const int32_t row, const int32_t col, const int32_t batch_co
   // cout tiling params
   PrintTilingParams(op_type, params);
 
-  run_info.block_dim = need_core;
+  run_info.SetBlockDim(need_core);
 }
 
-bool TopkTiling(const std::string &op_type, const TeOpParas &op_paras, const nlohmann::json &op_compile_info_json,
-                OpRunInfo &run_info) {
+bool TopkTiling(const std::string &op_type, const ge::Operator &op_paras, const opInfo &op_compile_info_json,
+                utils::OpRunInfo &run_info) {
   GELOGI("TopkTiling running.");
-  std::vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
+  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
+  std::vector<int64_t> input_shape = operator_info->MutableInputDesc(0)->MutableShape().GetDims();
   int32_t input_dims = input_shape.size();
   int32_t row = 1;
   for (int i = 0; i < input_dims - 1; i++) {
@@ -220,13 +218,11 @@ bool TopkTiling(const std::string &op_type, const TeOpParas &op_paras, const nlo
   GELOGI("op[%s] GetTopkCompileParams success.", op_type.c_str());
 
   std::vector<int64_t> values;
-  GetConstValue(op_paras, "k", op_paras.inputs[1].tensor[0].dtype, values);
+  GetConstValue(op_paras, 1, op_paras.GetInputDesc(1).GetDataType(), values);
   if (values.size() != 0) {
     int32_t k_element = values[0];
     if (k_element > max_k) {
-      OP_LOGW(op_type,
-              "AICORE does not support k[%d] > max_k[%d], should be transfered to AICPU.",
-              k_element, max_k);
+      OP_LOGW(op_type, "AICORE does not support k[%d] > max_k[%d], should be transfered to AICPU.", k_element, max_k);
       return false;
     }
   }
@@ -234,6 +230,6 @@ bool TopkTiling(const std::string &op_type, const TeOpParas &op_paras, const nlo
   GELOGI("Topk_tiling end.");
   return true;
 }
-REGISTER_OP_TILING_FUNC_BUFFERED(TopKD, TopkTiling);
-REGISTER_OP_TILING_FUNC_BUFFERED(TopKV2D, TopkTiling);
+REGISTER_OP_TILING_V3_CUSTOM(TopKD, TopkTiling, TopkParseFunc, opInfo);
+REGISTER_OP_TILING_V3_CUSTOM(TopKV2D, TopkTiling, TopkParseFunc, opInfo);
 }  // namespace optiling
