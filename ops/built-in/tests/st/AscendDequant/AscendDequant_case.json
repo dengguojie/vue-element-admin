@@ -1,0 +1,60 @@
+[
+  {
+    "op": "AscendDequant",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          16,
+          64
+        ],
+        "format": "NHWC",
+        "name": "x",
+        "type": "int32"
+      },      
+	  {
+        "shape": [
+          1,
+          1,
+          1,
+          64
+        ],
+        "format": "NHWC",
+        "name": "deq_scale",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          4,
+          16,
+          64
+        ],
+        "format": "NHWC",
+        "name": "y",
+        "type": "float"
+      }
+    ],
+    "attr": [
+      {
+        "name": "sqrt_mode",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "relu_flag",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "dtype",
+        "type": "int",
+        "value": 0
+      }
+    ],
+    "case_name": "test_AscendDequant_001"
+  }
+]

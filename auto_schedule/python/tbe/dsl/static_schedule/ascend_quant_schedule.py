@@ -25,6 +25,7 @@ from tbe.common.utils import shape_to_list
 from tbe.common.platform import scope_ubuf
 from tbe.common.platform import scope_cbuf_fusion
 from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform.platform_info import api_check_support
 from tbe.common.platform import SOC_VERSION
 from tbe.common.platform import ASCEND_310
 from tbe.dsl.instrinsic import cce_emitinsn_params
@@ -440,7 +441,7 @@ def ascend_quant_schedule(res, input_tensors):
     sch = tvm.create_schedule(res.op)
     tensor_map = {}
     is_fuse_flag = _get_tensor_map(res, tensor_map)
-    if is_fuse_flag or get_soc_spec(SOC_VERSION) in ("Ascend920","Ascend920A"):
+    if is_fuse_flag or api_check_support("tik.vgatherb"):
         schedule = QuantSchedule()
         schedule.do_schedule([res], [sch], [])
     else:

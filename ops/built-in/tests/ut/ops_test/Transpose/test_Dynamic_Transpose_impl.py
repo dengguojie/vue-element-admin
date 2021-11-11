@@ -287,7 +287,7 @@ add_ts_case(["Ascend910A"], "float16", (3, 20000),                 (1, 0),      
 #add_ts_case(["Ascend910A"], "float16", (2, 12, 51, 33, 15),        (1, 3, 2, 0, 4),        (12, 33, 51, 2, 15),     "random")
 #add_ts_case(["Ascend910A"], "float16", (2, 50, 4, 3, 40, 5, 8),    (4, 3, 5, 2, 1, 0, 6),  (20, 3, 5, 4, 50, 2, 8), "random")
 #add_ts_case(["Ascend910A"], "float16", (2048, 10, 512),            (1, 0, 2),              (10, 2048, 512),         "random")
-#add_ts_case(["Ascend920A"], "int16",   (4, 255, 3, 8),             (2, 1, 0, 3),           (2, 255, 4, 8),          "random")
+#add_ts_case(["Ascend910A"], "int16",   (4, 255, 3, 8),             (2, 1, 0, 3),           (2, 255, 4, 8),          "random")
 #add_ts_case(["Ascend910A"], "float16", (1000, 20, 100),            (1, 0, 2),              (20, 1000, 100),         "random")
 #add_ts_case(["Ascend910A"], "float16", (1, 128, 12, 26),           (0, 2, 1, 3),           (1, 12, 128, 26),        "random")
 #add_ts_case(["Ascend910A"], "int16",   (2, 17, 2, 4, 5, 8),        (3, 2, 4, 1, 0, 5),     (4, 2, 5, 17, 2, 8),     "random")
@@ -656,10 +656,9 @@ add_ts_case(["Ascend910A"], "float16", (3, 20000),                 (1, 0),      
 #            print("add case:", case_num, ", x:", x, ", perm :", p, ", y :", y)
 #            add_ts_case(["Ascend910A"], "float16", x,  p, y, "random")
 
-#def test_transpose_920a(test_arg):
+#def test_transpose_a100(test_arg):
 #    from impl.dynamic.transpose import transpose 
 #    from te import platform as cce_conf
-#    cce_conf.cce_conf.te_set_version("Ascend920A", core_type="VectorCore")
 #    transpose(
 #                {
 #                    "shape": (4, 255, 3, 8),
@@ -696,12 +695,11 @@ add_ts_case(["Ascend910A"], "float16", (3, 20000),                 (1, 0),      
 #              )
 #    cce_conf.cce_conf.te_set_version(test_arg)
 #
-#ut_case.add_cust_test_func(test_func=test_transpose_920a)
+#ut_case.add_cust_test_func(test_func=test_transpose_a100)
 
 if __name__ == '__main__':
     simulator_lib_path = "/usr/local/Ascend/toolkit/tools/simulator"
     ut_case.run(["Ascend910A"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
     #ut_case.run(["Ascend310"], simulator_mode="pv", simulator_lib_path=simulator_lib_path)
     #ut_case.run(["Ascend310"], simulator_mode="ca", simulator_lib_path=simulator_lib_path)
-    #ut_case.run(["Ascend920A"], simulator_mode="esl", simulator_lib_path=simulator_lib_path)
 

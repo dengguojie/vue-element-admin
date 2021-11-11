@@ -16,15 +16,14 @@
 ascend_quant
 """
 import functools
-from tbe.common.platform.platform_info import get_soc_spec
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
 from te.utils import shape_util
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from tbe.common.platform.platform_info import get_soc_spec
 from impl import ascend_quant_util as util
-from impl.util.platform_adapter import is_vgatherb
 
 
 def _is_lhisi_version():
@@ -48,7 +47,7 @@ def is_support_a100():
     False: other version.
     """
     soc_version = get_soc_spec("SOC_VERSION")
-    if is_vgatherb:
+    if tbe_platform.api_check_support("tik.vgatherb"):
         return True
     return False
 

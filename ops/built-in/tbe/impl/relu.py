@@ -35,8 +35,6 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-from tbe.common.platform.platform_info import get_soc_spec
-from impl.util.platform_adapter import is_vgatherb
 
 # const value
 CONST_ZERO = 0
@@ -68,7 +66,7 @@ def relu_compute(x, y, kernel_name="relu"):
     if inp_dtype == 'int8' and tbe_platform.api_check_support('te.lang.cce.cast_to', 's82f16'):
         x = tbe.cast_to(x, 'float16')
         compatible_dtype = 'float16'
-    if is_vgatherb and x.op.name == "res_conv2d":
+    if tbe_platform.api_check_support("tik.vgatherb") and x.op.name == "res_conv2d":
         res = tbe.vlrelu(x, 0)
         return res
     if tbe_platform.api_check_support('te.lang.cce.vrelu', compatible_dtype):

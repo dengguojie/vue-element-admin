@@ -6,7 +6,6 @@ ut_case = OpUT("IsFinite", "impl.dynamic.is_finite", "is_finite")
 
 
 def is_finite_fp16_001(test_args):
-    cce_conf.cce_conf.te_set_version("Ascend920A", "VectorCore")
     from impl.dynamic import is_finite
     shape = (3000,)
     with tbe.common.context.op_context.OpContext("dynamic"):
@@ -18,7 +17,6 @@ def is_finite_fp16_001(test_args):
 
 
 def is_finite_fp16_002(test_args):
-    cce_conf.cce_conf.te_set_version("Ascend920A", "VectorCore")
     from impl.dynamic import is_finite
     shape = (3000, 100)
     with tbe.common.context.op_context.OpContext("dynamic"):
@@ -30,7 +28,6 @@ def is_finite_fp16_002(test_args):
 
 
 def is_finite_fp16_003(test_args):
-    cce_conf.cce_conf.te_set_version("Ascend920A", "VectorCore")
     from impl.dynamic import is_finite
     shape = (3000, 100, 100)
     with tbe.common.context.op_context.OpContext("dynamic"):
@@ -42,7 +39,6 @@ def is_finite_fp16_003(test_args):
 
 
 def is_finite_fp32_001(test_args):
-    cce_conf.cce_conf.te_set_version("Ascend920A", "VectorCore")
     from impl.dynamic import is_finite
     shape = (3000,)
     with tbe.common.context.op_context.OpContext("dynamic"):
@@ -54,7 +50,6 @@ def is_finite_fp32_001(test_args):
 
 
 def is_finite_fp32_002(test_args):
-    cce_conf.cce_conf.te_set_version("Ascend920A", "VectorCore")
     from impl.dynamic import is_finite
     shape = (3000, 100)
     with tbe.common.context.op_context.OpContext("dynamic"):
@@ -66,7 +61,6 @@ def is_finite_fp32_002(test_args):
 
 
 def is_finite_fp32_003(test_args):
-    cce_conf.cce_conf.te_set_version("Ascend920A", "VectorCore")
     from impl.dynamic import is_finite
     shape = (16, 8, 7, 15, 16)
     with tbe.common.context.op_context.OpContext("dynamic"):
@@ -77,12 +71,12 @@ def is_finite_fp32_003(test_args):
     cce_conf.cce_conf.te_set_version(test_args)
 
 
-ut_case.add_cust_test_func(test_func=is_finite_fp16_001)
-ut_case.add_cust_test_func(test_func=is_finite_fp16_002)
-ut_case.add_cust_test_func(test_func=is_finite_fp16_003)
-ut_case.add_cust_test_func(test_func=is_finite_fp32_001)
-ut_case.add_cust_test_func(test_func=is_finite_fp32_002)
-ut_case.add_cust_test_func(test_func=is_finite_fp32_003)
+#ut_case.add_cust_test_func(test_func=is_finite_fp16_001)
+#ut_case.add_cust_test_func(test_func=is_finite_fp16_002)
+#ut_case.add_cust_test_func(test_func=is_finite_fp16_003)
+#ut_case.add_cust_test_func(test_func=is_finite_fp32_001)
+#ut_case.add_cust_test_func(test_func=is_finite_fp32_002)
+#ut_case.add_cust_test_func(test_func=is_finite_fp32_003)
 
 if __name__ == "__main__":
     ut_case.run("Ascend910A")

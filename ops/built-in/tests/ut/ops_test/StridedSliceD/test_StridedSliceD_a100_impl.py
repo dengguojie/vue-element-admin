@@ -11,7 +11,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 Apache License for more details at
 http://www.apache.org/licenses/LICENSE-2.0
 
-StridedSliceD slice with last dim in 1981 ut case
+StridedSliceD slice with last dim in a100 ut case
 """
 import tbe
 from tbe.common.platform import set_current_compile_soc_info
@@ -21,9 +21,9 @@ from impl.strided_slice_d import strided_slice_d
 ut_case = OpUT("StridedSliceD", "impl.strided_slice_d", "strided_slice_d")
 
 
-def test_1981_case1(test_arg):
+def test_a100_case1(test_arg):
     """
-    test_1981_case1
+    test_a100_case1
 
     Parameters:
     ----------
@@ -33,8 +33,6 @@ def test_1981_case1(test_arg):
     -------
     None
     """
-    set_current_compile_soc_info('Ascend920A', 'VectorCore')
-
     with tbe.common.context.op_context.OpContext("pre-static"):
         strided_slice_d(
             {"shape": (80, 3, 76, 76, 85),
@@ -51,9 +49,9 @@ def test_1981_case1(test_arg):
     set_current_compile_soc_info(test_arg)
 
 
-def test_1981_case2(test_arg):
+def test_a100_case2(test_arg):
     """
-    test_1981_case2
+    test_a100_case2
 
     Parameters:
     ----------
@@ -63,8 +61,6 @@ def test_1981_case2(test_arg):
     -------
     None
     """
-    set_current_compile_soc_info('Ascend920A', 'VectorCore')
-
     with tbe.common.context.op_context.OpContext("pre-static"):
         strided_slice_d(
             {"shape": (80, 3, 76, 76, 85),
@@ -81,9 +77,9 @@ def test_1981_case2(test_arg):
     set_current_compile_soc_info(test_arg)
 
 
-def test_1981_case3(test_arg):
+def test_a100_case3(test_arg):
     """
-    test_1981_case3
+    test_a100_case3
 
     Parameters:
     ----------
@@ -93,8 +89,6 @@ def test_1981_case3(test_arg):
     -------
     None
     """
-    set_current_compile_soc_info('Ascend920A', 'VectorCore')
-
     with tbe.common.context.op_context.OpContext("pre-static"):
         strided_slice_d(
             {"shape": (80, 3, 76, 76, 2),
@@ -111,9 +105,9 @@ def test_1981_case3(test_arg):
     set_current_compile_soc_info(test_arg)
 
 
-def test_1981_case4(test_arg):
+def test_a100_case4(test_arg):
     """
-    test_1981_case4
+    test_a100_case4
 
     Parameters:
     ----------
@@ -123,8 +117,6 @@ def test_1981_case4(test_arg):
     -------
     None
     """
-    set_current_compile_soc_info('Ascend920A', 'VectorCore')
-
     with tbe.common.context.op_context.OpContext("pre-static"):
         strided_slice_d(
             {"shape": (80, 3, 76, 76, 85),
@@ -141,9 +133,9 @@ def test_1981_case4(test_arg):
     set_current_compile_soc_info(test_arg)
 
 
-def test_1981_case5(test_arg):
+def test_a100_case5(test_arg):
     """
-    test_1981_case5
+    test_a100_case5
 
     Parameters:
     ----------
@@ -153,8 +145,6 @@ def test_1981_case5(test_arg):
     -------
     None
     """
-    set_current_compile_soc_info('Ascend920A', 'VectorCore')
-
     with tbe.common.context.op_context.OpContext("pre-static"):
         strided_slice_d(
             {"shape": (80, 3, 76, 76, 85),
@@ -171,9 +161,9 @@ def test_1981_case5(test_arg):
     set_current_compile_soc_info(test_arg)
 
 
-def test_1981_case6(test_arg):
+def test_a100_case6(test_arg):
     """
-    test_1981_case6
+    test_a100_case6
 
     Parameters:
     ----------
@@ -183,8 +173,6 @@ def test_1981_case6(test_arg):
     -------
     None
     """
-    set_current_compile_soc_info('Ascend920A', 'VectorCore')
-
     with tbe.common.context.op_context.OpContext("pre-static"):
         strided_slice_d(
             {"shape": (80, 3, 76, 76, 2),
@@ -201,9 +189,9 @@ def test_1981_case6(test_arg):
     set_current_compile_soc_info(test_arg)
 
 
-def test_1981_case7(test_arg):
+def test_a100_case7(test_arg):
     """
-    test_1981_case7
+    test_a100_case7
 
     Parameters:
     ----------
@@ -213,8 +201,6 @@ def test_1981_case7(test_arg):
     -------
     None
     """
-    set_current_compile_soc_info('Ascend920A', 'VectorCore')
-
     with tbe.common.context.op_context.OpContext("pre-static"):
         strided_slice_d(
             {"shape": (99, 110007),
@@ -231,9 +217,9 @@ def test_1981_case7(test_arg):
     set_current_compile_soc_info(test_arg)
 
 
-def test_1981_case8(test_arg):
+def test_a100_case8(test_arg):
     """
-    test_1981_case8
+    test_a100_case8
 
     Parameters:
     ----------
@@ -243,8 +229,6 @@ def test_1981_case8(test_arg):
     -------
     None
     """
-    set_current_compile_soc_info('Ascend920A', 'VectorCore')
-
     with tbe.common.context.op_context.OpContext("pre-static"):
         strided_slice_d(
             {"shape": (99, 98301),
@@ -261,9 +245,9 @@ def test_1981_case8(test_arg):
     set_current_compile_soc_info(test_arg)
 
 
-def test_1981_case9(test_arg):
+def test_a100_case9(test_arg):
     """
-    test_1981_case9
+    test_a100_case9
 
     Parameters:
     ----------
@@ -273,8 +257,6 @@ def test_1981_case9(test_arg):
     -------
     None
     """
-    set_current_compile_soc_info('Ascend920A', 'VectorCore')
-
     with tbe.common.context.op_context.OpContext("pre-static"):
         strided_slice_d(
             {"shape": (99, 55009),
@@ -291,9 +273,9 @@ def test_1981_case9(test_arg):
     set_current_compile_soc_info(test_arg)
 
 
-def test_1981_case10(test_arg):
+def test_a100_case10(test_arg):
     """
-    test_1981_case10
+    test_a100_case10
 
     Parameters:
     ----------
@@ -303,8 +285,6 @@ def test_1981_case10(test_arg):
     -------
     None
     """
-    set_current_compile_soc_info('Ascend920A', 'VectorCore')
-
     with tbe.common.context.op_context.OpContext("pre-static"):
         strided_slice_d(
             {"shape": (99, 98301),
@@ -321,9 +301,9 @@ def test_1981_case10(test_arg):
     set_current_compile_soc_info(test_arg)
 
 
-def test_1981_case11(test_arg):
+def test_a100_case11(test_arg):
     """
-    test_1981_case11
+    test_a100_case11
 
     Parameters:
     ----------
@@ -333,8 +313,6 @@ def test_1981_case11(test_arg):
     -------
     None
     """
-    set_current_compile_soc_info('Ascend920A', 'VectorCore')
-
     with tbe.common.context.op_context.OpContext("pre-static"):
         strided_slice_d(
             {"shape": (9,),
@@ -351,18 +329,14 @@ def test_1981_case11(test_arg):
     set_current_compile_soc_info(test_arg)
 
 
-# ut_case.add_cust_test_func(test_func=test_1981_case1)
-# ut_case.add_cust_test_func(test_func=test_1981_case2)
-# ut_case.add_cust_test_func(test_func=test_1981_case3)
-# ut_case.add_cust_test_func(test_func=test_1981_case4)
-# ut_case.add_cust_test_func(test_func=test_1981_case5)
-# ut_case.add_cust_test_func(test_func=test_1981_case6)
-# ut_case.add_cust_test_func(test_func=test_1981_case7)
-# ut_case.add_cust_test_func(test_func=test_1981_case8)
-# ut_case.add_cust_test_func(test_func=test_1981_case9)
-# ut_case.add_cust_test_func(test_func=test_1981_case10)
-# ut_case.add_cust_test_func(test_func=test_1981_case11)
-
-if __name__ == '__main__':
-    with tbe.common.context.op_context.OpContext("pre-static"):
-        ut_case.run('Ascend920A')
+# ut_case.add_cust_test_func(test_func=test_a100_case1)
+# ut_case.add_cust_test_func(test_func=test_a100_case2)
+# ut_case.add_cust_test_func(test_func=test_a100_case3)
+# ut_case.add_cust_test_func(test_func=test_a100_case4)
+# ut_case.add_cust_test_func(test_func=test_a100_case5)
+# ut_case.add_cust_test_func(test_func=test_a100_case6)
+# ut_case.add_cust_test_func(test_func=test_a100_case7)
+# ut_case.add_cust_test_func(test_func=test_a100_case8)
+# ut_case.add_cust_test_func(test_func=test_a100_case9)
+# ut_case.add_cust_test_func(test_func=test_a100_case10)
+# ut_case.add_cust_test_func(test_func=test_a100_case11)

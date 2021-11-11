@@ -20,22 +20,21 @@ import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-from impl.util.platform_adapter import is_vgatherb
 
-# define a scalar, value = -(2**16 - 1)
-SCALAR_MIN_FP16 = -(2**16 - 1)
 # define a scalar, value = -(2**32 - 1)
 SCALAR_MIN_FP32 = -3402823424.0
-# max set_mask_int64 value
-MAX_MASK_INT64 = 2**64 - 1
+# define a scalar, value = -(2**16 - 1)
+SCALAR_MIN_FP16 = -(2**16 - 1)
 # max segment len
 MAX_SEGMENT_LEN = 2048 * 4
-# int32 num in 8*block
-OUT_MASK = 64
+# max set_mask_int64 value
+MAX_MASK_INT64 = 2**64 - 1
 # 0101 mask value
 MASK_0_1 = 6148914691236517205
 # max int32 output num
 OUT_MAX_NUM = 2048 * 4
+# int32 num in 8*block
+OUT_MASK = 64
 
 
 def _get_ceil_int(int1, int2):
@@ -734,7 +733,8 @@ class Argmax(ArgmaxBase):
             compute_fuction = self.compute_argmax_last_axis_copy_one_time
             if self.c_align_ubsize <= self.data_each_vector * 2:
                 compute_fuction = self.compute_argmax_last_axis_fp16_more_dims
-        if is_vgatherb and self.dtype_x == "float16" and self.c_align_ubsize > self.data_each_vector * 2:
+        if tbe_platform.api_check_support("tik.vgatherb") and self.dtype_x == "float16" and \
+                self.c_align_ubsize > self.data_each_vector * 2:
             compute_fuction = self.compute_argmax_last_axis
 
         # calcu core policy
@@ -790,7 +790,7 @@ class Argmax(ArgmaxBase):
                 self.result_int32.set_as(0)
                 self.result_out_scalar = self.tik_instance.Scalar(self.dtype_x)
                 if self.dtype_x == "float16":
-                    if is_vgatherb:
+                    if tbe_platform.api_check_support("tik.vgatherb"):
                         argmax_func = self.do_argmax_last_axis_fp16_a100
                     else:
                         argmax_func = self.do_argmax_last_axis_fp16_default

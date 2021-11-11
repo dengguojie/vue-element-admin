@@ -16,7 +16,6 @@
 ascend_dequant
 """
 import functools
-
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
@@ -24,7 +23,6 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from te.utils import shape_util
 from impl import ascend_quant_util
-from impl.util.platform_adapter import is_vgatherb
 
 
 # pylint: disable=locally-disabled,too-many-arguments, unused-argument
@@ -74,17 +72,15 @@ def _check_params(x, deq_scale, sqrt_mode, kernel_name):
 
 
 def _is_support_v200_instruction():
-    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in ("Ascend710",
-                                                             "Ascend610",
-                                                             "Ascend615",
-                                                             "Hi3796CV300CS",
-                                                             "SD3403") or is_vgatherb:
+    if tbe_platform.cce_conf.get_soc_spec("SOC_VERSION") in (
+            "Ascend710", "Ascend610", "Ascend615", "Hi3796CV300CS",
+            "SD3403") or tbe_platform.api_check_support("tik.vgatherb"):
         return True
     return False
 
 
 def _is_support_a100_instruction():
-    if is_vgatherb:
+    if tbe_platform.api_check_support("tik.vgatherb"):
         return True
     return False
 

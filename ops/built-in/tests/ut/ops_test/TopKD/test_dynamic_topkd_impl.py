@@ -38,29 +38,27 @@ case2 = {"params": [{"shape": (5000, ), "dtype": "float16", "ori_shape": (5000, 
          "expect": "success",
          "support_expect": True}
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710", "Ascend920A"], case1)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend710", "Ascend920A"], case2)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case1)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case2)
 
-def test_1981(test_arg):
+def test_a100(test_arg):
     from te.platform.cce_conf import te_set_version
     from impl.top_k import top_k
     from impl.top_k_d import top_k_d
-    te_set_version("Ascend920A", "VectorCore")
     top_k({"shape": (100000, ), "format": "ND", "dtype": "float16", "ori_shape": (100000, ), "ori_format": "ND"},
           {"shape": (100000, ), "format": "ND", "dtype": "float16", "ori_shape": (100000, ), "ori_format": "ND"},
           {"shape": (10, ), "format": "ND", "dtype": "float16", "ori_shape": (10, ), "ori_format": "ND"},
           {"shape": (10, ), "format": "ND", "dtype": "int32", "ori_shape": (10, ), "ori_format": "ND"},
           10, False, -1, True)
     te_set_version(test_arg)
-    te_set_version("Ascend910A", "VectorCore")
     top_k_d({"shape": (5000, ), "format": "ND", "dtype": "float16", "ori_shape": (5000, ), "ori_format": "ND"},
           {"shape": (8192, ), "format": "ND", "dtype": "float16", "ori_shape": (8192, ), "ori_format": "ND"},
           {"shape": (16,), "format": "ND", "dtype": "float16", "ori_shape": (16,), "ori_format": "ND"},
           {"shape": (16,), "format": "ND", "dtype": "int32", "ori_shape": (16,), "ori_format": "ND"},
           16, True, -1, True)
     te_set_version(test_arg)
-ut_case.add_cust_test_func(test_func=test_1981)
+#ut_case.add_cust_test_func(test_func=test_a100)
 
 if __name__ == '__main__':
-    ut_case.run(["Ascend910A","Ascend310","Ascend710", "Ascend920A"])
+    ut_case.run(["Ascend910A","Ascend310","Ascend710"])
     exit(0)

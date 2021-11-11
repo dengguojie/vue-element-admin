@@ -27,6 +27,7 @@ from tbe import tvm
 from tbe.common.utils import shape_to_list
 from tbe.common.platform import scope_ubuf
 from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform.platform_info import api_check_support
 from tbe.dsl.instrinsic import cce_util
 
 MAX_SHAPE_NUM = 10000000
@@ -924,7 +925,7 @@ def schedule_cut_general(sch_list, shape_input, ub_split_reduce_axis, split_fact
 
     soc_version = get_soc_spec("SOC_VERSION")
 
-    if _need_dichotomy_add(loop_size, loop_tail_size, dtype) and soc_version not in ("Ascend920", "Ascend920A",):
+    if _need_dichotomy_add(loop_size, loop_tail_size, dtype) and not api_check_support("tik.vgatherb"):
         sch[final_out_buffer].emit_insn(sum_x_ub_inner, "vector_dichotomy_add_for_bn_reduce")
     else:
         sch[final_out_buffer].emit_insn(sum_x_ub_inner, "vector_reduce_sum")
@@ -1015,7 +1016,7 @@ def schedule_cut_m1_nz(sch_list, res, shape_x,
 
     soc_version = get_soc_spec("SOC_VERSION")
 
-    if ub_split_inner * 16 % vector_inst_one_repeat_size == 0 and soc_version not in ("Ascend920", "Ascend920A",):
+    if ub_split_inner * 16 % vector_inst_one_repeat_size == 0 and not api_check_support("tik.vgatherb"):
         sch[final_ub_tensor].emit_insn(ub_inner,
                                        "vector_dichotomy_add_for_bn_reduce")
     else:

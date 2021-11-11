@@ -930,10 +930,6 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
         except BaseException as _:  # 'pylint: disable=broad-except
             run_success = False
             err_trace = get_trace_info()
-            if "Ascend920A" in err_trace and \
-               "TVMError: [EB0000] Check failed: get_platform_info_flag == 0: get platform info failed" in err_trace:
-              run_success = True
-              err_trace = None
         stage_status = op_ut_case_info.OpUTStageResult(
             status=op_status.SUCCESS if run_success else op_status.FAILED,
             stage_name=op_ut_case_info.STAGE_CUST_FUNC,

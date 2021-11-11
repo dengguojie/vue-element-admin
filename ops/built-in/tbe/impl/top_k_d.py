@@ -23,15 +23,13 @@ from enum import Enum
 from enum import unique
 
 from te import platform as tbe_platform
-from te import tvm
 from te.utils import para_check
-from impl.util.platform_adapter import tik
 from te.utils.error_manager import error_manager_vector
+from impl.util.platform_adapter import tik
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 from impl.dynamic.top_k_d import top_k_d as top_k_template
-from impl.util.platform_adapter import is_vgatherb
 
 FP16_MINIMUM = -65520
 MAX_INT32 = 2**31 - 1
@@ -1044,7 +1042,8 @@ def _topk_a_row_by_part(tik_instance, row_start_in_core, cols, k, core_rows_star
     _add(tik_instance, indices_out_final_ub, indices_out_int32_ub, offset_int32_ub, 1, k_padding)
 
     soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-    if k >= 8 and k < 16 and (soc_version in ("Ascend710", "Ascend610") or is_vgatherb):
+    if k >= 8 and k < 16 and (soc_version in ("Ascend710", "Ascend610") or
+                              tbe_platform.api_check_support("tik.vgatherb")):
         _copy_ubuf_to_gm_k_less_16(tik_instance,
                                    'float16',
                                    data_gm_out,
@@ -1165,7 +1164,8 @@ def _topk_rows(tik_instance, row_start_in_core, rows, cols, k, core_rows_start, 
     _add(tik_instance, indices_out_final_ub, indices_out_int32_ub, offset_int32_ub, rows, cols_padding)
 
     soc_version = tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION)
-    if k >= 8 and k < 16 and (soc_version in ("Ascend710", "Ascend610") or is_vgatherb):
+    if k >= 8 and k < 16 and (soc_version in ("Ascend710", "Ascend610") or
+                              tbe_platform.api_check_support("tik.vgatherb")):
         _copy_ubuf_to_gm_k_less_16(tik_instance,
                                    'float16',
                                    data_gm_out,
@@ -1274,7 +1274,7 @@ def _kernel_ir(tik_instance, ins, outs, k, largest, soc_version):
     multi_core = True
     rows_cores, turn, batch = _tiling(rows, cols, cols_limit)
 
-    if k < 16 and (soc_version not in ("Ascend710", "Ascend610") or not is_vgatherb):
+    if k < 16 and (soc_version not in ("Ascend710", "Ascend610") or not tbe_platform.api_check_support("tik.vgatherb")):
         rows_cores = [rows]
         turn = 1
         multi_core = False
@@ -1503,10 +1503,11 @@ def check_supported(input_tensor,
     # Special adaptation to pytorch ("sorted" is false indicates the pytorch operator)
     if sorted is not True:
         return True, ""
-    # When input_size > 32768 and k < 16 and (soc version is not ["Ascend710", "Ascend610"] or not is_vgatherb),
+    # When input_size > 32768 and k < 16 and (soc version is not ["Ascend710", "Ascend610"] or not vgatherb),
     # the AICPU performance is better than the AICore performance.
     # k = 0 is set in fe pass when top_k is version two, top_k_v2 cannot check k value in compile phase.
-    if input_size > 32768 and k > 0 and k < 16 and (soc_version not in ("Ascend710", "Ascend610") or not is_vgatherb):
+    if input_size > 32768 and k > 0 and k < 16 and (soc_version not in ("Ascend710", "Ascend610") or
+                                                    not tbe_platform.api_check_support("tik.vgatherb")):
         reason = "input_size is too big, and k is in (0-16), input_size:%s, k:%s"\
                   % (input_size, k)
         return False, reason
@@ -1613,7 +1614,8 @@ def top_k_d(input_tensor,
 
     data_input = tik_instance.Tensor(input_dtype, shape, name='data_a', scope=tik.scope_gm)
     indices = tik_instance.Tensor(input_indices_dtype, indices_shape, name='indices', scope=tik.scope_gm)
-    if k >= 8 and k < 16 and (soc_version in ("Ascend710", "Ascend610") or is_vgatherb):
+    if k >= 8 and k < 16 and (soc_version in ("Ascend710", "Ascend610") or
+                              tbe_platform.api_check_support("tik.vgatherb")):
         res = tik_instance.Tensor(input_dtype, out_shape, name='res', scope=tik.scope_gm, is_atomic_add=True)
     else:
         res = tik_instance.Tensor(input_dtype, out_shape, name='res', scope=tik.scope_gm)

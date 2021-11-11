@@ -15,16 +15,16 @@
 """
 ascend_requant
 """
+import te.lang.cce
+import te.platform as tbe_platform
 from functools import reduce as function_reduce
 from tbe.common.platform.platform_info import get_soc_spec
 from te import tvm
-import te.lang.cce
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 from impl import ascend_quant_util as util
-from impl.util.platform_adapter import is_vgatherb
 
 
 # pylint: disable=invalid-name,unused-argument,unnecessary-lambda,too-many-arguments,too-many-locals
@@ -38,7 +38,7 @@ def is_support_a100():
     False: other version.
     """
     soc_version = get_soc_spec("SOC_VERSION")
-    if is_vgatherb:
+    if tbe_platform.api_check_support("tik.vgatherb"):
         return True
     return False
 

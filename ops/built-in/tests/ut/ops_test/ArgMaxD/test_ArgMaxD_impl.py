@@ -257,8 +257,7 @@ case11 = {
 }
 
 
-def test_argmax_ascend920(test_arg):
-    cce_conf.cce_conf.te_set_version("Ascend920A", core_type="VectorCore")
+def test_argmax_a100(test_arg):
     arg_max_d({
         "shape": (31, 24575),
         "dtype": "float16",
@@ -285,7 +284,6 @@ ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case7)
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case9)
 ut_case.add_case(["Ascend910A", "Ascend710"], case10)
 ut_case.add_case(["Ascend910A", "Ascend310", "Ascend710"], case11)
-ut_case.add_cust_test_func(test_func=test_argmax_ascend920)
 
 
 def calc_expect_func(x, y, dimension):

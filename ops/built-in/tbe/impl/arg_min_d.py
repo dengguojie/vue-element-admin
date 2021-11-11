@@ -21,20 +21,20 @@ from te import tik
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
-# define a scalar, value = (2**16 - 1)
-SCALAR_MAX_FP16 = (2**16 - 1)
 # define a scalar, value = (2**30 + 2**29)
 SCALAR_MAX_FP32 = (2**30 + 2**29)
-# max set_mask_int64 value
-MAX_MASK_INT64 = 2**64 - 1
+# define a scalar, value = (2**16 - 1)
+SCALAR_MAX_FP16 = (2**16 - 1)
 # max segment len
 MAX_SEGMENT_LEN = 2048*4
-# int32 num in 8*block
-OUT_MASK = 64
+# max set_mask_int64 value
+MAX_MASK_INT64 = 2**64 - 1
 # 0101 mask value
 MASK_0_1 = 6148914691236517205
 # max int32 output num
 OUT_MAX_NUM = 2048 * 4
+# int32 num in 8*block
+OUT_MASK = 64
 
 
 def _get_ceil_int(int1, int2):

@@ -41,8 +41,8 @@ case3 = {"params": [{"shape": (8, 5000), "dtype": "float16", "ori_shape": (8, 50
          "expect": "RuntimeError",
          "support_expect": False}
 # TODO fix me, this comment, run failed
-ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend710","Ascend920A"], case1)
-ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend710","Ascend920A"], case3)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend710"], case1)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend610", "Ascend710"], case3)
 
 def test_static_1951(test_arg):
     from te.platform.cce_conf import te_set_version

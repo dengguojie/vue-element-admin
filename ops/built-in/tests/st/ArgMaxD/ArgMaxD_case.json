@@ -1,0 +1,29 @@
+[
+  {
+    "op": "ArgMaxD",
+    "input_desc": [
+      {
+        "shape": [100,16],
+        "format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [16],
+        "format": "ND",
+        "name": "y",
+        "type": "int32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+	"type": "int",
+	"value": 0
+      }
+    ],
+    "case_name": "test_ArgMaxD_001"
+  }
+]

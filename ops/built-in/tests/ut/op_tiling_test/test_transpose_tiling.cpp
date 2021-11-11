@@ -2080,7 +2080,7 @@ TEST_F(TransposeTilingTest, para_test_64) {
   run_case(inShape, outShape, perm, data_dtype, compileInfo, "", this->test_info_->name());
 }
 
-TEST_F(TransposeTilingTest, 920A_vcopy) {
+TEST_F(TransposeTilingTest, vcopy) {
   vector<int64_t> inShape;
   vector<int64_t> outShape;
   inShape.push_back(100);

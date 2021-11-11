@@ -276,9 +276,9 @@ def calc_expect_func(box_scores, selected_boxes, selected_idx, selected_mask, io
             out_mask.astype(selected_mask["dtype"])]
 
 
-def test_1981_fp16_small_shape(test_arg):
+def test_a100_fp16_small_shape(test_arg):
     """
-    test small shape, dtype is fp16, 1981
+    test small shape, dtype is fp16
 
     Parameters:
     ----------
@@ -288,7 +288,6 @@ def test_1981_fp16_small_shape(test_arg):
     -------
     None
     """
-    cce_conf.cce_conf.te_set_version('Ascend920A', 'VectorCore')
     n_proposals = 6
     dtype = 'float16'
 
@@ -326,9 +325,9 @@ def test_1981_fp16_small_shape(test_arg):
     cce_conf.cce_conf.te_set_version(test_arg)
 
 
-def test_1981_fp16_big_shape(test_arg):
+def test_a100_fp16_big_shape(test_arg):
     """
-    test big shape, dtype is fp16, 1981
+    test big shape, dtype is fp16
 
     Parameters:
     ----------
@@ -338,7 +337,6 @@ def test_1981_fp16_big_shape(test_arg):
     -------
     None
     """
-    cce_conf.cce_conf.te_set_version('Ascend920A', 'VectorCore')
     n_proposals = 2007
     dtype = 'float16'
 
@@ -376,9 +374,9 @@ def test_1981_fp16_big_shape(test_arg):
     cce_conf.cce_conf.te_set_version(test_arg)
 
 
-def test_1981_fp32_small_shape(test_arg):
+def test_a100_fp32_small_shape(test_arg):
     """
-    test small shape, dtype is fp32, 1981
+    test small shape, dtype is fp32
 
     Parameters:
     ----------
@@ -388,7 +386,6 @@ def test_1981_fp32_small_shape(test_arg):
     -------
     None
     """
-    cce_conf.cce_conf.te_set_version('Ascend920A', 'VectorCore')
     n_proposals = 6
     dtype = 'float32'
 
@@ -426,9 +423,9 @@ def test_1981_fp32_small_shape(test_arg):
     cce_conf.cce_conf.te_set_version(test_arg)
 
 
-def test_1981_fp32_big_shape(test_arg):
+def test_a100_fp32_big_shape(test_arg):
     """
-    test big shape, dtype is fp32, 1981
+    test big shape, dtype is fp32
 
     Parameters:
     ----------
@@ -438,7 +435,6 @@ def test_1981_fp32_big_shape(test_arg):
     -------
     None
     """
-    cce_conf.cce_conf.te_set_version('Ascend920A', 'VectorCore')
     n_proposals = 1001
     dtype = 'float32'
 
@@ -476,13 +472,12 @@ def test_1981_fp32_big_shape(test_arg):
     cce_conf.cce_conf.te_set_version(test_arg)
 
 
-ut_case.add_cust_test_func(test_func=test_1981_fp16_small_shape)
-ut_case.add_cust_test_func(test_func=test_1981_fp16_big_shape)
-ut_case.add_cust_test_func(test_func=test_1981_fp32_small_shape)
-ut_case.add_cust_test_func(test_func=test_1981_fp32_big_shape)
+#ut_case.add_cust_test_func(test_func=test_a100_fp16_small_shape)
+#ut_case.add_cust_test_func(test_func=test_a100_fp16_big_shape)
+#ut_case.add_cust_test_func(test_func=test_a100_fp32_small_shape)
+#ut_case.add_cust_test_func(test_func=test_a100_fp32_big_shape)
 
 if __name__ == '__main__':
     ut_case.run('Ascend310')
     ut_case.run('Ascend910')
-    ut_case.run('Ascend920A')
     exit(0)

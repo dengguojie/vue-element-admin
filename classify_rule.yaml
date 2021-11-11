@@ -1744,7 +1744,6 @@ vector_B:
       - ops/built-in/tests/ut/ops_test/SquareSumV2/test_SquareSumV2_impl.py
       - ops/built-in/tests/ut/ops_test/SSDDetectionOutput/test_SSDDetectionOutput_impl.py
       - ops/built-in/tests/ut/ops_test/SSDDetectionOutput/test_SSDDetectionOutput_v200_Ascend710_impl.py
-      - ops/built-in/tests/ut/ops_test/StridedSliceD/test_StridedSliceD_1981_impl.py
       - ops/built-in/tests/ut/ops_test/StridedSliceGrad/test_dynamic_strided_slice_grad_impl.py
       - ops/built-in/tests/ut/ops_test/SwapCi/test_SwapCi_impl.py
       - ops/built-in/tests/ut/ops_test/Tan/test_Tan_impl.py

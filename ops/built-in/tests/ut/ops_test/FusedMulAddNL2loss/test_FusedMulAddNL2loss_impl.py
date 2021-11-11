@@ -55,7 +55,6 @@ def test_get_op_support_info(test_arg):
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
-ut_case.add_case(["Ascend920A"], case3)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 
 precision_case1 = {"params": [{"shape": (2,4,4), "dtype": "float32", "format": "ND", "ori_format": "ND", "ori_shape": (2,4,4), "param_type":"input"},

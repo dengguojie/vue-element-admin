@@ -24,13 +24,13 @@ from functools import reduce as reduceIns
 from tbe import tvm
 from tbe.common.utils import shape_to_list
 from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform.platform_info import api_check_support
 from tbe.common.platform import scope_ubuf
 from tbe.common.platform import SOC_VERSION
 from tbe.common.platform import ASCEND_610
 from tbe.common.platform import ASCEND_615
 from tbe.common.platform import ASCEND_710
 from tbe.common.platform import ASCEND_910
-from tbe.common.platform import ASCEND_920A
 from tbe.common.utils import log
 
 from .util import DTYPE_WIDTH_MAP
@@ -562,7 +562,8 @@ def _is_supported_atomic_add(reduce_tensor):
     if dtype != "float32":
         return False
     soc_ver = get_soc_spec(SOC_VERSION)
-    is_version_support = (soc_ver in (ASCEND_910, ASCEND_920A, ASCEND_610, ASCEND_615, ASCEND_710))
+    is_version_support = (soc_ver in (ASCEND_910, ASCEND_610, ASCEND_615, ASCEND_710) or
+                          api_check_support("tik.vgatherb"))
     if not is_version_support:
         return False
     tag = reduce_tensor.op.tag
