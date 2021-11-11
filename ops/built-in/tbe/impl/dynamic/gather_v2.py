@@ -32,13 +32,35 @@ class Constant:
     """
     The class for constant
     """
+    TYPE_LEN_DICT = {"float16": 2, "float32": 4, "int8": 1, "uint8": 1,
+                     "int16": 2, "uint16": 2, "int32": 4, "uint32": 4,
+                     "int64": 8, "uint64": 8}
+
+    # reserved ub size
+    RESERVED_UB_SIZE = 2 * 1024
+    # 100K, caches input params data
+    CACHE_UB_SIZE = 100 * 1024
+
     PARAMS_SIZE = 2 ** 31 - 1
     INDICES_NUM = 2 ** 31 - 1
     TILING_ARG_NUM = 32
-    # 100K, caches input params data
-    CACHE_UB_SIZE = 100 * 1024
-    # reserved ub size
-    RESERVED_UB_SIZE = 2 * 1024
+
+    # Aligned types for params row size
+    MODE_LESS_THAN_32B = 0
+    MODE_ALIGNED = 1
+    MODE_MORE_THAN_32B = 2
+    MODE_LARGE_PARAMS_ROW = 3
+    MODE_SMALL_PARAMS_ROW = 4
+
+    # Cached types for params
+    PARAMS_CACHED_UB = 0
+    PARAMS_NOT_CACHED = 1
+
+    # Cached types for indices
+    INDICES_CACHED_ALL = 0
+    INDICES_CACHED_ONE_ROW = 1
+    INDICES_LARGE_ROW = 2
+    INDICES_SMALL_ROW = 3
 
     # A. block tiling: indices tiling
     # paramsRowSize < 32
@@ -116,27 +138,6 @@ class Constant:
     TILING_MODE_40 = 40
     TILING_MODE_41 = 41
 
-    # Aligned types for params row size
-    MODE_LESS_THAN_32B = 0
-    MODE_ALIGNED = 1
-    MODE_MORE_THAN_32B = 2
-    MODE_LARGE_PARAMS_ROW = 3
-    MODE_SMALL_PARAMS_ROW = 4
-
-    # Cached types for params
-    PARAMS_CACHED_UB = 0
-    PARAMS_NOT_CACHED = 1
-
-    # Cached types for indices
-    INDICES_CACHED_ALL = 0
-    INDICES_CACHED_ONE_ROW = 1
-    INDICES_LARGE_ROW = 2
-    INDICES_SMALL_ROW = 3
-
-    TYPE_LEN_DICT = {"float16": 2, "float32": 4, "int8": 1, "uint8": 1,
-                     "int16": 2, "uint16": 2, "int32": 4, "uint32": 4,
-                     "int64": 8, "uint64": 8}
-
 
 # pylint: disable=too-many-public-methods,invalid-name,too-many-arguments,too-many-locals
 # pylint: disable=too-many-lines,too-many-instance-attributes,too-many-statements,unused-argument
@@ -199,6 +200,9 @@ def check_supported(x_dict, indices_dict, axis_dict, y_dict, batch_dims=0, kerne
     ----------
     x_dict: input params shape, dtype and range, if shape contains -2, the process doesn't support
     """
+    if tbe_platform_adapter.api_check_support("tik.vgatherb"):
+        return True, ""
+
     shape_x = x_dict.get("ori_shape")
     shape_indices = indices_dict.get("ori_shape")
 
@@ -809,11 +813,14 @@ class GatherV2():
                                          name="indices_ub", scope=tik.scope_ubuf)
         res_ub = tik_instance.Tensor(self.params_dtype, ((half_ub_size + constant.BLOCK_SIZE) // self.params_dsize,),
                                      name="res_ub", scope=tik.scope_ubuf)
-        x_cbuf = tik_instance.Tensor(self.params_dtype, (self.l1_size // self.params_dsize,),
-                                     name="x_l1", scope=tik.scope_cbuf)
 
-        # cache params data from gm in L1
-        tik_instance.data_move(x_cbuf, self.x, 0, 1, ceil_value(self.params_total, self.block_elem), 0, 0)
+        if tbe_platform_adapter.api_check_support("tik.vgatherb"):
+            x_cbuf = self.x
+        else:
+            x_cbuf = tik_instance.Tensor(self.params_dtype, (self.l1_size // self.params_dsize,),
+                                         name="x_l1", scope=tik.scope_cbuf)
+            # cache params data from gm in L1
+            tik_instance.data_move(x_cbuf, self.x, 0, 1, ceil_value(self.params_total, self.block_elem), 0, 0)
 
         with tik_instance.for_range(0, self.params_pre) as pre_i:
             # 1. indices_num_each_core: indices_row_num_once * indices_loop_num + indices_row_num_last
@@ -1682,12 +1689,15 @@ class GatherV2():
         None
         """
         tik_instance = self.tik_instance
-        x_cbuf = tik_instance.Tensor(self.params_dtype, (self.l1_size // self.params_dsize,),
-                                     name="x_l1", scope=tik.scope_cbuf)
-        # cache params data from gm in UB
-        tik_instance.data_move(x_cbuf, self.x, 0, 1, ceil_value(self.params_total, self.block_elem), 0, 0)
+        if tbe_platform_adapter.api_check_support("tik.vgatherb"):
+            self.compute_mode_32b_aligned(half_ub_size, block_id, self.x)
+        else:
+            x_cbuf = tik_instance.Tensor(self.params_dtype, (self.l1_size // self.params_dsize,),
+                                         name="x_l1", scope=tik.scope_cbuf)
 
-        self.compute_mode_32b_aligned(half_ub_size, block_id, x_cbuf)
+            # cache params data from gm in UB
+            tik_instance.data_move(x_cbuf, self.x, 0, 1, ceil_value(self.params_total, self.block_elem), 0, 0)
+            self.compute_mode_32b_aligned(half_ub_size, block_id, x_cbuf)
 
     def compute_mode_8(self, remain_half_ub_size, block_id):
         """
@@ -1955,10 +1965,14 @@ class GatherV2():
         None
         """
         tik_instance = self.tik_instance
-        x_cbuf = tik_instance.Tensor(self.params_dtype, (self.l1_size // self.params_dsize,),
-                                     name="x_l1", scope=tik.scope_cbuf)
-        # cache params data from gm in L1
-        tik_instance.data_move(x_cbuf, self.x, 0, 1, ceil_value(self.params_total, self.block_elem), 0, 0)
+        if tbe_platform_adapter.api_check_support("tik.vgatherb"):
+            x_cbuf = self.x
+        else:
+            x_cbuf = tik_instance.Tensor(self.params_dtype, (self.l1_size // self.params_dsize,),
+                                         name="x_l1", scope=tik.scope_cbuf)
+
+            # cache params data from gm in L1
+            tik_instance.data_move(x_cbuf, self.x, 0, 1, ceil_value(self.params_total, self.block_elem), 0, 0)
 
         indices_ub = tik_instance.Tensor(self.indices_dtype, (half_ub_size // self.indices_dsize,),
                                          name="indices_ub", scope=tik.scope_ubuf)
