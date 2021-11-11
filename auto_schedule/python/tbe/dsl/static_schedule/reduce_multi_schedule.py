@@ -183,7 +183,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
             self._map_apend(self._cache_read_tensors_and_readers_map, i,
                             self._input_tensor_dst_tensor_map[i])
 
-        if self._pattern in ("layernorm_x_backprop_fp16_1980_0420"):
+        if self._pattern == "layernorm_x_backprop_fp16_1980_0420":
             self.set_op_type("layer_norm_x_backprop_v2")
 
     def _calculate_cache_write(self):
@@ -367,7 +367,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
                 if self._special_non_last_broadcast_scene:
                     if self._is_special_tensor_of_broadcast_not_last_axis(i):
                         insn = "vector_sub_with_multi_broadcast"
-            
+
             if self._pattern in ('softmax_fp16_nz_non16', 'softmax_fp32_nz_non16', 'softmax_fp16_nz_special'):
                 if self._pattern in ('softmax_fp16_nz_non16', 'softmax_fp16_nz_special'):
                     phony_node = self._mid_tensors[5]
@@ -382,7 +382,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
                     insn = "phony_insn"
 
             if self._pattern in ('layernorm_fp16_nz_non16', 'layernorm_fp32_nz_non16'):
-                if self._pattern in ('layernorm_fp16_nz_non16'):
+                if self._pattern == 'layernorm_fp16_nz_non16':
                     phony_node = self._mid_tensors[7]
                 else:
                     phony_node = self._mid_tensors[5]
@@ -1190,7 +1190,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
             self._insn_map["reduce_min"] = "vector_dichotomy_reduce"
 
     def _do_buffer_reuse(self):
-        if self._pattern in ("layernorm_x_backprop_fp16_1980_0420"):
+        if self._pattern == "layernorm_x_backprop_fp16_1980_0420":
             return
 
         if self._pattern not in util.pattern.width.keys() or not util.PATTERN_OPTIMAZE or \
@@ -1229,7 +1229,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
             return
 
         if self._pattern in ('layernorm_fp16_nz_non16', 'layernorm_fp32_nz_non16'):
-            if self._pattern in ('layernorm_fp16_nz_non16'):
+            if self._pattern == 'layernorm_fp16_nz_non16':
                 tensor_before_tail = self._mid_tensors[8]
                 tensor_with_tail = self._mid_tensors[9]
                 tensor_after_tail = self._mid_tensors[7]

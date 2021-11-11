@@ -497,7 +497,7 @@ def fake_node_fuse_fun(tensors):
 
     for tensor in tensors:
         if len(tensor.shape) != dim:
-                return FAKE_NODE_FUSE_FAILED
+            return FAKE_NODE_FUSE_FAILED
         for i in range(dim):
             if shape[i] < tensor.shape[i].value:
                 shape[i] = tensor.shape[i].value

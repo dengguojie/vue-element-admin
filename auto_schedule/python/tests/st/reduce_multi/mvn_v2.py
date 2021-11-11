@@ -15,12 +15,12 @@
 """
 mvn_v2
 """
-from impl.util.platform_adapter import tbe
+import tbe.dsl as tbe
 import te.platform as tbe_platform
-from impl.util.platform_adapter import tvm
-from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import shape_util
-from impl.util import util_select_op_base
+from tbe import tvm
+from tbe.common.utils import para_check
+from tbe.common.utils import shape_util
+from util_select_op_base import *
 
 # const value
 CONST_HALF = 0.5
@@ -41,14 +41,14 @@ def get_op_support_info(x, y, eps=1e-9, axis=None, kernel_name="mvn_v2"):
     if format_x == "NCHW":
         split_axis = list({0, 1, 2, 3} - set(axis))
         for i in split_axis:
-            split_i = [util_select_op_base.SplitInput([0, [i], [-1], [-1]]), 
-                       util_select_op_base.SplitOutput([0, [i]])]
+            split_i = [SplitInput([0, [i], [-1], [-1]]),
+                       SplitOutput([0, [i]])]
             axis_split_list.append(split_i)
     else:
         axis_split_list = None
 
     axis_reduce_list = None
-    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_list, axis_reduce_list, 0, 0)
+    op_cal_info_in_json = get_op_cal_info(axis_split_list, axis_reduce_list, 0, 0)
     return op_cal_info_in_json
 
 

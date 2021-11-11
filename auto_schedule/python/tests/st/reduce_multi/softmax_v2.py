@@ -32,10 +32,10 @@ from te import platform as tbe_platform
 from te.platform.cce_build import build_config
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
-from impl.util.platform_adapter import shape_util
-from impl.util import util_frac_z as fz
+from tbe.common.utils import shape_util
+import util_frac_z as fz
 from te.utils.error_manager import error_manager_vector
-from impl.util import util_select_op_base
+from util_select_op_base import *
 
 
 # General limitation of the size for input shape: 2**31
@@ -61,39 +61,39 @@ def get_op_support_info(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         if origin_format_x == "NCHW":
             if new_axis in (0, -4):
                 axis_split_matrix = [
-                    [util_select_op_base.SplitInput([0, [2], [-1], [-1]]), util_select_op_base.SplitOutput([0, [2]])],
-                    [util_select_op_base.SplitInput([0, [3], [-1], [-1]]), util_select_op_base.SplitOutput([0, [3]])]]
+                    [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])],
+                    [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [3]])]]
             if new_axis in (1, -3):
                 axis_split_matrix = [
-                    [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])],
-                    [util_select_op_base.SplitInput([0, [2], [-1], [-1]]), util_select_op_base.SplitOutput([0, [2]])],
-                    [util_select_op_base.SplitInput([0, [3], [-1], [-1]]), util_select_op_base.SplitOutput([0, [3]])]]
+                    [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+                    [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])],
+                    [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [3]])]]
             if new_axis in (2, -2):
                 axis_split_matrix = [
-                    [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])],
-                    [util_select_op_base.SplitInput([0, [3], [-1], [-1]]), util_select_op_base.SplitOutput([0, [3]])]]
+                    [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+                    [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [3]])]]
             if new_axis in (3, -1):
                 axis_split_matrix = [
-                    [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])],
-                    [util_select_op_base.SplitInput([0, [2], [-1], [-1]]), util_select_op_base.SplitOutput([0, [2]])]]
+                    [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+                    [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])]]
         elif origin_format_x == "NHWC":
             if new_axis in (0, -4):
                 axis_split_matrix = [
-                    [util_select_op_base.SplitInput([0, [2], [-1], [-1]]), util_select_op_base.SplitOutput([0, [2]])],
-                    [util_select_op_base.SplitInput([0, [3], [-1], [-1]]), util_select_op_base.SplitOutput([0, [3]])]]
+                    [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])],
+                    [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [3]])]]
             if new_axis in (1, -3):
                 axis_split_matrix = [
-                    [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])],
-                    [util_select_op_base.SplitInput([0, [3], [-1], [-1]]), util_select_op_base.SplitOutput([0, [3]])]]
+                    [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+                    [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [3]])]]
             if new_axis in (2, -2):
                 axis_split_matrix = [
-                    [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])],
-                    [util_select_op_base.SplitInput([0, [2], [-1], [-1]]), util_select_op_base.SplitOutput([0, [2]])]]
+                    [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+                    [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])]]
             if new_axis in (3, -1):
                 axis_split_matrix = [
-                    [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])],
-                    [util_select_op_base.SplitInput([0, [2], [-1], [-1]]), util_select_op_base.SplitOutput([0, [2]])],
-                    [util_select_op_base.SplitInput([0, [3], [-1], [-1]]), util_select_op_base.SplitOutput([0, [3]])]]
+                    [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+                    [SplitInput([0, [2], [-1], [-1]]), SplitOutput([0, [2]])],
+                    [SplitInput([0, [3], [-1], [-1]]), SplitOutput([0, [3]])]]
         else:
             axis_split_matrix = None
         axis_reduce_list = None
@@ -102,15 +102,15 @@ def get_op_support_info(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
             axis_split_matrix = []
             for i in range(dims_x):
                 if not (i == dims_x - 1 or i == dims_x - 4):
-                    split_0 = [util_select_op_base.SplitInput([0, [i], [-1], [-1]]),
-                                                              util_select_op_base.SplitOutput([0, [i]])]
+                    split_0 = [SplitInput([0, [i], [-1], [-1]]),
+                                                              SplitOutput([0, [i]])]
                     axis_split_matrix.append(split_0)
         else:
             axis_split_matrix = []
             for i in range(dims_x):
                 if i == dims_x - 1 or i == dims_x - 4:
-                    split_0 = [util_select_op_base.SplitInput([0, [i], [-1], [-1]]),
-                                                              util_select_op_base.SplitOutput([0, [i]])]
+                    split_0 = [SplitInput([0, [i], [-1], [-1]]),
+                                                              SplitOutput([0, [i]])]
                     axis_split_matrix.append(split_0)
         axis_reduce_list = None
     elif format_x == "ND":
@@ -119,14 +119,14 @@ def get_op_support_info(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         axis_split_matrix = []
         for i in range(dims_x):
             if i != new_axis:
-                split_0 = [util_select_op_base.SplitInput([0, [i], [-1], [-1]]),
-                           util_select_op_base.SplitOutput([0, [i]])]
+                split_0 = [SplitInput([0, [i], [-1], [-1]]),
+                           SplitOutput([0, [i]])]
                 axis_split_matrix.append(split_0)
         axis_reduce_list = None
     else:
         axis_split_matrix = None
         axis_reduce_list = None
-    op_cal_info_in_json = util_select_op_base.get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
     return op_cal_info_in_json
 
 
@@ -183,16 +183,16 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
             is_dynamic = True
             break
     if is_dynamic:
-        input0 = util_select_op_base.gen_param(classify="input0", name="x",
+        input0 = gen_param(classify="input0", name="x",
                                                datatype="float16,float32",
                                                format="ND,ND",
                                                unknownshape_format="ND,ND")
-        output0 = util_select_op_base.gen_param(classify="output0", name="y",
+        output0 = gen_param(classify="output0", name="y",
                                                 datatype="float16,float32",
                                                 format="ND,ND",
                                                 unknownshape_format="ND,ND")
         param_list = [input0, output0]
-        param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+        param_dynamic_in_json = get_dynamic_param_in_json(param_list)
         return param_dynamic_in_json
 
     shape_x_ori = shape_util.scalar2tensor_one(input_x.get("ori_shape"))
@@ -203,68 +203,68 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     if length_x_ori == 2:
         if check_axis_is_last(shape_x_ori, axis) and shape_x_ori[0] != 1:
             if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
-                input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                input0 = gen_param(classify="input0", name="x",
                                                        datatype="float16,float16,float16",
                                                        format="FRACTAL_NZ,NC1HWC0,ND")
-                output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                output0 = gen_param(classify="output0", name="y",
                                                         datatype="float16,float16,float16",
                                                         format="FRACTAL_NZ,NC1HWC0,ND")
             if tbe_product in ("Ascend610", "Ascend615", "Ascend710",):
-                input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                input0 = gen_param(classify="input0", name="x",
                                                        datatype="float16,float16,float16,float",
                                                        format="FRACTAL_NZ,NC1HWC0,ND,ND")
-                output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                output0 = gen_param(classify="output0", name="y",
                                                         datatype="float16,float16,float16,float",
                                                         format="FRACTAL_NZ,NC1HWC0,ND,ND")
             if tbe_product in ("Ascend910", "Ascend310",):
-                input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                input0 = gen_param(classify="input0", name="x",
                                                        datatype="float16,float16,float16,float,float",
                                                        format="FRACTAL_NZ,NC1HWC0,ND,ND,NC1HWC0")
-                output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                output0 = gen_param(classify="output0", name="y",
                                                         datatype="float16,float16,float16,float,float",
                                                         format="FRACTAL_NZ,NC1HWC0,ND,ND,NC1HWC0")
         else:
             if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
-                input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                input0 = gen_param(classify="input0", name="x",
                                                        datatype="float16,float16",
                                                        format="NC1HWC0,ND")
-                output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                output0 = gen_param(classify="output0", name="y",
                                                         datatype="float16,float16",
                                                         format="NC1HWC0,ND")
             if tbe_product in ("Ascend610", "Ascend615", "Ascend710",):
-                input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                input0 = gen_param(classify="input0", name="x",
                                                        datatype="float16,float16,float",
                                                        format="NC1HWC0,ND,ND")
-                output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                output0 = gen_param(classify="output0", name="y",
                                                         datatype="float16,float16,float",
                                                         format="NC1HWC0,ND,ND")
             if tbe_product in ("Ascend910", "Ascend310",):
-                input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                input0 = gen_param(classify="input0", name="x",
                                                        datatype="float16,float16,float,float",
                                                        format="NC1HWC0,ND,ND,NC1HWC0")
-                output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                output0 = gen_param(classify="output0", name="y",
                                                         datatype="float16,float16,float,float",
                                                         format="NC1HWC0,ND,ND,NC1HWC0")
     elif length_x_ori > 2 and (shape_x_ori[-1] % 16 != 0 or shape_x_ori[-2] % 16 != 0):
         if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
-            input0 = util_select_op_base.gen_param(classify="input0", name="x",
+            input0 = gen_param(classify="input0", name="x",
                                                    datatype="float16,float16,float16",
                                                    format="NC1HWC0,NDC1HWC0,ND")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",
+            output0 = gen_param(classify="output0", name="y",
                                                     datatype="float16,float16,float16",
                                                     format="NC1HWC0,NDC1HWC0,ND")
         if tbe_product in ("Ascend610", "Ascend615", "Ascend710",):
-            input0 = util_select_op_base.gen_param(classify="input0", name="x",
+            input0 = gen_param(classify="input0", name="x",
                                                    datatype="float16,float16,float16,float",
                                                    format="NC1HWC0,NDC1HWC0,ND,ND")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",
+            output0 = gen_param(classify="output0", name="y",
                                                     datatype="float16,float16,float16,float",
                                                     format="NC1HWC0,NDC1HWC0,ND,ND")
         if tbe_product in ("Ascend910",):
-            input0 = util_select_op_base.gen_param(classify="input0", name="x",
+            input0 = gen_param(classify="input0", name="x",
                                                    datatype="float16,float16,float,float,float16,float",
                                                    format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",
+            output0 = gen_param(classify="output0", name="y",
                                                     datatype="float16,float16,float,float,float16,float",
                                                     format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
         if tbe_product in ("Ascend310",):
@@ -276,53 +276,53 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
                     else:
                         shape_x_ori = (1,) + shape_x_ori
                 if ori_input_format == "NCHW" and shape_x_ori[1] <= 16:
-                    input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                    input0 = gen_param(classify="input0", name="x",
                                                            datatype="float16,float",
                                                            format="ND,ND")
-                    output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                    output0 = gen_param(classify="output0", name="y",
                                                             datatype="float16,float",
                                                             format="ND,ND")
                 else:
-                    input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                    input0 = gen_param(classify="input0", name="x",
                                                            datatype="float16,float",
                                                            format="NC1HWC0,NC1HWC0")
-                    output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                    output0 = gen_param(classify="output0", name="y",
                                                             datatype="float16,float",
                                                             format="NC1HWC0,NC1HWC0")
             else:
-                input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                input0 = gen_param(classify="input0", name="x",
                                                        datatype="float16,float16,float,float,float16,float",
                                                        format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
-                output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                output0 = gen_param(classify="output0", name="y",
                                                         datatype="float16,float16,float,float,float16,float",
                                                         format="NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
     else:
         if tbe_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
-            input0 = util_select_op_base.gen_param(classify="input0", name="x",
+            input0 = gen_param(classify="input0", name="x",
                                                    datatype="float16,float16,float16,float16",
                                                    format="FRACTAL_NZ,NC1HWC0,ND,NDC1HWC0")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",
+            output0 = gen_param(classify="output0", name="y",
                                                     datatype="float16,float16,float16,float16",
                                                     format="FRACTAL_NZ,NC1HWC0,ND,NDC1HWC0")
         if tbe_product in ("Ascend610", "Ascend615", "Ascend710",):
-            input0 = util_select_op_base.gen_param(classify="input0", name="x",
+            input0 = gen_param(classify="input0", name="x",
                                                    datatype="float16,float,float16,float16,float,float16",
                                                    format="FRACTAL_NZ,FRACTAL_NZ,NC1HWC0,ND,ND,NDC1HWC0")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",
+            output0 = gen_param(classify="output0", name="y",
                                                     datatype="float16,float,float16,float16,float,float16",
                                                     format="FRACTAL_NZ,FRACTAL_NZ,NC1HWC0,ND,ND,NDC1HWC0")
         if tbe_product in ("Ascend910", "Ascend310",):
             input0 = \
-                util_select_op_base.gen_param(classify="input0", name="x",
+                gen_param(classify="input0", name="x",
                                               datatype="float16,float,float16,float16,float,float,float16,float",
                                               format="FRACTAL_NZ,FRACTAL_NZ,NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
             output0 = \
-                util_select_op_base.gen_param(classify="output0", name="y",
+                gen_param(classify="output0", name="y",
                                               datatype="float16,float,float16,float16,float,float,float16,float",
                                               format="FRACTAL_NZ,FRACTAL_NZ,NC1HWC0,ND,ND,NC1HWC0,NDC1HWC0,NDC1HWC0")
 
     param_list = [input0, output0]
-    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
 

@@ -153,7 +153,7 @@ def check_op_params(*type_args, **type_kwargs):
     check op params
     """
     warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
-                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_PARA_CHECK)
+                  DeprecationWarning, stacklevel=STACKLEVEL_FOR_PARA_CHECK)
     from tbe.common.utils import check_op_params
     return check_op_params(*type_args, **type_kwargs)
 
@@ -265,7 +265,7 @@ def check_shape(shape, min_dim=0, max_dim=DIM_LIMIT, min_rank=0,
     check shape size
     """
     warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
-                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_PARA_CHECK)
+                  DeprecationWarning, stacklevel=STACKLEVEL_FOR_PARA_CHECK)
     from tbe.common.utils import check_shape
     return check_shape(shape, min_dim, max_dim, min_rank, max_rank, min_size, max_size, param_name)
 
@@ -288,7 +288,7 @@ def check_dtype(dtype, check_list=ALL_DTYPE_LIST, param_name=PARAM_NAME):
     The common check rule for tensor dtype
     """
     warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
-                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_PARA_CHECK)
+                  DeprecationWarning, stacklevel=STACKLEVEL_FOR_PARA_CHECK)
     from tbe.common.utils import check_dtype
     return check_dtype(dtype, check_list, param_name)
 
@@ -299,7 +299,7 @@ def check_format(data_format, check_list=None, param_name=PARAM_NAME):
     """
 
     warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
-                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_PARA_CHECK)
+                  DeprecationWarning, stacklevel=STACKLEVEL_FOR_PARA_CHECK)
     from tbe.common.utils import check_format
     return check_format(data_format, check_list, param_name)
 
@@ -311,7 +311,7 @@ def check_elewise_shape_range(inputs: list, support_broadcast=False):
     :return:
     """
     warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
-                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_PARA_CHECK)
+                  DeprecationWarning, stacklevel=STACKLEVEL_FOR_PARA_CHECK)
     from tbe.common.utils import check_elewise_shape_range
     return check_elewise_shape_range(inputs, support_broadcast)
 
@@ -375,7 +375,7 @@ def check_input_type(*type_args, **type_kwargs):
     """
 
     warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
-                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_PARA_CHECK)
+                  DeprecationWarning, stacklevel=STACKLEVEL_FOR_PARA_CHECK)
     from tbe.common.utils import check_input_type
     return check_input_type(*type_args, **type_kwargs)
 
@@ -385,7 +385,7 @@ def check_dtype_rule(dtype, check_list, param_name="default"):
     The common check rule for tensor dtype
     """
     warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
-                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_PARA_CHECK)
+                  DeprecationWarning, stacklevel=STACKLEVEL_FOR_PARA_CHECK)
     from tbe.common.utils import check_dtype_rule
     return check_dtype_rule(dtype, check_list, param_name)
 
@@ -395,7 +395,7 @@ def check_shape_rule(shape, min_dim=None, max_dim=None, max_shape_num=None):
     The common check rule for tensor shape
     """
     warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
-                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_PARA_CHECK)
+                  DeprecationWarning, stacklevel=STACKLEVEL_FOR_PARA_CHECK)
     from tbe.common.utils import check_shape_rule
     return check_shape_rule(shape, min_dim, max_dim, max_shape_num)
 
@@ -411,7 +411,7 @@ def check_kernel_name(kernel_name):
     None
     """
     warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
-                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_PARA_CHECK)
+                  DeprecationWarning, stacklevel=STACKLEVEL_FOR_PARA_CHECK)
     from tbe.common.utils import check_kernel_name
     return check_kernel_name(kernel_name)
 
@@ -419,7 +419,7 @@ def check_kernel_name(kernel_name):
 def check_and_init_5hdc_reduce_support(input_tensor, axis):
     """5HD Special param for 5hd schedule"""
     warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
-                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_PARA_CHECK)
+                  DeprecationWarning, stacklevel=STACKLEVEL_FOR_PARA_CHECK)
     from tbe.common.utils import check_and_init_5hdc_reduce_support
     return check_and_init_5hdc_reduce_support(input_tensor, axis)
 
@@ -435,7 +435,7 @@ def is_scalar(shape):
     True or False
     """
     warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
-                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_PARA_CHECK)
+                  DeprecationWarning, stacklevel=STACKLEVEL_FOR_PARA_CHECK)
     from tbe.common.utils import is_scalar 
     return is_scalar(shape)
 
@@ -453,7 +453,7 @@ def check_shape_size(shape, limit=SHAPE_SIZE_LIMIT+1):
     None
     """
     warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
-                  DeprecationWarning, stacklevel = STACKLEVEL_FOR_PARA_CHECK)
+                  DeprecationWarning, stacklevel=STACKLEVEL_FOR_PARA_CHECK)
     from tbe.common.utils import check_shape_size
     return check_shape_size(shape, limit)
 
@@ -464,7 +464,7 @@ def check_tensor_shape_size(shape):
     if check shape size, use check_shape_size function.
     if get all shape size,use get_shape_size function.
     """
-    warnings.warn("check_tensor_shape_size is deprecated", DeprecationWarning, stacklevel = STACKLEVEL_FOR_PARA_CHECK)
+    warnings.warn("check_tensor_shape_size is deprecated", DeprecationWarning, stacklevel=STACKLEVEL_FOR_PARA_CHECK)
     from functools import reduce
     product = reduce(lambda x, y: x * y, shape[:])  # product of all dimension
 
@@ -477,6 +477,6 @@ def check_reduce_shape_rule(shape):
     :param shape: inout shape
     """
     # the shape of reduce axis must be less than MAX_REDUCE_SHAPE_NUM
-    warnings.warn("check_reduce_shape_rule is deprecated", DeprecationWarning, stacklevel = STACKLEVEL_FOR_PARA_CHECK)
+    warnings.warn("check_reduce_shape_rule is deprecated", DeprecationWarning, stacklevel=STACKLEVEL_FOR_PARA_CHECK)
     from functools import reduce
     product = reduce(lambda x, y: x * y, shape[:])  # product of all dimension

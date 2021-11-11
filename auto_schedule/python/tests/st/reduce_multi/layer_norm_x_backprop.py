@@ -24,10 +24,7 @@ import te.lang.cce as tbe
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
-from impl.util.util_select_op_base import SplitInput
-from impl.util.util_select_op_base import SplitOutput
-from impl.util.util_select_op_base import get_op_cal_info
-from impl.util import util_select_op_base
+from util_select_op_base import *
 
 # General limitation of the size for input shape: 2**31
 SHAPE_SIZE_LIMIT = 2147483648
@@ -125,64 +122,64 @@ def op_select_format(input_dy, input_x, input_variance, input_mean, input_gamma,
     c_0 = 16
 
     if _check_dynamic_format(shape_dy, shape_gamma, c_0):
-        input0 = util_select_op_base.gen_param(classify="input0", name="dy",
+        input0 = gen_param(classify="input0", name="dy",
                            datatype="float16,float16,float16,float16,float,"
                                     "float,float,float",
                            format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
-        input1 = util_select_op_base.gen_param(classify="input1", name="x",
+        input1 = gen_param(classify="input1", name="x",
                            datatype="float16,float16,float16,float16,float,"
                                     "float,float,float",
                            format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
-        input2 = util_select_op_base.gen_param(classify="input2", name="variance",
+        input2 = gen_param(classify="input2", name="variance",
                            datatype="float16,float16,float16,float16,float,"
                                     "float,float,float",
                            format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
-        input3 = util_select_op_base.gen_param(classify="input3", name="mean",
+        input3 = gen_param(classify="input3", name="mean",
                            datatype="float16,float16,float16,float16,float,"
                                     "float,float,float",
                            format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
-        input4 = util_select_op_base.gen_param(classify="input4", name="gamma",
+        input4 = gen_param(classify="input4", name="gamma",
                            datatype="float16,float16,float16,float16,float,"
                                     "float,float,float",
                            format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
-        output0 = util_select_op_base.gen_param(classify="output0", name="pd_x",
+        output0 = gen_param(classify="output0", name="pd_x",
                             datatype="float16,float16,float16,float16,float,"
                                      "float,float,float",
                             format="NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,NHWC,ND")
     else:
-        input0 = util_select_op_base.gen_param(classify="input0", name="dy",
+        input0 = gen_param(classify="input0", name="dy",
                            datatype="float16, float,float16,float16,float16,"
                                     "float16,float,float,float,float",
                            format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NC1HWC0,NHWC,ND,"
                                   "NCHW,NC1HWC0,NHWC,ND")
-        input1 = util_select_op_base.gen_param(classify="input1", name="x",
+        input1 = gen_param(classify="input1", name="x",
                            datatype="float16, float,float16,float16,float16,"
                                     "float16,float,float,float,float",
                            format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NC1HWC0,NHWC,ND,"
                                   "NCHW,NC1HWC0,NHWC,ND")
-        input2 = util_select_op_base.gen_param(classify="input2", name="variance",
+        input2 = gen_param(classify="input2", name="variance",
                            datatype="float16, float,float16,float16,float16,"
                                     "float16,float,float,float,float",
                            format="ND,ND,NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,"
                                   "NHWC,ND")
-        input3 = util_select_op_base.gen_param(classify="input3", name="mean",
+        input3 = gen_param(classify="input3", name="mean",
                            datatype="float16, float,float16,float16,float16,"
                                     "float16,float,float,float,float",
                            format="ND,ND,NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,"
                                   "NHWC,ND")
-        input4 = util_select_op_base.gen_param(classify="input4", name="gamma",
+        input4 = gen_param(classify="input4", name="gamma",
                            datatype="float16, float,float16,float16,float16,"
                                     "float16,float,float,float,float",
                            format="ND,ND,NCHW,NC1HWC0,NHWC,ND,NCHW,NC1HWC0,"
                                   "NHWC,ND")
-        output0 = util_select_op_base.gen_param(classify="output0", name="pd_x",
+        output0 = gen_param(classify="output0", name="pd_x",
                             datatype="float16, float,float16,float16,float16,"
                                      "float16,float,float,float,float",
                             format="FRACTAL_NZ,FRACTAL_NZ,NCHW,NC1HWC0,NHWC,"
                                    "ND,NCHW,NC1HWC0,NHWC,ND")
 
     param_list = [input0, input1, input2, input3, input4, output0]
-    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+    param_dynamic_in_json = get_dynamic_param_in_json(param_list)
 
     return param_dynamic_in_json
 
