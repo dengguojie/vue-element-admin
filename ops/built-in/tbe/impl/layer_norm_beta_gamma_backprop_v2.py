@@ -28,6 +28,16 @@ from impl.util import util_select_op_base
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from impl.util.platform_adapter import tbe as tbe_adapter
+
+
+# 'pylint: disable = too-few-public-methods
+class Constant:
+    """
+    common constants
+    """
+    DIM_TWO = 2
+    DIM_FOUR = 4
 
 
 # 'pylint: disable = unused-argument,invalid-name,too-many-locals,too-many-arguments,too-many-branches
@@ -246,7 +256,11 @@ def layer_norm_beta_gamma_backprop_v2_compute(data_dy, res_for_gamma, output_pd_
 
     data_x = tbe.vmul(res_for_gamma, data_dy)
     if param_axis:
-        pd_gamma, pd_beta = tbe.tuple_sum([data_x, data_dy], param_axis, keepdims=True)
+        if tbe_platform.api_check_support("tik.vgatherb"):
+            pd_gamma = tbe_adapter.reduce_sum(data_x, axis=param_axis)
+            pd_beta = tbe_adapter.reduce_sum(data_dy, axis=param_axis)
+        else:
+            pd_gamma, pd_beta = tbe.tuple_sum([data_x, data_dy], param_axis, keepdims=True)
     else:
         pd_beta = tbe.vadds(data_dy, tvm.const(0, dtype=dtype))
         pd_gamma = tbe.vadds(data_x, tvm.const(0, dtype=dtype))
@@ -268,13 +282,13 @@ def update_shape_nz(shape_x):
     # ND shape of x >= two dim
     # Nz shape of x >= four dim
     len_x = len(shape_x)
-    nz_begin = len_x - 4
+    nz_begin = len_x - Constant.DIM_FOUR
     shape_x_nz = []
     for i in range(0, nz_begin):
         shape_x_nz.append(shape_x[i])
     shape_x_nz.append(shape_x[nz_begin])
-    shape_x_nz.append(shape_x[nz_begin + 1] * shape_x[nz_begin + 2])
-    shape_x_nz.append(shape_x[nz_begin + 2])
+    shape_x_nz.append(shape_x[nz_begin + 1] * shape_x[nz_begin + Constant.DIM_TWO])
+    shape_x_nz.append(shape_x[nz_begin + Constant.DIM_TWO])
 
     # ND shape of gamma is one dim
     shape_gamma_nz = []
@@ -282,7 +296,7 @@ def update_shape_nz(shape_x):
         shape_gamma_nz.append(1)
     shape_gamma_nz.append(shape_x[nz_begin])
     shape_gamma_nz.append(1)
-    shape_gamma_nz.append(shape_x[nz_begin + 2])
+    shape_gamma_nz.append(shape_x[nz_begin + Constant.DIM_TWO])
 
     param_nz_axis = []
     for i, (xtem, gamma) in enumerate(zip(shape_x_nz, shape_gamma_nz)):
