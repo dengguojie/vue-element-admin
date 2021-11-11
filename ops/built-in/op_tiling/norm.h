@@ -29,7 +29,43 @@
 
 namespace optiling {
 
-struct TilingInfoNorm {
+
+struct NormCompileInfo {
+  // construct func
+  NormCompileInfo() = default;
+  NormCompileInfo(const std::string& op_type, const nlohmann::json &compile_info);
+  // check value
+  bool Check();
+
+  std::string norm_op_type;
+  bool check_sucess{true};
+  // reduce axis
+  std::vector<int32_t> ori_axis;
+  // common info
+  int32_t core_num{-1};
+  int32_t min_block_size{-1};
+  bool is_keep_dims{false};
+  int32_t max_ub_count{-1};
+  int32_t workspace_max_ub_count{-1};
+  int32_t pad_max_ub_count{-1};
+  int32_t pad_max_entire_size{-1};
+  // workspace info
+  std::vector<int32_t> workspace_type;
+  std::vector<int32_t> workspace_bytes;
+  int32_t workspace_diff_count{-1};
+  // norm vars
+  std::unordered_map<std::string, std::vector<int32_t>> norm_vars;
+  // fuse axis
+  bool is_fuse_axis{true};
+  // const
+  bool is_const{false};
+  bool is_const_post{false};
+  int32_t const_tiling_key{-1};
+  int32_t const_block_dim{-1};
+  std::vector<int64_t> const_workspace_size;
+};
+
+struct NormTilingInfo {
   int32_t block_dim{-1};
   int32_t block_tiling_axis{-1};
   int64_t block_tiling_factor{-1};
@@ -37,7 +73,7 @@ struct TilingInfoNorm {
   int64_t ub_tiling_factor{-1};
 };
 
-struct ReorderInfoNorm {
+struct NormReorderInfo {
   std::vector<int64_t> reorder_input_shape{std::vector<int64_t>(10, 0)};
   std::vector<int32_t> fused_block_tiling_axis;
   // pos after reorder : pos before reorder
@@ -45,31 +81,20 @@ struct ReorderInfoNorm {
   std::vector<int32_t> reorderPos_oriPos{std::vector<int32_t>(10, 0)};
 };
 
-struct CompileInfoNorm {
-  bool is_const{false};
-  bool is_const_post{false};
-  bool is_keep_dims{false};
-  bool is_fuse_axis{true};
-  int32_t max_ub_count{-1};
-  int32_t workspace_max_ub_count{-1};
-  int32_t pad_max_ub_count{-1};
-  int32_t pad_max_entire_size{-1};
-  int32_t core_num{-1};
-  int32_t min_block_size{-1};
-};
-
 class Norm {
   public:
-    explicit Norm(const std::string& _op_type, const ge::Operator& _op_paras, const nlohmann::json& _op_info,
-                  utils::OpRunInfo& _run_info)
-        : op_type(_op_type), op_paras(_op_paras), op_info(_op_info), run_info(_run_info) {
+    explicit Norm(const std::string& op_type, const ge::Operator& op_paras,
+                  const NormCompileInfo& compileInfo, utils::OpRunInfo& run_info)
+        : op_type(op_type), op_paras(op_paras), compileInfo(compileInfo), run_info(run_info) {
     }
     ~Norm() {
     }
+    bool DoTiling();
+
+  private:
     bool GetInput();
     bool Init();
     bool FusedReduceAxis();
-    bool GetCompileInfo();
     bool ProcessTiling();
     bool GetWorkspaceBlockTilingInfo();
     bool GetBlockTilingInfo();
@@ -77,13 +102,12 @@ class Norm {
     bool PartialReorderUbTiling();
     bool GetUbTilingInfo();
     bool NeedRefineBlockTiling();
-    bool DoTiling();
+    bool CalcTiling();
     bool ConstInputProcPost();
     bool CalcTilingKey();
     bool CalcWorkspace();
     bool WriteTilingData();
 
-  private:
     bool IsInVector(std::vector<int32_t>& shape, int32_t value);
     int64_t CalcAfterReduceShapeProduct(std::vector<int64_t>& shape, std::vector<int32_t>& axis);
     int64_t CalcReduceShapeProduct(std::vector<int64_t>& shape, std::vector<int32_t>& axis);
@@ -94,14 +118,12 @@ class Norm {
     int64_t CalcReorderShapeProduct(int32_t axis_index, int32_t block_tiling_axis_in_reorder);
     int64_t CalcReorderShapeProductAlign(int32_t axis_index, int32_t block_tiling_axis_in_reorder);
 
-  private:
     const std::string& op_type;
     const ge::Operator& op_paras;
-    const nlohmann::json& op_info;
+    const NormCompileInfo& compileInfo;
     utils::OpRunInfo& run_info;
-    CompileInfoNorm compileInfo;
-    TilingInfoNorm tilingInfo;
-    ReorderInfoNorm reorderInfo;
+    NormTilingInfo tilingInfo;
+    NormReorderInfo reorderInfo;
 
     std::vector<int64_t> input_shape_ori{std::vector<int64_t>(10, 0)};
     std::vector<int32_t> reduce_axis_ori{std::vector<int32_t>(10, 0)};
@@ -132,26 +154,17 @@ class Norm {
     int32_t tiling_key{-1};
 };
 
-/*
- * @brief: tiling function of norm operator
- * @param [in] op_type: op_type of the norm operator
- * @param [in] op_paras: inputs/outputs/attrs of the norm operator
- * @param [in] op_compile_info: compile time generated info of the norm operator
- * @param [out] run_info: result data
- * @return bool: success or not
- */
-bool NormTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
-                utils::OpRunInfo& run_info);
-
-class NormCompileInfo: public AutoTilingCompileInfo {
+class NormTilingHandler: public AutoTilingCompileInfo {
   public:
-  NormCompileInfo(const std::string& o, const std::string& p, const nlohmann::json& c)
-    : AutoTilingCompileInfo(o, p), compile_info(c) {}
+  NormTilingHandler(const std::string& o, const std::string& p, const nlohmann::json& c)
+    : AutoTilingCompileInfo(o, p), norm_compile_info(o, c) {}
+  ~NormTilingHandler() {}
   bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const override;
   bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const override;
+  bool ParsedSuccess() {return norm_compile_info.check_sucess;};
 
   private:
-  const nlohmann::json compile_info;
+  const NormCompileInfo norm_compile_info;
 };
 
 std::shared_ptr<AutoTilingCompileInfo> CreateNormTilingHandler(const std::string& op_type,

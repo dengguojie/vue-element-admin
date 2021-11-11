@@ -81,33 +81,22 @@ bool Norm::GetInput()
 
 bool Norm::Init()
 {
-  try {
-    const auto& local_reduce_axis = op_info.at("_ori_axis").get<std::vector<int32_t>>();
-    for (std::size_t i = 0; i < local_reduce_axis.size(); i++) {
-      reduce_axis_ori[i] = local_reduce_axis[i];
+  for (std::size_t i = 0; i < compileInfo.ori_axis.size(); i++) {
+    reduce_axis_ori[i] = compileInfo.ori_axis[i];
+  }
+  reduce_axis_ori.resize(compileInfo.ori_axis.size());
+  // Convert reduce axis (-1 -> length+1)
+  // CHECK AXIS VALUE
+  int32_t max_value = int32_t(input_shape_ori.size());
+  int32_t min_value = -1 * max_value;
+  for (std::size_t i = 0; i < reduce_axis_ori.size(); i++) {
+    if (reduce_axis_ori[i] >= max_value || reduce_axis_ori[i] < min_value) {
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "value of axis is illegal.");
+      return false;
     }
-    reduce_axis_ori.resize(local_reduce_axis.size());
-    // Convert reduce axis (-1 -> length+1)
-    // CHECK AXIS VALUE
-    int32_t max_value = int32_t(input_shape_ori.size());
-    int32_t min_value = -1 * max_value;
-    for (std::size_t i = 0; i < reduce_axis_ori.size(); i++) {
-      if (reduce_axis_ori[i] >= max_value || reduce_axis_ori[i] < min_value) {
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "value of axis is illegal.");
-        return false;
-      }
-      if (reduce_axis_ori[i] < 0) {
-        reduce_axis_ori[i] = input_shape_ori.size() + reduce_axis_ori[i];
-      }
+    if (reduce_axis_ori[i] < 0) {
+      reduce_axis_ori[i] = input_shape_ori.size() + reduce_axis_ori[i];
     }
-
-    compileInfo.is_const = op_info.count("_reduce_shape_known") > 0 &&
-                           op_info.at("_reduce_shape_known").get<bool>();
-    compileInfo.is_fuse_axis = op_info.count("_fuse_axis") > 0 &&
-                               op_info.at("_fuse_axis").get<bool>();
-  } catch (const std::exception &e) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Func of Init error. Error message: %s", e.what());
-    return false;
   }
 
   return true;
@@ -170,54 +159,6 @@ bool Norm::FusedReduceAxis()
     input_shape.insert(input_shape.begin(), 1, 1);
     reduce_axis = {1};
   }
-  return true;
-}
-
-bool Norm::GetCompileInfo()
-{
-  try {
-    const auto& common_info = op_info.at("_common_info").get<std::vector<int32_t>>();
-    V_CHECK_EQ(common_info.size(), 7,
-               VECTOR_INNER_ERR_REPORT_TILIING(op_type, "size of common_info should be 7"),
-               return false);
-    // Get Data
-    compileInfo.core_num = common_info[0];
-    compileInfo.min_block_size = common_info[1];
-    compileInfo.is_keep_dims = (bool)common_info[2];
-    compileInfo.max_ub_count = common_info[3];
-    compileInfo.workspace_max_ub_count = common_info[4];
-    compileInfo.pad_max_ub_count = common_info[5];
-    compileInfo.pad_max_entire_size = common_info[6];
-    // CHECK VALUE
-    V_OP_TILING_CHECK(compileInfo.core_num > 0,
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "core_num is %d that is illegal",
-                                                      compileInfo.core_num),
-                      return false);
-    V_OP_TILING_CHECK(compileInfo.min_block_size > 0,
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "min_block_size is %d that is illegal",
-                                                      compileInfo.min_block_size),
-                      return false);
-    V_OP_TILING_CHECK(compileInfo.max_ub_count > 0,
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "max_ub_count is %d that is illegal",
-                                                      compileInfo.max_ub_count),
-                      return false);
-    V_OP_TILING_CHECK(compileInfo.workspace_max_ub_count > 0,
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "workspace_max_ub_count is %d that is illegal",
-                                                      compileInfo.workspace_max_ub_count),
-                      return false);
-    V_OP_TILING_CHECK(compileInfo.pad_max_ub_count > 0,
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "pad_max_ub_count is %d that is illegal",
-                                                      compileInfo.pad_max_ub_count),
-                      return false);
-    V_OP_TILING_CHECK(compileInfo.pad_max_entire_size > 0,
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "pad_max_entire_size is %d that is illegal",
-                                                      compileInfo.pad_max_entire_size),
-                      return false);
-  } catch (const std::exception &e) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Func: GetCompileInfo error. Error message: %s", e.what());
-    return false;
-  }
-
   return true;
 }
 
@@ -738,7 +679,7 @@ bool Norm::GetVarValue()
   // obtain var value
   if (!compileInfo.is_const) {
     try {
-      const auto& var_pattern = op_info.at("_norm_vars").at(std::to_string(tiling_key)).get<std::vector<int32_t>>();
+      const auto& var_pattern = compileInfo.norm_vars.at(std::to_string(tiling_key));
       for (const auto& var : var_pattern) {
         if (var >= 300) {
           var_value[count_var] = (int32_t)tilingInfo.ub_tiling_factor;
@@ -760,9 +701,9 @@ bool Norm::GetVarValue()
   return true;
 }
 
-bool Norm::DoTiling()
+bool Norm::CalcTiling()
 {
-  /* Situations of DoTiling include:
+  /* Situations of CalcTiling include:
      1. input(known):
         status of compile: do others except FusedReduceAxis
         status of runtime: do WriteTilingData
@@ -775,17 +716,11 @@ bool Norm::DoTiling()
     // input(known)
     // invoking the tiling interface during runtime
     // is_const_post: "true"->runtime, "false"->compile
-    try {
-      compileInfo.is_const_post = op_info.at("_const_shape_post").get<bool>();
-      if (compileInfo.is_const_post) {
-        return ret;
-      } else {
-        reduce_axis = reduce_axis_ori;
-        input_shape = input_shape_ori;
-      }
-    } catch (const std::exception &e) {
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get compile_info error. Error message: %s", e.what());
-      return false;
+    if (compileInfo.is_const_post) {
+      return ret;
+    } else {
+      reduce_axis = reduce_axis_ori;
+      input_shape = input_shape_ori;
     }
   } else if (!compileInfo.is_fuse_axis) {
     reduce_axis = reduce_axis_ori;
@@ -794,8 +729,6 @@ bool Norm::DoTiling()
     // input(unknown)
     ret = ret && FusedReduceAxis();
   }
-
-  ret = ret && GetCompileInfo();
   // calculate some variables
   block_size = compileInfo.min_block_size;
 
@@ -824,8 +757,8 @@ bool Norm::DoTiling()
   pattern = CalcPattern(input_shape, reduce_axis);
   is_need_workspace = IsNeedWorkspace();
   is_align_and_remove_pad = !is_need_workspace && input_shape.size() == 2 && is_last_axis_reduce &&
-      input_shape.back() % block_size != 0 &&
       input_shape[0] != 1 && input_shape[1] != 1 &&
+      input_shape.back() % block_size != 0 &&
       compileInfo.pad_max_ub_count / compileInfo.pad_max_entire_size >= input_align_shape.back();
   // determine ub size
   if (is_need_workspace) {
@@ -870,19 +803,7 @@ bool Norm::CalcTilingKey()
 
 bool Norm::CalcWorkspace()
 {
-  const auto& workspace_type = op_info.at("_workspace_info").at("_workspace_type").get<std::vector<int32_t>>();
-  const auto& workspace_bytes = op_info.at("_workspace_info").at("_workspace_bytes").get<std::vector<int32_t>>();
-  const auto& workspace_diff_count = op_info.at("_workspace_info").at("_workspace_diff_count").get<int32_t>();
-  // CHECK VALUE
-  V_CHECK_EQ(workspace_type.size(), workspace_bytes.size(),
-             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "size of workspace_type and workspace_bytes should be equal"),
-             return false);
-  V_OP_TILING_CHECK((workspace_diff_count >= 0 && (uint32_t)workspace_diff_count <= workspace_type.size()),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "workspace_diff_count is %d that is illegal",
-                                                    workspace_diff_count),
-                    return false);
-
-  std::size_t workspace_count = workspace_type.size();
+  std::size_t workspace_count = compileInfo.workspace_type.size();
   if (workspace_count != 0) {
     if (is_need_workspace) {
       int64_t shape_after_reduce_align_product = CalcAfterReduceShapeProduct(input_align_shape, reduce_axis);
@@ -892,13 +813,13 @@ bool Norm::CalcWorkspace()
                                                                   std::multiplies<int64_t>());
       for (std::size_t i = 0; i < workspace_count; i++) {
         // workspace sch may need fake workspace
-        if (!is_partial_reorder && i >= workspace_count - (int32_t)workspace_diff_count) {
+        if (!is_partial_reorder && i >= workspace_count - (int32_t)compileInfo.workspace_diff_count) {
           workspace[i] = 32;
         } else {
-          if (workspace_type[i] == 1) {
-            workspace[i] = shape_before_reduce_align_product * workspace_bytes[i];
+          if (compileInfo.workspace_type[i] == 1) {
+            workspace[i] = shape_before_reduce_align_product * compileInfo.workspace_bytes[i];
           } else {
-            workspace[i] = shape_after_reduce_align_product * workspace_bytes[i];
+            workspace[i] = shape_after_reduce_align_product * compileInfo.workspace_bytes[i];
           }
         }
       }
@@ -915,18 +836,10 @@ bool Norm::CalcWorkspace()
 bool Norm::ConstInputProcPost()
 {
   // runtime
-  try {
-    int32_t const_tiling_key = op_info.at("_const_tiling_key").get<std::int32_t>();
-    workspace = op_info.at("_const_workspace_size").get<std::vector<std::int64_t>>();
-    run_info.SetBlockDim(op_info.at("_block_dims").get<std::int32_t>());
-    run_info.SetTilingKey(const_tiling_key);
-    for (const auto& item : workspace) {
-      run_info.AddWorkspace(item);
-    }
-  } catch (const std::exception &e) {
-    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Func: ConstInputProcPost get error message. Error message: %s",
-                                    e.what());
-    return false;
+  run_info.SetBlockDim(compileInfo.const_block_dim);
+  run_info.SetTilingKey(compileInfo.const_tiling_key);
+  for (const auto& item : compileInfo.const_workspace_size) {
+    run_info.AddWorkspace(item);
   }
 
   return true;
@@ -965,31 +878,120 @@ bool Norm::WriteTilingData()
   return true;
 }
 
-bool NormTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
-                utils::OpRunInfo& run_info)
+bool Norm::DoTiling()
 {
-  OP_LOGD(op_type.c_str(), "norm tiling running");
-  Norm norm(op_type, op_paras, op_info, run_info);
-  bool ret = norm.GetInput();
-  ret = ret && norm.DoTiling();
-  ret = ret && norm.WriteTilingData();
+  bool ret = GetInput();
+  ret = ret && CalcTiling();
+  ret = ret && WriteTilingData();
   return ret;
 }
 
-bool NormCompileInfo::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const {
-  return NormTiling(op_type, op_paras, compile_info, run_info);
+bool NormCompileInfo::Check()
+{
+  V_OP_TILING_CHECK(core_num > 0,
+                    VECTOR_INNER_ERR_REPORT_TILIING(norm_op_type, "core_num is %d that is illegal",
+                                                    core_num),
+                    return false);
+  V_OP_TILING_CHECK(min_block_size > 0,
+                    VECTOR_INNER_ERR_REPORT_TILIING(norm_op_type, "min_block_size is %d that is illegal",
+                                                    min_block_size),
+                    return false);
+  V_OP_TILING_CHECK(max_ub_count > 0,
+                    VECTOR_INNER_ERR_REPORT_TILIING(norm_op_type, "max_ub_count is %d that is illegal",
+                                                    max_ub_count),
+                    return false);
+  V_OP_TILING_CHECK(workspace_max_ub_count > 0,
+                    VECTOR_INNER_ERR_REPORT_TILIING(norm_op_type, "workspace_max_ub_count is %d that is illegal",
+                                                    workspace_max_ub_count),
+                    return false);
+  V_OP_TILING_CHECK(pad_max_ub_count > 0,
+                    VECTOR_INNER_ERR_REPORT_TILIING(norm_op_type, "pad_max_ub_count is %d that is illegal",
+                                                    pad_max_ub_count),
+                    return false);
+  V_OP_TILING_CHECK(pad_max_entire_size > 0,
+                    VECTOR_INNER_ERR_REPORT_TILIING(norm_op_type, "pad_max_entire_size is %d that is illegal",
+                                                    pad_max_entire_size),
+                    return false);
+  V_OP_TILING_CHECK(workspace_type.size() == workspace_bytes.size(),
+                    VECTOR_INNER_ERR_REPORT_TILIING(norm_op_type,
+                                                    "size of workspace_type and workspace_bytes should be equal"),
+                    return false);
+  V_OP_TILING_CHECK((workspace_diff_count >= 0 &&
+                     (uint32_t)workspace_diff_count <= workspace_type.size()),
+                    VECTOR_INNER_ERR_REPORT_TILIING(norm_op_type, "workspace_diff_count is %d that is illegal",
+                                                    workspace_diff_count),
+                    return false);
+
+  return true;
 }
 
-bool NormCompileInfo::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info,
-                               const OpInfo& op_info) const {
+NormCompileInfo::NormCompileInfo(const std::string& op_type, const nlohmann::json& parsed_json_obj)
+{
+  norm_op_type = op_type;
+  OP_LOGD(norm_op_type.c_str(), "norm compile info construct fuc running");
+  // reduce axis
+  ori_axis = parsed_json_obj.at("_ori_axis").get<std::vector<int32_t>>();
+  // common info
+  const auto& common_info = parsed_json_obj.at("_common_info").get<std::vector<int32_t>>();
+  if (common_info.size() == 7) {
+    core_num = common_info[0];
+    min_block_size = common_info[1];
+    is_keep_dims = (bool)common_info[2];
+    max_ub_count = common_info[3];
+    workspace_max_ub_count = common_info[4];
+    pad_max_ub_count = common_info[5];
+    pad_max_entire_size = common_info[6];
+  }
+  // workspace info
+  workspace_type = parsed_json_obj.at("_workspace_info").at("_workspace_type").get<std::vector<int32_t>>();
+  workspace_bytes = parsed_json_obj.at("_workspace_info").at("_workspace_bytes").get<std::vector<int32_t>>();
+  workspace_diff_count = parsed_json_obj.at("_workspace_info").at("_workspace_diff_count").get<int32_t>();
+  // fuse axis
+  if (parsed_json_obj.contains("_fuse_axis")) {
+    is_fuse_axis = parsed_json_obj.at("_fuse_axis").get<bool>();
+  }
+  // const
+  if (parsed_json_obj.contains("_reduce_shape_known")) {
+    is_const = parsed_json_obj.at("_reduce_shape_known").get<bool>();
+  }
+  if (is_const) {
+    is_const_post = parsed_json_obj.at("_const_shape_post").get<bool>();
+    if (is_const_post) {
+      const_tiling_key = parsed_json_obj.at("_const_tiling_key").get<int32_t>();
+      const_block_dim = parsed_json_obj.at("_block_dims").get<int32_t>();
+      const_workspace_size = parsed_json_obj.at("_const_workspace_size").get<std::vector<int64_t>>();
+    }
+  } else {
+    norm_vars = parsed_json_obj.at("_norm_vars").get<std::unordered_map<std::string, std::vector<int32_t>>>();
+  }
+  check_sucess = Check();
+}
+
+bool NormTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const
+{
+  OP_LOGD(op_type.c_str(), "norm tiling running");
+  Norm norm(op_type, op_paras, norm_compile_info, run_info);
+  return norm.DoTiling();
+}
+
+bool NormTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info,
+                                 const OpInfo& op_info) const
+{
   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Norm custom tiling is not supported yet");
   return false;
 }
 
 std::shared_ptr<AutoTilingCompileInfo> CreateNormTilingHandler(const std::string& op_type,
                                                                const std::string& pattern,
-                                                               const nlohmann::json& parsed_compile_info) {
-  return std::make_shared<NormCompileInfo>(op_type, pattern, parsed_compile_info);
+                                                               const nlohmann::json& parsed_compile_info)
+{
+  auto compile_info_ptr = std::make_shared<NormTilingHandler>(op_type, pattern, parsed_compile_info);
+  if (!compile_info_ptr->ParsedSuccess()) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Norm parse compile info failed");
+    return std::shared_ptr<AutoTilingCompileInfo>(nullptr);
+  }
+
+  return compile_info_ptr;
 }
 
 }  // namespace optiling
