@@ -680,20 +680,6 @@ vector_B:
       - ops/built-in/framework/tf_plugin/parallel_concat_plugin.cc
       - ops/built-in/framework/tf_plugin/resize_bilinear_grad_plugin.cc
       - ops/built-in/framework/tf_plugin/resize_nearest_neighbor_grad_plugin.cc
-      - ops/built-in/framework/tf_scope_fusion_passes/CMakeLists.txt
-      - ops/built-in/framework/tf_scope_fusion_passes/register_scope_fusion_passes.cc
-      - ops/built-in/framework/tf_scope_fusion_passes/scope_decode_bbox_v2_pass.cc
-      - ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_gru_pass.cc
-      - ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_gru_pass.h
-      - ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_lstm_pass.cc
-      - ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_rnn_pass.cc
-      - ops/built-in/framework/tf_scope_fusion_passes/scope_dynamic_rnn_pass.h
-      - ops/built-in/framework/tf_scope_fusion_passes/scope_instancenorm_grad_pass.cc
-      - ops/built-in/framework/tf_scope_fusion_passes/scope_instancenorm_grad_pass.h
-      - ops/built-in/framework/tf_scope_fusion_passes/scope_instancenorm_pass.cc
-      - ops/built-in/framework/tf_scope_fusion_passes/scope_instancenorm_pass.h
-      - ops/built-in/framework/tf_scope_fusion_passes/scope_layernorm_grad_pass.cc
-      - ops/built-in/framework/tf_scope_fusion_passes/scope_layernorm_grad_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_a_square_sum_maximum_rsqrt_mul_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_all_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/a_reduce_any_fusion_pass.cc
@@ -769,6 +755,7 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_confusion_transpose_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_confusion_transpose_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transdata_transdata_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/transpose_inplaceupdate_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/transpose_reshape_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/unsortedsegmentsumd_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/z_unsortedsegmentsum_update_fusion_pass.cc
@@ -1285,6 +1272,7 @@ vector_B:
       - ops/built-in/tests/ut/graph_fusion/ai_core/strided_slice_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/transdata_cast_fusion_pass_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/transdata_confusion_transpose_fusion_pass_test.cpp
+      - ops/built-in/tests/ut/graph_fusion/ai_core/transpose_inplaceupdate_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/zunsortedsegmentsum_update_fusion_test.cpp
       - ops/built-in/tests/ut/op_cfg_test/test_op_cfg_file.py
       - ops/built-in/tests/ut/op_tiling_test/test_arg_max_with_value.cpp
@@ -1401,6 +1389,7 @@ vector_B:
       - ops/built-in/tests/ut/ops_test/BatchNorm3DGrad/test_BatchNorm3DGrad_impl.py
       - ops/built-in/tests/ut/ops_test/BatchNormGrad/test_BatchNormGrad_impl.py
       - ops/built-in/tests/ut/ops_test/BatchToSpace/__init__.py
+      - ops/built-in/tests/ut/ops_test/BatchToSpace/test_batch_to_space_proto.cpp
       - ops/built-in/tests/ut/ops_test/BatchToSpace/test_batch_to_space_d_proto.cpp
       - ops/built-in/tests/ut/ops_test/BatchToSpaceD/__init__.py
       - ops/built-in/tests/ut/ops_test/BatchToSpaceD/test_BatchToSpaceD_impl.py
@@ -1471,6 +1460,8 @@ vector_B:
       - ops/built-in/tests/ut/ops_test/ConcatV2D/test_ConcatV2D_impl.py
       - ops/built-in/tests/ut/ops_test/ConfusionMatrix/test_ConfusionMatrix_impl.py
       - ops/built-in/tests/ut/ops_test/ConfusionMulGrad/test_ConfusionMulGrad_impl.py
+      - ops/built-in/tests/ut/ops_test/ConfusionTransposeD/test_ConfusionTranspose_proto.cpp
+      - ops/built-in/tests/ut/ops_test/ConfusionTransposeD/test_ConfusionTransposeD_proto.cpp
       - ops/built-in/tests/ut/ops_test/Cos/test_Cos_dynamic_impl.py
       - ops/built-in/tests/ut/ops_test/Cos/test_Cos_impl.py
       - ops/built-in/tests/ut/ops_test/Cos/test_Cos_proto.cpp
@@ -1528,6 +1519,7 @@ vector_B:
       - ops/built-in/tests/ut/ops_test/Fills/test_Fills_dynamic_impl.py
       - ops/built-in/tests/ut/ops_test/Fills/test_Fills_impl.py
       - ops/built-in/tests/ut/ops_test/Fills/test_fills_proto.cpp
+      - ops/built-in/tests/ut/ops_test/Flatten/test_FlattenV2_proto.cpp
       - ops/built-in/tests/ut/ops_test/Floor/test_Floor_dynamic_impl.py
       - ops/built-in/tests/ut/ops_test/Floor/test_Floor_impl.py
       - ops/built-in/tests/ut/ops_test/Floor/test_Floor_proto.cpp
