@@ -31,7 +31,7 @@ target_compile_definitions(ops_cpp_proto_utest PRIVATE
 if(NOT ${CMAKE_BUILD_MODE} STREQUAL "FALSE")
    set(compile_opt_mode ${CMAKE_BUILD_MODE})
 else()
-   set(compile_opt_mode -O0)
+   set(compile_opt_mode -g)
 endif()
 target_compile_options(ops_cpp_proto_utest PUBLIC
         -fPIC

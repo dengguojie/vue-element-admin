@@ -438,7 +438,7 @@ checkopts() {
       h) usage
          exit 0 ;;
       j) THREAD_NUM=$OPTARG 
-	 core_nums=$OPTARG ;;
+         core_nums=$OPTARG ;;
       u) UT_TEST_ALL=TRUE 
 	     UT_MODE=TRUE ;;
       s) ST_TEST=TRUE ;;
@@ -469,6 +469,9 @@ checkopts() {
                            exit 0;;
            make_clean) make_clean
                        exit 0;;
+           base_env) chmod 744 ./scripts/install_base_env.sh 
+                    ./scripts/install_base_env.sh
+		    exit 0;;
            install_daily) username="$2"
                           pwsswd="$3"
                           echo $dotted_line
@@ -778,3 +781,4 @@ if [[ "$@" == "-h" ]];then
 else
   main "$@"|gawk '{print strftime("[%Y-%m-%d %H:%M:%S]"), $0}'
 fi
+
