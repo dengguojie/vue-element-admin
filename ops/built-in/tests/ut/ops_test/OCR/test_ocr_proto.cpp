@@ -276,6 +276,16 @@ TEST_F(OCRTest, BatchDilatePolysInferShapeUnknown) {
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
+TEST_F(OCRTest, BatchDilatePolysInferShape) {
+  ge::op::BatchDilatePolys op;
+  op.UpdateInputDesc("polys_data", create_desc({2}, ge::DT_INT32));
+  op.UpdateInputDesc("polys_offset", create_desc({1}, ge::DT_INT32));
+  op.UpdateInputDesc("polys_size", create_desc({1}, ge::DT_INT32));
+  op.UpdateInputDesc("score", create_desc({4,4}, ge::DT_FLOAT));
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
 TEST_F(OCRTest, OCRFindContoursInferShape) {
   ge::op::OCRFindContours op;
   op.UpdateInputDesc("img", create_desc({200,300}, ge::DT_UINT8));

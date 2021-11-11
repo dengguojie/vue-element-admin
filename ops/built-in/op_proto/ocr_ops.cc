@@ -323,7 +323,7 @@ IMPLEMT_COMMON_INFERFUNC(BatchDilatePolysInferShape) {
     score_index->GetShapeRange(score_range);
     int64_t polys_score_max_h=score_range[0].second;
     int64_t polys_score_max_w=score_range[1].second;
-    std::pair<int64_t,int64_t> data_range({1,polys_score_max_h*polys_score_max_w});
+    std::pair<int64_t,int64_t> data_range({0,polys_score_max_h*polys_score_max_w});
     dilated_polys_data_range.push_back(data_range);
     OP_LOGI("dilated_polys_data_range=%d",polys_score_max_h*polys_score_max_w);
     dilated_polys_data_index->SetShapeRange(dilated_polys_data_range);
@@ -331,7 +331,7 @@ IMPLEMT_COMMON_INFERFUNC(BatchDilatePolysInferShape) {
     auto polys_data_max_dims=score_index->GetShape().GetDims();
     int64_t polys_score_max_h=polys_data_max_dims[0];
     int64_t polys_score_max_w=polys_data_max_dims[1];
-    std::pair<int64_t,int64_t> data_range({1,polys_score_max_h*polys_score_max_w});
+    std::pair<int64_t,int64_t> data_range({0,polys_score_max_h*polys_score_max_w});
     dilated_polys_data_range.push_back(data_range);
     dilated_polys_data_index->SetShapeRange(dilated_polys_data_range);
   }
@@ -347,15 +347,15 @@ IMPLEMT_COMMON_INFERFUNC(BatchDilatePolysInferShape) {
     std::vector<std::pair<int64_t,int64_t>> polys_offset_range;
     polys_offset_index->GetShapeRange(polys_offset_range);
     int64_t polys_offset_max=polys_offset_range[0].second;
-    std::pair<int64_t,int64_t> offset_range({1,polys_offset_max});
+    std::pair<int64_t,int64_t> offset_range({0,polys_offset_max});
     dilated_polys_offset_range.push_back(offset_range);
-    dilated_polys_offset_index->SetShapeRange(dilated_polys_data_range);
+    dilated_polys_offset_index->SetShapeRange(dilated_polys_offset_range);
   } else{
-    auto polys_offset_max_dims=dilated_polys_offset_index->GetShape().GetDims();
+    auto polys_offset_max_dims=polys_offset_index->GetShape().GetDims();
     int64_t polys_offset_max=polys_offset_max_dims[0];
-    std::pair<int64_t,int64_t> offset_range({1,polys_offset_max});
+    std::pair<int64_t,int64_t> offset_range({0,polys_offset_max});
     dilated_polys_offset_range.push_back(offset_range);
-    dilated_polys_offset_index->SetShapeRange(dilated_polys_data_range);
+    dilated_polys_offset_index->SetShapeRange(dilated_polys_offset_range);
   }
   dilated_polys_offset_index->SetDataType(DT_INT32);
   dilated_polys_offset_index->SetShape(ge::GeShape(UNKNOWN_SHAPE));
@@ -369,15 +369,15 @@ IMPLEMT_COMMON_INFERFUNC(BatchDilatePolysInferShape) {
     std::vector<std::pair<int64_t,int64_t>> polys_size_range;
     polys_size_index->GetShapeRange(polys_size_range);
     int64_t polys_size_max=polys_size_range[0].second;
-    std::pair<int64_t,int64_t> size_range({1,polys_size_max});
+    std::pair<int64_t,int64_t> size_range({0,polys_size_max});
     dilated_polys_size_range.push_back(size_range);
-    dilated_polys_size_index->SetShapeRange(dilated_polys_data_range);
+    dilated_polys_size_index->SetShapeRange(dilated_polys_size_range);
   } else{
-    auto polys_size_max_dims=dilated_polys_size_index->GetShape().GetDims();
+    auto polys_size_max_dims=polys_size_index->GetShape().GetDims();
     int64_t polys_size_max=polys_size_max_dims[0];
-    std::pair<int64_t,int64_t> size_range({1,polys_size_max});
+    std::pair<int64_t,int64_t> size_range({0,polys_size_max});
     dilated_polys_size_range.push_back(size_range);
-    dilated_polys_size_index->SetShapeRange(dilated_polys_data_range);
+    dilated_polys_size_index->SetShapeRange(dilated_polys_size_range);
   }
   dilated_polys_size_index->SetDataType(DT_INT32);
   dilated_polys_size_index->SetShape(ge::GeShape(UNKNOWN_SHAPE));
