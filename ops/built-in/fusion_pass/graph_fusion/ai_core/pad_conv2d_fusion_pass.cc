@@ -225,6 +225,7 @@ Status PadConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
         OP_LOGI(FUSED_OP_TYPE.c_str(), "Output node is not Conv2D or Conv2DBackpropFilterD, can not fusion."),
         return NOT_CHANGED);
   }
+
   // Get batch_norm_grad_node and check the graph
   std::ostringstream description;
   if (conv2d_backprop_filter_d_node != nullptr) {
@@ -281,7 +282,7 @@ Status PadConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
           description.str("");
           description << "Set paddings to " << conv2d_backpropinput_node->GetName().c_str() << " failed.";
           FUSION_PASS_CHECK(
-              !ge::AttrUtils::SetListInt(conv2d_backpropinput_node->GetOpDesc(), PADS, pads),
+              !ge::AttrUtils::SetListInt(conv2d_backpropinput_node->GetOpDesc(), PADS, conv_pads_all),
               ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), description.str().c_str()), return FAILED);
           FUSION_PASS_CHECK(!ge::AttrUtils::SetStr(conv2d_backpropinput_node->GetOpDesc(), PADDING, "SAME"),
                             ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Set padding attr failed."), return FAILED);
@@ -347,15 +348,11 @@ Status PadConv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
                                               node_ptr->GetInDataAnchor(0)) != SUCCESS,
                       ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), description.str().c_str()),
                       return FAILED);
-    description.str("");
+    description.str(""); 
     description << "Set paddings to " << node_name.c_str() << " failed.";
-    if (node_name == CONV2D) {
-      FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(node_ptr->GetOpDesc(), PADS, conv_pads_all),
-                        ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), description.str().c_str()), return FAILED);
-    } else {
-      FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(node_ptr->GetOpDesc(), PADS, pads),
-                        ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), description.str().c_str()), return FAILED);
-    }
+    FUSION_PASS_CHECK(!ge::AttrUtils::SetListInt(node_ptr->GetOpDesc(), PADS, conv_pads_all),
+                      ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), description.str().c_str()), return FAILED);
+
     FUSION_PASS_CHECK(!ge::AttrUtils::SetStr(node_ptr->GetOpDesc(), PADDING, "SAME"),
                       ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Set padding attr failed."), return FAILED);
   }
