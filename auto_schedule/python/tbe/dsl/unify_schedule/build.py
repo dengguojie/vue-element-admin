@@ -31,6 +31,8 @@ def build(sch, config_map=None):
     :param config_map:
     :return:
     """
+    _add_tensor_list_to_context(config_map)
+
     context = operation.get_context()
     if context is not None and context.get_mode() in ("dynamic", "static"):
         return dynamic_build(sch, config_map)
@@ -40,3 +42,9 @@ def build(sch, config_map=None):
     if len(tensors) == 1 and isinstance(tensors[0], (tuple, list)):
         config_map["tensor_list"] = tensors[0]
     return static_build(sch, config_map)
+
+
+def _add_tensor_list_to_context(config_map):
+    context = operation.get_op_context()
+    if context and config_map and "tensor_list" in config_map:
+        context.add_addition("tensor_list", config_map["tensor_list"])
