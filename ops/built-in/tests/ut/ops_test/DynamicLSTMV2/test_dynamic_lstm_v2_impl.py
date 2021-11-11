@@ -8,7 +8,7 @@ ut_case = OpUT("DynamicLSTMV2", "impl.dynamic_lstm_v2", "dynamic_lstm_v2")
 
 t = 2
 ut_case.add_case(
-    'Ascend310', 
+    ['Ascend310', 'Ascend910A'], 
     {
         'params': [
             {'dtype': 'float16', 'format': 'FRACTAL_NZ', 'ori_format': 'ND', 'ori_shape': (t, 1, 512), 'shape': (t, 32, 1, 16, 16), 'param_type': 'input'},
@@ -33,7 +33,7 @@ ut_case.add_case(
 
 print('run case 2')
 ut_case.add_case(
-    'Ascend310', 
+    ['Ascend310', 'Ascend910A'], 
     {
         'params': [
             {'dtype': 'float16', 'format': 'FRACTAL_NZ', 'ori_format': 'ND', 'ori_shape': (t, 1, 512), 'shape': (t, 32, 1, 16, 16), 'param_type': 'input'},
@@ -58,7 +58,7 @@ ut_case.add_case(
 t = 3
 print('run case 3')
 ut_case.add_case(
-    'Ascend310', 
+    ['Ascend310', 'Ascend910A'], 
     {
         'params': [
             {'dtype': 'float16', 'format': 'FRACTAL_NZ', 'ori_format': 'ND', 'ori_shape': (t, 1, 512), 'shape': (t, 32, 1, 16, 16), 'param_type': 'input'},
@@ -84,7 +84,7 @@ ut_case.add_case(
 )
 
 ut_case.add_case(
-    'Ascend910A', 
+    ['Ascend310', 'Ascend910A'], 
     {
         'params': [
             {'dtype': 'float16', 'format': 'FRACTAL_NZ', 'ori_format': 'ND', 'ori_shape': (t, 1, 512), 'shape': (t, 32, 1, 16, 16), 'param_type': 'input'},
@@ -106,6 +106,30 @@ ut_case.add_case(
     },
 )
 
+ut_case.add_case(
+    ['Ascend310', 'Ascend910A'], 
+    {
+        'params': [
+            {'dtype': 'float16', 'format': 'FRACTAL_NZ', 'ori_format': 'ND', 'ori_shape': (t, 1, 512), 'shape': (t, 32, 1, 16, 16), 'param_type': 'input'},
+            {'dtype': 'float16', 'format': 'FRACTAL_ZN_LSTM', 'ori_format': 'ND', 'ori_shape': (768, 1024), 'shape': (48, 64, 16, 16), 'param_type': 'input'},
+            {'dtype': 'float16', 'format': 'ND', 'ori_format': 'ND', 'ori_shape': (1024, ), 'shape': (1024, ), 'param_type': 'input'},
+            {'dtype': 'float16', 'format': 'ND', 'ori_format': 'ND', 'ori_shape': (t, 1), 'shape': (t, 1), 'param_type': 'input'}, 
+            {'dtype': 'float16', 'format': 'ND', 'ori_format': 'ND', 'ori_shape': (64, 1, 16, 16), 'shape': (64, 1, 16, 16), 'param_type': 'input'},
+            {'dtype': 'float16', 'format': 'FRACTAL_NZ', 'ori_format': 'NCHW', 'ori_shape': (t, 1, 256), 'shape': (t, 1, 256), 'param_type': 'input'},
+            {'dtype': 'float16', 'format': 'FRACTAL_NZ', 'ori_format': 'NCHW', 'ori_shape': (t, 1, 256), 'shape': (t, 1, 256), 'param_type': 'input'},
+            None, None, None, None,
+            {'dtype': 'float16', 'format': 'FRACTAL_NZ', 'ori_format': 'NCHW', 'ori_shape': (t, 1, 256), 'shape': (t, 1, 256), 'param_type': 'output'},
+            {'dtype': 'float16', 'format': 'FRACTAL_NZ', 'ori_format': 'NCHW', 'ori_shape': (t, 1, 256), 'shape': (t, 1, 256), 'param_type': 'output'},
+            {'dtype': 'float16', 'format': 'FRACTAL_NZ', 'ori_format': 'NCHW', 'ori_shape': (t, 1, 256), 'shape': (t, 1, 256), 'param_type': 'output'},
+            {'dtype': 'float16', 'format': 'FRACTAL_NZ', 'ori_format': 'NCHW', 'ori_shape': (t, 1, 256), 'shape': (t, 1, 256), 'param_type': 'output'},
+            {'dtype': 'float16', 'format': 'FRACTAL_NZ', 'ori_format': 'NCHW', 'ori_shape': (t, 1, 256), 'shape': (t, 1, 256), 'param_type': 'output'},
+            256, False, True, 0.0 
+        ],
+        'addition_params': {'impl_mode': 'high_performance'},
+        'case_name': 'dynamic_lstm_v2_case3',
+        'expect': 'success',
+    },
+)
 
 if __name__ == '__main__':
-    ut_case.run("Ascend310")
+    ut_case.run(["Ascend310", "Ascend910A"])

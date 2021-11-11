@@ -546,6 +546,51 @@ def test_compute_padding_fp32_002(test_arg):
         "high_performance",
     )
 
+def test_multicore_factor_calculate(test_arg):
+    from impl.softmax_v2 import multicore_factor_calculate
+    multicore_factor_calculate([32, 2, 4, 4, 16])
+    multicore_factor_calculate([1, 1, 32, 4, 16])
+    multicore_factor_calculate([1, 1, 1, 32, 16])
+    multicore_factor_calculate([1, 1, 1, 1, 32])
+
+def test_multicore_factor_calculate_nz(test_arg):
+    from impl.softmax_v2 import multicore_factor_calculate_nz
+    multicore_factor_calculate_nz([1, 32, 4, 4, 16])
+    multicore_factor_calculate_nz([1, 1, 32, 4, 16])
+    multicore_factor_calculate_nz([1, 1, 1, 32, 16])
+
+def test_tiling_factor_calculate(test_arg):
+    from impl.softmax_v2 import tiling_factor_calculate
+    tiling_factor_calculate([16, 1, 4, 4, 16], 1, 8, True)
+    tiling_factor_calculate([16, 1, 4, 4, 16], 1, 64, True)
+    tiling_factor_calculate([16, 1, 1024, 4, 16], 1, 64, True)
+    tiling_factor_calculate([16, 1, 1024, 1025, 16], 1, 64, True)
+    tiling_factor_calculate([16, 1, 4, 4, 16], 2, 8, True)
+    tiling_factor_calculate([16, 1, 1024, 4, 16], 2, 1024, True)
+    tiling_factor_calculate([16, 1, 1024, 1025, 16], 2, 1024, True)
+    tiling_factor_calculate([16, 1, 4, 4, 16], 3, 8, True)
+    tiling_factor_calculate([16, 1, 4, 4, 16], 3, 1025, True)
+    tiling_factor_calculate([16, 1, 4, 4, 16], 4, 8, True)
+
+def test_tiling_factor_calculate_nz(test_arg):
+    from impl.softmax_v2 import tiling_factor_calculate_nz
+    tiling_factor_calculate_nz([16, 1, 4, 4, 16], 1, 1, True)
+    tiling_factor_calculate_nz([16, 1, 4, 4, 16], 1, 2, True)
+    tiling_factor_calculate_nz([16, 1, 4, 8, 16], 1, 1024, True)
+    tiling_factor_calculate_nz([16, 1, 4, 4, 16], 2, 8, True)
+    tiling_factor_calculate_nz([16, 1, 4, 4, 16], 2, 2048, True)
+    tiling_factor_calculate_nz([16, 1, 4, 4, 16], 3, 8, True)
+
+def test_compute_nz_padding_fp32(test_arg):
+    from impl.softmax_v2 import compute_nz_padding_fp32
+    tensor_in = tvm.placeholder((6, 546, 16, 16), name='tensor_in', dtype="float16")
+    compute_nz_padding_fp32(tensor_in,(6, 546, 16, 16), [6, 15])
+    compute_nz_padding_fp32(tensor_in,(6, 546, 16, 16), [6, 1])
+
+    tensor_in = tvm.placeholder((6, 546, 16, 16), name='tensor_in', dtype="float32")
+    compute_nz_padding_fp32(tensor_in,(6, 6, 16, 16), [6, 15])
+    compute_nz_padding_fp32(tensor_in,(6, 546, 16, 16), [6, 1])
+    compute_nz_padding_fp32(tensor_in,(6, 546, 16, 16), [1, 1])
 
 ut_case.add_cust_test_func(test_func=test_get_op_support_info_000)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info_001)
@@ -569,6 +614,11 @@ ut_case.add_cust_test_func(test_func=test_compute_padding_001)
 ut_case.add_cust_test_func(test_func=test_compute_padding_002)
 ut_case.add_cust_test_func(test_func=test_compute_padding_fp32_001)
 ut_case.add_cust_test_func(test_func=test_compute_padding_fp32_002)
+ut_case.add_cust_test_func(test_func=test_multicore_factor_calculate)
+ut_case.add_cust_test_func(test_func=test_multicore_factor_calculate_nz)
+ut_case.add_cust_test_func(test_func=test_tiling_factor_calculate)
+ut_case.add_cust_test_func(test_func=test_tiling_factor_calculate_nz)
+ut_case.add_cust_test_func(test_func=test_compute_nz_padding_fp32)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910A","Hi3796CV300CS"])

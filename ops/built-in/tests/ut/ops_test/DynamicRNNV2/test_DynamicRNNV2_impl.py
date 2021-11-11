@@ -55,10 +55,15 @@ case1 = gen_dynamic_rnn_case((1,64,2,16,16), (64,4*32,16,16), (32,32*4,16,16), (
                              "tanh", "sigmoid", "ijfo", "success", "dynamic_rnn_1")
 case2 = gen_dynamic_rnn_case((1,64,2,16,16), (64,4*32,16,16), (32,32*4,16,16), (128*16,), (1,32,2,16,16), "float16", True, True,
                              "clip", "hard_sigmoid", "ifco", "success", "dynamic_rnn_2")
+case3 = gen_dynamic_rnn_case((1,64,2,16,16), (64,4*32,16,16), (32,32*4,16,16), (128*16,), (1,32,2,16,16), "float32", True, True,
+                             "tanh", "sigmoid", "ijfo", "success", "dynamic_rnn_3")
+case4 = gen_dynamic_rnn_case((1,64,2,16,16), (64,4*32,16,16), (32,32*4,16,16), (128*16,), (1,32,2,16,16), "float32", True, True,
+                             "clip", "hard_sigmoid", "ifco", "success", "dynamic_rnn_4")
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
-
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case3)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend310", "Ascend710", "Ascend910A"])
