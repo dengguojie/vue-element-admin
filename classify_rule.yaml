@@ -803,6 +803,7 @@ vector_B:
       - ops/built-in/op_tiling/max_pool_grad.cc
       - ops/built-in/op_tiling/maxpoolgradwithargmaxv1.cc
       - ops/built-in/op_tiling/maxpoolwithargmaxv1.cc
+      - ops/built-in/op_tiling/maxpoolwithargmaxv2.cc
       - ops/built-in/op_tiling/nll_loss.cc
       - ops/built-in/op_tiling/nll_loss_grad.cc
       - ops/built-in/op_tiling/nms_with_mask.cc

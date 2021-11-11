@@ -7053,116 +7053,223 @@ VERIFY_FUNC_REG(MaxPoolGradWithArgmaxV2, MaxPoolGradWithArgmaxV2Verify);
 // ----------------------MaxPoolGradWithArgmaxV2-----------------------
 
 // ---------------------MaxPoolWithArgmaxV2---------------------
-
-int cal_max(int input_size, int pad, int dilation, int kernel_size, int stride, bool ceil_mode) {
-  int max_size = 0;
-  int temp = 0;
-
-  if (stride == 0) {
-    return 0;
+static int64_t DivRtn(int64_t x, int64_t y) {
+  int64_t q = x / y;
+  int64_t r = x % y;
+  if ((r != 0) && ((r < 0) != (y < 0))) {
+    --q;
   }
+  return q;
+}
 
-  temp = input_size + 2 * pad - dilation * (kernel_size - 1) - 1;
-  if (ceil_mode) {
-    max_size = (temp + stride - 1) / stride + 1;
+static void UpdateMaxDimAndRange(const int64_t& ksize, const int64_t& strides, bool ceil_mode, int32_t pad_a,
+                                 int64_t& dim_size, std::pair<int64_t, int64_t>& dim_range) {
+  if (dim_size != -1) {
+    int64_t output_dim_size = 0;
+    int64_t exact_size = dim_size + 2 * pad_a - (ksize - 1) - 1 + ((ceil_mode == 1) ? (strides - 1) : 0);
+    output_dim_size = DivRtn(exact_size, strides) + 1;
+    if (pad_a > 0) {
+      if ((output_dim_size - 1) * strides >= dim_size + pad_a) {
+        output_dim_size = output_dim_size - 1;
+      }
+    }
+    dim_range = std::pair<int64_t, int64_t>{output_dim_size, output_dim_size};
+    dim_size = output_dim_size;
   } else {
-    max_size = temp / stride + 1;
+    int64_t first_range = 0;
+    int64_t second_range = 0;
+    if (dim_range.first == 1) {
+      first_range = 1;
+    } else {
+      int64_t exact_size = dim_range.first + 2 * pad_a - (ksize - 1) - 1 + ((ceil_mode == 1) ? (strides - 1) : 0);
+      first_range = DivRtn(exact_size, strides) + 1;
+      if (pad_a > 0) {
+        if ((first_range - 1) * strides >= dim_range.first + pad_a) {
+          first_range = first_range - 1;
+        }
+      }
+    }
+    if (dim_range.second == -1) {
+      second_range = -1;
+    } else {
+      int64_t exact_size = dim_range.second + 2 * pad_a - (ksize - 1) - 1 + ((ceil_mode == 1) ? (strides - 1) : 0);
+      second_range = DivRtn(exact_size, strides) + 1;
+      if (pad_a > 0) {
+        if ((second_range - 1) * strides >= dim_range.second + pad_a) {
+          second_range = second_range - 1;
+        }
+      }
+    }
+    dim_range = std::pair<int64_t, int64_t>{first_range, second_range};
   }
-  return max_size;
 }
 
-int ceil(int a, int b) {
-  int r = 0;
-  if (b == 0) {
-    return 0;
-  }
-
-  if (a % b == 0) {
-    r = a / b;
+static void UpdateMaskW(const int64_t& out_h, const int64_t& out_w,
+                        const int64_t& first_h, const int64_t& first_w,
+                        const int64_t& second_h, const int64_t& second_w,
+                        int64_t& dim_size, std::pair<int64_t, int64_t>& dim_range) {
+  if (dim_size != -1) {
+    int64_t mask_w = out_h * out_w;
+    if (mask_w % 16 != 0) {
+      mask_w = mask_w/16 + 1;
+    } else {
+      mask_w = mask_w/16;
+    }
+    mask_w = mask_w + 1;
+    dim_range = std::pair<int64_t, int64_t>{mask_w, mask_w};
+    dim_size = mask_w;
   } else {
-    r = a / b + 1;
+    int64_t first_range = 0;
+    int64_t second_range = 0;
+    if (dim_range.first == 1) {
+      first_range = 1;
+    } else {
+      int64_t mask_w = first_h * first_w;
+      if (mask_w % 16 != 0) {
+        mask_w = mask_w/16 + 1;
+      } else {
+        mask_w = mask_w/16;
+      }
+      first_range = mask_w + 1;
+    }
+    if (dim_range.second == -1) {
+      second_range = -1;
+    } else {
+      int64_t mask_w = second_h * second_w;
+      if (mask_w % 16 != 0) {
+        mask_w = mask_w/16 + 1;
+      } else {
+        mask_w = mask_w/16;
+      }
+      second_range = mask_w + 1;
+    }
+    dim_range = std::pair<int64_t, int64_t>{first_range, second_range};
   }
-
-  return r;
 }
 
-void cal_mask(int max_h, int max_w, int kernel_h, int kernel_w, int input_c0, int* mask_h, int* mask_w) {
-  int max_mul = 0;
-  max_mul = max_h * max_w;
-  *mask_h = kernel_h * kernel_w;
-  *mask_w = ceil(max_mul, input_c0) + 1;
-}
 
 IMPLEMT_VERIFIER(MaxPoolWithArgmaxV2, MaxPoolWithArgmaxV2Verify) {
   return GRAPH_SUCCESS;
 }
 
 IMPLEMT_COMMON_INFERFUNC(MaxPoolWithArgmaxV2InferShape) {
-  TensorDesc output_max = op.GetOutputDesc("y");
-  TensorDesc output_mask = op.GetOutputDesc("argmax");
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
+  if (op_info == nullptr) {
+    OP_LOGE(op.GetName().c_str(), "Get op_info failed.");
+    return GRAPH_FAILED;
+  }
+  auto input_desc = op_info->MutableInputDesc("x");
+  auto input_shape = input_desc->MutableShape();
+  auto input_format = input_desc->GetFormat();
+  DataType input_dtype = input_desc->GetDataType();
+  auto output_max = op_info->MutableOutputDesc("y");
+  auto output_mask = op_info->MutableOutputDesc("argmax");
 
-  auto tensorDesc = op.GetInputDesc(0);
-  auto shape = tensorDesc.GetShape();
+  std::vector<int32_t> ksize;
+  if (op.GetAttr("ksize", ksize) != GRAPH_SUCCESS) {
+    std::string err_msg = GetInputInvalidErrMsg("ksize");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
 
-  std::vector<int64_t> max_vec;
-  std::vector<int64_t> mask_vec;
-  std::vector<int64_t> pads;
-  std::vector<int64_t> dilation;
-  std::vector<int64_t> kernel_size;
-  std::vector<int64_t> strides;
+  if (ksize.size() != 4) {
+    GE_OP_LOGE(op.GetName().c_str(), "Length of ksize must be 4!");
+    return GRAPH_FAILED;
+  }
 
-  int batch_size, c1_size, input_h, input_w, pad_h, pad_w, dilation_h, dilation_w, kernel_h, kernel_w;
-  int max_h, max_w, mask_h, mask_w, stride_h, stride_w;
-  int input_c0 = 16;
-  bool ceil_mode;
+  std::vector<int32_t> strides;
+  if (GRAPH_SUCCESS != op.GetAttr("strides", strides)) {
+    std::string err_msg = GetInputInvalidErrMsg("strides");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
 
-  op.GetAttr("ksize", kernel_size);
-  op.GetAttr("strides", strides);
-  op.GetAttr("pads", pads);
-  op.GetAttr("dilation", dilation);
-  op.GetAttr("ceil_mode", ceil_mode);
-  batch_size = shape.GetDim(0);
-  c1_size = shape.GetDim(1);
-  input_h = shape.GetDim(2);
-  input_w = shape.GetDim(3);
+  if (strides.size() != 4) {
+    GE_OP_LOGE(op.GetName().c_str(), "Length of strides must be 4!");
+    return GRAPH_FAILED;
+  }
 
-  pad_h = pads[1];
-  pad_w = pads[2];
-  dilation_h = dilation[1];
-  dilation_w = dilation[2];
-  stride_h = strides[1];
-  stride_w = strides[2];
-  kernel_h = kernel_size[1];
-  kernel_w = kernel_size[2];
+  std::vector<int32_t> pads;
+  if (GRAPH_SUCCESS != op.GetAttr("pads", pads)) {
+    std::string err_msg = GetInputInvalidErrMsg("pads");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
 
-  max_h = cal_max(input_h, pad_h, dilation_h, kernel_h, stride_h, ceil_mode);
-  max_w = cal_max(input_w, pad_w, dilation_w, kernel_w, stride_w, ceil_mode);
+  if (pads.size() != 4) {
+    GE_OP_LOGE(op.GetName().c_str(), "Length of pads must be 4!");
+    return GRAPH_FAILED;
+  }
 
-  cal_mask(max_h, max_w, kernel_h, kernel_w, input_c0, &mask_h, &mask_w);
+  int32_t pad_top = pads[2];
+  int32_t pad_left = pads[3];
 
-  max_vec.push_back(batch_size);
-  max_vec.push_back(c1_size);
-  max_vec.push_back(max_h);
-  max_vec.push_back(max_w);
+  bool ceil_mode = 0;
+  if (GRAPH_SUCCESS != op.GetAttr("ceil_mode", ceil_mode)) {
+    std::string err_msg = GetInputInvalidErrMsg("ceil_mode");
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
 
-  mask_vec.push_back(batch_size);
-  mask_vec.push_back(c1_size);
-  mask_vec.push_back(mask_h);
-  mask_vec.push_back(mask_w);
+  std::vector<int64_t> input_dims = input_shape.GetDims();
+  std::vector<std::pair<int64_t, int64_t>> input_range;
+  if (IsUnknownRankShape(input_dims)) {
+    OP_LOGW(op.GetName().c_str(), "the input os unknown rank, will set the input [-1, -1, -1, -1].");
+    input_dims = {-1, -1, -1, -1};
+  } else {
+    input_desc->GetShapeRange(input_range);
+  }
+  MakeUpShapeRange(input_dims, input_range);
 
-  ge::Shape max_shape = ge::Shape(max_vec);
-  ge::Shape mask_shape = ge::Shape(mask_vec);
+  std::vector<int64_t> max_dims;
+  std::vector<std::pair<int64_t, int64_t>> max_range;
+  std::vector<int64_t> mask_dims;
+  std::vector<std::pair<int64_t, int64_t>> mask_range;
 
-  output_max.SetShape(max_shape);
-  output_max.SetDataType(op.GetInputDesc("x").GetDataType());
-  output_max.SetFormat(op.GetInputDesc("x").GetFormat());
-  output_mask.SetShape(mask_shape);
-  output_mask.SetFormat(op.GetInputDesc("x").GetFormat());
+  auto input_h_dim = input_format == FORMAT_NHWC ? 1 : 2;
+  auto input_w_dim = input_format == FORMAT_NHWC ? 2 : 3;
+  auto strides_h_dim = input_format == FORMAT_NHWC ? 1 : 2;
+  auto strides_w_dim = input_format == FORMAT_NHWC ? 2 : 3;
 
-  (void)op.UpdateOutputDesc("y", output_max);
-  (void)op.UpdateOutputDesc("argmax", output_mask);
+  for (size_t i = 0; i < input_dims.size(); i++) {
+    int64_t max_dim_size = input_dims[i];
+    auto max_dim_range = input_range[i];
+    if (i == input_h_dim) {
+      UpdateMaxDimAndRange(ksize[strides_h_dim], strides[strides_h_dim], ceil_mode,
+                                  pad_top, max_dim_size, max_dim_range);
+    } else if (i == input_w_dim) {
+      UpdateMaxDimAndRange(ksize[strides_w_dim], strides[strides_w_dim], ceil_mode,
+                                  pad_left, max_dim_size, max_dim_range);
+    }
+    max_dims.push_back(max_dim_size);
+    max_range.push_back(max_dim_range);
+  }
+
+  for (size_t i = 0; i < input_dims.size(); i++) {
+    int64_t mask_dim_size = input_dims[i];
+    auto mask_dims_range = input_range[i];
+    if (i == input_h_dim) {
+      mask_dim_size = ksize[strides_h_dim] * ksize[strides_w_dim];
+      mask_dims_range = std::pair<int64_t, int64_t>{mask_dim_size, mask_dim_size};
+    } else if (i == input_w_dim) {
+      UpdateMaskW(max_dims[strides_h_dim], max_dims[strides_w_dim],
+       max_range[strides_h_dim].first, max_range[strides_w_dim].first,
+       max_range[strides_h_dim].second, max_range[strides_w_dim].second,
+       mask_dim_size, mask_dims_range);
+    }
+    mask_dims.push_back(mask_dim_size);
+    mask_range.push_back(mask_dims_range);
+  }
+
+  output_max->SetShape(GeShape(max_dims));
+  output_max->SetShapeRange(max_range);
+  output_max->SetDataType(input_dtype);
+  output_mask->SetShape(GeShape(mask_dims));
+  output_mask->SetShapeRange(mask_range);
+  output_mask->SetDataType(DT_UINT16);
   return GRAPH_SUCCESS;
 }
+
 // Registered inferfunction
 COMMON_INFER_FUNC_REG(MaxPoolWithArgmaxV2, MaxPoolWithArgmaxV2InferShape);
 

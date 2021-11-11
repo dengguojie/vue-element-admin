@@ -155,6 +155,7 @@ set(_optiling_files
   pad_v3.cc
   maxpoolwithargmaxv1.cc
   maxpoolgradwithargmaxv1.cc
+  maxpoolwithargmaxv2.cc  
   bounding_box_decode.cc
   iou.cc
   layer_norm.cc
