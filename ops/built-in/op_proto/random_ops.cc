@@ -114,8 +114,29 @@ IMPLEMT_INFERFUNC(RandomGamma, RandomGammaInfer) {
   Shape shape;
   Shape alpha_shape;
   Tensor shape_tensor;
+  auto type = op.GetInputDesc("alpha").GetDataType();
+  TensorDesc output_desc = op.GetOutputDesc("y");
+
+  std::vector<std::string> input_infer_depends = {"shape"};
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  op_desc->SetOpInferDepends(input_infer_depends);
+
   if (op.GetInputConstData("shape", shape_tensor) != GRAPH_SUCCESS) {
-    return GRAPH_FAILED;
+    output_desc.SetDataType(type);
+    auto input_shape = op.GetInputDesc("shape").GetShape();
+    if (input_shape.GetShapeSize() == ge::UNKNOWN_DIM) {
+      output_desc.SetShape(ge::Shape(ge::UNKNOWN_RANK));
+      output_desc.SetOriginShape(ge::Shape(ge::UNKNOWN_RANK));
+    } else {
+      int64_t rank = input_shape.GetShapeSize();
+      std::vector<int64_t> out_shape;
+      for (int64_t i = 0; i < rank; i++) {
+        out_shape.push_back(ge::UNKNOWN_DIM);
+      }
+      output_desc.SetShape(ge::Shape(out_shape));
+      output_desc.SetOriginShape(ge::Shape(out_shape));
+    }
+    return GRAPH_SUCCESS;
   }
   if (MakeShapeFromShapeTensor(shape_tensor, shape, op.GetName().c_str()) != GRAPH_SUCCESS) {
     return GRAPH_FAILED;
@@ -123,8 +144,6 @@ IMPLEMT_INFERFUNC(RandomGamma, RandomGammaInfer) {
   alpha_shape = op.GetInputDesc(1).GetShape();
   (void)Concatenate(shape, alpha_shape, shape);
 
-  auto type = op.GetInputDesc("alpha").GetDataType();
-  TensorDesc output_desc = op.GetOutputDesc("y");
   output_desc.SetShape(shape);
   output_desc.SetDataType(type);
   return op.UpdateOutputDesc("y", output_desc);
