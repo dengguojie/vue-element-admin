@@ -58,4 +58,4 @@ class MulCpuKernel : public CpuKernel {
   uint32_t MulCalculate(const CpuKernelContext &ctx, BCalcInfo &calcInfo);
 };
 }  // namespace aicpu
-#endif  // AICPU_KERNELS_NORMALIZED_MUL_H_
+#endif  // AICPU_KERNELS_NORMALIZED_MUL_H

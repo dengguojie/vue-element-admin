@@ -32,7 +32,7 @@ const char *kRandomUniform = "RandomUniform";
       static_cast<T *>(output->GetData()),                            \
       output->GetTensorShape()->NumElements());                       \
   eigen_output.device(device) = eigen_output.random(                  \
-      Eigen::internal::UniformRandomGenerator<T>(final_seed));
+      Eigen::internal::UniformRandomGenerator<T>(final_seed))
 }
 
 namespace aicpu {

@@ -62,7 +62,7 @@ uint32_t SigmoidCpuKernel::Compute(CpuKernelContext &ctx) {
     SIGMOID_COMPUTE_CASE2(DT_COMPLEX128, std::complex<double>, ctx)
     default:
       KERNEL_LOG_ERROR("Sigmoid kernel data type [%s] not support.",
-                       DTypeStr(data_type).c_str());
+                      DTypeStr(data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
   return KERNEL_STATUS_OK;
@@ -72,11 +72,11 @@ uint32_t SigmoidCpuKernel::SigmoidCheck(CpuKernelContext &ctx) {
   auto input_0 = ctx.Input(0);
   auto output_0 = ctx.Output(0);
   KERNEL_CHECK_NULLPTR(input_0->GetData(), KERNEL_STATUS_PARAM_INVALID,
-                       "Get input data failed.")
+                      "Get input data failed.")
   KERNEL_CHECK_NULLPTR(output_0->GetData(), KERNEL_STATUS_PARAM_INVALID,
-                       "Get output data failed")
+                      "Get output data failed")
   KERNEL_CHECK_NULLPTR(input_0->GetTensorShape(), KERNEL_STATUS_PARAM_INVALID,
-                       "Get input tensor shape failed.")
+                      "Get input tensor shape failed.")
   return KERNEL_STATUS_OK;
 }
 

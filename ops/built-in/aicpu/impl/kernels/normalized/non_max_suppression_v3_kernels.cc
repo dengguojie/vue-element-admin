@@ -215,14 +215,13 @@ uint32_t NonMaxSuppressionV3CpuKernel::DoCompute() {
   T similarity = static_cast<T>(0.0);
   Candidate next_candidate = {.box_index = 0, .score = static_cast<T>(0.0)};
   int32_t cnt = 0;
-  bool should_suppress = false;
 
   while (cnt < max_output_size_ && !candidate_priority_queue.empty()) {
     next_candidate = candidate_priority_queue.top();
     candidate_priority_queue.pop();
     // iterate through the previously selected boxes backwards to see if
     // `next_candidate` should be suppressed.
-    should_suppress = false;
+    bool should_suppress = false;
     for (int j = cnt - 1; j >= 0; --j) {
       similarity = IOUSimilarity(&boxes_map(next_candidate.box_index, 0),
                                  &boxes_map(indices_data[j], 0));

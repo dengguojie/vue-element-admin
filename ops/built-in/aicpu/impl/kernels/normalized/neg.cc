@@ -86,6 +86,5 @@ uint32_t NegCpuKernel::Compute(CpuKernelContext &ctx) {
       return KERNEL_STATUS_PARAM_INVALID;
   }
 }
-
 REGISTER_CPU_KERNEL(kNeg, NegCpuKernel);
 }  // namespace aicpu

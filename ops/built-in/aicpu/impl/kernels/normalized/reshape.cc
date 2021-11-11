@@ -51,9 +51,9 @@ uint32_t ReshapeCpuKernel::Compute(CpuKernelContext &ctx) {
   if (output_data != input_data) {
     int cpret = memcpy_s(output_data, output_size, input_data, input_size);
     KERNEL_CHECK_FALSE(
-      (cpret == EOK), KERNEL_STATUS_INNER_ERROR,
-      "[%s] memcpy_s to output failed, destMax [%ld], count [%ld].",
-      kReshape, output_size, input_size);
+        (cpret == EOK), KERNEL_STATUS_INNER_ERROR,
+        "[%s] memcpy_s to output failed, destMax [%ld], count [%ld].",
+        kReshape, output_size, input_size);
   }
   return KERNEL_STATUS_OK;
 }

@@ -64,9 +64,9 @@ uint32_t ScatterElementsCpuKernel::Compute(CpuKernelContext &ctx) {
                     ctx);
   default:
     std::string err_msg = ConcatString(
-                  "Input[0] data type[",DTypeStr(data_type),"] is unsupported.",
-                  "It should be float16|float|double|bool|int8|int16|int32|int64|uint8|",
-                  "unint32|unit64|complex16|complex32");
+        "Input[0] data type[",DTypeStr(data_type),"] is unsupported.",
+        "It should be float16|float|double|bool|int8|int16|int32|int64|uint8|",
+        "unint32|unit64|complex16|complex32");
     KERNEL_LOG_ERROR("%s", err_msg.c_str());
     return KERNEL_STATUS_PARAM_INVALID;
   }
