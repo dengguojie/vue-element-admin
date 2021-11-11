@@ -38,7 +38,7 @@ set_ut_env() {
   export ASCEND_OPP_PATH=$install_path/opp
   export PYTHONPATH=${OPS_SOURCE_PATH}:${SCH_TEST_FRAME_INSTALL_HOME}:${SCH_UT_DIR}:${PYTHONPATH}
   export LD_LIBRARY_PATH=$install_path/atc/lib64:${CANN_ROOT}/lib:$install_path/compiler/lib64:$LD_LIBRARY_PATH
-  export PATH=$PATH:$install_path/atc/ccec_compiler/bin
+  export PATH=$PATH:$install_path/atc/ccec_compiler/bin:$install_path/compiler/ccec_compiler/bin
 }
 
 run_ut() {

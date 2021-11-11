@@ -34,7 +34,7 @@ from sch_test_frame.ut import op_ut
 from sch_test_frame.utils import file_util
 
 from sch_test_frame.ut.op_ut_case_info import CaseUsage
-import tbe
+
 
 DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
 
@@ -147,6 +147,12 @@ class RunUTCaseFileArgs:  # pylint: disable=too-many-instance-attributes,too-few
 
 def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
     logger.log_info("start run: %s" % run_arg.case_file)
+
+    # 规避st执行时的一个import异常，为定位到根因，
+    # 该方法会对覆盖率统计有一定影响
+    if not run_arg.simulator_mode:
+        import tbe
+        
     res = True
     if run_arg.cov_report:
         ut_cover = coverage.Coverage(source=["tbe.common.context", "tbe.common.utils", 
