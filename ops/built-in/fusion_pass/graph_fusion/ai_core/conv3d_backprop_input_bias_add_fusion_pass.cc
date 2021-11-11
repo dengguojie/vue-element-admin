@@ -179,7 +179,7 @@ void Conv3DbpInputBiasAddFusionPass::SetOpAttr(ge::OpDescPtr &conv_op,
   conv3d_transpose_d_out_desc_0.SetOriginDataType(ge::DT_FLOAT16);
 
   FUSION_PASS_CHECK(
-    conv3d_transpose_d_op->AddOutputDesc(conv3d_transpose_d_out_desc_0) != ge::GRAPH_SUCCESS,
+    conv3d_transpose_d_op->AddOutputDesc("y", conv3d_transpose_d_out_desc_0) != ge::GRAPH_SUCCESS,
     CUBE_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Adding output y for Conv3DTransposeD is failed."),
     return);
   std::vector<int64_t> input_size_index;
