@@ -2204,24 +2204,21 @@ IMPLEMT_COMMON_INFERFUNC(UnpackInferShape) {
   OP_LOGI(op.GetName().c_str(), "UnpackInferShape function start!");
   std::vector<std::pair<int64_t, int64_t>> x_range;
   std::vector<std::pair<int64_t, int64_t>> out_range;
-  std::vector<int64_t> output_vec;
   std::vector<GeTensorDescPtr> output_ptrs;
 
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto tensordesc_x = op_info->MutableInputDesc("x");
-  std::vector<int64_t> shape_x = tensordesc_x->MutableShape().GetDims();
-  tensordesc_x->GetShapeRange(x_range);
-  DataType input_dtype = tensordesc_x->GetDataType();
+  auto input_x_desc = op_info->GetInputDescPtr(0);
+  input_x_desc->GetShapeRange(x_range);
 
   // check value of aixs and num
   int64_t axis{0};
-  if (op.GetAttr("axis", axis) != GRAPH_SUCCESS) {
+  if (!AttrUtils::GetInt(op_info, "axis", axis)) {
     std::string err_msg = GetInputInvalidErrMsg("axis");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
   }
   int64_t num{0};
-  if (op.GetAttr("num", num) != GRAPH_SUCCESS) {
+  if (!AttrUtils::GetInt(op_info, "num", num)) {
     std::string err_msg = GetInputInvalidErrMsg("num");
     VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
     return GRAPH_FAILED;
@@ -2236,31 +2233,45 @@ IMPLEMT_COMMON_INFERFUNC(UnpackInferShape) {
     output_ptrs[i] = op_info->MutableOutputDesc(i);
   }
 
-  if (!IsUnknownRankShape(shape_x)) {
-    int64_t x_dims = static_cast<int64_t>(shape_x.size());
+  const GeShape &input_x_shape = input_x_desc->GetShape();
+  if (!input_x_shape.IsUnknownDimNum()) {
+    int64_t x_dims = input_x_shape.GetDimNum();
     int64_t real_axis = (axis >= 0) ? axis : axis + x_dims;
     if (real_axis < 0 || real_axis >= x_dims) {
       std::string err_msg = OtherErrMsg(ConcatString("Axis exceeding the prescribed range. Axis is ", real_axis,
-                                                     " and x_shape's size is ", shape_x.size()));
+                                                     " and x_shape's size is ", x_dims));
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
+    GeShape &output_shape = output_ptrs[0]->MutableShape();
+    output_shape.SetDimNum(x_dims - 1);
     // infer output shape
     for (int64_t i = 0; i < x_dims; i++) {
-      if (i != real_axis) {
-        output_vec.push_back(shape_x[i]);
+      if (i != real_axis && !x_range.empty()) {
         if (static_cast<int64_t>(x_range.size()) >= x_dims) {
           out_range.push_back(x_range[i]);
         }
       }
+      if (i < real_axis) {
+        int64_t dim_size = input_x_shape.GetDim(i);
+        output_shape.SetDim(i, dim_size);
+      } else if (i > real_axis) {
+        int64_t dim_size = input_x_shape.GetDim(i);
+        output_shape.SetDim(i-1, dim_size);
+      }
+    }
+    for (int64_t i = 0; i < num; i++) {
+      output_ptrs[i]->SetShape(output_shape);
+      output_ptrs[i]->SetDataType(input_x_desc->GetDataType());
+      if (!out_range.empty()) {
+        output_ptrs[i]->SetShapeRange(out_range);
+      }
     }
   } else {
-    output_vec = UNKNOWN_RANK;
-  }
-  for (int64_t i = 0; i < num; i++) {
-    output_ptrs[i]->SetShape(GeShape(output_vec));
-    output_ptrs[i]->SetShapeRange(out_range);
-    output_ptrs[i]->SetDataType(input_dtype);
+    for (int64_t i = 0; i < num; i++) {
+      output_ptrs[i]->MutableShape().SetIsUnknownDimNum();
+    }
+    return GRAPH_SUCCESS;
   }
   OP_LOGI(op.GetName().c_str(), "UnpackInferShape function End!");
   return GRAPH_SUCCESS;

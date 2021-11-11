@@ -6957,26 +6957,24 @@ IMPLEMT_VERIFIER(AvgPool1DD, AvgPool1DDVerify) {
 }
 
 IMPLEMT_INFERFUNC(AvgPool1DD, AvgPool1DDInfer) {
-  TensorDesc output_tensor_desc = op.GetOutputDesc("y");
-  auto input_tensor = op.GetInputDesc("x");
-  Format input_format = input_tensor.GetFormat();
-  auto input_shape = input_tensor.GetShape();
-  auto input_w_size = 0;
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_x_desc = op_desc->GetInputDescPtr(0);
+  auto output_y_desc = op_desc->MutableOutputDesc(0);
+  Format input_format = input_x_desc->GetFormat();
+  const GeShape &input_shape = input_x_desc->GetShape();
+  GeShape &output_shape = output_y_desc->MutableShape();
 
-  if (input_format == FORMAT_NHWC) {
-    input_w_size = input_shape.GetDim(2);
-  } else if (input_format == FORMAT_NCHW) {
-    input_w_size = input_shape.GetDim(3);
-  }
-  DataType input_type = input_tensor.GetDataType();
+  auto input_w_size = 0;
+  input_w_size = input_shape.GetDim(3);
+
   uint32_t ksize{0};
   uint32_t strides{1};
   bool ceil_mode{false};
 
-  if (op.GetAttr("ksize", ksize) != GRAPH_SUCCESS) {
+  if (!AttrUtils::GetInt(op_desc, "ksize", ksize)) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr ksize failed, set ksize default value");
   }
-  if (op.GetAttr("strides", strides) != GRAPH_SUCCESS) {
+  if (!AttrUtils::GetInt(op_desc, "strides", strides)) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr strides failed, set strides default value");
   }
   if (strides == 0) {
@@ -6985,7 +6983,7 @@ IMPLEMT_INFERFUNC(AvgPool1DD, AvgPool1DDInfer) {
   }
   // get input ksize
   std::vector<int32_t> pads_list;
-  if (op.GetAttr("pads", pads_list) != GRAPH_SUCCESS) {
+  if (!AttrUtils::GetListInt(op_desc, "pads", pads_list)) {
     OP_LOGE(op.GetName().c_str(), "GetOpAttr pads_list failed!");
     return GRAPH_FAILED;
   }
@@ -6993,7 +6991,7 @@ IMPLEMT_INFERFUNC(AvgPool1DD, AvgPool1DDInfer) {
     OP_LOGE(op.GetName().c_str(), "Attr pads should has 2 elements at least!");
     return GRAPH_FAILED;
   }
-  if (op.GetAttr("ceil_mode", ceil_mode) != GRAPH_SUCCESS) {
+  if (!AttrUtils::GetBool(op_desc, "ceil_mode", ceil_mode)) {
     OP_LOGW(op.GetName().c_str(), "GetOpAttr ceil_mode failed, set ceil_mode default value");
   }
   uint32_t padl = pads_list[0];
@@ -7014,30 +7012,19 @@ IMPLEMT_INFERFUNC(AvgPool1DD, AvgPool1DDInfer) {
   }
   padr = (output_w_size - 1) * strides + ksize - input_w_size - padl;
 
-  vector<int64_t> dim_vec;
-  if (input_format == FORMAT_NHWC) {
-    dim_vec.push_back(input_shape.GetDim(0));
-    dim_vec.push_back(input_shape.GetDim(1));
-    dim_vec.push_back(output_w_size);
-    dim_vec.push_back(input_shape.GetDim(3));
-  } else if (input_format == FORMAT_NCHW) {
-    dim_vec.push_back(input_shape.GetDim(0));
-    dim_vec.push_back(input_shape.GetDim(1));
-    dim_vec.push_back(input_shape.GetDim(2));
-    dim_vec.push_back(output_w_size);
+  size_t rank = input_shape.GetDimNum();
+  output_shape.SetDimNum(rank);
+
+  for (size_t i = 0; i < rank; i++) {
+    if (i == 3) {
+      output_shape.SetDim(i, output_w_size);
+      continue;
+    }
+    int64_t dim_size = input_shape.GetDim(i);
+    output_shape.SetDim(i, dim_size);
   }
-  if (dim_vec.size() == 0) {
-    OP_LOGE(op.GetName().c_str(), "Input format is not NCHW or NHWC");
-    return GRAPH_FAILED;
-  }
-  Shape output_shape = ge::Shape(dim_vec);
-  DataType output_dtype = input_type;
-  output_tensor_desc.SetShape(output_shape);
-  output_tensor_desc.SetDataType(output_dtype);
-  if (op.UpdateOutputDesc("y", output_tensor_desc) != GRAPH_SUCCESS) {
-    OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc run failed. Check whether the names of outputs are matched.");
-    return GRAPH_FAILED;
-  }
+  output_y_desc->SetDataType(input_x_desc->GetDataType());
+
   return GRAPH_SUCCESS;
 }
 INFER_FUNC_REG(AvgPool1DD, AvgPool1DDInfer);

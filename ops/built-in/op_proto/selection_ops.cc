@@ -1288,6 +1288,22 @@ static void GetUnsortedSegmentSumConstValue(const Tensor& const_tensor, const Da
   }
 }
 
+static void GetRealRange(ge::GeShape shape, std::vector<std::pair<int64_t, int64_t>>& range) {
+  if (shape.IsUnknownDimNum()) {
+    return;
+  }
+  if (range.empty()) {
+    for (size_t i = 0; i < shape.GetDimNum(); i++) {
+      int64_t dim = shape.GetDim(i);
+      if (dim == -1) {
+        range.push_back(std::pair<int64_t, int64_t>(1, -1));
+      } else {
+        range.push_back(std::pair<int64_t, int64_t>(dim, dim));
+      }
+    }
+  }
+}
+
 IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentSumInferShape) {
   PROFILING_PROTO_INIT(op.GetName().c_str());
   vector<string> input_infer_depends = {"num_segments"};
@@ -1296,12 +1312,12 @@ IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentSumInferShape) {
 
   Tensor input_num_segments_tensor;
   int64_t input_num_segments;
-  DataType input_num_segments_dtype = op_desc->MutableInputDesc("num_segments")->GetDataType();
+  DataType input_num_segments_dtype = op_desc->GetInputDescPtr(2)->GetDataType();
 
   std::vector<std::pair<int64_t, int64_t>> shape_range_x;
-  op_desc->MutableInputDesc("x")->GetShapeRange(shape_range_x);
+  op_desc->GetInputDescPtr(0)->GetShapeRange(shape_range_x);
   std::vector<std::pair<int64_t, int64_t>> shape_range_seg_id;
-  op_desc->MutableInputDesc("segment_ids")->GetShapeRange(shape_range_seg_id);
+  op_desc->GetInputDescPtr(1)->GetShapeRange(shape_range_seg_id);
 
   std::vector<std::pair<int64_t, int64_t>> out_range;
 
@@ -1313,48 +1329,53 @@ IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentSumInferShape) {
     out_range.push_back(std::pair<int64_t, int64_t>(input_num_segments, input_num_segments));
   }
 
-  ge::GeShape shape = op_desc->MutableInputDesc("x")->GetShape();
-  ge::GeShape shape_id = op_desc->MutableInputDesc("segment_ids")->GetShape();
-  auto shape_vec = shape.GetDims();
-  auto shape_id_vec = shape_id.GetDims();
+  ge::GeShape shape = op_desc->GetInputDescPtr(0)->GetShape();
+  ge::GeShape shape_id = op_desc->GetInputDescPtr(1)->GetShape();
 
-  MakeUpShapeRange(shape_vec, shape_range_x);
-  MakeUpShapeRange(shape_id_vec, shape_range_seg_id);
+  auto output_desc = op_desc->MutableOutputDesc(0);
+  ge::GeShape output_shape = output_desc->MutableShape();
+  GetRealRange(shape, shape_range_x);
+  GetRealRange(shape_id, shape_range_seg_id);
 
   int64_t dim_idsize_input = shape_id.GetDimNum();
   int64_t dim_size_input = shape.GetDimNum();
-  DataType input_dtype = op_desc->MutableInputDesc("x")->GetDataType();
+  DataType input_dtype = op_desc->GetInputDescPtr(0)->GetDataType();
   PROFILING_PROTO_AFTER_GET_SHAPE_REG();
-  vector<int64_t> shape_vector;
-  if (IsUnknownRankShape(shape_vec) || IsUnknownRankShape(shape_id_vec)) {
-    shape_vector.push_back(-2);
-    for (size_t i = shape_range_seg_id.size(); i < shape_range_x.size(); i++) {
-      out_range.push_back(shape_range_x[i]);
-    }
+  if (shape.IsUnknownDimNum() || shape_id.IsUnknownDimNum()) {
+    output_shape.SetIsUnknownDimNum();
+    return GRAPH_SUCCESS;
   } else if (dim_idsize_input > 1) {
-    shape_vector.push_back(input_num_segments);
-    for (int i = dim_idsize_input; i < dim_size_input; i++) {
-      shape_vector.push_back(shape_vec[i]);
+    size_t rank = dim_size_input - dim_idsize_input + 1;
+    size_t idx = 1;
+    output_shape.SetDimNum(rank);
+    output_shape.SetDim(0, input_num_segments);
+
+    for (size_t i = dim_idsize_input; i < dim_size_input; i++) {
+      int64_t x_dim = shape.GetDim(i);
+      output_shape.SetDim(idx, x_dim);
       if ((size_t)i < shape_range_x.size()) {
         out_range.push_back(shape_range_x[i]);
       }
+      idx ++;
     }
   } else {
-    shape_vector = shape_vec;
-    shape_vector[0] = input_num_segments;
-    for (size_t i = 1; i < shape_vector.size(); i++) {
-      if (i < shape_range_x.size()) {
+    size_t rank = shape.GetDimNum();
+    output_shape.SetDimNum(rank);
+    output_shape.SetDim(0, input_num_segments);
+
+    for (size_t i = 1; i < rank; i++) {
+      int64_t x_dim = shape.GetDim(i);
+      output_shape.SetDim(i, x_dim);
+      if ((size_t)i < shape_range_x.size()) {
         out_range.push_back(shape_range_x[i]);
       }
     }
   }
 
   PROFILING_PROTO_AFTER_INFER_SHAPE_REG();
-  GeTensorDescPtr tensordesc_output = op_desc->MutableOutputDesc("y");
-  ge::GeShape out_shape = ge::GeShape(shape_vector);
-  tensordesc_output->SetShape(out_shape);
-  tensordesc_output->SetDataType(input_dtype);
-  tensordesc_output->SetShapeRange(out_range);
+  output_desc->SetShape(output_shape);
+  output_desc->SetDataType(input_dtype);
+  output_desc->SetShapeRange(out_range);
   PROFILING_PROTO_END();
   return GRAPH_SUCCESS;
 }
@@ -2413,35 +2434,35 @@ COMMON_INFER_FUNC_REG(OneHot, OneHotInferShape);
 // ----------------OneHot END----------------------
 
 static void TopKGetShapeRange(std::vector<std::pair<int64_t, int64_t>> &shape_range,
-                              const std::vector<int64_t> &dims_in, int64_t k,
+                              const GeShape &input_shape, size_t dim_size, int64_t k,
                               uint32_t sorted_axis) {
-  for (size_t i = 0; i < dims_in.size(); i++) {
+  for (size_t i = 0; i < dim_size; i++) {
     if (i == sorted_axis && k > 0) {
       shape_range.push_back(pair<int64_t, int64_t>(k, k));
-    } else if (dims_in[i] == UNKNOWN_DIM) {
+    } else if (input_shape.GetDim(i) == UNKNOWN_DIM) {
       shape_range.push_back(pair<int64_t, int64_t>(1, -1));
     } else {
-      shape_range.push_back(pair<int64_t, int64_t>(dims_in[i], dims_in[i]));
+      shape_range.push_back(pair<int64_t, int64_t>(input_shape.GetDim(i), input_shape.GetDim(i)));
     }
   }
 }
 
 static bool TopKInferCommon(Operator &op, int64_t k) {
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_desc = op_info->MutableInputDesc("x");
-  auto output_v_desc = op_info->MutableOutputDesc("values");
-  auto output_i_desc = op_info->MutableOutputDesc("indices");
+  auto input_desc = op_info->GetInputDescPtr(0);
+  auto output_v_desc = op_info->MutableOutputDesc(0);
+  auto output_i_desc = op_info->MutableOutputDesc(1);
 
-  std::vector<int64_t> dims_in = input_desc->MutableShape().GetDims();
-  int32_t dim_size = dims_in.size();
+  const GeShape &input_shape = input_desc->GetShape();
+  size_t dim_size = input_shape.GetDimNum();
   if (dim_size <= 0) {
     OP_LOGE(op.GetName().c_str(), "The dims_in size should more than 0!");
     return false;
   }
 
-  int32_t dim = dim_size - 1;
-  int32_t sorted_axis = dim;
-  if (op.GetAttr("dim", dim) == GRAPH_SUCCESS) {
+  int64_t dim = dim_size - 1;
+  int64_t sorted_axis = dim;
+  if (AttrUtils::GetInt(op_info, "dim", dim)) {
     sorted_axis = dim;
     if (sorted_axis < 0) {
       sorted_axis += dim_size;
@@ -2460,24 +2481,30 @@ static bool TopKInferCommon(Operator &op, int64_t k) {
     }
   } else {
     // input is static shape
-    TopKGetShapeRange(shape_range, dims_in, k, static_cast<uint32_t>(sorted_axis));
+    TopKGetShapeRange(shape_range, input_shape, dim_size, k, static_cast<uint32_t>(sorted_axis));
   }
 
-  bool unknown_rank = IsUnknownRankShape(dims_in);
-  if (unknown_rank) {
-    output_v_desc->SetShape(GeShape(UNKNOWN_RANK));
-    output_v_desc->SetOriginShape(GeShape(UNKNOWN_RANK));
+  GeShape &output_v_shape = output_v_desc->MutableShape();
+  GeShape &output_i_shape = output_i_desc->MutableShape();
 
-    output_i_desc->SetShape(GeShape(UNKNOWN_RANK));
-    output_i_desc->SetOriginShape(GeShape(UNKNOWN_RANK));
+  if (input_shape.IsUnknownDimNum()) {
+    output_v_shape.SetIsUnknownDimNum();
+    output_i_shape.SetIsUnknownDimNum();
   } else {
-    dims_in[sorted_axis] = k;
+    size_t rank = input_shape.GetDimNum();
+    output_v_shape.SetDimNum(rank);
+    output_i_shape.SetDimNum(rank);
 
-    output_v_desc->SetShape(GeShape(dims_in));
-    output_v_desc->SetShapeRange(shape_range);
-
-    output_i_desc->SetShape(GeShape(dims_in));
-    output_i_desc->SetShapeRange(shape_range);
+    for (size_t i = 0; i < output_v_shape.GetDimNum(); i++) {
+      if (i == sorted_axis) {
+        output_v_shape.SetDim(i, k);
+        output_i_shape.SetDim(i, k);
+        continue;
+      }
+      int64_t size = input_shape.GetDim(i);
+      output_v_shape.SetDim(i, size);
+      output_i_shape.SetDim(i, size);
+    }
   }
   output_v_desc->SetDataType(input_desc->GetDataType());
   output_i_desc->SetDataType(DT_INT32);
