@@ -30,6 +30,11 @@
 #include "op_tiling.h"
 
 namespace optiling {
+const size_t kConv2dDimNumLimit = 4;
+const int32_t kConv2dNDim = 0;
+const int32_t kConv2dHDim = 2;
+const int32_t kConv2dWDim = 3;
+
 /*
  * @brief: tiling function of cube category operators
  * @param [in] curShape: execution time shape info
@@ -37,7 +42,6 @@ namespace optiling {
  * @param [out] runInfo: result data
  * @return int: tiling id
  */
-
 bool cube_tiling(const std::string& op_type,
                 const std::vector<int64_t>& input_shape,
                 const std::vector<int64_t>& var_value,

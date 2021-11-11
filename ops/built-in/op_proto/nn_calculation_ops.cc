@@ -2851,26 +2851,26 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DBackpropInput, Conv2DBackpropInputInferDataSlice)
   return GRAPH_FAILED;
 }
 
-static void GetConstValue(const Tensor& const_tensor, const DataType& dtype, GeShape& const_data) {
-  const uint8_t* constData = const_tensor.GetData();
+static void GetConstValue(const Tensor &const_tensor, const DataType &dtype, GeShape &const_data) {
+  const uint8_t *constData = const_tensor.GetData();
   size_t size;
   if (dtype == ge::DT_INT32) {
     size = const_tensor.GetSize() / sizeof(int32_t);
     const_data.SetDimNum(size);
     for (size_t i = 0; i < size; ++i) {
-      const_data.SetDim(i, *((int32_t*)constData + i));
+      const_data.SetDim(i, *((int32_t *)constData + i));
     }
   } else {
     size = const_tensor.GetSize() / sizeof(int64_t);
     const_data.SetDimNum(size);
     for (size_t i = 0; i < size; ++i) {
-      const_data.SetDim(i, *((int64_t*)constData + i));
+      const_data.SetDim(i, *((int64_t *)constData + i));
     }
   }
 }
 
-static bool CheckAndSetInputSizes(Operator& op, const DataType& dtype, const std::string& tensor_name,
-                                  bool& is_input_size_const, GeTensorDescPtr& y_desc) {
+static bool CheckAndSetInputSizes(Operator &op, const DataType &dtype, const std::string &tensor_name,
+                                  bool &is_input_size_const, GeTensorDescPtr &y_desc) {
   Tensor input_sizes_tensor;
   if (op.GetInputConstData(tensor_name, input_sizes_tensor) != GRAPH_SUCCESS) {
     return true;
@@ -2880,12 +2880,12 @@ static bool CheckAndSetInputSizes(Operator& op, const DataType& dtype, const std
   CHECK_SIZE(input_sizes.GetDimNum() != kConv2dDimSizeLimit, return false, "input_size is unvalid");
   is_input_size_const = true;
   y_desc->SetShape(input_sizes);
-  return true; 
+  return true;
 }
 
-static void SetConv2dBpInputOutRange(const OpDescPtr& op_desc, size_t idx, const AttrDataInfo& attrParams,
-                                     const std::vector<std::pair<int64_t, int64_t>>& dy_range,
-                                     std::vector<std::pair<int64_t, int64_t>>& dx_range) {
+static void SetConv2dBpInputOutRange(const OpDescPtr &op_desc, size_t idx, const AttrDataInfo &attrParams,
+                                     const std::vector<std::pair<int64_t, int64_t>> &dy_range,
+                                     std::vector<std::pair<int64_t, int64_t>> &dx_range) {
   OP_LOGD("", "start reset out range for -1");
   int64_t low = dy_range[idx].first;
   int64_t high = dy_range[idx].second;
@@ -2904,8 +2904,8 @@ static void SetConv2dBpInputOutRange(const OpDescPtr& op_desc, size_t idx, const
   }
 }
 
-static bool GetConv2dBpAttrInfo(const OpDetailInfo& op_info, const PosInfo& y_format_pos,
-                                const ShapeValInfo& filter_value, AttrInfo& attr_paras) {
+static bool GetConv2dBpAttrInfo(const OpDetailInfo &op_info, const PosInfo &y_format_pos,
+                                const ShapeValInfo &filter_value, AttrInfo &attr_paras) {
   std::vector<int32_t> strides_list;
   AttrUtils::GetListInt(op_info.op_desc, "strides", strides_list);
   std::vector<int32_t> dilations_list;
@@ -2943,7 +2943,7 @@ static bool GetConv2dBpAttrInfo(const OpDetailInfo& op_info, const PosInfo& y_fo
   attr_paras.h_attr.kernel = (filter_value.h_value - 1) * dilation_h + 1;
   attr_paras.w_attr.kernel = (filter_value.w_value - 1) * dilation_w + 1;
 
-  if(string(op_info.op_type.GetString()) == "Conv2DTranspose") {
+  if (string(op_info.op_type.GetString()) == "Conv2DTranspose") {
     std::vector<int32_t> output_padding_list;
     AttrUtils::GetListInt(op_info.op_desc, "output_padding", output_padding_list);
     int32_t outputpadding_h = output_padding_list[y_format_pos.h_position];
@@ -2962,23 +2962,23 @@ static bool GetConv2dBpAttrInfo(const OpDetailInfo& op_info, const PosInfo& y_fo
   return true;
 }
 
-static bool SetConv2dBpInputOutShapeRange(const OpDetailInfo& op_info, const PosInfo& y_format_pos,
-                                          const ShapeValInfo& filter_value, const GeShape& input_shape,
-                                          std::vector<std::pair<int64_t, int64_t>>& input_range,
-                                          GeTensorDescPtr& y_desc) {
+static bool SetConv2dBpInputOutShapeRange(const OpDetailInfo &op_info, const PosInfo &y_format_pos,
+                                          const ShapeValInfo &filter_value, const GeShape &input_shape,
+                                          std::vector<std::pair<int64_t, int64_t>> &input_range,
+                                          GeTensorDescPtr &y_desc) {
   int64_t groups = 1;
   if (!AttrUtils::GetInt(op_info.op_desc, "groups", groups)) {
     OP_LOGD(op_info.op_name.GetString(), "no groups setting, use groups as 1");
   }
 
   if (input_shape.IsUnknownDimNum()) {
-    GeShape unknown_rank_shape({-1,-1,-1,-1});
+    GeShape unknown_rank_shape({-1, -1, -1, -1});
     unknown_rank_shape.SetDim(y_format_pos.c_position, groups * filter_value.c_value);
     y_desc->SetShape(unknown_rank_shape);
     return true;
   }
 
-  const GeShape& y_shape = y_desc->GetShape();
+  const GeShape &y_shape = y_desc->GetShape();
   if (y_shape.GetDimNum() != kConv2dDimSizeLimit) {
     OP_LOGE(op_info.op_name.GetString(), "y_shape list should be 4D. actual is: %u.", y_shape.GetDimNum());
     map<string, string> err_map;
@@ -3022,8 +3022,8 @@ static bool SetConv2dBpInputOutShapeRange(const OpDetailInfo& op_info, const Pos
   return true;
 }
 
-static void ResetConv2dbpOutShape(const AscendString& op_name, const GeShape& input_shape,
-                                  GeShape& out_shape, const PosInfo& y_format_pos) {
+static void ResetConv2dbpOutShape(const AscendString &op_name, const GeShape &input_shape, GeShape &out_shape,
+                                  const PosInfo &y_format_pos) {
   if (input_shape.GetDim(y_format_pos.n_position) == -1) {
     out_shape.SetDim(y_format_pos.n_position, -1);
   }
@@ -3039,7 +3039,7 @@ static void ResetConv2dbpOutShape(const AscendString& op_name, const GeShape& in
   }
 }
 
-static bool GetPosInfoByFormat (Format format, PosInfo& format_pos) {
+static bool GetPosInfoByFormat(Format format, PosInfo &format_pos) {
   std::string format_str = format2str[format];
   CHECK(format_str.length() != kConv2dDimSizeLimit, OP_LOGE("", "the format is not 4D"), return false);
   format_pos.n_position = format_str.find("N");
@@ -3049,8 +3049,8 @@ static bool GetPosInfoByFormat (Format format, PosInfo& format_pos) {
   return true;
 }
 
-static bool ResetInputRange(const AscendString& op_name, const GeTensorDescPtr& input_desc, const GeShape& input_shape,
-                            std::vector<std::pair<int64_t, int64_t>>& input_range) {
+static bool ResetInputRange(const AscendString &op_name, const GeTensorDescPtr &input_desc, const GeShape &input_shape,
+                            std::vector<std::pair<int64_t, int64_t>> &input_range) {
   CHECK(input_shape.IsUnknownDimNum(), OP_LOGD(op_name.GetString(), "input shape is -2"), return true);
   bool input_range_invalid = input_range.size() != 0 && input_range.size() != input_shape.GetDimNum();
   if (input_range_invalid) {
@@ -3058,7 +3058,7 @@ static bool ResetInputRange(const AscendString& op_name, const GeTensorDescPtr& 
                           "input range size must be equal to shape size, or equal to 0 in dynamic.");
     return false;
   }
-  
+
   size_t dim_num = input_shape.GetDimNum();
   if (input_range.size() == 0) {
     input_range.resize(dim_num);
@@ -3092,10 +3092,10 @@ static void SetPadsByPaddingForDynamic(const AscendString &op_name, const OpDesc
   }
 }
 
-static bool InferConv2dBpInputOutShapeRange(const OpDetailInfo& op_info, GeTensorDescPtr& input_sizes_desc,
-                                            const ShapeValInfo& filter_value, const GeTensorDescPtr& input_desc,
-                                            GeTensorDescPtr& y_desc) {
-  const GeShape& input_shape = input_desc->GetShape();
+static bool InferConv2dBpInputOutShapeRange(const OpDetailInfo &op_info, GeTensorDescPtr &input_sizes_desc,
+                                            const ShapeValInfo &filter_value, const GeTensorDescPtr &input_desc,
+                                            GeTensorDescPtr &y_desc) {
+  const GeShape &input_shape = input_desc->GetShape();
   std::vector<std::pair<int64_t, int64_t>> input_range;
   input_desc->GetShapeRange(input_range);
   std::vector<std::pair<int64_t, int64_t>> input_sizes_range;
@@ -3106,12 +3106,13 @@ static bool InferConv2dBpInputOutShapeRange(const OpDetailInfo& op_info, GeTenso
         return false);
   CHECK_KEY_IN_MAP(format2str, y_format, "y_format", return false);
   PosInfo y_format_pos;
-  CHECK(!GetPosInfoByFormat(y_format, y_format_pos),
-        OP_LOGE(op_info.op_name.GetString(), "get position info failed."), return false);
+  CHECK(!GetPosInfoByFormat(y_format, y_format_pos), OP_LOGE(op_info.op_name.GetString(), "get position info failed."),
+        return false);
 
   if ((input_sizes_range.size() == kConv2dDimSizeLimit) && (input_range.size() == kConv2dDimSizeLimit)) {
-    bool is_mod_value_range = input_sizes_range[y_format_pos.c_position].first == -1 ||
-      input_sizes_range[y_format_pos.c_position].first != input_sizes_range[y_format_pos.c_position].second;
+    bool is_mod_value_range =
+        input_sizes_range[y_format_pos.c_position].first == -1 ||
+        input_sizes_range[y_format_pos.c_position].first != input_sizes_range[y_format_pos.c_position].second;
     if (is_mod_value_range) {
       int64_t groups = 1;
       if (!AttrUtils::GetInt(op_info.op_desc, "groups", groups)) {
@@ -3138,9 +3139,9 @@ static bool InferConv2dBpInputOutShapeRange(const OpDetailInfo& op_info, GeTenso
 
   std::vector<std::pair<int64_t, int64_t>> y_range;
   y_desc->GetShapeRange(y_range);
-  CHECK(y_range.size() != kConv2dDimSizeLimit,
-        OP_LOGE(op_info.op_name.GetString(), "the out range must be 4D"), return false);
-  GeShape out_shape({-1,-1,-1,-1});
+  CHECK(y_range.size() != kConv2dDimSizeLimit, OP_LOGE(op_info.op_name.GetString(), "the out range must be 4D"),
+        return false);
+  GeShape out_shape({-1, -1, -1, -1});
   for (size_t i = 0; i < y_range.size(); i++) {
     if (y_range[i].first == y_range[i].second) {
       out_shape.SetDim(i, y_range[i].first);
@@ -3153,7 +3154,7 @@ static bool InferConv2dBpInputOutShapeRange(const OpDetailInfo& op_info, GeTenso
   return true;
 }
 
-static bool SetConvGroups(OpDetailInfo& op_info, int64_t c_y_shape, int64_t c_filter) {
+static bool SetConvGroups(OpDetailInfo &op_info, int64_t c_y_shape, int64_t c_filter) {
   OP_LOGD(op_info.op_name.GetString(), "Setgroups begin.");
   int32_t x_c = c_y_shape;
   int32_t w_c = c_filter;
@@ -3176,7 +3177,7 @@ static bool SetConvGroups(OpDetailInfo& op_info, int64_t c_y_shape, int64_t c_fi
     return false;
   }
   groups = x_c / w_c;
-  
+
   int32_t groups_ori = 1;
   AttrUtils::GetInt(op_info.op_desc, "groups", groups_ori);
   if (groups_ori == 1) {
@@ -3195,8 +3196,8 @@ static bool SetConvGroups(OpDetailInfo& op_info, int64_t c_y_shape, int64_t c_fi
   return true;
 }
 
-static bool SetConv2dbpPadsByPadding(OpDetailInfo& op_info, const GeShape& inputSizes, const PosInfo& y_format_pos,
-                                     const ShapeValInfo& filter_value) {
+static bool SetConv2dbpPadsByPadding(OpDetailInfo &op_info, const GeShape &inputSizes, const PosInfo &y_format_pos,
+                                     const ShapeValInfo &filter_value) {
   OP_LOGD(op_info.op_name.GetString(), "Set Conv2dbp Padst By Padding begin.");
   AttrInfo attr_paras;
   CHECK(!GetConv2dBpAttrInfo(op_info, y_format_pos, filter_value, attr_paras),
@@ -3209,11 +3210,13 @@ static bool SetConv2dbpPadsByPadding(OpDetailInfo& op_info, const GeShape& input
   if (AttrUtils::GetStr(op_info.op_desc, "padding", padding)) {
     if (padding == "SAME") {
       int32_t pad_h = std::max((int32_t)(align_conv2dbp(dx_h, attr_paras.h_attr.stride) - attr_paras.h_attr.stride +
-                               attr_paras.h_attr.kernel - dx_h), 0);
+                                         attr_paras.h_attr.kernel - dx_h),
+                               0);
       int32_t pad_up = (pad_h >> 1);
       int32_t pad_down = pad_h - pad_up;
       int32_t pad_w = std::max((int32_t)(align_conv2dbp(dx_w, attr_paras.w_attr.stride) - attr_paras.w_attr.stride +
-                               attr_paras.w_attr.kernel - dx_w), 0);
+                                         attr_paras.w_attr.kernel - dx_w),
+                               0);
       int32_t pad_left = (pad_w >> 1);
       int32_t pad_right = pad_w - pad_left;
       pads[kConv2dPadUpIdx] = pad_up;
@@ -3224,19 +3227,19 @@ static bool SetConv2dbpPadsByPadding(OpDetailInfo& op_info, const GeShape& input
     AttrUtils::SetListInt(op_info.op_desc, "pads", pads);
   }
 
-  CHECK(!VerifyConv2dbpPads(op_info.op_name, op_info.op_desc),
-        OP_LOGE(op_info.op_name.GetString(), "pads is unvalid"), return false);
+  CHECK(!VerifyConv2dbpPads(op_info.op_name, op_info.op_desc), OP_LOGE(op_info.op_name.GetString(), "pads is unvalid"),
+        return false);
   OP_LOGD(op_info.op_name.GetString(), "op set pads succ.");
   return true;
 }
 
-static bool GetFilterValues(const GeTensorDescPtr& filter_desc, ShapeValInfo& filter_value) {
+static bool GetFilterValues(const GeTensorDescPtr &filter_desc, ShapeValInfo &filter_value) {
   Format filter_format = filter_desc->GetFormat();
   CHECK(FORMAT_RESERVED == filter_format, OP_LOGE("", "the filter format is illegal"), return false);
   CHECK_KEY_IN_MAP(format2str, filter_format, "filter_format", return false);
   PosInfo filter_format_pos;
   CHECK(!GetPosInfoByFormat(filter_format, filter_format_pos), OP_LOGE("", "get position info failed"), return false);
-  const GeShape& filter_shape = filter_desc->GetShape();
+  const GeShape &filter_shape = filter_desc->GetShape();
   filter_value.n_value = filter_shape.GetDim(filter_format_pos.n_position);
   filter_value.h_value = filter_shape.GetDim(filter_format_pos.h_position);
   filter_value.w_value = filter_shape.GetDim(filter_format_pos.w_position);
@@ -3244,8 +3247,8 @@ static bool GetFilterValues(const GeTensorDescPtr& filter_desc, ShapeValInfo& fi
   return true;
 }
 
-static bool checkConv2dBppads(const OpDetailInfo& op_info, const GeShape& input_shape, const ShapeValInfo& filter_value,
-                              const PosInfo& y_format_pos, const GeShape& y_shape) {
+static bool checkConv2dBppads(const OpDetailInfo &op_info, const GeShape &input_shape, const ShapeValInfo &filter_value,
+                              const PosInfo &y_format_pos, const GeShape &y_shape) {
   std::string padding;
   if (AttrUtils::GetStr(op_info.op_desc, "padding", padding)) {
     return true;
@@ -3292,7 +3295,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
   CHECK_KEY_IN_MAP(format2str, y_format, "y_format", return GRAPH_FAILED);
   PosInfo y_format_pos;
   CHECK_OP_FUNC(!GetPosInfoByFormat(y_format, y_format_pos), return GRAPH_FAILED, "get position info failed.");
-  const GeShape& out_backprop_shape = out_backprop_desc->GetShape();
+  const GeShape &out_backprop_shape = out_backprop_desc->GetShape();
 
   bool is_dynamic = out_backprop_shape.IsUnknownShape();
   DataType input_sizes_dtype = input_sizes_desc->GetDataType();
@@ -3306,9 +3309,9 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
   if (!is_input_size_const) {
     CHECK_OP_FUNC(!InferConv2dBpInputOutShapeRange(op_info, input_sizes_desc, filter_value, out_backprop_desc, y_desc),
                   return GRAPH_FAILED, "infer out shape and range fail.");
-    GeShape& out_shape = y_desc->MutableShape();
-    bool is_force_dynamic = (out_shape.GetDimNum() == kConv2dDimSizeLimit &&
-                             !is_dynamic && !out_shape.IsUnknownShape());
+    GeShape &out_shape = y_desc->MutableShape();
+    bool is_force_dynamic =
+        (out_shape.GetDimNum() == kConv2dDimSizeLimit && !is_dynamic && !out_shape.IsUnknownShape());
     if (is_force_dynamic) {
       OP_LOGD(op_info.op_name.GetString(),
               "input_sizes is Data but all tensors have no -1, so force to set HW in y to -1.");
@@ -3317,18 +3320,18 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
     }
   }
 
-  const GeShape& y_shape = y_desc->GetShape();
+  const GeShape &y_shape = y_desc->GetShape();
   bool is_strict_static = is_input_size_const && !is_dynamic;
   if (is_strict_static) {
-    CHECK_OP_FUNC(!SetConv2dbpPadsByPadding(op_info, y_shape, y_format_pos, filter_value),
-                  return GRAPH_FAILED, "update pads list by padding failed.");
+    CHECK_OP_FUNC(!SetConv2dbpPadsByPadding(op_info, y_shape, y_format_pos, filter_value), return GRAPH_FAILED,
+                  "update pads list by padding failed.");
     CHECK_OP_FUNC(!checkConv2dBppads(op_info, out_backprop_shape, filter_value, y_format_pos, y_shape),
                   return GRAPH_FAILED, "check Conv2dBp pads failed.");
   }
 
   CHECK_OP_FUNC(!SetConvGroups(op_info, y_shape.GetDim(y_format_pos.c_position), filter_value.c_value),
                 return GRAPH_FAILED, "Set groups for Conv2DBackpropInput failed.");
- 
+
   // set dtype of output desc
   DataType out_backprop_dtype = out_backprop_desc->GetDataType();
   y_desc->SetDataType(out_backprop_dtype);
@@ -3718,8 +3721,8 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
   CHECK_OP_FUNC(FORMAT_RESERVED == filter_format, return GRAPH_FAILED, "get format failed: %d", filter_format);
   CHECK_KEY_IN_MAP(format2str, filter_format, "filter_format", return GRAPH_FAILED);
   PosInfo filter_format_pos;
-  CHECK_OP_FUNC(!GetPosInfoByFormat(filter_format, filter_format_pos),
-                return GRAPH_FAILED, "get filter position info failed.");
+  CHECK_OP_FUNC(!GetPosInfoByFormat(filter_format, filter_format_pos), return GRAPH_FAILED,
+                "get filter position info failed.");
   Format x_format = x_desc->GetFormat();
   CHECK_OP_FUNC(FORMAT_RESERVED == x_format, return GRAPH_FAILED, "get format failed: %d", x_format);
   CHECK_KEY_IN_MAP(format2str, x_format, "x_format", return GRAPH_FAILED);
@@ -3731,13 +3734,13 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
   CHECK_OP_FUNC(!CheckAndSetInputSizes(op, filter_sizes_dtype, "filter_size", is_filter_sizes_const, y_desc),
                 return GRAPH_FAILED, "get filter_sizes const fail.");
 
-  const GeShape& x_sizes = x_desc->GetShape();
+  const GeShape &x_sizes = x_desc->GetShape();
   bool unknown_rank_x = x_sizes.IsUnknownDimNum();
   int32_t x_c = -1;
   if (!unknown_rank_x) {
     x_c = x_sizes.GetDim(x_format_pos.c_position);
   }
-  const GeShape& out_backprop_sizes = out_backprop_desc->GetShape();
+  const GeShape &out_backprop_sizes = out_backprop_desc->GetShape();
   bool unknown_rank_outbp = out_backprop_sizes.IsUnknownDimNum();
 
   // dynamic shape scene
@@ -3756,7 +3759,7 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
   }
 
   SetInputConst(is_filter_sizes_const, x_sizes.IsUnknownShape(), unknown_rank_x, op_info.op_desc);
-  const GeShape& y_shape = y_desc->GetShape();
+  const GeShape &y_shape = y_desc->GetShape();
   ShapeValInfo filter_value;
   filter_value.c_value = y_shape.GetDim(filter_format_pos.c_position);
   filter_value.h_value = y_shape.GetDim(filter_format_pos.h_position);
@@ -3764,8 +3767,8 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
   filter_value.n_value = y_shape.GetDim(filter_format_pos.n_position);
   bool is_strict_static = is_filter_sizes_const && !x_sizes.IsUnknownShape() && !unknown_rank_x;
   if (is_strict_static) {
-    CHECK_OP_FUNC(!SetConv2dbpPadsByPadding(op_info, x_sizes, x_format_pos, filter_value),
-                  return GRAPH_FAILED, "update pads list by padding failed.");
+    CHECK_OP_FUNC(!SetConv2dbpPadsByPadding(op_info, x_sizes, x_format_pos, filter_value), return GRAPH_FAILED,
+                  "update pads list by padding failed.");
     if (!unknown_rank_outbp) {
       CHECK_OP_FUNC(!checkConv2dBppads(op_info, out_backprop_sizes, filter_value, x_format_pos, x_sizes),
                     return GRAPH_FAILED, "check Conv2dBp pads failed.");
@@ -3775,11 +3778,11 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
   }
 
   bool ignore_set_group = unknown_rank_x || filter_value.c_value < 1 || x_c < 1;
-  if (ignore_set_group){
+  if (ignore_set_group) {
     OP_LOGD(op_info.op_name.GetString(), "ignore set groups.");
   } else {
-    CHECK_OP_FUNC(!SetConvGroups(op_info, x_c, filter_value.c_value),
-                  return GRAPH_FAILED, "Set groups for Conv2DBackpropFilter failed.");
+    CHECK_OP_FUNC(!SetConvGroups(op_info, x_c, filter_value.c_value), return GRAPH_FAILED,
+                  "Set groups for Conv2DBackpropFilter failed.");
   }
   OP_LOGI(op_info.op_name.GetString(), "Leaving Conv2DBackpropFilter inferfunction!");
   return GRAPH_SUCCESS;
@@ -9692,7 +9695,7 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
   CHECK_KEY_IN_MAP(format2str, y_format, "y_format", return GRAPH_FAILED);
   PosInfo y_format_pos;
   CHECK_OP_FUNC(!GetPosInfoByFormat(y_format, y_format_pos), return GRAPH_FAILED, "get position info failed.");
-  const GeShape& x_shape = x_desc->GetShape();
+  const GeShape &x_shape = x_desc->GetShape();
 
   bool is_dynamic = x_shape.IsUnknownShape();
   DataType input_sizes_dtype = input_sizes_desc->GetDataType();
@@ -9707,9 +9710,9 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
   if (!is_input_size_const) {
     CHECK_OP_FUNC(!InferConv2dBpInputOutShapeRange(op_info, input_sizes_desc, filter_value, x_desc, y_desc),
                   return GRAPH_FAILED, "infer out shape and range fail.");
-    GeShape& out_shape = y_desc->MutableShape();
-    bool is_force_dynamic = (out_shape.GetDimNum() == kConv2dDimSizeLimit &&
-                             !is_dynamic && !out_shape.IsUnknownShape());
+    GeShape &out_shape = y_desc->MutableShape();
+    bool is_force_dynamic =
+        (out_shape.GetDimNum() == kConv2dDimSizeLimit && !is_dynamic && !out_shape.IsUnknownShape());
     if (is_force_dynamic) {
       OP_LOGD(op_info.op_name.GetString(),
               "input_sizes is Data but all tensors have no -1, so force to set HW in y to -1.");
@@ -9721,9 +9724,9 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
   // update pads list by padding[SAME,VALID] and calculate y shape
   bool is_strict_static = is_input_size_const && !is_dynamic;
   if (is_strict_static) {
-    GeShape& y_shape = y_desc->MutableShape();
-    CHECK_OP_FUNC(!SetConv2dbpPadsByPadding(op_info, y_shape, y_format_pos, filter_value),
-                  return GRAPH_FAILED, "update pads list by padding failed.");
+    GeShape &y_shape = y_desc->MutableShape();
+    CHECK_OP_FUNC(!SetConv2dbpPadsByPadding(op_info, y_shape, y_format_pos, filter_value), return GRAPH_FAILED,
+                  "update pads list by padding failed.");
     CHECK_OP_FUNC(!SetDeDxAttrForConv2DTranspose(op_info, x_shape, filter_value, y_format_pos, y_shape),
                   return GRAPH_FAILED, "set dedx or check pads failed.");
   }

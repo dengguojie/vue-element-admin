@@ -23,12 +23,17 @@
 #include <nlohmann/json.hpp>
 #include "cube_tiling_new.h"
 #include "graph/debug/ge_log.h"
+#include "graph/ge_tensor.h"
+#include "graph/op_desc.h"
+#include "graph/utils/op_desc_utils.h"
 #include "graph/utils/type_utils.h"
 #include "external/graph/operator.h"
 #include "op_tiling.h"
 #include "op_log.h"
 
 namespace optiling {
+const size_t kConv2dDwInputSizeLimit = 3;
+
 /*
  * @brief: tiling function of conv2d_backprop_filter
  * @param [in] op_type: op_type of the conv2d_backprop_filter
@@ -39,25 +44,33 @@ namespace optiling {
  */
 bool Conv2DBpFilterTiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
                           utils::OpRunInfo& runInfo) {
-  if (opParas.GetInputsSize() < 3 || opParas.GetOutputsSize() == 0 ||
-      opParas.GetInputDesc(0).GetShape().GetDimNum() < 4 || opParas.GetInputDesc(2).GetShape().GetDimNum() < 4){
+  ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(opParas);
+  if (op_desc == nullptr) {
+    GELOGE(ge::FAILED, "the op_desc is nullptr.");
     return false;
   }
-  auto input_format = ge::TypeUtils::FormatToSerialString(opParas.GetInputDesc(0).GetFormat()).c_str();
-  auto input_ori_format = ge::TypeUtils::FormatToSerialString(opParas.GetInputDesc(0).GetOriginFormat()).c_str();
-  GELOGD("Current format is %s, Ori format is %s", input_format, input_ori_format);
-
-  int32_t nDim = 0;
-  int32_t hDim = 2;
-  int32_t wDim = 3;
+  ge::ConstGeTensorDescPtr tensor_a_desc = op_desc->GetInputDescPtr(0);
+  // the tensor b's index is 2
+  ge::ConstGeTensorDescPtr tensor_b_desc = op_desc->GetInputDescPtr(2);
+  const ge::GeShape &tensor_a_shape = tensor_a_desc->GetShape();
+  const ge::GeShape &tensor_b_shape = tensor_b_desc->GetShape();
+  bool unvalid_size = opParas.GetInputsSize() < kConv2dDwInputSizeLimit || opParas.GetOutputsSize() == 0 ||
+                      tensor_a_shape.GetDimNum() != kConv2dDimNumLimit ||
+                      tensor_b_shape.GetDimNum() != kConv2dDimNumLimit;
+  if (unvalid_size) {
+    GELOGE(ge::FAILED, "the size is unvalid.");
+    return false;
+  }
+  GELOGD("Current format is %s, Ori format is %s",
+         ge::TypeUtils::FormatToSerialString(tensor_a_desc->GetFormat()).c_str(),
+         ge::TypeUtils::FormatToSerialString(tensor_a_desc->GetOriginFormat()).c_str());
 
   try {
-    if(opCompileInfo.empty()) {
+    if (opCompileInfo.empty()) {
       GELOGD("op compile info is empty");
       return false;
     }
-    // accurate build has only one item
-    // fuzzy build has multiple items
+    // accurate build has only one item, fuzzy build has multiple items
     std::vector<std::string> varMap;
     nlohmann::json opInfo;
     GELOGD("original compile info is: %s", opCompileInfo.dump().c_str());
@@ -69,18 +82,18 @@ bool Conv2DBpFilterTiling(const std::string& opType, const ge::Operator& opParas
       for (size_t i = 1; i < opCompileInfo.size(); ++i) {
         item = opCompileInfo[i];
         std::vector<std::string> key_list = {"repo_seeds", "repo_range", "cost_range"};
-        for (auto key: key_list) {
-          if (item[key].is_object() && !item[key].empty()) {
-            std::vector<int32_t> list_value = item[key].begin().value().get<std::vector<int32_t>>();
-            opInfo[key][item[key].begin().key()] = list_value;
+        for (auto &key : key_list) {
+          auto &item_key = item[key];
+          if (item_key.is_object() && !item_key.empty()) {
+            std::vector<int32_t> list_value = item_key.begin().value().get<std::vector<int32_t>>();
+            opInfo[key][item_key.begin().key()] = list_value;
           }
         }
-        std::vector<std::string> key_int = {"block_dim"};
-        for (auto key: key_int) {
-          if (item[key].is_object() && !item[key].empty()) {
-            int32_t int_value = item[key].begin().value().get<int32_t>();
-            opInfo[key][item[key].begin().key()] = int_value;
-          }
+        std::string key_int = "block_dim";
+        auto &item_key_int = item[key_int];
+        if (item_key_int.is_object() && !item_key_int.empty()) {
+          int32_t int_value = item_key_int.begin().value().get<int32_t>();
+          opInfo[key_int][item_key_int.begin().key()] = int_value;
         }
       }
       // <<< end: put together compile info
@@ -92,18 +105,23 @@ bool Conv2DBpFilterTiling(const std::string& opType, const ge::Operator& opParas
 
     std::vector<int64_t> var_value;
     if (std::find(varMap.begin(), varMap.end(), "batch") != varMap.end()) {
-      var_value.insert(var_value.end(), opParas.GetInputDesc(0).GetShape().GetDim(nDim));
+      var_value.insert(var_value.end(), tensor_a_shape.GetDim(kConv2dNDim));
     }
     if (std::find(varMap.begin(), varMap.end(), "fmap_h") != varMap.end()) {
-      var_value.insert(var_value.end(), opParas.GetInputDesc(0).GetShape().GetDim(hDim));
-      var_value.insert(var_value.end(), opParas.GetInputDesc(2).GetShape().GetDim(hDim));
+      var_value.insert(var_value.end(), tensor_a_shape.GetDim(kConv2dHDim));
+      var_value.insert(var_value.end(), tensor_b_shape.GetDim(kConv2dHDim));
     }
     if (std::find(varMap.begin(), varMap.end(), "fmap_w") != varMap.end()) {
-      var_value.insert(var_value.end(), opParas.GetInputDesc(0).GetShape().GetDim(wDim));
-      var_value.insert(var_value.end(), opParas.GetInputDesc(2).GetShape().GetDim(wDim));
+      var_value.insert(var_value.end(), tensor_a_shape.GetDim(kConv2dWDim));
+      var_value.insert(var_value.end(), tensor_b_shape.GetDim(kConv2dWDim));
     }
 
-    return cube_tiling(opType, opParas.GetInputDesc(0).GetShape().GetDims(), var_value, opInfo, runInfo);
+    std::vector<int64_t> input_shape;
+    input_shape.reserve(kConv2dDimNumLimit);
+    for (size_t i = 0; i < kConv2dDimNumLimit; i++) {
+      input_shape.emplace_back(tensor_a_shape.GetDim(i));
+    }
+    return cube_tiling(opType, input_shape, var_value, opInfo, runInfo);
   } catch (...) {
     GELOGD("get unknown exception, please check compile info json.");
     return false;
