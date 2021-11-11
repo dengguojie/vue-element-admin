@@ -19,10 +19,15 @@
 
 #include <string>
 #include <vector>
+#include <string.h>
 #include "register/scope/scope_fusion_pass_register.h"
 #include "graph/operator.h"
 
 namespace ge {
+
+#define GET_DEQUANT_SCALE_DEQ(dequantScaleData)                                \
+  ((dequantScaleData & 0x00000000ffffffff))
+
 class ScopeDynamicRNNPass : public ScopeBasePass {
  protected:
   std::vector<ScopeFusionPatterns> DefinePatterns() override;
@@ -37,7 +42,14 @@ class ScopeDynamicRNNPass : public ScopeBasePass {
   void GenTacotronScopePatterns(ScopeFusionPatterns& patterns);
   void GenLTCRNNScopePatterns(ScopeFusionPatterns& patterns);
   void GenChinaMobileScopePatterns(ScopeFusionPatterns& patterns);
+  void GenQuantScopePatterns(ScopeFusionPatterns& patterns);
   void DynamicRNNPassParserParams(const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map, const std::string &origin_node_name, const std::string &op_type, ge::Operator* inner_node);
+  void QuantWeightRollBack(const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map,
+                           const std::string &origin_node_name, const std::string &type, ge::Operator* inner_node,
+                           const float scale_x, const float scale_b);
+  void GetQuantScale(const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map,
+                     float &scale_x, float &scale_b);
+  void GenerateFusionResultForQuant(const Scope* scope, FusionScopesResult* fusion_rlt, const std::string sub_type);
   void GenerateFusionResultForLTCRNN(const Scope* scope, FusionScopesResult* fusion_rlt);
   void GenerateFusionResultForMultiLSTM(const Scope* scope, FusionScopesResult* fusion_rlt);
   void GenerateFusionResultForMultiNetease(const Scope* scope, FusionScopesResult* fusion_rlt);

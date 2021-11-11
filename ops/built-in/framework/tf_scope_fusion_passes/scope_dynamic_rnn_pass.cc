@@ -38,6 +38,10 @@ static const char* kLstmTwoTransType = "lstm_two_transpose_scope";
 static const char* kLstmCell = "ganeral_lstm_cell";
 static const char* kMultiRNNCell = "ganeral_rnn_cell";
 static const char* kRNNTwoTransMaximumType = "lt_crnn_lstm";
+static const char* kFwQuantType = "fw_quant_two_transpose";
+static const char* kBwQuantType = "bw_quant_two_transpose";
+static const char* kFwQuantNoTransType = "fw_quant_no_transpose";
+static const char* kBwQuantNoTransType = "bw_quant_no_transpose";
 
 std::vector<ScopeFusionPatterns> ScopeDynamicRNNPass::DefinePatterns() {
   std::vector<ScopeFusionPatterns> patterns_list;
@@ -57,11 +61,119 @@ std::vector<ScopeFusionPatterns> ScopeDynamicRNNPass::DefinePatterns() {
   GenLTCRNNScopePatterns(patterns4);
   patterns_list.push_back(patterns4);
 
+  ScopeFusionPatterns patterns5;
+  GenQuantScopePatterns(patterns5);
+  patterns_list.push_back(patterns5);
+
   return patterns_list;
 }
 
 std::string ScopeDynamicRNNPass::PassName() {
   return std::string("ScopeDynamicRNNPass");
+}
+
+void ScopeDynamicRNNPass::GenQuantScopePatterns(ScopeFusionPatterns& patterns) {
+  // distinguish dynamic_rnn_cell
+  std::vector<ScopePattern*> batch1;
+  ScopePattern* basic_lstm_cell_tanh = new (std::nothrow) ScopePattern();
+  if (basic_lstm_cell_tanh == nullptr) {
+    ScopeUtil::FreeScopePatterns(patterns);
+    ScopeUtil::FreeOneBatchPattern(batch1);
+    OP_LOGE(kOpType, "Alloc an object failed.");
+    return;
+  }
+
+  basic_lstm_cell_tanh->SetSubType(kLstmCellTanhType);
+  // The number of Sigmoid is a multiple of 3.
+  basic_lstm_cell_tanh->AddNodeOpTypeFeature(NodeOpTypeFeature("Sigmoid", 0, 3));
+  // The number of Mul is a multiple of 3.
+  basic_lstm_cell_tanh->AddNodeOpTypeFeature(NodeOpTypeFeature("Mul", 0, 3));
+  // The number of Tanh is a multiple of 2.
+  basic_lstm_cell_tanh->AddNodeOpTypeFeature(NodeOpTypeFeature("Tanh", 0, 2));
+  // The number of MatMul is 1.
+  basic_lstm_cell_tanh->AddNodeOpTypeFeature(NodeOpTypeFeature("MatMul", 1, 0));
+  // The number of AscendWeightQuant is 1.
+  basic_lstm_cell_tanh->AddNodeOpTypeFeature(NodeOpTypeFeature("AscendWeightQuant", 1, 0));
+  ScopeAttrValue split_attr_value1;
+  // The Split node has a "num_split" attribute which value is 4.
+  split_attr_value1.SetIntValue(4);
+  basic_lstm_cell_tanh->AddNodeAttrFeature(NodeAttrFeature("Split", "num_split", ge::DT_INT32, split_attr_value1));
+
+  batch1.push_back(basic_lstm_cell_tanh);
+  patterns.push_back(batch1);
+
+  // distinguish while
+  std::vector<ScopePattern*> batch2;
+  ScopePattern* p_lstm_tanh_while = new (std::nothrow) ScopePattern();
+  if (p_lstm_tanh_while == nullptr) {
+    ScopeUtil::FreeScopePatterns(patterns);
+    ScopeUtil::FreeOneBatchPattern(batch2);
+    OP_LOGE(kOpType, "Alloc an object failed.");
+    return;
+  }
+  p_lstm_tanh_while->SetSubType(kWhileType);
+  p_lstm_tanh_while->AddScopeFeature(ScopeFeature(kLstmCellTanhType, 1, "while"));
+  batch2.push_back(p_lstm_tanh_while);
+  patterns.push_back(batch2);
+
+  std::vector<ScopePattern*> batch3;
+  ScopePattern* fw_while = new (std::nothrow) ScopePattern();
+  if (fw_while == nullptr) {
+    ScopeUtil::FreeScopePatterns(patterns);
+    ScopeUtil::FreeOneBatchPattern(batch3);
+    OP_LOGE(kOpType, "Alloc an object failed.");
+    return;
+  }
+  fw_while->SetSubType(kFwQuantType);
+  fw_while->AddScopeFeature(ScopeFeature(kWhileType, 1, "fw"));
+  fw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("StridedSlice", 0, 1));
+  fw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", 2, 0));
+  batch3.push_back(fw_while);
+
+  ScopePattern* bw_while = new (std::nothrow) ScopePattern();
+  if (bw_while == nullptr) {
+    ScopeUtil::FreeScopePatterns(patterns);
+    ScopeUtil::FreeOneBatchPattern(batch3);
+    OP_LOGE(kOpType, "Alloc an object failed.");
+    return;
+  }
+  bw_while->SetSubType(kBwQuantType);
+  bw_while->AddScopeFeature(ScopeFeature(kWhileType, 1, "bw"));
+  bw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("StridedSlice", 0, 1));
+  bw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", 2, 0));
+  bw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("ReverseSequence", -1, 0));
+  bw_while->AddNodeOpTypeFeature(NodeOpTypeFeature("ReverseV2", -1, 0));
+  batch3.push_back(bw_while);
+
+  ScopePattern* fw_no_trans_while = new (std::nothrow) ScopePattern();
+  if (fw_no_trans_while == nullptr) {
+    ScopeUtil::FreeScopePatterns(patterns);
+    ScopeUtil::FreeOneBatchPattern(batch3);
+    OP_LOGE(kOpType, "Alloc an object failed.");
+    return;
+  }
+  fw_no_trans_while->SetSubType(kFwQuantNoTransType);
+  fw_no_trans_while->AddScopeFeature(ScopeFeature(kWhileType, 1, "fw"));
+  fw_no_trans_while->AddNodeOpTypeFeature(NodeOpTypeFeature("StridedSlice", 0, 1));
+  fw_no_trans_while->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", -1, 0));
+  batch3.push_back(fw_no_trans_while);
+
+  ScopePattern* bw_no_trans_while = new (std::nothrow) ScopePattern();
+  if (bw_no_trans_while == nullptr) {
+    ScopeUtil::FreeScopePatterns(patterns);
+    ScopeUtil::FreeOneBatchPattern(batch3);
+    OP_LOGE(kOpType, "Alloc an object failed.");
+    return;
+  }
+  bw_no_trans_while->SetSubType(kBwQuantNoTransType);
+  bw_no_trans_while->AddScopeFeature(ScopeFeature(kWhileType, 1, "bw"));
+  bw_no_trans_while->AddNodeOpTypeFeature(NodeOpTypeFeature("StridedSlice", 0, 1));
+  bw_no_trans_while->AddNodeOpTypeFeature(NodeOpTypeFeature("Transpose", -1, 0));
+  bw_no_trans_while->AddNodeOpTypeFeature(NodeOpTypeFeature("ReverseSequence", -1, 0));
+  bw_no_trans_while->AddNodeOpTypeFeature(NodeOpTypeFeature("ReverseV2", -1, 0));
+  batch3.push_back(bw_no_trans_while);
+
+  patterns.push_back(batch3);
 }
 
 void ScopeDynamicRNNPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
@@ -354,10 +466,17 @@ Status ScopeDynamicRNNPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& s
   const std::vector<Scope*>& scopes = scope_tree->GetAllScopes();
   std::set<string> support_types = {kFwWhileType, kBwWhileType, kFwWhile_noTranposeType, kBwWhile_noTranposeType,
                                     kRnnWhileType, kLstmNoTransType, kLstmTransType, kLstmTwoTransType, kMultiRNNCell,
-                                    kRNNTwoTransMaximumType};
+                                    kRNNTwoTransMaximumType, kFwQuantType, kBwQuantType, kFwQuantNoTransType,
+                                    kBwQuantNoTransType};
   for (auto& scope : scopes) {
     // Class ScopeTree guarantees scope is not empty.
     if (support_types.count(scope->SubType()) != 0) {
+      if (scope->SubType() == kFwQuantType) {
+        std::string scope_name = scope->Name();
+        if (scope_name.find("BiLSTM/bidirectional_rnn/fw") != string::npos) {
+          continue;
+        }
+      }
       ScopesResult result;
       std::vector<Scope*> result_scopes;
       result_scopes.push_back(scope);
@@ -366,6 +485,102 @@ Status ScopeDynamicRNNPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& s
     }
   }
   return (!(results.empty())) ? SUCCESS : FAILED;
+}
+
+void ScopeDynamicRNNPass::GetQuantScale(const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map,
+                                        float &scale_x, float &scale_b) {
+  std::string ascend_quant_name = GetNodeNameFromScope(nodes_map, "lstm_cell/act_quant/AscendQuant");
+  std::string dequant_scale_name = GetNodeNameFromScope(nodes_map, "lstm_cell/dequant_temp/DeqQuant/deqscale");
+  for (auto& it : nodes_map) {
+    auto node_def = it.second;
+    std::string sub_node_name = node_def->GetName().c_str();
+    if (sub_node_name == ascend_quant_name) {
+      if (node_def->GetAttr("scale", scale_x) != SUCCESS) {
+        OP_LOGE(node_def->GetName().c_str(), "get attr AscendQuant scale failed.");
+        return;
+      }
+    }
+    if (sub_node_name == dequant_scale_name) {
+      ge::Tensor data;
+      if (node_def->GetAttr("value", data) != GRAPH_SUCCESS) {
+        OP_LOGE(node_def->GetName().c_str(), "get attr value failed");
+        return;
+      }
+      uint64_t scale_deq = *reinterpret_cast<uint64_t*>(data.GetData());
+      uint32_t scaleDeq = GET_DEQUANT_SCALE_DEQ(scale_deq);
+      memcpy(&scale_b, &scaleDeq, sizeof(float));
+    }
+  }
+}
+
+void ScopeDynamicRNNPass::QuantWeightRollBack(const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map,
+                                              const std::string &origin_node_name, const std::string &type,
+                                              ge::Operator* inner_node, const float scale_x, const float scale_b) {
+  for (auto& it : nodes_map) {
+    auto node_def = it.second;
+    std::string sub_node_name = node_def->GetName().c_str();
+    if (sub_node_name == origin_node_name) {
+      if (type == "weight") {
+        ge::Tensor tensor;
+        if (node_def->GetAttr("value", tensor) != GRAPH_SUCCESS) {
+          OP_LOGE(node_def->GetName().c_str(), "get attr value failed");
+          return;
+        }
+        int8_t *weightInt8Data = (int8_t *)(tensor.GetData());
+        const ge::Shape &weightShape = tensor.GetTensorDesc().GetShape();
+        int64_t weightDataCount = 1;
+        for (uint32_t i = 0; i < weightShape.GetDimNum(); i++) {
+          weightDataCount *= weightShape.GetDim(i);
+        }
+        std::unique_ptr<float[]> weightFloatData(new (std::nothrow) float[weightDataCount]());
+        float scale_w = scale_b * scale_x;
+        for (int64_t i = 0; i < weightDataCount; i++) {
+          weightFloatData[i] = weightInt8Data[i] * scale_w;
+        }
+        ge::graphStatus ret = tensor.SetData(reinterpret_cast<uint8_t *>(weightFloatData.get()),
+                                             weightDataCount * sizeof(float));
+        if (ret != GRAPH_SUCCESS) {
+          OP_LOGE(node_def->GetName().c_str(), "set data value failed.");
+          return;
+        }
+        auto val_desc = tensor.GetTensorDesc();
+        val_desc.SetDataType(DT_FLOAT);
+        tensor.SetTensorDesc(val_desc);
+        inner_node->SetAttr("value", tensor);
+        inner_node->SetAttr("dtype", DT_FLOAT);
+        break;
+      }
+      if (type == "bias") {
+        ge::Tensor tensor;
+        if (node_def->GetAttr("value", tensor) != GRAPH_SUCCESS) {
+          OP_LOGE(node_def->GetName().c_str(), "get bias value failed");
+          return;
+        }
+        int32_t *biasIntData = (int32_t *)(tensor.GetData());
+        const ge::Shape &biasShape = tensor.GetTensorDesc().GetShape();
+        int64_t biasDataCount = 1;
+        for (uint32_t i = 0; i < biasShape.GetDimNum(); i++) {
+          biasDataCount *= biasShape.GetDim(i);
+        }
+        std::unique_ptr<float[]> biasFloatData(new (std::nothrow) float[biasDataCount]());
+        for (int64_t i = 0; i < biasDataCount; i++) {
+          biasFloatData[i] = biasIntData[i] * scale_b;
+        }
+        ge::graphStatus ret = tensor.SetData(reinterpret_cast<uint8_t *>(biasFloatData.get()),
+                                             biasDataCount * sizeof(float));
+        if (ret != GRAPH_SUCCESS) {
+          OP_LOGE(node_def->GetName().c_str(), "set data value failed.");
+          return;
+        }
+        auto val_desc = tensor.GetTensorDesc();
+        val_desc.SetDataType(DT_FLOAT);
+        tensor.SetTensorDesc(val_desc);
+        inner_node->SetAttr("value", tensor);
+        inner_node->SetAttr("dtype", DT_FLOAT);
+        break;
+      }
+    }
+  }
 }
 
 void ScopeDynamicRNNPass::DynamicRNNPassParserParams(const std::unordered_map<std::string, ge::OperatorPtr> &nodes_map,
@@ -449,6 +664,66 @@ std::string ScopeDynamicRNNPass::GetNodeNameFromScope(const std::unordered_map<s
   }
   OP_LOGE(kOpType, "Cannot find node [%s] in scope.", sub_name.c_str());
   return "";
+}
+
+void ScopeDynamicRNNPass::GenerateFusionResultForQuant(const Scope* scope, FusionScopesResult* fusion_rlt,
+                                                       const std::string sub_type) {
+  OP_LOGD(kOpType, "Match DynamicRNN scope name is %s ", scope->Name().c_str());
+  const std::unordered_map<std::string, ge::OperatorPtr> &nodes_map = scope->AllNodesMap();
+
+  bool time_major = false;
+  if (sub_type == kFwQuantType || sub_type == kBwQuantType) {
+    fusion_rlt->InsertInputs("transpose", {0, kFusionDisableIndex});
+    fusion_rlt->InsertOutputs("transpose_1", {0});
+  } else {
+    fusion_rlt->InsertInputs("TensorArrayUnstack/TensorArrayScatter/TensorArrayScatterV3",
+                             {kFusionDisableIndex, kFusionDisableIndex, 0, kFusionDisableIndex});
+    fusion_rlt->InsertOutputs("TensorArrayStack/TensorArrayGatherV3", {0});
+    time_major = true;
+  }
+  fusion_rlt->SetType(kScopeToMultiNodes);
+  std::string scope_name = scope->Name();
+  fusion_rlt->SetName(scope_name.substr(0, scope_name.length() - 1));
+  fusion_rlt->SetDescription("");
+
+  std::string w_in_node_name = GetNodeNameFromScope(nodes_map, "lstm_cell/weight_quant/weight_int");
+  std::string b_in_node_name = GetNodeNameFromScope(nodes_map, "lstm_cell/bias_quant/bias_int");
+
+  float scale_x = 0;
+  float scale_b = 0;
+  GetQuantScale(nodes_map, scale_x, scale_b);
+
+  //weight to dynamicrnn
+  auto weight_0 = fusion_rlt->AddInnerNode("weight_0", "Const");
+  CHECK_INNER_NODE_CONDITION(weight_0 != nullptr, fusion_rlt);
+  Status ret = weight_0->InsertOutput("DynamicRNN_0", 1).BuildInnerNode();
+  CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
+  QuantWeightRollBack(nodes_map, w_in_node_name, "weight", weight_0->MutableOperator(), scale_x, scale_b);
+
+  //bias to dynamicrnn
+  auto bias_0 = fusion_rlt->AddInnerNode("bias_0", "Const");
+  CHECK_INNER_NODE_CONDITION(bias_0 != nullptr, fusion_rlt);
+  ret = bias_0->InsertOutput("DynamicRNN_0", 2).BuildInnerNode();
+  CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
+  QuantWeightRollBack(nodes_map, b_in_node_name, "bias", bias_0->MutableOperator(), scale_x, scale_b);
+
+  //dynamicrnn,input x,w,b
+  auto DynamicRNN_0 = fusion_rlt->AddInnerNode("DynamicRNN_0", "DynamicRNN");
+  CHECK_INNER_NODE_CONDITION(DynamicRNN_0 != nullptr, fusion_rlt);
+  ret = DynamicRNN_0->InsertInput(kInputFromFusionScope, 0)
+          .InsertInput("weight_0", 0)
+          .InsertInput("bias_0", 0)
+          .InsertOutput(kOutputToFusionScope, 0)
+          .BuildInnerNode();
+  CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
+
+  auto rnnNode = DynamicRNN_0->MutableOperator();
+  rnnNode->SetAttr("time_major", time_major);
+
+  ret = fusion_rlt->CheckInnerNodesInfo();
+  CHECK_INNER_NODE_CONDITION(ret == ge::GRAPH_SUCCESS, fusion_rlt);
+  OP_LOGI(kOpType, "Set fusion for quant result successfully.");
+  return;
 }
 
 void ScopeDynamicRNNPass::GenerateFusionResultForMultiLSTM(const Scope* scope, FusionScopesResult *fusion_rlt) {
@@ -886,6 +1161,11 @@ void ScopeDynamicRNNPass::GenerateFusionResult(const std::vector<Scope*>& scopes
     return;
   }
   for (auto& scope : scopes) {
+    if (scope->SubType() == kFwQuantType || scope->SubType() == kBwQuantType ||
+        scope->SubType() == kFwQuantNoTransType || scope->SubType() == kBwQuantNoTransType) {
+      GenerateFusionResultForQuant(scope, fusion_rlt, scope->SubType());
+      return;
+    }
     if (scope->SubType() == kRNNTwoTransMaximumType) {
       GenerateFusionResultForLTCRNN(scope, fusion_rlt);
       return;
