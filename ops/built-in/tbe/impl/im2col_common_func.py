@@ -610,8 +610,8 @@ def im2col_schedule(res, sch_list):
         """
         split multi core, when 32B is not aligned
         """
-        res_axis_list = list(res.op.axis)
-        workspace_axis_list = list(workspace_res.op.axis)
+        res_axis_list = list(res.op.axis).copy()
+        workspace_axis_list = list(workspace_res.op.axis).copy()
 
         res_bind_axis_list = [0 for _ in range(dma_split_axis_id)]
         workspace_bind_axis_list = [0 for _ in range(dma_split_axis_id)]
@@ -651,7 +651,7 @@ def im2col_schedule(res, sch_list):
 
         pre_core_n, pre_core_c, pre_core_howo = [1], [1], [1]
         for i in range(1, device_core_num + 1):
-            multi_core_factor = _get_core_factor(out_shape, i, i, i)
+            multi_core_factor = _get_core_factor(out_shape.copy(), i, i, i)
             pre_core_n.append(_ceil_div(out_shape[0], multi_core_factor[0]))
             pre_core_howo.append(_ceil_div(out_shape[1], multi_core_factor[1]))
             pre_core_c.append(_ceil_div(out_shape[3], multi_core_factor[3]))
@@ -660,9 +660,9 @@ def im2col_schedule(res, sch_list):
                                                               _ceil_div(out_shape[3], tiling_factor[3]),
                                                               _ceil_div(out_shape[1], tiling_factor[1]),
                                                               pre_core_n, pre_core_c, pre_core_howo)
-        multi_core_factor = _get_core_factor(out_shape, core_n, core_howo, core_c)
+        multi_core_factor = _get_core_factor(out_shape.copy(), core_n, core_howo, core_c)
 
-        res_axis_list = list(res.op.axis)
+        res_axis_list = list(res.op.axis).copy()
         res_bind_axis_list = [0 for _ in res_axis_list]
         for i, _ in enumerate(res_bind_axis_list):
             res_bind_axis_list[i], res_axis_list[i] = sch[res].split(res_axis_list[i], factor=multi_core_factor[i])
@@ -757,7 +757,7 @@ def im2col_schedule(res, sch_list):
         """
         get multi core split factor
         """
-        multi_core_factor = out_shape
+        multi_core_factor = out_shape.copy()
         if dma_split_axis_id == 0:  # n
             return multi_core_factor
         if dma_split_axis_id == 1:  # howo
@@ -780,14 +780,14 @@ def im2col_schedule(res, sch_list):
 
         pre_core_n, pre_core_howo = [1], [1]
         for i in range(1, device_core_num + 1):
-            multi_core_factor = _get_core_factor(out_shape, i, i)
+            multi_core_factor = _get_core_factor(out_shape.copy(), i, i)
             pre_core_n.append(_ceil_div(out_shape[0], multi_core_factor[0]))
             pre_core_howo.append(_ceil_div(out_shape[1], multi_core_factor[1]))
 
         core_n, core_howo = _cal_multi_core_factor(_ceil_div(out_shape[0], tiling_factor[0]),
                                                    _ceil_div(out_shape[1], tiling_factor[1]),
                                                    pre_core_n, pre_core_howo)
-        multi_core_factor = _get_core_factor(out_shape, core_n, core_howo)
+        multi_core_factor = _get_core_factor(out_shape.copy(), core_n, core_howo)
 
         return multi_core_factor
 
@@ -847,7 +847,7 @@ def im2col_schedule(res, sch_list):
         if allow_multi_core:
             multi_core_factor = _get_multi_core_factor(dma_split_axis_id, tiling_factor)
         else:
-            multi_core_factor = out_shape
+            multi_core_factor = out_shape.copy()
 
         split_multi_core_axis_list = _split_multi_core_32b_not_aligned(multi_core_factor, dma_split_axis_id,
                                                                        dma_split_factor)
