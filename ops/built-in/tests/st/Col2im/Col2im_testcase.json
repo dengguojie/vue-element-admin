@@ -62,5 +62,133 @@
                 "type": "list_int"
             }
         ]
+    },
+    {
+        "case_name": "Test_Col2im_002",
+        "op": "Col2im",
+        "st_mode": "",
+        "calc_expect_func_file": "",
+        "fuzz_impl": "",
+        "user_fuzz_impl": "",
+        "input_desc": [
+            {
+                "name": "x",
+                "format": ["NCHW"],
+                "ori_format": ["NCHW"],
+                "type": ["float"],
+                "shape": [2,192,9,196],
+                "ori_shape": [2,192,9,196],
+                "value_range": [1.0, 100.0],
+                "data_distribute": ["uniform"]
+            },
+            {
+                "name": "output_size",
+                "format": ["ND"],
+                "ori_format": ["ND"],
+                "type": ["int32"],
+                "shape": [2],
+                "ori_shape": [2],
+                "value_range": [0, 100],
+                "data_distribute": ["uniform"],
+                "value": [28,28],
+                "user_value": [28,28],
+                "is_const": true
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["NCHW"],
+                "ori_format": ["NCHW"],
+                "type": ["float"],
+                "shape": [2,192,28,28],
+                "ori_shape": [2,192,28,28]
+            }
+        ],
+        "attr": [
+            {
+                "name": "kernel_size",
+                "value": [3,3],
+                "type": "list_int"
+            },
+            {
+                "name": "dilation",
+                "value": [1,1],
+                "type": "list_int"
+            },
+            {
+                "name": "padding",
+                "value": [1,1],
+                "type": "list_int"
+            },
+            {
+                "name": "stride",
+                "value": [2,2],
+                "type": "list_int"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_Col2im_003",
+        "op": "Col2im",
+        "st_mode": "",
+        "calc_expect_func_file": "",
+        "fuzz_impl": "",
+        "user_fuzz_impl": "",
+        "input_desc": [
+            {
+                "name": "x",
+                "format": ["NCHW"],
+                "ori_format": ["NCHW"],
+                "type": ["float"],
+                "shape": [4,2,25,434],
+                "ori_shape": [4,2,25,434],
+                "value_range": [1.0, 100.0],
+                "data_distribute": ["uniform"]
+            },
+            {
+                "name": "output_size",
+                "format": ["ND"],
+                "ori_format": ["ND"],
+                "type": ["int32"],
+                "shape": [2],
+                "ori_shape": [2],
+                "value_range": [0, 100],
+                "data_distribute": ["uniform"],
+                "value": [46,96],
+                "user_value": [46,96],
+                "is_const": true
+            }
+        ],
+        "output_desc": [
+            {
+                "format": ["NCHW"],
+                "ori_format": ["NCHW"],
+                "type": ["float"],
+                "shape": [4,2,46,96],
+                "ori_shape": [4,2,46,96]
+            }
+        ],
+        "attr": [
+            {
+                "name": "kernel_size",
+                "value": [5,5],
+                "type": "list_int"
+            },
+            {
+                "name": "dilation",
+                "value": [2,2],
+                "type": "list_int"
+            },
+            {
+                "name": "padding",
+                "value": [2,2],
+                "type": "list_int"
+            },
+            {
+                "name": "stride",
+                "value": [3,3],
+                "type": "list_int"
+            }
+        ]
     }
 ]

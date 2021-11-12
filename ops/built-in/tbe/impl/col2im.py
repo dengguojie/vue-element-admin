@@ -65,82 +65,51 @@ def col2im_compute(
         ) as nc:
         n = nc // output_c1
         ci = nc % output_c1
-        
-        with tik_instance.new_stmt_scope():
-            zeors_ub = tik_instance.Tensor(
-                output_dtype, (output_w, output_c0), tik.scope_ubuf, "zeors_ub"
-            )
-            dup_rpt = (output_w * output_c0) // mask
-            dup_rmd = (output_w * output_c0) % mask
-            
-            if (dup_rpt):
-                tik_instance.vec_dup(mask, zeors_ub, 0, dup_rpt, constant.REPEAT_STRIDE_EIGHT)
-            if (dup_rmd):
-                tik_instance.vec_dup(dup_rmd, zeors_ub[dup_rpt * mask], 0, constant.REPEAT_TIME_ONCE, constant.REPEAT_STRIDE_EIGHT)
-            
-            with tik_instance.for_range(0, output_h) as height_id:
-                tik_instance.data_move(
-                    y_gm[n, ci, height_id, 0, 0], zeors_ub, constant.SID, 1, 
-                    (output_w * output_c0 * dtype_byte_num) // constant.BLOCK_SIZE, 
-                    constant.STRIDE_ZERO, constant.STRIDE_ZERO
-                )
         output_ub = tik_instance.Tensor(
-            output_dtype, (output_w, output_c0), tik.scope_ubuf, "output_ub"
+            output_dtype, (constant.VECTOR_BYTE_SIZE//dtype_byte_num,), tik.scope_ubuf, "output_ub"
         )
 
         input_ub = tik_instance.Tensor(
-            input_dtype, (wo, input_c0), tik.scope_ubuf, "input_ub"
+            input_dtype, (constant.VECTOR_BYTE_SIZE//dtype_byte_num,), tik.scope_ubuf, "input_ub"
         )        
         with tik_instance.for_range(0, kernel_num) as mask_id:
             width = mask_id % kernel_w
             height = mask_id // kernel_w
             with tik_instance.for_range(0, ho) as h:
-                # don't support to padding at current version
-                output_offset_h = height * dilation_h + h * stride_h 
+                output_offset_h = height * dilation_h + h * stride_h - padding_h
                 
+                with tik_instance.for_range(0, wo) as w:
+                    output_offset_w = width * dilation_w + w * stride_w - padding_w
 
-                tik_instance.data_move(
-                    input_ub, x_gm[n, ci, mask_id, h * wo, 0], 
-                    constant.SID, constant.DEFAULT_NBURST, 
-                    (wo * input_c0 * dtype_byte_num) // constant.BLOCK_SIZE, 
-                    constant.STRIDE_ZERO, constant.STRIDE_ZERO
-                )
-                tik_instance.data_move(
-                    output_ub, y_gm[n, ci, output_offset_h, 0, 0], 
-                    constant.SID, constant.DEFAULT_NBURST, 
-                    (output_w * output_c0 * dtype_byte_num) // constant.BLOCK_SIZE, 
-                    constant.STRIDE_ZERO, constant.STRIDE_ZERO
-                )
-                
-                add_rpt = (wo * input_c0) // mask
-                add_rmd = (wo * input_c0) % mask
-                
-                kernel_w_offset = width * constant.SIZE_SIXTEEN
+                    with  tik_instance.if_scope(tik.all(
+                        output_offset_h >= 0, output_offset_h < output_h, 
+                        output_offset_w >= 0, output_offset_w < output_w)):
+                        
+                        tik_instance.data_move(
+                            input_ub, x_gm[n, ci, mask_id, h*wo + w, 0], 
+                            constant.SID, constant.DEFAULT_NBURST, 
+                            (input_c0 * dtype_byte_num) // constant.BLOCK_SIZE, 
+                            constant.STRIDE_ZERO, constant.STRIDE_ZERO
+                        )
+                        tik_instance.data_move(
+                            output_ub, y_gm[n, ci, output_offset_h, output_offset_w, 0], 
+                            constant.SID, constant.DEFAULT_NBURST, 
+                            (output_c0 * dtype_byte_num) // constant.BLOCK_SIZE, 
+                            constant.STRIDE_ZERO, constant.STRIDE_ZERO
+                        )
+                        
+                        tik_instance.vadd(
+                            mask, output_ub, output_ub, input_ub,
+                            constant.DEFAULT_REPEAT_TIME, constant.BLOCK_STRIDE_ONE, constant.BLOCK_STRIDE_ONE, constant.BLOCK_STRIDE_ONE,
+                            constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT
+                        )
 
-                if (add_rpt):
-                    tik_instance.vadd(
-                        mask, output_ub[kernel_w_offset], output_ub[kernel_w_offset], input_ub,
-                        add_rpt, constant.BLOCK_STRIDE_ONE, constant.BLOCK_STRIDE_ONE, constant.BLOCK_STRIDE_ONE,
-                        constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT
-                    )
-
-                if (add_rmd):
-                    add_rpt_offset = add_rpt * mask
-                    output_ub_offset = kernel_w_offset + add_rpt_offset
-                    tik_instance.vadd(
-                        add_rmd, output_ub[output_ub_offset], output_ub[output_ub_offset], input_ub[add_rpt_offset],
-                        constant.REPEAT_TIME_ONCE, constant.BLOCK_STRIDE_ONE, constant.BLOCK_STRIDE_ONE, constant.BLOCK_STRIDE_ONE,
-                        constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT
-                    )
-
-
-
-                tik_instance.data_move(
-                    y_gm[n, ci, output_offset_h, 0, 0], output_ub, 
-                    constant.SID, constant.DEFAULT_NBURST, 
-                    (output_w * output_c0 * dtype_byte_num) // constant.BLOCK_SIZE, 
-                    constant.STRIDE_ZERO, constant.STRIDE_ZERO
-                )
+                        tik_instance.data_move(
+                            y_gm[n, ci, output_offset_h, output_offset_w, 0], output_ub, 
+                            constant.SID, constant.DEFAULT_NBURST, 
+                            (output_c0 * dtype_byte_num) // constant.BLOCK_SIZE, 
+                            constant.STRIDE_ZERO, constant.STRIDE_ZERO
+                        )
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
@@ -169,7 +138,7 @@ def col2im(
     """
     tik_instance = tik.Tik()
 
-    y_gm = tik_instance.Tensor(y["dtype"], y["shape"], tik.scope_gm, "y_gm")
+    y_gm = tik_instance.Tensor(y["dtype"], y["shape"], tik.scope_gm, "y_gm", is_atomic_add=True)
     x_gm = tik_instance.Tensor(x["dtype"], x["shape"], tik.scope_gm, "x_gm")
     output_size_gm = tik_instance.Tensor(output_size["dtype"], output_size["shape"], tik.scope_gm, "output_size_gm")
 
