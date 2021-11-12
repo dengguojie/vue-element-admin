@@ -92,6 +92,7 @@ set(_optiling_files
   reverse.cc
   reduce_tiling.cc
   reduce_tiling_v2.cc
+  reduce_tiling_v3.cc
   norm.cc
   resize_common.cc
   resize_nearest_neighbor_v2.cc

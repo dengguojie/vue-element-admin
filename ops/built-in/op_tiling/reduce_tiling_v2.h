@@ -181,22 +181,6 @@ class Reduce {
   int32_t ubSizeB{-1};
 };
 }  // namespace utils
-
-class ReduceCompileInfo: public AutoTilingCompileInfo {
-  public:
-  ReduceCompileInfo(const std::string& o, const std::string& p, const nlohmann::json& c)
-    : AutoTilingCompileInfo(o, p), compile_info(c) {}
-  bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const override;
-  bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const override;
-
-  private:
-  const nlohmann::json compile_info;
-};
-
-std::shared_ptr<AutoTilingCompileInfo> CreateReduceTilingHandler(const std::string& op_type,
-                                                                 const std::string& pattern,
-                                                                 const nlohmann::json& parsed_compile_info);
-
 }  // namespace optiling
 
 #endif  // REDUCE_TILING_V2_H
