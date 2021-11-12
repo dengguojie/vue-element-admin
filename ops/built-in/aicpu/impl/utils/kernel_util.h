@@ -19,8 +19,6 @@
 
 #include <climits>
 #include <cmath>
-#include <cstdint>
-#include <cstdlib>
 #include <sstream>
 
 #include "cpu_context.h"
@@ -28,33 +26,33 @@
 #include "status.h"
 
 namespace aicpu {
-const uint32_t kResvCpuNum = 2;
-const uint32_t kThreadNum = 32;
-const uint32_t kFirstInputIndex = 0;
-const uint32_t kSecondInputIndex = 1;
-const uint32_t kFirstOutputIndex = 0;
-const uint32_t kSecondOutputIndex = 1;
-const uint32_t kDynamicInput = -1;
-const uint32_t kDynamicOutput = -2;
-const uint64_t kEigenAlignmentBytes = 16;
+constexpr uint32_t kResvCpuNum = 2;
+constexpr uint32_t kThreadNum = 32;
+constexpr uint32_t kFirstInputIndex = 0;
+constexpr uint32_t kSecondInputIndex = 1;
+constexpr uint32_t kFirstOutputIndex = 0;
+constexpr uint32_t kSecondOutputIndex = 1;
+constexpr uint32_t kDynamicInput = -1;
+constexpr uint32_t kDynamicOutput = -2;
+constexpr uint64_t kEigenAlignmentBytes = 16;
 
-const uint64_t kFormatNCHWIndexN = 0;
-const uint64_t kFormatNCHWIndexC = 1;
-const uint64_t kFormatNCHWIndexH = 2;
-const uint64_t kFormatNCHWIndexW = 3;
+constexpr uint64_t kFormatNCHWIndexN = 0;
+constexpr uint64_t kFormatNCHWIndexC = 1;
+constexpr uint64_t kFormatNCHWIndexH = 2;
+constexpr uint64_t kFormatNCHWIndexW = 3;
 
-const uint64_t kFormatCHWIndexC = 0;
-const uint64_t kFormatCHWIndexH = 1;
-const uint64_t kFormatCHWIndexW = 2;
+constexpr uint64_t kFormatCHWIndexC = 0;
+constexpr uint64_t kFormatCHWIndexH = 1;
+constexpr uint64_t kFormatCHWIndexW = 2;
 
-const uint64_t kFormatNHWCIndexN = 0;
-const uint64_t kFormatNHWCIndexH = 1;
-const uint64_t kFormatNHWCIndexW = 2;
-const uint64_t kFormatNHWCIndexC = 3;
+constexpr uint64_t kFormatNHWCIndexN = 0;
+constexpr uint64_t kFormatNHWCIndexH = 1;
+constexpr uint64_t kFormatNHWCIndexW = 2;
+constexpr uint64_t kFormatNHWCIndexC = 3;
 
-const uint64_t kFormatHWCIndexH = 0;
-const uint64_t kFormatHWCIndexW = 1;
-const uint64_t kFormatHWCIndexC = 2;
+constexpr uint64_t kFormatHWCIndexH = 0;
+constexpr uint64_t kFormatHWCIndexW = 1;
+constexpr uint64_t kFormatHWCIndexC = 2;
 
 /*
  * str cat util function
@@ -157,7 +155,9 @@ inline bool MulWithoutOverflow(const int64_t x, const int64_t y, int64_t &xy) {
     }
 
     // Otherwise, detect overflow using a division
-    if (ux != 0 && uxy / ux != uy) return false;
+    if (ux != 0 && uxy / ux != uy) {
+      return false;
+    }
   }
 
   // Cast back to signed.  Any negative value will signal an error.

@@ -52,7 +52,7 @@ class RangeSampler {
       const aicpu::cpu::ArraySlice<int64_t> &extras,
       aicpu::cpu::MutableArraySlice<float> &extras_expected_count) const;
 
-  int64_t range() {
+  int64_t range() const {
     return range_;
   }
 

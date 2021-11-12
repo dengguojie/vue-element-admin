@@ -17,7 +17,7 @@
 #ifndef CPU_KERNELS_LOG_H
 #define CPU_KERNELS_LOG_H
 
-#include <stdio.h>
+#include <cstdio>
 #include <sys/syscall.h>
 #include <unistd.h>
 #include "toolchain/slog.h"
@@ -27,7 +27,7 @@ inline long GetTid() {
   return tid;
 }
 
-const char KERNEL_MODULE[] = "AICPU";
+constexpr char KERNEL_MODULE[] = "AICPU";
 
 #ifdef RUN_TEST
 #define KERNEL_LOG_DEBUG(fmt, ...)                                    \
@@ -47,19 +47,19 @@ const char KERNEL_MODULE[] = "AICPU";
          __FILE__, __FUNCTION__, __LINE__, GetTid(), ##__VA_ARGS__)
 #else
 #define KERNEL_LOG_DEBUG(fmt, ...)                                            \
-  dlog_debug(AICPU, "[%s][%s:%d][tid:%lu]:" fmt, KERNEL_MODULE, __FUNCTION__, \
+  dlog_debug(AICPU, "[%s][%s:%d][tid:%ld]:" fmt, KERNEL_MODULE, __FUNCTION__, \
              __LINE__, GetTid(), ##__VA_ARGS__)
 #define KERNEL_LOG_INFO(fmt, ...)                                            \
-  dlog_info(AICPU, "[%s][%s:%d][tid:%lu]:" fmt, KERNEL_MODULE, __FUNCTION__, \
+  dlog_info(AICPU, "[%s][%s:%d][tid:%ld]:" fmt, KERNEL_MODULE, __FUNCTION__, \
             __LINE__, GetTid(), ##__VA_ARGS__)
 #define KERNEL_LOG_WARN(fmt, ...)                                            \
-  dlog_warn(AICPU, "[%s][%s:%d][tid:%lu]:" fmt, KERNEL_MODULE, __FUNCTION__, \
+  dlog_warn(AICPU, "[%s][%s:%d][tid:%ld]:" fmt, KERNEL_MODULE, __FUNCTION__, \
             __LINE__, GetTid(), ##__VA_ARGS__)
 #define KERNEL_LOG_ERROR(fmt, ...)                                            \
-  dlog_error(AICPU, "[%s][%s:%d][tid:%lu]:" fmt, KERNEL_MODULE, __FUNCTION__, \
+  dlog_error(AICPU, "[%s][%s:%d][tid:%ld]:" fmt, KERNEL_MODULE, __FUNCTION__, \
              __LINE__, GetTid(), ##__VA_ARGS__)
 #define KERNEL_LOG_EVENT(fmt, ...)                                            \
-  dlog_event(AICPU, "[%s][%s:%d][tid:%lu]:" fmt, KERNEL_MODULE, __FUNCTION__, \
+  dlog_event(AICPU, "[%s][%s:%d][tid:%ld]:" fmt, KERNEL_MODULE, __FUNCTION__, \
              __LINE__, GetTid(), ##__VA_ARGS__)
 #endif
 

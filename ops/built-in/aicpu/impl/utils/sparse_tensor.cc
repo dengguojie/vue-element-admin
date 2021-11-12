@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright（c） Huawei Technologies Co., Ltd. 2020.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,12 +15,10 @@
  */
 
 #include "sparse_tensor.h"
-
 #include "cpu_types.h"
 
 namespace aicpu {
-
-uint32_t SparseTensor::CreateSparseTensor(Tensor *ix, Tensor *vals,
+uint32_t SparseTensor::CreateSparseTensor(Tensor *ix, Tensor *tensorvals,
                                           std::vector<int64_t> shape,
                                           std::vector<int64_t> order) {
   KERNEL_LOG_INFO("Start to execute CreateSparseTensor.");
@@ -28,7 +26,7 @@ uint32_t SparseTensor::CreateSparseTensor(Tensor *ix, Tensor *vals,
     KERNEL_LOG_ERROR("Ix is nullptr.");
     return KERNEL_STATUS_INNER_ERROR;
   }
-  if (vals == nullptr || vals->GetData() == nullptr) {
+  if (tensorvals == nullptr || tensorvals->GetData() == nullptr) {
     KERNEL_LOG_ERROR("Vals is nullptr.");
     return KERNEL_STATUS_INNER_ERROR;
   }
@@ -41,13 +39,11 @@ uint32_t SparseTensor::CreateSparseTensor(Tensor *ix, Tensor *vals,
   }
 
   int64_t dims = (ix->GetTensorShape()->GetDims() == 0)
-                     ? 1
-                     : ix->GetTensorShape()->GetDimSize(0);
-  int64_t vals_dim0 = (vals->GetTensorShape()->GetDims() == 0)
-                     ? 1
-                     : vals->GetTensorShape()->GetDimSize(0);
+                     ? 1 : ix->GetTensorShape()->GetDimSize(0);
+  int64_t vals_dim0 = (tensorvals->GetTensorShape()->GetDims() == 0)
+                     ? 1 : tensorvals->GetTensorShape()->GetDimSize(0);
   if (dims != vals_dim0) {
-    KERNEL_LOG_ERROR("Ix dim_size_0 [%lld] != vals dim_size_0 [%lld]", dims,
+    KERNEL_LOG_ERROR("Ix dim_size_0 [%ld] != tensorvals dim_size_0 [%ld]", dims,
                      vals_dim0);
     return KERNEL_STATUS_INNER_ERROR;
   }
@@ -57,15 +53,15 @@ uint32_t SparseTensor::CreateSparseTensor(Tensor *ix, Tensor *vals,
   int64_t orderSize = static_cast<int64_t>(order.size());
   int64_t shapeSize = static_cast<int64_t>(shape.size());
   if (orderSize != dims) {
-    KERNEL_LOG_ERROR("orderSize [%lld] != dims [%lld]", orderSize, dims);
+    KERNEL_LOG_ERROR("orderSize [%ld] != dims [%ld]", orderSize, dims);
     return KERNEL_STATUS_INNER_ERROR;
   }
   if (shapeSize != dims) {
-    KERNEL_LOG_ERROR("shapeSize [%lld] != dims [%lld]", shapeSize, dims);
+    KERNEL_LOG_ERROR("shapeSize [%ld] != dims [%ld]", shapeSize, dims);
     return KERNEL_STATUS_INNER_ERROR;
   }
   ix_ = std::make_shared<EigenTensor>(ix, ix->GetData());
-  vals_ = std::make_shared<EigenTensor>(vals, vals->GetData());
+  vals_ = std::make_shared<EigenTensor>(tensorvals, tensorvals->GetData());
   if (ix_ == nullptr || vals_ == nullptr) {
     KERNEL_LOG_ERROR("Indices or values creat eigen tensor failed.");
     return KERNEL_STATUS_INNER_ERROR;
@@ -78,7 +74,7 @@ uint32_t SparseTensor::CreateSparseTensor(Tensor *ix, Tensor *vals,
   return KERNEL_STATUS_OK;
 }
 
-uint32_t SparseTensor::IndicesValid() {
+uint32_t SparseTensor::IndicesValid() const {
   KERNEL_LOG_INFO("Start to execute IndicesValid.");
   for (auto ord : order_) {
     if (ord < 0) {
@@ -106,7 +102,7 @@ uint32_t SparseTensor::IndicesValid() {
   return KERNEL_STATUS_OK;
 }
 
-bool SparseTensor::ValidateToDense(Tensor *out) {
+bool SparseTensor::ValidateToDense(const Tensor *out) const {
   KERNEL_LOG_INFO("Start to execute ValidateToDense.");
   if (out->GetDataType() != vals_->GetTensor()->GetDataType()) {
     KERNEL_LOG_ERROR("Output data type must match vals, got out [%d], vals [%d].",
@@ -130,7 +126,7 @@ bool SparseTensor::ValidateToDense(Tensor *out) {
   for (size_t d = 0; d < shape_.size(); ++d) {
     if (shape_[d] > out_shape->GetDimSize(d)) {
       KERNEL_LOG_ERROR(
-          "Valid output shape dims value falied, index [%z], shape value [%d], "
+          "Valid output shape dims value falied, index [%zu], shape value [%ld], "
           "greater than output shape value [%d].",
           d, shape_[d], out_shape->GetDimSize(d));
       return false;
@@ -142,7 +138,7 @@ bool SparseTensor::ValidateToDense(Tensor *out) {
 
 GroupIterable SparseTensor::group(const std::vector<int64_t> &group_ix) const {
   if (group_ix.size() > static_cast<size_t>(dims_)) {
-    KERNEL_LOG_WARN("Grop_ix.size:%d > dims_:%d", group_ix.size(), dims_);
+    KERNEL_LOG_WARN("Grop_ix.size:%zu > dims_:%d", group_ix.size(), dims_);
   }
   return GroupIterable(const_cast<Tensor *>(ix_->GetTensor()),
                        const_cast<Tensor *>(vals_->GetTensor()), dims_,

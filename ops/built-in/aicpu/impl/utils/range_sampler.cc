@@ -1,3 +1,18 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #include "range_sampler.h"
 #include <cmath>
 #include <unordered_set>
@@ -14,18 +29,18 @@ uint32_t RangeSampler::SampleBatchGetExpectedCount(
     const aicpu::cpu::ArraySlice<int64_t> &extras,
     aicpu::cpu::MutableArraySlice<float> &extras_expected_count) const {
   return SampleBatchGetExpectedCountAvoid(unique, batch, batch_expected_count,
-                                          extras,extras_expected_count,
+                                          extras, extras_expected_count,
                                           aicpu::cpu::ArraySlice<int64_t>());
 }
 
 namespace {
-float ExpectedCountHelper(float p, int batch_size, int num_tries) {
-  if (num_tries == batch_size) {
+float ExpectedCountHelper(float p, int batch_size, int number_tries) {
+  if (number_tries == batch_size) {
     // This shortcut will always be taken if unique=false
     return p * batch_size;
   }
-  // numerically stable version of (1 - (1-p)^num_tries)
-  return -std::expm1(num_tries * std::log1p(-p));
+  // numerically stable version of (1 - (1-p)^number_tries)
+  return -std::expm1(number_tries * std::log1p(-p));
 }
 
 template <class Collection>
@@ -35,7 +50,6 @@ bool InsertIfNotPresent(Collection *const collection,
 }
 
 const int32_t kInt32Max = static_cast<int32_t>(0x7FFFFFFF);
-
 }  // namespace
 
 uint32_t RangeSampler::SampleBatchGetExpectedCountAvoid(
@@ -46,7 +60,7 @@ uint32_t RangeSampler::SampleBatchGetExpectedCountAvoid(
     const aicpu::cpu::ArraySlice<int64_t> &avoided_values) const {
   const size_t kBatchSize = batch.size();
   if (range_ <= 0) {
-    KERNEL_LOG_ERROR("The value of range_:[%lld] must be greater than 0!",
+    KERNEL_LOG_ERROR("The value of range_:[%ld] must be greater than 0!",
                      range_);
     return KERNEL_STATUS_INNER_ERROR;
   }
@@ -55,7 +69,7 @@ uint32_t RangeSampler::SampleBatchGetExpectedCountAvoid(
   if (unique) {
     if (kBatchSize + avoided_values.size() > static_cast<size_t>(range_)) {
       KERNEL_LOG_ERROR(
-          "The value should be less than range_:[%lld], but got [%zu]", range_,
+          "The value should be less than range_:[%ld], but got [%zu]", range_,
           kBatchSize + avoided_values.size());
       return KERNEL_STATUS_INNER_ERROR;
     }
@@ -88,7 +102,7 @@ uint32_t RangeSampler::SampleBatchGetExpectedCountAvoid(
   }
   // Compute the expected counts of the batch and the extra values
   return ComputeExpectedCount(kBatchSize, num_tries, batch, batch_expected_count,
-                       extras, extras_expected_count);
+                              extras, extras_expected_count);
 }
 
 uint32_t RangeSampler::ComputeExpectedCount(
@@ -153,7 +167,7 @@ int64_t LogUniformSampler::Sample() const {
   const int64_t value =
       static_cast<int64_t>(exp(uni_real(gen) * log_range_)) - 1;
   if (value < 0) {
-    KERNEL_LOG_ERROR("The value: [%lld] should be >= 0", value);
+    KERNEL_LOG_ERROR("The value: [%ld] should be >= 0", value);
     return 0;
   }
   return value % range_;

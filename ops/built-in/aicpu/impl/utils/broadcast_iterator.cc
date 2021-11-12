@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -90,7 +90,7 @@ void BroadcastIterator::InitStrides() {
 }
 
 uint32_t GetBroadcastShape(const std::vector<int64_t>& x, const std::vector<int64_t>& y,
-                       std::vector<int64_t>& broadcast_shape) {
+                           std::vector<int64_t>& broadcast_shape) {
   int64_t x_len = x.size();
   int64_t y_len = y.size();
   int64_t length = x_len < y_len ? x_len : y_len;
@@ -120,5 +120,4 @@ uint32_t GetBroadcastShape(const std::vector<int64_t>& x, const std::vector<int6
   }
   return KERNEL_STATUS_OK;
 }
-
 }  // namespace aicpu

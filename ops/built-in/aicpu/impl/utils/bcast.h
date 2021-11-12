@@ -24,7 +24,7 @@ namespace aicpu {
 // 1. SAME_SHAPE : x and y have the same shape
 // 2. X_ONE : x has only one element
 // 3. Y_ONE : y has only one element
-enum BcastShapeType {
+enum class BcastShapeType {
   SAME_SHAPE = 0,
   X_ONE_ELEMENT = 1,
   Y_ONE_ELEMENT = 2,
@@ -55,8 +55,8 @@ class Bcast {
   void GetBcastVec(BCalcInfo &calcInfo);
   void BCastIndexes(std::vector<int64_t> &x_indexes,
                     std::vector<int64_t> &y_indexes);
-  int64_t GetBroadcastXIndex(int64_t index);
-  int64_t GetBroadcastYIndex(int64_t index);
+  int64_t GetBroadcastXIndex(int64_t index) const;
+  int64_t GetBroadcastYIndex(int64_t index) const;
   bool IsValid() const { return valid_; }
   const std::vector<int64_t> &x_reshape() const { return x_reshape_; }
   const std::vector<int64_t> &y_reshape() const { return y_reshape_; }

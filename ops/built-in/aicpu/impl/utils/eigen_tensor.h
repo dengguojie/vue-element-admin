@@ -19,7 +19,6 @@
 
 #include "cpu_tensor.h"
 #include "log.h"
-#include "status.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace aicpu {
@@ -208,7 +207,6 @@ class EigenTensor {
   Tensor *tensor_;
   void *tensor_data_;
 };
-
 }  // namespace aicpu
 
 #endif  // AICPU_EIGENTENSOR_H

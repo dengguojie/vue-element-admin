@@ -17,7 +17,6 @@
 #ifndef CPU_KERNEL_UTIL_SPARSE_GROUP_ITERATOR_H_
 #define CPU_KERNEL_UTIL_SPARSE_GROUP_ITERATOR_H_
 
-#include <cstdint>
 #include <vector>
 #include "eigen_tensor.h"
 
@@ -52,7 +51,7 @@ class Group;  // Predeclare Group for GroupIterable.
 // Forward declaration of SparseTensor
 class GroupIterable {
  public:
-  typedef std::vector<int64_t> VarDimArray;
+  using VarDimArray = std::vector<int64_t>;
 
   GroupIterable(Tensor *ix, Tensor *vals, int dims,
                 const VarDimArray &group_dims)
@@ -98,7 +97,7 @@ class GroupIterable {
       UpdateEndOfGroup();
     }
 
-    ~IteratorStep() { iter_ = NULL; }
+    ~IteratorStep() { iter_ = nullptr; }
 
     void UpdateEndOfGroup();
 

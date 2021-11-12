@@ -97,17 +97,17 @@ void InvGradCpuKernel::SpecialCompute(BcastShapeType type, int64_t start,
                                    int64_t end, T *input1,
                                    T *input2, T *output) {
   switch(type) {
-    case SAME_SHAPE:
+    case BcastShapeType::SAME_SHAPE:
       for (int64_t i = start; i < end; ++i) {
         *(output + i) = *(input1 + i) * *(input1 + i) * *(input2 + i) * static_cast<T>(-1);
       }
       break;
-    case X_ONE_ELEMENT:
+    case BcastShapeType::X_ONE_ELEMENT:
       for (int64_t i = start; i < end; ++i) {
         *(output + i) = *(input1) * (*(input1)) * (*(input2 + i)) * static_cast<T>(-1.0);
       }
       break;
-    case Y_ONE_ELEMENT:
+    case BcastShapeType::Y_ONE_ELEMENT:
       for (int64_t i = start; i < end; ++i) {
         *(output + i) = *(input1 + i) * (*(input1 + i)) * (*(input2)) * static_cast<T>(-1.0);
       }
@@ -127,7 +127,9 @@ uint32_t InvGradCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
   int64_t in1_elements_nums = ctx.Input(1)->NumElements();
   int64_t data_num = ctx.Output(0)->NumElements();
   BcastShapeType type = in0_elements_nums == in1_elements_nums ?
-      SAME_SHAPE : (in0_elements_nums == 1 ? X_ONE_ELEMENT : Y_ONE_ELEMENT);
+      BcastShapeType::SAME_SHAPE :
+      (in0_elements_nums == 1 ?
+      BcastShapeType::X_ONE_ELEMENT : BcastShapeType::Y_ONE_ELEMENT);
       
   if (data_num >= kParallelDataNumSameShape) {
     uint32_t min_core_num = 1;

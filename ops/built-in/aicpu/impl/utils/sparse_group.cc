@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,9 +34,8 @@ bool GroupIterable::IteratorStep::operator==(const IteratorStep &rhs) const {
   return (rhs.loc_ == loc_);
 }
 
-GroupIterable::IteratorStep
-    &GroupIterable::IteratorStep::operator++()  // prefix ++
-{
+GroupIterable::IteratorStep &GroupIterable::IteratorStep::operator++()
+{ // prefix ++
   loc_ = next_loc_;
   UpdateEndOfGroup();
   return *this;

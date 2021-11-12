@@ -42,12 +42,12 @@ class SparseTensor {
   /*
    * creat sparse tensor
    * @param ix: index tensor
-   * @param vals: vals tensor
+   * @param tensorvals: tensorvals tensor
    * @param shape: shape vec
    * @param order: order vec
    * @return uint32_t: 0->success other->failed
    */
-  uint32_t CreateSparseTensor(Tensor *ix, Tensor *vals,
+  uint32_t CreateSparseTensor(Tensor *ix, Tensor *tensorvals,
                               std::vector<int64_t> shape,
                               std::vector<int64_t> order);
 
@@ -55,7 +55,7 @@ class SparseTensor {
    * sparse indices valid
    * @return uint32_t: 0->success other->failed
    */
-  uint32_t IndicesValid();
+  uint32_t IndicesValid() const;
 
   /*
    * group sparse tensor
@@ -68,7 +68,7 @@ class SparseTensor {
    * @return uint32_t: 0->success other->failed
    */
   template <typename T>
-  uint32_t EigenTensorIndicesValid(int64_t n) {
+  uint32_t EigenTensorIndicesValid(int64_t n) const {
     KERNEL_LOG_INFO("start to execute eigen IndicesValid.");
     bool valid = true;
     bool different = false;
@@ -118,7 +118,7 @@ class SparseTensor {
    * @param output: output tensor
    * @return bool: true->success false->failed
    */
-  bool ValidateToDense(Tensor *out);
+  bool ValidateToDense(const Tensor *out) const;
 
   /*
    * sparse tensor to dense tensor

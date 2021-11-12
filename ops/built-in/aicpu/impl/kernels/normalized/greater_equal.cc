@@ -99,17 +99,17 @@ void GreaterEqualCpuKernel::SpecialCompute(BcastShapeType type, int64_t start,
                                            int64_t end, const T *input1,
                                            const T *input2, bool *output) {
   switch (type) {
-    case SAME_SHAPE:
+    case BcastShapeType::SAME_SHAPE:
       for (int64_t i = start; i < end; ++i) {
         output[i] = input1[i] >= input2[i];
       }
       break;
-    case X_ONE_ELEMENT:
+    case BcastShapeType::X_ONE_ELEMENT:
       for (int64_t i = start; i < end; ++i) {
         output[i] = *input1 >= input2[i];
       }
       break;
-    case Y_ONE_ELEMENT:
+    case BcastShapeType::Y_ONE_ELEMENT:
       for (int64_t i = start; i < end; ++i) {
         output[i] = input1[i] >= *input2;
       }
@@ -128,10 +128,10 @@ uint32_t GreaterEqualCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
   const int64_t input0_elements_nums = ctx.Input(0)->NumElements();
   const int64_t input1_elements_nums = ctx.Input(1)->NumElements();
   const int64_t data_num = ctx.Output(0)->NumElements();
-  BcastShapeType type =
-      (input0_elements_nums == input1_elements_nums)
-          ? SAME_SHAPE
-          : ((input0_elements_nums == 1) ? X_ONE_ELEMENT : Y_ONE_ELEMENT);
+  BcastShapeType type = (input0_elements_nums == input1_elements_nums) ?
+      BcastShapeType::SAME_SHAPE :
+      ((input0_elements_nums == 1) ?
+      BcastShapeType::X_ONE_ELEMENT : BcastShapeType::Y_ONE_ELEMENT);
 
   if (data_num >= kParallelDataNumSameShape) {
     const int64_t min_core_num = 4;

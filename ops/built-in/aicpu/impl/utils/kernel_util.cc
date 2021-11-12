@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved. 
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -170,13 +170,13 @@ uint32_t NormalCheck(CpuKernelContext &ctx, const uint32_t inputs_num,
                            ctx.GetOpType().c_str(), i);
       auto input_shape = input->GetTensorShape();
       KERNEL_CHECK_NULLPTR(input_shape, KERNEL_STATUS_PARAM_INVALID,
-                          "%s input[%u] tensor shape is nullptr.",
-                          ctx.GetOpType().c_str(), i);
+                           "%s input[%u] tensor shape is nullptr.",
+                           ctx.GetOpType().c_str(), i);
       if (!IsEmptyTensor(input)) {
         auto input_data = input->GetData();
         KERNEL_CHECK_NULLPTR(input_data, KERNEL_STATUS_PARAM_INVALID,
-                            "%s input[%u] tensor data is nullptr.",
-                            ctx.GetOpType().c_str(), i);
+                             "%s input[%u] tensor data is nullptr.",
+                             ctx.GetOpType().c_str(), i);
       }
     }
   }
@@ -193,13 +193,13 @@ uint32_t NormalCheck(CpuKernelContext &ctx, const uint32_t inputs_num,
                            ctx.GetOpType().c_str(), i);
       auto output_shape = output->GetTensorShape();
       KERNEL_CHECK_NULLPTR(output_shape, KERNEL_STATUS_PARAM_INVALID,
-                          "%s output[%u] tensor shape is nullptr.",
-                          ctx.GetOpType().c_str(), i);
+                           "%s output[%u] tensor shape is nullptr.",
+                           ctx.GetOpType().c_str(), i);
       if (!IsEmptyTensor(output)) {
         auto output_data = output->GetData();
         KERNEL_CHECK_NULLPTR(output_data, KERNEL_STATUS_PARAM_INVALID,
-                            "%s output[%u] tensor data is nullptr.",
-                            ctx.GetOpType().c_str(), i);
+                             "%s output[%u] tensor data is nullptr.",
+                             ctx.GetOpType().c_str(), i);
       }
     }
   }
@@ -214,8 +214,8 @@ uint32_t NormalCheck(CpuKernelContext &ctx, const uint32_t inputs_num,
   for (auto const &attr_name : attr_names) {
     auto attr = ctx.GetAttr(attr_name);
     KERNEL_CHECK_NULLPTR(attr, KERNEL_STATUS_PARAM_INVALID,
-                          "%s get attr[%s] is nullptr.",
-                          ctx.GetOpType().c_str(), attr_name.c_str());
+                         "%s get attr[%s] is nullptr.",
+                         ctx.GetOpType().c_str(), attr_name.c_str());
   }
   return KERNEL_STATUS_OK;
 }

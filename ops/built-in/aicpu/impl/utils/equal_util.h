@@ -1,9 +1,10 @@
 
+#ifndef AICPU_UTILS_EQUAL_UTIL_H_
+#define AICPU_UTILS_EQUAL_UTIL_H_
+
 #include "cpu_kernel.h"
 #include "utils/bcast.h"
 
-#ifndef AICPU_UTILS_EQUAL_UTIL_H_
-#define AICPU_UTILS_EQUAL_UTIL_H_
 namespace aicpu {
    /**
    * @brief Parameter verification
