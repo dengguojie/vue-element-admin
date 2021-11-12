@@ -546,6 +546,7 @@ class NormComputeGraphInfo:
         self.reduce_tensor_set: Set[Tensor] = set()
         self.broadcast_tensor_set: Set[Tensor] = set()
         self.elewise_tensor_set: Set[Tensor] = set()
+        self.set_value_tensor_set: Set[Tensor] = set()
         self.input_tensor_set: Set[Tensor] = set()
         self.non_gm_input_tensor_set: Set[Tensor] = set()
         # Extra info initialized after pre-initialization
@@ -597,6 +598,10 @@ class NormComputeGraphInfo:
                                        # self.elewise_tensor_set hook
                                        (lambda _tensor: _tensor.op.tag.find("elewise") != -1,
                                         lambda _tensor: self.elewise_tensor_set.add(_tensor),
+                                        lambda _tensor: None),
+                                       # self.set_value_tensor_set hook
+                                       (lambda _tensor: _tensor.op.tag.find("set_value") != -1,
+                                        lambda _tensor: self.set_value_tensor_set.add(_tensor),
                                         lambda _tensor: None)
                                    ))
         # Initialize non-hookable info
@@ -936,7 +941,8 @@ class NormComputeGraphInfo:
                 _is_last_broadcast = False
                 _broadcast_num = 0
                 for _idx in range(len(_dst_shape)):
-                    if not util.expr_equal(_src_shape[_idx], _dst_shape[_idx]):
+                    if not util.expr_equal(_src_shape[_idx], _dst_shape[_idx]) \
+                            or (util.expr_equal(_src_shape[_idx], 1) and util.expr_equal(_dst_shape[_idx], 1)):
                         _broadcast_num += 1
                         if _idx == len(_dst_shape) - 1:
                             _is_last_broadcast = True

@@ -169,6 +169,7 @@ INSN_MAPPING = {
     "reduce_prod": "vector_reduce_prod",
     "broadcast": "vector_broadcast",
     "unified_broadcast": "vector_broadcast",
+    "set_value": "vector_dup",
     "elewise_binary_cmpsel_gt": "vector_select_gt",
     "elewise_binary_cmpsel_ge": "vector_select_ge",
     "elewise_binary_cmpsel_lt": "vector_select_lt",

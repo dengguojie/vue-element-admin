@@ -197,6 +197,9 @@ class NormNormalSchedule:
         self._calc_compute_at()
         self._do_compute_at()
 
+        self._do_reused_by()
+        self._do_set_store_predicate()
+
         self._calc_emit_insn()
         self._do_emit_insn()
 
@@ -467,6 +470,17 @@ class NormNormalSchedule:
         for single_tensor, param in self._compute_at_map.items():
             self._sch[single_tensor].compute_at(self._sch[param[0]], param[1])
 
+    def _do_reused_by(self):
+        for single_tensor in self._graph_info.set_value_tensor_set:
+            reused_tensor = list(self._backward_compute_graph_map[single_tensor])[0]
+            if reused_tensor in self._cache_read_tensor_and_buffer_map:
+                reused_tensor = self._cache_read_tensor_and_buffer_map[reused_tensor]
+            self._sch[reused_tensor].reused_by(single_tensor)
+
+    def _do_set_store_predicate(self):
+        for single_tensor in self._graph_info.set_value_tensor_set:
+            self._sch[single_tensor].set_store_predicate(single_tensor.op.body[0].condition)
+
     def _calc_emit_insn(self):
         emit_insn_axis_index = 0
         self._emit_insn_map[self._res_tensor] = [self._ub_split_result.get("inner_itervar"),
@@ -553,7 +567,7 @@ class NormNormalSchedule:
             # elewise tensor
             # compute_inlined_tensors can not fuse axis due to broadcast logic
             if single_tensor in (self._graph_info.reduce_tensor_set | self._graph_info.broadcast_tensor_set |
-                                 self._compute_inlined_tensors):
+                                 self._compute_inlined_tensors | self._graph_info.set_value_tensor_set):
                 continue
             if self._tiling_case.is_aligned_in_ub_case:
                 if single_tensor in self._ori_and_align_pad_tensor_map or\
@@ -616,6 +630,7 @@ class NormWorkspaceSchedule:
         self._bind_buffer_map = {}
         self._compute_at_map = {}
         self._compute_root_tensors = set()
+        self._reused_map = {}
         self._emit_insn_map = {}
 
         self._is_last_common_axis_split_block = False
@@ -682,6 +697,10 @@ class NormWorkspaceSchedule:
         self._calc_compute_at()
         self._do_compute_at()
         self._do_compute_root()
+
+        self._calc_reused_by()
+        self._do_reused_by()
+        self._do_set_store_predicate()
 
         self._calc_emit_insn()
         self._do_emit_insn()
@@ -1209,6 +1228,48 @@ class NormWorkspaceSchedule:
         for single_tensor in self._compute_root_tensors:
             self._sch[single_tensor].compute_root()
 
+    def _calc_reused_by(self):
+        for single_tensor in self._graph_info.set_value_tensor_set:
+            if single_tensor in self._graph_info.workspace_tensor_set:
+                reused_tensor = list(
+                    self._split_tensor_and_sub_graph_map[single_tensor]["sub_tensor_producers_map"][single_tensor])[0]
+                if reused_tensor in self._cache_read_tensor_and_buffer_map:
+                    reused_tensor = list(self._cache_read_tensor_and_buffer_map[reused_tensor].keys())[0]
+                if reused_tensor in self._cache_clone_tensor_and_buffer_map:
+                    reused_tensor = list(self._cache_clone_tensor_and_buffer_map[reused_tensor].keys())[0]
+                self._reused_map[self._workspace_map[single_tensor]["ub_tensor"]] = reused_tensor
+                continue
+
+            for sub_graph_split_tensor, sub_graph_map in self._split_tensor_and_sub_graph_map.items():
+                sub_tensor_list = sub_graph_map["sub_tensor_list"]
+                if single_tensor in sub_tensor_list and single_tensor != sub_graph_split_tensor:
+                    reused_tensor = list(self._split_tensor_and_sub_graph_map[sub_graph_split_tensor]
+                                         ["sub_tensor_producers_map"][single_tensor])[0]
+                    if single_tensor in self._cache_clone_tensor_and_buffer_map:
+                        reuse_tensor = list(self._cache_clone_tensor_and_buffer_map[single_tensor].keys())[0]
+                        sub_graph_split_tensor = \
+                            list(self._cache_clone_tensor_and_buffer_map[single_tensor].values())[0]
+                        if reused_tensor in self._cache_read_tensor_and_buffer_map:
+                            for cache_read_buffer in self._cache_read_tensor_and_buffer_map[reused_tensor]:
+                                if self._cache_read_tensor_and_buffer_map[reused_tensor][cache_read_buffer] == \
+                                        sub_graph_split_tensor:
+                                    self._reused_map[reuse_tensor] = cache_read_buffer
+                                else:
+                                    self._reused_map[single_tensor] = cache_read_buffer
+                    elif reused_tensor in self._cache_read_tensor_and_buffer_map:
+                        self._reused_map[single_tensor] = \
+                            list(self._cache_read_tensor_and_buffer_map[single_tensor].keys())[0]
+                    else:
+                        self._reused_map[single_tensor] = reused_tensor
+
+    def _do_reused_by(self):
+        for single_tensor, reuse_tensor in self._reused_map.items():
+            self._sch[reuse_tensor].reused_by(single_tensor)
+
+    def _do_set_store_predicate(self):
+        for single_tensor in self._reused_map:
+            self._sch[single_tensor].set_store_predicate(single_tensor.op.body[0].condition)
+
     def _calc_emit_insn(self):
         def __handle_workspace_tensor():
             for workspace_tensor in self._workspace_tensor_set:
@@ -1371,7 +1432,7 @@ class NormWorkspaceSchedule:
             # elewise tensor
             # compute_inlined_tensors can not fuse axis due to broadcast logic
             if single_tensor not in (self._graph_info.reduce_tensor_set | self._graph_info.broadcast_tensor_set |
-                                     self._compute_inlined_tensors):
+                                     self._compute_inlined_tensors | self._graph_info.set_value_tensor_set):
                 __mark_group_axis_on_common_tensor(single_tensor)
 
         for single_tensor in self._cache_read_buffer_and_tensor_map:
