@@ -54,38 +54,6 @@ REG_OP(Bitcast)
     .OP_END_FACTORY_REG(Bitcast)
 
 /**
-*@brief Convert tensor format from HWCN to C1HWNCoC0 . \n
-
-*@par Inputs:
-*x: A Tensor. Must be 4D Tensor of type float16, float32, int32, uint16, with format HWCN . \n
-
-*@par Outputs:
-*y: A 6D Tensor. Has the same type as "x", with format C1HWNCoC0.
-*/
-REG_OP(DepthwiseWeight4DTo6D)
-    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_UINT16}))
-    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_UINT16}))
-    .OP_END_FACTORY_REG(DepthwiseWeight4DTo6D)
-
-/**
-*@brief Convert tensor format from C1HWNCoC0 to HWCN . \n
-
-*@par Inputs:
-*x: A Tensor. Must be 6D Tensor of type float16, float32, int32, uint16, with format C1HWNCoC0 . \n
-
-*@par Attributes:
-*channel_size: An optional int, specifying the channel size of 4D Tensor with format HWCN . \n
-
-*@par Outputs:
-*y: A 4D Tensor. Has the same type as "x", with format HWCN.
-*/
-REG_OP(DepthwiseWeight6DTo4D)
-    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_UINT16}))
-    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32, DT_UINT16}))
-    .ATTR(channel_size, Int, 16)
-    .OP_END_FACTORY_REG(DepthwiseWeight6DTo4D)
-
-/**
 *@brief Permutes the dimensions according to perm.
         The returned tensor's dimension i will correspond to the input dimension perm[i] . \n
 
