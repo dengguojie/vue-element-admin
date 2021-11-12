@@ -25,7 +25,7 @@ class RoundCpuKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
-  bool CheckSupported(DataType input_type);
+  bool CheckSupported(DataType input_type) const;
 };
 }  // namespace aicpu
 #endif

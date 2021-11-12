@@ -25,7 +25,7 @@ const int32_t KSplitSize = 64 * 1024;
 const char *kScatterElements = "ScatterElements";
 #define DO_COMPUTE_CASE(DTYPE, TYPE, ITYPE, CTX)   \
   case (DTYPE): {                                  \
-    if(ITYPE == DT_INT32) {                        \
+    if((ITYPE) == DT_INT32) {                      \
       return DoCompute<TYPE, int32_t>(ctx);        \
     } else {                                       \
       return DoCompute<TYPE, int64_t>(ctx);        \

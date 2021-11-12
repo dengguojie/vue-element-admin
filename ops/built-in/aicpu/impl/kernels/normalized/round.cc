@@ -55,7 +55,7 @@ void RangeRound(int64_t start, int64_t end, T *input, T *out) {
 }
 
 namespace aicpu {
-bool RoundCpuKernel::CheckSupported(DataType input_type) {
+bool RoundCpuKernel::CheckSupported(DataType input_type) const {
   switch (input_type) {
     case DT_FLOAT16:
     case DT_FLOAT:

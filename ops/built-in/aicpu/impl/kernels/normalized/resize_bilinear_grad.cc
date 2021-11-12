@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "resize_bilinear_grad.h"
-#include "resize_bilinear.h"
+
 #include <vector>
 #include <securec.h>
 #include "cpu_types.h"
@@ -22,6 +21,8 @@
 #include "status.h"
 #include "utils/sparse_tensor.h"
 #include "utils/kernel_util.h"
+#include "resize_bilinear_grad.h"
+#include "resize_bilinear.h"
 
 namespace {
 constexpr uint32_t kInputNum = 2;

@@ -21,7 +21,6 @@
 #include "cpu_kernel_utils.h"
 #include "cpu_types.h"
 #include "log.h"
-#include "status.h"
 #include "utils/kernel_util.h"
 
 namespace {
