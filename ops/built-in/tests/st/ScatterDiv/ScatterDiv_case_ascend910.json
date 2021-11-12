@@ -1,22 +1,17 @@
 [
   {
-    "case_name": "SqrtGrad_static_shape_test_SqrtGrad_auto_case_name_3_ascend910a",
-    "op": "SqrtGrad",
+    "case_name": "ScatterDiv_dynamic_shape_dynamic_scatter_div_case_1_ascend910a",
+    "op": "ScatterDiv",
     "input_desc": [
       {
         "format": [
           "ND"
         ],
         "type": [
-          "float16"
+          "float32"
         ],
         "shape": [
-          15,
-          3,
-          7,
-          5,
-          3,
-          2
+          1
         ],
         "data_distribute": [
           "uniform"
@@ -27,22 +22,26 @@
             1.0
           ]
         ],
-        "name": "y"
+        "name": "var",
+        "shape_range": [
+          [
+            1,
+            1
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
       },
       {
         "format": [
           "ND"
         ],
         "type": [
-          "float16"
+          "int32"
         ],
         "shape": [
-          15,
-          3,
-          7,
-          5,
-          3,
-          2
+          1
         ],
         "data_distribute": [
           "uniform"
@@ -53,7 +52,37 @@
             1.0
           ]
         ],
-        "name": "dy"
+        "name": "indices"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "updates",
+        "shape_range": [
+          [
+            1,
+            1
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
       }
     ],
     "output_desc": [
@@ -62,23 +91,25 @@
           "ND"
         ],
         "type": [
-          "float16"
+          "float32"
         ],
         "shape": [
-          15,
-          3,
-          7,
-          5,
-          3,
-          2
+          1
         ],
-        "name": "z"
+        "name": "var"
+      }
+    ],
+    "attr": [
+      {
+        "name": "use_locking",
+        "type": "bool",
+        "value": false
       }
     ]
   },
   {
-    "case_name": "SqrtGrad_static_shape_test_SqrtGrad_auto_case_name_1_ascend910a",
-    "op": "SqrtGrad",
+    "case_name": "ScatterDiv_dynamic_shape_dynamic_scatter_div_case_ascend910a",
+    "op": "ScatterDiv",
     "input_desc": [
       {
         "format": [
@@ -88,8 +119,7 @@
           "float32"
         ],
         "shape": [
-          2,
-          64
+          1
         ],
         "data_distribute": [
           "uniform"
@@ -100,7 +130,37 @@
             1.0
           ]
         ],
-        "name": "y"
+        "name": "var",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "indices"
       },
       {
         "format": [
@@ -110,8 +170,7 @@
           "float32"
         ],
         "shape": [
-          2,
-          64
+          1
         ],
         "data_distribute": [
           "uniform"
@@ -122,7 +181,16 @@
             1.0
           ]
         ],
-        "name": "dy"
+        "name": "updates",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
       }
     ],
     "output_desc": [
@@ -134,75 +202,16 @@
           "float32"
         ],
         "shape": [
-          2,
-          64
+          1
         ],
-        "name": "z"
-      }
-    ]
-  },
-  {
-    "case_name": "SqrtGrad_static_shape_test_SqrtGrad_auto_case_name_2_ascend910a",
-    "op": "SqrtGrad",
-    "input_desc": [
-      {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float16"
-        ],
-        "shape": [
-          73,
-          64
-        ],
-        "data_distribute": [
-          "uniform"
-        ],
-        "value_range": [
-          [
-            0.1,
-            1.0
-          ]
-        ],
-        "name": "y"
-      },
-      {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float16"
-        ],
-        "shape": [
-          73,
-          64
-        ],
-        "data_distribute": [
-          "uniform"
-        ],
-        "value_range": [
-          [
-            0.1,
-            1.0
-          ]
-        ],
-        "name": "dy"
+        "name": "var"
       }
     ],
-    "output_desc": [
+    "attr": [
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float16"
-        ],
-        "shape": [
-          73,
-          64
-        ],
-        "name": "z"
+        "name": "use_locking",
+        "type": "bool",
+        "value": false
       }
     ]
   }

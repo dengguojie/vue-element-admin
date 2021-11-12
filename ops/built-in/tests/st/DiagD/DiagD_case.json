@@ -56,58 +56,6 @@
     "input_desc": [
       {
         "shape": [
-          16
-        ],
-        "format": "ND",
-        "ori_shape": [
-          3
-        ],
-        "ori_format": "ND",
-        "param_type": "input",
-        "name": "x",
-        "type": "int32"
-      },
-      {
-        "shape": [
-          16,
-          16
-        ],
-        "format": "ND",
-        "ori_shape": [
-          16,
-          16
-        ],
-        "ori_format": "ND",
-        "param_type": "input",
-        "name": "assist",
-        "type": "int32"
-      }
-    ],
-    "output_desc": [
-      {
-        "shape": [
-          16,
-          16
-        ],
-        "format": "ND",
-        "ori_shape": [
-          16,
-          16
-        ],
-        "ori_format": "ND",
-        "param_type": "output",
-        "name": "y",
-        "type": "int32"
-      }
-    ],
-    "attr": [],
-    "case_name": "test_DiagD_001"
-  },
-  {
-    "op": "DiagD",
-    "input_desc": [
-      {
-        "shape": [
           128
         ],
         "format": "ND",
@@ -402,58 +350,6 @@
     ],
     "attr": [],
     "case_name": "test_DiagD_008"
-  },
-  {
-    "op": "DiagD",
-    "input_desc": [
-      {
-        "shape": [
-          16
-        ],
-        "format": "ND",
-        "ori_shape": [
-          3
-        ],
-        "ori_format": "ND",
-        "param_type": "input",
-        "name": "x",
-        "type": "int32"
-      },
-      {
-        "shape": [
-          16,
-          16
-        ],
-        "format": "ND",
-        "ori_shape": [
-          16,
-          16
-        ],
-        "ori_format": "ND",
-        "param_type": "input",
-        "name": "assist",
-        "type": "int32"
-      }
-    ],
-    "output_desc": [
-      {
-        "shape": [
-          16,
-          16
-        ],
-        "format": "ND",
-        "ori_shape": [
-          16,
-          16
-        ],
-        "ori_format": "ND",
-        "param_type": "output",
-        "name": "y",
-        "type": "int32"
-      }
-    ],
-    "attr": [],
-    "case_name": "test_DiagD_009"
   },
   {
     "op": "DiagD",

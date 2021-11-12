@@ -1,0 +1,314 @@
+[
+  {
+    "case_name": "Gelu_dynamic_shape_Gelu_3_ascend910a",
+    "op": "Gelu",
+    "input_desc": [
+      {
+        "format": [],
+        "type": [
+          "float",
+          "float16"
+        ],
+        "shape": [],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [],
+        "type": [
+          "float",
+          "float16"
+        ],
+        "shape": [],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "Gelu_dynamic_shape_Gelu_1_ascend910a",
+    "op": "Gelu",
+    "input_desc": [
+      {
+        "format": [],
+        "type": [
+          "float",
+          "float16"
+        ],
+        "shape": [],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [],
+        "type": [
+          "float",
+          "float16"
+        ],
+        "shape": [],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "Gelu_dynamic_shape_Gelu_4_ascend910a",
+    "op": "Gelu",
+    "input_desc": [
+      {
+        "format": [],
+        "type": [
+          "float",
+          "float16"
+        ],
+        "shape": [],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [],
+        "type": [
+          "float",
+          "float16"
+        ],
+        "shape": [],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "Gelu_dynamic_shape_Gelu_2_ascend910a",
+    "op": "Gelu",
+    "input_desc": [
+      {
+        "format": [],
+        "type": [
+          "float",
+          "float16"
+        ],
+        "shape": [],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [],
+        "type": [
+          "float",
+          "float16"
+        ],
+        "shape": [],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "Gelu_static_shape_gelu_case4_ascend910a",
+    "op": "Gelu",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "Gelu_static_shape_gelu_case1_ascend910a",
+    "op": "Gelu",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "Gelu_static_shape_gelu_case3_ascend910a",
+    "op": "Gelu",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          16,
+          32
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "Gelu_static_shape_gelu_case2_ascend910a",
+    "op": "Gelu",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  }
+]

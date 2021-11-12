@@ -1,116 +1,2972 @@
 [
-    {
-        "op": "ResizeBilinearV2Grad",
-        "case_name": "test_resize_bilinear_v2_grad_001",
-        "calc_expect_func_file": "",
-        "input_desc": [
-            {
-                "format": "NCHW",
-                "shape": [-1, -1, -1, -1],
-                "typical_shape": [4, 16, 16, 16],
-                "shape_range": [[1, 2240],[1, 2240],[1, 2240],[1, 2240]],
-                "type": "float",
-                "value_range": [[0, 1]],
-                "data_distribute": "uniform",
-                "name": "grads"
-            },
-            {
-                "format": "NCHW",
-                "shape": [-1, -1, -1, -1],
-                "typical_shape": [4, 16, 8, 8],
-                "shape_range": [[1, 2240],[1, 2240],[1, 2240],[1, 2240]],
-                "type": "float",
-                "value_range": [[0, 1]],
-                "data_distribute": "uniform",
-                "name": "ori_image_size"
-            }
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_17_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
         ],
-        "output_desc": [
-            {
-                "format": "NCHW",
-                "shape": [4, 16, 8, 8],
-                "type": "float",
-                "name": "y"
-            }
+        "type": [
+          "float32"
         ],
-        "attr": [
-            {
-                "name": "align_corners",
-                "value": false,
-                "type": "bool"
-            },
-            {
-                "name": "half_pixel_centers",
-                "value": false,
-                "type": "bool"
-            },
-			{
-                "name": "size",
-                "value": [],
-                "type": "list_int"
-            },
-			{
-                "name": "ori_image_size",
-                "value": [],
-                "type": "list_int"
-            },
-			{
-                "name": "src_start_w",
-                "value": 0,
-                "type": "int"
-            },
-			{
-                "name": "dst_start_w",
-                "value": 0,
-                "type": "int"
-            }
+        "shape": [
+          33,
+          2,
+          32,
+          2,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          2,
+          2,
+          3,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
         ]
-    },
-    {
-        "op": "ResizeBilinearV2Grad",
-        "case_name": "test_resize_bilinear_v2_grad_002",
-        "calc_expect_func_file": "",
-        "input_desc": [
-            {
-                "format": "NCHW",
-                "shape": [-1, -1, -1, -1],
-                "typical_shape": [4, 16, 16, 16],
-                "shape_range": [[1, 2240],[1, 2240],[1, 2240],[1, 2240]],
-                "type": "float",
-                "value_range": [[0, 1]],
-                "data_distribute": "uniform",
-                "name": "grads"
-            },
-            {
-                "format": "NCHW",
-                "shape": [-1, -1, -1, -1],
-                "typical_shape": [4, 16, 8, 8],
-                "shape_range": [[1, 2240],[1, 2240],[1, 2240],[1, 2240]],
-                "type": "float",
-                "value_range": [[0, 1]],
-                "data_distribute": "uniform",
-                "name": "ori_image_size"
-            }
-        ],
-        "output_desc": [
-            {
-                "format": "NCHW",
-                "shape": [4, 16, 8, 8],
-                "type": "float",
-                "name": "y"
-            }
-        ],
-        "attr": [
-            {
-                "name": "align_corners",
-                "value": true,
-                "type": "bool"
-            },
-            {
-                "name": "half_pixel_centers",
-                "value": false,
-                "type": "bool"
-            }
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          false
         ]
-    }
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_17_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_8_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          1,
+          768,
+          1152,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          1,
+          48,
+          72,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_8_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_15_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          33,
+          2,
+          33,
+          3,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          2,
+          2,
+          2,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_15_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_2_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          3,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          3,
+          2,
+          2,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          3,
+          257,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          true
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_2_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_13_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          33,
+          1,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          1,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_13_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_6_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          256,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          true
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_6_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_19_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          33,
+          1,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          2,
+          2,
+          2,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_19_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_1_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          3,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          3,
+          2,
+          2,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          true
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_1_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_3_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          3,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          3,
+          2,
+          2,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          3,
+          25,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          true
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_3_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_24_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          260,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_24_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_10_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          1,
+          48,
+          72,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          32,
+          1,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_10_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_26_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          33,
+          2,
+          33,
+          2,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          2,
+          2,
+          650,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          true
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_26_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_7_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          256,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          33,
+          2,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          true
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_7_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_22_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          33,
+          1,
+          48,
+          130,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          1,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          true
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          true
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_22_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_9_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          1,
+          48,
+          72,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          1,
+          48,
+          72,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_9_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_25_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          33,
+          2,
+          33,
+          2,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          2,
+          2,
+          650,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_25_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_23_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          260,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          true
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_23_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_11_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          33,
+          1,
+          48,
+          72,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          1,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_11_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_14_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          33,
+          2,
+          2,
+          3,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          2,
+          2,
+          2,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_14_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_16_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          33,
+          2,
+          33,
+          2,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          2,
+          2,
+          3,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_16_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_5_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          true
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_5_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_12__1_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          33,
+          1,
+          4,
+          240,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          1,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_12__1_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_20_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          33,
+          1,
+          2,
+          500,
+          70
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          2,
+          2,
+          500,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_20_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_18_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          33,
+          2,
+          2,
+          3,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          2,
+          2,
+          2,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          true
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_18_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_4_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          3,
+          2,
+          2,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          3,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          3,
+          1,
+          1,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          true
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_4_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_21_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          33,
+          1,
+          2,
+          256,
+          128
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          2,
+          2,
+          256,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_21_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  },
+  {
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_12_ascend910a",
+    "op": "ResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          33,
+          1,
+          48,
+          130,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          1,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          2,
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [
+          false
+        ]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_12_ascend910a"
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  }
 ]

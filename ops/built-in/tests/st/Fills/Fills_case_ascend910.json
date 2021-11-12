@@ -1,0 +1,482 @@
+[
+  {
+    "case_name": "Fills_static_shape_test_Fills_auto_case_name_1_ascend910a",
+    "op": "Fills",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          125,
+          125
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          125,
+          125
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "value",
+        "type": "float",
+        "value": 3.0
+      }
+    ]
+  },
+  {
+    "case_name": "Fills_dynamic_shape_Fills_1_ascend910a",
+    "op": "Fills",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "value",
+        "type": "float",
+        "value": 1.0
+      }
+    ]
+  },
+  {
+    "case_name": "Fills_static_shape_test_Fills_auto_case_name_3_ascend910a",
+    "op": "Fills",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          3,
+          30,
+          100,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          3,
+          30,
+          100,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "value",
+        "type": "float",
+        "value": 3.0
+      }
+    ]
+  },
+  {
+    "case_name": "Fills_static_shape_test_Fills_auto_case_name_5_ascend910a",
+    "op": "Fills",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          3,
+          30,
+          10,
+          16,
+          17
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          3,
+          30,
+          10,
+          16,
+          17
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "value",
+        "type": "float",
+        "value": 3.0
+      }
+    ]
+  },
+  {
+    "case_name": "Fills_static_shape_test_Fills_auto_case_name_4_ascend910a",
+    "op": "Fills",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          3,
+          30,
+          100,
+          16,
+          17
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          3,
+          30,
+          100,
+          16,
+          17
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "value",
+        "type": "float",
+        "value": 3.0
+      }
+    ]
+  },
+  {
+    "case_name": "Fills_dynamic_shape_Fills_2_ascend910a",
+    "op": "Fills",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "value",
+        "type": "float",
+        "value": 1.0
+      }
+    ]
+  },
+  {
+    "case_name": "Fills_static_shape_test_Fills_auto_case_name_2_ascend910a",
+    "op": "Fills",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          3,
+          30,
+          100
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          3,
+          30,
+          100
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "value",
+        "type": "float",
+        "value": 3.0
+      }
+    ]
+  },
+  {
+    "case_name": "Fills_static_shape_test_Fills_auto_case_name_6_ascend910a",
+    "op": "Fills",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          3,
+          30,
+          10,
+          16,
+          17
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          3,
+          30,
+          10,
+          16,
+          17
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "value",
+        "type": "float",
+        "value": 3.0
+      }
+    ]
+  }
+]

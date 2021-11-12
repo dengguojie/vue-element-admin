@@ -1,14 +1,14 @@
 [
   {
-    "case_name": "ApplyAdagradD_dynamic_shape_case1_ascend910a",
-    "op": "ApplyAdagradD",
+    "case_name": "ClipByNormNoDivSum_dynamic_shape_clip_by_norm_no_div_sum_compute_1_ascend910a",
+    "op": "ClipByNormNoDivSum",
     "input_desc": [
       {
         "format": [
           "ND"
         ],
         "type": [
-          "float32"
+          "float16"
         ],
         "shape": [
           1
@@ -22,7 +22,7 @@
             1.0
           ]
         ],
-        "name": "var",
+        "name": "x",
         "shape_range": [
           [
             1,
@@ -38,7 +38,7 @@
           "ND"
         ],
         "type": [
-          "float32"
+          "float16"
         ],
         "shape": [
           1
@@ -52,7 +52,7 @@
             1.0
           ]
         ],
-        "name": "accum",
+        "name": "greater_zeros",
         "shape_range": [
           [
             1,
@@ -68,7 +68,7 @@
           "ND"
         ],
         "type": [
-          "float32"
+          "float16"
         ],
         "shape": [
           1
@@ -82,7 +82,7 @@
             1.0
           ]
         ],
-        "name": "lr",
+        "name": "select_ones",
         "shape_range": [
           [
             1,
@@ -98,7 +98,7 @@
           "ND"
         ],
         "type": [
-          "float32"
+          "float16"
         ],
         "shape": [
           1
@@ -112,7 +112,7 @@
             1.0
           ]
         ],
-        "name": "grad",
+        "name": "maximum_ones",
         "shape_range": [
           [
             1,
@@ -130,12 +130,12 @@
           "ND"
         ],
         "type": [
-          "float32"
+          "float16"
         ],
         "shape": [
           1
         ],
-        "name": "var",
+        "name": "y",
         "shape_range": [
           [
             1,
@@ -145,34 +145,6 @@
         "typical_shape": [
           1
         ]
-      },
-      {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float32"
-        ],
-        "shape": [
-          1
-        ],
-        "name": "accum",
-        "shape_range": [
-          [
-            1,
-            100
-          ]
-        ],
-        "typical_shape": [
-          1
-        ]
-      }
-    ],
-    "attr": [
-      {
-        "name": "update_slots",
-        "type": "bool",
-        "value": true
       }
     ]
   }

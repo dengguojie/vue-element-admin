@@ -1,7 +1,7 @@
 [
   {
-    "case_name": "ApplyAdagradD_dynamic_shape_case1_ascend910a",
-    "op": "ApplyAdagradD",
+    "case_name": "ScatterMax_dynamic_shape_dynamic_scatter_max_case_ascend910a",
+    "op": "ScatterMax",
     "input_desc": [
       {
         "format": [
@@ -26,12 +26,33 @@
         "shape_range": [
           [
             1,
-            100
+            65535
           ]
         ],
         "typical_shape": [
           1
         ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "indices"
       },
       {
         "format": [
@@ -52,71 +73,11 @@
             1.0
           ]
         ],
-        "name": "accum",
+        "name": "updates",
         "shape_range": [
           [
             1,
-            100
-          ]
-        ],
-        "typical_shape": [
-          1
-        ]
-      },
-      {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float32"
-        ],
-        "shape": [
-          1
-        ],
-        "data_distribute": [
-          "uniform"
-        ],
-        "value_range": [
-          [
-            0.1,
-            1.0
-          ]
-        ],
-        "name": "lr",
-        "shape_range": [
-          [
-            1,
-            100
-          ]
-        ],
-        "typical_shape": [
-          1
-        ]
-      },
-      {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float32"
-        ],
-        "shape": [
-          1
-        ],
-        "data_distribute": [
-          "uniform"
-        ],
-        "value_range": [
-          [
-            0.1,
-            1.0
-          ]
-        ],
-        "name": "grad",
-        "shape_range": [
-          [
-            1,
-            100
+            65535
           ]
         ],
         "typical_shape": [
@@ -135,44 +96,14 @@
         "shape": [
           1
         ],
-        "name": "var",
-        "shape_range": [
-          [
-            1,
-            100
-          ]
-        ],
-        "typical_shape": [
-          1
-        ]
-      },
-      {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float32"
-        ],
-        "shape": [
-          1
-        ],
-        "name": "accum",
-        "shape_range": [
-          [
-            1,
-            100
-          ]
-        ],
-        "typical_shape": [
-          1
-        ]
+        "name": "var"
       }
     ],
     "attr": [
       {
-        "name": "update_slots",
+        "name": "use_locking",
         "type": "bool",
-        "value": true
+        "value": false
       }
     ]
   }

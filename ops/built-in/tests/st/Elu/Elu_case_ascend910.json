@@ -1,7 +1,7 @@
 [
   {
-    "case_name": "ApplyAdagradD_dynamic_shape_case1_ascend910a",
-    "op": "ApplyAdagradD",
+    "case_name": "Elu_dynamic_shape_Elu_1__1_ascend910a",
+    "op": "Elu",
     "input_desc": [
       {
         "format": [
@@ -22,97 +22,7 @@
             1.0
           ]
         ],
-        "name": "var",
-        "shape_range": [
-          [
-            1,
-            100
-          ]
-        ],
-        "typical_shape": [
-          1
-        ]
-      },
-      {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float32"
-        ],
-        "shape": [
-          1
-        ],
-        "data_distribute": [
-          "uniform"
-        ],
-        "value_range": [
-          [
-            0.1,
-            1.0
-          ]
-        ],
-        "name": "accum",
-        "shape_range": [
-          [
-            1,
-            100
-          ]
-        ],
-        "typical_shape": [
-          1
-        ]
-      },
-      {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float32"
-        ],
-        "shape": [
-          1
-        ],
-        "data_distribute": [
-          "uniform"
-        ],
-        "value_range": [
-          [
-            0.1,
-            1.0
-          ]
-        ],
-        "name": "lr",
-        "shape_range": [
-          [
-            1,
-            100
-          ]
-        ],
-        "typical_shape": [
-          1
-        ]
-      },
-      {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float32"
-        ],
-        "shape": [
-          1
-        ],
-        "data_distribute": [
-          "uniform"
-        ],
-        "value_range": [
-          [
-            0.1,
-            1.0
-          ]
-        ],
-        "name": "grad",
+        "name": "x",
         "shape_range": [
           [
             1,
@@ -135,28 +45,7 @@
         "shape": [
           1
         ],
-        "name": "var",
-        "shape_range": [
-          [
-            1,
-            100
-          ]
-        ],
-        "typical_shape": [
-          1
-        ]
-      },
-      {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float32"
-        ],
-        "shape": [
-          1
-        ],
-        "name": "accum",
+        "name": "y",
         "shape_range": [
           [
             1,
@@ -170,9 +59,75 @@
     ],
     "attr": [
       {
-        "name": "update_slots",
-        "type": "bool",
-        "value": true
+        "name": "alpha",
+        "type": "float",
+        "value": 1.0
+      }
+    ]
+  },
+  {
+    "case_name": "Elu_dynamic_shape_Elu_1_ascend910a",
+    "op": "Elu",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "alpha",
+        "type": "float",
+        "value": 1.0
       }
     ]
   }

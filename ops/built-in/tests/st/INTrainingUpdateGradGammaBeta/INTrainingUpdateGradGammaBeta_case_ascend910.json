@@ -1,8 +1,15 @@
 [
   {
+    "case_name": "INTrainingUpdateGradGammaBeta_static_shape_test_right_001_ascend910a",
     "op": "INTrainingUpdateGradGammaBeta",
     "input_desc": [
       {
+        "format": [
+          "NDC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
           2,
           1,
@@ -11,20 +18,24 @@
           1,
           16
         ],
-        "ori_shape": [
-          2,
-          1,
-          2,
-          1,
-          1,
-          16
+        "data_distribute": [
+          "uniform"
         ],
-        "format": "NDC1HWC0",
-        "ori_format": "NDC1HWC0",
-        "name": "res_gamma",
-        "type": "float"
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "res_gamma"
       },
       {
+        "format": [
+          "NDC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
           2,
           1,
@@ -33,22 +44,26 @@
           1,
           16
         ],
-        "ori_shape": [
-          2,
-          1,
-          2,
-          1,
-          1,
-          16
+        "data_distribute": [
+          "uniform"
         ],
-        "format": "NDC1HWC0",
-        "ori_format": "NDC1HWC0",
-        "name": "res_beta",
-        "type": "float"
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "res_beta"
       }
     ],
     "output_desc": [
       {
+        "format": [
+          "NDC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
           1,
           1,
@@ -57,20 +72,15 @@
           1,
           16
         ],
-        "ori_shape": [
-          1,
-          1,
-          2,
-          1,
-          1,
-          16
-        ],
-        "format": "NDC1HWC0",
-        "ori_format": "NDC1HWC0",
-        "name": "pd_gamma",
-        "type": "float"
+        "name": "pb_gamma"
       },
       {
+        "format": [
+          "NDC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
           1,
           1,
@@ -79,21 +89,8 @@
           1,
           16
         ],
-        "ori_shape": [
-          1,
-          1,
-          2,
-          1,
-          1,
-          16
-        ],
-        "format": "NDC1HWC0",
-        "ori_format": "NDC1HWC0",
-        "name": "pd_beta",
-        "type": "float"
+        "name": "pb_beta"
       }
-    ],
-    "attr": [],
-    "case_name": "test_INTrainingUpdateGradGammaBeta_000"
+    ]
   }
 ]

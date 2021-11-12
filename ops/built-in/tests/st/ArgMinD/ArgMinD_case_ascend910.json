@@ -1,0 +1,112 @@
+[
+  {
+    "case_name": "ArgMinD_static_shape_test_ArgMinD_auto_case_name_2_ascend910a",
+    "op": "ArgMinD",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "dtype",
+        "type": "data_type",
+        "value": "ArgMinD_static_shape_test_ArgMinD_auto_case_name_2_ascend910a"
+      }
+    ]
+  },
+  {
+    "case_name": "ArgMinD_static_shape_test_ArgMinD_auto_case_name_1_ascend910a",
+    "op": "ArgMinD",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "dtype",
+        "type": "data_type",
+        "value": "ArgMinD_static_shape_test_ArgMinD_auto_case_name_1_ascend910a"
+      }
+    ]
+  }
+]

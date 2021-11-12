@@ -1,0 +1,662 @@
+[
+  {
+    "case_name": "ArgMaxD_static_shape_ArgMaxD_5_ascend910a",
+    "op": "ArgMaxD",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          31,
+          24575
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          31
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "dtype",
+        "type": "data_type",
+        "value": "ArgMaxD_static_shape_ArgMaxD_5_ascend910a"
+      }
+    ]
+  },
+  {
+    "case_name": "ArgMaxD_static_shape_ArgMaxD_6_ascend910a",
+    "op": "ArgMaxD",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          33,
+          11,
+          8191
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          33,
+          8191
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "dtype",
+        "type": "data_type",
+        "value": "ArgMaxD_static_shape_ArgMaxD_6_ascend910a"
+      }
+    ]
+  },
+  {
+    "case_name": "ArgMaxD_static_shape_ArgMaxD_9_ascend910a",
+    "op": "ArgMaxD",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          33,
+          11,
+          512
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          33,
+          512
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "dtype",
+        "type": "data_type",
+        "value": "ArgMaxD_static_shape_ArgMaxD_9_ascend910a"
+      }
+    ]
+  },
+  {
+    "case_name": "ArgMaxD_static_shape_ArgMaxD_7_ascend910a",
+    "op": "ArgMaxD",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          33,
+          11,
+          8191
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          33,
+          8191
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "dtype",
+        "type": "data_type",
+        "value": "ArgMaxD_static_shape_ArgMaxD_7_ascend910a"
+      }
+    ]
+  },
+  {
+    "case_name": "ArgMaxD_static_shape_ArgMaxD_3_ascend910a",
+    "op": "ArgMaxD",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          31,
+          127
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          31
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "dtype",
+        "type": "data_type",
+        "value": "ArgMaxD_static_shape_ArgMaxD_3_ascend910a"
+      }
+    ]
+  },
+  {
+    "case_name": "ArgMaxD_static_shape_ArgMaxD_2_ascend910a",
+    "op": "ArgMaxD",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          31,
+          256
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          31
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "dtype",
+        "type": "data_type",
+        "value": "ArgMaxD_static_shape_ArgMaxD_2_ascend910a"
+      }
+    ]
+  },
+  {
+    "case_name": "ArgMaxD_static_shape_test_ArgMaxD_auto_case_name_2_ascend910a",
+    "op": "ArgMaxD",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          2,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "dtype",
+        "type": "data_type",
+        "value": "ArgMaxD_static_shape_test_ArgMaxD_auto_case_name_2_ascend910a"
+      }
+    ]
+  },
+  {
+    "case_name": "ArgMaxD_static_shape_ArgMaxD_10_ascend910a",
+    "op": "ArgMaxD",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          33,
+          11,
+          810909
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          33,
+          810909
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "dtype",
+        "type": "data_type",
+        "value": "ArgMaxD_static_shape_ArgMaxD_10_ascend910a"
+      }
+    ]
+  },
+  {
+    "case_name": "ArgMaxD_static_shape_ArgMaxD_1_ascend910a",
+    "op": "ArgMaxD",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          31,
+          8190
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          31
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "dtype",
+        "type": "data_type",
+        "value": "ArgMaxD_static_shape_ArgMaxD_1_ascend910a"
+      }
+    ]
+  },
+  {
+    "case_name": "ArgMaxD_static_shape_ArgMaxD_11_ascend910a",
+    "op": "ArgMaxD",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          33,
+          11,
+          810909
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          33,
+          810909
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "dtype",
+        "type": "data_type",
+        "value": "ArgMaxD_static_shape_ArgMaxD_11_ascend910a"
+      }
+    ]
+  },
+  {
+    "case_name": "ArgMaxD_static_shape_test_ArgMaxD_auto_case_name_1_ascend910a",
+    "op": "ArgMaxD",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "dtype",
+        "type": "data_type",
+        "value": "ArgMaxD_static_shape_test_ArgMaxD_auto_case_name_1_ascend910a"
+      }
+    ]
+  },
+  {
+    "case_name": "ArgMaxD_static_shape_ArgMaxD_4_ascend910a",
+    "op": "ArgMaxD",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          31,
+          24575
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          31
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "dimension",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "dtype",
+        "type": "data_type",
+        "value": "ArgMaxD_static_shape_ArgMaxD_4_ascend910a"
+      }
+    ]
+  }
+]

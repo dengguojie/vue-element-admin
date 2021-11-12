@@ -1,187 +1,141 @@
 [
-    {
-      "op": "DynamicRNN",
-      "input_desc": [
-        {
-          "shape": [
+  {
+    "case_name": "BNTrainingReduce_dynamic_shape_dynamic_bn_training_reduce_3_ascend910a",
+    "op": "BNTrainingReduce",
+    "input_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
             1,
-            16,
-            16
+            65535
           ],
-          "ori_shape": [
+          [
             1,
-            16,
-            16
+            65535
           ],
-          "ori_format": "ND",
-          "format": "ND",
-          "name": "x",
-          "type": "float16"
-        },
-        {
-          "shape": [
-            32,
-            64
-          ],
-          "ori_shape": [
-            32,
-            64
-          ],
-          "ori_format": "ND",
-          "format": "ND",
-          "name": "w",
-          "type": "float16"
-        },
-        {
-          "shape": [
-            64
-          ],
-          "ori_shape": [
-            64
-          ],
-          "ori_format": "ND",
-          "format": "ND",
-          "name": "b",
-          "type": "float16"
-        }
-      ],
-      "output_desc": [
-        {
-          "shape": [
+          [
             1,
-            16,
-            16
+            65535
           ],
-          "ori_shape": [
+          [
             1,
-            16,
-            16
-          ],
-          "ori_format": "ND",
-          "format": "ND",
-          "name": "y",
-          "type": "float16"
-        },
-        {
-            "shape": [
-                1,
-                16,
-                16
-            ],
-            "ori_shape": [
-                1,
-                16,
-                16
-            ],
-            "ori_format": "ND",
-            "format": "ND",
-            "name": "output_h",
-            "type": "float16"
-        },
-        {
-          "shape": [
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "name": "sum",
+        "shape_range": [
+          [
             1,
-            16,
-            16
+            65535
           ],
-          "ori_shape": [
+          [
             1,
-            16,
-            16
+            65535
           ],
-          "ori_format": "ND",
-          "format": "ND",
-          "name": "output_c",
-          "type": "float16"
-        },
-        {
-          "shape": [
+          [
             1,
-            16,
-            16
+            65535
           ],
-          "ori_shape": [
+          [
             1,
-            16,
-            16
-          ],
-          "ori_format": "ND",
-          "format": "ND",
-          "name": "i",
-          "type": "float16"
-        },
-        {
-          "shape": [
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ]
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "name": "square_sum",
+        "shape_range": [
+          [
             1,
-            16,
-            16
+            65535
           ],
-          "ori_shape": [
+          [
             1,
-            16,
-            16
+            65535
           ],
-          "ori_format": "ND",
-          "format": "ND",
-          "name": "j",
-          "type": "float16"
-        },
-        {
-          "shape": [
+          [
             1,
-            16,
-            16
+            65535
           ],
-          "ori_shape": [
+          [
             1,
-            16,
-            16
-          ],
-          "ori_format": "ND",
-          "format": "ND",
-          "name": "f",
-          "type": "float16"
-        },
-        {
-            "shape": [
-              1,
-              16,
-              16
-            ],
-            "ori_shape": [
-              1,
-              16,
-              16
-            ],
-            "ori_format": "ND",
-            "format": "ND",
-            "name": "o",
-            "type": "float16"
-          },
-          {
-            "shape": [
-              1,
-              16,
-              16
-            ],
-            "ori_shape": [
-              1,
-              16,
-              16
-            ],
-            "ori_format": "ND",
-            "format": "ND",
-            "name": "tanhc",
-            "type": "float16"
-          }
-      ],
-      "attr": [
-        {
-          "name": "time_major",
-          "type": "bool",
-          "value": true
-        }
-      ],
-      "case_name": "test_DynamicRNN_000"
-    }
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ]
+      }
+    ]
+  }
 ]

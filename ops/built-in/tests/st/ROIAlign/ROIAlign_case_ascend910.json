@@ -1,0 +1,585 @@
+[
+  {
+    "case_name": "ROIAlign_dynamic_shape_dynamic_RoiAlign_2_ascend910a",
+    "op": "ROIAlign",
+    "input_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          256,
+          336,
+          336
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "features"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1280,
+          5
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "rois"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          1280
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "rois_n"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1280,
+          256,
+          7,
+          7
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "spatial_scale",
+        "type": "float",
+        "value": 0.25
+      },
+      {
+        "name": "pooled_height",
+        "type": "int",
+        "value": 7
+      },
+      {
+        "name": "pooled_width",
+        "type": "int",
+        "value": 7
+      },
+      {
+        "name": "sample_num",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "roi_end_mode",
+        "type": "int",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "case_name": "ROIAlign_dynamic_shape_dynamic_RoiAlign_3_ascend910a",
+    "op": "ROIAlign",
+    "input_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          256,
+          336,
+          336
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "features"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1280,
+          5
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "rois"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          1280
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "rois_n"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1280,
+          256,
+          7,
+          7
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "spatial_scale",
+        "type": "float",
+        "value": 0.25
+      },
+      {
+        "name": "pooled_height",
+        "type": "int",
+        "value": 7
+      },
+      {
+        "name": "pooled_width",
+        "type": "int",
+        "value": 7
+      },
+      {
+        "name": "sample_num",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "roi_end_mode",
+        "type": "int",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "case_name": "ROIAlign_dynamic_shape_dynamic_RoiAlign_5_ascend910a",
+    "op": "ROIAlign",
+    "input_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          256,
+          2,
+          336
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "features"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          32,
+          5
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "rois"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "rois_n"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          32,
+          256,
+          7,
+          7
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "spatial_scale",
+        "type": "float",
+        "value": 0.25
+      },
+      {
+        "name": "pooled_height",
+        "type": "int",
+        "value": 7
+      },
+      {
+        "name": "pooled_width",
+        "type": "int",
+        "value": 7
+      },
+      {
+        "name": "sample_num",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "roi_end_mode",
+        "type": "int",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "case_name": "ROIAlign_dynamic_shape_RoiAlign_1_ascend910a",
+    "op": "ROIAlign",
+    "input_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          256,
+          24,
+          40
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "features"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          32,
+          5
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "rois"
+      },
+      {
+        "format": [
+          "UNDEFINED"
+        ],
+        "type": [
+          "UNDEFINED"
+        ],
+        "shape": [],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "rois_n"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          32,
+          256,
+          14,
+          14
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "spatial_scale",
+        "type": "float",
+        "value": 0.03125
+      },
+      {
+        "name": "pooled_height",
+        "type": "int",
+        "value": 14
+      },
+      {
+        "name": "pooled_width",
+        "type": "int",
+        "value": 14
+      },
+      {
+        "name": "sample_num",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "roi_end_mode",
+        "type": "int",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "case_name": "ROIAlign_dynamic_shape_dynamic_RoiAlign_4_ascend910a",
+    "op": "ROIAlign",
+    "input_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          256,
+          5,
+          5
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "features"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1280,
+          5
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "rois"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          1280
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "rois_n"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1280,
+          256,
+          7,
+          7
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "spatial_scale",
+        "type": "float",
+        "value": 0.25
+      },
+      {
+        "name": "pooled_height",
+        "type": "int",
+        "value": 7
+      },
+      {
+        "name": "pooled_width",
+        "type": "int",
+        "value": 7
+      },
+      {
+        "name": "sample_num",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "roi_end_mode",
+        "type": "int",
+        "value": 1
+      }
+    ]
+  }
+]

@@ -1,245 +1,734 @@
 [
   {
+    "case_name": "GeluGrad_static_shape_test_GeluGrad_auto_case_name_1_ascend910a",
     "op": "GeluGrad",
     "input_desc": [
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
-          3,
-          24,
-          96
+          10,
+          1
         ],
-        "format": "NHWC",
-        "ori_shape": [
-          3,
-          24,
-          96
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "NHWC",
-        "name": "input_dy",
-        "type": "float"
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "dy"
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
-          3,
-          24,
-          96
+          10,
+          1
         ],
-        "format": "NHWC",
-        "ori_shape": [
-          3,
-          24,
-          96
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "NHWC",
-        "name": "input_x",
-        "type": "float"
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
-          3,
-          24,
-          96
+          10,
+          1
         ],
-        "format": "NHWC",
-        "ori_shape": [
-          3,
-          24,
-          96
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "NHWC",
-        "name": "input_y",
-        "type": "float"
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "y"
       }
     ],
     "output_desc": [
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
-          3,
-          24,
-          96
+          10,
+          1
         ],
-        "format": "NHWC",
-        "ori_shape": [
-          3,
-          24,
-          96
-        ],
-        "ori_format": "NHWC",
-        "name": "output_z",
-        "type": "float"
+        "name": "z"
       }
-    ],
-    "attr": [],
-    "case_name": "test_GeluGrad_002"
+    ]
   },
   {
+    "case_name": "GeluGrad_static_shape_test_GeluGrad_auto_case_name_2_ascend910a",
     "op": "GeluGrad",
     "input_desc": [
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
-          3,
-          24,
-          96
+          100,
+          100
         ],
-        "format": "NHWC",
-        "ori_shape": [
-          3,
-          24,
-          96
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "NHWC",
-        "name": "input_dy",
-        "type": "float"
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "dy"
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
-          3,
-          24,
-          96
+          100,
+          100
         ],
-        "format": "NHWC",
-        "ori_shape": [
-          3,
-          24,
-          96
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "NHWC",
-        "name": "input_x",
-        "type": "float"
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
-          3,
-          24,
-          96
+          100,
+          100
         ],
-        "format": "NHWC",
-        "ori_shape": [
-          3,
-          24,
-          96
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "NHWC",
-        "name": "input_y",
-        "type": "float"
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "y"
       }
     ],
     "output_desc": [
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
-          3,
-          24,
-          96
+          100,
+          100
         ],
-        "format": "NHWC",
-        "ori_shape": [
-          3,
-          24,
-          96
-        ],
-        "ori_format": "NHWC",
-        "name": "output_z",
-        "type": "float"
+        "name": "z"
       }
-    ],
-    "attr": [],
-    "case_name": "test_GeluGrad_005"
+    ]
   },
   {
+    "case_name": "GeluGrad_static_shape_test_GeluGrad_auto_case_name_3_ascend910a",
     "op": "GeluGrad",
     "input_desc": [
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
-          10,
-          1
+          1,
+          2
         ],
-        "format": "ND",
-        "ori_shape": [
-          10,
-          1
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "ND",
-        "param_type": "input",
         "value_range": [
-          -1,
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "dy"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "y"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          2
+        ],
+        "name": "z"
+      }
+    ]
+  },
+  {
+    "case_name": "GeluGrad_static_shape_GeluGrad_3_ascend910a",
+    "op": "GeluGrad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          24,
+          96
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "dy"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          24,
+          96
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          24,
+          96
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "y"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          24,
+          96
+        ],
+        "name": "z"
+      }
+    ]
+  },
+  {
+    "case_name": "GeluGrad_static_shape_GeluGrad_2_ascend910a",
+    "op": "GeluGrad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          96
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "dy"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          96
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          96
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "y"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          96
+        ],
+        "name": "z"
+      }
+    ]
+  },
+  {
+    "case_name": "GeluGrad_static_shape_GeluGrad_1_ascend910a",
+    "op": "GeluGrad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          5,
+          10
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "dy"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          5,
+          10
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          5,
+          10
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "y"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          5,
+          10
+        ],
+        "name": "z"
+      }
+    ]
+  },
+  {
+    "case_name": "GeluGrad_dynamic_shape_GeluGrad_1_ascend910a",
+    "op": "GeluGrad",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
           1
         ],
-        "name": "input_dy",
-        "type": "float",
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "dy",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
         "typical_shape": [
-          10,
           1
         ]
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
         "shape": [
-          10,
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          10,
-          1
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "ND",
-        "param_type": "input",
         "value_range": [
-          -1,
-          1
+          [
+            0.1,
+            1.0
+          ]
         ],
-        "name": "input_x",
-        "type": "float",
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
         "typical_shape": [
-          10,
           1
         ]
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
         "shape": [
-          10,
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          10,
-          1
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "ND",
-        "param_type": "input",
         "value_range": [
-          -1,
-          1
+          [
+            0.1,
+            1.0
+          ]
         ],
-        "name": "input_y",
-        "type": "float",
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
         "typical_shape": [
-          10,
           1
         ]
       }
     ],
     "output_desc": [
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
         "shape": [
-          10,
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          10,
-          1
+        "name": "z",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
         ],
-        "ori_format": "ND",
-        "param_type": "output",
-        "name": "output_z",
-        "type": "float",
         "typical_shape": [
-          10,
           1
         ]
       }
+    ]
+  },
+  {
+    "case_name": "GeluGrad_static_shape_test_GeluGrad_auto_case_name_4_ascend910a",
+    "op": "GeluGrad",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          512,
+          256
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "dy"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          512,
+          256
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          512,
+          256
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "y"
+      }
     ],
-    "attr": [],
-    "case_name": "test_dynamic_GeluGrad_000"
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          512,
+          256
+        ],
+        "name": "z"
+      }
+    ]
   }
 ]

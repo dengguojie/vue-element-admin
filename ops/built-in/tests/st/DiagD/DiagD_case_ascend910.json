@@ -1,22 +1,17 @@
 [
   {
-    "case_name": "SqrtGrad_static_shape_test_SqrtGrad_auto_case_name_3_ascend910a",
-    "op": "SqrtGrad",
+    "case_name": "DiagD_static_shape_test_DiagD_auto_case_name_3_ascend910a",
+    "op": "DiagD",
     "input_desc": [
       {
         "format": [
           "ND"
         ],
         "type": [
-          "float16"
+          "float32"
         ],
         "shape": [
-          15,
-          3,
-          7,
-          5,
-          3,
-          2
+          128
         ],
         "data_distribute": [
           "uniform"
@@ -27,22 +22,18 @@
             1.0
           ]
         ],
-        "name": "y"
+        "name": "x"
       },
       {
         "format": [
           "ND"
         ],
         "type": [
-          "float16"
+          "float32"
         ],
         "shape": [
-          15,
-          3,
-          7,
-          5,
-          3,
-          2
+          128,
+          128
         ],
         "data_distribute": [
           "uniform"
@@ -53,7 +44,7 @@
             1.0
           ]
         ],
-        "name": "dy"
+        "name": "assist"
       }
     ],
     "output_desc": [
@@ -62,34 +53,29 @@
           "ND"
         ],
         "type": [
-          "float16"
+          "float32"
         ],
         "shape": [
-          15,
-          3,
-          7,
-          5,
-          3,
-          2
+          128,
+          128
         ],
-        "name": "z"
+        "name": "y"
       }
     ]
   },
   {
-    "case_name": "SqrtGrad_static_shape_test_SqrtGrad_auto_case_name_1_ascend910a",
-    "op": "SqrtGrad",
+    "case_name": "DiagD_static_shape_test_DiagD_auto_case_name_1_ascend910a",
+    "op": "DiagD",
     "input_desc": [
       {
         "format": [
           "ND"
         ],
         "type": [
-          "float32"
+          "float16"
         ],
         "shape": [
-          2,
-          64
+          1
         ],
         "data_distribute": [
           "uniform"
@@ -100,18 +86,18 @@
             1.0
           ]
         ],
-        "name": "y"
+        "name": "x"
       },
       {
         "format": [
           "ND"
         ],
         "type": [
-          "float32"
+          "float16"
         ],
         "shape": [
-          2,
-          64
+          1,
+          1
         ],
         "data_distribute": [
           "uniform"
@@ -122,7 +108,7 @@
             1.0
           ]
         ],
-        "name": "dy"
+        "name": "assist"
       }
     ],
     "output_desc": [
@@ -131,30 +117,29 @@
           "ND"
         ],
         "type": [
-          "float32"
+          "float16"
         ],
         "shape": [
-          2,
-          64
+          1,
+          1
         ],
-        "name": "z"
+        "name": "y"
       }
     ]
   },
   {
-    "case_name": "SqrtGrad_static_shape_test_SqrtGrad_auto_case_name_2_ascend910a",
-    "op": "SqrtGrad",
+    "case_name": "DiagD_static_shape_test_DiagD_auto_case_name_2_ascend910a",
+    "op": "DiagD",
     "input_desc": [
       {
         "format": [
           "ND"
         ],
         "type": [
-          "float16"
+          "int32"
         ],
         "shape": [
-          73,
-          64
+          16
         ],
         "data_distribute": [
           "uniform"
@@ -165,18 +150,18 @@
             1.0
           ]
         ],
-        "name": "y"
+        "name": "x"
       },
       {
         "format": [
           "ND"
         ],
         "type": [
-          "float16"
+          "int32"
         ],
         "shape": [
-          73,
-          64
+          16,
+          16
         ],
         "data_distribute": [
           "uniform"
@@ -187,7 +172,7 @@
             1.0
           ]
         ],
-        "name": "dy"
+        "name": "assist"
       }
     ],
     "output_desc": [
@@ -196,13 +181,13 @@
           "ND"
         ],
         "type": [
-          "float16"
+          "int32"
         ],
         "shape": [
-          73,
-          64
+          16,
+          16
         ],
-        "name": "z"
+        "name": "y"
       }
     ]
   }

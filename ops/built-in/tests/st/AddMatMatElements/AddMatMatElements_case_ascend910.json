@@ -1,22 +1,18 @@
 [
   {
-    "case_name": "INTrainingUpdateGrad_static_shape_test_right_001_ascend910a",
-    "op": "INTrainingUpdateGrad",
+    "case_name": "AddMatMatElements_static_shape_apply_adagrad_d_1_ascend910a",
+    "op": "AddMatMatElements",
     "input_desc": [
       {
         "format": [
-          "NDC1HWC0"
+          "ND"
         ],
         "type": [
-          "float32"
+          "float16"
         ],
         "shape": [
-          2,
-          128,
-          2,
-          128,
-          128,
-          16
+          1,
+          2
         ],
         "data_distribute": [
           "uniform"
@@ -27,22 +23,18 @@
             1.0
           ]
         ],
-        "name": "dy"
+        "name": "c"
       },
       {
         "format": [
-          "NDC1HWC0"
+          "ND"
         ],
         "type": [
-          "float32"
+          "float16"
         ],
         "shape": [
-          2,
-          128,
-          2,
-          128,
-          128,
-          16
+          1,
+          2
         ],
         "data_distribute": [
           "uniform"
@@ -53,22 +45,18 @@
             1.0
           ]
         ],
-        "name": "x"
+        "name": "a"
       },
       {
         "format": [
-          "NDC1HWC0"
+          "ND"
         ],
         "type": [
-          "float32"
+          "float16"
         ],
         "shape": [
-          2,
           1,
-          2,
-          1,
-          1,
-          16
+          2
         ],
         "data_distribute": [
           "uniform"
@@ -79,22 +67,17 @@
             1.0
           ]
         ],
-        "name": "variance"
+        "name": "b"
       },
       {
         "format": [
-          "NDC1HWC0"
+          "ND"
         ],
         "type": [
-          "float32"
+          "float16"
         ],
         "shape": [
-          2,
-          1,
-          2,
-          1,
-          1,
-          16
+          1
         ],
         "data_distribute": [
           "uniform"
@@ -105,116 +88,59 @@
             1.0
           ]
         ],
-        "name": "mean"
+        "name": "beta"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "alpha"
       }
     ],
     "output_desc": [
       {
         "format": [
-          "NDC1HWC0"
+          "ND"
         ],
         "type": [
-          "float32"
+          "float16"
         ],
         "shape": [
-          2,
           1,
-          2,
-          1,
-          1,
-          16
+          2
         ],
-        "name": "res_gamma"
-      },
-      {
-        "format": [
-          "NDC1HWC0"
-        ],
-        "type": [
-          "float32"
-        ],
-        "shape": [
-          2,
-          1,
-          2,
-          1,
-          1,
-          16
-        ],
-        "name": "res_beta"
+        "name": "c"
       }
     ]
   },
   {
-    "case_name": "INTrainingUpdateGrad_static_shape_test_right_002_ascend910a",
-    "op": "INTrainingUpdateGrad",
+    "case_name": "AddMatMatElements_dynamic_shape_case1_ascend910a",
+    "op": "AddMatMatElements",
     "input_desc": [
       {
         "format": [
-          "NDC1HWC0"
-        ],
-        "type": [
-          "float16"
-        ],
-        "shape": [
-          2,
-          128,
-          2,
-          128,
-          128,
-          16
-        ],
-        "data_distribute": [
-          "uniform"
-        ],
-        "value_range": [
-          [
-            0.1,
-            1.0
-          ]
-        ],
-        "name": "dy"
-      },
-      {
-        "format": [
-          "NDC1HWC0"
-        ],
-        "type": [
-          "float16"
-        ],
-        "shape": [
-          2,
-          128,
-          2,
-          128,
-          128,
-          16
-        ],
-        "data_distribute": [
-          "uniform"
-        ],
-        "value_range": [
-          [
-            0.1,
-            1.0
-          ]
-        ],
-        "name": "x"
-      },
-      {
-        "format": [
-          "NDC1HWC0"
+          "ND"
         ],
         "type": [
           "float32"
         ],
         "shape": [
-          2,
-          1,
-          2,
-          1,
-          1,
-          16
+          1
         ],
         "data_distribute": [
           "uniform"
@@ -225,22 +151,26 @@
             1.0
           ]
         ],
-        "name": "variance"
+        "name": "c",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
       },
       {
         "format": [
-          "NDC1HWC0"
+          "ND"
         ],
         "type": [
           "float32"
         ],
         "shape": [
-          2,
-          1,
-          2,
-          1,
-          1,
-          16
+          1
         ],
         "data_distribute": [
           "uniform"
@@ -251,43 +181,111 @@
             1.0
           ]
         ],
-        "name": "mean"
+        "name": "a",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "b",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "beta"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "alpha"
       }
     ],
     "output_desc": [
       {
         "format": [
-          "NDC1HWC0"
+          "ND"
         ],
         "type": [
           "float32"
         ],
         "shape": [
-          2,
-          1,
-          2,
-          1,
-          1,
-          16
+          1
         ],
-        "name": "res_gamma"
-      },
-      {
-        "format": [
-          "NDC1HWC0"
+        "name": "c",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
         ],
-        "type": [
-          "float32"
-        ],
-        "shape": [
-          2,
-          1,
-          2,
-          1,
-          1,
-          16
-        ],
-        "name": "res_beta"
+        "typical_shape": [
+          1
+        ]
       }
     ]
   }

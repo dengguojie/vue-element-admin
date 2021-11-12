@@ -1,14 +1,50 @@
 [
   {
-    "case_name": "ApplyAdagradD_dynamic_shape_case1_ascend910a",
-    "op": "ApplyAdagradD",
+    "case_name": "ClipByValue_dynamic_shape_broadcast_to_d_1_ascend910a",
+    "op": "ClipByValue",
     "input_desc": [
       {
         "format": [
-          "ND"
+          "NHWC"
         ],
         "type": [
-          "float32"
+          "float16"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            100
+          ],
+          [
+            1,
+            50
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1
+        ]
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float16"
         ],
         "shape": [
           1
@@ -22,11 +58,11 @@
             1.0
           ]
         ],
-        "name": "var",
+        "name": "clip_value_min",
         "shape_range": [
           [
             1,
-            100
+            5
           ]
         ],
         "typical_shape": [
@@ -35,10 +71,10 @@
       },
       {
         "format": [
-          "ND"
+          "NHWC"
         ],
         "type": [
-          "float32"
+          "float16"
         ],
         "shape": [
           1
@@ -52,71 +88,11 @@
             1.0
           ]
         ],
-        "name": "accum",
+        "name": "clip_value_max",
         "shape_range": [
           [
             1,
-            100
-          ]
-        ],
-        "typical_shape": [
-          1
-        ]
-      },
-      {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float32"
-        ],
-        "shape": [
-          1
-        ],
-        "data_distribute": [
-          "uniform"
-        ],
-        "value_range": [
-          [
-            0.1,
-            1.0
-          ]
-        ],
-        "name": "lr",
-        "shape_range": [
-          [
-            1,
-            100
-          ]
-        ],
-        "typical_shape": [
-          1
-        ]
-      },
-      {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float32"
-        ],
-        "shape": [
-          1
-        ],
-        "data_distribute": [
-          "uniform"
-        ],
-        "value_range": [
-          [
-            0.1,
-            1.0
-          ]
-        ],
-        "name": "grad",
-        "shape_range": [
-          [
-            1,
-            100
+            5
           ]
         ],
         "typical_shape": [
@@ -127,52 +103,30 @@
     "output_desc": [
       {
         "format": [
-          "ND"
+          "NHWC"
         ],
         "type": [
-          "float32"
+          "float16"
         ],
         "shape": [
+          1,
           1
         ],
-        "name": "var",
+        "name": "y",
         "shape_range": [
           [
             1,
             100
-          ]
-        ],
-        "typical_shape": [
-          1
-        ]
-      },
-      {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float32"
-        ],
-        "shape": [
-          1
-        ],
-        "name": "accum",
-        "shape_range": [
+          ],
           [
             1,
-            100
+            50
           ]
         ],
         "typical_shape": [
+          1,
           1
         ]
-      }
-    ],
-    "attr": [
-      {
-        "name": "update_slots",
-        "type": "bool",
-        "value": true
       }
     ]
   }

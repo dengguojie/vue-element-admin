@@ -1,260 +1,564 @@
 [
   {
+    "case_name": "ApplyAdadeltaD_dynamic_shape_ApplyAdadeltaD_2_ascend910a",
     "op": "ApplyAdadeltaD",
     "input_desc": [
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          1
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "ND",
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
         "name": "var",
-        "type": "float"
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          1
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "ND",
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
         "name": "accum",
-        "type": "float"
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          1
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "ND",
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
         "name": "accum_update",
-        "type": "float"
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          1
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "ND",
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
         "name": "lr",
-        "type": "float"
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          1
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "ND",
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
         "name": "rho",
-        "type": "float"
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          1
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "ND",
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
         "name": "epsilon",
-        "type": "float"
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          1
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "ND",
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
         "name": "grad",
-        "type": "float"
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
       }
     ],
     "output_desc": [
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          1
+        "name": "var",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
         ],
-        "ori_format": "ND",
-        "name": "var_out",
-        "type": "float"
+        "typical_shape": [
+          1
+        ]
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          1
+        "name": "accum",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
         ],
-        "ori_format": "ND",
-        "name": "accum_out",
-        "type": "float"
+        "typical_shape": [
+          1
+        ]
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
         "shape": [
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          1
+        "name": "accum_update",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
         ],
-        "ori_format": "ND",
-        "name": "accum_update_out",
-        "type": "float"
+        "typical_shape": [
+          1
+        ]
       }
-    ],
-    "attr": [],
-    "case_name": "test_ApplyAdadeltaD_000"
+    ]
   },
   {
+    "case_name": "ApplyAdadeltaD_dynamic_shape_ApplyAdadeltaD_1_ascend910a",
     "op": "ApplyAdadeltaD",
     "input_desc": [
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
         "shape": [
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          1
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "ND",
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
         "name": "var",
-        "type": "float16"
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
         "shape": [
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          1
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "ND",
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
         "name": "accum",
-        "type": "float16"
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
         "shape": [
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          1
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "ND",
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
         "name": "accum_update",
-        "type": "float16"
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
         "shape": [
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          1
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "ND",
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
         "name": "lr",
-        "type": "float16"
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
         "shape": [
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          1
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "ND",
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
         "name": "rho",
-        "type": "float16"
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
         "shape": [
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          1
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "ND",
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
         "name": "epsilon",
-        "type": "float16"
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
         "shape": [
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          1
+        "data_distribute": [
+          "uniform"
         ],
-        "ori_format": "ND",
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
         "name": "grad",
-        "type": "float16"
+        "shape_range": [
+          [
+            1,
+            200
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
       }
     ],
     "output_desc": [
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
         "shape": [
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          1
+        "name": "var",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
         ],
-        "ori_format": "ND",
-        "name": "var_out",
-        "type": "float16"
+        "typical_shape": [
+          1
+        ]
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
         "shape": [
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          1
+        "name": "accum",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
         ],
-        "ori_format": "ND",
-        "name": "accum_out",
-        "type": "float16"
+        "typical_shape": [
+          1
+        ]
       },
       {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
         "shape": [
           1
         ],
-        "format": "ND",
-        "ori_shape": [
-          1
+        "name": "accum_update",
+        "shape_range": [
+          [
+            1,
+            200
+          ]
         ],
-        "ori_format": "ND",
-        "name": "accum_update_out",
-        "type": "float16"
+        "typical_shape": [
+          1
+        ]
       }
-    ],
-    "attr": [],
-    "case_name": "test_ApplyAdadeltaD_001"
+    ]
   }
 ]
