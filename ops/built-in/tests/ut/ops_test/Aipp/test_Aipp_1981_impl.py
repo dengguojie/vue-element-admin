@@ -285,15 +285,16 @@ aipp_config_dict_dynamic = {
 
 
 def test_aipp_dynamic_1(test_arg):
-    aipp_config_dict["input_format"] = "YUV422SP_U8"
+    aipp_config_dict_dynamic_tmp = aipp_config_dict_dynamic.copy()
+    aipp_config_dict_dynamic_tmp["input_format"] = "YUV420SP_U8"
     param_dict = gen_dynamic_aipp_case(
         (1, 1, 224, 224),
-        (1, 1, 223, 223, 16),
+        (1, 1, 224, 224, 16),
         "uint8",
         "float16",
         "NCHW",
         "NC1HWC0",
-        aipp_config_dict_dynamic,
+        aipp_config_dict_dynamic_tmp,
         "aipp_dynamic_1",
         "success",
     )
@@ -301,12 +302,18 @@ def test_aipp_dynamic_1(test_arg):
     input_dync_param = param_dict["params"][1]
     output_data = param_dict["params"][2]
     try:
-        new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_dynamic, kernel_name="aipp")
+        new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_dynamic_tmp, "Ascend920", kernel_name="aipp")
     except Exception as e:
         print("1981 aipp test mock")
 
+    try:
+        new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_dynamic_tmp, "Ascend320", kernel_name="aipp")
+    except Exception as e:
+        print("1911 aipp test mock")
+
 
 ut_case.add_cust_test_func(test_func=test_aipp_dynamic_1)
+
 
 if __name__ == "__main__":
     # ut_case.run("Ascend710")

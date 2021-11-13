@@ -160,6 +160,25 @@ def get_bin_value_from_fp32(value):
 
     return 0
 
+def convert_fp16_to_fp32(value):
+    """
+    Description:
+        Convert input binary value of fp16 dtype to binary value of fp32 dtype.
+        fp16: 1 bit (sign) + 5 bit (exponent) + 10 bit (fraction)
+        fp32: 1 bit (sign) + 8 bit (exponent) + 23 bit (fraction)
+    :param value: binary value of fp16 dtype, type: tvm.expr.Load
+    :return: binary value of fp32 dtype, type: tvm.expr.Load
+    """
+    sign_mask = 0x8000
+    exponent_mask = 0x7c00
+    fraction_mask = 0x03ff
+    sign = value & sign_mask
+    # exponent_fp32  - 127 = exponent_fp16 - 15, exponent_diff = 127 - 15 = 112
+    exponent_diff = tvm.const(112, dtype="uint64")
+    exponent = ((value & exponent_mask) >> 10) + exponent_diff
+    fraction = value & fraction_mask
+
+    return tvm.const(0, dtype="uint64") | (sign << 16) | (exponent << 23) | (fraction << 13)
 
 def get_l1_image_buf_max(actual_col_size, dtype, is_dynamic, output_format="NC1HWC0"):
     """
@@ -609,7 +628,7 @@ def set_spr_dync_from_gm(ib, param_buf, dtype):
     :param cur_cce_product:
     :return:
     """
-    spr = ib.allocate("uint64", [17], name="spr", scope=tbe_platform.scope_reg)
+    spr = ib.allocate("uint64", [22], name="spr", scope=tbe_platform.scope_reg)
     tmp = ib.allocate("uint64", [1], name="tmp", scope=tbe_platform.scope_reg)
 
     input_format_tmp = ib.allocate("uint64", [1], name="input_format_tmp", scope=tbe_platform.scope_reg)
@@ -865,6 +884,23 @@ def get_dync_crop_info(ib, param_buf, tmp, load_image_info,
     load_image_info[2] = tmp[0]
 
 
+def get_dync_actual_col_size(out_h, out_w, padding_info, actual_col_size_reg, support_vertical_padding):
+    """
+    :param out_h: height of aipp output image.
+    :param out_w: width of aipp output image.
+    :param padding_info: buffer for padding info, include top_padding_size, bottom_padding_size,
+                         left_padding_size, right_padding_size
+    :param actual_col_size_reg: buffer for actual size for aipp output image
+    :param support_vertical_padding: flag for support vertical padding, True if support, otherwise False.
+    :return: None.
+    """
+    if support_vertical_padding:
+        actual_col_size_reg[0] = tvm.const(out_h, dtype="uint64") * tvm.const(out_w, dtype="uint64")
+    else:
+        out_h_tmp = out_h - padding_info[0] - padding_info[1]
+        actual_col_size_reg[0] = tbe_platform.get_const(out_h_tmp) * tvm.const(out_w, dtype="uint64")
+
+
 def set_spr_dync_in_batch(ib, dtype, param_buf, spr, tmp,
     is_hisi_yuv400=False, offset=DYNC_PARAM_HEAD_STRUCT_SIZE):
     """
@@ -966,6 +1002,82 @@ def set_spr_dync_in_batch(ib, dtype, param_buf, spr, tmp,
     spr[7] = spr[7] | (tmp[0] & 0xffff) << 48
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_7", spr[7]))
 
+def set_spr_dync_in_batch_v300(ib, dtype, param_buf, spr, tmp, offset=DYNC_PARAM_HEAD_STRUCT_SIZE):
+    """
+    set_spr_dync_in_batch_new
+    """
+    chn_offset = 32
+
+    # spr18
+    ib.emit(tvm.call_extern("uint16",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=offset + \
+                                                            BATCH_OFFSET_DTC_VAR_C0)))
+    with ib.if_scope(tmp[0] != 0):
+        spr[18] = convert_fp16_to_fp32(tmp[0])
+
+    ib.emit(tvm.call_extern("uint16",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=offset + \
+                                                            BATCH_OFFSET_DTC_VAR_C1)))
+    with ib.if_scope(tmp[0] != 0):
+        spr[18] = spr[18] | convert_fp16_to_fp32(tmp[0]) << chn_offset
+    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_18", spr[18]))
+
+    # spr19
+    ib.emit(tvm.call_extern("uint16",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=offset + \
+                                                            BATCH_OFFSET_DTC_VAR_C2)))
+    with ib.if_scope(tmp[0] != 0):
+        spr[19] = convert_fp16_to_fp32(tmp[0])
+
+    ib.emit(tvm.call_extern("uint16",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=offset + \
+                                                            BATCH_OFFSET_DTC_VAR_C3)))
+    with ib.if_scope(tmp[0] != 0):
+        spr[19] = spr[19] | convert_fp16_to_fp32(tmp[0]) << chn_offset
+    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_19", spr[19]))
+
+    # spr20
+    ib.emit(tvm.call_extern("int16",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=offset + \
+                                                            BATCH_OFFSET_DTC_MEAN_C0)))
+    with ib.if_scope(tmp[0] != 0):
+        spr[20] = convert_fp16_to_fp32(tmp[0])
+
+    ib.emit(tvm.call_extern("int16",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=offset + \
+                                                            BATCH_OFFSET_DTC_MEAN_C1)))
+    with ib.if_scope(tmp[0] != 0):
+        spr[20] = spr[20] | convert_fp16_to_fp32(tmp[0]) << chn_offset
+    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_20", spr[20]))
+
+    ib.emit(tvm.call_extern("int16",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=offset + \
+                                                            BATCH_OFFSET_DTC_MEAN_C2)))
+    with ib.if_scope(tmp[0] != 0):
+        spr[21] =  convert_fp16_to_fp32(tmp[0])
+
+    ib.emit(tvm.call_extern("int16",
+                            "reg_mov",
+                            tvm.call_extern("uint64", "reg", tmp[0]),
+                            param_buf.access_ptr('r', offset=offset + \
+                                                            BATCH_OFFSET_DTC_MEAN_C3)))
+    with ib.if_scope(tmp[0] != 0):
+        spr[21] = spr[21] | convert_fp16_to_fp32(tmp[0]) << chn_offset
+    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_21", spr[21]))
 
 def get_spr9(aipp_config, dtype, output_format="NC1HWC0"):
     spr9 = 0

@@ -294,14 +294,13 @@ def _padding_compute(ib, input_data, output_buf, l1_image_buf_max):
             )
 
 
-def _dynamic_aipp_compute(input_tensor, param_tensor, output_data):
+def _dynamic_aipp_compute(input_tensor, param_tensor, output_data, cur_cce_product):
     """
-    :param input_tensor:
-    :param param_tensor:
-    :param input_shape:
-    :param input_format:
-    :param output_data:
-    :return:
+    :param input_tensor: tensor for input image
+    :param param_tensor: tensor for dynamic aipp config params
+    :param output_data: dict of output, include shape, format and dtype
+    :param cur_cce_product: current soc version
+    :return: tensor for aipp output image
     """
 
     output_shape = output_data.get("shape")
@@ -340,10 +339,95 @@ def _dynamic_aipp_compute(input_tensor, param_tensor, output_data):
 
         block_index = tvm.thread_axis("blockIdx.x")
         ib.scope_attr(block_index, "thread_extent", batch_num // batch_factor)
-
         offset = batch_factor * c1 * out_h * out_w * c0
-
         zero_const = tvm.const(0, dtype="uint64")
+
+        def _padding_top_bottom(spr, src_image_size, load_image_info, padding_info, top_offset, bottom_offset):
+            # set single line mode
+            spr9 = spr[9] | (1 & 0x1) << 24
+            ib.emit(tvm.call_extern(dtype, "set_aipp_spr_9", spr9))
+            # top_padding_size
+            with ib.if_scope(padding_info[0] > 0):
+                with ib.new_scope():
+                    _padding_compute(
+                        ib,
+                        (
+                            dtype,
+                            out_w,
+                            c0,
+                            size,
+                            padding_info[0],
+                            top_offset,
+                            load_image_info[3],
+                            load_image_info[2],
+                            load_image_info[1],
+                            load_image_info[0],
+                            src_image_size[1],
+                        ),
+                        output_buf,
+                        l1_image_buf_max,
+                    )
+            # bottom_padding_size
+            with ib.if_scope(padding_info[1] > 0):
+                with ib.new_scope():
+                    _padding_compute(
+                        ib,
+                        (
+                            dtype,
+                            out_w,
+                            c0,
+                            size,
+                            padding_info[0],
+                            bottom_offset,
+                            load_image_info[3],
+                            load_image_info[2],
+                            load_image_info[1],
+                            load_image_info[0],
+                            src_image_size[1],
+                        ),
+                        output_buf,
+                        l1_image_buf_max,
+                    )
+
+            ib.emit(tvm.call_extern(dtype, "set_aipp_spr_9", spr[9]))
+
+        def _aipp_single_process(aipp_xt, aipp_xm, output_offset, len_burst):
+            with ib.new_scope():
+                output_cb = ib.allocate(
+                    dtype,
+                    (l1_image_buf_max * c0,),
+                    "output_cb",
+                    scope=tbe_platform.scope_cbuf,
+                )
+                output_cb_buf = tvm.decl_buffer(
+                    (l1_image_buf_max * c0,),
+                    dtype,
+                    "output_cb_buf",
+                    scope=tbe_platform.scope_cbuf,
+                    data=output_cb,
+                )
+                ib.emit(
+                    tvm.call_extern(
+                        dtype,
+                        "load_image_to_cbuf",
+                        output_cb_buf.access_ptr("rw", ptr_type=dtype, offset=0),
+                        aipp_xm,
+                        aipp_xt,
+                    )
+                )
+                ib.emit(
+                    tvm.call_extern(
+                        dtype,
+                        "copy_cbuf_to_gm",
+                        output_buf.access_ptr("w", ptr_type=dtype, offset=output_offset),
+                        output_cb_buf.access_ptr("rw", ptr_type=dtype, offset=0),
+                        0,
+                        1,
+                        len_burst,
+                        0,
+                        0,
+                    )
+                )
 
         def _aipp_intrin():
             # config SPR2~SPR9
@@ -353,9 +437,6 @@ def _dynamic_aipp_compute(input_tensor, param_tensor, output_data):
             src_image_size[0] = tvm.const(out_h, dtype="uint64")
             src_image_size[1] = tvm.const(out_w, dtype="uint64")
             aipp_comm.get_dync_src_image_size(ib, param_buf, tmp, src_image_size)
-
-            actual_col_size_reg = ib.allocate("uint64", [1], name="actual_col_size_reg", scope=tbe_platform.scope_reg)
-            actual_col_size_reg[0] = src_image_size[0] * src_image_size[1]
 
             load_image_info = ib.allocate("uint64", [4], name="load_image_info", scope=tbe_platform.scope_reg)
 
@@ -372,9 +453,6 @@ def _dynamic_aipp_compute(input_tensor, param_tensor, output_data):
 
             h_loop = ib.allocate("uint64", [1], name="h_loop", scope=tbe_platform.scope_reg)
             h_loop[0] = tvm.const(1, dtype="uint64")
-
-            aipp_xm = ib.allocate("uint64", [1], name="aipp_xm", scope=tbe_platform.scope_reg)
-            aipp_xm[0] = tvm.const(0, dtype="uint64")
 
             load_h = ib.allocate("uint64", [1], name="load_h", scope=tbe_platform.scope_reg)
             load_h[0] = tvm.const(0, dtype="uint64")
@@ -396,8 +474,6 @@ def _dynamic_aipp_compute(input_tensor, param_tensor, output_data):
             ) as n1:
                 batch_id = batch_factor * block_index + n1
                 param_offset = aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE * batch_id
-
-                actual_col_size_reg[0] = src_image_size[0] * src_image_size[1]
 
                 # load_start_pos_h
                 load_image_info[0] = tvm.const(0, dtype="uint64")
@@ -432,9 +508,6 @@ def _dynamic_aipp_compute(input_tensor, param_tensor, output_data):
                 # crop enable
                 with ib.if_scope(crop[0] > 0):
                     aipp_comm.get_dync_crop_info(ib, param_buf, tmp, load_image_info, param_offset)
-                    actual_col_size_reg[0] = load_image_info[2] * load_image_info[3]
-
-                aipp_xt = src_image_size[1] - 1
 
                 ib.emit(
                     tvm.call_extern(
@@ -468,127 +541,76 @@ def _dynamic_aipp_compute(input_tensor, param_tensor, output_data):
                 ib.emit(tvm.call_extern(dtype, "set_aipp_spr_1", spr0_1[1]))
 
                 aipp_comm.set_spr_dync_in_batch(ib, dtype, param_buf, spr, tmp, offset=param_offset)
+                if cur_cce_product in aipp_comm.V300_SOC_VERSION_LIST:
+                    aipp_comm.set_spr_dync_in_batch_v300(ib, dtype, param_buf, spr, tmp, offset=param_offset)
                 aipp_comm.get_dync_padding_size(ib, param_buf, tmp, padding_info, param_offset)
 
-                ib.emit(
-                    tvm.call_extern(
-                        "int8",
-                        "reg_mov",
-                        tvm.call_extern("uint64", "reg", tmp[0]),
-                        param_buf.access_ptr("r", offset=param_offset + aipp_comm.BATCH_OFFSET_PAD_SWITCH),
-                    )
-                )
-                padding[0] = tmp[0]
-                # padding enable
-                with ib.if_scope(padding[0] > 0):
-                    output_h = out_h - padding_info[0] - padding_info[1]
-                    actual_col_size_reg[0] = tbe_platform.get_const(output_h) * tvm.const(out_w, dtype="uint64")
-                    # set single line mode
-                    spr9 = spr[9] | (1 & 0x1) << 24
-                    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_9", spr9))
-                    # top_padding_size
-                    with ib.if_scope(padding_info[0] > 0):
-                        with ib.new_scope():
-                            top_offset = block_index * offset + n1 * c1 * out_h * out_w * c0
-                            _padding_compute(
-                                ib,
-                                (
-                                    dtype,
-                                    out_w,
-                                    c0,
-                                    size,
-                                    padding_info[0],
-                                    top_offset,
-                                    load_image_info[3],
-                                    load_image_info[2],
-                                    load_image_info[1],
-                                    load_image_info[0],
-                                    src_image_size[1],
-                                ),
-                                output_buf,
-                                l1_image_buf_max,
-                            )
-                    # bottom_padding_size
-                    with ib.if_scope(padding_info[1] > 0):
-                        with ib.new_scope():
-                            bottom_offset = (
-                                block_index * offset
-                                + n1 * c1 * out_h * out_w * c0
-                                + (out_h - padding_info[1]) * out_w * c0
-                            )
-                            _padding_compute(
-                                ib,
-                                (
-                                    dtype,
-                                    out_w,
-                                    c0,
-                                    size,
-                                    padding_info[0],
-                                    bottom_offset,
-                                    load_image_info[3],
-                                    load_image_info[2],
-                                    load_image_info[1],
-                                    load_image_info[0],
-                                    src_image_size[1],
-                                ),
-                                output_buf,
-                                l1_image_buf_max,
-                            )
-
-                    ib.emit(tvm.call_extern(dtype, "set_aipp_spr_9", spr[9]))
+                support_vertical_padding = cur_cce_product in aipp_comm.V300_SOC_VERSION_LIST
+                actual_col_size_reg = ib.allocate("uint64", [1], name="actual_col_size_reg", scope=tbe_platform.scope_reg)
+                aipp_comm.get_dync_actual_col_size(out_h, out_w, padding_info, actual_col_size_reg, support_vertical_padding)
 
                 with ib.if_scope(l1_image_buf_max >= actual_col_size_reg[0]):
-                    with ib.new_scope():
-                        output_cb = ib.allocate(
-                            dtype,
-                            (l1_image_buf_max * c0,),
-                            "output_cb",
-                            scope=tbe_platform.scope_cbuf,
-                        )
-                        output_cb_buf = tvm.decl_buffer(
-                            (l1_image_buf_max * c0,),
-                            dtype,
-                            "output_cb_buf",
-                            scope=tbe_platform.scope_cbuf,
-                            data=output_cb,
-                        )
-
-                        aipp_xt = aipp_xt | (padding_info[2] & 0xFFF) << 32 | (padding_info[3] & 0xFFF) << 45
-
-                        aipp_xm[0] = tbe_platform.get_const(
-                            (load_image_info[3] - 1)
-                            | (load_image_info[2] - 1) << 16
-                            | (load_image_info[1]) << 32
-                            | (load_image_info[0]) << 48
-                        )
-                        ib.emit(
-                            tvm.call_extern(
-                                dtype,
-                                "load_image_to_cbuf",
-                                output_cb_buf.access_ptr("rw", ptr_type=dtype, offset=0),
-                                aipp_xm[0],
-                                tbe_platform.get_const(aipp_xt),
-                            )
+                    """
+                        +----+---------+---------------------------------+
+                        | Xt | [57:45] | right padding size              |
+                        | Xt | [44:32] | left padding size               |
+                        | Xt | [29:24] | bottom padding size             |
+                        | Xt | [21:16] | top padding size                |
+                        | Xt | [15:0]  | horizontal size of source image |
+                        +----+---------+---------------------------------+
+                        | Xm | [60:48] | start positon h of matted image |
+                        | Xm | [44:32] | start positon w of matted image |
+                        | Xm | [28:16] | height of matted image          |
+                        | Xm | [12:0]  | width of matted image           |
+                        +----+---------+---------------------------------+
+                    """
+                    if support_vertical_padding:
+                        aipp_xt = tbe_platform.get_const(
+                            (src_image_size[1] - 1) |
+                            (padding_info[0] & 0x1F) << 16 |
+                            (padding_info[1] & 0x1F) << 24 |
+                            (padding_info[2] & 0xFFF) << 32 |
+                            (padding_info[3] & 0xFFF) << 45,
                         )
 
-                        output_offset = (
+                        aipp_xm = tbe_platform.get_const(
+                            (load_image_info[3] - 1) |
+                            (load_image_info[2] - 1) << 16 |
+                            (load_image_info[1]) << 32 |
+                            (load_image_info[0]) << 48
+                        )
+
+                        output_offset = block_index * offset + n1 * c1 * out_h * out_w * c0
+                        len_burst = c1 * out_h * out_w
+                        _aipp_single_process(aipp_xt, aipp_xm, output_offset, len_burst)
+                    else:
+                        top_offset = block_index * offset + n1 * c1 * out_h * out_w * c0
+                        bottom_offset = (
+                            block_index * offset
+                            + n1 * c1 * out_h * out_w * c0
+                            + (out_h - padding_info[1]) * out_w * c0
+                        )
+                        _padding_top_bottom(spr, src_image_size, load_image_info, padding_info, top_offset, 
+                                            bottom_offset)
+
+                        aipp_xt = tbe_platform.get_const(
+                            (src_image_size[1] - 1) |
+                            (padding_info[2] & 0xFFF) << 32 |
+                            (padding_info[3] & 0xFFF) << 45
+                        )
+
+                        aipp_xm = tbe_platform.get_const(
+                            (load_image_info[3] - 1) |
+                            (load_image_info[2] - 1) << 16 |
+                            (load_image_info[1]) << 32 |
+                            (load_image_info[0]) << 48
+                        )
+
+                        output_offset = \
                             block_index * offset + n1 * c1 * out_h * out_w * c0 + padding_info[0] * out_w * c0
-                        )
                         len_burst = c1 * (out_h - padding_info[0] - padding_info[1]) * out_w
+                        _aipp_single_process(aipp_xt, aipp_xm, output_offset, len_burst)
 
-                        ib.emit(
-                            tvm.call_extern(
-                                dtype,
-                                "copy_cbuf_to_gm",
-                                output_buf.access_ptr("w", ptr_type=dtype, offset=output_offset),
-                                output_cb_buf.access_ptr("rw", ptr_type=dtype, offset=0),
-                                0,
-                                1,
-                                len_burst,
-                                0,
-                                0,
-                            )
-                        )
                 with ib.else_scope():
                     tiling_h = l1_image_buf_max // out_w
 
@@ -603,120 +625,56 @@ def _dynamic_aipp_compute(input_tensor, param_tensor, output_data):
                     load_h[0] = tvm.const(tiling_h - 1, dtype="uint64")
 
                     with ib.for_range(zero_const, h_loop[0], name="h1", dtype="uint64") as h1:
-                        with ib.new_scope():
-                            output_cb = ib.allocate(
-                                dtype,
-                                (l1_image_buf_max * c0,),
-                                "output_cb",
-                                scope=tbe_platform.scope_cbuf,
-                            )
-                            output_cb_buf = tvm.decl_buffer(
-                                (l1_image_buf_max * c0,),
-                                dtype,
-                                "output_cb_buf",
-                                scope=tbe_platform.scope_cbuf,
-                                data=output_cb,
-                            )
+                        aipp_xt = tbe_platform.get_const(
+                            (src_image_size[1] - 1) |
+                            (padding_info[2] & 0xFFF) << 32 |
+                            (padding_info[3] & 0xFFF) << 45
+                        )
 
-                            aipp_xt = aipp_xt | (padding_info[2] & 0xFFF) << 32 | (padding_info[3] & 0xFFF) << 45
+                        aipp_xm = tbe_platform.get_const(
+                            load_w |
+                            load_h[0] << load_h_pos |
+                            load_image_info[1] << w_start_pos |
+                            (load_image_info[0] + h1 * tiling_h_const) << h_start_pos
+                        )
 
-                            aipp_xm[0] = tbe_platform.get_const(
-                                load_w
-                                | load_h[0] << load_h_pos
-                                | tbe_platform.get_const(load_image_info[1]) << w_start_pos
-                                | (load_image_info[0] + h1 * tiling_h_const) << h_start_pos
-                            )
+                        output_offset = (
+                            block_index * offset
+                            + padding_info[0] * out_w * c0
+                            + n1 * c1 * out_h * out_w * c0
+                            + c1 * (h1 * tiling_h) * out_w * c0
+                        )
 
-                            ib.emit(
-                                tvm.call_extern(
-                                    dtype,
-                                    "load_image_to_cbuf",
-                                    output_cb_buf.access_ptr("rw", ptr_type=dtype, offset=0),
-                                    aipp_xm[0],
-                                    tbe_platform.get_const(aipp_xt),
-                                )
-                            )
-
-                            output_offset = (
-                                block_index * offset
-                                + padding_info[0] * out_w * c0
-                                + n1 * c1 * out_h * out_w * c0
-                                + c1 * (h1 * tiling_h) * out_w * c0
-                            )
-                            len_burst = tiling_h * out_w
-                            ib.emit(
-                                tvm.call_extern(
-                                    dtype,
-                                    "copy_cbuf_to_gm",
-                                    output_buf.access_ptr("w", ptr_type=dtype, offset=output_offset),
-                                    output_cb_buf.access_ptr("rw", ptr_type=dtype, offset=0),
-                                    0,
-                                    1,
-                                    len_burst,
-                                    0,
-                                    0,
-                                )
-                            )
+                        len_burst = tiling_h * out_w
+                        _aipp_single_process(aipp_xt, aipp_xm, output_offset, len_burst)
 
                     tail_h[0] = load_image_info[2] % tvm.const(tiling_h, dtype="uint64")
                     with ib.if_scope(tail_h[0] != 0):
                         tail_h_postion[0] = load_image_info[0] + h_loop[0] * tvm.const(tiling_h, dtype="uint64")
                         load_tail_h[0] = tail_h[0] - tvm.const(1, dtype="uint64")
 
-                        with ib.new_scope():
-                            output_cb = ib.allocate(
-                                dtype,
-                                (l1_image_buf_max * c0,),
-                                "output_cb",
-                                scope=tbe_platform.scope_cbuf,
-                            )
-                            output_cb_buf = tvm.decl_buffer(
-                                (l1_image_buf_max * c0,),
-                                dtype,
-                                "output_cb_buf",
-                                scope=tbe_platform.scope_cbuf,
-                                data=output_cb,
-                            )
+                        aipp_xt = tbe_platform.get_const(
+                            (src_image_size[1] - 1) |
+                            (padding_info[2] & 0xFFF) << 32 |
+                            (padding_info[3] & 0xFFF) << 45
+                        )
 
-                            aipp_xt = aipp_xt | (padding_info[2] & 0xFF) << 32 | (padding_info[3] & 0xFF) << 45
-                            output_h = tail_h[0]
-                            aipp_xm = (
-                                load_w
-                                | load_tail_h[0] << load_h_pos
-                                | tail_h_postion[0] << h_start_pos
-                                | (load_image_info[1]) << w_start_pos
-                            )
+                        aipp_xm = tbe_platform.get_const(
+                            load_w |
+                            load_tail_h[0] << load_h_pos |
+                            tail_h_postion[0] << h_start_pos |
+                            (load_image_info[1]) << w_start_pos
+                        )
 
-                            ib.emit(
-                                tvm.call_extern(
-                                    dtype,
-                                    "load_image_to_cbuf",
-                                    output_cb_buf.access_ptr("rw", ptr_type=dtype, offset=0),
-                                    tbe_platform.get_const(aipp_xm),
-                                    tbe_platform.get_const(aipp_xt),
-                                )
-                            )
+                        output_offset = (
+                            block_index * offset
+                            + padding_info[0] * out_w * c0
+                            + n1 * c1 * out_h * out_w * c0
+                            + c1 * (h_loop[0] * tiling_h) * out_w * c0
+                        )
 
-                            output_offset = (
-                                block_index * offset
-                                + padding_info[0] * out_w * c0
-                                + n1 * c1 * out_h * out_w * c0
-                                + c1 * (h_loop[0] * tiling_h) * out_w * c0
-                            )
-                            len_burst = tail_h[0] * out_w
-                            ib.emit(
-                                tvm.call_extern(
-                                    dtype,
-                                    "copy_cbuf_to_gm",
-                                    output_buf.access_ptr("w", ptr_type=dtype, offset=output_offset),
-                                    output_cb_buf.access_ptr("rw", ptr_type=dtype, offset=0),
-                                    0,
-                                    1,
-                                    len_burst,
-                                    0,
-                                    0,
-                                )
-                            )
+                        len_burst = tail_h[0] * out_w
+                        _aipp_single_process(aipp_xt, aipp_xm, output_offset, len_burst)
 
         _aipp_intrin()
         return ib.get()
@@ -866,7 +824,7 @@ def _static_aipp_compute(data, input_shape, input_format, output_data, aipp_conf
             spr9 = aipp_comm.get_spr9(aipp_config, dtype, output_format)
             ib.emit(tvm.call_extern(dtype, "set_aipp_spr_9", tvm.const(spr9, dtype="uint64")))
 
-        def _aipp_single_process(aipp_xt, output_offset, len_burst):
+        def _aipp_single_process(aipp_xt, aipp_xm, output_offset, len_burst):
             with ib.new_scope():
                 output_cb = ib.allocate(
                     dtype,
@@ -881,20 +839,13 @@ def _static_aipp_compute(data, input_shape, input_format, output_data, aipp_conf
                     scope=tbe_platform.scope_cbuf,
                     data=output_cb,
                 )
-                aipp_xm = tvm.const(
-                    (load_image_w - 1)
-                    | (load_image_h - 1) << 16
-                    | (load_start_pos_w) << 32
-                    | (load_start_pos_h) << 48,
-                    dtype="uint64",
-                )
                 ib.emit(
                     tvm.call_extern(
                         dtype,
                         "load_image_to_cbuf",
                         output_cb_buf.access_ptr("rw", ptr_type=dtype, offset=0),
                         aipp_xm,
-                        tvm.const(aipp_xt, dtype="uint64"),
+                        aipp_xt,
                     )
                 )
                 ib.emit(
@@ -953,15 +904,41 @@ def _static_aipp_compute(data, input_shape, input_format, output_data, aipp_conf
                 ) = aipp_comm.get_padding_size(aipp_config)
 
                 if l1_image_buf_max >= actual_col_size:
+                    """
+                        +----+---------+---------------------------------+
+                        | Xt | [57:45] | right padding size              |
+                        | Xt | [44:32] | left padding size               |
+                        | Xt | [29:24] | bottom padding size             |
+                        | Xt | [21:16] | top padding size                |
+                        | Xt | [15:0]  | horizontal size of source image |
+                        +----+---------+---------------------------------+
+                        | Xm | [60:48] | start positon h of matted image |
+                        | Xm | [44:32] | start positon w of matted image |
+                        | Xm | [28:16] | height of matted image          |
+                        | Xm | [12:0]  | width of matted image           |
+                        +----+---------+---------------------------------+
+                    """
                     if support_vertical_padding:
-                        aipp_xt = src_image_size_w - 1 \
-                            | (left_padding_size & horizontal_pad_mask) << 32 \
-                            | (right_padding_size & horizontal_pad_mask) << 45 \
-                            | (top_padding_size & verical_pad_mask) << 16 \
-                            | (bottom_padding_size & verical_pad_mask) << 24
+                        aipp_xt = tvm.const(
+                            (src_image_size_w - 1) |
+                            (left_padding_size & horizontal_pad_mask) << 32 |
+                            (right_padding_size & horizontal_pad_mask) << 45 |
+                            (top_padding_size & verical_pad_mask) << 16 |
+                            (bottom_padding_size & verical_pad_mask) << 24,
+                            dtype="uint64"
+                        )
+
+                        aipp_xm = tvm.const(
+                            (load_image_w - 1) |
+                            (load_image_h - 1) << 16 |
+                            (load_start_pos_w) << 32 |
+                            (load_start_pos_h) << 48,
+                            dtype="uint64"
+                        )
+
                         output_offset = block_index * offset + n1 * c1 * out_h * out_w * c0
                         len_burst = c1 * out_h * out_w
-                        _aipp_single_process(aipp_xt, output_offset, len_burst)
+                        _aipp_single_process(aipp_xt, aipp_xm, output_offset, len_burst)
                     else:
                         top_offset = block_index * offset + n1 * c1 * out_h * out_w * c0
                         bottom_offset = (
@@ -970,13 +947,26 @@ def _static_aipp_compute(data, input_shape, input_format, output_data, aipp_conf
                             + (out_h - bottom_padding_size) * out_w * c0
                         )
                         _padding_top_bottom(top_padding_size, bottom_padding_size, top_offset, bottom_offset)
-                        aipp_xt = src_image_size_w - 1 \
-                            | (left_padding_size & horizontal_pad_mask) << 32 \
-                            | (right_padding_size & horizontal_pad_mask) << 45
+
+                        aipp_xt = tvm.const(
+                            (src_image_size_w - 1) |
+                            (left_padding_size & horizontal_pad_mask) << 32 |
+                            (right_padding_size & horizontal_pad_mask) << 45,
+                            dtype="uint64"
+                        )
+
+                        aipp_xm = tvm.const(
+                            (load_image_w - 1) |
+                            (load_image_h - 1) << 16 |
+                            (load_start_pos_w) << 32 |
+                            (load_start_pos_h) << 48,
+                            dtype="uint64"
+                        )
+
                         output_offset = block_index * offset + n1 * c1 * out_h * out_w * c0 \
                             + top_padding_size * out_w * c0
                         len_burst = c1 * (out_h - top_padding_size - bottom_padding_size) * out_w
-                        _aipp_single_process(aipp_xt, output_offset, len_burst)
+                        _aipp_single_process(aipp_xt, aipp_xm, output_offset, len_burst)
                 else:
                     top_offset = block_index * offset + n1 * c1 * out_h * out_w * c0
                     bottom_offset = (
@@ -999,126 +989,59 @@ def _static_aipp_compute(data, input_shape, input_format, output_data, aipp_conf
                     h_loop_const = tvm.const(h_loop, dtype="uint64")
 
                     with ib.for_range(zero_const, h_loop_const, name="h1", dtype="uint64") as h1:
-                        with ib.new_scope():
-                            num = l1_image_buf_max * c0
-                            output_cb = ib.allocate(
-                                dtype,
-                                (num,),
-                                "output_cb",
-                                scope=tbe_platform.scope_cbuf,
-                            )
-                            output_cb_buf = tvm.decl_buffer(
-                                (num,),
-                                dtype,
-                                "output_cb_buf",
-                                scope=tbe_platform.scope_cbuf,
-                                data=output_cb,
-                            )
+                        aipp_xt = tvm.const(
+                            (src_image_size_w - 1) |
+                            (left_padding_size & horizontal_pad_mask) << 32 |
+                            (right_padding_size & horizontal_pad_mask) << 45,
+                            dtype="uint64"
+                        )
 
-                            aipp_xt = src_image_size_w - 1 \
-                                | (left_padding_size & horizontal_pad_mask) << 32 \
-                                | (right_padding_size & horizontal_pad_mask) << 45
+                        aipp_xm = tbe_platform.get_const(
+                            load_w |
+                            load_h << load_h_pos |
+                            tvm.const(load_start_pos_w, dtype="uint64") << w_start_pos |
+                            (load_start_pos_h + h1 * tiling_h_const) << h_start_pos
+                        )
 
-                            output_offset = (
-                                block_index * offset
-                                + n1 * c1 * out_h * out_w * c0
-                                + c1 * (h1 * tiling_h) * out_w * c0
-                                + top_padding_size * out_w * c0
-                            )
+                        output_offset = (
+                            block_index * offset
+                            + n1 * c1 * out_h * out_w * c0
+                            + c1 * (h1 * tiling_h) * out_w * c0
+                            + top_padding_size * out_w * c0
+                        )
 
-                            aipp_xm = tbe_platform.get_const(
-                                load_w
-                                | load_h << load_h_pos
-                                | (tvm.const(load_start_pos_w, dtype="uint64")) << w_start_pos
-                                | (load_start_pos_h + h1 * tiling_h_const) << h_start_pos
-                            )
-                            ib.emit(
-                                tvm.call_extern(
-                                    dtype,
-                                    "load_image_to_cbuf",
-                                    output_cb_buf.access_ptr("rw", ptr_type=dtype, offset=0),
-                                    aipp_xm,
-                                    tvm.const(aipp_xt, dtype="uint64"),
-                                )
-                            )
-
-                            len_burst = tiling_h * out_w
-                            ib.emit(
-                                tvm.call_extern(
-                                    dtype,
-                                    "copy_cbuf_to_gm",
-                                    output_buf.access_ptr("w", ptr_type=dtype, offset=output_offset),
-                                    output_cb_buf.access_ptr("rw", ptr_type=dtype, offset=0),
-                                    0,
-                                    1,
-                                    len_burst,
-                                    0,
-                                    0,
-                                )
-                            )
+                        len_burst = tiling_h * out_w
+                        _aipp_single_process(aipp_xt, aipp_xm, output_offset, len_burst)
 
                     tail_h = load_image_h % tiling_h
                     if tail_h != 0:
                         tail_h_postion = tvm.const(load_start_pos_h + h_loop * tiling_h, dtype="uint64")
                         load_tail_h = tvm.const(tail_h - 1, dtype="uint64")
 
-                        with ib.new_scope():
-                            num = l1_image_buf_max * c0
-                            output_cb = ib.allocate(
-                                dtype,
-                                (num,),
-                                "output_cb",
-                                scope=tbe_platform.scope_cbuf,
-                            )
-                            output_cb_buf = tvm.decl_buffer(
-                                (num,),
-                                dtype,
-                                "output_cb_buf",
-                                scope=tbe_platform.scope_cbuf,
-                                data=output_cb,
-                            )
+                        aipp_xt = tvm.const(
+                            (src_image_size_w - 1) |
+                            (left_padding_size & horizontal_pad_mask) << 32 |
+                            (right_padding_size & horizontal_pad_mask) << 45,
+                            dtype="uint64"
+                        )
 
-                            aipp_xt = src_image_size_w - 1 \
-                                | (left_padding_size & horizontal_pad_mask) << 32 \
-                                | (right_padding_size & horizontal_pad_mask) << 45
+                        aipp_xm = tbe_platform.get_const(
+                            load_w |
+                            load_tail_h << load_h_pos |
+                            tail_h_postion << h_start_pos |
+                            tvm.const(load_start_pos_w, dtype="uint64") << w_start_pos
+                        )
+                        aipp_xm = tvm.const(aipp_xm, dtype="uint64")
 
-                            output_offset = (
-                                block_index * offset
-                                + top_padding_size * out_w * c0
-                                + n1 * c1 * out_h * out_w * c0
-                                + c1 * (h_loop_const * tiling_h) * out_w * c0
-                            )
+                        output_offset = (
+                            block_index * offset
+                            + top_padding_size * out_w * c0
+                            + n1 * c1 * out_h * out_w * c0
+                            + c1 * (h_loop_const * tiling_h) * out_w * c0
+                        )
 
-                            aipp_xm = tbe_platform.get_const(
-                                load_w
-                                | load_tail_h << load_h_pos
-                                | tail_h_postion << h_start_pos
-                                | (tvm.const(load_start_pos_w, dtype="uint64")) << w_start_pos
-                            )
-
-                            ib.emit(
-                                tvm.call_extern(
-                                    dtype,
-                                    "load_image_to_cbuf",
-                                    output_cb_buf.access_ptr("rw", ptr_type=dtype, offset=0),
-                                    tvm.const(aipp_xm, dtype="uint64"),
-                                    tvm.const(aipp_xt, dtype="uint64"),
-                                )
-                            )
-                            len_burst = tail_h * out_w
-                            ib.emit(
-                                tvm.call_extern(
-                                    dtype,
-                                    "copy_cbuf_to_gm",
-                                    output_buf.access_ptr("w", ptr_type=dtype, offset=output_offset),
-                                    output_cb_buf.access_ptr("rw", ptr_type=dtype, offset=0),
-                                    0,
-                                    1,
-                                    len_burst,
-                                    0,
-                                    0,
-                                )
-                            )
+                        len_burst = tail_h * out_w
+                        _aipp_single_process(aipp_xt, aipp_xm, output_offset, len_burst)
 
         _aipp_intrin()
         return ib.get()
@@ -1161,7 +1084,7 @@ def new_aipp_compute(input_data, input_dync_param, output_data, aipp_config, cur
         # Compute
         data = tvm.placeholder(input_shape, name="input", dtype=input_dtype.lower())
         param = tvm.placeholder(input_dync_param_shape, name="param", dtype=input_dync_param_dtype)
-        output = _dynamic_aipp_compute(data, param, output_data)
+        output = _dynamic_aipp_compute(data, param, output_data, cur_cce_product)
         tensor_list = [data, param, output]
     else:
         aipp_comm.set_aipp_default_params(aipp_config)
