@@ -35,7 +35,7 @@
 namespace optiling {
 
 #define TRANSPOSE_MAX_AXIS_NUM 8
-#define MAX_CORE_NUM 96 
+#define MAX_CORE_NUM 64 
 #define BORROW_SRC_AXIS_NUM 2
 #define BORROW_DST_AXIS_NUM 2
 #define BORROW_MAX_AXIS_NUM (BORROW_SRC_AXIS_NUM + BORROW_DST_AXIS_NUM)
@@ -67,7 +67,7 @@ namespace optiling {
 #define TDTS 3
 #define COL_UNIT 240 
 #define ROW_UNIT 128 
-#define MAX_INFO_NUM 1000
+#define MAX_INFO_NUM 16 // keep same with GE threads, too huge will result in init timeout 
 #define MAX_TILING_NUM 16 * 1024 
 #define TILING_HEAD_SIZE 4
 #define MAX_RETRY_SCENARIO 5

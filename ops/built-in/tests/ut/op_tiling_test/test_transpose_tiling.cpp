@@ -2091,7 +2091,7 @@ TEST_F(TransposeTilingTest, vcopy) {
   outShape.push_back(16);
   vector<int64_t> perm = {1, 0, 2};
   std::string data_dtype = "float16";
-  std::string compileInfo = "{\"vars\": {\"core_num\":96, \"ub_size\":6144, \"dtype\":\"float16\"}}";
+  std::string compileInfo = "{\"vars\": {\"core_num\":48, \"ub_size\":6144, \"dtype\":\"float16\"}}";
   run_case(inShape, outShape, perm, data_dtype, compileInfo, "", this->test_info_->name());
 }
 
