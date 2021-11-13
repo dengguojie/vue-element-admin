@@ -112,7 +112,7 @@ TEST_F(TilingDispatch, TilingDispatchTransposeDsl) {
   ASSERT_TRUE(op_func_info.IsFunctionV3());
   const OpTilingFuncV3& tiling_func = op_func_info.GetOpTilingFuncV3();
   const OpParseFuncV3& parse_func = op_func_info.GetOpParseFuncV3();
-  ge::AscendString compileInfo(R"({"_pattern": "TransposeDsl"})");
+  ge::AscendString compileInfo(R"({"_pattern": "Transpose"})");
   void* op_compile_info = parse_func(op, compileInfo);
   ASSERT_TRUE(op_compile_info != nullptr);
   ASSERT_TRUE(tiling_func(op, op_compile_info, runInfo));

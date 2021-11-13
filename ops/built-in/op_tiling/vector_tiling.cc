@@ -50,7 +50,7 @@ std::shared_ptr<AutoTilingCompileInfo> CreateAutoTilingHandler(const std::string
       return CreateElewiseTilingHandler(op_type, pattern, parsed_compile_info);
     } else if (pattern == "Norm") {
       return CreateNormTilingHandler(op_type, pattern, parsed_compile_info);
-    } else if (pattern == "TransposeDsl") {
+    } else if (pattern == "Transpose") {
       return CreateTransposeDslTilingHandler(op_type, pattern, parsed_compile_info);
     } else {
       OP_LOGE(op_type.c_str(), "Pattern %s is not supported by AutoTiling Compile Info Parser", pattern.c_str());

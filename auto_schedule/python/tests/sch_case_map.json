@@ -288,6 +288,15 @@
     "auto_schedule/python/tbe/dsl/unify_schedule/vector/norm/norm_schedule.py":[
         "norm"
     ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/transpose/transpose_tilingcase.py":[
+        "transpose"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/transpose/transpose_schedule.py":[
+        "transpose"
+    ],
+    "auto_schedule/python/tbe/dsl/base/classifier/transpose_classifier.py": [
+        "transpose"
+    ],
     "auto_schedule/python/tbe/dsl/unify_schedule/unify_auto_schedule.py":[
         "unify_auto_schedule",
         "reduce_max",
