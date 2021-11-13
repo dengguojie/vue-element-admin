@@ -558,3 +558,52 @@ TEST_F(PadV3Tiling, rpad_v3_tiling_10) {
   ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.tiling_data), "4 1 1 1 1280 8 8 0 0 0 0 0 0 0 0 0 0 0 0 -1 ");
 }
+
+TEST_F(PadV3Tiling, rpad_v3_tiling_11) {
+  using namespace optiling;
+  std::string op_name = "PadV3";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  std::string compileInfo = "{\"vars\": {\"core_num\": 2, \"padding_contiguous\": false, \"size\": 2, \"mode\": \"constant\"}}";
+
+  std::vector<int64_t> input{4, 256, 16, 16, 16};
+  std::vector<int64_t> padding_shape{8};
+  std::vector<int64_t> padding_value{0, 0, 1, 1, 0, 0, 1, 1};
+  std::vector<int64_t> output{4, 256, 18, 18, 16};
+
+  TeOpTensor tensor_input;
+  tensor_input.shape = input;
+  tensor_input.dtype = "float16";
+  tensor_input.format = "NC1HWC0";
+  TeOpTensor tensor_padding;
+  tensor_padding.shape = padding_shape;
+  tensor_padding.dtype = "int64";
+  TeOpTensor tensor_output;
+  tensor_output.shape = output;
+  tensor_output.dtype = "float16";
+
+  TeOpTensorArg tensor_input_arg;
+  tensor_input_arg.tensor.push_back(tensor_input);
+  tensor_input_arg.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_padding_arg;
+  tensor_padding_arg.tensor.push_back(tensor_padding);
+  tensor_padding_arg.arg_type = TA_SINGLE;
+  TeOpTensorArg tensor_output_arg;
+  tensor_output_arg.tensor.push_back(tensor_output);
+  tensor_output_arg.arg_type = TA_SINGLE;
+
+  TeOpParas opParas;
+  opParas.const_inputs["paddings"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
+    (const uint8_t*)padding_value.data(), padding_value.size() * 8, ge::Tensor());
+  opParas.inputs.push_back(tensor_input_arg);
+  opParas.inputs.push_back(tensor_padding_arg);
+  opParas.outputs.push_back(tensor_output_arg);
+  opParas.op_type = op_name;
+  OpCompileInfo op_compile_info;
+  op_compile_info.str = compileInfo;
+  op_compile_info.key = "2234239";
+  OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(to_string(runInfo.tiling_data), "0 4 256 16 16 16 4 256 18 18 16 2 1 1 1 1 512 512 ");
+}

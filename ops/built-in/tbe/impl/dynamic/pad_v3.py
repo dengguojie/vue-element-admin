@@ -24,6 +24,7 @@ from impl.util.platform_adapter import register_operator
 from impl import constant_util as constant
 from impl.dynamic.reflection_pad_v3 import reflection_pad_v3
 from impl.dynamic.replication_pad_v3 import replication_pad_v3
+from impl.dynamic.pad_v3_5hd import pad_v3_5hd
 from impl.util.util_select_op_base import get_op_cal_info
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
@@ -1479,9 +1480,15 @@ def pad_v3(x, paddings, constant_values, y, mode='constant', padding_contiguous=
     if mode == 'edge':
         return replication_pad_v3(x, paddings, constant_values, y, mode, padding_contiguous, kernel_name)
 
+    cur_format = x.get("format")
+
+    # This branch is taken when the mode is constant and the format is 5HD.
+    # If not, then go to the ND branch of constant mode
+    if cur_format == "NC1HWC0":
+        return pad_v3_5hd(x, paddings, constant_values, y, mode, padding_contiguous, kernel_name)
+
     src_dtype = x.get("dtype").lower()
     paddings_dtype = paddings.get("dtype").lower()
-
     supported_dtype = ("float16", "float32", "int32")
     para_check.check_dtype(src_dtype, supported_dtype, param_name="x")
     para_check.check_dtype(paddings_dtype, ("int32", "int64"), param_name="paddings")

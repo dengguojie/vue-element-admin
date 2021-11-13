@@ -87,6 +87,7 @@ set(_optiling_files
   batch_multi_class_non_max_suppression.cc
   pad.cc
   pad_v3.cc
+  pad_v3_5hd.cc
   reflection_pad_v3.cc
   prelu.cc
   reverse.cc

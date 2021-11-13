@@ -82,10 +82,29 @@ case3 = {
     "support_expect": True
 }
 
+case4 = {
+    "params": [
+        {"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "ori_shape": (-1, -1, -1, -1),
+        "format": "NC1HWC0", "ori_format": "ND", "range": ((-1, 1), (-1, 1), (-1, 1), (-1, 1), (16, 16))},
+        {"shape": (-1), "dtype": "int32", "ori_shape": (-1),
+        "format": "ND", "ori_format": "ND", "range": ((1, -1))},
+        {"shape": (1), "dtype": "float16", "ori_shape": (1),
+        "format": "ND", "ori_format": "ND", "range": ((1, 1))},
+        {"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "ori_shape": (-1, -1, -1, -1),
+        "format": "NC1HWC0", "ori_format": "ND", "range": ((1, -1), (1, -1), (-1, -1), (-1, -1), (16, 16))},
+        "constant"
+    ],
+    "case_name": "dynamic_pad_v3_04",
+    "expect": "success",
+    "format_expect": [],
+    "support_expect": True
+}
+
 ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 ut_case.add_case(["Ascend310","Ascend710","Ascend910"], case1)
 ut_case.add_case(["Ascend310","Ascend710","Ascend910"], case2)
 ut_case.add_case(["Ascend310","Ascend710","Ascend910"], case3)
+ut_case.add_case(["Ascend310","Ascend710","Ascend910"], case4)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")
