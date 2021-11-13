@@ -45,7 +45,8 @@ dynamic_conv2d_bp_filter_op_testcase = [
     ((3, 40, 9, 75), (3, 40, 200, 75), (40, 40, 9, 9), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_14"),
     # filter_h equal -1
     ((3, 40, 9, 75), (3, 40, 200, 75), (40, 1, -1, 9), [1,1,1,1], [1,1,1,1], (0, 0, 0, 0), "NCHW", [0], RuntimeError, "dynamic_conv2d_bp_filter_op_testcase_15"),
-
+    # min_range_negative
+    ((4, 2, 16, 1), (4, 2, 23, 1), (1, 8, 1, 1), [1, 1, 1, 1], [1, 1, 1, 1], (0, 0, 0, 0), "NHWC", [-2], "success", "dynamic_conv2d_bp_filter_op_testcase_min_range_negative")
 ]
 
 def _get_kernel_name(x_shape, dedy_shape, filter_shape, strides, dilations, pads, data_format):

@@ -930,14 +930,14 @@ class Conv2dBpFilterTiling(CubeTilingOp):
     def _get_output_h(self, h_i):
         if not h_i:
             return None
-        return (h_i + self.cur_pads[2] + self.cur_pads[3] - self.dilate_h *
-                (self.k_h - 1) - 1) // self.stride_h + 1
+        return max(1, (h_i + self.cur_pads[2] + self.cur_pads[3] - self.dilate_h *
+                (self.k_h - 1) - 1) // self.stride_h + 1)
 
     def _get_output_w(self, w_i):
         if not w_i:
             return None
-        return (w_i + self.cur_pads[0] + self.cur_pads[1] - self.dilate_w *
-                (self.k_w - 1) - 1) // self.stride_w + 1
+        return max(1, (w_i + self.cur_pads[0] + self.cur_pads[1] - self.dilate_w *
+                (self.k_w - 1) - 1) // self.stride_w + 1)
 
     def _check_full_k(self, tiling, dy_shape):
         """
