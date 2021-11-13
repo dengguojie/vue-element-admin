@@ -54,9 +54,9 @@ bool Conv2DTransposeTiling(const std::string& opType, const ge::Operator& opPara
   ge::ConstGeTensorDescPtr tensor_out_desc = op_desc->GetOutputDescPtr(0);
   const ge::GeShape &tensor_in_shape = tensor_in_desc->GetShape();
   const ge::GeShape &tensor_out_shape = tensor_out_desc->GetShape();
+  size_t output_dimnum = tensor_out_shape.GetDimNum();
   bool unvalid_size = opParas.GetInputsSize() < kConv2dTransInputSizeLimit || opParas.GetOutputsSize() == 0 ||
-                      tensor_in_shape.GetDimNum() != kConv2dDimNumLimit ||
-                      tensor_out_shape.GetDimNum() != kConv2dDimNumLimit;
+                      tensor_in_shape.GetDimNum() < kConv2dDimNumLimit || output_dimnum < kConv2dDimNumLimit;
   if (unvalid_size) {
     GELOGE(ge::FAILED, "the size is unvalid.");
     return false;
@@ -118,8 +118,8 @@ bool Conv2DTransposeTiling(const std::string& opType, const ge::Operator& opPara
     }
 
     std::vector<int64_t> output_shape;
-    output_shape.reserve(kConv2dDimNumLimit);
-    for (size_t i = 0; i < kConv2dDimNumLimit; i++) {
+    output_shape.reserve(output_dimnum);
+    for (size_t i = 0; i < output_dimnum; i++) {
       output_shape.emplace_back(tensor_out_shape.GetDim(i));
     }
     return cube_tiling(opType, output_shape, var_value, opInfo, runInfo);

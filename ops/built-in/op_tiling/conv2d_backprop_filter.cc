@@ -54,9 +54,9 @@ bool Conv2DBpFilterTiling(const std::string& opType, const ge::Operator& opParas
   ge::ConstGeTensorDescPtr tensor_b_desc = op_desc->GetInputDescPtr(2);
   const ge::GeShape &tensor_a_shape = tensor_a_desc->GetShape();
   const ge::GeShape &tensor_b_shape = tensor_b_desc->GetShape();
+  size_t shape_a_dimnum = tensor_a_shape.GetDimNum();
   bool unvalid_size = opParas.GetInputsSize() < kConv2dDwInputSizeLimit || opParas.GetOutputsSize() == 0 ||
-                      tensor_a_shape.GetDimNum() != kConv2dDimNumLimit ||
-                      tensor_b_shape.GetDimNum() != kConv2dDimNumLimit;
+                      shape_a_dimnum < kConv2dDimNumLimit || tensor_b_shape.GetDimNum() < kConv2dDimNumLimit;
   if (unvalid_size) {
     GELOGE(ge::FAILED, "the size is unvalid.");
     return false;
@@ -117,8 +117,8 @@ bool Conv2DBpFilterTiling(const std::string& opType, const ge::Operator& opParas
     }
 
     std::vector<int64_t> input_shape;
-    input_shape.reserve(kConv2dDimNumLimit);
-    for (size_t i = 0; i < kConv2dDimNumLimit; i++) {
+    input_shape.reserve(shape_a_dimnum);
+    for (size_t i = 0; i < shape_a_dimnum; i++) {
       input_shape.emplace_back(tensor_a_shape.GetDim(i));
     }
     return cube_tiling(opType, input_shape, var_value, opInfo, runInfo);
