@@ -23,7 +23,7 @@
 
 namespace optiling {
 
-static std::vector<std::shared_ptr<AutoTilingCompileInfo>> compile_info_container;
+static thread_local std::vector<std::shared_ptr<AutoTilingCompileInfo>> compile_info_container;
 
 /*
  * @brief: tiling function of ops
