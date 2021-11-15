@@ -1342,7 +1342,13 @@ IMPLEMT_COMMON_INFERFUNC(UnsortedSegmentSumInferShape) {
   DataType input_dtype = op_desc->GetInputDescPtr(0)->GetDataType();
   PROFILING_PROTO_AFTER_GET_SHAPE_REG();
   if (shape.IsUnknownDimNum() || shape_id.IsUnknownDimNum()) {
-    output_shape.SetIsUnknownDimNum();
+    if (shape.IsUnknownDimNum()) {
+      output_desc->SetShape(shape);
+      output_desc->SetDataType(input_dtype);
+    } else {
+      output_desc->SetShape(shape_id);
+      output_desc->SetDataType(input_dtype);
+    }
     return GRAPH_SUCCESS;
   } else if (dim_idsize_input > 1) {
     size_t rank = dim_size_input - dim_idsize_input + 1;
@@ -2453,7 +2459,18 @@ static bool TopKInferCommon(Operator &op, int64_t k) {
   auto output_v_desc = op_info->MutableOutputDesc(0);
   auto output_i_desc = op_info->MutableOutputDesc(1);
 
+  GeShape &output_v_shape = output_v_desc->MutableShape();
+  GeShape &output_i_shape = output_i_desc->MutableShape();
+
   const GeShape &input_shape = input_desc->GetShape();
+  if (input_shape.IsUnknownDimNum()) {
+    output_v_desc->SetShape(input_shape);
+    output_v_desc->SetDataType(input_desc->GetDataType());
+    output_i_desc->SetShape(input_shape);
+    output_i_desc->SetDataType(DT_INT32);
+    return true;
+  }
+
   size_t dim_size = input_shape.GetDimNum();
   if (dim_size <= 0) {
     OP_LOGE(op.GetName().c_str(), "The dims_in size should more than 0!");
@@ -2484,29 +2501,23 @@ static bool TopKInferCommon(Operator &op, int64_t k) {
     TopKGetShapeRange(shape_range, input_shape, dim_size, k, static_cast<uint32_t>(sorted_axis));
   }
 
-  GeShape &output_v_shape = output_v_desc->MutableShape();
-  GeShape &output_i_shape = output_i_desc->MutableShape();
+  output_v_shape.SetDimNum(dim_size);
+  output_i_shape.SetDimNum(dim_size);
 
-  if (input_shape.IsUnknownDimNum()) {
-    output_v_shape.SetIsUnknownDimNum();
-    output_i_shape.SetIsUnknownDimNum();
-  } else {
-    size_t rank = input_shape.GetDimNum();
-    output_v_shape.SetDimNum(rank);
-    output_i_shape.SetDimNum(rank);
-
-    for (size_t i = 0; i < output_v_shape.GetDimNum(); i++) {
-      if (i == sorted_axis) {
-        output_v_shape.SetDim(i, k);
-        output_i_shape.SetDim(i, k);
-        continue;
-      }
-      int64_t size = input_shape.GetDim(i);
-      output_v_shape.SetDim(i, size);
-      output_i_shape.SetDim(i, size);
+  for (size_t i = 0; i < dim_size; i++) {
+    if (i == sorted_axis) {
+      output_v_shape.SetDim(i, k);
+      output_i_shape.SetDim(i, k);
+      continue;
     }
+    int64_t size = input_shape.GetDim(i);
+    output_v_shape.SetDim(i, size);
+    output_i_shape.SetDim(i, size);
   }
+  
+  output_v_desc->SetShape(output_v_shape);
   output_v_desc->SetDataType(input_desc->GetDataType());
+  output_i_desc->SetShape(output_i_shape);
   output_i_desc->SetDataType(DT_INT32);
   return true;
 }

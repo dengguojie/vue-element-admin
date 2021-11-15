@@ -2272,7 +2272,8 @@ IMPLEMT_COMMON_INFERFUNC(UnpackInferShape) {
     }
   } else {
     for (int64_t i = 0; i < num; i++) {
-      output_ptrs[i]->MutableShape().SetIsUnknownDimNum();
+      output_ptrs[i]->SetShape(input_x_shape);
+      output_ptrs[i]->SetDataType(input_x_desc->GetDataType());
     }
     return GRAPH_SUCCESS;
   }
