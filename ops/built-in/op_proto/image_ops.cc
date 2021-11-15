@@ -28,6 +28,7 @@
 #include "util/error_util.h"
 #include "op_log.h"
 #include "graph/utils/node_utils.h"
+#include "graph/utils/op_desc_utils.h"
 #include "graph/utils/type_utils.h"
 #include "axis_util.h"
 #include "inc/graph/utils/type_utils.h"
@@ -1512,7 +1513,7 @@ IMPLEMT_INFERFUNC(DecodeAndCropJpeg, DecodeAndCropJpegInfer) {
 }
 INFER_FUNC_REG(DecodeAndCropJpeg, DecodeAndCropJpegInfer);
 
-static void GetResizeConstValue(const Operator& op, const GeTensorPtr& const_tensor,
+static void GetResizeConstValue(const Operator& op, const GeTensor* const_tensor,
                                 const DataType& dtype, std::vector<int64_t>& const_data) {
   size_t size = const_tensor->GetData().GetSize();
   void* data_ptr = (void*)const_tensor->GetData().GetData();
@@ -1539,7 +1540,6 @@ static void GetResizeConstValue(const Operator& op, const GeTensorPtr& const_ten
 
 bool ResizeConstInferShape(const Operator& op, const string& image_name,
                            const string& size_name, const string& output_name) {
-  auto node = NodeUtils::GetNodeFromOperator(op);
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   CHECK(op_desc == nullptr, OP_LOGE(op.GetName().c_str(), "op desc is null."), return false);
 
@@ -1560,11 +1560,12 @@ bool ResizeConstInferShape(const Operator& op, const string& image_name,
     input_desc_x->GetShapeRange(x_range);
   }
   MakeUpShapeRange(image_shape, x_range);
-
-  GeTensorPtr size_tensor = nullptr;
+  
   vector<int64_t> size_out;
   std::vector<std::pair<int64_t, int64_t>> output_range;
-  if (NodeUtils::GetInputConstData(node, size_name, size_tensor) != GRAPH_SUCCESS) {
+  auto size_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName(size_name));
+  const GeTensor *size_tensor = OpDescUtils::GetInputConstData(op, size_idx);
+  if (size_tensor == nullptr) {
     OP_LOGW(op.GetName().c_str(), "get sise const value failed, will set output h w = [-1, -1]");
     size_out.push_back(-1);
     size_out.push_back(-1);

@@ -226,6 +226,8 @@ bool GetConstValue(const Operator& op, const Tensor& const_tensor, const DataTyp
                    std::vector<uint64_t>& const_data);
 bool GetConstValue(const Operator& op, const GeTensorPtr& const_tensor, const DataType& dtype,
                    std::vector<int64_t>& const_data);
+bool GetConstValue(const Operator& op, const GeTensor* const_tensor, const DataType& dtype,
+std::vector<int64_t>& const_data);
 bool GetScalerValue(const Operator& op, const Tensor& const_tensor, const DataType& dtype, std::int64_t& const_data);
 bool InferShapeAndTypeTwoInOneOutBroadcast(Operator& op, const string& input_name1, const string& input_name2,
                                            const string& output_name);

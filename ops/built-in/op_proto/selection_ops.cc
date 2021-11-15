@@ -2363,7 +2363,6 @@ IMPLEMT_COMMON_INFERFUNC(OneHotInferShape) {
     return GRAPH_FAILED;
   }
 
-  auto node = NodeUtils::GetNodeFromOperator(op);
   // get all Desc info
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info->MutableInputDesc("x");
@@ -2385,9 +2384,10 @@ IMPLEMT_COMMON_INFERFUNC(OneHotInferShape) {
   // update axis to positive number
 
   // get depth const value
-  GeTensorPtr depth_tensor = nullptr;
   vector<int64_t> depth_value;
-  if (GRAPH_SUCCESS == NodeUtils::GetInputConstData(node, "depth", depth_tensor)) {
+  auto depth_idx = static_cast<uint32_t>(op_info->GetInputIndexByName("depth"));
+  const GeTensor *depth_tensor = OpDescUtils::GetInputConstData(op, depth_idx);
+  if (depth_tensor != nullptr) {
     auto const_desc = op_info->MutableInputDesc("depth");
     auto const_dtype = const_desc->GetDataType();
     if (!GetConstValue(op, depth_tensor, const_dtype, depth_value)) {

@@ -226,7 +226,6 @@ VERIFY_FUNC_REG(DepthwiseWeight4DTo6D, DepthwiseWeight4DTo6DVerify);
 IMPLEMT_COMMON_INFERFUNC(SpaceToBatchNDInferShape) {
   const vector<string> depend_names = {"block_shape", "paddings"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
-  auto node = NodeUtils::GetNodeFromOperator(op);
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info->MutableInputDesc("x");
   auto input_dims = input_desc->MutableShape().GetDims();
@@ -238,8 +237,9 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToBatchNDInferShape) {
   // get const node block_shape
   bool block_done = false;
   std::vector<int64_t> block_shape;
-  GeTensorPtr block_tensor = nullptr;
-  if (GRAPH_SUCCESS == NodeUtils::GetInputConstData(node, "block_shape", block_tensor)) {
+  auto block_idx = static_cast<uint32_t>(op_info->GetInputIndexByName("block_shape"));
+  const GeTensor *block_tensor = OpDescUtils::GetInputConstData(op, block_idx);
+  if (block_tensor != nullptr) {
     auto const_desc = op_info->MutableInputDesc("block_shape");
     auto const_dtype = const_desc->GetDataType();
     if (GetConstValue(op, block_tensor, const_dtype, block_shape)) {
@@ -252,8 +252,9 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToBatchNDInferShape) {
   // get const node padding
   bool padding_done = false;
   std::vector<int64_t> paddings;
-  GeTensorPtr paddings_tensor = nullptr;
-  if (GRAPH_SUCCESS == NodeUtils::GetInputConstData(node, "paddings", paddings_tensor)) {
+  auto pad_idx = static_cast<uint32_t>(op_info->GetInputIndexByName("paddings"));
+  const GeTensor *paddings_tensor = OpDescUtils::GetInputConstData(op, pad_idx);
+  if (paddings_tensor != nullptr) {
     auto const_desc = op_info->MutableInputDesc("paddings");
     auto const_dtype = const_desc->GetDataType();
     if (GetConstValue(op, paddings_tensor, const_dtype, paddings)) {
@@ -495,7 +496,6 @@ COMMON_INFER_FUNC_REG(SpaceToBatchNDD, SpaceToBatchNDDInferShape);
 IMPLEMT_COMMON_INFERFUNC(BatchToSpaceNDInferShape) {
   const vector<string> depend_names = {"block_shape", "crops"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
-  auto node = NodeUtils::GetNodeFromOperator(op);
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info->MutableInputDesc("x");
   auto input_dims = input_desc->MutableShape().GetDims();
@@ -507,8 +507,9 @@ IMPLEMT_COMMON_INFERFUNC(BatchToSpaceNDInferShape) {
   // get const node block_shape
   bool block_done = false;
   std::vector<int64_t> block_shape;
-  GeTensorPtr block_tensor = nullptr;
-  if (GRAPH_SUCCESS == NodeUtils::GetInputConstData(node, "block_shape", block_tensor)) {
+  auto block_idx = static_cast<uint32_t>(op_info->GetInputIndexByName("block_shape"));
+  const GeTensor *block_tensor = OpDescUtils::GetInputConstData(op, block_idx);
+  if (block_tensor != nullptr) {
     auto const_desc = op_info->MutableInputDesc("block_shape");
     auto const_dtype = const_desc->GetDataType();
     if (GetConstValue(op, block_tensor, const_dtype, block_shape)) {
@@ -521,8 +522,9 @@ IMPLEMT_COMMON_INFERFUNC(BatchToSpaceNDInferShape) {
   // get const node crops
   bool crops_done = false;
   std::vector<int64_t> crops;
-  GeTensorPtr crops_tensor = nullptr;
-  if (GRAPH_SUCCESS == NodeUtils::GetInputConstData(node, "crops", crops_tensor)) {
+  auto crop_idx = static_cast<uint32_t>(op_info->GetInputIndexByName("crops"));
+  const GeTensor *crops_tensor = OpDescUtils::GetInputConstData(op, crop_idx);
+  if (crops_tensor != nullptr) {
     auto const_desc = op_info->MutableInputDesc("crops");
     auto const_dtype = const_desc->GetDataType();
     if (GetConstValue(op, crops_tensor, const_dtype, crops)) {
@@ -977,12 +979,13 @@ static graphStatus TransposeCommonInferShape(const std::vector<int64_t>& perm_li
 IMPLEMT_COMMON_INFERFUNC(TransposeInferShape) {
   const vector<string> depend_names = {"perm"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
-  auto node = NodeUtils::GetNodeFromOperator(op);
+  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
 
   bool perm_done = false;
-  GeTensorPtr perm_tensor = nullptr;
   std::vector<int64_t> perm_list;
-  if (GRAPH_SUCCESS == NodeUtils::GetInputConstData(node, "perm", perm_tensor)) {
+  auto perm_idx = static_cast<uint32_t>(op_info->GetInputIndexByName("perm"));
+  const GeTensor *perm_tensor = OpDescUtils::GetInputConstData(op, perm_idx);
+  if (perm_tensor != nullptr) {
     auto const_desc = op_desc->MutableInputDesc("perm");
     auto const_dtype = const_desc->GetDataType();
     if (GetConstValue(op, perm_tensor, const_dtype, perm_list)) {
@@ -1657,7 +1660,6 @@ VERIFY_FUNC_REG(SpaceToDepth, SpaceToDepthVerify);
 IMPLEMT_COMMON_INFERFUNC(SpaceToBatchInferShape) {
   const vector<string> depend_names = {"paddings"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
-  auto node = NodeUtils::GetNodeFromOperator(op);
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info->MutableInputDesc("x");
   auto input_format = input_desc->GetFormat();
@@ -1678,8 +1680,9 @@ IMPLEMT_COMMON_INFERFUNC(SpaceToBatchInferShape) {
   // get const node padding
   bool padding_done = false;
   std::vector<int64_t> paddings;
-  GeTensorPtr paddings_tensor = nullptr;
-  if (GRAPH_SUCCESS == NodeUtils::GetInputConstData(node, "paddings", paddings_tensor)) {
+  auto pad_idx = static_cast<uint32_t>(op_info->GetInputIndexByName("paddings"));
+  const GeTensor *paddings_tensor = OpDescUtils::GetInputConstData(op, pad_idx);
+  if (paddings_tensor != nullptr) {
     auto const_desc = op_info->MutableInputDesc("paddings");
     auto const_dtype = const_desc->GetDataType();
     if (GetConstValue(op, paddings_tensor, const_dtype, paddings)) {
@@ -1936,7 +1939,6 @@ COMMON_INFER_FUNC_REG(SpaceToBatchD, SpaceToBatchDInferShape);
 IMPLEMT_COMMON_INFERFUNC(BatchToSpaceInferShape) {
   const vector<string> depend_names = {"crops"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
-  auto node = NodeUtils::GetNodeFromOperator(op);
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info->MutableInputDesc("x");
   auto input_dims = input_desc->MutableShape().GetDims();
@@ -1957,8 +1959,9 @@ IMPLEMT_COMMON_INFERFUNC(BatchToSpaceInferShape) {
   // get const node crops
   bool crops_done = false;
   std::vector<int64_t> crops;
-  GeTensorPtr crops_tensor = nullptr;
-  if (GRAPH_SUCCESS == NodeUtils::GetInputConstData(node, "crops", crops_tensor)) {
+  auto crop_idx = static_cast<uint32_t>(op_info->GetInputIndexByName("crops"));
+  const GeTensor *crops_tensor = OpDescUtils::GetInputConstData(op, crop_idx);
+  if (crops_tensor != nullptr) {
     auto const_desc = op_info->MutableInputDesc("crops");
     auto const_dtype = const_desc->GetDataType();
     if (GetConstValue(op, crops_tensor, const_dtype, crops)) {

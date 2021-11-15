@@ -26,6 +26,7 @@
 #include "op_log.h"
 #include "./util/error_util.h"
 #include "graph/utils/node_utils.h"
+#include "graph/utils/op_desc_utils.h"
 #include "graph/debug/ge_log.h"
 #include <chrono>
 
@@ -278,7 +279,7 @@ static bool CheckReduceDInfo(const ge::Operator& op, const size_t& input_size, c
 }
 
 template <typename T>
-static void GetTensorValue(const GeTensorPtr& data, std::vector<int64_t>& vec_dim) {
+static void GetTensorValue(const GeTensor* data, std::vector<int64_t>& vec_dim) {
   int32_t size = data->GetData().GetSize() / sizeof(T);
   void* data_ptr = (void*)data->GetData().GetData();
   if (data_ptr == nullptr) {
@@ -451,11 +452,10 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
     return true;
   }
   // Get const data
-  GeTensorPtr axis_tensor;
-  auto node = NodeUtils::GetNodeFromOperator(op);
-  auto state = NodeUtils::GetInputConstData(node, axis_name, axis_tensor);
+  auto axis_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName(axis_name));
+  const GeTensor *axis_tensor = OpDescUtils::GetInputConstData(op, axis_idx);
   std::vector<int64_t> axis;
-  if (GRAPH_SUCCESS == state) {
+  if (axis_tensor != nullptr) {
     if (axis_type == DT_INT32) {
       GetTensorValue<int32_t>(axis_tensor, axis);
     } else if (axis_type == DT_INT64) {
@@ -471,9 +471,6 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
     }
   } else {
     OP_LOGD(op.GetName().c_str(), "GetInputConstData Failed");
-    if (node == nullptr) {
-      OP_LOGE(op.GetName().c_str(), "get null node ptr");
-    }
   }
 
   // Get attr
@@ -509,7 +506,7 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
     return true;
   }
   // DoKnown Branch && UnKnown Branch
-  if ((!IsUnknown(input_shape)) && (!IsUnknown(axis_shape)) && (GRAPH_SUCCESS == state)) {
+  if ((!IsUnknown(input_shape)) && (!IsUnknown(axis_shape)) && (axis_tensor != nullptr)) {
     OP_LOGD(op.GetName().c_str(), "[DoKnown Branch]: shape and axis are known.");
     DoKnownBranch(keep_dims, input_type, input_shape, axis, output_desc);
   } else {
@@ -522,7 +519,7 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
     MakeUpShapeRange(input_shape, input_shape_range);
 
     // Split as axis known and axis unknown
-    if (GRAPH_SUCCESS == state) {
+    if (axis_tensor != nullptr) {
       OP_LOGD(op.GetName().c_str(), "[UnKnown Branch]: axis is known.");
       DoAxisKnown(keep_dims, axis, input_shape, input_shape_range, output_shape, output_shape_range);
     } else {

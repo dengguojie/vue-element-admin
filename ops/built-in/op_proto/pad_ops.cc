@@ -182,10 +182,10 @@ IMPLEMT_COMMON_INFERFUNC(PadInferShape) {
   PREPARE_DYNAMIC_SHAPE(depend_names);
 
   // first get the padding const
-  auto node = NodeUtils::GetNodeFromOperator(op);
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  GeTensorPtr paddings_tensor = nullptr;
-  if (GRAPH_SUCCESS != NodeUtils::GetInputConstData(node, "paddings", paddings_tensor)) {
+  auto pad_idx = static_cast<uint32_t>(op_info->GetInputIndexByName("paddings"));
+  const GeTensor *paddings_tensor = OpDescUtils::GetInputConstData(op, pad_idx);
+  if (paddings_tensor == nullptr) {
     OP_LOGW(op.GetName().c_str(), "the node paddings is not const node, will set the output dynamic");
     auto input_desc = op_info->MutableInputDesc("x");
     auto input_shape = input_desc->MutableShape().GetDims();
@@ -634,7 +634,7 @@ COMMON_INFER_FUNC_REG(MirrorPad, PadInferShape);
 
 // ----------------Fill Op Begin-------------------
 template <typename T>
-static void CaclDims(const GeTensorPtr& data, std::vector<int64_t>& vec_dim) {
+static void CaclDims(const GeTensor* data, std::vector<int64_t>& vec_dim) {
   int32_t size = data->GetData().GetSize() / sizeof(T);
   for (int32_t i = 0; i < size; i++) {
     void* data_ptr = (void*)data->GetData().GetData();
@@ -656,21 +656,15 @@ static void CaclDims(const Tensor& data, std::vector<int64_t>& vec_dim) {
 }
 
 IMPLEMT_COMMON_INFERFUNC(FillInferShape) {
-  GeTensorPtr data;
   std::vector<int64_t> vec_dim;
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   op_desc->SetOpInferDepends({"dims"});
 
-  auto node = NodeUtils::GetNodeFromOperator(op);
-  if (node == nullptr) {
-    std::string err_msg = GetInputInvalidErrMsg("node");
-    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-    return GRAPH_PARAM_INVALID;
-  }
-
   TensorDesc td = op.GetOutputDesc("y");
 
-  if (NodeUtils::GetInputConstData(node, "dims", data) != GRAPH_SUCCESS) {
+  auto dim_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName("dims"));
+  const GeTensor *data = OpDescUtils::GetInputConstData(op, dim_idx);
+  if (data == nullptr) {
     GE_OP_LOGW(op.GetName().c_str(), "Get constValue failed of [dims]");
     auto shape = op.GetInputDesc("dims").GetShape();
     int64_t dim_value;
@@ -694,7 +688,6 @@ IMPLEMT_COMMON_INFERFUNC(FillInferShape) {
     (void)op.UpdateOutputDesc("y", td);
     return GRAPH_SUCCESS;
   } else {
-    NodeUtils::GetInputConstData(node, "dims", data);
     DataType data_type = data->GetTensorDesc().GetDataType();
     std::vector<int64_t> vec_dim;
     if (data_type == DT_INT32) {

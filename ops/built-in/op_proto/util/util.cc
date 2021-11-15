@@ -969,7 +969,7 @@ bool GetConstValue(const Operator& op, const Tensor& const_tensor, const DataTyp
   return true;
 }
 
-bool GetConstValue(const Operator& op, const GeTensorPtr& const_tensor,
+bool GetConstValue(const Operator& op, const GeTensor* const_tensor,
                           const DataType& dtype, std::vector<int64_t>& const_data) {
   size_t size = const_tensor->GetData().GetSize();
   void* data_ptr = (void*)const_tensor->GetData().GetData();
@@ -993,6 +993,12 @@ bool GetConstValue(const Operator& op, const GeTensorPtr& const_tensor,
   }
   return true;
 }
+
+bool GetConstValue(const Operator& op, const GeTensorPtr& const_tensor,
+                          const DataType& dtype, std::vector<int64_t>& const_data) {
+  return GetConstValue(op, const_tensor.get(), dtype, const_data);
+}
+
 
 bool GetScalerValue(const Operator& op, const Tensor& const_tensor, const DataType& dtype, std::int64_t& const_data) {
   if (dtype == ge::DT_INT32) {

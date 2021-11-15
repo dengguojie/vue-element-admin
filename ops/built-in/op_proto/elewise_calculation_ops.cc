@@ -26,6 +26,7 @@
 #include "util/error_util.h"
 #include "util/vector_proto_profiling.h"
 #include "graph/utils/node_utils.h"
+#include "graph/utils/op_desc_utils.h"
 #include "register/infer_data_slice_registry.h"
 #include "graph/debug/ge_attr_define.h"
 
@@ -50,7 +51,7 @@ bool BroadCastTwoShape(const Operator& op, const ge::Shape& shape_x, const ge::S
   }
 
   // set out dims
-  for (size_t i = 0; i < dim_x.size(); i++) {
+  for (size_t i = 0UL; i < dim_x.size(); i++) {
     if ((dim_x[i] != dim_y[i]) && (dim_x[i] != 1) && (dim_y[i] != 1)) {
       OP_LOGE(op.GetName().c_str(), "The %s's dimensions does not match the broadcast rule(%lu %lu).",
               op.GetName().c_str(), dim_x[i], dim_y[i]);
@@ -110,7 +111,7 @@ IMPLEMT_COMMON_INFERFUNC(OneInOneOutCommonInferShape) {
 static void InferElewiseTwoInput(vector<vector<int64_t>>& in_data_slice, const vector<vector<int64_t>> out_data_slice,
                                  const vector<int64_t> in_dims, const vector<int64_t> out_dims) {
   if (in_dims.size() == out_dims.size()) {
-    for (size_t i = 0; i < in_dims.size(); i++) {
+    for (size_t i = 0UL; i < in_dims.size(); i++) {
       if (in_dims[i] == 1) {
         in_data_slice.push_back({0, 1});
       } else {
@@ -131,7 +132,7 @@ static void InferElewiseTwoInput(vector<vector<int64_t>>& in_data_slice, const v
 static void InferElewiseTwoInputdif(vector<vector<int64_t>>& in_data_slice, const vector<vector<int64_t>> out_data_slice,
                                     const vector<int64_t> in_dims, const vector<int64_t> out_dims, const int64_t aixs) {
   if (in_dims.size() == out_dims.size()) {
-    for (size_t i = 0; i < in_dims.size(); i++) {
+    for (size_t i = 0UL; i < in_dims.size(); i++) {
       if (in_dims[i] == 1) {
         in_data_slice.push_back({0, 1});
       } else {
@@ -1396,7 +1397,7 @@ IMPLEMT_COMMON_INFERFUNC(AccumulateNV2InferShape) {
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
   int64_t tensor_num = GetAccumulateNV2ConstValue(op);
 
-  for (uint32_t i = 0; i < tensor_num; i++) {
+  for (uint32_t i = 0U; i < tensor_num; i++) {
     auto input_desc = op_info->MutableInputDesc(i);
     vector<int64_t> tempVector = input_desc->MutableShape().GetDims();
     if (tempVector.empty()) {
@@ -1448,7 +1449,7 @@ IMPLEMT_COMMON_INFERFUNC(AccumulateNV2InferShape) {
         if (!shape_vector.empty() && !IsUnknownRankShape(shape_vector)) {
             if (!IsUnknownRankShape(temp_vector)) {
                 shape_vector = Broadcast(shape_vector, temp_vector);
-                for (size_t j = 0; j < shape_vector.size(); j++) {
+                for (size_t j = 0UL; j < shape_vector.size(); j++) {
                     if (shape_vector[j] == -1) {
                         std::string err_msg = OtherErrMsg("Operands could not be broadcast together with these shapes.");
                         VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op_name, err_msg);
@@ -2136,7 +2137,6 @@ IMPLEMT_COMMON_INFERFUNC(ArgMinInferShape) {
   // get all input desc
   const vector<string> depend_names = {"dimension"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
-  auto node_arg = NodeUtils::GetNodeFromOperator(op);
   auto op_info_arg = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info_arg->MutableInputDesc("x");
   auto const_desc = op_info_arg->MutableInputDesc("dimension");
@@ -2167,10 +2167,10 @@ IMPLEMT_COMMON_INFERFUNC(ArgMinInferShape) {
   }
 
   // read dimension const value
-  GeTensorPtr dimension_tensor = nullptr;
   vector<int64_t> dimension_value;
-  if (NodeUtils::GetInputConstData(node_arg, "dimension", dimension_tensor) ==
-      GRAPH_SUCCESS) {
+  auto dimension_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName("dimension"));
+  const GeTensor *dimension_tensor = OpDescUtils::GetInputConstData(op, dimension_idx);
+  if (dimension_tensor != nullptr) {
     auto const_dtype = const_desc->GetDataType();
     GetConstValue(op, dimension_tensor, const_dtype, dimension_value);
     // verify dimension_value
@@ -2281,7 +2281,6 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxInferShape) {
   // get all input desc
   const vector<string> depend_names = {"dimension"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
-  auto node_arg = NodeUtils::GetNodeFromOperator(op);
   auto op_info_arg = OpDescUtils::GetOpDescFromOperator(op);
   auto input_desc = op_info_arg->MutableInputDesc("x");
   auto const_desc = op_info_arg->MutableInputDesc("dimension");
@@ -2312,9 +2311,10 @@ IMPLEMT_COMMON_INFERFUNC(ArgMaxInferShape) {
   }
 
   // read dimension const value
-  GeTensorPtr dimension_tensor = nullptr;
   vector<int64_t> dimension_value;
-  if (GRAPH_SUCCESS == NodeUtils::GetInputConstData(node_arg, "dimension", dimension_tensor)) {
+  auto dimension_idx = static_cast<uint32_t>(op_info_arg->GetInputIndexByName("dimension"));
+  const GeTensor *dimension_tensor = OpDescUtils::GetInputConstData(op, dimension_idx);
+  if (dimension_tensor != nullptr) {
     auto const_dtype = const_desc->GetDataType();
     GetConstValue(op, dimension_tensor, const_dtype, dimension_value);
     // verify dimension_value
@@ -2624,7 +2624,7 @@ IMPLEMT_COMMON_INFERFUNC(EltwiseInferShape) {
       std::vector<std::pair<int64_t, int64_t>> temp_range;
       op.GetDynamicInputDesc("x", i).GetShapeRange(temp_range);
       MakeUpShapeRange(temp_vector, temp_range);
-      for (size_t j = 0; j < temp_vector.size(); j++) {
+      for (size_t j = 0UL; j < temp_vector.size(); j++) {
         // two condition: const == const; const > -1
         if (temp_vector[j] >= out_vector[j]) {
           out_vector[j] = temp_vector[j];
@@ -5092,7 +5092,7 @@ bool InferShapeAndTypeCosineSimilarity(Operator &op,
     //the axis that dim points to.
     //Example.
     //Shape of input [2,3,4,5], dim = 0, then shape of output is [3,4,5]
-    for (size_t i = 0; i < dims_x.size(); i++)
+    for (size_t i = 0UL; i < dims_x.size(); i++)
     {
         if (static_cast<int64_t>(i) != attr_dim)
         {

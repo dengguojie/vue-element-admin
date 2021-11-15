@@ -28,6 +28,7 @@
 #include "array_ops_shape_fns.h"
 #include "graph/utils/tensor_adapter.h"
 #include "graph/utils/node_utils.h"
+#include "graph/utils/op_desc_utils.h"
 #include "./util/error_util.h"
 #include "util/util.h"
 #include "framework/common/debug/ge_log.h"
@@ -776,12 +777,6 @@ INFER_FUNC_REG(StopGradient, StopGradientInferFunc);
 IMPLEMT_INFERFUNC(ExpandDims, ExpandDimsInfer) {
   std::vector<string> dep_inputs = {"axis"};
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  auto node = NodeUtils::GetNodeFromOperator(op);
-  if (node == nullptr) {
-    REPORT_CALL_ERROR("E19999", "[Node:%s] Infer shape failed, as get null node from op", op.GetName().c_str());
-    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Get node from op failed, as node is null");
-    return GRAPH_FAILED;
-  }
   auto x_desc = op_desc->MutableInputDesc("x");
   auto axis_desc = op_desc->MutableInputDesc("axis");
   auto y_desc = op_desc->MutableOutputDesc("y");
@@ -822,9 +817,9 @@ IMPLEMT_INFERFUNC(ExpandDims, ExpandDimsInfer) {
     }
   }
 
-  GeTensorPtr tensor_axis = nullptr;
-  graphStatus status = NodeUtils::GetInputConstData(node, "axis", tensor_axis);
-  if (status != GRAPH_SUCCESS) {
+  auto axis_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName("axis"));
+  auto tensor_axis = OpDescUtils::GetInputConstData(op, axis_idx);
+  if (tensor_axis == nullptr) {
     GE_OP_LOGI(op.GetName().c_str(), "Op get input const data of axis failed");
     auto x_shape_size = x_desc->MutableShape().GetDims().size();
     std::vector<int64_t> out_dims(x_shape_size + 1, UNKNOWN_DIM);
@@ -922,7 +917,7 @@ INFER_FUNC_REG(ExpandDims, ExpandDimsInfer);
 
 template <typename T>
 static graphStatus ValidateShape(std::vector<int64_t> &x_shape, const std::vector<int64_t> &shape_dims,
-                                 const GeTensorPtr &tenosr, int64_t &product, int &unknow_index, GeShape &output,
+                                 const GeTensor *tenosr, int64_t &product, int &unknow_index, GeShape &output,
                                  Operator &op) {
   int64_t dim_num = shape_dims[0];
   const T* shape_data = const_cast<T*>(reinterpret_cast<const T*>(tenosr->GetData().GetData()));
@@ -1161,7 +1156,7 @@ static graphStatus CaffeReshapeInferShape(const vector<int64_t> &dims, const int
 }
 
 template <typename T>
-graphStatus GetOutShapeFromTensor(OpDescPtr op_desc, GeTensorPtr tensor, std::vector<int64_t> &v_out) {
+graphStatus GetOutShapeFromTensor(OpDescPtr op_desc, GeTensor* tensor, std::vector<int64_t> &v_out) {
   auto shape_desc = tensor->MutableTensorDesc();
   T* shape_data = const_cast<T*>(reinterpret_cast<const T*>(tensor->GetData().GetData()));
   if (shape_data == nullptr) {
@@ -1174,7 +1169,7 @@ graphStatus GetOutShapeFromTensor(OpDescPtr op_desc, GeTensorPtr tensor, std::ve
   return GRAPH_SUCCESS;
 }
 
-graphStatus EmptyTensorProcess(const Operator &op, const GeTensorDesc &x_desc, const GeTensorPtr &shape_tensor,
+graphStatus EmptyTensorProcess(const Operator &op, const GeTensorDesc &x_desc, GeTensor *shape_tensor,
                                GeTensorDesc &out_desc) {
   GE_OP_LOGD("Start empty-tensor preprocess!");
 
@@ -1233,7 +1228,7 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
   bool zero_flag = false;
   vector<int64_t> attr_dims;
   if (op.GetAttr("shape", attr_dims) == GRAPH_SUCCESS) {
-    for (size_t i = 0; i < attr_dims.size(); ++i) {
+    for (size_t i = 0UL; i < attr_dims.size(); ++i) {
       if (attr_dims[i] == 0) {
         zero_flag = true;
         break;
@@ -1254,23 +1249,17 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
   op.GetAttr("num_axes", attr_num_axes);
 
   if (attr_axis != 0 || attr_num_axes != -1 || zero_flag) {
-    GE_OP_LOGI(op.GetName().c_str(), "Get reshape_param successfully, shape size is %u, axis is %ld, num_axes is %ld",
+    GE_OP_LOGI(op.GetName().c_str(), "Get reshape_param successfully, shape size is %zu, axis is %ld, num_axes is %ld",
                attr_dims.size(), attr_axis, attr_num_axes);
     graphStatus caffe_reshape_ret = CaffeReshapeInferShape(attr_dims, attr_axis, attr_num_axes, op);
     return caffe_reshape_ret;
   }
 
   GE_OP_LOGI(op.GetName().c_str(), "Reshape infer shape start");
-  GeTensorPtr tensor = nullptr;
-  auto node = NodeUtils::GetNodeFromOperator(op);
-  if (node == nullptr) {
-    REPORT_CALL_ERROR("E19999", "[Node:%s] Infer shape failed, as get null node from op", op.GetName().c_str());
-    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Get node from op failed, as node is null");
-    return GRAPH_PARAM_INVALID;
-  }
 
-  graphStatus state = NodeUtils::GetInputConstData(node, "shape", tensor);
-  if (state != GRAPH_SUCCESS) {
+  auto shape_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName("shape"));
+  const GeTensor *tensor = OpDescUtils::GetInputConstData(op, shape_idx);
+  if (tensor == nullptr) {
     GE_OP_LOGW(op.GetName().c_str(), "Op get input const data of shape failed");
     auto input_x_desc = op_desc->MutableInputDesc("x");
     auto input_shape_desc = op_desc->MutableInputDesc("shape");
@@ -1323,7 +1312,7 @@ IMPLEMT_INFERFUNC(Reshape, ReshapeInfer) {
   }
 
   if (IsEmptyTensor(x_desc)) {
-    return EmptyTensorProcess(op, *x_desc, tensor, *y_desc);
+    return EmptyTensorProcess(op, *x_desc, const_cast<GeTensor *>(tensor), *y_desc);
   }
   std::vector<std::pair<int64_t, int64_t>> x_range;
   std::vector<std::pair<int64_t, int64_t>> y_range;
@@ -1676,9 +1665,9 @@ bool CanSqueezeV2DoSqueeze(const vector<int32_t> &axis_arr, const size_t dim_siz
   // check axis val is in dim range[-dim, dim -1], if not, we use input shape as output shape
   for (auto val : axis_arr) {
     if ((val + static_cast<int32_t>(dim_size) < 0) || (val >= static_cast<int32_t>(dim_size))) {
-      string reason = "Dimension out of range (expect to be in range of [-" + std::to_string(dim_size) + "," +   
+      string reason = "Dimension is out of range (expect to be in range of [-" + std::to_string(dim_size) + "," +
                       std::to_string(dim_size - 1) + "], but got " + std::to_string(val) + ".";
-      GE_OP_LOGW("SqueezeV2", "%s, can not squeeze, use input shape as output shape", reason.c_str());
+      GE_OP_LOGW("SqueezeV2", "%s, can not be squeezed, use input shape as output shape", reason.c_str());
       return false;
     }
   }
@@ -1717,8 +1706,8 @@ IMPLEMT_INFERFUNC(SqueezeV2, SqueezeV2Infer) {
     auto input_dims = input_shape.GetDims();
     auto output_size = std::count_if(input_dims.begin(), input_dims.end(), [](const int64_t &item) {return item != 1;});
     output_shape.SetDimNum(output_size);
-    size_t idx = 0;
-    for (size_t i = 0; i < input_dims.size(); ++i) {
+    size_t idx = 0UL;
+    for (size_t i = 0UL; i < input_dims.size(); ++i) {
       if (input_dims[i] != 1 && idx < output_size) {
         output_shape.SetDim(idx, input_dims[i]);
         if (is_unknown_shape && i < input_range.size()) {
@@ -1797,7 +1786,7 @@ IMPLEMT_INFERFUNC(Unsqueeze, UnsqueezeInfer) {
   int64_t dim_num = input_shape.GetDimNum() + axis_nums;
   std::vector<int64_t> vec_dim(dim_num, 0);
 
-  for (size_t i = 0; i < axis_nums; i++) {
+  for (size_t i = 0UL; i < axis_nums; i++) {
     int64_t axis = axis_arr[i];
     if ((axis < -dim_num) || (axis > (dim_num - 1))) {
       string reason = "axes[" + std::to_string(i) + "]=" + std::to_string(axis) + " out range of [-"+
@@ -1879,7 +1868,7 @@ IMPLEMT_INFERFUNC(UnsqueezeV2, UnsqueezeV2Infer) {
   for (int64_t i = 0; i < total_dim_num; ++i) {
     if ((ax_idx < axis_arr.size()) && 
         ((axis_arr[ax_idx] + static_cast<int32_t>(total_dim_num) < 0) || (axis_arr[ax_idx] >= total_dim_num))) {
-      string reason = "Dimension out of range (expect to be in range of [-" + std::to_string(total_dim_num) + "," + 
+      string reason = "Dimension is out of range (expect to be in range of [-" + std::to_string(total_dim_num) + "," + 
                       std::to_string(total_dim_num - 1) + "], but got " + std::to_string(axis_arr[ax_idx]) + ".";
       GeInfershapeErrReport(op.GetName(), op.GetOpType(), kAttrAxis, reason);
       REPORT_INNER_ERROR("E19999", "[Node:%s] Check attr axis failed, as %s", op.GetName().c_str(), reason.c_str());
@@ -2161,7 +2150,7 @@ static void CaclDims(const Tensor& data, std::vector<int64_t>& vec_dim) {
 }
 
 template <typename T>
-static void CaclDims(const GeTensorPtr& data, std::vector<int64_t>& vec_dim) {
+static void CaclDims(const GeTensor* data, std::vector<int64_t>& vec_dim) {
   int32_t size = data->GetData().GetSize() / sizeof(T);
   for (int32_t i = 0; i < size; i++) {
     void* data_ptr = (void*)data->GetData().GetData();
@@ -2223,17 +2212,10 @@ IMPLEMT_INFERFUNC(Empty, EmptyInfer) {
     return GRAPH_SUCCESS;
   }
 
-  auto node = NodeUtils::GetNodeFromOperator(op);
-  if (node == nullptr) {
-    REPORT_CALL_ERROR("E19999", "[Node:%s] Infer shape failed, as get null node from op", op.GetName().c_str());
-    GE_OP_LOGE(op.GetName().c_str(), "[InferShape][Check] Get node from op failed, as node is null");
-    return GRAPH_PARAM_INVALID;
-  }
-
-  GeTensorPtr shape_data;
   std::vector<int64_t> shape_dims;
-  auto result = NodeUtils::GetInputConstData(node, "shape", shape_data);
-  if (result == GRAPH_SUCCESS) {
+  auto shape_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName("shape"));
+  const GeTensor *shape_data = OpDescUtils::GetInputConstData(op, shape_idx);
+  if (shape_data != nullptr) {
     DataType data_type = shape_data->GetTensorDesc().GetDataType();
     if (data_type == DT_INT32) {
       CaclDims<int32_t>(shape_data, shape_dims);
@@ -2791,7 +2773,7 @@ IMPLEMT_COMMON_INFERFUNC(ExpandDInferShape) {
       dims_x.insert(dims_x.begin(), (int64_t)1);
     }
   }
-  for (size_t i = 0; i < shape.size(); i++) {
+  for (size_t i = 0UL; i < shape.size(); i++) {
     if ((shape[i] != dims_x[i]) && (shape[i] != 1) && (dims_x[i] != 1)) {
       OP_LOGE(op.GetName().c_str(), "The input shape and attr shape are not compatible.");
       return GRAPH_FAILED;
@@ -2817,7 +2799,7 @@ IMPLEMT_COMMON_INFERFUNC(GetShapeInferShape) {
   auto tensorDescOutput = opDesc->MutableOutputDesc("y");
   size_t inputSize = op.GetInputsSize();
   int64_t sumSize = 0;
-  for (size_t i = 0; i < inputSize; i++) {
+  for (size_t i = 0UL; i < inputSize; i++) {
     auto inputIDesc = opDesc->MutableInputDesc(i);
     auto inputDims = inputIDesc->MutableShape().GetDims();
     sumSize += static_cast<int64_t>(inputDims.size());
@@ -2843,7 +2825,7 @@ IMPLEMT_COMMON_INFERFUNC(GetShapeInferShape) {
 IMPLEMT_VERIFIER(GetShape, GetShapeVerify) {
   auto opDesc = OpDescUtils::GetOpDescFromOperator(op);
   size_t inputSize = op.GetInputsSize();
-  for (size_t i = 0; i < inputSize; i++) {
+  for (size_t i = 0UL; i < inputSize; i++) {
     auto inputIDesc = opDesc->MutableInputDesc(i);
     auto inputDims = inputIDesc->MutableShape().GetDims();
     if (inputDims == UNKNOWN_RANK) {

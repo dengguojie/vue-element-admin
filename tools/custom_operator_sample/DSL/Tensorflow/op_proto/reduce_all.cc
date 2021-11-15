@@ -276,7 +276,7 @@ static bool CheckReduceDInfo(const ge::Operator& op, const size_t& input_size, c
 }
 
 template <typename T>
-static void GetTensorValue(const GeTensorPtr& data, std::vector<int64_t>& vec_dim) {
+static void GetTensorValue(const GeTensor* data, std::vector<int64_t>& vec_dim) {
     int32_t size = data->GetData().GetSize() / sizeof(T);
     void* data_ptr = (void*)data->GetData().GetData();
     if (data_ptr == nullptr) {
@@ -444,11 +444,10 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
     }
 
     // Get const data
-    GeTensorPtr axis_tensor;
-    auto node = NodeUtils::GetNodeFromOperator(op);
-    auto state = NodeUtils::GetInputConstData(node, axis_name, axis_tensor);
+    auto axis_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName(axis_name));
+    const GeTensor *axis_tensor = OpDescUtils::GetInputConstData(op, axis_idx);
     std::vector<int64_t> axis;
-    if (GRAPH_SUCCESS == state) {
+    if (axis_tensor != nullptr) {
         if (axis_type == DT_INT32) {
             GetTensorValue<int32_t>(axis_tensor, axis);
         } else if (axis_type == DT_INT64) {
@@ -464,9 +463,6 @@ static bool InferReduceShapeProcess(const ge::Operator& op, const string& input_
         }
     } else {
         OP_LOGD(op.GetName().c_str(), "GetInputConstData Failed");
-        if (node == nullptr) {
-            OP_LOGE(op.GetName().c_str(), "get null node ptr");
-        }
     }
 
     // Get attr

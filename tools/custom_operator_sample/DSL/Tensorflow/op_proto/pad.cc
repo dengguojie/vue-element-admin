@@ -103,10 +103,10 @@ IMPLEMT_COMMON_INFERFUNC(PadInferShape) {
   PREPARE_DYNAMIC_SHAPE(depend_names);
 
   // first get the padding const
-  auto node = NodeUtils::GetNodeFromOperator(op);
   auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  GeTensorPtr paddings_tensor = nullptr;
-  if (GRAPH_SUCCESS != NodeUtils::GetInputConstData(node, "paddings", paddings_tensor)) {
+  auto pad_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName("paddings"));
+  const GeTensor *paddings_tensor = OpDescUtils::GetInputConstData(op, pad_idx);
+  if (paddings_tensor != nullptr) {
     OP_LOGW("OP[Pad]", "the node paddings is not const node, will set the output dynamic");
     auto input_desc = op_info->MutableInputDesc("x");
     auto input_shape = input_desc->MutableShape().GetDims();

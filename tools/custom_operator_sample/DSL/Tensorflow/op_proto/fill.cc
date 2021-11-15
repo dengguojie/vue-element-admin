@@ -26,6 +26,7 @@
 #include <numeric>
 
 #include "graph/utils/node_utils.h"
+#include "graph/utils/op_desc_utils.h"
 
 #include "util/util.h"
 #include "util/common_shape_fns.h"
@@ -35,13 +36,13 @@
 namespace ge {
     // ----------------Fill Op Begin-------------------
     template <typename T>
-    static void CaclDims(const GeTensorPtr& data, std::vector<int64_t>& vec_dim) {
+    static void CaclDims(const GeTensor* data, std::vector<int64_t>& vec_dim) {
       int32_t size = data->GetData().GetSize() / sizeof(T);
       for (int32_t i = 0; i < size; i++) {
         void* data_ptr = (void*)data->GetData().GetData();
         if (data_ptr == nullptr) {
           return;
-        }
+        }s
         T dim = *((T*)data_ptr + i);
         vec_dim.push_back(dim);
       }
@@ -70,8 +71,9 @@ namespace ge {
       }
 
       TensorDesc td = op.GetOutputDesc("y");
-
-      if (NodeUtils::GetInputConstData(node, "dims", data) != GRAPH_SUCCESS) {
+      auto dim_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName("dims"));
+      const GeTensor *data = OpDescUtils::GetInputConstData(op, dim_idx);
+      if (data == nullptr) {
         GE_OP_LOGW(op.GetName().c_str(), "Get constValue failed of [dims]");
         auto shape = op.GetInputDesc("dims").GetShape();
         int64_t dim_value;
@@ -98,7 +100,6 @@ namespace ge {
         (void)op.UpdateOutputDesc("y", td);
         return GRAPH_SUCCESS;
       } else {
-        NodeUtils::GetInputConstData(node, "dims", data);
         DataType data_type = data->GetTensorDesc().GetDataType();
         std::vector<int64_t> vec_dim;
         if (data_type == DT_INT32) {
