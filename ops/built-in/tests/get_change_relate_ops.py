@@ -276,6 +276,14 @@ def get_file_change_info_from_ci(changed_file_info_from_ci):
                           test_files=test_change_files, other_files=other_changed_files)
 
 
+def is_util_file(file_path):
+    flags = ["/util/", "impl/common_util.py"]
+    for flag in flags:
+        if flag in file_path:
+            return True
+    return False
+
+
 def get_change_relate_op_type_list(changed_file_info_from_ci):
     file_change_info = get_file_change_info_from_ci(changed_file_info_from_ci)
     if not file_change_info:
@@ -294,7 +302,7 @@ def get_change_relate_op_type_list(changed_file_info_from_ci):
             for ops_changed_file in ops_changed_files:
                 ops_changed_file = str(ops_changed_file)
                 if ops_changed_file.startswith(os.path.join("ops", "built-in", "tbe", "impl")) \
-                        and ops_changed_file.endswith("py"):
+                        and ops_changed_file.endswith("py") and not is_util_file(ops_changed_file):
                     ops_changed_file = os.path.join(repo_root, ops_changed_file)
                     impl_changed_files.append(ops_changed_file)
 

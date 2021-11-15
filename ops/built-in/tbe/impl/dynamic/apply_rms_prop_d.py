@@ -27,10 +27,24 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.common_util import get_attr
 
 
-# 'pylint: disable=too-many-arguments,invalid-name,too-many-locals
-# 'pylint: disable=unused-argument
+# pylint: disable=too-many-arguments,invalid-name,too-many-locals
+# pylint: disable=unused-argument
+def rho_gs_compute(rho, grad_square_ms, dtype):
+    """
+    get the rho_gs
+    """
+    if rho is None:
+        rho_var = tbe.var_attr("rho", None, dtype, {"src_dtype": "float"})
+        rho_gs = tbe.vmuls(grad_square_ms, rho_var)
+        rho_gs = tbe.vsub(grad_square_ms, rho_gs)
+    else:
+        rho_gs = tbe.vmuls(grad_square_ms, tvm.const(1.0 - rho, dtype))
+    return rho_gs
+
+
 @register_operator_compute("ApplyRMSPropD", op_mode="dynamic", support_fusion=True)
 def apply_rms_prop_d_compute(var,
                              ms,
@@ -59,17 +73,24 @@ def apply_rms_prop_d_compute(var,
     :param epsilon: const, float32
     :return: out_var, out_ms, out_mom
     """
+
+    momentum_dtype_in_ir = "float"
+    epsilon_dtype_in_ir = "float"
+
     grad_square = tbe.vmul(grad, grad)
     grad_square_ms = tbe.vsub(grad_square, ms)
-    rho_gs = tbe.vmuls(grad_square_ms, tvm.const(1.0 - rho, grad.dtype))
+
+    rho_gs = rho_gs_compute(rho, grad_square_ms, grad.dtype)
     ms_t = tbe.vadd(ms, rho_gs)
 
-    m_mom = tbe.vmuls(mom, tvm.const(momentum, mom.dtype))
-
+    momentum_var = get_attr(momentum, "momentum", mom.dtype, momentum_dtype_in_ir)
+    m_mom = tbe.vmuls(mom, momentum_var)
     lr_brc = tbe.broadcast(lr, grad.shape)
     lr_grad = tbe.vmul(grad, lr_brc)
 
-    e_ms = tbe.vadds(ms_t, tvm.const(epsilon, ms.dtype))
+    epsilon_var = get_attr(epsilon, "epsilon", ms.dtype, epsilon_dtype_in_ir)
+    e_ms = tbe.vadds(ms_t, epsilon_var)
+
     sqrt_ms = tbe.vsqrt(e_ms)
     tmp_grad = tbe.vdiv(lr_grad, sqrt_ms)
     mom_t = tbe.vadd(m_mom, tmp_grad)
@@ -86,8 +107,8 @@ def apply_rms_prop_d_compute(var,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_FLOAT,
-                            para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def apply_rms_prop_d(var,
                      ms,
                      mom,

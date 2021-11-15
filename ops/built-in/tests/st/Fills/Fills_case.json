@@ -525,6 +525,37 @@
     "op": "Fills",
     "input_desc": [
       {
+        "format": "ND",
+        "shape": [-2],
+        "typical_shape": [2, 4],
+        "shape_range": [[1, 2240]],
+        "type": "float32",
+        "value_range": [[1, 10]],
+        "data_distribute": "uniform",
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [2, 4],
+        "format": "ND",
+        "name": "y",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "value",
+        "type": "float",
+        "value": 1.0
+      }
+    ],
+    "case_name": "test_dynamic_Fills_002"
+  },
+  {
+    "op": "Fills",
+    "input_desc": [
+      {
         "shape": [
           3,
           30,

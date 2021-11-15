@@ -13,7 +13,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 cast_cce
 """
-# 'pylint: disable=too-many-locals,consider-using-f-string
+# 'pylint: disable=too-many-locals,consider-using-f-string,invalid-name
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
@@ -27,7 +27,7 @@ MAX_SUPPORT_SHAPE = 1 << 30  # Limit of all dims' product
 SPECIAL_SHAPE_NUM = 10000000  # Limit of one dim
 
 
-# 'pylint: disable=inconsistent-return-statements
+# 'pylint: disable=inconsistent-return-statements,too-many-function-args
 def _int8_uint8_process(data, dst_type):
     """
     deal with src dtype=int8 and uint8 case
@@ -173,6 +173,9 @@ def _int64_process(data, dst_type):
 
 
 def _cast_dsttype_conversion(dst_type):
+    """
+    git cast_dsttype
+    """
     if dst_type == 0:
         dst_type = "float32"
     if dst_type == 1:
@@ -300,7 +303,7 @@ def cast_compute(data, output_y, dst_type, kernel_name="cast"):
 
 @register_operator("Cast")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def cast(input_x, output_y, dst_type, kernel_name="cast"):
     """
     cast a tensor/scaler with input shape form src data type to dst data
@@ -357,7 +360,12 @@ def cast(input_x, output_y, dst_type, kernel_name="cast"):
     for (_input_x,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([_input_x])[0]
-            dst_type = _cast_dsttype_conversion(dst_type)
+
+            if dst_type is None:
+                dst_type = output_y.get("dtype").lower()
+            else:
+                dst_type = _cast_dsttype_conversion(dst_type)
+
             data = tvm.placeholder(x_shape, name="data", dtype=src_type)
             res = cast_compute(data, output_y, dst_type, kernel_name)
             tensors.append([data, res])

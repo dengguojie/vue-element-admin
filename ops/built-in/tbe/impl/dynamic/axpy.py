@@ -23,6 +23,8 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
+from impl.common_util import get_attr
+
 
 # pylint: disable=invalid-name,too-many-locals, unused-argument
 @register_operator_compute("Axpy", op_mode="dynamic", support_fusion=True)
@@ -52,6 +54,8 @@ def axpy_compute(x1, x2, y, alpha, kernel_name="axpy"):
     shape_y = shape_util.shape_to_list(x2.shape)
     dtype = x1.dtype.lower()
 
+    alpha_dtype_in_ir = "float"
+
     # neg_1_axis_flag
     neg_1_axis_flag = 0
     if shape_x != shape_y:
@@ -71,25 +75,28 @@ def axpy_compute(x1, x2, y, alpha, kernel_name="axpy"):
     # start the main logic
     if dtype in ("float16", "float32"):
         # fp16 or fp32
+        alpha_var = get_attr(alpha, "alpha", dtype, alpha_dtype_in_ir)
+
         if neg_1_axis_flag:
-            res_muls = tbe.vmuls(x2, alpha)
+            res_muls = tbe.vmuls(x2, alpha_var)
             res = tbe.vadd(x1, res_muls)
         else:
-            res = tbe.vaxpy(x2, x1, tvm.const(alpha, dtype=dtype))
+            res = tbe.vaxpy(x2, x1, alpha_var)
     else:
         # int32
         if alpha != 1:
             # add+muls use fp32
             to_type = "float32"
+            alpha_var = get_attr(alpha, "alpha", to_type, alpha_dtype_in_ir)
+
             input_x_cast = tbe.cast_to(x1, to_type)
             input_y_cast = tbe.cast_to(x2, to_type)
 
             if neg_1_axis_flag:
-                res_muls = tbe.vmuls(input_y_cast, alpha)
+                res_muls = tbe.vmuls(input_y_cast, alpha_var)
                 res_tmp = tbe.vadd(input_x_cast, res_muls)
             else:
-                res_tmp = tbe.vaxpy(input_y_cast, input_x_cast,
-                                    tvm.const(alpha, dtype=to_type))
+                res_tmp = tbe.vaxpy(input_y_cast, input_x_cast, alpha_var)
 
             res = tbe.cast_to(res_tmp, dtype)
 

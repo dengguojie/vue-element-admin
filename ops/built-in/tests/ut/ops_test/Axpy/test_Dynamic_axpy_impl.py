@@ -39,6 +39,13 @@ ut_case.add_case("all",
                                        "int32", 2.1, "NCHW", "dynamic_axpy_int32_NCHW",
                                        "success"))
 
+
+ut_case.add_case("all",
+                 gen_dynamic_axpy_case((-1,2,3,1), (1,2,3,11), ((2, 16),(2,2),(3,3),(1,1)),
+                                       ((1, 1),(2,2),(3,3),(11,11)),
+                                       "int32", None, "NCHW", "dynamic_axpy_int32_NCHW",
+                                       "success"))
+
 if __name__ == '__main__':
     ut_case.run("Ascend910A")
     ut_case.run("Ascend310")

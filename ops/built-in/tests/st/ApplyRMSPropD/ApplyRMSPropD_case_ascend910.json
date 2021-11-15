@@ -4,190 +4,62 @@
     "op": "ApplyRMSPropD",
     "input_desc": [
       {
-        "shape": [
-          -1,
-          16
-        ],
+        "shape": [-1, 16],
+        "typical_shape": [1,16],
+        "shape_range": [[1,100]],
         "format": "ND",
-        "ori_shape": [
-          1,
-          16
-        ],
-        "ori_format": "ND",
         "name": "var",
-        "type": "float",
-        "shape_range": [
-          [
-            1,
-            100
-          ]
-        ],
-        "typical_shape": [
-          1,
-          16
-        ]
+        "type": "float32"
       },
       {
-        "shape": [
-          -1,
-          16
-        ],
+        "shape": [-1, 16],
+        "typical_shape": [1,16],
+        "shape_range": [[1,100]],
         "format": "ND",
-        "ori_shape": [
-          1,
-          16
-        ],
-        "ori_format": "ND",
         "name": "ms",
-        "type": "float",
-        "shape_range": [
-          [
-            1,
-            100
-          ]
-        ],
-        "typical_shape": [
-          1,
-          16
-        ]
+        "type": "float32"
       },
       {
-        "shape": [
-          -1,
-          16
-        ],
+        "shape": [-1, 16],
+        "typical_shape": [1,16],
+        "shape_range": [[1,100]],
         "format": "ND",
-        "ori_shape": [
-          1,
-          16
-        ],
-        "ori_format": "ND",
         "name": "mom",
-        "type": "float",
-        "shape_range": [
-          [
-            1,
-            100
-          ]
-        ],
-        "typical_shape": [
-          1,
-          16
-        ]
+        "type": "float32"
       },
       {
-        "shape": [
-          1
-        ],
+        "shape": [1],
         "format": "ND",
-        "ori_shape": [
-          1
-        ],
-        "ori_format": "ND",
         "name": "lr",
-        "type": "float",
-        "shape_range": [],
-        "typical_shape": [
-          1
-        ]
+        "type": "float32"
       },
       {
-        "shape": [
-          -1,
-          16
-        ],
+        "shape": [-1, 16],
+        "typical_shape": [1,16],
+        "shape_range": [[1,100]],
         "format": "ND",
-        "ori_shape": [
-          1,
-          16
-        ],
-        "ori_format": "ND",
         "name": "grad",
-        "type": "float",
-        "shape_range": [
-          [
-            1,
-            100
-          ]
-        ],
-        "typical_shape": [
-          1,
-          16
-        ]
+        "type": "float32"
       }
     ],
     "output_desc": [
       {
-        "shape": [
-          -1,
-          16
-        ],
+        "shape": [1, 16],
         "format": "ND",
-        "ori_shape": [
-          1,
-          16
-        ],
-        "ori_format": "ND",
-        "name": "out_var",
-        "type": "float",
-        "shape_range": [
-          [
-            1,
-            100
-          ]
-        ],
-        "typical_shape": [
-          1,
-          16
-        ]
+        "name": "var",
+        "type": "float32"
       },
       {
-        "shape": [
-          -1,
-          16
-        ],
+        "shape": [1, 16],
         "format": "ND",
-        "ori_shape": [
-          1,
-          16
-        ],
-        "ori_format": "ND",
-        "name": "out_ms",
-        "type": "float",
-        "shape_range": [
-          [
-            1,
-            100
-          ]
-        ],
-        "typical_shape": [
-          1,
-          16
-        ]
+        "name": "ms",
+        "type": "float32"
       },
       {
-        "shape": [
-          -1,
-          16
-        ],
+        "shape": [1, 16],
         "format": "ND",
-        "ori_shape": [
-          1,
-          16
-        ],
-        "ori_format": "ND",
-        "name": "out_mom",
-        "type": "float",
-        "shape_range": [
-          [
-            1,
-            100
-          ]
-        ],
-        "typical_shape": [
-          1,
-          16
-        ]
+        "name": "mom",
+        "type": "float32"
       }
     ],
     "attr": [
@@ -208,5 +80,94 @@
       }
     ],
     "case_name": "test_dynamic_ApplyRMSPropD_000"
+  },
+  {
+    "op": "ApplyRMSPropD",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [-2],
+        "typical_shape": [1,16],
+        "shape_range": [[1, 2240]],
+        "type": "float32",
+        "value_range": [[1, 10]],
+        "data_distribute": "uniform",
+        "name": "var"
+        },
+      {
+        "format": "ND",
+        "shape": [-2],
+        "typical_shape": [1,16],
+        "shape_range": [[1, 2240]],
+        "type": "float32",
+        "value_range": [[1, 10]],
+        "data_distribute": "uniform",
+        "name": "ms"
+      },
+      {
+        "format": "ND",
+        "shape": [-2],
+        "typical_shape": [1,16],
+        "shape_range": [[1, 2240]],
+        "type": "float32",
+        "value_range": [[1, 10]],
+        "data_distribute": "uniform",
+        "name": "mom"
+      },
+      {
+        "shape": [1],
+        "format": "ND",
+        "name": "lr",
+        "type": "float32"
+      },
+      {
+        "format": "ND",
+        "shape": [-2],
+        "typical_shape": [1,16],
+        "shape_range": [[1, 2240]],
+        "type": "float32",
+        "value_range": [[1, 10]],
+        "data_distribute": "uniform",
+        "name": "grad"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [1, 16],
+        "format": "ND",
+        "name": "var",
+        "type": "float32"
+      },
+      {
+        "shape": [1, 16],
+        "format": "ND",
+        "name": "ms",
+        "type": "float32"
+      },
+      {
+        "shape": [1, 16],
+        "format": "ND",
+        "name": "mom",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "rho",
+        "type": "float",
+        "value": 0.9
+      },
+      {
+        "name": "momentum",
+        "type": "float",
+        "value": 0.9
+      },
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 1e-07
+      }
+    ],
+    "case_name": "test_dynamic_ApplyRMSPropD_001"
   }
 ]

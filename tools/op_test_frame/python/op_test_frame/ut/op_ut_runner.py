@@ -166,6 +166,8 @@ def get_cov_relate_source(module_name: str) -> list:
         module_dir = "impl"
     else:
         module_dir = os.path.split(module_spec.origin)[0]
+        if module_dir.endswith("dynamic"):
+            module_dir = os.path.dirname(module_dir)
     return [module_name, module_dir]
 
 

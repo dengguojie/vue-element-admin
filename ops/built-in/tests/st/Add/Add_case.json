@@ -5232,5 +5232,39 @@
     ],
     "attr": [],
     "case_name": "test_Add_116"
+  },
+  {
+    "op": "Add",
+    "input_desc": [
+      {
+        "format": "ND",
+        "shape": [-2],
+        "typical_shape": [13, 15, 17, 19],
+        "shape_range": [[1, 2240]],
+        "type": "float32",
+        "value_range": [[1, 10]],
+        "data_distribute": "uniform",
+        "name": "x1"
+      },
+      {
+        "format": "ND",
+        "shape": [-2],
+        "typical_shape": [13, 15, 17, 19],
+        "shape_range": [[1, 2240]],
+        "type": "float32",
+        "value_range": [[1, 10]],
+        "data_distribute": "uniform",
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [13, 15, 17, 19],
+        "format": "ND",
+        "name": "y",
+        "type": "float32"
+      }
+    ],
+    "case_name": "test_Add_dynamic_000"
   }
 ]

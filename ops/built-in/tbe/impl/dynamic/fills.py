@@ -37,6 +37,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
+from impl.common_util import get_attr
 
 
 # 'pylint: disable=invalid-name,unused-argument
@@ -60,16 +61,19 @@ def fills_compute(x, value, dtype, kernel_name="fills"):
     res: TVM tensor
         the calculation results
     """
+    value_dtype_in_ir = "float"
     if dtype == "int8":
-        res = tbe.broadcast(tvm.const(value, dtype="float16"), x.shape)
+        value_var = get_attr(value, "value", "float16", value_dtype_in_ir)
+        res = tbe.broadcast(value_var, x.shape)
         res = tbe.cast_to(res, dtype)
     else:
-        res = tbe.broadcast(tvm.const(value, dtype=dtype), x.shape)
+        value_var = get_attr(value, "value", dtype, value_dtype_in_ir)
+        res = tbe.broadcast(value_var, x.shape)
     return res
 
 
 @register_operator("Fills")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.KERNEL_NAME)
 def fills(x, y, value, kernel_name="fills"):
     """

@@ -17,6 +17,8 @@ common_util
 """
 from te import tik
 from impl import constant_util as constant
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import tbe
 
 
 def get_vector_repeat_times(tik_instance, total_size):
@@ -180,3 +182,26 @@ def get_block_element(datatype):
     """
     data_type_size = get_data_size(datatype)
     return constant.BLOCK_SIZE // data_type_size
+
+
+def get_attr(attr_value, attr_name, dtype_compute, ir_dtype):
+    """
+    get the attr
+
+    Parameters
+    ----------
+    attr_value: value of attr
+    attr_name: name of attr
+    dtype_compute: is the dtype used for calculation
+    ir_dtype: the type of attr is ir
+
+    Returns
+    -------
+    attr_var
+    """
+    if attr_value is None:
+        attr_dtype = {"src_dtype": ir_dtype}
+        attr_var = tbe.var_attr(attr_name, dtype=dtype_compute, addition=attr_dtype)
+    else:
+        attr_var = tvm.const(attr_value, dtype_compute)
+    return attr_var
