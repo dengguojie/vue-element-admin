@@ -181,6 +181,7 @@ class Reduce {
   int32_t ubSizeB{-1};
 };
 }  // namespace utils
+
 }  // namespace optiling
 
 #endif  // REDUCE_TILING_V2_H

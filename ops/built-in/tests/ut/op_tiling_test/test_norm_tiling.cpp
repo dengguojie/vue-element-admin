@@ -145,7 +145,7 @@ TEST_F(NormTilingTest, NormTilingCustomUnsupported) {
   nlohmann::json compile_info = nlohmann::json::parse(compileInfo.c_str());
   optiling::utils::OpRunInfo runInfo;
   optiling::OpInfo c_op_info(inputs, DT_FLOAT);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info =
+  std::shared_ptr<AutoTilingHandler> outer_compile_info =
     CreateNormTilingHandler("NormDoTilingWithOpInfo", "Norm", compile_info);
   ASSERT_FALSE(outer_compile_info->DoTiling(op_paras, runInfo, c_op_info));
 }

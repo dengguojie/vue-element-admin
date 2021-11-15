@@ -61,7 +61,7 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_custom_unsupported) {
   optiling::utils::OpRunInfo runInfo;
   std::vector<std::vector<int64_t>> input_shapes{};
   optiling::OpInfo c_op_info(input_shapes, ge::DT_FLOAT);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateTransposeDslTilingHandler(this->test_info_->name(),
                                     "Transpose",
                                     op_info);
@@ -92,7 +92,7 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case1) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateTransposeDslTilingHandler(this->test_info_->name(),
                                     "Transpose",
                                     op_info);
@@ -125,7 +125,7 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case2) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateTransposeDslTilingHandler(this->test_info_->name(),
                                     "Transpose",
                                     op_info);
@@ -158,7 +158,7 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case3) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateTransposeDslTilingHandler(this->test_info_->name(),
                                     "Transpose",
                                     op_info);
@@ -191,7 +191,7 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case4) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateTransposeDslTilingHandler(this->test_info_->name(),
                                     "Transpose",
                                     op_info);
@@ -224,7 +224,7 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case5) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateTransposeDslTilingHandler(this->test_info_->name(),
                                     "Transpose",
                                     op_info);
@@ -257,7 +257,7 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case6) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateTransposeDslTilingHandler(this->test_info_->name(),
                                     "Transpose",
                                     op_info);
@@ -290,7 +290,7 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case7) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateTransposeDslTilingHandler(this->test_info_->name(),
                                     "Transpose",
                                     op_info);
@@ -323,7 +323,7 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case8) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateTransposeDslTilingHandler(this->test_info_->name(),
                                     "Transpose",
                                     op_info);
@@ -356,7 +356,7 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case9) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateTransposeDslTilingHandler(this->test_info_->name(),
                                     "Transpose",
                                     op_info);
@@ -389,7 +389,7 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case10) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateTransposeDslTilingHandler(this->test_info_->name(),
                                     "Transpose",
                                     op_info);
@@ -422,7 +422,7 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case11) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateTransposeDslTilingHandler(this->test_info_->name(),
                                     "Transpose",
                                     op_info);
@@ -455,7 +455,7 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case12) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateTransposeDslTilingHandler(this->test_info_->name(),
                                     "Transpose",
                                     op_info);
@@ -488,7 +488,7 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case13) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateTransposeDslTilingHandler(this->test_info_->name(),
                                     "Transpose",
                                     op_info);
@@ -521,7 +521,7 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case14) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateTransposeDslTilingHandler(this->test_info_->name(),
                                     "Transpose",
                                     op_info);
@@ -554,7 +554,7 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case15) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateTransposeDslTilingHandler(this->test_info_->name(),
                                     "Transpose",
                                     op_info);
@@ -587,7 +587,7 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case16) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateTransposeDslTilingHandler(this->test_info_->name(),
                                     "Transpose",
                                     op_info);
@@ -620,7 +620,7 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case17) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateTransposeDslTilingHandler(this->test_info_->name(),
                                     "Transpose",
                                     op_info);
@@ -653,7 +653,7 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case18) {
 
   nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
   optiling::utils::OpRunInfo runInfo;
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateTransposeDslTilingHandler(this->test_info_->name(),
                                     "Transpose",
                                     op_info);

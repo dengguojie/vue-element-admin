@@ -67,12 +67,12 @@ private:
     static const std::vector<std::vector<int32_t>> dummy_variable;
 };
 
-class AutoTilingCompileInfo {
+class AutoTilingHandler {
   public:
-  AutoTilingCompileInfo(const std::string& o, const std::string& p) : op_type(o), pattern(p) {}
+  AutoTilingHandler(const std::string& o, const std::string& p) : op_type(o), pattern(p) {}
   virtual bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const = 0;
   virtual bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const = 0;
-  virtual ~AutoTilingCompileInfo() = default;
+  virtual ~AutoTilingHandler() = default;
 
   protected:
   const std::string op_type;
@@ -108,7 +108,7 @@ bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, co
 bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& compile_info,
                     utils::OpRunInfo& run_info, const OpInfo& op_info);
 
-std::shared_ptr<AutoTilingCompileInfo> CreateAutoTilingHandler(const std::string& op_type, const std::string& pattern,
+std::shared_ptr<AutoTilingHandler> CreateAutoTilingHandler(const std::string& op_type, const std::string& pattern,
                                                                const nlohmann::json& parsed_compile_info);
 }  // namespace optiling
 

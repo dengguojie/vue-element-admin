@@ -181,10 +181,10 @@ class Reduce {
 };
 }  // namespace v3
 
-class ReduceTilingHandler: public AutoTilingCompileInfo {
+class ReduceTilingHandler: public AutoTilingHandler {
   public:
     ReduceTilingHandler(const std::string& op_info, const std::string& pattern, const nlohmann::json& json_info)
-                         : AutoTilingCompileInfo(op_info, pattern), compileInfo(op_info, json_info) {}
+                         : AutoTilingHandler(op_info, pattern), compileInfo(op_info, json_info) {}
   bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const override;
   bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const override;
   bool ParsedSuccess() {
@@ -198,7 +198,7 @@ class ReduceTilingHandler: public AutoTilingCompileInfo {
   const v3::ReduceCompileInfo compileInfo;
 };
 
-std::shared_ptr<AutoTilingCompileInfo> CreateReduceTilingHandler(const std::string& op_type,
+std::shared_ptr<AutoTilingHandler> CreateReduceTilingHandler(const std::string& op_type,
                                                                  const std::string& pattern,
                                                                  const nlohmann::json& parsed_compile_info);
 }  // namespace optiling

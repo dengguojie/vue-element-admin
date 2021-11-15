@@ -148,10 +148,10 @@ class Transpose {
 bool TransposeDsl(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& compile_info,
                   utils::OpRunInfo& run_info);
 
-class TransposeDslCompileInfo: public AutoTilingCompileInfo {
+class TransposeDslTilingHandler: public AutoTilingHandler {
   public:
-  TransposeDslCompileInfo(const std::string& o, const std::string& p, const nlohmann::json& c)
-    : AutoTilingCompileInfo(o, p), compile_info(c) {}
+  TransposeDslTilingHandler(const std::string& o, const std::string& p, const nlohmann::json& c)
+    : AutoTilingHandler(o, p), compile_info(c) {}
   bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const override;
   bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const override;
 
@@ -159,7 +159,7 @@ class TransposeDslCompileInfo: public AutoTilingCompileInfo {
   const nlohmann::json compile_info;
 };
 
-std::shared_ptr<AutoTilingCompileInfo> CreateTransposeDslTilingHandler(const std::string& op_type,
+std::shared_ptr<AutoTilingHandler> CreateTransposeDslTilingHandler(const std::string& op_type,
                                                                        const std::string& pattern,
                                                                        const nlohmann::json& parsed_compile_info);
 

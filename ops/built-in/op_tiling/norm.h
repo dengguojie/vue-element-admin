@@ -154,10 +154,10 @@ class Norm {
     int32_t tiling_key{-1};
 };
 
-class NormTilingHandler: public AutoTilingCompileInfo {
+class NormTilingHandler: public AutoTilingHandler {
   public:
   NormTilingHandler(const std::string& o, const std::string& p, const nlohmann::json& c)
-    : AutoTilingCompileInfo(o, p), norm_compile_info(o, c) {}
+    : AutoTilingHandler(o, p), norm_compile_info(o, c) {}
   ~NormTilingHandler() {}
   bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const override;
   bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const override;
@@ -167,7 +167,7 @@ class NormTilingHandler: public AutoTilingCompileInfo {
   const NormCompileInfo norm_compile_info;
 };
 
-std::shared_ptr<AutoTilingCompileInfo> CreateNormTilingHandler(const std::string& op_type,
+std::shared_ptr<AutoTilingHandler> CreateNormTilingHandler(const std::string& op_type,
                                                                const std::string& pattern,
                                                                const nlohmann::json& parsed_compile_info);
 

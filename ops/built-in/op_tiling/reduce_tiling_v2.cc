@@ -1233,4 +1233,5 @@ bool ReduceTiling(const std::string& op_type, const ge::Operator& op_paras, cons
   ret = ret && reduce.WriteTilingData();
   return ret;
 }
+
 }  // namespace optiling

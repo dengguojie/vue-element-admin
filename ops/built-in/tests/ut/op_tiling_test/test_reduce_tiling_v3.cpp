@@ -250,7 +250,7 @@ TEST_F(ReduceTilingV3, ReduceTiling1) {
 
   optiling::utils::OpRunInfo runInfo;
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateReduceTilingHandler(this->test_info_->name(),
                               "CommReduce",
                               nlohmann::json::parse(compileInfo));
@@ -287,7 +287,7 @@ TEST_F(ReduceTilingV3, ReduceTiling2) {
   optiling::utils::OpRunInfo runInfo;
 
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateReduceTilingHandler(this->test_info_->name(),
                               "CommReduce",
                               nlohmann::json::parse(compileInfo));
@@ -324,7 +324,7 @@ TEST_F(ReduceTilingV3, ReduceTiling3) {
   optiling::utils::OpRunInfo runInfo;
 
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateReduceTilingHandler(this->test_info_->name(),
                               "CommReduce",
                               nlohmann::json::parse(compileInfo));
@@ -363,7 +363,7 @@ TEST_F(ReduceTilingV3, ReduceTiling4) {
   optiling::utils::OpRunInfo runInfo;
 
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateReduceTilingHandler(this->test_info_->name(),
                               "CommReduce",
                               nlohmann::json::parse(compileInfo));
@@ -398,7 +398,7 @@ TEST_F(ReduceTilingV3, ReduceTiling5) {
   optiling::utils::OpRunInfo runInfo;
 
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateReduceTilingHandler(this->test_info_->name(),
                               "CommReduce",
                               nlohmann::json::parse(compileInfo));
@@ -433,7 +433,7 @@ TEST_F(ReduceTilingV3, ReduceTiling6) {
   optiling::utils::OpRunInfo runInfo;
 
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateReduceTilingHandler(this->test_info_->name(),
                               "CommReduce",
                               nlohmann::json::parse(compileInfo));
@@ -476,7 +476,7 @@ TEST_F(ReduceTilingV3, ReduceTiling8) {
   optiling::utils::OpRunInfo runInfo;
 
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateReduceTilingHandler(this->test_info_->name(),
                               "CommReduce",
                               nlohmann::json::parse(compileInfo));
@@ -517,7 +517,7 @@ TEST_F(ReduceTilingV3, ReduceTiling9) {
   optiling::utils::OpRunInfo runInfo;
 
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateReduceTilingHandler(this->test_info_->name(),
                               "CommReduce",
                               nlohmann::json::parse(compileInfo));
@@ -558,7 +558,7 @@ TEST_F(ReduceTilingV3, ReduceTiling10) {
   std::vector<std::vector<int64_t>> input_shapes{input,};
   optiling::OpInfo c_op_info(input_shapes, DT_FLOAT);
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateReduceTilingHandler(this->test_info_->name(),
                               "CommReduce",
                               nlohmann::json::parse(compileInfo));
@@ -603,7 +603,7 @@ TEST_F(ReduceTilingV3, ReduceTiling11) {
   std::vector<std::vector<int64_t>> input_shapes{};
   optiling::OpInfo c_op_info(input_shapes, DT_FLOAT);
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateReduceTilingHandler(this->test_info_->name(),
                               "CommReduce",
                               nlohmann::json::parse(compileInfo));
@@ -643,7 +643,7 @@ TEST_F(ReduceTilingV3, ReduceTiling12) {
   std::vector<std::vector<int64_t>> input_shapes{input,};
   optiling::OpInfo c_op_info(input_shapes, DT_FLOAT);
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateReduceTilingHandler(this->test_info_->name(),
                               "CommReduce",
                               nlohmann::json::parse(compileInfo));
@@ -674,7 +674,7 @@ static void ReduceSumCompute(std::vector<int64_t> inputA, std::vector<int64_t> i
 
   optiling::utils::OpRunInfo runInfo;
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateReduceTilingHandler(caseName,
                               "CommReduce",
                               nlohmann::json::parse(compileInfo));

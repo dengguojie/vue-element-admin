@@ -23,7 +23,7 @@
 
 namespace optiling {
 
-static thread_local std::vector<std::shared_ptr<AutoTilingCompileInfo>> compile_info_container;
+static thread_local std::vector<std::shared_ptr<AutoTilingHandler>> handler_container;
 
 /*
  * @brief: tiling function of ops
@@ -33,24 +33,24 @@ static thread_local std::vector<std::shared_ptr<AutoTilingCompileInfo>> compile_
  * @param [out] run_info: result data
  * @return bool: success or not
  */
-bool AutoTiling(const ge::Operator& op_paras, const void* compile_info,
+bool AutoTiling(const ge::Operator& op_paras, const void* handler,
                 utils::OpRunInfo& run_info) {
   OP_LOGI("AutoTiling", "Entering AutoTiling Dispatcher.");
-  if (compile_info == nullptr) {
-    OP_LOGE("AutoTiling", "AutoTiling Dispatcher received nullptr, Compile Info Parser is not working properly.");
+  if (handler == nullptr) {
+    OP_LOGE("AutoTiling", "AutoTiling Dispatcher received nullptr, CompileInfo Parser is not working properly.");
     return false;
   }
-  const AutoTilingCompileInfo& outer_compile_info = *(static_cast<const AutoTilingCompileInfo*>(compile_info));
+  const AutoTilingHandler& _handler = *(static_cast<const AutoTilingHandler*>(handler));
 #ifdef ASCEND_OPTILING_UT
   return true;
 #else
-  return outer_compile_info.DoTiling(op_paras, run_info);
+  return _handler.DoTiling(op_paras, run_info);
 #endif
 }
 
-void* AutoTilingCompileInfoParser(const ge::Operator& op_paras, const ge::AscendString& compile_info_str) {
+void* AutoTilingHandlerParser(const ge::Operator& op_paras, const ge::AscendString& compile_info_str) {
   // Print Info Log and get Pattern+OpType
-  OP_LOGI("AutoTiling", "Entering AutoTiling Compile Info Parser.");
+  OP_LOGI("AutoTiling", "Entering AutoTilingHandler Parser.");
   ge::AscendString ascend_op_type;
   ge::graphStatus ret = op_paras.GetOpType(ascend_op_type);
   if (ret != ge::GRAPH_SUCCESS) {
@@ -68,13 +68,13 @@ void* AutoTilingCompileInfoParser(const ge::Operator& op_paras, const ge::Ascend
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info[_pattern] not is string"),
                   return nullptr);
   const string& pattern = parsed_compile_info["_pattern"];
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = CreateAutoTilingHandler(op_type, pattern,
-                                                                                      parsed_compile_info);
-  compile_info_container.push_back(outer_compile_info);
-  return outer_compile_info.get();
+  std::shared_ptr<AutoTilingHandler> p_handler = CreateAutoTilingHandler(op_type, pattern,
+                                                                         parsed_compile_info);
+  handler_container.push_back(p_handler);
+  return p_handler.get();
 }
 
 // register AutoTiling
-REGISTER_OP_TILING_V3(AutoTiling, AutoTiling, AutoTilingCompileInfoParser);
+REGISTER_OP_TILING_V3(AutoTiling, AutoTiling, AutoTilingHandlerParser);
 
 }  // namespace optiling

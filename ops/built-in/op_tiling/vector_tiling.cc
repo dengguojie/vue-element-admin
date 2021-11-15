@@ -22,23 +22,23 @@
 
 namespace optiling {
 
-extern std::shared_ptr<AutoTilingCompileInfo> CreateNormTilingHandler(const std::string& op_type,
+extern std::shared_ptr<AutoTilingHandler> CreateNormTilingHandler(const std::string& op_type,
                                                                       const std::string& pattern,
                                                                       const nlohmann::json& parsed_compile_info);
-extern std::shared_ptr<AutoTilingCompileInfo> CreateTransposeDslTilingHandler(
+extern std::shared_ptr<AutoTilingHandler> CreateTransposeDslTilingHandler(
   const std::string& op_type,
   const std::string& pattern,
   const nlohmann::json& parsed_compile_info);
-extern std::shared_ptr<AutoTilingCompileInfo> CreateElewiseTilingHandler(const std::string& op_type,
+extern std::shared_ptr<AutoTilingHandler> CreateElewiseTilingHandler(const std::string& op_type,
                                                                          const std::string& pattern,
                                                                          const nlohmann::json& parsed_compile_info);
-extern std::shared_ptr<AutoTilingCompileInfo> CreateReduceTilingHandler(const std::string& op_type,
+extern std::shared_ptr<AutoTilingHandler> CreateReduceTilingHandler(const std::string& op_type,
                                                                         const std::string& pattern,
                                                                         const nlohmann::json& parsed_compile_info);
 
 const std::vector<vector<int32_t>> OpInfo::dummy_variable;
 
-std::shared_ptr<AutoTilingCompileInfo> CreateAutoTilingHandler(const std::string& op_type, const std::string& pattern,
+std::shared_ptr<AutoTilingHandler> CreateAutoTilingHandler(const std::string& op_type, const std::string& pattern,
                                                                const nlohmann::json& parsed_compile_info) {
   OP_LOGI(op_type.c_str(), "Entering AutoTiling Compile Info Parser for pattern %s", pattern.c_str());
   try {
@@ -54,11 +54,11 @@ std::shared_ptr<AutoTilingCompileInfo> CreateAutoTilingHandler(const std::string
       return CreateTransposeDslTilingHandler(op_type, pattern, parsed_compile_info);
     } else {
       OP_LOGE(op_type.c_str(), "Pattern %s is not supported by AutoTiling Compile Info Parser", pattern.c_str());
-      return std::shared_ptr<AutoTilingCompileInfo>(nullptr);
+      return std::shared_ptr<AutoTilingHandler>(nullptr);
     }
   } catch(...) {
     OP_LOGE(op_type.c_str(), "Unknown Exception encountered when parsing Compile Info of pattern %s", pattern.c_str());
-    return std::shared_ptr<AutoTilingCompileInfo>(nullptr);
+    return std::shared_ptr<AutoTilingHandler>(nullptr);
   }
 }
 

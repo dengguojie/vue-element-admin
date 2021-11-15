@@ -91,7 +91,7 @@ TEST_F(EletwiseTilingV2, Eletwise_tiling1) {
 
   optiling::utils::OpRunInfo runInfo;
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateElewiseTilingHandler(this->test_info_->name(),
                                "ElemWise",
                                nlohmann::json::parse(compileInfo));
@@ -139,7 +139,7 @@ TEST_F(EletwiseTilingV2, Eletwise_tiling2) {
 
   optiling::utils::OpRunInfo runInfo;
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateElewiseTilingHandler(this->test_info_->name(),
                                "ElemWise",
                                nlohmann::json::parse(compileInfo));
@@ -181,7 +181,7 @@ TEST_F(EletwiseTilingV2, Eletwise_tiling3) {
 
   optiling::utils::OpRunInfo runInfo;
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateElewiseTilingHandler(this->test_info_->name(),
                                "ElemWise",
                                nlohmann::json::parse(compileInfo));
@@ -230,7 +230,7 @@ TEST_F(EletwiseTilingV2, Eletwise_tiling_mul1) {
   
   optiling::utils::OpRunInfo runInfo;
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateElewiseTilingHandler(this->test_info_->name(),
                                "ElemWise",
                                nlohmann::json::parse(compileInfo));
@@ -272,7 +272,7 @@ TEST_F(EletwiseTilingV2, Eletwise_tiling4) {
 
   optiling::utils::OpRunInfo runInfo;
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateElewiseTilingHandler(this->test_info_->name(),
                                "ElemWise",
                                nlohmann::json::parse(compileInfo));
@@ -353,7 +353,7 @@ std::string compileInfo = R"({ "_outs_uint1": false, "_pattern": "ElemWise", "pu
 
 optiling::utils::OpRunInfo runInfo;
 const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateElewiseTilingHandler(this->test_info_->name(),
                                "ElemWise",
                                nlohmann::json::parse(compileInfo));
@@ -398,7 +398,7 @@ std::string compileInfo = R"({ "_outs_uint1": false, "_pattern": "ElemWise", "pu
 
 optiling::utils::OpRunInfo runInfo;
 const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateElewiseTilingHandler(this->test_info_->name(),
                                "ElemWise",
                                nlohmann::json::parse(compileInfo));
@@ -444,7 +444,7 @@ std::string compileInfo = R"({"_fusion_index":[1], "push_status": 0, "_pattern":
 
 optiling::utils::OpRunInfo runInfo;
 const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateElewiseTilingHandler(this->test_info_->name(),
                                "ElemWise",
                                nlohmann::json::parse(compileInfo));
@@ -491,7 +491,7 @@ std::string compileInfo = R"({"_pattern": "ElemWise", "push_status": 0, "_flag_i
 optiling::utils::OpRunInfo runInfo;
 
 const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateElewiseTilingHandler(this->test_info_->name(),
                                "ElemWise",
                                nlohmann::json::parse(compileInfo));
@@ -538,7 +538,7 @@ std::string compileInfo = R"({"_fusion_index": [[0, 1]],"_const_shapes":[[64,64]
 optiling::utils::OpRunInfo runInfo;
 
 const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateElewiseTilingHandler(this->test_info_->name(),
                                "ElemWise",
                                nlohmann::json::parse(compileInfo));
@@ -580,7 +580,7 @@ TEST_F(EletwiseTilingV2, Eletwise_tiling11) {
   optiling::utils::OpRunInfo runInfo;
   
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateElewiseTilingHandler(this->test_info_->name(),
                                "ElemWise",
                                nlohmann::json::parse(compileInfo));
@@ -629,7 +629,7 @@ std::string compileInfo = R"({ "_outs_uint1": false, "_flag_info": [true],"_base
 optiling::utils::OpRunInfo runInfo;
 
 const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateElewiseTilingHandler(this->test_info_->name(),
                                "ElemWise",
                                nlohmann::json::parse(compileInfo));
@@ -677,7 +677,7 @@ std::string compileInfo = R"({ "push_status": 0, "_pattern": "Broadcast", "_flag
 optiling::utils::OpRunInfo runInfo;
 
 const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateElewiseTilingHandler(this->test_info_->name(),
                                "ElemWise",
                                nlohmann::json::parse(compileInfo));
@@ -731,7 +731,7 @@ std::string compileInfo = R"({"_fusion_index": [[0], [1], [2], [3], [4]], "_patt
 optiling::utils::OpRunInfo runInfo;
 
 const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateElewiseTilingHandler(this->test_info_->name(),
                                "ElemWise",
                                nlohmann::json::parse(compileInfo));
@@ -780,7 +780,7 @@ std::string compileInfo = R"({"_fusion_index": [[0], [1], [2], [3], [4]], "_patt
 optiling::utils::OpRunInfo runInfo;
 
 const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateElewiseTilingHandler(this->test_info_->name(),
                                "ElemWise",
                                nlohmann::json::parse(compileInfo));
@@ -827,7 +827,7 @@ TEST_F(EletwiseTilingV2, Eletwise_tiling19) {
   optiling::utils::OpRunInfo runInfo;
 
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateElewiseTilingHandler(this->test_info_->name(),
                                "ElemWise",
                                nlohmann::json::parse(compileInfo));
@@ -879,7 +879,7 @@ TEST_F(EletwiseTilingV2, Eletwise_tiling_mul3) {
 
   optiling::utils::OpRunInfo runInfo;
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateElewiseTilingHandler(this->test_info_->name(),
                                "ElemWise",
                                nlohmann::json::parse(compileInfo));
@@ -924,7 +924,7 @@ std::string compileInfo = R"({"_fusion_index": [[0], [1], [2]], "_pattern": "Bro
 optiling::utils::OpRunInfo runInfo;
 
 const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateElewiseTilingHandler(this->test_info_->name(),
                                "ElemWise",
                                nlohmann::json::parse(compileInfo));
@@ -966,7 +966,7 @@ TEST_F(EletwiseTilingV2, Eletwise_tiling20) {
   optiling::OpInfo c_op_info(input_shapes, DT_FLOAT);
   optiling::utils::OpRunInfo runInfo;
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateElewiseTilingHandler(this->test_info_->name(),
                                "ElemWise",
                                nlohmann::json::parse(compileInfo));
@@ -1008,7 +1008,7 @@ TEST_F(EletwiseTilingV2, Eletwise_tiling_empty_tensor) {
   std::vector<std::vector<int64_t>> input_shapes{input};
   optiling::utils::OpRunInfo runInfo;
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateElewiseTilingHandler(this->test_info_->name(),
                                "ElemWise",
                                nlohmann::json::parse(compileInfo));
@@ -1052,7 +1052,7 @@ TEST_F(EletwiseTilingV2, Eletwise_custom_empty_tensor) {
   optiling::OpInfo c_op_info(input_shapes, DT_FLOAT);
   optiling::utils::OpRunInfo runInfo;
   const nlohmann::json& parsed_compile_info = nlohmann::json::parse(compileInfo);
-  std::shared_ptr<AutoTilingCompileInfo> outer_compile_info = \
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
     CreateElewiseTilingHandler(this->test_info_->name(),
                                "ElemWise",
                                nlohmann::json::parse(compileInfo));

@@ -981,14 +981,14 @@ bool NormTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo&
   return false;
 }
 
-std::shared_ptr<AutoTilingCompileInfo> CreateNormTilingHandler(const std::string& op_type,
+std::shared_ptr<AutoTilingHandler> CreateNormTilingHandler(const std::string& op_type,
                                                                const std::string& pattern,
                                                                const nlohmann::json& parsed_compile_info)
 {
   auto compile_info_ptr = std::make_shared<NormTilingHandler>(op_type, pattern, parsed_compile_info);
   if (!compile_info_ptr->ParsedSuccess()) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Norm parse compile info failed");
-    return std::shared_ptr<AutoTilingCompileInfo>(nullptr);
+    return std::shared_ptr<AutoTilingHandler>(nullptr);
   }
 
   return compile_info_ptr;
