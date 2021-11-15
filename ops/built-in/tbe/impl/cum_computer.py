@@ -25,6 +25,7 @@ from impl.constant_util import VECTOR_BYTE_SIZE
 from impl.constant_util import STRIDE_ONE
 from impl.constant_util import REPEAT_STRIDE_EIGHT
 from impl.constant_util import DEFAULT_BURST_LEN
+from impl.constant_util import DEFAULT_REPEAT_TIME
 from impl.constant_util import STRIDE_ZERO
 from impl.constant_util import DATA_TYPE_UINT8
 from impl.common_util import get_data_size
@@ -158,8 +159,7 @@ class CumTensor(CumBase):
         super(CumTensor, self).__init__(shape, axis, dtype)
         self.mov_len = int(self.get_mov_len())
         self.mov_loop = int(self.each // self.mov_len)
-        self.mov_tail = int(
-            (self.each - self.mov_len * self.mov_loop) % self.mov_len)
+        self.mov_tail = int((self.each - self.mov_len * self.mov_loop) % self.mov_len)
         self.rdtype = DATA_TYPE_FP16 if \
             dtype in (DATA_TYPE_UINT8, DATA_TYPE_INT8) else dtype
         self.rdsize = VALUE_TWO if \
@@ -226,8 +226,7 @@ class CumTensor(CumBase):
 
         """
 
-        return self.tik_instance.Tensor(self.dtype, (BLOCK_SIZE,),
-                                        tik.scope_ubuf, "last_32B")
+        return self.tik_instance.Tensor(self.dtype, (BLOCK_SIZE,), tik.scope_ubuf, "last_32B")
 
     def get_outer_loop(self, shape, axis):
         """
@@ -535,8 +534,7 @@ class CumComputer(CumTilingParam):
                 value = -2 ** 127 * 1.9999999
 
         self.tik_instance.vector_dup(self.mask, last_ret, value, repeat,
-                                     STRIDE_ONE,
-                                     REPEAT_STRIDE_EIGHT)
+                                     STRIDE_ONE, REPEAT_STRIDE_EIGHT)
         ub_out = last_ret
         if self.check_dtype_in_u8s8():
             self.tik_instance.vconv(self.mask, "", last_ori, last_ret,
@@ -546,8 +544,7 @@ class CumComputer(CumTilingParam):
             ub_out = last_ori
         if burlen != 0:
             self.tik_instance.data_move(self.output_out_gm[idx], ub_out,
-                                        VALUE_ZERO,
-                                        DEFAULT_BURST_LEN,
+                                        VALUE_ZERO, DEFAULT_BURST_LEN,
                                         burlen, STRIDE_ZERO, STRIDE_ZERO)
         if self.need_special and position == self.spe_position:
             last_32b = self.post_multicore(burlen, idx, ub_out, tail_idx)
@@ -584,13 +581,11 @@ class CumComputer(CumTilingParam):
         repeat = self.get_repeat(self.mov_len)
 
         self.tik_instance.data_move(real_in, self.input_x_gm[idx], VALUE_ZERO,
-                                    DEFAULT_BURST_LEN,
-                                    burlen, STRIDE_ZERO, STRIDE_ZERO)
+                                    DEFAULT_BURST_LEN, burlen, STRIDE_ZERO, STRIDE_ZERO)
 
         if self.check_dtype_in_u8s8():
             self.tik_instance.vconv(self.mask, "", ub_in, ori, repeat,
-                                    VALUE_ONE, VALUE_ONE, REPEAT_STRIDE_EIGHT,
-                                    STRIDE_FOUR)
+                                    VALUE_ONE, VALUE_ONE, REPEAT_STRIDE_EIGHT, STRIDE_FOUR)
 
     def t_dma_direct_out(self, last_ret, last_ori, idx, position):
         """
@@ -617,9 +612,8 @@ class CumComputer(CumTilingParam):
         real_out = last_ori if self.check_dtype_in_u8s8() else last_ret
         if burlen != 0:
             self.tik_instance.data_move(self.output_out_gm[idx], real_out,
-                                        VALUE_ZERO,
-                                        DEFAULT_BURST_LEN, burlen, STRIDE_ZERO,
-                                        STRIDE_ZERO)
+                                        VALUE_ZERO, DEFAULT_BURST_LEN, burlen,
+                                        STRIDE_ZERO, STRIDE_ZERO)
 
         if self.need_special and position == self.spe_position:
             last_32b = self.post_multicore(burlen, idx, real_out, tail_idx)
@@ -702,6 +696,52 @@ class CumComputer(CumTilingParam):
                 self.output_out_gm[idx[0], idx[1], idx[2] + tail_idx],
                 last_32b, VALUE_ZERO, DEFAULT_BURST_LEN,
                 VALUE_ONE, STRIDE_ZERO, STRIDE_ZERO)
+
+    def prod_mul(self, mask_process, repeat_process, last_ret, input_x_ub, idx):
+        """
+        Mul calculation
+
+        Returns
+        -------
+        None
+
+        """
+        self.tik_instance.vmul(mask_process, last_ret[idx], input_x_ub[idx], last_ret[idx],
+                               repeat_process, STRIDE_ONE, STRIDE_ONE, STRIDE_ONE,
+                               REPEAT_STRIDE_EIGHT, REPEAT_STRIDE_EIGHT, REPEAT_STRIDE_EIGHT)
+
+    def prod_tail_process(self, mov_length, repeat, last_ret, input_x_ub):
+        """
+        Check tail exit and special process
+
+        Returns
+        -------
+        None
+
+        """
+        if mov_length % (VECTOR_BYTE_SIZE // self.rdsize) != VALUE_ZERO:
+            align_repeat = mov_length * self.rdsize // VECTOR_BYTE_SIZE
+            if align_repeat != VALUE_ZERO:
+                self.prod_mul(self.mask, align_repeat, last_ret, input_x_ub, VALUE_ZERO)
+            mask_vector = mov_length % (VECTOR_BYTE_SIZE // self.rdsize)
+            self.prod_mul(mask_vector, DEFAULT_REPEAT_TIME, last_ret, input_x_ub, self.mask * align_repeat)
+        else:
+            self.prod_mul(self.mask, repeat, last_ret, input_x_ub, VALUE_ZERO)
+
+    def prod_process(self, mov_length, repeat, e_cycle, last_ret, input_x_ub):
+        """
+        Different process by checking revserse and e_cycle
+
+        Returns
+        -------
+        None
+
+        """
+        with self.tik_instance.if_scope((tik.Expr(self.reverse == True) & (e_cycle == VALUE_ONE)) |
+                                        (tik.Expr(self.reverse == False) & (e_cycle == self.each_loop - 1))):
+            self.prod_tail_process(mov_length, repeat, last_ret, input_x_ub)
+        with self.tik_instance.else_scope():
+            self.prod_mul(self.mask, repeat, last_ret, input_x_ub, VALUE_ZERO)
 
     def cum_computer(self):
         """
@@ -872,13 +912,7 @@ class CumComputer(CumTilingParam):
                     self.t_dma_trans_out(last_ret, last_ori, idx, HEAD)
 
                 elif self.ctype == PROD_TYPE:
-                    self.tik_instance.vmul(self.mask, last_ret, input_x_ub,
-                                           last_ret,
-                                           repeat, STRIDE_ONE, STRIDE_ONE,
-                                           STRIDE_ONE,
-                                           REPEAT_STRIDE_EIGHT,
-                                           REPEAT_STRIDE_EIGHT,
-                                           REPEAT_STRIDE_EIGHT)
+                    self.prod_process(self.mov_len, repeat, e_cycle, last_ret, input_x_ub)
                     idx = [o_cycle, e_cycle + out_offset,
                            m_cycle * self.mov_len]
                     self.t_dma_trans_out(last_ret, last_ori, idx, HEAD)
@@ -1026,12 +1060,7 @@ class CumComputer(CumTilingParam):
                 self.t_dma_trans_out(last_ret, last_ori, idx, TAIL)
 
             elif self.ctype == PROD_TYPE:
-                self.tik_instance.vmul(self.mask, last_ret, input_x_ub,
-                                       last_ret,
-                                       repeat, STRIDE_ONE, STRIDE_ONE,
-                                       STRIDE_ONE,
-                                       REPEAT_STRIDE_EIGHT, REPEAT_STRIDE_EIGHT,
-                                       REPEAT_STRIDE_EIGHT)
+                self.prod_process(self.mov_tail, repeat, e_cycle, last_ret, input_x_ub)
                 idx = [o_cycle, e_cycle + out_offset,
                        self.mov_loop * self.mov_len]
                 self.t_dma_trans_out(last_ret, last_ori, idx, TAIL)

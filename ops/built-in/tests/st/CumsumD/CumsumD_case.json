@@ -1,0 +1,1467 @@
+[
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_CumsumD_000"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_CumsumD_001"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_CumsumD_002"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          13
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          13
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_CumsumD_003"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_CumsumD_004"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          1,
+          13,
+          15,
+          223
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          1,
+          13,
+          15,
+          223
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          1,
+          13,
+          15,
+          223
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          1,
+          13,
+          15,
+          223
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_CumsumD_005"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_CumsumD_007"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_CumsumD_008"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_CumsumD_009"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          13
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          13
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_CumsumD_010"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_CumsumD_011"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          1,
+          13,
+          15,
+          223
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          1,
+          13,
+          15,
+          223
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          1,
+          13,
+          15,
+          223
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          1,
+          13,
+          15,
+          223
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_CumsumD_012"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_CumsumD_014"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_CumsumD_015"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_CumsumD_016"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          13
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          13
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_CumsumD_017"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_CumsumD_018"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          1,
+          13,
+          15,
+          223
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          1,
+          13,
+          15,
+          223
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          1,
+          13,
+          15,
+          223
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          1,
+          13,
+          15,
+          223
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_CumsumD_019"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          12,
+          13,
+          15,
+          223
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12,
+          13,
+          15,
+          223
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          12,
+          13,
+          15,
+          223
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          12,
+          13,
+          15,
+          223
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_CumsumD_021"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_CumsumD_022"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_CumsumD_023"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_CumsumD_024"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          13
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          13
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          13
+        ],
+        "ori_format": "ND",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_CumsumD_025"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          1,
+          16,
+          16
+        ],
+        "format": "ND",
+        "ori_shape": [
+          1,
+          16,
+          16
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": true
+      }
+    ],
+    "case_name": "test_CumsumD_026"
+  },
+  {
+    "op": "CumsumD",
+    "input_desc": [
+      {
+        "shape": [
+          10,
+          1,
+          13,
+          15,
+          223
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          1,
+          13,
+          15,
+          223
+        ],
+        "ori_format": "ND",
+        "name": "x",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          10,
+          1,
+          13,
+          15,
+          223
+        ],
+        "format": "ND",
+        "ori_shape": [
+          10,
+          1,
+          13,
+          15,
+          223
+        ],
+        "ori_format": "ND",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "exclusive",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "reverse",
+        "type": "bool",
+        "value": false
+      }
+    ],
+    "case_name": "test_CumsumD_027"
+  }
+]

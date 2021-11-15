@@ -19,6 +19,7 @@ import numpy as np
 ut_case = OpUT("CumprodD", "impl.cumprod_d", "cumprod_d")
 
 def test_get_op_support_info(test_arg):
+    from impl.cum_computer import get_computer_by_ctype
     from impl.cumprod_d import get_op_support_info
     get_op_support_info({"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"}, 
                         {"shape": (15, 80, 2, 32), "dtype": "float32", "format": "ND", "ori_shape": (15, 80, 2, 32),"ori_format": "ND"})
@@ -100,7 +101,24 @@ case10 = {"params": [{"shape": (3, 8, 50, 273), "dtype": "float32", "format": "N
           "expect": "success",
           "support_expect": True}
 
+case11 = {"params": [{"shape": (5, 24), "dtype": "float32", "format": "ND", "ori_shape": (5, 24),"ori_format": "ND"},
+                     {"shape": (5, 24), "dtype": "float32", "format": "ND", "ori_shape": (5, 24),"ori_format": "ND"},
+                     0, True, True,
+                     ],
+          "case_name": "CumprodD_11",
+          "expect": "success",
+          "support_expect": True}
+
+case12 = {"params": [{"shape": (16, 11, 17), "dtype": "float32", "format": "ND", "ori_shape": (16, 11, 17),"ori_format": "ND"},
+                     {"shape": (16, 11, 17), "dtype": "float32", "format": "ND", "ori_shape": (16, 11, 17),"ori_format": "ND"},
+                     0, False, False,
+                     ],
+          "case_name": "CumprodD_12",
+          "expect": "success",
+          "support_expect": True}
+
 # TODO fix me, this comment, run failed
+ut_case.add_cust_test_func(test_func=test_get_op_support_info)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case1)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case2)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case3)
@@ -111,7 +129,8 @@ ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case7)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case8)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case9)
 ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case10)
-ut_case.add_cust_test_func(test_func=test_get_op_support_info)
+ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case11)
+ut_case.add_case(["Ascend910","Ascend310","Ascend710"], case12)
 
 def calc_expect_func(x, y, axis, exclusive, reverse):
     shape = x['shape']
