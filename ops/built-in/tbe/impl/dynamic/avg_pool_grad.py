@@ -537,7 +537,12 @@ def avg_pool_grad(orig_input_shape,
     -------
     None
     """
-    
+    out_grad_range_new = []
+    if input_grad.get('range') is not None:
+        for i in range(len(input_grad.get('range'))):
+            out_grad_range_new.append((max(input_grad.get('range')[i][0], 1), 
+                                    input_grad.get('range')[i][1]))
+        input_grad['range'] = tuple(out_grad_range_new)
     stride_h, stride_w, input_c = _avgpoolgrad_check_rule(input_grad, kernel_matrix, out_grad, ksize, strides,
                                                           padding, data_format, kernel_name)
     
