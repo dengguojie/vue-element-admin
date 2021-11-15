@@ -655,7 +655,7 @@ compile_mod(){
       cmake --build . --target repack_tbe -- -j ${THREAD_NUM}
       
       if [[ "$related" =~ "CPU" ]]; then
-        for lib in eigen secure_c constant_folding_ops aicpu_ops_json_info cpu_kernels_static
+        for lib in  constant_folding_ops aicpu_ops_json_info cpu_kernels_static
             do
                 cmake --build . --target $lib -- -j ${THREAD_NUM}
             done 

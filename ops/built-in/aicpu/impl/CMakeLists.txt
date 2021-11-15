@@ -229,7 +229,7 @@ if(BUILD_OPEN_PROJECT)
         -fstack-protector-all
     )
 
-    add_dependencies(cpu_kernels_static eigen_headers)
+    add_dependencies(cpu_kernels_static eigen_headers c_sec)
 
     set(cpu_kernels_static ${CMAKE_CURRENT_BINARY_DIR}/libcpu_kernels.a)
     set_target_properties(cpu_kernels_static
