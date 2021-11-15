@@ -21,13 +21,18 @@ import te.lang.cce
 from te import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
-
-# General limitation of the reduce size for input shape: 2**31
-SHAPE_SIZE_LIMIT = 2147483648
-EPS = 1.192092896e-07
+from impl.constant_util import SHAPE_SIZE_LIMIT
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    Constant in this class
+    """
+    EPS = 1.192092896e-07
+
+
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals,invalid-name
 def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
     """
     calculating data's add, c = a + b
@@ -55,7 +60,7 @@ def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
         # forcing pass zero
         ori_clip_min = te.lang.cce.vmins(clamp_min, tvm.const(0, clamp_min.dtype))
 
-    ori_clip_max = te.lang.cce.vmaxs(clamp_max, tvm.const(step*EPS, clamp_max.dtype))
+    ori_clip_max = te.lang.cce.vmaxs(clamp_max, tvm.const(step * Constant.EPS, clamp_max.dtype))
 
     scale = te.lang.cce.vsub(ori_clip_max, ori_clip_min)
 
@@ -65,20 +70,20 @@ def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
     offset = te.lang.cce.round(offset)
     offset = te.lang.cce.cast_to(offset, data.dtype)
 
-    #fake quant clip min/max
+    # fake quant clip min/max
     clip_min = te.lang.cce.vmul(scale, offset)
     clip_max = te.lang.cce.vadds(offset, tvm.const(step, offset.dtype))
     clip_max = te.lang.cce.vmul(clip_max, scale)
 
-    #clip data = data
+    # clip data = data
     clamped_x = te.lang.cce.vmax(data, te.lang.cce.broadcast(clip_min, data.shape))
     clamped_x = te.lang.cce.vmin(clamped_x, te.lang.cce.broadcast(clip_max, data.shape))
 
-    #adjust shape first
+    # adjust shape first
     clamp_min_mask = te.lang.cce.vcmp(data, te.lang.cce.broadcast(clip_min, data.shape), 'ge')
     clamp_max_mask = te.lang.cce.vcmp(data, te.lang.cce.broadcast(clip_max, data.shape), 'le')
 
-    #fake quant x
+    # fake quant x
     raw_x = te.lang.cce.vdiv(clamped_x, te.lang.cce.broadcast(scale, clamped_x.shape))
     round_x = te.lang.cce.round(raw_x)
     round_x = te.lang.cce.cast_to(round_x, data.dtype)

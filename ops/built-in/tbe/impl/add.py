@@ -31,11 +31,7 @@ from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 
-# constant, value is 16
-SIZE_SIXTEEN = 16
-
-
-# pylint: disable=too-many-nested-blocks
+# 'pylint: disable=too-many-nested-blocks
 def _can_division_sixteen(shape):
     """
     check whether divided by 16.
@@ -61,13 +57,13 @@ def _can_division_sixteen(shape):
         error_manager_vector.raise_err_input_value_invalid("add", "shape[-1] and shape[-2]",
                                                            expected_value, real_value)
 
-    if shape[-1] % SIZE_SIXTEEN == 0 and shape[-2] % SIZE_SIXTEEN == 0:
+    if shape[-1] % 16 == 0 and shape[-2] % 16 == 0:
         return True
 
     return False
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def _can_broadcast(shape1, shape2):
     """
     check whether can broadcast or no.
@@ -96,9 +92,9 @@ def _can_broadcast(shape1, shape2):
     return True
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=invalid-name,too-many-locals,too-many-branches,unused-variable
-# pylint: disable=too-many-statements,too-many-boolean-expressions,consider-using-enumerate
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=invalid-name,too-many-locals,too-many-branches,unused-variable
+# 'pylint: disable=too-many-statements,too-many-boolean-expressions,consider-using-enumerate
 def op_sub_select_format(x1, x2, y, kernel_name="add"):
     """
     Dynamic matching format
@@ -115,7 +111,7 @@ def op_sub_select_format(x1, x2, y, kernel_name="add"):
     kernel_name : str
         kernel name, default value is "add"
 
-    Returns 
+    Returns
     -------
     None
     """
@@ -142,7 +138,7 @@ def op_sub_select_format(x1, x2, y, kernel_name="add"):
         unknownshape_format_list = ["ND"] * len(format_list) * len(dtype_list)
         format_list_for_one = [x2.get("format")] * len(format_list) * len(dtype_list)
     else:
-        return None
+        return 'None'
 
     if -1 in shape_x1 or -1 in shape_x2:
         input0 = gen_param(classify="input0", name="x1",
@@ -174,9 +170,9 @@ def op_sub_select_format(x1, x2, y, kernel_name="add"):
     return param_dynamic_in_json
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=invalid-name,too-many-locals,too-many-branches,unused-variable
-# pylint: disable=too-many-statements,too-many-boolean-expressions,consider-using-enumerate
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=invalid-name,too-many-locals,too-many-branches,unused-variable
+# 'pylint: disable=too-many-statements,too-many-boolean-expressions,consider-using-enumerate
 def _can_broad(x, y):
     if x[2]:
         x[0] *= 16
@@ -251,7 +247,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
     """
     # do this scene like:input_x shape=[2,3,4] input_y shape=[1,]
     param_dynamic_in_json = op_sub_select_format(input_x, input_y, output_z, kernel_name)
-    if param_dynamic_in_json is not None:
+    if param_dynamic_in_json != 'None':
         return param_dynamic_in_json
 
     shape_x = input_x.get("ori_shape")
@@ -293,19 +289,18 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
 
     common_flag = {"half_16_div_flg": (_can_division_sixteen(shape_x) and not _can_division_sixteen(shape_y)) or (
             not _can_division_sixteen(shape_x) and _can_division_sixteen(shape_y))}
-    if x_flag["5d"] or x_flag["4d"]:
+    if x_flag.get("5d") or x_flag.get("4d"):
         x_cdim = shape_x[format_x.index("C")]
         x_ndim = shape_x[format_x.index("N")]
-    if y_flag["5d"] or y_flag["4d"]:
+    if y_flag.get("5d") or y_flag.get("4d"):
         y_cdim = shape_y[format_y.index("C")]
         y_ndim = shape_y[format_y.index("N")]
 
-
-    format_flag = {"NDC1HWC0": x_flag["5d"] and y_flag["5d"] and x_cdim == y_cdim,
-                   "FRACTAL_Z_3D": x_flag["5d"] and y_flag["5d"] and x_cdim == y_cdim and x_ndim == y_ndim,
+    format_flag = {"NDC1HWC0": x_flag.get("5d") and y_flag.get("5d") and x_cdim == y_cdim,
+                   "FRACTAL_Z_3D": x_flag.get("5d") and y_flag.get("5d") and x_cdim == y_cdim and x_ndim == y_ndim,
                    "FRACTAL_NZ": len(shape_x) >= 2 and len(shape_y) >= 2 and shape_x[-2:] == shape_y[-2:],
-                   "NC1HWC0": x_flag["4d"] and
-                              y_flag["4d"] and
+                   "NC1HWC0": x_flag.get("4d") and
+                              y_flag.get("4d") and
                               ((format_y == format_x and
                                 ((x_cdim % 16 == 0 and y_cdim % 16 == 0) or x_cdim == y_cdim) and _can_broad(
                                [shape_x[format_x.index(format_x[0])], shape_x[format_x.index(format_x[1])],
@@ -313,9 +308,9 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
                                [shape_y[format_y.index(format_y[0])], shape_y[format_y.index(format_y[1])],
                                 format_y[0] != "C", format_y[1] != "C"])) or
                                (list(shape_x) == list(shape_y) and -1 not in shape_x) or
-                               (common_flag["half_16_div_flg"] and x_cdim % 16 == 0 and y_cdim % 16 == 0 and
+                               (common_flag.get("half_16_div_flg") and x_cdim % 16 == 0 and y_cdim % 16 == 0 and
                                (x_cdim == y_cdim or x_cdim == 16 or y_cdim == 16))),
-                   "FRACTAL_Z": x_flag["4d"] and y_flag["4d"] and format_x == format_y and (
+                   "FRACTAL_Z": x_flag.get("4d") and y_flag.get("4d") and format_x == format_y and (
                            (all(i % 16 == 0 for i in [x_cdim, y_cdim, x_ndim, y_ndim])
                             and util_common.is_support_fractal_z_inputs(list_input)
                             and ((list(shape_x) == list(shape_y) and format_x.upper() in ("NCHW", "NHWC")) or
@@ -324,15 +319,16 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
                            or (list(shape_x) == list(shape_y) and util_common.is_same_group(list_input))),
                    "ND": True
                    }
-    format_flag["NC1HWC0"] = format_flag["NC1HWC0"] or (x_flag["4d"] and y_flag["Scalar"] and x_cdim % 16 == 0) or (
-            x_flag["Scalar"] and y_flag["4d"] and y_cdim % 16 == 0) or (
+    format_flag["NC1HWC0"] = format_flag.get("NC1HWC0") or \
+                             (x_flag.get("4d") and y_flag.get("Scalar") and x_cdim % 16 == 0) or (
+            x_flag.get("Scalar") and y_flag.get("4d") and y_cdim % 16 == 0) or (
             len(shape_x) == 1 and len(shape_y) == 1 and shape_x[0] % 16 == 0 and shape_y[0] % 16 == 0)
-    format_flag["FRACTAL_Z"] = format_flag["FRACTAL_Z"] or \
+    format_flag["FRACTAL_Z"] = format_flag.get("FRACTAL_Z") or \
                                (util_common.is_support_fractal_z_inputs(list_input) and
-                               (x_flag["4d"] and y_flag["Scalar"] and x_cdim % 16 == 0 and x_ndim % 16 == 0) or
-                               (x_flag["Scalar"] and y_flag["4d"] and y_cdim % 16 == 0 and y_ndim % 16 == 0))
+                               (x_flag.get("4d") and y_flag.get("Scalar") and x_cdim % 16 == 0 and x_ndim % 16 == 0) or
+                               (x_flag.get("Scalar") and y_flag.get("4d") and y_cdim % 16 == 0 and y_ndim % 16 == 0))
 
-    format_flag["NC1HWC0"] = format_5hd_flag and format_flag["NC1HWC0"]
+    format_flag["NC1HWC0"] = format_5hd_flag and format_flag.get("NC1HWC0")
 
     format_list = [i for i in format_flag if format_flag[i]]
     for dtype in dtype_list:
@@ -370,7 +366,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
             dtype_total = dtype_total + [dtype] * 1
         format_list0 = format_list + format_nz * len_format_list
         format_list1 = format_list + format_nd * len_format_list
-        if len(shape_y) == 1 and x_flag["4d"] and shape_y[0] % 16 == 0 and x_cdim % 16 == 0:
+        if len(shape_y) == 1 and x_flag.get("4d") and shape_y[0] % 16 == 0 and x_cdim % 16 == 0:
             format_list0 = format_list + format_5hd * len_format_list
             format_list1 = format_list + format_5hd * len_format_list
         if add_nz_nd:
@@ -567,8 +563,8 @@ def _add_compute_with_batchmatmul(lhs_tensor, rhs_tensor):
     else:
         para_name = "add"
     batch_shape = shape_util.shape_to_list(lhs_tensor.op.attrs["batch_shape"])
-    para_dict= {"format_elem": rhs_tensor.op.attrs["format"],
-                "batch_shape": batch_shape}
+    para_dict = {"format_elem": rhs_tensor.op.attrs["format"],
+                 "batch_shape": batch_shape}
     rhs_tensor, shape_max = batchmatmul_elem_nd2nz(lhs_tensor, rhs_tensor, para_dict, para_name)
     rhs_tensor = tbe.broadcast(rhs_tensor, shape_max)
     rhs_tensor = batchmatmul_elem_reshape(lhs_tensor, rhs_tensor, batch_shape, para_name)
@@ -579,9 +575,9 @@ def _add_compute_with_batchmatmul(lhs_tensor, rhs_tensor):
     return res
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("add")
-def add_compute(input_x, input_y, output_z, is_scene_1D=False, broadcast_flag=True, kernel_name="add"):
+def add_compute(input_x, input_y, output_z, is_scene_1d=False, broadcast_flag=True, kernel_name="add"):
     """
     calculating data's add, c = a + b
 
@@ -593,6 +589,8 @@ def add_compute(input_x, input_y, output_z, is_scene_1D=False, broadcast_flag=Tr
         the placeholder of second input data
     output_z: dict
         shape and dtype of output, should be broadcast shape and type as input
+    is_scene_1d: bool
+        is scene 1d
     kernel_name: str
         cce kernel name, default value is add
 
@@ -605,7 +603,7 @@ def add_compute(input_x, input_y, output_z, is_scene_1D=False, broadcast_flag=Tr
         input_x = tbe.cast_to(input_x, "float16")
         input_y = tbe.cast_to(input_y, "float16")
 
-    if is_scene_1D == True:
+    if is_scene_1d:
         shape_x = tbe.util.shape_to_list(input_x.shape)
         shape_y = tbe.util.shape_to_list(input_y.shape)
         if shape_x != shape_y:
@@ -664,26 +662,27 @@ def add(input_x, input_y, output_z, kernel_name="add"):
     input_data_type = input_x.get("dtype").lower()
     para_check.check_dtype(input_data_type, check_tuple, param_name="input_x")
 
-    # check shape 
+    # check shape
     shape_x = input_x.get("shape")
     shape_y = input_y.get("shape")
     shape_x = shape_util.scalar2tensor_one(shape_x)
     shape_y = shape_util.scalar2tensor_one(shape_y)
     if shape_y[0] == 1 and len(shape_y) == 1:
         broadcast_flag = True
-        is_scene_1D = True
+        is_scene_1d = True
 
         # check x2 is 1D or not
         if para_check.is_scalar(shape_y):
             broadcast_flag = False
             shape_y = tuple([1] * (len(shape_x) - len(shape_y))) + tuple(shape_y)
     else:
-        is_scene_1D = False
+        is_scene_1d = False
         broadcast_flag = True
 
-        # format_pattern = 1  Nz and vector
-        # format_pattern = 2  vector and Nz
-        # format_pattern = 0  Nz scalar  Nz Nz  ND ND
+        # format_pattern value means
+        # 1: Nz and vector
+        # 2: vector and Nz
+        # 0:  Nz scalar  Nz Nz  ND ND
         format_pattern = _add_check_format(input_x, input_y)
         shape_x, shape_y = _infer_shape(format_pattern, input_x, input_y)
         shape_x = shape_util.scalar2tensor_one(shape_x)
@@ -702,7 +701,7 @@ def add(input_x, input_y, output_z, kernel_name="add"):
 
     data_x = tvm.placeholder(shape_x, dtype=input_data_type, name="data_1")
     data_y = tvm.placeholder(shape_y, dtype=input_data_type, name="data_2")
-    res = add_compute(data_x, data_y, output_z, is_scene_1D, broadcast_flag, kernel_name)
+    res = add_compute(data_x, data_y, output_z, is_scene_1d, broadcast_flag, kernel_name)
 
     with tvm.target.cce():
         schedule = tbe.auto_schedule(res)

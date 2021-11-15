@@ -23,8 +23,9 @@ from te.utils import shape_util
 from impl.util import util_common
 from impl.util import util_select_op_base
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=locally-disabled,too-many-locals,unused-variable
+
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-locals,unused-variable
 def shape_broadcast(data_1, data_2):
     """
     broadcast the two input
@@ -53,7 +54,7 @@ def shape_broadcast(data_1, data_2):
     return data_1, data_2
 
 
-# pylint: disable=redeclared-assigned-name
+# 'pylint: disable=redeclared-assigned-name
 @tbe_platform.fusion_manager.fusion_manager.register("adam_apply_one")
 def adam_apply_one_compute(data_input0, data_input1, data_input2, data_input3,
                            data_input4, data_input_mul, data_input_mul1,
@@ -315,7 +316,7 @@ def op_select_format(input0, input1, input2, input3, input4,
                   mul0_x, mul1_x, mul2_x, mul3_x, add2_y]
 
     dtype_list = ["float16", "float32"]
-    dtype_list_out = dtype_list.copy()
+    dtype_list_out = ["float16", "float32"]
     support_format = ["ND"] * len(dtype_list)
     shape_equal_flag = True
     for i in range(1, 10):
@@ -327,7 +328,7 @@ def op_select_format(input0, input1, input2, input3, input4,
         support_format = support_format + ["NDC1HWC0"] * len(dtype_list)
         support_format = support_format + ["FRACTAL_Z_3D"] * len(dtype_list)
         dtype_list_out = dtype_list_out + dtype_list + dtype_list
-    
+
     dtype_str = ','.join(dtype_list_out)
     format_str = ','.join(support_format)
 
@@ -357,7 +358,7 @@ def op_select_format(input0, input1, input2, input3, input4,
                                                  datatype=dtype_str, format=format_str)
     output2_param = util_select_op_base.gen_param(classify="output2", name="output2",
                                                  datatype=dtype_str, format=format_str)
-    
+
     param_list = [input0_param, input1_param, input2_param, input3_param,
                   input4_param, input5_param, input6_param, input7_param,
                   input8_param, input9_param,

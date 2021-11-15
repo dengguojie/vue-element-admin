@@ -11,10 +11,10 @@
         ],
         "format": "ND",
         "ori_shape": [
-          32,
-          3,
-          5,
-          5
+          -1,
+          -1,
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "name": "y_grad",
@@ -53,10 +53,10 @@
         ],
         "format": "ND",
         "ori_shape": [
-          32,
-          3,
-          5,
-          5
+          -1,
+          -1,
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "name": "clamp_min_mask",
@@ -95,10 +95,10 @@
         ],
         "format": "ND",
         "ori_shape": [
-          32,
-          3,
-          5,
-          5
+          -1,
+          -1,
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "name": "clamp_max_mask",
@@ -139,10 +139,10 @@
         ],
         "format": "ND",
         "ori_shape": [
-          32,
-          3,
-          5,
-          5
+          -1,
+          -1,
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "name": "x_grad",

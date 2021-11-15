@@ -14,23 +14,6 @@
 # ============================================================================
 """
 acosh_grad
-
-  Op_description :
-    Computes gradients for Acosh operation
-
-    # acosh_grad(
-    #   y,
-    #   dy,
-    #   z,
-    #   kernel_name="cce_acosh_grad")
-
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
-
-  Constraint :
-    [1] All : 'y' and 'dy' must have the same type and shape.
-    [2] All : shape size limit is 2147483648.
 """
 import operator
 
@@ -41,13 +24,19 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
-NUM_ONE = 1
-NUM_TWO = 2
-NUM_REPEAT = 0.125
 
-TAYLOR_SECOND_ORDER_PARAM = 0.1666666666666666666666666666666666
-TAYLOR_THIRD_ORDER_PARAM = 0.0083333333333333333333333333333333
-TAYLOR_FOURTH_ORDER_PARAM = 0.0001984126984126984126984126984126
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    Constant in this class
+    """
+    NUM_ONE = 1
+    NUM_TWO = 2
+    NUM_REPEAT = 0.125
+
+    TAYLOR_SECOND_ORDER_PARAM = 0.1666666666666666666666666666666666
+    TAYLOR_THIRD_ORDER_PARAM = 0.0083333333333333333333333333333333
+    TAYLOR_FOURTH_ORDER_PARAM = 0.0001984126984126984126984126984126
 
 
 def _taylor_sinh_compute(input_data):
@@ -64,24 +53,23 @@ def _taylor_sinh_compute(input_data):
     data_power_2 = tbe.vmul(input_data, input_data)
     data_power_res = tbe.vmuls(
         data_power_2,
-        tvm.const(TAYLOR_FOURTH_ORDER_PARAM, input_data.dtype))
+        tvm.const(Constant.TAYLOR_FOURTH_ORDER_PARAM, input_data.dtype))
 
     # 1/5! + x^2 / 7!
     data_power_res = tbe.vadds(
         data_power_res,
-        tvm.const(TAYLOR_THIRD_ORDER_PARAM, input_data.dtype))
+        tvm.const(Constant.TAYLOR_THIRD_ORDER_PARAM, input_data.dtype))
 
     # 1/3! + x^2( 1/5! + x^2/7!)
     data_power_res = tbe.vmul(data_power_res, data_power_2)
     data_power_res = tbe.vadds(
         data_power_res,
-        tvm.const(TAYLOR_SECOND_ORDER_PARAM, input_data.dtype))
+        tvm.const(Constant.TAYLOR_SECOND_ORDER_PARAM, input_data.dtype))
 
     # 1 + x^2( 1/3! + x^2(1/5! + x^2/7!))
     data_power_res = tbe.vmul(data_power_res, data_power_2)
 
-    data_power_res = tbe.vadds(data_power_res, \
-                               tvm.const(NUM_ONE, input_data.dtype))
+    data_power_res = tbe.vadds(data_power_res, tvm.const(Constant.NUM_ONE, input_data.dtype))
 
     # x * (1 + x^2( 1/3! + x^2(1/5! + x^2/7!)))
     data_power_res = tbe.vmul(data_power_res, input_data)
@@ -100,18 +88,17 @@ def _sinh_repeat_with_sqrt(data):
     """
 
     data_square = tbe.vmul(data, data)
-    data_square = tbe.vadds(data_square, tvm.const(NUM_ONE,
-                                                   data.dtype))
+    data_square = tbe.vadds(data_square, tvm.const(Constant.NUM_ONE, data.dtype))
 
     data_square = tbe.vsqrt(data_square, 1)
 
     data_square = tbe.vmul(data_square, data)
-    data_square = tbe.vmuls(data_square, tvm.const(NUM_TWO,
-                                                   data.dtype))
+    data_square = tbe.vmuls(data_square, tvm.const(Constant.NUM_TWO, data.dtype))
 
     return data_square
 
 
+# 'pylint: disable=unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("acosh_grad")
 def acosh_grad_compute(y, dy, z, kernel_name="acos_grad"):
     """
@@ -133,7 +120,7 @@ def acosh_grad_compute(y, dy, z, kernel_name="acos_grad"):
         dy = tbe.cast_to(dy, "float32")
         dtype = "float32"
 
-    data_y = tbe.vmuls(y, tvm.const(NUM_REPEAT, dtype))
+    data_y = tbe.vmuls(y, tvm.const(Constant.NUM_REPEAT, dtype))
     sinh_value_0 = _taylor_sinh_compute(data_y)
     sinh_value_1 = _sinh_repeat_with_sqrt(sinh_value_0)
     sinh_value_2 = _sinh_repeat_with_sqrt(sinh_value_1)
@@ -146,6 +133,7 @@ def acosh_grad_compute(y, dy, z, kernel_name="acos_grad"):
     return res
 
 
+# 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def acosh_grad(y, dy, z, kernel_name="acosh_grad"):

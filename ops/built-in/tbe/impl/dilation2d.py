@@ -295,7 +295,7 @@ def _is_immediate(val):
     """
     check is immediate number
     """
-    if isinstance(val, (tik.tik_lib.tik_expr.Expr, tik.api.tik_scalar.Scalar)):
+    if isinstance(val, (tik.Expr, tik.Scalar)):
         return False
     return True
 

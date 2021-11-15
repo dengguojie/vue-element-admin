@@ -14,23 +14,6 @@
 # ============================================================================
 """
 acos_grad
-
-  Op_description :
-    Computes gradients for Acos operation
-
-    # acos_grad(
-    #   y,
-    #   dy,
-    #   z,
-    #   kernel_name="acos_grad")
-
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
-
-  Constraint :
-    [1] All : 'y' and 'dy' must have the same type and shape.
-    [2] All : shape size limit is 2147483648.
 """
 import operator
 
@@ -42,10 +25,18 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 # newton eqation is x1 = x0(3-a*(x0^2))/2
-NUM_MINUS_ONE = -1
-NUM_ONE = 1
 
 
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    Constant in this class
+    """
+    NUM_MINUS_ONE = -1
+    NUM_ONE = 1
+
+
+# 'pylint: disable=unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("acos_grad")
 def acos_grad_compute(y, dy, z, kernel_name="acos_grad"):
     """
@@ -69,18 +60,19 @@ def acos_grad_compute(y, dy, z, kernel_name="acos_grad"):
         dtype = "float32"
 
     data1_square = tbe.vmul(y, y)
-    data1_square = tbe.vmuls(data1_square, tvm.const(NUM_MINUS_ONE, dtype=dtype))
-    data1_square = tbe.vadds(data1_square, tvm.const(NUM_ONE, dtype=dtype))
+    data1_square = tbe.vmuls(data1_square, tvm.const(Constant.NUM_MINUS_ONE, dtype=dtype))
+    data1_square = tbe.vadds(data1_square, tvm.const(Constant.NUM_ONE, dtype=dtype))
 
     data1_reciprocal = tbe.vsqrt(data1_square, 1)
     data1_reciprocal = tbe.vdiv(dy, data1_reciprocal)
-    res = tbe.vmuls(data1_reciprocal, tvm.const(NUM_MINUS_ONE, dtype=dtype))
+    res = tbe.vmuls(data1_reciprocal, tvm.const(Constant.NUM_MINUS_ONE, dtype=dtype))
 
     if dtype_1 == "float16":
         res = tbe.cast_to(res, "float16")
     return res
 
 
+# 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def acos_grad(y, dy, z, kernel_name="acos_grad"):

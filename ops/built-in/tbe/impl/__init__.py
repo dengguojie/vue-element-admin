@@ -17,8 +17,7 @@ cce specific declaration and schedules.
 """
 from __future__ import absolute_import as _abs
 
-import warnings
-warnings.filterwarnings(action="ignore", category=DeprecationWarning)
+import impl.ignore_deprecation_warning
 
 # tbe base op
 from .abs import abs
@@ -43,7 +42,7 @@ from .inv_grad import inv_grad
 from .matrix_set_diag_d import matrix_set_diag_d
 from .softplus_grad import softplus_grad
 from .reduce_min_d import reduce_min_d
-from .reduce_min_d import reduce_min_d as reduce_min
+from .reduce_min import reduce_min
 from .lin_space_d import lin_space_d
 from .matrix_diag_d import matrix_diag_d
 from .matrix_diag_part_d import matrix_diag_part_d

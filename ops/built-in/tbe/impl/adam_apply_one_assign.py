@@ -25,8 +25,8 @@ from te.utils import shape_util
 from impl.util import fusion_util
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=locally-disabled,too-many-locals,unused-variable
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-locals,unused-variable
 def shape_broadcast(data_1, data_2):
     """
     broadcast the two input
@@ -55,7 +55,7 @@ def shape_broadcast(data_1, data_2):
     return data_1, data_2
 
 
-# pylint: disable=redeclared-assigned-name
+# 'pylint: disable=redeclared-assigned-name
 @tbe_platform.fusion_manager.fusion_manager.register("adam_apply_one_assign")
 def adam_apply_one_assign_compute(data_input0, data_input1, data_input2, data_input3,
                                   data_input4, data_input_mul, data_input_mul1,

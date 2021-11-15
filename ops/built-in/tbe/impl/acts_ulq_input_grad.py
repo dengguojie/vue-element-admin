@@ -21,12 +21,10 @@ import te.lang.cce
 from te import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
-
-# General limitation of the reduce size for input shape: 2**31
-SHAPE_SIZE_LIMIT = 2147483648
+from impl.constant_util import SHAPE_SIZE_LIMIT
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals
 def acts_ulq_input_grad_compute(data_y_grad, data_clamp_min_mask, data_clamp_max_mask, kernel_name):
     """
     calculating grad of acts_ulq

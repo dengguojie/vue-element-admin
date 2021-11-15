@@ -24,13 +24,10 @@ from te.utils import para_check
 from te.utils import shape_util
 from impl.util import fusion_util
 
-# shape size limit
-SHAPE_SIZE_LIMIT = 2**30
 
-
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=locally-disabled,too-many-locals,too-many-statements
-# pylint: disable=locally-disabled,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-locals,too-many-statements
+# 'pylint: disable=locally-disabled,invalid-name,too-many-locals
 def square_compute(x, kernel_name="square"):
     """
     calculating data's square,y= x*x
@@ -52,21 +49,21 @@ def square_compute(x, kernel_name="square"):
 
 def mul_compute(x1, x2, kernel_name="mul"):
     """
-   calculating data's element-wise mul, c = a .* b
+    calculating data's element-wise mul, c = a .* b
 
-   Parameters
-   ----------
-   x1: TVM tensor
-       the placeholder of first input data
-   x2: TVM tensor
-       the placeholder of second input data
-   kernel_name: str
-       cce kernel name, default value is "mul"
+    Parameters
+    ----------
+    x1: TVM tensor
+        the placeholder of first input data
+    x2: TVM tensor
+        the placeholder of second input data
+    kernel_name: str
+        cce kernel name, default value is "mul"
 
-   Returns
-   -------
-   res: output of the data's element-wise mul
-   """
+    Returns
+    -------
+    res: output of the data's element-wise mul
+    """
     shape_x1 = shape_util.shape_to_list(x1.shape)
     shape_x2 = shape_util.shape_to_list(x2.shape)
 

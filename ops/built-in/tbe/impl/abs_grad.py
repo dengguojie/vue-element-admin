@@ -14,23 +14,6 @@
 # ============================================================================
 """
 abs_grad
-
-  Op_description :
-    Computes gradients for abs operation
-
-    # abs_grad(
-    #   y,
-    #   dy,
-    #   z,
-    #   kernel_name="cce_abs_grad")
-
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
-
-  Constraint :
-    [1] All : 'y' and 'dy' must have the same type and shape.
-    [2] All : shape size limit is 2147483648.
 """
 import operator
 
@@ -40,8 +23,6 @@ from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
-
-SHAPE_SIZE_LIMIT = 2147483648
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("abs_grad")
@@ -75,6 +56,7 @@ def abs_grad_compute(y, dy, z, kernel_name="abs_grad"):
     return data1_res
 
 
+# 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def abs_grad(y, dy, z, kernel_name="abs_grad"):

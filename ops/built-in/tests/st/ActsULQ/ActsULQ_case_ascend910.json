@@ -11,10 +11,10 @@
         ],
         "format": "ND",
         "ori_shape": [
-          32,
-          3,
-          5,
-          5
+          -1,
+          -1,
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "name": "data",
@@ -46,16 +46,28 @@
       },
       {
         "shape": [
-          1
+          1,1,1,1
         ],
         "format": "ND",
         "ori_shape": [
-          1
+          1,1,1,1
         ],
         "ori_format": "ND",
         "name": "clamp_min",
         "type": "float16",
         "shape_range": [
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            1
+          ],
           [
             1,
             1
@@ -67,16 +79,28 @@
       },
       {
         "shape": [
-          1
+          1,1,1,1
         ],
         "format": "ND",
         "ori_shape": [
-          1
+          1,1,1,1
         ],
         "ori_format": "ND",
         "name": "clamp_max",
         "type": "float16",
         "shape_range": [
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            1
+          ],
           [
             1,
             1
@@ -97,10 +121,10 @@
         ],
         "format": "ND",
         "ori_shape": [
-          32,
-          3,
-          5,
-          5
+          -1,
+          -1,
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "name": "output",
@@ -139,10 +163,10 @@
         ],
         "format": "ND",
         "ori_shape": [
-          32,
-          3,
-          5,
-          5
+          -1,
+          -1,
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "name": "clamp_min_mask",
@@ -181,10 +205,10 @@
         ],
         "format": "ND",
         "ori_shape": [
-          32,
-          3,
-          5,
-          5
+          -1,
+          -1,
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "name": "clamp_max_mask",
@@ -223,10 +247,10 @@
         ],
         "format": "ND",
         "ori_shape": [
-          32,
-          3,
-          5,
-          5
+          -1,
+          -1,
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "name": "x_clamped_loss",

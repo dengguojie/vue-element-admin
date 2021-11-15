@@ -1,6 +1,6 @@
 [
   {
-    "op": "ActULQClampMaxGrad",
+    "op": "ActULQClampMinGrad",
     "input_desc": [
       {
         "shape": [
@@ -9,8 +9,8 @@
         ],
         "format": "ND",
         "ori_shape": [
-          128,
-          8
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "name": "input_x",
@@ -21,8 +21,8 @@
             200
           ],
           [
-            1,
-            128
+            8,
+            8
           ]
         ],
         "typical_shape": [
@@ -37,8 +37,8 @@
         ],
         "format": "ND",
         "ori_shape": [
-          128,
-          8
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "name": "input_y",
@@ -49,8 +49,8 @@
             200
           ],
           [
-            1,
-            128
+            8,
+            8
           ]
         ],
         "typical_shape": [
@@ -65,8 +65,8 @@
         ],
         "format": "ND",
         "ori_shape": [
-          128,
-          8
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "name": "input_z",
@@ -77,8 +77,8 @@
             200
           ],
           [
-            1,
-            128
+            8,
+            8
           ]
         ],
         "typical_shape": [
@@ -105,6 +105,6 @@
       }
     ],
     "attr": [],
-    "case_name": "test_ActULQClampMaxGrad_000"
+    "case_name": "test_ActULQClampMinGrad_000"
   }
 ]

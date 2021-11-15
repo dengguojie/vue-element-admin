@@ -12,7 +12,7 @@
         ],
         "ori_format": "ND",
         "name": "input0",
-        "type": "float"
+        "type": "float32"
       },
       {
         "shape": [
@@ -24,7 +24,7 @@
         ],
         "ori_format": "ND",
         "name": "input1",
-        "type": "float"
+        "type": "float32"
       },
       {
         "shape": [
@@ -36,7 +36,7 @@
         ],
         "ori_format": "ND",
         "name": "input2",
-        "type": "float"
+        "type": "float32"
       },
       {
         "shape": [
@@ -48,7 +48,7 @@
         ],
         "ori_format": "ND",
         "name": "input3",
-        "type": "float"
+        "type": "float32"
       },
       {
         "shape": [
@@ -60,7 +60,7 @@
         ],
         "ori_format": "ND",
         "name": "input4",
-        "type": "float"
+        "type": "float32"
       },
       {
         "shape": [
@@ -72,7 +72,7 @@
         ],
         "ori_format": "ND",
         "name": "const_mul_x",
-        "type": "float"
+        "type": "float32"
       },
       {
         "shape": [
@@ -84,7 +84,7 @@
         ],
         "ori_format": "ND",
         "name": "const_mul1_x",
-        "type": "float"
+        "type": "float32"
       },
       {
         "shape": [
@@ -96,7 +96,7 @@
         ],
         "ori_format": "ND",
         "name": "const_mul2_x",
-        "type": "float"
+        "type": "float32"
       },
       {
         "shape": [
@@ -108,7 +108,7 @@
         ],
         "ori_format": "ND",
         "name": "const_mul3_x",
-        "type": "float"
+        "type": "float32"
       },
       {
         "shape": [
@@ -120,7 +120,7 @@
         ],
         "ori_format": "ND",
         "name": "const_mul4_x",
-        "type": "float"
+        "type": "float32"
       },
       {
         "shape": [
@@ -132,7 +132,7 @@
         ],
         "ori_format": "ND",
         "name": "add2_y",
-        "type": "float"
+        "type": "float32"
       }
     ],
     "output_desc": [
@@ -146,7 +146,7 @@
         ],
         "ori_format": "ND",
         "name": "output0",
-        "type": "float"
+        "type": "float32"
       },
       {
         "shape": [
@@ -158,7 +158,7 @@
         ],
         "ori_format": "ND",
         "name": "output1",
-        "type": "float"
+        "type": "float32"
       },
       {
         "shape": [
@@ -170,7 +170,7 @@
         ],
         "ori_format": "ND",
         "name": "output2",
-        "type": "float"
+        "type": "float32"
       }
     ],
     "attr": [],
@@ -391,7 +391,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
+          -1,
           8,
           9
         ],
@@ -418,7 +418,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
+          -1,
           8,
           9
         ],
@@ -445,7 +445,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
+          -1,
           8,
           9
         ],
@@ -472,7 +472,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
+          -1,
           8,
           9
         ],
@@ -499,7 +499,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
+          -1,
           8,
           9
         ],
@@ -526,7 +526,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
+          -1,
           8,
           9
         ],
@@ -553,7 +553,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
+          -1,
           8,
           9
         ],
@@ -580,7 +580,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
+          -1,
           8,
           9
         ],
@@ -607,7 +607,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
+          -1,
           8,
           9
         ],
@@ -634,7 +634,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
+          -1,
           8,
           9
         ],
@@ -663,7 +663,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
+          -1,
           8,
           9
         ],
@@ -690,7 +690,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
+          -1,
           8,
           9
         ],
@@ -717,7 +717,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1,
+          -1,
           8,
           9
         ],

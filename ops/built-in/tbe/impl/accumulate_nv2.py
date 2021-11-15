@@ -24,10 +24,17 @@ from te.platform.fusion_manager import fusion_manager
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 
-MIN_TENSOR_NUM = 1
-MAX_TENSOR_NUM = 40
+
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    Constant in this class
+    """
+    MIN_TENSOR_NUM = 1
+    MAX_TENSOR_NUM = 40
 
 
+# 'pylint: disable=too-many-branches,unused-argument
 @fusion_manager.register("accumulate_nv2")
 def _accumulate_nv2_compute(tensor_list, y, num, kernel_name='accumulate_nv2'):
     """
@@ -44,7 +51,7 @@ def _accumulate_nv2_compute(tensor_list, y, num, kernel_name='accumulate_nv2'):
 
     out_shape = y.get('shape')
     out_dtype = y.get('dtype').lower()
-    
+
     reduce_shape, _ = refine_shape_axes(out_shape, [])
 
     if num > 1:
@@ -106,22 +113,23 @@ def _check_all_shape_and_dtype_same(x, y, num, kernel_name):
     ----------
     """
     para_check.check_kernel_name(kernel_name)
-    
+
     same_shape = True
     # ccec compiler does not support more than 40 parameters, so limit it
-    if num > MAX_TENSOR_NUM or num < MIN_TENSOR_NUM:
-        error_manager_vector.raise_err_input_param_not_in_range("accumulate_nv2", "num", MIN_TENSOR_NUM, MAX_TENSOR_NUM, num)
-    
+    if num > Constant.MAX_TENSOR_NUM or num < Constant.MIN_TENSOR_NUM:
+        error_manager_vector.raise_err_input_param_not_in_range(
+            "accumulate_nv2", "num", Constant.MIN_TENSOR_NUM, Constant.MAX_TENSOR_NUM, num)
+
     check_list = ('float32', 'float16', 'int8', 'uint8', 'int32')
     shape_list = []
     out_dtype = y.get('dtype').lower()
     para_check.check_dtype(out_dtype, check_list)
 
     for i in range(num):
-        shape = x[i].get('shape') 
+        shape = x[i].get('shape')
         para_check.check_shape(shape)
         shape_list.append(shape)
-        
+
         dtype = x[i].get('dtype').lower()
         if dtype != out_dtype:
             error_detail = "The input and output data types should be the same."
@@ -132,12 +140,13 @@ def _check_all_shape_and_dtype_same(x, y, num, kernel_name):
         if out_shape != shape_list[i]:
             _, _, out_shape = broadcast_shapes(out_shape, shape_list[i])
             same_shape = False
-    
+
     back_dict = [shape_list, out_shape, out_dtype, same_shape]
 
     return back_dict
 
 
+# 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
                             para_check.KERNEL_NAME)
 def accumulate_nv2(x, y, num, kernel_name="accumulate_nv2"):
@@ -155,7 +164,7 @@ def accumulate_nv2(x, y, num, kernel_name="accumulate_nv2"):
     if len(x) != num:
         error_detail = "The size of input and num must be same."
         error_manager_vector.raise_err_two_input_shape_invalid("accumulate_nv2", len(x), num, error_detail)
-    
+
     back_dict = _check_all_shape_and_dtype_same(x, y, num, kernel_name)
     shape_list, out_shape, out_dtype, same_shape = back_dict[0], back_dict[1], back_dict[2], back_dict[3]
 
@@ -172,7 +181,7 @@ def accumulate_nv2(x, y, num, kernel_name="accumulate_nv2"):
             data_name = 'data%d' % i
             data = tvm.placeholder(shape_list[i], name=data_name, dtype=out_dtype)
             tensor_list.append(data)
-        
+
     res = _accumulate_nv2_compute(tensor_list, y, num, kernel_name)
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)

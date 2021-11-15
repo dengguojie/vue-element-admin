@@ -14,21 +14,6 @@
 # ============================================================================
 """
 acosh
-
-  Op_description :
-    Computes inverse hyperbolic cosine of x element-wise
-
-    # acosh(
-    #   input_data,
-    #   output_res,
-    #   kernel_name="cce_acosh")
-
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
-
-  Constraint :
-    [1] All : shape size limit is 2147483648.
 """
 import te.lang.cce as tbe
 import te.platform as tbe_platform
@@ -36,9 +21,16 @@ from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 
-CONST_NEG_ONE = -1.0
+
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    Constant in this class
+    """
+    CONST_NEG_ONE = -1.0
 
 
+# 'pylint: disable=unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("acosh")
 def acosh_compute(input_data, output_res, kernel_name="acosh"):
     """
@@ -63,7 +55,7 @@ def acosh_compute(input_data, output_res, kernel_name="acosh"):
         data = tbe.cast_to(data, "float32")
 
     res = tbe.vmul(data, data)
-    res = tbe.vadds(res, tvm.const(CONST_NEG_ONE, data.dtype))
+    res = tbe.vadds(res, tvm.const(Constant.CONST_NEG_ONE, data.dtype))
     res = tbe.vsqrt(res, 1)
     res = tbe.vadd(res, data)
     res = tbe.vlog(res, 1)

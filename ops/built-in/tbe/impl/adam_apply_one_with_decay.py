@@ -20,15 +20,13 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-
-# shape size limit
-SHAPE_SIZE_LIMIT = 2**30
+from impl.constant_util import SHAPE_SIZE_LIMIT
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=locally-disabled,too-many-locals,too-many-statements
-# pylint: disable=locally-disabled,invalid-name,too-many-locals
-# pylint: disable=unused-variable
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-locals,too-many-statements
+# 'pylint: disable=locally-disabled,invalid-name,too-many-locals
+# 'pylint: disable=unused-variable
 def square_compute(x, kernel_name="square"):
     """
     calculating data's square,y= x*x

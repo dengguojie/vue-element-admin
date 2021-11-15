@@ -23,8 +23,6 @@ from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 
-SHAPE_SIZE_LIMIT = 2147483648  # shape limit
-
 
 @tbe_platform.fusion_manager.fusion_manager.register("abs")
 def abs_compute(x, y, kernel_name="abs"):
