@@ -75,7 +75,9 @@ if(BUILD_OPEN_PROJECT)
     -ftrapv
     -fstack-protector-all
     -fPIC
-    -Werror
+    -Werror=sign-compare
+    -Werror=unused-function
+    -Werror=unused-variable
     -Wno-address
     $<$<STREQUAL:${PRODUCT_SIDE},device>:-fvisibility-inlines-hidden>
     $<$<STREQUAL:${PRODUCT_SIDE},device>:-fvisibility=hidden>
@@ -201,7 +203,9 @@ target_compile_options(cpu_kernels_context PRIVATE
     -O2
     -std=c++11
     -ftrapv
-    -Werror
+    -Werror=sign-compare
+    -Werror=unused-function
+    -Werror=unused-variable
     -Wno-address
     $<$<STREQUAL:${PRODUCT_SIDE},host>:-fvisibility-inlines-hidden>
     $<$<STREQUAL:${PRODUCT_SIDE},host>:-fvisibility=hidden>
@@ -229,7 +233,9 @@ target_compile_options(cpu_kernels_context_static PRIVATE
     -std=c++11
     -ftrapv
     -fstack-protector-all
-    -Werror
+    -Werror=sign-compare
+    -Werror=unused-function
+    -Werror=unused-variable
     -Wno-address
     $<$<STREQUAL:${PRODUCT_SIDE},device>:-fvisibility-inlines-hidden>
     $<$<STREQUAL:${PRODUCT_SIDE},device>:-fvisibility=hidden>
