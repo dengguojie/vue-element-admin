@@ -25,22 +25,15 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
 
-SHAPE_SIZE_ONE = 1
-SHAPE_SIZE_FOUR = 4
-FP16_VECTOR_MASK_MAX = 128
 FP32_VECTOR_MASK_MAX = 64
-INT8_VECTOR_MASK_MAX = 256
-# vnchwconv instr compute min blocks
-TRANS_MIN_BLKS = 16
-# do transpose need split ub to trisection
-TRISECTION_UB = 3
 BLOCK_BYTES = 32
-CONFIG_TWO = 2
-REPEAT_TIMES_MAX = 255
 SMMU_ID = 0
 DATA_MOV_STRIDE = 0
 DATA_MOV_NBURST = 1
-REMAIN_REPEAT = 1
+# vector instr stride 8 block
+VEC_STRIDE = 8
+# ub init all 0 value
+INIT_ZERO = 0
 # int32 in 32B
 ONE_BLK_INT32_NUMS = 8
 # int64 in 32B
@@ -49,11 +42,12 @@ ONE_BLK_INT64_NUMS = 4
 BYTE_BITS = 8
 TILING_NUMS = 8
 MODE0 = 0
+FP32_MIN_VALUE = 0.00001
 
 # pylint: disable=no-member,attribute-defined-outside-init,dangerous-default-value,consider-using-enumerate
 
 
-class LRU(OpBase):
+class Lru(OpBase):
     """
        Function: use to store  base parameters
        Modify : 2021-07-09
@@ -77,6 +71,8 @@ class LRU(OpBase):
         self.way_number = 64
         self.embedding_size = self.data_shape[-1]
         self.set_number = self.cache_size // self.embedding_size // self.way_number
+        self.set_number_ceil_64 = (
+            self.set_number + FP32_VECTOR_MASK_MAX - 1) // FP32_VECTOR_MASK_MAX * FP32_VECTOR_MASK_MAX
         self.pre_route_number = pre_route_count
         # input param check
         self.check_param()
@@ -227,14 +223,16 @@ class LRU(OpBase):
         self.index_lower_tmp = self.tik_instance.Scalar(dtype="int64", name="index_lower_tmp", init_value=0)
         self.index_upper = self.tik_instance.Scalar(dtype="int32", name="index_upper", init_value=0)
         self.index_lower = self.tik_instance.Scalar(dtype="int32", name="index_lower", init_value=0)
-        self.miss_cnt = self.tik_instance.ScalarArray(dtype="int64",
-                                                      length=self.set_number,
-                                                      name="miss_cnt",
-                                                      init_value=0)
-        self.cache_cnt = self.tik_instance.ScalarArray(dtype="int64",
-                                                       length=self.set_number,
-                                                       name="cache_cnt",
-                                                       init_value=0)
+        self.miss_cnt_ub = self.tik_instance.Tensor("int32", [self.set_number_ceil_64], name="miss_cnt_ub",
+                                                    scope=tik.scope_ubuf)
+        self.cache_cnt_ub = self.tik_instance.Tensor("int32", [self.set_number_ceil_64], name="cache_cnt_ub",
+                                                    scope=tik.scope_ubuf)
+        self.tik_instance.vec_dup(FP32_VECTOR_MASK_MAX, self.miss_cnt_ub, INIT_ZERO,
+                                  self.set_number_ceil_64 // FP32_VECTOR_MASK_MAX, VEC_STRIDE)
+        self.tik_instance.vec_dup(FP32_VECTOR_MASK_MAX, self.cache_cnt_ub, INIT_ZERO,
+                                  self.set_number_ceil_64 // FP32_VECTOR_MASK_MAX, VEC_STRIDE)
+        self.miss_cnt_scalar = self.tik_instance.Scalar(dtype="int32", name="miss_cnt_scalar", init_value=0)
+        self.cache_cnt_scalar = self.tik_instance.Scalar(dtype="int32", name="cache_cnt_scalar", init_value=0)
         self.index_scalar = self.tik_instance.Scalar(dtype=self.index_list_dtype, name="index_scalar", init_value=0)
         self.index_core = self.tik_instance.Scalar(dtype=self.index_list_dtype, name="index_core", init_value=0)
         self.index_set = self.tik_instance.Scalar(dtype=self.index_list_dtype, name="index_set", init_value=0)
@@ -246,7 +244,7 @@ class LRU(OpBase):
                                                          init_value=0)
         self.atomic_add_index = self.tik_instance.Scalar(dtype=self.time_stamp_dtype,
                                                          name="atomic_add_index",
-                                                         init_value=1)
+                                                         init_value=FP32_MIN_VALUE)
         self.offset_index = self.tik_instance.Scalar(dtype=self.index_list_dtype, name="offset_index", init_value=-1)
         self.way_index = self.tik_instance.Scalar(dtype="uint16", name="way_index", init_value=0)
 
@@ -387,7 +385,8 @@ class LRU(OpBase):
                                               mask_mode="counter")
                 with self.tik_instance.if_scope(self.rsvd_cnt == 1):
                     self.way_index.set_as(self.vreduce_addr[0])
-                    self.cache_cnt[self.index_set].set_as(self.cache_cnt[self.index_set] + 1)
+                    self.cache_cnt_scalar.set_as(self.cache_cnt_ub[self.index_set])
+                    self.cache_cnt_ub[self.index_set].set_as(self.cache_cnt_scalar + 1)
                     self.time_stamp_ub[0].set_as(self.iterate_timestamp_scalar)
                     self.tik_instance.data_move_pad(
                         self.time_stamp_wsp[self.index_set * self.way_number + self.way_index], self.time_stamp_ub, 1,
@@ -396,9 +395,11 @@ class LRU(OpBase):
                         (self.index_set * self.way_number + self.way_index) * self.embedding_size)
                 with self.tik_instance.else_scope():
                     self.move_out_tmp_ub[0].set_as(self.index_scalar)
-                    self.miss_cnt[self.index_set].set_as(self.miss_cnt[self.index_set] + 1)
+                    self.miss_cnt_scalar.set_as(self.miss_cnt_ub[self.index_set])
+                    self.miss_cnt_scalar.set_as(self.miss_cnt_scalar + 1)
+                    self.miss_cnt_ub[self.index_set].set_as(self.miss_cnt_scalar)
                     self.tik_instance.data_move_pad(
-                        self.miss_index_wsp[self.index_set * self.index_list_len + self.miss_cnt[self.index_set] -
+                        self.miss_index_wsp[self.index_set * self.index_list_len + self.miss_cnt_scalar -
                                             1].reinterpret_cast_to("int32"),
                         self.move_out_tmp_ub.reinterpret_cast_to("int32"), 1, self.index_list_bytes, 0, 0)
                     self.move_out_tmp_ub[0].set_as(self.offset_index)
@@ -416,12 +417,14 @@ class LRU(OpBase):
                                             self.sorted_index_blocks, 0, 0)
                 self.sort_index(self.sorted_index_ub, self.time_stamp_ub, self.vsort_ub_a, self.vsort_ub_b)
                 self.vsort_ub_b.reinterpret_cast_to("int32")
-                with self.tik_instance.for_range(0, self.miss_cnt[set_id]) as miss_id:
+                self.miss_cnt_scalar.set_as(self.miss_cnt_ub[set_id])
+                self.cache_cnt_scalar.set_as(self.cache_cnt_ub[set_id])
+                with self.tik_instance.for_range(0, self.miss_cnt_scalar) as miss_id:
                     self.tik_instance.data_move_pad(
                         self.move_out_tmp_ub.reinterpret_cast_to("int32"),
                         self.miss_index_wsp[set_id * self.index_list_len + miss_id].reinterpret_cast_to("int32"), 1,
                         self.index_list_bytes, 0, 0)
-                    with self.tik_instance.if_scope(miss_id < self.way_number - self.cache_cnt[set_id]):
+                    with self.tik_instance.if_scope(miss_id < self.way_number - self.cache_cnt_scalar):
                         self.exchane_in_index.set_as(self.move_out_tmp_ub[0])
                         self.min_timestamp_index.set_as(self.vsort_ub_b[self.sorted_index_shape * 2 - 1 - miss_id * 2])
                         self.tag_index.set_as(self.min_timestamp_index + set_id * self.way_number)
@@ -549,7 +552,7 @@ def lru_cache_v2(index_list,
     not_in_cache_number,
     pre_route_count,
     """
-    obj = LRU(index_list, data, cache, tag, is_last_call, out_data, out_cache, out_tag, index_offset_list,
+    obj = Lru(index_list, data, cache, tag, is_last_call, out_data, out_cache, out_tag, index_offset_list,
               not_in_cache_index_list, not_in_cache_number, pre_route_count, kernel_name)
     obj.init_src_dst_gm([index_list, data, cache, tag, is_last_call],
                         [out_data, out_cache, out_tag, index_offset_list, not_in_cache_index_list, not_in_cache_number])
