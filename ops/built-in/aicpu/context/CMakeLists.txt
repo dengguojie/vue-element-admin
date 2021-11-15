@@ -75,6 +75,8 @@ if(BUILD_OPEN_PROJECT)
     -ftrapv
     -fstack-protector-all
     -fPIC
+    -Werror
+    -Wno-address
     $<$<STREQUAL:${PRODUCT_SIDE},device>:-fvisibility-inlines-hidden>
     $<$<STREQUAL:${PRODUCT_SIDE},device>:-fvisibility=hidden>
 	-DEIGEN_MPL2_ONLY
@@ -112,6 +114,7 @@ if(BUILD_OPEN_PROJECT)
     -ftrapv
     -fstack-protector-all
     -fPIC
+    -Werror
 	-DEIGEN_MPL2_ONLY
   )
 
@@ -198,6 +201,8 @@ target_compile_options(cpu_kernels_context PRIVATE
     -O2
     -std=c++11
     -ftrapv
+    -Werror
+    -Wno-address
     $<$<STREQUAL:${PRODUCT_SIDE},host>:-fvisibility-inlines-hidden>
     $<$<STREQUAL:${PRODUCT_SIDE},host>:-fvisibility=hidden>
 	-DEIGEN_MPL2_ONLY
@@ -224,6 +229,8 @@ target_compile_options(cpu_kernels_context_static PRIVATE
     -std=c++11
     -ftrapv
     -fstack-protector-all
+    -Werror
+    -Wno-address
     $<$<STREQUAL:${PRODUCT_SIDE},device>:-fvisibility-inlines-hidden>
     $<$<STREQUAL:${PRODUCT_SIDE},device>:-fvisibility=hidden>
 	-DEIGEN_MPL2_ONLY
@@ -261,6 +268,8 @@ target_compile_options(aicpu_nodedef_builder PRIVATE
     -ftrapv
     -fstack-protector-all
     -fPIC
+    -Werror
+    -Wno-address
 	-DEIGEN_MPL2_ONLY
 )
 

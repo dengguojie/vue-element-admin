@@ -50,14 +50,15 @@ inline std::uint32_t ComputeSoftmaxV2Kernel(const CpuKernelContext &ctx) {
   if (cores < 1) {
     return KERNEL_STATUS_INNER_ERROR;
   }
+  int64_t dim_size = dims.size();
   // pivot is the axes value
   std::int64_t pivot, inner_size{1}, outer_size{1}, length{1};
   if (axes[0] >= 0) {
     pivot = axes[0];
   } else {
-    pivot = dims.size() + axes[0];
+    pivot = dim_size + axes[0];
   }
-  for (size_t index = 0; index < dims.size(); index++) {
+  for (int64_t index = 0; index < dim_size; index++) {
     if (index > pivot) {
       inner_size *= dims[index];
     }
@@ -84,8 +85,7 @@ inline std::uint32_t ComputeSoftmaxV2Kernel(const CpuKernelContext &ctx) {
         dims_maximum, inner_size, outer_size);
     Eigen::array<int, 1> softmax_axes{{1}};
     dims_max = logits.maximum(softmax_axes);
-    const T constant_one(1.0);
-    for (size_t index = 0, index_dst = 0, index_batch = 0, count_step = 0;
+    for (int64_t index = 0, index_dst = 0, index_batch = 0, count_step = 0;
          index < total; index++) {
       if (index % inner_size == 0 && index != 0) {
         count_step++;
@@ -101,7 +101,7 @@ inline std::uint32_t ComputeSoftmaxV2Kernel(const CpuKernelContext &ctx) {
       index_dst++;
     }
     dims_sum = dims_sum.inverse();
-    for (size_t index = 0, index_dst = 0, index_batch = 0, count_step = 0;
+    for (int64_t index = 0, index_dst = 0, index_batch = 0, count_step = 0;
          index < total; index++) {
       if (index % inner_size == 0 && index != 0) {
         count_step++;
@@ -120,21 +120,21 @@ inline std::uint32_t ComputeSoftmaxV2Kernel(const CpuKernelContext &ctx) {
     const T constant_one(1.0);
     aicpu::CpuKernelUtils::ParallelFor(
         ctx, length, per_unit_size, [&](std::int64_t begin, std::int64_t end) {
-          for (size_t index = begin, dim_length = dims[pivot], outer_index,
+          for (int64_t index = begin, dim_length = dims[pivot], outer_index,
                       index_base;
                index < end; ++index) {
             outer_index = index / inner_size;
             index_base =
                 outer_index * dim_length * inner_size + index % inner_size;
             dims_maximum[index] = *(input + index_base);
-            for (size_t inner_index = 0, index_dst = index_base;
+            for (int64_t inner_index = 0, index_dst = index_base;
                  inner_index < dim_length; ++inner_index) {
               if (*(input + index_dst) > dims_maximum[index]) {
                 dims_maximum[index] = *(input + index_dst);
               }
               index_dst += inner_size;
             }
-            for (size_t inner_index = 0, index_dst = index_base;
+            for (int64_t inner_index = 0, index_dst = index_base;
                  inner_index < dim_length; ++inner_index) {
               *(output + index_dst) = Eigen::numext::exp(*(input + index_dst) -
                                                          dims_maximum[index]);
@@ -142,7 +142,7 @@ inline std::uint32_t ComputeSoftmaxV2Kernel(const CpuKernelContext &ctx) {
               index_dst += inner_size;
             }
             dims_exp_sum[index] = constant_one / dims_exp_sum[index];
-            for (size_t inner_index = 0, index_dst = index_base;
+            for (int64_t inner_index = 0, index_dst = index_base;
                  inner_index < dim_length; ++inner_index) {
               *(output + index_dst) =
                   *(output + index_dst) * dims_exp_sum[index];
@@ -208,16 +208,12 @@ inline std::uint32_t SoftmaxV2ExtraCheck(const CpuKernelContext &ctx) {
     }
     auto input = ctx.Input(0)->GetTensorShape()->GetDimSizes();
     std::int64_t dim = 0;
-    if (axes[0] > 0) {
-      dim = axes[0];
-    } else {
-      dim = axes[0] + input.size();
-    }
-    if ((dim < 0 || dim >= input.size()) &&
-        axes[0] >= ctx.Input(0)->GetTensorShape()->GetDimSizes().size()) {
+    int64_t size = input.size();
+    dim = (axes[0] > 0) ? axes[0] : axes[0] + size;
+    if ((dim < 0 || dim >= size) && axes[0] >= size) {
       KERNEL_LOG_ERROR(
-          "The Attributes axes[0] dim=%lld is out of range of input size %llu.",
-          axes[0], ctx.Input(0)->GetTensorShape()->GetDimSizes().size());
+          "The Attributes axes[0] dim=%ld is out of range of input size %ld.",
+          axes[0], size);
       return KERNEL_STATUS_PARAM_INVALID;
     }
   }

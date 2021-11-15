@@ -72,7 +72,7 @@ uint32_t FloorCpuKernel::FloorCompute(CpuKernelContext &ctx) {
   auto input_x = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto output_y = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   int64_t data_num = ctx.Output(0)->NumElements();
-  for (size_t i = 0; i < data_num; i++) {
+  for (int64_t i = 0; i < data_num; i++) {
     auto x_index = input_x + i;  // i-th value of input0
     *(output_y + i) = Eigen::numext::floor((*x_index));
   }

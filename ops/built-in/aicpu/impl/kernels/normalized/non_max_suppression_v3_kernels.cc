@@ -258,8 +258,6 @@ uint32_t NonMaxSuppressionV3CpuKernel::Compute(CpuKernelContext &ctx) {
     return res;
   }
 
-  float fp32_data_type = 0.0;
-  Eigen::half fp16_data_type(0.0);
   if (boxes_scores_dtype_ == DT_FLOAT16 && threshold_dtype_ == DT_FLOAT16) {
     res = DoCompute<Eigen::half, Eigen::half>();
   } else if (boxes_scores_dtype_ == DT_FLOAT &&

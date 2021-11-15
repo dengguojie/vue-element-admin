@@ -150,8 +150,8 @@ uint32_t ScatterElementsCpuKernel::DoCompute(CpuKernelContext &ctx) {
   int64_t per_core_size = total_value_num / max_thread_num * sizeof(T);
   int64_t last_core_size = total_value_num % max_thread_num * sizeof(T) +
                            per_core_size;
-  auto shard_copy = [&](size_t start, size_t end) {
-    for (size_t i = start; i < end; ++i) {
+  auto shard_copy = [&](int64_t start, int64_t end) {
+    for (int64_t i = start; i < end; ++i) {
       int64_t core_size = (i == max_thread_num - 1) ?
                           last_core_size : per_core_size;
       int64_t ptr_offset = i * (total_value_num / max_thread_num);

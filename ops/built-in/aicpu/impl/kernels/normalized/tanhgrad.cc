@@ -93,7 +93,6 @@ uint32_t TanhGradCpuKernel::TanhGradCompute(CpuKernelContext &ctx) {
 
   int64_t input_y_total = ctx.Input(0)->NumElements();
   int64_t input_dy_total = ctx.Input(1)->NumElements();
-  int64_t output_z_total = ctx.Output(0)->NumElements();
   int64_t total = std::min(input_y_total, input_dy_total);
   ctx.Output(0)->GetTensorShape()->SetDimSizes(
       ctx.Input(0)->GetTensorShape()->GetDimSizes());

@@ -92,7 +92,7 @@ uint32_t CalReverseSequence(int seq_dim, int batch_dim,
   auto shard = [&](const int64_t start, const int64_t end) {
     for (int j = start; j < end; ++j) {  // 0~n
       int begin = run_len * shape[seq_dim] * j;
-      auto shard_in = [&](const int64_t start_in, const int64_t end_in) {
+      auto shard_in = [&](int64_t start_in, int64_t end_in) {
         for (int r = start_in; r < end_in; ++r) {
           int offset = r + begin;
           int reverse_num = seq[offset / batch_size % shape[batch_dim]];

@@ -133,12 +133,12 @@ uint32_t LogMatrixDeterminantCpuKernel::LogMatrixDeterminantCompute(
       MartixXd;
   using RealT = typename Eigen::NumTraits<T>::Real;
   if (size_mm > 0) {
-    size_t martix_num = ctx.Input(0)->NumElements() / size_mm;
+    int64_t martix_num = ctx.Input(0)->NumElements() / size_mm;
     int64_t data_size = ctx.Input(0)->NumElements() * sizeof(T);
     if (data_size <= kParallelDataNums) {
       RealT log_abs_det = 0;
       T sign = 1;
-      for (size_t i = 0; i < martix_num; i++) {
+      for (int64_t i = 0; i < martix_num; i++) {
         log_abs_det = 0;
         sign = 1;
         Eigen::Map<MartixXd> martix_x(input_x + i * m * m, m, m);

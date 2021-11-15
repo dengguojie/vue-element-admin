@@ -51,7 +51,7 @@ uint32_t RsqrtCpuKernel::Compute(CpuKernelContext &ctx) {
   }
   Tensor *x = ctx.Input(0);
   Tensor *y = ctx.Output(0);
-  uint64_t data_num = x->NumElements();
+  int64_t data_num = x->NumElements();
   DataType data_type = x->GetDataType();
   uint32_t res = KERNEL_STATUS_OK;
 
@@ -83,7 +83,7 @@ uint32_t RsqrtCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t RsqrtCpuKernel::RsqrtCompute(Tensor *x, Tensor *y, uint64_t data_num,
+uint32_t RsqrtCpuKernel::RsqrtCompute(Tensor *x, Tensor *y, int64_t data_num,
                                       CpuKernelContext &ctx) {
   auto input_x = reinterpret_cast<T *>(x->GetData());
   KERNEL_CHECK_NULLPTR(input_x, KERNEL_STATUS_PARAM_INVALID,
@@ -92,7 +92,7 @@ uint32_t RsqrtCpuKernel::RsqrtCompute(Tensor *x, Tensor *y, uint64_t data_num,
   KERNEL_CHECK_NULLPTR(output_y, KERNEL_STATUS_PARAM_INVALID,
                        "Get output data failed")
   if (data_num <= kParallelDataNums) {
-    for (size_t i = 0; i < data_num; i++) {
+    for (int64_t i = 0; i < data_num; i++) {
       if (x->GetDataType() == DT_FLOAT16) {
         if ((Eigen::half)input_x[i] == Eigen::half{0.0f}) { 
           KERNEL_LOG_ERROR("Rsqrt kernel input[%d] cannot be 0");
@@ -147,7 +147,7 @@ uint32_t RsqrtCpuKernel::RsqrtCompute(Tensor *x, Tensor *y, uint64_t data_num,
 
 template <typename T>
 uint32_t RsqrtCpuKernel::RsqrtComputeComplex(Tensor *x, Tensor *y,
-                                             uint64_t data_num,
+                                             int64_t data_num,
                                              CpuKernelContext &ctx) {
   auto input_x = reinterpret_cast<T *>(x->GetData());
   KERNEL_CHECK_NULLPTR(input_x, KERNEL_STATUS_PARAM_INVALID,
@@ -156,7 +156,7 @@ uint32_t RsqrtCpuKernel::RsqrtComputeComplex(Tensor *x, Tensor *y,
   KERNEL_CHECK_NULLPTR(output_y, KERNEL_STATUS_PARAM_INVALID,
                        "Get output data failed")
   if (data_num <= kParallelComplexDataNums) {
-    for (size_t i = 0; i < data_num; i++) {
+    for (int64_t i = 0; i < data_num; i++) {
       output_y[i] =
           sqrt(conj(input_x[i])) / sqrt(input_x[i].real() * input_x[i].real() +
                                         input_x[i].imag() * input_x[i].imag());

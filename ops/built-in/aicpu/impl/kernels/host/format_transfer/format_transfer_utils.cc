@@ -128,5 +128,23 @@ uint32_t TransFormat(const TransArgs &args, TransResult &result) {
 
   return transfer->TransFormat(args, result);
 }
+
+int64_t Measure(int64_t x, int64_t y) {
+  int64_t z = y;
+  while (x % y != 0) {
+    z = x % y;
+    x = y;
+    y = z;
+  }
+  return z;
+}
+// least common multiple
+int64_t Lcm(int64_t a, int64_t b) {
+  if (b == 0) {
+    return -1;
+  }
+  int64_t temp = (a * b) / (Measure(a, b));
+  return temp;
+}
 }  // namespace formats
 }  // namespace aicpu

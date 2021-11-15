@@ -24,73 +24,54 @@
 #include "status.h"
 #include "utils/kernel_util.h"
 
+using namespace std;
 namespace {
 const std::uint32_t kSquareInputNum{1};
 const std::uint32_t kSquareOutputNum{1};
 // parallel 3 level
-const std::int64_t Int32ParallelNums[3] = {96000, 192000, 384000};
-const std::int64_t Int64ParallelNums[3] = {24000, 48000, 96000};
-const std::int64_t Float16ParallelNums[3] = {24000, 48000, 96000};
-const std::int64_t FloatParallelNums[3] = {192000, 384000, 512000};
-const std::int64_t DoubleParallelNums[3] = {48000, 96000, 256000};
-const std::int64_t ComplexParallelNums[3] = {24000, 96000, 192000};
+constexpr int64_t  kParallelLevel = 3;
+const std::int64_t Int32ParallelNums[kParallelLevel] = {96000, 192000, 384000};
+const std::int64_t Int64ParallelNums[kParallelLevel] = {24000, 48000, 96000};
+const std::int64_t Float16ParallelNums[kParallelLevel] = {24000, 48000, 96000};
+const std::int64_t FloatParallelNums[kParallelLevel] = {192000, 384000, 512000};
+const std::int64_t DoubleParallelNums[kParallelLevel] = {48000, 96000, 256000};
+const std::int64_t ComplexParallelNums[kParallelLevel] = {24000, 96000, 192000};
+constexpr int64_t kMinCoreNum = 1;
+constexpr int64_t kUseCpuNumlevel1 = 6;
+constexpr int64_t kUseCpuNumlevel2 = 8;
 const char *kSquare{"Square"};
 }  // namespace
 
 namespace aicpu {
 namespace detail {
 template <typename T>
-inline std::uint32_t ComputeSquareKernel(const CpuKernelContext &ctx,
-                                         DataType &input_type) {
+uint32_t ComputeSquareKernel(const CpuKernelContext &ctx,
+                             const DataType &input_type,
+                             const int64_t parallel[kParallelLevel]) {
   const auto ParallelFor = aicpu::CpuKernelUtils::ParallelFor;
-  T *input = (T *)(ctx.Input(0)->GetData());
+  T *input = (T *)(ctx.Input(0)->GetData()); 
   T *output = (T *)(ctx.Output(0)->GetData());
   std::int64_t total = ctx.Input(0)->NumElements();
-  std::uint64_t total_size = ctx.Input(0)->GetDataSize();
-  uint32_t cores = aicpu::CpuKernelUtils::GetCPUNum(ctx);
-  bool parallel_flag = false;
-  std::int64_t ParallelNums[3];
-  switch (input_type) {
-    case DT_INT32: {
-      memcpy(ParallelNums, Int32ParallelNums, 3 * sizeof(std::int64_t));
-    }; break;
-    case DT_INT64: {
-      memcpy(ParallelNums, Int64ParallelNums, 3 * sizeof(std::int64_t));
-    }; break;
-    case DT_FLOAT16: {
-      memcpy(ParallelNums, Float16ParallelNums, 3 * sizeof(std::int64_t));
-    }; break;
-    case DT_FLOAT: {
-      memcpy(ParallelNums, FloatParallelNums, 3 * sizeof(std::int64_t));
-    }; break;
-    case DT_DOUBLE: {
-      memcpy(ParallelNums, DoubleParallelNums, 3 * sizeof(std::int64_t));
-    }; break;
-    case DT_COMPLEX64: {
-      memcpy(ParallelNums, ComplexParallelNums, 3 * sizeof(std::int64_t));
-    }; break;
-    case DT_COMPLEX128: {
-      memcpy(ParallelNums, ComplexParallelNums, 3 * sizeof(std::int64_t));
-    }; break;
+  int64_t cores = aicpu::CpuKernelUtils::GetCPUNum(ctx); 
+  bool parallel_flag = true;
+  if (total > parallel[2]) {
+  } else if (total > parallel[1]) {
+    cores = (cores > kUseCpuNumlevel2) ? kUseCpuNumlevel2 : cores;
+  } else if (total > parallel[0]) {
+    cores = (cores > kUseCpuNumlevel1) ? kUseCpuNumlevel1 : cores;
+  } else {
+    parallel_flag = false;
   }
-  if (total_size > ParallelNums[2] * sizeof(T)) {
-    parallel_flag = true;
-  } else if (total_size > ParallelNums[1] * sizeof(T)) {
-    parallel_flag = true;
-    cores = 8;
-  } else if (total_size > ParallelNums[0] * sizeof(T)) {
-    parallel_flag = true;
-    cores = 6;
-  }
+
   if (parallel_flag) {
-    std::int64_t per_unit_size{total /
-                               std::min(std::max(1L, cores - 2L), total)};
+    int64_t per_unit_size{total /
+                          std::min(std::max(kMinCoreNum, cores - kResvCpuNum), total)};
     if (input_type == DT_INT64 || input_type == DT_FLOAT16) {
       return ParallelFor(
           ctx, total, per_unit_size, [&](std::int64_t begin, std::int64_t end) {
             T *inner_input = input + begin;
             T *inner_output = output + begin;
-            for (size_t index = begin; index < end; ++index) {
+            for (int64_t index = begin; index < end; ++index) {
               *(inner_output) = (*(inner_input)) * (*(inner_input));
               inner_input++;
               inner_output++;
@@ -109,7 +90,7 @@ inline std::uint32_t ComputeSquareKernel(const CpuKernelContext &ctx,
     }
   } else if (cores != 0) {
     if (input_type == DT_INT64 || input_type == DT_FLOAT16) {
-      for (size_t index = 0; index < total; ++index) {
+      for (int64_t index = 0; index < total; ++index) {
         *(output) = (*(input)) * (*(input));
         input++;
         output++;
@@ -124,13 +105,15 @@ inline std::uint32_t ComputeSquareKernel(const CpuKernelContext &ctx,
   } else {
     return KERNEL_STATUS_INNER_ERROR;
   }
+
   return KERNEL_STATUS_OK;
 }
 
 template <typename T>
 inline std::uint32_t ComputeSquare(const CpuKernelContext &ctx,
-                                   DataType &input_type) {
-  uint32_t result = ComputeSquareKernel<T>(ctx, input_type);
+                                   const DataType &input_type,
+                                   const int64_t parallel[kParallelLevel]) {
+  uint32_t result = ComputeSquareKernel<T>(ctx, input_type, parallel);
   if (result != 0) {
     KERNEL_LOG_ERROR("Square compute failed.");
   }
@@ -178,25 +161,26 @@ std::uint32_t SquareCheck(CpuKernelContext &ctx, uint32_t inputs_num,
              ? KERNEL_STATUS_PARAM_INVALID
              : SquareExtraCheck(ctx);
 }
-// DT_FLOAT16, DT_FLOAT, DT_DOUBLE,DT_INT32, DT_INT64, DT_COMPLEX64,
-// DT_COMPLEX128
+
 std::uint32_t SquareCompute(const CpuKernelContext &ctx) {
   DataType input_type{ctx.Input(0)->GetDataType()};
   switch (input_type) {
     case DT_INT32:
-      return ComputeSquare<std::int32_t>(ctx, input_type);
+      return ComputeSquare<std::int32_t>(ctx, input_type, Int32ParallelNums);
     case DT_INT64:
-      return ComputeSquare<std::int64_t>(ctx, input_type);
+      return ComputeSquare<std::int64_t>(ctx, input_type, Int64ParallelNums);
     case DT_FLOAT16:
-      return ComputeSquare<Eigen::half>(ctx, input_type);
+      return ComputeSquare<Eigen::half>(ctx, input_type, Float16ParallelNums);
     case DT_FLOAT:
-      return ComputeSquare<std::float_t>(ctx, input_type);
+      return ComputeSquare<std::float_t>(ctx, input_type, FloatParallelNums);
     case DT_DOUBLE:
-      return ComputeSquare<std::double_t>(ctx, input_type);
+      return ComputeSquare<std::double_t>(ctx, input_type, DoubleParallelNums);
     case DT_COMPLEX64:
-      return ComputeSquare<std::complex<std::float_t> >(ctx, input_type);
+      return ComputeSquare<std::complex<std::float_t>>(ctx, input_type,
+                                                       ComplexParallelNums);
     case DT_COMPLEX128:
-      return ComputeSquare<std::complex<std::double_t> >(ctx, input_type);
+      return ComputeSquare<std::complex<std::double_t>>(ctx, input_type,
+                                                        ComplexParallelNums);
     default:
       KERNEL_LOG_ERROR("Unsupported input data type [%s].",
                        DTypeStr(input_type).c_str());

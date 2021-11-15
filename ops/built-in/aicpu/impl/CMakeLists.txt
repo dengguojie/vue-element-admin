@@ -174,6 +174,9 @@ if(BUILD_OPEN_PROJECT)
       -fvisibility=hidden
       -frename-registers
       -fpeel-loops
+      -Werror
+      -Wno-return-type
+      -Wno-attributes
       -DEIGEN_NO_DEBUG
 	  -DEIGEN_MPL2_ONLY
       -DNDEBUG

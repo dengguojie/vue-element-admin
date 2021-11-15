@@ -43,6 +43,8 @@ target_compile_options(constant_folding_ops PRIVATE
     -fstack-protector-all
     -fvisibility-inlines-hidden
     -fvisibility=hidden
+    -Werror
+    -Wno-deprecated-declarations
 )
 
 target_compile_definitions(constant_folding_ops PRIVATE

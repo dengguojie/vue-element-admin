@@ -51,7 +51,7 @@ const uint32_t kTotalThetaNumber = 6;
       KERNEL_LOG_ERROR("SpatialTransformer kernel compute failed.");   \
       return ret;                                                      \
     }                                                                  \
-    break;                                                             \ 
+    break;                                                             \
   }                                                               
 
 }
@@ -146,7 +146,7 @@ uint32_t SpatialTransformerCpuKernel::DoCompute4D(CpuKernelContext &ctx) {
   uint32_t input_idx = 0;
   float res, x_floor, y_floor, x_ref_1, y_ref_1, x_ref_0, y_ref_0, x, y = 0;
   int32_t m, n;
-  for (uint32_t i = 0; i < input_n_; i++) {
+  for (int32_t i = 0; i < input_n_; i++) {
     // init theta
     uint32_t predf_theta_idx = 0;
     for (uint32_t j = 0; j < kTotalThetaNumber; j++) {
@@ -161,8 +161,8 @@ uint32_t SpatialTransformerCpuKernel::DoCompute4D(CpuKernelContext &ctx) {
     }
 
     // compute grid
-    for (uint32_t s = 0; s < output_h_; ++s) {
-      for (uint32_t t = 0; t < output_w_; ++t) {
+    for (int32_t s = 0; s < output_h_; ++s) {
+      for (int32_t t = 0; t < output_w_; ++t) {
         uint32_t input_grid_idx = (s * output_w_ + t) * 2;
         float ref_output_grid_1 = (float)s / output_h_ * 2 - 1;
         float ref_output_grid_2 = (float)t / output_w_ * 2 - 1;
@@ -174,10 +174,10 @@ uint32_t SpatialTransformerCpuKernel::DoCompute4D(CpuKernelContext &ctx) {
     }
 
     // calc output data
-    for (uint32_t j = 0; j < input_c_; j++) {
+    for (int32_t j = 0; j < input_c_; j++) {
       uint32_t input_grid_idx = 0;
 
-      for (uint32_t k = 0; k < output_h_ * output_w_; k++) {
+      for (int32_t k = 0; k < output_h_ * output_w_; k++) {
         x = input_grid[input_grid_idx];
         y = input_grid[input_grid_idx + 1];
         x_floor = floor(x);
@@ -247,7 +247,7 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D(CpuKernelContext &ctx) {
   int32_t m, n;
   float *res = (float*)malloc(sizeof(float) * input_c0_);
   KERNEL_CHECK_NULLPTR(input_grid, KERNEL_STATUS_INNER_ERROR, "Can't malloc input_grid.");
-  for (uint32_t i = 0; i < input_n_; i++) {
+  for (int32_t i = 0; i < input_n_; i++) {
     // init theta
     uint32_t predf_theta_idx = 0;
     for (uint32_t j = 0; j < kTotalThetaNumber; j++) {
@@ -262,8 +262,8 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D(CpuKernelContext &ctx) {
     }
 
     // compute grid
-    for (uint32_t s = 0; s < output_h_; ++s) {
-      for (uint32_t t = 0; t < output_w_; ++t) {
+    for (int32_t s = 0; s < output_h_; ++s) {
+      for (int32_t t = 0; t < output_w_; ++t) {
         uint32_t input_grid_idx = (s * output_w_ + t) * 2;
         float ref_output_grid_1 = (float)s / output_h_ * 2 - 1;
         float ref_output_grid_2 = (float)t / output_w_ * 2 - 1;
@@ -275,10 +275,10 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D(CpuKernelContext &ctx) {
     }
 
     // calc output data
-    for (uint32_t j = 0; j < input_c1_; j++) {
+    for (int32_t j = 0; j < input_c1_; j++) {
       uint32_t input_grid_idx = 0;
 
-      for (uint32_t k = 0; k < output_h_ * output_w_; k++) {
+      for (int32_t k = 0; k < output_h_ * output_w_; k++) {
         x = input_grid[input_grid_idx];
         y = input_grid[input_grid_idx + 1];
 
@@ -295,7 +295,7 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D(CpuKernelContext &ctx) {
         n = y_floor;
         if (m >= 0 && m < input_h_ && n >= 0 && n < input_w_) {
           uint32_t input_data_spos = input_idx + m * input_w_ * input_c0_ + n * input_c0_;
-          for (uint32_t c0_i = 0; c0_i < input_c0_; c0_i++) {
+          for (int32_t c0_i = 0; c0_i < input_c0_; c0_i++) {
             res[c0_i] += x_ref_0 * y_ref_0 * (float)input_data_ptr[input_data_spos + c0_i];
           }
         }
@@ -304,7 +304,7 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D(CpuKernelContext &ctx) {
         n = y_floor + 1;
         if (m >= 0 && m < input_h_ && n >= 0 && n < input_w_) {
           uint32_t input_data_spos = input_idx + m * input_w_ * input_c0_ + n * input_c0_;
-          for (uint32_t c0_i = 0; c0_i < input_c0_; c0_i++) {
+          for (int32_t c0_i = 0; c0_i < input_c0_; c0_i++) {
             res[c0_i] += x_ref_0 * y_ref_1 * (float)input_data_ptr[input_data_spos + c0_i];
           }
         }
@@ -313,7 +313,7 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D(CpuKernelContext &ctx) {
         n = y_floor;
         if (m >= 0 && m < input_h_ && n >= 0 && n < input_w_) {
           uint32_t input_data_spos = input_idx + m * input_w_ * input_c0_ + n * input_c0_;
-          for (uint32_t c0_i = 0; c0_i < input_c0_; c0_i++) {
+          for (int32_t c0_i = 0; c0_i < input_c0_; c0_i++) {
             res[c0_i] += x_ref_1 * y_ref_0 * (float)input_data_ptr[input_data_spos + c0_i];
           }
         }
@@ -322,12 +322,12 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D(CpuKernelContext &ctx) {
         n = y_floor + 1;
         if (m >= 0 && m < input_h_ && n >= 0 && n < input_w_) {
           uint32_t input_data_spos = input_idx + m * input_w_ * input_c0_ + n * input_c0_;
-          for (uint32_t c0_i = 0; c0_i < input_c0_; c0_i++) {
+          for (int32_t c0_i = 0; c0_i < input_c0_; c0_i++) {
             res[c0_i] += x_ref_1 * y_ref_1 * (float)input_data_ptr[input_data_spos + c0_i];
           }
         }
 
-        for (uint32_t c0_i = 0; c0_i < input_c0_; c0_i++) {
+        for (int32_t c0_i = 0; c0_i < input_c0_; c0_i++) {
           output_data_ptr[output_idx + c0_i] = (T)res[c0_i];
         }
         input_grid_idx += 2;
@@ -364,7 +364,7 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D_C1(CpuKernelContext &ctx) {
   uint32_t input_idx = 0;
   float res, x_floor, y_floor, x_ref_1, y_ref_1, x_ref_0, y_ref_0, x, y = 0;
   int32_t m, n;
-  for (uint32_t i = 0; i < input_n_; i++) {
+  for (int32_t i = 0; i < input_n_; i++) {
     // init theta
     uint32_t predf_theta_idx = 0;
     for (uint32_t j = 0; j < kTotalThetaNumber; j++) {
@@ -379,8 +379,8 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D_C1(CpuKernelContext &ctx) {
     }
 
     // compute grid
-    for (uint32_t s = 0; s < output_h_; ++s) {
-      for (uint32_t t = 0; t < output_w_; ++t) {
+    for (int32_t s = 0; s < output_h_; ++s) {
+      for (int32_t t = 0; t < output_w_; ++t) {
         uint32_t input_grid_idx = (s * output_w_ + t) * 2;
         float ref_output_grid_1 = (float)s / output_h_ * 2 - 1;
         float ref_output_grid_2 = (float)t / output_w_ * 2 - 1;
@@ -392,10 +392,10 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D_C1(CpuKernelContext &ctx) {
     }
 
     // calc output data
-    for (uint32_t j = 0; j < input_c1_; j++) {
+    for (int32_t j = 0; j < input_c1_; j++) {
       uint32_t input_grid_idx = 0;
 
-      for (uint32_t k = 0; k < output_h_ * output_w_; k++) {
+      for (int32_t k = 0; k < output_h_ * output_w_; k++) {
         x = input_grid[input_grid_idx];
         y = input_grid[input_grid_idx + 1];
 

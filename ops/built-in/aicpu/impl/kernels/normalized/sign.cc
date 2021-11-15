@@ -86,11 +86,10 @@ template <typename T>
 uint32_t SignCpuKernel::SignCompute(CpuKernelContext &ctx) {
   auto input_x = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto output_y = reinterpret_cast<T *>(ctx.Output(0)->GetData());
-  auto data_type = ctx.Input(0)->GetDataType();
   int64_t data_num = ctx.Input(0)->NumElements();
   int64_t data_size = data_num * sizeof(T);
   if(data_size <= kParallelDataNums){
-    for (size_t i = 0; i < data_num; i++) {
+    for (int64_t i = 0; i < data_num; i++) {
       if(*(input_x + i) > static_cast<T>(0)){
         *(output_y + i) = static_cast<T>(1);
       }else if(*(input_x + i) == static_cast<T>(0)){
@@ -101,7 +100,7 @@ uint32_t SignCpuKernel::SignCompute(CpuKernelContext &ctx) {
     }
   }else{
     uint32_t min_core_num = 1;
-    size_t max_core_num =
+    int64_t max_core_num =
     	std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
     if (max_core_num > data_num) {
       max_core_num = data_num;
@@ -127,11 +126,10 @@ template <typename T>
 uint32_t SignCpuKernel::SignComputeComplex(CpuKernelContext &ctx) {
   auto input_x = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto output_y = reinterpret_cast<T *>(ctx.Output(0)->GetData());
-  auto data_type = ctx.Input(0)->GetDataType();
   int64_t data_num = ctx.Input(0)->NumElements();
   int64_t data_size = data_num * sizeof(T);
   if(data_size <= kParallelDataNums){
-    for (size_t i = 0; i < data_num; i++) {
+    for (int64_t i = 0; i < data_num; i++) {
       if(*(input_x + i) != static_cast<T>(0)){
         *(output_y + i) = ( *(input_x + i) / Eigen::numext::abs(*(input_x + i)));
       }else{
@@ -140,7 +138,7 @@ uint32_t SignCpuKernel::SignComputeComplex(CpuKernelContext &ctx) {
     }
   }else{
     uint32_t min_core_num = 1;
-    size_t max_core_num =
+    int64_t max_core_num =
             std::max(min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
     if (max_core_num > data_num) {
       max_core_num = data_num;

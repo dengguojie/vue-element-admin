@@ -75,7 +75,7 @@ uint32_t RangeSampler::SampleBatchGetExpectedCountAvoid(
     }
     std::unordered_set<int64_t> used(kBatchSize);
     used.insert(avoided_values.begin(), avoided_values.end());
-    int num_picked = 0;
+    size_t num_picked = 0u;
     num_tries = 0;
     while (num_picked < kBatchSize) {
       num_tries++;
@@ -95,7 +95,7 @@ uint32_t RangeSampler::SampleBatchGetExpectedCountAvoid(
       KERNEL_LOG_ERROR("The avoided_values only supported with unique=true");
       return KERNEL_STATUS_INNER_ERROR;
     }
-    for (int i = 0; i < kBatchSize; i++) {
+    for (size_t i = 0; i < kBatchSize; i++) {
       batch[i] = Sample();
     }
     num_tries = kBatchSize;
@@ -112,14 +112,14 @@ uint32_t RangeSampler::ComputeExpectedCount(
     const aicpu::cpu::ArraySlice<int64_t> &extras,
     aicpu::cpu::MutableArraySlice<float> &extras_expected_count) const {
   if (!batch_expected_count.empty()) {
-    if (kBatchSize != static_cast<int>(batch_expected_count.size())) {
+    if (kBatchSize != batch_expected_count.size()) {
       KERNEL_LOG_ERROR(
           "The size of extras_expected_count:[%zu] should be equal "
           "to batch_size:[%zu]!",
           batch_expected_count.size(), kBatchSize);
       return KERNEL_STATUS_INNER_ERROR;
     }
-    for (int i = 0; i < kBatchSize; i++) {
+    for (size_t i = 0; i < kBatchSize; i++) {
       batch_expected_count[i] =
           ExpectedCountHelper(Probability(batch[i]), kBatchSize, num_tries);
     }

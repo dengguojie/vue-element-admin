@@ -27,25 +27,7 @@ namespace formats {
 static const int kCubeSize = 16;
 static const int kNiSize = 16;
 static const int64_t kShapeItemNumMAX = 1024UL * 1024UL * 1024UL * 1024UL;
-
-static int64_t Measure(int64_t x, int64_t y) {
-  int64_t z = y;
-  while (x % y != 0) {
-    z = x % y;
-    x = y;
-    y = z;
-  }
-  return z;
-}
-// least common multiple
-static int64_t Lcm(int64_t a, int64_t b) {
-  if (b == 0) {
-    return -1;
-  }
-  int64_t temp = (a * b) / (Measure(a, b));
-  return temp;
-}
-
+int64_t Lcm(int64_t a, int64_t b);
 bool IsShapeValid(const std::vector<int64_t> &shape);
 
 bool CheckShapeValid(const std::vector<int64_t> &shape,

@@ -111,7 +111,8 @@ uint32_t LogSoftmaxV2CpuKernel::LogSoftmaxV2Compute(CpuKernelContext& ctx) {
   } else {
     pivot = dims.size() + axes[0];
   }
-  for (size_t index = 0; index < dims.size(); index++) {
+  int64_t size = dims.size();
+  for (int64_t index = 0; index < size; index++) {
     if (index > pivot) {
       inner_size *= dims[index];
     }
@@ -133,8 +134,7 @@ uint32_t LogSoftmaxV2CpuKernel::LogSoftmaxV2Compute(CpuKernelContext& ctx) {
         dims_maximum, inner_size, outer_size);
     Eigen::array<int, 1> softmax_axes{{1}};
     dims_max = logits.maximum(softmax_axes);
-    const T constant_one(1.0);
-    for (size_t index = 0, index_dst = 0, index_batch = 0, step = 0;
+    for (int64_t index = 0, index_dst = 0, index_batch = 0, step = 0;
          index < total; index++) {
       if (index % inner_size == 0 && index != 0) {
         step++;
@@ -150,7 +150,7 @@ uint32_t LogSoftmaxV2CpuKernel::LogSoftmaxV2Compute(CpuKernelContext& ctx) {
       index_dst++;
     }
     dims_sum = dims_sum.inverse();
-    for (size_t index = 0, index_dst = 0, index_batch = 0, step = 0;
+    for (int64_t index = 0, index_dst = 0, index_batch = 0, step = 0;
          index < total; index++) {
       if (index % inner_size == 0 && index != 0) {
         step++;
@@ -170,21 +170,21 @@ uint32_t LogSoftmaxV2CpuKernel::LogSoftmaxV2Compute(CpuKernelContext& ctx) {
     const T constant_one(1.0);
     ParallelFor(
         ctx, length, per_unit_size, [&](std::int64_t begin, std::int64_t end) {
-          for (size_t index = begin, dim_length = dims[pivot], outer_index,
+          for (int64_t index = begin, dim_length = dims[pivot], outer_index,
                       index_base;
                index < end; ++index) {
             outer_index = index / inner_size;
             index_base =
                 outer_index * dim_length * inner_size + index % inner_size;
             dims_maximum[index] = *(input + index_base);
-            for (size_t inner_index = 0, index_dst = index_base;
+            for (int64_t inner_index = 0, index_dst = index_base;
                  inner_index < dim_length; ++inner_index) {
               if (*(input + index_dst) > dims_maximum[index]) {
                 dims_maximum[index] = *(input + index_dst);
               }
               index_dst += inner_size;
             }
-            for (size_t inner_index = 0, index_dst = index_base;
+            for (int64_t inner_index = 0, index_dst = index_base;
                  inner_index < dim_length; ++inner_index) {
               *(output + index_dst) = Eigen::numext::exp(*(input + index_dst) -
                                                          dims_maximum[index]);
@@ -192,7 +192,7 @@ uint32_t LogSoftmaxV2CpuKernel::LogSoftmaxV2Compute(CpuKernelContext& ctx) {
               index_dst += inner_size;
             }
             dims_exp_sum[index] = constant_one / dims_exp_sum[index];
-            for (size_t inner_index = 0, index_dst = index_base;
+            for (int64_t inner_index = 0, index_dst = index_base;
                  inner_index < dim_length; ++inner_index) {
               *(output + index_dst) =
                   *(output + index_dst) * dims_exp_sum[index];
