@@ -48,6 +48,7 @@ static const char LOGSOFTMAXGRAD[] = "LogSoftmaxGrad";
 static const char ATTR_NAME_CONST[] = "axes";
 static const uint8_t SUB_INPUT_NODE_NUM = 2;
 static const uint8_t EXP_INPUT_NODE_NUM = 1;
+static const uint8_t EXP_OUTPUT_NODE_NUM = 1;
 static const uint8_t SUM_INPUT_NODE_NUM = 1;
 static const uint8_t SUM_OUTPUT_NODE_NUM = 1;
 static const uint8_t MUL_OUTPUT_NODE_NUM = 1;
@@ -92,7 +93,8 @@ Status LogSoftmaxGradFusionPass::IsMatch(ge::NodePtr sumNode, ge::NodePtr subNod
   auto sumInputDataNodes = sumNode->GetInDataNodes();
   if ((subInputDataNodes.size() != SUB_INPUT_NODE_NUM) || (expNode->GetInDataNodes().size() != EXP_INPUT_NODE_NUM) ||
       (sumInputDataNodes.size() != SUM_INPUT_NODE_NUM) || (sumNode->GetOutDataNodes().size() != SUM_OUTPUT_NODE_NUM) ||
-      (mulNode->GetOutDataNodes().size() != MUL_OUTPUT_NODE_NUM)) {
+      (mulNode->GetOutDataNodes().size() != MUL_OUTPUT_NODE_NUM) ||
+      (expNode->GetOutDataNodes().size() != EXP_OUTPUT_NODE_NUM)) {
     OP_LOGD(FUSED_OP_TYPE.c_str(), "this pattern does not meet the fusion condition");
     return FAILED;
   }
