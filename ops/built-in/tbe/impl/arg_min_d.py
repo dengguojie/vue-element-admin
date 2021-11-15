@@ -15,26 +15,17 @@
 """
 arg_min_d
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-
-# define a scalar, value = (2**30 + 2**29)
-SCALAR_MAX_FP32 = (2**30 + 2**29)
-# define a scalar, value = (2**16 - 1)
-SCALAR_MAX_FP16 = (2**16 - 1)
-# max segment len
-MAX_SEGMENT_LEN = 2048*4
-# max set_mask_int64 value
-MAX_MASK_INT64 = 2**64 - 1
-# 0101 mask value
-MASK_0_1 = 6148914691236517205
-# max int32 output num
-OUT_MAX_NUM = 2048 * 4
-# int32 num in 8*block
-OUT_MASK = 64
+from impl.constant_util_v1 import SCALAR_MAX_FP32
+from impl.constant_util_v1 import SCALAR_MAX_FP16
+from impl.constant_util_v1 import MAX_SEGMENT_LEN
+from impl.constant_util_v1 import MAX_MASK_INT64
+from impl.constant_util_v1 import MASK_0_1
+from impl.constant_util_v1 import OUT_MASK
 
 
 def _get_ceil_int(int1, int2):
@@ -61,8 +52,8 @@ def _get_ceil_int(int1, int2):
     return ceil_int
 
 
-# pylint: disable=unused-argument,invalid-name,useless-object-inheritance
-# pylint: disable=super-with-arguments
+# 'pylint: disable=unused-argument,invalid-name,useless-object-inheritance
+# 'pylint: disable=super-with-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def arg_min_d(x, y, dimension, kernel_name="arg_min_d"):
@@ -188,7 +179,7 @@ class ArgminBase(object):
             tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class Argmin(ArgminBase):
     """
        Function: use to store argmin schedule parameters
@@ -318,7 +309,7 @@ class Argmin(ArgminBase):
 
         return core_used, core_seg
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def argmin_not_last_axis(self):
         """
         scedule for argmin_not_last_axis
@@ -438,7 +429,7 @@ class Argmin(ArgminBase):
             gm_out_offset = out_offset + self.segment*segment_loop - offset
             not_last_axis_fuc(segment_tail_data, gm_in_offset, gm_out_offset)
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def compute_argmin_not_last_axis_cut_by_first_dim(
             self, first_i, segment_loop, offset,
             segment_tail, segment_tail_data):
@@ -910,7 +901,7 @@ class Argmin(ArgminBase):
         if _loop_segment_tail != 0:
             _run(_loop_segment_tail, _loop_segment)
 
-    # pylint: disable=too-many-locals,too-many-statements
+    # 'pylint: disable=too-many-locals,too-many-statements
     def do_argmin_last_axis_fp16_default(self, ub_buf_size, loop, n_i):
         """
         do arg in one segment fo float16
@@ -1491,7 +1482,7 @@ class Argmin(ArgminBase):
             second_max_index = self.tik_instance.Scalar("uint16")
             second_max_index.set_as(ub_result[1])
             self.result_int32.set_as(second_max_index)
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
 
     def do_argmin_last_axis_fp32(self, ub_buf_size, loop, n_i):
         """

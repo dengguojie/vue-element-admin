@@ -24,7 +24,7 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=too-many-arguments,invalid-name,too-many-locals,unused-argument
+# 'pylint: disable=too-many-arguments,invalid-name,too-many-locals,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("apply_keras_momentum_d")
 def apply_keras_momentum_d_compute(var,
                                    accum,
@@ -54,19 +54,19 @@ def apply_keras_momentum_d_compute(var,
         error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'var', [], inp_dtype)
 
     # update var and accum according to the momentum scheme
-    # accum = accum * momentum - grad * lr
+    # this step is accum * momentum - grad * lr
     accum_momen = tvm.compute(accum.shape, lambda *indices: accum(*indices) * momentum[0], tag='elewise_single_VS_mul')
     grad_lr = tvm.compute(grad.shape, lambda *indices: grad(*indices) * lr[0], tag='elewise_single_VS_mul')
     out_accum = tbe.vsub(accum_momen, grad_lr)
 
-    # var = var + accum * momentum - grad * lr
+    #this step is var + accum * momentum - grad * lr
     if use_nesterov is True:
         accum_momen2 = tvm.compute(accum.shape,
                                    lambda *indices: out_accum(*indices) * momentum[0],
                                    tag='elewise_single_VS_mul')
         add_var_am = tbe.vadd(var, accum_momen2)
         out_var = tbe.vsub(add_var_am, grad_lr)
-    # var = var + accum
+    # this step is var + accum
     else:
         out_var = tbe.vadd(var, out_accum)
 
@@ -76,7 +76,7 @@ def apply_keras_momentum_d_compute(var,
     return tvm.compute(var.shape, _compute, name='outputs')
 
 
-# pylint: disable=too-many-arguments,unused-argument,unbalanced-tuple-unpacking
+# 'pylint: disable=too-many-arguments,unused-argument,unbalanced-tuple-unpacking
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,

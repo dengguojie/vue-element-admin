@@ -14,23 +14,6 @@
 # ============================================================================
 """
 apply_gradient_descent
-
-  Op_description :
-    Update var by subtracting alpha * delta from it.
-
-    # apply_gradient_descent(var,
-    #   alpha,
-    #   delta,
-    #   out,
-    #   kernel_name='apply_gradient_descent')
-
-  Supportive_dtype_format :
-    ['int32', 'int8', 'uint8', 'float32', 'float16']
-    ['ND', 'NCHW', 'NHWC', 'NC1HWC0']
-
-  Constraint :
-    [1] All : the input tensors must have the same shape and type.
-    [2] All : shape size limit is 2147483648.
 """
 import te.lang.cce as tbe
 import te.platform as tbe_platform

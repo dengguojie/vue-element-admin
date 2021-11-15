@@ -209,7 +209,7 @@ cs1_0F = {"params": [{"shape": (16,), "dtype": "int32", "format": "ND", "ori_sha
 ut_case.add_case(["Ascend910","Ascend310"], cs4_0)
 ut_case.add_case(["Ascend910","Ascend310"], cs4_1)
 ut_case.add_case(["Ascend910","Ascend310"], cs4_2)
-ut_case.add_case(["Ascend910","Ascend310"], cs4_3)
+ut_case.add_case(["Ascend910"], cs4_3)
 ut_case.add_case(["Ascend910","Ascend310"], cs4_0F)
 ut_case.add_case(["Ascend910","Ascend310"], cs4_1F)
 ut_case.add_case(["Ascend910","Ascend310"], cs4_2F)

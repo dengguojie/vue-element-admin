@@ -25,7 +25,10 @@ from impl.ascend import VecCmd
 from impl.ascend import VecExecutor
 
 
-class BertAdam(object):
+class BertAdam():
+    """
+    class of apply_adam_v2
+    """
 
     def __init__(self, data_num, data_type, kernel_name, cont):
         self.data_num = data_num
@@ -61,16 +64,26 @@ class BertAdam(object):
         self.m_out = self.tik_inst.Tensor(self.data_type, data_shape, self.tik.scope_gm, "m_out")
         self.v_out = self.tik_inst.Tensor(self.data_type, data_shape, self.tik.scope_gm, "v_out")
 
-    def ceil_div(self, dividend_, divisor_):
+    @staticmethod
+    def ceil_div(dividend_, divisor_):
+        """
+        calculation ceil div
+        """
         result_ = (dividend_ + divisor_ - 1) // divisor_
         return result_
 
     def get_loop_info(self, all_data_num_, each_loop_num_):
+        """
+        get loop info
+        """
         loop_times_ = self.ceil_div(all_data_num_, each_loop_num_)
         last_loop_num_ = all_data_num_ - each_loop_num_ * (loop_times_ - 1)
         return loop_times_, last_loop_num_
 
     def get_align_num(self, input_num_, align_num_, ceil=True):
+        """
+        get align num
+        """
         if ceil:
             result_ = self.ceil_div(input_num_, align_num_) * align_num_
         else:
@@ -78,12 +91,18 @@ class BertAdam(object):
         return result_
 
     def get_type_const(self, data_type):
+        """
+        get type const
+        """
         data_size = self.cont.const_dtype_byte.get(data_type)
         block_data_num = self.cont.get_vec_proc_num_per_cmd_blk(data_type)
         repeat_data_num = self.cont.get_vec_proc_num_per_cmd(data_type)
         return data_size, block_data_num, repeat_data_num
 
     def mode_compute(self):
+        """
+        op mode compute func
+        """
         each_core_data_num = self.ceil_div(self.data_num, self.ai_core_use)
         each_core_data_num = self.get_align_num(each_core_data_num, self.data_repeat_data_num)
         self.ai_core_use, last_core_data_num = self.get_loop_info(self.data_num, each_core_data_num)
@@ -247,6 +266,7 @@ class BertAdam(object):
                 self._mode_compute_each_loop(data_buf, scalar_all, data_index_loop_s, last_loop_data_num,
                                              compute_mode, "exp_avg_last_ub")
 
+    # 'pylint: disable=too-many-arguments
     def _mode_compute_each_loop(self, data_buf, scalar_all, data_index_loop_s, data_num, compute_mode, drive_buf_name):
         self._data_move_in(data_buf, data_index_loop_s, data_num)
         self._start_compute(data_buf, scalar_all, compute_mode, drive_buf_name)
@@ -266,16 +286,10 @@ class BertAdam(object):
         self.tik_inst.data_move(combined_param_ub, self.var[data_index_loop_s], 0, 1, block_num, 0, 0)
         self.tik_inst.data_move(combined_grad_ub, self.grad[data_index_loop_s], 0, 1, block_num, 0, 0)
 
-    def _start_compute(self, data_buf, scalar_all, compute_mode, drive_buf_name):
+    @staticmethod
+    def _start_compute(data_buf, scalar_all, compute_mode, drive_buf_name):
         """
         start compute:
-            if compute_mode % 2 == 1: combined_grad /= global_grad_norm
-            exp_avg = exp_avg * beta1 + combined_grad * (1 - beta1)
-            exp_avg_sq = exp_avg_sq * beta2 + combined_grad * combined_grad * (1 - beta2)
-            update = exp_avg / (exp_avg_sq.sqrt() + epsilon)
-            if compute_mode // 2 == 1: update += weight_decay * combined_param
-            update_with_lr = lr_scheduled * update
-            combined_param -= update_with_lr
         """
         compute_cmd = []
         if compute_mode % 2 == 1:
@@ -333,6 +347,7 @@ class BertAdam(object):
         self.tik_inst.data_move(self.var_out[data_index_loop_s], combined_param_ub, 0, 1, block_num, 0, 0)
 
 
+# 'pylint: disable=too-many-arguments,too-many-locals
 def check_params(var, m, v, lr, beta1, beta2, epsilon, grad, max_grad_norm, global_grad_norm, weight_decay,
                  var_out, m_out, v_out, kernel_name):
     """
@@ -373,6 +388,9 @@ def check_params(var, m, v, lr, beta1, beta2, epsilon, grad, max_grad_norm, glob
 
 
 def get_data_num(data_shape):
+    """
+    return data num by data shape
+    """
     data_num = 1
     for data_dim in data_shape:
         data_num *= data_dim
@@ -384,7 +402,7 @@ def get_data_num(data_shape):
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
 def apply_adam_v2(var, m, v, lr, beta1, beta2, epsilon, grad, max_grad_norm, global_grad_norm, weight_decay,
                   var_out, m_out, v_out, kernel_name="ApplyAdamV2"):
     """

@@ -25,28 +25,36 @@ from impl.util import util_compute
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 
-CONST_ZERO = 0
-CONST_ONE = 1
+
+# 'pylint: disable=too-few-public-methods, not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    CONST_ZERO = 0
+    CONST_ONE = 1
 
 
-def len_c(format, shape):
+def len_c(input_format, shape):
     """
     Judge the c axis
-    :param format: input format
+    :param input_format: input format
     :param shape: input shape
     :return: c axis and nd_fromat
     """
     nd_format = False
     shape_c = 1
-    if format == "NHWC" and len(shape) == 4:
+    if input_format == "NHWC" and len(shape) == 4:
         shape_c = shape[3]
-    elif format == "NCHW" and len(shape) == 4:
+    elif input_format == "NCHW" and len(shape) == 4:
         shape_c = shape[1]
     else:
         nd_format = True
     return shape_c, nd_format
 
 
+# 'pylint: disable=unused-variable,too-many-arguments,too-many-locals,unused-argument
+# 'pylint: disable=too-many-boolean-expressions,too-many-statements
 def op_select_format(var, accum, lr, l1, l2, grad, var_out,
                      accum_out, use_locking=False,
                      kernel_name="apply_proximal_adagrad_d"):
@@ -73,10 +81,10 @@ def op_select_format(var, accum, lr, l1, l2, grad, var_out,
     if var_n == -2 or accum_n == -2 or grad_n == -2 or var_nd_format or accum_nd_format or grad_nd_format:
         format_list = "ND,ND"
         dtype_list = "float16,float32"
-        unknowshape_format =format_list
+        unknowshape_format = format_list
         format_list_nd = format_list
         dtype_list_nd = dtype_list
-        unknowshape_format_nd =format_list
+        unknowshape_format_nd = format_list
     else:
         support_fz_var = (var_c % 16 == 0) and (var_n % 16 == 0)
         support_5hd_var = var_c % 16 == 0
@@ -87,24 +95,24 @@ def op_select_format(var, accum, lr, l1, l2, grad, var_out,
         if support_fz_var and support_fz_accum and support_fz_grad:
             format_list = "ND,ND,FRACTAL_Z,FRACTAL_Z,NC1HWC0,NC1HWC0"
             dtype_list = "float16,float32,float16,float32,float16,float32"
-            unknowshape_format =format_list
+            unknowshape_format = format_list
             format_list_nd = "ND,ND,ND,ND,ND,ND"
             dtype_list_nd = dtype_list
-            unknowshape_format_nd =format_list_nd
+            unknowshape_format_nd = format_list_nd
         elif support_5hd_var and support_5hd_accum and support_5hd_grad:
             format_list = "ND,ND,NC1HWC0,NC1HWC0"
             dtype_list = "float16,float32,float16,float32"
-            unknowshape_format =format_list
+            unknowshape_format = format_list
             format_list_nd = "ND,ND,ND,ND"
             dtype_list_nd = dtype_list
-            unknowshape_format_nd =format_list_nd
+            unknowshape_format_nd = format_list_nd
         else:
             format_list = "ND,ND"
             dtype_list = "float16,float32"
-            unknowshape_format =format_list
+            unknowshape_format = format_list
             format_list_nd = format_list
             dtype_list_nd = dtype_list
-            unknowshape_format_nd =format_list
+            unknowshape_format_nd = format_list
     input0 = gen_param(classify="input0", name="var",
                        datatype=dtype_list,
                        format=format_list,
@@ -166,7 +174,9 @@ def _check_shape_is_same(var, accum, grad):
     shape_grad = grad.get("shape")
     if shape_var != shape_accum or shape_var != shape_grad:
         error_detail = "shape of var and accum and grad should be same"
-        error_manager_vector.raise_err_input_shape_invalid("apply_proximal_adagrad_d", "var or accum or grad", error_detail)
+        error_manager_vector.raise_err_input_shape_invalid("apply_proximal_adagrad_d", "var or accum or grad",
+                                                           error_detail)
+
 
 # pylint: disable=locally-disabled,too-many-arguments
 # pylint: disable=too-many-locals,unused-argument,invalid-name
@@ -240,17 +250,17 @@ def apply_proximal_adagrad_d_compute(var, accum, lr, l1, l2, grad, var_out,
     learning_rate_grad = tbe.vmul(grad, learning_rate)
     prox_v = tbe.vsub(var, learning_rate_grad)
     l2_lr = tbe.vmul(l2_broad, learning_rate)
-    l2_lr_1 = tbe.vadds(l2_lr, tvm.const(CONST_ONE, "float32"))
+    l2_lr_1 = tbe.vadds(l2_lr, tvm.const(Constant.CONST_ONE, "float32"))
     prox_v_abs = tbe.vabs(prox_v)
     prox_v_sign = util_compute.sign(prox_v)
     learning_rate_l1 = tbe.vmul(learning_rate, l1_broad)
     prox_v_l1 = tbe.vsub(prox_v_abs, learning_rate_l1)
     max_value = tbe.vmax(prox_v_l1, tbe.broadcast(
-        tvm.const(CONST_ZERO, "float32"), prox_v.shape))
+        tvm.const(Constant.CONST_ZERO, "float32"), prox_v.shape))
     var_res = tbe.vmul(prox_v_sign, max_value)
     var_new = tbe.vdiv(var_res, l2_lr_1)
-    output_data = tbe.vadds(var_new, tvm.const(CONST_ZERO, "float32"))
-    output_accum_data = tbe.vadds(accum_out, tvm.const(CONST_ZERO, "float32"))
+    output_data = tbe.vadds(var_new, tvm.const(Constant.CONST_ZERO, "float32"))
+    output_accum_data = tbe.vadds(accum_out, tvm.const(Constant.CONST_ZERO, "float32"))
 
     if has_improve_precision:
         var_new = tbe.cast_to(var_new, "float16")

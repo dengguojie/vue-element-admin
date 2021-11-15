@@ -22,8 +22,8 @@ from te.utils import para_check
 from impl.util import util_apply_op_schedule
 
 
-# pylint: disable=invalid-name, too-many-arguments, too-many-locals
-# pylint: disable=unused-argument
+# 'pylint: disable=invalid-name, too-many-arguments, too-many-locals
+# 'pylint: disable=unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("apply_adam_d")
 def apply_adam_d_compute(var, m, v, beta1_power, beta2_power, lr, beta1, beta2,
                          epsilon, grad, var_out, m_out, v_out, use_nesterov,
@@ -91,7 +91,7 @@ def apply_adam_d_compute(var, m, v, beta1_power, beta2_power, lr, beta1, beta2,
     m = tbe.vadds(m, tvm.const(0.0, dtype=inp_dtype))
     v = tbe.vadds(v, tvm.const(0.0, dtype=inp_dtype))
 
-    # m.device(d) += (1-beta1)*(grad - m)
+    # this step is: m.device(d) += (1-beta1)*(grad - m)
     lhs = tvm.compute(beta1.shape,
                       lambda *indices:
                       beta1(*indices) * tvm.const(-1.0, dtype=inp_dtype),
@@ -106,7 +106,7 @@ def apply_adam_d_compute(var, m, v, beta1_power, beta2_power, lr, beta1, beta2,
                          tag="elewise_single_VS_mul")
     m = tbe.vadd(m, vmul_m)
 
-    # v.device(d) += (1 - beta2)*(grad*grad - v)
+    # this step is: v.device(d) += (1 - beta2)*(grad*grad - v)
     rhs = tvm.compute(beta2.shape,
                       lambda *indices:
                       beta2(*indices) * tvm.const(-1.0, dtype=inp_dtype),
@@ -123,7 +123,7 @@ def apply_adam_d_compute(var, m, v, beta1_power, beta2_power, lr, beta1, beta2,
                          tag="elewise_single_VS_mul")
     v = tbe.vadd(v, vmul_v)
 
-    # alpha.device(d) = lr*sqrt(T(1) - beta2_power) / (T(1) - beta1_power)
+    # this step is: alpha.device(d) = lr*sqrt(T(1) - beta2_power) / (T(1) - beta1_power)
     lhs1 = tvm.compute(beta2_power.shape,
                        lambda *indices:
                        beta2_power(*indices) * tvm.const(-1.0, dtype=inp_dtype),

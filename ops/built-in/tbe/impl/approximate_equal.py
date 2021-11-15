@@ -24,8 +24,15 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
-NUM_ONE = 1.0
-NUM_ZERO = 0.0
+
+# 'pylint: disable=too-few-public-methods, not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    NUM_ONE = 1.0
+    NUM_ZERO = 0.0
+
 
 __all__ = ["approximate_equal"]
 
@@ -65,8 +72,8 @@ def approximate_equal_compute(input_x, input_y, output_z, tolerance,
                                        input_x.shape)
 
     res_cmp = tbe.vcmp(res_vabs, tol_tensor, 'le')
-    zero_rb_tensor = tbe.broadcast(tvm.const(NUM_ZERO, "float16"), input_x.shape)
-    one_rb_tensor = tbe.broadcast(tvm.const(NUM_ONE, "float16"), input_x.shape)
+    zero_rb_tensor = tbe.broadcast(tvm.const(Constant.NUM_ZERO, "float16"), input_x.shape)
+    one_rb_tensor = tbe.broadcast(tvm.const(Constant.NUM_ONE, "float16"), input_x.shape)
     res = tbe.vsel(res_cmp, one_rb_tensor, zero_rb_tensor)
 
     res = tbe.cast_to(res, "int8")

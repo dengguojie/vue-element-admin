@@ -23,11 +23,16 @@ from impl.util import util_apply_op_schedule
 from impl.util import util_build
 from impl.util import util_compute
 
-# scalar in apply_ftrl_v2
-NUM_ONE = 1.0
-NUM_TWO = 2.0
-NUM_ZERO = 0.0
-NUM_M_ONE = -1.0
+
+# 'pylint: disable=too-few-public-methods, not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    NUM_ONE = 1.0
+    NUM_TWO = 2.0
+    NUM_ZERO = 0.0
+    NUM_M_ONE = -1.0
 
 
 def _pow(data_x, data_y):
@@ -55,8 +60,8 @@ def _pow(data_x, data_y):
     return res
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=invalid-name,too-many-locals, too-many-statements
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=invalid-name,too-many-locals, too-many-statements
 @tbe_platform.fusion_manager.fusion_manager.register("apply_ftrl_v2_d")
 def apply_ftrl_v2_d_compute(var, accum, linear, grad, lr, l1, l2, l2_shrinkage,
                             lr_power, var_out, accum_out, linear_out,
@@ -120,50 +125,50 @@ def apply_ftrl_v2_d_compute(var, accum, linear, grad, lr, l1, l2, l2_shrinkage,
         lr_power = tbe.cast_to(lr_power, "float32")
         has_improve_precision = True
     else:
-        var_tmp = tbe.vadds(var, tvm.const(NUM_ZERO, "float32"))
-        accum_tmp = tbe.vadds(accum, tvm.const(NUM_ZERO, "float32"))
-        linear_tmp = tbe.vadds(linear, tvm.const(NUM_ZERO, "float32"))
+        var_tmp = tbe.vadds(var, tvm.const(Constant.NUM_ZERO, "float32"))
+        accum_tmp = tbe.vadds(accum, tvm.const(Constant.NUM_ZERO, "float32"))
+        linear_tmp = tbe.vadds(linear, tvm.const(Constant.NUM_ZERO, "float32"))
 
-    # 1.grad_with_shrinkage = grad + 2 * l2_shrinkage * var
-    mul_value = tbe.vmuls(l2_shrinkage, tvm.const(NUM_TWO, "float32"))
+    # 1.cal grad_with_shrinkage
+    mul_value = tbe.vmuls(l2_shrinkage, tvm.const(Constant.NUM_TWO, "float32"))
     mul_value = tbe.broadcast(mul_value, var_tmp.shape)
     mul_value2 = tbe.vmul(mul_value, var_tmp)
     grad_with_shrinkage = tbe.vadd(grad, mul_value2)
 
-    # 2.accum_new = accum + grad^2
+    # 2.cal accum_new
     gs = tbe.vmul(grad, grad)
     accum_new = tbe.vadd(accum_tmp, gs)
 
-    # 3.accum_pow_sub = accum_new^(-lr_power)-accum^(-lr_power)
-    lr_power = tbe.vmuls(lr_power, tvm.const(NUM_M_ONE, "float32"))
+    # 3.cal accum_pow_sub
+    lr_power = tbe.vmuls(lr_power, tvm.const(Constant.NUM_M_ONE, "float32"))
     lr_power = tbe.broadcast(lr_power, var_tmp.shape)
     accum_new_pow = _pow(accum_new, lr_power)
     accum_pow = _pow(accum_tmp, lr_power)
     accum_pow_sub = tbe.vsub(accum_new_pow, accum_pow)
 
-    # 4.linear += grad_with_shrinkage - accum_pow_sub / lr * var
+    # 4.cal linear
     lr = tbe.broadcast(lr, var_tmp.shape)
     accum_pow_div = tbe.vdiv(accum_pow_sub, lr)
     accum_pow_mul = tbe.vmul(accum_pow_div, var_tmp)
     accum_pow = tbe.vsub(grad_with_shrinkage, accum_pow_mul)
     linear_new = tbe.vadd(linear_tmp, accum_pow)
 
-    # 5.x_res = l1*linear.sign()-linear
+    # 5.cal x_res
     l1 = tbe.broadcast(l1, var_tmp.shape)
     x_res = util_compute.sign(linear_new)
     x_res = tbe.vmul(x_res, l1)
     x_res = tbe.vsub(x_res, linear_new)
 
-    # 6.y_res = accum_new^(-lr_power)/lr + 2*l2
-    l2 = tbe.vmuls(l2, tvm.const(NUM_TWO, "float32"))
+    # 6.cal y_res
+    l2 = tbe.vmuls(l2, tvm.const(Constant.NUM_TWO, "float32"))
     l2 = tbe.broadcast(l2, var_tmp.shape)
     y_res = tbe.vdiv(accum_new_pow, lr)
     y_res = tbe.vadd(y_res, l2)
 
-    # 7.var = x_res / y_res if linear.abs > l1, else var = 0
+    # 7.cal var
     x_res = tbe.vdiv(x_res, y_res)
     linear_abs = tbe.vabs(linear_new)
-    zero_tensor = tbe.broadcast(tvm.const(NUM_ZERO, "float32"), var_tmp.shape)
+    zero_tensor = tbe.broadcast(tvm.const(Constant.NUM_ZERO, "float32"), var_tmp.shape)
     var_sel = tbe.vcmp(linear_abs, l1, 'gt')
     var_new = tbe.vsel(var_sel, x_res, zero_tensor)
 
@@ -175,12 +180,12 @@ def apply_ftrl_v2_d_compute(var, accum, linear, grad, lr, l1, l2, l2_shrinkage,
         accum_new = tbe.cast_to(accum_new, "float16")
         linear_new = tbe.cast_to(linear_new, "float16")
 
-    # 8.output_var = var_new
-    output_data = tbe.vadds(var_new, tvm.const(NUM_ZERO, var_new.dtype))
+    # 8.cal output_var
+    output_data = tbe.vadds(var_new, tvm.const(Constant.NUM_ZERO, var_new.dtype))
     accum_out_data = tbe.vadds(
-        accum_new, tvm.const(NUM_ZERO, accum_new.dtype))
+        accum_new, tvm.const(Constant.NUM_ZERO, accum_new.dtype))
     linear_out_data = tbe.vadds(
-        linear_new, tvm.const(NUM_ZERO, linear_new.dtype))
+        linear_new, tvm.const(Constant.NUM_ZERO, linear_new.dtype))
 
     def _compute(*index):
         return var_new(*index), accum_new(*index), \

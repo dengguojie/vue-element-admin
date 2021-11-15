@@ -15,26 +15,17 @@
 """
 arg_max_d
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-
-# define a scalar, value = -(2**32 - 1)
-SCALAR_MIN_FP32 = -3402823424.0
-# define a scalar, value = -(2**16 - 1)
-SCALAR_MIN_FP16 = -(2**16 - 1)
-# max segment len
-MAX_SEGMENT_LEN = 2048 * 4
-# max set_mask_int64 value
-MAX_MASK_INT64 = 2**64 - 1
-# 0101 mask value
-MASK_0_1 = 6148914691236517205
-# max int32 output num
-OUT_MAX_NUM = 2048 * 4
-# int32 num in 8*block
-OUT_MASK = 64
+from impl.constant_util_v1 import SCALAR_MIN_FP32
+from impl.constant_util_v1 import SCALAR_MIN_FP16
+from impl.constant_util_v1 import MAX_SEGMENT_LEN
+from impl.constant_util_v1 import MAX_MASK_INT64
+from impl.constant_util_v1 import MASK_0_1
+from impl.constant_util_v1 import OUT_MASK
 
 
 def _get_ceil_int(int1, int2):
@@ -60,7 +51,7 @@ def _get_ceil_int(int1, int2):
     return ceil_int
 
 
-# pylint: disable=unused-argument,invalid-name,useless-object-inheritance,too-many-instance-attributes
+# 'pylint: disable=unused-argument,invalid-name,useless-object-inheritance,too-many-instance-attributes
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
                             para_check.KERNEL_NAME)
 def arg_max_d(x, y, dimension, kernel_name="arg_max_d"):
@@ -183,7 +174,7 @@ class ArgmaxBase(object):
         self.tik_instance = tik.Tik()
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class Argmax(ArgmaxBase):
     """
        Function: use to store argmax schedule parameters
@@ -306,7 +297,7 @@ class Argmax(ArgmaxBase):
 
         return core_used, core_seg
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def argmax_not_last_axis(self):
         """
         scedule for argmax_not_last_axis
@@ -415,7 +406,7 @@ class Argmax(ArgmaxBase):
             gm_out_offset = out_offset + self.segment * segment_loop - offset
             not_last_axis_fuc(segment_tail_data, gm_in_offset, gm_out_offset)
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def compute_argmax_not_last_axis_cut_by_first_dim(self, first_i, segment_loop, offset, segment_tail,
                                                       segment_tail_data):
         """
@@ -758,7 +749,7 @@ class Argmax(ArgmaxBase):
                 with self.tik_instance.else_scope():
                     compute_fuction(n_i, core_segment_tail, core_segment)
 
-    # pylint: disable=too-many-locals,too-many-statements
+    # 'pylint: disable=too-many-locals,too-many-statements
     def compute_argmax_last_axis(self, n_i, core_segment, segment_core):
         """
         compute arg when do last axis
@@ -1385,7 +1376,7 @@ class Argmax(ArgmaxBase):
             second_max_index.set_as(ub_result[1])
             self.result_int32.set_as(second_max_index)
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def do_argmax_last_axis_fp32(self, ub_buf_size, loop, n_i):
         """
         do arg in one segment fo float32

@@ -25,8 +25,14 @@ from te.utils import shape_util
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
-NUM_ONE = 1.0
-NUM_N_ONE = -1.0
+
+# 'pylint: disable=too-few-public-methods, not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    NUM_ONE = 1.0
+    NUM_N_ONE = -1.0
 
 
 # pylint: disable=too-many-arguments,invalid-name,too-many-locals,unused-argument
@@ -63,8 +69,8 @@ def apply_adam_with_amsgrad_d_compute(var,
     if inp_dtype == "float32" and not vmul_support:
         error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'var', [], inp_dtype)
 
-    one = tvm.const(NUM_ONE, "float32")
-    neg_one = tvm.const(NUM_N_ONE, "float32")
+    one = tvm.const(Constant.NUM_ONE, "float32")
+    neg_one = tvm.const(Constant.NUM_N_ONE, "float32")
 
     beta1_power = tbe.broadcast(beta1_power, var.shape)
     beta2_power = tbe.broadcast(beta2_power, var.shape)

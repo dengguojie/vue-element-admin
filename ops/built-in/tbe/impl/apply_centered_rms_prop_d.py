@@ -13,39 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-This file achieved the apply_centered_rms_prop_d which is a optimizer operator
-to update weight.
-
-apply_centered_rms_prop_d
-
-  Op_description :
-    Update '*var' according to the centered RMSProp algorithm.
-    Update '*mg' according to the centered RMSProp algorithm.
-    Update '*ms' according to the centered RMSProp algorithm.
-    Update '*mom' according to the centered RMSProp algorithm.
-
-    # apply_centered_rms_prop_d(var,
-    #   mg,
-    #   ms,
-    #   mom,
-    #   lr,
-    #   rho,
-    #   momentum,
-    #   epsilon,
-    #   grad,
-    #   var_out,
-    #   mg_out,
-    #   ms_out,
-    #   mom_out,
-    #   kernel_name='apply_centered_rms_prop_d')
-
-  Supportive_dtype_format :
-    ['int32', 'int8', 'uint8', 'float32', 'float16']
-    ['ND', 'NCHW', 'NHWC', 'NC1HWC0']
-
-  Constraint :
-    [1] All : the input tensors must have the same shape and type.
-    [2] All : shape size limit is 2147483648.
+apply_centered_rms_prop_d.py
 """
 import te.lang.cce as tbe
 import te.platform as tbe_platform
@@ -53,10 +21,15 @@ from te import tvm
 from te.utils import para_check
 from impl.util import util_apply_op_schedule
 
-# const value
-NUM_ONE = 1.0
-NUM_ZERO = 0.0
-NUM_ONE_NA = -1.0
+
+# 'pylint: disable=too-few-public-methods, not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    NUM_ONE = 1.0
+    NUM_ZERO = 0.0
+    NUM_ONE_NA = -1.0
 
 
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals
@@ -133,12 +106,12 @@ def apply_centered_rms_prop_d_compute(var,
 
     tensor_one_rho = tvm.compute(rho.shape,
                                  lambda *indices: rho(*indices)
-                                     * tvm.const(NUM_ONE_NA, rho.dtype),
+                                     * tvm.const(Constant.NUM_ONE_NA, rho.dtype),
                                  tag='elewise_single_VS_mul')
     tensor_one_rho = tvm.compute(
         tensor_one_rho.shape,
         lambda *indices: tensor_one_rho(*indices)
-                         + tvm.const(NUM_ONE, tensor_one_rho.dtype),
+                         + tvm.const(Constant.NUM_ONE, tensor_one_rho.dtype),
         tag='elewise_single_VS_add')
 
     mg_rho = tvm.compute(mg.shape,
@@ -181,9 +154,9 @@ def apply_centered_rms_prop_d_compute(var,
         out_ms = tbe.cast_to(out_ms, "float16")
         out_mom = tbe.cast_to(out_mom, "float16")
 
-    mg_output_data = tbe.vadds(out_mg, NUM_ZERO)
-    ms_output_data = tbe.vadds(out_ms, NUM_ZERO)
-    mom_output_data = tbe.vadds(out_mom, NUM_ZERO)
+    mg_output_data = tbe.vadds(out_mg, Constant.NUM_ZERO)
+    ms_output_data = tbe.vadds(out_ms, Constant.NUM_ZERO)
+    mom_output_data = tbe.vadds(out_mom, Constant.NUM_ZERO)
 
     # this compute is for multi output
     def _compute(*index):

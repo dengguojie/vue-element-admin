@@ -22,27 +22,16 @@ from te.utils import shape_util
 from te.utils import para_check
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_vector
-
-# define a scalar for fp16 minimal
-SCALAR_MIN_FP16 = -65500
-# define a scalar for fp32 minimal
-SCALAR_MIN_FP32 = -(2 ** 31 - 1)
-# max set_mask_int64 value
-MAX_MASK_INT64 = 2 ** 64 - 1
-# the segment len to split tasks in a core
-CORE_SEGMENT_LEN = 2048
-# int32 num in 8*block
-OUT_MASK = 64
-# 0101 mask value
-MASK_0_1 = 6148914691236517205
-# default axis
-AXIS_DEFAULT = 10000
-# the elements each vec_trans_scatter repeat takes
-DATA_EACH_VNCHWCONV = 16
-# the axis size maximal, int32, because use int32 to store indices, add this constraint
-AXIS_SIZE_MAX = 2 ** 31
-# large task case threshold
-LARGE_TASK_NUM_PER_CORE = 32
+from impl.constant_util_v1 import SCALAR_MIN_FP16
+from impl.constant_util_v1 import SCALAR_MIN_FP32
+from impl.constant_util_v1 import MAX_MASK_INT64
+from impl.constant_util_v1 import CORE_SEGMENT_LEN
+from impl.constant_util_v1 import OUT_MASK
+from impl.constant_util_v1 import MASK_0_1
+from impl.constant_util_v1 import AXIS_DEFAULT
+from impl.constant_util_v1 import DATA_EACH_VNCHWCONV
+from impl.constant_util_v1 import AXIS_SIZE_MAX
+from impl.constant_util_v1 import MAX_BLOCK_NUMBER as LARGE_TASK_NUM_PER_CORE
 
 
 def _get_div_ceil_int(int1, int2):
@@ -300,7 +289,8 @@ def arg_max_with_kd(x, indices, values, axis=AXIS_DEFAULT, out_max_val=False, to
 
         if ori_format not in ("NCHW", "NHWC"):
             excepted_format_list = ["NCHW", "NHWC"]
-            error_manager_vector.raise_err_input_format_invalid("arg_max_with_kd", "ori_format", excepted_format_list, ori_format)
+            error_manager_vector.raise_err_input_format_invalid("arg_max_with_kd", "ori_format", excepted_format_list,
+                                                                ori_format)
         if length_x != 5:
             error_manager_vector.raise_err_input_value_invalid("arg_max_with_kd", "length_x", "5", length_x)
         if length_x_ori != 4:
@@ -312,11 +302,11 @@ def arg_max_with_kd(x, indices, values, axis=AXIS_DEFAULT, out_max_val=False, to
             if axis in (1, 4):
                 error_detail = "axis is invalid for 5D Tensor, axis should not in (1, 4), axis:", axis
                 error_manager_vector.raise_err_specific_reson("arg_max_with_kd", error_detail)
-   
+
         else:
             error_detail = "axis is invalid for 5D Tensor, axis:", axis
             error_manager_vector.raise_err_specific_reson("arg_max_with_kd", error_detail)
-   
+
     # the element size of axis
     axis_size = 1
 
@@ -332,7 +322,7 @@ def arg_max_with_kd(x, indices, values, axis=AXIS_DEFAULT, out_max_val=False, to
         para_check.check_shape_rule(shape_x, min_dim=1, max_dim=8)
 
         # check axis
-        # constraints: -len(shape_x) <= axis < len(shape_x)
+        # constraints: axis is between -len(shape_x) and len(shape_x)
         axis = shape_util.axis_check(len(shape_x), axis)
 
         axis_size = shape_x[axis]
@@ -340,12 +330,12 @@ def arg_max_with_kd(x, indices, values, axis=AXIS_DEFAULT, out_max_val=False, to
     if topk != 1 or topk > axis_size:
         error_detail = "topk is out of range, topk:%s, axis_size:%s" % (topk, axis_size)
         error_manager_vector.raise_err_specific_reson("arg_max_with_kd", error_detail)
-   
+
     # check axis size
     if axis_size > AXIS_SIZE_MAX:
         error_detail = "axis_size is larger than int limit, fail. axis_size:%s, limit:%s" % (axis_size, AXIS_SIZE_MAX)
         error_manager_vector.raise_err_specific_reson("arg_max_with_kd", error_detail)
-   
+
     para_check.check_tensor_shape_size(shape_x)
     para_check.check_dtype_rule(dtype_x, ("float16", "float32"))
     para_check.check_kernel_name(kernel_name)
@@ -478,9 +468,10 @@ class ArgMax():
 
         if self.version in ("Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403") and \
                 self.dtype_x == "float32":
-            error_detail = "Only support float16 in mini/cloud/hisi-es/hisi-cs, self.version:%s, self.dtype_x:%s" % (self.version, self.dtype_x)
+            error_detail = "Only support float16 in mini/cloud/hisi-es/hisi-cs, self.version:%s, self.dtype_x:%s" % (
+            self.version, self.dtype_x)
             error_manager_vector.raise_err_specific_reson("arg_max_with_kd", error_detail)
-   
+
     def argmax_compute(self):
         """
         argmax_compute
@@ -895,7 +886,7 @@ class ArgMax():
             second_dim = DATA_EACH_VNCHWCONV
         first_dim = ub_capacity // tmp_size // second_dim * DATA_EACH_VNCHWCONV
 
-        CORE_SEGMENT_LEN_LOCAL = first_dim * second_dim
+        core_segment_len_local = first_dim * second_dim
 
         # the number of elements this core to write, for 32B alignment purpose
         element_end_address_to_write = (n_i * segment_core + core_segment) * \
@@ -920,7 +911,7 @@ class ArgMax():
                                          task_segment_len_last_dim)
 
             # the schema is: first_dim_local, second_dim, self.axis_size, self.last_dim_size
-            index = CORE_SEGMENT_LEN_LOCAL * segment_index
+            index = core_segment_len_local * segment_index
             offset = n_i * segment_core + index
 
             # 1. transpose
@@ -1424,11 +1415,11 @@ class ArgMax():
                             self.result_gm[element_end_address_to_write - self.index_each_block],
                             result_int32_tmp, 0, 1, 1, 0, 0)
 
-        _loop_segment = core_segment // CORE_SEGMENT_LEN_LOCAL
-        _loop_segment_tail = core_segment % CORE_SEGMENT_LEN_LOCAL
+        _loop_segment = core_segment // core_segment_len_local
+        _loop_segment_tail = core_segment % core_segment_len_local
         if _loop_segment != 0:
             with self.tik_instance.for_range(0, _loop_segment) as _loop:
-                _run(CORE_SEGMENT_LEN_LOCAL, _loop)
+                _run(core_segment_len_local, _loop)
         if _loop_segment_tail != 0:
             with self.tik_instance.new_stmt_scope():
                 _run(_loop_segment_tail, _loop_segment)
@@ -2752,7 +2743,7 @@ class ArgMax():
         ub_buf_size, loop_times, over_size, align_flag = \
             get_tiling_info_for_axis(self.axis_size, self.task_segment_len)
         # use 16 for vec_trans_scatter
-        CORE_SEGMENT_LEN_DB = DATA_EACH_VNCHWCONV
+        core_segment_len_db = DATA_EACH_VNCHWCONV
 
         # use to store the first vcmax result, the self.task_segment_len limit to 16K
         seg_len = min(self.task_segment_len, self.axis_size)
@@ -2762,29 +2753,29 @@ class ArgMax():
         def _run(segment_len, segment_index):
             # the ub buffer used to store the first vcmax results
             ub_result_first = self.tik_instance.Tensor(
-                self.dtype_x, (CORE_SEGMENT_LEN_DB, repeat_num_2 * self.data_each_vector,),
+                self.dtype_x, (core_segment_len_db, repeat_num_2 * self.data_each_vector,),
                 name="ub_result_first",
                 scope=tik.scope_ubuf)
 
             # the ub buffer used to store the second vcmax results
             ub_result_second = self.tik_instance.Tensor(
-                self.dtype_x, (CORE_SEGMENT_LEN_DB, 2 * self.data_each_block,),
+                self.dtype_x, (core_segment_len_db, 2 * self.data_each_block,),
                 name="ub_result_second",
                 scope=tik.scope_ubuf)
 
             # the ub buffer used to store the third vcmax results
             ub_result_third = self.tik_instance.Tensor(
-                self.dtype_x, (CORE_SEGMENT_LEN_DB, self.data_each_block,),
+                self.dtype_x, (core_segment_len_db, self.data_each_block,),
                 name="ub_result_third",
                 scope=tik.scope_ubuf)
 
             # the ub buffer used to store the final results of segments assigned to this core
             ub_result_indices = self.tik_instance.Tensor(
-                "int32", (CORE_SEGMENT_LEN_DB,),
+                "int32", (core_segment_len_db,),
                 name="ub_result_indices",
                 scope=tik.scope_ubuf)
             ub_result_value = self.tik_instance.Tensor(
-                self.dtype_x, (CORE_SEGMENT_LEN_DB, DATA_EACH_VNCHWCONV),
+                self.dtype_x, (core_segment_len_db, DATA_EACH_VNCHWCONV),
                 name="ub_result_value",
                 scope=tik.scope_ubuf)
 
@@ -2803,7 +2794,7 @@ class ArgMax():
                 need_merge = True
 
             with self.tik_instance.for_range(0, segment_len, thread_num=thread_1) as core_i:
-                index = core_i + CORE_SEGMENT_LEN_DB * segment_index
+                index = core_i + core_segment_len_db * segment_index
                 offset = n_i * segment_core + index
                 argmax_func = self.do_argmax_last_axis
                 if loop_times != 0:
@@ -2823,7 +2814,7 @@ class ArgMax():
                                     ub_result_indices[core_i:],
                                     ub_result_value[core_i * DATA_EACH_VNCHWCONV:])
 
-            gm_out_offset = n_i * segment_core + CORE_SEGMENT_LEN_DB * segment_index
+            gm_out_offset = n_i * segment_core + core_segment_len_db * segment_index
             # store the indices
             if self.out_max_index:
                 if not need_merge:
@@ -2904,12 +2895,12 @@ class ArgMax():
             if self.out_max_val:
                 # the ub buffer to store the transposed results of segments assigned to this core
                 ub_result_value_transposed = self.tik_instance.Tensor(
-                    self.dtype_x, (DATA_EACH_VNCHWCONV, CORE_SEGMENT_LEN_DB),
+                    self.dtype_x, (DATA_EACH_VNCHWCONV, core_segment_len_db),
                     name="ub_result_value_transposed",
                     scope=tik.scope_ubuf)
 
                 # do the transpose
-                row_loop_count = _get_div_ceil_int(CORE_SEGMENT_LEN_DB, DATA_EACH_VNCHWCONV)
+                row_loop_count = _get_div_ceil_int(core_segment_len_db, DATA_EACH_VNCHWCONV)
                 col_loop_count = _get_div_ceil_int(DATA_EACH_VNCHWCONV, DATA_EACH_VNCHWCONV)
 
                 # for max value transpose
@@ -2920,7 +2911,7 @@ class ArgMax():
                         # the region of each elements at most not overlap
                         dst_list = []
                         for i in range(DATA_EACH_VNCHWCONV):
-                            dst_pos = CORE_SEGMENT_LEN_DB * i + DATA_EACH_VNCHWCONV * row_idx
+                            dst_pos = core_segment_len_db * i + DATA_EACH_VNCHWCONV * row_idx
                             dst_list.append(ub_result_value_transposed[dst_pos])
                         # should of length 16, but the elements can be duplicate
                         src_list = []
@@ -2935,7 +2926,7 @@ class ArgMax():
                         else:
                             self.tik_instance.vec_trans_scatter(
                                 False, False, dst_list, src_list, col_loop_count,
-                                DATA_EACH_VNCHWCONV * CORE_SEGMENT_LEN_DB // self.data_each_block,
+                                DATA_EACH_VNCHWCONV * core_segment_len_db // self.data_each_block,
                                 DATA_EACH_VNCHWCONV // self.data_each_block)
                 else:
                     # float32, 16*8
@@ -2944,7 +2935,7 @@ class ArgMax():
                         # the region of each elements at most not overlap
                         dst_list = []
                         for i in range(DATA_EACH_VNCHWCONV):
-                            dst_pos = CORE_SEGMENT_LEN_DB * (i // 2) + \
+                            dst_pos = core_segment_len_db * (i // 2) + \
                                       (i % 2) * DATA_EACH_VNCHWCONV // 2 + \
                                       DATA_EACH_VNCHWCONV * row_idx
                             dst_list.append(ub_result_value_transposed[dst_pos])
@@ -2956,7 +2947,7 @@ class ArgMax():
 
                         self.tik_instance.vec_trans_scatter(
                             False, False, dst_list, src_list, 2 * col_loop_count,
-                            DATA_EACH_VNCHWCONV // 2 * CORE_SEGMENT_LEN_DB // self.data_each_block,
+                            DATA_EACH_VNCHWCONV // 2 * core_segment_len_db // self.data_each_block,
                             DATA_EACH_VNCHWCONV // 2 // self.data_each_block)
 
                 if segment_len % self.data_each_block == 0:
@@ -2995,11 +2986,11 @@ class ArgMax():
                         self.result_gm_value[gm_out_offset + segment_len - self.data_each_block],
                         ub_result_value_tmp, 0, 1, 1, 0, 0)
 
-        _loop_segment = core_segment // CORE_SEGMENT_LEN_DB
-        _loop_segment_tail = core_segment % CORE_SEGMENT_LEN_DB
+        _loop_segment = core_segment // core_segment_len_db
+        _loop_segment_tail = core_segment % core_segment_len_db
         if _loop_segment != 0:
             with self.tik_instance.for_range(0, _loop_segment) as _loop:
-                _run(CORE_SEGMENT_LEN_DB, _loop)
+                _run(core_segment_len_db, _loop)
         if _loop_segment_tail != 0:
             _run(_loop_segment_tail, _loop_segment)
 

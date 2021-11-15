@@ -13,29 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-this file achieved the apply_proximal_gradient_descent which is
-a optimizer operator to update weight, this file contains compute and schedule.
-
 apply_proximal_gradient_descent
-
-  Op_description :
-    Update '*var' as FOBOS algorithm with fixed learning rate.
-
-    # apply_proximal_gradient_descent(var,
-    #   alpha,
-    #   l1,
-    #   l2,
-    #   delta,
-    #   out,
-    #   kernel_name='apply_proximal_gradient_descent')
-
-  Supportive_dtype_format :
-    ['int32', 'int8', 'uint8', 'float32', 'float16']
-    ['ND', 'NCHW', 'NHWC', 'NC1HWC0']
-
-  Constraint :
-    [1] All : the input tensors must have the same shape and type.
-    [2] All : shape size limit is 2147483648.
 """
 import te.lang.cce as tbe
 import te.platform as tbe_platform
@@ -45,13 +23,19 @@ from impl.util import util_apply_op_schedule
 from impl.util import util_build
 from impl.util import util_compute
 
-CONST_ZERO = 0
-CONST_ONE = 1
-CONST_ONE_NEG = -1
+
+# 'pylint: disable=too-few-public-methods, not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    CONST_ZERO = 0
+    CONST_ONE = 1
+    CONST_ONE_NEG = -1
 
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("apply_proximal_gradient_descent")
 def apply_proximal_gradient_descent_compute(
         var,
@@ -132,17 +116,17 @@ def _compute_process(var, alpha_broad, l1_broad, l2_broad, delta):
     """
     # var - alpha * delta
     alpha_delta = tbe.vmul(alpha_broad, delta)
-    alpha_delta = tbe.vmuls(alpha_delta, tvm.const(CONST_ONE_NEG, "float32"))
+    alpha_delta = tbe.vmuls(alpha_delta, tvm.const(Constant.CONST_ONE_NEG, "float32"))
     prox_v = tbe.vadd(var, alpha_delta)
 
-    const_zero_tensor = tbe.broadcast(tvm.const(CONST_ZERO, var.dtype.lower()), delta.shape)
+    const_zero_tensor = tbe.broadcast(tvm.const(Constant.CONST_ZERO, var.dtype.lower()), delta.shape)
     situation = tbe.vcmp(l1_broad, const_zero_tensor, 'gt')
 
     var_res = _compute_positive(prox_v, alpha_broad, l1_broad, l2_broad)
 
     # prox_var / 1 + l2 * alpha
     l2_lr = tbe.vmul(l2_broad, alpha_broad)
-    l2_lr_1 = tbe.vadds(l2_lr, tvm.const(CONST_ONE, "float32"))
+    l2_lr_1 = tbe.vadds(l2_lr, tvm.const(Constant.CONST_ONE, "float32"))
     var_t_neg = tbe.vdiv(prox_v, l2_lr_1)
 
     var_out = tbe.vsel(situation, var_res, var_t_neg)
@@ -169,15 +153,15 @@ def _compute_positive(prox_v, alpha_broad, l1_broad, l2_broad):
     prox_v_sign = util_compute.sign(prox_v)
     # 1+alpha*l2
     alpha_l2 = tbe.vmul(alpha_broad, l2_broad)
-    alpha_l2_1 = tbe.vadds(alpha_l2, tvm.const(CONST_ONE, "float32"))
-    # max{|prox_v|-alpha*l1,0}
+    alpha_l2_1 = tbe.vadds(alpha_l2, tvm.const(Constant.CONST_ONE, "float32"))
+    # this step is max{|prox_v|-alpha*l1,0}
     alpha_l1 = tbe.vmul(alpha_broad, l1_broad)
-    alpha_l1_neg = tbe.vmuls(alpha_l1, tvm.const(CONST_ONE_NEG, "float32"))
+    alpha_l1_neg = tbe.vmuls(alpha_l1, tvm.const(Constant.CONST_ONE_NEG, "float32"))
     prox_v_l1 = tbe.vadd(prox_v_abs, alpha_l1_neg)
     max_value = tbe.vmax(
         prox_v_l1,
-        tbe.broadcast(tvm.const(CONST_ZERO, "float32"), prox_v.shape))
-    # sign(prox_v)/(1+alpha*l2) * max{|prox_v|-alpha*l1,0}
+        tbe.broadcast(tvm.const(Constant.CONST_ZERO, "float32"), prox_v.shape))
+    # this step is sign(prox_v)/(1+alpha*l2) * max{|prox_v|-alpha*l1,0}
     res = tbe.vdiv(prox_v_sign, alpha_l2_1)
     var_res = tbe.vmul(res, max_value)
 

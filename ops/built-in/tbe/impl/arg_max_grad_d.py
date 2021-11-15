@@ -24,7 +24,7 @@ from te.utils.error_manager import error_manager_vector
 from te.utils import para_check
 
 
-# pylint: disable=invalid-name,unused-argument,too-many-statements
+# pylint: disable=invalid-name,unused-argument,too-many-statements,too-many-arguments
 @fusion_manager.register("arg_max_grad_d")
 def arg_max_grad_d_compute(var, indices, updates, assist, y, dimension=0, kernel_name="arg_max_grad_d"):
     """
@@ -38,7 +38,8 @@ def arg_max_grad_d_compute(var, indices, updates, assist, y, dimension=0, kernel
     res = tbe.vsel(data_eq, data_updates, var)
     return res
 
-# pylint: disable=invalid-name,unused-argument,too-many-statements
+
+# pylint: disable=invalid-name,unused-argument,too-many-statements,too-many-arguments,too-many-locals
 def arg_max_grad_d_check_param(var, indices, updates, assist, y, kernel_name="arg_max_grad_d"):
     """
     check input param
@@ -47,7 +48,7 @@ def arg_max_grad_d_check_param(var, indices, updates, assist, y, kernel_name="ar
     updates_shape = updates.get("shape")
     var_shape = var.get("shape")
     assist_shape = assist.get("shape")
-    
+
     var_dtype = var.get("dtype")
     indices_dtype = indices.get("dtype")
     updates_dtype = updates.get("dtype")
@@ -76,6 +77,7 @@ def arg_max_grad_d_check_param(var, indices, updates, assist, y, kernel_name="ar
     para_check.check_dtype(dtype_assist, check_list, param_name="assist")
 
 
+# pylint: disable=too-many-arguments,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
@@ -113,12 +115,12 @@ def arg_max_grad_d(var, indices, updates, assist, y, dimension=0, kernel_name="a
     if dimension < 0:
         dimension = dimension + len(var_shape)
     data_shape[dimension] = 1
-    
+
     data_var = tvm.placeholder(var.get("shape"), dtype=var.get("dtype"), name="data_var")
     data_indexs = tvm.placeholder(data_shape, dtype=indices.get("dtype"), name="data_indexs")
     data_updates = tvm.placeholder(data_shape, dtype=updates.get("dtype"), name="data_updates")
     data_assist = tvm.placeholder(assist.get("shape"), dtype=assist.get("dtype"), name="data_assist")
-    
+
     res = arg_max_grad_d_compute(data_var, data_indexs, data_updates, data_assist, y, dimension, kernel_name)
 
     # auto schedule

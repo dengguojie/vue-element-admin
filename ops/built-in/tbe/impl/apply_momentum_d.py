@@ -14,27 +14,6 @@
 # ============================================================================
 """
 apply_momentum
-
-  Op_description :
-    Update '*var' according to the ApplyMomentum algorithm.
-
-    # apply_momentum_d(var,
-    #   accum,
-    #   lr,
-    #   grad,
-    #   momentum,
-    #   var_out,
-    #   accum_out,
-    #   use_nesterov,
-    #   kernel_name='apply_momentum')
-
-  Supportive_dtype_format :
-    ['int32', 'int8', 'uint8', 'float32', 'float16']
-    ['ND', 'NCHW', 'NHWC', 'NC1HWC0']
-
-  Constraint :
-    [1] All : the input tensors must have the same shape and type.
-    [2] All : shape size limit is 2147483648.
 """
 import te.lang.cce as tbe
 import te.platform as tbe_platform
@@ -42,8 +21,13 @@ from te import tvm
 from te.utils import para_check
 from impl.util import util_apply_op_schedule
 
-# scalar in apply_momentum
-NUM_ZERO = 0.0
+
+# 'pylint: disable=too-few-public-methods, not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    NUM_ZERO = 0.0
 
 
 # pylint: disable=locally-disabled,too-many-arguments
@@ -133,9 +117,9 @@ def apply_momentum_compute_d(var,
         accum_t = tbe.cast_to(accum_t, "float16")
 
     var_out_data = tbe.vadds(
-        var_t, tvm.const(NUM_ZERO, var_t.dtype))
+        var_t, tvm.const(Constant.NUM_ZERO, var_t.dtype))
     accum_out_data = tbe.vadds(
-        accum_t, tvm.const(NUM_ZERO, accum_t.dtype))
+        accum_t, tvm.const(Constant.NUM_ZERO, accum_t.dtype))
 
     def _compute(*index):
         return accum_t(*index), var_t(*index), var_out_data(*index), \

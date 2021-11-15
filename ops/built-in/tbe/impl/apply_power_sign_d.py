@@ -14,27 +14,6 @@
 # ============================================================================
 """
 apply_power_sign
-
-  Op_description :
-    Update '*var' according to the AddSign update.
-
-    # apply_power_sign_d(var,
-    #   m,
-    #   lr,
-    #   logbase,
-    #   sign_decay,
-    #   beta,
-    #   grad,
-    #   out,
-    #   kernel_name='cce_apply_power_sign')
-
-  Supportive_dtype_format :
-    ['int32', 'int8', 'uint8', 'float32', 'float16']
-    ['ND', 'NCHW', 'NHWC', 'NC1HWC0']
-
-  Constraint :
-    [1] All : the input tensors must have the same shape and type.
-    [2] All : shape size limit is 2147483648.
 """
 import te.lang.cce as tbe
 import te.platform as tbe_platform
@@ -43,8 +22,14 @@ from te.utils import para_check
 from impl.util import util_compute
 from impl.util import util_apply_op_schedule
 
-CONST_ONE = 1.0
-CONST_ONE_NA = -1.0
+
+# 'pylint: disable=too-few-public-methods, not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    CONST_ONE = 1.0
+    CONST_ONE_NA = -1.0
 
 
 # pylint: disable=locally-disabled,invalid-name
@@ -54,10 +39,10 @@ def _compute_m_t(m, beta, grad):
                            lambda *indice: m(*indice) * beta[0],
                            tag='elewise_single_VS_mul')
     beta_na = tvm.compute(beta.shape,
-                          lambda *indice: beta(*indice) * tvm.const(CONST_ONE_NA, beta.dtype),
+                          lambda *indice: beta(*indice) * tvm.const(Constant.CONST_ONE_NA, beta.dtype),
                           tag='elewise_single_VS_mul')
     beta_na = tvm.compute(beta_na.shape,
-                          lambda *indice: beta_na(*indice) + tvm.const(CONST_ONE, beta_na.dtype),
+                          lambda *indice: beta_na(*indice) + tvm.const(Constant.CONST_ONE, beta_na.dtype),
                           tag='elewise_single_VS_add')
     beta_sub_tmp = tvm.compute(grad.shape,
                                lambda *indice: grad(*indice) * beta_na[0],

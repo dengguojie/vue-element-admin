@@ -23,13 +23,19 @@ from impl.util import util_apply_op_schedule
 from impl.util import util_build
 from impl.util import util_compute
 
-# scalar in apply_ftrl_d
-NUM_ONE = 1.0
-NUM_TWO = 2.0
-NUM_ZERO = 0.0
-NUM_M_ONE = -1.0
+
+# 'pylint: disable=too-few-public-methods, not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    NUM_ONE = 1.0
+    NUM_TWO = 2.0
+    NUM_ZERO = 0.0
+    NUM_M_ONE = -1.0
 
 
+# 'pylint: disable=unused-argument,unused-variable
 def _pow(data, index, bound):
     """
     Calculate power result for non-negative data.
@@ -59,8 +65,8 @@ def _pow(data, index, bound):
     return res
 
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=unused-argument,invalid-name,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("apply_ftrl_d")
 def apply_ftrl_d_compute(var,
                          accum,
@@ -129,23 +135,23 @@ def apply_ftrl_d_compute(var,
         lr_power = tbe.cast_to(lr_power, "float32")
         has_improve_precision = True
     else:
-        var_tmp = tbe.vadds(var, tvm.const(NUM_ZERO, dtype))
-        accum_tmp = tbe.vadds(accum, tvm.const(NUM_ZERO, dtype))
-        linear_tmp = tbe.vadds(linear, tvm.const(NUM_ZERO, dtype))
+        var_tmp = tbe.vadds(var, tvm.const(Constant.NUM_ZERO, dtype))
+        accum_tmp = tbe.vadds(accum, tvm.const(Constant.NUM_ZERO, dtype))
+        linear_tmp = tbe.vadds(linear, tvm.const(Constant.NUM_ZERO, dtype))
 
     # broadcast scalar to appropriate shape
-    zero_tensor = tbe.broadcast(tvm.const(NUM_ZERO, var_tmp.dtype), var.shape)
+    zero_tensor = tbe.broadcast(tvm.const(Constant.NUM_ZERO, var_tmp.dtype), var.shape)
     lr = tbe.broadcast(lr, var.shape)
     l1 = tbe.broadcast(l1, var.shape)
     l2 = tbe.broadcast(l2, var.shape)
     lr_power = tbe.broadcast(lr_power, var.shape)
 
-    # 1.accum_new = accum + grad^2
+    # 1.cal accum_new
     gs = tbe.vmul(grad, grad)
     accum_new = tbe.vadd(accum_tmp, gs)
 
-    # 2.linear += grad - (accum_new^(-lr_power)-accum^(-lr_power))/lr*var
-    lr_power = tbe.vmuls(lr_power, tvm.const(NUM_M_ONE, var_tmp.dtype))
+    # 2.cal linear
+    lr_power = tbe.vmuls(lr_power, tvm.const(Constant.NUM_M_ONE, var_tmp.dtype))
     accum_new_p = _pow(accum_new, lr_power, zero_tensor)
     accum_p = _pow(accum_tmp, lr_power, zero_tensor)
     accum_p = tbe.vsub(accum_new_p, accum_p)
@@ -155,17 +161,17 @@ def apply_ftrl_d_compute(var,
     accum_p = tbe.vsub(grad, accum_p)
     linear_t = tbe.vadd(linear_tmp, accum_p)
 
-    # 3.x_res = l1*linear.sign()-linear
+    # 3.cal x_res
     x_res = util_compute.sign(linear_t)
     x_res = tbe.vmul(x_res, l1)
     x_res = tbe.vsub(x_res, linear_t)
 
-    # 4.y_res = accum_new^(-lr_power)/lr + 2*l2
-    l2 = tbe.vmuls(l2, tvm.const(NUM_TWO, var_tmp.dtype))
+    # 4.cal y_res
+    l2 = tbe.vmuls(l2, tvm.const(Constant.NUM_TWO, var_tmp.dtype))
     y_res = tbe.vdiv(accum_new_p, lr)
     y_res = tbe.vadd(y_res, l2)
 
-    # 5.var = x_res / y_res if linear.abs > l1, else var = 0
+    # 5.cal var
     x_res = tbe.vdiv(x_res, y_res)
     linear_abs = tbe.vabs(linear_t)
     var_sel = tbe.vcmp(linear_abs, l1, 'gt')
@@ -179,10 +185,10 @@ def apply_ftrl_d_compute(var,
         accum_new = tbe.cast_to(accum_new, "float16")
         linear_t = tbe.cast_to(linear_t, "float16")
 
-    # 8.var_output_data = var_t
-    var_output_data = tbe.vadds(var_t, tvm.const(NUM_ZERO, var_t.dtype))
-    accum_output_data = tbe.vadds(accum_new, tvm.const(NUM_ZERO, accum_new.dtype))
-    linear_output_data = tbe.vadds(linear_t, tvm.const(NUM_ZERO, linear_t.dtype))
+    # 8.cal var_output_data
+    var_output_data = tbe.vadds(var_t, tvm.const(Constant.NUM_ZERO, var_t.dtype))
+    accum_output_data = tbe.vadds(accum_new, tvm.const(Constant.NUM_ZERO, accum_new.dtype))
+    linear_output_data = tbe.vadds(linear_t, tvm.const(Constant.NUM_ZERO, linear_t.dtype))
 
     def _compute(*index):
         return var_t(*index), accum_new(*index), linear_t(*index), var_output_data(

@@ -120,3 +120,28 @@ MINI = "mini"
 
 # product is cloud
 CLOUD = "cloud"
+
+# define a scalar, value = -(2**32 - 1)
+SCALAR_MIN_FP32 = -3402823424.0
+# define a scalar, value = -(2**16 - 1)
+SCALAR_MIN_FP16 = -(2**16 - 1)
+# define a scalar, value = (2**30 + 2**29)
+SCALAR_MAX_FP32 = (2**30 + 2**29)
+# define a scalar, value = (2**16 - 1)
+SCALAR_MAX_FP16 = (2**16 - 1)
+# max segment len
+MAX_SEGMENT_LEN = 2048 * 4
+# max set_mask_int64 value
+MAX_MASK_INT64 = 2**64 - 1
+# 0101 mask value
+MASK_0_1 = 6148914691236517205
+# int32 num in 8*block
+OUT_MASK = 64
+# the segment len to split tasks in a core
+CORE_SEGMENT_LEN = 2048
+# default axis
+AXIS_DEFAULT = 10000
+# the elements each vec_trans_scatter repeat takes
+DATA_EACH_VNCHWCONV = 16
+# the axis size maximal, int32, because use int32 to store indices, add this constraint
+AXIS_SIZE_MAX = 2 ** 31
