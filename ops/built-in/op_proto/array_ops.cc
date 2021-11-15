@@ -487,6 +487,20 @@ IMPLEMT_INFERFUNC(Constant, ConstantInfer) {
 
 INFER_FUNC_REG(Constant, ConstantInfer);
 
+IMPLEMT_INFERFUNC(FileConstant, FileConstantInfer) {
+  auto attr_shape = op.get_attr_shape();
+  auto attr_dtype = op.get_attr_dtype();
+
+  TensorDesc outDesc = op.GetOutputDesc("y");
+  outDesc.SetDataType(ge::DataType(attr_dtype));
+  outDesc.SetShape(Shape(attr_shape));
+  (void)op.UpdateOutputDesc("y", outDesc);
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(FileConstant, FileConstantInfer);
+
 graphStatus ConstAndConstantInferFormat(ge::Operator& op) {
   OP_LOGI(op.GetName().c_str(), "Const infer format start");
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
