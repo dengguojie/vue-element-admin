@@ -289,7 +289,7 @@ def _test_conv2d_backprop_filter_compute(test_args):
         formatted_case = _gen_trans_data_case(*test_case)
         formatted_case["params"][5] = test_case[11]
         __build_dw_compute(formatted_case)
-        
+
 
 _gen_conv2d_bp_filter_op_case()
 _gen_conv2d_bp_filter_check_support_case()

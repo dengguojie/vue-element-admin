@@ -578,8 +578,9 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
         mag_factor1 = lcm(cout // groups, BLOCK_SIZE) // (cout // groups)
         mag_factor = min(lcm(mag_factor0, mag_factor1), groups)
 
-        cin1_g = (mag_factor * fmap_c // groups + c0_size - 1) // c0_size
-        cout_g = (mag_factor * cout // groups + c0_size - 1) // c0_size * c0_size
+        cin_g = (mag_factor * fmap_c // groups + BLOCK_SIZE - 1) // BLOCK_SIZE * BLOCK_SIZE
+        cin1_g = cin_g // c0_size
+        cout_g = (mag_factor * cout // groups + BLOCK_SIZE - 1) // BLOCK_SIZE * BLOCK_SIZE
 
         group_dict = {
             "real_g": (groups + mag_factor - 1) // mag_factor,
