@@ -96,19 +96,23 @@ Status ScopeLayerNormPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& sc
           OP_LOGI(kOpType, "LayerNorm/batchnorm/Rsqrt is found, name is %s", mode_def->GetName().c_str());
           std::vector<std::string> outputs_sqrt;
           mode_def->GetAttr("_origin_graph_node_outputs", outputs_sqrt);
-          bool found_grad_mul = false;
-          for (size_t i = 0; i < outputs_sqrt.size(); i++) {
-            std::string output_name = outputs_sqrt.at(i);
-            std::string split_name = output_name.substr(1);
-            OP_LOGI(kOpType, "split name is %s", split_name.c_str());
-            if (split_name.find("mul_grad/Mul_1") != std::string::npos) {
-              found_grad_mul = true;
-              break;
+          OP_LOGI(kOpType, "outputs_sqrt is %d", outputs_sqrt.size());
+          // if output size of sqrt is greater than 1, training, must have anchor to layernormgrad
+          if (outputs_sqrt.size() > 1) {
+            bool found_grad_mul = false;
+            for (size_t i = 0; i < outputs_sqrt.size(); i++) {
+              std::string output_name = outputs_sqrt.at(i);
+              std::string split_name = output_name.substr(1);
+              OP_LOGI(kOpType, "split name is %s", split_name.c_str());
+              if (split_name.find("mul_grad/Mul_1") != std::string::npos) {
+                found_grad_mul = true;
+                break;
+              }
             }
-          }
-          if (not found_grad_mul) {
-            OP_LOGI(kOpType, " not find mul_grad/Mul_1");
-            return FAILED;
+            if (not found_grad_mul) {
+              OP_LOGI(kOpType, " not find mul_grad/Mul_1");
+              return FAILED;
+            }
           }
         }
     }
@@ -256,7 +260,6 @@ void ScopeLayerNormPass::GenMomentsScopePatterns(ScopeFusionPatterns& patterns) 
   moments_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Mean", 2));               // Mean num is 2
   moments_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("SquaredDifference", 1));  // SquaredDifference num is 1
   moments_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("Squeeze", -1));           // Squeeze num is 0
-  moments_cell->AddNodeOpTypeFeature(NodeOpTypeFeature("StopGradient", -1));
   moments_cell->AddScopeFeature(ScopeFeature("", -1, "moments"));
 
   batch.push_back(moments_cell);
