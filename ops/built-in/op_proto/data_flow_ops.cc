@@ -48,6 +48,7 @@ graphStatus SetAttrsToShapesAndTypes(Operator& op,
 
   Operator::OpListListInt elem_shapes;
   auto ret = op.GetAttr(shapes, elem_shapes);
+  OP_LOGI(op.GetName().c_str(), "elem_shapes = %ld, elem_types = %ld", elem_shapes.size(), elem_types.size());
   if (ret == GRAPH_SUCCESS && elem_shapes.size() > 0) {
     size_t num = std::min(elem_shapes.size(), elem_types.size());
     std::vector<ShapeAndType> handle_shapes_and_types;
@@ -63,12 +64,13 @@ graphStatus SetAttrsToShapesAndTypes(Operator& op,
     std::vector<std::vector<ShapeAndType>> shapes_and_types(2);
     shapes_and_types[0] = handle_shapes_and_types;
     context->SetOutputHandleShapesAndTypes(shapes_and_types);
-  } else {
-    AscendString op_name;
-    op.GetName(op_name);
-    std::vector<AscendString> marks = {op_name};
-    context->SetMarks(marks);
   }
+
+  AscendString op_name;
+  op.GetName(op_name);
+  std::vector<AscendString> marks = {op_name};
+  context->SetMarks(marks);
+
   return GRAPH_SUCCESS;
 }
 
@@ -435,11 +437,13 @@ IMPLEMT_INFERFUNC(QueueEnqueue, QueueEnqueueInfer) {
   if ((input_shapes_and_types.size() != 0) &&
       (input_shapes_and_types[0].size() != 0) &&
       (input_shapes_and_types[0].size() == dyn_comp_size)) {
+      OP_LOGI(op.GetName().c_str(), "dyn_comp_size = %ld", dyn_comp_size);
     return GRAPH_SUCCESS;
   }
 
   std::vector<AscendString> marks;
   context->GetMarks(marks);
+  OP_LOGI(op.GetName().c_str(), "SaveShapesToAicpuResource marks.size() = %ld", marks.size());
   return SaveShapesToAicpuResource(op, marks, dyn_comp_size, "components");
 }
 
@@ -1720,6 +1724,7 @@ INFER_FUNC_REG(PaddingFIFOQueue, PaddingFIFOQueueInfer);
 
 IMPLEMT_INFERFUNC(PriorityQueue, PriorityQueueInfer) {
   TensorDesc ops_output_desc = op.GetOutputDesc("handle");
+  OP_LOGI(op.GetName().c_str(), "PriorityQueueInfer");
   ops_output_desc.SetShape(Shape());
   ops_output_desc.SetDataType(DT_RESOURCE);
   if (op.UpdateOutputDesc("handle", ops_output_desc) != GRAPH_SUCCESS) {
