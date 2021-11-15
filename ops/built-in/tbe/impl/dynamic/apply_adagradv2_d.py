@@ -27,7 +27,7 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import OpPatternMode
 
 
-# pylint: disable=unused-argument,invalid-name,too-many-arguments,too-many-locals
+# 'pylint: disable=unused-argument,invalid-name,too-many-arguments,too-many-locals
 @register_operator_compute("ApplyAdagradV2D", op_mode="dynamic", support_fusion=True)
 def apply_adagradv2_d_compute(var,
                               accum,
@@ -92,7 +92,7 @@ def apply_adagradv2_d_compute(var,
     return out_var, out_accum
 
 
-# pylint: disable=unbalanced-tuple-unpacking,invalid-name,too-many-arguments
+# 'pylint: disable=unbalanced-tuple-unpacking,invalid-name,too-many-arguments
 @register_operator("ApplyAdagradV2D")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,

@@ -15,26 +15,26 @@
 """
 dynamic apply_power_sign
 
-  Op_description :
-    Update '*var' according to the AddSign update.
+Op_description :
+Update '*var' according to the AddSign update.
 
-    # apply_power_sign_d(var,
-    #   m,
-    #   lr,
-    #   logbase,
-    #   sign_decay,
-    #   beta,
-    #   grad,
-    #   out,
-    #   kernel_name='cce_apply_power_sign')
+# apply_power_sign_d(var,
+#   m,
+#   lr,
+#   logbase,
+#   sign_decay,
+#   beta,
+#   grad,
+#   out,
+#   kernel_name='cce_apply_power_sign')
 
-  Supportive_dtype_format :
-    ['int32', 'int8', 'uint8', 'float32', 'float16']
-    ['ND', 'NCHW', 'NHWC', 'NC1HWC0']
+Supportive_dtype_format :
+['int32', 'int8', 'uint8', 'float32', 'float16']
+['ND', 'NCHW', 'NHWC', 'NC1HWC0']
 
-  Constraint :
-    [1] All : the input tensors must have the same shape and type.
-    [2] All : shape size limit is 2147483648.
+Constraint :
+[1] All : the input tensors must have the same shape and type.
+[2] All : shape size limit is 2147483648.
 """
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
@@ -48,8 +48,8 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util import util_compute
 
 
-# pylint: disable=locally-disabled,invalid-name
-# pylint: disable=too-many-locals
+# 'pylint: disable=locally-disabled,invalid-name
+# 'pylint: disable=too-many-locals
 def _compute_m_t(m, beta, grad):
     beta_tmp = tbe.vmul(m, beta)
     beta_na = tbe.vmuls(beta, tvm.const(-1.0, beta.dtype))
@@ -96,7 +96,7 @@ def _compute_process(input_list):
     return var_t, m_t
 
 
-# pylint: disable=locally-disabled, too-many-arguments, unused-argument
+# 'pylint: disable=locally-disabled, too-many-arguments, unused-argument
 @register_operator_compute("ApplyPowerSignD", op_mode="dynamic", support_fusion=True)
 def apply_power_sign_d_compute(var,
                                m,

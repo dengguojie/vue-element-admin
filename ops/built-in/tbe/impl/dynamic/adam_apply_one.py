@@ -24,10 +24,14 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-
-NUM_TEN = 10
-NUM_ZERO = 0
-DYNAMIC_NUM = -1
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    NUM_TEN = 10
+    NUM_ZERO = 0
+    DYNAMIC_NUM = -1
 
 
 def shape_broadcast(data_1, data_2):
@@ -59,9 +63,9 @@ def shape_broadcast(data_1, data_2):
     return data_1, data_2
 
 
-# pylint: disable=too-many-arguments,unused-argument
-# pylint: disable=too-many-locals
-# pylint: disable=too-many-statements,too-many-branches
+# 'pylint: disable=too-many-arguments,unused-argument
+# 'pylint: disable=too-many-locals
+# 'pylint: disable=too-many-statements,too-many-branches
 @register_operator_compute("adam_apply_one", op_mode="dynamic", support_fusion=True)
 def adam_apply_one_compute(data_input0, data_input1, data_input2, data_input3,
                            data_input4, data_input_mul, data_input_mul1,
@@ -227,15 +231,15 @@ def adam_apply_one(input0, input1, input2, input3, input4,
     data_dtype.append(mul3_x.get("dtype").lower())
     data_dtype.append(add2_y.get("dtype").lower())
 
-    data_inputs = [None] * NUM_TEN
+    data_inputs = [None] * Constant.NUM_TEN
     data_names = ["data_grad", "data_v", "data_m", "data_var", "data_input4",
                   "data_input_mul", "data_input_mul1", "data_input_mul2",
                   "data_input_mul3", "data_input_add2"]
     #num 0
-    idx = NUM_ZERO
-    dynamic_inputs =[]
+    idx = Constant.NUM_ZERO
+    dynamic_inputs = []
     shape_input0 = shape_util.scalar2tensor_one(input0.get("shape"))
-    if DYNAMIC_NUM not in shape_input0:
+    if Constant.DYNAMIC_NUM not in shape_input0:
         data_inputs[idx] = tvm.placeholder(shape_input0,
                                            name=data_names[idx],
                                            dtype=data_dtype[idx])
@@ -245,7 +249,7 @@ def adam_apply_one(input0, input1, input2, input3, input4,
     #num 1
     idx += 1
     shape_input1 = shape_util.scalar2tensor_one(input1.get("shape"))
-    if DYNAMIC_NUM not in shape_input1:
+    if Constant.DYNAMIC_NUM not in shape_input1:
         data_inputs[idx] = tvm.placeholder(shape_input1,
                                            name=data_names[idx],
                                            dtype=data_dtype[idx])
@@ -255,7 +259,7 @@ def adam_apply_one(input0, input1, input2, input3, input4,
     #num 2
     idx += 1
     shape_input2 = shape_util.scalar2tensor_one(input2.get("shape"))
-    if DYNAMIC_NUM not in shape_input2:
+    if Constant.DYNAMIC_NUM not in shape_input2:
         data_inputs[idx] = tvm.placeholder(shape_input2,
                                            name=data_names[idx],
                                            dtype=data_dtype[idx])
@@ -265,7 +269,7 @@ def adam_apply_one(input0, input1, input2, input3, input4,
     #num 3
     idx += 1
     shape_input3 = shape_util.scalar2tensor_one(input3.get("shape"))
-    if DYNAMIC_NUM not in shape_input3:
+    if Constant.DYNAMIC_NUM not in shape_input3:
         data_inputs[idx] = tvm.placeholder(shape_input3,
                                            name=data_names[idx],
                                            dtype=data_dtype[idx])
@@ -275,7 +279,7 @@ def adam_apply_one(input0, input1, input2, input3, input4,
     #num 4
     idx += 1
     shape_input4 = shape_util.scalar2tensor_one(input4.get("shape"))
-    if DYNAMIC_NUM not in shape_input4:
+    if Constant.DYNAMIC_NUM not in shape_input4:
         data_inputs[idx] = tvm.placeholder(shape_input4,
                                            name=data_names[idx],
                                            dtype=data_dtype[idx])
@@ -285,7 +289,7 @@ def adam_apply_one(input0, input1, input2, input3, input4,
     #num 5
     idx += 1
     shape_mul0_x = shape_util.scalar2tensor_one(mul0_x.get("shape"))
-    if DYNAMIC_NUM not in shape_mul0_x:
+    if Constant.DYNAMIC_NUM not in shape_mul0_x:
         data_inputs[idx] = tvm.placeholder(shape_mul0_x,
                                            name=data_names[idx],
                                            dtype=data_dtype[idx])
@@ -295,7 +299,7 @@ def adam_apply_one(input0, input1, input2, input3, input4,
     #num 6
     idx += 1
     shape_mul1_x = shape_util.scalar2tensor_one(mul1_x.get("shape"))
-    if DYNAMIC_NUM not in shape_mul1_x:
+    if Constant.DYNAMIC_NUM not in shape_mul1_x:
         data_inputs[idx] = tvm.placeholder(shape_mul1_x,
                                            name=data_names[idx],
                                            dtype=data_dtype[idx])
@@ -305,7 +309,7 @@ def adam_apply_one(input0, input1, input2, input3, input4,
     #num 7
     idx += 1
     shape_mul2_x = shape_util.scalar2tensor_one(mul2_x.get("shape"))
-    if DYNAMIC_NUM not in shape_mul2_x:
+    if Constant.DYNAMIC_NUM not in shape_mul2_x:
         data_inputs[idx] = tvm.placeholder(shape_mul2_x,
                                            name=data_names[idx],
                                            dtype=data_dtype[idx])
@@ -315,7 +319,7 @@ def adam_apply_one(input0, input1, input2, input3, input4,
     #num 8
     idx += 1
     shape_mul3_x = shape_util.scalar2tensor_one(mul3_x.get("shape"))
-    if DYNAMIC_NUM not in shape_mul3_x:
+    if Constant.DYNAMIC_NUM not in shape_mul3_x:
         data_inputs[idx] = tvm.placeholder(shape_mul3_x,
                                            name=data_names[idx],
                                            dtype=data_dtype[idx])
@@ -325,7 +329,7 @@ def adam_apply_one(input0, input1, input2, input3, input4,
     #num 9
     idx += 1
     shape_add2_y = shape_util.scalar2tensor_one(add2_y.get("shape"))
-    if DYNAMIC_NUM not in shape_add2_y:
+    if Constant.DYNAMIC_NUM not in shape_add2_y:
         data_inputs[idx] = tvm.placeholder(shape_add2_y,
                                            name=data_names[idx],
                                            dtype=data_dtype[idx])
@@ -339,9 +343,9 @@ def adam_apply_one(input0, input1, input2, input3, input4,
     for _dinputs in ins:
         with tbe.compute():
             shape_dinputs = shape_util.variable_shape(_dinputs)
-            idx = NUM_ZERO
+            idx = Constant.NUM_ZERO
             for shape_dinput in shape_dinputs:
-                while idx < NUM_TEN and (data_inputs[idx] is not None):
+                while idx < Constant.NUM_TEN and (data_inputs[idx] is not None):
                     idx += 1
                 data_inputs[idx] = tvm.placeholder(shape_dinput,
                                                    name=data_names[idx],

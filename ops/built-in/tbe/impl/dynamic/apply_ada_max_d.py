@@ -15,29 +15,29 @@
 """
 apply_ada_max
 
-  Op_description :
-    Update '*var' according to the AdaMax algorithm.
+Op_description :
+Update '*var' according to the AdaMax algorithm.
 
-    # apply_ada_max_d(var,
-    #   m,
-    #   v,
-    #   beta1_power,
-    #   lr,
-    #   beta1,
-    #   beta2,
-    #   epsilon,
-    #   grad,
-    #   m_out,
-    #   v_out,
-    #   kernel_name='apply_ada_max_d')
+# apply_ada_max_d(var,
+#   m,
+#   v,
+#   beta1_power,
+#   lr,
+#   beta1,
+#   beta2,
+#   epsilon,
+#   grad,
+#   m_out,
+#   v_out,
+#   kernel_name='apply_ada_max_d')
 
-  Supportive_dtype_format :
-    ['int32', 'int8', 'uint8', 'float32', 'float16']
-    ['ND', 'NCHW', 'NHWC', 'NC1HWC0']
+Supportive_dtype_format :
+['int32', 'int8', 'uint8', 'float32', 'float16']
+['ND', 'NCHW', 'NHWC', 'NC1HWC0']
 
-  Constraint :
-    [1] All : the input tensors must have the same shape and type.
-    [2] All : shape size limit is 2147483648.
+Constraint :
+[1] All : the input tensors must have the same shape and type.
+[2] All : shape size limit is 2147483648.
 """
 
 from impl.util.platform_adapter import tbe_platform
@@ -51,8 +51,8 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
 
 
-# pylint: disable=locally-disabled, too-many-arguments
-# pylint: disable=unused-argument, invalid-name, too-many-locals
+# 'pylint: disable=locally-disabled, too-many-arguments
+# 'pylint: disable=unused-argument, invalid-name, too-many-locals
 @register_operator_compute("ApplyAdaMaxD", op_mode="dynamic", support_fusion=True)
 def apply_ada_max_d_compute(var,
                             m,

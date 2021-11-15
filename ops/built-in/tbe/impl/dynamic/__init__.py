@@ -15,7 +15,7 @@
 """
 dynamic operator
 """
-# pylint: disable=W0622
+# 'pylint: disable=W0622
 from __future__ import absolute_import as _abs
 from .addcdiv import addcdiv
 from .aipp import aipp

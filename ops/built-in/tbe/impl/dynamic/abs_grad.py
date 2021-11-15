@@ -15,27 +15,23 @@
 """
 abs_grad
 
-  Op_description :
-    Computes gradients for abs operation
+Op_description :
+Computes gradients for abs operation
 
-    # abs_grad(
-    #   y,
-    #   dy,
-    #   z,
-    #   kernel_name="cce_abs_grad")
+# abs_grad(
+#   y,
+#   dy,
+#   z,
+#   kernel_name="cce_abs_grad")
 
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
+Supportive_dtype_format :
+['float16', 'float32']
+['ALL']
 
-  Constraint :
-    [1] All : 'y' and 'dy' must have the same type and shape.
-    [2] All : shape size limit is 2147483648.
+Constraint :
+[1] All : 'y' and 'dy' must have the same type and shape.
+[2] All : shape size limit is 2147483648.
 """
-import operator
-
-import functools
-import math
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
@@ -45,10 +41,9 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-SHAPE_SIZE_LIMIT = 2147483648
 
 
-# pylint: disable=unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=unused-argument,too-many-locals,invalid-name
 @register_operator_compute("AbsGrad", op_mode="dynamic", support_fusion=True)
 def abs_grad_compute(y, dy, z, kernel_name="abs_grad"):
     """
@@ -81,7 +76,7 @@ def abs_grad_compute(y, dy, z, kernel_name="abs_grad"):
     return data1_res
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 @register_operator("AbsGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)

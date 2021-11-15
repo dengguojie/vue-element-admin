@@ -27,16 +27,20 @@ from impl.util import fusion_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-# shape size limit
-SHAPE_SIZE_LIMIT = 2 ** 30
-NUM_ELEVEN = 11
-NUM_ZERO = 0
-DYNAMIC_NUM = -1
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # shape size limit
+    NUM_ELEVEN = 11
+    NUM_ZERO = 0
+    DYNAMIC_NUM = -1
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=locally-disabled,too-many-locals,too-many-statements
-# pylint: disable=locally-disabled,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-locals,too-many-statements
+# 'pylint: disable=locally-disabled,invalid-name,too-many-locals
 def square_compute(x, kernel_name="square"):
     """
     calculating data's square,y= x*x
@@ -316,7 +320,7 @@ def adam_apply_one_with_decay_assign_compute(input0, input1, input2, input3, inp
 
     return y0, y1, y2
 
-
+# 'pylint: disable=too-many-branches
 @register_operator("AdamApplyOneWithDecayAssign")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
@@ -399,7 +403,7 @@ def adam_apply_one_with_decay_assign(input0,
     data_dtype.append(const_mul4_x.get("dtype").lower())
     data_dtype.append(add2_y.get("dtype").lower())
 
-    data_inputs = [None] * NUM_ELEVEN
+    data_inputs = [None] * Constant.NUM_ELEVEN
     data_names = ["data_grad", "data_v", "data_m", "data_var", "data_input4",
                   "const_input_mul", "const_input_mul1", "const_input_mul2",
                   "const_input_mul3", "const_input_mul4", "data_input_add2"]
@@ -411,9 +415,9 @@ def adam_apply_one_with_decay_assign(input0,
                                     const_mul3_x, const_mul4_x, add2_y)
 
     # num 0
-    idx = NUM_ZERO
+    idx = Constant.NUM_ZERO
     dynamic_inputs = []
-    if DYNAMIC_NUM not in shape0:
+    if Constant.DYNAMIC_NUM not in shape0:
         data_inputs[idx] = tvm.placeholder(shape0,
                                            name=data_names[idx],
                                            dtype=data_dtype[idx])
@@ -423,7 +427,7 @@ def adam_apply_one_with_decay_assign(input0,
 
     # num 1
     idx += 1
-    if DYNAMIC_NUM not in shape1:
+    if Constant.DYNAMIC_NUM not in shape1:
         data_inputs[idx] = tvm.placeholder(shape1,
                                            name=data_names[idx],
                                            dtype=data_dtype[idx])
@@ -433,7 +437,7 @@ def adam_apply_one_with_decay_assign(input0,
 
     # num 2
     idx += 1
-    if DYNAMIC_NUM not in shape2:
+    if Constant.DYNAMIC_NUM not in shape2:
         data_inputs[idx] = tvm.placeholder(shape2,
                                            name=data_names[idx],
                                            dtype=data_dtype[idx])
@@ -443,7 +447,7 @@ def adam_apply_one_with_decay_assign(input0,
 
     # num 3
     idx += 1
-    if DYNAMIC_NUM not in shape3:
+    if Constant.DYNAMIC_NUM not in shape3:
         data_inputs[idx] = tvm.placeholder(shape3,
                                            name=data_names[idx],
                                            dtype=data_dtype[idx])
@@ -453,7 +457,7 @@ def adam_apply_one_with_decay_assign(input0,
 
     # num 4
     idx += 1
-    if DYNAMIC_NUM not in shape4:
+    if Constant.DYNAMIC_NUM not in shape4:
         data_inputs[idx] = tvm.placeholder(shape4,
                                            name=data_names[idx],
                                            dtype=data_dtype[idx])
@@ -463,7 +467,7 @@ def adam_apply_one_with_decay_assign(input0,
 
     # num 5
     idx += 1
-    if DYNAMIC_NUM not in shapecm0:
+    if Constant.DYNAMIC_NUM not in shapecm0:
         data_inputs[idx] = tvm.placeholder(shapecm0,
                                            name=data_names[idx],
                                            dtype=data_dtype[idx])
@@ -473,7 +477,7 @@ def adam_apply_one_with_decay_assign(input0,
 
     # num 6
     idx += 1
-    if DYNAMIC_NUM not in shapecm1:
+    if Constant.DYNAMIC_NUM not in shapecm1:
         data_inputs[idx] = tvm.placeholder(shapecm1,
                                            name=data_names[idx],
                                            dtype=data_dtype[idx])
@@ -483,7 +487,7 @@ def adam_apply_one_with_decay_assign(input0,
 
     # num 7
     idx += 1
-    if DYNAMIC_NUM not in shapecm2:
+    if Constant.DYNAMIC_NUM not in shapecm2:
         data_inputs[idx] = tvm.placeholder(shapecm2,
                                            name=data_names[idx],
                                            dtype=data_dtype[idx])
@@ -493,7 +497,7 @@ def adam_apply_one_with_decay_assign(input0,
 
     # num 8
     idx += 1
-    if DYNAMIC_NUM not in shapecm3:
+    if Constant.DYNAMIC_NUM not in shapecm3:
         data_inputs[idx] = tvm.placeholder(shapecm3,
                                            name=data_names[idx],
                                            dtype=data_dtype[idx])
@@ -503,7 +507,7 @@ def adam_apply_one_with_decay_assign(input0,
 
     # num 9
     idx += 1
-    if DYNAMIC_NUM not in shapecm4:
+    if Constant.DYNAMIC_NUM not in shapecm4:
         data_inputs[idx] = tvm.placeholder(shapecm4,
                                            name=data_names[idx],
                                            dtype=data_dtype[idx])
@@ -513,7 +517,7 @@ def adam_apply_one_with_decay_assign(input0,
 
     # num 10
     idx += 1
-    if DYNAMIC_NUM not in shapey:
+    if Constant.DYNAMIC_NUM not in shapey:
         data_inputs[idx] = tvm.placeholder(shapey,
                                            name=data_names[idx],
                                            dtype=data_dtype[idx])
@@ -527,9 +531,9 @@ def adam_apply_one_with_decay_assign(input0,
     for _dinputs in ins:
         with tbe.compute():
             shape_dinputs = shape_util.variable_shape(_dinputs)
-            idx = NUM_ZERO
+            idx = Constant.NUM_ZERO
             for shape_dinput in shape_dinputs:
-                while idx < NUM_ELEVEN and (data_inputs[idx] is not None):
+                while idx < Constant.NUM_ELEVEN and (data_inputs[idx] is not None):
                     idx += 1
                 data_inputs[idx] = tvm.placeholder(shape_dinput,
                                                    name=data_names[idx],

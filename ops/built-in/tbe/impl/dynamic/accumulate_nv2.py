@@ -16,7 +16,6 @@
 dynamic accumulate_nv2
 """
 
-import functools
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
@@ -28,12 +27,16 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import error_manager_vector
 
-MIN_TENSOR_NUM = 1
-MAX_TENSOR_NUM = 40
-NUM_ONE = 1
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    MIN_TENSOR_NUM = 1
+    MAX_TENSOR_NUM = 40
+    NUM_ONE = 1
 
-
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 @register_operator_compute("AccumulateNV2", op_mode="dynamic", support_fusion=True)
 def _accumulate_nv2_compute(input_x, output_y, num, kernel_name='accumulate_nv2'):
     """
@@ -76,11 +79,11 @@ def _accumulate_nv2_compute(input_x, output_y, num, kernel_name='accumulate_nv2'
         # be converted to float16. This will cause the data to be truncated.
         # so use tbe.vmul.
         if dtype == "int32":
-            value_one = tvm.const(NUM_ONE, dtype=dtype)
+            value_one = tvm.const(Constant.NUM_ONE, dtype=dtype)
             value_one_tensor = tbe.broadcast(value_one, shape)
             result = tbe.vmul(result, value_one_tensor)
         else:
-            result = tbe.vmuls(result, NUM_ONE)
+            result = tbe.vmuls(result, Constant.NUM_ONE)
 
     # in order to improve the accuracy, convert float32 back to float16
     if dtype == 'float16' and length > 1:
@@ -126,15 +129,15 @@ def _check_all_dtype_same(input_list):
     dtype: the data type of input tensor.
     """
 
-    if input_list is None or len(input_list) < MIN_TENSOR_NUM:
-        error_detail = 'inputs must be a list of at least one Tensor with the same dtype and shape, MIN_TENSOR_NUM:', MIN_TENSOR_NUM
+    if input_list is None or len(input_list) < Constant.MIN_TENSOR_NUM:
+        error_detail = 'inputs must be a list of at least one Tensor with the same dtype and shape, \
+        MIN_TENSOR_NUM:', Constant.MIN_TENSOR_NUM
         error_manager_vector.raise_err_specific_reson("accumulate_nv2", error_detail)
 
-        
     # ccec compiler does not support more than 40 parameters, so limit it
-    if len(input_list) > MAX_TENSOR_NUM:
-        error_manager_vector.raise_err_input_param_not_in_range("accumulate_nv2", "tensor_num", MIN_TENSOR_NUM, MAX_TENSOR_NUM, len(input_list))
-
+    if len(input_list) > Constant.MAX_TENSOR_NUM:
+        error_manager_vector.raise_err_input_param_not_in_range("accumulate_nv2", "tensor_num", \
+        Constant.MIN_TENSOR_NUM, Constant.MAX_TENSOR_NUM, len(input_list))
     dtype = _get_dtype(input_list[0])
 
     if not all(dtype == _get_dtype(x) for x in input_list):
@@ -143,7 +146,7 @@ def _check_all_dtype_same(input_list):
     return dtype
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 @register_operator("AccumulateNV2")
 @para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT,
@@ -170,7 +173,7 @@ def accumulate_nv2(input_x, output_y, num, kernel_name="accumulate_nv2"):
     if len(input_x) != num:
         error_detail = "The size of input and num must be same."
         error_manager_vector.raise_err_two_input_shape_invalid("accumulate_nv2", len(input_x), num, error_detail)
-    
+
     dtype = _check_all_dtype_same(input_x)
     ins = classify(input_x, OpPatternMode.ELEWISE)
     schedules, tensors = [], []

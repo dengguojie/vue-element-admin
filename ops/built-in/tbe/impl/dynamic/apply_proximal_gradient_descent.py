@@ -18,24 +18,24 @@ a optimizer operator to update weight, this file contains compute and schedule.
 
 apply_proximal_gradient_descent
 
-  Op_description :
-    Update '*var' as FOBOS algorithm with fixed learning rate.
+Op_description :
+Update '*var' as FOBOS algorithm with fixed learning rate.
 
-    # apply_proximal_gradient_descent(var,
-    #   alpha,
-    #   l1,
-    #   l2,
-    #   delta,
-    #   out,
-    #   kernel_name='apply_proximal_gradient_descent')
+# apply_proximal_gradient_descent(var,
+#   alpha,
+#   l1,
+#   l2,
+#   delta,
+#   out,
+#   kernel_name='apply_proximal_gradient_descent')
 
-  Supportive_dtype_format :
-    ['int32', 'int8', 'uint8', 'float32', 'float16']
-    ['ND', 'NCHW', 'NHWC', 'NC1HWC0']
+Supportive_dtype_format :
+['int32', 'int8', 'uint8', 'float32', 'float16']
+['ND', 'NCHW', 'NHWC', 'NC1HWC0']
 
-  Constraint :
-    [1] All : the input tensors must have the same shape and type.
-    [2] All : shape size limit is 2147483648.
+Constraint :
+[1] All : the input tensors must have the same shape and type.
+[2] All : shape size limit is 2147483648.
 """
 from impl.util import util_compute
 from impl.util.platform_adapter import tbe
@@ -48,7 +48,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=unused-argument,invalid-name,too-many-arguments
+# 'pylint: disable=unused-argument,invalid-name,too-many-arguments
 @register_operator_compute("ApplyProximalGradientDescent", op_mode="dynamic", support_fusion=True)
 def apply_proximal_gradient_descent_compute(
         var,
@@ -166,7 +166,7 @@ def _compute_positive(prox_v, alpha_broad, l1_broad, l2_broad):
     return var_res
 
 
-# pylint: disable=line-too-long, too-many-locals
+# 'pylint: disable=line-too-long, too-many-locals
 @register_operator("ApplyProximalGradientDescent")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

@@ -15,22 +15,22 @@
 """
 dynamic apply_gradient_descent
 
-  Op_description :
-    Update var by subtracting alpha * delta from it.
+Op_description :
+Update var by subtracting alpha * delta from it.
 
-    # apply_gradient_descent(var,
-    #   alpha,
-    #   delta,
-    #   out,
-    #   kernel_name='apply_gradient_descent')
+# apply_gradient_descent(var,
+#   alpha,
+#   delta,
+#   out,
+#   kernel_name='apply_gradient_descent')
 
-  Supportive_dtype_format :
-    ['int32', 'int8', 'uint8', 'float32', 'float16']
-    ['ND', 'NCHW', 'NHWC', 'NC1HWC0']
+Supportive_dtype_format :
+['int32', 'int8', 'uint8', 'float32', 'float16']
+['ND', 'NCHW', 'NHWC', 'NC1HWC0']
 
-  Constraint :
-    [1] All : the input tensors must have the same shape and type.
-    [2] All : shape size limit is 2147483648.
+Constraint :
+[1] All : the input tensors must have the same shape and type.
+[2] All : shape size limit is 2147483648.
 """
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
@@ -43,7 +43,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @register_operator_compute("ApplyGradientDescent", op_mode="dynamic", support_fusion=True)
 def apply_gradient_descent_compute(var,
                                    alpha,
@@ -72,10 +72,10 @@ def apply_gradient_descent_compute(var,
 
     return reuse_var
 
-
+# 'pylint: disable=too-many-locals
 @register_operator("ApplyGradientDescent")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, 
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, 
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def apply_gradient_descent(var,
                            alpha,
@@ -117,18 +117,18 @@ def apply_gradient_descent(var,
 
     if var_dtype != alpha_dtype:
         error_detail = "type of var and alpha should be same"
-        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "var", 
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "var",
                                                                "alpha", error_detail)
-    
+
     if var_dtype != delta_dtype:
         error_detail = "type of var and delta should be same"
-        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "var", 
+        error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "var",
                                                                "delta", error_detail)
 
     shape_scalar = [1]
     compute_dtype = var_dtype
     data_alpha = tvm.placeholder(shape_scalar, name="data_alpha", dtype=compute_dtype)
-    
+
     ins = classify([var, delta], OpPatternMode.ELEWISE)
 
     schedules, tensors = [], []

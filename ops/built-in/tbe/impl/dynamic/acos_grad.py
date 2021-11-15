@@ -15,22 +15,22 @@
 """
 dynamic acos_grad
 
-  Op_description :
-    Computes gradients for Acos operation
+Op_description :
+Computes gradients for Acos operation
 
-    # acos_grad(
-    #   y,
-    #   dy,
-    #   z,
-    #   kernel_name="acos_grad")
+# acos_grad(
+#   y,
+#   dy,
+#   z,
+#   kernel_name="acos_grad")
 
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
+Supportive_dtype_format :
+['float16', 'float32']
+['ALL']
 
-  Constraint :
-    [1] All : 'y' and 'dy' must have the same type and shape.
-    [2] All : shape size limit is 2147483648.
+Constraint :
+[1] All : 'y' and 'dy' must have the same type and shape.
+[2] All : shape size limit is 2147483648.
 """
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
@@ -43,12 +43,15 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-# newton eqation is x1 = x0(3-a*(x0^2))/2
-NUM_MINUS_ONE = -1
-NUM_ONE = 1
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # newton eqation is x1 = x0(3-a*(x0^2))/2
+    NUM_MINUS_ONE = -1
 
-
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals,invalid-name
 @register_operator_compute("AcosGrad", op_mode="dynamic", support_fusion=True)
 def acos_grad_compute(y, dy, z, kernel_name="acos_grad"):
     """
@@ -65,6 +68,7 @@ def acos_grad_compute(y, dy, z, kernel_name="acos_grad"):
 
     dtype = y.dtype
     dtype_1 = dtype
+    NUM_ONE = 1
     if dtype == "float16" and \
             tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):
         y = tbe.cast_to(y, "float32")
@@ -72,12 +76,12 @@ def acos_grad_compute(y, dy, z, kernel_name="acos_grad"):
         dtype = "float32"
 
     data1_square = tbe.vmul(y, y)
-    data1_square = tbe.vmuls(data1_square, tvm.const(NUM_MINUS_ONE, dtype=dtype))
+    data1_square = tbe.vmuls(data1_square, tvm.const(Constant.NUM_MINUS_ONE, dtype=dtype))
     data1_square = tbe.vadds(data1_square, tvm.const(NUM_ONE, dtype=dtype))
 
     data1_reciprocal = tbe.vsqrt(data1_square, 1)
     data1_reciprocal = tbe.vdiv(dy, data1_reciprocal)
-    res = tbe.vmuls(data1_reciprocal, tvm.const(NUM_MINUS_ONE, dtype=dtype))
+    res = tbe.vmuls(data1_reciprocal, tvm.const(Constant.NUM_MINUS_ONE, dtype=dtype))
 
     if dtype_1 == "float16":
         res = tbe.cast_to(res, "float16")

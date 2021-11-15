@@ -34,8 +34,8 @@ NUM_ZERO = 0.0
 __all__ = ["approximate_equal"]
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=too-many-locals
 @register_operator_compute("ApproximateEqual", op_mode="dynamic", support_fusion=True)
 def approximate_equal_compute(input_x, input_y, output_z, tolerance,
                               kernel_name="approximate_equal"):

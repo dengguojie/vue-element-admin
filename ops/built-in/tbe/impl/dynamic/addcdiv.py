@@ -25,6 +25,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import error_manager_vector
 
+# 'pylint: disable=unused-argument,too-many-arguments,invalid-name
 @register_operator_compute("Addcdiv", op_mode="dynamic", support_fusion=True)
 def addcdiv_compute(input_data, x1, x2, value, y, kernel_name="addcdiv"):
     """
@@ -63,6 +64,7 @@ def addcdiv_compute(input_data, x1, x2, value, y, kernel_name="addcdiv"):
 
 
 #register op
+# 'pylint: disable=unused-argument,too-many-locals,invalid-name
 @register_operator("Addcdiv")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)

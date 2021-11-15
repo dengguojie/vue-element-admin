@@ -29,7 +29,7 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator_compute
 from impl.util import fusion_util
 
-
+# 'pylint: disable=unused-argument
 @register_operator_compute("AddN", op_mode="dynamic", support_fusion=True)
 def add_n_fusion_compute(datas, output, tensor_num, kernel_name="add_n"):
     """
@@ -59,11 +59,10 @@ def add_n_fusion_compute(datas, output, tensor_num, kernel_name="add_n"):
         if i == 0:
             continue
         res = tbe.vadd(res, data_i)
-        
     return {"op_placeholder": ph_datas, "op_res": [res]}
 
 
-# pylint: disable=unused-argument,too-many-locals,redefined-argument-from-local,unused-variable,too-many-statements
+# 'pylint: disable=unused-argument,too-many-locals,redefined-argument-from-local,unused-variable,too-many-statements
 def add_n_compute(datas, output, tensor_num, kernel_name="add_n"):
     """
     calculating data's adds, z = a + b + c...
@@ -144,7 +143,7 @@ def add_n(inputs, output, tensor_num, kernel_name="add_n"):
         para_check.check_dtype(dtype_input, check_list, param_name="inputs")
         if dtype_input != dtype_0:
             error_manager_vector.raise_err_inputs_shape_not_equal("add_n", "inputs[" + str(index) + "]", "inputs[0]",
-                                                                  str(dtype_input), str(dtype_0))
+                                                                  str(dtype_input), str(dtype_0), str(dtype_input))
 
 
     ins = classify(inputs, OpPatternMode.ELEWISE)

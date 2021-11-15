@@ -15,24 +15,24 @@
 """
 dynamic acosh_grad
 
-  Op_description :
-    Computes gradients for Acosh operation
+Op_description :
+Computes gradients for Acosh operation
 
-    # acosh_grad(
-    #   y,
-    #   dy,
-    #   z,
-    #   kernel_name="cce_acosh_grad")
+# acosh_grad(
+#   y,
+#   dy,
+#   z,
+#   kernel_name="cce_acosh_grad")
 
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
+Supportive_dtype_format :
+['float16', 'float32']
+['ALL']
 
-  Constraint :
-    [1] All : 'y' and 'dy' must have the same type and shape.
-    [2] All : shape size limit is 2147483648.
+Constraint :
+[1] All : 'y' and 'dy' must have the same type and shape.
+[2] All : shape size limit is 2147483648.
 """
-# pylint: disable=invalid-name,too-many-locals
+# 'pylint: disable=invalid-name,too-many-locals
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
@@ -45,14 +45,12 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-NUM_ONE = 1
-NUM_TWO = 2
-NUM_REPEAT = 0.125
-
-TAYLOR_SECOND_ORDER_PARAM = 0.1666666666666666666666666666666666
-TAYLOR_THIRD_ORDER_PARAM = 0.0083333333333333333333333333333333
-TAYLOR_FOURTH_ORDER_PARAM = 0.0001984126984126984126984126984126
-
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    NUM_ONE = 1
 
 def _taylor_sinh_compute(input_data):
     """
@@ -64,6 +62,9 @@ def _taylor_sinh_compute(input_data):
     ----------------
     """
 
+    TAYLOR_SECOND_ORDER_PARAM = 0.1666666666666666666666666666666666
+    TAYLOR_THIRD_ORDER_PARAM = 0.0083333333333333333333333333333333
+    TAYLOR_FOURTH_ORDER_PARAM = 0.0001984126984126984126984126984126
     # x^2 / 7!
     data_power_2 = tbe.vmul(input_data, input_data)
     data_power_res = tbe.vmuls(
@@ -85,7 +86,7 @@ def _taylor_sinh_compute(input_data):
     data_power_res = tbe.vmul(data_power_res, data_power_2)
 
     data_power_res = tbe.vadds(data_power_res, \
-                               tvm.const(NUM_ONE, input_data.dtype))
+                               tvm.const(Constant.NUM_ONE, input_data.dtype))
 
     # x * (1 + x^2( 1/3! + x^2(1/5! + x^2/7!)))
     data_power_res = tbe.vmul(data_power_res, input_data)
@@ -103,8 +104,9 @@ def _sinh_repeat_with_sqrt(data):
     ----------------
     """
 
+    NUM_TWO = 2
     data_square = tbe.vmul(data, data)
-    data_square = tbe.vadds(data_square, tvm.const(NUM_ONE,
+    data_square = tbe.vadds(data_square, tvm.const(Constant.NUM_ONE,
                                                    data.dtype))
 
     data_square = tbe.vsqrt(data_square, 1)
@@ -116,7 +118,7 @@ def _sinh_repeat_with_sqrt(data):
     return data_square
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @register_operator_compute("AcoshGrad", op_mode="dynamic", support_fusion=True)
 def acosh_grad_compute(y, dy, z, kernel_name="acos_grad"):
     """
@@ -131,6 +133,7 @@ def acosh_grad_compute(y, dy, z, kernel_name="acos_grad"):
     ----------------
     """
 
+    NUM_REPEAT = 0.125
     dtype = y.dtype
     dtype_1 = dtype
     if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):

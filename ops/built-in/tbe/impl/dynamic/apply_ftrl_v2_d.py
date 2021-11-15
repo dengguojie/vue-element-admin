@@ -52,8 +52,8 @@ def _pow(data_x, data_y):
     return res
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=invalid-name,too-many-locals, too-many-statements
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=invalid-name,too-many-locals, too-many-statements
 @register_operator_compute("ApplyFtrlV2D", op_mode="dynamic", support_fusion=True)
 def apply_ftrl_v2_d_compute(var, accum, linear, grad, lr, l1, l2, l2_shrinkage,
                             lr_power, var_out, accum_out, linear_out,
@@ -110,43 +110,43 @@ def apply_ftrl_v2_d_compute(var, accum, linear, grad, lr, l1, l2, l2_shrinkage,
         accum_tmp = tbe.vadds(accum, tvm.const(0.0, "float32"))
         linear_tmp = tbe.vadds(linear, tvm.const(0.0, "float32"))
 
-    # 1.grad_with_shrinkage = grad + 2 * l2_shrinkage * var
+    # `1.grad_with_shrinkage = grad + 2 * l2_shrinkage * var`
     mul_value = tbe.vmuls(l2_shrinkage, tvm.const(2.0, "float32"))
     mul_value = tbe.broadcast(mul_value, var_tmp.shape)
     mul_value2 = tbe.vmul(mul_value, var_tmp)
     grad_with_shrinkage = tbe.vadd(grad, mul_value2)
 
-    # 2.accum_new = accum + grad^2
+    # `2.accum_new = accum + grad^2`
     gs = tbe.vmul(grad, grad)
     accum_new = tbe.vadd(accum_tmp, gs)
 
-    # 3.accum_pow_sub = accum_new^(-lr_power)-accum^(-lr_power)
+    # `3.accum_pow_sub = accum_new^(-lr_power)-accum^(-lr_power)`
     lr_power = tbe.vmuls(lr_power, tvm.const(-1.0, "float32"))
     lr_power = tbe.broadcast(lr_power, var_tmp.shape)
     accum_new_pow = _pow(accum_new, lr_power)
     accum_pow = _pow(accum_tmp, lr_power)
     accum_pow_sub = tbe.vsub(accum_new_pow, accum_pow)
 
-    # 4.linear += grad_with_shrinkage - accum_pow_sub / lr * var
+    # `4.linear += grad_with_shrinkage - accum_pow_sub / lr * var`
     lr = tbe.broadcast(lr, var_tmp.shape)
     accum_pow_div = tbe.vdiv(accum_pow_sub, lr)
     accum_pow_mul = tbe.vmul(accum_pow_div, var_tmp)
     accum_pow = tbe.vsub(grad_with_shrinkage, accum_pow_mul)
     linear_new = tbe.vadd(linear_tmp, accum_pow)
 
-    # 5.x_res = l1*linear.sign()-linear
+    # `5.x_res = l1*linear.sign()-linear`
     l1 = tbe.broadcast(l1, var_tmp.shape)
     x_res = util_compute.sign(linear_new)
     x_res = tbe.vmul(x_res, l1)
     x_res = tbe.vsub(x_res, linear_new)
 
-    # 6.y_res = accum_new^(-lr_power)/lr + 2*l2
+    # `6.y_res = accum_new^(-lr_power)/lr + 2*l2`
     l2 = tbe.vmuls(l2, tvm.const(2.0, "float32"))
     l2 = tbe.broadcast(l2, var_tmp.shape)
     y_res = tbe.vdiv(accum_new_pow, lr)
     y_res = tbe.vadd(y_res, l2)
 
-    # 7.var = x_res / y_res if linear.abs > l1, else var = 0
+    # `7.var = x_res / y_res if linear.abs > l1, else var = 0`
     x_res = tbe.vdiv(x_res, y_res)
     linear_abs = tbe.vabs(linear_new)
     zero_tensor = tbe.broadcast(tvm.const(0.0, "float32"), var_tmp.shape)

@@ -25,6 +25,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import error_manager_vector
 
+# 'pylint: disable=invalid-name,unused-argument,too-many-arguments
 @register_operator_compute("Addcmul", op_mode="dynamic", support_fusion=True)
 def addcmul_compute(input_data, x1, x2, value, y, kernel_name="addcmul"):
     """
@@ -63,6 +64,7 @@ def addcmul_compute(input_data, x1, x2, value, y, kernel_name="addcmul"):
 
 
 #register op
+# 'pylint: disable=too-many-locals,too-many-arguments,invalid-name
 @register_operator("Addcmul")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)

@@ -25,7 +25,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-locals
 def adds_compute(x, scalar, kernel_name="adds"):
     """
     calculating data
@@ -87,3 +87,4 @@ def adds(x, y, value, kernel_name="adds"):
         schedules.append(sch)
     config = {"print_ir": False, "name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)
+    

@@ -27,7 +27,7 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=too-many-arguments,invalid-name,too-many-locals
+# 'pylint: disable=too-many-arguments,invalid-name,too-many-locals
 @register_operator_compute("ApplyKerasMomentumD", op_mode="dynamic", support_fusion=True)
 def apply_keras_momentum_d_compute(var,
                                    accum,
@@ -62,17 +62,17 @@ def apply_keras_momentum_d_compute(var,
     momentum = tbe.broadcast(momentum, compute_shape)
 
     # update var and accum according to the momentum scheme
-    # accum = accum * momentum - grad * lr
+    # `accum = accum * momentum - grad * lr`
     accum_momen = tbe.vmul(accum, momentum)
     grad_lr = tbe.vmul(grad, lr)
     out_accum = tbe.vsub(accum_momen, grad_lr)
 
-    # var = var + accum * momentum - grad * lr
+    # `var = var + accum * momentum - grad * lr`
     if use_nesterov:
         accum_momen2 = tbe.vmul(out_accum, momentum)
         add_var_am = tbe.vadd(var, accum_momen2)
         out_var = tbe.vsub(add_var_am, grad_lr)
-    # var = var + accum
+    # `var = var + accum`
     else:
         out_var = tbe.vadd(var, out_accum)
 
@@ -81,7 +81,7 @@ def apply_keras_momentum_d_compute(var,
     return res
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @register_operator("ApplyKerasMomentumD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

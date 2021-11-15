@@ -54,8 +54,8 @@ def _pow(data, index):
     return res
 
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=unused-argument,invalid-name,too-many-locals
 @register_operator_compute("ApplyFtrlD", op_mode="dynamic", support_fusion=True)
 def apply_ftrl_d_compute(var,
                          accum,
@@ -125,11 +125,11 @@ def apply_ftrl_d_compute(var,
     l2 = tbe.broadcast(l2, var.shape)
     lr_power = tbe.broadcast(lr_power, var.shape)
 
-    # 1.accum_new = accum + grad^2
+    # `1.accum_new = accum + grad^2`
     gs = tbe.vmul(grad, grad)
     accum_new = tbe.vadd(accum_tmp, gs)
 
-    # 2.linear += grad - (accum_new^(-lr_power)-accum^(-lr_power))/lr*var
+    # `2.linear += grad - (accum_new^(-lr_power)-accum^(-lr_power))/lr*var`
     lr_power = tbe.vmuls(lr_power, tvm.const(-1.0, var_tmp.dtype))
     accum_new_p = _pow(accum_new, lr_power)
     accum_p = _pow(accum_tmp, lr_power)
@@ -140,17 +140,17 @@ def apply_ftrl_d_compute(var,
     accum_p = tbe.vsub(grad, accum_p)
     linear_t = tbe.vadd(linear_tmp, accum_p)
 
-    # 3.x_res = l1*linear.sign()-linear
+    # `3.x_res = l1*linear.sign()-linear`
     x_res = util_compute.sign(linear_t)
     x_res = tbe.vmul(x_res, l1)
     x_res = tbe.vsub(x_res, linear_t)
 
-    # 4.y_res = accum_new^(-lr_power)/lr + 2*l2
+    # `4.y_res = accum_new^(-lr_power)/lr + 2*l2`
     l2 = tbe.vmuls(l2, tvm.const(2.0, var_tmp.dtype))
     y_res = tbe.vdiv(accum_new_p, lr)
     y_res = tbe.vadd(y_res, l2)
 
-    # 5.var = x_res / y_res if linear.abs > l1, else var = 0
+    # `5.var = x_res / y_res if linear.abs > l1, else var = 0`
     x_res = tbe.vdiv(x_res, y_res)
     linear_abs = tbe.vabs(linear_t)
     var_t = tbe.vcmpsel(linear_abs, l1, 'gt', x_res, zero_tensor)

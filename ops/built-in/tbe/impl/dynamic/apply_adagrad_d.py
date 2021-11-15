@@ -12,32 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-# pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 """
 this file achieved the apply_adagrad_d which is a optimizer operator
 to update weight, this file contains compute and schedule.
 
 apply_adagrad_d
 
-  Op_description :
-    Update '*var' according to the Adagrad algorithm.
+Op_description :
+Update '*var' according to the Adagrad algorithm.
 
-    # apply_adagrad_d(var,
-    #   accum,
-    #   lr,
-    #   grad,
-    #   var_out,
-    #   accum_out,
-    #   update_slots,
-    #   kernel_name='apply_adagrad_d')
+# apply_adagrad_d(var,
+#   accum,
+#   lr,
+#   grad,
+#   var_out,
+#   accum_out,
+#   update_slots,
+#   kernel_name='apply_adagrad_d')
 
-  Supportive_dtype_format :
-    ['int32', 'int8', 'uint8', 'float32', 'float16']
-    ['ND', 'NCHW', 'NHWC', 'NC1HWC0']
+Supportive_dtype_format :
+['int32', 'int8', 'uint8', 'float32', 'float16']
+['ND', 'NCHW', 'NHWC', 'NC1HWC0']
 
-  Constraint :
-    [1] All : the input tensors must have the same shape and type.
-    [2] All : shape size limit is 2147483648.
+Constraint :
+[1] All : the input tensors must have the same shape and type.
+[2] All : shape size limit is 2147483648.
 """
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
@@ -48,9 +48,9 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
-NUM_ZERO = 0.0
 
 
+# 'pylint: disable=too-many-arguments
 @register_operator_compute("ApplyAdagradD", op_mode="dynamic", support_fusion=True)
 def apply_adagrad_d_compute(var,
                             accum,
@@ -90,6 +90,7 @@ def apply_adagrad_d_compute(var,
     -------
     None
     """
+    NUM_ZERO = 0.0
     input_dtype = var.dtype
 
     if input_dtype == "float16" and tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):
@@ -116,7 +117,7 @@ def apply_adagrad_d_compute(var,
 
     return [res1, res2]
 
-
+# 'pylint: disable=too-many-arguments
 @register_operator("ApplyAdagradD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,

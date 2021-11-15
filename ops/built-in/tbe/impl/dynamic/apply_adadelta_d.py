@@ -26,13 +26,16 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    NUM_ZERO = 0.0
 
-NUM_ONE = 1.0
-NUM_ZERO = 0.0
 
-
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=unused-argument,invalid-name,too-many-locals
 @register_operator_compute("ApplyAdadeltaD", op_mode="dynamic", support_fusion=True)
 def apply_adadelta_d_compute(var,
                              accum,
@@ -81,7 +84,7 @@ def apply_adadelta_d_compute(var,
     -------
     None
     """
-
+    NUM_ONE = 1.0
     dtype = var.dtype
     has_improve_precision = False
     if dtype == "float16" and \
@@ -109,7 +112,7 @@ def apply_adadelta_d_compute(var,
     lhs = tbe.vmuls(lhs, scalar_rho_gs)
     accum_res = tbe.vadd(lhs, rhs)
 
-    accum_update_orig = tbe.vadds(accum_update, NUM_ZERO)
+    accum_update_orig = tbe.vadds(accum_update, Constant.NUM_ZERO)
     # step2
     rhs = tbe.vadds(accum_update_orig, scalar_epsilon)
     rhs = tbe.vsqrt(rhs)
@@ -130,9 +133,9 @@ def apply_adadelta_d_compute(var,
     accum_update_res = tbe.vadd(lhs, rhs)
 
     # out
-    output_data = tbe.vadds(var_res, NUM_ZERO)
-    accum_output_data = tbe.vadds(accum_res, NUM_ZERO)
-    accum_update_output_data = tbe.vadds(accum_update_res, NUM_ZERO)
+    output_data = tbe.vadds(var_res, Constant.NUM_ZERO)
+    accum_output_data = tbe.vadds(accum_res, Constant.NUM_ZERO)
+    accum_update_output_data = tbe.vadds(accum_update_res, Constant.NUM_ZERO)
 
     if dtype == "float16" and has_improve_precision:
         output_data = tbe.cast_to(output_data, "float16")

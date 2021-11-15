@@ -25,11 +25,15 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator_compute
 
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    SHAPE_SIZE_LIMIT = 2 ** 31
 
-SHAPE_SIZE_LIMIT = 2 ** 31
 
-
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals
 @register_operator_compute('ActsULQInputGrad', op_mode='dynamic', support_fusion=False)
 def acts_ulq_input_grad_compute(data_y_grad, data_clamp_min_mask, data_clamp_max_mask, kernel_name):
     """
@@ -55,7 +59,7 @@ def acts_ulq_input_grad_compute(data_y_grad, data_clamp_min_mask, data_clamp_max
 
     return x_grad
 
-
+# 'pylint: disable=too-many-branches
 @register_operator('ActsULQInputGrad')
 @para_check.check_op_params(
     para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
@@ -80,18 +84,18 @@ def acts_ulq_input_grad(y_grad, clamp_min_mask, clamp_max_mask, x_grad, kernel_n
     None
     """
     y_grad_shape = y_grad.get('shape')
-    y_grad_range =y_grad.get('range')
+    y_grad_range = y_grad.get('range')
     y_grad_size = 1
-    for i in range(len(y_grad_shape)):
-        if y_grad_shape[i] == -1:
-            if y_grad_range[i][1] is None:
-                y_grad_size *= SHAPE_SIZE_LIMIT
+    for index, y_grad_shape_value in enumerate(y_grad_shape):
+        if y_grad_shape_value == -1:
+            if y_grad_range[index][1] is None:
+                y_grad_size *= Constant.SHAPE_SIZE_LIMIT
             else:
-                y_grad_size *= y_grad_range[i][1]
+                y_grad_size *= y_grad_range[index][1]
         else:
-            y_grad_size *= y_grad_shape[i]
-    if y_grad_size > SHAPE_SIZE_LIMIT:
-        error_detail = "The shape size of y_grad must be smaller than {}!".format(SHAPE_SIZE_LIMIT)
+            y_grad_size *= y_grad_shape_value
+    if y_grad_size > Constant.SHAPE_SIZE_LIMIT:
+        error_detail = "The shape size of y_grad must be smaller than {}!".format(Constant.SHAPE_SIZE_LIMIT)
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, 'y_grad', error_detail)
 
     clamp_min_mask_shape = clamp_min_mask.get('shape')
@@ -132,10 +136,10 @@ def acts_ulq_input_grad(y_grad, clamp_min_mask, clamp_max_mask, x_grad, kernel_n
 
     ins = classify([y_grad, clamp_min_mask, clamp_max_mask], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
-    for (y_grad, clamp_min_mask, clamp_max_mask) in ins:
+    for (_, clamp_min_mask_value, clamp_max_mask_value) in ins:
         with tbe.compute():
             shape_y_grad, shape_clamp_min_mask, shape_clamp_max_mask = shape_util.variable_shape(
-                [y_grad, clamp_min_mask, clamp_max_mask])
+                [y_grad, clamp_min_mask_value, clamp_max_mask_value])
 
             data_y_grad = tvm.placeholder(shape_y_grad, y_grad_type, 'data_y_grad')
             data_clamp_min_mask = tvm.placeholder(shape_clamp_min_mask, clamp_min_mask_type, 'data_clamp_min_mask')

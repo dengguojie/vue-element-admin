@@ -25,11 +25,15 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator_compute
 
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    SHAPE_SIZE_LIMIT = 2 ** 31
 
-SHAPE_SIZE_LIMIT = 2 ** 31
 
-
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @register_operator_compute('ActULQClampMaxGrad', op_mode='dynamic', support_fusion=False)
 def act_ulq_clamp_max_grad_compute(
     y_grad, clamp_max_mask, x_clamped_loss, axis, kernel_name='act_ulq_clamp_max_grad'):
@@ -65,7 +69,7 @@ def act_ulq_clamp_max_grad_compute(
 
     return clamp_max_grad
 
-
+# 'pylint: disable=too-many-locals,too-many-branches,too-many-statements
 @register_operator('ActULQClampMaxGrad')
 @para_check.check_op_params(
     para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
@@ -87,18 +91,18 @@ def act_ulq_clamp_max_grad(input_x, input_y, input_z, output, kernel_name='act_u
     ----------
     """
     input_x_shape = input_x.get('shape')
-    input_x_range =input_x.get('range')
+    input_x_range = input_x.get('range')
     input_x_size = 1
-    for i in range(len(input_x_shape)):
-        if input_x_shape[i] == -1:
-            if input_x_range[i][1] is None:
-                input_x_size *= SHAPE_SIZE_LIMIT
+    for index, input_x_shape_value in enumerate(input_x_shape):
+        if input_x_shape_value == -1:
+            if input_x_range[index][1] is None:
+                input_x_size *= Constant.SHAPE_SIZE_LIMIT
             else:
-                input_x_size *= input_x_range[i][1]
+                input_x_size *= input_x_range[index][1]
         else:
-            input_x_size *= input_x_shape[i]
-    if input_x_size > SHAPE_SIZE_LIMIT:
-        error_detail = "The shape size of y_grad must be smaller than {}!".format(SHAPE_SIZE_LIMIT)
+            input_x_size *= input_x_shape_value
+    if input_x_size > Constant.SHAPE_SIZE_LIMIT:
+        error_detail = "The shape size of y_grad must be smaller than {}!".format(Constant.SHAPE_SIZE_LIMIT)
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, 'y_grad', error_detail)
 
     input_y_shape = input_y.get('shape')
@@ -141,7 +145,7 @@ def act_ulq_clamp_max_grad(input_x, input_y, input_z, output, kernel_name='act_u
             kernel_name, 'y_grad', 'clamp_max_grad', input_x_type, output_type)
 
     axis = list(range(len(input_x_shape)))
-    input_axis = {'shape': [len(axis),], 'value': axis, 'rel_pos_to_reduce': 'axis'}
+    input_axis = {'shape': [len(axis), ], 'value': axis, 'rel_pos_to_reduce': 'axis'}
 
     ins = classify([input_x, input_y, input_z, input_axis], OpPatternMode.REDUCE, {'keepdims': False})
     schedules, tensors = [], []

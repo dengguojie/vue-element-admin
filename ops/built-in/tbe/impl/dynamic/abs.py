@@ -25,7 +25,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=invalid-name,unused-argument
+# 'pylint: disable=invalid-name,unused-argument
 def abs_compute(x, y, kernel_name="abs"):
     """
     algorithm: abs
@@ -55,7 +55,7 @@ def abs_compute(x, y, kernel_name="abs"):
     return res
 
 
-# pylint: disable=redefined-builtin
+# 'pylint: disable=redefined-builtin
 @register_operator("Abs")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def abs(x, y, kernel_name="abs"):

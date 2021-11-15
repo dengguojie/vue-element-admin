@@ -25,13 +25,16 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator_compute
 
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    SHAPE_SIZE_LIMIT = 2 ** 31
+    CALCULATE_TYPE = 'float32'
 
-SHAPE_SIZE_LIMIT = 2 ** 31
-EPS = 1.192092896e-07
-CALCULATE_TYPE = 'float32'
 
-
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals,invalid-name,too-many-locals,too-many-statements
 @register_operator_compute('ActsULQ', op_mode='dynamic', support_fusion=False)
 def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
     """
@@ -57,6 +60,7 @@ def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
     shape_data = shape_util.shape_to_list(data.shape)
     shape_clamp_min = shape_util.shape_to_list(clamp_min.shape)
     shape_clamp_max = shape_util.shape_to_list(clamp_max.shape)
+    EPS = 1.192092896e-07
 
     _, _, shape_broadcast = shape_util.broadcast_shapes(
         shape_data, shape_clamp_min, param_name_input1='data', param_name_input2='clamp_min')
@@ -64,31 +68,30 @@ def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
         shape_data, shape_clamp_max, param_name_input1='data', param_name_input2='clamp_max')
 
     dtype = data.dtype
-    data = tbe.cast_to(data, CALCULATE_TYPE)
-    clamp_min = tbe.cast_to(clamp_min, CALCULATE_TYPE)
-    clamp_max = tbe.cast_to(clamp_max, CALCULATE_TYPE)
+    data = tbe.cast_to(data, Constant.CALCULATE_TYPE)
+    clamp_min = tbe.cast_to(clamp_min, Constant.CALCULATE_TYPE)
+    clamp_max = tbe.cast_to(clamp_max, Constant.CALCULATE_TYPE)
 
     if fixed_min:
-        ori_clip_min = tbe.vmuls(clamp_min, tvm.const(0, CALCULATE_TYPE))
+        ori_clip_min = tbe.vmuls(clamp_min, tvm.const(0, Constant.CALCULATE_TYPE))
     else:
-        ori_clip_min = tbe.vmins(clamp_min, tvm.const(0, CALCULATE_TYPE))
+        ori_clip_min = tbe.vmins(clamp_min, tvm.const(0, Constant.CALCULATE_TYPE))
 
-    ori_clip_max = tbe.vmaxs(clamp_max, tvm.const(step * EPS, CALCULATE_TYPE))
+    ori_clip_max = tbe.vmaxs(clamp_max, tvm.const(step * EPS, Constant.CALCULATE_TYPE))
 
     scale = tbe.vsub(ori_clip_max, ori_clip_min)
-    scale = tbe.vdiv(scale, tbe.broadcast(tvm.const(step, CALCULATE_TYPE), scale.shape))
+    scale = tbe.vdiv(scale, tbe.broadcast(tvm.const(step, Constant.CALCULATE_TYPE), scale.shape))
 
     offset = tbe.vdiv(ori_clip_min, scale)
     offset = tbe.round(offset)
     offset = tbe.cast_to(offset, 'float16')
-    offset = tbe.cast_to(offset, CALCULATE_TYPE)
+    offset = tbe.cast_to(offset, Constant.CALCULATE_TYPE)
 
     #fake quant clip min/max
     clip_min = tbe.vmul(scale, offset)
-    clip_max = tbe.vadds(offset, tvm.const(step, CALCULATE_TYPE))
+    clip_max = tbe.vadds(offset, tvm.const(step, Constant.CALCULATE_TYPE))
     clip_max = tbe.vmul(clip_max, scale)
 
-    #clip data = data
     clip_min = tbe.broadcast(clip_min, shape_broadcast)
     clip_max = tbe.broadcast(clip_max, shape_broadcast)
     clamped_x = tbe.vmax(data, clip_min)
@@ -101,16 +104,16 @@ def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
     raw_x = tbe.vdiv(clamped_x, tbe.broadcast(scale, shape_broadcast))
     round_x = tbe.round(raw_x)
     round_x = tbe.cast_to(round_x, 'float16')
-    round_x = tbe.cast_to(round_x, CALCULATE_TYPE)
+    round_x = tbe.cast_to(round_x, Constant.CALCULATE_TYPE)
     clamped_loss = tbe.vsub(round_x, raw_x)
-    clamped_loss = tbe.vdiv(clamped_loss, tbe.broadcast(tvm.const(step, CALCULATE_TYPE), shape_broadcast))
+    clamped_loss = tbe.vdiv(clamped_loss, tbe.broadcast(tvm.const(step, Constant.CALCULATE_TYPE), shape_broadcast))
 
     raw_m = tbe.vdiv(ori_clip_min, scale)
     round_m = tbe.round(raw_m)
     round_m = tbe.cast_to(round_m, 'float16')
-    round_m = tbe.cast_to(round_m, CALCULATE_TYPE)
+    round_m = tbe.cast_to(round_m, Constant.CALCULATE_TYPE)
     loss_m = tbe.vsub(round_m, raw_m)
-    loss_m = tbe.vdiv(loss_m, tbe.broadcast(tvm.const(step, CALCULATE_TYPE), shape_broadcast))
+    loss_m = tbe.vdiv(loss_m, tbe.broadcast(tvm.const(step, Constant.CALCULATE_TYPE), shape_broadcast))
 
     clamped_loss_float16 = tbe.cast_to(clamped_loss, 'float16')
     loss_m_float16 = tbe.broadcast(loss_m, shape_broadcast)
@@ -129,7 +132,7 @@ def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
 
     return [output, clamp_min_mask, clamp_max_mask, clamped_loss]
 
-
+# 'pylint: disable=too-many-branches,too-many-statements
 @register_operator('ActsULQ')
 @para_check.check_op_params(
     para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
@@ -168,18 +171,18 @@ def acts_ulq(
         error_manager_vector.raise_err_input_param_not_in_range(kernel_name, 'num_bits', 8, 8, num_bits)
 
     data_shape = data.get('shape')
-    data_range =data.get('range')
+    data_range = data.get('range')
     data_size = 1
-    for i in range(len(data_shape)):
-        if data_shape[i] == -1:
-            if data_range[i][1] is None:
-                data_size *= SHAPE_SIZE_LIMIT
+    for index, data_shape_value in enumerate(data_shape):
+        if data_shape_value == -1:
+            if data_range[index][1] is None:
+                data_size *= Constant.SHAPE_SIZE_LIMIT
             else:
-                data_size *= data_range[i][1]
+                data_size *= data_range[index][1]
         else:
-            data_size *= data_shape[i]
-    if data_size > SHAPE_SIZE_LIMIT:
-        error_detail = "The shape size of data must be smaller than {}!".format(SHAPE_SIZE_LIMIT)
+            data_size *= data_shape_value
+    if data_size > Constant.SHAPE_SIZE_LIMIT:
+        error_detail = "The shape size of data must be smaller than {}!".format(Constant.SHAPE_SIZE_LIMIT)
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, 'data', error_detail)
 
     clamp_min_shape = shape_util.scalar2tensor_one(clamp_min.get('shape'))

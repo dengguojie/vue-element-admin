@@ -25,13 +25,17 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
 
-CONST_ZERO = 0
-CONST_ONE = 1
-CONST_ONE_NEG = -1
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    CONST_ZERO = 0
+    CONST_ONE = 1
+    CONST_ONE_NEG = -1
 
-
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=unused-argument,invalid-name,too-many-locals
 @register_operator_compute("ApplyAddSignD", op_mode="dynamic", support_fusion=True)
 def apply_add_sign_d_compute(var,
                              m,
@@ -102,8 +106,8 @@ def _compute_process(var, m, lr_broad, alpha_broad, sign_decay_broad,
     decay_gm = tbe.vmul(sign_gm, sign_decay_broad)
     var_out = _update_var(decay_gm, alpha_broad, lr_broad, grad, var)
 
-    output_data = tbe.vadds(var_out, tvm.const(CONST_ZERO, "float32"))
-    m_output_data = tbe.vadds(m_out, tvm.const(CONST_ZERO, "float32"))
+    output_data = tbe.vadds(var_out, tvm.const(Constant.CONST_ZERO, "float32"))
+    m_output_data = tbe.vadds(m_out, tvm.const(Constant.CONST_ZERO, "float32"))
 
     return output_data, m_output_data
 
@@ -123,9 +127,9 @@ def _update_m(m_old, beta_broad, grad):
     the new value of m
     """
     m_beta = tbe.vmul(m_old, beta_broad)
-    beta_neg = tbe.vmuls(beta_broad, tvm.const(CONST_ONE_NEG,
+    beta_neg = tbe.vmuls(beta_broad, tvm.const(Constant.CONST_ONE_NEG,
                                                "float32"))
-    beta_1 = tbe.vadds(beta_neg, tvm.const(CONST_ONE, "float32"))
+    beta_1 = tbe.vadds(beta_neg, tvm.const(Constant.CONST_ONE, "float32"))
     grad_beta_gs = tbe.vmul(grad, beta_1)
     m_out = tbe.vadd(m_beta, grad_beta_gs)
 
@@ -151,7 +155,7 @@ def _update_var(decay_gm, alpha_broad, lr_broad, grad, var):
     decay_gm_alpha = tbe.vadd(decay_gm, alpha_broad)
     res = tbe.vmul(decay_gm_alpha, lr_broad)
     res = tbe.vmul(res, grad)
-    res_neg = tbe.vmuls(res, tvm.const(CONST_ONE_NEG, "float32"))
+    res_neg = tbe.vmuls(res, tvm.const(Constant.CONST_ONE_NEG, "float32"))
     var_out = tbe.vadd(var, res_neg)
 
     return var_out
@@ -162,11 +166,11 @@ def _sign_compute(input_data):
     this compute is for sign output
     """
     input_dtype = input_data.dtype
-    input_x = tbe.broadcast(tvm.const(CONST_ONE, input_dtype), input_data.shape)
-    input_y = tbe.broadcast(tvm.const(CONST_ZERO, input_dtype), input_data.shape)
-    input_z = tbe.broadcast(tvm.const(CONST_ONE_NEG, input_dtype), input_data.shape)
-    res1 = tbe.vcmpsel(input_data, tvm.const(CONST_ZERO, input_dtype), "gt", input_x, input_y)
-    res2 = tbe.vcmpsel(input_data, tvm.const(CONST_ZERO, input_dtype), "lt", input_z, input_y)
+    input_x = tbe.broadcast(tvm.const(Constant.CONST_ONE, input_dtype), input_data.shape)
+    input_y = tbe.broadcast(tvm.const(Constant.CONST_ZERO, input_dtype), input_data.shape)
+    input_z = tbe.broadcast(tvm.const(Constant.CONST_ONE_NEG, input_dtype), input_data.shape)
+    res1 = tbe.vcmpsel(input_data, tvm.const(Constant.CONST_ZERO, input_dtype), "gt", input_x, input_y)
+    res2 = tbe.vcmpsel(input_data, tvm.const(Constant.CONST_ZERO, input_dtype), "lt", input_z, input_y)
     res = tbe.vadd(res1, res2)
 
     return res

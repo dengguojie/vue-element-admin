@@ -23,61 +23,34 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-
-MAX_SHAPE_SIZE = 2 ** 32 - 1
-# reserved ub size
-RESERVED_UB_SIZE = 2 * 1024
-# 8 bit
-EIGHT_BIT = 8
-# bytes of one block
-BLOCK_BYTES = 32
-# tiling param num
-TILING_ARG_NUM = 8
-
-# padding to 256bits
-CHANNEL_PAD_MODE_0 = 0
-
-AIPP_OP_ERROR_CODE = 'E81012'
-
-PARAM_HEAD_STRUCT_SIZE = 64
-PARAM_BATCH_STRUCT_SIZE = 96
-
-# uint8
-HEAD_OFFSET_INPUT_FORMAT = 0
-# int8
-HEAD_OFFSET_CSC_SWITCH = 1
-HEAD_OFFSET_RBUV_SWAP_SWITCH = 2
-HEAD_OFFSET_AX_SWAP_SWITCH = 3
-HEAD_OFFSET_BATCH_NUM = 4
-
-HEAD_OFFSET_SRC_IMAGE_SIZE_W = 8
-HEAD_OFFSET_CSC_MATRIX_R0C0 = 16
-HEAD_OFFSET_CSC_MATRIX_R2C2_END = 34
-
-# uint8
-HEAD_OFFSET_CSC_OUTPUT_BIAS_R0 = 40
-HEAD_OFFSET_CSC_OUTPUT_BIAS_R1 = 41
-HEAD_OFFSET_CSC_OUTPUT_BIAS_R2 = 42
-HEAD_OFFSET_CSC_INPUT_BIAS_R0 = 43
-HEAD_OFFSET_CSC_INPUT_BIAS_R1 = 44
-HEAD_OFFSET_CSC_INPUT_BIAS_R2 = 45
-
-HEAD_OFFSET_CROP_SWITCH = 0
-HEAD_OFFSET_CROP_START_W = 8
-HEAD_OFFSET_DTC_MEAN_CHN0 = 56
-HEAD_OFFSET_DTC_MIN_CHN0 = 64
-HEAD_OFFSET_DTC_RECI_CHN3_END = 80
-
-# aipp input format
-FORMAT_YUV420SP = 1
-FORMAT_XRGB8888 = 2
-FORMAT_RGB888 = 5
-FORMAT_ARGB8888 = 6
-FORMAT_YUYV = 7
-FORMAT_YUV422SP = 8
-FORMAT_AYUV444 = 9
-FORMAT_YUV400 = 10
-
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    MAX_SHAPE_SIZE = 2 ** 32 - 1
+    # bytes of one block
+    BLOCK_BYTES = 32
+    # tiling param num
+    TILING_ARG_NUM = 8
+    PARAM_HEAD_STRUCT_SIZE = 64
+    PARAM_BATCH_STRUCT_SIZE = 96
+    # uint8
+    HEAD_OFFSET_INPUT_FORMAT = 0
+    HEAD_OFFSET_SRC_IMAGE_SIZE_W = 8
+    HEAD_OFFSET_CSC_MATRIX_R0C0 = 16
+    HEAD_OFFSET_CROP_START_W = 8
+    HEAD_OFFSET_DTC_MEAN_CHN0 = 56
+    HEAD_OFFSET_DTC_MIN_CHN0 = 64
+    # aipp input format
+    FORMAT_YUV420SP = 1
+    FORMAT_XRGB8888 = 2
+    FORMAT_RGB888 = 5
+    FORMAT_ARGB8888 = 6
+    FORMAT_YUYV = 7
+    FORMAT_YUV422SP = 8
+    FORMAT_AYUV444 = 9
+    FORMAT_YUV400 = 10
 
 def ceil_value(value, factor):
     """
@@ -110,11 +83,12 @@ def align_value(value, factor):
     """
     return (value + factor - 1) // factor * factor
 
-
+# 'pylint: disable=invalid-name
 def raise_runtime_error(cause_desc):
     """
     raise runtime error
     """
+    AIPP_OP_ERROR_CODE = 'E81012'
     error_info = {'errCode': AIPP_OP_ERROR_CODE, 'cause_desc': cause_desc}
 
     raise RuntimeError(error_info, "Compile op[aipp] failed, cause: %s." % cause_desc)
@@ -163,8 +137,8 @@ def check_input_params(input_data, input_dync_param, output_data, aipp_config_js
     para_check.check_format(output_format, ("NC1HWC0",), param_name="output_data")
 
 
-# pylint: disable=invalid-name,too-many-statements,too-many-locals,too-many-arguments
-# pylint: disable=too-many-instance-attributes,too-many-public-methods,too-many-lines
+# 'pylint: disable=invalid-name,too-many-statements,too-many-locals,too-many-arguments
+# 'pylint: disable=too-many-instance-attributes,too-many-public-methods,too-many-lines
 class Aipp():
     """
     Function: class that execute Aipp
@@ -173,6 +147,12 @@ class Aipp():
         """
         Aipp init
         """
+        # reserved ub size
+        RESERVED_UB_SIZE = 2 * 1024
+        # 8 bit
+        EIGHT_BIT = 8
+        # padding to 256bits
+        CHANNEL_PAD_MODE_0 = 0
         self.tik_instance = tik.Tik()
         self.input_dtype = input_data.get('dtype').lower()
         self.data_format = input_data.get('format')
@@ -180,7 +160,7 @@ class Aipp():
         self.output_dtype = output_data.get('dtype').lower()
         self.output_format = output_data.get('format')
         self.output_dsize = tbe_platform.get_bit_len(self.output_dtype) // EIGHT_BIT
-        self.block_elems = BLOCK_BYTES // self.output_dsize
+        self.block_elems = Constant.BLOCK_BYTES // self.output_dsize
 
         self.c0 = 16
         self.c_padding_value_zero = 0.0
@@ -199,19 +179,19 @@ class Aipp():
         if self.cur_cce_product in (tbe_platform.HI3796CV300ES, tbe_platform.HI3796CV300CS, tbe_platform.SD3403):
             self.ihisi = True
         self.ub_max_elems = (self.ub_size // self.output_dsize) // self.block_elems * self.block_elems
-        self.max_s8_padding_elems = (self.ub_size // 3) // BLOCK_BYTES * BLOCK_BYTES
+        self.max_s8_padding_elems = (self.ub_size // 3) // Constant.BLOCK_BYTES * Constant.BLOCK_BYTES
         self.l1_max_elems = (self.l1_size // self.output_dsize) // self.block_elems * self.block_elems
         self.max_hw_l1_size = self.l1_max_elems // self.c0
 
         self.tiling_dtype = "int64"
-        self.tiling_align = align_value(TILING_ARG_NUM, 4)
-        self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, (TILING_ARG_NUM,),
+        self.tiling_align = align_value(Constant.TILING_ARG_NUM, 4)
+        self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, (Constant.TILING_ARG_NUM,),
                                                   name="tiling_gm", scope=tik.scope_gm)
-        self.data_gm = self.tik_instance.Tensor(self.input_dtype, (MAX_SHAPE_SIZE,),
+        self.data_gm = self.tik_instance.Tensor(self.input_dtype, (Constant.MAX_SHAPE_SIZE,),
                                                 name="input_data", scope=tik.scope_gm)
-        self.dync_param_gm = self.tik_instance.Tensor(self.param_dtype, (MAX_SHAPE_SIZE,),
+        self.dync_param_gm = self.tik_instance.Tensor(self.param_dtype, (Constant.MAX_SHAPE_SIZE,),
                                                       name="input_dync_param", scope=tik.scope_gm)
-        self.output_gm = self.tik_instance.Tensor(self.output_dtype, (MAX_SHAPE_SIZE,),
+        self.output_gm = self.tik_instance.Tensor(self.output_dtype, (Constant.MAX_SHAPE_SIZE,),
                                                   name="output_data", scope=tik.scope_gm)
 
         self.tiling_ub = None
@@ -369,7 +349,7 @@ class Aipp():
         self.src_image_size_w = self.tik_instance.Scalar(dtype="int32", name="src_image_size_w")
         with self.tik_instance.new_stmt_scope():
             src_image_size_ub = self.params_ub[
-                                HEAD_OFFSET_SRC_IMAGE_SIZE_W:HEAD_OFFSET_CSC_MATRIX_R0C0].reinterpret_cast_to("int32")
+                                Constant.HEAD_OFFSET_SRC_IMAGE_SIZE_W:Constant.HEAD_OFFSET_CSC_MATRIX_R0C0].reinterpret_cast_to("int32")
 
             self.src_image_size_w.set_as(src_image_size_ub[0])
             self.src_image_size_h.set_as(src_image_size_ub[1])
@@ -378,6 +358,7 @@ class Aipp():
         """
         get csc matrix
         """
+        HEAD_OFFSET_CSC_MATRIX_R2C2_END = 34
         self.matrix_r0_c0 = self.tik_instance.Scalar(dtype="int16", name="matrix_r0_c0")
         self.matrix_r0_c1 = self.tik_instance.Scalar(dtype="int16", name="matrix_r0_c1")
         self.matrix_r0_c2 = self.tik_instance.Scalar(dtype="int16", name="matrix_r0_c2")
@@ -390,7 +371,7 @@ class Aipp():
 
         with self.tik_instance.new_stmt_scope():
             csc_matrix_ub = self.params_ub[
-                            HEAD_OFFSET_CSC_MATRIX_R0C0:HEAD_OFFSET_CSC_MATRIX_R2C2_END].reinterpret_cast_to("int16")
+                            Constant.HEAD_OFFSET_CSC_MATRIX_R0C0:HEAD_OFFSET_CSC_MATRIX_R2C2_END].reinterpret_cast_to("int16")
 
             self.matrix_r0_c0.set_as(csc_matrix_ub[0])
             self.matrix_r0_c1.set_as(csc_matrix_ub[1])
@@ -406,14 +387,26 @@ class Aipp():
         """
         get public params
         """
+        # int8
+        HEAD_OFFSET_CSC_SWITCH = 1
+        HEAD_OFFSET_RBUV_SWAP_SWITCH = 2
+        HEAD_OFFSET_AX_SWAP_SWITCH = 3
+        HEAD_OFFSET_BATCH_NUM = 4
+        # uint8
+        HEAD_OFFSET_CSC_OUTPUT_BIAS_R0 = 40
+        HEAD_OFFSET_CSC_OUTPUT_BIAS_R1 = 41
+        HEAD_OFFSET_CSC_OUTPUT_BIAS_R2 = 42
+        HEAD_OFFSET_CSC_INPUT_BIAS_R0 = 43
+        HEAD_OFFSET_CSC_INPUT_BIAS_R1 = 44
+        HEAD_OFFSET_CSC_INPUT_BIAS_R2 = 45
         # move data of head params to ub, uint8
-        self.params_ub = self.tik_instance.Tensor(self.param_dtype, (PARAM_HEAD_STRUCT_SIZE,), name="params_ub",
+        self.params_ub = self.tik_instance.Tensor(self.param_dtype, (Constant.PARAM_HEAD_STRUCT_SIZE,), name="params_ub",
                                                   scope=tik.scope_ubuf)
-        self.tik_instance.data_move(self.params_ub, self.dync_param_gm, 0, 1, PARAM_HEAD_STRUCT_SIZE // BLOCK_BYTES,
+        self.tik_instance.data_move(self.params_ub, self.dync_param_gm, 0, 1, Constant.PARAM_HEAD_STRUCT_SIZE // Constant.BLOCK_BYTES,
                                     0, 0)
 
         self.input_format = self.tik_instance.Scalar(dtype="uint8", name="input_format")
-        self.input_format.set_as(self.params_ub[HEAD_OFFSET_INPUT_FORMAT])
+        self.input_format.set_as(self.params_ub[Constant.HEAD_OFFSET_INPUT_FORMAT])
 
         self.output_bias_r0 = self.tik_instance.Scalar(dtype="uint8", name="output_bias_r0")
         self.output_bias_r1 = self.tik_instance.Scalar(dtype="uint8", name="output_bias_r1")
@@ -435,7 +428,7 @@ class Aipp():
 
         with self.tik_instance.new_stmt_scope():
             public_switch_ub = \
-                self.params_ub[HEAD_OFFSET_INPUT_FORMAT:HEAD_OFFSET_SRC_IMAGE_SIZE_W].reinterpret_cast_to("int8")
+                self.params_ub[Constant.HEAD_OFFSET_INPUT_FORMAT:Constant.HEAD_OFFSET_SRC_IMAGE_SIZE_W].reinterpret_cast_to("int8")
 
             self.csc_switch.set_as(public_switch_ub[HEAD_OFFSET_CSC_SWITCH])
             self.rbuv_swap_switch.set_as(public_switch_ub[HEAD_OFFSET_RBUV_SWAP_SWITCH])
@@ -450,10 +443,11 @@ class Aipp():
         """
         get dtc params
         """
+        HEAD_OFFSET_DTC_RECI_CHN3_END = 80
         with self.tik_instance.new_stmt_scope():
             batch_dtc_mean_ub = self.batch_params_ub[
-                                HEAD_OFFSET_DTC_MEAN_CHN0:HEAD_OFFSET_DTC_MIN_CHN0].reinterpret_cast_to("int16")
-            batch_dtc_min_reci_ub = self.batch_params_ub[HEAD_OFFSET_DTC_MIN_CHN0:HEAD_OFFSET_DTC_RECI_CHN3_END]\
+                                Constant.HEAD_OFFSET_DTC_MEAN_CHN0:Constant.HEAD_OFFSET_DTC_MIN_CHN0].reinterpret_cast_to("int16")
+            batch_dtc_min_reci_ub = self.batch_params_ub[Constant.HEAD_OFFSET_DTC_MIN_CHN0:HEAD_OFFSET_DTC_RECI_CHN3_END]\
                 .reinterpret_cast_to("float16")
 
             self.dtc_mean_chn0.set_as(batch_dtc_mean_ub[0])
@@ -476,7 +470,7 @@ class Aipp():
         get crop, scf, padding params
         """
         with self.tik_instance.new_stmt_scope():
-            batch_crop_scf_padding_ub = self.batch_params_ub[HEAD_OFFSET_CROP_START_W:HEAD_OFFSET_DTC_MEAN_CHN0]\
+            batch_crop_scf_padding_ub = self.batch_params_ub[Constant.HEAD_OFFSET_CROP_START_W:Constant.HEAD_OFFSET_DTC_MEAN_CHN0]\
                 .reinterpret_cast_to("int32")
 
             with self.tik_instance.if_scope(self.crop_switch > 0):
@@ -512,9 +506,10 @@ class Aipp():
         """
         get crop, scf, padding switch
         """
+        HEAD_OFFSET_CROP_SWITCH = 0
         with self.tik_instance.new_stmt_scope():
             batch_switch_ub = self.batch_params_ub[
-                              HEAD_OFFSET_CROP_SWITCH:HEAD_OFFSET_CROP_START_W].reinterpret_cast_to("int8")
+                              HEAD_OFFSET_CROP_SWITCH:Constant.HEAD_OFFSET_CROP_START_W].reinterpret_cast_to("int8")
 
             self.crop_switch.set_as(batch_switch_ub[0])
             self.scf_switch.set_as(batch_switch_ub[1])
@@ -526,8 +521,8 @@ class Aipp():
         """
         # move batch params
         self.tik_instance.data_move(self.batch_params_ub,
-                                    self.dync_param_gm[PARAM_HEAD_STRUCT_SIZE + PARAM_BATCH_STRUCT_SIZE * batch_id],
-                                    0, 1, PARAM_BATCH_STRUCT_SIZE // BLOCK_BYTES, 0, 0)
+                                    self.dync_param_gm[Constant.PARAM_HEAD_STRUCT_SIZE + Constant.PARAM_BATCH_STRUCT_SIZE * batch_id],
+                                    0, 1, Constant.PARAM_BATCH_STRUCT_SIZE // Constant.BLOCK_BYTES, 0, 0)
 
         self.get_batch_switch()
         self.get_crop_scf_padding_params()
@@ -556,11 +551,11 @@ class Aipp():
         input_bias_r2_cs = self.tik_instance.Scalar(dtype="uint8", name="input_bias_r2_cs", init_value=0)
 
         # YUV420SP_U8, YUYV_U8, YUV422SP_U8, AYUV444_U8, YUV400
-        with self.tik_instance.if_scope(tik.any(self.input_format == FORMAT_YUV420SP,
-                                                self.input_format == FORMAT_YUYV,
-                                                self.input_format == FORMAT_YUV422SP,
-                                                self.input_format == FORMAT_YUV400,
-                                                self.input_format == FORMAT_AYUV444)):
+        with self.tik_instance.if_scope(tik.any(self.input_format == Constant.FORMAT_YUV420SP,
+                                                self.input_format == Constant.FORMAT_YUYV,
+                                                self.input_format == Constant.FORMAT_YUV422SP,
+                                                self.input_format == Constant.FORMAT_YUV400,
+                                                self.input_format == Constant.FORMAT_AYUV444)):
             with self.tik_instance.if_scope(self.csc_switch > 0):
                 matrix_r0_c0_cs.set_as(self.matrix_r2_c0 * 4)
                 matrix_r0_c1_cs.set_as(self.matrix_r2_c1 * 4)
@@ -576,7 +571,7 @@ class Aipp():
                 input_bias_r1_cs.set_as(self.input_bias_r1)
                 input_bias_r2_cs.set_as(self.input_bias_r0)
             with self.tik_instance.else_scope():
-                with self.tik_instance.if_scope(self.input_format != FORMAT_YUV400):
+                with self.tik_instance.if_scope(self.input_format != Constant.FORMAT_YUV400):
                     self.csc_switch.set_as(1)
 
                 # spr_2->bits.csc_matrix_r0_c2, 1 << 10 & 0xffff
@@ -588,9 +583,9 @@ class Aipp():
                 matrix_r2_c0_cs.set_as(1024)
 
         # XRGB8888_U8, RGB888_U8, ARGB8888_U8
-        with self.tik_instance.if_scope(tik.any(self.input_format == FORMAT_XRGB8888,
-                                                self.input_format == FORMAT_RGB888,
-                                                self.input_format == FORMAT_ARGB8888)):
+        with self.tik_instance.if_scope(tik.any(self.input_format == Constant.FORMAT_XRGB8888,
+                                                self.input_format == Constant.FORMAT_RGB888,
+                                                self.input_format == Constant.FORMAT_ARGB8888)):
             with self.tik_instance.if_scope(self.csc_switch > 0):
                 matrix_r0_c0_cs.set_as(self.matrix_r2_c2 * 4)
                 matrix_r0_c1_cs.set_as(self.matrix_r2_c1 * 4)
@@ -631,20 +626,20 @@ class Aipp():
         ax_swap = self.tik_instance.Scalar(dtype="uint8", name="ax_swap", init_value=0)
 
         with self.tik_instance.if_scope(self.rbuv_swap_switch > 0):
-            with self.tik_instance.if_scope(tik.any(self.input_format == FORMAT_YUV420SP,
-                                                    self.input_format == FORMAT_YUV422SP,
-                                                    self.input_format == FORMAT_AYUV444,
-                                                    self.input_format == FORMAT_YUYV)):
+            with self.tik_instance.if_scope(tik.any(self.input_format == Constant.FORMAT_YUV420SP,
+                                                    self.input_format == Constant.FORMAT_YUV422SP,
+                                                    self.input_format == Constant.FORMAT_AYUV444,
+                                                    self.input_format == Constant.FORMAT_YUYV)):
                 uv_swap.set_as(1)
-            with self.tik_instance.if_scope(tik.any(self.input_format == FORMAT_XRGB8888,
-                                                    self.input_format == FORMAT_RGB888,
-                                                    self.input_format == FORMAT_ARGB8888)):
+            with self.tik_instance.if_scope(tik.any(self.input_format == Constant.FORMAT_XRGB8888,
+                                                    self.input_format == Constant.FORMAT_RGB888,
+                                                    self.input_format == Constant.FORMAT_ARGB8888)):
                 rb_swap.set_as(1)
 
         with self.tik_instance.if_scope(self.ax_swap_switch > 0):
-            with self.tik_instance.if_scope(tik.any(self.input_format == FORMAT_XRGB8888,
-                                                    self.input_format == FORMAT_ARGB8888,
-                                                    self.input_format == FORMAT_AYUV444)):
+            with self.tik_instance.if_scope(tik.any(self.input_format == Constant.FORMAT_XRGB8888,
+                                                    self.input_format == Constant.FORMAT_ARGB8888,
+                                                    self.input_format == Constant.FORMAT_AYUV444)):
                 ax_swap.set_as(1)
 
         self.swap_list = [rb_swap, uv_swap, ax_swap]
@@ -660,7 +655,7 @@ class Aipp():
         dtc_reci_chn0_tmp = self.tik_instance.Scalar(dtype="float16", name="dtc_reci_chn0_tmp")
         dtc_reci_chn2_tmp = self.tik_instance.Scalar(dtype="float16", name="dtc_reci_chn2_tmp")
 
-        with self.tik_instance.if_scope(self.input_format == FORMAT_YUV400):
+        with self.tik_instance.if_scope(self.input_format == Constant.FORMAT_YUV400):
             dtc_mean_chn0_tmp.set_as(self.dtc_mean_chn2)
             dtc_mean_chn2_tmp.set_as(self.dtc_mean_chn0)
             dtc_min_chn0_tmp.set_as(self.dtc_min_chn2)
@@ -691,22 +686,22 @@ class Aipp():
         """
         calculate src0 offset
         """
-        with self.tik_instance.if_scope(self.input_format == FORMAT_YUV420SP):
+        with self.tik_instance.if_scope(self.input_format == Constant.FORMAT_YUV420SP):
             src0_offset.set_as(batch_id * ((self.src_image_size_h * self.src_image_size_w * 3) // 2))
 
-        with self.tik_instance.if_scope(tik.any(self.input_format == FORMAT_YUV422SP,
-                                                self.input_format == FORMAT_YUYV)):
+        with self.tik_instance.if_scope(tik.any(self.input_format == Constant.FORMAT_YUV422SP,
+                                                self.input_format == Constant.FORMAT_YUYV)):
             src0_offset.set_as(batch_id * (self.src_image_size_h * self.src_image_size_w * 2))
 
-        with self.tik_instance.if_scope(tik.any(self.input_format == FORMAT_XRGB8888,
-                                                self.input_format == FORMAT_ARGB8888,
-                                                self.input_format == FORMAT_AYUV444)):
+        with self.tik_instance.if_scope(tik.any(self.input_format == Constant.FORMAT_XRGB8888,
+                                                self.input_format == Constant.FORMAT_ARGB8888,
+                                                self.input_format == Constant.FORMAT_AYUV444)):
             src0_offset.set_as(batch_id * (self.src_image_size_h * self.src_image_size_w * 4))
 
-        with self.tik_instance.if_scope(self.input_format == FORMAT_RGB888):
+        with self.tik_instance.if_scope(self.input_format == Constant.FORMAT_RGB888):
             src0_offset.set_as(batch_id * (self.src_image_size_h * self.src_image_size_w * 3))
 
-        with self.tik_instance.if_scope(self.input_format == FORMAT_YUV400):
+        with self.tik_instance.if_scope(self.input_format == Constant.FORMAT_YUV400):
             src0_offset.set_as(batch_id * (self.src_image_size_h * self.src_image_size_w))
 
     def vector_conv(self, dst_ub, src_ub, elems):
@@ -1153,7 +1148,7 @@ class Aipp():
         # function_switch: 1-crop, 4-swap, 8-csc, 16-resize, 64-dtc, 256-area padding, 512-c padding
         # c padding: 512
         function_switch = tik_inst.Scalar(dtype="uint32", name="function_switch", init_value=512)
-        # dtc: 64
+        # the value of dtc is 64
         if self.output_dtype != "uint8":
             function_switch.set_as(function_switch + 64)
 
@@ -1161,17 +1156,17 @@ class Aipp():
         actual_hw_size.set_as(self.src_image_size_h * self.src_image_size_w)
         output_h_no_pad = tik_inst.Scalar(dtype="int32", name="output_h_no_pad")
 
-        # crop: 1
+        # the value of crop is 1
         function_switch.set_as(function_switch + 1)
         with tik_inst.if_scope(self.crop_switch > 0):
             actual_hw_size.set_as(self.crop_size_h * self.crop_size_w)
 
         with tik_inst.if_scope(tik.any(self.rbuv_swap_switch > 0, self.ax_swap_switch > 0)):
-            # swap: 4
+            # the value of swap is 4
             function_switch.set_as(function_switch + 4)
 
         with tik_inst.if_scope(self.csc_switch > 0):
-            # csc: 8
+            # the value of csc is 8
             function_switch.set_as(function_switch + 8)
 
         with tik_inst.if_scope(self.padding_switch > 0):
@@ -1233,7 +1228,7 @@ class Aipp():
         """
         tik_inst = self.tik_instance
         with tik_inst.for_range(0, self.core_num, block_num=self.core_num) as block_id:
-            self.batch_params_ub = tik_inst.Tensor(self.param_dtype, (PARAM_BATCH_STRUCT_SIZE,),
+            self.batch_params_ub = tik_inst.Tensor(self.param_dtype, (Constant.PARAM_BATCH_STRUCT_SIZE,),
                                                    name="batch_params_ub", scope=tik.scope_ubuf)
             self.init_batch_params()
 

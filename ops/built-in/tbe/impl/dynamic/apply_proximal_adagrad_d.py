@@ -27,7 +27,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=too-many-locals,unused-argument,invalid-name,too-many-arguments
+# 'pylint: disable=too-many-locals,unused-argument,invalid-name,too-many-arguments
 @register_operator_compute("ApplyProximalAdagradD", op_mode="dynamic", support_fusion=True)
 def apply_proximal_adagrad_d_compute(var, accum, lr, l1, l2, grad, var_out,
                                      accum_out, use_locking=False,
@@ -108,7 +108,7 @@ def apply_proximal_adagrad_d_compute(var, accum, lr, l1, l2, grad, var_out,
         tvm.const(0, "float32"), prox_v.shape))
     var_res = tbe.vmul(prox_v_sign, max_value)
     var_out = tbe.vdiv(var_res, l2_lr_1)
-    
+
     if has_improve_precision:
         var_out = tbe.cast_to(var_out, "float16")
         accum_out = tbe.cast_to(accum_out, "float16")

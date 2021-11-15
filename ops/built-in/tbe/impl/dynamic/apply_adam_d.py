@@ -24,8 +24,8 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=invalid-name,too-many-arguments,too-many-locals
-# pylint: disable=unused-argument
+# 'pylint: disable=invalid-name,too-many-arguments,too-many-locals
+# 'pylint: disable=unused-argument
 def _output_m_compute(m, beta1, grad):
     """
     _output_m_compute
@@ -35,19 +35,19 @@ def _output_m_compute(m, beta1, grad):
 
     sneg_one = tvm.const(-1, dtype=input_dtype)
 
-    # broadcast beta1 to vector
+    # `broadcast beta1 to vector`
     beta1_broad = tbe.broadcast(beta1, shape_m_grad)
 
-    # formula; beta1 -1
+    # `formula; beta1 -1`
     vsub_beta1_1 = tbe.vadds(beta1_broad, sneg_one)
 
-    # formula; m - grad
+    # `formula; m - grad`
     vsub_m_grad = tbe.vsub(m, grad)
 
-    # formula; (beta1 - 1) * (m - grad)
+    # `formula; (beta1 - 1) * (m - grad)`
     vmul_m = tbe.vmul(vsub_beta1_1, vsub_m_grad)
 
-    # formula; m_t = m + (beta1 - 1) * (m - grad)
+    # `formula; m_t = m + (beta1 - 1) * (m - grad)`
     m_t = tbe.vadd(m, vmul_m)
 
     return m_t
@@ -61,22 +61,22 @@ def _output_v_compute(v, beta2, grad):
     shape_m_grad = shape_util.shape_to_list(v.shape)
     sneg_one = tvm.const(-1, dtype=input_dtype)
 
-    # formula; broadcast beta2 to vector
+    # `formula; broadcast beta2 to vector`
     beta2_broad = tbe.broadcast(beta2, shape_m_grad)
 
-    # formula; beta2 - 1
+    # `formula; beta2 - 1`
     vsub_beta2_1 = tbe.vadds(beta2_broad, sneg_one)
 
-    # formula; grad * grad
+    # `formula; grad * grad`
     vmul_grad_grad = tbe.vmul(grad, grad)
 
-    # formula; (v - grad*grad)
+    # `formula; (v - grad*grad)`
     vsub_v_grad = tbe.vsub(v, vmul_grad_grad)
 
-    # formula; (beta2 -1) * (v - grad * grad)
+    # `formula; (beta2 -1) * (v - grad * grad)`
     vmul_grad = tbe.vmul(vsub_beta2_1, vsub_v_grad)
 
-    # formula; v_t = v + (beta2 - 1) * (v - grad * grad)
+    # `formula; v_t = v + (beta2 - 1) * (v - grad * grad)`
     v_t = tbe.vadd(v, vmul_grad)
 
     return v_t
@@ -84,17 +84,16 @@ def _output_v_compute(v, beta2, grad):
 
 def _inner_eps_add_sqrt_vt_compute(epsilon, v_t):
     """
-    _inner_eps_add_sqrt_vt_compute
     (epsilon + sqrt(v_t) )
     """
-    # formula; sqrt(v_t)
+    # `formula; sqrt(v_t)`
     sqrt_vt = tbe.vsqrt(v_t)
 
-    # formula; broadcast epsilon  to vector
+    # `formula; broadcast epsilon  to vector`
     compute_shape = shape_util.shape_to_list(v_t.shape)
     epsilon_broad = tbe.broadcast(epsilon, compute_shape)
 
-    # formula; epsilon + sqrt(v_t)
+    # `formula; epsilon + sqrt(v_t)`
     v_add_sqrt_v = tbe.vadd(sqrt_vt, epsilon_broad)
 
     return v_add_sqrt_v
@@ -103,7 +102,7 @@ def _inner_eps_add_sqrt_vt_compute(epsilon, v_t):
 def _inner_lr_compute(lr, beta2_power, beta1_power, compute_shape):
     """
     _inner_lr_compute
-    lr_t = learning_rate * (sqrt(1-beta2_power)) / (1 - beta1_power)
+    #lr_t = learning_rate * (sqrt(1-beta2_power)) / (1 - beta1_power)
     """
     input_dtype = lr.dtype
     s_one = tvm.const(1, dtype=input_dtype)
@@ -113,21 +112,21 @@ def _inner_lr_compute(lr, beta2_power, beta1_power, compute_shape):
     beta2_power_broad = tbe.broadcast(beta2_power, compute_shape)
     beta1_power_broad = tbe.broadcast(beta1_power, compute_shape)
 
-    # formula; (1 - beta2_power)
+    # `formula; (1 - beta2_power)`
     v_neg_beta2_power = tbe.vmuls(beta2_power_broad, s_neg_one)
     v_add_beta2_power = tbe.vadds(v_neg_beta2_power, s_one)
 
-    # formula; sqrt(1 - beta2_power)
+    # `formula; sqrt(1 - beta2_power)`
     v_sqrt_beta2_power = tbe.vsqrt(v_add_beta2_power)
 
-    # formula; (1 - beta1_power)
+    # `formula; (1 - beta1_power)`
     v_neg_beta1_power = tbe.vmuls(beta1_power_broad, s_neg_one)
     v_add_beta1_power = tbe.vadds(v_neg_beta1_power, s_one)
 
-    # formula; learning_rate * (sqrt(1-beta2_power)
+    # `formula; learning_rate * (sqrt(1-beta2_power)`
     res = tbe.vmul(lr_broad, v_sqrt_beta2_power)
 
-    # formula; learning_rate*(sqrt(1-beta2_power))/(1-beta1_power)
+    # `formula; learning_rate*(sqrt(1-beta2_power))/(1-beta1_power)`
     res = tbe.vdiv(res, v_add_beta1_power)
     return res
 
@@ -143,55 +142,55 @@ def _output_var_t_compute_use_nesterov(var, lr_t, m_t, beta1, grad, epsilon, v_t
     s_one = tvm.const(1, dtype=input_dtype)
     s_neg_one = tvm.const(-1, dtype=input_dtype)
 
-    # formula; broadcast beta1 to vector
+    # `formula; broadcast beta1 to vector`
     beta1_broad = tbe.broadcast(beta1, compute_shape)
 
-    # formula; m_t * beta1
+    # `formula; m_t * beta1`
     v_muls_mt_beta1 = tbe.vmul(m_t, beta1_broad)
 
-    # formula; 1 -beta1
+    # `formula; 1 -beta1`
     v_neg_beta1 = tbe.vmuls(beta1_broad, s_neg_one)
     vsub_1_beta1 = tbe.vadds(v_neg_beta1, s_one)
 
-    #  formula; (1-beta1)* grad
+    # `formula; (1-beta1)* grad`
     v_mul_grad = tbe.vmul(vsub_1_beta1, grad)
 
-    # formula; (m_t*beta1 + (1 - beta1)*grad)
+    # `formula; (m_t*beta1 + (1 - beta1)*grad)`
     v_div_left = tbe.vadd(v_muls_mt_beta1, v_mul_grad)
 
-    # formula; lr_t * (m_t*beta1 + (1 - beta1) * grad)
+    # `formula; lr_t * (m_t*beta1 + (1 - beta1) * grad)`
     # broadcast lr_t to vector
     lrt_broad = tbe.broadcast(lr_t, compute_shape)
     v_mul_left = tbe.vmul(lrt_broad, v_div_left)
 
-    # formula; (epsilon + sqrt(v_t))
+    # `formula; (epsilon + sqrt(v_t))`
     v_add_sqrt_v = _inner_eps_add_sqrt_vt_compute(epsilon, v_t)
 
-    # formula; lr_t * (m_t*beta1 + (1-beta1)*grad / (epsilon + sqrt(v_t))
+    # `formula; lr_t * (m_t*beta1 + (1-beta1)*grad / (epsilon + sqrt(v_t))`
     v_div_res = tbe.vdiv(v_mul_left, v_add_sqrt_v)
 
-    # formula; var - lr_t * (m_t*beta1 + (1-beta1)*grad) / (epsilon + sqrt(v_t))
+    # `formula; var - lr_t * (m_t*beta1 + (1-beta1)*grad) / (epsilon + sqrt(v_t))`
     v_t = tbe.vsub(var, v_div_res)
 
     return v_t
 
 
-# var_t = var - lr_t * m_t / (epsilon + sqrt(v_t))
+# `var_t = var - lr_t * m_t / (epsilon + sqrt(v_t))`
 def _output_var_t_compute(var, lr_t, m_t, epsilon, v_t):
     """
     _output_var_t_compute
     var_t = var - lr_t * m_t / (epsilon + sqrt(v_t))
     """
-    # formula; lr_t * m_t
+    # `formula; lr_t * m_t`
     v_mul_left = tbe.vmul(lr_t, m_t)
 
-    # formula; (epsilon + sqrt(v_t))
+    # `formula; (epsilon + sqrt(v_t))`
     v_add_sqrt_v = _inner_eps_add_sqrt_vt_compute(epsilon, v_t)
 
-    # formula; lr_t * m_t /(epsilon + sqrt(v_t))
+    # `formula; lr_t * m_t /(epsilon + sqrt(v_t))`
     v_div_res = tbe.vdiv(v_mul_left, v_add_sqrt_v)
 
-    # formula; var - lr_t * m_t / (epsilon + sqrt(v_t))
+    # `formula; var - lr_t * m_t / (epsilon + sqrt(v_t))`
     v_t = tbe.vsub(var, v_div_res)
 
     return v_t

@@ -15,22 +15,21 @@
 """
 acosh
 
-  Op_description :
-    Computes inverse hyperbolic cosine of x element-wise
+Op_description :
+Computes inverse hyperbolic cosine of x element-wise
 
-    # acosh(
-    #   input_data,
-    #   output_res,
-    #   kernel_name="cce_acosh")
+# acosh(
+#   input_data,
+#   output_res,
+#   kernel_name="cce_acosh")
 
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
+Supportive_dtype_format :
+['float16', 'float32']
+['ALL']
 
-  Constraint :
-    [1] All : shape size limit is 2147483648.
+Constraint :
+[1] All : shape size limit is 2147483648.
 """
-import functools
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
@@ -41,10 +40,9 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
-CONST_NEG_ONE = -1.0
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 def acosh_compute(input_data, output_res, kernel_name="acosh"):
     """
     do element-wise acosh compute
@@ -62,6 +60,7 @@ def acosh_compute(input_data, output_res, kernel_name="acosh"):
     -------
     """
     data = input_data
+    CONST_NEG_ONE = -1.0
 
     input_dtype = data.dtype.lower()
     if input_dtype == "float16" and tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):

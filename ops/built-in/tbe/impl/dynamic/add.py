@@ -27,12 +27,7 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util import util_common
 
 
-# General limitation of the reduce size for input shape: 2**31
-SHAPE_SIZE_LIMIT = 2147483648
-SIZE_SIXTEEN = 16
-
-
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @register_operator_compute("Add", op_mode="dynamic", support_fusion=True)
 def add_compute(input_x, input_y, output_z, kernel_name="add"):
     """
@@ -77,7 +72,7 @@ def add_compute(input_x, input_y, output_z, kernel_name="add"):
 
     return res
 
-
+# 'pylint: disable=too-many-locals
 @register_operator("Add")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)

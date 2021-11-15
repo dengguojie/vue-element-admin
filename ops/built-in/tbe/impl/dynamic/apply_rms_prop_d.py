@@ -29,8 +29,8 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=too-many-arguments,invalid-name,too-many-locals
-# pylint: disable=unused-argument
+# 'pylint: disable=too-many-arguments,invalid-name,too-many-locals
+# 'pylint: disable=unused-argument
 @register_operator_compute("ApplyRMSPropD", op_mode="dynamic", support_fusion=True)
 def apply_rms_prop_d_compute(var,
                              ms,
@@ -80,7 +80,7 @@ def apply_rms_prop_d_compute(var,
     return res
 
 
-# pylint: disable=too-many-arguments,unused-argument,unbalanced-tuple-unpacking
+# 'pylint: disable=too-many-arguments,unused-argument,unbalanced-tuple-unpacking
 @register_operator("ApplyRMSPropD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

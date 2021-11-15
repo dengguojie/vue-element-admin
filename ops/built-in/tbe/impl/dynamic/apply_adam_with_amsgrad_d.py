@@ -26,11 +26,10 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-NUM_ONE = 1.0
-NUM_N_ONE = -1.0
 
 
-# pylint: disable=too-many-arguments,invalid-name,too-many-locals,unused-argument
+
+# 'pylint: disable=too-many-arguments,invalid-name,too-many-locals,unused-argument
 @register_operator_compute("ApplyAdamWithAmsgradD", op_mode="dynamic", support_fusion=True)
 def apply_adam_with_amsgrad_d_compute(var,
                                       m,
@@ -58,6 +57,8 @@ def apply_adam_with_amsgrad_d_compute(var,
     :param epsilon: epsilon, const
     :param grad: grad, placeholder
     """
+    NUM_ONE = 1.0
+    NUM_N_ONE = -1.0
     inp_dtype = var.dtype
     # check the instruction supports or not
     vmul_support = tbe_platform.api_check_support("tbe.dsl.vmul", "float32")
@@ -106,7 +107,7 @@ def apply_adam_with_amsgrad_d_compute(var,
     return [var_t, m_t, v_t, vhat_t]
 
 
-# pylint: disable=too-many-arguments,unused-argument,too-many-locals,unbalanced-tuple-unpacking
+# 'pylint: disable=too-many-arguments,unused-argument,too-many-locals,unbalanced-tuple-unpacking
 @register_operator("ApplyAdamWithAmsgradD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

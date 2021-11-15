@@ -25,8 +25,8 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals
-# pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name,unused-variable
 def apply_momentum_compute_d(var,
                              accum,
                              lr,
@@ -82,10 +82,10 @@ def apply_momentum_compute_d(var,
     beta1_momentum = momentum[0]
     beta1_lr = lr[0]
 
-    # accum_delta = accum * momentum
+    # `accum_delta = accum * momentum`
     accum_delta = tbe.vmuls(accum, beta1_momentum)
 
-    # accum_t =  accum_delta + grad
+    # `accum_t =  accum_delta + grad`
     accum_t = tbe.vadd(accum_delta, grad)
 
     # update var
@@ -187,8 +187,8 @@ def apply_momentum_d(var,
 
     compute_type = var.get("dtype").lower()
 
-    # shape_size = reduce(lambda x, y: x * y, shape_var[:])
-    # compute_type = [shape_size, ]
+    # `shape_size = reduce(lambda x, y: x * y, shape_var[:])`
+    # `compute_type = [shape_size, ]`
     ins = classify([var, accum, grad], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
 

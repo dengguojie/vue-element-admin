@@ -18,34 +18,34 @@ to update weight.
 
 apply_centered_rms_prop_d
 
-  Op_description :
-    Update '*var' according to the centered RMSProp algorithm.
-    Update '*mg' according to the centered RMSProp algorithm.
-    Update '*ms' according to the centered RMSProp algorithm.
-    Update '*mom' according to the centered RMSProp algorithm.
+Op_description :
+Update '*var' according to the centered RMSProp algorithm.
+Update '*mg' according to the centered RMSProp algorithm.
+Update '*ms' according to the centered RMSProp algorithm.
+Update '*mom' according to the centered RMSProp algorithm.
 
-    # apply_centered_rms_prop_d(var,
-    #   mg,
-    #   ms,
-    #   mom,
-    #   lr,
-    #   rho,
-    #   momentum,
-    #   epsilon,
-    #   grad,
-    #   var_out,
-    #   mg_out,
-    #   ms_out,
-    #   mom_out,
-    #   kernel_name='apply_centered_rms_prop_d')
+# apply_centered_rms_prop_d(var,
+#   mg,
+#   ms,
+#   mom,
+#   lr,
+#   rho,
+#   momentum,
+#   epsilon,
+#   grad,
+#   var_out,
+#   mg_out,
+#   ms_out,
+#   mom_out,
+#   kernel_name='apply_centered_rms_prop_d')
 
-  Supportive_dtype_format :
-    ['int32', 'int8', 'uint8', 'float32', 'float16']
-    ['ND', 'NCHW', 'NHWC', 'NC1HWC0']
+Supportive_dtype_format :
+['int32', 'int8', 'uint8', 'float32', 'float16']
+['ND', 'NCHW', 'NHWC', 'NC1HWC0']
 
-  Constraint :
-    [1] All : the input tensors must have the same shape and type.
-    [2] All : shape size limit is 2147483648.
+Constraint :
+[1] All : the input tensors must have the same shape and type.
+[2] All : shape size limit is 2147483648.
 """
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
@@ -58,7 +58,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals
 @register_operator_compute("ApplyCenteredRMSPropD", op_mode="dynamic", support_fusion=True)
 def apply_centered_rms_prop_d_compute(var,
                                       mg,
