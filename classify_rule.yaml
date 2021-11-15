@@ -1388,7 +1388,9 @@ vector_B:
       - ops/built-in/tests/ut/ops_test/BatchNorm3D/test_BatchNorm3d_impl.py
       - ops/built-in/tests/ut/ops_test/BatchNorm3DGrad/__init__.py
       - ops/built-in/tests/ut/ops_test/BatchNorm3DGrad/test_BatchNorm3DGrad_impl.py
+      - ops/built-in/tests/ut/ops_test/BatchNormExt2/test_BatchNormExt2_proto.cpp
       - ops/built-in/tests/ut/ops_test/BatchNormGrad/test_BatchNormGrad_impl.py
+      - ops/built-in/tests/ut/ops_test/BatchNormGradExt2/test_BatchNormGradExt2_proto.cpp
       - ops/built-in/tests/ut/ops_test/BatchToSpace/__init__.py
       - ops/built-in/tests/ut/ops_test/BatchToSpace/test_batch_to_space_proto.cpp
       - ops/built-in/tests/ut/ops_test/BatchToSpace/test_batch_to_space_d_proto.cpp
@@ -1429,6 +1431,7 @@ vector_B:
       - ops/built-in/tests/ut/ops_test/BN3DTrainingUpdateGrad/test_BN3DTrainingUpdateGrad_proto.cpp
       - ops/built-in/tests/ut/ops_test/BNInfer/test_BNInfer_impl.py
       - ops/built-in/tests/ut/ops_test/BNInfer/test_BNInfer_proto.cpp
+      - ops/built-in/tests/ut/ops_test/BNInference/test_BNInference_proto.cpp
       - ops/built-in/tests/ut/ops_test/BNInferenceD/__init__.py
       - ops/built-in/tests/ut/ops_test/BNInferenceD/test_BNInferenceD_impl.py
       - ops/built-in/tests/ut/ops_test/BNInferenceD/test_BNInferenceD_proto.cpp
@@ -1571,7 +1574,9 @@ vector_B:
       - ops/built-in/tests/ut/ops_test/KLDiv/test_KLDiv_proto.cpp
       - ops/built-in/tests/ut/ops_test/L2Loss/test_L2Loss_impl.py
       - ops/built-in/tests/ut/ops_test/L2Loss/test_L2Loss_op_select_format_impl.py
+      - ops/built-in/tests/ut/ops_test/L2Normalize/test_L2Normalize_proto.cpp
       - ops/built-in/tests/ut/ops_test/L2NormalizeGrad/test_L2NormalizeGrad_impl.py
+      - ops/built-in/tests/ut/ops_test/L2NormalizeGrad/test_L2NormalizeGrad_proto.cpp
       - ops/built-in/tests/ut/ops_test/LarsV2Update/test_LarsV2Update_proto.cpp
       - ops/built-in/tests/ut/ops_test/LayerNorm/test_LayerNorm_impl.py
       - ops/built-in/tests/ut/ops_test/LayerNormBetaGammaBackpropV2/__init__.py
@@ -1591,6 +1596,7 @@ vector_B:
       - ops/built-in/tests/ut/ops_test/LRNGrad/__init__.py
       - ops/built-in/tests/ut/ops_test/LRNGrad/test_LrnGrad_impl.py
       - ops/built-in/tests/ut/ops_test/LRUCacheV2/__init__.py
+      - ops/built-in/tests/ut/ops_test/LRUCacheV2/test_Lru_cache_proto.cpp
       - ops/built-in/tests/ut/ops_test/LRUCacheV2/test_lru_cache_v2_proto.cpp
       - ops/built-in/tests/ut/ops_test/LRUCacheV2/test_LRUCacheV2_impl.py
       - ops/built-in/tests/ut/ops_test/MaskedFill/test_MaskedFill_proto.cpp
