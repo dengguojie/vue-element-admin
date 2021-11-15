@@ -1337,6 +1337,9 @@ REG_OP(ExpandD)
 
 *@par Outputs:
 *y: A 1D tensor. The data type must be int32. \n
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 REG_OP(GetShape)
     .DYNAMIC_INPUT(x, TensorType({DT_DOUBLE, DT_FLOAT, DT_FLOAT16, DT_INT8, DT_UINT8, DT_INT16, \
@@ -1352,6 +1355,9 @@ REG_OP(GetShape)
 
 *@par outputs:
 * y: a tensor_desc, type is int.\n
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
 */
 REG_OP(UpdateTensorDesc)
     .INPUT(x, TensorType({DT_BOOL, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT32, DT_UINT8,

@@ -2831,6 +2831,12 @@ IMPLEMT_COMMON_INFERFUNC(GetShapeInferShape) {
     tensorDescOutput->SetOriginShape(ge::GeShape(outputYDims));
   }
   tensorDescOutput->SetDataType(ge::DT_INT32);
+  vector<std::string> tilingInlineEngine;
+  tilingInlineEngine.push_back("AIcoreEngine");
+  vector<std::string> exportShapeEngine;
+  exportShapeEngine.push_back("AIcoreEngine");
+  op.SetAttr("_op_tiling_inline_engine", tilingInlineEngine);
+  op.SetAttr("_op_export_shape_engine", exportShapeEngine);
   return GRAPH_SUCCESS;
 }
 
