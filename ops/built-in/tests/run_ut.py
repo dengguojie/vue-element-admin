@@ -384,6 +384,7 @@ def get_cube_case_dir(case_dir):
                 'AvgPoolV2', 'AvgPoolV2GradD', 'Avg_pool_v2_grad_d',
                 'BatchMatMul', 'BatchMatMulV2',
                 'MatMul', 'MatMulV2',
+                'GEMM',
                 'Conv2D', 'Conv2DAipp',
                 'Conv2DBackpropFilter', 'Conv2DBackpropFilterD',
                 'Conv2DBackpropInput', 'Conv2DBackpropInputD',

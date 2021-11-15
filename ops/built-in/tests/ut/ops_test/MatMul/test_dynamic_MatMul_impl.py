@@ -252,6 +252,7 @@ for case in matmul_ND_case_succ:
 ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_matmul)
 ut_case.add_cust_test_func(test_func=test_op_select_format_dynamic_matmul)
 print(ut_case)
+
 if __name__ == "__main__":
     ut_case._case_info_map = {}
     ut_case.run(["Ascend910A"])
