@@ -18,7 +18,7 @@
 common function for check ops parameter
 """
 from functools import reduce
-
+from tbe.common.context import get_context
 from tbe.common.utils import para_check
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
@@ -328,15 +328,18 @@ def _get_input_range_nchw(op_type, in_shape, in_format, in_range):
 def _cube_variable_shape(inputs: list, attrs=None):
     shape_out = []
 
+    groups = 1
+    for op_info in get_context().get_op_info():
+        if op_info.pattern == "Convolution":
+            groups = op_info.attrs[3]
+            break
+
+
     weight_ori_format = inputs[1].get("ori_format")
     c_index = weight_ori_format.index("C")
     weight_cin = inputs[1].get("ori_shape")[c_index]
 
-    if attrs:
-        groups = attrs[3]
-        fmap_cin = weight_cin * groups
-    else:
-        fmap_cin = weight_cin
+    fmap_cin = weight_cin * groups
 
     for i, input in enumerate(inputs):
         if i == 0:
@@ -400,7 +403,7 @@ def variable_shape(inputs: list, op_mode="elewise", attrs=None):
     :return:
     """
     if op_mode == "cube":
-        return _cube_variable_shape(inputs, attrs=attrs)
+        return _cube_variable_shape(inputs)
 
     if op_mode in ("reduce", "norm"):
         return _reduce_and_norm_variable_shape(inputs)
