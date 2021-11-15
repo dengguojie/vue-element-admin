@@ -306,15 +306,30 @@ def _vector_dequant_v200(x, x_shape, align_shape, deq_scale, relu_flag, conv_fla
         cout1_opt = x.op.input_tensors[0].shape[2].value
         res_shape_nchw_after_removepad = x.op.attrs["conv_shape"]
 
-        res_f16 = tvm.compute(
-            align_shape,
-            lambda batch, cout1, howo, cout0:
-                tvm.vdeq_cast(
-                    x.op.input_tensors[0](
-                        0 if group == 1 else cout1 // cout1_opt, batch,
-                        cout1 if group == 1 else cout1 % cout1_opt, howo, cout0),
-                        deq_scale(0, cout1, 0, 0, cout0), dtype="float16", do_relu=relu_flag),
-            name="dequant", tag="dequant_vector")
+        if "int4_wout" in x.op.attrs and "int4_hout" in x.op.attrs:
+            int4_hout = x.op.attrs["int4_hout"]
+            int4_wout = x.op.attrs["int4_wout"]
+            align_shape_5d = [align_shape[0], align_shape[1], int4_hout, int4_wout, align_shape[3]]
+            res_f16 = tvm.compute(
+                align_shape_5d,
+                lambda batch, cout1, hout, wout, cout0:
+                    tvm.vdeq_cast(
+                        x.op.input_tensors[0](
+                            0 if group == 1 else cout1 // cout1_opt, batch,
+                            cout1 if group == 1 else cout1 % cout1_opt,
+                            hout*int4_wout+wout, cout0),
+                            deq_scale(0, cout1, 0, 0, cout0), dtype="float16", do_relu=relu_flag),
+                name="dequant", tag="dequant_vector")
+        else:
+            res_f16 = tvm.compute(
+                align_shape,
+                lambda batch, cout1, howo, cout0:
+                    tvm.vdeq_cast(
+                        x.op.input_tensors[0](
+                            0 if group == 1 else cout1 // cout1_opt, batch,
+                            cout1 if group == 1 else cout1 % cout1_opt, howo, cout0),
+                            deq_scale(0, cout1, 0, 0, cout0), dtype="float16", do_relu=relu_flag),
+                name="dequant", tag="dequant_vector")
 
         if not _is_support_a100_instruction() and x.op.attrs["remove_padded_column_in_next_op"].value == 1:
             remove_padded_column_shape = align_shape
@@ -333,11 +348,19 @@ def _vector_dequant_v200(x, x_shape, align_shape, deq_scale, relu_flag, conv_fla
                               name='invalid_dequant_rmpad',
                               tag="invalid_dequant_rmpad")
         else:
-            res = tvm.compute(res_shape_nchw_after_removepad,
-                              lambda batch, cout1, howo, cout0:
-                              res_f16(batch, cout1, howo, cout0),
-                              name='dequant_remove_pad',
-                              tag="dequant_remove_pad")
+            if "int4_ori_wout" in x.op.attrs:
+                res = tvm.compute(res_shape_nchw_after_removepad,
+                                  lambda batch, cout1, howo, cout0:
+                                  res_f16(batch, cout1,
+                                          howo//x.op.attrs["int4_ori_wout"], howo%x.op.attrs["int4_ori_wout"], cout0),
+                                  name='dequant_remove_pad',
+                                  tag="dequant_remove_pad")
+            else:
+                res = tvm.compute(res_shape_nchw_after_removepad,
+                                  lambda batch, cout1, howo, cout0:
+                                  res_f16(batch, cout1, howo, cout0),
+                                  name='dequant_remove_pad',
+                                  tag="dequant_remove_pad")
     else:
         res_f16 = tvm.compute(
             align_shape,
@@ -458,14 +481,26 @@ def _scalar_dequant_v200(x, x_shape, align_shape, deq_scale, conv_flag):
         group = x.op.input_tensors[0].shape[0].value
         cout1_opt = x.op.input_tensors[0].shape[2].value
         res_shape_nchw_after_removepad = x.op.attrs["conv_shape"]
-
-        res_f16 = tvm.compute(
-            align_shape,
-            lambda batch, cout1, howo, cout0:
-                tvm.deq_cast(x.op.input_tensors[0](0 if group == 1 else cout1 // cout1_opt, batch,
-                                                   cout1 if group == 1 else cout1 % cout1_opt, howo, cout0),
-                             deq_scale(0, 0, 0, 0, 0), dtype="float16"),
-            name="dequant", tag="dequant_scale")
+        if "int4_wout" in x.op.attrs and "int4_hout" in x.op.attrs:
+            int4_hout = x.op.attrs["int4_hout"]
+            int4_wout = x.op.attrs["int4_wout"]
+            align_shape_5d = [align_shape[0], align_shape[1], int4_hout, int4_wout, align_shape[3]]
+            res_f16 = tvm.compute(
+                align_shape_5d,
+                lambda batch, cout1, hout, wout, cout0:
+                    tvm.deq_cast(x.op.input_tensors[0](0 if group == 1 else cout1 // cout1_opt, batch,
+                                                       cout1 if group == 1 else cout1 % cout1_opt,
+                                                       hout*int4_wout+wout, cout0),
+                                 deq_scale(0, 0, 0, 0, 0), dtype="float16"),
+                    name="dequant", tag="dequant_scale")
+        else:
+            res_f16 = tvm.compute(
+                align_shape,
+                lambda batch, cout1, howo, cout0:
+                    tvm.deq_cast(x.op.input_tensors[0](0 if group == 1 else cout1 // cout1_opt, batch,
+                                                       cout1 if group == 1 else cout1 % cout1_opt, howo, cout0),
+                                deq_scale(0, 0, 0, 0, 0), dtype="float16"),
+                name="dequant", tag="dequant_scale")
 
         if x.op.attrs["remove_padded_column_in_next_op"].value == 1:
             remove_padded_column_shape = align_shape
@@ -484,11 +519,19 @@ def _scalar_dequant_v200(x, x_shape, align_shape, deq_scale, conv_flag):
                               name='invalid_dequant_rmpad',
                               tag="invalid_dequant_rmpad")
         else:
-            res = tvm.compute(res_shape_nchw_after_removepad,
-                              lambda batch, cout1, howo, cout0:
-                              res_f16(batch, cout1, howo, cout0),
-                              name='dequant_remove_pad',
-                              tag="dequant_remove_pad")
+            if "int4_ori_wout" in x.op.attrs:
+                res = tvm.compute(res_shape_nchw_after_removepad,
+                                  lambda batch, cout1, howo, cout0:
+                                  res_f16(batch, cout1, howo//x.op.attrs["int4_ori_wout"],
+                                          howo%x.op.attrs["int4_ori_wout"], cout0),
+                                  name='dequant_remove_pad',
+                                  tag="dequant_remove_pad")
+            else:
+                res = tvm.compute(res_shape_nchw_after_removepad,
+                                  lambda batch, cout1, howo, cout0:
+                                  res_f16(batch, cout1, howo, cout0),
+                                  name='dequant_remove_pad',
+                                  tag="dequant_remove_pad")
     else:
         res_f16 = tvm.compute(align_shape,
                               lambda i, j, k, l: tvm.deq_cast(x(i, j, k, l), deq_scale(0, 0, 0, 0, 0), dtype="float16"),

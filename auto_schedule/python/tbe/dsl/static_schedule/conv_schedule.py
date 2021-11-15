@@ -52,6 +52,9 @@ TILING_FLOAT16_N = 16
 TILING_INT8_M = 16
 TILING_INT8_K = 32
 TILING_INT8_N = 16
+TILING_INT4_M = 16
+TILING_INT4_K = 64
+TILING_INT4_N = 16
 CONV_OP_NUM = 5
 SMALL_GRAPH_OP_NUM = 16
 L1_FUSION_SCOPE = 1
@@ -370,7 +373,6 @@ def reget_tensor_list(outs):
         ConvParam.tensor_map["res_remove_pad_s16"] = res_remove_pad_s16
 
         ConvParam.tensor_map["c_ub_reform"] = out_s8
-        ConvParam.tensor_map["res_out_quant"] = out_s8
         ConvParam.tensor_map["c_double_output_s16"] = relu_s16
 
         virtual_res = tvm.compute(out_s8.shape,
@@ -844,67 +846,40 @@ class CceConvOp:
             -------
             true for auto tiling, false for default tiling
             """
-            def check_tiling_m_k_fp16(tiling):
-                if tiling["AL0_matrix"][2] != TILING_FLOAT16_M:
+            def check_tiling_m_k_n(tiling, m_valid_vals, k_valid_vals, n_valid_vals, dtype):
+                if tiling["AL0_matrix"][2] not in m_valid_vals:
                     err_man.raise_err_value_or_format_invalid("conv2d",
-                                                              "tiling['AL0_matrix'][2]", str(TILING_FLOAT16_M),
-                                                              "when w_dtype is float16")
-                if tiling["AL0_matrix"][3] not in (TILING_FLOAT16_K,
-                                                   TILING_FLOAT16_K_C04):
+                                                              "tiling['AL0_matrix'][2]", str(m_valid_vals[0]),
+                                                              f"when w_dtype is {dtype}")
+                if tiling["AL0_matrix"][3] not in k_valid_vals:
+                    if dtype == "float16":
+                        valid_val_str = str(TILING_FLOAT16_K) + "or" + str(TILING_FLOAT16_K_C04)
+                    else:
+                        valid_val_str = str(k_valid_vals[0])
                     err_man.raise_err_value_or_format_invalid("conv2d",
-                                                              "tiling['AL0_matrix'][3]", str(TILING_FLOAT16_K) +
-                                                              "or" +
-                                                              str(TILING_FLOAT16_K_C04), "when w_dtype is float16")
+                                                              "tiling['AL0_matrix'][3]", valid_val_str,
+                                                              f"when w_dtype is {dtype}")
                 if tiling["BL0_matrix"] != []:
-                    if tiling["BL0_matrix"][2] != TILING_FLOAT16_N:
+                    if tiling["BL0_matrix"][2] not in n_valid_vals:
                         err_man.raise_err_value_or_format_invalid("conv2d",
-                                                                  "tiling['BL0_matrix'][2]", str(TILING_FLOAT16_N),
-                                                                  "when w_dtype is float16")
-                    if tiling["BL0_matrix"][3] not in (TILING_FLOAT16_K,
-                                                       TILING_FLOAT16_K_C04):
+                                                                  "tiling['BL0_matrix'][2]", str(n_valid_vals[0]),
+                                                                  f"when w_dtype is {dtype}")
+                    if tiling["BL0_matrix"][3] not in k_valid_vals:
+                        if dtype == "float16":
+                            valid_val_str = str(TILING_FLOAT16_K) + "or" + str(TILING_FLOAT16_K_C04)
+                        else:
+                            valid_val_str = str(k_valid_vals[0])
                         err_man.raise_err_value_or_format_invalid("conv2d",
-                                                                  "tiling['BL0_matrix'][3]",
-                                                                  str(TILING_FLOAT16_K) + "or" +
-                                                                  str(TILING_FLOAT16_K_C04),
-                                                                  "when w_dtype is float16")
-                if tiling["CL0_matrix"][2] != TILING_FLOAT16_M:
+                                                                  "tiling['BL0_matrix'][3]", valid_val_str,
+                                                                  f"when w_dtype is {dtype}")
+                if tiling["CL0_matrix"][2] not in m_valid_vals:
                     err_man.raise_err_value_or_format_invalid("conv2d",
-                                                              "tiling['CL0_matrix'][2]", str(TILING_FLOAT16_M),
-                                                              "when w_dtype is float16")
-                if tiling["CL0_matrix"][3] != TILING_FLOAT16_N:
+                                                              "tiling['CL0_matrix'][2]", str(m_valid_vals[0]),
+                                                              f"when w_dtype is {dtype}")
+                if tiling["CL0_matrix"][3] not in n_valid_vals:
                     err_man.raise_err_value_or_format_invalid("conv2d",
-                                                              "tiling['CL0_matrix'][3]", str(TILING_FLOAT16_N),
-                                                              "when w_dtype is float16")
-
-            def check_tiling_m_k_int8(tiling):
-                """
-                check int8 tiling m and k is legal or not
-                """
-                if tiling["AL0_matrix"][2] != TILING_INT8_M:
-                    err_man.raise_err_value_or_format_invalid("conv2d",
-                                                              "tiling['AL0_matrix'][2]", str(TILING_INT8_M),
-                                                              "when w_dtype is float16")
-                if tiling["AL0_matrix"][3] != TILING_INT8_K:
-                    err_man.raise_err_value_or_format_invalid("conv2d",
-                                                              "tiling['AL0_matrix'][3]", str(TILING_INT8_K),
-                                                              "when w_dtype is float16")
-                if tiling["BL0_matrix"] != []:
-                    if tiling["BL0_matrix"][2] != TILING_INT8_N:
-                        err_man.raise_err_value_or_format_invalid("conv2d",
-                                                                  "tiling['BL0_matrix'][2]", str(TILING_INT8_N),
-                                                                  "when w_dtype is float16")
-                    if tiling["BL0_matrix"][3] != TILING_INT8_K:
-                        err_man.raise_err_value_or_format_invalid("conv2d",
-                                                                  "tiling['BL0_matrix'][3]", str(TILING_INT8_K),
-                                                                  "when w_dtype is float16")
-                if tiling["CL0_matrix"][2] != TILING_INT8_M:
-                    err_man.raise_err_value_or_format_invalid("conv2d",
-                                                              "tiling['CL0_matrix'][2]", str(TILING_INT8_M),
-                                                              "when w_dtype is float16")
-                if tiling["CL0_matrix"][3] != TILING_INT8_N:
-                    err_man.raise_err_value_or_format_invalid("conv2d",
-                                                              "tiling['CL0_matrix'][3]", str(TILING_INT8_N),
-                                                              "when w_dtype is float16")
+                                                              "tiling['CL0_matrix'][3]", str(n_valid_vals[0]),
+                                                              f"when w_dtype is {dtype}")
 
             def check_default_tiling():
                 """
@@ -1003,11 +978,14 @@ class CceConvOp:
                     err_man.raise_err_equal_invalid("conv2d", "nB", "nC")
 
             if w_dtype == "float16":
-                check_tiling_m_k_fp16(tiling)
+                check_tiling_m_k_n(tiling, {TILING_FLOAT16_M}, {TILING_FLOAT16_K_C04, TILING_FLOAT16_K},
+                                   {TILING_FLOAT16_N}, "float16")
             elif w_dtype == "int8":
-                check_tiling_m_k_int8(tiling)
-            else:
-                err_man.raise_err_value_or_format_invalid("conv2d", "weight", "float16 or int8", "")
+                check_tiling_m_k_n(tiling, {TILING_INT8_M}, {TILING_INT8_K}, {TILING_INT8_N}, "int8")
+            elif w_dtype == "int4":
+                check_tiling_m_k_n(tiling, {TILING_INT4_M}, {TILING_INT4_K}, {TILING_INT4_N}, "int4")
+            else:   
+                err_man.raise_err_value_or_format_invalid("conv2d", "weight", "float16 or int8 or int4", "")
 
             check_innerbatch_tiling()
 
@@ -1172,7 +1150,8 @@ class CceConvOp:
                     pooling_shape = [POOLING_2_2_WINDOW, POOLING_2_2_WINDOW]
                     pooling_stride = [POOLING_STRIDE, POOLING_STRIDE]
                 if res.op.tag == "conv_virtual_res" and not ConvParam.conv_reluv2_flag:
-                    c_dtype = tensor_map["res_out_quant"].dtype
+                    c_dtype = tensor_map["res_out_quant"].dtype if "res_out_quant" in tensor_map \
+                        else tensor_map["c_ub_reform"].dtype
                 else:
                     c_dtype = res_dtype
 
@@ -1345,10 +1324,8 @@ class CceConvOp:
                 else:
                     tiling["BL1_shape"] = None
 
-                if w_dtype == "int8":
-                    c_0 = 32
-                else:
-                    c_0 = 16
+                c_0_vals = {"int4": 64, "int8": 32}
+                c_0 = c_0_vals.get(w_dtype, 16)
                 tiling["AL0_matrix"] = [tiling_m, tiling_k, 16, c_0]
                 tiling["BL0_matrix"] = [tiling_k, tiling_n, 16, c_0, 1, 1]
                 tiling["CL0_matrix"] = [tiling_n, tiling_m, 16, 16, 1, group_cl0]
@@ -1522,7 +1499,8 @@ class CceConvOp:
                     out_mem = list(map(int, self._output_memory_type))
 
                     if res.op.tag == "conv_virtual_res":
-                        c_dtype = tensor_map["res_out_quant"].dtype
+                        c_dtype = tensor_map["res_out_quant"].dtype if "res_out_quant" in tensor_map else \
+                                  tensor_map["c_ub_reform"].dtype
                     else:
                         c_dtype = res.dtype
 
@@ -2839,14 +2817,18 @@ class CceConvOp:
                             self._lhisi_dequant_quant_para["quant_padding"] = True
                         else:
                             self._schedule[lop["dst_buffer"]].compute_inline()
-                    elif lop["op"] == "dequant_remove_pad":
+                    elif lop["op"] == "dequant_remove_pad" and \
+                        not (ConvParam.para_dict.get("int4_ori_wout") and c_tiling_factor[1] > ConvParam.w_out):
                         self._schedule[lop["dst_buffer"]].compute_inline()
                     else:
                         if lop["dst_buffer"].op.tag != "strided_read" and remove_suffix_num_for_name(
                                 lop["dst_buffer"].op.name) != "fmap_l1":
-                            if ConvParam.invalid_data_rm_flag:
+                            if ConvParam.invalid_data_rm_flag and not ConvParam.invalid_data_rm_disable:
                                 self._schedule[lop["dst_buffer"]].buffer_align((1, 1), (1, 1), (1, 16), (1, 1))
                             self._schedule[lop["dst_buffer"]].compute_at(self._schedule[res_c], m_outer_inner_outer)
+                        if lop["op"] == "dequant_remove_pad":
+                            self._schedule[lop["dst_buffer"]].split(lop["dst_buffer"].op.axis[2],
+                                                                    ConvParam.para_dict.get("int4_ori_wout"))
             if "c_ub_res" in tensor_map:
                 c_ub_res = tensor_map["c_ub_res"]
                 sch[c_ub_res].compute_at(sch[res_c], m_outer_inner_outer)
@@ -3905,6 +3887,8 @@ class CceConvOp:
             self._preload = 0
             self._l0a_dma_flag = ConvParam.l0a_dma_flag
             self._dynamic_flag = ConvParam.dynamic_flag
+            if ConvParam.invalid_data_rm_disable:
+                ConvParam.invalid_data_rm_flag = True
             if ConvParam.para_dict["cout1_opt"] % 2 == 1 and ConvParam.para_dict["group_opt"] > 1 and \
             ("virtual_res" in remove_suffix_num_for_name(res.op.name) or res.dtype == "int8"):
                 self._quant_fusion_muti_groups_in_cl0 = True
@@ -4480,7 +4464,7 @@ class CceConvOp:
             res_src = get_srctensor(res)
             res_src_src = get_srctensor(res_src)
 
-            if ConvParam.invalid_data_rm_flag:
+            if ConvParam.invalid_data_rm_flag or ConvParam.invalid_data_rm_disable:
                 if tensor_map["fmap"].dtype == "float16":
                     delete_op("invalid_conv2d_rmpad", self._op_graph.body_ops, sch)
                 else:
@@ -4667,9 +4651,14 @@ class CceConvOp:
                                    (16, 16),
                                    (1, 1))
         else:
-            sch[c_ub].buffer_align((1, 1), (1, 1),
-                                   (1, CUBE_MKN[c_ub.dtype]["mac"][0]),
-                                   (1, CUBE_MKN[c_ub.dtype]["mac"][2]))
+            if ConvParam.para_dict.get("int4_ori_wout"):
+                sch[c_ub].buffer_align((1, 1), (1, 1), (1, 1),
+                                       (1, CUBE_MKN[c_ub.dtype]["mac"][0]),
+                                       (1, CUBE_MKN[c_ub.dtype]["mac"][2]))
+            else:
+                sch[c_ub].buffer_align((1, 1), (1, 1),
+                                       (1, CUBE_MKN[c_ub.dtype]["mac"][0]),
+                                       (1, CUBE_MKN[c_ub.dtype]["mac"][2]))
 
         has_vector_flag = False
 
@@ -5056,10 +5045,12 @@ class CceConvOp:
             noi_true = batch_inner_outer
             res_c = sum_x_ub_rf
         else:
-            if (res_c.dtype in ("int8", "int4") or "virtual_res" in remove_suffix_num_for_name(res_c.op.name)) and \
+            if (res_c.dtype in ("int4", "int8") or "virtual_res" in remove_suffix_num_for_name(res_c.op.name)) and \
                     not ConvParam.conv_reluv2_flag:
                 if "virtual_res" in res_c.op.name:
-                    quant_nparts = 2 if tensor_map["res_out_quant"].dtype == "int8" else 4
+                    virtual_res_dtype = tensor_map["res_out_quant"].dtype if "res_out_quant" in tensor_map \
+                        else tensor_map["c_ub_reform"].dtype
+                    quant_nparts = 2 if virtual_res_dtype == "int8" else 4
                 else:
                     quant_nparts = 2 if res_c.dtype == "int8" else 4
 
@@ -5084,8 +5075,17 @@ class CceConvOp:
                     cout1_ori,
                     factor=c_tiling_factor[0])
 
+            m_c_tiling_axis = res_c.op.axis[2]
+            m_c_tiling_factor = c_tiling_factor[1]
+            if ConvParam.para_dict.get("int4_ori_wout"):
+                if c_tiling_factor[1] < ConvParam.w_out:
+                    m_hout_outer, m_wout_ori_inner = sch[res_c].split(res_c.op.axis[2], nparts=ConvParam.h_out)
+                    m_c_tiling_axis = m_wout_ori_inner
+                else:
+                    m_c_tiling_factor = m_c_tiling_factor // ConvParam.w_out * ConvParam.para_dict.get("int4_ori_wout")
+
             m_outer_outer, m_outer_inner = sch[res_c].split(
-                res_c.op.axis[2], c_tiling_factor[1])
+                m_c_tiling_axis, m_c_tiling_factor)
             sch[res_c].reorder(c_outer_outer, m_outer_outer,
                                c_outer_inner, m_outer_inner)
             m_outer_outer_outer, m_outer_outer_inner = sch[res_c].split(
@@ -5131,6 +5131,11 @@ class CceConvOp:
             m_outer_inner_outer, m_outer_inner_inner = sch[res_c].split(
                 m_outer_inner, nparts=1)
 
+            if ConvParam.para_dict.get("int4_ori_wout") and c_tiling_factor[1] >= ConvParam.w_out:
+                m_outer_inner_inner_outer, m_outer_inner_inner_inner = sch[res_c].split(
+                    m_outer_inner_inner, factor=ConvParam.para_dict.get("int4_ori_wout"))
+                m_outer_inner_inner = m_outer_inner_inner_outer
+
             if self._l0b_first_flag:
                 sch[res_c].reorder(batch_outer,
                                    cout1_group_outer,
@@ -5159,6 +5164,12 @@ class CceConvOp:
                                    m_outer_outer_outer_inner,
                                    batch_inner_inner,
                                    c_outer_outer_inner)
+
+            if ConvParam.para_dict.get("int4_ori_wout") and c_tiling_factor[1] < ConvParam.w_out:
+                sch[res_c].reorder(c_outer_outer_outer_outer,
+                                   m_hout_outer,
+                                   m_outer_outer_outer_outer)
+
             c_slice_axis = m_outer_outer_inner
 
             mc_flag = False
@@ -5270,6 +5281,15 @@ class CceConvOp:
             sch[c_ub].reorder(c_ub.op.axis[1], c_ub.op.axis[0],
                               c_ub.op.axis[2], c_ub.op.axis[3])
         sch[c_ub].compute_at(sch[res_c], m_outer_inner_outer)  # k.inner.outer
+
+        if ConvParam.para_dict.get("int4_ori_wout") and c_tiling_factor[1] < ConvParam.w_out:
+            sch[c_ub].buffer_tile(
+                (None, None),
+                (None, None),
+                (m_hout_outer.var, 1),
+                (m_outer_outer.var*c_tiling_factor[1], c_tiling_factor[1]),
+                (None, None))
+
         if "mean_matrix_avgv2" in tensor_map.keys():
             sch[mean_matrix_avgv2].compute_at(sch[res_c], m_outer_inner_outer)
         if "mean_matrix" in tensor_map:
@@ -5648,7 +5668,7 @@ class CceConvOp:
                 for lop in self._op_graph.input_ops:
                     l1_tensor_map[lop["dst_buffer"]] = tvm.var("dummy")
 
-                data_one_byte_num = {"uint4": 2, "int4": 2}
+                data_one_byte_num = {"float32": 0.25, "float16": 0.5, "uint8": 1, "int8": 1, "uint4": 2, "int4": 2}
                 l1_tensor_map[fmap] = al1
                 if self._fmap_l1_valid_size > 0:
                     sch[al1].set_buffer_size(int(self._fmap_l1_valid_size*data_one_byte_num.get(weight.dtype, 1)))
@@ -5827,7 +5847,8 @@ class CceConvOp:
                     self._schedule[cache_buffer].emit_insn(c_pragma_axis, 'phony_insn')
             elif lop["op"] == "input_ub":
                 if self._lhisi_dequant_quant_para["quant_padding"] or \
-                        ConvParam.tensor_map["quant_input"].op.attrs["c_out"].value % 2 == 1:
+                        ConvParam.tensor_map["quant_input"].op.attrs["c_out"].value % \
+                            ConvParam.tensor_map["quant_input"].op.attrs["c1_transform"].value != 0:
                     self._schedule[cache_buffer].emit_insn(tensorize_axis, 'dma_padding')
             _handle_lx_fusion_lhisi_data_flow()
             _handle_dyn_quant_inline()
@@ -6200,7 +6221,7 @@ class AutoScheduleOp:
         ConvParam.tensor_map["v200_data_flow_type"] = None
         if out_src in tag_to_type_map.keys():
             ConvParam.tensor_map["v200_data_flow_type"] = tag_to_type_map[out_src]
-        elif is_support_v200() and weight.dtype in ("int8", "int4") \
+        elif is_support_v200() and weight.dtype in ("int4", "int8") \
             and out_src not in ('convolution_C_UB', 'convolution_remove_padded_column'):
             ConvParam.tensor_map["v200_data_flow_type"] = DataFlowType.V200_GENERAL_FUSION
         if "pooling2d_max" in out_src:

@@ -455,6 +455,7 @@ class ConvParam:
         cls.conv_deq_req_double_out = False
         cls.conv_reluv2_flag = False
         cls.invalid_data_rm_flag = False
+        cls.invalid_data_rm_disable = False
         cls.swrite_flag = False
         cls.swrite_dequant_flag = False
         cls.conv1d_split_w_flag = False
@@ -470,6 +471,7 @@ class ConvParam:
         cls.weight_nd_flag = False
         cls.multi_conv2d_fusion_flag = False # mark multi conv2d fusion
         cls.bias_init_align_dim_flag = False
+        cls.int4_width_out_align_flag = False
         cls.fusion_para = {"input_memory_type": [],
                            "output_memory_type": [],
                            "slice_offset": (0, 0, 0, 0, 0),
@@ -506,6 +508,8 @@ class ConvParam:
     dynamic_flag = False
     has_padding = False
     bias_init_align_dim_flag = False
+    invalid_data_rm_disable = False
+    int4_width_out_align_flag = False
     dynamic_para = None
     compress_index_shape = {}
     compress_tiling_ = {}
@@ -619,16 +623,29 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         howo_mad = (height_out*width_out + block_size_m - 1) // block_size_m*block_size_m
 
         cout1_opt = ConvParam.para_dict["cout1_opt"]
-        final_c_ub_shape = (ConvParam.para_dict["a_shape"][0],
-                            DIM_MAP["out_img_shape"][1], howo_mad, config['mac'][2])
-        c_ub = tvm.compute(final_c_ub_shape,
-                           lambda batch, cout1, howo, cout0:
-                           c_col(0 if group == 1 else cout1 // cout1_opt,
-                                 batch,
-                                 cout1 if group == 1 else cout1 % cout1_opt,
-                                 howo, cout0).astype(res_dtype),
-                           name=get_name_with_suffix_num('C_UB'),
-                           tag=OP_TAG + "C_UB")
+
+        if ConvParam.int4_width_out_align_flag:
+            final_c_ub_shape = (ConvParam.para_dict["a_shape"][0],
+                                DIM_MAP["out_img_shape"][1], height_out, width_out, config['mac'][2])
+            c_ub = tvm.compute(final_c_ub_shape,
+                               lambda batch, cout1, hout, wout, cout0:
+                               c_col(0 if group == 1 else cout1 // cout1_opt,
+                                     batch,
+                                     cout1 if group == 1 else cout1 % cout1_opt,
+                                     hout*width_out+wout, cout0).astype(res_dtype),
+                               name=get_name_with_suffix_num('C_UB'),
+                               tag=OP_TAG + "C_UB")
+        else:
+            final_c_ub_shape = (ConvParam.para_dict["a_shape"][0],
+                                DIM_MAP["out_img_shape"][1], howo_mad, config['mac'][2])
+            c_ub = tvm.compute(final_c_ub_shape,
+                               lambda batch, cout1, howo, cout0:
+                               c_col(0 if group == 1 else cout1 // cout1_opt,
+                                     batch,
+                                     cout1 if group == 1 else cout1 % cout1_opt,
+                                     howo, cout0).astype(res_dtype),
+                               name=get_name_with_suffix_num('C_UB'),
+                               tag=OP_TAG + "C_UB")
         TENSOR_MAP["c_ub"] = c_ub
         return c_ub
 
@@ -1627,6 +1644,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             remove_pad_m = DIM_MAP["out_img_height_width"][0]*DIM_MAP["out_img_height_width"][1]
         else: # invliad_data_rm uses removed_pad_m as the shape of UB tensor, so modify it to N*1 here
             remove_pad_m = DIM_MAP["out_img_height_width"][0]*DIM_MAP["out_img_height_width"][1] // 2
+        if ConvParam.int4_width_out_align_flag:
+            remove_pad_m = DIM_MAP["out_img_height_width"][0]*ConvParam.para_dict.get("int4_ori_wout")
 
         offset_d = offset_x if is_support_v200() else 0
         if TENSOR_MAP["c0_optim_flg"] or \
@@ -1749,7 +1768,14 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         -------
         res_remove_pad tensor
         """
-        if invalid_data_rm_flag:
+        if ConvParam.int4_width_out_align_flag:
+            with tvm.tag_scope('conv_vector_remove_pad'):
+                res_tensor = tvm.compute(conv_shape,
+                                         lambda batch, cout1, howo, cout0:
+                                         res(batch, cout1, howo//ConvParam.para_dict["int4_ori_wout"], \
+                                             howo%ConvParam.para_dict["int4_ori_wout"], cout0),
+                                         name=get_name_with_suffix_num('remove_pad_cc'))
+        elif invalid_data_rm_flag:
             with tvm.tag_scope('conv_vector_remove_pad'):
                 res_tensor = tvm.compute(res.shape,
                                          lambda batch, cout1, howo, cout0:
@@ -1785,6 +1811,11 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         conv_shape[1] = DIM_MAP["out_img_shape"][1]
         params_dict["conv_shape"] = conv_shape
         params_dict["invalid_data_rm_flag"] = int(invalid_data_rm_flag)
+        if ConvParam.int4_width_out_align_flag:
+            params_dict["int4_ori_wout"] = ConvParam.para_dict["int4_ori_wout"]
+            params_dict["int4_hout"] = ConvParam.h_out
+            params_dict["int4_wout"] = ConvParam.w_out
+
         with tvm.tag_scope('conv_vector_remove_pad'):
             res_tensor = tvm.compute(conv_shape,
                                      lambda batch, cout1, howo, cout0:
@@ -1998,6 +2029,12 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             ConvParam.dim_map["output_mad_res_shape"] = [group_opt, batch, cout1_opt, ceil(hout*wout, 16), cout0]
             ConvParam.dim_map["output_tiling_c_shape"] = [batch, cout1_opt, hout, wout, cout0]
 
+            if ConvParam.para_dict.get("int4_ori_wout"):
+                ori_wout = ConvParam.para_dict.get("int4_ori_wout")
+                ConvParam.dim_map["output_5hd_shape"] = [batch, int_ceil_div(cout_ori, cout0), hout, ori_wout, cout0]
+                ConvParam.dim_map["output_conv_res_shape"] = [batch, int_ceil_div(cout_ori, cout0),
+                                                              hout*ori_wout, cout0]
+
         def _save_params():
             """
             save params into ConvParam
@@ -2138,11 +2175,33 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         if ConvParam.fusion_para["l1_fusion_type"] in (0, 1) or ConvParam.fusion_para["input_memory_type"][0] == 1:
             l0a_load2d_flag = False
 
-        if not check_load3d_w_out_1_support() and h_out != 1 and w_out == 1 and not l0a_load2d_flag:
+        if not check_load3d_w_out_1_support() and not ConvParam.int4_width_out_align_flag \
+            and h_out != 1 and w_out == 1 and not l0a_load2d_flag:
             para_dict["pad_w"][1] += para_dict["stride_w"] # increasing pad right, N*1 -> N*2
             ConvParam.v200_width_out_1_flag = True
         else:
             ConvParam.v200_width_out_1_flag = False
+
+    def _int4_width_out_align_flag_set():
+        """
+        use load3dv2 in int4, need to align wout to ceil(wout, 16)
+        """
+        if data.dtype == "int4":
+            wk_dilation = (para_dict["filter_w"] - 1)*para_dict["dilate_w"] + 1
+            if 'value' in dir(data.shape[3]):
+                w_out = (data.shape[3].value + (para_dict["pad_w"][0] + para_dict["pad_w"][1]) - wk_dilation) // \
+                    para_dict["stride_w"] + 1
+            else:
+                w_out = (data.shape[3] + (para_dict["pad_w"][0] + para_dict["pad_w"][1]) - wk_dilation) // \
+                    para_dict["stride_w"] + 1
+            wout_align_val = ceil(w_out, 16) - w_out
+            if wout_align_val:
+                para_dict["pad_w"][1] += para_dict["stride_w"] * wout_align_val
+                if para_dict["pad_w"][1] > 0xf11111111:
+                    err_man.raise_err_specific_input_shape("conv2d", \
+                        "int4 wout align, pad align val({}) cannot be greater than 255".format(para_dict["pad_w"][1]))
+                para_dict.update({"int4_ori_wout": w_out})
+                ConvParam.int4_width_out_align_flag = True
 
     def _save_tiling_info_dict(shape_fmap_nc1hwc0, shape_w_nc1hwc0, c_ub_shape, in_dtype, w_dtype, res_dtype,
                                bias_flag, kernel_name):
@@ -2275,7 +2334,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
 
         # save bias
         if bias_tensor_flag:
-            if data.dtype != "int8":
+            if data.dtype not in ("int4", "int8"):
                 TENSOR_MAP["fp16_bias"] = bias_tensor   # float bias
             else:
                 TENSOR_MAP["int32_bias"] = bias_tensor # quant bias
@@ -2293,7 +2352,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             err_man.raise_err_check_type("conv2d", "the third Input", "dict", "not dict")
 
         if "mad_dtype" not in para_dict:
-            if weight.dtype == "int8" or weight.dtype == "int4":
+            if weight.dtype in ("int4", "int8"):
                 mad_dtype = "int32"
             elif get_soc_spec("SOC_VERSION") in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 mad_dtype = "float16"
@@ -2474,6 +2533,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
     slice_offset = para_dict["fusion_para"]["slice_offset"]
     ConvParam.fusion_para["slice_offset"] = slice_offset if slice_offset else (0, 0, 0, 0, 0)
     #===========================================================================================
+    _int4_width_out_align_flag_set()
     _v200_width_out_1_flag_set()
     load2d_to_load3d_flag = load2d_to_load3d_flag_set()
     _conv1d_split_w_flag_set()
@@ -2501,6 +2561,11 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
     invalid_data_rm_flag = optim_dict.get("invalid_data_rm", False)
     ConvParam.invalid_data_rm_flag = invalid_data_rm_flag
 
+    if in_dtype == "int4" and invalid_data_rm_flag:
+        invalid_data_rm_flag = False
+        ConvParam.invalid_data_rm_flag = False
+        ConvParam.invalid_data_rm_disable = True
+
     if is_support_v220():
         conv_res = conv_v220_compute(data, weight, para_dict, optim_dict, dsl_flag, ConvParam)
         if lxfusion_enable_flag and not dsl_flag:
@@ -2508,7 +2573,7 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             buffer_manager.set_tensor_list(tensor_list)
         return conv_res
 
-    if in_dtype == "int8" or in_dtype == "int4":  # quant
+    if in_dtype in ("int4", "int8"):  # quant
         if dsl_flag:  # quant fusion
             conv_res = _cube_compute(data, weight, mad_dtype,
                                      tiling=ConvParam.tiling, optim_dict=optim_dict, bias=bias_tensor)

@@ -42,9 +42,9 @@ def conv2d_data_rm_compute(input_tensor, res_tensor=None):
     if type(input_tensor) != tvm.tensor.Tensor:
         err_man_cube.raise_err_one_para("E62006", "conv2d_data_rm", "The tpye of input should be tensor, "
                                         "but actually it is {}.".format(type(input_tensor)))
-    if input_tensor.dtype not in ("int8", "float16"):
-        err_man_cube.raise_err_one_para("E62006", "conv2d_data_rm", "The input_tensor dtype should be int8 or float16,"
-                                        " but actually it is {}.".format(input_tensor.dtype))
+    if input_tensor.dtype not in ("int4", "int8", "float16"):
+        err_man_cube.raise_err_one_para("E62006", "conv2d_data_rm", "The input_tensor dtype should be int4, int8 or "
+                                        "float16, but actually it is {}.".format(input_tensor.dtype))
 
     if len(input_tensor.shape) == 3 or len(input_tensor.shape) == 4:
         tensor_queue = deque()
@@ -57,8 +57,9 @@ def conv2d_data_rm_compute(input_tensor, res_tensor=None):
                 if len(input_tensor.shape) == 4:
                     batch, co1, hw_mad, co0 = tuple(i.value for i in input_tensor.shape)
                     if output_hw > hw_mad:
-                        err_man_cube.raise_err_specific("conv2d_data_rm", "conv2d_data_rm output_hw {} is bigger than input_hw {} !!!"
-                                                        .format(output_hw, hw_mad))
+                        err_man_cube.raise_err_specific(
+                            "conv2d_data_rm", "conv2d_data_rm output_hw {} is bigger than input_hw {} !!!"
+                            .format(output_hw, hw_mad))
                     output_shape = (batch, co1, output_hw, co0)
                     output_tensor = tvm.compute(
                         output_shape,
@@ -69,8 +70,9 @@ def conv2d_data_rm_compute(input_tensor, res_tensor=None):
                 else:
                     batch, c, hw_mad = tuple(i.value for i in input_tensor.shape)
                     if output_hw > hw_mad:
-                        err_man_cube.raise_err_specific("conv2d_data_rm", "conv2d_data_rm output_hw {} is bigger than input_hw {} !!!"
-                                                        .format(output_hw, hw_mad))
+                        err_man_cube.raise_err_specific(
+                            "conv2d_data_rm", "conv2d_data_rm output_hw {} is bigger than input_hw {} !!!"
+                            .format(output_hw, hw_mad))
                     output_shape = (batch, c, output_hw)
                     output_tensor = tvm.compute(
                         output_shape,
