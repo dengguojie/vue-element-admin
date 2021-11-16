@@ -28,6 +28,10 @@ namespace {
 constexpr uint32_t kInputNum = 2;
 constexpr uint32_t kOutputNum = 1;
 const char *kResizeBilinearGrad = "ResizeBilinearGrad";
+constexpr uint32_t kIndex_batch = 0;
+constexpr uint32_t kIndex_channle = 1;
+constexpr uint32_t kIndex_height = 2;
+constexpr uint32_t kIndex_width = 3;
 }  // namespace
 
 namespace aicpu {
@@ -55,10 +59,10 @@ uint32_t ResizeBilinearGradCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   KERNEL_CHECK_FALSE((size_dtype == dtype_), KERNEL_STATUS_PARAM_INVALID,
                      "The type of input[0] and input[1] must be the same");
 
-  size_t in_height = shape_[2];
-  size_t in_width = shape_[3];
-  size_t out_height = size_[2];
-  size_t out_width = size_[3];
+  size_t in_height = shape_[kIndex_height];
+  size_t in_width = shape_[kIndex_width];
+  size_t out_height = size_[kIndex_height];
+  size_t out_width = size_[kIndex_width];
   height_scale_ = Scaling(out_height, in_height, align_corners_);
   width_scale_ = Scaling(out_width, in_width, align_corners_);
   return KERNEL_STATUS_OK;
@@ -74,12 +78,12 @@ uint32_t ResizeBilinearGradCpuKernel::DoCompute(CpuKernelContext &ctx) {
   KERNEL_CHECK_FALSE((ret == EOK), ret,
                      "Output buffer memset failed, ret: [%d].", ret);
 
-  size_t batch_size = shape_[0];
-  size_t channel = shape_[1];
-  size_t in_height = shape_[2];
-  size_t in_width = shape_[3];
-  size_t out_height = size_[2];
-  size_t out_width = size_[3];
+  size_t batch_size = shape_[kIndex_batch];
+  size_t channel = shape_[kIndex_channle];
+  size_t in_height = shape_[kIndex_height];
+  size_t in_width = shape_[kIndex_width];
+  size_t out_height = size_[kIndex_height];
+  size_t out_width = size_[kIndex_width];
   size_t out_hw_size = out_height * out_width;
   size_t in_hw_size = in_height * in_width;
 

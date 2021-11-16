@@ -28,6 +28,12 @@
 
 namespace {
 const char *kNonMaxSuppressionV3 = "NonMaxSuppressionV3";
+constexpr uint32_t kFirstInputIndex = 0;
+constexpr uint32_t kSecondInputIndex = 1;
+constexpr uint32_t kThirdInputIndex = 2;
+constexpr uint32_t kFourthInputIndex = 3;
+constexpr uint32_t kFifthInputIndex = 4;
+constexpr uint32_t kFirstOutputIndex = 0;
 }
 
 namespace aicpu {
@@ -35,7 +41,7 @@ uint32_t NonMaxSuppressionV3CpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("GetInputAndCheck start!! ");
   // get input tensors
   // get boxes with size [num_boxes, 4]
-  boxes_ = ctx.Input(0);
+  boxes_ = ctx.Input(kFirstInputIndex);
   KERNEL_CHECK_FALSE((boxes_ != nullptr), KERNEL_STATUS_PARAM_INVALID,
                      "GetInputAndCheck: get "
                      "input:0 boxes failed.");
@@ -55,7 +61,7 @@ uint32_t NonMaxSuppressionV3CpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
   num_boxes_ = boxes_shape->GetDimSize(0);
 
   // get scores with size [num_boxes]
-  scores_ = ctx.Input(1);
+  scores_ = ctx.Input(kSecondInputIndex);
   KERNEL_CHECK_FALSE((scores_ != nullptr), KERNEL_STATUS_PARAM_INVALID,
                      "GetInputAndCheck: get "
                      "input:1 scores failed.");
@@ -74,7 +80,7 @@ uint32_t NonMaxSuppressionV3CpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
                      scores_shape->GetDimSize(0), num_boxes_);
 
   // get max_output_size : scalar
-  Tensor *max_output_size_tensor = ctx.Input(2);
+  Tensor *max_output_size_tensor = ctx.Input(kThirdInputIndex);
   KERNEL_CHECK_FALSE((max_output_size_tensor != nullptr),
                      KERNEL_STATUS_PARAM_INVALID,
                      "GetInputAndCheck: get "
@@ -85,21 +91,21 @@ uint32_t NonMaxSuppressionV3CpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
       reinterpret_cast<float *>(max_output_size_tensor->GetData()));
 
   // get iou_threshold : scalar
-  iou_threshold_tensor_ = ctx.Input(3);
+  iou_threshold_tensor_ = ctx.Input(kFourthInputIndex);
   KERNEL_CHECK_FALSE((iou_threshold_tensor_ != nullptr),
                      KERNEL_STATUS_PARAM_INVALID,
                      "GetInputAndCheck: get "
                      "input:3 iou_threshold failed.");
 
   // get score_threshold: scalar
-  score_threshold_tensor_ = ctx.Input(4);
+  score_threshold_tensor_ = ctx.Input(kFifthInputIndex);
   KERNEL_CHECK_FALSE((score_threshold_tensor_ != nullptr),
                      KERNEL_STATUS_PARAM_INVALID,
                      "GetInputAndCheck: get "
                      "input:4 score_threshold failed.");
 
   // get output tensors
-  output_indices_ = ctx.Output(0);
+  output_indices_ = ctx.Output(kFirstOutputIndex);
   KERNEL_CHECK_FALSE((output_indices_ != nullptr), KERNEL_STATUS_PARAM_INVALID,
                      "GetInputAndCheck: get "
                      "output:0 output_indices failed.");
