@@ -1292,6 +1292,7 @@ vector_B:
       - ops/built-in/tests/ut/op_tiling_test/test_roi_align_grad_tiling.cpp
       - ops/built-in/tests/ut/op_tiling_test/test_roi_align_tiling.cpp
       - ops/built-in/tests/ut/op_tiling_test/test_space_to_batch_nd_tiling.cpp
+      - ops/built-in/tests/ut/op_tiling_test/test_sparse_apply_proximal_adagrad_d_tilling.cpp
       - ops/built-in/tests/ut/op_tiling_test/test_trans_data_tiling.cpp
       - ops/built-in/tests/ut/op_tiling_test/test_unsortedsegmentsum.cpp
       - ops/built-in/tests/ut/ops_test/Abs/test_Abs_dynamic_impl.py
