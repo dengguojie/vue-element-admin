@@ -545,9 +545,9 @@ def gemm(tensor_a, tensor_b, para_dict):
 
     kernel_name = para_dict.get("kernel_name", "")
     para_dict_copy = para_dict.copy()
-    cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
+    support_l0c2out = tbe_platform_info.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out")
     is_confusion_transpose = para_dict.get("confusion_transpose", False)
-    use_old_code = cube_vector_split or is_confusion_transpose
+    use_old_code = support_l0c2out or is_confusion_transpose
     if not in_dynamic():
         use_old_code = use_old_code or filter_case(tensor_a, tensor_b, kernel_name)
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+import sys
 from unittest.mock import MagicMock
 from unittest.mock import patch
 
@@ -30,9 +31,12 @@ vals = {("CORE_NUM", ): 48,
         ("UB_SIZE", ): 196608,
         ("L0A_SIZE", ): 65536,
         ("L0B_SIZE", ): 65536,
-        ("L1_SIZE", ): 196608,
+        ("L1_SIZE", ): 524288,
         ("L0C_SIZE", ): 131072,
-        ("SOC_VERSION",): "Ascend920A"
+        ("SOC_VERSION",): "Ascend920A",
+        ("Intrinsic_fix_pipe_l0c2out",): True,
+        ("Compiler_arch",): "dav-c220-cube",
+        ("AICORE_TYPE",): "AiCore"
         }
 def side_effects(*args):
     return vals[args]
@@ -268,48 +272,29 @@ case_fp16_transpose_nz_2  = {"params": [{"shape": (6,4,16, 16), "dtype": "float1
 ut_case.add_case(["Ascend920A"], case_fp16_transpose_nz_1)
 ut_case.add_case(["Ascend920A"], case_fp16_transpose_nz_2)
 
-def test_matmul_trans_data_fusion_920_1(test_arg):
-    te_set_version("Ascend920A")
+def test_matmul_trans_data_fusion_920_1():
     with cce():
-        tensor_a_ori = tvm.placeholder((12288, 4096), name="tensor_a_ori", dtype="int8")
-        tensor_b_ori = tvm.placeholder((12288, 1024), name="tensor_b_ori", dtype="int8")
+        tensor_a_ori = tvm.placeholder((64, 96), name="tensor_a_ori", dtype="int8")
+        tensor_b_ori = tvm.placeholder((64, 128), name="tensor_b_ori", dtype="int8")
         tensor_a = trans_data_compute(tensor_a_ori, None, src_format="ND", dst_format="FRACTAL_NZ")
         tensor_b = trans_data_compute(tensor_b_ori, None, src_format="ND", dst_format="FRACTAL_NZ")
-        output_y = {"shape": (64, 256, 16, 16), "dtype": "int32", "ori_shape": (4096, 1024), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        output_y = {"shape": (8, 6, 16, 16), "dtype": "int32", "ori_shape": (96, 128), "format": "FRACTAL_NZ", "ori_format": "ND"}
         matmul_out = mat_mul_compute(tensor_a, tensor_b, None, None, output_y, True, False, 0)
         out = trans_data_compute(matmul_out, None, src_format="FRACTAL_NZ", dst_format="ND")
         tensor_list = [tensor_a_ori, tensor_b_ori, out]
         sch = auto_schedule(out)
-        config = {
-            "print_ir": False,
-            "need_build": True,
-            "name": "matmul_transdata_fusion_1",
-            "tensor_list": tensor_list,
-        }
-        cce_build_code(sch, config)
-    te_set_version('Ascend910A')
 
-def test_matmul_trans_data_fusion_920_2(test_arg):
-    te_set_version("Ascend920A")
+def test_matmul_trans_data_fusion_920_2():
     with cce():
-        tensor_a_ori = tvm.placeholder((128, 768, 16, 32), name="tensor_a", dtype="int8", attrs={"format": "FRACTAL_NZ", "ori_format": "ND"})
-        tensor_b_ori = tvm.placeholder((32, 768, 16, 32), name="tensor_b", dtype="int8", attrs={"format": "FRACTAL_NZ", "ori_format": "ND"})
+        tensor_a_ori = tvm.placeholder((3, 4, 16, 32), name="tensor_a", dtype="int8", attrs={"format": "FRACTAL_NZ", "ori_format": "ND", "ori_shape":(64, 96)})
+        tensor_b_ori = tvm.placeholder((4, 4, 16, 32), name="tensor_b", dtype="int8", attrs={"format": "FRACTAL_NZ", "ori_format": "ND", "ori_shape": (64, 128)})
         bias = tvm.placeholder((1024,), name="tensor_bias", dtype="int32", attrs={"format": "ND", "ori_format": "ND"})
-        output_y = {"shape": (64, 256, 16, 16), "dtype": "int32", "ori_shape": (4096, 1024), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        output_y = {"shape": (8, 6, 16, 16), "dtype": "int32", "ori_shape": (96, 128), "format": "FRACTAL_NZ", "ori_format": "ND"}
         matmul_out = mat_mul_compute(tensor_a_ori, tensor_b_ori, bias, None, output_y, True, False, 0)
         tensor_list = [tensor_a_ori, tensor_b_ori, bias, matmul_out]
         sch = auto_schedule(matmul_out)
-        config = {
-            "print_ir": False,
-            "need_build": True,
-            "name": "matmul_transdata_fusion_2",
-            "tensor_list": tensor_list,
-        }
-        cce_build_code(sch, config)
-    te_set_version('Ascend910A')
 
-def test_matmul_dequant(test_arg):
-    te_set_version("Ascend920A")
+def test_matmul_dequant():
     with cce():
         input_x1 = tvm.placeholder((4, 2, 16, 32), name="x1", dtype="int8", attrs={"ori_shape": (32, 128), "format": "FRACTAL_NZ", "ori_format": "ND"})
         input_x2 = tvm.placeholder((4, 2, 16, 32), name="x2", dtype="int8", attrs={"ori_shape": (128, 32), "format": "FRACTAL_Z", "ori_format": "ND"})
@@ -320,17 +305,8 @@ def test_matmul_dequant(test_arg):
         out = ascend_dequant_compute(matmul_out, deq_scale, None, False, False)
         tensor_list = [input_x1, input_x2, bias, deq_scale, out]
         sch = auto_schedule(out)
-        config = {
-            "print_ir": False,
-            "need_build": True,
-            "name": "matmul_transdata_fusion_1",
-            "tensor_list": tensor_list,
-        }
-        cce_build_code(sch, config)
-    te_set_version('Ascend910A')
 
-def test_matmul_requant(test_arg):
-    te_set_version("Ascend920A")
+def test_matmul_requant():
     with cce():
         input_x1 = tvm.placeholder((4, 2, 16, 32), name="x1", dtype="int8", attrs={"ori_shape": (32, 128), "format": "FRACTAL_NZ", "ori_format": "ND"})
         input_x2 = tvm.placeholder((4, 2, 16, 32), name="x2", dtype="int8", attrs={"ori_shape": (128, 32), "format": "FRACTAL_Z", "ori_format": "ND"})
@@ -341,14 +317,6 @@ def test_matmul_requant(test_arg):
         out = ascend_requant_compute(matmul_out, req_scale, None, False)
         tensor_list = [input_x1, input_x2, bias, req_scale, out]
         sch = auto_schedule(out)
-        config = {
-            "print_ir": False,
-            "need_build": True,
-            "name": "matmul_transdata_fusion_1",
-            "tensor_list": tensor_list,
-        }
-        cce_build_code(sch, config)
-    te_set_version('Ascend910A')
 
 def test_split_matmul(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (2, 1, 16, 16), "ori_shape": (16, 32)}
@@ -409,31 +377,21 @@ def test_trans_data_fp32(test_arg):
     tensor_a = trans_data_compute(tensor_a_ori, None, src_format="ND", dst_format="FRACTAL_NZ")
 
 
-def test_matmul_trans_data_fusion_920_3(test_arg):
-    te_set_version("Ascend920A")
+def test_matmul_trans_data_fusion_920_3():
     with cce():
-        tensor_a_ori = tvm.placeholder((12288, 4096), name="tensor_a_ori", dtype="float32")
-        tensor_b_ori = tvm.placeholder((12288, 1024), name="tensor_b_ori", dtype="float32")
+        tensor_a_ori = tvm.placeholder((64, 96), name="tensor_a_ori", dtype="float32")
+        tensor_b_ori = tvm.placeholder((64,128), name="tensor_b_ori", dtype="float32")
         tensor_a = trans_data_compute(tensor_a_ori, None, src_format="ND", dst_format="FRACTAL_NZ")
         tensor_b = trans_data_compute(tensor_b_ori, None, src_format="ND", dst_format="FRACTAL_NZ")
-        output_y = {"shape": (64, 256, 16, 16), "dtype": "float32",
-                    "ori_shape": (4096, 1024), "format": "ND", "ori_format": "ND"}
+        output_y = {"shape": (8, 6, 16, 16), "dtype": "float32",
+                    "ori_shape": (96, 128), "format": "ND", "ori_format": "ND"}
         matmul_out = mat_mul_compute(tensor_a, tensor_b, None, None, output_y, True, False, 0)
         out = trans_data_compute(matmul_out, None, src_format="FRACTAL_NZ", dst_format="ND")
         tensor_list = [tensor_a_ori, tensor_b_ori, out]
         sch = auto_schedule(out)
-        config = {
-            "print_ir": False,
-            "need_build": True,
-            "name": "matmul_transdata_fusion_1",
-            "tensor_list": tensor_list,
-        }
-        cce_build_code(sch, config)
-    te_set_version('Ascend910A')
 
 
-def test_matmul_trans_data_fusion_920_4(test_arg):
-    te_set_version("Ascend920A")
+def test_matmul_trans_data_fusion_920_4():
     with cce():
         tensor_a_ori = tvm.placeholder((64, 32), name="tensor_a_ori", dtype="float32")
         tensor_b_ori = tvm.placeholder((96, 32), name="tensor_b_ori", dtype="float32")
@@ -445,41 +403,23 @@ def test_matmul_trans_data_fusion_920_4(test_arg):
         out = trans_data_compute(matmul_out, None, src_format="FRACTAL_NZ", dst_format="ND")
         tensor_list = [tensor_a_ori, tensor_b_ori, out]
         sch = auto_schedule(out)
-        config = {
-            "print_ir": False,
-            "need_build": True,
-            "name": "matmul_transdata_fusion_4",
-            "tensor_list": tensor_list,
-        }
-        cce_build_code(sch, config)
-    te_set_version('Ascend910A')
 
     
-def test_matmul_trans_data_fusion_920_5(test_arg):
-    te_set_version("Ascend920A")
+def test_matmul_trans_data_fusion_920_5():
     with cce():
         tensor_a = tvm.placeholder((2, 2, 16, 16), name="tensor_a_ori", dtype="float16",
-                                       attrs={"ori_shape":(32, 32), "format": "FRACTAL_NZ"})
+                                    attrs={"ori_shape":(32, 32), "format": "FRACTAL_NZ"})
         tensor_b = tvm.placeholder((2, 2, 16, 16), name="tensor_b_ori", dtype="float16",
-                                       attrs={"ori_shape":(32, 32), "format": "FRACTAL_NZ"})
+                                    attrs={"ori_shape":(32, 32), "format": "FRACTAL_NZ"})
         output_y = {"shape": (32, 32), "dtype": "float16", "ori_shape": (32, 32), 
                     "format": "ND", "ori_format": "ND"}
         matmul_out = mat_mul_compute(tensor_a, tensor_b, None, None, output_y, False, False, 0)
         out = trans_data_compute(matmul_out, None, src_format="FRACTAL_NZ", dst_format="ND")
         tensor_list = [tensor_a, tensor_b, out]
         sch = auto_schedule(out)
-        config = {
-            "print_ir": False,
-            "need_build": True,
-            "name": "matmul_transdata_fusion_5",
-            "tensor_list": tensor_list,
-        }
-        cce_build_code(sch, config)
-    te_set_version('Ascend910A')
 
 
-def test_matmul_trans_data_fusion_920_6(test_arg):
-    te_set_version("Ascend920A")
+def test_matmul_trans_data_fusion_920_6():
     with cce():
         tensor_a_ori = tvm.placeholder((32, 32), name="tensor_a_ori", dtype="float16")
         tensor_b_ori = tvm.placeholder((32, 32), name="tensor_b_ori", dtype="float16")
@@ -490,41 +430,23 @@ def test_matmul_trans_data_fusion_920_6(test_arg):
         matmul_out = mat_mul_compute(tensor_a, tensor_b, None, None, output_y, False, True, 0)
         tensor_list = [tensor_a_ori, tensor_b_ori, matmul_out]
         sch = auto_schedule(matmul_out)
-        config = {
-            "print_ir": False,
-            "need_build": True,
-            "name": "matmul_transdata_fusion_6",
-            "tensor_list": tensor_list,
-        }
-        cce_build_code(sch, config)
-    te_set_version('Ascend910A')
 
 
-def test_matmul_trans_data_fusion_920_7(test_arg):
-    te_set_version("Ascend920A")
+def test_matmul_trans_data_fusion_920_7():
     with cce():
         tensor_a = tvm.placeholder((2, 2, 16, 32), name="tensor_a_ori", dtype="int8",
-                                       attrs={"ori_shape":(32, 64), "format": "FRACTAL_NZ"})
+                                    attrs={"ori_shape":(32, 64), "format": "FRACTAL_NZ"})
         tensor_b = tvm.placeholder((1, 4, 16, 32), name="tensor_b_ori", dtype="int8",
-                                       attrs={"ori_shape":(64, 32), "format": "FRACTAL_NZ"})
+                                    attrs={"ori_shape":(64, 32), "format": "FRACTAL_NZ"})
         output_y = {"shape": (32, 32), "dtype": "int32", "ori_shape": (32, 32), 
                     "format": "ND", "ori_format": "ND"}
         matmul_out = mat_mul_compute(tensor_a, tensor_b, None, None, output_y, False, False, 0)
         out = trans_data_compute(matmul_out, None, src_format="FRACTAL_NZ", dst_format="ND")
         tensor_list = [tensor_a, tensor_b, out]
         sch = auto_schedule(out)
-        config = {
-            "print_ir": False,
-            "need_build": True,
-            "name": "matmul_transdata_fusion_7",
-            "tensor_list": tensor_list,
-        }
-        cce_build_code(sch, config)
-    te_set_version('Ascend910A')
 
 
-def test_matmul_trans_data_fusion_920_8(test_arg):
-    te_set_version("Ascend920A")
+def test_matmul_trans_data_fusion_920_8():
     with cce():
         tensor_a_ori = tvm.placeholder((64, 32), name="tensor_a_ori", dtype="int8")
         tensor_b_ori = tvm.placeholder((64, 32), name="tensor_b_ori", dtype="int8")
@@ -535,102 +457,69 @@ def test_matmul_trans_data_fusion_920_8(test_arg):
         matmul_out = mat_mul_compute(tensor_a, tensor_b, None, None, output_y, True, False, 0)
         tensor_list = [tensor_a_ori, tensor_b_ori, matmul_out]
         sch = auto_schedule(matmul_out)
-        config = {
-            "print_ir": False,
-            "need_build": True,
-            "name": "matmul_transdata_fusion_6",
-            "tensor_list": tensor_list,
-        }
-        cce_build_code(sch, config)
-    te_set_version('Ascend910A')
 
 
-def test_matmul_trans_data_fusion_920_9(test_arg):
-    te_set_version("Ascend920A")
+def test_matmul_trans_data_fusion_920_9():
     with cce():
-        tensor_a_ori = tvm.placeholder((480, 320), name="tensor_a_ori", dtype="float32")
-        tensor_b_ori = tvm.placeholder((480, 320), name="tensor_b_ori", dtype="float32")
+        tensor_a_ori = tvm.placeholder((48, 32), name="tensor_a_ori", dtype="float32")
+        tensor_b_ori = tvm.placeholder((48, 32), name="tensor_b_ori", dtype="float32")
         tensor_a = trans_data_compute(tensor_a_ori, None, src_format="ND", dst_format="FRACTAL_NZ")
         tensor_b = trans_data_compute(tensor_b_ori, None, src_format="ND", dst_format="FRACTAL_NZ")
-        output_y = {"shape": (20, 20, 16, 16), "dtype": "float32", "ori_shape": (64, 96),
+        output_y = {"shape": (3, 3, 16, 16), "dtype": "float32", "ori_shape": (32, 32),
                     "format": "ND", "ori_format": "ND"}
         matmul_out = mat_mul_compute(tensor_a, tensor_b, None, None, output_y, False, True, 0)
         out = trans_data_compute(matmul_out, None, src_format="FRACTAL_NZ", dst_format="ND")
         tensor_list = [tensor_a_ori, tensor_b_ori, out]
         sch = auto_schedule(out)
-        config = {
-            "print_ir": False,
-            "need_build": True,
-            "name": "matmul_transdata_fusion_4",
-            "tensor_list": tensor_list,
-        }
-        cce_build_code(sch, config)
-    te_set_version('Ascend910A')
 
 
-def test_matmul_trans_data_fusion_920_error_case_1(test_arg):
-    te_set_version("Ascend920A")
+def test_matmul_trans_data_fusion_920_error_case_1():
     with cce():
-        tensor_a = tvm.placeholder((2, 2, 16, 16), name="tensor_a_ori", dtype="float16",
-                                       attrs={"format": "FRACTAL_NZ"})
-        tensor_b = tvm.placeholder((2, 2, 16, 16), name="tensor_b_ori", dtype="float16",
-                                       attrs={"ori_shape":(32, 32), "format": "FRACTAL_NZ"})
-        output_y = {"shape": (32, 32), "dtype": "float16", "ori_shape": (32, 32), 
-                    "format": "ND", "ori_format": "ND"}
-        matmul_out = mat_mul_compute(tensor_a, tensor_b, None, None, output_y, False, False, 0)
-        out = trans_data_compute(matmul_out, None, src_format="FRACTAL_NZ", dst_format="ND")
-        tensor_list = [tensor_a, tensor_b, out]
-        sch = auto_schedule(out)
-        config = {
-            "print_ir": False,
-            "need_build": True,
-            "name": "matmul_transdata_fusion_5",
-            "tensor_list": tensor_list,
-        }
-        cce_build_code(sch, config)
-    te_set_version('Ascend910A')
+        try:
+            tensor_a = tvm.placeholder((2, 2, 16, 16), name="tensor_a_ori", dtype="float16",
+                                        attrs={"format": "FRACTAL_NZ"})
+            tensor_b = tvm.placeholder((2, 2, 16, 16), name="tensor_b_ori", dtype="float16",
+                                        attrs={"ori_shape":(32, 32), "format": "FRACTAL_NZ"})
+            output_y = {"shape": (32, 32), "dtype": "float16", "ori_shape": (32, 32), 
+                        "format": "ND", "ori_format": "ND"}
+            matmul_out = mat_mul_compute(tensor_a, tensor_b, None, None, output_y, False, False, 0)
+            out = trans_data_compute(matmul_out, None, src_format="FRACTAL_NZ", dst_format="ND")
+            tensor_list = [tensor_a, tensor_b, out]
+            sch = auto_schedule(out)
+        except RuntimeError:
+            print("test origin shape a error")
     
 
-def test_matmul_trans_data_fusion_920_error_case_2(test_arg):
-    te_set_version("Ascend920A")
+def test_matmul_trans_data_fusion_920_error_case_2():
     with cce():
-        tensor_a = tvm.placeholder((2, 2, 16, 16), name="tensor_a_ori", dtype="float16",
-                                       attrs={"ori_shape":(32, 32), "format": "FRACTAL_NZ"})
-        tensor_b = tvm.placeholder((2, 2, 16, 16), name="tensor_b_ori", dtype="float16",
-                                       attrs={ "format": "FRACTAL_NZ"})
-        output_y = {"shape": (32, 32), "dtype": "float16", "ori_shape": (32, 32), 
-                    "format": "ND", "ori_format": "ND"}
-        matmul_out = mat_mul_compute(tensor_a, tensor_b, None, None, output_y, False, False, 0)
-        out = trans_data_compute(matmul_out, None, src_format="FRACTAL_NZ", dst_format="ND")
-        tensor_list = [tensor_a, tensor_b, out]
-        sch = auto_schedule(out)
-        config = {
-            "print_ir": False,
-            "need_build": True,
-            "name": "matmul_transdata_fusion_5",
-            "tensor_list": tensor_list,
-        }
-        cce_build_code(sch, config)
-    te_set_version('Ascend910A')
+        try:
+            tensor_a = tvm.placeholder((2, 2, 16, 16), name="tensor_a_ori", dtype="float16",
+                                        attrs={"ori_shape":(32, 32), "format": "FRACTAL_NZ"})
+            tensor_b = tvm.placeholder((2, 2, 16, 16), name="tensor_b_ori", dtype="float16",
+                                        attrs={ "format": "FRACTAL_NZ"})
+            output_y = {"shape": (32, 32), "dtype": "float16", "ori_shape": (32, 32), 
+                        "format": "ND", "ori_format": "ND"}
+            matmul_out = mat_mul_compute(tensor_a, tensor_b, None, None, output_y, False, False, 0)
+            out = trans_data_compute(matmul_out, None, src_format="FRACTAL_NZ", dst_format="ND")
+            tensor_list = [tensor_a, tensor_b, out]
+            sch = auto_schedule(out)
+        except RuntimeError:
+            print("test origin shape b error")
+                    
 
 
 def test_shape_check(test_args):
-    te_set_version("Ascend920A")
-    shape_a = (32, 64)
-    shape_b = (64, 64)
-    shape_bias = (64,)
-    _shape_check(shape_a, shape_b, shape_bias, "float32", False, False)
-    te_set_version('Ascend910A')
+    with patch("tbe.common.platform.intrinsic_check_support", MagicMock(side_effect=side_effects)):
+        shape_a = (32, 64)
+        shape_b = (64, 64)
+        shape_bias = (64,)
+        _shape_check(shape_a, shape_b, shape_bias, "float32", False, False)
 
 
-#ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_1)
-#ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_2)
-#ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_3)
+ut_case.add_cust_test_func(test_func=test_shape_check)
 ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_910)
 ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_710)
 ut_case.add_cust_test_func(test_func=test_trans_data_fp32)
-#ut_case.add_cust_test_func(test_func=test_matmul_dequant)
-#ut_case.add_cust_test_func(test_func=test_matmul_requant)
 
 def test_check_support(test_arg):
     from tbe.common.context import op_context
@@ -691,70 +580,99 @@ not_align_bias_case2 = {"params": [{"shape": (6, 2, 16, 16), "dtype": "float16",
 
 ut_case.add_case(["Ascend310", "Ascend910A"], not_align_bias_case2)
 
-def test_matmul_trans_data_fusion_920_mock(test_args):
-    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
-        with cce():
-            x1 = tvm.placeholder((32, 16), name="x1", dtype="float16", attrs={"ori_shape": (32, 16), "format": "ND", "ori_format": "ND"})
-            x2 = tvm.placeholder((32, 16), name="x2", dtype="float16", attrs={"ori_shape": (32, 16), "format": "ND", "ori_format": "ND"})
-            x1_trans = trans_data_compute(x1, None, "ND", "FRACTAL_NZ")
-            x2_trans = trans_data_compute(x2, None, "ND", "FRACTAL_NZ")
-            y = {"shape": (1, 1, 16, 16), "ori_shape": (16, 16), "format": "FRACTAL_NZ", "ori_format": "ND", "dtype": "float16"}
-            dx_res = mat_mul_compute(x1_trans, x2_trans, None, None, y, True, False, 0)
-            trans_out = {"shape": (16, 16), "ori_shape": (16, 16), "format": "ND", "ori_format": "ND", "dtype": "float16"}
-            out = trans_data_compute(dx_res, trans_out, "FRACTAL_NZ", "ND")
-            sch = auto_schedule(out)
-def test_matmul_trans_data_fusion_920_mock_1(test_args):
-    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
-        with cce():
-            x1 = tvm.placeholder((1, 2, 16, 16), name="x1", dtype="float16", attrs={"ori_shape": (32, 16), "format": "FRACTAL_NZ", "ori_format": "ND"})
-            x2 = tvm.placeholder((1, 2, 16, 16), name="x2", dtype="float16", attrs={"ori_shape": (32, 16), "format": "FRACTAL_NZ", "ori_format": "ND"})
-            y = {"shape": (2, 2, 16, 16), "ori_shape": (32, 32), "format": "FRACTAL_NZ", "ori_format": "ND", "dtype": "float16"}
-            dx_res = mat_mul_compute(x1, x2, None, None, y, False, True, 0)
-            trans_out = {"shape": (32, 32), "ori_shape": (32, 32), "format": "ND", "ori_format": "ND", "dtype": "float16"}
-            out = trans_data_compute(dx_res, trans_out, "FRACTAL_NZ", "ND")
-            sch = auto_schedule(out)
-def test_matmul_trans_data_fusion_920_mock_2(test_args):
-    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
-        with cce():
-            x1 = tvm.placeholder((64, 1024), name="x1", dtype="float16", attrs={"ori_shape": (64, 1024), "format": "ND", "ori_format": "ND"})
-            x2 = tvm.placeholder((1024, 32), name="x2", dtype="float16", attrs={"ori_shape": (1024, 32), "format": "ND", "ori_format": "ND"})
-            x1_trans = trans_data_compute(x1, None, "ND", "FRACTAL_NZ")
-            x2_trans = trans_data_compute(x2, None, "ND", "FRACTAL_NZ")
-            y = {"shape": (2, 4, 16, 16), "ori_shape": (64, 32), "format": "FRACTAL_NZ", "ori_format": "ND", "dtype": "float16"}
-            bias = tvm.placeholder((32,), name="bias", dtype="float32", attrs={"ori_shape": (32,), "format": "ND", "ori_format": "ND"})
-            out = mat_mul_compute(x1_trans, x2_trans, bias, None, y, False, False, 0)
-            sch = auto_schedule(out)
-def test_matmul_trans_data_fusion_920_mock_3(test_args):
-    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
-        with cce():
-            x1 = tvm.placeholder((64, 1, 16, 32), name="tensor_a", dtype="int8", attrs={"ori_shape": (2, 2048), "format": "FRACTAL_NZ", "ori_format": "ND"})
-            x2 = tvm.placeholder((32, 128, 16, 32), name="tensor_b", dtype="int8", attrs={"ori_shape": (2048, 1001), "format": "FRACTAL_NZ", "ori_format": "ND"})
-            bias = tvm.placeholder((1008,), name="tensor_bias", dtype="int32", attrs={"format": "ND", "ori_format": "ND", "ori_shape": (1001,)})
-            output_y = {"shape": (63, 1, 16, 16), "dtype": "int32", "ori_shape": (2, 1001), "format": "FRACTAL_NZ", "ori_format": "ND"}
-            matmul_out = mat_mul_compute(x1, x2, bias, None, output_y, False, False, 0)
-            deq_scale = tvm.placeholder((1, 63, 1, 1, 16), name='deq_scale', dtype="uint64", attrs={"ori_shape": (1001, ), "format": "NC1HWC0", "ori_format": "ND"})
-            res = ascend_dequant_compute(matmul_out, deq_scale, None, sqrt_mode=False, relu_flag=False, kernel_name="ascend_dequant")
-            tensor_list = [x1, x2, bias, deq_scale, res]
-            sch = auto_schedule(res)
-def test_matmul_trans_data_fusion_920_mock_4(test_args):
-    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
-        with cce():
-            x1 = tvm.placeholder((32, 2, 16, 32), name="tensor_a", dtype="int8", attrs={"ori_shape": (32, 1024), "format": "FRACTAL_NZ", "ori_format": "ND"})
-            x2 = tvm.placeholder((1, 2, 16, 32), name="tensor_b", dtype="int8", attrs={"ori_shape": (32, 32), "format": "FRACTAL_Z", "ori_format": "ND"})
-            bias = tvm.placeholder((32,), name="tensor_bias", dtype="int32", attrs={"format": "ND", "ori_format": "ND", "ori_shape": (32,)})
-            output_y = {"shape": (2, 64, 16, 16), "dtype": "int32", "ori_shape": (1024, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
-            matmul_out = mat_mul_compute(x1, x2, bias, None, output_y, True, False, 0)
-            deq_scale = tvm.placeholder((1, 2, 1, 1, 16), name='deq_scale', dtype="uint64", attrs={"ori_shape": (32, ), "format": "NC1HWC0", "ori_format": "ND"})
-            res = ascend_dequant_compute(matmul_out, deq_scale, None, sqrt_mode=False, relu_flag=False, kernel_name="ascend_dequant")
-            tensor_list = [x1, x2, bias, deq_scale, res]
-            sch = auto_schedule(res)
+def test_matmul_trans_data_fusion_920_mock():
+    with cce():
+        x1 = tvm.placeholder((32, 16), name="x1", dtype="float16", attrs={"ori_shape": (32, 16), "format": "ND", "ori_format": "ND"})
+        x2 = tvm.placeholder((32, 16), name="x2", dtype="float16", attrs={"ori_shape": (32, 16), "format": "ND", "ori_format": "ND"})
+        x1_trans = trans_data_compute(x1, None, "ND", "FRACTAL_NZ")
+        x2_trans = trans_data_compute(x2, None, "ND", "FRACTAL_NZ")
+        y = {"shape": (1, 1, 16, 16), "ori_shape": (16, 16), "format": "FRACTAL_NZ", "ori_format": "ND", "dtype": "float16"}
+        dx_res = mat_mul_compute(x1_trans, x2_trans, None, None, y, True, False, 0)
+        trans_out = {"shape": (16, 16), "ori_shape": (16, 16), "format": "ND", "ori_format": "ND", "dtype": "float16"}
+        out = trans_data_compute(dx_res, trans_out, "FRACTAL_NZ", "ND")
+        sch = auto_schedule(out)
 
+def test_matmul_trans_data_fusion_920_mock_1():
+    with cce():
+        x1 = tvm.placeholder((1, 2, 16, 16), name="x1", dtype="float16", attrs={"ori_shape": (32, 16), "format": "FRACTAL_NZ", "ori_format": "ND"})
+        x2 = tvm.placeholder((1, 2, 16, 16), name="x2", dtype="float16", attrs={"ori_shape": (32, 16), "format": "FRACTAL_NZ", "ori_format": "ND"})
+        y = {"shape": (2, 2, 16, 16), "ori_shape": (32, 32), "format": "FRACTAL_NZ", "ori_format": "ND", "dtype": "float16"}
+        dx_res = mat_mul_compute(x1, x2, None, None, y, False, True, 0)
+        trans_out = {"shape": (32, 32), "ori_shape": (32, 32), "format": "ND", "ori_format": "ND", "dtype": "float16"}
+        out = trans_data_compute(dx_res, trans_out, "FRACTAL_NZ", "ND")
+        sch = auto_schedule(out)
 
-ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_mock)
-ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_mock_1)
-ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_mock_2)
-ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_mock_3)
-ut_case.add_cust_test_func(test_func=test_matmul_trans_data_fusion_920_mock_4)
+def test_matmul_trans_data_fusion_920_mock_2():
+    with cce():
+        x1 = tvm.placeholder((64, 1024), name="x1", dtype="float16", attrs={"ori_shape": (64, 1024), "format": "ND", "ori_format": "ND"})
+        x2 = tvm.placeholder((1024, 32), name="x2", dtype="float16", attrs={"ori_shape": (1024, 32), "format": "ND", "ori_format": "ND"})
+        x1_trans = trans_data_compute(x1, None, "ND", "FRACTAL_NZ")
+        x2_trans = trans_data_compute(x2, None, "ND", "FRACTAL_NZ")
+        y = {"shape": (2, 4, 16, 16), "ori_shape": (64, 32), "format": "FRACTAL_NZ", "ori_format": "ND", "dtype": "float16"}
+        bias = tvm.placeholder((32,), name="bias", dtype="float32", attrs={"ori_shape": (32,), "format": "ND", "ori_format": "ND"})
+        out = mat_mul_compute(x1_trans, x2_trans, bias, None, y, False, False, 0)
+        sch = auto_schedule(out)
+
+def test_matmul_trans_data_fusion_920_mock_3():
+    with cce():
+        x1 = tvm.placeholder((64, 1, 16, 32), name="tensor_a", dtype="int8", attrs={"ori_shape": (2, 2048), "format": "FRACTAL_NZ", "ori_format": "ND"})
+        x2 = tvm.placeholder((32, 128, 16, 32), name="tensor_b", dtype="int8", attrs={"ori_shape": (2048, 1001), "format": "FRACTAL_NZ", "ori_format": "ND"})
+        bias = tvm.placeholder((1008,), name="tensor_bias", dtype="int32", attrs={"format": "ND", "ori_format": "ND", "ori_shape": (1001,)})
+        output_y = {"shape": (63, 1, 16, 16), "dtype": "int32", "ori_shape": (2, 1001), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = mat_mul_compute(x1, x2, bias, None, output_y, False, False, 0)
+        deq_scale = tvm.placeholder((1, 63, 1, 1, 16), name='deq_scale', dtype="uint64", attrs={"ori_shape": (1001, ), "format": "NC1HWC0", "ori_format": "ND"})
+        res = ascend_dequant_compute(matmul_out, deq_scale, None, sqrt_mode=False, relu_flag=False, kernel_name="ascend_dequant")
+        tensor_list = [x1, x2, bias, deq_scale, res]
+        sch = auto_schedule(res)
+
+def test_matmul_trans_data_fusion_920_mock_4():
+    with cce():
+        x1 = tvm.placeholder((32, 2, 16, 32), name="tensor_a", dtype="int8", attrs={"ori_shape": (32, 1024), "format": "FRACTAL_NZ", "ori_format": "ND"})
+        x2 = tvm.placeholder((1, 2, 16, 32), name="tensor_b", dtype="int8", attrs={"ori_shape": (32, 32), "format": "FRACTAL_Z", "ori_format": "ND"})
+        bias = tvm.placeholder((32,), name="tensor_bias", dtype="int32", attrs={"format": "ND", "ori_format": "ND", "ori_shape": (32,)})
+        output_y = {"shape": (2, 64, 16, 16), "dtype": "int32", "ori_shape": (1024, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = mat_mul_compute(x1, x2, bias, None, output_y, True, False, 0)
+        deq_scale = tvm.placeholder((1, 2, 1, 1, 16), name='deq_scale', dtype="uint64", attrs={"ori_shape": (32, ), "format": "NC1HWC0", "ori_format": "ND"})
+        res = ascend_dequant_compute(matmul_out, deq_scale, None, sqrt_mode=False, relu_flag=False, kernel_name="ascend_dequant")
+        tensor_list = [x1, x2, bias, deq_scale, res]
+        sch = auto_schedule(res)
+
+def test_matmul_trans_data_fusion_920_mock_5():
+    with cce():
+        x1 = tvm.placeholder((5, 32, 16), name="x1", dtype="float16", attrs={"ori_shape": (5, 32, 16), "format": "ND", "ori_format": "ND"})
+        x2 = tvm.placeholder((32, 16), name="x2", dtype="float16", attrs={"ori_shape": (5, 32, 16), "format": "ND", "ori_format": "ND"})
+        x1_trans = trans_data_compute(x1, None, "ND", "FRACTAL_NZ")
+        x2_trans = trans_data_compute(x2, None, "ND", "FRACTAL_NZ")
+        y = {"shape": (5, 1, 1, 16, 16), "ori_shape": (16, 16), "format": "FRACTAL_NZ", "ori_format": "ND", "dtype": "float16"}
+        dx_res = mat_mul_compute(x1_trans, x2_trans, None, None, y, True, False, 0)
+        trans_out = {"shape": (5, 16, 16), "ori_shape": (5, 16, 16), "format": "ND", "ori_format": "ND", "dtype": "float16"}
+        out = trans_data_compute(dx_res, trans_out, "FRACTAL_NZ", "ND")
+        sch = auto_schedule(out)
+
+def test_920_mock_cases(test_args):
+    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
+        with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=side_effects)):
+            test_matmul_trans_data_fusion_920_mock()
+            test_matmul_trans_data_fusion_920_mock_1()
+            test_matmul_trans_data_fusion_920_mock_2()
+            test_matmul_trans_data_fusion_920_mock_3()
+            test_matmul_trans_data_fusion_920_mock_4()
+            test_matmul_trans_data_fusion_920_mock_5()
+            test_matmul_dequant()
+            test_matmul_requant()
+            test_matmul_trans_data_fusion_920_1()
+            test_matmul_trans_data_fusion_920_2()
+            test_matmul_trans_data_fusion_920_3()
+            test_matmul_trans_data_fusion_920_4()
+            test_matmul_trans_data_fusion_920_5()
+            test_matmul_trans_data_fusion_920_6()
+            test_matmul_trans_data_fusion_920_7()
+            test_matmul_trans_data_fusion_920_8()
+            test_matmul_trans_data_fusion_920_9()
+            test_matmul_trans_data_fusion_920_error_case_1()
+            test_matmul_trans_data_fusion_920_error_case_2()
+ut_case.add_cust_test_func(test_func=test_920_mock_cases)
+
 ut_case.add_case(["Ascend310", "Ascend920A"], not_align_bias_case2)
 
 

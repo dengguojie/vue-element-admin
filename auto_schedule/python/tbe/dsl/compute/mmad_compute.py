@@ -26,9 +26,9 @@ from functools import wraps
 from tbe import tvm
 from tbe.common import platform as tbe_platform
 from tbe.common import utils as tbe_utils
-from tbe.common.utils import broadcast_shapes
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.testing.dsl_source_info import source_info_decorator
+from tbe.common.utils import broadcast_shapes
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube
 from tbe.dsl.compute import cube_util
@@ -47,7 +47,7 @@ def _elecnt_of_shape(shape):
 # int32's max value
 SHAPE_SIZE_LIMIT = 2**31 - 1
 FORMAT_DYNAMIC_THRESHOLD = 1 * 1
-
+BATCH_MATMUL_LENGTH = 5
 
 def _shape_check(tensor_a, tensor_b,  # pylint: disable=C0301, R0912, R0913, R0914, R0915
                 tensor_bias, trans_a, trans_b, format_a, format_b, dst_dtype,
@@ -971,8 +971,8 @@ def matmul(tensor_a,  # pylint: disable=W0108, R1702, R0912, R0913, R0914, R0915
     compress_index: index for compressed wights, None means not compress wights
     Returns None
     """
-    cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
-    if cube_vector_split:
+    support_l0c2out = tbe_platform_info.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out")
+    if support_l0c2out:
         result = _matmul_cv_split(tensor_a=tensor_a,
                                   tensor_b=tensor_b,
                                   trans_a=trans_a,
@@ -4014,7 +4014,6 @@ class MatMulCompute:
         self.block_out = tbe_platform.BLOCK_OUT
         self.block_reduce = tbe_platform.CUBE_MKN[self.src_dtype]["mac"][1]
         self.origin_reduce_axis = 0
-        self.cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
         self.matrix_type = "int32" if self.src_dtype == "int8" else "float32"
         self.origin_m_shape = 0
         self.origin_n_shape = 0
@@ -4062,10 +4061,11 @@ class MatMulCompute:
         -------
         tensor
         """
+        block_reduce_multiple_in = self.block_in // self.block_reduce
         if not self.trans_a:
             a_matrix_shape = [
-                self._ceil_div(self.m_shape, 2),
-                self.km_shape * 2,
+                self._ceil_div(self.m_shape, block_reduce_multiple_in),
+                self.km_shape * block_reduce_multiple_in,
                 self.block_in,
                 self.block_reduce]
         else:
@@ -4074,14 +4074,17 @@ class MatMulCompute:
                 self.km_shape,
                 self.block_in,
                 self.block_reduce]
+        if self.batch_shape_a:
+            a_matrix_shape.insert(0, self.batch_shape_a)
         if not self.trans_a:
             a_matrix = tvm.compute(
                 a_matrix_shape,
                 lambda *indices:
-                    temp_tensor_a(indices[-4] * 2 + indices[-2] // 8,
-                                  (indices[-3] * 8 + indices[-1]) // 16,
-                                  (indices[-3] * 8 + indices[-1]) % 16,
-                                  indices[-2] % 8),
+                    temp_tensor_a(*indices[:-4],
+                                  indices[-4] * block_reduce_multiple_in + indices[-2] // self.block_reduce,
+                                  (indices[-3] * self.block_reduce + indices[-1]) // self.block_in,
+                                  (indices[-3] * self.block_reduce + indices[-1]) % self.block_in,
+                                  indices[-2] % self.block_reduce),
                 name="tensor_a_matrix",
                 attrs={"transpose_a": "false"}
                 )
@@ -4153,6 +4156,7 @@ class MatMulCompute:
         -------
         tensor
         """
+        block_reduce_multiple_in = self.block_in // self.block_reduce
         if not self.trans_b:
             b_matrix_shape = [
                 self.kn_shape,
@@ -4161,10 +4165,12 @@ class MatMulCompute:
                 self.block_reduce]
         else:
             b_matrix_shape = [
-                self.kn_shape * 2,
-                self._ceil_div(self.n_shape, 2),
+                self.kn_shape * block_reduce_multiple_in,
+                self._ceil_div(self.n_shape, block_reduce_multiple_in),
                 self.block_out,
                 self.block_reduce]
+        if self.batch_shape_b:
+            b_matrix_shape.insert(0, self.batch_shape_b)
         if not self.trans_b:
             b_matrix = tvm.compute(
                 b_matrix_shape,
@@ -4176,7 +4182,8 @@ class MatMulCompute:
             b_matrix = tvm.compute(
                 b_matrix_shape,
                 lambda *indices:
-                    temp_tensor_b(indices[-3] * 2 + indices[-2] // 8,
+                    temp_tensor_b(*indices[:-4],
+                                  indices[-3] * block_reduce_multiple_in + indices[-2] // self.block_reduce,
                                   (indices[-4] * 8 + indices[-1]) // 16,
                                   (indices[-4] * 8 + indices[-1]) % 16,
                                   indices[-2] % 8),
@@ -4224,7 +4231,8 @@ class MatMulCompute:
                         b_matrix_shape.insert(0, self.batch_shape_b)
                     b_matrix = tvm.compute(
                         b_matrix_shape,
-                        lambda *indices: self.tensor_b(*indices[:-4], indices[-3], indices[-4], indices[-1], indices[-2]),
+                        lambda *indices: self.tensor_b(*indices[:-4], indices[-3], 
+                                                       indices[-4], indices[-1], indices[-2]),
                         name="tensor_b_matrix",
                         attrs={"transpose_b": "true"})
             else:
@@ -4285,18 +4293,21 @@ class MatMulCompute:
                 name='tensor_c_matrix',
                 attrs={"impl_mode": self.impl_mode})
         if self.dst_dtype == "float32" and self.src_dtype == "float32":
-            output_shape[-4] = output_shape[0] * 2
-            output_shape[-1] = self.block_out // 2
-            tensor_c_gm = tvm.compute(output_shape,
-                                      lambda *indices: tensor_c_matrix((indices[-4] * 8 + indices[-1]) // 16,
-                                                                       indices[-3],
-                                                                       indices[-2],
-                                                                       (indices[-4] * 8 + indices[-1]) % 16).astype(self.dst_dtype),
-                                      tag="gemm",
-                                      name="tensor_c_gm",
-                                      attrs={"kernel_name": self.kernel_name,
-                                             "ori_shape": ori_shape,
-                                             "shape": output_shape})
+            output_shape[-4] = self._ceil_div(self.origin_n_shape, self.block_reduce)
+            output_shape[-1] = self.block_reduce
+            tensor_c_gm = tvm.compute(
+                output_shape,
+                lambda *indices: tensor_c_matrix(*indices[:-4],
+                                                 (indices[-4] * self.block_reduce + indices[-1]) // self.block_out,
+                                                 indices[-3],
+                                                 indices[-2],
+                                                 (indices[-4] * self.block_reduce + indices[-1]) %
+                                                 self.block_out).astype(self.dst_dtype),
+                tag="gemm",
+                name="tensor_c_gm",
+                attrs={"kernel_name": self.kernel_name,
+                       "ori_shape": ori_shape,
+                       "shape": output_shape})
         else:
             tensor_c_gm = tvm.compute(output_shape,
                                     lambda *indices: tensor_c_matrix(*indices).astype(self.dst_dtype),
@@ -4322,10 +4333,10 @@ class MatMulCompute:
         """
         # matrix A
         self.batch_shape_a = None
-        if len(self.tensor_a.shape) == 5:
+        if len(self.tensor_a.shape) == BATCH_MATMUL_LENGTH:
             self.batch_shape_a = self.tensor_a.shape[0].value
         self.batch_shape_b = None
-        if len(self.tensor_b.shape) == 5:
+        if len(self.tensor_b.shape) == BATCH_MATMUL_LENGTH:
             self.batch_shape_b = self.tensor_b.shape[0].value
 
         # matrix A

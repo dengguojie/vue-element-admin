@@ -39,7 +39,7 @@ _C0_16 = 16
 
 
 def op_select_format(input_x, input_y, bias=None, offset_w=None, output_z=None, trans_a=False,
-                     trans_b=False, offset_x=0, kernel_name="matmul"):
+                     trans_b=False, offset_x=0, kernel_name="matmul", impl_mode=""):
     """
     provide dynamic format to FE
     """
@@ -228,7 +228,8 @@ def get_op_support_info(input_x1,  # pylint: R0913,R0914,W0613
                         trans_a=False,
                         trans_b=False,
                         offset_x=0,
-                        kernel_name="matmul"):
+                        kernel_name="matmul",
+                        impl_mode=""):
     """
     get the matmul split, which only split the m and n, cannot cut k with bias
 
@@ -315,7 +316,8 @@ def check_supported(input_x1,
                     trans_a=False,
                     trans_b=False,
                     offset_x=0,
-                    kernel_name="matmul"):
+                    kernel_name="matmul",
+                    impl_mode=""):
     """
     check the op support situation
     """

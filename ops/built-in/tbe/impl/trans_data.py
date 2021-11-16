@@ -312,14 +312,15 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
         )
     elif src_format == "ND" and dst_format == "FRACTAL_NZ":
         src_shape = tuple(i.value for i in src.shape)
-        block_reduce = c0_dict.get(src.dtype, 16)
-        block_size = 16
+        block_reduce = c0_dict.get(src.dtype, tbe_platform.BLOCK_REDUCE)
+        block_size = tbe_platform.BLOCK_IN
         dst_shape = (
             _ceil_div(src_shape[-1], block_reduce),
             _ceil_div(src_shape[-2], block_size),
             block_size,
             block_reduce
         )
+        dst_shape = src_shape[:-2] + dst_shape
         d_axis_origin_length = src_shape[-1]
         dst_tensor = tvm.compute(
             dst_shape,
@@ -338,10 +339,11 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
         dst_shape = src.op.attrs["ori_shape"]
         dst_tensor = tvm.compute(
                 dst_shape,
-                lambda *indices: src(indices[-1] // src_shape[-1],
-                indices[-2] // src_shape[-2],
-                indices[-2] % src_shape[-2],
-                indices[-1] % src_shape[-1]),
+                lambda *indices: src(*indices[:-2],
+                                     indices[-1] // src_shape[-1],
+                                     indices[-2] // src_shape[-2],
+                                     indices[-2] % src_shape[-2],
+                                     indices[-1] % src_shape[-1]),
                 tag="NZ_trans_ND",
                 name="res_nd",
                 attrs={"ori_format": "FRACTAL_NZ",
