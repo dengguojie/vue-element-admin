@@ -21,6 +21,7 @@ from te import platform as tbe_platform
 from te import tik
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl.load3d_common_func import img2col
 
 # MIN VALUE OF FP16
 MIN_VALUE_FP16 = -65500.0
@@ -825,6 +826,8 @@ class MaxpoolV3Grad():
         self.scalar_esp.set_as(1.18e-38)
         self.scalar_one.set_as(1)
 
+        self.check_load3d_support = tbe_platform.cce_conf.api_check_support("tik.load3dv1")
+
     # 'pylint: disable = too-many-locals
     def _padding_mode(self, ori_input, ksize, strides, padding, pads, global_pooling, ceil_mod):
         _, _, fmap_h, fmap_w, _ = ori_input
@@ -1143,61 +1146,88 @@ class MaxpoolV3Grad():
         -------
         """
         pad_left, pad_right, pad_top, pad_bottom = pad
+        self._vector_dup(ori_input_col_ub, 0, ori_input_col_ub.shape, MIN_VALUE_FP16, "float16")
         # load3d
         with self.tik_instance.if_scope(start_h <= pad_top):
             self.actual_pad_top.set_as(pad_top - start_h)
             with self.tik_instance.if_scope(end_h < each_process_hi_block + pad_top):
-                self.tik_instance.load3dv1(ori_input_col_ub[0],
-                                           ori_input_l1[0],
-                                           (pad_left, pad_right,
-                                            self.actual_pad_top, 0),
-                                           each_process_hi - self.actual_pad_top,
-                                           each_process_wi, 0, index_w, index_h,
-                                           wo_offset, -self.actual_pad_top,
-                                           self.stride_w, self.stride_h,
-                                           self.kw, self.kh, 1, 1, 1, 1,
-                                           repeat_times, 0, pad_value)
+                if self.check_load3d_support:
+                    self.tik_instance.load3dv1(ori_input_col_ub[0],
+                                               ori_input_l1[0],
+                                               (pad_left, pad_right,
+                                               self.actual_pad_top, 0),
+                                               each_process_hi - self.actual_pad_top,
+                                               each_process_wi, 0, index_w, index_h,
+                                               wo_offset, -self.actual_pad_top,
+                                               self.stride_w, self.stride_h,
+                                               self.kw, self.kh, 1, 1, 1, 1,
+                                               repeat_times, 0, pad_value)
+                else:
+                    img2col(self.tik_instance, ori_input_l1, ori_input_col_ub, 0, 0, index_h, index_w,
+                            -self.actual_pad_top, wo_offset, each_process_hi - self.actual_pad_top, each_process_wi,
+                            self.kh, self.kw, self.stride_h, self.stride_w, repeat_times, 1,
+                            (pad_left, pad_right, self.actual_pad_top, 0))
             with self.tik_instance.else_scope():
                 self.actual_pad_bottom.set_as(end_h - each_process_hi_block - pad_top)
-                self.tik_instance.load3dv1(ori_input_col_ub[0],
-                                           ori_input_l1[0],
-                                           (pad_left, pad_right,
-                                            self.actual_pad_top,
-                                            self.actual_pad_bottom),
-                                           each_process_hi -
-                                           self.actual_pad_top -
-                                           self.actual_pad_bottom,
-                                           each_process_wi, 0, index_w, index_h,
-                                           wo_offset, -self.actual_pad_top,
-                                           self.stride_w, self.stride_h,
-                                           self.kw, self.kh, 1, 1, 1, 1,
-                                           repeat_times,
-                                           0, pad_value)
+                if self.check_load3d_support:
+                    self.tik_instance.load3dv1(ori_input_col_ub[0],
+                                               ori_input_l1[0],
+                                               (pad_left, pad_right,
+                                               self.actual_pad_top,
+                                               self.actual_pad_bottom),
+                                               each_process_hi -
+                                               self.actual_pad_top -
+                                               self.actual_pad_bottom,
+                                               each_process_wi, 0, index_w, index_h,
+                                               wo_offset, -self.actual_pad_top,
+                                               self.stride_w, self.stride_h,
+                                               self.kw, self.kh, 1, 1, 1, 1,
+                                               repeat_times,
+                                               0, pad_value)
+                else:
+                    img2col(self.tik_instance, ori_input_l1, ori_input_col_ub, 0, 0, index_h, index_w,
+                            -self.actual_pad_top, wo_offset,
+                            each_process_hi - self.actual_pad_top - self.actual_pad_bottom, each_process_wi,
+                            self.kh, self.kw, self.stride_h, self.stride_w, repeat_times, 1,
+                            (pad_left, pad_right, self.actual_pad_top, self.actual_pad_bottom))
         with self.tik_instance.else_scope():
             with self.tik_instance.if_scope(end_h < each_process_hi_block + pad_top):
-                self.tik_instance.load3dv1(ori_input_col_ub[0],
-                                           ori_input_l1[
-                                               start_pos_h * self.wi * C0],
-                                           (pad_left, pad_right, 0, 0),
-                                           each_process_hi, each_process_wi, 0,
-                                           index_w, index_h, wo_offset, 0,
-                                           self.stride_w, self.stride_h,
-                                           self.kw, self.kh, 1, 1, 1, 1,
-                                           repeat_times, 0, pad_value)
+                if self.check_load3d_support:
+                    self.tik_instance.load3dv1(ori_input_col_ub[0],
+                                               ori_input_l1[
+                                                   start_pos_h * self.wi * C0],
+                                               (pad_left, pad_right, 0, 0),
+                                               each_process_hi, each_process_wi, 0,
+                                               index_w, index_h, wo_offset, 0,
+                                               self.stride_w, self.stride_h,
+                                               self.kw, self.kh, 1, 1, 1, 1,
+                                               repeat_times, 0, pad_value)
+                else:
+                    img2col(self.tik_instance, ori_input_l1, ori_input_col_ub, start_pos_h * self.wi * C0, 0,
+                            index_h, index_w, 0, wo_offset, each_process_hi, each_process_wi,
+                            self.kh, self.kw, self.stride_h, self.stride_w, repeat_times, 1,
+                            (pad_left, pad_right, 0, 0))
 
             with self.tik_instance.else_scope():
                 self.actual_pad_bottom.set_as(end_h - each_process_hi_block - pad_top)
-                self.tik_instance.load3dv1(ori_input_col_ub[0],
-                                           ori_input_l1[
-                                               start_pos_h * self.wi * C0],
-                                           (pad_left, pad_right, 0,
-                                            self.actual_pad_bottom),
-                                           each_process_hi - self.actual_pad_bottom,
-                                           each_process_wi, 0,
-                                           index_w, index_h, wo_offset, 0,
-                                           self.stride_w, self.stride_h,
-                                           self.kw, self.kh, 1, 1, 1, 1,
-                                           repeat_times, 0, pad_value)
+                if self.check_load3d_support:
+                    self.tik_instance.load3dv1(ori_input_col_ub[0],
+                                               ori_input_l1[
+                                                   start_pos_h * self.wi * C0],
+                                               (pad_left, pad_right, 0,
+                                                self.actual_pad_bottom),
+                                               each_process_hi - self.actual_pad_bottom,
+                                               each_process_wi, 0,
+                                               index_w, index_h, wo_offset, 0,
+                                               self.stride_w, self.stride_h,
+                                               self.kw, self.kh, 1, 1, 1, 1,
+                                               repeat_times, 0, pad_value)
+                else:
+                    img2col(self.tik_instance, ori_input_l1, ori_input_col_ub, start_pos_h * self.wi * C0, 0,
+                            index_h, index_w, 0, wo_offset, each_process_hi - self.actual_pad_bottom, each_process_wi,
+                            self.kh, self.kw, self.stride_h, self.stride_w, repeat_times, 1,
+                            (pad_left, pad_right, 0, self.actual_pad_bottom))
+
         return ori_input_col_ub
 
     def _data_move_ub(self, ori_input_shape, ori_output_shape, input_data_num,
@@ -1566,15 +1596,21 @@ class MaxpoolV3Grad():
 
         with self.tik_instance.for_range(0, self.kh, thread_num=1) as index_h:
             with self.tik_instance.for_range(0, self.kw, thread_num=1) as index_w:
-                self.tik_instance.load3dv1(ori_input_col_ub[0],
-                                           ori_input_l1[0],
-                                           (pad_left, pad_right, pad_top, pad_bottom),
-                                           mov_len_hi, self.wi, 0,
-                                           index_w, index_h,
-                                           -pad_left, -pad_top,
-                                           self.stride_w, self.stride_h,
-                                           self.kw, self.kh, 1, 1, 1, 1,
-                                           repeate_time, 0, self.pad_value)
+                if self.check_load3d_support:
+                    self.tik_instance.load3dv1(ori_input_col_ub[0],
+                                               ori_input_l1[0],
+                                               (pad_left, pad_right, pad_top, pad_bottom),
+                                               mov_len_hi, self.wi, 0,
+                                               index_w, index_h,
+                                               -pad_left, -pad_top,
+                                               self.stride_w, self.stride_h,
+                                               self.kw, self.kh, 1, 1, 1, 1,
+                                               repeate_time, 0, self.pad_value)
+                else:
+                    self._vector_dup(ori_input_col_ub, 0, ori_input_col_ub.shape, MIN_VALUE_FP16, "float16")
+                    img2col(self.tik_instance, ori_input_l1, ori_input_col_ub, 0, 0, index_h, index_w,
+                            -pad_top, -pad_left, mov_len_hi, self.wi, self.kh, self.kw, self.stride_h, self.stride_w,
+                            repeate_time, 1, (pad_left, pad_right, pad_top, pad_bottom))
 
                 # calculate mask here
                 mask_shape = (ceil_div(cal_shape_ele(ori_output_ub.shape[:2]), MASK128_VALUE) *
@@ -3187,6 +3223,8 @@ class MaxpoolV3GradAtomic:
         self.grads_gm = None
         self.ou_y_gm = None
 
+        self.check_load3d_support = tbe_platform.cce_conf.api_check_support("tik.load3dv1")
+
     def set_tik_instance(self):
         """
         set tik_instance
@@ -4198,18 +4236,25 @@ class MaxpoolV3GradAtomic:
                     with tik_instance.for_range(0, self.kh, thread_num=1) as idx_h:
                         with tik_instance.for_range(0, self.kw, thread_num=1) as idx_w:
                             src_l1 = (idx_do * self.sd + idx_d) * hi * wi * c0
-                            tik_instance.load3dv1(col_in_buf[0],
-                                                  l1_in_buf[src_l1],
-                                                  [0, 0, 0, 0],
-                                                  hi, wi, 0,
-                                                  idx_w, idx_h,
-                                                  0, 0,
-                                                  self.sw, self.sh,
-                                                  self.kw, self.kh,
-                                                  1, 1, 1, 1,
-                                                  repeat_times, 0,
-                                                  MIN_VALUE_FP16
-                                                  )
+                            if self.check_load3d_support:
+                                tik_instance.load3dv1(col_in_buf[0],
+                                                      l1_in_buf[src_l1],
+                                                      [0, 0, 0, 0],
+                                                      hi, wi, 0,
+                                                      idx_w, idx_h,
+                                                      0, 0,
+                                                      self.sw, self.sh,
+                                                      self.kw, self.kh,
+                                                      1, 1, 1, 1,
+                                                      repeat_times, 0,
+                                                      MIN_VALUE_FP16
+                                                      )
+                            else:
+                                col_in_buf_shape = cal_shape_ele(col_in_buf.shape)
+                                self.set_vector_dup(
+                                    tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
+                                img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
+                                        hi, wi, self.kh, self.kw, self.sh, self.sw, repeat_times, 1, (0, 0, 0, 0))
 
                             # ---calculate mask---
                             with tik_instance.if_scope(tik.all(idx_d == 0,
@@ -4427,18 +4472,25 @@ class MaxpoolV3GradAtomic:
                         with tik_instance.for_range(0, self.kh, thread_num=1) as idx_h:
                             with tik_instance.for_range(0, self.kw, thread_num=1) as idx_w:
                                 src_l1 = (idx_do * self.sd + idx_d) * hi * wi * c0
-                                tik_instance.load3dv1(col_in_buf[0],
-                                                      l1_in_buf[src_l1],
-                                                      [0, 0, 0, 0],
-                                                      hi, wi, 0,
-                                                      idx_w, idx_h,
-                                                      0, 0,
-                                                      self.sw, self.sh,
-                                                      self.kw, self.kh,
-                                                      1, 1, 1, 1,
-                                                      repeat_times, 0,
-                                                      MIN_VALUE_FP16
-                                                      )
+                                if self.check_load3d_support:
+                                    tik_instance.load3dv1(col_in_buf[0],
+                                                          l1_in_buf[src_l1],
+                                                          [0, 0, 0, 0],
+                                                          hi, wi, 0,
+                                                          idx_w, idx_h,
+                                                          0, 0,
+                                                          self.sw, self.sh,
+                                                          self.kw, self.kh,
+                                                          1, 1, 1, 1,
+                                                          repeat_times, 0,
+                                                          MIN_VALUE_FP16
+                                                          )
+                                else:
+                                    col_in_buf_shape = cal_shape_ele(col_in_buf.shape)
+                                    self.set_vector_dup(
+                                        tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
+                                    img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
+                                            hi, wi, self.kh, self.kw, self.sh, self.sw, repeat_times, 1, (0, 0, 0, 0))
 
                                 # ---calculate mask---
                                 idx_list = [idx_do, idx_d, idx_h, idx_w]
@@ -4716,18 +4768,25 @@ class MaxpoolV3GradAtomic:
                         with tik_instance.for_range(0, self.kh, thread_num=1) as idx_h:
                             with tik_instance.for_range(0, self.kw, thread_num=1) as idx_w:
                                 src_l1 = (idx_do * self.sd + idx_d) * hi_batch * wi * c0
-                                tik_instance.load3dv1(col_in_buf[0],
-                                                      l1_in_buf[src_l1],
-                                                      [0, 0, 0, 0],
-                                                      hi, wi, 0,
-                                                      idx_w, idx_h,
-                                                      0, 0,
-                                                      self.sw, self.sh,
-                                                      self.kw, self.kh,
-                                                      1, 1, 1, 1,
-                                                      repeat_times, 0,
-                                                      MIN_VALUE_FP16
-                                                      )
+                                if self.check_load3d_support:
+                                    tik_instance.load3dv1(col_in_buf[0],
+                                                          l1_in_buf[src_l1],
+                                                          [0, 0, 0, 0],
+                                                          hi, wi, 0,
+                                                          idx_w, idx_h,
+                                                          0, 0,
+                                                          self.sw, self.sh,
+                                                          self.kw, self.kh,
+                                                          1, 1, 1, 1,
+                                                          repeat_times, 0,
+                                                          MIN_VALUE_FP16
+                                                          )
+                                else:
+                                    col_in_buf_shape = cal_shape_ele(col_in_buf.shape)
+                                    self.set_vector_dup(
+                                        tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
+                                    img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
+                                            hi, wi, self.kh, self.kw, self.sh, self.sw, repeat_times, 1, (0, 0, 0, 0))
 
                                 # ---calculate mask---
                                 idx_list = [idx_do, idx_d, idx_h, idx_w]
@@ -5061,18 +5120,26 @@ class MaxpoolV3GradAtomic:
                         with tik_instance.for_range(0, self.kh, thread_num=1) as idx_h:
                             with tik_instance.for_range(0, self.kw, thread_num=1) as idx_w:
                                 src_l1 = (idx_do * self.sd + idx_d) * hi_batch * wi_batch * c0
-                                tik_instance.load3dv1(col_in_buf[0],
-                                                      l1_in_buf[src_l1],
-                                                      [0, 0, 0, 0],
-                                                      hi_val, wi_val, 0,
-                                                      idx_w, idx_h,
-                                                      0, 0,
-                                                      self.sw, self.sh,
-                                                      self.kw, self.kh,
-                                                      1, 1, 1, 1,
-                                                      repeat_times, 0,
-                                                      MIN_VALUE_FP16
-                                                      )
+                                if self.check_load3d_support:
+                                    tik_instance.load3dv1(col_in_buf[0],
+                                                          l1_in_buf[src_l1],
+                                                          [0, 0, 0, 0],
+                                                          hi_val, wi_val, 0,
+                                                          idx_w, idx_h,
+                                                          0, 0,
+                                                          self.sw, self.sh,
+                                                          self.kw, self.kh,
+                                                          1, 1, 1, 1,
+                                                          repeat_times, 0,
+                                                          MIN_VALUE_FP16
+                                                          )
+                                else:
+                                    col_in_buf_shape = cal_shape_ele(col_in_buf.shape)
+                                    self.set_vector_dup(
+                                        tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
+                                    img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
+                                            hi_val, wi_val, self.kh, self.kw, self.sh, self.sw, repeat_times, 1,
+                                            (0, 0, 0, 0))
 
                                 # ---calculate mask---
                                 idx_list = [idx_do, idx_d, idx_h, idx_w]
@@ -5309,19 +5376,27 @@ class MaxpoolV3GradAtomic:
                                 src_l1 = (idx_do * self.sd + idx_d) * hi_batch * wi_batch * c0
 
                                 with tik_instance.if_scope(load3d_mark != 1):
-                                    tik_instance.load3dv1(col_in_buf[0],
-                                                          l1_in_buf[src_l1],
-                                                          pad_hw_list,
-                                                          hi_batch, wi_batch, 0,
-                                                          idx_w, idx_h,
-                                                          -pad_hw_left,
-                                                          -pad_hw_top,
-                                                          self.sw, self.sh,
-                                                          self.kw, self.kh,
-                                                          1, 1, 1, 1,
-                                                          repeat_times, 0,
-                                                          MIN_VALUE_FP16
-                                                          )
+                                    if self.check_load3d_support:
+                                        tik_instance.load3dv1(col_in_buf[0],
+                                                              l1_in_buf[src_l1],
+                                                              pad_hw_list,
+                                                              hi_batch, wi_batch, 0,
+                                                              idx_w, idx_h,
+                                                              -pad_hw_left,
+                                                              -pad_hw_top,
+                                                              self.sw, self.sh,
+                                                              self.kw, self.kh,
+                                                              1, 1, 1, 1,
+                                                              repeat_times, 0,
+                                                              MIN_VALUE_FP16
+                                                              )
+                                    else:
+                                        col_in_buf_shape = cal_shape_ele(col_in_buf.shape)
+                                        self.set_vector_dup(
+                                            tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
+                                        img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w,
+                                                -pad_hw_top, -pad_hw_left, hi_batch, wi_batch, self.kh, self.kw,
+                                                self.sh, self.sw, repeat_times, 1, pad_hw_list)
 
                                 # ---calculate mask---
                                 idx_list = [idx_do, idx_d, idx_h, idx_w]
@@ -5623,19 +5698,27 @@ class MaxpoolV3GradAtomic:
                                 with tik_instance.if_scope(load3d_mark != 1):
                                     # in the case, l1_h must be hi_val to assure
                                     # correctness of result after filled.
-                                    tik_instance.load3dv1(col_in_buf[0],
-                                                          l1_in_buf[src_l1],
-                                                          pad_hw_list,
-                                                          hi_val, wi_batch, 0,
-                                                          idx_w, idx_h,
-                                                          -pad_hw_left,
-                                                          -h_top,
-                                                          self.sw, self.sh,
-                                                          self.kw, self.kh,
-                                                          1, 1, 1, 1,
-                                                          repeat_times, 0,
-                                                          MIN_VALUE_FP16
-                                                          )
+                                    if self.check_load3d_support:
+                                        tik_instance.load3dv1(col_in_buf[0],
+                                                              l1_in_buf[src_l1],
+                                                              pad_hw_list,
+                                                              hi_val, wi_batch, 0,
+                                                              idx_w, idx_h,
+                                                              -pad_hw_left,
+                                                              -h_top,
+                                                              self.sw, self.sh,
+                                                              self.kw, self.kh,
+                                                              1, 1, 1, 1,
+                                                              repeat_times, 0,
+                                                              MIN_VALUE_FP16
+                                                              )
+                                    else:
+                                        col_in_buf_shape = cal_shape_ele(col_in_buf.shape)
+                                        self.set_vector_dup(
+                                            tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
+                                        img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w,
+                                                -h_top, -pad_hw_left, hi_val, wi_batch, self.kh, self.kw,
+                                                self.sh, self.sw, repeat_times, 1, pad_hw_list)
 
                                 # ---calculate mask---
                                 idx_list = [idx_do, idx_d, idx_h, idx_w]
@@ -5968,18 +6051,26 @@ class MaxpoolV3GradAtomic:
                                 src_l1 = (idx_do * self.sd + idx_d) * hi_batch * wi_batch * c0
 
                                 with tik_instance.if_scope(load3d_mark != 1):
-                                    tik_instance.load3dv1(col_in_buf[0],
-                                                          l1_in_buf[src_l1],
-                                                          pad_hw_list,
-                                                          hi_val, wi_val, 0,
-                                                          idx_w, idx_h,
-                                                          -w_top, -h_top,
-                                                          self.sw, self.sh,
-                                                          self.kw, self.kh,
-                                                          1, 1, 1, 1,
-                                                          repeat_times, 0,
-                                                          MIN_VALUE_FP16
-                                                          )
+                                    if self.check_load3d_support:
+                                        tik_instance.load3dv1(col_in_buf[0],
+                                                              l1_in_buf[src_l1],
+                                                              pad_hw_list,
+                                                              hi_val, wi_val, 0,
+                                                              idx_w, idx_h,
+                                                              -w_top, -h_top,
+                                                              self.sw, self.sh,
+                                                              self.kw, self.kh,
+                                                              1, 1, 1, 1,
+                                                              repeat_times, 0,
+                                                              MIN_VALUE_FP16
+                                                              )
+                                    else:
+                                        col_in_buf_shape = cal_shape_ele(col_in_buf.shape)
+                                        self.set_vector_dup(
+                                            tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
+                                        img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w,
+                                                -h_top, -w_top, hi_val, wi_val, self.kh, self.kw,
+                                                self.sh, self.sw, repeat_times, 1, pad_hw_list)
 
                                 # ---calculate mask---
                                 idx_list = [idx_do, idx_d, idx_h, idx_w]
