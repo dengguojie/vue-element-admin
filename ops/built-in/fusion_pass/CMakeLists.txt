@@ -138,6 +138,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/avg_pool_v2_grad_fusion_pass.cc
   graph_fusion/ai_core/batch_matmul_fusion_pass.cc
   graph_fusion/ai_core/batch_multi_class_nms_fusion_pass.cc
+  graph_fusion/ai_core/batch_multi_class_nms_enable_vector_core_fusion_pass.cc
   graph_fusion/ai_core/batchnorm_bninfer_fusion_pass.cc
   graph_fusion/ai_core/batchnorm_fusion_pass.cc
   graph_fusion/ai_core/z_one_hot_fusion_pass.cc
@@ -292,6 +293,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/transdata_reshape_transpose_fusion_pass.cc
   graph_fusion/ai_core/transpose_inplaceupdate_fusion_pass.cc
   graph_fusion/ai_core/transpose_reshape_fusion_pass.cc
+  graph_fusion/ai_core/tbe_vector_core_fusion_base_pass.cc
   graph_fusion/ai_core/unpack_fusion_pass.cc
   graph_fusion/ai_core/unsortedsegmentsumd_fusion_pass.cc
   graph_fusion/ai_core/yolo_fusion_pass.cc

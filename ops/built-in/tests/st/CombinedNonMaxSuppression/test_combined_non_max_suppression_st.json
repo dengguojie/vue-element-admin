@@ -1,0 +1,128 @@
+[
+    {
+        "case_name": "test_CombinedNonMaxSuppression_001",
+        "op": "CombinedNonMaxSuppression",
+        "input_desc": [
+            {
+                "name": "boxes",
+                "format": [
+                    "ND"
+                ],
+                "type":[
+                    "float32"
+                ],
+                "shape": [8, 512, 1, 4],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "data_distribute": [
+                    "uniform"
+                ]
+            },
+            {
+                "name": "scores",
+                "format": [
+                    "ND"
+                ],
+                "type":[
+                    "float32"
+                ],
+                "shape": [8, 512, 90],
+                "value_range": [
+                    [
+                        0.1,
+                        1.0
+                    ]
+                ],
+                "data_distribute": [
+                    "uniform"
+                ]
+            },
+            {
+                "name": "max_output_size_per_class",
+                "format": "ND",
+                "type": "int32",
+                "is_const": true,
+                "shape": [],
+                "value": [100]
+            },
+            {
+                "name": "max_total_size",
+                "format": "ND",
+                "type": "int32",
+                "is_const": true,
+                "shape": [],
+                "value": [100]
+            },
+            {
+                "name": "iou_threshold",
+                "format": "ND",
+                "type": "float32",
+                "is_const": true,
+                "shape": [],
+                "value": [0.6]
+            },
+            {
+                "name": "score_threshold",
+                "format": "ND",
+                "type": "float32",
+                "is_const": true,
+                "shape": [],
+                "value": [0.3]
+            }
+        ],
+        "output_desc": [
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float32"
+                ],
+                "shape": [8, 4, 100]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float32"
+                ],
+                "shape": [8, 100]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "float32"
+                ],
+                "shape": [8, 100]
+            },
+            {
+                "format": [
+                    "ND"
+                ],
+                "type": [
+                    "int32"
+                ],
+                "shape": [8, 8]
+            }
+        ],
+        "attr": [
+            {
+                "name": "pad_per_class",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "clip_boxes",
+                "value": true,
+                "type": "bool"
+            }
+        ]
+    }
+]

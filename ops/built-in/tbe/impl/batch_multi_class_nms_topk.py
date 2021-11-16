@@ -18,6 +18,7 @@ batch_multi_class_nms_topk
 import math
 from te import tik
 from impl import common_util
+from impl.util.util_tik_comm_func import ub2ub
 
 
 # pylint: disable=too-many-arguments
@@ -173,11 +174,8 @@ def _merge_recur(instance: tik.Tik,
                            False, valid_bit, repeat_times=1)
     elif remain == 1:
         merge_n0 = last_dim - offset
-        num_blocks_write = (merge_n0 * 8 * common_util.get_data_size(
-            src_ub.dtype) + 31) // 32
         ub_offset = region_offset + offset * 8
-        instance.data_move(dst_ub[ub_offset], src_ub[ub_offset], 0, 1,
-                           num_blocks_write, 0, 0)
+        ub2ub(instance, dst_ub[ub_offset], src_ub[ub_offset], merge_n0 * 8)
 
     next_total_region_list = math.ceil(total_region_list / 4)
     if next_total_region_list <= 1:

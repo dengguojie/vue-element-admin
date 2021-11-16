@@ -1539,12 +1539,14 @@ IMPLEMT_COMMON_INFERFUNC(BatchMultiClassNonMaxSuppressionInferShape) {
 
   vector<int64_t> nmsedBoxesShape;
   nmsedBoxesShape.push_back(inputScoreShape[0]);
+  vector<int64_t> nmsedValidNum = {inputScoreShape[0]};
   if (!transposeBox) {
     nmsedBoxesShape.push_back(maxOutNum);
     nmsedBoxesShape.push_back(4);
   } else {
     nmsedBoxesShape.push_back(4);
     nmsedBoxesShape.push_back(maxOutNum);
+    nmsedValidNum.push_back(8);
   }
   TensorDesc tdBoxes = op.GetOutputDesc("nmsed_boxes");
   tdBoxes.SetShape(ge::Shape(nmsedBoxesShape));
@@ -1567,8 +1569,6 @@ IMPLEMT_COMMON_INFERFUNC(BatchMultiClassNonMaxSuppressionInferShape) {
   CHECK(op.UpdateOutputDesc("nmsed_classes", tdClass) != GRAPH_SUCCESS,
         OP_LOGE(op.GetName().c_str(), "UpdateOutputDesc failed."), return GRAPH_FAILED);
 
-  vector<int64_t> nmsedValidNum;
-  nmsedValidNum.push_back(inputScoreShape[0]);
   TensorDesc tdNum = op.GetOutputDesc("nmsed_num");
   tdNum.SetShape(ge::Shape(nmsedValidNum));
   tdNum.SetDataType(DT_INT32);

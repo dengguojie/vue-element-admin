@@ -23,6 +23,7 @@ import te.lang.cce as tbe
 from te.utils.error_manager import error_manager_util
 from te import platform as tbe_platform
 from te import tvm
+from impl.util.platform_adapter import tbe_platform as tbe_platform_adapter
 
 PAD_MIN = 0
 # the dim of most parameters in conv3d is 5
@@ -667,3 +668,8 @@ def check_load3d_w_out_1_support():
     if soc_version in ["Ascend310", "Hi3796CV300CS"]:
         return True
     return False
+
+
+def is_vector_core():
+    aicore_type = tbe_platform_adapter.get_soc_spec(tbe_platform_adapter.AICORE_TYPE)
+    return aicore_type == "VectorCore"

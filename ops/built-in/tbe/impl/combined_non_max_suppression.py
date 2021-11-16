@@ -205,6 +205,11 @@ class CombinedNonMaxSuppression:
         """
         return self.tik_instance
 
+    # 'pylint: disable=unused-argument
+    @staticmethod
+    def get_l1_core_idx(core_idx):
+        return 0
+
     def build_tik_instance(self, kernel_name_value):
         """build_tik_instance
         """
@@ -258,7 +263,7 @@ class CombinedNonMaxSuppression:
         self.output_gm_list = [nmsed_boxes_gm, nmsed_scores_gm, nmsed_classes_gm, nmsed_num_gm]
 
         # init l1 buff for save multi class nms result, size = [classes, self.max_selected_nms_num_in_ub, 8]
-        self.l1_nms_result = self.tik_instance.Tensor("float16", (self.classes, self.max_selected_nms_num_in_ub, 8),
+        self.l1_nms_result = self.tik_instance.Tensor("float16", (1, self.classes, self.max_selected_nms_num_in_ub, 8),
                                                       name="l1_nms_result", scope=tik.scope_cbuf)
 
         if self.is_second_nms:
@@ -271,7 +276,7 @@ class CombinedNonMaxSuppression:
 
         # zero data in l1
         self.l1_nms_result_zero = \
-            self.tik_instance.Tensor("float16", (self.max_selected_nms_num_in_ub, 8),
+            self.tik_instance.Tensor("float16", (1, self.max_selected_nms_num_in_ub, 8),
                                      name="l1_nms_result_zero", scope=tik.scope_cbuf)
         with self.tik_instance.new_stmt_scope():
             ub_nms_result = self.tik_instance.Tensor("float16", (self.max_selected_nms_num_in_ub, 8),
@@ -284,7 +289,7 @@ class CombinedNonMaxSuppression:
         # workspace
         self.workspace_proposal_gm = self.tik_instance.Tensor("float16",
                                                               [self.aicore_num,
-                                                               total_num(self.l1_nms_result.shape) + 128],
+                                                               total_num(self.l1_nms_result.shape[1:]) + 128],
                                                               name="workspace_proposal_gm",
                                                               scope=tik.scope_gm, is_workspace=True)
         # workspace for second nms
@@ -575,7 +580,7 @@ def batch_multi_class_nms_output(tik_instance, core_idx, _batch_idx, nms, clip_f
     -------
     None
     """
-    result_total = total_num(nms.l1_nms_result.shape)
+    result_total = total_num(nms.l1_nms_result.shape[1:])
     class_num = nms.classes
     # get score batch offset
     output_batch_offset = _batch_idx * nms.max_total_size
@@ -590,7 +595,7 @@ def batch_multi_class_nms_output(tik_instance, core_idx, _batch_idx, nms, clip_f
             ub_result_boxes_class = tik_instance.Tensor("float16", [result_total // 8, 8],
                                                         name="ub_result_boxes_class", scope=tik.scope_ubuf)
             l1_buffer = nms.l1_nms_result
-            l1_offset = [0, 0, 0]
+            l1_offset = [nms.get_l1_core_idx(core_idx), 0, 0, 0]
             loop_burst_len = result_total // 16
             tik_instance.data_move(ub_result_boxes, l1_buffer[l1_offset],
                                    0, 1, loop_burst_len, 0, 0)
@@ -666,7 +671,7 @@ def batch_multi_class_nms_output(tik_instance, core_idx, _batch_idx, nms, clip_f
                                                         ub_class_tmp, _trans_repeat, 4)
 
             with tik_instance.for_range(0, copy_loop) as _class_idx:
-                l1_offset = [_class_idx * copy_classes_num, 0, 0]
+                l1_offset = [nms.get_l1_core_idx(core_idx), _class_idx * copy_classes_num, 0, 0]
                 loop_burst_len = copy_classes_num * nms.max_selected_nms_num_in_ub * 8 // 16
                 _do_copy_and_vconcat_class(l1_offset, loop_burst_len)
                 sort_within_ub(tik_instance, ub_result_boxes, copy_classes_num * nms.max_selected_nms_num_in_ub)
@@ -677,7 +682,7 @@ def batch_multi_class_nms_output(tik_instance, core_idx, _batch_idx, nms, clip_f
                                       [ub_out_result_class, ub_result_boxes_class], tmp_output_proposal_num)
 
             if copy_tail != 0:
-                l1_offset = [copy_loop * copy_classes_num, 0, 0]
+                l1_offset = [nms.get_l1_core_idx(core_idx), copy_loop * copy_classes_num, 0, 0]
                 loop_burst_len = copy_tail * nms.max_selected_nms_num_in_ub * 8 // 16
                 _do_copy_and_vconcat_class(l1_offset, loop_burst_len)
                 sort_within_ub(tik_instance, ub_result_boxes, copy_tail * nms.max_selected_nms_num_in_ub)

@@ -23,6 +23,7 @@ from impl import constant_util
 from impl.util import util_common
 from impl.util.platform_adapter import tik as tik_adapter
 from impl.util.platform_adapter import tbe_platform as tbe_platform_adapter
+from impl.util.util_common import is_vector_core
 
 
 # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
@@ -613,6 +614,11 @@ def ceil_div(int1, int2):
     return (int1 + int2 - 1) // int2
 
 
+def is_vector_core():
+    aicore_type = tbe_platform_adapter.get_soc_spec(tbe_platform_adapter.AICORE_TYPE)
+    return aicore_type == "VectorCore"
+
+
 def ub2ub(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, count, tail_overlap=True):
     """
     move data from ub to ub
@@ -631,6 +637,10 @@ def ub2ub(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, count, tail_o
 
     if dst.dtype != src.dtype:
         raise RuntimeError("dst.dtype[{}] != src.dtype[{}].".format(dst.dtype, src.dtype))
+
+    if is_vector_core() and tbe_platform_adapter.api_check_support("tik.vadds", dtype=dst.dtype):
+        tik_func_vadds(tik_instance, dst, src, 0, count)
+        return
 
     dtype_size = common_util.get_data_size(src.dtype)
     block_element = constant_util.BLOCK_SIZE // dtype_size
