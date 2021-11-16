@@ -31,6 +31,7 @@ from impl.util.platform_adapter import error_manager_vector
 
 AVG_KERNEL_SIZE_H_MUL_W = 255 #kernel_h * kernel_w
 AVG_KERNEL_SIZE = 20 # maximum ksieze
+AVG_STRIDE_SIZE = 63 # maximum strides
 
 
 # pylint: disable=locally-disabled,too-many-arguments
@@ -57,6 +58,8 @@ def check_supported(x, filter, bias, y, ksize, strides,
     if data_format == "NHWC":
         ksize_h = ksize[1]
         ksize_w = ksize[2]
+        stride_h = strides[1]
+        stride_w = strides[2]
         outputh = ori_shape[1]
         outputw = ori_shape[2]
         input_h = input_shape[1]
@@ -64,12 +67,17 @@ def check_supported(x, filter, bias, y, ksize, strides,
     else:
         ksize_h = ksize[2]
         ksize_w = ksize[3]
+        stride_h = strides[2]
+        stride_w = strides[3]
         outputh = ori_shape[2]
         outputw = ori_shape[3]
         input_h = input_shape[2]
         input_w = input_shape[3]
     is_support_kernel = (ksize_h * ksize_w <= AVG_KERNEL_SIZE_H_MUL_W) or \
                         (ksize_h <= AVG_KERNEL_SIZE and ksize_w <= AVG_KERNEL_SIZE)
+    if stride_h > AVG_STRIDE_SIZE or stride_w > AVG_STRIDE_SIZE:
+        reason = "input_shape is not supported by schedule when stride > 63."
+        return False, reason
     if not is_support_kernel and outputh != 1 and outputw == 1:
         reason = "the shape is not supported by schedule, ksize:%s ori_shape:%s" %(str(ksize),str(ori_shape))
         return False, reason

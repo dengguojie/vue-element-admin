@@ -167,6 +167,12 @@ def test_check_support(test_arg):
     None,None,{"shape": (1, 24, 1, 256 ), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "output"},
     [1,2,2,1],[1,4,4,1],"VALIED","NCHW")
 
+    check_supported({"shape": (1, 1024, 128, 256), "dtype": "float16", "format": "ND", "ori_shape": (1, 1024, 128, 256),"ori_format": "ND", "param_type": "input"},
+    None,None,{"shape": (1, 1024, 1, 2), "dtype": "float16", "format": "ND", "ori_shape": (1, 1024, 1, 2),"ori_format": "ND", "param_type": "output"},
+    [1,1,90,90],[1,1,90,90],"VALIED","NCHW")
+    check_supported({"shape": (1, 128, 256, 1024), "dtype": "float16", "format": "ND", "ori_shape": (1, 128, 256, 1024),"ori_format": "ND", "param_type": "input"},
+    None,None,{"shape": (1, 1, 2, 1024 ), "dtype": "float16", "format": "ND", "ori_shape": (1, 24, 1, 256),"ori_format": "ND", "param_type": "output"},
+    [1,90,90,1],[1,90,90,1],"VALIED","NHWC")
 
 def test_get_op_support_info(test_arg):
     get_op_support_info({"shape": (1, 16, 24, 24, 16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (1, 24, 24, 256),"ori_format": "NHWC", "param_type": "input"},
