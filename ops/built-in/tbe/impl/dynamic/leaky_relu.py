@@ -25,6 +25,10 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import get_current_build_config
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import is_supported_vlrelu
+from impl.common_util import get_vlrelu
+from impl.common_util import get_attr
 
 
 # 'pylint: disable=unused-argument,invalid-name,too-many-locals
@@ -84,8 +88,17 @@ def leaky_relu_compute(x, y, negative_slope=0, kernel_name="leaky_relu"):
     """
     compute for caffe_relu_layer_cce
     """
+    negative_slope_dtype = "float"
+    dtype = x.dtype
     fusion_params = get_fusion_params(x, y)
-    res = tbe.vlrelu(x, negative_slope)
+    # check whether support vlrelu interface
+    if not is_supported_vlrelu:
+        res, negative_slope = get_vlrelu(x, negative_slope, "negative_slope",
+                                         negative_slope_dtype)
+    else:
+        negative_slope = get_attr(negative_slope, "negative_slope",
+                                  dtype, negative_slope_dtype)
+        res = tbe.vlrelu(x, negative_slope)
     if x.op.attrs:
         if 'format' in x.op.attrs:
             res.op.attrs['format'] = x.op.attrs['format']

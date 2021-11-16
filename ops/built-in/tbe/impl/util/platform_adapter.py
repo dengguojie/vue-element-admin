@@ -277,3 +277,4 @@ tbe_platform = PlatformApi
 tuple_sum = te_tuple_sum
 # a100
 is_vgatherb = tbe_platform.api_check_support("tik.vgatherb")
+is_supported_vlrelu = tbe_platform.api_check_support("tik.vlrelu")

@@ -22,6 +22,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
+from impl.common_util import get_attr
 
 
 # 'pylint: disable=unused-argument,invalid-name,too-many-locals
@@ -54,6 +55,7 @@ def leaky_relu_grad_compute(g, x, y, negative_slope=0,
     shape_list = shape_util.broadcast_shapes(shape_util.shape_to_list(g.shape),
                                   shape_util.shape_to_list(x.shape))
     dtype = g.dtype
+    negative_slope_dtype = "float"
     g = tbe.broadcast(g, shape_list[2])
     x = tbe.broadcast(x, shape_list[2])
 
@@ -77,6 +79,9 @@ def leaky_relu_grad_compute(g, x, y, negative_slope=0,
 
     result_sub = tbe.vadds(result_tmp_right, tvm.const(-1, "float32"))
     result_abs = tbe.vabs(result_sub)
+    #check whether attr is None
+    negative_slope = get_attr(negative_slope, "negative_slope",
+                              dtype, negative_slope_dtype)
     result_tmp_left = tbe.vmuls(result_abs, negative_slope)
 
     result_tmp = tbe.vadd(result_tmp_left, result_tmp_right)

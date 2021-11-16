@@ -2,16 +2,17 @@
 # -*- coding: UTF-8 -*-
 from op_test_frame.ut import OpUT
 
-ut_case = OpUT("LeakyRelu", "impl.dynamic.leaky_relu", "leaky_relu")
+ut_case = OpUT("LeakyReluGrad", "impl.dynamic.leaky_relu_grad", "leaky_relu_grad")
 
 
 case1 = {
     "params": [
         {"shape": (-1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND", "range":[(1, 100)]},
         {"shape": (-1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND", "range":[(1, 100)]},
+        {"shape": (-1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND", "range":[(1, 100)]},
         0
     ],
-    "case_name": "dynamic_leaky_relu_case1",
+    "case_name": "dynamic_leaky_relu_grad_case1",
     "expect": "success",
     "format_expect": [],
     "support_expect": True
@@ -21,9 +22,10 @@ case2 = {
     "params": [
         {"shape": (-1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND", "range":[(1, 100)]},
         {"shape": (-1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND", "range":[(1, 100)]},
+        {"shape": (-1,), "dtype": "float32", "format": "ND", "ori_shape": (1,),"ori_format": "ND", "range":[(1, 100)]},
         None
     ],
-    "case_name": "dynamic_leaky_relu_case2",
+    "case_name": "dynamic_leaky_relu_grad_case2",
     "expect": "success",
     "format_expect": [],
     "support_expect": True

@@ -22,10 +22,11 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
+from impl.common_util import get_attr
 
 
 # 'pylint: disable=too-many-locals,unused-argument
-def muls_compute(input_x, scalar, kernel_name="muls"):
+def muls_compute(input_x, value, kernel_name="muls"):
     """
     calculating data
 
@@ -42,12 +43,17 @@ def muls_compute(input_x, scalar, kernel_name="muls"):
     res: TVM tensor
         the calculation results
     """
-    res = tbe.vmuls(input_x, scalar)
+    input_dtype = input_x.dtype
+    value_dtype_in_ir = "float"
+    #check whether attr is None
+    value = get_attr(value, "value", input_dtype,
+                     value_dtype_in_ir)
+    res = tbe.vmuls(input_x, value)
     return res
 
 
 @register_operator("Muls")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.KERNEL_NAME)
 def muls(input_x, output_y, value, kernel_name="muls"):
     """
@@ -75,12 +81,11 @@ def muls(input_x, output_y, value, kernel_name="muls"):
     para_check.check_dtype(x_dtype, check_list)
     ins = classify([input_x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
-    scalar = tvm.const(value, dtype=input_dtype)
     for (_input_x,) in ins:
         with tbe.compute():
             x_shape = shape_util.variable_shape([_input_x])
             data_input = tvm.placeholder(x_shape[0], name="data_input", dtype=input_dtype)
-            res = muls_compute(data_input, scalar)
+            res = muls_compute(data_input, value)
             tensors.append([data_input, res])
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)

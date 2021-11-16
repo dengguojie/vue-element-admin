@@ -205,3 +205,32 @@ def get_attr(attr_value, attr_name, dtype_compute, ir_dtype):
     else:
         attr_var = tvm.const(attr_value, dtype_compute)
     return attr_var
+
+
+def get_vlrelu(x, attr_value, attr_name, attr_dtype):
+    """
+    get vlrelu
+
+    Parameters
+    ----------
+    x: x tensor
+    attr: value of attr
+    attr_name: name of attr
+    attr_dtype: dtype of attr
+
+    Returns
+    -------
+    res_vlrelu, attr_value
+    """
+    if attr_value is None:
+        dtype = x.dtype
+        scalar = tvm.const(0, dtype)
+        tmp_max_x = tbe.vmaxs(x, scalar)
+        tmp_min_x = tbe.vmins(x, scalar)
+        attr_value = get_attr(attr_value, attr_name, dtype, attr_dtype)
+        tmp_mul_x = tbe.vmuls(tmp_min_x, attr_value)
+        res_vlrelu = tbe.vadd(tmp_max_x, tmp_mul_x)
+    else:
+        res_vlrelu = tbe.vlrelu(x, attr_value)
+    return res_vlrelu, attr_value
+
