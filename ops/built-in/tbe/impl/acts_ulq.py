@@ -75,7 +75,7 @@ def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
     clip_max = te.lang.cce.vadds(offset, tvm.const(step, offset.dtype))
     clip_max = te.lang.cce.vmul(clip_max, scale)
 
-    # clip data = data
+    # clip data equals data
     clamped_x = te.lang.cce.vmax(data, te.lang.cce.broadcast(clip_min, data.shape))
     clamped_x = te.lang.cce.vmin(clamped_x, te.lang.cce.broadcast(clip_max, data.shape))
 

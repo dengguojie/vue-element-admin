@@ -24,6 +24,7 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
+# 'pylint: disable=unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("abs")
 def abs_compute(x, y, kernel_name="abs"):
     """

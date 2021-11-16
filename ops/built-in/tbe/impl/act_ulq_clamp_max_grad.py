@@ -21,12 +21,10 @@ import te.lang.cce
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from impl.util.platform_adapter import para_check
+from impl.constant_util import SHAPE_SIZE_LIMIT
 
 
-SHAPE_SIZE_LIMIT = 2147483648
-
-
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @fusion_manager.register('act_ulq_clamp_max_grad')
 def act_ulq_clamp_max_grad_compute(
     y_grad, clamp_max_mask, x_clamped_loss, output, kernel_name='act_ulq_clamp_max_grad'):

@@ -245,7 +245,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
             y        ori shape = [2] ori_format = "ND"
 
     """
-    # do this scene like:input_x shape=[2,3,4] input_y shape=[1,]
+    # do this scene like: input_x shape is [2,3,4] input_y shape is [1,]
     param_dynamic_in_json = op_sub_select_format(input_x, input_y, output_z, kernel_name)
     if param_dynamic_in_json != 'None':
         return param_dynamic_in_json
@@ -330,7 +330,7 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
 
     format_flag["NC1HWC0"] = format_5hd_flag and format_flag.get("NC1HWC0")
 
-    format_list = [i for i in format_flag if format_flag[i]]
+    format_list = [i for i in format_flag if format_flag.get(i)]
     for dtype in dtype_list:
         dtype_total = dtype_total + [dtype] * len(format_list)
     format_list = format_list * len_format_list

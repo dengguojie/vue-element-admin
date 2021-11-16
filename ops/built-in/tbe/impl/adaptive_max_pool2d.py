@@ -17,12 +17,16 @@ adaptive max pool2d
 """
 import math
 import functools
-from te import tik
 import te.platform as tbe_platform
-from tbe.common.utils import para_check
-from te.utils.op_utils import REQUIRED_INPUT, REQUIRED_OUTPUT, OPTION_OUTPUT, REQUIRED_ATTR_LIST_INT, KERNEL_NAME
+from te import tik
+from te.utils.op_utils import REQUIRED_INPUT
+from te.utils.op_utils import REQUIRED_OUTPUT
+from te.utils.op_utils import OPTION_OUTPUT
+from te.utils.op_utils import REQUIRED_ATTR_LIST_INT
+from te.utils.op_utils import KERNEL_NAME
 from te.utils.op_utils import check_op_params
 from te.utils.error_manager import error_manager_vector
+from tbe.common.utils import para_check
 
 
 # 'pylint: disable=too-few-public-methods,not-use-list-comprehension
@@ -115,7 +119,7 @@ def k_info(input_size, output_size):
     return k_info_h, k_info_w
 
 
-# 'pylint: disable=too-public-methods
+# 'pylint: disable=too-many-public-methods
 class AdaptiveMaxPool2d:
     """
     Applies a 2D adaptive max pooling over an input signal composed of several input planes.
