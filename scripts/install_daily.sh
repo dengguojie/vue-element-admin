@@ -177,19 +177,26 @@ install_Ascend(){
       set -e
     fi
     
-    for pack in atc opp toolkit
+    for pack in compiler opp toolkit runtime
       do 
-        if [ -f ./Ascend-${pack}* ];then
+        if [ -f ./CANN-${pack}* ];then
           if [ ${pack} == "atc" ];then
-            ./Ascend-${pack}* --pylocal --full 
+            ./CANN-${pack}* --pylocal --full 
           else 
-            ./Ascend-${pack}*  --full
+            ./CANN-${pack}*  --full
           fi
         else
           echo "The ${pack} package does not exist, please check "
           exit -1
         fi
       done
+    if [ $UID -eq 0 ];then
+      if [  -d "/usr/local/Ascend" ];then
+        ln -s  /usr/local/Ascend/x86_64-linux/lib64/libruntime.so  /usr/local/Ascend/atc/lib64/libruntime.so
+      fi
+    else
+      ln -s  ~/Ascend/x86_64-linux/lib64/libruntime.so  ~/Ascend/atc/lib64/libruntime.so
+    fi
 }
 if [[ "$install_local" =~ "FALSE" ]];then
   network_test
@@ -214,4 +221,5 @@ if [ $UID -eq 0 ];then
 else
   echo "The Ascend install path is ~/Ascend, the ori is ~/Ascend_$bak_time"
 fi
+
 
