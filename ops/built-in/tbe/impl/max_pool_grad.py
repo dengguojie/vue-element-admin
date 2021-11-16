@@ -1155,7 +1155,8 @@ class MaxpoolGrad:
         -------
         """
         pad_left, pad_right, pad_top, _ = pad
-        self._vector_dup(ori_input_col_ub, 0, ori_input_col_ub.shape, MIN_VALUE_FP16, "float16")
+        if not self.check_load3d_support:
+            self._vector_dup(ori_input_col_ub, 0, ori_input_col_ub.shape, MIN_VALUE_FP16, "float16")
         # load3d
         with self.tik_instance.if_scope(start_h <= pad_top):
             self.actual_pad_top.set_as(pad_top - start_h)

@@ -179,7 +179,8 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
 
     def _img2col(self, aux_l1, big_matrix_ub, l1_begin_pos, rep_times):
         if self.ub_kernel_stg is UbKernelStrategy.WHOLE_KERNEL:
-            self._vector_dup(big_matrix_ub, 0, big_matrix_ub.shape, 0)
+            if not self.check_load3d_support:
+                self._vector_dup(big_matrix_ub, 0, big_matrix_ub.shape, 0)
             with self.inst.for_range(0, self.k_d) as tmp_kd:
                 # we adopt the scheme that repeat_mode = 1
                 with self.inst.for_range(0, self.k_h) as tmp_kh:
