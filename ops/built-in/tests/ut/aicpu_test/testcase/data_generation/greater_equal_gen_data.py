@@ -71,7 +71,7 @@ def gen_random_data_int8():
                 "greater_equal/data/greater_equal_data_input2_1.txt",
                 "greater_equal/data/greater_equal_data_output1_1.txt"]
     np.random.seed(23333)
-    shape_x1 = [6, 12]
+    shape_x1 = [1024, 12]
     shape_x2 = [12]
     a = gen_data_file(data_files[0], shape_x1, np.int8, "randint", np.iinfo(np.int8).min, np.iinfo(np.int8).max) 
     b = gen_data_file(data_files[1], shape_x2, np.int8, "randint", np.iinfo(np.int8).min, np.iinfo(np.int8).max)
@@ -90,8 +90,8 @@ def gen_random_data_int16():
                 "greater_equal/data/greater_equal_data_input2_2.txt",
                 "greater_equal/data/greater_equal_data_output1_2.txt"]
     np.random.seed(23333)
-    shape_x1 = [12, 6]
-    shape_x2 = [12, 6]
+    shape_x1 = [3, 12]
+    shape_x2 = [12]
     a = gen_data_file(data_files[0], shape_x1, np.int16, "randint", np.iinfo(np.int16).min, np.iinfo(np.int16).max) 
     b = gen_data_file(data_files[1], shape_x2, np.int16, "randint", np.iinfo(np.int16).min, np.iinfo(np.int16).max)
     
@@ -127,8 +127,8 @@ def gen_random_data_int64():
                 "greater_equal/data/greater_equal_data_input2_4.txt",
                 "greater_equal/data/greater_equal_data_output1_4.txt"]
     np.random.seed(23333)
-    shape_x1 = [11, 10, 4]
-    shape_x2 = [11, 10, 4]
+    shape_x1 = [3, 12]
+    shape_x2 = [12]
     a = gen_data_file(data_files[0], shape_x1, np.int64, "randint", np.iinfo(np.int64).min, np.iinfo(np.int64).max) 
     b = gen_data_file(data_files[1], shape_x2, np.int64, "randint", np.iinfo(np.int64).min, np.iinfo(np.int64).max)
     
@@ -146,7 +146,7 @@ def gen_random_data_uint8():
                 "greater_equal/data/greater_equal_data_input2_5.txt",
                 "greater_equal/data/greater_equal_data_output1_5.txt"]
     np.random.seed(23333)
-    shape_x1 = [6, 12]
+    shape_x1 = [3, 12]
     shape_x2 = [12]
     a = gen_data_file(data_files[0], shape_x1, np.uint8, "randint", 0, 100)
     b = gen_data_file(data_files[1], shape_x2, np.uint8, "randint", 0, 100)
@@ -166,7 +166,7 @@ def gen_random_data_uint16():
                 "greater_equal/data/greater_equal_data_input2_6.txt",
                 "greater_equal/data/greater_equal_data_output1_6.txt"]
     np.random.seed(23333)
-    shape_x1 = [6, 12]
+    shape_x1 = [3, 12]
     shape_x2 = [12]
     a = gen_data_file(data_files[0], shape_x1, np.uint32, "randint", np.iinfo(np.uint8).max+1, np.iinfo(np.uint8).max+200)
     b = gen_data_file(data_files[1], shape_x2, np.uint32, "randint", np.iinfo(np.uint8).max+1, np.iinfo(np.uint8).max+200)
@@ -183,8 +183,8 @@ def gen_random_data_uint32():
                 "greater_equal/data/greater_equal_data_input2_7.txt",
                 "greater_equal/data/greater_equal_data_output1_7.txt"]
     np.random.seed(23333)
-    shape_x1 = [7, 12, 10]
-    shape_x2 = [12, 10]
+    shape_x1 = [3, 12]
+    shape_x2 = [12]
     a = gen_data_file(data_files[0], shape_x1, np.uint32, "randint", np.iinfo(np.uint16).max+1, np.iinfo(np.uint16).max+200)
     b = gen_data_file(data_files[1], shape_x2, np.uint32, "randint", np.iinfo(np.uint16).max+1, np.iinfo(np.uint16).max+200)
 
@@ -200,8 +200,8 @@ def gen_random_data_uint64():
                 "greater_equal/data/greater_equal_data_input2_8.txt",
                 "greater_equal/data/greater_equal_data_output1_8.txt"]
     np.random.seed(23333)
-    shape_x1 = [12, 10]
-    shape_x2 = [7, 12, 10]
+    shape_x1 = [3, 12]
+    shape_x2 = [12]
     a = gen_data_file(data_files[0], shape_x1, np.uint64, "randint", np.iinfo(np.uint32).max+1, np.iinfo(np.uint32).max+200)
     b = gen_data_file(data_files[1], shape_x2, np.uint64, "randint", np.iinfo(np.uint32).max+1, np.iinfo(np.uint32).max+200)
 
@@ -217,8 +217,8 @@ def gen_random_data_float16():
                 "greater_equal/data/greater_equal_data_input2_9.txt",
                 "greater_equal/data/greater_equal_data_output1_9.txt"]
     np.random.seed(23333)
-    shape_x1 = [15, 12, 30]
-    shape_x2 = [15, 12, 30]
+    shape_x1 = [3, 12]
+    shape_x2 = [12]
     a = gen_data_file(data_files[0], shape_x1, np.float16, "uniform", -100, 100)
     b = gen_data_file(data_files[1], shape_x2, np.float16, "uniform", -100, 100)
 
@@ -234,8 +234,8 @@ def gen_random_data_float():
                 "greater_equal/data/greater_equal_data_input2_10.txt",
                 "greater_equal/data/greater_equal_data_output1_10.txt"]
     np.random.seed(66666)
-    shape_x1 = [15, 12, 30]
-    shape_x2 = [12, 30]
+    shape_x1 = [3, 12]
+    shape_x2 = [12]
     a = gen_data_file(data_files[0], shape_x1, np.float32, "uniform", -100, 100)
     b = gen_data_file(data_files[1], shape_x2, np.float32, "uniform", -100, 100)
 
@@ -251,8 +251,8 @@ def gen_random_data_double():
                 "greater_equal/data/greater_equal_data_input2_11.txt",
                 "greater_equal/data/greater_equal_data_output1_11.txt"]
     np.random.seed(55555)
-    shape_x1 = [7, 12, 30]
-    shape_x2 = [30]
+    shape_x1 = [3, 12]
+    shape_x2 = [12]
     a = gen_data_file(data_files[0], shape_x1, np.float64, "uniform", -100, 100)
     b = gen_data_file(data_files[1], shape_x2, np.float64, "uniform", -100, 100)
 
@@ -269,7 +269,7 @@ def gen_random_data_x_one_elem():
                 "greater_equal/data/greater_equal_data_output1_x_one_elem.txt"]
     np.random.seed(666)
     shape_x1 = [1]
-    shape_x2 = [1024, 1024]
+    shape_x2 = [8, 1024]
     a = gen_data_file(data_files[0], shape_x1, np.int32, "uniform", -10, 10)
     b = gen_data_file(data_files[1], shape_x2, np.int32, "uniform", -10, 10)
 
@@ -285,7 +285,7 @@ def gen_random_data_y_one_elem():
                 "greater_equal/data/greater_equal_data_input2_y_one_elem.txt",
                 "greater_equal/data/greater_equal_data_output1_y_one_elem.txt"]
     np.random.seed(666)
-    shape_x1 = [1024, 1024]
+    shape_x1 = [12, 12]
     shape_x2 = [1]
     a = gen_data_file(data_files[0], shape_x1, np.int32, "uniform", -10, 10)
     b = gen_data_file(data_files[1], shape_x2, np.int32, "uniform", -10, 10)

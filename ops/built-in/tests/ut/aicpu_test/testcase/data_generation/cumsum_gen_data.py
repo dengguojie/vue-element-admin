@@ -94,10 +94,7 @@ def config(execute_type):
 def gen_random_data_int8_1():
     data_files=["cumsum/data/cumsum_data_input_int8.txt",
                 "cumsum/data/cumsum_data_axis_int32_int8.txt",
-                "cumsum/data/cumsum_data_output_int8_EF_RF.txt",
-                "cumsum/data/cumsum_data_output_int8_ET_RF.txt",
-                "cumsum/data/cumsum_data_output_int8_EF_RT.txt",
-                "cumsum/data/cumsum_data_output_int8_ET_RT.txt"]
+                "cumsum/data/cumsum_data_output_int8_EF_RF.txt"]
     np.random.seed(3457)
     shape_input_data = [3,4,5]
     a = gen_data_file(data_files[0],shape_input_data,np.int8,"randint",-10,10)
@@ -108,26 +105,11 @@ def gen_random_data_int8_1():
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={input_data:a, axis_data:b})
     write_file_txt(data_files[2],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, True, False)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[3],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, False, True)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[4],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, True, True)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[5],data,fmt="%s")
 
 def gen_random_data_int16_1():
     data_files=["cumsum/data/cumsum_data_input_int16.txt",
                 "cumsum/data/cumsum_data_axis_int32_int16.txt",
-                "cumsum/data/cumsum_data_output_int16_EF_RF.txt",
-                "cumsum/data/cumsum_data_output_int16_ET_RF.txt",
-                "cumsum/data/cumsum_data_output_int16_EF_RT.txt",
-                "cumsum/data/cumsum_data_output_int16_ET_RT.txt"]
+                "cumsum/data/cumsum_data_output_int16_EF_RF.txt"]
     np.random.seed(3457)
     shape_input_data = [3,4,5]
     a = gen_data_file(data_files[0],shape_input_data,np.int16,"randint",-10,10)
@@ -138,26 +120,11 @@ def gen_random_data_int16_1():
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={input_data:a, axis_data:b})
     write_file_txt(data_files[2],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, True, False)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[3],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, False, True)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[4],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, True, True)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[5],data,fmt="%s")
 
 def gen_random_data_int32_1():
     data_files=["cumsum/data/cumsum_data_input_int32.txt",
                 "cumsum/data/cumsum_data_axis_int32_int32.txt",
-                "cumsum/data/cumsum_data_output_int32_EF_RF.txt",
-                "cumsum/data/cumsum_data_output_int32_ET_RF.txt",
-                "cumsum/data/cumsum_data_output_int32_EF_RT.txt",
-                "cumsum/data/cumsum_data_output_int32_ET_RT.txt"]
+                "cumsum/data/cumsum_data_output_int32_EF_RF.txt"]
     np.random.seed(3457)
     shape_input_data = [3,4,5]
     a = gen_data_file(data_files[0],shape_input_data,np.int32,"randint",-100,100)
@@ -168,27 +135,11 @@ def gen_random_data_int32_1():
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={input_data:a, axis_data:b})
     write_file_txt(data_files[2],data,fmt="%s")
-    # read_data = read_file_txt_to_boll(data_files[2])
-    re = tf.cumsum(input_data, axis_data, True, False)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[3],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, False, True)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[4],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, True, True)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[5],data,fmt="%s")
 
 def gen_random_data_int64_1():
     data_files=["cumsum/data/cumsum_data_input_int64.txt",
                 "cumsum/data/cumsum_data_axis_int32_int64.txt",
-                "cumsum/data/cumsum_data_output_int64_EF_RF.txt",
-                "cumsum/data/cumsum_data_output_int64_ET_RF.txt",
-                "cumsum/data/cumsum_data_output_int64_EF_RT.txt",
-                "cumsum/data/cumsum_data_output_int64_ET_RT.txt"]
+                "cumsum/data/cumsum_data_output_int64_EF_RF.txt"]
     np.random.seed(3457)
     shape_input_data = [3,4,5]
     a = gen_data_file(data_files[0],shape_input_data,np.int64,"randint",-100,100)
@@ -199,26 +150,11 @@ def gen_random_data_int64_1():
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={input_data:a, axis_data:b})
     write_file_txt(data_files[2],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, True, False)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[3],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, False, True)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[4],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, True, True)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[5],data,fmt="%s")
 
 def gen_random_data_uint8_1():
     data_files=["cumsum/data/cumsum_data_input_uint8.txt",
                 "cumsum/data/cumsum_data_axis_int32_uint8.txt",
-                "cumsum/data/cumsum_data_output_uint8_EF_RF.txt",
-                "cumsum/data/cumsum_data_output_uint8_ET_RF.txt",
-                "cumsum/data/cumsum_data_output_uint8_EF_RT.txt",
-                "cumsum/data/cumsum_data_output_uint8_ET_RT.txt"]
+                "cumsum/data/cumsum_data_output_uint8_EF_RF.txt"]
     np.random.seed(3457)
     shape_input_data = [3,4,5]
     a = gen_data_file(data_files[0],shape_input_data,np.uint8,"randint",-10,10)
@@ -228,27 +164,12 @@ def gen_random_data_uint8_1():
     re = tf.cumsum(input_data, axis_data, False, False)
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[2],data,fmt="%s") 
-    re = tf.cumsum(input_data, axis_data, True, False)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[3],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, False, True)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[4],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, True, True)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[5],data,fmt="%s")
+    write_file_txt(data_files[2],data,fmt="%s")
 
 def gen_random_data_uint16_1():
     data_files=["cumsum/data/cumsum_data_input_uint16.txt",
                 "cumsum/data/cumsum_data_axis_int32_uint16.txt",
-                "cumsum/data/cumsum_data_output_uint16_EF_RF.txt",
-                "cumsum/data/cumsum_data_output_uint16_ET_RF.txt",
-                "cumsum/data/cumsum_data_output_uint16_EF_RT.txt",
-                "cumsum/data/cumsum_data_output_uint16_ET_RT.txt"]
+                "cumsum/data/cumsum_data_output_uint16_EF_RF.txt"]
     np.random.seed(3457)
     shape_input_data = [3,4,5]
     a = gen_data_file(data_files[0],shape_input_data,np.uint16,"randint",-10,10)
@@ -259,18 +180,6 @@ def gen_random_data_uint16_1():
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={input_data:a, axis_data:b})
     write_file_txt(data_files[2],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, True, False)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[3],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, False, True)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[4],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, True, True)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[5],data,fmt="%s")
 
 def gen_random_data_float16_1():
     data_files=["cumsum/data/cumsum_data_input_float16.txt",
@@ -305,10 +214,7 @@ def gen_random_data_float16_1():
 def gen_random_data_float32_1():
     data_files=["cumsum/data/cumsum_data_input_float32.txt",
                 "cumsum/data/cumsum_data_axis_int32_float32.txt",
-                "cumsum/data/cumsum_data_output_float32_EF_RF.txt",
-                "cumsum/data/cumsum_data_output_float32_ET_RF.txt",
-                "cumsum/data/cumsum_data_output_float32_EF_RT.txt",
-                "cumsum/data/cumsum_data_output_float32_ET_RT.txt"]
+                "cumsum/data/cumsum_data_output_float32_EF_RF.txt"]
     np.random.seed(3457)
     shape_input_data = [3,4,5]
     a = gen_data_file(data_files[0],shape_input_data,np.float32,"uniform",-100,100)
@@ -319,26 +225,11 @@ def gen_random_data_float32_1():
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={input_data:a, axis_data:b})
     write_file_txt(data_files[2],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, True, False)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[3],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, False, True)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[4],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, True, True)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[5], data, fmt="%s")
 
 def gen_random_data_float64_1():
     data_files=["cumsum/data/cumsum_data_input_float64.txt",
                 "cumsum/data/cumsum_data_axis_int32_float64.txt",
-                "cumsum/data/cumsum_data_output_float64_EF_RF.txt",
-                "cumsum/data/cumsum_data_output_float64_ET_RF.txt",
-                "cumsum/data/cumsum_data_output_float64_EF_RT.txt",
-                "cumsum/data/cumsum_data_output_float64_ET_RT.txt"]
+                "cumsum/data/cumsum_data_output_float64_EF_RF.txt"]
     np.random.seed(3457)
     shape_input_data = [3,4,5]
     a = gen_data_file(data_files[0],shape_input_data,np.float64,"uniform",-100,100)
@@ -349,26 +240,11 @@ def gen_random_data_float64_1():
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={input_data:a, axis_data:b})
     write_file_txt(data_files[2],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, True, False)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[3],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, False, True)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[4],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, True, True)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[5], data, fmt="%s")
 
 def gen_random_data_complex64_1():
     data_files=["cumsum/data/cumsum_data_input_complex64.txt",
                 "cumsum/data/cumsum_data_axis_int32_complex64.txt",
-                "cumsum/data/cumsum_data_output_complex64_EF_RF.txt",
-                "cumsum/data/cumsum_data_output_complex64_ET_RF.txt",
-                "cumsum/data/cumsum_data_output_complex64_EF_RT.txt",
-                "cumsum/data/cumsum_data_output_complex64_ET_RT.txt"]
+                "cumsum/data/cumsum_data_output_complex64_EF_RF.txt"]
     np.random.seed(3457)
     shape_input_data = [3,4,5]
     a = gen_data_file(data_files[0],shape_input_data,np.complex64,"complex",0,10)
@@ -379,25 +255,11 @@ def gen_random_data_complex64_1():
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={input_data:a, axis_data:b})
     write_file_txt(data_files[2],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, True, False)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[3],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, False, True)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[4],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, True, True)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[5], data, fmt="%s")
 
 def gen_random_data_complex128_1():
     data_files=["cumsum/data/cumsum_data_input_complex128.txt",
                 "cumsum/data/cumsum_data_axis_int32_complex128.txt",
                 "cumsum/data/cumsum_data_output_complex128_EF_RF.txt",
-                "cumsum/data/cumsum_data_output_complex128_ET_RF.txt",
-                "cumsum/data/cumsum_data_output_complex128_EF_RT.txt",
                 "cumsum/data/cumsum_data_output_complex128_ET_RT.txt"]
     np.random.seed(3457)
     shape_input_data = [3,4,5]
@@ -409,26 +271,17 @@ def gen_random_data_complex128_1():
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={input_data:a, axis_data:b})
     write_file_txt(data_files[2],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, True, False)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[3],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, False, True)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[4],data,fmt="%s")
     re = tf.cumsum(input_data, axis_data, True, True)
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[5], data, fmt="%s")
+    write_file_txt(data_files[3],data,fmt="%s")
 
 def gen_random_data_double_big_1():
     data_files=["cumsum/data/cumsum_data_input_double.txt",
                 "cumsum/data/cumsum_data_axis_int32_double.txt",
-                "cumsum/data/cumsum_data_output_double_EF_RF.txt",
-                "cumsum/data/cumsum_data_output_double_ET_RT.txt"]
+                "cumsum/data/cumsum_data_output_double_EF_RF.txt"]
     np.random.seed(3457)
-    shape_input_data = [1024,4,1024]
+    shape_input_data = [17,4,1024]
     a = gen_data_file(data_files[0],shape_input_data,np.float64,"uniform",-100,100)
     b = gen_data_file2(data_files[1],np.int32,"randint",-3,2)
     input_data = tf.compat.v1.placeholder(tf.float64,shape=shape_input_data)
@@ -437,10 +290,6 @@ def gen_random_data_double_big_1():
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={input_data:a, axis_data:b})
     write_file_txt(data_files[2],data,fmt="%s")
-    re = tf.cumsum(input_data, axis_data, True, True)
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={input_data:a, axis_data:b})
-    write_file_txt(data_files[3],data,fmt="%s")
 
 def run():
     gen_random_data_int8_1()

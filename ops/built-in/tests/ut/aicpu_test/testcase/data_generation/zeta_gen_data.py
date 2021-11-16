@@ -129,5 +129,5 @@ def gen_random_data(nptype, shape, rand_type, low, high):
 
 
 def run():
-    gen_random_data(np.float32, [12, 130, 3], "uniform", -100, 100)
-    gen_random_data(np.float64, [12, 130, 3], "uniform", -100, 100)
+    gen_random_data(np.float32, [12, 12, 3], "uniform", -100, 100)
+    gen_random_data(np.float64, [12, 12, 3], "uniform", -100, 100)

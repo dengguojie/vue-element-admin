@@ -209,39 +209,7 @@ TEST_F(TEST_CUMSUM_UT, DATA_TYPE_FLOAT_EF_RF) {
   RunCumsumKernel<float, int32_t, float>(files, data_types, shapes, exclusive,
                                          reverse);
 }
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_FLOAT_ET_RF) {
-  vector<DataType> data_types = {DT_FLOAT, DT_INT32, DT_FLOAT};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_float32.txt",
-                       "cumsum/data/cumsum_data_axis_int32_float32.txt",
-                       "cumsum/data/cumsum_data_output_float32_ET_RF.txt"};
-  bool exclusive = true;
-  bool reverse = false;
-  RunCumsumKernel<float, int32_t, float>(files, data_types, shapes, exclusive,
-                                         reverse);
-}
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_FLOAT_EF_RT) {
-  vector<DataType> data_types = {DT_FLOAT, DT_INT32, DT_FLOAT};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_float32.txt",
-                       "cumsum/data/cumsum_data_axis_int32_float32.txt",
-                       "cumsum/data/cumsum_data_output_float32_EF_RT.txt"};
-  bool exclusive = false;
-  bool reverse = true;
-  RunCumsumKernel<float, int32_t, float>(files, data_types, shapes, exclusive,
-                                         reverse);
-}
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_FLOAT_ET_RT) {
-  vector<DataType> data_types = {DT_FLOAT, DT_INT32, DT_FLOAT};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_float32.txt",
-                       "cumsum/data/cumsum_data_axis_int32_float32.txt",
-                       "cumsum/data/cumsum_data_output_float32_ET_RT.txt"};
-  bool exclusive = true;
-  bool reverse = true;
-  RunCumsumKernel<float, int32_t, float>(files, data_types, shapes, exclusive,
-                                         reverse);
-}
+
 TEST_F(TEST_CUMSUM_UT, DATA_TYPE_DOUBLE_EF_RF) {
   vector<DataType> data_types = {DT_DOUBLE, DT_INT32, DT_DOUBLE};
   vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
@@ -253,39 +221,7 @@ TEST_F(TEST_CUMSUM_UT, DATA_TYPE_DOUBLE_EF_RF) {
   RunCumsumKernel<double, int32_t, double>(files, data_types, shapes, exclusive,
                                            reverse);
 }
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_DOUBLE_ET_RF) {
-  vector<DataType> data_types = {DT_DOUBLE, DT_INT32, DT_DOUBLE};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_float64.txt",
-                       "cumsum/data/cumsum_data_axis_int32_float64.txt",
-                       "cumsum/data/cumsum_data_output_float64_ET_RF.txt"};
-  bool exclusive = true;
-  bool reverse = false;
-  RunCumsumKernel<double, int32_t, double>(files, data_types, shapes, exclusive,
-                                           reverse);
-}
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_DOUBLE_EF_RT) {
-  vector<DataType> data_types = {DT_DOUBLE, DT_INT32, DT_DOUBLE};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_float64.txt",
-                       "cumsum/data/cumsum_data_axis_int32_float64.txt",
-                       "cumsum/data/cumsum_data_output_float64_EF_RT.txt"};
-  bool exclusive = false;
-  bool reverse = true;
-  RunCumsumKernel<double, int32_t, double>(files, data_types, shapes, exclusive,
-                                           reverse);
-}
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_DOUBLE_ET_RT) {
-  vector<DataType> data_types = {DT_DOUBLE, DT_INT32, DT_DOUBLE};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_float64.txt",
-                       "cumsum/data/cumsum_data_axis_int32_float64.txt",
-                       "cumsum/data/cumsum_data_output_float64_ET_RT.txt"};
-  bool exclusive = true;
-  bool reverse = true;
-  RunCumsumKernel<double, int32_t, double>(files, data_types, shapes, exclusive,
-                                           reverse);
-}
+
 TEST_F(TEST_CUMSUM_UT, DATA_TYPE_INT8_EF_RF) {
   vector<DataType> data_types = {DT_INT8, DT_INT32, DT_INT8};
   vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
@@ -297,39 +233,7 @@ TEST_F(TEST_CUMSUM_UT, DATA_TYPE_INT8_EF_RF) {
   RunCumsumKernel<int8_t, int32_t, int8_t>(files, data_types, shapes, exclusive,
                                            reverse);
 }
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_INT8_ET_RF) {
-  vector<DataType> data_types = {DT_INT8, DT_INT32, DT_INT8};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_int8.txt",
-                       "cumsum/data/cumsum_data_axis_int32_int8.txt",
-                       "cumsum/data/cumsum_data_output_int8_ET_RF.txt"};
-  bool exclusive = true;
-  bool reverse = false;
-  RunCumsumKernel<int8_t, int32_t, int8_t>(files, data_types, shapes, exclusive,
-                                           reverse);
-}
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_INT8_EF_RT) {
-  vector<DataType> data_types = {DT_INT8, DT_INT32, DT_INT8};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_int8.txt",
-                       "cumsum/data/cumsum_data_axis_int32_int8.txt",
-                       "cumsum/data/cumsum_data_output_int8_EF_RT.txt"};
-  bool exclusive = false;
-  bool reverse = true;
-  RunCumsumKernel<int8_t, int32_t, int8_t>(files, data_types, shapes, exclusive,
-                                           reverse);
-}
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_INT8_ET_RT) {
-  vector<DataType> data_types = {DT_INT8, DT_INT32, DT_INT8};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_int8.txt",
-                       "cumsum/data/cumsum_data_axis_int32_int8.txt",
-                       "cumsum/data/cumsum_data_output_int8_ET_RT.txt"};
-  bool exclusive = true;
-  bool reverse = true;
-  RunCumsumKernel<int8_t, int32_t, int8_t>(files, data_types, shapes, exclusive,
-                                           reverse);
-}
+
 TEST_F(TEST_CUMSUM_UT, DATA_TYPE_INT16_EF_RF) {
   vector<DataType> data_types = {DT_INT16, DT_INT32, DT_INT16};
   vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
@@ -341,39 +245,7 @@ TEST_F(TEST_CUMSUM_UT, DATA_TYPE_INT16_EF_RF) {
   RunCumsumKernel<int16_t, int32_t, int16_t>(files, data_types, shapes,
                                              exclusive, reverse);
 }
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_INT16_ET_RF) {
-  vector<DataType> data_types = {DT_INT16, DT_INT32, DT_INT16};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_int16.txt",
-                       "cumsum/data/cumsum_data_axis_int32_int16.txt",
-                       "cumsum/data/cumsum_data_output_int16_ET_RF.txt"};
-  bool exclusive = true;
-  bool reverse = false;
-  RunCumsumKernel<int16_t, int32_t, int16_t>(files, data_types, shapes,
-                                             exclusive, reverse);
-}
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_INT16_EF_RT) {
-  vector<DataType> data_types = {DT_INT16, DT_INT32, DT_INT16};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_int16.txt",
-                       "cumsum/data/cumsum_data_axis_int32_int16.txt",
-                       "cumsum/data/cumsum_data_output_int16_EF_RT.txt"};
-  bool exclusive = false;
-  bool reverse = true;
-  RunCumsumKernel<int16_t, int32_t, int16_t>(files, data_types, shapes,
-                                             exclusive, reverse);
-}
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_INT16_ET_RT) {
-  vector<DataType> data_types = {DT_INT16, DT_INT32, DT_INT16};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_int16.txt",
-                       "cumsum/data/cumsum_data_axis_int32_int16.txt",
-                       "cumsum/data/cumsum_data_output_int16_ET_RT.txt"};
-  bool exclusive = true;
-  bool reverse = true;
-  RunCumsumKernel<int16_t, int32_t, int16_t>(files, data_types, shapes,
-                                             exclusive, reverse);
-}
+
 TEST_F(TEST_CUMSUM_UT, DATA_TYPE_INT32_EF_RF) {
   vector<DataType> data_types = {DT_INT32, DT_INT32, DT_INT32};
   vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
@@ -385,39 +257,7 @@ TEST_F(TEST_CUMSUM_UT, DATA_TYPE_INT32_EF_RF) {
   RunCumsumKernel<int32_t, int32_t, int32_t>(files, data_types, shapes,
                                              exclusive, reverse);
 }
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_INT32_ET_RF) {
-  vector<DataType> data_types = {DT_INT32, DT_INT32, DT_INT32};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_int32.txt",
-                       "cumsum/data/cumsum_data_axis_int32_int32.txt",
-                       "cumsum/data/cumsum_data_output_int32_ET_RF.txt"};
-  bool exclusive = true;
-  bool reverse = false;
-  RunCumsumKernel<int32_t, int32_t, int32_t>(files, data_types, shapes,
-                                             exclusive, reverse);
-}
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_INT32_EF_RT) {
-  vector<DataType> data_types = {DT_INT32, DT_INT32, DT_INT32};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_int32.txt",
-                       "cumsum/data/cumsum_data_axis_int32_int32.txt",
-                       "cumsum/data/cumsum_data_output_int32_EF_RT.txt"};
-  bool exclusive = false;
-  bool reverse = true;
-  RunCumsumKernel<int32_t, int32_t, int32_t>(files, data_types, shapes,
-                                             exclusive, reverse);
-}
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_INT32_ET_RT) {
-  vector<DataType> data_types = {DT_INT32, DT_INT32, DT_INT32};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_int32.txt",
-                       "cumsum/data/cumsum_data_axis_int32_int32.txt",
-                       "cumsum/data/cumsum_data_output_int32_ET_RT.txt"};
-  bool exclusive = true;
-  bool reverse = true;
-  RunCumsumKernel<int32_t, int32_t, int32_t>(files, data_types, shapes,
-                                             exclusive, reverse);
-}
+
 TEST_F(TEST_CUMSUM_UT, DATA_TYPE_INT64_EF_RF) {
   vector<DataType> data_types = {DT_INT64, DT_INT32, DT_INT64};
   vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
@@ -429,39 +269,7 @@ TEST_F(TEST_CUMSUM_UT, DATA_TYPE_INT64_EF_RF) {
   RunCumsumKernel<int64_t, int32_t, int64_t>(files, data_types, shapes,
                                              exclusive, reverse);
 }
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_INT64_ET_RF) {
-  vector<DataType> data_types = {DT_INT64, DT_INT32, DT_INT64};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_int64.txt",
-                       "cumsum/data/cumsum_data_axis_int32_int64.txt",
-                       "cumsum/data/cumsum_data_output_int64_ET_RF.txt"};
-  bool exclusive = true;
-  bool reverse = false;
-  RunCumsumKernel<int64_t, int32_t, int64_t>(files, data_types, shapes,
-                                             exclusive, reverse);
-}
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_INT64_EF_RT) {
-  vector<DataType> data_types = {DT_INT64, DT_INT32, DT_INT64};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_int64.txt",
-                       "cumsum/data/cumsum_data_axis_int32_int64.txt",
-                       "cumsum/data/cumsum_data_output_int64_EF_RT.txt"};
-  bool exclusive = false;
-  bool reverse = true;
-  RunCumsumKernel<int64_t, int32_t, int64_t>(files, data_types, shapes,
-                                             exclusive, reverse);
-}
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_INT64_ET_RT) {
-  vector<DataType> data_types = {DT_INT64, DT_INT32, DT_INT64};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_int64.txt",
-                       "cumsum/data/cumsum_data_axis_int32_int64.txt",
-                       "cumsum/data/cumsum_data_output_int64_ET_RT.txt"};
-  bool exclusive = true;
-  bool reverse = true;
-  RunCumsumKernel<int64_t, int32_t, int64_t>(files, data_types, shapes,
-                                             exclusive, reverse);
-}
+
 TEST_F(TEST_CUMSUM_UT, DATA_TYPE_UINT8_EF_RF) {
   vector<DataType> data_types = {DT_UINT8, DT_INT32, DT_UINT8};
   vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
@@ -473,39 +281,7 @@ TEST_F(TEST_CUMSUM_UT, DATA_TYPE_UINT8_EF_RF) {
   RunCumsumKernel<uint8_t, int32_t, uint8_t>(files, data_types, shapes,
                                              exclusive, reverse);
 }
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_UINT8_ET_RF) {
-  vector<DataType> data_types = {DT_UINT8, DT_INT32, DT_UINT8};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_uint8.txt",
-                       "cumsum/data/cumsum_data_axis_int32_uint8.txt",
-                       "cumsum/data/cumsum_data_output_uint8_ET_RF.txt"};
-  bool exclusive = true;
-  bool reverse = false;
-  RunCumsumKernel<uint8_t, int32_t, uint8_t>(files, data_types, shapes,
-                                             exclusive, reverse);
-}
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_UINT8_EF_RT) {
-  vector<DataType> data_types = {DT_UINT8, DT_INT32, DT_UINT8};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_uint8.txt",
-                       "cumsum/data/cumsum_data_axis_int32_uint8.txt",
-                       "cumsum/data/cumsum_data_output_uint8_EF_RT.txt"};
-  bool exclusive = false;
-  bool reverse = true;
-  RunCumsumKernel<uint8_t, int32_t, uint8_t>(files, data_types, shapes,
-                                             exclusive, reverse);
-}
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_UINT8_ET_RT) {
-  vector<DataType> data_types = {DT_UINT8, DT_INT32, DT_UINT8};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_uint8.txt",
-                       "cumsum/data/cumsum_data_axis_int32_uint8.txt",
-                       "cumsum/data/cumsum_data_output_uint8_ET_RT.txt"};
-  bool exclusive = true;
-  bool reverse = true;
-  RunCumsumKernel<uint8_t, int32_t, uint8_t>(files, data_types, shapes,
-                                             exclusive, reverse);
-}
+
 TEST_F(TEST_CUMSUM_UT, DATA_TYPE_UINT16_EF_RF) {
   vector<DataType> data_types = {DT_UINT16, DT_INT32, DT_UINT16};
   vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
@@ -517,39 +293,7 @@ TEST_F(TEST_CUMSUM_UT, DATA_TYPE_UINT16_EF_RF) {
   RunCumsumKernel<uint16_t, int32_t, uint16_t>(files, data_types, shapes,
                                                exclusive, reverse);
 }
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_UINT16_ET_RF) {
-  vector<DataType> data_types = {DT_UINT16, DT_INT32, DT_UINT16};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_uint16.txt",
-                       "cumsum/data/cumsum_data_axis_int32_uint16.txt",
-                       "cumsum/data/cumsum_data_output_uint16_ET_RF.txt"};
-  bool exclusive = true;
-  bool reverse = false;
-  RunCumsumKernel<uint16_t, int32_t, uint16_t>(files, data_types, shapes,
-                                               exclusive, reverse);
-}
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_UINT16_EF_RT) {
-  vector<DataType> data_types = {DT_UINT16, DT_INT32, DT_UINT16};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_uint16.txt",
-                       "cumsum/data/cumsum_data_axis_int32_uint16.txt",
-                       "cumsum/data/cumsum_data_output_uint16_EF_RT.txt"};
-  bool exclusive = false;
-  bool reverse = true;
-  RunCumsumKernel<uint16_t, int32_t, uint16_t>(files, data_types, shapes,
-                                               exclusive, reverse);
-}
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_UINT16_ET_RT) {
-  vector<DataType> data_types = {DT_UINT16, DT_INT32, DT_UINT16};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_uint16.txt",
-                       "cumsum/data/cumsum_data_axis_int32_uint16.txt",
-                       "cumsum/data/cumsum_data_output_uint16_ET_RT.txt"};
-  bool exclusive = true;
-  bool reverse = true;
-  RunCumsumKernel<uint16_t, int32_t, uint16_t>(files, data_types, shapes,
-                                               exclusive, reverse);
-}
+
 TEST_F(TEST_CUMSUM_UT, DATA_TYPE_UINT32_EF_RF) {
   vector<DataType> data_types = {DT_UINT32, DT_INT32, DT_UINT32};
   vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
@@ -558,6 +302,7 @@ TEST_F(TEST_CUMSUM_UT, DATA_TYPE_UINT32_EF_RF) {
   RunCumsumKernel2<uint32_t, int32_t, uint32_t>(data_types, shapes, exclusive,
                                                 reverse);
 }
+/*
 TEST_F(TEST_CUMSUM_UT, DATA_TYPE_UINT32_ET_RF) {
   vector<DataType> data_types = {DT_UINT32, DT_INT32, DT_UINT32};
   vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
@@ -582,6 +327,7 @@ TEST_F(TEST_CUMSUM_UT, DATA_TYPE_UINT32_ET_RT) {
   RunCumsumKernel2<uint32_t, int32_t, uint32_t>(data_types, shapes, exclusive,
                                                 reverse);
 }
+*/
 TEST_F(TEST_CUMSUM_UT, DATA_TYPE_UINT64_EF_RF) {
   vector<DataType> data_types = {DT_UINT64, DT_INT32, DT_UINT64};
   vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
@@ -590,33 +336,7 @@ TEST_F(TEST_CUMSUM_UT, DATA_TYPE_UINT64_EF_RF) {
   RunCumsumKernel2<uint64_t, int32_t, uint64_t>(data_types, shapes, exclusive,
                                                 reverse);
 }
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_UINT64_ET_RF) {
-  vector<DataType> data_types = {DT_UINT64, DT_INT32, DT_UINT64};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  bool exclusive = true;
-  bool reverse = false;
-  RunCumsumKernel2<uint64_t, int32_t, uint64_t>(data_types, shapes, exclusive,
-                                                reverse);
-}
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_UINT64_EF_RT) {
-  vector<DataType> data_types = {DT_UINT64, DT_INT32, DT_UINT64};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  bool exclusive = false;
-  bool reverse = true;
-  RunCumsumKernel2<uint64_t, int32_t, uint64_t>(data_types, shapes, exclusive,
-                                                reverse);
-}
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_UINT64_ET_RT) {
-  vector<DataType> data_types = {DT_UINT64, DT_INT32, DT_UINT64};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  bool exclusive = true;
-  bool reverse = true;
-  RunCumsumKernel2<uint64_t, int32_t, uint64_t>(data_types, shapes, exclusive,
-                                                reverse);
-}
-// TEST_F(TEST_CUMSUM_UT,DATA_TYPE_QINT8_SUCC){}
-// TEST_F(TEST_CUMSUM_UT,DATA_TYPE_QINT32_SUCC){}
-// TEST_F(TEST_CUMSUM_UT,DATA_TYPE_QUINT8_SUCC){}
+
 TEST_F(TEST_CUMSUM_UT, DATA_TYPE_COMPLEX64_EF_RF) {
   vector<DataType> data_types = {DT_COMPLEX64, DT_INT32, DT_COMPLEX64};
   vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
@@ -628,39 +348,7 @@ TEST_F(TEST_CUMSUM_UT, DATA_TYPE_COMPLEX64_EF_RF) {
   RunCumsumKernel<complex<float>, int32_t, complex<float>>(
       files, data_types, shapes, exclusive, reverse);
 }
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_COMPLEX64_ET_RF) {
-  vector<DataType> data_types = {DT_COMPLEX64, DT_INT32, DT_COMPLEX64};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_complex64.txt",
-                       "cumsum/data/cumsum_data_axis_int32_complex64.txt",
-                       "cumsum/data/cumsum_data_output_complex64_ET_RF.txt"};
-  bool exclusive = true;
-  bool reverse = false;
-  RunCumsumKernel<complex<float>, int32_t, complex<float>>(
-      files, data_types, shapes, exclusive, reverse);
-}
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_COMPLEX64_EF_RT) {
-  vector<DataType> data_types = {DT_COMPLEX64, DT_INT32, DT_COMPLEX64};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_complex64.txt",
-                       "cumsum/data/cumsum_data_axis_int32_complex64.txt",
-                       "cumsum/data/cumsum_data_output_complex64_EF_RT.txt"};
-  bool exclusive = false;
-  bool reverse = true;
-  RunCumsumKernel<complex<float>, int32_t, complex<float>>(
-      files, data_types, shapes, exclusive, reverse);
-}
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_COMPLEX64_ET_RT) {
-  vector<DataType> data_types = {DT_COMPLEX64, DT_INT32, DT_COMPLEX64};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_complex64.txt",
-                       "cumsum/data/cumsum_data_axis_int32_complex64.txt",
-                       "cumsum/data/cumsum_data_output_complex64_ET_RT.txt"};
-  bool exclusive = true;
-  bool reverse = true;
-  RunCumsumKernel<complex<float>, int32_t, complex<float>>(
-      files, data_types, shapes, exclusive, reverse);
-}
+
 TEST_F(TEST_CUMSUM_UT, DATA_TYPE_COMPLEX128_EF_RF) {
   vector<DataType> data_types = {DT_COMPLEX128, DT_INT32, DT_COMPLEX128};
   vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
@@ -672,28 +360,7 @@ TEST_F(TEST_CUMSUM_UT, DATA_TYPE_COMPLEX128_EF_RF) {
   RunCumsumKernel<complex<double>, int32_t, complex<double>>(
       files, data_types, shapes, exclusive, reverse);
 }
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_COMPLEX128_ET_RF) {
-  vector<DataType> data_types = {DT_COMPLEX128, DT_INT32, DT_COMPLEX128};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_complex128.txt",
-                       "cumsum/data/cumsum_data_axis_int32_complex128.txt",
-                       "cumsum/data/cumsum_data_output_complex128_ET_RF.txt"};
-  bool exclusive = true;
-  bool reverse = false;
-  RunCumsumKernel<complex<double>, int32_t, complex<double>>(
-      files, data_types, shapes, exclusive, reverse);
-}
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_COMPLEX128_EF_RT) {
-  vector<DataType> data_types = {DT_COMPLEX128, DT_INT32, DT_COMPLEX128};
-  vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
-  vector<string> files{"cumsum/data/cumsum_data_input_complex128.txt",
-                       "cumsum/data/cumsum_data_axis_int32_complex128.txt",
-                       "cumsum/data/cumsum_data_output_complex128_EF_RT.txt"};
-  bool exclusive = false;
-  bool reverse = true;
-  RunCumsumKernel<complex<double>, int32_t, complex<double>>(
-      files, data_types, shapes, exclusive, reverse);
-}
+
 TEST_F(TEST_CUMSUM_UT, DATA_TYPE_COMPLEX128_ET_RT) {
   vector<DataType> data_types = {DT_COMPLEX128, DT_INT32, DT_COMPLEX128};
   vector<vector<int64_t>> shapes = {{3, 4, 5}, {1}, {3, 4, 5}};
@@ -705,9 +372,10 @@ TEST_F(TEST_CUMSUM_UT, DATA_TYPE_COMPLEX128_ET_RT) {
   RunCumsumKernel<complex<double>, int32_t, complex<double>>(
       files, data_types, shapes, exclusive, reverse);
 }
+
 TEST_F(TEST_CUMSUM_UT, DATA_TYPE_DOUBLE_BIG_EF_RF) {
   vector<DataType> data_types = {DT_DOUBLE, DT_INT32, DT_DOUBLE};
-  vector<vector<int64_t>> shapes = {{1024, 4, 1024}, {1}, {1024, 4, 1024}};
+  vector<vector<int64_t>> shapes = {{17, 4, 1024}, {1}, {17, 4, 1024}};
   vector<string> files{"cumsum/data/cumsum_data_input_double.txt",
                        "cumsum/data/cumsum_data_axis_int32_double.txt",
                        "cumsum/data/cumsum_data_output_double_EF_RF.txt"};
@@ -716,17 +384,7 @@ TEST_F(TEST_CUMSUM_UT, DATA_TYPE_DOUBLE_BIG_EF_RF) {
   RunCumsumKernel<double, int32_t, double>(files, data_types, shapes, exclusive,
                                            reverse);
 }
-TEST_F(TEST_CUMSUM_UT, DATA_TYPE_DOUBLE_BIG_ET_RT) {
-  vector<DataType> data_types = {DT_DOUBLE, DT_INT32, DT_DOUBLE};
-  vector<vector<int64_t>> shapes = {{1024, 4, 1024}, {1}, {1024, 4, 1024}};
-  vector<string> files{"cumsum/data/cumsum_data_input_double.txt",
-                       "cumsum/data/cumsum_data_axis_int32_double.txt",
-                       "cumsum/data/cumsum_data_output_double_ET_RT.txt"};
-  bool exclusive = true;
-  bool reverse = true;
-  RunCumsumKernel<double, int32_t, double>(files, data_types, shapes, exclusive,
-                                           reverse);
-}
+
 // exception instance
 TEST_F(TEST_CUMSUM_UT, AXIS_SHAPE_EXCEPTION) {
   vector<DataType> data_types = {DT_INT32, DT_INT32, DT_INT32};

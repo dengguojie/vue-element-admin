@@ -172,8 +172,8 @@ def gen_random_data_uint16(data_files):
 
 def gen_random_data_float16(data_files):
     np.random.seed(23457)
-    shape_x1 = [15, 60, 30]
-    shape_x2 = [15, 60, 30]
+    shape_x1 = [1]
+    shape_x2 = [3, 4, 5]
     a = gen_data_file(data_files[0], shape_x1, np.float16, "uniform", 1, 100)
     b = gen_data_file(data_files[1], shape_x2, np.float16, "uniform", 1, 100)
 
@@ -187,8 +187,8 @@ def gen_random_data_float16(data_files):
 
 def gen_random_data_float(data_files):
     np.random.seed(23457)
-    shape_x1 = [15, 12, 30]
-    shape_x2 = [15, 12, 30]
+    shape_x1 = [1]
+    shape_x2 = [10, 12, 20]
     a = gen_data_file(data_files[0], shape_x1, np.float32, "uniform", 1, 100)
     b = gen_data_file(data_files[1], shape_x2, np.float32, "uniform", 1, 100)
 
@@ -202,8 +202,8 @@ def gen_random_data_float(data_files):
 
 def gen_random_data_double(data_files):
     np.random.seed(3457)
-    shape_x1 = [64, 48, 30]
-    shape_x2 = [64, 48, 30]
+    shape_x1 = [1]
+    shape_x2 = [3, 4, 5]
     a = gen_data_file(data_files[0], shape_x1, np.float64, "uniform", 1, 100)
     b = gen_data_file(data_files[1], shape_x2, np.float64, "uniform", 1, 100)
 

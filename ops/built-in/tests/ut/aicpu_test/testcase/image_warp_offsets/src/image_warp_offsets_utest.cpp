@@ -94,21 +94,6 @@ void RunIMGWarpOffsetsKernel(vector<string> data_files,
   delete[] output_exp;
 }
 
-TEST_F(TEST_IMAGE_WARP_OFFSETS_UT, 10x100x200x3_50x100_float16_float_SUCCESS) {
-  vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT, DT_FLOAT16};
-  vector<vector<int64_t>> shapes = {
-      {10, 100, 200, 3}, {10, 4, 50, 100}, {10, 4, 50, 100, 3}};
-  vector<string> files{
-      "image_warp_offsets/data/"
-      "image_warp_offsets_data_input1_10x100x200x3_float16.txt",
-      "image_warp_offsets/data/"
-      "image_warp_offsets_data_input2_10x4x50x100_float32.txt",
-      "image_warp_offsets/data/"
-      "image_warp_offsets_data_output1_10x4x500x100x3_float16.txt"};
-  RunIMGWarpOffsetsKernel<Eigen::half, float, Eigen::half>(files, data_types,
-                                                           shapes);
-}
-
 TEST_F(TEST_IMAGE_WARP_OFFSETS_UT, NO_KERNEL_FAILED) {
   vector<DataType> data_types = {DT_UINT64, DT_UINT64, DT_UINT64};
   vector<vector<int64_t>> shapes = {

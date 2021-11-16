@@ -82,7 +82,7 @@ void RunGreaterEqualKernel(vector<string> data_files,
 
 TEST_F(TEST_GREATER_EQUAL_UT, DATA_TYPE_INT8_SUCC) {
   vector<DataType> data_types = {DT_INT8, DT_INT8, DT_BOOL};
-  vector<vector<int64_t>> shapes = {{6, 12}, {12}, {6, 12}};
+  vector<vector<int64_t>> shapes = {{1024, 12}, {12}, {1024, 12}};
   vector<string> files{"greater_equal/data/greater_equal_data_input1_1.txt",
                        "greater_equal/data/greater_equal_data_input2_1.txt",
                        "greater_equal/data/greater_equal_data_output1_1.txt"};
@@ -91,7 +91,7 @@ TEST_F(TEST_GREATER_EQUAL_UT, DATA_TYPE_INT8_SUCC) {
 
 TEST_F(TEST_GREATER_EQUAL_UT, DATA_TYPE_INT16_SUCC) {
   vector<DataType> data_types = {DT_INT16, DT_INT16, DT_BOOL};
-  vector<vector<int64_t>> shapes = {{12, 6}, {12, 6}, {12, 6}};
+  vector<vector<int64_t>> shapes = {{3, 12}, {12}, {3, 12}};
   vector<string> files{"greater_equal/data/greater_equal_data_input1_2.txt",
                        "greater_equal/data/greater_equal_data_input2_2.txt",
                        "greater_equal/data/greater_equal_data_output1_2.txt"};
@@ -109,7 +109,7 @@ TEST_F(TEST_GREATER_EQUAL_UT, DATA_TYPE_INT32_SUCC) {
 
 TEST_F(TEST_GREATER_EQUAL_UT, DATA_TYPE_INT64_SUCC) {
   vector<DataType> data_types = {DT_INT64, DT_INT64, DT_BOOL};
-  vector<vector<int64_t>> shapes = {{11, 10, 4}, {11, 10, 4}, {11, 10, 4}};
+  vector<vector<int64_t>> shapes = {{3, 12}, {12}, {3, 12}};
   vector<string> files{"greater_equal/data/greater_equal_data_input1_4.txt",
                        "greater_equal/data/greater_equal_data_input2_4.txt",
                        "greater_equal/data/greater_equal_data_output1_4.txt"};
@@ -118,7 +118,7 @@ TEST_F(TEST_GREATER_EQUAL_UT, DATA_TYPE_INT64_SUCC) {
 
 TEST_F(TEST_GREATER_EQUAL_UT, DATA_TYPE_UINT8_SUCC) {
   vector<DataType> data_types = {DT_UINT8, DT_UINT8, DT_BOOL};
-  vector<vector<int64_t>> shapes = {{6, 12}, {12}, {6, 12}};
+  vector<vector<int64_t>> shapes = {{3, 12}, {12}, {3, 12}};
   vector<string> files{"greater_equal/data/greater_equal_data_input1_5.txt",
                        "greater_equal/data/greater_equal_data_input2_5.txt",
                        "greater_equal/data/greater_equal_data_output1_5.txt"};
@@ -127,7 +127,7 @@ TEST_F(TEST_GREATER_EQUAL_UT, DATA_TYPE_UINT8_SUCC) {
 
 TEST_F(TEST_GREATER_EQUAL_UT, DATA_TYPE_UINT16_SUCC) {
   vector<DataType> data_types = {DT_UINT16, DT_UINT16, DT_BOOL};
-  vector<vector<int64_t>> shapes = {{6, 12}, {12}, {6, 12}};
+  vector<vector<int64_t>> shapes = {{3, 12}, {12}, {3, 12}};
   vector<string> files{"greater_equal/data/greater_equal_data_input1_6.txt",
                        "greater_equal/data/greater_equal_data_input2_6.txt",
                        "greater_equal/data/greater_equal_data_output1_6.txt"};
@@ -136,7 +136,7 @@ TEST_F(TEST_GREATER_EQUAL_UT, DATA_TYPE_UINT16_SUCC) {
 
 TEST_F(TEST_GREATER_EQUAL_UT, DATA_TYPE_UINT32_SUCC) {
   vector<DataType> data_types = {DT_UINT32, DT_UINT32, DT_BOOL};
-  vector<vector<int64_t>> shapes = {{7, 12, 10}, {12, 10}, {7, 12, 10}};
+  vector<vector<int64_t>> shapes = {{3, 12}, {12}, {3, 12}};
   vector<string> files{"greater_equal/data/greater_equal_data_input1_7.txt",
                        "greater_equal/data/greater_equal_data_input2_7.txt",
                        "greater_equal/data/greater_equal_data_output1_7.txt"};
@@ -145,7 +145,7 @@ TEST_F(TEST_GREATER_EQUAL_UT, DATA_TYPE_UINT32_SUCC) {
 
 TEST_F(TEST_GREATER_EQUAL_UT, DATA_TYPE_UINT64_SUCC) {
   vector<DataType> data_types = {DT_UINT64, DT_UINT64, DT_BOOL};
-  vector<vector<int64_t>> shapes = {{12, 10}, {7, 12, 10}, {7, 12, 10}};
+  vector<vector<int64_t>> shapes = {{3, 12}, {12}, {3, 12}};
   vector<string> files{"greater_equal/data/greater_equal_data_input1_8.txt",
                        "greater_equal/data/greater_equal_data_input2_8.txt",
                        "greater_equal/data/greater_equal_data_output1_8.txt"};
@@ -154,7 +154,7 @@ TEST_F(TEST_GREATER_EQUAL_UT, DATA_TYPE_UINT64_SUCC) {
 
 TEST_F(TEST_GREATER_EQUAL_UT, DATA_TYPE_FLOAT16_SUCC) {
   vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16, DT_BOOL};
-  vector<vector<int64_t>> shapes = {{15, 12, 30}, {15, 12, 30}, {15, 12, 30}};
+  vector<vector<int64_t>> shapes =  {{3, 12}, {12}, {3, 12}};
   vector<string> files{"greater_equal/data/greater_equal_data_input1_9.txt",
                        "greater_equal/data/greater_equal_data_input2_9.txt",
                        "greater_equal/data/greater_equal_data_output1_9.txt"};
@@ -164,7 +164,7 @@ TEST_F(TEST_GREATER_EQUAL_UT, DATA_TYPE_FLOAT16_SUCC) {
 
 TEST_F(TEST_GREATER_EQUAL_UT, DATA_TYPE_FLOAT_SUCC) {
   vector<DataType> data_types = {DT_FLOAT, DT_FLOAT, DT_BOOL};
-  vector<vector<int64_t>> shapes = {{15, 12, 30}, {12, 30}, {15, 12, 30}};
+  vector<vector<int64_t>> shapes = {{3, 12}, {12}, {3, 12}};
   vector<string> files{"greater_equal/data/greater_equal_data_input1_10.txt",
                        "greater_equal/data/greater_equal_data_input2_10.txt",
                        "greater_equal/data/greater_equal_data_output1_10.txt"};
@@ -173,7 +173,7 @@ TEST_F(TEST_GREATER_EQUAL_UT, DATA_TYPE_FLOAT_SUCC) {
 
 TEST_F(TEST_GREATER_EQUAL_UT, DATA_TYPE_DOUBLE_SUCC) {
   vector<DataType> data_types = {DT_DOUBLE, DT_DOUBLE, DT_BOOL};
-  vector<vector<int64_t>> shapes = {{7, 12, 30}, {30}, {7, 12, 30}};
+  vector<vector<int64_t>> shapes = {{3, 12}, {12}, {3, 12}};
   vector<string> files{"greater_equal/data/greater_equal_data_input1_11.txt",
                        "greater_equal/data/greater_equal_data_input2_11.txt",
                        "greater_equal/data/greater_equal_data_output1_11.txt"};
@@ -182,7 +182,7 @@ TEST_F(TEST_GREATER_EQUAL_UT, DATA_TYPE_DOUBLE_SUCC) {
 
 TEST_F(TEST_GREATER_EQUAL_UT, X_ONE_ELEMENT) {
   vector<DataType> data_types = {DT_INT32, DT_INT32, DT_BOOL};
-  vector<vector<int64_t>> shapes = {{1}, {1024, 1024}, {1024, 1024}};
+  vector<vector<int64_t>> shapes = {{1}, {8, 1024}, {8, 1024}};
   vector<string> files{
       "greater_equal/data/greater_equal_data_input1_x_one_elem.txt",
       "greater_equal/data/greater_equal_data_input2_x_one_elem.txt",
@@ -192,7 +192,7 @@ TEST_F(TEST_GREATER_EQUAL_UT, X_ONE_ELEMENT) {
 
 TEST_F(TEST_GREATER_EQUAL_UT, Y_ONE_ELEMENT) {
   vector<DataType> data_types = {DT_INT32, DT_INT32, DT_BOOL};
-  vector<vector<int64_t>> shapes = {{1024, 1024}, {1}, {1024, 1024}};
+  vector<vector<int64_t>> shapes = {{12, 12}, {1}, {12, 12}};
   vector<string> files{
       "greater_equal/data/greater_equal_data_input1_y_one_elem.txt",
       "greater_equal/data/greater_equal_data_input2_y_one_elem.txt",

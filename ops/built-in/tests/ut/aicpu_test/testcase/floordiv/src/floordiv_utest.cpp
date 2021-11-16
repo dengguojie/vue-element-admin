@@ -153,7 +153,7 @@ TEST_F(TEST_FLOORDIV_UT, FILE_DATA_TYPE_UINT16_SUCC) {
 
 TEST_F(TEST_FLOORDIV_UT, FILE_DATA_TYPE_FLOAT16_SUCC) {
   vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16, DT_FLOAT16};
-  vector<vector<int64_t>> shapes = {{15, 60, 30}, {15, 60, 30}, {15, 60, 30}};
+  vector<vector<int64_t>> shapes = {{1}, {3, 4, 5}, {3, 4, 5}};
   vector<string> files{"floordiv/data/floordiv_data_input1_7.txt",
                        "floordiv/data/floordiv_data_input2_7.txt",
                        "floordiv/data/floordiv_data_output1_7.txt"};
@@ -163,7 +163,7 @@ TEST_F(TEST_FLOORDIV_UT, FILE_DATA_TYPE_FLOAT16_SUCC) {
 
 TEST_F(TEST_FLOORDIV_UT, FILE_DATA_TYPE_FLOAT_SUCC) {
   vector<DataType> data_types = {DT_FLOAT, DT_FLOAT, DT_FLOAT};
-  vector<vector<int64_t>> shapes = {{15, 12, 30}, {15, 12, 30}, {15, 12, 30}};
+  vector<vector<int64_t>> shapes = {{1}, {10, 12, 20}, {10, 12, 20}};
   vector<string> files{"floordiv/data/floordiv_data_input1_8.txt",
                        "floordiv/data/floordiv_data_input2_8.txt",
                        "floordiv/data/floordiv_data_output1_8.txt"};
@@ -172,7 +172,7 @@ TEST_F(TEST_FLOORDIV_UT, FILE_DATA_TYPE_FLOAT_SUCC) {
 
 TEST_F(TEST_FLOORDIV_UT, FILE_DATA_TYPE_DOUBLE_SUCC) {
   vector<DataType> data_types = {DT_DOUBLE, DT_DOUBLE, DT_DOUBLE};
-  vector<vector<int64_t>> shapes = {{64, 48, 30}, {64, 48, 30}, {64, 48, 30}};
+  vector<vector<int64_t>> shapes = {{1}, {3, 4, 5}, {3, 4, 5}};
   vector<string> files{"floordiv/data/floordiv_data_input1_9.txt",
                        "floordiv/data/floordiv_data_input2_9.txt",
                        "floordiv/data/floordiv_data_output1_9.txt"};

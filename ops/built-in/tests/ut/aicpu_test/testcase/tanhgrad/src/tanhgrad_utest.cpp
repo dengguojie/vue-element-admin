@@ -677,10 +677,6 @@ void RunTestTanhGradDiff(std::uint32_t flag) {
   TEST_F(TEST_TANHGRAD_UT, DATA_TYPE_SAME_##aicpu_type) { \
     RunTestTanhGrad<base_type>(1);                        \
   }
-#define ADD_DIFF_BIGDATA_CASE(base_type, aicpu_type)              \
-  TEST_F(TEST_TANHGRAD_UT, DATA_TYPE_DIFF_BIGDATA_##aicpu_type) { \
-    RunTestTanhGradDiff<base_type>(0);                            \
-  }
 
 #define ADD_DIFF_CASE(base_type, aicpu_type)              \
   TEST_F(TEST_TANHGRAD_UT, DATA_TYPE_DIFF_##aicpu_type) { \
@@ -754,17 +750,5 @@ ADD_SAME_CASE(std::complex<std::double_t>, DT_COMPLEX128)
 ADD_DIFF_CASE(Eigen::half, DT_FLOAT16)
 ADD_DIFF_CASE(std::float_t, DT_FLOAT)
 ADD_DIFF_CASE(std::double_t, DT_DOUBLE)
-ADD_DIFF_CASE(std::complex<std::float_t>, DT_COMPLEX64)
-ADD_DIFF_CASE(std::complex<std::double_t>, DT_COMPLEX128)
 
 ADD_SAME_BIGDATA_CASE(Eigen::half, DT_FLOAT16)
-ADD_SAME_BIGDATA_CASE(std::float_t, DT_FLOAT)
-ADD_SAME_BIGDATA_CASE(std::double_t, DT_DOUBLE)
-ADD_SAME_BIGDATA_CASE(std::complex<std::float_t>, DT_COMPLEX64)
-ADD_SAME_BIGDATA_CASE(std::complex<std::double_t>, DT_COMPLEX128)
-
-ADD_DIFF_BIGDATA_CASE(Eigen::half, DT_FLOAT16)
-ADD_DIFF_BIGDATA_CASE(std::float_t, DT_FLOAT)
-ADD_DIFF_BIGDATA_CASE(std::double_t, DT_DOUBLE)
-ADD_DIFF_BIGDATA_CASE(std::complex<std::float_t>, DT_COMPLEX64)
-ADD_DIFF_BIGDATA_CASE(std::complex<std::double_t>, DT_COMPLEX128)

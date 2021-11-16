@@ -321,66 +321,12 @@ TEST_F(TEST_INVGRAD_UT, DATA_TYPE_FLOAT_SUCC_1D) {
   RunInvGradKernel<float, float, float>(files, data_types, shapes);
 }
 
-TEST_F(TEST_INVGRAD_UT, DATA_TYPE_FLOAT_SUCC_2D) {
-  vector<DataType> data_types = {DT_FLOAT, DT_FLOAT, DT_FLOAT};
-  vector<vector<int64_t>> shapes = {{1,256}, {256}, {1, 256}};
-  vector<string> files{"invgrad/data/invgrad_data_input1_2.txt",
-                       "invgrad/data/invgrad_data_input2_2.txt",
-                       "invgrad/data/invgrad_data_output1_2.txt"};
-  RunInvGradKernel<float, float, float>(files, data_types, shapes);
-}
-
-TEST_F(TEST_INVGRAD_UT, DATA_TYPE_FLOAT_SUCC_3D) {
-  vector<DataType> data_types = {DT_FLOAT, DT_FLOAT, DT_FLOAT};
-  vector<vector<int64_t>> shapes = {{2, 3, 1024}, {2, 3, 1024}, {2, 3, 1024}};
-  vector<string> files{"invgrad/data/invgrad_data_input1_3.txt",
-                       "invgrad/data/invgrad_data_input2_3.txt",
-                       "invgrad/data/invgrad_data_output1_3.txt"};
-  RunInvGradKernel<float, float, float>(files, data_types, shapes);
-}
-
-TEST_F(TEST_INVGRAD_UT, DATA_TYPE_FLOAT_SUCC_4D) {
-  vector<DataType> data_types = {DT_FLOAT, DT_FLOAT, DT_FLOAT};
-  vector<vector<int64_t>> shapes = {{4, 3, 4, 256}, {4, 3, 4, 256}, {4, 3, 4, 256}};
-  vector<string> files{"invgrad/data/invgrad_data_input1_4.txt",
-                       "invgrad/data/invgrad_data_input2_4.txt",
-                       "invgrad/data/invgrad_data_output1_4.txt"};
-  RunInvGradKernel<float, float, float>(files, data_types, shapes);
-}
-
-TEST_F(TEST_INVGRAD_UT, DATA_TYPE_FLOAT_SUCC_5D) {
-  vector<DataType> data_types = {DT_FLOAT, DT_FLOAT, DT_FLOAT};
-  vector<vector<int64_t>> shapes = {{15, 12, 30, 8, 16}, {15, 12, 30, 8, 16}, {15, 12, 30, 8, 16}};
-  vector<string> files{"invgrad/data/invgrad_data_input1_5.txt",
-                       "invgrad/data/invgrad_data_input2_5.txt",
-                       "invgrad/data/invgrad_data_output1_5.txt"};
-  RunInvGradKernel<float, float, float>(files, data_types, shapes);
-}
-
 TEST_F(TEST_INVGRAD_UT, DATA_TYPE_FLOAT16_SUCC_1D) {
   vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16, DT_FLOAT16};
   vector<vector<int64_t>> shapes = {{16,12}, {16,12}, {16,12}};
   vector<string> files{"invgrad/data/invgrad_data_input1_6.txt",
                        "invgrad/data/invgrad_data_input2_6.txt",
                        "invgrad/data/invgrad_data_output1_6.txt"};
-  RunInvGradKernelFloat16<Eigen::half, Eigen::half, Eigen::half>(files, data_types, shapes);
-}
-
-TEST_F(TEST_INVGRAD_UT, DATA_TYPE_FLOAT16_SUCC_2D) {
-  vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16, DT_FLOAT16};
-  vector<vector<int64_t>> shapes = {{256, 1024}, {256, 1024}, {256, 1024}};
-  vector<string> files{"invgrad/data/invgrad_data_input1_7.txt",
-                       "invgrad/data/invgrad_data_input2_7.txt",
-                       "invgrad/data/invgrad_data_output1_7.txt"};
-  RunInvGradKernelFloat16<Eigen::half, Eigen::half, Eigen::half>(files, data_types, shapes);
-}
-
-TEST_F(TEST_INVGRAD_UT, DATA_TYPE_FLOAT16_SUCC_3D) {
-  vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16, DT_FLOAT16};
-  vector<vector<int64_t>> shapes = {{4, 80, 1024}, {4, 80, 1024}, {4, 80, 1024}};
-  vector<string> files{"invgrad/data/invgrad_data_input1_8.txt",
-                       "invgrad/data/invgrad_data_input2_8.txt",
-                       "invgrad/data/invgrad_data_output1_8.txt"};
   RunInvGradKernelFloat16<Eigen::half, Eigen::half, Eigen::half>(files, data_types, shapes);
 }
 
@@ -413,7 +359,7 @@ TEST_F(TEST_INVGRAD_UT, DATA_TYPE_COMPLEX128_SUCC) {
 
 TEST_F(TEST_INVGRAD_UT, DATA_TYPE_FLOAT16_SUCC_ADD1) {
   vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16, DT_FLOAT16};
-  vector<vector<int64_t>> shapes = {{2,1024}, {2,1024}, {2,1024}};
+  vector<vector<int64_t>> shapes = {{7,1024}, {7,1024}, {7,1024}};
   vector<string> files{"invgrad/data/invgrad_data_input1_12.txt",
                        "invgrad/data/invgrad_data_input2_12.txt",
                        "invgrad/data/invgrad_data_output1_12.txt"};
@@ -422,12 +368,13 @@ TEST_F(TEST_INVGRAD_UT, DATA_TYPE_FLOAT16_SUCC_ADD1) {
 
 TEST_F(TEST_INVGRAD_UT, DATA_TYPE_FLOAT16_SUCC_ADD2) {
   vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16, DT_FLOAT16};
-  vector<vector<int64_t>> shapes = {{1,16384}, {16384}, {1,16384}};
+  vector<vector<int64_t>> shapes = {{1,1024}, {1024}, {1,1024}};
   vector<string> files{"invgrad/data/invgrad_data_input1_13.txt",
                        "invgrad/data/invgrad_data_input2_13.txt",
                        "invgrad/data/invgrad_data_output1_13.txt"};
   RunInvGradKernelFloat16<Eigen::half, Eigen::half, Eigen::half>(files, data_types, shapes);
 }
+
 
 TEST_F(TEST_INVGRAD_UT, DATA_TYPE_FLOAT16_SUCC_ADD3) {
   vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16, DT_FLOAT16};
@@ -435,15 +382,6 @@ TEST_F(TEST_INVGRAD_UT, DATA_TYPE_FLOAT16_SUCC_ADD3) {
   vector<string> files{"invgrad/data/invgrad_data_input1_14.txt",
                        "invgrad/data/invgrad_data_input2_14.txt",
                        "invgrad/data/invgrad_data_output1_14.txt"};
-  RunInvGradKernelFloat16<Eigen::half, Eigen::half, Eigen::half>(files, data_types, shapes);
-}
-
-TEST_F(TEST_INVGRAD_UT, DATA_TYPE_FLOAT_SUCC_ADD4) {
-  vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16, DT_FLOAT16};
-  vector<vector<int64_t>> shapes = {{8,1024}, {8,1024}, {8,1024}};
-  vector<string> files{"invgrad/data/invgrad_data_input1_15.txt",
-                       "invgrad/data/invgrad_data_input2_15.txt",
-                       "invgrad/data/invgrad_data_output1_15.txt"};
   RunInvGradKernelFloat16<Eigen::half, Eigen::half, Eigen::half>(files, data_types, shapes);
 }
 

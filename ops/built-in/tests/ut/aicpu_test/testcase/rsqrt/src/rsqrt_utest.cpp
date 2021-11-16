@@ -227,7 +227,7 @@ TEST_F(TEST_RSQRT_UT, DATA_TYPE_FLOAT_SUCC) {
 
 TEST_F(TEST_RSQRT_UT, DATA_TYPE_DOUBLE_SUCC) {
   vector<DataType> data_types = {DT_DOUBLE, DT_DOUBLE};
-  vector<vector<int64_t>> shapes = {{7, 12, 30}, {7, 12, 30}};
+  vector<vector<int64_t>> shapes = {{5, 5}, {5, 5}};
   vector<string> files{"rsqrt/data/rsqrt_data_input1_2.txt",
                        "rsqrt/data/rsqrt_data_output1_2.txt"};
   RunRsqrtKernel<double, double>(files, data_types, shapes);
@@ -235,7 +235,7 @@ TEST_F(TEST_RSQRT_UT, DATA_TYPE_DOUBLE_SUCC) {
 
 TEST_F(TEST_RSQRT_UT, DATA_TYPE_FLOAT16_SUCC) {
   vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16};
-  vector<vector<int64_t>> shapes = {{12, 130}, {12, 130}};
+  vector<vector<int64_t>> shapes =  {{5, 5}, {5, 5}};
   vector<string> files{"rsqrt/data/rsqrt_data_input1_3.txt",
                        "rsqrt/data/rsqrt_data_output1_3.txt"};
   RunRsqrtKernel<Eigen::half, Eigen::half>(files, data_types, shapes);
@@ -243,23 +243,15 @@ TEST_F(TEST_RSQRT_UT, DATA_TYPE_FLOAT16_SUCC) {
 
 TEST_F(TEST_RSQRT_UT, DATA_TYPE_FLOAT_MUTILCORE_SUCC) {
   vector<DataType> data_types = {DT_FLOAT, DT_FLOAT};
-  vector<vector<int64_t>> shapes = {{128, 1024}, {128, 1024}};
+  vector<vector<int64_t>> shapes = {{9, 1024}, {9, 1024}};
   vector<string> files{"rsqrt/data/rsqrt_data_input1_4.txt",
                        "rsqrt/data/rsqrt_data_output1_4.txt"};
   RunRsqrtKernel<float, float>(files, data_types, shapes);
 }
 
-TEST_F(TEST_RSQRT_UT, DATA_TYPE_FLOAT16_MUTILCORE_SUCC) {
-  vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16};
-  vector<vector<int64_t>> shapes = {{120, 1300}, {120, 1300}};
-  vector<string> files{"rsqrt/data/rsqrt_data_input1_5.txt",
-                       "rsqrt/data/rsqrt_data_output1_5.txt"};
-  RunRsqrtKernel<Eigen::half, Eigen::half>(files, data_types, shapes);
-}
-
 TEST_F(TEST_RSQRT_UT, DATA_TYPE_COMPLEX64_SUCC) {
   vector<DataType> data_types = {DT_COMPLEX64, DT_COMPLEX64};
-  vector<vector<int64_t>> shapes = {{12, 130}, {12, 130}};
+  vector<vector<int64_t>> shapes = {{5, 5}, {5, 5}};
   vector<string> files{"rsqrt/data/rsqrt_data_input1_6.txt",
                        "rsqrt/data/rsqrt_data_output1_6.txt"};
   RunRsqrtKernelComplex64<std::complex<float>, std::complex<float>>(files, data_types, shapes);
@@ -267,7 +259,7 @@ TEST_F(TEST_RSQRT_UT, DATA_TYPE_COMPLEX64_SUCC) {
 
 TEST_F(TEST_RSQRT_UT, DATA_TYPE_COMPLEX128__SUCC) {
   vector<DataType> data_types = {DT_COMPLEX128, DT_COMPLEX128};
-  vector<vector<int64_t>> shapes = {{12, 130}, {12, 130}};
+  vector<vector<int64_t>> shapes = {{5, 5}, {5, 5}};
   vector<string> files{"rsqrt/data/rsqrt_data_input1_7.txt",
                        "rsqrt/data/rsqrt_data_output1_7.txt"};
   RunRsqrtKernelComplex128<std::complex<double>, std::complex<double>>(files, data_types, shapes);
@@ -275,19 +267,12 @@ TEST_F(TEST_RSQRT_UT, DATA_TYPE_COMPLEX128__SUCC) {
 
 TEST_F(TEST_RSQRT_UT, DATA_TYPE_COMPLEX64_MUTILCORE_SUCC) {
   vector<DataType> data_types = {DT_COMPLEX64, DT_COMPLEX64};
-  vector<vector<int64_t>> shapes = {{120, 1300}, {120, 1300}};
+  vector<vector<int64_t>> shapes = {{5, 1024}, {5, 1024}};
   vector<string> files{"rsqrt/data/rsqrt_data_input1_8.txt",
                        "rsqrt/data/rsqrt_data_output1_8.txt"};
   RunRsqrtKernelComplex64<std::complex<float>, std::complex<float>>(files, data_types, shapes);
 }
 
-TEST_F(TEST_RSQRT_UT, DATA_TYPE_COMPLEX128_MUTILCORE_SUCC) {
-  vector<DataType> data_types = {DT_COMPLEX128, DT_COMPLEX128};
-  vector<vector<int64_t>> shapes = {{120, 1300}, {120, 1300}};
-  vector<string> files{"rsqrt/data/rsqrt_data_input1_9.txt",
-                       "rsqrt/data/rsqrt_data_output1_9.txt"};
-  RunRsqrtKernelComplex128<std::complex<double>, std::complex<double>>(files, data_types, shapes);
-}
 // exception instance
 TEST_F(TEST_RSQRT_UT, INPUT_SHAPE_EXCEPTION) {
   vector<DataType> data_types = {DT_DOUBLE, DT_DOUBLE};

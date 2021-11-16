@@ -95,74 +95,6 @@ def gen_random_data_float_1d():
         data = session.run(re, feed_dict={x1:a, x2:b})
     write_file_txt(data_files[2], data, fmt="%s")
 
-def gen_random_data_float_2d():
-    data_files=["invgrad/data/invgrad_data_input1_2.txt",
-                "invgrad/data/invgrad_data_input2_2.txt",
-                "invgrad/data/invgrad_data_output1_2.txt"]
-    np.random.seed(23457)
-    shape_x1 = [1, 256]
-    shape_x2 = [256]
-    a = gen_data_file(data_files[0], shape_x1, np.float32, "uniform", 0, 100)
-    b = gen_data_file(data_files[1], shape_x2, np.float32, "uniform", 0, 100)
-
-    x1 = tf.compat.v1.placeholder(tf.float32, shape=shape_x1)
-    x2 = tf.compat.v1.placeholder(tf.float32, shape=shape_x2)
-    re = tf.raw_ops.InvGrad(y=x1, dy=x2, name="re")
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={x1:a, x2:b})
-    write_file_txt(data_files[2], data, fmt="%s")
-
-def gen_random_data_float_3d():
-    data_files=["invgrad/data/invgrad_data_input1_3.txt",
-                "invgrad/data/invgrad_data_input2_3.txt",
-                "invgrad/data/invgrad_data_output1_3.txt"]
-    np.random.seed(23457)
-    shape_x1 = [2, 3, 1024]
-    shape_x2 = [2, 3, 1024]
-    a = gen_data_file(data_files[0], shape_x1, np.float32, "uniform", 0, 100)
-    b = gen_data_file(data_files[1], shape_x2, np.float32, "uniform", 0, 100)
-
-    x1 = tf.compat.v1.placeholder(tf.float32, shape=shape_x1)
-    x2 = tf.compat.v1.placeholder(tf.float32, shape=shape_x2)
-    re = tf.raw_ops.InvGrad(y=x1, dy=x2, name="re")
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={x1:a, x2:b})
-    write_file_txt(data_files[2], data, fmt="%s")
-
-def gen_random_data_float_4d():
-    data_files=["invgrad/data/invgrad_data_input1_4.txt",
-                "invgrad/data/invgrad_data_input2_4.txt",
-                "invgrad/data/invgrad_data_output1_4.txt"]
-    np.random.seed(23457)
-    shape_x1 = [4, 3, 4, 256]
-    shape_x2 = [4, 3, 4, 256]
-    a = gen_data_file(data_files[0], shape_x1, np.float32, "uniform", 0, 100)
-    b = gen_data_file(data_files[1], shape_x2, np.float32, "uniform", 0, 100)
-
-    x1 = tf.compat.v1.placeholder(tf.float32, shape=shape_x1)
-    x2 = tf.compat.v1.placeholder(tf.float32, shape=shape_x2)
-    re = tf.raw_ops.InvGrad(y=x1, dy=x2, name="re")
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={x1:a, x2:b})
-    write_file_txt(data_files[2], data, fmt="%s")
-
-def gen_random_data_float_5d():
-    data_files=["invgrad/data/invgrad_data_input1_5.txt",
-                "invgrad/data/invgrad_data_input2_5.txt",
-                "invgrad/data/invgrad_data_output1_5.txt"]
-    np.random.seed(23457)
-    shape_x1 = [15, 12, 30, 8, 16]
-    shape_x2 = [15, 12, 30, 8, 16]
-    a = gen_data_file(data_files[0], shape_x1, np.float32, "uniform", 0, 100)
-    b = gen_data_file(data_files[1], shape_x2, np.float32, "uniform", 0, 100)
-
-    x1 = tf.compat.v1.placeholder(tf.float32, shape=shape_x1)
-    x2 = tf.compat.v1.placeholder(tf.float32, shape=shape_x2)
-    re = tf.raw_ops.InvGrad(y=x1, dy=x2, name="re")
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={x1:a, x2:b})
-    write_file_txt(data_files[2], data, fmt="%s")
-
 def gen_random_data_float16_1d():
     data_files=["invgrad/data/invgrad_data_input1_6.txt",
                 "invgrad/data/invgrad_data_input2_6.txt",
@@ -170,40 +102,6 @@ def gen_random_data_float16_1d():
     np.random.seed(23457)
     shape_x1 = [16,12]
     shape_x2 = [16,12]
-    a = gen_data_file(data_files[0], shape_x1, np.float16, "uniform", -10, 10)
-    b = gen_data_file(data_files[1], shape_x2, np.float16, "uniform", -10, 10)
-
-    x1 = tf.compat.v1.placeholder(tf.float16, shape=shape_x1)
-    x2 = tf.compat.v1.placeholder(tf.float16, shape=shape_x2)
-    re = tf.raw_ops.InvGrad(y=x1, dy=x2, name="re")
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={x1:a, x2:b})
-    write_file_txt(data_files[2], data, fmt="%s")
-
-def gen_random_data_float16_2d():
-    data_files=["invgrad/data/invgrad_data_input1_7.txt",
-                "invgrad/data/invgrad_data_input2_7.txt",
-                "invgrad/data/invgrad_data_output1_7.txt"]
-    np.random.seed(23457)
-    shape_x1 = [256, 1024]
-    shape_x2 = [256, 1024]
-    a = gen_data_file(data_files[0], shape_x1, np.float16, "uniform", -10, 10)
-    b = gen_data_file(data_files[1], shape_x2, np.float16, "uniform", -10, 10)
-
-    x1 = tf.compat.v1.placeholder(tf.float16, shape=shape_x1)
-    x2 = tf.compat.v1.placeholder(tf.float16, shape=shape_x2)
-    re = tf.raw_ops.InvGrad(y=x1, dy=x2, name="re")
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={x1:a, x2:b})
-    write_file_txt(data_files[2], data, fmt="%s")
-
-def gen_random_data_float16_3d():
-    data_files=["invgrad/data/invgrad_data_input1_8.txt",
-                "invgrad/data/invgrad_data_input2_8.txt",
-                "invgrad/data/invgrad_data_output1_8.txt"]
-    np.random.seed(23457)
-    shape_x1 = [4, 80, 1024]
-    shape_x2 = [4, 80, 1024]
     a = gen_data_file(data_files[0], shape_x1, np.float16, "uniform", -10, 10)
     b = gen_data_file(data_files[1], shape_x2, np.float16, "uniform", -10, 10)
 
@@ -288,8 +186,8 @@ def gen_random_data_float16_add2():
                 "invgrad/data/invgrad_data_input2_13.txt",
                 "invgrad/data/invgrad_data_output1_13.txt"]
     np.random.seed(23457)
-    shape_x1 = [1,16384]
-    shape_x2 = [16384]
+    shape_x1 = [1,1024]
+    shape_x2 = [1024]
     a = gen_data_file(data_files[0], shape_x1, np.float16, "uniform", -10, 10)
     b = gen_data_file(data_files[1], shape_x2, np.float16, "uniform", -10, 10)
 
@@ -318,37 +216,13 @@ def gen_random_data_float16_add3():
         data = session.run(re, feed_dict={x1:a, x2:b})
     write_file_txt(data_files[2], data, fmt="%s")
 
-def gen_random_data_float16_add4():
-    data_files=["invgrad/data/invgrad_data_input1_15.txt",
-                "invgrad/data/invgrad_data_input2_15.txt",
-                "invgrad/data/invgrad_data_output1_15.txt"]
-    np.random.seed(23457)
-    shape_x1 = [8, 1024]
-    shape_x2 = [8, 1024]
-    a = gen_data_file(data_files[0], shape_x1, np.float16, "uniform", -10, 10)
-    b = gen_data_file(data_files[1], shape_x2, np.float16, "uniform", -10, 10)
-
-    x1 = tf.compat.v1.placeholder(tf.float16, shape=shape_x1)
-    x2 = tf.compat.v1.placeholder(tf.float16, shape=shape_x2)
-    re = tf.raw_ops.InvGrad(y=x1, dy=x2, name="re")
-    with tf.compat.v1.Session(config=config('cpu')) as session:
-        data = session.run(re, feed_dict={x1:a, x2:b})
-    write_file_txt(data_files[2], data, fmt="%s")
-
 def run():
 
     gen_random_data_float_1d()
-    gen_random_data_float_2d()
-    gen_random_data_float_3d()
-    gen_random_data_float_4d()
-    gen_random_data_float_5d()
     gen_random_data_float16_1d()
-    gen_random_data_float16_2d()
-    gen_random_data_float16_3d()
     gen_random_data_double()
     gen_random_data_complex64()
     gen_random_data_complex128()
     gen_random_data_float16_add1()
     gen_random_data_float16_add2()
     gen_random_data_float16_add3()
-    gen_random_data_float16_add4()

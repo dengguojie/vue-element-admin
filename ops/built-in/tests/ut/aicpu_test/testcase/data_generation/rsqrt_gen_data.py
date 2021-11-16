@@ -96,7 +96,7 @@ def gen_random_data_float():
     a = gen_data_file(data_files[0], shape_x, np.float32, "uniform", 1, 100)
 
     x = tf.compat.v1.placeholder(tf.float32, shape=shape_x)
-    re = tf.rsqrt(x)
+    re = tf.math.rsqrt(x)
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x:a})
     write_file_txt(data_files[1], data, fmt="%s")
@@ -106,11 +106,11 @@ def gen_random_data_double():
     data_files=["rsqrt/data/rsqrt_data_input1_2.txt",
                 "rsqrt/data/rsqrt_data_output1_2.txt"]
     np.random.seed(3457)
-    shape_x = [7, 12, 30]
+    shape_x = [5,5]
     a = gen_data_file(data_files[0], shape_x, np.float64, "uniform", 1, 100)
 
     x = tf.compat.v1.placeholder(tf.float64, shape=shape_x)
-    re = tf.rsqrt(x)
+    re = tf.math.rsqrt(x)
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x:a})
     write_file_txt(data_files[1], data, fmt="%s")
@@ -120,11 +120,11 @@ def gen_random_data_float16():
     data_files=["rsqrt/data/rsqrt_data_input1_3.txt",
                 "rsqrt/data/rsqrt_data_output1_3.txt"]
     np.random.seed(3457)
-    shape_x = [12, 130]
+    shape_x = [5,5]
     a = gen_data_file(data_files[0], shape_x, np.float16, "randint", 1, 100)
 
     x = tf.compat.v1.placeholder(tf.float16, shape=shape_x)
-    re = tf.rsqrt(x)
+    re = tf.math.rsqrt(x)
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x:a})
     write_file_txt(data_files[1], data, fmt="%s")
@@ -134,11 +134,11 @@ def gen_random_bigdata_float():
     data_files=["rsqrt/data/rsqrt_data_input1_4.txt",
                 "rsqrt/data/rsqrt_data_output1_4.txt"]
     np.random.seed(23457)
-    shape_x = [128,1024]
+    shape_x = [9,1024]
     a = gen_data_file(data_files[0], shape_x, np.float32, "uniform", 1, 100)
 
     x = tf.compat.v1.placeholder(tf.float32, shape=shape_x)
-    re = tf.rsqrt(x)
+    re = tf.math.rsqrt(x)
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x:a})
     write_file_txt(data_files[1], data, fmt="%s")
@@ -151,7 +151,7 @@ def gen_random_bigdata_float16():
     a = gen_data_file(data_files[0], shape_x, np.float16, "randint", 1, 100)
 
     x = tf.compat.v1.placeholder(tf.float16, shape=shape_x)
-    re = tf.rsqrt(x)
+    re = tf.math.rsqrt(x)
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x:a})
     write_file_txt(data_files[1], data, fmt="%s")
@@ -162,12 +162,12 @@ def gen_random_data_complex64():
                 "rsqrt/data/rsqrt_data_output1_6_real.txt",
                 "rsqrt/data/rsqrt_data_output1_6_imag.txt"]
     np.random.seed(3457)
-    shape_x = [12, 130]
+    shape_x = [5, 5]
     a = gen_complex_data_file(shape_x, np.float32, -100, 100)
     b = gen_complex_data_file(shape_x, np.float32, -100, 100)
 
     x = tf.compat.v1.placeholder(tf.complex64, shape=shape_x)
-    re = tf.rsqrt(x)
+    re = tf.math.rsqrt(x)
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x:a + b*1j})
     write_file_txt(data_files[0], a, fmt="%s")
@@ -182,12 +182,12 @@ def gen_random_data_complex128():
                 "rsqrt/data/rsqrt_data_output1_7_real.txt",
                 "rsqrt/data/rsqrt_data_output1_7_imag.txt"]
     np.random.seed(3457)
-    shape_x = [12, 130]
+    shape_x = [5, 5]
     a = gen_complex_data_file(shape_x, np.float64, -100, 100)
     b = gen_complex_data_file(shape_x, np.float64, -100, 100)
 
     x = tf.compat.v1.placeholder(tf.complex128, shape=shape_x)
-    re = tf.rsqrt(x)
+    re = tf.math.rsqrt(x)
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x:a + b*1j})
     write_file_txt(data_files[0], a, fmt="%s")
@@ -202,12 +202,12 @@ def gen_random_bigdata_complex64():
                 "rsqrt/data/rsqrt_data_output1_8_real.txt",
                 "rsqrt/data/rsqrt_data_output1_8_imag.txt"]
     np.random.seed(3457)
-    shape_x = [120, 1300]
+    shape_x = [5, 1024]
     a = gen_complex_data_file(shape_x, np.float32, -100, 100)
     b = gen_complex_data_file(shape_x, np.float32, -100, 100)
 
     x = tf.compat.v1.placeholder(tf.complex64, shape=shape_x)
-    re = tf.rsqrt(x)
+    re = tf.math.rsqrt(x)
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x:a + b*1j})
     write_file_txt(data_files[0], a, fmt="%s")
@@ -227,7 +227,7 @@ def gen_random_bigdata_complex128():
     b = gen_complex_data_file(shape_x, np.float64, -100, 100)
 
     x = tf.compat.v1.placeholder(tf.complex128, shape=shape_x)
-    re = tf.rsqrt(x)
+    re = tf.math.rsqrt(x)
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x:a + b*1j})
     write_file_txt(data_files[0], a, fmt="%s")
@@ -241,8 +241,6 @@ def run():
     gen_random_data_double()
     gen_random_data_float16()
     gen_random_bigdata_float()
-    gen_random_bigdata_float16()
     gen_random_data_complex64()
     gen_random_data_complex128()
     gen_random_bigdata_complex64()
-    gen_random_bigdata_complex128()

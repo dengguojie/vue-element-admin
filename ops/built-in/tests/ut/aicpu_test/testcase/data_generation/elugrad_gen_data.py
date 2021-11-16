@@ -61,7 +61,7 @@ def gen_random_data_float16():
                  "elugrad/data/elugrad_data_input1_2.txt",
                  "elugrad/data/elugrad_data_output_1.txt"]
     np.random.seed(3457)
-    shape_x1 = [12, 15, 30]
+    shape_x1 = [2, 5, 10]
     a = gen_data_file(shape_x1, np.float16, "uniform",-100,100)
     x1 = tf.compat.v1.placeholder(tf.float16, shape=shape_x1)
     with tf.GradientTape() as tape:
@@ -82,7 +82,7 @@ def gen_random_data_float():
                  "elugrad/data/elugrad_data_input2_2.txt",
                  "elugrad/data/elugrad_data_output_2.txt"]
     np.random.seed(3457)
-    shape_x1 = [12, 15, 30]
+    shape_x1 = [2, 5, 10]
     a = gen_data_file(shape_x1, np.float, "uniform",-100,100)
     x1 = tf.compat.v1.placeholder(tf.float32, shape=shape_x1)
     with tf.GradientTape() as tape:
@@ -103,7 +103,7 @@ def gen_random_data_double():
                  "elugrad/data/elugrad_data_input3_2.txt",
                  "elugrad/data/elugrad_data_output_3.txt"]
     np.random.seed(3457)
-    shape_x1 = [12, 15, 30]
+    shape_x1 = [2, 5, 10]
     a = gen_data_file(shape_x1, np.double, "uniform",-100,100)
     x1 = tf.compat.v1.placeholder(tf.double, shape=shape_x1)
     with tf.GradientTape() as tape:
@@ -166,7 +166,7 @@ def gen_random_data_double_elugrad():
                  "elugrad/data/elugrad_data_input6_2.txt",
                  "elugrad/data/elugrad_data_output_6.txt"]
     np.random.seed(3457)
-    shape_x1 = [12, 15, 300]
+    shape_x1 = [6, 15, 100]
     a = gen_data_file(shape_x1, np.double, "uniform",-100,100)
     x1 = tf.compat.v1.placeholder(tf.double, shape=shape_x1)
     with tf.GradientTape() as tape:
@@ -186,6 +186,4 @@ def run():
     gen_random_data_float16()
     gen_random_data_float()
     gen_random_data_double()
-    gen_random_data_float16_elugrad()
-    gen_random_data_float_elugrad()
     gen_random_data_double_elugrad()

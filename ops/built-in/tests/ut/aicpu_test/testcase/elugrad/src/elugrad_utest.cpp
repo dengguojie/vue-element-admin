@@ -60,7 +60,7 @@ void RunEluGradKernel(vector<string> data_files, vector<DataType> data_types,
 
 TEST_F(TEST_ELUGRAD_UT, DATA_TYPE_FLOAT16_SUCC) {
   vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16, DT_FLOAT16};
-  vector<vector<int64_t>> shapes = {{12, 15, 30}, {12, 15, 30}, {12, 15, 30}};
+  vector<vector<int64_t>> shapes = {{2, 5, 10}, {2, 5, 10}, {2, 5, 10}};
   vector<string> files{"elugrad/data/elugrad_data_input1_1.txt",
                        "elugrad/data/elugrad_data_input1_2.txt",
                        "elugrad/data/elugrad_data_output_1.txt"};
@@ -70,7 +70,7 @@ TEST_F(TEST_ELUGRAD_UT, DATA_TYPE_FLOAT16_SUCC) {
 
 TEST_F(TEST_ELUGRAD_UT, DATA_TYPE_FLOAT_SUCC) {
   vector<DataType> data_types = {DT_FLOAT, DT_FLOAT, DT_FLOAT};
-  vector<vector<int64_t>> shapes = {{12, 15, 30}, {12, 15, 30}, {12, 15, 30}};
+  vector<vector<int64_t>> shapes = {{2, 5, 10}, {2, 5, 10}, {2, 5, 10}};
   vector<string> files{"elugrad/data/elugrad_data_input2_1.txt",
                        "elugrad/data/elugrad_data_input2_2.txt",
                        "elugrad/data/elugrad_data_output_2.txt"};
@@ -79,38 +79,17 @@ TEST_F(TEST_ELUGRAD_UT, DATA_TYPE_FLOAT_SUCC) {
 
 TEST_F(TEST_ELUGRAD_UT, DATA_TYPE_DOUBLE_SUCC) {
   vector<DataType> data_types = {DT_DOUBLE, DT_DOUBLE, DT_DOUBLE};
-  vector<vector<int64_t>> shapes = {{12, 15, 30}, {12, 15, 30}, {12, 15, 30}};
+  vector<vector<int64_t>> shapes = {{2, 5, 10}, {2, 5, 10}, {2, 5, 10}};
   vector<string> files{"elugrad/data/elugrad_data_input3_1.txt",
                        "elugrad/data/elugrad_data_input3_2.txt",
                        "elugrad/data/elugrad_data_output_3.txt"};
   RunEluGradKernel<double, double, double>(files, data_types, shapes);
 }
 
-TEST_F(TEST_ELUGRAD_UT, DATA_TYPE_FLOAT16_ELUGRAD_SUCC) {
-  vector<DataType> data_types = {DT_FLOAT16, DT_FLOAT16, DT_FLOAT16};
-  vector<vector<int64_t>> shapes = {
-      {12, 15, 300}, {12, 15, 300}, {12, 15, 300}};
-  vector<string> files{"elugrad/data/elugrad_data_input4_1.txt",
-                       "elugrad/data/elugrad_data_input4_2.txt",
-                       "elugrad/data/elugrad_data_output_4.txt"};
-  RunEluGradKernel<Eigen::half, Eigen::half, Eigen::half>(files, data_types,
-                                                          shapes);
-}
-
-TEST_F(TEST_ELUGRAD_UT, DATA_TYPE_FLOAT_ELUGRAD_SUCC) {
-  vector<DataType> data_types = {DT_FLOAT, DT_FLOAT, DT_FLOAT};
-  vector<vector<int64_t>> shapes = {
-      {12, 15, 300}, {12, 15, 300}, {12, 15, 300}};
-  vector<string> files{"elugrad/data/elugrad_data_input5_1.txt",
-                       "elugrad/data/elugrad_data_input5_2.txt",
-                       "elugrad/data/elugrad_data_output_5.txt"};
-  RunEluGradKernel<float, float, float>(files, data_types, shapes);
-}
-
 TEST_F(TEST_ELUGRAD_UT, DATA_TYPE_DOUBLE_ELUGRAD_SUCC) {
   vector<DataType> data_types = {DT_DOUBLE, DT_DOUBLE, DT_DOUBLE};
   vector<vector<int64_t>> shapes = {
-      {12, 15, 300}, {12, 15, 300}, {12, 15, 300}};
+      {6, 15, 100}, {6, 15, 100}, {6, 15, 100}};
   vector<string> files{"elugrad/data/elugrad_data_input6_1.txt",
                        "elugrad/data/elugrad_data_input6_2.txt",
                        "elugrad/data/elugrad_data_output_6.txt"};
