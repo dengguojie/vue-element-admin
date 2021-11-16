@@ -42,7 +42,7 @@ namespace ge {
         void* data_ptr = (void*)data->GetData().GetData();
         if (data_ptr == nullptr) {
           return;
-        }s
+        }
         T dim = *((T*)data_ptr + i);
         vec_dim.push_back(dim);
       }
@@ -58,19 +58,12 @@ namespace ge {
     }
 
     IMPLEMT_COMMON_INFERFUNC(FillInferShape) {
-      GeTensorPtr data;
       std::vector<int64_t> vec_dim;
       auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
       op_desc->SetOpInferDepends({"dims"});
 
-      auto node = NodeUtils::GetNodeFromOperator(op);
-      if (node == nullptr) {
-        std::string err_msg = GetInputInvalidErrMsg("node");
-        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
-        return GRAPH_PARAM_INVALID;
-      }
-
       TensorDesc td = op.GetOutputDesc("y");
+
       auto dim_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName("dims"));
       const GeTensor *data = OpDescUtils::GetInputConstData(op, dim_idx);
       if (data == nullptr) {
@@ -79,9 +72,6 @@ namespace ge {
         int64_t dim_value;
         dim_value = shape.GetDim(0);
         std::vector<std::pair<int64_t, int64_t>> range_output;
-        std::vector<std::pair<int64_t, int64_t>> range_input;
-        range_input.push_back(std::make_pair(1, -1));
-        op.GetInputDesc("dims").SetShapeRange(range_input);
         for (int64_t m = 0; m < dim_value; m++) {
           vec_dim.push_back(-1);
           range_output.push_back(std::make_pair(1, -1));
@@ -114,21 +104,15 @@ namespace ge {
 
         int64_t fused_output = std::accumulate(vec_dim.begin(), vec_dim.end(), 1, std::multiplies<int64_t>());
         OP_LOGD(op.GetName().c_str(), "fused_output dims value done [%d]", fused_output);
-        std::vector<std::pair<int64_t, int64_t>> range_input;
         std::vector<std::pair<int64_t, int64_t>> range_output;
-        range_input.push_back(std::make_pair(fused_output, fused_output));
 
         td.SetShape(Shape(vec_dim));
         td.SetDataType(op.GetInputDesc("value").GetDataType());
-        auto status = op.GetInputDesc("dims").SetShapeRange(range_input);
 
         for (auto& dim_val : vec_dim) {
           range_output.push_back(std::make_pair(dim_val, dim_val));
         }
 
-        if (status != GRAPH_SUCCESS) {
-          return GRAPH_FAILED;
-        }
         td.SetShapeRange(range_output);
 
         (void)op.UpdateOutputDesc("y", td);
