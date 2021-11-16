@@ -93,7 +93,7 @@ TEST_F(depthwise_conv2d_fusion_pass_test, fuse_n_c_dim_test) {
   fe::FusionPassTestUtils::RunGraphFusionPass("ADepthwiseFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
   for (ge::NodePtr &node : compute_graph_ptr->GetDirectNode()) {
     std::cout << "type:" << node->GetType() << ", name:" << node->GetName() << std::endl;
-    if (node->GetName() == "filter/Reshape") {
+    if (node->GetName() == "filter/Reshape_1") {
       ge::OpDescPtr desc = node->GetOpDesc();
       auto out_tensor = desc->GetOutputDesc(0);
       out_shape = out_tensor.GetOriginShape().GetDims();
@@ -362,7 +362,7 @@ TEST_F(depthwise_conv2d_fusion_pass_test, all_filter_input_empty_test) {
   fe::FusionPassTestUtils::RunGraphFusionPass("ADepthwiseFusionPass", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
   for (ge::NodePtr &node : compute_graph_ptr->GetDirectNode()) {
     std::cout << "type:" << node->GetType() << ", name:" << node->GetName() << std::endl;
-    if (node->GetName() == "filter/Reshape") {
+    if (node->GetName() == "filter/Reshape_1") {
       ge::OpDescPtr desc = node->GetOpDesc();
       auto out_tensor = desc->GetOutputDesc(0);
       out_shape = out_tensor.GetOriginShape().GetDims();

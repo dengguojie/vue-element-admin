@@ -32,8 +32,9 @@ class DepthwiseFusionPass : public PatternFusionBasePass {
     vector<FusionPattern*> DefinePatterns() override;
     Status Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& fusionNodes) override;
   private:
-    Status CreateReshapeNode(ge::ComputeGraph& graph, const ge::OutDataAnchorPtr & out_anchor, const vector<int64_t> & shape,
-                           ge::NodePtr& shape_node);
+    Status CreateReshapeNode(ge::ComputeGraph& graph, const ge::InDataAnchorPtr & in_anchor,
+                            const vector<int64_t> & pre_shape, const vector<int64_t> & new_shape,
+                            ge::NodePtr& shape_node);
     Status InsertNode(const ge::OutDataAnchorPtr &src, const ge::InDataAnchorPtr &dst,  ge::NodePtr& new_node);
     const string FUSED_OP_TYPE = "DepthwiseConv2D";
 };
