@@ -24,11 +24,11 @@ class AICPU_VISIBILITY AsyncCpuKernel : public CpuKernel {
  public:
   using CpuKernel::CpuKernel;
 
-  typedef std::function<void(uint32_t status)> DoneCallback;
+  using DoneCallback = std::function<void(uint32_t status)>;
 
   virtual uint32_t ComputeAsync(CpuKernelContext &ctx, DoneCallback done) = 0;
 
-  virtual uint32_t Compute(CpuKernelContext &ctx);
+  virtual uint32_t Compute(CpuKernelContext &ctx) override;
 };
 } // namespace aicp 
 #endif  // ASYNC_CPU_KERNEL_H

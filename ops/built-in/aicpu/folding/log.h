@@ -27,35 +27,35 @@ const char CPU_MODULE[] = "AICPU";
 
 #ifdef RUN_TEST
 #define CPU_LOG_DEBUG(fmt, ...)                                              \
-  printf("[DEBUG] [%s][%s][%s:%d][tid:%lu]:" fmt "\n", CPU_MODULE, __FILE__, \
+  printf("[DEBUG] [%s][%s][%s:%d][tid:%ld]:" fmt "\n", CPU_MODULE, __FILE__, \
          __FUNCTION__, __LINE__, GET_TID(), ##__VA_ARGS__)
 #define CPU_LOG_INFO(fmt, ...)                                              \
-  printf("[INFO] [%s][%s][%s:%d][tid:%lu]:" fmt "\n", CPU_MODULE, __FILE__, \
+  printf("[INFO] [%s][%s][%s:%d][tid:%ld]:" fmt "\n", CPU_MODULE, __FILE__, \
          __FUNCTION__, __LINE__, GET_TID(), ##__VA_ARGS__)
 #define CPU_LOG_WARN(fmt, ...)                                              \
-  printf("[WARN] [%s][%s][%s:%d][tid:%lu]:" fmt "\n", CPU_MODULE, __FILE__, \
+  printf("[WARN] [%s][%s][%s:%d][tid:%ld]:" fmt "\n", CPU_MODULE, __FILE__, \
          __FUNCTION__, __LINE__, GET_TID(), ##__VA_ARGS__)
 #define CPU_LOG_ERROR(fmt, ...)                                              \
-  printf("[ERROR] [%s][%s][%s:%d][tid:%lu]:" fmt "\n", CPU_MODULE, __FILE__, \
+  printf("[ERROR] [%s][%s][%s:%d][tid:%ld]:" fmt "\n", CPU_MODULE, __FILE__, \
          __FUNCTION__, __LINE__, GET_TID(), ##__VA_ARGS__)
 #define CPU_LOG_EVENT(fmt, ...)                                              \
-  printf("[EVENT] [%s][%s][%s:%d][tid:%lu]:" fmt "\n", CPU_MODULE, __FILE__, \
+  printf("[EVENT] [%s][%s][%s:%d][tid:%ld]:" fmt "\n", CPU_MODULE, __FILE__, \
          __FUNCTION__, __LINE__, GET_TID(), ##__VA_ARGS__)
 #else
 #define CPU_LOG_DEBUG(fmt, ...)                                            \
-  dlog_debug(AICPU, "[%s][%s:%d][tid:%lu]:" fmt, CPU_MODULE, __FUNCTION__, \
+  dlog_debug(AICPU, "[%s][%s:%d][tid:%ld]:" fmt, CPU_MODULE, __FUNCTION__, \
              __LINE__, GET_TID(), ##__VA_ARGS__)
 #define CPU_LOG_INFO(fmt, ...)                                            \
-  dlog_info(AICPU, "[%s][%s:%d][tid:%lu]:" fmt, CPU_MODULE, __FUNCTION__, \
+  dlog_info(AICPU, "[%s][%s:%d][tid:%ld]:" fmt, CPU_MODULE, __FUNCTION__, \
             __LINE__, GET_TID(), ##__VA_ARGS__)
 #define CPU_LOG_WARN(fmt, ...)                                            \
-  dlog_warn(AICPU, "[%s][%s:%d][tid:%lu]:" fmt, CPU_MODULE, __FUNCTION__, \
+  dlog_warn(AICPU, "[%s][%s:%d][tid:%ld]:" fmt, CPU_MODULE, __FUNCTION__, \
             __LINE__, GET_TID(), ##__VA_ARGS__)
 #define CPU_LOG_ERROR(fmt, ...)                                            \
-  dlog_error(AICPU, "[%s][%s:%d][tid:%lu]:" fmt, CPU_MODULE, __FUNCTION__, \
+  dlog_error(AICPU, "[%s][%s:%d][tid:%ld]:" fmt, CPU_MODULE, __FUNCTION__, \
              __LINE__, GET_TID(), ##__VA_ARGS__)
 #define CPU_LOG_EVENT(fmt, ...)                                            \
-  dlog_event(AICPU, "[%s][%s:%d][tid:%lu]:" fmt, CPU_MODULE, __FUNCTION__, \
+  dlog_event(AICPU, "[%s][%s:%d][tid:%ld]:" fmt, CPU_MODULE, __FUNCTION__, \
              __LINE__, GET_TID(), ##__VA_ARGS__)
 #endif
 

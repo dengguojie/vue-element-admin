@@ -27,35 +27,35 @@ const char KERNEL_MODULE[] = "AICPU";
 
 #ifdef RUN_TEST
 #define KERNEL_LOG_DEBUG(fmt, ...)                                    \
-  printf("[DEBUG] [%s][%s][%s:%d][tid:%lu]:" fmt "\n", KERNEL_MODULE, \
+  printf("[DEBUG] [%s][%s][%s:%d][tid:%ld]:" fmt "\n", KERNEL_MODULE, \
          __FILE__, __FUNCTION__, __LINE__, GET_TID(), ##__VA_ARGS__)
 #define KERNEL_LOG_INFO(fmt, ...)                                              \
-  printf("[INFO] [%s][%s][%s:%d][tid:%lu]:" fmt "\n", KERNEL_MODULE, __FILE__, \
+  printf("[INFO] [%s][%s][%s:%d][tid:%ld]:" fmt "\n", KERNEL_MODULE, __FILE__, \
          __FUNCTION__, __LINE__, GET_TID(), ##__VA_ARGS__)
 #define KERNEL_LOG_WARN(fmt, ...)                                              \
-  printf("[WARN] [%s][%s][%s:%d][tid:%lu]:" fmt "\n", KERNEL_MODULE, __FILE__, \
+  printf("[WARN] [%s][%s][%s:%d][tid:%ld]:" fmt "\n", KERNEL_MODULE, __FILE__, \
          __FUNCTION__, __LINE__, GET_TID(), ##__VA_ARGS__)
 #define KERNEL_LOG_ERROR(fmt, ...)                                    \
-  printf("[ERROR] [%s][%s][%s:%d][tid:%lu]:" fmt "\n", KERNEL_MODULE, \
+  printf("[ERROR] [%s][%s][%s:%d][tid:%ld]:" fmt "\n", KERNEL_MODULE, \
          __FILE__, __FUNCTION__, __LINE__, GET_TID(), ##__VA_ARGS__)
 #define KERNEL_LOG_EVENT(fmt, ...)                                    \
-  printf("[EVENT] [%s][%s][%s:%d][tid:%lu]:" fmt "\n", KERNEL_MODULE, \
+  printf("[EVENT] [%s][%s][%s:%d][tid:%ld]:" fmt "\n", KERNEL_MODULE, \
          __FILE__, __FUNCTION__, __LINE__, GET_TID(), ##__VA_ARGS__)
 #else
 #define KERNEL_LOG_DEBUG(fmt, ...)                                            \
-  dlog_debug(AICPU, "[%s][%s:%d][tid:%lu]:" fmt, KERNEL_MODULE, __FUNCTION__, \
+  dlog_debug(AICPU, "[%s][%s:%d][tid:%ld]:" fmt, KERNEL_MODULE, __FUNCTION__, \
              __LINE__, GET_TID(), ##__VA_ARGS__)
 #define KERNEL_LOG_INFO(fmt, ...)                                            \
-  dlog_info(AICPU, "[%s][%s:%d][tid:%lu]:" fmt, KERNEL_MODULE, __FUNCTION__, \
+  dlog_info(AICPU, "[%s][%s:%d][tid:%ld]:" fmt, KERNEL_MODULE, __FUNCTION__, \
             __LINE__, GET_TID(), ##__VA_ARGS__)
 #define KERNEL_LOG_WARN(fmt, ...)                                            \
-  dlog_warn(AICPU, "[%s][%s:%d][tid:%lu]:" fmt, KERNEL_MODULE, __FUNCTION__, \
+  dlog_warn(AICPU, "[%s][%s:%d][tid:%ld]:" fmt, KERNEL_MODULE, __FUNCTION__, \
             __LINE__, GET_TID(), ##__VA_ARGS__)
 #define KERNEL_LOG_ERROR(fmt, ...)                                            \
-  dlog_error(AICPU, "[%s][%s:%d][tid:%lu]:" fmt, KERNEL_MODULE, __FUNCTION__, \
+  dlog_error(AICPU, "[%s][%s:%d][tid:%ld]:" fmt, KERNEL_MODULE, __FUNCTION__, \
              __LINE__, GET_TID(), ##__VA_ARGS__)
 #define KERNEL_LOG_EVENT(fmt, ...)                                            \
-  dlog_event(AICPU, "[%s][%s:%d][tid:%lu]:" fmt, KERNEL_MODULE, __FUNCTION__, \
+  dlog_event(AICPU, "[%s][%s:%d][tid:%ld]:" fmt, KERNEL_MODULE, __FUNCTION__, \
              __LINE__, GET_TID(), ##__VA_ARGS__)
 #endif
 
