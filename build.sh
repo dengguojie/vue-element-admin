@@ -117,6 +117,7 @@ query_env(){
 }
 
 get_libs_name(){
+  base_url="https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/"
   libs=("secure_c" "protobuf" "eigen" "gtest" "nlohmann_json")
   secure_c_pack="v1.1.10.tar.gz"
   protobuf_pack="v3.13.0.tar.gz"
@@ -128,6 +129,11 @@ get_libs_name(){
   nlohmann_json_link=https://github.com/nlohmann/json/releases/download/v3.6.1/include.zip
   protobuf_link=https://github.com/protocolbuffers/protobuf/archive/v3.13.0.tar.gz
   secure_c_link=https://gitee.com/openeuler/libboundscheck/repository/archive/v1.1.10.tar.gz
+  obs_eigen=https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/eigen-3.3.7.tar.gz
+  obs_gtest=https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/release-1.8.0.tar.gz
+  obs_nlohmann_json=https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/include.zip
+  obs_protobuf=https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/v3.13.0.tar.gz
+  obs_secure_c=https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/v1.1.10.tar.gz
 }
 
 down_third_libs(){
@@ -165,86 +171,51 @@ down_third_libs(){
       echo "Network testing completed"
     fi
   fi
-  if [ ! -f "./build/cann/download/thirdlibs.zip" ];then 
-    wget --no-check-certificate  --connect-timeout=5 -P build/cann/download $obs_addr
-    res_down=`echo $?`
-    if [  $res_down -eq 0 ];then
-      echo "download from $obs_addr success"
-    else
-      echo $dotted_line
-      echo "download from $obs_addr failed"
-      echo "begin download from github"
-      for mylib in ${libs[@]}
-        do
-          pack=${mylib}_pack
-          link=${mylib}_link
-          eval pack=$(echo \$$pack)
-          eval link=$(echo \$$link)
-          if [ ! -f "./build/cann/download/$mylib/$pack" ];then
-            wget --no-check-certificate -P build/cann/download/$mylib --debug ${link}
-          fi
-        done
-    fi
-  else
-    echo $dotted_line
-    echo "./build/cann/download/thirdlibs.zip exist, do not need download"
-  fi
-  if [ ! -f "./build/cann/download/thirdlibs.zip" ];then 
-    if [ $res_down -ne 0  ];then
-      for mylib in ${libs[@]}
-        do
-          pack=${mylib}_pack
-          link=${mylib}_link
-          eval pack=$(echo \$$pack)
-          eval link=$(echo \$$link)
-          if [ -f "./build/cann/download/$mylib/$pack" ];then
-            md5=`md5sum ./build/cann/download/$mylib/$pack | cut -d" " -f1`
-            eval "${mylib}_md5=$md5"
-          else
-            echo "dwonload from $link failed"
-            exit -1
-          fi
-        done
-    fi
-  fi
-  if [ ! -d "./build/cann/download/ascend_thirdlibs" ];then
-    if [ -f "./build/cann/download/thirdlibs.zip" ];then
-      unzip -d build/cann/download build/cann/download/thirdlibs.zip
-      mv ./build/cann/download/ascned_thirdlibs ./build/cann/download/ascend_thirdlibs
-    fi
-  fi
-  if [ -d "./build/cann/download/ascend_thirdlibs" ];then
-     for mylib in ${libs[@]}
-        do
-          pack=${mylib}_pack
-          eval pack=$(echo \$$pack)
-          md5=`md5sum ./build/cann/download/ascend_thirdlibs/download/$mylib/$pack | cut -d" " -f1`
-          eval "${mylib}_md5=$md5"
-        done
-  fi
+  declare -A expect_md5
+  expect_md5=([secure_c]="ae4865cec1bfb52f7dca03f5c05ac98a"
+              [protobuf]="1a6274bc4a65b55a6fa70e264d796490"
+              [eigen]="9e30f67e8531477de4117506fe44669b"
+              [gtest]="16877098823401d1bf2ed7891d7dce36"
+              [nlohmann_json]="0dc903888211db3a0f170304cd9f3a89")
+  declare -A read_md5
   for mylib in ${libs[@]}
     do
-      pack=${mylib}_pack
-      eval pack=$(echo \$$pack)
-      if [ -f build/cann/download/ascend_thirdlibs/download/$mylib/$pack ];then
-        if [ ! -f "./build/cann/download/$mylib/$pack" ];then
-          cp build/cann/download/ascend_thirdlibs/download/$mylib/$pack build/cann/download/$mylib/$pack
-        fi
+      if [ -f ./build/cann/download/$mylib/* ];then
+        md5=`md5sum ./build/cann/download/$mylib/* | cut -d" " -f1`
+        read_md5+=([$mylib]=$md5)
+      else
+        read_md5+=([$mylib]="empty")
       fi
     done
 
-  expect_md5=("ae4865cec1bfb52f7dca03f5c05ac98a" #is secure_c
-              "1a6274bc4a65b55a6fa70e264d796490" #is protobuf
-              "9e30f67e8531477de4117506fe44669b" #is eigen
-              "16877098823401d1bf2ed7891d7dce36" #is gtest
-              "0dc903888211db3a0f170304cd9f3a89" ) #is nlohmann_json
-              
+  for mylib in ${libs[@]}
+    do
+      if [[ ! ${expect_md5[$mylib]} == ${read_md5[$mylib]} ]];then
+        echo $mylib
+        echo ${expect_md5[$mylib]} 
+        echo ${read_md5[$mylib]}
+        link=obs_${mylib}
+        eval link=$(echo \$$link)
+        rm -rf ./build/cann/download/$mylib/* 
+        wget -P ./build/cann/download/$mylib/  $link
+      fi
+    done    
+    
+  for mylib in ${libs[@]}
+    do
+      if [ ! -f ./build/cann/download/$mylib/* ];then
+        link=${mylib}_link
+        eval link=$(echo \$$link)
+        wget -P ./build/cann/download/$mylib/  $link
+      fi
+    done
+    
   echo "check md5 begin"
   for i in $(seq 0 4)
     do
       real_md5=${libs[i]}_md5
       eval real_md5=$(echo \$$real_md5)
-      if [  $real_md5 != ${expect_md5[i]} ];then
+      if [[ ! $real_md5 == ${expect_md5[i]} ]];then
         echo "${libs[i]} md5 not correct"
         exit -1
       fi
@@ -781,4 +752,3 @@ if [[ "$@" == "-h" ]];then
 else
   main "$@"|gawk '{print strftime("[%Y-%m-%d %H:%M:%S]"), $0}'
 fi
-
