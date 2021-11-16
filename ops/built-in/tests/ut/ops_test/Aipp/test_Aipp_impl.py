@@ -179,6 +179,26 @@ ut_case.add_case(["Ascend310", "Ascend710"],
                                        "uint8", "float16", "NCHW", "NC1HWC0", aipp_config_dynamic,
                                        "aipp_dynamic_1", "success"))
 
+from tbe import tvm
+def test_set_spr2_spr9_1(test_arg):
+    from impl.aipp_comm import set_spr2_spr9
+    aipp_config_dict11 = aipp_config_dict.copy()
+    aipp_config_dict11["input_format"] = "YUV400_U8"
+    set_spr2_spr9(tvm.ir_builder.create(), aipp_config_dict11, "int8", "SD3403", "NC1HWC0")
+    aipp_config_dict12 = aipp_config_dict.copy()
+    set_spr2_spr9(tvm.ir_builder.create(), aipp_config_dict12, "int8", "SD3403", "NC1HWC0")
+    aipp_config_dict13 = aipp_config_dict.copy()
+    aipp_config_dict13["csc_switch"] = 1
+    set_spr2_spr9(tvm.ir_builder.create(), aipp_config_dict13, "int8", "SD3403", "NC1HWC0")
+    aipp_config_dict14 = aipp_config_dict.copy()
+    aipp_config_dict14["input_format"] = "RAW10"
+    set_spr2_spr9(tvm.ir_builder.create(), aipp_config_dict14, "float16", "SD3403", "NC1HWC0")
+    aipp_config_dict15 = aipp_config_dict.copy()
+    aipp_config_dict15["padding"] = 1
+    aipp_config_dict15["input_format"] = "AYUV444_U8"
+    set_spr2_spr9(tvm.ir_builder.create(), aipp_config_dict15, "float16", "SD3403", "NC1HWC0")
+
+ut_case.add_cust_test_func(test_func=test_set_spr2_spr9_1)
 
 if __name__ == '__main__':
     #ut_case.run("Ascend310")

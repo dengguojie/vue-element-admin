@@ -103,7 +103,17 @@ case11 = {"params": [{"shape": (1,9,84,84,16), "dtype": "float16", "format": "NC
          "expect": "success",
          "format_expect": [],
          "support_expect": True} 
-            
+
+case12 = {"params": [{"shape": (32,9,32,16,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (32,9,4,16,16),"ori_format": "NCHW"},
+                    {"shape": (32,4,16), "dtype": "float16", "format": "NCHW", "ori_shape": (32,2,16),"ori_format": "NCHW"},
+                    {"shape": (32,4,16), "dtype": "float16", "format": "NCHW", "ori_shape": (32,2,16),"ori_format": "NCHW"},
+                    {"shape": (32,9,4,16,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (32,9,4,16,16),"ori_format": "NCHW"},
+                    40, 30, 0.5, -0.5],
+         "case_name": "roi_pooling_12",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+       
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
@@ -115,6 +125,7 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case8)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case9)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case10)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case11)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case12)
 
 if __name__ == '__main__':
     ut_case.run(["Ascend910","Ascend310","Ascend710"])
