@@ -163,12 +163,16 @@ def im2col_row_major(  # pylint: disable=R0913
 
         h_index = (hw_index // width_out) * stride_h + kh_index * dilate_h
         w_index = (hw_index % width_out) * stride_w + kw_index * dilate_w
-
-        return tvm.select(
-            tvm.any(h_index < padding_up, h_index > a_height.value + padding_up - 1, w_index < padding_left,
-                    w_index > a_width.value + padding_left - 1), tvm.const(offset_x, compute_dtype),
-            tensor_a(n_index, c1_index, h_index - padding_up + slice_offset, w_index - padding_left,
-                     c0_index))
+        if not l0a_dma_flag:
+            return tvm.select(tvm.any(h_index < padding_up,
+                                      h_index > a_height.value + padding_up - 1,
+                                      w_index < padding_left,
+                                      w_index > a_width.value + padding_left - 1),
+                              tvm.const(offset_x, compute_dtype),
+                              tensor_a(n_index, c1_index, h_index - padding_up + slice_offset,
+                                       w_index - padding_left, c0_index))
+        else:
+            return tensor_a(n_index, c1_index, h_index + slice_offset, w_index, c0_index)
 
     return tvm.compute(a_im2col_vm_shape,
                        lambda *indices: __im2col_row_major_indices(indices, tensor_a, kernel_w, padding,

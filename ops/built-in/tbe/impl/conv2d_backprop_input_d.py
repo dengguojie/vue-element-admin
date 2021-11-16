@@ -63,20 +63,19 @@ def _cal_min_l1space(out_backprop,  # pylint: disable=invalid-name
     Parameters
     ----------
     out_backprop: dict with keys(shape and dtype) or Tensor
-        The shape of gradients.
+    The shape of gradients.
 
     weight: dict with keys(shape and dtype) or Tensor
-        input weight tensor
+    input weight tensor
 
     y: dict with keys(shape and dtype)
-        conv2d_backprop_input output tensor, dtype must be assigned.
+    conv2d_backprop_input output tensor, dtype must be assigned.
 
     strides: list of 2 integers
 
     dilations: tuple/list of 2 integers
 
-    pads: tuple/list of 4 integers
-        [pad_top, pad_bottom, pad_left, pad_right].
+    pads: tuple/list of 4 integers. [pad_top, pad_bottom, pad_left, pad_right].
 
 
     Returns

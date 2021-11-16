@@ -77,6 +77,21 @@ conv2d_bp_input_op_testcase = [
         (1, 1, 1, 1),
         (0, 0, 0, 0),
     ),
+    # l0a use dma_copy repleace l0ad3d, kernel > 255 conv2d
+    (
+        "float16",
+        "float16",
+        "float16",
+        (16, 4, 1, 500),
+        (1, 16, 9, 4),
+        (1, 4, 9, 4),
+        "NCHW",
+        "NCHW",
+        "NCHW",
+        (1, 4, 9, 4),
+        (1, 1, 1, 1),
+        (0, 0, 249, 250),
+    ),
     (
         "float16",
         "float16",

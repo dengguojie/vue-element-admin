@@ -2529,6 +2529,18 @@ static bool VerifyConv2dbpParas(const AscendString& op_name, ConstGeTensorDescPt
   return true;
 }
 
+// -----------------------------conv3d_transpose_common_check----------------------------
+template <typename T1>
+static bool CheckVectorAllZero(const std::vector<T1>& list)
+{
+    for (const auto& iter : list) {
+        if (iter != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
 static bool VerifyConv2dbpOutputPadding(const AscendString& op_name, const OpDescPtr& op_desc) {
   std::vector<int32_t> output_padding_list;
   if (!AttrUtils::GetListInt(op_desc, "output_padding", output_padding_list)) {
@@ -2639,6 +2651,7 @@ static graphStatus data_slice_conv2d_backprop_input(ge::Operator& op, vector<vec
   bool i_equal_two = i == kHDimNCHWIdx && (kh != 1 || strh != 1) && ih > 0;
   bool i_equal_three = i == kWDimNCHWIdx && (kw != 1 || strw != 1) && iw > 0;
   bool is_deconv_flag = string(op_type.GetString()) == "Deconvolution";
+  bool not_set_input_size = is_deconv_flag || CheckVectorAllZero(input_sizes);
   SliceTuple infer_hw(kh, dilh, strh, ih);
   if (i == 1) {
     bool dim_shape_fail = string(op_type.GetString()) == "Conv2DBackpropInputD" &&
@@ -2660,7 +2673,7 @@ static graphStatus data_slice_conv2d_backprop_input(ge::Operator& op, vector<vec
     }
     CHECK_OP_FUNC(!AttrUtils::SetListListInt(tensor_desc_filter, ge::ATTR_NAME_DATA_SLICE, filter_data_slice),
                   return GRAPH_FAILED, "set filter data slice attr failed.");
-    if (!is_deconv_flag) {
+    if (!not_set_input_size) {
       input_sizes[c_y_position] = y_extend * kBlockBaseSize;
       op.SetAttr("input_size", input_sizes);
     }
@@ -2672,7 +2685,7 @@ static graphStatus data_slice_conv2d_backprop_input(ge::Operator& op, vector<vec
     dedy_data_slice[i] = input_h;
     CHECK_OP_FUNC(!AttrUtils::SetListListInt(tensor_desc_dedy, ge::ATTR_NAME_DATA_SLICE, dedy_data_slice),
               return GRAPH_FAILED, "set dedy data slice attr failed.");
-    if (!is_deconv_flag) {
+    if (!not_set_input_size) {
       input_sizes[h_y_position] = y_extend;
       op.SetAttr("input_size", input_sizes);
     }
@@ -2686,7 +2699,7 @@ static graphStatus data_slice_conv2d_backprop_input(ge::Operator& op, vector<vec
     dedy_data_slice[i] = input_w;
     CHECK_OP_FUNC(!AttrUtils::SetListListInt(tensor_desc_dedy, ge::ATTR_NAME_DATA_SLICE, dedy_data_slice),
               return GRAPH_FAILED, "set dedy data slice attr failed.");
-    if (!is_deconv_flag) {
+    if (!not_set_input_size) {
       input_sizes[w_y_position] = y_extend;
       op.SetAttr("input_size", input_sizes);
     }
@@ -8497,18 +8510,6 @@ IMPLEMT_INFER_DATA_SLICE(Conv3DBackpropFilterD, Conv3DBackpropFilterDInfereDataS
 INFER_DATA_SLICE_FUNC_REG(Conv3DBackpropFilterD, Conv3DBackpropFilterDInfereDataSlice);
 INFER_FUNC_REG(Conv3DBackpropFilterD, Conv3DBackpropFilterDInfer);
 VERIFY_FUNC_REG(Conv3DBackpropFilterD, Conv3DBackpropFilterDVerify);
-
-// -----------------------------conv3d_transpose_common_check----------------------------
-template <typename T1>
-static bool CheckVectorAllZero(const std::vector<T1>& list)
-{
-    for (const auto& iter : list) {
-        if (iter != 0) {
-            return false;
-        }
-    }
-    return true;
-}
 
 template <typename T1, typename T2, typename T3>
 static bool SetInputsizeListConv3dtranspose(ge::Operator& op, const std::vector<T1>& x_sizes, Format x_format,
