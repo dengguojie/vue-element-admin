@@ -113,7 +113,7 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
 
         self.l1_strategy = L1MoveStrategy.EMPTY
         self.ub_kernel_stg = UbKernelStrategy.EMPTY
-        self.check_load3d_support = tbe_platform.cce_conf.api_check_support("tik.load3dv1")
+        self.check_load3d_support = tbe_platform.api_check_support("tik.load3dv1")
 
         # encapsulate the data_move function when the data is continue.
         self._move_ctn = partial(self.inst.data_move,
