@@ -17,16 +17,17 @@ load3d_common_func
 """
 from te import tik
 
-C0 = 16
-SCALAR_TYPE = "int64"
-# load3d process num per repeat
-LOAD3D_NUM_PER_REPEAT = 256
-# load3d max loop count for repeat_mode = 0
-MAX_LOOP_COUNT = 16
 
 # 'pylint: disable=too-many-arguments
 def img2col(tik_instance, ori_input_l1, ori_input_col_ub, l1_start_offset, ub_start_offset, index_kh, index_kw,
             left_top_h, left_top_w, l1_h, l1_w, kernel_h, kernel_w, stride_h, stride_w, repeat_times, repeat_mode, pad):
+    C0 = 16
+    SCALAR_TYPE = "int64"
+    # load3d process num per repeat
+    LOAD3D_NUM_PER_REPEAT = 256
+    # load3d max loop count for repeat_mode = 0
+    MAX_LOOP_COUNT = 16
+
     pad_left, pad_right, pad_top, pad_bottom = pad
     left_top_h_scalar = tik_instance.Scalar(dtype=SCALAR_TYPE, name="left_top_h", init_value=left_top_h)
     left_top_w_scalar = tik_instance.Scalar(dtype=SCALAR_TYPE, name="left_top_w", init_value=left_top_w)
@@ -78,7 +79,7 @@ def img2col(tik_instance, ori_input_l1, ori_input_col_ub, l1_start_offset, ub_st
                 n_burst.set_as(0)
 
             with tik_instance.if_scope(n_burst > 0):
-                index_w.set_as(idx_kw + first_wi + actual_pad_left + stride_w * index_wo_max)
+                index_w.set_as(idx_kw + first_wi + actual_pad_left + stride_w * index_wo_min)
                 offset_l1.set_as(((index_h - pad_top) * l1_w + (index_w - pad_left)) * C0)
                 if repeat_mode == 1:
                     offset_ub.set_as((first_wo + index_ho * wo + index_wo_min) * C0)
@@ -91,10 +92,10 @@ def img2col(tik_instance, ori_input_l1, ori_input_col_ub, l1_start_offset, ub_st
 
     if repeat_mode == 1:
         # process first ho
-        load3d_l1_to_ub(-1, top_wo, left_top_w_scalar, 0, pad_left)
+        load3d_l1_to_ub(-1, index_kh, index_kw, top_wo, left_top_w_scalar, 0, pad_left)
         # process remain ho
         with tik_instance.for_range(0, ho) as idx_ho:
-            load3d_l1_to_ub(idx_ho, wo, 0, top_wo, 0)
+            load3d_l1_to_ub(idx_ho, index_kh, index_kw, wo, 0, top_wo, 0)
     else:
         with tik_instance.if_scope(top_wo >= MAX_LOOP_COUNT):
             with tik_instance.for_range(index_kh, kernel_h) as idx_kh:

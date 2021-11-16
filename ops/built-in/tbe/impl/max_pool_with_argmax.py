@@ -473,17 +473,20 @@ class MaxPoolWithargmax():
         repeat_max_time = total_repeat_time // MAX_VECTOR_REPEAT_TIME
         remain_repeat_time = total_repeat_time % MAX_VECTOR_REPEAT_TIME
 
-        with self.inst.for_range(0, repeat_max_time) as loop:
-            self.inst.vector_dup(mask_value, src[src_start + loop * MAX_VECTOR_REPEAT_TIME * mask_value],
-                                 dup_reg, MAX_VECTOR_REPEAT_TIME, 1, 8)
+        with self.tik_instance.for_range(0, repeat_max_time) as loop:
+            self.tik_instance.vector_dup(mask_value, src[src_start + loop * MAX_VECTOR_REPEAT_TIME * mask_value],
+                                         dup_reg, MAX_VECTOR_REPEAT_TIME, 1, 8)
 
         if remain_repeat_time > 0:
-            self.inst.vector_dup(mask_value, src[src_start + repeat_max_time * MAX_VECTOR_REPEAT_TIME * mask_value],
-                                 dup_reg, remain_repeat_time, 1, 8)
+            self.tik_instance.vector_dup(mask_value,
+                                         src[src_start + repeat_max_time * MAX_VECTOR_REPEAT_TIME * mask_value],
+                                         dup_reg, remain_repeat_time, 1, 8)
 
         if remain_ele > 0:
-            self.inst.vector_dup(remain_ele, src[src_start + repeat_max_time * MAX_VECTOR_REPEAT_TIME * mask_value +
-                                                 remain_repeat_time * mask_value], dup_reg, 1, 1, 8)
+            self.tik_instance.vector_dup(remain_ele,
+                                         src[src_start + repeat_max_time * MAX_VECTOR_REPEAT_TIME * mask_value +
+                                             remain_repeat_time * mask_value],
+                                         dup_reg, 1, 1, 8)
 
     # 'pylint: disable=too-many-locals
     def _fun_no_cut(self, block_index, nc1_index, nc1_size):
@@ -929,10 +932,10 @@ class MaxPoolWithargmax():
                                                                    gm_tem * self.in_size_w * self.c_block_size],
                                                 0, 1, gm_l1_burst_len_1, 0, 0)
 
-                    if not self.check_load3d_support:
-                        self._vector_dup(fmap_img2col_ub, 0, fmap_img2col_ub.shape, self.pad_value)
                     with self.tik_instance.if_scope(cut_w_index != 0):
                         with self.tik_instance.if_scope(cut_w_index != (cut_w_num - 1)):
+                            if not self.check_load3d_support:
+                                self._vector_dup(fmap_img2col_ub, 0, fmap_img2col_ub.shape, self.pad_value)
                             with self.tik_instance. for_range(0, fmap_img2col_cut_w_num) as h_index:
                                 source_h = (((h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w)
                                              // (SCALAR_C0 * self.fmap_img2col_w)) //

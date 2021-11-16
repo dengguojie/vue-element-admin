@@ -1249,7 +1249,7 @@ class MaxPool3DGradCompute:
                             else:
                                 col_in_buf_shape = _cal_shape_ele(col_in_buf.shape)
                                 self.set_vector_dup(
-                                    tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, self.dtype)
+                                    tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
                                 img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
                                         hi, wi, self.kh, self.kw, self.sh, self.sw, repeat_times, 1, [0, 0, 0, 0])
 
@@ -1485,7 +1485,7 @@ class MaxPool3DGradCompute:
                                 else:
                                     col_in_buf_shape = _cal_shape_ele(col_in_buf.shape)
                                     self.set_vector_dup(
-                                        tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, self.dtype)
+                                        tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
                                     img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
                                             hi, wi, self.kh, self.kw, self.sh, self.sw, repeat_times, 1, [0, 0, 0, 0])
 
@@ -1781,7 +1781,7 @@ class MaxPool3DGradCompute:
                                 else:
                                     col_in_buf_shape = _cal_shape_ele(col_in_buf.shape)
                                     self.set_vector_dup(
-                                        tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, self.dtype)
+                                        tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
                                     img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
                                             hi, wi, self.kh, self.kw, self.sh, self.sw, repeat_times, 1, [0, 0, 0, 0])
 
@@ -2133,7 +2133,7 @@ class MaxPool3DGradCompute:
                                 else:
                                     col_in_buf_shape = _cal_shape_ele(col_in_buf.shape)
                                     self.set_vector_dup(
-                                        tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, self.dtype)
+                                        tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
                                     img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
                                             hi_val, wi_val, self.kh, self.kw, self.sh, self.sw, repeat_times,
                                             1, [0, 0, 0, 0])
@@ -2350,7 +2350,7 @@ class MaxPool3DGradCompute:
                                 else:
                                     col_in_buf_shape = _cal_shape_ele(col_in_buf.shape)
                                     self.set_vector_dup(
-                                        tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, self.dtype)
+                                        tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
                                     img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
                                             hi_batch, wi_batch, self.kh, self.kw, self.sh, self.sw, repeat_times,
                                             1, [0, 0, 0, 0])
@@ -2604,7 +2604,7 @@ class MaxPool3DGradCompute:
                                 else:
                                     col_in_buf_shape = _cal_shape_ele(col_in_buf.shape)
                                     self.set_vector_dup(
-                                        tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, self.dtype)
+                                        tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
                                     img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
                                             hi, wi_batch, self.kh, self.kw, self.sh, self.sw, repeat_times,
                                             1, [0, 0, 0, 0])
@@ -2896,7 +2896,7 @@ class MaxPool3DGradCompute:
                                 else:
                                     col_in_buf_shape = _cal_shape_ele(col_in_buf.shape)
                                     self.set_vector_dup(
-                                        tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, self.dtype)
+                                        tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
                                     img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
                                             hi_val, wi_val, self.kh, self.kw, self.sh, self.sw, repeat_times,
                                             1, [0, 0, 0, 0])
@@ -3153,7 +3153,7 @@ class MaxPool3DGradCompute:
                                     else:
                                         col_in_buf_shape = _cal_shape_ele(col_in_buf.shape)
                                         self.set_vector_dup(
-                                            tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, self.dtype)
+                                            tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
                                         img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w,
                                                 -pad_hw_top, -pad_hw_left, hi_batch, wi_batch, self.kh, self.kw,
                                                 self.sh, self.sw, repeat_times, 1, pad_hw_list)
@@ -3475,7 +3475,7 @@ class MaxPool3DGradCompute:
                                     else:
                                         col_in_buf_shape = _cal_shape_ele(col_in_buf.shape)
                                         self.set_vector_dup(
-                                            tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, self.dtype)
+                                            tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
                                         img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w,
                                                 -h_top, -pad_hw_left, hi_val, wi_batch, self.kh, self.kw,
                                                 self.sh, self.sw, repeat_times, 1, pad_hw_list)
@@ -3827,7 +3827,7 @@ class MaxPool3DGradCompute:
                                     else:
                                         col_in_buf_shape = _cal_shape_ele(col_in_buf.shape)
                                         self.set_vector_dup(
-                                            tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, self.dtype)
+                                            tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
                                         img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w,
                                                 -h_top, -w_top, hi_val, wi_val, self.kh, self.kw, self.sh, self.sw,
                                                 repeat_times, 1, pad_hw_list)

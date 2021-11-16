@@ -421,7 +421,7 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
         fmap_h, kernel_h, stride_h, padding)
     output_w, pad_l, pad_r = tbe.te_compute.common.tf_get_windowed_output_size_verbose(
         fmap_w, kernel_w, stride_w, padding)
-    check_load3d_support = None
+    check_load3d_support = tbe_platform.cce_conf.api_check_support("tik.load3dv1")
 
     if output_h != out_h:
         error_manager_vector.raise_err_check_params_rules('max_pool_grad_grad',
@@ -652,7 +652,7 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
             tvm_ir.emit(
                 tvm.call_extern(ub_buffer.dtype, "vector_dup",
                                 ub_buffer.access_ptr("w", offset=MAX_VECTOR_REPEATE_TIME * mask_value * repeat_loop),
-                                tvm.const(value, ub_buffer.dtype), MAX_VECTOR_REPEATE_TIME, 1, 1, 8, 8))
+                                tvm.const(value, ub_buffer.dtype), remain_repeat, 1, 1, 8, 8))
 
         if remain > 0:
             tbe_platform.reset_mask_insn(tvm_ir, ub_buffer.dtype, bits=remain)
@@ -692,7 +692,7 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
                     index_wo_max[0] = max_wo - 1
                 n_burst[0] = index_wo_max[0] - index_wo_min[0] + 1
                 index_ho[0] = idx_ho
-                with tvm_ir.if_scope(index_ho == -1):
+                with tvm_ir.if_scope(index_ho[0] == -1):
                     index_ho[0] = tvm.const(0, SCALAR_DTYPE)
 
                 # load num cannot exceed repeat_times * 256
@@ -715,7 +715,7 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
                     tvm_ir.emit(
                         tvm.call_extern(ub_buffer.dtype, "copy_cbuf_to_ubuf",
                                         ub_buffer.access_ptr("w", offset=ub_start_offset + offset_ub),
-                                        l1_buffer.access_ptr("w", offset=l1_start_offset + offset_l1),
+                                        l1_buffer.access_ptr("r", offset=l1_start_offset + offset_l1),
                                         0, n_burst[0], 1, stride_w - 1, 0))
 
         if repeat_mode == 1:
@@ -833,7 +833,7 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
                                        actual_pad_top_value, actual_pad_left_value)
         else:
             if not check_load3d_support:
-                _dup_const_min_fp16(orig_x_ub, orig_x_ub.shape, FP16_MIN_VALUE)
+                _dup_const_min_fp16(orig_x_ub, orig_x_col_shape, FP16_MIN_VALUE)
             with tvm_ir.for_range(0, kernel_h, name="kh") as kh:
                 with tvm_ir.for_range(0, kernel_w, name="kw") as kw:
                     _img_to_col_vertical(orig_x_l1, orig_x_ub, actual_tiling_ub_howo_i, howo_o, kh, kw,
