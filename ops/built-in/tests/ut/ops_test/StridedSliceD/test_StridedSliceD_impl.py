@@ -432,6 +432,15 @@ case45 = {"params": [{"shape": (10000, 148), "dtype": "float16", "format": "ND",
           "expect": "success",
           "support_expect": True}
 
+case46 = {"params": [{"shape": (1, 1088, 1920, 18), "dtype": "float16", "format": "ND",
+                      "ori_shape": (1, 1088, 1920, 18), "ori_format": "ND"},
+                     {"shape": (1, 544, 960, 18), "dtype": "float16", "format": "ND",
+                      "ori_shape": (1, 544, 960, 18), "ori_format": "ND"},
+                     [0, 0, 0, 0], [1, 1088, 1920, 18], [1, 2, 2, 1], 15, 15, 0, 0, 0],
+          "case_name": "StridedSliceD_46",
+          "expect": "success",
+          "support_expect": True}
+
 def test_op_select_format(test_arg):
     from impl.strided_slice_d import op_select_format
     op_select_format(
@@ -502,6 +511,7 @@ ut_case.add_case(["all"], case42)
 ut_case.add_case(["all"], case43)
 ut_case.add_case(["all"], case44)
 ut_case.add_case(["all"], case45)
+ut_case.add_case(["all"], case46)
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 
 def calc_expect_func(x, y, begin, end, strides):
