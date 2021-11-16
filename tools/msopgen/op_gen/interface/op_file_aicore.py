@@ -36,6 +36,12 @@ class OpFileAiCore(OPFile):
         "DT_DOUBLE": "double"
     }
 
+    PARAM_CHECK_TYPE_MAP = {
+        "required": "REQUIRED",
+        "optional": "OPTION",
+        "dynamic": "DYNAMIC"
+    }
+
     def _generate_cmake_lists(self):
         tbe_dir = os.path.join(self.output_path, 'tbe')
         if os.path.exists(tbe_dir):
@@ -49,11 +55,11 @@ class OpFileAiCore(OPFile):
     def _generate_op_params_for_check(self):
         op_params_for_check = ""
         for op_input in self.op_info.parsed_input_info.values():
-            input_type = op_input.get("param_type").upper()
+            input_type = OpFileAiCore.PARAM_CHECK_TYPE_MAP.get(op_input.get("param_type"))
             input_for_check = "para_check.%s_INPUT, " % input_type
             op_params_for_check = "{}{}".format(op_params_for_check, input_for_check)
         for op_output in self.op_info.parsed_output_info.values():
-            output_type = op_output.get("param_type").upper()
+            output_type = OpFileAiCore.PARAM_CHECK_TYPE_MAP.get(op_output.get("param_type"))
             output_for_check = "para_check.%s_OUTPUT, " % output_type
             op_params_for_check = "{}{}".format(op_params_for_check, output_for_check)
         for op_attr in self.op_info.parsed_attr_info:

@@ -59,10 +59,7 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
         try:
             module = importlib.import_module(module_name)
             if not hasattr(module, fuzz_func):
-                utils.print_error_log('%s has no attribute "%s"' % (real_fuzz_path,
-                                                                    fuzz_func))
-                raise utils.OpTestGenException(
-                    ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
+                raise utils.OpTestGenException('%s has no attribute "%s"' % (real_fuzz_path, fuzz_func))
             fuzz_function = getattr(module, fuzz_func)
         except Exception as ex:
             utils.print_error_log(
