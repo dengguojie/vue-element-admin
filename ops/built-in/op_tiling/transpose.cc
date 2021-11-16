@@ -66,7 +66,7 @@ struct TransposeInputCompile {
   std::string mode;
 };
 
-static int64_t infoId = 0;
+static int64_t infoId[MAX_INFO_NUM] = {0};
 static std::mutex infoIdMutex;
 static RuntimeInfo runtimeInfoList[MAX_INFO_NUM];
 static ShapeInfo shapeInfoList[MAX_INFO_NUM];
@@ -111,18 +111,25 @@ static int InitTransposeTilingData() {
 
 static int res = InitTransposeTilingData(); 
 
-static int64_t AcquireID() { 
+static int64_t AcquireID() {
   infoIdMutex.lock();
-  int64_t id = infoId++;
+  int64_t id = MAX_INFO_NUM;
+  for (int i = 0; i < MAX_INFO_NUM; i++) {
+    if (infoId[i] == 0) {
+      id = i;
+      infoId[i] = 1;
+      break;
+    }
+  }
   infoIdMutex.unlock();
   return id;
 }
 
-static void ReleaseID(int64_t id) { 
+static void ReleaseID(int64_t id) {
   infoIdMutex.lock();
   runtimeInfoList[id].Reset();
   shapeInfoList[id].Reset();
-  infoId--;
+  infoId[id] = 0;
   infoIdMutex.unlock();
 }
 
