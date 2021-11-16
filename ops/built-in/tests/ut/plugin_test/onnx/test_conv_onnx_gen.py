@@ -201,7 +201,9 @@ def make_conv_1d_2_inputs():
         inputs=['x', 'W'],
         outputs=['y'],
         strides=[2, ],
-        kernel_shape=[2, ]
+        kernel_shape=[2, ],
+        dilations=[2, ],
+        pads=[1, 1],
     )
 
     graph = helper.make_graph(
@@ -215,6 +217,30 @@ def make_conv_1d_2_inputs():
     model.opset_import[0].version = 11
     onnx.save(model, "./test_conv_case_1d_2_input.onnx")
 
+def make_conv_1d_inputs():
+    """v11 1d 2-input"""
+    x = helper.make_tensor_value_info('x', TensorProto.FLOAT, [1, 16, 50])
+    w = helper.make_tensor_value_info('W', TensorProto.FLOAT, [33, 16, 3])
+    y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [1, 33, 24])
+    node_def = helper.make_node(
+        'Conv',
+        inputs=['x', 'W'],
+        outputs=['y'],
+        strides=[2, ],
+        dilations=[2, ],
+        pads=[1, 1],
+    )
+
+    graph = helper.make_graph(
+        [node_def],
+        'Conv',
+        [x, w],
+        [y]
+    )
+
+    model = helper.make_model(graph, producer_name="onnx-parser_test")
+    model.opset_import[0].version = 11
+    onnx.save(model, "./test_conv_case_1d_input.onnx")
 
 def make_conv_autopad_same():
     """v11 2d 2-input"""
@@ -274,3 +300,4 @@ if __name__ == '__main__':
     make_conv_1d_2_inputs()
     make_conv_autopad_same()
     make_conv_fail()
+    make_conv_1d_inputs()

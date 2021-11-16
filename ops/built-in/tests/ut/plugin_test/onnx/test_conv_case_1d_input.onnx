@@ -1,9 +1,8 @@
-onnx-parser_test:¨
-U
+onnx-parser_test:“
+@
 x
 Wy"Conv*
-	dilations@ *
-kernel_shape@ *
+	dilations@ *
 pads@@ *
 strides@ ConvZ
 x

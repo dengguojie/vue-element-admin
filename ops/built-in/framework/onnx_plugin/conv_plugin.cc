@@ -55,6 +55,7 @@ Status SetAttrToOp(const ge::onnx::NodeProto* node, ge::Operator& op) {
     if (attr.name() == "strides" && attr.type() == ge::onnx::AttributeProto::INTS) {
       if (attr.ints_size() == ONNX_1D_ATTR_LEN) {
         strides_list.push_back(1);
+        is_trans_2d = true;
       }
       for (auto i = 0; i < attr.ints_size(); ++i) {
         strides_list.push_back(attr.ints(i));
@@ -63,6 +64,7 @@ Status SetAttrToOp(const ge::onnx::NodeProto* node, ge::Operator& op) {
     } else if (attr.name() == "dilations" && attr.type() == ge::onnx::AttributeProto::INTS) {
       if (attr.ints_size() == ONNX_1D_ATTR_LEN) {
         dilations_list.push_back(1);
+        is_trans_2d = true;
       }
       for (auto i = 0; i < attr.ints_size(); ++i) {
         dilations_list.push_back(attr.ints(i));
@@ -79,6 +81,7 @@ Status SetAttrToOp(const ge::onnx::NodeProto* node, ge::Operator& op) {
       if (attr.ints_size() == ONNX_1D_ATTR_PAD_LEN) {
         pad_list.push_back(0);
         pad_list.push_back(0);
+        is_trans_2d = true;
       }
       for (unsigned int i = 0; i < len / 2; i++) {
         pad_list.push_back(attr.ints(i));
@@ -97,8 +100,11 @@ Status SetAttrToOp(const ge::onnx::NodeProto* node, ge::Operator& op) {
   }
 
   if (!is_have_kernel_shape) {
-    ONNX_PLUGIN_LOGE(op.GetName().c_str(), "node must have attr kernel_shape");
-    return FAILED;
+    if (strides_list.size() == 2 && dilations_list.size() == 2 && pad_list.empty()) {
+      ONNX_PLUGIN_LOGE(op.GetName().c_str(), "node must have attr (kernel_shape,pads,strides,dilations) at least one");
+      return FAILED;
+    }
+    dim_size = (strides_list.size() == 5 || pad_list.size() == 6 || dilations_list.size() == 5) ? 5 : 4;
   }
   // kernel_shape属性暂时在TBE算子上没有相应的属性接收，所以没有设置它们
   // aicore算子暂时不支持auto_pad参数，接收后对其进行判断拦截处理
