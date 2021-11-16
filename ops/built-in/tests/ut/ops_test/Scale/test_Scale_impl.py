@@ -3,6 +3,7 @@
 
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
+from impl.util import util_common
 import numpy as np
 ut_case = OpUT("Scale", None, None)
 
@@ -51,11 +52,54 @@ case3 = scale_cce((1, 1, 448, 448, 16), (1, 1, 448, 448, 16), (1, 1, 448, 448, 1
                   "float32", "float32", "float32", "float32",
                   "ND", "ND", "ND", "ND",
                   "ND", "ND", "ND", "ND",
-                  0, -1, True, RuntimeError, "scale_2")
+                  0, -1, True, RuntimeError, "scale_3")
+
+case4 = scale_cce((2, 3, 2, 3), (2), (1, 3, 1, 1), (2, 3, 2, 3),
+                  (2, 3, 2, 3), (1, 3, 1, 1), (1, 3, 1, 1), (2, 3, 2, 3),
+                  "float32", "float32", "float32", "float32",
+                  "ND", "ND", "ND", "ND",
+                  "ND", "ND", "ND", "ND",
+                  1, 1, True, RuntimeError, "scale_4")
+
+case5 = scale_cce((2, 3, 2, 3), (2, 3, 2, 5), (1, 3, 1, 1), (2, 3, 2, 3),
+                  (2, 3, 2, 3), (1, 3, 1, 1), (1, 3, 1, 1), (2, 3, 2, 3),
+                  "float32", "float32", "float32", "float32",
+                  "ND", "ND", "ND", "ND",
+                  "ND", "ND", "ND", "ND",
+                  1, 1, True, ValueError, "scale_5")
+
+case6 = scale_cce((2, 3, 2, 3, 4), (1, 3, 1, 1, 1), (1, 3, 1, 1, 1), (2, 3, 2, 3, 4),
+                  (2, 3, 2, 3, 4), (1, 3, 1, 1, 1), (1, 3, 1, 1, 1), (2, 3, 2, 3, 4),
+                  "float32", "float32", "float32", "float32",
+                  "ND", "ND", "ND", "ND",
+                  "ND", "ND", "ND", "ND",
+                  4, 1, True, RuntimeError, "scale_6")
+
+case7 = scale_cce((2, 3, 2, 3, 4), (1, 3, 1, 1, 1), (1, 3, 1, 1, 1), (2, 3, 2, 3, 4),
+                  (2, 3, 2, 3, 4), (1, 3, 1, 1, 1), (1, 3, 1, 1, 1), (2, 3, 2, 3, 4),
+                  "float32", "float32", "float32", "float32",
+                  "ND", "ND", "ND", "ND",
+                  "ND", "ND", "ND", "ND",
+                  1, -2, True, RuntimeError, "scale_7")
+
+case8 = scale_cce((2, 3, 2, 3, 4), (1, 3, 1, 1, 1), (1, 3, 1, 1, 1), (2, 3, 2, 3, 4),
+                  (2, 3, 2, 3, 4), (1, 3, 1, 1, 1), (1, 3, 1, 1, 1), (2, 3, 2, 3, 4),
+                  "float32", "float32", "float32", "float32",
+                  "ND", "ND", "ND", "ND",
+                  "ND", "ND", "ND", "ND",
+                  -1, 1, True, RuntimeError, "scale_8")
+
 
 ut_case.add_case("Ascend910", case1)
 ut_case.add_case("Ascend910", case2)
 ut_case.add_case("Hi3796CV300ES", case3)
+ut_case.add_case("Ascend910A", case4)
+ut_case.add_case("Ascend910A", case5)
+ut_case.add_case("Ascend910A", case6)
+ut_case.add_case("Ascend910A", case7)
+ut_case.add_case("Ascend910A", case8)
+
+
 
 def calc_expect_func(x, scale, bias, y, axis, num_axes, scale_from_blob):
     if bias is not None:
@@ -85,3 +129,139 @@ precision_case2 = {"params": [{"shape": (1,1,4,8,16), "dtype": "float16", "forma
 
 ut_case.add_precision_case("Ascend910A", precision_case1)
 ut_case.add_precision_case("Ascend910A", precision_case2)
+
+
+# pylint: disable=unused-argument
+# ut_case.scale_test_cfg_cov_case("all")
+def test_op_select_format(test_arg):
+    """
+    test_op_select_format
+    """
+    from impl.scale import op_select_format
+    op_select_format({"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                     {"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                     {"shape": (1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1, 1), "ori_format": "ND"},
+                     "test_scale_op_select_format_1")
+    op_select_format({"shape": (-1, 1), "dtype": "float16", "format": "ND", "ori_shape": (-1, 1), "ori_format": "ND"},
+                     {"shape": (-1, 1), "dtype": "float16", "format": "ND", "ori_shape": (-1, 1), "ori_format": "ND"},
+                     {"shape": (-1, 1), "dtype": "float16", "format": "ND", "ori_shape": (-1, 1), "ori_format": "ND"},
+                     "test_scale_op_select_format_2")
+    op_select_format({"shape": (1, 1, 1, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 1, 1, 16),
+                      "ori_format": "NHWC"},
+                     {"shape": (1, 1, 1, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 1, 1, 16),
+                      "ori_format": "NHWC"},
+                     {"shape": (1, 1, 1, 16), "dtype": "float16", "format": "NHWC", "ori_shape": (1, 1, 1, 16),
+                      "ori_format": "NHWC"},
+                     "test_scale_op_select_format_3")
+    op_select_format({"shape": (1, 1, 16, 1), "dtype": "float16", "format": "HWCN", "ori_shape": (1, 1, 16, 1),
+                      "ori_format": "HWCN"},
+                     {"shape": (1, 1, 16, 1), "dtype": "float16", "format": "HWCN", "ori_shape": (1, 1, 16, 1),
+                      "ori_format": "HWCN"},
+                     {"shape": (1, 1, 16, 1), "dtype": "float16", "format": "HWCN", "ori_shape": (1, 1, 16, 1),
+                      "ori_format": "HWCN"},
+                     "test_scale_op_select_format_4")
+    op_select_format({"shape": (1, 1, 16, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (1, 1, 16, 1),
+                      "ori_format": "NCHW"},
+                     {"shape": (1, 1, 16, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (1, 1, 16, 1),
+                      "ori_format": "NCHW"},
+                     {"shape": (1, 1, 16, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (1, 1, 16, 1),
+                      "ori_format": "NCHW"},
+                     "test_scale_op_select_format_5")
+    op_select_format({"shape": (16,), "dtype": "float16", "format": "NCHW", "ori_shape": (16,), "ori_format": "NCHW"},
+                     {"shape": (16,), "dtype": "float16", "format": "NCHW", "ori_shape": (16,), "ori_format": "NCHW"},
+                     {"shape": (16,), "dtype": "float16", "format": "NCHW", "ori_shape": (16,), "ori_format": "NCHW"},
+                     "test_scale_op_select_format_6")
+    op_select_format({"shape": (16, 16, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 16, 16),
+                      "ori_format": "NCHW"},
+                     {"shape": (16, 16, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 16, 16),
+                      "ori_format": "NCHW"},
+                     {"shape": (16, 16, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 16, 16),
+                      "ori_format": "NCHW"},
+                     "test_scale_op_select_format_7")
+    op_select_format({"shape": (16, 16, 32, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 32, 16),
+                      "ori_format": "NCHW"},
+                     {"shape": (16, 16, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 16, 16),
+                      "ori_format": "NCHW"},
+                     {"shape": (16, 16, 32, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 16, 32, 16),
+                      "ori_format": "NCHW"},
+                     "test_scale_op_select_format_8")
+    op_select_format({"shape": (1,), "dtype": "float16", "format": "NCHW", "ori_shape": (1,), "ori_format": "NCHW"},
+                     {"shape": (1, 16, 1, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (1, 16, 1, 1),
+                      "ori_format": "NCHW"},
+                     {"shape": (1, 16, 1, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (1, 16, 1, 1),
+                      "ori_format": "NCHW"},
+                     "test_scale_op_select_format_9")
+    op_select_format({"shape": (1, 1, 16, 1), "dtype": "float16", "format": "HWCN", "ori_shape": (1, 1, 16, 1),
+                      "ori_format": "HWCN"},
+                     {"shape": (1, 1, 32, 1), "dtype": "float16", "format": "HWCN", "ori_shape": (1, 1, 32, 1),
+                      "ori_format": "HWCN"},
+                     {"shape": (1, 1, 32, 1), "dtype": "float16", "format": "HWCN", "ori_shape": (1, 1, 32, 1),
+                      "ori_format": "HWCN"},
+                     "test_scale_op_select_format_10")
+    op_select_format({"shape": (1, 16, 1, 1), "dtype": "uint8", "format": "NCHW", "ori_shape": (1, 16, 1, 1),
+                      "ori_format": "NCHW"},
+                     {"shape": (1, 16, 1, 1), "dtype": "uint8", "format": "NCHW", "ori_shape": (1, 16, 1, 1),
+                      "ori_format": "NCHW"},
+                     {"shape": (1, 16, 1, 1), "dtype": "uint8", "format": "NCHW", "ori_shape": (1, 16, 1, 1),
+                      "ori_format": "NCHW"},
+                     "test_scale_op_select_format_11")
+    op_select_format({"shape": (1, 1, 16, 1), "dtype": "int8", "format": "HWCN", "ori_shape": (1, 1, 16, 1),
+                      "ori_format": "HWCN"},
+                     {"shape": (1, 1, 32, 1), "dtype": "int8", "format": "HWCN", "ori_shape": (1, 1, 32, 1),
+                      "ori_format": "HWCN"},
+                     {"shape": (1, 1, 32, 1), "dtype": "int8", "format": "HWCN", "ori_shape": (1, 1, 32, 1),
+                      "ori_format": "HWCN"},
+                     "test_scale_op_select_format_12")
+    op_select_format({"shape": (1, 1, 16, 1), "dtype": "int8", "format": "NHWC", "ori_shape": (1, 1, 16, 1),
+                      "ori_format": "NHWC"},
+                     {"shape": (1,), "dtype": "int8", "format": "NHWC", "ori_shape": (1,),
+                      "ori_format": "NHWC"},
+                     {"shape": (1, 1, 16, 1), "dtype": "int8", "format": "NHWC", "ori_shape": (1, 1, 16, 1),
+                      "ori_format": "NHWC"},
+                     "test_scale_op_select_format_13")
+    op_select_format({"shape": (4,64,200,320), "dtype": "float16", "format": "NCHW", "ori_shape": (4,64,200,320),
+                      "ori_format": "NCHW"},
+                     {"shape": (1,64,1,1), "dtype": "float16", "format": "NCHW", "ori_shape": (1,64,1,1),
+                      "ori_format": "NCHW"},
+                     {"shape": (4,64,200,320), "dtype": "float16", "format": "NCHW", "ori_shape": (4,64,200,320),
+                      "ori_format": "NCHW"},
+                     "test_scale_op_select_format_14")
+    op_select_format({"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+                      "ori_format": "HWCN", "sub_format" : 1},
+                     {"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+                      "ori_format": "HWCN", "sub_format" : 1},
+                     {"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+                      "ori_format": "HWCN", "sub_format" : 1},
+                     "test_scale_op_select_format_15")
+    op_select_format({"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+                      "ori_format": "HWCN"},
+                     {"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+                      "ori_format": "HWCN"},
+                     {"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+                      "ori_format": "HWCN"},
+                     "test_scale_op_select_format_16")
+    op_select_format({"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+                      "ori_format": "HWCN", "sub_format" : 1},
+                     {"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+                      "ori_format": "HWCN", "sub_format" : 8},
+                     {"shape": (3, 3, 16, 128), "dtype": "float32", "format": "HWCN", "ori_shape": (3, 3, 16, 128),
+                      "ori_format": "HWCN", "sub_format" : 8},
+                     "test_scale_op_select_format_17")
+    op_select_format({"shape": (1,), "dtype": "float32", "format": "NHWC", "ori_shape": (),
+                      "ori_format": "NHWC", "sub_format" : 0},
+                     {"shape": (1,), "dtype": "float32", "format": "NHWC", "ori_shape": (),
+                      "ori_format": "NHWC", "sub_format" : 0},
+                     {"shape": (1,), "dtype": "float32", "format": "NHWC", "ori_shape": (),
+                      "ori_format": "NHWC", "sub_format" : 0},
+                     "test_scale_op_select_format_18")
+
+    def __test_util_commom():
+        input_parm = ({"shape": (1,), "dtype": "float32", "format": "NHWC", "ori_shape": (1,), "ori_format": "NHWC", "sub_format" : 0},
+                      {"shape": (1,), "dtype": "float32", "format": "NHWC", "ori_shape": (1,), "ori_format": "NHWC", "sub_format" : 0},
+                      {"shape": (1,), "dtype": "float32", "format": "NHWC", "ori_shape": (1,), "ori_format": "NHWC", "sub_format" : 0})
+        util_common.is_support_fractal_z_inputs(input_parm)
+
+    __test_util_commom()
+
+
+ut_case.add_cust_test_func(support_soc="all", test_func=test_op_select_format)

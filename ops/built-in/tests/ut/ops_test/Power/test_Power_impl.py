@@ -37,11 +37,69 @@ case5 = {"params": [{"shape": (1, 2), "dtype": "float32", "format": "ND", "ori_s
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+
+case6 = {"params": [{"shape": (1,2,4), "dtype": "float16", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    {"shape": (1,2,4), "dtype": "float16", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    1.0, 0.0],
+         "case_name": "Power_6",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case7 = {"params": [{"shape": (1,2,4), "dtype": "float16", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    {"shape": (1,2,4), "dtype": "float16", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    2.0],
+         "case_name": "Power_7",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case8 = {"params": [{"shape": (1,2,4), "dtype": "float16", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    {"shape": (1,2,4), "dtype": "float16", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    3.0],
+         "case_name": "Power_8",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+
+
+case9 = {"params": [{"shape": (1,2,4), "dtype": "float16", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    {"shape": (1,2,4), "dtype": "float16", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    4.0],
+         "case_name": "Power_9",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case10 = {"params": [{"shape": (1,2,4), "dtype": "float16", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    {"shape": (1,2,4), "dtype": "float16", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                    0.0],
+         "case_name": "Power_10",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+
+case11 = {"params": [{"shape": (1,2,4), "dtype": "float16", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                     {"shape": (1,2,4), "dtype": "float16", "format": "ND", "ori_shape": (1,2,4),"ori_format": "ND"},
+                     -1.0, -1.0],
+          "case_name": "Power_11",
+          "expect": "success",
+          "format_expect": [],
+          "support_expect": True}
+
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend710", "Ascend910"], case5)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case6)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case7)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case8)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case9)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case10)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case11)
+
 
 def calc_expect_func(x, res, power, scale, shift):
     x_shape = x.get("shape")
@@ -78,7 +136,6 @@ ut_case.add_precision_case(["Ascend910"], {"params": [{"shape": (4,4,32,2), "dty
                                    "calc_expect_func": calc_expect_func,
                                    "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
                                    })
-
 
 # ============ auto gen ["Ascend910"] test cases end =================
 
