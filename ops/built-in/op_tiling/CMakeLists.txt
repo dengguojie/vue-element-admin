@@ -67,8 +67,10 @@ set(_optiling_files
   dynamic_rnn_v2.cc
   eletwise.cc
   eletwise_v2.cc
+  elewise_v3.cc
   broadcast.cc
   broadcast_v2.cc
+  broadcast_v3.cc
   fill.cc
   gather_nd.cc
   gather_v2.cc

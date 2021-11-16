@@ -84,21 +84,5 @@ class Eletwise {
   bool need_double_buffer{false};
 };
 }  // namespace utils
-
-class ElewiseTilingHandler: public AutoTilingHandler {
-  public:
-  ElewiseTilingHandler(const std::string& o, const std::string& p, const nlohmann::json& c)
-    : AutoTilingHandler(o, p), compile_info(c) {}
-  bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const override;
-  bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const override;
-
-  private:
-  const nlohmann::json compile_info;
-};
-
-std::shared_ptr<AutoTilingHandler> CreateElewiseTilingHandler(const std::string& op_type,
-                                                                  const std::string& pattern,
-                                                                  const nlohmann::json& parsed_compile_info);
-
 }  // namespace optiling
 #endif  // OPS_BUILT_IN_OP_TILING_ELETWISE_H_
