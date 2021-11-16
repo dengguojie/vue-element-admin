@@ -108,6 +108,55 @@ TEST_F(Conv2DBackpropInputProtoTest, conv2dbackpropinputOptiWithPads) {
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
+// dynamic hw -1 with Const
+TEST_F(Conv2DBackpropInputProtoTest, conv2dbackpropinputWithConstNode) {
+    ge::op::Conv2DBackpropInput op;
+    op.UpdateInputDesc("filter", create_desc_with_ori({32, 16, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW,
+                                            {32, 16, 1, 1}, ge::FORMAT_NCHW));
+    op.UpdateInputDesc("out_backprop",
+                       create_desc_shape_range({1, 32, -1, -1},
+                                               ge::DT_FLOAT16,
+                                               ge::FORMAT_NCHW,
+                                               {1, 32, -1, -1},
+                                               ge::FORMAT_NCHW,
+                                               {{1, 1}, {32, 32}, {6, -1}, {6, -1}}));
+    op.UpdateOutputDesc("y", create_desc_shape_range({1, 16, -1, -1},
+                                                        ge::DT_FLOAT16,
+                                                        ge::FORMAT_NCHW,
+                                                        {1, 16, -1, -1},
+                                                        ge::FORMAT_NCHW,
+                                                        {{1, 1}, {16, 16}, {6, -1}, {6, -1}}));
+    op.SetAttr("strides", {1, 1, 1, 1});
+    op.SetAttr("pads", {0, 0, 0, 0});
+    op.SetAttr("dilations", {1, 1, 1, 1});
+    op.SetAttr("padding", "VALID");
+    op.SetAttr("data_format", "NCHW");
+
+    ge::Tensor constTensor;
+    std::vector<int64_t> dims_input_size{1, 16, 24, 24};
+    ge::TensorDesc tensor_desc_input_size(ge::Shape(),
+      ge::FORMAT_NCHW, ge::DT_INT32);
+    int element_size = dims_input_size.size();
+    tensor_desc_input_size.SetSize(element_size * sizeof(int32_t));
+    constTensor.SetTensorDesc(tensor_desc_input_size);
+
+    int *conv_input_size_tensor_value = new int[element_size];
+    for (int i = 0; i < element_size; i++) {
+        *(conv_input_size_tensor_value + i) = dims_input_size[i];
+    }
+    constTensor.SetData((uint8_t *) conv_input_size_tensor_value,
+      element_size * sizeof(int32_t));
+    auto const0 = ge::op::Constant("input_size").set_attr_value(constTensor);
+    op.set_input_input_size(const0);
+    delete[] conv_input_size_tensor_value;
+    op.UpdateInputDesc("input_size", tensor_desc_input_size);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+    auto ret = op.InferShapeAndType();
+    EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
 // dynamic nwc SAME var range -1
 TEST_F(Conv2DBackpropInputProtoTest, conv2dbackpropinputDynamicNWC) {
     ge::op::Conv2DBackpropInput op;

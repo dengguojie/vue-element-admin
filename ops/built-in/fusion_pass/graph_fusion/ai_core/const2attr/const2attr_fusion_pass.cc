@@ -225,6 +225,7 @@ REGISTER_CONST2ATTR("Conv2DBackpropFilterD")
 
 REGISTER_CONST2ATTR("Conv2DBackpropInputD")
     .OriginOpType("Conv2DBackpropInput")
+    .NeedCheckSupported(true)
     .SetConstToAttr(0, "input_size", "SetListInt");
 
 REGISTER_CONST2ATTR("Conv3DBackpropFilterD")
