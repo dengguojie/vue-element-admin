@@ -1648,8 +1648,83 @@ IMPLEMT_COMMON_INFERFUNC(ResizeInferShape) {
   return GRAPH_SUCCESS;
 }
 
+bool SyncResizeInferShape(const Operator& op) {
+  vector<int64_t> size_out;
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc_x = op_desc->MutableInputDesc("x");
+  auto output_desc_y = op_desc->MutableOutputDesc("y");
+  auto image_shape = input_desc_x->MutableShape().GetDims();
+  auto input_format = input_desc_x->GetFormat();
+
+  if (op.GetAttr("split_size", size_out) == ge::GRAPH_FAILED) {
+    OP_LOGE(op.GetName().c_str(), "GetOpAttr split_size failed!");
+    return false;
+  }
+
+  if (size_out.size() != DIM_SIZE2) {
+    OP_LOGE(op.GetName().c_str(), "length of size_out must be equal to 2");
+    return false;
+  }
+
+  std::vector<std::pair<int64_t, int64_t>> x_range;
+  // check whether is -2 case
+  bool is_unkown_rank = image_shape == UNKNOWN_RANK ? true : false;
+  if (is_unkown_rank) {
+    OP_LOGW(op.GetName().c_str(), "the input os unkown rank, will set the input -1, -1, -1 , -1");
+    image_shape = {-1, -1, -1, -1};
+  } else {
+    input_desc_x->GetShapeRange(x_range);
+  }
+  MakeUpShapeRange(image_shape, x_range);
+
+  std::vector<std::pair<int64_t, int64_t>> output_range;
+  output_range.push_back(std::pair<int64_t, int64_t>{size_out[0], size_out[0]});
+  output_range.push_back(std::pair<int64_t, int64_t>{size_out[1], size_out[1]});
+  // get input shape range
+  std::vector<std::pair<int64_t, int64_t>> result_range;
+
+  vector<int64_t> y_shape;
+  if (input_format == FORMAT_NHWC && image_shape.size() > 3) {
+    y_shape.push_back(image_shape[0]);
+    y_shape.push_back(size_out[0]);
+    y_shape.push_back(size_out[1]);
+    y_shape.push_back(image_shape[3]);
+    result_range.push_back(x_range[0]);
+    result_range.push_back(output_range[0]);
+    result_range.push_back(output_range[1]);
+    result_range.push_back(x_range[3]);
+  } else if (input_format == FORMAT_NCHW && image_shape.size() > 1) {
+    y_shape.push_back(image_shape[0]);
+    y_shape.push_back(image_shape[1]);
+    y_shape.push_back(size_out[0]);
+    y_shape.push_back(size_out[1]);
+    result_range.push_back(x_range[0]);
+    result_range.push_back(x_range[1]);
+    result_range.push_back(output_range[0]);
+    result_range.push_back(output_range[1]);
+  } else {
+    OP_LOGE(op.GetName().c_str(), "Not supported this format %d", input_format);
+    return false;
+  }
+
+  output_desc_y->SetShape(GeShape(y_shape));
+  output_desc_y->SetOriginShape(GeShape(y_shape));
+  auto input_dtype = input_desc_x->GetDataType();
+  output_desc_y->SetDataType(input_dtype);
+  output_desc_y->SetShapeRange(result_range);
+  return true;
+}
+
 // ---------------ResizeBilinearV2 Op Start-------------------
 IMPLEMT_COMMON_INFERFUNC(ResizeBilinearV2InferShape) {
+  vector<int64_t> split_size;
+  op.GetAttr("split_size", split_size);
+  if (split_size.size() == DIM_SIZE2) {
+    if (!SyncResizeInferShape(op)) {
+      return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+  } else {
   const vector<string> depend_names = {"size"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
   if (!ResizeConstInferShape(op, "x", "size", "y")) {
@@ -1661,6 +1736,7 @@ IMPLEMT_COMMON_INFERFUNC(ResizeBilinearV2InferShape) {
   output_desc_y->SetDataType(DT_FLOAT);
 
   return GRAPH_SUCCESS;
+  }
 }
 
 COMMON_INFER_FUNC_REG(ResizeBilinearV2, ResizeBilinearV2InferShape);

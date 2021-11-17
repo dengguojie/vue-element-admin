@@ -23,7 +23,9 @@ from impl.util import util_tik_auto_tune
 from impl.util.platform_adapter import tbe_platform as tbe_platform_adapter
 
 
-def tune_space_resize_bilinear_v2(images, size, y, align_corners, half_pixel_centers, kernel_name):
+# pylint: disable=unused-argument
+def tune_space_resize_bilinear_v2(images, size, y, ori_image_size, split_size, src_start_w, dst_start_w, align_corners,
+                                  half_pixel_centers, kernel_name):
     """
     get tune_param
     Parameters
@@ -37,6 +39,10 @@ def tune_space_resize_bilinear_v2(images, size, y, align_corners, half_pixel_cen
     y: dict
         the dict of output, include shape of input_tensor which layout
         only support 5HD and dtype supports 'float16', 'float32'
+    ori_image_size : list
+    split_size: list
+    src_start_w: int
+    dst_start_w: int
     align_corners: bool
         whether align_corners
     half_pixel_centers: bool
@@ -74,8 +80,9 @@ def tune_space_resize_bilinear_v2(images, size, y, align_corners, half_pixel_cen
     return json.dumps(tune_param)
 
 
-def tune_param_check_supported_resize_bilinear_v2(images, size, y, align_corners,
-                                                  half_pixel_centers, kernel_name, tune_param):
+# pylint: disable=unused-argument
+def tune_param_check_supported_resize_bilinear_v2(images, size, y, ori_image_size, split_size, src_start_w, dst_start_w,
+                                                  align_corners, half_pixel_centers, kernel_name, tune_param):
     """
     check tune_param
     Parameters
@@ -89,6 +96,10 @@ def tune_param_check_supported_resize_bilinear_v2(images, size, y, align_corners
     y: dict
         the dict of output, include shape of input_tensor which layout
         only support 5HD and dtype supports 'float16', 'float32'
+    ori_image_size : list
+    split_size: list
+    src_start_w: int
+    dst_start_w: int
     align_corners: bool
         whether align_corners
     half_pixel_centers: bool

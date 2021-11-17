@@ -86,6 +86,68 @@
                 "type": "bool"
             }
         ]
+    },
+	{
+        "op": "ResizeBilinearV2",
+        "case_name": "test_resize_bilinear_v2_003",
+        "input_desc": [
+            {
+                "format": "NHWC",
+                "shape": [-1, 16, 16, 16],
+                "typical_shape": [1, 16, 16, 16],
+                "shape_range": [[1, 2240]],
+                "type": "float16",
+                "value_range": [[0, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            },
+            {
+                "format": "NHWC",
+                "shape": [2],
+                "type": "int32",
+                "value": [32, 32],
+                "name": "size"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "NHWC",
+                "shape": [1, 32, 32, 16],
+                "type": "float",
+                "name": "y"
+            }
+        ],
+        "attr": [
+            {
+                "name": "align_corners",
+                "value": false,
+                "type": "bool"
+            },
+            {
+                "name": "half_pixel_centers",
+                "value": true,
+                "type": "bool"
+            },
+			{
+                "name": "ori_image_size",
+                "value": [16, 16],
+                "type": "list_int"
+            },
+			{
+                "name": "split_size",
+                "value": [32, 32],
+                "type": "list_int"
+            },
+			{
+                "name": "src_start_w",
+                "value": 0,
+                "type": "int"
+            },
+			{
+                "name": "dst_start_w",
+                "value": 0,
+                "type": "int"
+            }
+        ]
     }
-
 ]

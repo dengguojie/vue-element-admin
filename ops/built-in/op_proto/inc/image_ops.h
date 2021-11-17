@@ -636,7 +636,10 @@ size for the images . \n
 output tensors are aligned, preserving the values at the corner pixels.
 Defaults to false .
 * @li half_pixel_centers: An optional bool. Defaults to False . \n
-
+*@li ori_image_size: An optional listint. Defaults to {}.
+*@li split_size: An optional listint. Defaults to {}.
+*@li src_start_w: An optional int. Defaults to 0.
+*@li dst_start_w: An optional int. Defaults to 0.
 *@par Outputs:
 *y: 4-D with shape [batch, new_height, new_width, channels] . \n
 
@@ -652,6 +655,10 @@ REG_OP(ResizeBilinearV2)
                                DT_INT32, DT_INT64, DT_FLOAT16, DT_FLOAT, DT_DOUBLE}))
     .INPUT(size, TensorType({DT_INT32}))
     .OUTPUT(y, TensorType({DT_FLOAT}))
+    .ATTR(ori_image_size, ListInt, {})
+    .ATTR(split_size, ListInt, {})
+    .ATTR(src_start_w, Int, 0)
+    .ATTR(dst_start_w, Int, 0)
     .ATTR(align_corners, Bool, false)
     .ATTR(half_pixel_centers, Bool, false)
     .OP_END_FACTORY_REG(ResizeBilinearV2)
