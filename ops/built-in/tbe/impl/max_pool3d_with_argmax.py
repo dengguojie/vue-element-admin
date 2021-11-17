@@ -16,6 +16,7 @@
 max_pool3d_with_argmax
 """
 import math
+import functools
 from functools import partial
 from abc import ABCMeta
 from abc import abstractmethod
@@ -26,14 +27,6 @@ from te import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
 from impl.load3d_common_func import img2col
-
-
-def _cal_shape_ele(shape):
-    reduce_ = 1
-    for i in shape:
-        reduce_ *= int(i)
-    return reduce_
-
 
 @unique
 class L1MoveStrategy(Enum):
@@ -158,7 +151,7 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
         VECTOR_FP16_SIZE = 128
         MAX_VECTOR_REPEAT_TIME = 255
 
-        ele_num = _cal_shape_ele(shape)
+        ele_num = functools.reduce(lambda x, y: x * y, shape)
         total_repeat_time = ele_num // VECTOR_FP16_SIZE
         remain_ele = ele_num % VECTOR_FP16_SIZE
         mask_value = VECTOR_FP16_SIZE

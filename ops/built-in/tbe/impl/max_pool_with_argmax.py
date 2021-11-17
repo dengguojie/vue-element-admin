@@ -15,6 +15,7 @@
 """
 max_pool_with_argmax
 """
+import functools
 import math
 
 from te import tik
@@ -127,13 +128,6 @@ def _ceil_div(value, factor):
     value: dtype of int or float
     """
     return math.ceil(value / factor)
-
-
-def _cal_shape_ele(shape):
-    reduce_ = 1
-    for i in shape:
-        reduce_ *= int(i)
-    return reduce_
 
 
 def _check_param(input_x, ksize, strides, padding, kernel_name):
@@ -466,7 +460,7 @@ class MaxPoolWithargmax():
         VECTOR_FP16_SIZE = 128
         MAX_VECTOR_REPEAT_TIME = 255
 
-        ele_num = _cal_shape_ele(shape)
+        ele_num = functools.reduce(lambda x, y: x * y, shape)
         total_repeat_time = ele_num // VECTOR_FP16_SIZE
         remain_ele = ele_num % VECTOR_FP16_SIZE
         mask_value = VECTOR_FP16_SIZE

@@ -16,6 +16,7 @@
 max_pool3d_grad
 """
 # 'pylint: disable=too-many-lines,import-error
+import functools
 import math
 from te import tik
 from te import platform as tbe_platform
@@ -135,13 +136,6 @@ def _check_config(config):
             break
 
     return mark
-
-
-def _cal_shape_ele(shape):
-    reduce_ = 1
-    for i in shape:
-        reduce_ *= int(i)
-    return reduce_
 
 
 class Params:
@@ -1247,7 +1241,7 @@ class MaxPool3DGradCompute:
                                                       MIN_VALUE_FP16
                                                       )
                             else:
-                                col_in_buf_shape = _cal_shape_ele(col_in_buf.shape)
+                                col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
                                 self.set_vector_dup(
                                     tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
                                 img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
@@ -1483,7 +1477,7 @@ class MaxPool3DGradCompute:
                                                           MIN_VALUE_FP16
                                                           )
                                 else:
-                                    col_in_buf_shape = _cal_shape_ele(col_in_buf.shape)
+                                    col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
                                     self.set_vector_dup(
                                         tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
                                     img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
@@ -1779,7 +1773,7 @@ class MaxPool3DGradCompute:
                                                           MIN_VALUE_FP16
                                                           )
                                 else:
-                                    col_in_buf_shape = _cal_shape_ele(col_in_buf.shape)
+                                    col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
                                     self.set_vector_dup(
                                         tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
                                     img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
@@ -2131,7 +2125,7 @@ class MaxPool3DGradCompute:
                                                           MIN_VALUE_FP16
                                                           )
                                 else:
-                                    col_in_buf_shape = _cal_shape_ele(col_in_buf.shape)
+                                    col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
                                     self.set_vector_dup(
                                         tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
                                     img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
@@ -2348,7 +2342,7 @@ class MaxPool3DGradCompute:
                                                           MIN_VALUE_FP16
                                                           )
                                 else:
-                                    col_in_buf_shape = _cal_shape_ele(col_in_buf.shape)
+                                    col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
                                     self.set_vector_dup(
                                         tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
                                     img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
@@ -2602,7 +2596,7 @@ class MaxPool3DGradCompute:
                                                           MIN_VALUE_FP16
                                                           )
                                 else:
-                                    col_in_buf_shape = _cal_shape_ele(col_in_buf.shape)
+                                    col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
                                     self.set_vector_dup(
                                         tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
                                     img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
@@ -2894,7 +2888,7 @@ class MaxPool3DGradCompute:
                                                           MIN_VALUE_FP16
                                                           )
                                 else:
-                                    col_in_buf_shape = _cal_shape_ele(col_in_buf.shape)
+                                    col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
                                     self.set_vector_dup(
                                         tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
                                     img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
@@ -3151,7 +3145,7 @@ class MaxPool3DGradCompute:
                                                               MIN_VALUE_FP16
                                                               )
                                     else:
-                                        col_in_buf_shape = _cal_shape_ele(col_in_buf.shape)
+                                        col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
                                         self.set_vector_dup(
                                             tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
                                         img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w,
@@ -3473,7 +3467,7 @@ class MaxPool3DGradCompute:
                                                               MIN_VALUE_FP16
                                                               )
                                     else:
-                                        col_in_buf_shape = _cal_shape_ele(col_in_buf.shape)
+                                        col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
                                         self.set_vector_dup(
                                             tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
                                         img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w,
@@ -3825,7 +3819,7 @@ class MaxPool3DGradCompute:
                                                               MIN_VALUE_FP16
                                                               )
                                     else:
-                                        col_in_buf_shape = _cal_shape_ele(col_in_buf.shape)
+                                        col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
                                         self.set_vector_dup(
                                             tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
                                         img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w,
