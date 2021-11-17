@@ -25,11 +25,10 @@ from te import tvm
 from te.utils.error_manager import error_manager_vector
 from impl.util import util_select_op_base
 
-VALUE_ONE = 1
-
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 # 'pylint: disable=locally-disabled,too-many-statements,too-many-branches
+# 'pylint: disable=get-dict-value-exception
 def op_select_format(condition, x1, x2, y, kernel_name="select"):
     """1.when all input(condition, x1, x2) have the same ori_shape, ori_format,
        and the format is in ["NCHW", "NHWC", "HWCN"] or ["NDHWC", "DHWCN", "NCDHW"],

@@ -14,15 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
+"""
+sigmoid_cross_entropy_with_logits
+"""
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
-
-SCALAR_ONE = 1
-SCALAR_ZREO = 0
 
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals

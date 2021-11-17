@@ -15,12 +15,12 @@
 """
 rpn_proposals_d_mdc_v200
 """
-# pylint: disable=C0302
-# pylint: disable=R0902
-# pylint: disable=R0915
-# pylint: disable=R0914
-# pylint: disable=R0913
-# pylint: disable=R0912
+# 'pylint: disable=C0302
+# 'pylint: disable=R0902
+# 'pylint: disable=R0915
+# 'pylint: disable=R0914
+# 'pylint: disable=R0913
+# 'pylint: disable=R0912
 from te import tik
 
 

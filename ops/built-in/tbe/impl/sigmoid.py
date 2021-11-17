@@ -14,7 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
+"""
+sigmoid
+"""
 import functools
 import math
 import te.platform as tbe_platform
@@ -23,8 +25,14 @@ from te.lang import cce as tbe
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
-CONST_FP32_MAX = 3.4e+38
-CONST_FP16_MAX = 65504
+
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    The class for constant.
+    """
+    CONST_FP32_MAX = 3.4e+38
+    CONST_FP16_MAX = 65504
 
 
 # 'pylint: disable=unused-argument,too-many-locals,invalid-name
@@ -54,10 +62,10 @@ def sigmoid_compute(x, y, kernel_name="sigmoid"):
 
     if tbe_platform.get_soc_spec("SOC_VERSION") == "Ascend910":
         if dtype == "float32" and exp_support:
-            ln_res = -math.log(CONST_FP32_MAX)
+            ln_res = -math.log(Constant.CONST_FP32_MAX)
             ln_res = int(ln_res * 10) / 10
         else:
-            ln_res = -math.log(CONST_FP16_MAX)
+            ln_res = -math.log(Constant.CONST_FP16_MAX)
             ln_res = int(ln_res * 1000) / 1000
         data_input = tbe.vmaxs(data_input, ln_res)
 

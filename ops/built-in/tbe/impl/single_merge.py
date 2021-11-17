@@ -14,7 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-
+"""
+single_merge
+"""
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
@@ -23,9 +25,9 @@ from impl.merge_sort import CommonMethod
 from impl.merge_sort import MergeSort
 
 
+# 'pylint: disable=too-many-arguments,too-many-locals,too-few-public-methods
 class SingleMerge():
     """method to merge and sort on single core"""
-    # 'pylint: disable=too-many-arguments
     def __init__(self, input_shape, k_num, data_type, kernel_name, cont):
         self.channel_num = input_shape[0]
         self.sorted_num = input_shape[1]
@@ -94,7 +96,6 @@ class SingleMerge():
         data_num_align = self.method.get_align_num(data_num, self.int_repeat_data_num, False)
         return data_num_align
 
-    # 'pylint: disable=too-many-locals
     def _result_move_out_each_loop(self, data_index_start, data_num):
         """algorithm: get result_data, result_index
             result_data = gm_tensor[0, :, 3]
@@ -146,7 +147,6 @@ class SingleMerge():
         self.tik_inst.data_move(self.output_data[data_index_start], score_ub, 0, 1, data_block_num, 0, 0)
         self.tik_inst.data_move(self.output_index[data_index_start], index_int_ub_0, 0, 1, index_block_num, 0, 0)
 
-    # 'pylint: disable=too-many-arguments
     def _get_int_index(self, result_index, index_int_ub, index_ub, index_int_ub_temp, mask, repeat_num, mul_num):
         self.tik_inst.vconv(mask, "round", index_int_ub, index_ub, repeat_num, 1, 1, 8, 4)
         self.tik_inst.vector_dup(mask, index_int_ub_temp, mul_num, repeat_num, 1, 8)
@@ -154,6 +154,7 @@ class SingleMerge():
         self.tik_inst.vadd(mask, result_index, result_index, index_int_ub, repeat_num, 1, 1, 1, 8, 8, 8)
 
 
+# 'pylint: disable=unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
                             para_check.KERNEL_NAME)

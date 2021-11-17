@@ -424,7 +424,7 @@ class ScatterNonAliasingAdd(object):
                                         1, updates_burst_len, 0, 0)
 
 
-# 'pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def _calc_process(self, mask, dest_addr, src_addr1, src_addr2, repeat_times, is_tile):
         """Execute the corresponding calculation instruction
 

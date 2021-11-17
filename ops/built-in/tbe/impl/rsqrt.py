@@ -36,12 +36,17 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 
-# const value
-CONST_ONE = 1.0
+
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    The class for constant.
+    """
+    CONST_ONE = 1.0
 
 
-# pylint: disable=locally-disabled,too-many-arguments,
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,
+# 'pylint: disable=unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("rsqrt")
 def rsqrt_compute(x, y, kernel_name="rsqrt_cce"):
     """
@@ -88,7 +93,7 @@ def _compute(data_input):
 
     inp_shape = data_input.shape
     data_sqrt = tbe.vsqrt(data_input, 1)
-    tesor_one = tbe.broadcast(tvm.const(CONST_ONE, data_input.dtype), inp_shape)
+    tesor_one = tbe.broadcast(tvm.const(Constant.CONST_ONE, data_input.dtype), inp_shape)
     result = tbe.vdiv(tesor_one, data_sqrt)
 
     return result
