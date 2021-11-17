@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
  */
 #include "logsoftmaxv2.h"
 
+#include <securec.h>
 #include "cpu_kernel_utils.h"
 #include "utils/eigen_tensor.h"
 #include "utils/kernel_util.h"
@@ -22,6 +23,9 @@
 namespace {
 const uint32_t kLogSoftmaxV2InputNum = 1;
 const uint32_t kLogSoftmaxV2OutputNum = 1;
+const uint32_t dimType1 = 1;
+const uint32_t dimType2 = 2;
+const uint32_t dimType3 = 3;
 const int64_t paralled_data_size = 4 * 1024;
 const char* kLogSoftmaxV2 = "LogSoftmaxV2";
 #define LOGSOFTMAXV2_COMPUTE_CASE(DTYPE, TYPE, CTX)            \
@@ -123,14 +127,14 @@ uint32_t LogSoftmaxV2CpuKernel::LogSoftmaxV2Compute(CpuKernelContext& ctx) {
   length = inner_size * outer_size;
   T dims_exp_sum[length];
   T dims_maximum[length];
-  memset(dims_exp_sum, 0, length * sizeof(T));
+  memset_s(dims_exp_sum, length * sizeof(T), 0, length * sizeof(T));
   int64_t data_size = total * sizeof(T);
   if (data_size <= paralled_data_size) {
-    Eigen::TensorMap<Eigen::Tensor<T, 3>, Eigen::Aligned> logits(
+    Eigen::TensorMap<Eigen::Tensor<T, dimType3>, Eigen::Aligned> logits(
         input, inner_size, (int)dims[pivot], outer_size);
-    Eigen::TensorMap<Eigen::Tensor<T, 1>, Eigen::Aligned> dims_sum(dims_exp_sum,
+    Eigen::TensorMap<Eigen::Tensor<T, dimType1>, Eigen::Aligned> dims_sum(dims_exp_sum,
                                                                    length);
-    Eigen::TensorMap<Eigen::Tensor<T, 2>, Eigen::Aligned> dims_max(
+    Eigen::TensorMap<Eigen::Tensor<T, dimType2>, Eigen::Aligned> dims_max(
         dims_maximum, inner_size, outer_size);
     Eigen::array<int, 1> softmax_axes{{1}};
     dims_max = logits.maximum(softmax_axes);

@@ -22,6 +22,7 @@
 namespace {
 const uint32_t kOutputNum = 2;
 const uint32_t kInputNum = 1;
+const uint32_t kIndexTwo = 2;
 const char *kLogMatrixDeterminant = "LogMatrixDeterminant";
 constexpr int64_t kParallelDataNums = 8 * 1024;
 
@@ -90,20 +91,20 @@ uint32_t LogMatrixDeterminantCpuKernel::LogMatrixDeterminantCheck(
                      KERNEL_STATUS_PARAM_INVALID,
                      "Input x last dimension must be at least 1.")
   KERNEL_CHECK_FALSE(
-      (shape_x[shape_size_x - 2] == shape_x[shape_size_x - 1]),
+      (shape_x[shape_size_x - kIndexTwo] == shape_x[shape_size_x - 1]),
       KERNEL_STATUS_PARAM_INVALID,
       "Input x dimensions must be equal, but are [%lld] and [%lld].",
-      shape_x[shape_size_x - 2], shape_x[shape_size_x - 1])
+      shape_x[shape_size_x - kIndexTwo], shape_x[shape_size_x - 1])
 
-  KERNEL_CHECK_FALSE((shape_size_sign == shape_size_x - 2),
+  KERNEL_CHECK_FALSE((shape_size_sign == shape_size_x - kIndexTwo),
                      KERNEL_STATUS_PARAM_INVALID,
                      "Output sign must be rank [%zu], got [%zu].",
-                     shape_size_x - 2, shape_size_sign)
-  KERNEL_CHECK_FALSE((shape_size_y == shape_size_x - 2),
+                     shape_size_x - kIndexTwo, shape_size_sign)
+  KERNEL_CHECK_FALSE((shape_size_y == shape_size_x - kIndexTwo),
                      KERNEL_STATUS_PARAM_INVALID,
                      "Output y must be rank [%zu], got [%zu].",
-                     shape_size_x - 2, shape_size_y)
-  for (size_t i = 0; i < shape_size_x - 2; i++) {
+                     shape_size_x - kIndexTwo, shape_size_y)
+  for (size_t i = 0; i < shape_size_x - kIndexTwo; i++) {
     KERNEL_CHECK_FALSE((shape_sign[i] == shape_x[i]),
                        KERNEL_STATUS_PARAM_INVALID,
                        "Output sign and Input x dimension [%zu] must be "
@@ -136,11 +137,9 @@ uint32_t LogMatrixDeterminantCpuKernel::LogMatrixDeterminantCompute(
     int64_t martix_num = ctx.Input(0)->NumElements() / size_mm;
     int64_t data_size = ctx.Input(0)->NumElements() * sizeof(T);
     if (data_size <= kParallelDataNums) {
-      RealT log_abs_det = 0;
-      T sign = 1;
       for (int64_t i = 0; i < martix_num; i++) {
-        log_abs_det = 0;
-        sign = 1;
+        RealT log_abs_det = 0;
+        T sign = 1;
         Eigen::Map<MartixXd> martix_x(input_x + i * m * m, m, m);
         if (martix_x.size() > 0) {
           Eigen::PartialPivLU<MartixXd> lu(martix_x);
@@ -168,10 +167,9 @@ uint32_t LogMatrixDeterminantCpuKernel::LogMatrixDeterminantCompute(
       }
       auto shard_work = [&](size_t start, size_t end) {
         RealT log_abs_det = 0;
-        T sign = 1;
         for (size_t i = start; i < end; i++) {
           log_abs_det = 0;
-          sign = 1;
+          T sign = 1;
           Eigen::Map<MartixXd> martix_x(input_x + i * m * m, m, m);
           if (martix_x.size() > 0) {
             Eigen::PartialPivLU<MartixXd> lu(martix_x);
