@@ -31,6 +31,7 @@ set(_onnx_plugins
   quant/ascend_requant_s16_plugin.cc
   batch_normalization_plugin.cc
   custom/batch_multi_class_non_max_suppression_plugin.cc
+  custom/bounding_box_decode_plugin.cc
   concat_plugin.cc
   conv_plugin.cc
   gather_plugin.cc
