@@ -50,7 +50,6 @@ from tbe.tvm.tensor import PlaceholderOp
 from . import util
 from .util import get_reduce_all_axes
 from .util import get_reduce_axis_indexes
-from .vector_tilingcase import TilingCaseBase
 from ...common.utils.errormgr import get_error_message
 
 num_tw = 2

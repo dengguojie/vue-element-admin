@@ -962,7 +962,7 @@ bool LayerNormTiling(const string &op_type, const ge::Operator &op_paras, const 
     int32_t tiling_key = CalcTilingKey(compileinfo, old_input_x, tilingparams, reduce_axis);
     // rwrite ByteBuffer
     WriteByteBuffer(mode, tiling_key, workspace_sub1, tilingparams, compileinfo, run_info);
-    bool compileflag = GetCompileInfo(op_type, op_info, compileinfo, reduce_axis, input_x, run_info);
+    bool compileflag = GetCompileInfo(op_type, op_info, compileinfo, reduce_axis, old_input_x, run_info);
     if (!compileflag) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo failed.");
     }
