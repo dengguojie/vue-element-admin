@@ -51,13 +51,6 @@ IMPLEMT_INFERFUNC(BatchNorm, BatchNormInferShape) {
   if (!OneInOneOutDynamicInfer(op, "scale", {"batch_mean", "batch_variance", "reserve_space_1", "reserve_space_2"})) {
     return GRAPH_FAILED;
   }
-  std::vector<int64_t> oShapeVector;
-  auto op_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto output_desc = op_info->MutableOutputDesc("reserve_space_3");
-  if (output_desc != nullptr) {
-    output_desc->SetShape(GeShape(oShapeVector));
-    output_desc->SetDataType(DT_FLOAT);
-  }
   return GRAPH_SUCCESS;
 }
 

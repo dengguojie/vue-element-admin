@@ -51,6 +51,8 @@ vector<FusionPattern*> BatchNormPreprocessFusionPass::DefinePatterns() {
 }
 
 Status BatchNormPreprocessFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<ge::NodePtr>& newNodes) {
+  // currently do not do anything
+  return NOT_CHANGED;
   OP_LOGI(FUSED_OP_TYPE.c_str(), "Define BatchNormPreprocessFusionPass fusion begin");
   ge::NodePtr batchNormNode = GetNodeFromMapping(PATTERN_BATCHNORM, mapping);
 
