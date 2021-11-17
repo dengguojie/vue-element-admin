@@ -21,11 +21,9 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
-NONETYPE = type(None)
 
-
-# pylint: disable=unused-argument,invalid-name
-# pylint: disable=redefined-argument-from-local
+# 'pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=redefined-argument-from-local
 def reduce_max_compute(x, axes, y, keepdims=None,
                        kernel_name="reduce_max"):
     """

@@ -53,8 +53,8 @@ def is_do_with_positive_source_ntc_100(src_format, dst_format):
     return False
 
 
-# pylint: disable=unused-argument, too-many-arguments, too-many-locals, too-many-boolean-expressions
-# pylint: disable=inconsistent-return-statements
+# 'pylint: disable=unused-argument, too-many-arguments, too-many-locals, too-many-boolean-expressions
+# 'pylint: disable=inconsistent-return-statements
 @register_operator("TransData")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)

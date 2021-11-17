@@ -23,18 +23,22 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-# max uint16
-MAX_UINT16 = 2 ** 16 - 1
-# max int64
-MAX_INT64 = 2 ** 63 - 1
-# ting param num
-TILING_ARG_NUM = 16
-# reserved ub size
-RESERVED_UB_SIZE = 8 * 1024
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # max uint16
+    MAX_UINT16 = 2 ** 16 - 1
+    # ting param num
+    TILING_ARG_NUM = 16
+    # reserved ub size
+    RESERVED_UB_SIZE = 8 * 1024
 
 
-# pylint: disable=too-many-instance-attributes,too-many-arguments,unused-argument
-# pylint: disable=too-many-locals,too-many-statements,unused-argument,invalid-name
+# 'pylint: disable=too-many-instance-attributes,too-many-arguments,unused-argument
+# 'pylint: disable=too-many-locals,too-many-statements,unused-argument,invalid-name
 class ResizeNearestNeighbor(OpBase):
     """
     Function: use to store ResizeNearestNeighbor base parameters
@@ -51,7 +55,7 @@ class ResizeNearestNeighbor(OpBase):
         para_check.check_dtype(self.images_dtype, ("float32", "float16"), param_name="images")
 
         self.kernel_name = kernel_name
-        self.ub_size_bytes = self.ub_size_bytes - RESERVED_UB_SIZE
+        self.ub_size_bytes = self.ub_size_bytes - Constant.RESERVED_UB_SIZE
         self.elememts_vector_fp16 = tbe_platform.ELEMENTS_VECTOR_OP_FP16
 
         self.block_num = 16 if self.images_dtype in ("float16",) else 8
@@ -63,12 +67,12 @@ class ResizeNearestNeighbor(OpBase):
         self.width_idx_sigment_num = 512
 
         # init gm addr
-        tiling_dict = {"dtype": "int64", "shape": (TILING_ARG_NUM,)}
+        tiling_dict = {"dtype": "int64", "shape": (Constant.TILING_ARG_NUM,)}
         self.op_init_gm([images, size], [y], tiling_info=tiling_dict, is_fused_1d=True)
         self.images_gm, self.size_gm = self.input_gm_list
         self.out_gm = self.output_gm_list[0]
 
-        self.stride_threshold = MAX_UINT16 if self.images_dtype in ("float16",) else MAX_UINT16 // 2
+        self.stride_threshold = Constant.MAX_UINT16 if self.images_dtype in ("float16",) else Constant.MAX_UINT16 // 2
         self.is_suport_vdiv = tbe_platform.api_check_support("tik.vdiv", "float32")
         # init tiling data
         self.resize_scale_h = self.tik_instance.Scalar("float32", name="resize_scale_h")
@@ -121,9 +125,9 @@ class ResizeNearestNeighbor(OpBase):
         cut info    tiling_bc1_, tiling_height_cut_num, tiling_width_cut_num
         """
         with self.tik_instance.new_stmt_scope():
-            tiling_ub = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,),
+            tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,),
                                                  name="tiling_ub", scope=tik.scope_ubuf)
-            self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, (TILING_ARG_NUM + 3) // 4, 0, 0)
+            self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, (Constant.TILING_ARG_NUM + 3) // 4, 0, 0)
             self.tiling_key.set_as(tiling_ub[0])
             self.tiling_batch.set_as(tiling_ub[1])
             self.tiling_c1.set_as(tiling_ub[2])

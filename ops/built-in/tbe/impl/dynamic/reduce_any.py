@@ -15,7 +15,6 @@
 """
 reduce any
 """
-import te
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import classify

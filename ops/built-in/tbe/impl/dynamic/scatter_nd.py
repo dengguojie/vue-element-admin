@@ -45,6 +45,7 @@ def ceil_div(value_x, value_y):
     return (value_x + value_y - 1) // value_y
 
 
+# 'pylint: disable=invalid-name,unused-argument
 def check_supported(indices, x, shape, y, kernel_name="ScatterNd"):
     """
     check support dynamiclly
@@ -57,7 +58,7 @@ def check_supported(indices, x, shape, y, kernel_name="ScatterNd"):
     if len(list(filter(lambda x: x < 0, indices_shape + x_shape + shape_shape))) > 0:
         return True, "dynamic shape support"
     if indices_shape[-1] == 1:
-        return True,"indices last dim is 1, support dynamic shape"
+        return True, "indices last dim is 1, support dynamic shape"
     data_size = 4
     if x_dtype in ("float32", "int32"):
         data_size = 4
@@ -68,13 +69,13 @@ def check_supported(indices, x, shape, y, kernel_name="ScatterNd"):
     shape_value = list(shape.get('const_value'))
     shape_value += [1]
     update_slice = reduce(lambda a, b: a * b, shape_value[indices_shape[-1]:])
-    if data_size > 0 and update_slice > 0 and update_slice < (32 / data_size):
+    if data_size > 0 and 0 < update_slice < (32 / data_size):
         return False, "ScatterNdD update slice < 32byte, graph not changed."
     return True, ""
 
 
-# pylint: disable=too-many-public-methods,too-many-arguments,too-many-instance-attributes
-# pylint: disable=too-many-lines,attribute-defined-outside-init,too-many-statements,too-many-branches,unused-argument
+# 'pylint: disable=too-many-public-methods,too-many-arguments,too-many-instance-attributes
+# 'pylint: disable=too-many-lines,attribute-defined-outside-init,too-many-statements,too-many-branches,unused-argument
 class ScatterNd():
     """
        Function: use to store scatter_nd base parameters
@@ -144,7 +145,9 @@ class ScatterNd():
 
         self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
         self.shape_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE,), name="shape", scope=tik.scope_gm)
-        self.indices_gm = self.tik_instance.Tensor(self.indices_dtype, (MAX_INT64_VALUE,), name="indices_gm", scope=tik.scope_gm)
+        self.indices_gm = self.tik_instance.Tensor(self.indices_dtype, (MAX_INT64_VALUE,),
+                                                   name="indices_gm",
+                                                   scope=tik.scope_gm)
         self.updates_gm = self.tik_instance.Tensor(self.updates_dtype, (MAX_INT64_VALUE,),
                                                    name="updates_gm",
                                                    scope=tik.scope_gm)
@@ -1454,7 +1457,7 @@ class ScatterNd():
                                    config=opt_config)
 
 
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=unused-argument,invalid-name
 @register_operator("ScatterNd")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)

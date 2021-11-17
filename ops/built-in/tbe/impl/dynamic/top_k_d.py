@@ -15,7 +15,7 @@
 """
 top_k_d
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 from enum import Enum
 from enum import unique
 
@@ -96,7 +96,7 @@ def isinstance_if(tik_instance, condition, fun):
             fun()
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 @unique
 class Mode(Enum):
     """Mode for Region proposal"""
@@ -107,9 +107,9 @@ class Mode(Enum):
     Score = 4
 
 
-# pylint: disable=too-many-instance-attributes,too-many-public-methods
-# pylint: disable=attribute-defined-outside-init
-class GlobalVarGM(object):
+# 'pylint: disable=too-many-instance-attributes,too-many-public-methods
+# 'pylint: disable=attribute-defined-outside-init
+class GlobalVarGM:
     """GlobalVarGM Class Defination"""
 
     def __init__(self, tik_instance):
@@ -183,7 +183,7 @@ class GlobalVarGM(object):
         return self.offset_gm
 
 
-class GlobalVarUB(object):
+class GlobalVarUB:
     """GlobalVarUB Class Defination"""
 
     def __init__(self):
@@ -370,7 +370,7 @@ class GlobalVarUB(object):
         return self.offset_int32_ub
 
 
-class GlobalVarTilingScalar(object):
+class GlobalVarTilingScalar:
     """GlobalVarTilingScalar Class Defination"""
 
     def __init__(self, tik_instance, tiling_gm, mode, k, input_shape):
@@ -544,7 +544,7 @@ class GlobalVarTilingScalar(object):
         return self.num_batch_scalar
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def set_tensor_more_4096(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs):
     """
     Set UB when tensor bigger than 4096
@@ -595,7 +595,7 @@ def set_tensor_more_4096(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs):
     obj_ub.set_indices_tail_block_ub(indices_tail_block_ub)
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals,too-many-arguments
 def set_tensor_more_4096_a100(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs, dtype):
     """
     Set UB when tensor bigger than 4096
@@ -636,7 +636,7 @@ def set_tensor_more_4096_a100(tik_instance, obj_tiling, obj_gm, obj_ub, ins, out
     obj_ub.set_indices_tail_block_ub(indices_tail_block_ub)
 
 
-# pylint: disable=too-many-arguments,too-many-locals
+# 'pylint: disable=too-many-arguments,too-many-locals
 def set_tensor_less_4096(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs):
     """
     Set UB when tensor less than 4096
@@ -685,7 +685,7 @@ def set_tensor_less_4096(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs):
     obj_ub.set_indices_tail_block_ub(indices_tail_block_ub)
 
 
-# pylint: disable=too-many-arguments,too-many-locals
+# 'pylint: disable=too-many-arguments,too-many-locals
 def set_tensor_less_4096_a100(tik_instance, obj_tiling, obj_gm, obj_ub, ins, outs, dtype):
     """
     Set UB when tensor less than 4096
@@ -720,7 +720,7 @@ def set_tensor_less_4096_a100(tik_instance, obj_tiling, obj_gm, obj_ub, ins, out
     obj_ub.set_indices_tail_block_ub(indices_tail_block_ub)
 
 
-class GlobalVarFunction(object):
+class GlobalVarFunction:
     """GlobalVarFunction Class Defination"""
 
     def __init__(self, obj_gm, obj_tiling, obj_ub):
@@ -770,7 +770,7 @@ class GlobalVarFunction(object):
         self.turn_block_idx = obj_tiling.get_turn_num()
         self.num_per_ele = SORT_REGION_BYTE // _get_dtype_byte(self.data_ub.dtype)
 
-    # pylint: disable=locally-disabled,too-many-locals
+    # 'pylint: disable=locally-disabled,too-many-locals,too-many-arguments
     def kernel_ir(self, tik_instance, largest, by_part, block_idx, block_dim, k):
         """
         Funtion for common process in top_k op
@@ -823,7 +823,7 @@ class GlobalVarFunction(object):
                                multi_core=multi_core,
                                largest=largest)
 
-    # pylint: disable=too-many-arguments,too-many-statements
+    # 'pylint: disable=too-many-arguments,too-many-statements,too-many-branches
     def topk_a_row_by_part(self, tik_instance, row_start_in_core, cols, k, core_rows_start, multi_core, largest):
         """
         topk_a_row_by_part
@@ -896,8 +896,7 @@ class GlobalVarFunction(object):
         result_ub = region_sorted_ub
         self.copy_region(tik_instance, dst=region_k_ub, src=result_ub, num=cols_per_part)
         if isinstance(part_cnt, int):
-            if part_cnt < 2:
-                part_cnt = 2
+            part_cnt = max(part_cnt, 2)
         with tik_instance.for_range(0, part_cnt - 2, name='topk_i0') as i:
             self.copy_gm_to_ubuf_func(tik_instance,
                                       data_ub,
@@ -1044,7 +1043,7 @@ class GlobalVarFunction(object):
                              gm_offset=row_start_in_core * k + core_rows_start * k,
                              multi_core=multi_core)
 
-    # pylint: disable=too-many-arguments,no-self-use
+    # 'pylint: disable=too-many-arguments,no-self-use
     def emit_vextract(self, tik_instance, dst, src, mode, cnt, dst_offset=0, src_offset=0):
         """
         emit_vextract
@@ -1073,7 +1072,7 @@ class GlobalVarFunction(object):
                                dst_offset=i * self.cols_padding,
                                src_offset=i * self.cols_padding * self.num_per_ele)
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def topk_rows(self, tik_instance, row_start_in_core, rows, cols, k, core_rows_start, multi_core, largest):
         """
         topk_rows do topk action muilti rows
@@ -1107,14 +1106,14 @@ class GlobalVarFunction(object):
                                    indices_per_part * i, indices_per_part // vadds_len, 1, 1, 8, 8)
 
             with tik_instance.for_range(1, rows, name='i0') as i:
-                indices_out_final_ub_C0 = tbe_platform.BLOCK_REDUCE_INT8 // _get_dtype_byte(
+                indices_out_final_ub_c0 = tbe_platform.BLOCK_REDUCE_INT8 // _get_dtype_byte(
                     self.indices_out_final_ub.dtype)
 
-                _exec_front_last(tik_instance, self.cols_padding, 255 * indices_out_final_ub_C0,
+                _exec_front_last(tik_instance, self.cols_padding, 255 * indices_out_final_ub_c0,
                                  lambda offset, part_len: tik_instance.data_move(
                                      self.indices_out_final_ub[i * self.cols_padding + offset],
                                      self.indices_out_final_ub[offset], 0, 1,
-                                     part_len // indices_out_final_ub_C0, 0, 0))
+                                     part_len // indices_out_final_ub_c0, 0, 0))
             self.sort_region_a100(tik_instance, self.region_sorted_ub.reinterpret_cast_to(self.data_ub.dtype),
                                   self.data_ub,
                                   self.indices_out_final_ub, rows, self.cols_padding)
@@ -1200,7 +1199,7 @@ class GlobalVarFunction(object):
                              gm_offset=row_start_in_core * k + core_rows_start * k,
                              multi_core=multi_core)
 
-    # pylint: disable=no-self-use,too-many-arguments
+    # 'pylint: disable=no-self-use,too-many-arguments
     def merge_two_sorted_region(self, tik_instance, dst, src_region_k, src_region_sorted, len_region_k,
                                 len_region_sorted):
         """
@@ -1238,16 +1237,18 @@ class GlobalVarFunction(object):
                             src_region_k[16]]
                 tik_instance.vmrgsort4(dst, src_list, (merge_n0, merge_n1, merge_n2_merge_two_reg, 16), False, 7, 1)
 
-    # pylint: disable=no-self-use,too-many-arguments
-    def copy_region(self, tik_instance, dst, src, num, dst_offset=0):
+    # 'pylint: disable=no-self-use,too-many-arguments
+    @staticmethod
+    def copy_region(tik_instance, dst, src, num, dst_offset=0):
         """
         copy_region
         """
         burstlen = _ceil_div(num * SORT_REGION_BYTE, tbe_platform.BLOCK_REDUCE_INT8)
         tik_instance.data_move(dst[dst_offset], src, 0, 1, burstlen, 0, 0)
 
-    # pylint: disable=no-self-use,too-many-arguments
-    def _add(self, tik_instance, dst, src1, src2, rows, cols_padding):
+    # 'pylint: disable=no-self-use,too-many-arguments
+    @staticmethod
+    def _add(tik_instance, dst, src1, src2, rows, cols_padding):
         # process 256B data per repeat for vsub
         vadd_len = 64
         repeat = (rows * cols_padding) // vadd_len
@@ -1258,8 +1259,9 @@ class GlobalVarFunction(object):
                       lambda: tik_instance.vadd(remain, dst[repeat * vadd_len], src1[repeat * vadd_len],
                                                 src2[repeat * vadd_len], 1, 1, 1, 1, 8, 8, 8))
 
-    # pylint: disable=too-many-arguments,no-self-use
-    def conv_fp162s32(self, tik_instance, s32ub, s32ub_offset, fp16ub, fp16ub_offset, num):
+    # 'pylint: disable=too-many-arguments,no-self-use
+    @staticmethod
+    def conv_fp162s32(tik_instance, s32ub, s32ub_offset, fp16ub, fp16ub_offset, num):
         """
         fp16 to int32
         """
@@ -1316,7 +1318,7 @@ class GlobalVarFunction(object):
             with tik_instance.else_scope():
                 self._merge(tik_instance, dst_ub, src_ub, last_dim, region_list_reg, i, region_offset)
 
-    # pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements,no-self-use
+    # 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements,no-self-use
     def _merge(self, tik_instance, src_ub, dst_ub, last_dim, total_region_list, level, region_offset=0):
         """
         _merge_recur
@@ -1411,7 +1413,7 @@ class GlobalVarFunction(object):
                                    num_blocks_write_reg, 0, 0)
         total_region_list.set_as(_ceil_div(total_region_list, max_merge_tensors))
 
-    # pylint: disable=too-many-arguments,no-self-use
+    # 'pylint: disable=too-many-arguments,no-self-use
     def emit_vconcat(self, tik_instance, dst, src, mode, cnt, dst_offset=0, src_offset=0):
         """
         emit_vconcat
@@ -1427,12 +1429,12 @@ class GlobalVarFunction(object):
         """
         cols_padding = _ceil_fill(cols, SORT_ONCE_NUM)
         burstlen = _ceil_div(cols * _get_dtype_byte(dst.dtype), tbe_platform.BLOCK_REDUCE_INT8)
-        # pylint: disable=invalid-name
-        cols_32B_align = cols % SORT_ONCE_NUM
+        # 'pylint: disable=invalid-name
+        cols_32b_align = cols % SORT_ONCE_NUM
         reg_min_number = tik_instance.Scalar(dtype=dst.dtype, init_value=_get_dtype_min_val(dst.dtype),
                                              name='reg_min_number')
 
-        with tik_instance.if_scope(cols_32B_align == 0):
+        with tik_instance.if_scope(cols_32b_align == 0):
             tik_instance.data_move(dst[0], src[col_start + gm_offset], 0, 1, burstlen * num_rows, 0, 0)
             if not largest:
                 self.emit_vmuls(tik_instance, dst, dst, cnt=num_rows * cols_padding)
@@ -1453,8 +1455,9 @@ class GlobalVarFunction(object):
                 with tik_instance.for_range(0, cols_padding - cols) as j:
                     dst[cols_padding * i + cols + j].set_as(reg_min_number)
 
-    # pylint: disable=no-self-use
-    def emit_vmuls(self, tik_instance, dst, src, cnt):
+    # 'pylint: disable=no-self-use
+    @staticmethod
+    def emit_vmuls(tik_instance, dst, src, cnt):
         """
         emit_vmuls
         """
@@ -1477,7 +1480,7 @@ class GlobalVarFunction(object):
             tik_instance.vmuls(repeat_remain_scalar, dst[repeat_255_scalar * 128], src[repeat_255_scalar * 128], -1, 1,
                                1, 1, 8, 8)
 
-    # pylint: disable=invalid-name
+    # 'pylint: disable=invalid-name
     def copy_ubuf_to_gm(self,
                         tik_instance,
                         dtype,
@@ -1494,11 +1497,11 @@ class GlobalVarFunction(object):
         """
         burstlen = _ceil_div(k * _get_dtype_byte(dtype), tbe_platform.BLOCK_REDUCE_INT8)
         blocklen = tbe_platform.BLOCK_REDUCE_INT8 // _get_dtype_byte(dtype)
-        k_32B_align = self.k % blocklen
-        cols_32B_align = self.cols % blocklen
+        k_32b_align = self.k % blocklen
+        cols_32b_align = self.cols % blocklen
         dst_offset = tik_instance.Scalar(dtype="int32", init_value=gm_offset)
         src_offset = tik_instance.Scalar(dtype="int32", init_value=0)
-        with tik_instance.if_scope(tik.all(cols_32B_align == 0, k_32B_align == 0)):
+        with tik_instance.if_scope(tik.all(cols_32b_align == 0, k_32b_align == 0)):
             src_stride = cols_padding // blocklen - burstlen
             tik_instance.data_move(dst[dst_offset], src[0], 0, num_rows, burstlen, src_stride, 0)
 
@@ -1555,9 +1558,9 @@ class GlobalVarFunction(object):
         """
         cols_padding = _ceil_fill(cols, SORT_ONCE_NUM)
         burstlen = _ceil_div(cols * _get_dtype_byte(dst.dtype), tbe_platform.BLOCK_REDUCE_INT8)
-        # pylint: disable=invalid-name
-        cols_32B_align = cols % (tbe_platform.BLOCK_REDUCE_INT8 // _get_dtype_byte(dst.dtype))
-        with tik_instance.if_scope(cols_32B_align == 0):
+        # 'pylint: disable=invalid-name
+        cols_32b_align = cols % (tbe_platform.BLOCK_REDUCE_INT8 // _get_dtype_byte(dst.dtype))
+        with tik_instance.if_scope(cols_32b_align == 0):
             tik_instance.data_move(dst[0], src[col_start + gm_offset], 0, num_rows, burstlen, 0, 0)
 
         with tik_instance.else_scope():
@@ -1572,9 +1575,9 @@ class GlobalVarFunction(object):
                                           dst_offset=cols_padding * i,
                                           src_offset=cols * i + col_start + gm_offset)
 
-    # pylint: disable=too-many-arguments,no-self-use
-    def emit_copy_gm_to_ubuf(self,
-                             tik_instance,
+    # 'pylint: disable=too-many-arguments,no-self-use
+    @staticmethod
+    def emit_copy_gm_to_ubuf(tik_instance,
                              dst,
                              src,
                              nburst,
@@ -1588,9 +1591,9 @@ class GlobalVarFunction(object):
         """
         tik_instance.data_move(dst[dst_offset], src[src_offset], 0, nburst, burstlen, srcstride, dststride)
 
-    # pylint: disable=too-many-arguments,no-self-use
-    def emit_copy_ubuf_to_gm(self,
-                             tik_instance,
+    # 'pylint: disable=too-many-arguments,no-self-use
+    @staticmethod
+    def emit_copy_ubuf_to_gm(tik_instance,
                              dst,
                              src,
                              nburst,
@@ -1605,7 +1608,7 @@ class GlobalVarFunction(object):
         tik_instance.data_move(dst[dst_offset], src[src_offset], 0, nburst, burstlen, srcstride, dststride)
 
 
-# pylint: disable=too-many-arguments,too-many-locals
+# 'pylint: disable=too-many-arguments,too-many-locals,unused-argument
 def top_k_compute(tik_instance, obj_gm, obj_tiling, obj_ub, profile, dtype, indices_dtype, largest, k, kernel_name,
                   mode):
     """
@@ -1684,7 +1687,10 @@ def top_k_compute(tik_instance, obj_gm, obj_tiling, obj_ub, profile, dtype, indi
                               enable_l2=True, config=build_config)
 
 
-# pylint: disable=too-many-arguments,too-many-locals
+SUPPORT_VBITSORT32 = False
+SORT_REGION_BYTE = 0
+SORT_ONCE_NUM = 0
+# 'pylint: disable=too-many-arguments,too-many-locals,unused-argument,global-statement,redefined-builtin
 @register_operator("TopKD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_BOOL,

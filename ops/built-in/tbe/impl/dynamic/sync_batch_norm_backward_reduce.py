@@ -1,31 +1,29 @@
-# Copyright 2021 Huawei Technologies Co., Ltd
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ============================================================================
+"""
+Copyright (C) 2021. Huawei Technologies Co., Ltd. All rights reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the Apache License Version 2.0.You may not use
+this file except in compliance with the License.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+Apache License for more details at
+http://www.apache.org/licenses/LICENSE-2.0
+
+sync_batch_norm_backward_reduce
+"""
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
-from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
-from impl.util.platform_adapter import tbe_context
-from impl.util.platform_adapter import OpImplMode
 
 
+# 'pylint:disable=invalid-name,too-many-arguments,unused-argument
 @register_operator_compute("SyncBatchNormBackwardReduce", op_mode="dynamic", support_fusion=True)
 def sync_batch_norm_backward_reduce_compute(sum_dy,
                                             sum_dy_dx_pad,
@@ -49,7 +47,7 @@ def sync_batch_norm_backward_reduce_compute(sum_dy,
         Reciprocal of the variance of the saved forward input
     kernel_name: str
         cce kernel nema, default value is sync_batch_norm_backward_reduce
-    
+
     Returns
     -------
     res: TVM tensor
@@ -62,6 +60,7 @@ def sync_batch_norm_backward_reduce_compute(sum_dy,
     return [sum_dy_xmu, grad_weight_res]
 
 
+# 'pylint:disable=invalid-name,too-many-arguments,too-many-locals
 def sync_batch_norm_backward_reduce(sum_dy,
                                     sum_dy_dx_pad,
                                     mean,
@@ -84,7 +83,7 @@ def sync_batch_norm_backward_reduce(sum_dy,
         Reciprocal of the variance of the saved forward input
     kernel_name: str
         cce kernel nema, default value is sync_batch_norm_backward_reduce
-    
+
     Returns
     -------
     None
@@ -113,18 +112,21 @@ def sync_batch_norm_backward_reduce(sum_dy,
             shape_sum_dy, shape_sum_dy_dx_pad, shape_mean, shape_invert_std = \
                 shape_util.variable_shape([_sum_dy, _sum_dy_dx_pad, _mean, _invert_std])
             data_input_sum_dy = tvm.placeholder(shape_sum_dy, name="sum_dy", dtype=dtype_lower_sum_dy)
-            data_input_sum_dy_dx_pad = tvm.placeholder(shape_sum_dy_dx_pad, name="data_sum_dy_dx_pad", dtype=dtype_lower_sum_dy_dx_pad)
+            data_input_sum_dy_dx_pad = tvm.placeholder(shape_sum_dy_dx_pad,
+                                                       name="data_sum_dy_dx_pad",
+                                                       dtype=dtype_lower_sum_dy_dx_pad)
             data_input_mean = tvm.placeholder(shape_mean, name="data_mean", dtype=dtype_lower_mean)
-            data_input_invert_std = tvm.placeholder(shape_invert_std, name="data_invert_std", dtype=dtype_lower_invert_std)
+            data_input_invert_std = tvm.placeholder(shape_invert_std,
+                                                    name="data_invert_std",
+                                                    dtype=dtype_lower_invert_std)
 
             res = sync_batch_norm_backward_reduce_compute(data_input_sum_dy, data_input_sum_dy_dx_pad, data_input_mean,
-                                                                 data_input_invert_std, sum_dy_xmu, y)
-            tensors.append([data_input_sum_dy, data_input_sum_dy_dx_pad, data_input_mean, data_input_invert_std] + res)                                              
+                                                          data_input_invert_std, sum_dy_xmu, y)
+            tensors.append([data_input_sum_dy, data_input_sum_dy_dx_pad, data_input_mean, data_input_invert_std] + res)
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
         schedules.append(sch)
 
     # build
-    config = {"name": kernel_name,
-              "tensor_list": tensors}
+    config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)

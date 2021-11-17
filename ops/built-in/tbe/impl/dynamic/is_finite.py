@@ -24,56 +24,61 @@ from impl.util.platform_adapter import tbe_context
 from impl import common_util
 
 
-# ub size count
-UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-# aicore count
-CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-# byte count one block
-BLOCK_BYTE_COUNT = 32
-# repeat up limit for mte
-REPEAT_LIMIT = 255
-# max int64 value
-MAX_INT64_VALUE = 2 ** 64 - 1
-# parameters for moving tiling data
-TILING_CTRL_PARAM = ("int64", 64, 4)
-# the number that fp16 data should to vand with(Binary 11111)
-FLAG_FP16 = 31
-# the number that fp32 data should to vand with(Binary 11111111)
-FLAG_FP32 = 255
-# the bits of fp16 shift right
-SHR_FP16_NUM = 10
-# the bits of fp32 shift right
-SHR_FP32_NUM = 23
-# the dtype that fp16 should to reinterpret_cast_to before shift right
-SHR_FP16_DTYPE = "uint16"
-# the dtype that fp32 should to reinterpret_cast_to before shift right
-SHR_FP32_DTYPE = "uint32"
-# the dtype that fp16 vand result should to reinterpret_cast_to
-VAND_RESULT_FP16_DTYPE = "int16"
-# the dtype that fp32 vand result should to reinterpret_cast_to
-VAND_RESULT_FP32_DTYPE = "int32"
-# the finite result need to be converted to 1
-BOOL_FLAG_TRUE = 1
-# the constants related to input dtype
-CONSTANT_MAP = {
-    "float16": {
-        "shr_dtype": SHR_FP16_DTYPE,
-        "shr_num": SHR_FP16_NUM,
-        "shr_flag": FLAG_FP16,
-        "vand_result_dtype": VAND_RESULT_FP16_DTYPE,
-        "flag_tensor_multiple": 1
-    },
-    "float32": {
-        "shr_dtype": SHR_FP32_DTYPE,
-        "shr_num": SHR_FP32_NUM,
-        "shr_flag": FLAG_FP32,
-        "vand_result_dtype": VAND_RESULT_FP32_DTYPE,
-        "flag_tensor_multiple": 2
+# 'pylint:disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    The class for constant
+    """
+    # ub size count
+    UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+    # aicore count
+    CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+    # byte count one block
+    BLOCK_BYTE_COUNT = 32
+    # repeat up limit for mte
+    REPEAT_LIMIT = 255
+    # max int64 value
+    MAX_INT64_VALUE = 2**64 - 1
+    # parameters for moving tiling data
+    TILING_CTRL_PARAM = ("int64", 64, 4)
+    # the number that fp16 data should to vand with(Binary 11111)
+    FLAG_FP16 = 31
+    # the number that fp32 data should to vand with(Binary 11111111)
+    FLAG_FP32 = 255
+    # the bits of fp16 shift right
+    SHR_FP16_NUM = 10
+    # the bits of fp32 shift right
+    SHR_FP32_NUM = 23
+    # the dtype that fp16 should to reinterpret_cast_to before shift right
+    SHR_FP16_DTYPE = "uint16"
+    # the dtype that fp32 should to reinterpret_cast_to before shift right
+    SHR_FP32_DTYPE = "uint32"
+    # the dtype that fp16 vand result should to reinterpret_cast_to
+    VAND_RESULT_FP16_DTYPE = "int16"
+    # the dtype that fp32 vand result should to reinterpret_cast_to
+    VAND_RESULT_FP32_DTYPE = "int32"
+    # the finite result need to be converted to 1
+    BOOL_FLAG_TRUE = 1
+    # the constants related to input dtype
+    CONSTANT_MAP = {
+        "float16": {
+            "shr_dtype": SHR_FP16_DTYPE,
+            "shr_num": SHR_FP16_NUM,
+            "shr_flag": FLAG_FP16,
+            "vand_result_dtype": VAND_RESULT_FP16_DTYPE,
+            "flag_tensor_multiple": 1
+        },
+        "float32": {
+            "shr_dtype": SHR_FP32_DTYPE,
+            "shr_num": SHR_FP32_NUM,
+            "shr_flag": FLAG_FP32,
+            "vand_result_dtype": VAND_RESULT_FP32_DTYPE,
+            "flag_tensor_multiple": 2
+        }
     }
-}
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def _ceil_div(value_x, value_y):
     """
     do ceil division
@@ -86,7 +91,7 @@ def _get_element_cnt_one_block(dtype):
     get element count in a block
     """
     byte_len = common_util.get_data_size(dtype)
-    element_cnt = BLOCK_BYTE_COUNT // byte_len
+    element_cnt = Constant.BLOCK_BYTE_COUNT // byte_len
 
     return element_cnt
 
@@ -97,7 +102,7 @@ def _get_max_element_in_ub(dtype, ub_part):
     """
     byte_len = common_util.get_data_size(dtype)
 
-    ub_upper_limit = ((UB_SIZE - 2 * 1024) // 2) // ub_part
+    ub_upper_limit = ((Constant.UB_SIZE - 2 * 1024) // 2) // ub_part
     element_size = ub_upper_limit // byte_len
 
     return element_size
@@ -116,9 +121,10 @@ def _get_ub_max_size(input_dtype, output_dtype):
     output 32 bytes align
     """
     ub_x_size = _get_max_element_in_ub(input_dtype, 1) // 2
-    return ub_x_size - ub_x_size % (BLOCK_BYTE_COUNT // common_util.get_data_size(output_dtype))
+    return ub_x_size - ub_x_size % (Constant.BLOCK_BYTE_COUNT // common_util.get_data_size(output_dtype))
 
 
+# 'pylint:disable=too-many-arguments
 def _scalar_vector_func(tik_inst, vec_func, dst, src, scalar, data_len, data_type):
     """
     do scalar vector operator
@@ -131,17 +137,17 @@ def _scalar_vector_func(tik_inst, vec_func, dst, src, scalar, data_len, data_typ
     else:
         repeat = data_len // repeat_data_num
     repeat_tail = data_len % repeat_data_num
-    loop_repeat_cnt = repeat // REPEAT_LIMIT
+    loop_repeat_cnt = repeat // Constant.REPEAT_LIMIT
 
     if not isinstance(repeat, int) or repeat != 0:
-        with tik_inst.if_scope(repeat >= REPEAT_LIMIT):
+        with tik_inst.if_scope(repeat >= Constant.REPEAT_LIMIT):
             with tik_inst.for_range(0, loop_repeat_cnt) as repeat_lp_cnt:
-                offset = repeat_lp_cnt * REPEAT_LIMIT * repeat_data_num
-                vec_func(repeat_data_num, dst[offset], src[offset], scalar, REPEAT_LIMIT, 1, 1, 8, 8)
-    left_repeat = repeat - loop_repeat_cnt * REPEAT_LIMIT
+                offset = repeat_lp_cnt * Constant.REPEAT_LIMIT * repeat_data_num
+                vec_func(repeat_data_num, dst[offset], src[offset], scalar, Constant.REPEAT_LIMIT, 1, 1, 8, 8)
+    left_repeat = repeat - loop_repeat_cnt * Constant.REPEAT_LIMIT
     if not isinstance(left_repeat, int) or left_repeat != 0:
         with tik_inst.if_scope(left_repeat > 0):
-            offset = loop_repeat_cnt * REPEAT_LIMIT * repeat_data_num
+            offset = loop_repeat_cnt * Constant.REPEAT_LIMIT * repeat_data_num
             vec_func(repeat_data_num, dst[offset], src[offset], scalar, left_repeat, 1, 1, 8, 8)
     if not isinstance(repeat_tail, int) or repeat_tail != 0:
         with tik_inst.if_scope(repeat_tail > 0):
@@ -149,6 +155,7 @@ def _scalar_vector_func(tik_inst, vec_func, dst, src, scalar, data_len, data_typ
             vec_func(repeat_tail, dst[offset], src[offset], scalar, 1, 1, 1, 8, 8)
 
 
+# 'pylint:disable=too-many-arguments
 def _vector_single_src_func(tik_inst, vec_func, dst, src, data_len, data_type):
     """
     do vector operator
@@ -161,17 +168,17 @@ def _vector_single_src_func(tik_inst, vec_func, dst, src, data_len, data_type):
     else:
         repeat = data_len // repeat_data_num
     repeat_tail = data_len % repeat_data_num
-    loop_repeat_cnt = repeat // REPEAT_LIMIT
+    loop_repeat_cnt = repeat // Constant.REPEAT_LIMIT
 
     if not isinstance(repeat, int) or repeat != 0:
-        with tik_inst.if_scope(repeat >= REPEAT_LIMIT):
+        with tik_inst.if_scope(repeat >= Constant.REPEAT_LIMIT):
             with tik_inst.for_range(0, loop_repeat_cnt) as repeat_lp_cnt:
-                offset = repeat_lp_cnt * REPEAT_LIMIT * repeat_data_num
-                vec_func(repeat_data_num, dst[offset], src[offset], REPEAT_LIMIT, 1, 1, 8, 8)
-    left_repeat = repeat - loop_repeat_cnt * REPEAT_LIMIT
+                offset = repeat_lp_cnt * Constant.REPEAT_LIMIT * repeat_data_num
+                vec_func(repeat_data_num, dst[offset], src[offset], Constant.REPEAT_LIMIT, 1, 1, 8, 8)
+    left_repeat = repeat - loop_repeat_cnt * Constant.REPEAT_LIMIT
     if not isinstance(left_repeat, int) or left_repeat != 0:
         with tik_inst.if_scope(left_repeat > 0):
-            offset = loop_repeat_cnt * REPEAT_LIMIT * repeat_data_num
+            offset = loop_repeat_cnt * Constant.REPEAT_LIMIT * repeat_data_num
             vec_func(repeat_data_num, dst[offset], src[offset], left_repeat, 1, 1, 8, 8)
     if not isinstance(repeat_tail, int) or repeat_tail != 0:
         with tik_inst.if_scope(repeat_tail > 0):
@@ -179,6 +186,7 @@ def _vector_single_src_func(tik_inst, vec_func, dst, src, data_len, data_type):
             vec_func(repeat_tail, dst[offset], src[offset], 1, 1, 1, 8, 8)
 
 
+# 'pylint:disable=too-many-arguments
 def _vector_double_src_func(tik_inst, vec_func, dst, src1, src2, data_len, data_type):
     """
     do vector operator
@@ -191,17 +199,18 @@ def _vector_double_src_func(tik_inst, vec_func, dst, src1, src2, data_len, data_
     else:
         repeat = data_len // repeat_data_num
     repeat_tail = data_len % repeat_data_num
-    loop_repeat_cnt = repeat // REPEAT_LIMIT
+    loop_repeat_cnt = repeat // Constant.REPEAT_LIMIT
 
     if not isinstance(repeat, int) or repeat != 0:
-        with tik_inst.if_scope(repeat >= REPEAT_LIMIT):
+        with tik_inst.if_scope(repeat >= Constant.REPEAT_LIMIT):
             with tik_inst.for_range(0, loop_repeat_cnt) as repeat_lp_cnt:
-                offset = repeat_lp_cnt * REPEAT_LIMIT * repeat_data_num
-                vec_func(repeat_data_num, dst[offset], src1[offset], src2[offset], REPEAT_LIMIT, 1, 1, 1, 8, 8, 8)
-    left_repeat = repeat - loop_repeat_cnt * REPEAT_LIMIT
+                offset = repeat_lp_cnt * Constant.REPEAT_LIMIT * repeat_data_num
+                vec_func(repeat_data_num, dst[offset], src1[offset], src2[offset], Constant.REPEAT_LIMIT, 1, 1, 1, 8, 8,
+                         8)
+    left_repeat = repeat - loop_repeat_cnt * Constant.REPEAT_LIMIT
     if not isinstance(left_repeat, int) or left_repeat != 0:
         with tik_inst.if_scope(left_repeat > 0):
-            offset = loop_repeat_cnt * REPEAT_LIMIT * repeat_data_num
+            offset = loop_repeat_cnt * Constant.REPEAT_LIMIT * repeat_data_num
             vec_func(repeat_data_num, dst[offset], src1[offset], src2[offset], left_repeat, 1, 1, 1, 8, 8, 8)
     if not isinstance(repeat_tail, int) or repeat_tail != 0:
         with tik_inst.if_scope(repeat_tail > 0):
@@ -221,17 +230,17 @@ def _vector_dup_func(tik_inst, dst, scalar, data_len):
     else:
         repeat = data_len // repeat_data_num
     repeat_tail = data_len % repeat_data_num
-    loop_repeat_cnt = repeat // REPEAT_LIMIT
+    loop_repeat_cnt = repeat // Constant.REPEAT_LIMIT
 
     if not isinstance(repeat, int) or repeat != 0:
-        with tik_inst.if_scope(repeat >= REPEAT_LIMIT):
+        with tik_inst.if_scope(repeat >= Constant.REPEAT_LIMIT):
             with tik_inst.for_range(0, loop_repeat_cnt) as repeat_lp_cnt:
-                offset = repeat_lp_cnt * REPEAT_LIMIT * repeat_data_num
-                tik_inst.vec_dup(repeat_data_num, dst[offset], scalar, REPEAT_LIMIT, 8)
-    left_repeat = repeat - loop_repeat_cnt * REPEAT_LIMIT
+                offset = repeat_lp_cnt * Constant.REPEAT_LIMIT * repeat_data_num
+                tik_inst.vec_dup(repeat_data_num, dst[offset], scalar, Constant.REPEAT_LIMIT, 8)
+    left_repeat = repeat - loop_repeat_cnt * Constant.REPEAT_LIMIT
     if not isinstance(left_repeat, int) or left_repeat != 0:
         with tik_inst.if_scope(left_repeat > 0):
-            offset = loop_repeat_cnt * REPEAT_LIMIT * repeat_data_num
+            offset = loop_repeat_cnt * Constant.REPEAT_LIMIT * repeat_data_num
             tik_inst.vec_dup(repeat_data_num, dst[offset], scalar, left_repeat, 8)
     if not isinstance(repeat_tail, int) or repeat_tail != 0:
         with tik_inst.if_scope(repeat_tail > 0):
@@ -239,6 +248,7 @@ def _vector_dup_func(tik_inst, dst, scalar, data_len):
             tik_inst.vec_dup(repeat_tail, dst[offset], scalar, 1, 8)
 
 
+# 'pylint:disable=too-many-locals
 def _vconv_func(tik_inst, dst, src, round_mode, data_len):
     dst_data_one_block = _get_element_cnt_one_block(dst.dtype)
     src_data_one_block = _get_element_cnt_one_block(src.dtype)
@@ -252,19 +262,19 @@ def _vconv_func(tik_inst, dst, src, round_mode, data_len):
     else:
         repeat = data_len // repeat_data_num
     repeat_tail = data_len % repeat_data_num
-    loop_repeat_cnt = repeat // REPEAT_LIMIT
+    loop_repeat_cnt = repeat // Constant.REPEAT_LIMIT
     deq_scalar = 1.0 if src.dtype == "int32" and dst.dtype == "float16" else None
 
     if not isinstance(repeat, int) or repeat != 0:
-        with tik_inst.if_scope(repeat >= REPEAT_LIMIT):
+        with tik_inst.if_scope(repeat >= Constant.REPEAT_LIMIT):
             with tik_inst.for_range(0, loop_repeat_cnt) as repeat_lp_cnt:
-                offset = repeat_lp_cnt * REPEAT_LIMIT * repeat_data_num
-                tik_inst.vconv(repeat_data_num, round_mode, dst[offset], src[offset], REPEAT_LIMIT, 1, 1, dst_rep_stride,
-                               src_rep_stride, deq_scalar)
-    left_repeat = repeat - loop_repeat_cnt * REPEAT_LIMIT
+                offset = repeat_lp_cnt * Constant.REPEAT_LIMIT * repeat_data_num
+                tik_inst.vconv(repeat_data_num, round_mode, dst[offset], src[offset], Constant.REPEAT_LIMIT, 1, 1,
+                               dst_rep_stride, src_rep_stride, deq_scalar)
+    left_repeat = repeat - loop_repeat_cnt * Constant.REPEAT_LIMIT
     if not isinstance(left_repeat, int) or left_repeat != 0:
         with tik_inst.if_scope(left_repeat > 0):
-            offset = loop_repeat_cnt * REPEAT_LIMIT * repeat_data_num
+            offset = loop_repeat_cnt * Constant.REPEAT_LIMIT * repeat_data_num
             tik_inst.vconv(repeat_data_num, round_mode, dst[offset], src[offset], left_repeat, 1, 1, dst_rep_stride,
                            src_rep_stride, deq_scalar)
     if not isinstance(repeat_tail, int) or repeat_tail != 0:
@@ -296,6 +306,8 @@ class IsFinite:
 
     def __init__(self, input_x, output_y, kernel_name="is_finite"):
         self.tik_inst = tik.Tik()
+        self.input_ub = None
+        self.cache_ub = None
         self._init_inner_params(input_x, output_y, kernel_name)
         self._init_gm()
         self._init_tiling_params()
@@ -310,7 +322,7 @@ class IsFinite:
 
         _check_input_params(self.input_dtype, self.output_dtype)
 
-        constant_map = CONSTANT_MAP.get(self.input_dtype)
+        constant_map = Constant.CONSTANT_MAP.get(self.input_dtype)
         self.shr_dtype = constant_map.get("shr_dtype")
         self.shr_num = constant_map.get("shr_num")
         self.shr_flag = constant_map.get("shr_flag")
@@ -319,10 +331,11 @@ class IsFinite:
         self.per_loop_size = _get_ub_max_size(self.input_dtype, self.output_dtype)
 
     def _init_gm(self):
-        self.data_input = self.tik_inst.Tensor(self.input_dtype, (MAX_INT64_VALUE,), tik.scope_gm, "data_input")
-        self.data_out = self.tik_inst.Tensor(self.output_dtype, (MAX_INT64_VALUE,), tik.scope_gm, "data_out")
-        self.data_tiling = self.tik_inst.Tensor(TILING_CTRL_PARAM[0], (TILING_CTRL_PARAM[1],), tik.scope_gm,
-                                                "data_tiling")
+        self.data_input = self.tik_inst.Tensor(self.input_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm,
+                                               "data_input")
+        self.data_out = self.tik_inst.Tensor(self.output_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "data_out")
+        self.data_tiling = self.tik_inst.Tensor(Constant.TILING_CTRL_PARAM[0], (Constant.TILING_CTRL_PARAM[1],),
+                                                tik.scope_gm, "data_tiling")
 
     def _init_ub(self):
         ub_max_size = _get_max_element_in_ub(self.input_dtype, 2)
@@ -330,18 +343,18 @@ class IsFinite:
         self.cache_ub = self.tik_inst.Tensor(self.input_dtype, (ub_max_size,), tik.scope_ubuf, "cache_ub")
 
     def _init_tiling_params(self):
-        self.ub_tiling = self.tik_inst.Tensor(TILING_CTRL_PARAM[0], (TILING_CTRL_PARAM[1],), tik.scope_ubuf,
-                                              "ub_tiling")
-        self.need_core_num = self.tik_inst.Scalar(TILING_CTRL_PARAM[0], "need_core_num")
-        self.total_element_size = self.tik_inst.Scalar(TILING_CTRL_PARAM[0], "total_element_size")
-        self.per_core_size = self.tik_inst.Scalar(TILING_CTRL_PARAM[0], "per_core_size")
-        self.core_size = self.tik_inst.Scalar(TILING_CTRL_PARAM[0], "core_size")
-        self.core_loop_cnt = self.tik_inst.Scalar(TILING_CTRL_PARAM[0], "core_loop_cnt")
-        self.core_left_size = self.tik_inst.Scalar(TILING_CTRL_PARAM[0], "core_left_size")
-        self.real_per_loop_size = self.tik_inst.Scalar(TILING_CTRL_PARAM[0], "per_loop_size")
+        self.ub_tiling = self.tik_inst.Tensor(Constant.TILING_CTRL_PARAM[0], (Constant.TILING_CTRL_PARAM[1],),
+                                              tik.scope_ubuf, "ub_tiling")
+        self.need_core_num = self.tik_inst.Scalar(Constant.TILING_CTRL_PARAM[0], "need_core_num")
+        self.total_element_size = self.tik_inst.Scalar(Constant.TILING_CTRL_PARAM[0], "total_element_size")
+        self.per_core_size = self.tik_inst.Scalar(Constant.TILING_CTRL_PARAM[0], "per_core_size")
+        self.core_size = self.tik_inst.Scalar(Constant.TILING_CTRL_PARAM[0], "core_size")
+        self.core_loop_cnt = self.tik_inst.Scalar(Constant.TILING_CTRL_PARAM[0], "core_loop_cnt")
+        self.core_left_size = self.tik_inst.Scalar(Constant.TILING_CTRL_PARAM[0], "core_left_size")
+        self.real_per_loop_size = self.tik_inst.Scalar(Constant.TILING_CTRL_PARAM[0], "per_loop_size")
 
     def _get_tiling_params(self, block_idx):
-        _data_move(self.tik_inst, self.ub_tiling, self.data_tiling, TILING_CTRL_PARAM[1])
+        _data_move(self.tik_inst, self.ub_tiling, self.data_tiling, Constant.TILING_CTRL_PARAM[1])
         self.need_core_num.set_as(self.ub_tiling[0])
         self.total_element_size.set_as(self.ub_tiling[1])
         self.per_core_size.set_as(self.ub_tiling[2])
@@ -365,15 +378,18 @@ class IsFinite:
         build cce
         """
         opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
-        self.tik_inst.BuildCCE(kernel_name=self.kernel_name, inputs=[self.data_input], outputs=[self.data_out],
-                               flowtable=[self.data_tiling], config=opt_config)
+        self.tik_inst.BuildCCE(kernel_name=self.kernel_name,
+                               inputs=[self.data_input],
+                               outputs=[self.data_out],
+                               flowtable=[self.data_tiling],
+                               config=opt_config)
         return self.tik_inst
 
     def compute(self):
         """
         do is_finite
         """
-        with self.tik_inst.for_range(0, CORE_NUM, block_num=CORE_NUM) as block_idx:
+        with self.tik_inst.for_range(0, Constant.CORE_NUM, block_num=Constant.CORE_NUM) as block_idx:
             self._get_tiling_params(block_idx)
             core_offset = block_idx * self.per_core_size
             self._schedule(core_offset, self.core_loop_cnt, self.core_left_size)
@@ -421,7 +437,7 @@ class IsFinite:
                             element_size, vconv_result.dtype)
         _vector_single_src_func(self.tik_inst, self.tik_inst.vabs, vconv_result, vconv_result, element_size,
                                 vconv_result.dtype)
-        _scalar_vector_func(self.tik_inst, self.tik_inst.vmins, vconv_result, vconv_result, BOOL_FLAG_TRUE,
+        _scalar_vector_func(self.tik_inst, self.tik_inst.vmins, vconv_result, vconv_result, Constant.BOOL_FLAG_TRUE,
                             element_size, vconv_result.dtype)
 
     def _data_move_out(self, offset, element_size):
@@ -458,7 +474,10 @@ def is_finite(input_x, output_y, kernel_name="is_finite"):
     is_finite_instance = IsFinite(input_x, output_y, kernel_name)
     is_finite_instance.compute()
     ub_size = _get_max_element_in_ub(is_finite_instance.input_dtype, 1)
-    tbe_context.get_context().add_compile_info("vars", {"ub_size": ub_size, "core_num": CORE_NUM,
-                                                        "input_data_byte": common_util.get_data_size(
-                                                            is_finite_instance.input_dtype)})
+    tbe_context.get_context().add_compile_info(
+        "vars", {
+            "ub_size": ub_size,
+            "core_num": Constant.CORE_NUM,
+            "input_data_byte": common_util.get_data_size(is_finite_instance.input_dtype)
+        })
     return is_finite_instance.build()

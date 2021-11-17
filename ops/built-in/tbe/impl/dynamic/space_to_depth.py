@@ -22,14 +22,20 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-BLOCK_SIZE = 32
-MAX_INT64_VALUE = 2**64 - 1
-TILING_MAX_SIZE_GM = 2048  # 16KB
+
+# 'pylint:disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    The class for constant
+    """
+    CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+    UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+    BLOCK_SIZE = 32
+    MAX_INT64_VALUE = 2**64 - 1
+    TILING_MAX_SIZE_GM = 2048  # 16KB
 
 
-# pylint: disable=invalid-name,unused-argument,too-many-locals,too-many-arguments,redefined-builtin,protected-access
+# 'pylint: disable=invalid-name,unused-argument,too-many-locals,too-many-arguments,redefined-builtin,protected-access
 @register_operator("SpaceToDepth")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
@@ -62,17 +68,17 @@ def space_to_depth(x, filter, y, block_size, data_format="NHWC", kernel_name="sp
 
     # run tick
     tik_inst = tik.Tik()
-    data_in = tik_inst.Tensor(input_dtype, (MAX_INT64_VALUE,), tik.scope_gm, "data_in")
-    data_out = tik_inst.Tensor(input_dtype, (MAX_INT64_VALUE,), tik.scope_gm, "data_out")
+    data_in = tik_inst.Tensor(input_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "data_in")
+    data_out = tik_inst.Tensor(input_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "data_out")
     data_workspace = tik_inst.Tensor(input_dtype, (1024,), tik.scope_gm, "data_workspace", is_workspace=True)
-    data_tiling = tik_inst.Tensor("int64", (TILING_MAX_SIZE_GM,), tik.scope_gm, "data_tiling")
+    data_tiling = tik_inst.Tensor("int64", (Constant.TILING_MAX_SIZE_GM,), tik.scope_gm, "data_tiling")
     tensor_list = [data_in, None, data_out, data_workspace, data_tiling]
     obj = Transpose(tik_inst, input_dtype, tensor_list, kernel_name)
     obj.compute_tiling()
 
     tbe_context.get_context().add_compile_info("vars", {
-        "ub_size": UB_SIZE // BLOCK_SIZE,
-        "core_num": CORE_NUM,
+        "ub_size": Constant.UB_SIZE // Constant.BLOCK_SIZE,
+        "core_num": Constant.CORE_NUM,
         "dtype": input_dtype,
         "block_size": block_size,
     })

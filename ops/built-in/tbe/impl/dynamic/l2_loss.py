@@ -86,7 +86,7 @@ def l2_loss(x, y, kernel_name="l2_loss"):
     axes = []
     for i in range(len(shape)):
         axes.append(i)
-    input_axis = {"shape": [len(axes),], "value": axes, "rel_pos_to_reduce": "axis"}
+    input_axis = {"shape": [len(axes)], "value": axes, "rel_pos_to_reduce": "axis"}
 
     schedules = []
     ins = classify([x, input_axis], OpPatternMode.REDUCE, {"keepdims": False})

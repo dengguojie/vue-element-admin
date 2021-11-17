@@ -25,7 +25,7 @@ class SparseApplyAdagradV2D(SparseApplyDynamic):
     Sub class inherited form SparseApply for sparse_apply_adagrad_v2_d op
     """
 
-    # pylint: disable=invalid-name,too-many-arguments
+    # 'pylint: disable=invalid-name,too-many-arguments
     def __init__(self, var, accum, grad, indices, lr, epsilon, update_slot, kernel_name):
         """
         init sparse_apply_adagrad  base parameters
@@ -114,7 +114,7 @@ class SparseApplyAdagradV2D(SparseApplyDynamic):
             _func()
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 @register_operator("SparseApplyAdagradV2D")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,

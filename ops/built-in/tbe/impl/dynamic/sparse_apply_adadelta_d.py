@@ -22,13 +22,13 @@ from impl.util.platform_adapter import register_operator
 from impl.dynamic.sparse_apply_dynamic_common import SparseApplyDynamic
 
 
-# pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-locals,
+# 'pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-locals,
 class SparseApplyAdadelta(SparseApplyDynamic):
     """
         Function: use to store sparse_apply_adadelta base parameters
     """
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def __init__(self, var, accum, accum_update, learning_rate, rho, grad, indices, epsilon, kernel_name):
         """
         Init sparse_apply_adadelta base parameters
@@ -182,7 +182,7 @@ class SparseApplyAdadelta(SparseApplyDynamic):
             _func()
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 @register_operator("SparseApplyAdadeltaD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

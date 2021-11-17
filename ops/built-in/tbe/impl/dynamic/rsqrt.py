@@ -14,21 +14,6 @@
 # ============================================================================
 """
 rsqrt
-
-  Op_description :
-    Computes reciprocal of square root of x element-wise
-
-    # rsqrt(
-    #   x,
-    #   y,
-    #   kernel_name="rsqrt_cce")
-
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
-
-  Constraint :
-    [1] All : shape size limit is 2147483648.
 """
 
 from impl.util.platform_adapter import tbe_platform
@@ -41,12 +26,18 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-# const value
-CONST_ONE = 1.0
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # const value
+    CONST_ONE = 1.0
 
 
 @register_operator_compute("Rsqrt", op_mode="dynamic", support_fusion=True)
-# pylint: disable=unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=unused-argument,too-many-locals,invalid-name
 def rsqrt_compute(x, y, kernel_name="rsqrt_cce"):
     """
     Algrithm : rsqrt(x) = 1 / sqrt(x)  where x > 0
@@ -92,13 +83,13 @@ def _compute(data_input):
 
     inp_shape = data_input.shape
     data_sqrt = tbe.vsqrt(data_input, 1)
-    tesor_one = tbe.broadcast(tvm.const(CONST_ONE, data_input.dtype), inp_shape)
+    tesor_one = tbe.broadcast(tvm.const(Constant.CONST_ONE, data_input.dtype), inp_shape)
     result = tbe.vdiv(tesor_one, data_sqrt)
 
     return result
 
 
-# pylint: disable=unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=unused-argument,too-many-locals,invalid-name
 @register_operator("Rsqrt")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT,

@@ -22,42 +22,6 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-MAX_SHAPE_SIZE = 2 ** 32 - 1
-# tiling param num
-TILING_ARG_NUM = 24
-# reserved ub size
-RESERVED_UB_SIZE = 8 * 1024
-# 8 bit
-EIGHT_BIT = 8
-# bytes of one block
-BLOCK_BYTES = 32
-# vtranspose can deal 16*16
-TRANSPOSE_SIZE = 256
-
-# tiling mode
-# num_split is 1
-MODE_1 = 1
-# split axis 0, or shape_before is 1
-MODE_2 = 2
-# split axis 0, or shape_before is 1, and shape_dim is greater than core num
-MODE_8 = 8
-# split axis is 1, tiling with shape_before
-MODE_3 = 3
-# only support fp16, num_split <= 16, and size_splits[i] is 1
-MODE_4 = 4
-# size_splits[i] is smaller than 32B, e.g [187264,33], 33->[5,6,7,4,3,2,6]
-MODE_5 = 5
-# only split_v, e.g int16,[48000,256], 256->[80,80,80,1,1,1,13]
-MODE_6 = 6
-# only split_v, only support fp16, e.g [2028,85], 85->[2,2,1,80]
-MODE_7 = 7
-# sub mode of mode 3
-SUB_MODE_1 = 1
-SUB_MODE_2 = 2
-SUB_MODE_3 = 3
-SUB_MODE_4 = 4
-SUB_MODE_5 = 5
-
 
 def ceil_value(value, factor):
     """
@@ -92,11 +56,47 @@ def align_value(value, factor):
 
 
 # 'pylint: disable=invalid-name,too-many-statements,too-many-locals,too-many-arguments
-# 'pylint: disable=too-many-instance-attributes,too-many-public-methods,too-many-lines
+# 'pylint: disable=too-many-instance-attributes,too-many-public-methods,too-many-lines,consider-using-f-string
 class SplitV():
     """
     Function: class that execute split_v
     """
+
+    MAX_SHAPE_SIZE = 2**32 - 1
+    # tiling param num
+    TILING_ARG_NUM = 24
+    # reserved ub size
+    RESERVED_UB_SIZE = 8 * 1024
+    # 8 bit
+    EIGHT_BIT = 8
+    # bytes of one block
+    BLOCK_BYTES = 32
+    # vtranspose can deal 16*16
+    TRANSPOSE_SIZE = 256
+
+    # tiling mode
+    # num_split is 1
+    MODE_1 = 1
+    # split axis 0, or shape_before is 1
+    MODE_2 = 2
+    # split axis 0, or shape_before is 1, and shape_dim is greater than core num
+    MODE_8 = 8
+    # split axis is 1, tiling with shape_before
+    MODE_3 = 3
+    # only support fp16, num_split <= 16, and size_splits[i] is 1
+    MODE_4 = 4
+    # size_splits[i] is smaller than 32B, e.g [187264,33], 33->[5,6,7,4,3,2,6]
+    MODE_5 = 5
+    # only split_v, e.g int16,[48000,256], 256->[80,80,80,1,1,1,13]
+    MODE_6 = 6
+    # only split_v, only support fp16, e.g [2028,85], 85->[2,2,1,80]
+    MODE_7 = 7
+    # sub mode of mode 3
+    SUB_MODE_1 = 1
+    SUB_MODE_2 = 2
+    SUB_MODE_3 = 3
+    SUB_MODE_4 = 4
+    SUB_MODE_5 = 5
 
     def __init__(self, x, size_splits, split_dim, y, num_split, kernel_name):
         """
@@ -137,15 +137,15 @@ class SplitV():
 
         self.split_dim_dtype = split_dim.get("dtype").lower()
         self.output_dtype = y[0].get("dtype").lower()
-        self.input_dsize = tbe_platform.get_bit_len(self.input_dtype) // EIGHT_BIT
-        self.size_splits_dsize = tbe_platform.get_bit_len(self.size_splits_dtype) // EIGHT_BIT
-        self.block_elems = BLOCK_BYTES // self.input_dsize
+        self.input_dsize = tbe_platform.get_bit_len(self.input_dtype) // self.EIGHT_BIT
+        self.size_splits_dsize = tbe_platform.get_bit_len(self.size_splits_dtype) // self.EIGHT_BIT
+        self.block_elems = self.BLOCK_BYTES // self.input_dsize
         self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE
+        self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - self.RESERVED_UB_SIZE
         self.ub_elems = self.ub_size // self.input_dsize
         self.ub_elems = (self.ub_elems // self.block_elems) * self.block_elems
         self.tiling_dtype = "int64"
-        self.tiling_align = align_value(TILING_ARG_NUM, 4)
+        self.tiling_align = align_value(self.TILING_ARG_NUM, 4)
         self.tiling_gm, self.x_gm, self.size_splits_gm, self.split_dim_gm, self.outputs_gm = self.init_gm_tensor()
 
         self.block_ub = None
@@ -205,19 +205,22 @@ class SplitV():
         -------
         gm tensors
         """
-        tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, (TILING_ARG_NUM,), name="tiling_gm",
+        tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, (self.TILING_ARG_NUM,),
+                                             name="tiling_gm",
                                              scope=tik.scope_gm)
-        x_gm = self.tik_instance.Tensor(self.input_dtype, (MAX_SHAPE_SIZE,), name="x", scope=tik.scope_gm)
+        x_gm = self.tik_instance.Tensor(self.input_dtype, (self.MAX_SHAPE_SIZE,), name="x", scope=tik.scope_gm)
         split_dim_gm = self.tik_instance.Tensor(self.split_dim_dtype, (1,), name="split_dim", scope=tik.scope_gm)
         size_splits_gm = None
         if self.is_split_v:
-            size_splits_gm = self.tik_instance.Tensor(self.size_splits_dtype, (64,), name="size_splits",
+            size_splits_gm = self.tik_instance.Tensor(self.size_splits_dtype, (64,),
+                                                      name="size_splits",
                                                       scope=tik.scope_gm)
 
         outputs_gm = []
         for i in range(self.num_split):
-            tensor_name = "gm_output_" + str(i)
-            gm_tensor = self.tik_instance.Tensor(self.input_dtype, (MAX_SHAPE_SIZE,), name=tensor_name,
+            tensor_name = "gm_output_{}".format(i)
+            gm_tensor = self.tik_instance.Tensor(self.input_dtype, (self.MAX_SHAPE_SIZE,),
+                                                 name=tensor_name,
                                                  scope=tik.scope_gm)
             outputs_gm.append(gm_tensor)
 
@@ -369,8 +372,8 @@ class SplitV():
 
                 need_core_temp = ceil_value(out_i_elems, each_core_elems)
                 last_core_elems_temp = out_i_elems - (need_core_temp - 1) * each_core_elems
-                with tik_instance.if_scope(tik.all(last_core_elems_temp > 0, last_core_elems_temp < self.block_elems,
-                                                   need_core_temp > 1)):
+                with tik_instance.if_scope(
+                        tik.all(last_core_elems_temp > 0, last_core_elems_temp < self.block_elems, need_core_temp > 1)):
                     i_need_core_num.set_as(need_core_temp - 1)
                     last_core_elems.set_as(each_core_elems + last_core_elems_temp)
                 with tik_instance.else_scope():
@@ -390,8 +393,7 @@ class SplitV():
         compute_mode_2_last_core
         """
         with self.tik_instance.new_stmt_scope():
-            data_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems,), name="data_ub",
-                                               scope=tik.scope_ubuf)
+            data_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems,), name="data_ub", scope=tik.scope_ubuf)
             loops = last_core_elems // self.ub_elems
             tail = last_core_elems % self.ub_elems
 
@@ -410,8 +412,8 @@ class SplitV():
                 with self.tik_instance.if_scope(tik.all(tail < self.block_elems, loops > 0)):
                     align_elems = self.block_elems - tail
                     self.tik_instance.data_move(data_ub, self.x_gm[x_offset - align_elems], 0, 1, 1, 0, 0)
-                    self.tik_instance.data_move(self.outputs_gm[out_i][dst_offset - align_elems], data_ub,
-                                                0, 1, 1, 0, 0)
+                    self.tik_instance.data_move(self.outputs_gm[out_i][dst_offset - align_elems], data_ub, 0, 1, 1, 0,
+                                                0)
                 with self.tik_instance.else_scope():
                     burst_len = ceil_value(tail, self.block_elems)
                     self.tik_instance.data_move(data_ub, self.x_gm[x_offset], 0, 1, burst_len, 0, 0)
@@ -422,8 +424,7 @@ class SplitV():
         compute_mode_2_one_core
         """
         with self.tik_instance.new_stmt_scope():
-            data_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems,), name="data_ub",
-                                               scope=tik.scope_ubuf)
+            data_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems,), name="data_ub", scope=tik.scope_ubuf)
             loops = each_core_elems // self.ub_elems
             tail = each_core_elems % self.ub_elems
 
@@ -481,9 +482,8 @@ class SplitV():
             tik_instance.data_move(data_ub, self.x_gm[x_gm_offset], 0, row_count, row_elems // self.block_elems,
                                    src_stride, 0)
             # move result to output gm
-            tik_instance.data_move(
-                self.outputs_gm[out_i][rows_offset * row_elems + row_count * row_elems * inner_i],
-                data_ub, 0, 1, row_count * row_elems // self.block_elems, 0, 0)
+            tik_instance.data_move(self.outputs_gm[out_i][rows_offset * row_elems + row_count * row_elems * inner_i],
+                                   data_ub, 0, 1, row_count * row_elems // self.block_elems, 0, 0)
 
         with tik_instance.if_scope(inner_tail > 0):
             x_gm_offset = rows_offset * self.shape_after + inner_loop * row_count * self.shape_after + \
@@ -491,9 +491,8 @@ class SplitV():
             tik_instance.data_move(data_ub, self.x_gm[x_gm_offset], 0, inner_tail, row_elems // self.block_elems,
                                    src_stride, 0)
             # move result to output gm
-            tik_instance.data_move(
-                self.outputs_gm[out_i][rows_offset * row_elems + row_count * row_elems * inner_loop],
-                data_ub, 0, 1, inner_tail * row_elems // self.block_elems, 0, 0)
+            tik_instance.data_move(self.outputs_gm[out_i][rows_offset * row_elems + row_count * row_elems * inner_loop],
+                                   data_ub, 0, 1, inner_tail * row_elems // self.block_elems, 0, 0)
 
     def compute_sub_mode2(self, out_i, core_id, row_elems, outer, tail):
         """
@@ -505,8 +504,7 @@ class SplitV():
             # 4095 is the max nburst
             with self.tik_instance.if_scope(row_count > 4095):
                 row_count.set_as(4095)
-            data_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems,), name="data_ub",
-                                               scope=tik.scope_ubuf)
+            data_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems,), name="data_ub", scope=tik.scope_ubuf)
 
             with self.tik_instance.if_scope(core_id < tail):
                 rows_offset = core_id * self.row_num1
@@ -527,25 +525,23 @@ class SplitV():
             x_gm_offset = rows_offset * self.shape_after + inner_i * row_count * self.shape_after + \
                           self.row_elems_offset
             with tik_instance.for_range(0, row_count) as count_i:
-                tik_instance.data_move(
-                    data_ub[row_elems * count_i], self.x_gm[x_gm_offset + self.shape_after * count_i],
-                    0, 1, row_elems // self.block_elems, 0, 0)
+                tik_instance.data_move(data_ub[row_elems * count_i],
+                                       self.x_gm[x_gm_offset + self.shape_after * count_i], 0, 1,
+                                       row_elems // self.block_elems, 0, 0)
             # move result to output gm
-            tik_instance.data_move(
-                self.outputs_gm[out_i][rows_offset * row_elems + row_count * row_elems * inner_i],
-                data_ub, 0, 1, row_count * row_elems // self.block_elems, 0, 0)
+            tik_instance.data_move(self.outputs_gm[out_i][rows_offset * row_elems + row_count * row_elems * inner_i],
+                                   data_ub, 0, 1, row_count * row_elems // self.block_elems, 0, 0)
 
         with tik_instance.if_scope(inner_tail > 0):
             x_gm_offset = rows_offset * self.shape_after + inner_loop * row_count * self.shape_after + \
                           self.row_elems_offset
             with tik_instance.for_range(0, inner_tail) as count_i:
-                tik_instance.data_move(
-                    data_ub[row_elems * count_i], self.x_gm[x_gm_offset + self.shape_after * count_i],
-                    0, 1, row_elems // self.block_elems, 0, 0)
+                tik_instance.data_move(data_ub[row_elems * count_i],
+                                       self.x_gm[x_gm_offset + self.shape_after * count_i], 0, 1,
+                                       row_elems // self.block_elems, 0, 0)
             # move result to output gm
-            tik_instance.data_move(
-                self.outputs_gm[out_i][rows_offset * row_elems + row_count * row_elems * inner_loop],
-                data_ub, 0, 1, inner_tail * row_elems // self.block_elems, 0, 0)
+            tik_instance.data_move(self.outputs_gm[out_i][rows_offset * row_elems + row_count * row_elems * inner_loop],
+                                   data_ub, 0, 1, inner_tail * row_elems // self.block_elems, 0, 0)
 
     def compute_sub_mode3(self, out_i, core_id, row_elems, outer, tail):
         """
@@ -553,8 +549,7 @@ class SplitV():
         """
         with self.tik_instance.new_stmt_scope():
             row_count = self.ub_elems // row_elems
-            data_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems,), name="data_ub",
-                                               scope=tik.scope_ubuf)
+            data_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems,), name="data_ub", scope=tik.scope_ubuf)
 
             with self.tik_instance.if_scope(core_id < tail):
                 rows_offset = core_id * self.row_num1
@@ -577,8 +572,7 @@ class SplitV():
             x_gm_offset = rows_i_offset * self.shape_after + self.row_elems_offset
             tik_instance.data_move(data_ub, self.x_gm[x_gm_offset], 0, 1, burst_len, 0, 0)
             # move row_elems to output gm
-            tik_instance.data_move(self.outputs_gm[out_i][rows_i_offset * row_elems],
-                                   data_ub, 0, 1, burst_len, 0, 0)
+            tik_instance.data_move(self.outputs_gm[out_i][rows_i_offset * row_elems], data_ub, 0, 1, burst_len, 0, 0)
 
         # process last row
         rows_i_offset = rows_offset + (rows - 1)
@@ -586,18 +580,16 @@ class SplitV():
         tik_instance.data_move(data_ub, self.x_gm[x_gm_offset], 0, 1, burst_len - 1, 0, 0)
         tik_instance.data_move(self.block_ub, self.x_gm[x_gm_offset + align_offset], 0, 1, 1, 0, 0)
         # move result to output gm
-        tik_instance.data_move(self.outputs_gm[out_i][rows_i_offset * row_elems],
-                               data_ub, 0, 1, burst_len - 1, 0, 0)
-        tik_instance.data_move(self.outputs_gm[out_i][rows_i_offset * row_elems + align_offset],
-                               self.block_ub, 0, 1, 1, 0, 0)
+        tik_instance.data_move(self.outputs_gm[out_i][rows_i_offset * row_elems], data_ub, 0, 1, burst_len - 1, 0, 0)
+        tik_instance.data_move(self.outputs_gm[out_i][rows_i_offset * row_elems + align_offset], self.block_ub, 0, 1, 1,
+                               0, 0)
 
     def compute_sub_mode4(self, out_i, core_id, row_elems, outer, tail):
         """
         sub mode 4 compute of mode 3
         """
         with self.tik_instance.new_stmt_scope():
-            data_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems,), name="data_ub",
-                                               scope=tik.scope_ubuf)
+            data_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems,), name="data_ub", scope=tik.scope_ubuf)
 
             with self.tik_instance.if_scope(core_id < tail):
                 rows_offset = core_id * self.row_num1
@@ -618,28 +610,24 @@ class SplitV():
         inner_loop_new = tik_instance.Scalar(dtype=self.tiling_dtype, name="inner_loop_new")
         row_count_tail.set_as(inner_tail)
         inner_loop_new.set_as(inner_loop)
-        with tik_instance.if_scope(tik.all(inner_tail > 0, inner_loop > 0,
-                                           inner_tail * row_elems < self.block_elems)):
+        with tik_instance.if_scope(tik.all(inner_tail > 0, inner_loop > 0, inner_tail * row_elems < self.block_elems)):
             row_count_tail.set_as(row_count + inner_tail)
             inner_loop_new.set_as(inner_loop - 1)
 
         with tik_instance.for_range(0, inner_loop_new) as inner_i:
             x_gm_offset = (rows_offset + inner_i * row_count) * self.shape_after + self.row_elems_offset
             with tik_instance.for_range(0, row_count) as row_i:
-                tik_instance.data_move(self.block_ub, self.x_gm[x_gm_offset + self.shape_after * row_i],
-                                       0, 1, 1, 0, 0)
+                tik_instance.data_move(self.block_ub, self.x_gm[x_gm_offset + self.shape_after * row_i], 0, 1, 1, 0, 0)
                 with tik_instance.for_range(0, row_elems) as elem_i:
                     data_ub[row_i * row_elems + elem_i].set_as(self.block_ub[elem_i])
             # move result to output gm
-            tik_instance.data_move(
-                self.outputs_gm[out_i][(rows_offset + inner_i * row_count) * row_elems],
-                data_ub, 0, 1, row_count * row_elems // self.block_elems, 0, 0)
+            tik_instance.data_move(self.outputs_gm[out_i][(rows_offset + inner_i * row_count) * row_elems], data_ub, 0,
+                                   1, row_count * row_elems // self.block_elems, 0, 0)
 
         with tik_instance.if_scope(row_count_tail > 0):
             x_gm_offset = (rows_offset + inner_loop_new * row_count) * self.shape_after + self.row_elems_offset
             with tik_instance.for_range(0, row_count_tail) as row_i:
-                tik_instance.data_move(self.block_ub, self.x_gm[x_gm_offset + self.shape_after * row_i],
-                                       0, 1, 1, 0, 0)
+                tik_instance.data_move(self.block_ub, self.x_gm[x_gm_offset + self.shape_after * row_i], 0, 1, 1, 0, 0)
                 with tik_instance.for_range(0, row_elems) as elem_i:
                     data_ub[row_i * row_elems + elem_i].set_as(self.block_ub[elem_i])
 
@@ -652,17 +640,15 @@ class SplitV():
                     with tik_instance.for_range(0, self.block_elems) as index_i:
                         self.block_ub[index_i].set_as(data_ub[align_offset + index_i])
                     output_offset = (rows_offset + row_count * inner_loop_new) * row_elems
-                    tik_instance.data_move(self.outputs_gm[out_i][output_offset], data_ub,
-                                           0, 1, burst_len - 1, 0, 0)
-                    tik_instance.data_move(self.outputs_gm[out_i][output_offset + align_offset], self.block_ub,
-                                           0, 1, 1, 0, 0)
+                    tik_instance.data_move(self.outputs_gm[out_i][output_offset], data_ub, 0, 1, burst_len - 1, 0, 0)
+                    tik_instance.data_move(self.outputs_gm[out_i][output_offset + align_offset], self.block_ub, 0, 1, 1,
+                                           0, 0)
                 with tik_instance.else_scope():
                     # only one core required, and all data of output_i is smaller than 32B
                     tik_instance.data_move(self.outputs_gm[out_i][0], data_ub, 0, 1, 1, 0, 0)
             with tik_instance.else_scope():
-                tik_instance.data_move(
-                    self.outputs_gm[out_i][(rows_offset + row_count * inner_loop_new) * row_elems],
-                    data_ub, 0, 1, burst_len, 0, 0)
+                tik_instance.data_move(self.outputs_gm[out_i][(rows_offset + row_count * inner_loop_new) * row_elems],
+                                       data_ub, 0, 1, burst_len, 0, 0)
 
     def compute_sub_mode5(self, out_i, core_id, row_elems, outer, tail):
         """
@@ -671,7 +657,8 @@ class SplitV():
         with self.tik_instance.new_stmt_scope():
             row_count = (self.ub_elems // row_elems) // self.block_elems * self.block_elems
             data_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems + 2 * self.block_elems,),
-                                               name="data_ub", scope=tik.scope_ubuf)
+                                               name="data_ub",
+                                               scope=tik.scope_ubuf)
 
             with self.tik_instance.if_scope(core_id < tail):
                 rows_offset = core_id * self.row_num1
@@ -694,14 +681,13 @@ class SplitV():
             rows_i_offset = rows_offset + row_i
             x_gm_offset = rows_i_offset * self.shape_after + self.row_elems_offset
             with tik_instance.for_range(0, one_row_loop) as loop_i:
-                tik_instance.data_move(data_ub, self.x_gm[x_gm_offset + loop_i * self.ub_elems],
-                                       0, 1, burst_len, 0, 0)
+                tik_instance.data_move(data_ub, self.x_gm[x_gm_offset + loop_i * self.ub_elems], 0, 1, burst_len, 0, 0)
                 # move row_elems to output gm
                 tik_instance.data_move(self.outputs_gm[out_i][rows_i_offset * row_elems + loop_i * self.ub_elems],
                                        data_ub, 0, 1, burst_len, 0, 0)
             # process one_row_tail
-            tik_instance.data_move(data_ub, self.x_gm[x_gm_offset + one_row_loop * self.ub_elems],
-                                   0, 1, burst_len_tail, 0, 0)
+            tik_instance.data_move(data_ub, self.x_gm[x_gm_offset + one_row_loop * self.ub_elems], 0, 1, burst_len_tail,
+                                   0, 0)
             tik_instance.data_move(self.outputs_gm[out_i][rows_i_offset * row_elems + one_row_loop * self.ub_elems],
                                    data_ub, 0, 1, burst_len_tail, 0, 0)
 
@@ -709,10 +695,9 @@ class SplitV():
         rows_i_offset = rows_offset + (rows - 1)
         x_gm_offset = rows_i_offset * self.shape_after + self.row_elems_offset
         with tik_instance.for_range(0, one_row_loop) as loop_i:
-            tik_instance.data_move(data_ub, self.x_gm[x_gm_offset + loop_i * self.ub_elems],
+            tik_instance.data_move(data_ub, self.x_gm[x_gm_offset + loop_i * self.ub_elems], 0, 1, burst_len, 0, 0)
+            tik_instance.data_move(self.outputs_gm[out_i][rows_i_offset * row_elems + loop_i * self.ub_elems], data_ub,
                                    0, 1, burst_len, 0, 0)
-            tik_instance.data_move(self.outputs_gm[out_i][rows_i_offset * row_elems + loop_i * self.ub_elems],
-                                   data_ub, 0, 1, burst_len, 0, 0)
         # process one_row_tail of last row
         with tik_instance.if_scope(one_row_tail > 0):
             burst_len_last_tail = tik_instance.Scalar(dtype=self.tiling_dtype, name="burst_len_last_tail")
@@ -724,8 +709,8 @@ class SplitV():
                 tik_instance.data_move(self.outputs_gm[out_i][rows_i_offset * row_elems + last_tail_offset],
                                        self.block_ub, 0, 1, 1, 0, 0)
                 burst_len_last_tail.set_as(one_row_tail // self.block_elems)
-            tik_instance.data_move(data_ub, self.x_gm[x_gm_offset + one_row_loop * self.ub_elems],
-                                   0, 1, burst_len_last_tail, 0, 0)
+            tik_instance.data_move(data_ub, self.x_gm[x_gm_offset + one_row_loop * self.ub_elems], 0, 1,
+                                   burst_len_last_tail, 0, 0)
             tik_instance.data_move(self.outputs_gm[out_i][rows_i_offset * row_elems + one_row_loop * self.ub_elems],
                                    data_ub, 0, 1, burst_len_last_tail, 0, 0)
 
@@ -735,7 +720,8 @@ class SplitV():
         """
         with self.tik_instance.new_stmt_scope():
             data_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems + self.block_elems,),
-                                               name="data_ub", scope=tik.scope_ubuf)
+                                               name="data_ub",
+                                               scope=tik.scope_ubuf)
 
             one_row_loop = self.tik_instance.Scalar(dtype=self.tiling_dtype, name="one_row_loop")
             one_row_loop.set_as(row_elems // self.ub_elems)
@@ -760,18 +746,18 @@ class SplitV():
         determine the sub_mode
         """
         with self.tik_instance.if_scope(row_elems > self.ub_elems):
-            self.split_i_mode.set_as(SUB_MODE_1)
+            self.split_i_mode.set_as(self.SUB_MODE_1)
         with self.tik_instance.else_scope():
             with self.tik_instance.if_scope(row_elems % self.block_elems == 0):
                 with self.tik_instance.if_scope(self.multi_move == 1):
-                    self.split_i_mode.set_as(SUB_MODE_2)
+                    self.split_i_mode.set_as(self.SUB_MODE_2)
                 with self.tik_instance.else_scope():
-                    self.split_i_mode.set_as(SUB_MODE_3)
+                    self.split_i_mode.set_as(self.SUB_MODE_3)
             with self.tik_instance.else_scope():
                 with self.tik_instance.if_scope(row_elems >= self.block_elems):
-                    self.split_i_mode.set_as(SUB_MODE_4)
+                    self.split_i_mode.set_as(self.SUB_MODE_4)
                 with self.tik_instance.else_scope():
-                    self.split_i_mode.set_as(SUB_MODE_5)
+                    self.split_i_mode.set_as(self.SUB_MODE_5)
 
     def compute_mode_3(self, core_id):
         """
@@ -827,15 +813,15 @@ class SplitV():
         """
         tik_instance = self.tik_instance
         with tik_instance.if_scope(core_id < core_num_i):
-            with tik_instance.if_scope(self.split_i_mode == SUB_MODE_2):
+            with tik_instance.if_scope(self.split_i_mode == self.SUB_MODE_2):
                 self.compute_sub_mode2(out_i, core_id, row_elems, outer, tail)
-            with tik_instance.if_scope(self.split_i_mode == SUB_MODE_3):
+            with tik_instance.if_scope(self.split_i_mode == self.SUB_MODE_3):
                 self.compute_sub_mode3(out_i, core_id, row_elems, outer, tail)
-            with tik_instance.if_scope(self.split_i_mode == SUB_MODE_4):
+            with tik_instance.if_scope(self.split_i_mode == self.SUB_MODE_4):
                 self.compute_sub_mode4(out_i, core_id, row_elems, outer, tail)
-            with tik_instance.if_scope(self.split_i_mode == SUB_MODE_5):
+            with tik_instance.if_scope(self.split_i_mode == self.SUB_MODE_5):
                 self.compute_sub_mode5(out_i, core_id, row_elems, outer, tail)
-            with tik_instance.if_scope(self.split_i_mode == SUB_MODE_1):
+            with tik_instance.if_scope(self.split_i_mode == self.SUB_MODE_1):
                 self.compute_sub_mode1(out_i, core_id, row_elems, outer, tail)
 
     def split_last_dim_vnc_compute_internal(self, src_offset, dst_offset, seg, max_seg):
@@ -843,29 +829,33 @@ class SplitV():
         split_last_dim_vnc_compute internal
         """
         with self.tik_instance.new_stmt_scope():
-            ub_x = self.tik_instance.Tensor(self.input_dtype, (max_seg * TRANSPOSE_SIZE * self.num_split,),
-                                            scope=tik.scope_ubuf, name="ub_x")
-            ub_y = self.tik_instance.Tensor(self.input_dtype, (max_seg * TRANSPOSE_SIZE * self.num_split,),
-                                            scope=tik.scope_ubuf, name="ub_y")
-            ub_m = self.tik_instance.Tensor(self.input_dtype, (max_seg * TRANSPOSE_SIZE,), scope=tik.scope_ubuf,
+            ub_x = self.tik_instance.Tensor(self.input_dtype, (max_seg * self.TRANSPOSE_SIZE * self.num_split,),
+                                            scope=tik.scope_ubuf,
+                                            name="ub_x")
+            ub_y = self.tik_instance.Tensor(self.input_dtype, (max_seg * self.TRANSPOSE_SIZE * self.num_split,),
+                                            scope=tik.scope_ubuf,
+                                            name="ub_y")
+            ub_m = self.tik_instance.Tensor(self.input_dtype, (max_seg * self.TRANSPOSE_SIZE,),
+                                            scope=tik.scope_ubuf,
                                             name="ub_m")
-            ub_n = self.tik_instance.Tensor(self.input_dtype, (max_seg * TRANSPOSE_SIZE,), scope=tik.scope_ubuf,
+            ub_n = self.tik_instance.Tensor(self.input_dtype, (max_seg * self.TRANSPOSE_SIZE,),
+                                            scope=tik.scope_ubuf,
                                             name="ub_n")
 
             # copy gm to ub
             self.tik_instance.data_move(ub_x, self.x_gm[src_offset], 0, 1,
-                                        seg * TRANSPOSE_SIZE * self.num_split // self.block_elems, 0, 0)
+                                        seg * self.TRANSPOSE_SIZE * self.num_split // self.block_elems, 0, 0)
 
             # vadds and vtranspose
             with self.tik_instance.for_range(0, self.num_split) as num_idx:
                 src_offset_ub = num_idx * self.block_elems
-                dst_offset_ub = num_idx * TRANSPOSE_SIZE
+                dst_offset_ub = num_idx * self.TRANSPOSE_SIZE
 
                 self.tik_instance.vadds(128, ub_m, ub_x[src_offset_ub], 0, 2 * seg, 1, self.num_split, 8,
                                         self.num_split * 8)
                 with self.tik_instance.for_range(0, seg) as trans_idx:
-                    src_offset_trans = trans_idx * TRANSPOSE_SIZE
-                    dst_offset_trans = dst_offset_ub + self.num_split * trans_idx * TRANSPOSE_SIZE
+                    src_offset_trans = trans_idx * self.TRANSPOSE_SIZE
+                    dst_offset_trans = dst_offset_ub + self.num_split * trans_idx * self.TRANSPOSE_SIZE
                     self.tik_instance.vtranspose(ub_y[dst_offset_trans], ub_m[src_offset_trans])
 
             for out_i in range(0, self.num_split):
@@ -873,12 +863,12 @@ class SplitV():
                 self.tik_instance.vadds(128, ub_m, ub_y[src_offset_ub], 0, 2 * seg, 1, self.num_split, 8,
                                         self.num_split * 8)
                 with self.tik_instance.for_range(0, seg) as trans_idx:
-                    src_offset_trans = trans_idx * TRANSPOSE_SIZE
-                    dst_offset_trans = trans_idx * TRANSPOSE_SIZE
+                    src_offset_trans = trans_idx * self.TRANSPOSE_SIZE
+                    dst_offset_trans = trans_idx * self.TRANSPOSE_SIZE
                     self.tik_instance.vtranspose(ub_n[dst_offset_trans], ub_m[src_offset_trans])
                 # copy ub to gm
                 self.tik_instance.data_move(self.outputs_gm[out_i][dst_offset], ub_n, 0, 1,
-                                            seg * TRANSPOSE_SIZE // self.block_elems, 0, 0)
+                                            seg * self.TRANSPOSE_SIZE // self.block_elems, 0, 0)
 
     def split_last_dim_vnc_compute_for_core(self, max_seg, src_offset_core, dst_offset_core):
         """
@@ -887,18 +877,18 @@ class SplitV():
         with self.tik_instance.if_scope(self.seg_loop_num > 1):
             # double buffer
             with self.tik_instance.for_range(0, self.seg_loop_num, thread_num=2) as loop_idx:
-                src_offset = src_offset_core + loop_idx * max_seg * TRANSPOSE_SIZE * self.shape_after
-                dst_offset = dst_offset_core + loop_idx * max_seg * TRANSPOSE_SIZE * 1
+                src_offset = src_offset_core + loop_idx * max_seg * self.TRANSPOSE_SIZE * self.shape_after
+                dst_offset = dst_offset_core + loop_idx * max_seg * self.TRANSPOSE_SIZE * 1
                 self.split_last_dim_vnc_compute_internal(src_offset, dst_offset, max_seg, max_seg)
         with self.tik_instance.else_scope():
             with self.tik_instance.for_range(0, self.seg_loop_num) as loop_idx:
-                src_offset = src_offset_core + loop_idx * max_seg * TRANSPOSE_SIZE * self.shape_after
-                dst_offset = dst_offset_core + loop_idx * max_seg * TRANSPOSE_SIZE * 1
+                src_offset = src_offset_core + loop_idx * max_seg * self.TRANSPOSE_SIZE * self.shape_after
+                dst_offset = dst_offset_core + loop_idx * max_seg * self.TRANSPOSE_SIZE * 1
                 self.split_last_dim_vnc_compute_internal(src_offset, dst_offset, max_seg, max_seg)
 
         with self.tik_instance.if_scope(self.last_seg > 0):
-            src_offset = src_offset_core + self.seg_loop_num * max_seg * TRANSPOSE_SIZE * self.shape_after
-            dst_offset = dst_offset_core + self.seg_loop_num * max_seg * TRANSPOSE_SIZE * 1
+            src_offset = src_offset_core + self.seg_loop_num * max_seg * self.TRANSPOSE_SIZE * self.shape_after
+            dst_offset = dst_offset_core + self.seg_loop_num * max_seg * self.TRANSPOSE_SIZE * 1
             self.split_last_dim_vnc_compute_internal(src_offset, dst_offset, self.last_seg, max_seg)
 
     def split_last_dim_vnc_compute_last_core(self, max_seg, src_offset_core, dst_offset_core):
@@ -908,22 +898,23 @@ class SplitV():
         with self.tik_instance.if_scope(self.seg_loop_num_last_core > 1):
             # double buffer
             with self.tik_instance.for_range(0, self.seg_loop_num_last_core, thread_num=2) as loop_idx:
-                src_offset = src_offset_core + loop_idx * max_seg * TRANSPOSE_SIZE * self.shape_after
-                dst_offset = dst_offset_core + loop_idx * max_seg * TRANSPOSE_SIZE * 1
+                src_offset = src_offset_core + loop_idx * max_seg * self.TRANSPOSE_SIZE * self.shape_after
+                dst_offset = dst_offset_core + loop_idx * max_seg * self.TRANSPOSE_SIZE * 1
                 self.split_last_dim_vnc_compute_internal(src_offset, dst_offset, max_seg, max_seg)
         with self.tik_instance.else_scope():
             with self.tik_instance.for_range(0, self.seg_loop_num_last_core) as loop_idx:
-                src_offset = src_offset_core + loop_idx * max_seg * TRANSPOSE_SIZE * self.shape_after
-                dst_offset = dst_offset_core + loop_idx * max_seg * TRANSPOSE_SIZE * 1
+                src_offset = src_offset_core + loop_idx * max_seg * self.TRANSPOSE_SIZE * self.shape_after
+                dst_offset = dst_offset_core + loop_idx * max_seg * self.TRANSPOSE_SIZE * 1
                 self.split_last_dim_vnc_compute_internal(src_offset, dst_offset, max_seg, max_seg)
 
         with self.tik_instance.if_scope(self.last_seg_last_core > 0):
-            src_offset = src_offset_core + self.seg_loop_num_last_core * max_seg * TRANSPOSE_SIZE * self.shape_after
-            dst_offset = dst_offset_core + self.seg_loop_num_last_core * max_seg * TRANSPOSE_SIZE * 1
+            src_offset = src_offset_core + \
+                         self.seg_loop_num_last_core * max_seg * self.TRANSPOSE_SIZE * self.shape_after
+            dst_offset = dst_offset_core + self.seg_loop_num_last_core * max_seg * self.TRANSPOSE_SIZE * 1
             self.split_last_dim_vnc_compute_internal(src_offset, dst_offset, self.last_seg_last_core, max_seg)
         with self.tik_instance.if_scope(self.tail_ele != 0):
-            src_offset = (self.shape_before - TRANSPOSE_SIZE) * self.shape_after
-            dst_offset = (self.shape_before - TRANSPOSE_SIZE) * 1
+            src_offset = (self.shape_before - self.TRANSPOSE_SIZE) * self.shape_after
+            dst_offset = (self.shape_before - self.TRANSPOSE_SIZE) * 1
             self.split_last_dim_vnc_compute_internal(src_offset, dst_offset, 1, max_seg)
 
     def compute_mode_4(self, core_id):
@@ -931,11 +922,11 @@ class SplitV():
         mode 4 compute
         """
         with self.tik_instance.if_scope(core_id < self.need_core_num):
-            src_offset_core = core_id * self.one_core_seg * TRANSPOSE_SIZE * self.shape_after
+            src_offset_core = core_id * self.one_core_seg * self.TRANSPOSE_SIZE * self.shape_after
             # size_splits is [1,1,1...]
-            dst_offset_core = core_id * self.one_core_seg * TRANSPOSE_SIZE * 1
+            dst_offset_core = core_id * self.one_core_seg * self.TRANSPOSE_SIZE * 1
 
-            max_seg = (self.ub_elems // 2) // (TRANSPOSE_SIZE * (2 * self.num_split + 2))
+            max_seg = (self.ub_elems // 2) // (self.TRANSPOSE_SIZE * (2 * self.num_split + 2))
 
             with self.tik_instance.if_scope(core_id < self.need_core_num - 1):
                 self.split_last_dim_vnc_compute_for_core(max_seg, src_offset_core, dst_offset_core)
@@ -947,9 +938,11 @@ class SplitV():
         process rows: use scalar
         """
         with self.tik_instance.new_stmt_scope():
-            data_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems // 2,), name="data_ub",
+            data_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems // 2,),
+                                               name="data_ub",
                                                scope=tik.scope_ubuf)
-            result_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems // 2,), name="result_ub",
+            result_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems // 2,),
+                                                 name="result_ub",
                                                  scope=tik.scope_ubuf)
 
             burst_len = (rows * self.shape_after) // self.block_elems
@@ -982,9 +975,11 @@ class SplitV():
         process rows for last core: use scalar
         """
         with self.tik_instance.new_stmt_scope():
-            data_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems // 2,), name="data_ub",
+            data_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems // 2,),
+                                               name="data_ub",
                                                scope=tik.scope_ubuf)
-            result_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems // 2,), name="result_ub",
+            result_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems // 2,),
+                                                 name="result_ub",
                                                  scope=tik.scope_ubuf)
 
             burst_len = ceil_value(rows * self.shape_after, self.block_elems)
@@ -1013,15 +1008,14 @@ class SplitV():
                         align_offset = rows * row_elems - self.block_elems
                         with self.tik_instance.for_range(0, self.block_elems) as index_i:
                             self.block_ub[index_i].set_as(result_ub[align_offset + index_i])
-                        self.tik_instance.data_move(self.outputs_gm[out_i][gm_offset], result_ub,
-                                                    0, 1, burst_len_out - 1, 0, 0)
-                        self.tik_instance.data_move(self.outputs_gm[out_i][gm_offset + align_offset], self.block_ub,
-                                                    0, 1, 1, 0, 0)
+                        self.tik_instance.data_move(self.outputs_gm[out_i][gm_offset], result_ub, 0, 1,
+                                                    burst_len_out - 1, 0, 0)
+                        self.tik_instance.data_move(self.outputs_gm[out_i][gm_offset + align_offset], self.block_ub, 0,
+                                                    1, 1, 0, 0)
                     with self.tik_instance.else_scope():
                         self.tik_instance.data_move(self.outputs_gm[out_i][gm_offset], result_ub, 0, 1, 1, 0, 0)
                 with self.tik_instance.else_scope():
-                    self.tik_instance.data_move(self.outputs_gm[out_i][gm_offset], result_ub,
-                                                0, 1, burst_len_out, 0, 0)
+                    self.tik_instance.data_move(self.outputs_gm[out_i][gm_offset], result_ub, 0, 1, burst_len_out, 0, 0)
 
                 # update x offset for next output
                 row_elems_offset.set_as(row_elems_offset + row_elems)
@@ -1089,9 +1083,11 @@ class SplitV():
         mode 6 compute internal
         """
         with self.tik_instance.new_stmt_scope():
-            data_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems // 2,), name="data_ub",
+            data_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems // 2,),
+                                               name="data_ub",
                                                scope=tik.scope_ubuf)
-            out_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems // 2,), name="out_ub",
+            out_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_elems // 2,),
+                                              name="out_ub",
                                               scope=tik.scope_ubuf)
 
             burst_len = (rows * self.shape_after) // self.block_elems
@@ -1105,19 +1101,19 @@ class SplitV():
                 split_size_i.set_as(size_splits_ub[out_i])
                 row_elems = split_size_i * self.shape_after_dim
                 gm_offset = gm_rows_offset * row_elems
-                with self.tik_instance.if_scope(tik.any(row_elems_offset == 0,
-                                                        tik.all(row_elems_offset % self.block_elems == 0,
-                                                                row_elems % self.block_elems == 0))):
+                with self.tik_instance.if_scope(
+                        tik.any(row_elems_offset == 0,
+                                tik.all(row_elems_offset % self.block_elems == 0, row_elems % self.block_elems == 0))):
                     src_stride = (self.shape_after - row_elems) // self.block_elems
-                    self.tik_instance.data_move(self.outputs_gm[out_i][gm_offset], data_ub[row_elems_offset],
-                                                0, rows, row_elems // self.block_elems, src_stride, 0)
+                    self.tik_instance.data_move(self.outputs_gm[out_i][gm_offset], data_ub[row_elems_offset], 0, rows,
+                                                row_elems // self.block_elems, src_stride, 0)
                 with self.tik_instance.else_scope():
                     with self.tik_instance.for_range(0, rows) as row_i:
                         with self.tik_instance.for_range(0, row_elems) as elem_i:
                             out_ub[row_i * row_elems + elem_i].set_as(data_ub[row_i * self.shape_after +
                                                                               row_elems_offset + elem_i])
-                    self.tik_instance.data_move(self.outputs_gm[out_i][gm_offset], out_ub,
-                                                0, 1, ceil_value(rows * row_elems, self.block_elems), 0, 0)
+                    self.tik_instance.data_move(self.outputs_gm[out_i][gm_offset], out_ub, 0, 1,
+                                                ceil_value(rows * row_elems, self.block_elems), 0, 0)
 
                 # update x offset for next output
                 row_elems_offset.set_as(row_elems_offset + row_elems)
@@ -1162,9 +1158,11 @@ class SplitV():
         """
         with self.tik_instance.new_stmt_scope():
             shape_after_max = 128
-            data_ub = self.tik_instance.Tensor(self.input_dtype, (rows * shape_after_max,), name="data_ub",
+            data_ub = self.tik_instance.Tensor(self.input_dtype, (rows * shape_after_max,),
+                                               name="data_ub",
                                                scope=tik.scope_ubuf)
-            out_ub = self.tik_instance.Tensor(self.input_dtype, (rows * self.block_elems,), name="out_ub",
+            out_ub = self.tik_instance.Tensor(self.input_dtype, (rows * self.block_elems,),
+                                              name="out_ub",
                                               scope=tik.scope_ubuf)
 
             split_size_i = self.tik_instance.Scalar(dtype=self.size_splits_dtype, name="split_size_i")
@@ -1174,8 +1172,8 @@ class SplitV():
             x_offset_base = gm_rows_offset * self.shape_after
             with self.tik_instance.for_range(0, 16) as idx:
                 x_offset = x_offset_base + idx * self.shape_after
-                self.tik_instance.data_move(data_ub[idx * self.block_elems], self.x_gm[x_offset], 0,
-                                            rows // 16, 1, self.shape_after - 1, 15)
+                self.tik_instance.data_move(data_ub[idx * self.block_elems], self.x_gm[x_offset], 0, rows // 16, 1,
+                                            self.shape_after - 1, 15)
 
             for out_i in range(0, self.num_split - 1):
                 split_size_i.set_as(size_splits_ub[out_i])
@@ -1183,10 +1181,10 @@ class SplitV():
                 gm_offset = gm_rows_offset * row_elems
                 with self.tik_instance.for_range(0, rows) as row_i:
                     with self.tik_instance.for_range(0, row_elems) as elem_i:
-                        out_ub[row_i * row_elems + elem_i].set_as(data_ub[row_i * self.block_elems +
-                                                                          row_elems_offset + elem_i])
-                self.tik_instance.data_move(self.outputs_gm[out_i][gm_offset], out_ub,
-                                            0, 1, rows * row_elems // self.block_elems, 0, 0)
+                        out_ub[row_i * row_elems + elem_i].set_as(data_ub[row_i * self.block_elems + row_elems_offset +
+                                                                          elem_i])
+                self.tik_instance.data_move(self.outputs_gm[out_i][gm_offset], out_ub, 0, 1,
+                                            rows * row_elems // self.block_elems, 0, 0)
 
                 # update x offset for next output
                 row_elems_offset.set_as(row_elems_offset + row_elems)
@@ -1197,13 +1195,13 @@ class SplitV():
             row_elems = split_size_i * self.shape_after_dim
             with self.tik_instance.for_range(0, 16) as idx:
                 x_offset = x_offset_base + idx * self.shape_after
-                self.tik_instance.data_move(data_ub[idx * row_elems], self.x_gm[x_offset], 0,
-                                            rows // 16, row_elems // self.block_elems,
+                self.tik_instance.data_move(data_ub[idx * row_elems], self.x_gm[x_offset], 0, rows // 16,
+                                            row_elems // self.block_elems,
                                             self.shape_after - row_elems // self.block_elems,
                                             row_elems * 15 // self.block_elems)
             gm_offset = gm_rows_offset * row_elems
-            self.tik_instance.data_move(self.outputs_gm[self.num_split - 1][gm_offset], data_ub,
-                                        0, 1, rows * row_elems // self.block_elems, 0, 0)
+            self.tik_instance.data_move(self.outputs_gm[self.num_split - 1][gm_offset], data_ub, 0, 1,
+                                        rows * row_elems // self.block_elems, 0, 0)
 
     def mode_8_tiling(self):
         """
@@ -1255,7 +1253,8 @@ class SplitV():
         current_split_size = self.tik_instance.Scalar(dtype=self.size_splits_dtype, name="current_split_size")
         split_size_temp = self.tik_instance.Scalar(dtype=self.size_splits_dtype, name="split_size_temp")
         # calculate split_size_offset
-        split_size_offset = self.tik_instance.Scalar(dtype=self.size_splits_dtype, name="split_size_offset",
+        split_size_offset = self.tik_instance.Scalar(dtype=self.size_splits_dtype,
+                                                     name="split_size_offset",
                                                      init_value=0)
         with self.tik_instance.for_range(0, output_index_offset) as i:
             split_size_temp.set_as(size_splits_ub[i])
@@ -1263,8 +1262,8 @@ class SplitV():
 
         # process num outputs
         for output_index in range(0, self.num_split):
-            with self.tik_instance.if_scope(tik.all(output_index >= output_index_offset,
-                                                    output_index < output_index_offset + num)):
+            with self.tik_instance.if_scope(
+                    tik.all(output_index >= output_index_offset, output_index < output_index_offset + num)):
                 current_split_size.set_as(size_splits_ub[output_index])
                 self.process_one_output(data_ub, output_index, current_split_size, split_size_offset)
 
@@ -1290,9 +1289,10 @@ class SplitV():
         """
         get size_splits ub
         """
-        data_block = BLOCK_BYTES // self.size_splits_dsize
+        data_block = self.BLOCK_BYTES // self.size_splits_dsize
         num_split_align = align_value(self.num_split, data_block)
-        size_splits_ub = self.tik_instance.Tensor(self.size_splits_dtype, (num_split_align,), name="size_splits_ub",
+        size_splits_ub = self.tik_instance.Tensor(self.size_splits_dtype, (num_split_align,),
+                                                  name="size_splits_ub",
                                                   scope=tik.scope_ubuf)
         if self.is_split_v:
             # move size_splits data to ub
@@ -1320,17 +1320,19 @@ class SplitV():
         self.mode_8_tiling()
 
         with tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_id:
-            self.block_ub = tik_instance.Tensor(self.input_dtype, (self.block_elems,), name="block_ub",
+            self.block_ub = tik_instance.Tensor(self.input_dtype, (self.block_elems,),
+                                                name="block_ub",
                                                 scope=tik.scope_ubuf)
             # get run tiling data
-            self.tiling_ub = tik_instance.Tensor(self.tiling_dtype, (self.tiling_align,), name="tiling_ub",
+            self.tiling_ub = tik_instance.Tensor(self.tiling_dtype, (self.tiling_align,),
+                                                 name="tiling_ub",
                                                  scope=tik.scope_ubuf)
             tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, self.tiling_align // 4, 0, 0)
             self.get_tiling_args()
 
-            # MODE_1
+            # self.MODE_1
             if self.num_split == 1:
-                with tik_instance.if_scope(self.tiling_mode == MODE_1):
+                with tik_instance.if_scope(self.tiling_mode == self.MODE_1):
                     with tik_instance.if_scope(block_id < self.need_core_num - 1):
                         with tik_instance.new_stmt_scope():
                             self.compute_move_copy(block_id, self.loop_num, self.one_loop_elems, self.last_num)
@@ -1338,37 +1340,36 @@ class SplitV():
                         with tik_instance.new_stmt_scope():
                             self.compute_move_copy(block_id, self.loop_num_last_core, self.one_loop_elems_last_core,
                                                    self.last_num_last_core)
-            # num_split >= 2
             else:
-                with tik_instance.if_scope(self.tiling_mode == MODE_8):
+                with tik_instance.if_scope(self.tiling_mode == self.MODE_8):
                     with tik_instance.if_scope(block_id < self.block_num):
                         with tik_instance.new_stmt_scope():
                             self.compute_mode_8(block_id)
 
-                with tik_instance.if_scope(self.tiling_mode == MODE_2):
+                with tik_instance.if_scope(self.tiling_mode == self.MODE_2):
                     with tik_instance.new_stmt_scope():
                         self.compute_mode_2(block_id)
 
                 if self.input_dtype == "float16" and self.num_split <= 16:
-                    with tik_instance.if_scope(self.tiling_mode == MODE_4):
+                    with tik_instance.if_scope(self.tiling_mode == self.MODE_4):
                         with tik_instance.new_stmt_scope():
                             self.compute_mode_4(block_id)
 
-                with tik_instance.if_scope(self.tiling_mode == MODE_5):
+                with tik_instance.if_scope(self.tiling_mode == self.MODE_5):
                     with tik_instance.new_stmt_scope():
                         self.compute_mode_5(block_id)
 
                 if self.is_split_v:
-                    with tik_instance.if_scope(self.tiling_mode == MODE_6):
+                    with tik_instance.if_scope(self.tiling_mode == self.MODE_6):
                         with tik_instance.new_stmt_scope():
                             self.compute_mode_6(block_id)
 
                     if self.input_dtype == "float16" and self.num_split <= 16:
-                        with tik_instance.if_scope(self.tiling_mode == MODE_7):
+                        with tik_instance.if_scope(self.tiling_mode == self.MODE_7):
                             with tik_instance.new_stmt_scope():
                                 self.compute_mode_7(block_id)
 
-                with tik_instance.if_scope(self.tiling_mode == MODE_3):
+                with tik_instance.if_scope(self.tiling_mode == self.MODE_3):
                     with tik_instance.new_stmt_scope():
                         self.compute_mode_3(block_id)
 
@@ -1379,8 +1380,8 @@ def check_input_params(x, size_splits, split_dim, y, num_split):
     """
     # split_v has 3 input tensors, so 61 is the maximum of output tensors
     if num_split > 61 or num_split < 1:
-        error_manager_vector.raise_err_input_value_invalid("split_v", "num_split",
-                                                           "61 is the maximum of num_split", num_split)
+        error_manager_vector.raise_err_input_value_invalid("split_v", "num_split", "61 is the maximum of num_split",
+                                                           num_split)
 
     x_dtype = x.get("dtype").lower()
     size_splits_dtype = size_splits.get("dtype").lower()
@@ -1394,8 +1395,8 @@ def check_input_params(x, size_splits, split_dim, y, num_split):
     para_check.check_dtype(split_dim_dtype, ("int32",), param_name="split_dim")
 
     if x_dtype != output_dtype:
-        error_manager_vector.raise_err_inputs_dtype_not_equal("split_v", "x_dtype", "output_dtype",
-                                                              x_dtype, output_dtype)
+        error_manager_vector.raise_err_inputs_dtype_not_equal("split_v", "x_dtype", "output_dtype", x_dtype,
+                                                              output_dtype)
 
 
 @register_operator("SplitV")
@@ -1435,12 +1436,14 @@ def split_v(x, size_splits, split_dim, y, num_split, kernel_name="split_v"):
     tik_inst.BuildCCE(kernel_name=obj.kernel_name,
                       inputs=(obj.x_gm, obj.size_splits_gm, obj.split_dim_gm),
                       outputs=obj.outputs_gm,
-                      flowtable=(obj.tiling_gm,), enable_l2=True)
+                      flowtable=(obj.tiling_gm,),
+                      enable_l2=True)
 
     # add compile info
-    tbe_context.get_context().add_compile_info("vars", {"core_num": obj.core_num,
-                                                        "ub_elems": obj.ub_elems,
-                                                        "num_split": obj.num_split
-                                                        })
+    tbe_context.get_context().add_compile_info("vars", {
+        "core_num": obj.core_num,
+        "ub_elems": obj.ub_elems,
+        "num_split": obj.num_split
+    })
 
     return tik_inst

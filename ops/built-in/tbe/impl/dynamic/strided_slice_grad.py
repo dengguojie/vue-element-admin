@@ -114,7 +114,7 @@ def strided_slice_grad(shape, begin, end, strides, dy, output, begin_mask=0,
     obj = PadInit(kernel_name)
     obj.init_src_dst_gm((shape, begin, end, strides, dy), (output,), pad_input_idx=4, pad_outnput_idx=0)
 
-    outer_compile = dict()
+    outer_compile = {}
     outer_compile["begin_mask"] = begin_mask
     outer_compile["end_mask"] = end_mask
     outer_compile["ellipsis_mask"] = ellipsis_mask

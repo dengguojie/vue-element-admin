@@ -24,7 +24,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=unused-argument,invalid-name
 @register_operator_compute("ReduceMin", op_mode="dynamic", support_fusion=True)
 def reduce_min_compute(x, axes, y, keepdims=None,
                        kernel_name="reduce_min"):
@@ -60,7 +60,7 @@ def reduce_min_compute(x, axes, y, keepdims=None,
     return res
 
 
-# pylint: disable=too-many-locals,invalid-name
+# 'pylint: disable=too-many-locals,invalid-name
 @register_operator("ReduceMin")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)

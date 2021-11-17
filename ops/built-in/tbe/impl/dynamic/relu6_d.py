@@ -29,7 +29,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=locally-disabled,too-many-locals,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-locals,unused-argument,invalid-name
 @register_operator_compute("Relu6D", op_mode="dynamic", support_fusion=True)
 def relu6_d_compute(input_x, output_y, scale, kernel_name="relu6_d"):
     """

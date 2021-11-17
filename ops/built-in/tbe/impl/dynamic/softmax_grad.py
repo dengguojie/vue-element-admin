@@ -24,8 +24,8 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 
 
-# pylint: disable=locally-disabled,unused-argument
-# pylint: disable=unused-variable
+# 'pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=unused-variable
 @register_operator("SoftmaxGrad")
 def softmax_grad_compute(softmax, grad_softmax, grad_x, axis,
                          kernel_name="softmax_grad"):
@@ -75,6 +75,7 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x, axis,
     return res
 
 
+# 'pylint:disable=too-many-locals,invalid-name
 @register_operator("SoftmaxGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT),
@@ -110,15 +111,15 @@ def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_gr
     shape = softmax.get("shape")
     grad_shape = grad_softmax.get("shape")
     dtype = softmax.get("dtype").lower()
-    if not isinstance(axis, int):
-        axis = list(axis)
 
     para_check.check_shape(shape, param_name="softmax")
     para_check.check_shape(grad_shape, param_name="grad_softmax")
     para_check.check_dtype(dtype, ("float16", "float32"), param_name="softmax")
-    if isinstance(axis, int):
-        axis = [axis]
-    input_axis = {"shape": [len(axis), ], "value": axis, "rel_pos_to_reduce": "axis"}
+    if not isinstance(axis, int):
+        list_axis = list(axis)
+    else:
+        list_axis = [axis]
+    input_axis = {"shape": [len(list_axis), ], "value": list_axis, "rel_pos_to_reduce": "axis"}
 
     schedules = []
     tensors = []

@@ -26,8 +26,8 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import OpImplMode
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
-# pylint: disable=invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=invalid-name
 def get_broadcast_shapes(input1, input2, input1_name, input2_name):
     """
     get_broadcast_shapes
@@ -39,7 +39,7 @@ def get_broadcast_shapes(input1, input2, input1_name, input2_name):
     return y_shape
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 def sigmoid_cross_entropy_with_logits_compute(predict, target, loss, kernel_name="sigmoid_cross_entropy_with_logits"):
     """
     calculating data

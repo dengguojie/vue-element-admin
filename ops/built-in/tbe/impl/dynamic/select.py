@@ -27,7 +27,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
 
-# pylint: disable=too-many-locals,invalid-name,unused-argument,too-many-statements
+# 'pylint: disable=too-many-locals,invalid-name,unused-argument,too-many-statements
 def select_compute(condition, x1, x2, y, kernel_name="select"):
     """
     compute for select

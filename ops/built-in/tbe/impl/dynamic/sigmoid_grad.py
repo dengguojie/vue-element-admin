@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
 """
 Copyright (C) 2019. Huawei Technologies Co., Ltd. All rights reserved.
 
@@ -26,12 +24,9 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
-# General limitation of the reduce size for input shape: 2**30
-SHAPE_SIZE_LIMIT = 2 ** 30
 
-
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=invalid-name,too-many-locals,redefined-argument-from-local
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=invalid-name,too-many-locals,redefined-argument-from-local
 def sigmoid_grad_compute(x, y, z, kernel_name="sigmoid_grad"):
     """
     algorithm : sigmoid grad compute

@@ -15,7 +15,7 @@
 """
 sparse_apply_proximal_adagrad_d
 """
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
@@ -23,36 +23,40 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-DTYPE_FP32 = "float32"
-DTYPE_INT32 = "int32"
-TILING_PARAM_DTYPE = DTYPE_INT32
 
-SELECT_KEY_LAST_AXIS_80_FLOAT = 1
+# 'pylint:disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    The class for constant
+    """
+    DTYPE_INT32 = "int32"
+    TILING_PARAM_DTYPE = DTYPE_INT32
 
-# fp32 byte
-BYTE_FP32 = 4
-# int32 byte
-BYTE_INT32 = 4
-# byte of one block
-BYTE_BLOCK = 32
-# ele num fp32 in one block
-FP32_ELE_NUM_BLOCK = 8
-# tiling params num
-TILING_PARAMS_NUM = 32
-# full mask for fp32
-MASK_FP32 = 64
+    SELECT_KEY_LAST_AXIS_80_FLOAT = 1
 
-MAX_INT32 = 2 ** 31 - 1
-MAX_GM_TENSOR_SHAPE = (MAX_INT32,)
-MIN_TENSOR_SHAPE = (32,)
-MIN_BURSTLEN_FP32 = 4
-ONE_FP32 = 1.0
-ZERO_FP32 = 0.0
-NEG_ONE_FP32 = -1.0
+    # fp32 byte
+    BYTE_FP32 = 4
+    # int32 byte
+    BYTE_INT32 = 4
+    # byte of one block
+    BYTE_BLOCK = 32
+    # ele num fp32 in one block
+    FP32_ELE_NUM_BLOCK = 8
+    # tiling params num
+    TILING_PARAMS_NUM = 32
+    # full mask for fp32
+    MASK_FP32 = 64
+
+    MAX_INT32 = 2 ** 31 - 1
+    MAX_GM_TENSOR_SHAPE = (MAX_INT32,)
+    MIN_TENSOR_SHAPE = (32,)
+    ONE_FP32 = 1.0
+    ZERO_FP32 = 0.0
+    NEG_ONE_FP32 = -1.0
 
 
-# pylint: disable=unused-argument,too-many-locals,too-many-arguments,invalid-name,too-few-public-methods
-# pylint: disable=too-many-statements,too-many-instance-attributes,
+# 'pylint: disable=unused-argument,too-many-locals,too-many-arguments,invalid-name,too-few-public-methods
+# 'pylint: disable=too-many-statements,too-many-instance-attributes,
 def ceil(num, factor):
     """
     compute ceil
@@ -122,43 +126,43 @@ class SparseApplyProximalAdagradD:
                 None
                 """
                 self.var_gm = tik_instance.Tensor(var_dtype,
-                                                  MAX_GM_TENSOR_SHAPE,
+                                                  Constant.MAX_GM_TENSOR_SHAPE,
                                                   name="var_gm",
                                                   scope=tik.scope_gm)
                 self.accum_gm = tik_instance.Tensor(var_dtype,
-                                                    MAX_GM_TENSOR_SHAPE,
+                                                    Constant.MAX_GM_TENSOR_SHAPE,
                                                     name="accum_gm",
                                                     scope=tik.scope_gm)
                 self.lr_gm = tik_instance.Tensor(var_dtype,
-                                                 MIN_TENSOR_SHAPE,
+                                                 Constant.MIN_TENSOR_SHAPE,
                                                  name="lr_gm",
                                                  scope=tik.scope_gm)
                 self.l1_gm = tik_instance.Tensor(var_dtype,
-                                                 MIN_TENSOR_SHAPE,
+                                                 Constant.MIN_TENSOR_SHAPE,
                                                  name="l1_gm",
                                                  scope=tik.scope_gm)
                 self.l2_gm = tik_instance.Tensor(var_dtype,
-                                                 MIN_TENSOR_SHAPE,
+                                                 Constant.MIN_TENSOR_SHAPE,
                                                  name="l2_gm",
                                                  scope=tik.scope_gm)
                 self.grad_gm = tik_instance.Tensor(var_dtype,
-                                                   MAX_GM_TENSOR_SHAPE,
+                                                   Constant.MAX_GM_TENSOR_SHAPE,
                                                    name="grad_gm",
                                                    scope=tik.scope_gm)
                 self.idx_gm = tik_instance.Tensor(idx_dtype,
-                                                  MAX_GM_TENSOR_SHAPE,
+                                                  Constant.MAX_GM_TENSOR_SHAPE,
                                                   name="index_gm",
                                                   scope=tik.scope_gm)
                 self.var_out_gm = tik_instance.Tensor(var_dtype,
-                                                      MAX_GM_TENSOR_SHAPE,
+                                                      Constant.MAX_GM_TENSOR_SHAPE,
                                                       name="var_out_gm",
                                                       scope=tik.scope_gm)
                 self.accum_out_gm = tik_instance.Tensor(var_dtype,
-                                                        MAX_GM_TENSOR_SHAPE,
+                                                        Constant.MAX_GM_TENSOR_SHAPE,
                                                         name="accum_out_gm",
                                                         scope=tik.scope_gm)
-                self.tiling_gm = tik_instance.Tensor(TILING_PARAM_DTYPE,
-                                                     MIN_TENSOR_SHAPE,
+                self.tiling_gm = tik_instance.Tensor(Constant.TILING_PARAM_DTYPE,
+                                                     Constant.MIN_TENSOR_SHAPE,
                                                      name="tiling_gm",
                                                      scope=tik.scope_gm)
 
@@ -180,38 +184,38 @@ class SparseApplyProximalAdagradD:
                 None
                 """
                 self.select_key = \
-                    tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                    tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                         name="select_key")
                 self.need_core_num = \
-                    tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                    tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                         name="need_core_num")
                 self.idx_mov_times = \
-                    tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                    tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                         name="idx_mov_times")
                 self.idx_front_num = \
-                    tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                    tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                         name="idx_front_num")
                 self.idx_last_num = \
-                    tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                    tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                         name="idx_last_num")
                 self.idx_front_burstlen = \
-                    tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                    tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                         name="idx_front_burstlen")
                 self.idx_last_burstlen = \
-                    tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                    tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                         name="idx_last_burstlen")
                 self.one_row_burstlen = \
-                    tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                    tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                         name="one_row_burstlen")
                 self.one_row_num = \
-                    tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                    tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                         name="one_row_num")
                 self.vec_repeat_time = \
-                    tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                    tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                         name="vec_repeat_time")
 
         last_axis = 80
-        last_axis_ceil = ceil(last_axis, MASK_FP32)
+        last_axis_ceil = ceil(last_axis, Constant.MASK_FP32)
         ub_shape = (last_axis_ceil,)
 
         def compute_row(ub_size):
@@ -228,8 +232,8 @@ class SparseApplyProximalAdagradD:
             """
             row = (ub_size - 1024 * 8) / \
                   (last_axis_ceil + 1) / \
-                  BYTE_FP32
-            row = row // FP32_ELE_NUM_BLOCK * FP32_ELE_NUM_BLOCK
+                  Constant.BYTE_FP32
+            row = row // Constant.FP32_ELE_NUM_BLOCK * Constant.FP32_ELE_NUM_BLOCK
             return row
 
         class UbTensor():
@@ -320,13 +324,13 @@ class SparseApplyProximalAdagradD:
             UbTensor(self.tik_instance, self.var_dtype, self.idx_dtype,
                      self.ub_size)
         with self.tik_instance.new_stmt_scope():
-            tiling_ub = self.tik_instance.Tensor(TILING_PARAM_DTYPE,
-                                                 MIN_TENSOR_SHAPE,
+            tiling_ub = self.tik_instance.Tensor(Constant.TILING_PARAM_DTYPE,
+                                                 Constant.MIN_TENSOR_SHAPE,
                                                  name="tiling_ub",
                                                  scope=tik.scope_ubuf)
             self.tik_instance.data_move(tiling_ub, self.gm_tensor.tiling_gm,
                                         0, 1,
-                                        TILING_PARAMS_NUM * BYTE_INT32 // BYTE_BLOCK,
+                                        Constant.TILING_PARAMS_NUM * Constant.BYTE_INT32 // Constant.BYTE_BLOCK,
                                         0, 0)
             index = 0
             self.obj_fp32_input_scalar.select_key.set_as(tiling_ub[index])
@@ -355,15 +359,15 @@ class SparseApplyProximalAdagradD:
         # init ub tensor
         with self.tik_instance.new_stmt_scope():
             lr_ub_t = self.tik_instance.Tensor(self.var_dtype,
-                                               MIN_TENSOR_SHAPE,
+                                               Constant.MIN_TENSOR_SHAPE,
                                                name="lr_ub_t",
                                                scope=tik.scope_ubuf)
             l1_ub_t = self.tik_instance.Tensor(self.var_dtype,
-                                               MIN_TENSOR_SHAPE,
+                                               Constant.MIN_TENSOR_SHAPE,
                                                name="l1_ub_t",
                                                scope=tik.scope_ubuf)
             l2_ub_t = self.tik_instance.Tensor(self.var_dtype,
-                                               MIN_TENSOR_SHAPE,
+                                               Constant.MIN_TENSOR_SHAPE,
                                                name="l2_ub_t",
                                                scope=tik.scope_ubuf)
             self.tik_instance.data_move(lr_ub_t[0], self.gm_tensor.lr_gm,
@@ -384,18 +388,18 @@ class SparseApplyProximalAdagradD:
             lr_scalar.set_as(lr_ub_t[0])
             l1_scalar.set_as(l1_ub_t[0])
             l2_scalar.set_as(l2_ub_t[0])
-            self.tik_instance.vector_dup(MASK_FP32, self.ub_tensor.lr_ub[0],
+            self.tik_instance.vector_dup(Constant.MASK_FP32, self.ub_tensor.lr_ub[0],
                                          lr_scalar, self.obj_fp32_input_scalar.vec_repeat_time, 1, 8)
-            self.tik_instance.vector_dup(MASK_FP32, self.ub_tensor.l1_ub[0],
+            self.tik_instance.vector_dup(Constant.MASK_FP32, self.ub_tensor.l1_ub[0],
                                          l1_scalar, self.obj_fp32_input_scalar.vec_repeat_time, 1, 8)
-            self.tik_instance.vector_dup(MASK_FP32, self.ub_tensor.l2_ub[0],
+            self.tik_instance.vector_dup(Constant.MASK_FP32, self.ub_tensor.l2_ub[0],
                                          l2_scalar, self.obj_fp32_input_scalar.vec_repeat_time, 1, 8)
-            self.tik_instance.vector_dup(MASK_FP32, self.ub_tensor.one_ub[0],
-                                         ONE_FP32, self.obj_fp32_input_scalar.vec_repeat_time, 1, 8)
-            self.tik_instance.vector_dup(MASK_FP32, self.ub_tensor.zero_ub[0],
-                                         ZERO_FP32, self.obj_fp32_input_scalar.vec_repeat_time, 1, 8)
-            self.tik_instance.vector_dup(MASK_FP32,
-                                         self.ub_tensor.neg_one_ub[0], NEG_ONE_FP32,
+            self.tik_instance.vector_dup(Constant.MASK_FP32, self.ub_tensor.one_ub[0],
+                                         Constant.ONE_FP32, self.obj_fp32_input_scalar.vec_repeat_time, 1, 8)
+            self.tik_instance.vector_dup(Constant.MASK_FP32, self.ub_tensor.zero_ub[0],
+                                         Constant.ZERO_FP32, self.obj_fp32_input_scalar.vec_repeat_time, 1, 8)
+            self.tik_instance.vector_dup(Constant.MASK_FP32,
+                                         self.ub_tensor.neg_one_ub[0], Constant.NEG_ONE_FP32,
                                          self.obj_fp32_input_scalar.vec_repeat_time, 1, 8)
 
     def sparse_apply_proximal_adagrad_d(self):
@@ -417,7 +421,7 @@ class SparseApplyProximalAdagradD:
                                             self.obj_fp32_input_scalar.need_core_num):
                 with self.tik_instance.if_scope(
                         self.obj_fp32_input_scalar.select_key ==
-                        SELECT_KEY_LAST_AXIS_80_FLOAT):
+                        Constant.SELECT_KEY_LAST_AXIS_80_FLOAT):
                     compute_sparse_apply_proximal_adagrad_d(block_index,
                                                             self.tik_instance,
                                                             self.gm_tensor,
@@ -491,7 +495,7 @@ def compute_sparse_apply_proximal_adagrad_d(block_index,
     -------
     None
     """
-    idx_val = tik_instance.Scalar(dtype=DTYPE_INT32,
+    idx_val = tik_instance.Scalar(dtype=Constant.DTYPE_INT32,
                                   name="idx_val")
     with tik_instance.for_range(0, fp32_input_scalar.idx_mov_times) as \
             idx_mov_index:
@@ -580,7 +584,7 @@ def traversal_idx(tik_instance,
                            fp32_input_scalar.one_row_burstlen,
                            0, 0)
     # `vmla, accum += grad*grad`
-    tik_instance.vmla(MASK_FP32, ub_tensor.accum_ub[0],
+    tik_instance.vmla(Constant.MASK_FP32, ub_tensor.accum_ub[0],
                       ub_tensor.grad_ub[0],
                       ub_tensor.grad_ub[0],
                       fp32_input_scalar.vec_repeat_time,
@@ -592,17 +596,17 @@ def traversal_idx(tik_instance,
                            0, 1,
                            fp32_input_scalar.one_row_burstlen,
                            0, 0)
-    tik_instance.vsqrt(MASK_FP32, ub_tensor.tmp_ub[0],
+    tik_instance.vsqrt(Constant.MASK_FP32, ub_tensor.tmp_ub[0],
                        ub_tensor.accum_ub[0],
                        fp32_input_scalar.vec_repeat_time,
                        1, 1, 8, 8)
-    tik_instance.vdiv(MASK_FP32, ub_tensor.lr1_ub[0],
+    tik_instance.vdiv(Constant.MASK_FP32, ub_tensor.lr1_ub[0],
                       ub_tensor.lr_ub[0],
                       ub_tensor.tmp_ub[0],
                       fp32_input_scalar.vec_repeat_time,
                       1, 1, 1,
                       8, 0, 8)
-    tik_instance.vmul(MASK_FP32, ub_tensor.tmp_ub[0],
+    tik_instance.vmul(Constant.MASK_FP32, ub_tensor.tmp_ub[0],
                       ub_tensor.grad_ub[0],
                       ub_tensor.lr1_ub[0],
                       fp32_input_scalar.vec_repeat_time,
@@ -615,55 +619,55 @@ def traversal_idx(tik_instance,
                            0, 1,
                            fp32_input_scalar.one_row_burstlen,
                            0, 0)
-    tik_instance.vsub(MASK_FP32, ub_tensor.prox_ub[0],
+    tik_instance.vsub(Constant.MASK_FP32, ub_tensor.prox_ub[0],
                       ub_tensor.var_ub[0],
                       ub_tensor.tmp_ub[0],
                       fp32_input_scalar.vec_repeat_time,
                       1, 1, 1,
                       8, 8, 8)
-    tik_instance.vmul(MASK_FP32, ub_tensor.tmp_ub[0],
+    tik_instance.vmul(Constant.MASK_FP32, ub_tensor.tmp_ub[0],
                       ub_tensor.l2_ub[0],
                       ub_tensor.lr1_ub[0],
                       fp32_input_scalar.vec_repeat_time,
                       1, 1, 1,
                       8, 0, 8)
-    tik_instance.vadd(MASK_FP32, ub_tensor.accum_ub[0],
+    tik_instance.vadd(Constant.MASK_FP32, ub_tensor.accum_ub[0],
                       ub_tensor.one_ub[0],
                       ub_tensor.tmp_ub[0],
                       fp32_input_scalar.vec_repeat_time,
                       1, 1, 1,
                       8, 0, 8)
-    tik_instance.vdiv(MASK_FP32, ub_tensor.lr2_ub[0],
+    tik_instance.vdiv(Constant.MASK_FP32, ub_tensor.lr2_ub[0],
                       ub_tensor.one_ub[0],
                       ub_tensor.accum_ub[0],
                       fp32_input_scalar.vec_repeat_time,
                       1, 1, 1,
                       8, 0, 8)
-    with tik_instance.if_scope(l1_scalar > ZERO_FP32):
-        tik_instance.vmul(MASK_FP32, ub_tensor.tmp_ub[0],
+    with tik_instance.if_scope(l1_scalar > Constant.ZERO_FP32):
+        tik_instance.vmul(Constant.MASK_FP32, ub_tensor.tmp_ub[0],
                           ub_tensor.lr1_ub[0],
                           ub_tensor.l1_ub[0],
                           fp32_input_scalar.vec_repeat_time,
                           1, 1, 1,
                           8, 8, 0)
-        tik_instance.vabs(MASK_FP32, ub_tensor.accum_ub[0],
+        tik_instance.vabs(Constant.MASK_FP32, ub_tensor.accum_ub[0],
                           ub_tensor.prox_ub[0],
                           fp32_input_scalar.vec_repeat_time,
                           1, 1,
                           8, 8)
-        tik_instance.vsub(MASK_FP32, ub_tensor.var_t1_ub[0],
+        tik_instance.vsub(Constant.MASK_FP32, ub_tensor.var_t1_ub[0],
                           ub_tensor.accum_ub[0],
                           ub_tensor.tmp_ub[0],
                           fp32_input_scalar.vec_repeat_time,
                           1, 1, 1,
                           8, 8, 8)
-        tik_instance.vmax(MASK_FP32, ub_tensor.tmp_ub[0],
+        tik_instance.vmax(Constant.MASK_FP32, ub_tensor.tmp_ub[0],
                           ub_tensor.var_t1_ub[0],
                           ub_tensor.zero_ub[0],
                           fp32_input_scalar.vec_repeat_time,
                           1, 1, 1,
                           8, 8, 0)
-        tik_instance.vmul(MASK_FP32, ub_tensor.accum_ub[0],
+        tik_instance.vmul(Constant.MASK_FP32, ub_tensor.accum_ub[0],
                           ub_tensor.tmp_ub[0],
                           ub_tensor.lr2_ub[0],
                           fp32_input_scalar.vec_repeat_time,
@@ -672,35 +676,35 @@ def traversal_idx(tik_instance,
         with tik_instance.for_range(0,
                                     fp32_input_scalar.vec_repeat_time) as \
                 repeat_index:
-            ub_offset = repeat_index * MASK_FP32
-            cmp_mask = tik_instance.vcmp_gt(MASK_FP32,
+            ub_offset = repeat_index * Constant.MASK_FP32
+            cmp_mask = tik_instance.vcmp_gt(Constant.MASK_FP32,
                                             ub_tensor.prox_ub[ub_offset],
                                             ub_tensor.zero_ub[0],
                                             1, 1)
-            tik_instance.vsel(MASK_FP32, 0,
+            tik_instance.vsel(Constant.MASK_FP32, 0,
                               ub_tensor.tmp_ub[0],
                               cmp_mask,
                               ub_tensor.one_ub[0],
                               ub_tensor.zero_ub[0],
                               1, 1, 1, 1, 0, 0, 0)
-            cmp_mask = tik_instance.vcmp_lt(MASK_FP32,
+            cmp_mask = tik_instance.vcmp_lt(Constant.MASK_FP32,
                                             ub_tensor.prox_ub[ub_offset],
                                             ub_tensor.zero_ub[0],
                                             1, 1)
-            tik_instance.vsel(MASK_FP32, 0,
+            tik_instance.vsel(Constant.MASK_FP32, 0,
                               ub_tensor.prox_ub[ub_offset],
                               cmp_mask,
                               ub_tensor.neg_one_ub[0],
                               ub_tensor.tmp_ub[0],
                               1, 1, 1, 1, 0, 0, 0)
-        tik_instance.vmul(MASK_FP32, ub_tensor.var_ub[0],
+        tik_instance.vmul(Constant.MASK_FP32, ub_tensor.var_ub[0],
                           ub_tensor.prox_ub[0],
                           ub_tensor.accum_ub[0],
                           fp32_input_scalar.vec_repeat_time,
                           1, 1, 1,
                           8, 8, 8)
     with tik_instance.else_scope():
-        tik_instance.vmul(MASK_FP32, ub_tensor.var_ub[0],
+        tik_instance.vmul(Constant.MASK_FP32, ub_tensor.var_ub[0],
                           ub_tensor.prox_ub[0],
                           ub_tensor.lr2_ub[0],
                           fp32_input_scalar.vec_repeat_time,

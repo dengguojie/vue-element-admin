@@ -37,13 +37,14 @@ BLOCK_BYTES = 32
 MAX_BURST_LEN = 65535
 
 
-# pylint: disable=too-many-arguments,too-many-instance-attributes,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-instance-attributes,unused-argument,invalid-name
 class ScatterUpdate():
     """
        Function: use to store scatter_update base parameters
        Modify : 2020-10-29
     """
 
+    # 'pylint: disable=too-many-statements
     def __init__(self, var, indices, updates, var_out, use_locking, kernel_name, opname="scatter_update"):
         """
         Init ScatterUpdate parameters
@@ -130,6 +131,7 @@ class ScatterUpdate():
         self.last_core_loop_num = None
         self.last_core_loop_compute_num = None
         self.last_core_last_num = None
+        self.var_data_ub = None
 
     def check_input_params(self):
         """
@@ -586,7 +588,7 @@ class ScatterUpdate():
                                    config=opt_config)
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @register_operator("ScatterUpdate")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)

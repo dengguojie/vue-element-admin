@@ -16,7 +16,6 @@
 sort
 """
 
-
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
@@ -25,42 +24,44 @@ from impl.util.platform_adapter import tbe_context
 from impl import common_util
 from impl import constant_util
 
-# max int32 value
-MAX_INT32_VALUE = 2 ** 31 - 1
-# workspace size
-WORKSPACE_SIZE = 2 ** 30
-# temp proposal gm cache
-TEMP_PROPOSAL_SIZE = 2 ** 30
-# tiling param num
-TILING_ARG_NUM = 24
-# reserved ub size
-RESERVED_UB_SIZE = 8 * 1024
-# bytes of one block
-BLOCK_BYTES = 32
-# proposal num
-PROPOSAL_NUM = 8
-# max proposal num
-MAX_PROPOSAL_NUM = 2048
-# col_per_part num
-COL_PAR_LEN = 3600
-# col loop time
-COL_LOOP_TIME = 5
-# big shape 2048 align
-NUM_BLOCK = 2048
-# block
-BLOCK = 16
-# max repeat
-REPEAT_MAX = 255
-# repeat max
-DATA_MAX = 4080
-# min value for descend
-MIN_VAL = -65504
-# max value for ascend
-MAX_VAL = 65504
+
+# 'pylint:disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    The class for constant
+    """
+    # max int32 value
+    MAX_INT32_VALUE = 2**31 - 1
+    # workspace size
+    WORKSPACE_SIZE = 2**30
+    # temp proposal gm cache
+    TEMP_PROPOSAL_SIZE = 2**30
+    # tiling param num
+    TILING_ARG_NUM = 24
+    # reserved ub size
+    RESERVED_UB_SIZE = 8 * 1024
+    # bytes of one block
+    BLOCK_BYTES = 32
+    # proposal num
+    PROPOSAL_NUM = 8
+    # max proposal num
+    MAX_PROPOSAL_NUM = 2048
+    # big shape 2048 align
+    NUM_BLOCK = 2048
+    # block
+    BLOCK = 16
+    # max repeat
+    REPEAT_MAX = 255
+    # repeat max
+    DATA_MAX = 4080
+    # min value for descend
+    MIN_VAL = -65504
+    # max value for ascend
+    MAX_VAL = 65504
 
 
-# pylint: disable=too-many-branches,too-many-statements,too-many-locals
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-branches,too-many-statements,too-many-locals
+# 'pylint: disable=too-many-arguments
 def tik_func_vector_dup(tik_instance, _ub, value, dup_len):
     """
     tik_func_vector
@@ -86,28 +87,38 @@ def tik_func_vector_dup(tik_instance, _ub, value, dup_len):
     block_num = constant_util.BLOCK_SIZE // byte_num_one
     vector_num = block_num * constant_util.REPEAT_STRIDE_EIGHT
 
-    repeat_255_scalar = tik_instance.Scalar(init_value=(dup_len // (vector_num * REPEAT_MAX)))
+    repeat_255_scalar = tik_instance.Scalar(init_value=(dup_len // (vector_num * Constant.REPEAT_MAX)))
     repeat_remain_scalar = tik_instance.Scalar(
-        init_value=((dup_len - repeat_255_scalar * vector_num * REPEAT_MAX) // vector_num))
+        init_value=((dup_len - repeat_255_scalar * vector_num * Constant.REPEAT_MAX) // vector_num))
 
-    repeat_tail = tik_instance.Scalar(
-        init_value=(dup_len - vector_num * REPEAT_MAX * repeat_255_scalar - repeat_remain_scalar * vector_num))
+    repeat_tail = tik_instance.Scalar(init_value=(dup_len - vector_num * Constant.REPEAT_MAX * repeat_255_scalar -
+                                                  repeat_remain_scalar * vector_num))
 
     with tik_instance.if_scope(repeat_255_scalar > 0):
         with tik_instance.for_range(0, repeat_255_scalar, name='vadd_i0') as i:
-            tik_instance.vector_dup(vector_num, _ub[vector_num * REPEAT_MAX * i], value, REPEAT_MAX, 1, 8)
+            tik_instance.vector_dup(vector_num, _ub[vector_num * Constant.REPEAT_MAX * i], value, Constant.REPEAT_MAX,
+                                    1, 8)
 
     with tik_instance.if_scope(repeat_remain_scalar > 0):
-        tik_instance.vector_dup(vector_num, _ub[vector_num * REPEAT_MAX * repeat_255_scalar], value,
+        tik_instance.vector_dup(vector_num, _ub[vector_num * Constant.REPEAT_MAX * repeat_255_scalar], value,
                                 repeat_remain_scalar, 1, 8)
     with tik_instance.if_scope(repeat_tail > 0):
-        offset = vector_num * REPEAT_MAX * repeat_255_scalar + repeat_remain_scalar * vector_num
+        offset = vector_num * Constant.REPEAT_MAX * repeat_255_scalar + repeat_remain_scalar * vector_num
         tik_instance.vector_dup(repeat_tail, _ub[offset], value, 1, 1, 8)
 
 
-# pylint: disable=no-self-use,too-many-arguments
-def tik_func_element_func(tik_instance, function, out_dst, src0, src1, copy_num,
-                          dst_blk=1, src0_blk=1, src1_blk=1, dst_rep=8, src0_rep=8,
+# 'pylint: disable=no-self-use,too-many-arguments
+def tik_func_element_func(tik_instance,
+                          function,
+                          out_dst,
+                          src0,
+                          src1,
+                          copy_num,
+                          dst_blk=1,
+                          src0_blk=1,
+                          src1_blk=1,
+                          dst_rep=8,
+                          src0_rep=8,
                           src1_rep=8):
     """
     tik_func_vcomple
@@ -118,12 +129,12 @@ def tik_func_element_func(tik_instance, function, out_dst, src0, src1, copy_num,
     block_num = constant_util.BLOCK_SIZE // byte_num_one
     vector_num = block_num * constant_util.REPEAT_STRIDE_EIGHT
 
-    repeat_255_scalar = tik_instance.Scalar(init_value=(copy_num // (vector_num * REPEAT_MAX)))
+    repeat_255_scalar = tik_instance.Scalar(init_value=(copy_num // (vector_num * Constant.REPEAT_MAX)))
     repeat_remain_scalar = tik_instance.Scalar(
-        init_value=((copy_num - repeat_255_scalar * vector_num * REPEAT_MAX) // vector_num))
+        init_value=((copy_num - repeat_255_scalar * vector_num * Constant.REPEAT_MAX) // vector_num))
 
-    repeat_tail = tik_instance.Scalar(
-        init_value=(copy_num - vector_num * REPEAT_MAX * repeat_255_scalar - repeat_remain_scalar * vector_num))
+    repeat_tail = tik_instance.Scalar(init_value=(copy_num - vector_num * Constant.REPEAT_MAX * repeat_255_scalar -
+                                                  repeat_remain_scalar * vector_num))
     tik_fun = None
     if function == "vmin":
         tik_fun = tik_instance.vmin
@@ -138,37 +149,22 @@ def tik_func_element_func(tik_instance, function, out_dst, src0, src1, copy_num,
 
     with tik_instance.if_scope(repeat_255_scalar > 0):
         with tik_instance.for_range(0, repeat_255_scalar, name='vadd_i0') as i:
-            offset = vector_num * REPEAT_MAX * i
-            tik_fun(vector_num,
-                    out_dst[offset],
-                    src0[offset],
-                    src1[offset],
-                    REPEAT_MAX,
-                    dst_blk, src0_blk, src1_blk,
-                    dst_rep, src0_rep, src1_rep)
+            offset = vector_num * Constant.REPEAT_MAX * i
+            tik_fun(vector_num, out_dst[offset], src0[offset], src1[offset], Constant.REPEAT_MAX, dst_blk, src0_blk,
+                    src1_blk, dst_rep, src0_rep, src1_rep)
 
     with tik_instance.if_scope(repeat_remain_scalar > 0):
-        offset = repeat_255_scalar * vector_num * REPEAT_MAX
-        tik_fun(vector_num,
-                out_dst[offset],
-                src0[offset],
-                src1[offset],
-                repeat_remain_scalar,
-                dst_blk, src0_blk, src1_blk,
-                dst_rep, src0_rep, src1_rep)
+        offset = repeat_255_scalar * vector_num * Constant.REPEAT_MAX
+        tik_fun(vector_num, out_dst[offset], src0[offset], src1[offset], repeat_remain_scalar, dst_blk, src0_blk,
+                src1_blk, dst_rep, src0_rep, src1_rep)
 
     with tik_instance.if_scope(repeat_tail > 0):
-        offset = vector_num * REPEAT_MAX * repeat_255_scalar + repeat_remain_scalar * vector_num
-        tik_fun(repeat_tail,
-                out_dst[offset],
-                src0[offset],
-                src1[offset],
-                1,
-                dst_blk, src0_blk, src1_blk,
-                dst_rep, src0_rep, src1_rep)
+        offset = vector_num * Constant.REPEAT_MAX * repeat_255_scalar + repeat_remain_scalar * vector_num
+        tik_fun(repeat_tail, out_dst[offset], src0[offset], src1[offset], 1, dst_blk, src0_blk, src1_blk, dst_rep,
+                src0_rep, src1_rep)
 
 
-# pylint: disable=too-many-arguments,no-self-use
+# 'pylint: disable=too-many-arguments,no-self-use
 def emit_vextract(tik_instance, dst, src, mode, cnt, dst_offset=0, src_offset=0):
     """
     emit_vextract
@@ -184,7 +180,7 @@ def emit_vextract(tik_instance, dst, src, mode, cnt, dst_offset=0, src_offset=0)
                               repeat_remain, mode)
 
 
-# pylint: disable=too-many-arguments,no-self-use
+# 'pylint: disable=too-many-arguments,no-self-use
 def emit_vec_conv(tik_instance, dst, src, cnt, dst_offset=0, src_offset=0):
     """
     emit_vec_conv
@@ -194,22 +190,23 @@ def emit_vec_conv(tik_instance, dst, src, cnt, dst_offset=0, src_offset=0):
 
     with tik_instance.if_scope(repeat_255_scalar > 0):
         with tik_instance.for_range(0, repeat_255_scalar, name='vconv_i0') as i:
-            tik_instance.vec_conv(BLOCK, "round", dst[dst_offset + i * 255 * 16],
+            tik_instance.vec_conv(Constant.BLOCK, "round", dst[dst_offset + i * 255 * 16],
                                   src[src_offset + i * 255 * 16], 255, 2, 1)
     with tik_instance.if_scope(repeat_remain_scalar > 0):
-        tik_instance.vec_conv(BLOCK, "round", dst[dst_offset + 255 * 16 * repeat_255_scalar],
+        tik_instance.vec_conv(Constant.BLOCK, "round", dst[dst_offset + 255 * 16 * repeat_255_scalar],
                               src[src_offset + 255 * 16 * repeat_255_scalar], repeat_remain_scalar, 2, 1)
 
 
-# pylint: disable=too-many-arguments,too-many-instance-attributes,unused-argument
-# pylint: disable=too-many-public-methods,invalid-name,too-many-lines
-# pylint: disable=attribute-defined-outside-init,too-many-branches,too-many-statements
-class Sort(object):
+# 'pylint: disable=too-many-arguments,too-many-instance-attributes,unused-argument
+# 'pylint: disable=too-many-public-methods,invalid-name,too-many-lines
+# 'pylint: disable=attribute-defined-outside-init,too-many-branches,too-many-statements
+class Sort:
     """
        Function: use to store sort base parameters
        Modify : 2021-04-13
     """
 
+    # 'pylint: disable=too-many-arguments
     def __init__(self, x, y1, y2, axis, descending, kernel_name):
         """
         Init Sort parameters
@@ -234,18 +231,16 @@ class Sort(object):
         """
         self.tik_instance = tik.Tik(tik.Dprofile())
         self.kernel_name = kernel_name
-        self.ai_core_num = tbe_platform.get_soc_spec(
-            tbe_platform.CORE_NUM)
-        self.ub_size_bytes = (tbe_platform.get_soc_spec(
-            tbe_platform.UB_SIZE) - RESERVED_UB_SIZE)
+        self.ai_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+        self.ub_size_bytes = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - Constant.RESERVED_UB_SIZE)
 
         self.input_dtype = x.get("dtype").lower()
         # get data each block
         self.data_byte_size = tbe_platform.get_bit_len(self.input_dtype)
-        self.data_each_block = BLOCK_BYTES // self.data_byte_size
+        self.data_each_block = Constant.BLOCK_BYTES // self.data_byte_size
 
         self.indices_byte_size = tbe_platform.get_bit_len("int32")
-        self.indices_each_block = BLOCK_BYTES // self.indices_byte_size
+        self.indices_each_block = Constant.BLOCK_BYTES // self.indices_byte_size
 
         # attr
         self.axis = axis
@@ -267,45 +262,62 @@ class Sort(object):
         # init ub para
         self.tiling_ub = None
         self.max_data = self.tik_instance.Scalar("int32", name="max_data")
-        self.max_data.set_as(DATA_MAX)
+        self.max_data.set_as(Constant.DATA_MAX)
         self.repeat_max = self.tik_instance.Scalar("int32", name="repeat_max")
-        self.repeat_max.set_as(REPEAT_MAX)
+        self.repeat_max.set_as(Constant.REPEAT_MAX)
 
         # input ub tensor size
         self.src_ub_size = 44800
         self.des_ub_size = 44800
         self.ub_align_size = 5600
 
-    # pylint: disable=no-self-use,too-many-arguments
+    # 'pylint: disable=no-self-use,too-many-arguments
     def init_tik_mem(self):
         """
         init tik mem
         :return:
         """
-        self.tiling_gm = self.tik_instance.Tensor("int32", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor("int32", (Constant.TILING_ARG_NUM,),
+                                                  name="tiling_gm",
+                                                  scope=tik.scope_gm)
 
-        self.input_gm = self.tik_instance.Tensor(self.input_dtype, (MAX_INT32_VALUE,), name="input_gm",
+        self.input_gm = self.tik_instance.Tensor(self.input_dtype, (Constant.MAX_INT32_VALUE,),
+                                                 name="input_gm",
                                                  scope=tik.scope_gm)
 
-        self.data_out = self.tik_instance.Tensor(self.input_dtype, [WORKSPACE_SIZE, ], name="data_out",
-                                                 scope=tik.scope_gm, is_workspace=True)
+        self.data_out = self.tik_instance.Tensor(self.input_dtype, [
+            Constant.WORKSPACE_SIZE,
+        ],
+                                                 name="data_out",
+                                                 scope=tik.scope_gm,
+                                                 is_workspace=True)
 
-        self.data_indices = self.tik_instance.Tensor("int32", [WORKSPACE_SIZE, ], name="data_indices",
-                                                     scope=tik.scope_gm, is_workspace=True)
+        self.data_indices = self.tik_instance.Tensor("int32", [
+            Constant.WORKSPACE_SIZE,
+        ],
+                                                     name="data_indices",
+                                                     scope=tik.scope_gm,
+                                                     is_workspace=True)
 
-        self.temp_proposal_gm = self.tik_instance.Tensor(self.input_dtype, [TEMP_PROPOSAL_SIZE, ],
+        self.temp_proposal_gm = self.tik_instance.Tensor(self.input_dtype, [
+            Constant.TEMP_PROPOSAL_SIZE,
+        ],
                                                          name="temp_proposal_gm",
-                                                         scope=tik.scope_gm, is_workspace=True)
+                                                         scope=tik.scope_gm,
+                                                         is_workspace=True)
 
-        self.out_gm1 = self.tik_instance.Tensor(self.input_dtype, (MAX_INT32_VALUE,), name="out_gm1",
+        self.out_gm1 = self.tik_instance.Tensor(self.input_dtype, (Constant.MAX_INT32_VALUE,),
+                                                name="out_gm1",
                                                 scope=tik.scope_gm)
 
-        self.out_gm2 = self.tik_instance.Tensor("int32", (MAX_INT32_VALUE,), name="out_gm2", scope=tik.scope_gm)
+        self.out_gm2 = self.tik_instance.Tensor("int32", (Constant.MAX_INT32_VALUE,),
+                                                name="out_gm2",
+                                                scope=tik.scope_gm)
 
         self.input_gm_list = [self.input_gm]
         self.output_gm_list = [self.out_gm1, self.out_gm2]
 
-    # pylint: disable=no-self-use,too-many-arguments
+    # 'pylint: disable=no-self-use,too-many-arguments
     def tiling_args(self):
         """
         get runtime params from tiling
@@ -349,7 +361,7 @@ class Sort(object):
         self.num_block_align = self.tik_instance.Scalar("int32", name="num_block_align")
         self.num_block_align.set_as(self.tiling_ub[9])
 
-    # pylint: disable=no-self-use,too-many-arguments
+    # 'pylint: disable=no-self-use,too-many-arguments,too-many-locals
     def generate_proposal_more(self, tik_instance, src_ub, des_ub, input_gm, num_16, num, version, dtype, offset_in):
         """
         generate from unsorted region
@@ -364,15 +376,16 @@ class Sort(object):
         :param offset_in:
         :return:
         """
-        tik_instance.data_move(des_ub, input_gm[offset_in], 0, 1, num_16 // BLOCK, 0, 0)
+        tik_instance.data_move(des_ub, input_gm[offset_in], 0, 1, num_16 // Constant.BLOCK, 0, 0)
 
         proposal_loop = tik_instance.Scalar(dtype="int32", init_value=0)
-        proposal_loop.set_as((self.dim_align_num - 1 + MAX_PROPOSAL_NUM) // MAX_PROPOSAL_NUM)
+        proposal_loop.set_as((self.dim_align_num - 1 + Constant.MAX_PROPOSAL_NUM) // Constant.MAX_PROPOSAL_NUM)
 
-        data_out_ub_ = tik_instance.Tensor(dtype, [BLOCK], name="data_out_ub_", scope=tik.scope_ubuf)
-        data_indices_ub_int_ = tik_instance.Tensor("int32", [BLOCK], name="data_indices_ub_int_",
+        data_out_ub_ = tik_instance.Tensor(dtype, [Constant.BLOCK], name="data_out_ub_", scope=tik.scope_ubuf)
+        data_indices_ub_int_ = tik_instance.Tensor("int32", [Constant.BLOCK],
+                                                   name="data_indices_ub_int_",
                                                    scope=tik.scope_ubuf)
-        with tik_instance.for_range(0, MAX_PROPOSAL_NUM) as i2:
+        with tik_instance.for_range(0, Constant.MAX_PROPOSAL_NUM) as i2:
             data_indices_ub_int_.set_as(i2)
             tik_instance.vec_conv(1, "none", data_out_ub_, data_indices_ub_int_, 1, 0, 0, deqscale=1.0)
             des_ub[num_16 * 5 + i2].set_as(data_out_ub_[0])
@@ -383,39 +396,39 @@ class Sort(object):
             proposal_id = tik_instance.Scalar(dtype=dtype)
             proposal_id.set_as(data_out_ub_[0])
 
-            tik_func_vector_dup(tik_instance, des_ub[6 * num_16], proposal_id, MAX_PROPOSAL_NUM)
+            tik_func_vector_dup(tik_instance, des_ub[6 * num_16], proposal_id, Constant.MAX_PROPOSAL_NUM)
 
             # move index 0 to head des_ub
-            tik_instance.data_move(des_ub[num_16 + loop_id * MAX_PROPOSAL_NUM], des_ub[5 * num_16], 0, 1,
-                                   MAX_PROPOSAL_NUM // BLOCK, 0, 0)
+            tik_instance.data_move(des_ub[num_16 + loop_id * Constant.MAX_PROPOSAL_NUM], des_ub[5 * num_16], 0, 1,
+                                   Constant.MAX_PROPOSAL_NUM // Constant.BLOCK, 0, 0)
             # move index 1 to second des_ub
-            tik_instance.data_move(des_ub[3 * num_16 + loop_id * MAX_PROPOSAL_NUM], des_ub[6 * num_16], 0, 1,
-                                   MAX_PROPOSAL_NUM // BLOCK, 0, 0)
+            tik_instance.data_move(des_ub[3 * num_16 + loop_id * Constant.MAX_PROPOSAL_NUM], des_ub[6 * num_16], 0, 1,
+                                   Constant.MAX_PROPOSAL_NUM // Constant.BLOCK, 0, 0)
 
-        with tik_instance.if_scope(num_16 > DATA_MAX):
+        with tik_instance.if_scope(num_16 > Constant.DATA_MAX):
             # index0
             tik_instance.vconcat(src_ub[0], des_ub[num_16 * 3], self.repeat_max, 0)
-            tik_instance.vconcat(src_ub[self.max_data * PROPOSAL_NUM], des_ub[num_16 * 3 + self.max_data],
-                                 (num_16 % self.max_data) // BLOCK, 0)
+            tik_instance.vconcat(src_ub[self.max_data * Constant.PROPOSAL_NUM], des_ub[num_16 * 3 + self.max_data],
+                                 (num_16 % self.max_data) // Constant.BLOCK, 0)
             # index 1
             tik_instance.vconcat(src_ub[0], des_ub[num_16], self.repeat_max, 1)
-            tik_instance.vconcat(src_ub[self.max_data * PROPOSAL_NUM], des_ub[num_16 + self.max_data],
-                                 (num_16 % self.max_data) // BLOCK, 1)
+            tik_instance.vconcat(src_ub[self.max_data * Constant.PROPOSAL_NUM], des_ub[num_16 + self.max_data],
+                                 (num_16 % self.max_data) // Constant.BLOCK, 1)
             # value
             tik_instance.vconcat(src_ub[0], des_ub, self.repeat_max, 4)
-            tik_instance.vconcat(src_ub[self.max_data * PROPOSAL_NUM], des_ub[self.max_data],
-                                 (num_16 % self.max_data) // BLOCK, 4)
+            tik_instance.vconcat(src_ub[self.max_data * Constant.PROPOSAL_NUM], des_ub[self.max_data],
+                                 (num_16 % self.max_data) // Constant.BLOCK, 4)
 
         with tik_instance.else_scope():
-            tik_instance.vconcat(src_ub[0], des_ub[num_16 * 3], num_16 // BLOCK, 0)
+            tik_instance.vconcat(src_ub[0], des_ub[num_16 * 3], num_16 // Constant.BLOCK, 0)
 
-            tik_instance.vconcat(src_ub[0], des_ub[num_16], num_16 // BLOCK, 1)
+            tik_instance.vconcat(src_ub[0], des_ub[num_16], num_16 // Constant.BLOCK, 1)
 
-            tik_instance.vconcat(src_ub[0], des_ub, num_16 // BLOCK, 4)
+            tik_instance.vconcat(src_ub[0], des_ub, num_16 // Constant.BLOCK, 4)
 
         return src_ub, des_ub
 
-    # pylint: disable=no-self-use,too-many-arguments
+    # 'pylint: disable=no-self-use,too-many-arguments
     def generate_proposal_less(self, tik_instance, src_ub, des_ub, input_gm, num_16, num, version, dtype, offset_in):
         """
         generate from unsorted region
@@ -430,34 +443,35 @@ class Sort(object):
         :param offset_in:
         :return:
         """
-        tik_instance.data_move(des_ub, input_gm[offset_in], 0, 1, num_16 // BLOCK, 0, 0)
+        tik_instance.data_move(des_ub, input_gm[offset_in], 0, 1, num_16 // Constant.BLOCK, 0, 0)
 
         if version == "cloud":
             idx = tik_instance.Scalar(dtype="float32", init_value=num)
             with tik_instance.for_range(0, num) as i2:
                 idx.set_as(idx - 1)
-                src_ub[(num - 1 - i2) * PROPOSAL_NUM].set_as(idx)
+                src_ub[(num - 1 - i2) * Constant.PROPOSAL_NUM].set_as(idx)
         elif version == "mini":
-            data_out_ub_ = tik_instance.Tensor(dtype, [BLOCK], name="data_out_ub_", scope=tik.scope_ubuf)
-            data_indices_ub_int_ = tik_instance.Tensor("int32", [BLOCK], name="data_indices_ub_int_",
+            data_out_ub_ = tik_instance.Tensor(dtype, [Constant.BLOCK], name="data_out_ub_", scope=tik.scope_ubuf)
+            data_indices_ub_int_ = tik_instance.Tensor("int32", [Constant.BLOCK],
+                                                       name="data_indices_ub_int_",
                                                        scope=tik.scope_ubuf)
             with tik_instance.for_range(0, num) as i2:
                 data_indices_ub_int_.set_as(num - 1 - i2)
                 tik_instance.vec_conv(1, "none", data_out_ub_, data_indices_ub_int_, 1, 0, 0, deqscale=1.0)
-                src_ub[(num - 1 - i2) * PROPOSAL_NUM].set_as(data_out_ub_[0])
+                src_ub[(num - 1 - i2) * Constant.PROPOSAL_NUM].set_as(data_out_ub_[0])
         else:
             raise RuntimeError("Unexcepted version.")
 
-        with tik_instance.if_scope(num_16 > DATA_MAX):
+        with tik_instance.if_scope(num_16 > Constant.DATA_MAX):
             tik_instance.vconcat(src_ub[0], des_ub, self.repeat_max, 4)
-            tik_instance.vconcat(src_ub[self.max_data * PROPOSAL_NUM], des_ub[self.max_data],
-                                 (num_16 % self.max_data) // BLOCK, 4)
+            tik_instance.vconcat(src_ub[self.max_data * Constant.PROPOSAL_NUM], des_ub[self.max_data],
+                                 (num_16 % self.max_data) // Constant.BLOCK, 4)
         with tik_instance.else_scope():
-            tik_instance.vconcat(src_ub[0], des_ub, num_16 // BLOCK, 4)
+            tik_instance.vconcat(src_ub[0], des_ub, num_16 // Constant.BLOCK, 4)
 
         return src_ub, des_ub
 
-    # pylint: disable=no-self-use,too-many-arguments
+    # 'pylint: disable=no-self-use,too-many-arguments
     def vbs16(self, tik_instance, num, total, src_ub, des_ub, descending):
         """
         Function: Sort every 16 numsi in UB, des_ub is sorted after vbs16
@@ -476,24 +490,24 @@ class Sort(object):
         # Add ineffective object for 16 alignment
         if descending:
             with tik_instance.for_range(0, total - num) as i:
-                src_ub[(num + i) * PROPOSAL_NUM + 4].set_as(min_scalar)
+                src_ub[(num + i) * Constant.PROPOSAL_NUM + 4].set_as(min_scalar)
         else:
             with tik_instance.for_range(0, total - num) as i:
-                src_ub[(num + i) * PROPOSAL_NUM + 4].set_as(max_scalar)
+                src_ub[(num + i) * Constant.PROPOSAL_NUM + 4].set_as(max_scalar)
 
-        n_repeat_total = total // BLOCK
-        with self.tik_instance.if_scope(n_repeat_total > REPEAT_MAX):
+        n_repeat_total = total // Constant.BLOCK
+        with self.tik_instance.if_scope(n_repeat_total > Constant.REPEAT_MAX):
             tik_instance.vrpsort16(dst=des_ub[0], src=src_ub[0], repeat_times=self.repeat_max)
 
-            tik_instance.vrpsort16(dst=des_ub[self.repeat_max * BLOCK * PROPOSAL_NUM],
-                                   src=src_ub[self.repeat_max * BLOCK * PROPOSAL_NUM],
-                                   repeat_times=n_repeat_total - REPEAT_MAX)
+            tik_instance.vrpsort16(dst=des_ub[self.repeat_max * Constant.BLOCK * Constant.PROPOSAL_NUM],
+                                   src=src_ub[self.repeat_max * Constant.BLOCK * Constant.PROPOSAL_NUM],
+                                   repeat_times=n_repeat_total - Constant.REPEAT_MAX)
         with self.tik_instance.else_scope():
             tik_instance.vrpsort16(dst=des_ub[0], src=src_ub[0], repeat_times=n_repeat_total)
 
         return src_ub, des_ub
 
-    # pylint: disable=no-self-use,too-many-arguments
+    # 'pylint: disable=no-self-use,too-many-arguments
     def sort_region(self, tik_instance, src_ub, dst_ub, last_dim, total_region_list, loop_time, region_offset=0):
         """
         sort region
@@ -513,7 +527,7 @@ class Sort(object):
                 self._merge(tik_instance, dst_ub, src_ub, last_dim, region_list_reg, (i + 1), region_offset)
             region_list_reg.set_as((region_list_reg + 3) // 4)
 
-    # pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements,no-self-use
+    # 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements,no-self-use
     @staticmethod
     def _merge(tik_instance, src_ub, dst_ub, last_dim, total_region_list, level, region_offset=0):
         """
@@ -594,7 +608,7 @@ class Sort(object):
             tik_instance.data_move(dst_ub[region_offset + offset_reg * 8], src_ub[region_offset + offset_reg * 8], 0, 1,
                                    num_blocks_write_reg, 0, 0)
 
-    # pylint: disable=no-self-use,too-many-arguments
+    # 'pylint: disable=no-self-use,too-many-arguments
     def sort_compute_less(self, tik_instance, dtype, num_16, i0, descending, num, data_out, data_indices, input_gm):
         """
         Function: sort the proposal id num is more than 4000
@@ -609,23 +623,19 @@ class Sort(object):
         ----------
         """
 
-        src_ub = self.tik_instance.Tensor(self.input_dtype, [self.src_ub_size], name="src_ub",
-                                          scope=tik.scope_ubuf)
-        des_ub = self.tik_instance.Tensor(self.input_dtype, [self.des_ub_size], name="des_ub",
-                                          scope=tik.scope_ubuf)
+        src_ub = self.tik_instance.Tensor(self.input_dtype, [self.src_ub_size], name="src_ub", scope=tik.scope_ubuf)
+        des_ub = self.tik_instance.Tensor(self.input_dtype, [self.des_ub_size], name="des_ub", scope=tik.scope_ubuf)
 
         version = tik.Dprofile().get_product_name()
         offset_in = i0 * num
         offset_out = i0 * num_16
 
         # 1. generate proposal,src_ub is proposal
-        with tik_instance.if_scope(self.dim_align_num > MAX_PROPOSAL_NUM):
-            src_ub, des_ub = self.generate_proposal_more(tik_instance, src_ub, des_ub,
-                                                         input_gm, num_16, num, version,
+        with tik_instance.if_scope(self.dim_align_num > Constant.MAX_PROPOSAL_NUM):
+            src_ub, des_ub = self.generate_proposal_more(tik_instance, src_ub, des_ub, input_gm, num_16, num, version,
                                                          dtype, offset_in)
         with tik_instance.else_scope():
-            src_ub, des_ub = self.generate_proposal_less(tik_instance, src_ub, des_ub,
-                                                         input_gm, num_16, num, version,
+            src_ub, des_ub = self.generate_proposal_less(tik_instance, src_ub, des_ub, input_gm, num_16, num, version,
                                                          dtype, offset_in)
 
         # 2. sort proposal 16 by 16,des_ub is sorted ub
@@ -634,26 +644,28 @@ class Sort(object):
         # 3.merge proposal
         with tik_instance.if_scope(self.dim_align_num > 16):
             # if dim is bigger than 16, des_ub to be sort,sort result is put in src_ub
-            self.sort_region(tik_instance, des_ub, src_ub, self.dim_align_num,
-                             self.dim_align_num // 16, self.loop_times, region_offset=0)
+            self.sort_region(tik_instance,
+                             des_ub,
+                             src_ub,
+                             self.dim_align_num,
+                             self.dim_align_num // 16,
+                             self.loop_times,
+                             region_offset=0)
             # src_ub is sorted ub
-            with tik_instance.if_scope(self.dim_align_num > MAX_PROPOSAL_NUM):
+            with tik_instance.if_scope(self.dim_align_num > Constant.MAX_PROPOSAL_NUM):
                 data_out, data_indices = self.moveout_more(tik_instance, descending, num_16, num, data_out, offset_out,
-                                                           src_ub,
-                                                           des_ub, data_indices, version, self.ub_align_size)
+                                                           src_ub, des_ub, data_indices, version, self.ub_align_size)
             with tik_instance.else_scope():
                 data_out, data_indices = self.moveout_less(tik_instance, descending, num_16, num, data_out, offset_out,
-                                                           src_ub,
-                                                           des_ub, data_indices, version, self.ub_align_size)
+                                                           src_ub, des_ub, data_indices, version, self.ub_align_size)
         with tik_instance.else_scope():
             # des_ub is sorted ub
             data_out, data_indices = self.moveout_less(tik_instance, descending, num_16, num, data_out, offset_out,
-                                                       des_ub,
-                                                       src_ub, data_indices, version, self.ub_align_size)
+                                                       des_ub, src_ub, data_indices, version, self.ub_align_size)
 
         return data_out, data_indices
 
-    # pylint: disable=no-self-use,too-many-arguments
+    # 'pylint: disable=no-self-use,too-many-arguments
     def sort_in_ub(self, tik_instance, src_ub, dst_ub, idx_ub, num, i, ori_offset, offset, descending):
         """
         Function: sort proposal 2048 by 2048 in ub
@@ -662,38 +674,37 @@ class Sort(object):
 
         """
 
-        repeat_times = NUM_BLOCK // BLOCK
+        repeat_times = Constant.NUM_BLOCK // Constant.BLOCK
 
         # 1. Move data from OUT to UB
-        tik_instance.data_move(dst_ub, self.input_gm[ori_offset + i * NUM_BLOCK], 0, 1, repeat_times, 0, 0)
+        tik_instance.data_move(dst_ub, self.input_gm[ori_offset + i * Constant.NUM_BLOCK], 0, 1, repeat_times, 0, 0)
 
         # generate index ub
-        index_0_ub = tik_instance.Tensor("float16", [NUM_BLOCK], name="index_0_ub", scope=tik.scope_ubuf)
-        temp_float16_ub = tik_instance.Tensor("float16", [BLOCK], name="temp_float16_ub", scope=tik.scope_ubuf)
-        temp_ub_int = tik_instance.Tensor("int32", [BLOCK], name="temp_ub_int",
-                                          scope=tik.scope_ubuf)
+        index_0_ub = tik_instance.Tensor("float16", [Constant.NUM_BLOCK], name="index_0_ub", scope=tik.scope_ubuf)
+        temp_float16_ub = tik_instance.Tensor("float16", [Constant.BLOCK], name="temp_float16_ub", scope=tik.scope_ubuf)
+        temp_ub_int = tik_instance.Tensor("int32", [Constant.BLOCK], name="temp_ub_int", scope=tik.scope_ubuf)
         temp_ub_int[0].set_as(i)
         tik_instance.vec_conv(1, "none", temp_float16_ub, temp_ub_int, 1, 0, 0, deqscale=1.0)
         temp_scalar = self.tik_instance.Scalar("float16", name="temp_scalar")
         temp_scalar.set_as(temp_float16_ub[0])
-        tik_func_vector_dup(tik_instance, index_0_ub, temp_scalar, NUM_BLOCK)
+        tik_func_vector_dup(tik_instance, index_0_ub, temp_scalar, Constant.NUM_BLOCK)
 
         # append big value to ub memory
-        with tik_instance.if_scope(num < (i + 1) * NUM_BLOCK):
-            # aline for NUM_BLOCK
-            aline = NUM_BLOCK - num % NUM_BLOCK
+        with tik_instance.if_scope(num < (i + 1) * Constant.NUM_BLOCK):
+            # aline for Constant.NUM_BLOCK
+            aline = Constant.NUM_BLOCK - num % Constant.NUM_BLOCK
             if descending:
-                big_value_scalar = tik_instance.Scalar('float16', init_value=MIN_VAL)
+                big_value_scalar = tik_instance.Scalar('float16', init_value=Constant.MIN_VAL)
             # descend
             else:
-                big_value_scalar = tik_instance.Scalar('float16', init_value=MAX_VAL)
+                big_value_scalar = tik_instance.Scalar('float16', init_value=Constant.MAX_VAL)
             # Add ineffective object for 16 alignment
-            with tik_instance.for_range(0, aline % BLOCK) as j:
-                dst_ub[num % NUM_BLOCK + j].set_as(big_value_scalar)
-            # Add ineffective object for NUM_BLOCK alignment
-            with tik_instance.if_scope(aline > BLOCK - 1):
-                tik_instance.vec_dup(BLOCK, dst_ub[num % NUM_BLOCK + aline % BLOCK], big_value_scalar,
-                                     aline // BLOCK, 1)
+            with tik_instance.for_range(0, aline % Constant.BLOCK) as j:
+                dst_ub[num % Constant.NUM_BLOCK + j].set_as(big_value_scalar)
+            # Add ineffective object for Constant.NUM_BLOCK alignment
+            with tik_instance.if_scope(aline > Constant.BLOCK - 1):
+                tik_instance.vec_dup(Constant.BLOCK, dst_ub[num % Constant.NUM_BLOCK + aline % Constant.BLOCK],
+                                     big_value_scalar, aline // Constant.BLOCK, 1)
 
         # index // 2048 for index 0
         tik_instance.vconcat(src_ub[0], index_0_ub[0], repeat_times, 0)
@@ -706,12 +717,17 @@ class Sort(object):
 
         # 3. merge sort ,src_ub is sorted ub
         loop_time = 5
-        self.sort_region(tik_instance, dst_ub, src_ub, NUM_BLOCK,
-                         NUM_BLOCK // 16, loop_time, region_offset=0)
+        self.sort_region(tik_instance,
+                         dst_ub,
+                         src_ub,
+                         Constant.NUM_BLOCK,
+                         Constant.NUM_BLOCK // 16,
+                         loop_time,
+                         region_offset=0)
 
         # 4. Move Data from UB to OUT
-        tik_instance.data_move(self.temp_proposal_gm[offset + i * NUM_BLOCK * PROPOSAL_NUM], src_ub[0], 0, 1,
-                               NUM_BLOCK * PROPOSAL_NUM // BLOCK, 0, 0)
+        tik_instance.data_move(self.temp_proposal_gm[offset + i * Constant.NUM_BLOCK * Constant.PROPOSAL_NUM],
+                               src_ub[0], 0, 1, Constant.NUM_BLOCK * Constant.PROPOSAL_NUM // Constant.BLOCK, 0, 0)
 
     def sort_in_gm(self, tik_instance, num_gm, input_ub, offset):
         """
@@ -730,31 +746,36 @@ class Sort(object):
 
         with tik_instance.for_range(0, num_gm - 1) as tail:
             src_pos_ub.set_as(0)
-            dest_pos_ub.set_as(NUM_BLOCK * 2 * PROPOSAL_NUM)
+            dest_pos_ub.set_as(Constant.NUM_BLOCK * 2 * Constant.PROPOSAL_NUM)
 
-            tik_instance.data_move(input_ub[src_pos_ub + NUM_BLOCK * PROPOSAL_NUM], self.temp_proposal_gm[offset], 0, 1,
-                                   (NUM_BLOCK * PROPOSAL_NUM) // BLOCK, 0, 0)
+            tik_instance.data_move(input_ub[src_pos_ub + Constant.NUM_BLOCK * Constant.PROPOSAL_NUM],
+                                   self.temp_proposal_gm[offset], 0, 1,
+                                   (Constant.NUM_BLOCK * Constant.PROPOSAL_NUM) // Constant.BLOCK, 0, 0)
             with tik_instance.for_range(1, num_gm - tail) as i:
                 tik_instance.data_move(input_ub[src_pos_ub],
-                                       self.temp_proposal_gm[offset + NUM_BLOCK * i * PROPOSAL_NUM], 0, 1,
-                                       (NUM_BLOCK * PROPOSAL_NUM) // BLOCK, 0, 0)
+                                       self.temp_proposal_gm[offset + Constant.NUM_BLOCK * i * Constant.PROPOSAL_NUM],
+                                       0, 1, (Constant.NUM_BLOCK * Constant.PROPOSAL_NUM) // Constant.BLOCK, 0, 0)
 
-                tik_instance.vmrgsort4(input_ub[dest_pos_ub],
-                                       [input_ub[src_pos_ub], input_ub[src_pos_ub + NUM_BLOCK * PROPOSAL_NUM],
-                                        input_ub[0], input_ub[0]], [NUM_BLOCK, NUM_BLOCK, 0, 0],
-                                       if_exhausted_suspension=False, valid_bit="0011", repeat_times=1)
+                tik_instance.vmrgsort4(input_ub[dest_pos_ub], [
+                    input_ub[src_pos_ub], input_ub[src_pos_ub + Constant.NUM_BLOCK * Constant.PROPOSAL_NUM],
+                    input_ub[0], input_ub[0]
+                ], [Constant.NUM_BLOCK, Constant.NUM_BLOCK, 0, 0],
+                                       if_exhausted_suspension=False,
+                                       valid_bit="0011",
+                                       repeat_times=1)
 
-                tik_instance.data_move(self.temp_proposal_gm[offset + NUM_BLOCK * (i - 1) * PROPOSAL_NUM],
-                                       input_ub[dest_pos_ub], 0, 1,
-                                       (NUM_BLOCK * PROPOSAL_NUM) // BLOCK, 0, 0)
+                tik_instance.data_move(
+                    self.temp_proposal_gm[offset + Constant.NUM_BLOCK * (i - 1) * Constant.PROPOSAL_NUM],
+                    input_ub[dest_pos_ub], 0, 1, (Constant.NUM_BLOCK * Constant.PROPOSAL_NUM) // Constant.BLOCK, 0, 0)
 
                 dest_pos_ub.set_as(src_pos_ub)
-                src_pos_ub.set_as(NUM_BLOCK * 2 * PROPOSAL_NUM - dest_pos_ub)
+                src_pos_ub.set_as(Constant.NUM_BLOCK * 2 * Constant.PROPOSAL_NUM - dest_pos_ub)
 
             # Move Data from UB to GM
-            tik_instance.data_move(self.temp_proposal_gm[offset + NUM_BLOCK * (num_gm - tail - 1) * PROPOSAL_NUM],
-                                   input_ub[src_pos_ub + NUM_BLOCK * PROPOSAL_NUM], 0, 1,
-                                   (NUM_BLOCK * PROPOSAL_NUM) // BLOCK, 0, 0)
+            tik_instance.data_move(
+                self.temp_proposal_gm[offset + Constant.NUM_BLOCK * (num_gm - tail - 1) * Constant.PROPOSAL_NUM],
+                input_ub[src_pos_ub + Constant.NUM_BLOCK * Constant.PROPOSAL_NUM], 0, 1,
+                (Constant.NUM_BLOCK * Constant.PROPOSAL_NUM) // Constant.BLOCK, 0, 0)
 
     def pick_up(self, tik_instance, offset, core_idx, num_2048, data_out, data_indices, src_ub, dst_ub, num_gm,
                 descending, version):
@@ -767,54 +788,55 @@ class Sort(object):
         ----------
         """
         # dest position in UB
-        repeat_times = NUM_BLOCK // BLOCK
+        repeat_times = Constant.NUM_BLOCK // Constant.BLOCK
 
         with tik_instance.for_range(0, num_gm) as i:
-            tik_instance.data_move(src_ub[0], self.temp_proposal_gm[offset + NUM_BLOCK * i * PROPOSAL_NUM], 0, 1,
-                                   (NUM_BLOCK * PROPOSAL_NUM) // BLOCK, 0, 0)
-            int_list_1 = tik_instance.Tensor("int32", [NUM_BLOCK], name="int_list_1", scope=tik.scope_ubuf)
-            int_list_2 = tik_instance.Tensor("int32", [NUM_BLOCK], name="int_list_2", scope=tik.scope_ubuf)
-            int_list_3 = tik_instance.Tensor("int32", [NUM_BLOCK], name="int_list_3", scope=tik.scope_ubuf)
-            int_list_4 = tik_instance.Tensor("int32", [NUM_BLOCK], name="int_list_4", scope=tik.scope_ubuf)
+            tik_instance.data_move(src_ub[0],
+                                   self.temp_proposal_gm[offset + Constant.NUM_BLOCK * i * Constant.PROPOSAL_NUM], 0, 1,
+                                   (Constant.NUM_BLOCK * Constant.PROPOSAL_NUM) // Constant.BLOCK, 0, 0)
+            int_list_1 = tik_instance.Tensor("int32", [Constant.NUM_BLOCK], name="int_list_1", scope=tik.scope_ubuf)
+            int_list_2 = tik_instance.Tensor("int32", [Constant.NUM_BLOCK], name="int_list_2", scope=tik.scope_ubuf)
+            int_list_3 = tik_instance.Tensor("int32", [Constant.NUM_BLOCK], name="int_list_3", scope=tik.scope_ubuf)
+            int_list_4 = tik_instance.Tensor("int32", [Constant.NUM_BLOCK], name="int_list_4", scope=tik.scope_ubuf)
 
-            tik_instance.vector_dup(BLOCK, int_list_4, NUM_BLOCK, repeat_times, 1, 2)
+            tik_instance.vector_dup(Constant.BLOCK, int_list_4, Constant.NUM_BLOCK, repeat_times, 1, 2)
 
             tik_instance.vextract(dst_ub[0], src_ub[0], repeat_times, 0)
-            tik_instance.vextract(dst_ub[NUM_BLOCK], src_ub[0], repeat_times, 1)
-            tik_instance.vec_conv(BLOCK, "round", int_list_1, dst_ub[0], repeat_times, 2, 1)
-            tik_instance.vec_conv(BLOCK, "round", int_list_2, dst_ub[NUM_BLOCK], repeat_times, 2, 1)
+            tik_instance.vextract(dst_ub[Constant.NUM_BLOCK], src_ub[0], repeat_times, 1)
+            tik_instance.vec_conv(Constant.BLOCK, "round", int_list_1, dst_ub[0], repeat_times, 2, 1)
+            tik_instance.vec_conv(Constant.BLOCK, "round", int_list_2, dst_ub[Constant.NUM_BLOCK], repeat_times, 2, 1)
 
-            tik_instance.vec_mul(BLOCK, int_list_3, int_list_1, int_list_4, repeat_times, 2, 2, 2)
-            tik_instance.vec_add(BLOCK, int_list_1, int_list_2, int_list_3, repeat_times, 2, 2, 2)
+            tik_instance.vec_mul(Constant.BLOCK, int_list_3, int_list_1, int_list_4, repeat_times, 2, 2, 2)
+            tik_instance.vec_add(Constant.BLOCK, int_list_1, int_list_2, int_list_3, repeat_times, 2, 2, 2)
 
             # data is continuous in GM & gather scattered data together
             if version == "cloud":
                 tik_instance.vextract(dst_ub[0], src_ub[0], repeat_times, 4)
             elif version == "mini":
-                with tik_instance.for_range(0, NUM_BLOCK) as i2:
-                    dst_ub[i2].set_as(src_ub[i2 * PROPOSAL_NUM + 4])
+                with tik_instance.for_range(0, Constant.NUM_BLOCK) as i2:
+                    dst_ub[i2].set_as(src_ub[i2 * Constant.PROPOSAL_NUM + 4])
             else:
                 raise RuntimeError("Unexcepted version.")
 
             # move output (float16) from UB to GM
             # ascend
             with tik_instance.if_scope(descending is False):
-                with tik_instance.for_range(0, NUM_BLOCK) as i2:
-                    int_list_2[i2].set_as(int_list_1[NUM_BLOCK - i2 - 1])
-                    dst_ub[NUM_BLOCK + i2].set_as(dst_ub[NUM_BLOCK - i2 - 1])
-                tik_instance.data_move(data_indices[core_idx * num_2048 + NUM_BLOCK * (num_gm - i - 1)],
+                with tik_instance.for_range(0, Constant.NUM_BLOCK) as i2:
+                    int_list_2[i2].set_as(int_list_1[Constant.NUM_BLOCK - i2 - 1])
+                    dst_ub[Constant.NUM_BLOCK + i2].set_as(dst_ub[Constant.NUM_BLOCK - i2 - 1])
+                tik_instance.data_move(data_indices[core_idx * num_2048 + Constant.NUM_BLOCK * (num_gm - i - 1)],
                                        int_list_2, 0, 1, 2 * repeat_times, 0, 0)
-                tik_instance.data_move(data_out[core_idx * num_2048 + NUM_BLOCK * (num_gm - i - 1)],
-                                       dst_ub[NUM_BLOCK], 0, 1, repeat_times, 0, 0)
+                tik_instance.data_move(data_out[core_idx * num_2048 + Constant.NUM_BLOCK * (num_gm - i - 1)],
+                                       dst_ub[Constant.NUM_BLOCK], 0, 1, repeat_times, 0, 0)
             with tik_instance.else_scope():
-                tik_instance.data_move(data_indices[core_idx * num_2048 + NUM_BLOCK * i], int_list_1, 0, 1,
+                tik_instance.data_move(data_indices[core_idx * num_2048 + Constant.NUM_BLOCK * i], int_list_1, 0, 1,
                                        2 * repeat_times, 0, 0)
 
-                tik_instance.data_move(data_out[core_idx * num_2048 + NUM_BLOCK * i], dst_ub[0], 0, 1,
+                tik_instance.data_move(data_out[core_idx * num_2048 + Constant.NUM_BLOCK * i], dst_ub[0], 0, 1,
                                        repeat_times, 0, 0)
         return data_out, data_indices
 
-    # pylint: disable=no-self-use,too-many-arguments
+    # 'pylint: disable=no-self-use,too-many-arguments
     def sort_compute_batch(self, tik_instance, dtype, num_16, core_idx, descending, num, data_out, data_indices,
                            input_gm):
         """
@@ -829,34 +851,39 @@ class Sort(object):
         data_out, data_indices, input_gm : for data move
         ----------
         """
-        idx_ub = tik_instance.Tensor(dtype, [NUM_BLOCK], name="idx_ub", scope=tik.scope_ubuf)
+        idx_ub = tik_instance.Tensor(dtype, [Constant.NUM_BLOCK], name="idx_ub", scope=tik.scope_ubuf)
 
         version = tik.Dprofile().get_product_name()
         if version == "cloud":
             idx = tik_instance.Scalar(dtype="float32", init_value=0)
-            with tik_instance.for_range(0, NUM_BLOCK) as i2:
+            with tik_instance.for_range(0, Constant.NUM_BLOCK) as i2:
                 idx_ub[i2].set_as(idx)
                 idx.set_as(idx + 1)
         elif version == "mini":
-            data_out_ub_ = tik_instance.Tensor(dtype, [BLOCK], name="data_out_ub_", scope=tik.scope_ubuf)
-            data_indices_ub_int_ = tik_instance.Tensor("int32", [BLOCK], name="data_indices_ub_int_",
+            data_out_ub_ = tik_instance.Tensor(dtype, [Constant.BLOCK], name="data_out_ub_", scope=tik.scope_ubuf)
+            data_indices_ub_int_ = tik_instance.Tensor("int32", [Constant.BLOCK],
+                                                       name="data_indices_ub_int_",
                                                        scope=tik.scope_ubuf)
-            with tik_instance.for_range(0, NUM_BLOCK) as i2:
+            with tik_instance.for_range(0, Constant.NUM_BLOCK) as i2:
                 data_indices_ub_int_.set_as(i2)
                 tik_instance.vec_conv(1, "none", data_out_ub_, data_indices_ub_int_, 1, 0, 0, deqscale=1.0)
                 idx_ub[i2].set_as(data_out_ub_[0])
         else:
             raise RuntimeError("Unexcepted version.")
 
-        num_gm = self.num_block_align // NUM_BLOCK
+        num_gm = self.num_block_align // Constant.NUM_BLOCK
 
-        offset = (core_idx % self.used_core_num) * num_gm * NUM_BLOCK * PROPOSAL_NUM
+        offset = (core_idx % self.used_core_num) * num_gm * Constant.NUM_BLOCK * Constant.PROPOSAL_NUM
 
         ori_offset = core_idx * num
 
         with tik_instance.new_stmt_scope():
-            src_ub = tik_instance.Tensor(dtype, [NUM_BLOCK * 2 * PROPOSAL_NUM], name="src_ub", scope=tik.scope_ubuf)
-            dst_ub = tik_instance.Tensor(dtype, [NUM_BLOCK * 2 * PROPOSAL_NUM], name="dst_ub", scope=tik.scope_ubuf)
+            src_ub = tik_instance.Tensor(dtype, [Constant.NUM_BLOCK * 2 * Constant.PROPOSAL_NUM],
+                                         name="src_ub",
+                                         scope=tik.scope_ubuf)
+            dst_ub = tik_instance.Tensor(dtype, [Constant.NUM_BLOCK * 2 * Constant.PROPOSAL_NUM],
+                                         name="dst_ub",
+                                         scope=tik.scope_ubuf)
 
             # 1.sort proposal every 2048
             with tik_instance.for_range(0, num_gm) as i:
@@ -864,12 +891,18 @@ class Sort(object):
 
         # 2.use gm to sort
         with tik_instance.new_stmt_scope():
-            input_ub = tik_instance.Tensor(dtype, [NUM_BLOCK * 4 * PROPOSAL_NUM], name="input_ub", scope=tik.scope_ubuf)
+            input_ub = tik_instance.Tensor(dtype, [Constant.NUM_BLOCK * 4 * Constant.PROPOSAL_NUM],
+                                           name="input_ub",
+                                           scope=tik.scope_ubuf)
             self.sort_in_gm(tik_instance, num_gm, input_ub, offset)
 
         with tik_instance.new_stmt_scope():
-            src_ub = tik_instance.Tensor(dtype, [NUM_BLOCK * 2 * PROPOSAL_NUM], name="src_ub", scope=tik.scope_ubuf)
-            dst_ub = tik_instance.Tensor(dtype, [NUM_BLOCK * 2 * PROPOSAL_NUM], name="dst_ub", scope=tik.scope_ubuf)
+            src_ub = tik_instance.Tensor(dtype, [Constant.NUM_BLOCK * 2 * Constant.PROPOSAL_NUM],
+                                         name="src_ub",
+                                         scope=tik.scope_ubuf)
+            dst_ub = tik_instance.Tensor(dtype, [Constant.NUM_BLOCK * 2 * Constant.PROPOSAL_NUM],
+                                         name="dst_ub",
+                                         scope=tik.scope_ubuf)
 
             # 3.move data to workspace gm
             data_out, data_indices = self.pick_up(tik_instance, offset, core_idx, self.num_block_align, data_out,
@@ -877,10 +910,10 @@ class Sort(object):
 
         return data_out, data_indices
 
-    # pylint: disable=no-self-use,too-many-arguments
+    # 'pylint: disable=no-self-use,too-many-arguments
     @staticmethod
-    def moveout_more(tik_instance, descending, num_16, num, data_out, offset_out, src_ub, des_ub, data_indices,
-                     version, ub_align_size):
+    def moveout_more(tik_instance, descending, num_16, num, data_out, offset_out, src_ub, des_ub, data_indices, version,
+                     ub_align_size):
         """
         Function: Move UB to GM, and trans y2 from fp16 to int32.
         Modify : 2021-04-13
@@ -905,7 +938,7 @@ class Sort(object):
             # extract index 1
             emit_vextract(tik_instance, des_ub, src_ub, 1, num_16, dst_offset=num_16, src_offset=0)
             with tik_instance.for_range(0, num) as i2:
-                des_ub[i2 + num_16 * 2].set_as(src_ub[i2 * PROPOSAL_NUM + 4])
+                des_ub[i2 + num_16 * 2].set_as(src_ub[i2 * Constant.PROPOSAL_NUM + 4])
         elif version == "cloud":
             # extract index 0
             emit_vextract(tik_instance, des_ub, src_ub, 0, num_16, dst_offset=0, src_offset=0)
@@ -930,19 +963,19 @@ class Sort(object):
                 des_ub[3 * num_16 + i2].set_as(des_ub[3 * num_16 - 1 - i2])
                 int_list_1[i2].set_as(int_list_0[num_16 - 1 - i2])
             # move sorted value
-            tik_instance.data_move(data_out[offset_out], des_ub[num_16 * 3], 0, 1, num_16 // BLOCK, 0, 0)
+            tik_instance.data_move(data_out[offset_out], des_ub[num_16 * 3], 0, 1, num_16 // Constant.BLOCK, 0, 0)
             # move index to out
             tik_instance.data_move(data_indices[offset_out], int_list_1, 0, 1, num_16 // 8, 0, 0)
         # descend
         with tik_instance.else_scope():
             # move sorted value
-            tik_instance.data_move(data_out[offset_out], des_ub[num_16 * 2], 0, 1, num_16 // BLOCK, 0, 0)
+            tik_instance.data_move(data_out[offset_out], des_ub[num_16 * 2], 0, 1, num_16 // Constant.BLOCK, 0, 0)
             # move index to out
             tik_instance.data_move(data_indices[offset_out], int_list_0, 0, 1, num_16 // 8, 0, 0)
 
         return data_out, data_indices
 
-    # pylint: disable=no-self-use,too-many-arguments
+    # 'pylint: disable=no-self-use,too-many-arguments
     def moveout_less(self, tik_instance, descending, num_16, num, data_out, offset_out, src_ub, des_ub, data_indices,
                      version, ub_align_size):
         """
@@ -963,19 +996,20 @@ class Sort(object):
         # data is continuous in GM & gather scattered data together
         with tik_instance.if_scope(descending is False):
             with tik_instance.for_range(0, num) as i2:
-                des_ub[i2].set_as(src_ub[(num_16 - 1 - i2) * PROPOSAL_NUM + 4])
-                des_ub[i2 + num_16].set_as(src_ub[(num_16 - 1 - i2) * PROPOSAL_NUM])
+                des_ub[i2].set_as(src_ub[(num_16 - 1 - i2) * Constant.PROPOSAL_NUM + 4])
+                des_ub[i2 + num_16].set_as(src_ub[(num_16 - 1 - i2) * Constant.PROPOSAL_NUM])
 
             # conv indices (float16->int32) , and move from UB to GM
-            with tik_instance.if_scope(num_16 > DATA_MAX):
-                tik_instance.vec_conv(BLOCK, "round", int_list, des_ub[num_16], self.repeat_max, 2, 1)
-                tik_instance.vec_conv(BLOCK, "round", int_list[self.max_data], des_ub[num_16 + DATA_MAX],
-                                      (num_16 % DATA_MAX) // BLOCK, 2, 1)
+            with tik_instance.if_scope(num_16 > Constant.DATA_MAX):
+                tik_instance.vec_conv(Constant.BLOCK, "round", int_list, des_ub[num_16], self.repeat_max, 2, 1)
+                tik_instance.vec_conv(Constant.BLOCK, "round", int_list[self.max_data],
+                                      des_ub[num_16 + Constant.DATA_MAX],
+                                      (num_16 % Constant.DATA_MAX) // Constant.BLOCK, 2, 1)
             with tik_instance.else_scope():
-                tik_instance.vec_conv(BLOCK, "round", int_list, des_ub[num_16], num_16 // BLOCK, 2, 1)
+                tik_instance.vec_conv(Constant.BLOCK, "round", int_list, des_ub[num_16], num_16 // Constant.BLOCK, 2, 1)
 
             # move output (float16) from UB to GM
-            tik_instance.data_move(data_out[offset_out], des_ub[0], 0, 1, num_16 // BLOCK, 0, 0)
+            tik_instance.data_move(data_out[offset_out], des_ub[0], 0, 1, num_16 // Constant.BLOCK, 0, 0)
             tik_instance.data_move(data_indices[offset_out], int_list, 0, 1, num_16 // 8, 0, 0)
 
         # descend
@@ -983,31 +1017,32 @@ class Sort(object):
             # data is continuous in GM & gather scattered data together
             if version == "mini":
                 with tik_instance.for_range(0, num) as i2:
-                    des_ub[i2].set_as(src_ub[i2 * PROPOSAL_NUM + 4])
-                    des_ub[i2 + num_16].set_as(src_ub[i2 * PROPOSAL_NUM])
+                    des_ub[i2].set_as(src_ub[i2 * Constant.PROPOSAL_NUM + 4])
+                    des_ub[i2 + num_16].set_as(src_ub[i2 * Constant.PROPOSAL_NUM])
             elif version == "cloud":
-                with tik_instance.if_scope(num_16 > DATA_MAX):
+                with tik_instance.if_scope(num_16 > Constant.DATA_MAX):
                     tik_instance.vextract(des_ub[0], src_ub[0], self.repeat_max, 4)
-                    tik_instance.vextract(des_ub[self.max_data], src_ub[self.max_data * PROPOSAL_NUM],
-                                          (num_16 % self.max_data) // BLOCK, 4)
+                    tik_instance.vextract(des_ub[self.max_data], src_ub[self.max_data * Constant.PROPOSAL_NUM],
+                                          (num_16 % self.max_data) // Constant.BLOCK, 4)
 
                     tik_instance.vextract(des_ub[num_16], src_ub[0], self.repeat_max, 0)
-                    tik_instance.vextract(des_ub[num_16 + DATA_MAX],
-                                          src_ub[self.max_data * PROPOSAL_NUM],
-                                          (num_16 % self.max_data) // BLOCK, 0)
+                    tik_instance.vextract(des_ub[num_16 + Constant.DATA_MAX],
+                                          src_ub[self.max_data * Constant.PROPOSAL_NUM],
+                                          (num_16 % self.max_data) // Constant.BLOCK, 0)
                 with tik_instance.else_scope():
-                    tik_instance.vextract(des_ub[0], src_ub[0], num_16 // BLOCK, 4)
-                    tik_instance.vextract(des_ub[num_16], src_ub[0], num_16 // BLOCK, 0)
+                    tik_instance.vextract(des_ub[0], src_ub[0], num_16 // Constant.BLOCK, 4)
+                    tik_instance.vextract(des_ub[num_16], src_ub[0], num_16 // Constant.BLOCK, 0)
             else:
                 raise RuntimeError("Unexcepted version.")
-            with tik_instance.if_scope(num_16 > DATA_MAX):
-                tik_instance.vec_conv(BLOCK, "round", int_list, des_ub[num_16], self.repeat_max, 2, 1)
-                tik_instance.vec_conv(BLOCK, "round", int_list[self.max_data], des_ub[num_16 + DATA_MAX],
-                                      (num_16 % self.max_data) // BLOCK, 2, 1)
+            with tik_instance.if_scope(num_16 > Constant.DATA_MAX):
+                tik_instance.vec_conv(Constant.BLOCK, "round", int_list, des_ub[num_16], self.repeat_max, 2, 1)
+                tik_instance.vec_conv(Constant.BLOCK, "round", int_list[self.max_data],
+                                      des_ub[num_16 + Constant.DATA_MAX], (num_16 % self.max_data) // Constant.BLOCK, 2,
+                                      1)
             with tik_instance.else_scope():
-                tik_instance.vec_conv(BLOCK, "round", int_list, des_ub[num_16], num_16 // BLOCK, 2, 1)
+                tik_instance.vec_conv(Constant.BLOCK, "round", int_list, des_ub[num_16], num_16 // Constant.BLOCK, 2, 1)
             # move output (float16) from UB to GM
-            tik_instance.data_move(data_out[offset_out], des_ub[0], 0, 1, num_16 // BLOCK, 0, 0)
+            tik_instance.data_move(data_out[offset_out], des_ub[0], 0, 1, num_16 // Constant.BLOCK, 0, 0)
             tik_instance.data_move(data_indices[offset_out], int_list, 0, 1, num_16 // 8, 0, 0)
 
         return data_out, data_indices
@@ -1017,62 +1052,63 @@ class Sort(object):
         Function: move sorted result from workspace to finally gm
         Modify : 2021-05-13
         """
-        num_gm = self.num_block_align // NUM_BLOCK
-        with self.tik_instance.if_scope(self.dim_num <= NUM_BLOCK):
+        num_gm = self.num_block_align // Constant.NUM_BLOCK
+        with self.tik_instance.if_scope(self.dim_num <= Constant.NUM_BLOCK):
             with self.tik_instance.for_range(0, self.round) as i:
-                float_ub = self.tik_instance.Tensor("float16", [NUM_BLOCK], name="float_ub", scope=tik.scope_ubuf)
-                int_ub = self.tik_instance.Tensor("int32", [NUM_BLOCK], name="int_ub", scope=tik.scope_ubuf)
+                float_ub = self.tik_instance.Tensor("float16", [Constant.NUM_BLOCK],
+                                                    name="float_ub",
+                                                    scope=tik.scope_ubuf)
+                int_ub = self.tik_instance.Tensor("int32", [Constant.NUM_BLOCK], name="int_ub", scope=tik.scope_ubuf)
 
                 self.tik_instance.data_move(float_ub[0], self.data_out[i * self.dim_align_num], 0, 1,
                                             self.dim_align_num // 16, 0, 0)
-                self.tik_instance.data_move(self.out_gm1[i * self.dim_num], float_ub[0], 0, 1,
-                                            self.dim_align_num // 16, 0, 0)
+                self.tik_instance.data_move(self.out_gm1[i * self.dim_num], float_ub[0], 0, 1, self.dim_align_num // 16,
+                                            0, 0)
 
                 self.tik_instance.data_move(int_ub[0], self.data_indices[i * self.dim_align_num], 0, 1,
                                             self.dim_align_num // 8, 0, 0)
-                self.tik_instance.data_move(self.out_gm2[i * self.dim_num], int_ub[0], 0, 1,
-                                            self.dim_align_num // 8, 0, 0)
+                self.tik_instance.data_move(self.out_gm2[i * self.dim_num], int_ub[0], 0, 1, self.dim_align_num // 8, 0,
+                                            0)
 
         with self.tik_instance.else_scope():
-            repeat_times = NUM_BLOCK // BLOCK
+            repeat_times = Constant.NUM_BLOCK // Constant.BLOCK
             with self.tik_instance.for_range(0, self.round) as i:
                 with self.tik_instance.for_range(0, num_gm) as j:
-                    float_ub = self.tik_instance.Tensor("float16", [NUM_BLOCK], name="float_ub", scope=tik.scope_ubuf)
-                    int_ub = self.tik_instance.Tensor("int32", [NUM_BLOCK], name="int_ub", scope=tik.scope_ubuf)
-                    self.tik_instance.data_move(float_ub[0], self.data_out[i * self.num_block_align + j * NUM_BLOCK], 0,
-                                                1,
+                    float_ub = self.tik_instance.Tensor("float16", [Constant.NUM_BLOCK],
+                                                        name="float_ub",
+                                                        scope=tik.scope_ubuf)
+                    int_ub = self.tik_instance.Tensor("int32", [Constant.NUM_BLOCK],
+                                                      name="int_ub",
+                                                      scope=tik.scope_ubuf)
+                    self.tik_instance.data_move(float_ub[0],
+                                                self.data_out[i * self.num_block_align + j * Constant.NUM_BLOCK], 0, 1,
                                                 repeat_times, 0, 0)
-                    self.tik_instance.data_move(self.out_gm1[i * self.dim_num + j * NUM_BLOCK], float_ub[0], 0, 1,
-                                                repeat_times, 0, 0)
+                    self.tik_instance.data_move(self.out_gm1[i * self.dim_num + j * Constant.NUM_BLOCK], float_ub[0], 0,
+                                                1, repeat_times, 0, 0)
 
-                    self.tik_instance.data_move(int_ub[0], self.data_indices[i * self.num_block_align + j * NUM_BLOCK],
-                                                0, 1,
-                                                2 * repeat_times, 0, 0)
-                    self.tik_instance.data_move(self.out_gm2[i * self.dim_num + j * NUM_BLOCK], int_ub[0], 0, 1,
-                                                2 * repeat_times, 0, 0)
+                    self.tik_instance.data_move(int_ub[0],
+                                                self.data_indices[i * self.num_block_align + j * Constant.NUM_BLOCK], 0,
+                                                1, 2 * repeat_times, 0, 0)
+                    self.tik_instance.data_move(self.out_gm2[i * self.dim_num + j * Constant.NUM_BLOCK], int_ub[0], 0,
+                                                1, 2 * repeat_times, 0, 0)
 
     def sort_compute_tiling(self):
         """
         sort compute tiling
         :return:
         """
-        self.tiling_ub = self.tik_instance.Tensor("int32", (TILING_ARG_NUM,), name="tiling_ub",
+        self.tiling_ub = self.tik_instance.Tensor("int32", (Constant.TILING_ARG_NUM,),
+                                                  name="tiling_ub",
                                                   scope=tik.scope_ubuf)
-        self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, TILING_ARG_NUM // 8, 0, 0)
+        self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, Constant.TILING_ARG_NUM // 8, 0, 0)
         self.tiling_args()
 
         with self.tik_instance.for_range(0, self.ai_core_num, block_num=self.ai_core_num) as core_index:
             with self.tik_instance.if_scope(self.tiling_mode == 1):
                 with self.tik_instance.for_range(0, self.batch_num_per_aicore) as k:
-                    self.data_out, self.data_indices = self.sort_compute_less(self.tik_instance,
-                                                                              self.input_dtype,
-                                                                              self.dim_align_num,
-                                                                              core_index + k * self.ai_core_num,
-                                                                              self.descending,
-                                                                              self.dim_num,
-                                                                              self.data_out,
-                                                                              self.data_indices,
-                                                                              self.input_gm)
+                    self.data_out, self.data_indices = self.sort_compute_less(
+                        self.tik_instance, self.input_dtype, self.dim_align_num, core_index + k * self.ai_core_num,
+                        self.descending, self.dim_num, self.data_out, self.data_indices, self.input_gm)
                 with self.tik_instance.if_scope(core_index < self.batch_tail):
                     self.data_out, self.data_indices = self.sort_compute_less(self.tik_instance,
                                                                               self.input_dtype,
@@ -1086,15 +1122,9 @@ class Sort(object):
                                                                               self.input_gm)
             with self.tik_instance.if_scope(self.tiling_mode == 2):
                 with self.tik_instance.for_range(0, self.batch_num_per_aicore) as k:
-                    self.data_out, self.data_indices = self.sort_compute_batch(self.tik_instance,
-                                                                               self.input_dtype,
-                                                                               self.dim_align_num,
-                                                                               core_index + k * self.ai_core_num,
-                                                                               self.descending,
-                                                                               self.dim_num,
-                                                                               self.data_out,
-                                                                               self.data_indices,
-                                                                               self.input_gm)
+                    self.data_out, self.data_indices = self.sort_compute_batch(
+                        self.tik_instance, self.input_dtype, self.dim_align_num, core_index + k * self.ai_core_num,
+                        self.descending, self.dim_num, self.data_out, self.data_indices, self.input_gm)
                 with self.tik_instance.if_scope(core_index < self.batch_tail):
                     self.data_out, self.data_indices = self.sort_compute_batch(self.tik_instance,
                                                                                self.input_dtype,
@@ -1122,30 +1152,24 @@ class Sort(object):
         build_tik_instance
         """
         opt_config = {"out_of_bound_sync_check": True}
-        self.tik_instance.BuildCCE(
-            kernel_name=kernel_name_value,
-            inputs=self.input_gm_list,
-            outputs=self.output_gm_list,
-            flowtable=[self.tiling_gm],
-            config=opt_config)
+        self.tik_instance.BuildCCE(kernel_name=kernel_name_value,
+                                   inputs=self.input_gm_list,
+                                   outputs=self.output_gm_list,
+                                   flowtable=[self.tiling_gm],
+                                   config=opt_config)
 
-        tbe_context.get_context().add_compile_info("vars", {"ub_size": self.ub_size_bytes,
-                                                            "core_num": self.ai_core_num})
+        tbe_context.get_context().add_compile_info("vars", {
+            "ub_size": self.ub_size_bytes,
+            "core_num": self.ai_core_num
+        })
         return self.tik_instance
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @register_operator("Sort")
-@para_check.check_op_params(para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_OUTPUT,
-                            para_check.OPTION_ATTR_INT,
-                            para_check.OPTION_ATTR_BOOL,
-                            para_check.KERNEL_NAME)
-def sort(x, y1, y2,
-         axis=-1,
-         descending=False,
-         kernel_name="sort"):
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
+def sort(x, y1, y2, axis=-1, descending=False, kernel_name="sort"):
     """
     sort interface
 

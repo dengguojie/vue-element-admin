@@ -34,9 +34,9 @@ EIGHT_BIT = 8
 BLOCK_BYTES = 32
 
 
-# pylint: disable=too-many-arguments,too-many-instance-attributes,unused-argument
-# pylint: disable=too-many-public-methods
-# pylint: disable=attribute-defined-outside-init
+# 'pylint: disable=too-many-arguments,too-many-instance-attributes,unused-argument
+# 'pylint: disable=too-many-public-methods
+# 'pylint: disable=attribute-defined-outside-init
 class ScatterSub():
     """
        Function: use to store scatter_sub base parameters
@@ -916,7 +916,7 @@ class ScatterSub():
             })
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @register_operator("ScatterSub")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)

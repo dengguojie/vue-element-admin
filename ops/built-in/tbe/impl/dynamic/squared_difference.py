@@ -26,9 +26,6 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-SHAPE_SIZE_LIMIT = 2147483648
-
-
 # 'pylint: disable=locally-disabled,too-many-locals,unused-argument
 # 'pylint: disable=invalid-name,unused-variable
 @register_operator_compute("SquaredDifference", op_mode="dynamic", support_fusion=True)

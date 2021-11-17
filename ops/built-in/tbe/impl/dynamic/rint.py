@@ -26,7 +26,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
 @register_operator_compute("Rint", op_mode="dynamic", support_fusion=True)
 def rint_compute(input_x, output_y, kernel_name="rint"):
     """

@@ -21,37 +21,39 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-PARAMS_SIZE = 2 ** 31 - 1
-TILING_ARG_NUM = 256
-# C0 size
-C0_SIZE = 16
-# batch size
-BATCH_SIZE = 128
-# data type of int64
-INT64 = "int64"
-# one block size takes up 32b
-BLOCK_SIZE = 32
-TYPE_LEN_DICT = {"float16": 2, "float32": 4, "int64": 8}
-TILING_MODE_1 = 1
-TILING_MODE_2 = 2
-TILING_MODE_3 = 3
 
-# 16K size
-UB_30K_SIZE = 150 * 1024
-ZERO = 0.0
-POINT_FIVE = 0.5
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # max uint16
+    PARAMS_SIZE = 2 ** 31 - 1
+    TILING_ARG_NUM = 256
+    # C0 size
+    C0_SIZE = 16
+    # batch size
+    BATCH_SIZE = 128
+    # data type of int64
+    INT64 = "int64"
+    # one block size takes up 32b
+    BLOCK_SIZE = 32
+    TYPE_LEN_DICT = {"float16": 2, "float32": 4, "int64": 8}
+    TILING_MODE_1 = 1
+    TILING_MODE_2 = 2
 
-# FlowTabParam
-ONE = 1.0
+    # 16K size
+    UB_30K_SIZE = 150 * 1024
+    ZERO = 0.0
 
 
 def ceil_value(value, dtype):
     """
     if not divide exactly then plus 1
     """
-    value *= TYPE_LEN_DICT.get(dtype)
+    value *= Constant.TYPE_LEN_DICT.get(dtype)
 
-    return (value + BLOCK_SIZE - 1) // BLOCK_SIZE
+    return (value + Constant.BLOCK_SIZE - 1) // Constant.BLOCK_SIZE
 
 
 def align_value(value, factor):
@@ -61,6 +63,7 @@ def align_value(value, factor):
     return (value + factor - 1) // factor * factor
 
 
+# 'pylint:disable=too-few-public-methods,too-many-instance-attributes
 class RoiAlign():
     """
     define roi_align object
@@ -78,7 +81,7 @@ class RoiAlign():
         self.w_number_l1 = 0
         self.tiling_mode = 0
         self.real_core_num = 0
-        self.tiling_dtype = INT64
+        self.tiling_dtype = Constant.INT64
         self.rois_n = 0
         self.rois_row_length = 0
         self.c1_num = 0
@@ -127,6 +130,7 @@ class RoiAlign():
         self.x_width = self.tik_instance.Scalar(dtype=self.tiling_dtype, name="x_width")
         self.x_width.set_as(tiling_ub[6])
 
+    # 'pylint: disable=too-many-locals,too-many-arguments
     def _load_a_w_to_cache(self, cache_table, cache, feature_map,
                            index, y_low, n_bust, point):
         """
@@ -158,6 +162,7 @@ class RoiAlign():
         cache_table[point, 0].set_as(index)
         cache_table[point, 1].set_as(y_low)
 
+    # 'pylint: disable=too-many-arguments
     def _load_from_l1_cache(self, fm_grid, cache_l1, point,
                             current_cb, c_block, x_low, x_high, c_valid, n_bust):
         """
@@ -175,6 +180,7 @@ class RoiAlign():
                                c_valid, n_bust, (self.x_width - 1) * n_bust,
                                (4 - 1) * n_bust)
 
+    # 'pylint: disable=too-many-locals,too-many-arguments
     def _load_feature_map_to_ub(self, fm_grid,
                                 c_block, c_valid,
                                 feature_map, index, current_cb,
@@ -237,6 +243,7 @@ class RoiAlign():
                 tik_instance.data_move(fm_grid[c_iter_i, 1, 0, 0], feature_map[feature_map_offset], 0,
                                        1, n_bust, 1, 1)
 
+    # 'pylint: disable=too-many-arguments
     def _load_ret_to_gm(self, n_bust, core_bias, roi_128_number, curr_roi, grid_num_h, val):
         tik_instance = self.tik_instance
         with tik_instance.if_scope(
@@ -256,34 +263,37 @@ class RoiAlign():
                                                         c_iter_i, grid_num_h // self.sample_num, 0)
                 tik_instance.data_move(
                     self.output[output_offset],
-                    val[c_iter_i * self.pooled_width * C0_SIZE], 0, 1, self.pooled_width * n_bust, 0, 0)
+                    val[c_iter_i * self.pooled_width * Constant.C0_SIZE], 0, 1, self.pooled_width * n_bust, 0, 0)
 
+    # 'pylint: disable=invalid-name
     def _get_feature_map_offset(self, n, c1, h, w):
         """calc x_diff offset
         """
-        n_offset = n * self.c1_num * self.x_height * self.x_width * C0_SIZE
-        c1_offset = c1 * self.x_height * self.x_width * C0_SIZE
-        h_offset = h * self.x_width * C0_SIZE
-        w_offset = w * C0_SIZE
+        n_offset = n * self.c1_num * self.x_height * self.x_width * Constant.C0_SIZE
+        c1_offset = c1 * self.x_height * self.x_width * Constant.C0_SIZE
+        h_offset = h * self.x_width * Constant.C0_SIZE
+        w_offset = w * Constant.C0_SIZE
 
         return n_offset + c1_offset + h_offset + w_offset
 
+    # 'pylint: disable=invalid-name
     def _get_cache_offset(self, n, c1, w):
         """calc x_diff offset
         """
-        n_offset = n * self.c1_num * self.x_width * C0_SIZE
-        c1_offset = c1 * self.x_width * C0_SIZE
-        w_offset = w * C0_SIZE
+        n_offset = n * self.c1_num * self.x_width * Constant.C0_SIZE
+        c1_offset = c1 * self.x_width * Constant.C0_SIZE
+        w_offset = w * Constant.C0_SIZE
 
         return n_offset + c1_offset + w_offset
 
+    # 'pylint: disable=invalid-name
     def _get_output_offset(self, n, c1, h, w):
         """calc output offset
         """
-        n_offset = n * self.c1_num * self.pooled_height * self.pooled_width * C0_SIZE
-        c1_offset = c1 * self.pooled_height * self.pooled_width * C0_SIZE
-        h_offset = h * self.pooled_width * C0_SIZE
-        w_offset = w * C0_SIZE
+        n_offset = n * self.c1_num * self.pooled_height * self.pooled_width * Constant.C0_SIZE
+        c1_offset = c1 * self.pooled_height * self.pooled_width * Constant.C0_SIZE
+        h_offset = h * self.pooled_width * Constant.C0_SIZE
+        w_offset = w * Constant.C0_SIZE
 
         return n_offset + c1_offset + h_offset + w_offset
 
@@ -293,22 +303,23 @@ class RoiAlign():
             n_bust = 2
         else:
             n_bust = 1
-        ub_size_available = self.ub_size - UB_30K_SIZE
+        ub_size_available = self.ub_size - Constant.UB_30K_SIZE
         self.feature_map_to_ub_verify = ub_size_available // \
-                                        (self.c1_num * self.x_height * self.x_width * C0_SIZE * n_bust * 2)
+                                        (self.c1_num * self.x_height * self.x_width * Constant.C0_SIZE * n_bust * 2)
         self.feature_map_to_l1_verify = self.l1_size // \
-                                        (self.c1_num * self.x_height * self.x_width * C0_SIZE * n_bust * 2)
+                                        (self.c1_num * self.x_height * self.x_width * Constant.C0_SIZE * n_bust * 2)
 
         with tik_instance.if_scope(self.feature_map_to_ub_verify == 0 and self.feature_map_to_l1_verify == 0):
             self.w_number_ub = ub_size_available // \
                                (self.c1_num * self.x_width *
-                                C0_SIZE * n_bust * 2)
+                                Constant.C0_SIZE * n_bust * 2)
         with tik_instance.if_scope(self.feature_map_to_ub_verify == 0 and \
                                    self.feature_map_to_l1_verify == 0 and
                                    self.w_number_ub == 0):
             with tik_instance.if_scope((self.x_width - 1) * n_bust < 65535):
-                self.w_number_l1 = self.l1_size // (self.c1_num * self.x_width * C0_SIZE * n_bust * 2)
+                self.w_number_l1 = self.l1_size // (self.c1_num * self.x_width * Constant.C0_SIZE * n_bust * 2)
 
+    # 'pylint: disable=too-many-arguments
     def _get_input(self, grid_h, grid_w, proposals_ub_y0,
                    proposals_ub_x0, curr_roi):
         """
@@ -340,6 +351,7 @@ class RoiAlign():
             rois_ub[rois_num, 3].set_as(rois_n5[rois_num, 3])
             rois_ub[rois_num, 4].set_as(rois_n5[rois_num, 4])
 
+    # 'pylint: disable=too-many-locals,too-many-arguments
     def _compute_w1234(self, y_hi_w, y_lo_w, x_hi_w, x_lo_w, grid_num_h, grid_num_w,
                        fm_grid, c_valid, n_bust, val):
         """
@@ -389,8 +401,8 @@ class RoiAlign():
                              c_valid, n_bust, n_bust, n_bust)
 
         with tik_instance.for_range(0, self.c1_num) as c_iter_i:
-            val_offset = c_iter_i * self.pooled_width * C0_SIZE + \
-                         grid_num_w // self.sample_num * C0_SIZE
+            val_offset = c_iter_i * self.pooled_width * Constant.C0_SIZE + \
+                         grid_num_w // self.sample_num * Constant.C0_SIZE
             tik_instance.vec_add(
                 16,
                 val[val_offset],
@@ -409,39 +421,40 @@ class RoiAlign():
         tik_instance.vec_muls(16, val, val, 1.0 / wh_tmp, c_valid * self.pooled_width, \
                               n_bust, n_bust)
 
+    # 'pylint: disable=too-many-locals,too-many-arguments,too-many-statements
     def _get_grid_weight(self, grid_w_roi, grid_h_roi, rois_start_w, rois_start_h):
         """
         get grid size and coordinate in feature
         """
         tik_instance = self.tik_instance
         x_lo_w = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="x_lo_w", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="x_lo_w", scope=tbe_platform.scope_ubuf)
         x_hi_w = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="x_hi_w", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="x_hi_w", scope=tbe_platform.scope_ubuf)
         y_lo_w = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="y_lo_w", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="y_lo_w", scope=tbe_platform.scope_ubuf)
         y_hi_w = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="_lo_w", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="_lo_w", scope=tbe_platform.scope_ubuf)
         x_lo = tik_instance.Tensor(
-            "int32", [BATCH_SIZE], name="x_lo", scope=tbe_platform.scope_ubuf)
+            "int32", [Constant.BATCH_SIZE], name="x_lo", scope=tbe_platform.scope_ubuf)
         x_hi = tik_instance.Tensor(
-            "int32", [BATCH_SIZE], name="x_hi", scope=tbe_platform.scope_ubuf)
+            "int32", [Constant.BATCH_SIZE], name="x_hi", scope=tbe_platform.scope_ubuf)
         y_lo = tik_instance.Tensor(
-            "int32", [BATCH_SIZE], name="y_lo", scope=tbe_platform.scope_ubuf)
+            "int32", [Constant.BATCH_SIZE], name="y_lo", scope=tbe_platform.scope_ubuf)
         y_hi = tik_instance.Tensor(
-            "int32", [BATCH_SIZE], name="y_hi", scope=tbe_platform.scope_ubuf)
+            "int32", [Constant.BATCH_SIZE], name="y_hi", scope=tbe_platform.scope_ubuf)
 
         raw_x = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="raw_x", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="raw_x", scope=tbe_platform.scope_ubuf)
         raw_y = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="raw_y", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="raw_y", scope=tbe_platform.scope_ubuf)
         x_output = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="x_output", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="x_output", scope=tbe_platform.scope_ubuf)
         y_output = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="y_output", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="y_output", scope=tbe_platform.scope_ubuf)
 
         const_value_0_127 = tik_instance.Tensor(
-            self.dtype, (BATCH_SIZE,), name="const_value_0_127", scope=tbe_platform.scope_ubuf)
+            self.dtype, (Constant.BATCH_SIZE,), name="const_value_0_127", scope=tbe_platform.scope_ubuf)
         if self.dtype == "float32":
             dtype_num = 1
         else:
@@ -451,9 +464,9 @@ class RoiAlign():
             const_value_0_127[i] = i
 
         grid_w_vector = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="grid_w_vector", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="grid_w_vector", scope=tbe_platform.scope_ubuf)
         grid_h_vector = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="grid_h_vector", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="grid_h_vector", scope=tbe_platform.scope_ubuf)
 
         tik_instance.vec_muls(64 * dtype_num, grid_w_vector, const_value_0_127,
                               grid_w_roi, 2 // dtype_num, 8, 8)
@@ -508,7 +521,7 @@ class RoiAlign():
                              2 // dtype_num, 8, 8, 0)
 
         tmp_fp32 = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="tmp_fp32", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="tmp_fp32", scope=tbe_platform.scope_ubuf)
 
         tik_instance.vec_conv(64, "", tmp_fp32, x_lo, 2, 8, 8)
 
@@ -527,6 +540,7 @@ class RoiAlign():
 
         return x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo, x_hi, y_lo, y_hi, raw_x, raw_y
 
+    # 'pylint: disable=too-many-locals,too-many-arguments
     def _bilinear_interpolate_all_in_ub(self, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo, x_hi, y_lo, y_hi,
                                         raw_x, raw_y, n_bust, core_bias,
                                         index, curr_roi, roi_128_number, cache_index):
@@ -534,9 +548,8 @@ class RoiAlign():
         _bilinear_interpolate
         """
         tik_instance = self.tik_instance
-        ub_size_available = self.ub_size - UB_30K_SIZE
+        ub_size_available = self.ub_size - Constant.UB_30K_SIZE
         available_ub_num = ub_size_available // 2 // n_bust
-        available_l1_num = self.l1_size // 2 // n_bust
         feature_map_offset = self._get_feature_map_offset(index, 0, 0, 0)
 
         feature_map_ub = tik_instance.Tensor(
@@ -555,9 +568,9 @@ class RoiAlign():
         tik_instance.vec_dup(16, val, 0.0, self.c1_num * self.pooled_width, n_bust)
 
         roi_y_floor = tik_instance.Tensor(
-            "int32", [BATCH_SIZE], name="roi_y_floor", scope=tbe_platform.scope_ubuf)
+            "int32", [Constant.BATCH_SIZE], name="roi_y_floor", scope=tbe_platform.scope_ubuf)
         roi_x_floor = tik_instance.Tensor(
-            "int32", [BATCH_SIZE], name="roi_x_floor", scope=tbe_platform.scope_ubuf)
+            "int32", [Constant.BATCH_SIZE], name="roi_x_floor", scope=tbe_platform.scope_ubuf)
 
         tik_instance.vec_conv(64, "floor", roi_y_floor[0], raw_y[0], 2, 8, 4)
         tik_instance.vec_conv(64, "floor", roi_x_floor[0], raw_x[0], 2, 8, 4)
@@ -609,6 +622,7 @@ class RoiAlign():
 
                 tik_instance.vec_dup(16, val, 0.0, self.c1_num * self.pooled_width, n_bust)
 
+    # 'pylint: disable=too-many-locals,too-many-arguments
     def _bilinear_interpolate_all_in_l1(self, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo, x_hi, y_lo, y_hi,
                                         raw_x, raw_y, n_bust, core_bias,
                                         index, curr_roi, roi_128_number, cache_index):
@@ -635,9 +649,9 @@ class RoiAlign():
         tik_instance.vec_dup(16, val, 0.0, self.c1_num * self.pooled_width, n_bust)
 
         roi_y_floor = tik_instance.Tensor(
-            "int32", [BATCH_SIZE], name="roi_y_floor", scope=tbe_platform.scope_ubuf)
+            "int32", [Constant.BATCH_SIZE], name="roi_y_floor", scope=tbe_platform.scope_ubuf)
         roi_x_floor = tik_instance.Tensor(
-            "int32", [BATCH_SIZE], name="roi_x_floor", scope=tbe_platform.scope_ubuf)
+            "int32", [Constant.BATCH_SIZE], name="roi_x_floor", scope=tbe_platform.scope_ubuf)
 
         tik_instance.vec_conv(64, "floor", roi_y_floor[0], raw_y[0], 2, 8, 4)
         tik_instance.vec_conv(64, "floor", roi_x_floor[0], raw_x[0], 2, 8, 4)
@@ -689,6 +703,7 @@ class RoiAlign():
 
                 tik_instance.vec_dup(16, val, 0.0, self.c1_num * self.pooled_width, n_bust)
 
+    # 'pylint: disable=unused-argument,too-many-locals,too-many-arguments
     def _bilinear_interpolate_w_in_ub(self, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo, x_hi, y_lo, y_hi,
                                       raw_x, raw_y, n_bust, core_bias,
                                       index, curr_roi, roi_128_number, cache_index):
@@ -696,7 +711,7 @@ class RoiAlign():
         _bilinear_interpolate
         """
         tik_instance = self.tik_instance
-        ub_size_available = self.ub_size - UB_30K_SIZE
+        ub_size_available = self.ub_size - Constant.UB_30K_SIZE
         available_ub_num = ub_size_available // 2 // n_bust
 
         cache_ub = tik_instance.Tensor( \
@@ -716,9 +731,9 @@ class RoiAlign():
         tik_instance.vec_dup(16, val, 0.0, self.c1_num * self.pooled_width, n_bust)
 
         roi_y_floor = tik_instance.Tensor(
-            "int32", [BATCH_SIZE], name="roi_y_floor", scope=tbe_platform.scope_ubuf)
+            "int32", [Constant.BATCH_SIZE], name="roi_y_floor", scope=tbe_platform.scope_ubuf)
         roi_x_floor = tik_instance.Tensor(
-            "int32", [BATCH_SIZE], name="roi_x_floor", scope=tbe_platform.scope_ubuf)
+            "int32", [Constant.BATCH_SIZE], name="roi_x_floor", scope=tbe_platform.scope_ubuf)
 
         tik_instance.vec_conv(64, "floor", roi_y_floor[0], raw_y[0], 2, 8, 4)
         tik_instance.vec_conv(64, "floor", roi_x_floor[0], raw_x[0], 2, 8, 4)
@@ -775,6 +790,7 @@ class RoiAlign():
 
                 tik_instance.vec_dup(16, val, 0.0, self.c1_num * self.pooled_width, n_bust)
 
+    # 'pylint: disable=unused-argument,too-many-locals,too-many-arguments
     def _bilinear_interpolate_w_in_l1(self, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo, x_hi, y_lo, y_hi,
                                       raw_x, raw_y, n_bust, core_bias,
                                       index, curr_roi, roi_128_number, cache_index):
@@ -797,9 +813,9 @@ class RoiAlign():
         tik_instance.vec_dup(16, val, 0.0, self.c1_num * self.pooled_width, n_bust)
 
         roi_y_floor = tik_instance.Tensor(
-            "int32", [BATCH_SIZE], name="roi_y_floor", scope=tbe_platform.scope_ubuf)
+            "int32", [Constant.BATCH_SIZE], name="roi_y_floor", scope=tbe_platform.scope_ubuf)
         roi_x_floor = tik_instance.Tensor(
-            "int32", [BATCH_SIZE], name="roi_x_floor", scope=tbe_platform.scope_ubuf)
+            "int32", [Constant.BATCH_SIZE], name="roi_x_floor", scope=tbe_platform.scope_ubuf)
 
         tik_instance.vec_conv(64, "floor", roi_y_floor[0], raw_y[0], 2, 8, 4)
         tik_instance.vec_conv(64, "floor", roi_x_floor[0], raw_x[0], 2, 8, 4)
@@ -857,6 +873,7 @@ class RoiAlign():
 
                 tik_instance.vec_dup(16, val, 0.0, self.c1_num * self.pooled_width, n_bust)
 
+    # 'pylint: disable=unused-argument,too-many-locals,too-many-arguments
     def _bilinear_interpolate_without_cache(self, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo, x_hi, y_lo, y_hi,
                                             raw_x, raw_y, n_bust, core_bias,
                                             index, curr_roi, roi_128_number, cache_index):
@@ -872,9 +889,9 @@ class RoiAlign():
         tik_instance.vec_dup(16, val, 0.0, self.c1_num * self.pooled_width, n_bust)
 
         roi_y_floor = tik_instance.Tensor(
-            "int32", [BATCH_SIZE], name="roi_y_floor", scope=tbe_platform.scope_ubuf)
+            "int32", [Constant.BATCH_SIZE], name="roi_y_floor", scope=tbe_platform.scope_ubuf)
         roi_x_floor = tik_instance.Tensor(
-            "int32", [BATCH_SIZE], name="roi_x_floor", scope=tbe_platform.scope_ubuf)
+            "int32", [Constant.BATCH_SIZE], name="roi_x_floor", scope=tbe_platform.scope_ubuf)
 
         tik_instance.vec_conv(64, "floor", roi_y_floor[0], raw_y[0], 2, 8, 4)
         tik_instance.vec_conv(64, "floor", roi_x_floor[0], raw_x[0], 2, 8, 4)
@@ -927,6 +944,7 @@ class RoiAlign():
 
                 tik_instance.vec_dup(16, val, 0.0, self.c1_num * self.pooled_width, n_bust)
 
+    # 'pylint: disable=too-many-locals,too-many-arguments
     def _common_compute(self, proposals_ub_x0, proposals_ub_y0,
                         roi_128_number, rois_valid_in_block,
                         n_bust, roi_int32_fm_index,
@@ -939,8 +957,8 @@ class RoiAlign():
         with tik_instance.for_range(0, rois_valid_in_block) as curr_roi:
             index = tik_instance.Scalar(dtype="int32")
             index.set_as(roi_int32_fm_index[curr_roi])
-            w_num = (self.sample_num * self.pooled_width + 127) // BATCH_SIZE
-            h_num = (self.sample_num * self.pooled_height + 127) // BATCH_SIZE
+            w_num = (self.sample_num * self.pooled_width + 127) // Constant.BATCH_SIZE
+            h_num = (self.sample_num * self.pooled_height + 127) // Constant.BATCH_SIZE
 
             flag_para = tik_instance.Scalar(dtype="int32", init_value=0)
             with tik_instance.if_scope(w_num > 1):
@@ -1004,9 +1022,9 @@ class RoiAlign():
         dtype_num, mask, repeat_times = self._calc_vector_params()
 
         roi_h_fp32 = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="roi_h_fp32", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="roi_h_fp32", scope=tbe_platform.scope_ubuf)
         roi_w_fp32 = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="roi_w_fp32", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="roi_w_fp32", scope=tbe_platform.scope_ubuf)
 
         tik_instance.vec_muls(mask, proposals_ub_x0[0],
                               proposals_ub_x0[0],
@@ -1039,13 +1057,13 @@ class RoiAlign():
 
         # Declare roi_bin_size tik_instance.Tensor
         roi_bin_h_fp32_value = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="roi_bin_h_fp32_value", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="roi_bin_h_fp32_value", scope=tbe_platform.scope_ubuf)
         roi_bin_w_fp32_value = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="roi_bin_w_fp32_value", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="roi_bin_w_fp32_value", scope=tbe_platform.scope_ubuf)
         grid_h = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="grid_h", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="grid_h", scope=tbe_platform.scope_ubuf)
         grid_w = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="grid_w", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="grid_w", scope=tbe_platform.scope_ubuf)
 
         tik_instance.vec_muls(64 * dtype_num, roi_bin_h_fp32_value[:],
                               roi_h_fp32[:], 1.0 / self.pooled_height,
@@ -1062,6 +1080,7 @@ class RoiAlign():
 
         return roi_bin_h_fp32_value, roi_bin_w_fp32_value, proposals_ub_x0, proposals_ub_y0, grid_h, grid_w
 
+    # 'pylint: disable=too-many-locals
     def _compute_mode_1(self, core_rois_n, core_bias):
         """
         roi_align_tik
@@ -1074,19 +1093,19 @@ class RoiAlign():
             n_bust = 1
 
         rois_ub = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE, 8], name="rois_ub", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE, 8], name="rois_ub", scope=tbe_platform.scope_ubuf)
         proposals_ub_x0 = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="proposals_ub_x0", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="proposals_ub_x0", scope=tbe_platform.scope_ubuf)
         proposals_ub_y0 = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="proposals_ub_y0", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="proposals_ub_y0", scope=tbe_platform.scope_ubuf)
         proposals_ub_x1 = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="proposals_ub_x1", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="proposals_ub_x1", scope=tbe_platform.scope_ubuf)
         proposals_ub_y1 = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="proposals_ub_y1", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="proposals_ub_y1", scope=tbe_platform.scope_ubuf)
         roi_float_fm_index = tik_instance.Tensor(
-            self.dtype, [BATCH_SIZE], name="roi_float_fm_index", scope=tbe_platform.scope_ubuf)
+            self.dtype, [Constant.BATCH_SIZE], name="roi_float_fm_index", scope=tbe_platform.scope_ubuf)
         roi_int32_fm_index = tik_instance.Tensor(
-            "int32", [BATCH_SIZE], name="roi_int32_fm_index", scope=tbe_platform.scope_ubuf)
+            "int32", [Constant.BATCH_SIZE], name="roi_int32_fm_index", scope=tbe_platform.scope_ubuf)
 
         if self.dtype == "float32":
             tik_instance.vector_dup(64, rois_ub, 0.0, 16, 1, 8)
@@ -1094,27 +1113,27 @@ class RoiAlign():
             tik_instance.vector_dup(128, rois_ub, 0.0, 8, 1, 8)
 
         rois_valid = tik_instance.Scalar(dtype="int32", init_value=core_rois_n)
-        rois_batch_num = (core_rois_n + 127) // BATCH_SIZE
+        rois_batch_num = (core_rois_n + 127) // Constant.BATCH_SIZE
         self._calc_buffer_verify()
         with tik_instance.if_scope(rois_valid != 0):
             with tik_instance.for_range(0, rois_batch_num) as roi_128_number:
                 rois_valid_in_block = \
-                    tik_instance.Scalar(dtype="int32", init_value=BATCH_SIZE)
+                    tik_instance.Scalar(dtype="int32", init_value=Constant.BATCH_SIZE)
                 with tik_instance.if_scope(roi_128_number == (rois_batch_num - 1)):
-                    rois_valid_in_block.set_as(rois_valid - roi_128_number * BATCH_SIZE)
+                    rois_valid_in_block.set_as(rois_valid - roi_128_number * Constant.BATCH_SIZE)
 
                 with tik_instance.if_scope(self.rois_row_length == 5):
                     rois_ub_n5 = tik_instance.Tensor(
-                        self.dtype, [BATCH_SIZE, 5], name="rois_ub_n5", scope=tbe_platform.scope_ubuf)
+                        self.dtype, [Constant.BATCH_SIZE, 5], name="rois_ub_n5", scope=tbe_platform.scope_ubuf)
                     burst_num = (rois_valid_in_block * 5 * n_bust + 15) // 16
                     tik_instance.data_move(rois_ub_n5[0, 0],
-                                           self.rois[(core_bias + roi_128_number * BATCH_SIZE) * 5],
+                                           self.rois[(core_bias + roi_128_number * Constant.BATCH_SIZE) * 5],
                                            0, 1, burst_num, 0, 0)
                     self._tf_n52n8(rois_ub, rois_ub_n5, rois_valid_in_block)
                 with tik_instance.else_scope():
                     burst_num = (rois_valid_in_block * 8 * n_bust + 15) // 16
                     tik_instance.data_move(rois_ub[0, 0],
-                                           self.rois[(core_bias + roi_128_number * BATCH_SIZE) * 8],
+                                           self.rois[(core_bias + roi_128_number * Constant.BATCH_SIZE) * 8],
                                            0, 1, burst_num, 0, 0)
 
                 support_vextract = tbe_platform.api_check_support("tik.vextract", "float32")
@@ -1135,7 +1154,7 @@ class RoiAlign():
                 tik_instance.vec_conv(64, "ceil", roi_int32_fm_index[0],
                                       roi_float_fm_index[0], 2, 8, 4 * n_bust)
 
-                roi_bin_h_fp32_value, roi_bin_w_fp32_value, proposals_ub_x0, proposals_ub_y0, grid_h, grid_w = \
+                _, _, proposals_ub_x0, proposals_ub_y0, grid_h, grid_w = \
                     self._get_roi_align_perf_scale_for_zero(proposals_ub_x0,
                                                             proposals_ub_y0,
                                                             proposals_ub_x1,
@@ -1153,10 +1172,10 @@ class RoiAlign():
 
         with tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_id:
             # get tiling data
-            tiling_ub = tik_instance.Tensor(self.tiling_dtype, (TILING_ARG_NUM,), name="tiling_ub",
+            tiling_ub = tik_instance.Tensor(self.tiling_dtype, (Constant.TILING_ARG_NUM,), name="tiling_ub",
                                             scope=tik.scope_ubuf)
             tik_instance.data_move(tiling_ub, self.tiling_gm, 0,
-                                   1, ceil_value(TILING_ARG_NUM, self.tiling_dtype),
+                                   1, ceil_value(Constant.TILING_ARG_NUM, self.tiling_dtype),
                                    0, 0)
             # get run info
             self._get_tiling_args(tiling_ub)
@@ -1176,10 +1195,10 @@ class RoiAlign():
                     with self.tik_instance.else_scope():
                         core_bias.set_as(core_rois_n * block_id + core_tail)
 
-                with tik_instance.if_scope(self.tiling_mode == TILING_MODE_1):
+                with tik_instance.if_scope(self.tiling_mode == Constant.TILING_MODE_1):
                     with tik_instance.new_stmt_scope():
                         self._compute_mode_1(core_rois_n, core_bias)
-                with tik_instance.if_scope(self.tiling_mode == TILING_MODE_2):
+                with tik_instance.if_scope(self.tiling_mode == Constant.TILING_MODE_2):
                     with tik_instance.new_stmt_scope():
                         pass
 
@@ -1187,19 +1206,19 @@ class RoiAlign():
         """calc one block gradient
         """
         tik_instance = self.tik_instance
-        self.feature_map = tik_instance.Tensor(self.dtype, (PARAMS_SIZE,),
+        self.feature_map = tik_instance.Tensor(self.dtype, (Constant.PARAMS_SIZE,),
                                                name="feature_map", scope=tbe_platform.scope_gm)
-        self.rois = tik_instance.Tensor(self.dtype, (PARAMS_SIZE,),
+        self.rois = tik_instance.Tensor(self.dtype, (Constant.PARAMS_SIZE,),
                                         name="rois_data", scope=tbe_platform.scope_gm)
-        self.output = tik_instance.Tensor(self.dtype, (PARAMS_SIZE,), name="x_diff",
+        self.output = tik_instance.Tensor(self.dtype, (Constant.PARAMS_SIZE,), name="x_diff",
                                           scope=tbe_platform.scope_gm)
-        self.tiling_gm = tik_instance.Tensor(self.tiling_dtype, (TILING_ARG_NUM,),
+        self.tiling_gm = tik_instance.Tensor(self.tiling_dtype, (Constant.TILING_ARG_NUM,),
                                              name="tiling_gm", scope=tik.scope_gm)
 
         inputs = [self.feature_map, self.rois]
         if self.exist_rois_n:
             self.rois_n_gm = tik_instance.Tensor(
-                "int32", (PARAMS_SIZE,), name="rois_n_gm", scope=tbe_platform.scope_gm)
+                "int32", (Constant.PARAMS_SIZE,), name="rois_n_gm", scope=tbe_platform.scope_gm)
             inputs.append(self.rois_n_gm)
 
         self._roi_align_compute_tiling()
@@ -1218,7 +1237,7 @@ class RoiAlign():
                               enable_l2=True, config=opt_config)
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments
 @register_operator("ROIAlign")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,

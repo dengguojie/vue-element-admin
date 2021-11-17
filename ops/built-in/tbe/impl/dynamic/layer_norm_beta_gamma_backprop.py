@@ -15,7 +15,7 @@
 """
 layer_norm_beta_gamma_backprop
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 import tbe.common.register as tbe_register
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
@@ -25,7 +25,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments
 @tbe_register.register_param_generalization("LayerNormBetaGammaBackprop")
 def layer_norm_beta_gamma_backprop_generalization(input_dy, input_x, input_variance, input_mean, output_pd_gamma,
                                                   output_pd_beta, shape_gamma, impl_mode,
@@ -192,10 +192,10 @@ def _get_pd_var_front(data, dtype):
         np.power((data_variance + EPSLON), (-0.5))
     """
     # Minimum positive number greater than 0
-    EPSLON = 1e-12
+    epslon = 1e-12
 
     var_elta = tbe.vadds(data.get("data_variance"),
-                         tvm.const(EPSLON, dtype=dtype))
+                         tvm.const(epslon, dtype=dtype))
     var_elta_log = tbe.vlog(var_elta)
     var_elta_mul = tbe.vmuls(var_elta_log,
                              tvm.const(-0.5, dtype=dtype))
@@ -327,7 +327,7 @@ def _get_pd_x(data, shape_x, dtype):
     return var_elta_2_cast, sub_x_mean
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def _get_pd_gamma(data, params, var_elta_2_cast, sub_x_mean, dtype):
     """
     compute pd_gamma according to data, params, var_elta_2_cast and sub_x_mean
@@ -492,7 +492,7 @@ def _get_pds(data_dy, data_x, data_variance, data_mean, shape_gamma_ori):
     return pd_gamma, pd_beta
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments
 def layer_norm_beta_gamma_backprop_compute(input_dy, input_x, input_variance,
                                            input_mean, output_pd_gamma,
                                            output_pd_beta, shape_gamma,
@@ -530,6 +530,7 @@ def layer_norm_beta_gamma_backprop_compute(input_dy, input_x, input_variance,
 
 
 
+# 'pylint: disable=too-many-arguments,too-many-locals
 @register_operator("LayerNormBetaGammaBackprop", pattern="Layer_norm_beta_gamma_backprop")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

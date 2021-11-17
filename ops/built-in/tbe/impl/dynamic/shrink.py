@@ -26,7 +26,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=superfluous-parens,unused-argument
+# 'pylint: disable=superfluous-parens,unused-argument,too-many-locals
 @register_operator_compute("Shrink", op_mode="dynamic", support_fusion=True)
 def shrink_compute(input_x, output_y, lambd, bias, kernel_name="Shrink"):
     """
@@ -70,6 +70,7 @@ def shrink_compute(input_x, output_y, lambd, bias, kernel_name="Shrink"):
     return result
 
 
+# 'pylint: disable=too-many-locals,consider-using-f-string
 @register_operator("Shrink")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT,

@@ -22,35 +22,9 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-# data type of int32
-INT32 = "int32"
-# data type of float32
-FP32 = "float32"
-# one block size takes up 32b
-BLOCK_SIZE = 32
-# digit 256
-DIGIT_256 = 256
 
-UB_1K_SIZE = 1024
-# The 4KB space of UB is used to store indices data
-UB_INDICES_SIZE = 4 * 1024
-UB_2K_SIZE = 2 * 1024
-
-# paramsRow is 32B aligned, params is in gm
-TILING_MODE_1 = 1
-# paramsRow is smaller than 32B
-TILING_MODE_2 = 2
-
-TILING_ARG_NUM = 24
-
-# the max size of SHAPE is 2^31 - 1
-MAX_SHAPE_SIZE = 2 ** 31 - 1
-
-TYPE_LEN_DICT = {"float32": 4, "int32": 4, "int64": 8}
-
-
-# pylint: disable=unrecognized-inline-option,too-many-instance-attributes
-# pylint: disable=unused-variable,attribute-defined-outside-init,unused-argument
+# 'pylint: disable=unrecognized-inline-option,too-many-instance-attributes
+# 'pylint: disable=unused-variable,attribute-defined-outside-init,unused-argument
 def ceil_value(value, factor):
     """
     if not divide exactly then plus 1
@@ -67,12 +41,33 @@ def ceil_value(value, factor):
     return (value + factor - 1) // factor
 
 
-# pylint: disable=invalid-name, too-many-locals, too-many-arguments, disable=too-many-statements
-# pylint: unused-argument, too-many-instance-attributes
+# 'pylint: disable=invalid-name, too-many-locals, too-many-arguments, too-many-statements
+# 'pylint: disable=unused-argument, too-many-instance-attributes
 class SparseApplyFtrl():
     """
     Function: class that execute sparse_apply_ftrl
     """
+    # data type of int32
+    INT32 = "int32"
+    # one block size takes up 32b
+    BLOCK_SIZE = 32
+    # digit 256
+    DIGIT_256 = 256
+    # The 4KB space of UB is used to store indices data
+    UB_INDICES_SIZE = 4 * 1024
+    UB_2K_SIZE = 2 * 1024
+
+    # paramsRow is 32B aligned, params is in gm
+    TILING_MODE_1 = 1
+    # paramsRow is smaller than 32B
+    TILING_MODE_2 = 2
+
+    TILING_ARG_NUM = 24
+
+    # the max size of SHAPE is 2^31 - 1
+    MAX_SHAPE_SIZE = 2**31 - 1
+
+    TYPE_LEN_DICT = {"float32": 4, "int32": 4, "int64": 8}
 
     def input_params_check(self, input_dicts, output_dicts):
         """
@@ -149,29 +144,29 @@ class SparseApplyFtrl():
 
         self.var_dtype = input_dicts[0].get("dtype").lower()
         self.indices_dtype = input_dicts[4].get("dtype").lower()
-        self.tiling_dtype = INT32
+        self.tiling_dtype = self.INT32
 
         profile = tik.Dprofile()
         self.tik_instance = tik.Tik(profile, disable_debug=False)
         self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
         self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
-        self.var_dsize = TYPE_LEN_DICT.get(self.var_dtype)
-        self.block_elem = BLOCK_SIZE // self.var_dsize
-        self.vector_elem = DIGIT_256 // self.var_dsize
-        self.indices_dsize = TYPE_LEN_DICT.get(self.indices_dtype)
-        self.block_indices = BLOCK_SIZE // self.indices_dsize
-        self.indices_nums_once = UB_INDICES_SIZE // self.indices_dsize
-        self.remain_size = self.ub_size - UB_2K_SIZE - UB_INDICES_SIZE
+        self.var_dsize = self.TYPE_LEN_DICT.get(self.var_dtype)
+        self.block_elem = self.BLOCK_SIZE // self.var_dsize
+        self.vector_elem = self.DIGIT_256 // self.var_dsize
+        self.indices_dsize = self.TYPE_LEN_DICT.get(self.indices_dtype)
+        self.block_indices = self.BLOCK_SIZE // self.indices_dsize
+        self.indices_nums_once = self.UB_INDICES_SIZE // self.indices_dsize
+        self.remain_size = self.ub_size - self.UB_2K_SIZE - self.UB_INDICES_SIZE
         # The remaining UB space is divided into six parts
         self.one_part_size = self.remain_size // 6
         self.one_part_elem = self.one_part_size // self.var_dsize
         self.one_part_elem = self.one_part_elem // self.vector_elem * self.vector_elem
 
-        self.var_shape = (MAX_SHAPE_SIZE,)
-        self.grad_shape = (MAX_SHAPE_SIZE,)
-        self.indices_shape = (MAX_SHAPE_SIZE,)
-        self.tiling_shape = (TILING_ARG_NUM,)
+        self.var_shape = (self.MAX_SHAPE_SIZE,)
+        self.grad_shape = (self.MAX_SHAPE_SIZE,)
+        self.indices_shape = (self.MAX_SHAPE_SIZE,)
+        self.tiling_shape = (self.TILING_ARG_NUM,)
         self.block_shape = (self.block_elem,)
 
         self.var = None
@@ -202,8 +197,7 @@ class SparseApplyFtrl():
         if self.lr_power_attr > 0:
             expected_value = "smaller than or equal to 0"
             real_value = "greater than 0"
-            error_manager_vector.raise_err_input_value_invalid(self.kernel_name, "lr_power",
-                                                               expected_value, real_value)
+            error_manager_vector.raise_err_input_value_invalid(self.kernel_name, "lr_power", expected_value, real_value)
 
         self.lr_attr_rec = 1.0 / self.lr_attr
 
@@ -301,29 +295,29 @@ class SparseApplyFtrl():
         """
         tik_instance = self.tik_instance
         indices_ub = tik_instance.Tensor(self.indices_dtype, (self.indices_nums_once,),
-                                         name="indices_ub", scope=tik.scope_ubuf)
-        var_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,),
-                                     name="var_ub", scope=tik.scope_ubuf)
-        accum_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,),
-                                       name="accum_ub", scope=tik.scope_ubuf)
-        linear_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,),
-                                        name="linear_ub", scope=tik.scope_ubuf)
-        grad_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,),
-                                      name="grad_ub", scope=tik.scope_ubuf)
-        tmp_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,),
-                                     name="tmp_ub", scope=tik.scope_ubuf)
-        tmp2_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,),
-                                      name="tmp2_ub", scope=tik.scope_ubuf)
+                                         name="indices_ub",
+                                         scope=tik.scope_ubuf)
+        var_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,), name="var_ub", scope=tik.scope_ubuf)
+        accum_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,), name="accum_ub", scope=tik.scope_ubuf)
+        linear_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,), name="linear_ub", scope=tik.scope_ubuf)
+        grad_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,), name="grad_ub", scope=tik.scope_ubuf)
+        tmp_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,), name="tmp_ub", scope=tik.scope_ubuf)
+        tmp2_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,), name="tmp2_ub", scope=tik.scope_ubuf)
         ub_tuples = (var_ub, accum_ub, linear_ub, grad_ub, tmp_ub, tmp2_ub)
 
-        var_ub_block = tik_instance.Tensor(self.var_dtype, self.block_shape,
-                                           name="var_ub_block", scope=tik.scope_ubuf)
-        accum_ub_block = tik_instance.Tensor(self.var_dtype, self.block_shape,
-                                             name="accum_ub_block", scope=tik.scope_ubuf)
-        linear_ub_block = tik_instance.Tensor(self.var_dtype, self.block_shape,
-                                              name="linear_ub_block", scope=tik.scope_ubuf)
-        grad_ub_block = tik_instance.Tensor(self.var_dtype, self.block_shape,
-                                            name="grad_ub_block", scope=tik.scope_ubuf)
+        var_ub_block = tik_instance.Tensor(self.var_dtype, self.block_shape, name="var_ub_block", scope=tik.scope_ubuf)
+        accum_ub_block = tik_instance.Tensor(self.var_dtype,
+                                             self.block_shape,
+                                             name="accum_ub_block",
+                                             scope=tik.scope_ubuf)
+        linear_ub_block = tik_instance.Tensor(self.var_dtype,
+                                              self.block_shape,
+                                              name="linear_ub_block",
+                                              scope=tik.scope_ubuf)
+        grad_ub_block = tik_instance.Tensor(self.var_dtype,
+                                            self.block_shape,
+                                            name="grad_ub_block",
+                                            scope=tik.scope_ubuf)
         ub_block_tuples = (var_ub_block, accum_ub_block, linear_ub_block, grad_ub_block)
 
         self.var_cur_row = tik_instance.Scalar(dtype=self.tiling_dtype, name="var_cur_row")
@@ -344,26 +338,22 @@ class SparseApplyFtrl():
         with tik_instance.for_range(0, self.indices_loop_num) as indices_loop_i:
             indices_num_offset = indices_loop_i * self.indices_nums_once
             # move indices and grad data to ub from gm
-            tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1,
-                                   burst_len_indices, 0, 0)
-            tik_instance.data_move(grad_ub, self.grad[indices_num_offset * self.var_row_elem], 0, 1,
-                                   burst_len_grad, 0, 0)
+            tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1, burst_len_indices, 0, 0)
+            tik_instance.data_move(grad_ub, self.grad[indices_num_offset * self.var_row_elem], 0, 1, burst_len_grad, 0,
+                                   0)
 
-            self.calc_multi_indices(indices_ub, self.indices_nums_once, burst_len_multi_row,
-                                    ub_tuples, ub_block_tuples)
+            self.calc_multi_indices(indices_ub, self.indices_nums_once, burst_len_multi_row, ub_tuples, ub_block_tuples)
 
         with tik_instance.if_scope(self.indices_nums_last > 0):
             indices_num_offset = self.indices_loop_num * self.indices_nums_once
             burst_len_indices = ceil_value(self.indices_nums_last, self.block_indices)
             burst_len_grad = ceil_value(self.indices_nums_last * self.var_row_elem, self.block_elem)
             # move indices and grad data to ub from gm
-            tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1,
-                                   burst_len_indices, 0, 0)
-            tik_instance.data_move(grad_ub, self.grad[indices_num_offset * self.var_row_elem], 0, 1,
-                                   burst_len_grad, 0, 0)
+            tik_instance.data_move(indices_ub, self.indices[indices_num_offset], 0, 1, burst_len_indices, 0, 0)
+            tik_instance.data_move(grad_ub, self.grad[indices_num_offset * self.var_row_elem], 0, 1, burst_len_grad, 0,
+                                   0)
 
-            self.calc_multi_indices(indices_ub, self.indices_nums_last, burst_len_multi_row,
-                                    ub_tuples, ub_block_tuples)
+            self.calc_multi_indices(indices_ub, self.indices_nums_last, burst_len_multi_row, ub_tuples, ub_block_tuples)
 
     def calc_multi_indices(self, indices_ub, indices_num, burst_len_multi_row, ub_tuples, ub_block_tuples):
         """
@@ -387,12 +377,13 @@ class SparseApplyFtrl():
             self.var_cur_row.set_as(indices_ub[indices_i])
 
             # check whether current indices is within the processing range of the core
-            with tik_instance.if_scope(tik.all(self.var_cur_row >= self.core_rows_start_index,
-                                               self.var_cur_row < self.core_rows_end_index)):
+            with tik_instance.if_scope(
+                    tik.all(self.var_cur_row >= self.core_rows_start_index,
+                            self.var_cur_row < self.core_rows_end_index)):
                 # check whether the var, accum, linear corresponding to current indices is cached in the UB
-                with tik_instance.if_scope(tik.all(self.var_cur_row >= self.cached_rows_start_index,
-                                                   self.var_cur_row < self.cached_rows_start_index +
-                                                   self.num_multi_rows)):
+                with tik_instance.if_scope(
+                        tik.all(self.var_cur_row >= self.cached_rows_start_index,
+                                self.var_cur_row < self.cached_rows_start_index + self.num_multi_rows)):
                     self.calc_a_small_row(indices_i, ub_tuples, ub_block_tuples)
                 with tik_instance.else_scope():
                     with tik_instance.if_scope(self.cached_rows_start_index < self.var_rows):
@@ -453,12 +444,12 @@ class SparseApplyFtrl():
         with self.tik_instance.else_scope():
             self.cached_rows_start_index.set_as(self.core_rows_end_index - self.num_multi_rows)
 
-        self.tik_instance.data_move(var_ub, self.var[self.cached_rows_start_index * self.var_row_elem],
-                                    0, 1, burst_len_multi_row, 0, 0)
-        self.tik_instance.data_move(accum_ub, self.accum[self.cached_rows_start_index * self.var_row_elem],
-                                    0, 1, burst_len_multi_row, 0, 0)
-        self.tik_instance.data_move(linear_ub, self.linear[self.cached_rows_start_index * self.var_row_elem],
-                                    0, 1, burst_len_multi_row, 0, 0)
+        self.tik_instance.data_move(var_ub, self.var[self.cached_rows_start_index * self.var_row_elem], 0, 1,
+                                    burst_len_multi_row, 0, 0)
+        self.tik_instance.data_move(accum_ub, self.accum[self.cached_rows_start_index * self.var_row_elem], 0, 1,
+                                    burst_len_multi_row, 0, 0)
+        self.tik_instance.data_move(linear_ub, self.linear[self.cached_rows_start_index * self.var_row_elem], 0, 1,
+                                    burst_len_multi_row, 0, 0)
 
     def save_multi_rows(self, ub_tuples, burst_len_multi_row):
         """
@@ -474,12 +465,12 @@ class SparseApplyFtrl():
         None
         """
         var_ub, accum_ub, linear_ub = ub_tuples[:3]
-        self.tik_instance.data_move(self.var[self.cached_rows_start_index * self.var_row_elem], var_ub,
-                                    0, 1, burst_len_multi_row, 0, 0)
-        self.tik_instance.data_move(self.accum[self.cached_rows_start_index * self.var_row_elem], accum_ub,
-                                    0, 1, burst_len_multi_row, 0, 0)
-        self.tik_instance.data_move(self.linear[self.cached_rows_start_index * self.var_row_elem], linear_ub,
-                                    0, 1, burst_len_multi_row, 0, 0)
+        self.tik_instance.data_move(self.var[self.cached_rows_start_index * self.var_row_elem], var_ub, 0, 1,
+                                    burst_len_multi_row, 0, 0)
+        self.tik_instance.data_move(self.accum[self.cached_rows_start_index * self.var_row_elem], accum_ub, 0, 1,
+                                    burst_len_multi_row, 0, 0)
+        self.tik_instance.data_move(self.linear[self.cached_rows_start_index * self.var_row_elem], linear_ub, 0, 1,
+                                    burst_len_multi_row, 0, 0)
         self.cached_rows_start_index.set_as(self.var_rows)
 
     def compute_mode_3(self, block_id):
@@ -496,19 +487,14 @@ class SparseApplyFtrl():
         """
         tik_instance = self.tik_instance
         indices_ub = tik_instance.Tensor(self.indices_dtype, (self.indices_nums_once,),
-                                         name="indices_ub", scope=tik.scope_ubuf)
-        var_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,),
-                                     name="var_ub", scope=tik.scope_ubuf)
-        accum_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,),
-                                       name="accum_ub", scope=tik.scope_ubuf)
-        linear_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,),
-                                        name="linear_ub", scope=tik.scope_ubuf)
-        grad_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,),
-                                      name="grad_ub", scope=tik.scope_ubuf)
-        tmp_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,),
-                                     name="tmp_ub", scope=tik.scope_ubuf)
-        tmp2_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,),
-                                      name="tmp2_ub", scope=tik.scope_ubuf)
+                                         name="indices_ub",
+                                         scope=tik.scope_ubuf)
+        var_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,), name="var_ub", scope=tik.scope_ubuf)
+        accum_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,), name="accum_ub", scope=tik.scope_ubuf)
+        linear_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,), name="linear_ub", scope=tik.scope_ubuf)
+        grad_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,), name="grad_ub", scope=tik.scope_ubuf)
+        tmp_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,), name="tmp_ub", scope=tik.scope_ubuf)
+        tmp2_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,), name="tmp2_ub", scope=tik.scope_ubuf)
         ub_tuples = (var_ub, accum_ub, linear_ub, grad_ub, tmp_ub, tmp2_ub)
 
         self.grad_cur_row = tik_instance.Scalar(dtype=self.tiling_dtype, name="grad_cur_row")
@@ -539,12 +525,15 @@ class SparseApplyFtrl():
         """
         tik_instance = self.tik_instance
         core_start_offset = (block_id - grad_id * self.partial_factor) * self.elems_per_core
-        var_ub_block = tik_instance.Tensor(self.var_dtype, self.block_shape,
-                                           name="var_ub_block", scope=tik.scope_ubuf)
-        accum_ub_block = tik_instance.Tensor(self.var_dtype, self.block_shape,
-                                             name="accum_ub_block", scope=tik.scope_ubuf)
-        linear_ub_block = tik_instance.Tensor(self.var_dtype, self.block_shape,
-                                              name="linear_ub_block", scope=tik.scope_ubuf)
+        var_ub_block = tik_instance.Tensor(self.var_dtype, self.block_shape, name="var_ub_block", scope=tik.scope_ubuf)
+        accum_ub_block = tik_instance.Tensor(self.var_dtype,
+                                             self.block_shape,
+                                             name="accum_ub_block",
+                                             scope=tik.scope_ubuf)
+        linear_ub_block = tik_instance.Tensor(self.var_dtype,
+                                              self.block_shape,
+                                              name="linear_ub_block",
+                                              scope=tik.scope_ubuf)
         block_ubs = (var_ub_block, accum_ub_block, linear_ub_block)
 
         with tik_instance.if_scope(block_id == (grad_id + 1) * self.partial_factor - 1):
@@ -560,11 +549,10 @@ class SparseApplyFtrl():
                 self.process_part_loop(ub_tuples, var_id, grad_id, core_start_offset, self.elems_core_loop)
 
             with tik_instance.if_scope(self.elems_core_remain > 0):
-                self.process_part_tail(ub_tuples, block_ubs, var_id, grad_id, core_start_offset,
-                                       self.elems_core_loop, self.elems_core_remain)
+                self.process_part_tail(ub_tuples, block_ubs, var_id, grad_id, core_start_offset, self.elems_core_loop,
+                                       self.elems_core_remain)
 
-    def process_part_tail(self, ub_tuples, block_ubs, var_id, grad_id, core_start_offset,
-                          loops, part_elems_cnt):
+    def process_part_tail(self, ub_tuples, block_ubs, var_id, grad_id, core_start_offset, loops, part_elems_cnt):
         """
         process tail part
 
@@ -591,46 +579,36 @@ class SparseApplyFtrl():
         offset = self.one_part_elem * loops + core_start_offset
         var_offset = var_id * self.var_row_elem + offset
         # move grad to ub
-        tik_instance.data_move(grad_ub, self.grad[grad_id * self.var_row_elem + offset],
-                               0, 1, burst_len, 0, 0)
+        tik_instance.data_move(grad_ub, self.grad[grad_id * self.var_row_elem + offset], 0, 1, burst_len, 0, 0)
         # move var, accum, linear to ub
-        tik_instance.data_move(var_ub, self.var[var_offset], 0, 1,
-                               burst_len, 0, 0)
-        tik_instance.data_move(accum_ub, self.accum[var_offset], 0, 1,
-                               burst_len, 0, 0)
-        tik_instance.data_move(linear_ub, self.linear[var_offset], 0, 1,
-                               burst_len, 0, 0)
+        tik_instance.data_move(var_ub, self.var[var_offset], 0, 1, burst_len, 0, 0)
+        tik_instance.data_move(accum_ub, self.accum[var_offset], 0, 1, burst_len, 0, 0)
+        tik_instance.data_move(linear_ub, self.linear[var_offset], 0, 1, burst_len, 0, 0)
 
         # calculate
         self.sparse_calc(ub_tuples, 0, self.vector_elem, self.var_row_repeat)
 
         # move result to gm
         with tik_instance.if_scope(part_elems_cnt % self.block_elem == 0):
-            tik_instance.data_move(self.var_out[var_offset], var_ub, 0, 1,
-                                   burst_len, 0, 0)
-            tik_instance.data_move(self.accum_out[var_offset], accum_ub, 0, 1,
-                                   burst_len, 0, 0)
-            tik_instance.data_move(self.linear_out[var_offset], linear_ub, 0, 1,
-                                   burst_len, 0, 0)
+            tik_instance.data_move(self.var_out[var_offset], var_ub, 0, 1, burst_len, 0, 0)
+            tik_instance.data_move(self.accum_out[var_offset], accum_ub, 0, 1, burst_len, 0, 0)
+            tik_instance.data_move(self.linear_out[var_offset], linear_ub, 0, 1, burst_len, 0, 0)
         with tik_instance.else_scope():
             with self.tik_instance.for_range(0, self.block_elem) as i:
                 var_ub_block[i].set_as(var_ub[part_elems_cnt - self.block_elem + i])
                 accum_ub_block[i].set_as(accum_ub[part_elems_cnt - self.block_elem + i])
                 linear_ub_block[i].set_as(linear_ub[part_elems_cnt - self.block_elem + i])
 
-            tik_instance.data_move(self.var_out[var_offset], var_ub, 0, 1,
-                                   burst_len - 1, 0, 0)
-            tik_instance.data_move(self.accum_out[var_offset], accum_ub, 0, 1,
-                                   burst_len - 1, 0, 0)
-            tik_instance.data_move(self.linear_out[var_offset], linear_ub, 0, 1,
-                                   burst_len - 1, 0, 0)
+            tik_instance.data_move(self.var_out[var_offset], var_ub, 0, 1, burst_len - 1, 0, 0)
+            tik_instance.data_move(self.accum_out[var_offset], accum_ub, 0, 1, burst_len - 1, 0, 0)
+            tik_instance.data_move(self.linear_out[var_offset], linear_ub, 0, 1, burst_len - 1, 0, 0)
 
-            tik_instance.data_move(self.var_out[var_offset + part_elems_cnt - self.block_elem],
-                                   var_ub_block, 0, 1, 1, 0, 0)
-            tik_instance.data_move(self.accum_out[var_offset + part_elems_cnt - self.block_elem],
-                                   accum_ub_block, 0, 1, 1, 0, 0)
-            tik_instance.data_move(self.linear_out[var_offset + part_elems_cnt - self.block_elem],
-                                   linear_ub_block, 0, 1, 1, 0, 0)
+            tik_instance.data_move(self.var_out[var_offset + part_elems_cnt - self.block_elem], var_ub_block, 0, 1, 1,
+                                   0, 0)
+            tik_instance.data_move(self.accum_out[var_offset + part_elems_cnt - self.block_elem], accum_ub_block, 0, 1,
+                                   1, 0, 0)
+            tik_instance.data_move(self.linear_out[var_offset + part_elems_cnt - self.block_elem], linear_ub_block, 0,
+                                   1, 1, 0, 0)
 
     def process_part_loop(self, ub_tuples, var_id, grad_id, core_start_offset, loops):
         """
@@ -657,26 +635,19 @@ class SparseApplyFtrl():
             offset = self.one_part_elem * loop_i + core_start_offset
             var_offset = var_id * self.var_row_elem + offset
             # move grad to ub
-            tik_instance.data_move(grad_ub, self.grad[grad_id * self.var_row_elem + offset],
-                                   0, 1, burst_len, 0, 0)
+            tik_instance.data_move(grad_ub, self.grad[grad_id * self.var_row_elem + offset], 0, 1, burst_len, 0, 0)
             # move var, accum, linear to ub
-            tik_instance.data_move(var_ub, self.var[var_offset], 0, 1,
-                                   burst_len, 0, 0)
-            tik_instance.data_move(accum_ub, self.accum[var_offset], 0, 1,
-                                   burst_len, 0, 0)
-            tik_instance.data_move(linear_ub, self.linear[var_offset], 0, 1,
-                                   burst_len, 0, 0)
+            tik_instance.data_move(var_ub, self.var[var_offset], 0, 1, burst_len, 0, 0)
+            tik_instance.data_move(accum_ub, self.accum[var_offset], 0, 1, burst_len, 0, 0)
+            tik_instance.data_move(linear_ub, self.linear[var_offset], 0, 1, burst_len, 0, 0)
 
             # calculate
             self.sparse_calc(ub_tuples, 0, self.vector_elem, self.var_row_repeat)
 
             # move result to gm
-            tik_instance.data_move(self.var_out[var_offset], var_ub, 0, 1,
-                                   burst_len, 0, 0)
-            tik_instance.data_move(self.accum_out[var_offset], accum_ub, 0, 1,
-                                   burst_len, 0, 0)
-            tik_instance.data_move(self.linear_out[var_offset], linear_ub, 0, 1,
-                                   burst_len, 0, 0)
+            tik_instance.data_move(self.var_out[var_offset], var_ub, 0, 1, burst_len, 0, 0)
+            tik_instance.data_move(self.accum_out[var_offset], accum_ub, 0, 1, burst_len, 0, 0)
+            tik_instance.data_move(self.linear_out[var_offset], linear_ub, 0, 1, burst_len, 0, 0)
 
     def compute_mode_1(self, block_id):
         """
@@ -692,19 +663,14 @@ class SparseApplyFtrl():
         """
         tik_instance = self.tik_instance
         indices_ub = tik_instance.Tensor(self.indices_dtype, (self.indices_nums_once,),
-                                         name="indices_ub", scope=tik.scope_ubuf)
-        var_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,),
-                                     name="var_ub", scope=tik.scope_ubuf)
-        accum_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,),
-                                       name="accum_ub", scope=tik.scope_ubuf)
-        linear_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,),
-                                        name="linear_ub", scope=tik.scope_ubuf)
-        grad_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,),
-                                      name="grad_ub", scope=tik.scope_ubuf)
-        tmp_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,),
-                                     name="tmp_ub", scope=tik.scope_ubuf)
-        tmp2_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,),
-                                      name="tmp2_ub", scope=tik.scope_ubuf)
+                                         name="indices_ub",
+                                         scope=tik.scope_ubuf)
+        var_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,), name="var_ub", scope=tik.scope_ubuf)
+        accum_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,), name="accum_ub", scope=tik.scope_ubuf)
+        linear_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,), name="linear_ub", scope=tik.scope_ubuf)
+        grad_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,), name="grad_ub", scope=tik.scope_ubuf)
+        tmp_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,), name="tmp_ub", scope=tik.scope_ubuf)
+        tmp2_ub = tik_instance.Tensor(self.var_dtype, (self.one_part_elem,), name="tmp2_ub", scope=tik.scope_ubuf)
         ub_tuples = (var_ub, accum_ub, linear_ub, grad_ub, tmp_ub, tmp2_ub)
 
         self.var_cur_row = tik_instance.Scalar(dtype=self.tiling_dtype, name="var_cur_row")
@@ -752,27 +718,21 @@ class SparseApplyFtrl():
             self.var_cur_row.set_as(indices_ub[indices_i])
 
             # move grad to ub
-            tik_instance.data_move(grad_ub, self.grad[(indices_num_offset + indices_i) * self.var_row_elem],
-                                   0, 1, burst_len, 0, 0)
+            tik_instance.data_move(grad_ub, self.grad[(indices_num_offset + indices_i) * self.var_row_elem], 0, 1,
+                                   burst_len, 0, 0)
             # move var, accum, linear to ub
             var_offset = self.var_cur_row * self.var_row_elem
-            tik_instance.data_move(var_ub, self.var[var_offset], 0, 1,
-                                   burst_len, 0, 0)
-            tik_instance.data_move(accum_ub, self.accum[var_offset], 0, 1,
-                                   burst_len, 0, 0)
-            tik_instance.data_move(linear_ub, self.linear[var_offset], 0, 1,
-                                   burst_len, 0, 0)
+            tik_instance.data_move(var_ub, self.var[var_offset], 0, 1, burst_len, 0, 0)
+            tik_instance.data_move(accum_ub, self.accum[var_offset], 0, 1, burst_len, 0, 0)
+            tik_instance.data_move(linear_ub, self.linear[var_offset], 0, 1, burst_len, 0, 0)
 
             # calculate
             self.sparse_calc(ub_tuples, 0, self.vector_elem, self.var_row_repeat)
 
             # move result to gm
-            tik_instance.data_move(self.var_out[var_offset], var_ub, 0, 1,
-                                   burst_len, 0, 0)
-            tik_instance.data_move(self.accum_out[var_offset], accum_ub, 0, 1,
-                                   burst_len, 0, 0)
-            tik_instance.data_move(self.linear_out[var_offset], linear_ub, 0, 1,
-                                   burst_len, 0, 0)
+            tik_instance.data_move(self.var_out[var_offset], var_ub, 0, 1, burst_len, 0, 0)
+            tik_instance.data_move(self.accum_out[var_offset], accum_ub, 0, 1, burst_len, 0, 0)
+            tik_instance.data_move(self.linear_out[var_offset], linear_ub, 0, 1, burst_len, 0, 0)
 
     def sparse_calc(self, ub_tuples, offset, mask, repeat):
         """
@@ -796,64 +756,43 @@ class SparseApplyFtrl():
         tmp_ub = ub_tuples[4][offset]
         tmp2_ub = ub_tuples[5][offset]
 
-        self.tik_instance.vmul(mask, tmp_ub, grad_ub, grad_ub,
-                               repeat, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vmul(mask, tmp_ub, grad_ub, grad_ub, repeat, 1, 1, 1, 8, 8, 8)
         # linear += grad, grad will not used after this operation
-        self.tik_instance.vadd(mask, linear_ub, grad_ub, linear_ub,
-                               repeat, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vln(mask, grad_ub, accum_ub,
-                              repeat, 1, 1, 8, 8)
+        self.tik_instance.vadd(mask, linear_ub, grad_ub, linear_ub, repeat, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vln(mask, grad_ub, accum_ub, repeat, 1, 1, 8, 8)
 
-        self.tik_instance.vmuls(mask, grad_ub, grad_ub, -self.lr_power_attr,
-                                repeat, 1, 1, 8, 8)
+        self.tik_instance.vmuls(mask, grad_ub, grad_ub, -self.lr_power_attr, repeat, 1, 1, 8, 8)
 
-        self.tik_instance.vexp(mask, grad_ub, grad_ub,
-                               repeat, 1, 1, 8, 8)
+        self.tik_instance.vexp(mask, grad_ub, grad_ub, repeat, 1, 1, 8, 8)
 
-        self.tik_instance.vadd(mask, accum_ub, accum_ub, tmp_ub,
-                               repeat, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vadd(mask, accum_ub, accum_ub, tmp_ub, repeat, 1, 1, 1, 8, 8, 8)
 
-        self.tik_instance.vln(mask, tmp_ub, accum_ub,
-                              repeat, 1, 1, 8, 8)
+        self.tik_instance.vln(mask, tmp_ub, accum_ub, repeat, 1, 1, 8, 8)
 
-        self.tik_instance.vmuls(mask, tmp_ub, tmp_ub, -self.lr_power_attr,
-                                repeat, 1, 1, 8, 8)
+        self.tik_instance.vmuls(mask, tmp_ub, tmp_ub, -self.lr_power_attr, repeat, 1, 1, 8, 8)
 
-        self.tik_instance.vexp(mask, tmp_ub, tmp_ub,
-                               repeat, 1, 1, 8, 8)
+        self.tik_instance.vexp(mask, tmp_ub, tmp_ub, repeat, 1, 1, 8, 8)
 
-        self.tik_instance.vmuls(mask, tmp2_ub, tmp_ub, self.lr_attr_rec,
-                                repeat, 1, 1, 8, 8)
+        self.tik_instance.vmuls(mask, tmp2_ub, tmp_ub, self.lr_attr_rec, repeat, 1, 1, 8, 8)
 
-        self.tik_instance.vsub(mask, tmp_ub, grad_ub, tmp_ub,
-                               repeat, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vsub(mask, tmp_ub, grad_ub, tmp_ub, repeat, 1, 1, 1, 8, 8, 8)
 
-        self.tik_instance.vmuls(mask, tmp_ub, tmp_ub, self.lr_attr_rec,
-                                repeat, 1, 1, 8, 8)
+        self.tik_instance.vmuls(mask, tmp_ub, tmp_ub, self.lr_attr_rec, repeat, 1, 1, 8, 8)
 
-        self.tik_instance.vmul(mask, tmp_ub, tmp_ub, var_ub,
-                               repeat, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vmul(mask, tmp_ub, tmp_ub, var_ub, repeat, 1, 1, 1, 8, 8, 8)
 
         # linear out
-        self.tik_instance.vadd(mask, linear_ub, tmp_ub, linear_ub,
-                               repeat, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vadd(mask, linear_ub, tmp_ub, linear_ub, repeat, 1, 1, 1, 8, 8, 8)
 
-        self.tik_instance.vector_dup(mask, tmp_ub, self.l1_attr,
-                                     repeat, 1, 8)
-        self.tik_instance.vmin(mask, grad_ub, linear_ub, tmp_ub,
-                               repeat, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vector_dup(mask, tmp_ub, -self.l1_attr,
-                                     repeat, 1, 8)
-        self.tik_instance.vmax(mask, tmp_ub, grad_ub, tmp_ub,
-                               repeat, 1, 1, 1, 8, 8, 8)
-        self.tik_instance.vsub(mask, tmp_ub, tmp_ub, linear_ub,
-                               repeat, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vector_dup(mask, tmp_ub, self.l1_attr, repeat, 1, 8)
+        self.tik_instance.vmin(mask, grad_ub, linear_ub, tmp_ub, repeat, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vector_dup(mask, tmp_ub, -self.l1_attr, repeat, 1, 8)
+        self.tik_instance.vmax(mask, tmp_ub, grad_ub, tmp_ub, repeat, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vsub(mask, tmp_ub, tmp_ub, linear_ub, repeat, 1, 1, 1, 8, 8, 8)
 
-        self.tik_instance.vadds(mask, tmp2_ub, tmp2_ub, 2 * self.l2_attr,
-                                repeat, 1, 1, 8, 8)
+        self.tik_instance.vadds(mask, tmp2_ub, tmp2_ub, 2 * self.l2_attr, repeat, 1, 1, 8, 8)
 
-        self.tik_instance.vdiv(mask, var_ub, tmp_ub, tmp2_ub,
-                               repeat, 1, 1, 1, 8, 8, 8)
+        self.tik_instance.vdiv(mask, var_ub, tmp_ub, tmp2_ub, repeat, 1, 1, 1, 8, 8, 8)
 
     def sparse_apply_ftrl_compute_tiling(self):
         """
@@ -871,21 +810,23 @@ class SparseApplyFtrl():
 
         with tik_instance.for_range(0, self.core_num, block_num=self.core_num) as block_id:
             # get run tiling data
-            self.tiling_ub = tik_instance.Tensor(self.tiling_dtype, self.tiling_shape,
-                                                 name="tiling_ub", scope=tik.scope_ubuf)
-            tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0,
-                                   1, ceil_value(TILING_ARG_NUM * TYPE_LEN_DICT.get(self.tiling_dtype), BLOCK_SIZE),
-                                   0, 0)
+            self.tiling_ub = tik_instance.Tensor(self.tiling_dtype,
+                                                 self.tiling_shape,
+                                                 name="tiling_ub",
+                                                 scope=tik.scope_ubuf)
+            tik_instance.data_move(
+                self.tiling_ub, self.tiling_gm, 0, 1,
+                ceil_value(self.TILING_ARG_NUM * self.TYPE_LEN_DICT.get(self.tiling_dtype), self.BLOCK_SIZE), 0, 0)
             self.get_tiling_args()
 
             with tik_instance.if_scope(block_id < self.need_core_num):
-                # TILING_MODE_1: var_row_elem is 32B aligned
-                with tik_instance.if_scope(self.tiling_mode == TILING_MODE_1):
+                # self.TILING_MODE_1: var_row_elem is 32B aligned
+                with tik_instance.if_scope(self.tiling_mode == self.TILING_MODE_1):
                     with tik_instance.new_stmt_scope():
                         self.compute_mode_1(block_id)
-                # TILING_MODE_2: var_row_elem is smaller than 32B
+                # self.TILING_MODE_2: var_row_elem is smaller than 32B
                 with tik_instance.else_scope():
-                    with tik_instance.if_scope(self.tiling_mode == TILING_MODE_2):
+                    with tik_instance.if_scope(self.tiling_mode == self.TILING_MODE_2):
                         with tik_instance.new_stmt_scope():
                             self.compute_mode_2(block_id)
                     with tik_instance.else_scope():
@@ -904,38 +845,46 @@ class SparseApplyFtrl():
         -------
         compile info
         """
-        self.var = self.tik_instance.Tensor(self.var_dtype, self.var_shape,
-                                            name="var", scope=tik.scope_gm)
-        self.accum = self.tik_instance.Tensor(self.var_dtype, self.var_shape,
-                                              name="accum", scope=tik.scope_gm)
-        self.linear = self.tik_instance.Tensor(self.var_dtype, self.var_shape,
-                                               name="linear", scope=tik.scope_gm)
-        self.grad = self.tik_instance.Tensor(self.var_dtype, self.grad_shape,
-                                             name="grad", scope=tik.scope_gm)
-        self.indices = self.tik_instance.Tensor(self.indices_dtype, self.indices_shape,
-                                                name="indices", scope=tik.scope_gm)
+        self.var = self.tik_instance.Tensor(self.var_dtype, self.var_shape, name="var", scope=tik.scope_gm)
+        self.accum = self.tik_instance.Tensor(self.var_dtype, self.var_shape, name="accum", scope=tik.scope_gm)
+        self.linear = self.tik_instance.Tensor(self.var_dtype, self.var_shape, name="linear", scope=tik.scope_gm)
+        self.grad = self.tik_instance.Tensor(self.var_dtype, self.grad_shape, name="grad", scope=tik.scope_gm)
+        self.indices = self.tik_instance.Tensor(self.indices_dtype,
+                                                self.indices_shape,
+                                                name="indices",
+                                                scope=tik.scope_gm)
 
-        self.var_out = self.tik_instance.Tensor(self.var_dtype, shape=self.var_shape,
-                                                name="var_out", scope=tik.scope_gm)
-        self.accum_out = self.tik_instance.Tensor(self.var_dtype, shape=self.var_shape,
-                                                  name="accum_out", scope=tik.scope_gm)
-        self.linear_out = self.tik_instance.Tensor(self.var_dtype, shape=self.var_shape,
-                                                   name="linear_out", scope=tik.scope_gm)
-        self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, self.tiling_shape,
-                                                  name="ddr_arg", scope=tik.scope_gm)
+        self.var_out = self.tik_instance.Tensor(self.var_dtype,
+                                                shape=self.var_shape,
+                                                name="var_out",
+                                                scope=tik.scope_gm)
+        self.accum_out = self.tik_instance.Tensor(self.var_dtype,
+                                                  shape=self.var_shape,
+                                                  name="accum_out",
+                                                  scope=tik.scope_gm)
+        self.linear_out = self.tik_instance.Tensor(self.var_dtype,
+                                                   shape=self.var_shape,
+                                                   name="linear_out",
+                                                   scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype,
+                                                  self.tiling_shape,
+                                                  name="ddr_arg",
+                                                  scope=tik.scope_gm)
 
         self.sparse_apply_ftrl_compute_tiling()
 
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=(self.var, self.accum, self.linear, self.grad, self.indices),
                                    outputs=(self.var_out, self.accum_out, self.linear_out),
-                                   flowtable=(self.tiling_gm,), enable_l2=True)
+                                   flowtable=(self.tiling_gm,),
+                                   enable_l2=True)
 
         # add compile info
-        tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num,
-                                                            "ub_size": self.ub_size,
-                                                            "indices_dsize": self.indices_dsize
-                                                            })
+        tbe_context.get_context().add_compile_info("vars", {
+            "core_num": self.core_num,
+            "ub_size": self.ub_size,
+            "indices_dsize": self.indices_dsize
+        })
 
 
 @register_operator("SparseApplyFtrlD")
@@ -945,11 +894,21 @@ class SparseApplyFtrl():
                             (para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_INT),
                             (para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_INT),
                             (para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_INT),
-                            (para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_INT),
-                            para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-def sparse_apply_ftrl_d(var_dict, accum_dict, linear_dict, grad_dict, indices_dict,
-                        var_out_dict, accum_out_dict, linear_out_dict,
-                        lr, l1, l2, lr_power, use_locking=False,
+                            (para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_INT), para_check.OPTION_ATTR_BOOL,
+                            para_check.KERNEL_NAME)
+def sparse_apply_ftrl_d(var_dict,
+                        accum_dict,
+                        linear_dict,
+                        grad_dict,
+                        indices_dict,
+                        var_out_dict,
+                        accum_out_dict,
+                        linear_out_dict,
+                        lr,
+                        l1,
+                        l2,
+                        lr_power,
+                        use_locking=False,
                         kernel_name="sparse_apply_ftrl"):
     """
     sparse_apply_ftrl_d interface, update the variable referenced by resource.

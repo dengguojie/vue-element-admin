@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-# pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 """
 sigmoid_cross_entropy_with_logits_grad
 """

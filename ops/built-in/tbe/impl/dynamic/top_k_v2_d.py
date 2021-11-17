@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 """
 Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
 
@@ -22,7 +22,7 @@ from impl.dynamic.top_k_d import top_k_d
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=redefined-builtin,too-many-arguments
+# 'pylint: disable=redefined-builtin,too-many-arguments
 @register_operator("TopKV2D")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL,

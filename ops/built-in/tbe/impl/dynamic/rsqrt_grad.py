@@ -24,11 +24,16 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-# define a scalar, value = -0.5
-SCALAR = -0.5
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # define a scalar, value = -0.5
+    SCALAR = -0.5
 
 
-# pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=locally-disabled,unused-argument
 @register_operator_compute("RsqrtGrad", op_mode="dynamic", support_fusion=True)
 def rsqrt_grad_compute(input_y, input_dy, output_z, kernel_name="rsqrt_grad"):
     """
@@ -51,9 +56,9 @@ def rsqrt_grad_compute(input_y, input_dy, output_z, kernel_name="rsqrt_grad"):
         the result of compute
     """
     dtype_input_y = input_y.dtype
-    rsqrt_const = tvm.const(SCALAR, dtype=dtype_input_y)
+    rsqrt_const = tvm.const(Constant.SCALAR, dtype=dtype_input_y)
     if dtype_input_y in ("int8", "float16"):
-        rsqrt_const = tvm.const(SCALAR, dtype="float32")
+        rsqrt_const = tvm.const(Constant.SCALAR, dtype="float32")
         input_y = tbe.cast_to(input_y, "float32")
         input_dy = tbe.cast_to(input_dy, "float32")
     res_vmul = tbe.vmul(input_y, input_y)
@@ -65,6 +70,7 @@ def rsqrt_grad_compute(input_y, input_dy, output_z, kernel_name="rsqrt_grad"):
     return res
 
 
+# 'pylint: disable=too-many-locals
 @register_operator("RsqrtGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)

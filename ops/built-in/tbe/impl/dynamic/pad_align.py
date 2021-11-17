@@ -18,7 +18,7 @@ PadD: Align
 from impl.util.platform_adapter import tik
 
 
-# 'pylint: disable=too-few-public-methods
+# 'pylint:disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     The class for constant

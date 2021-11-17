@@ -25,7 +25,7 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.dynamic.sync_resize_bilinear_v2_grad import SyncResizeBilinearV2Grad
 
 
-# 'pylint: disable=too-few-public-methods
+# 'pylint:disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     The class for constant
@@ -73,7 +73,7 @@ def _check_param(grads, images, align_corners, half_pixel_centers):
 
 # 'pylint: disable=invalid-name,useless-object-inheritance,too-many-instance-attributes
 # 'pylint: disable=too-many-arguments,too-many-locals,too-many-public-methods
-class ResizeBilinearV2Grad(object):
+class ResizeBilinearV2Grad:
     """
     The class of ResizeBilinearV2Grad op
     """
@@ -139,7 +139,7 @@ class ResizeBilinearV2Grad(object):
         self.w_loop = None
         self.w_tail = None
 
-    class CommomScalar(object):
+    class CommomScalar:
         """
         define some scalar
         """

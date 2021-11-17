@@ -27,6 +27,7 @@ from impl.util.util_common import div_align_scalar as div_align
 from impl.util.util_common import ceil_div_scalar as ceil_div
 
 
+# 'pylint:disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     The class for constant.
@@ -38,7 +39,7 @@ class Constant:
     TILING_NUM = 34
 
 
-# pylint: disable=too-many-lines,too-many-instance-attributes,too-many-statements,too-many-arguments,too-many-locals
+# 'pylint: disable=too-many-lines,too-many-instance-attributes,too-many-statements,too-many-arguments,too-many-locals
 class ReverseExt2:
     """
     Function: use to store reverse_ext2 schedule parameters
@@ -1610,7 +1611,7 @@ class ReverseExt2:
                 self.reverse_with_topk(max_topk_size=1024, align_num=align_num)
 
 
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=unused-argument,invalid-name
 @register_operator("ReverseV2")
 def reverse_v2(x, axis, y, kernel_name):
     """ calculating reverse_v2 tensor by axis parameters

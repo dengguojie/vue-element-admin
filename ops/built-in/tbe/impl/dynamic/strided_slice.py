@@ -16,16 +16,19 @@ http://www.apache.org/licenses/LICENSE-2.0
 strided slice
 """
 
-from __future__ import absolute_import, with_statement
+from __future__ import absolute_import
+from __future__ import with_statement
 import math
-from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import tik
 
 from impl import common_util
 from impl import constant_util as constant
 from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe_context
-from impl.util.util_tik_comm_func import ceil_align, ceil_div, floor_align
+from impl.util.platform_adapter import tik
+from impl.util.util_tik_comm_func import ceil_align
+from impl.util.util_tik_comm_func import ceil_div
+from impl.util.util_tik_comm_func import floor_align
 
 
 # 'pylint: disable=too-few-public-methods
@@ -33,16 +36,27 @@ class Constant:
     """
     The class for constant
     """
-    MAX_SIZE = 2 ** 31 - 1
+    MAX_SIZE = 2**31 - 1
     MAX_NBURST = 4095
     MAX_REPEAT = 255
     Tiling_UB_SIZE = 382
 
 
-def check_supported(input_x, begin, end, strides=None,
-                    output_x=None, begin_mask=0, end_mask=0,
-                    ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,
+# 'pylint: disable=too-many-arguments,unused-argument
+def check_supported(input_x,
+                    begin,
+                    end,
+                    strides=None,
+                    output_x=None,
+                    begin_mask=0,
+                    end_mask=0,
+                    ellipsis_mask=0,
+                    new_axis_mask=0,
+                    shrink_axis_mask=0,
                     kernel_name="strided_slice"):
+    """
+    check_supported
+    """
     return "Unknown"
 
 
@@ -110,7 +124,8 @@ class StridedSlice:
             """
             with self.tik_instance.new_stmt_scope():
                 need_ub_size = ceil_32bytes_align_count(self.tiling_gm.shape[0], self.dtype)
-                tiling_ub = self.tik_instance.Tensor(self.dtype, (need_ub_size,), name="tiling_ub",
+                tiling_ub = self.tik_instance.Tensor(self.dtype, (need_ub_size,),
+                                                     name="tiling_ub",
                                                      scope=tik.scope_ubuf)
                 _data_move(self.tik_instance, tiling_ub, self.tiling_gm, need_ub_size)
 
@@ -142,7 +157,14 @@ class StridedSlice:
 
     # 'pylint: disable=locally-disabled,too-many-arguments,
     # 'pylint: disable=unused-argument,too-many-locals
-    def __init__(self, input_x, strides, begin_mask, end_mask, ellipsis_mask, new_axis_mask, shrink_axis_mask,
+    def __init__(self,
+                 input_x,
+                 strides,
+                 begin_mask,
+                 end_mask,
+                 ellipsis_mask,
+                 new_axis_mask,
+                 shrink_axis_mask,
                  kernel_name="strided_slice"):
         self.strides = strides
         self.begin_mask = begin_mask
@@ -329,8 +351,9 @@ class StridedSlice:
         input_inner_dim = self.tiling_param.input_shape[self.shape_length - 1]
         input_outer_dim = self.tiling_param.input_shape[0]
         max_rows_in_ub.set_as(floor_align(self.ub_size // (input_inner_dim + 1), self.block_element))
-        rows_each_core.set_as(self._ceil_32bytes_count(self._ceil_div(self.tiling_param.input_shape[0],
-                                                                      self.aicore_num), self.block_element))
+        rows_each_core.set_as(
+            self._ceil_32bytes_count(self._ceil_div(self.tiling_param.input_shape[0], self.aicore_num),
+                                     self.block_element))
         aicore_num_used.set_as(self._ceil_div(input_outer_dim, rows_each_core))
         repeat_times.set_as(rows_each_core // max_rows_in_ub)
         last_repeat_rows.set_as(rows_each_core % max_rows_in_ub)
@@ -343,7 +366,8 @@ class StridedSlice:
 
         with inst.new_stmt_scope():
             input_ub = inst.Tensor(self.dtype, (max_rows_in_ub * input_inner_dim,),
-                                   scope=tik.scope_ubuf, name="input_ub")
+                                   scope=tik.scope_ubuf,
+                                   name="input_ub")
             output_ub = inst.Tensor(self.dtype, (max_rows_in_ub,), scope=tik.scope_ubuf, name="output_ub")
             with inst.if_scope(core_idx < aicore_num_used):
                 with inst.if_scope(tail_rows != 0):
@@ -352,21 +376,21 @@ class StridedSlice:
                             src_addr.set_as((core_idx * rows_each_core + repeat_idx * max_rows_in_ub) * \
                                             input_inner_dim)
                             dst_addr.set_as((core_idx * rows_each_core + repeat_idx * max_rows_in_ub) * 1)
-                            self._do_with_last_dim_equal_one_per_loop(src_addr, dst_addr, max_rows_in_ub,
-                                                                      input_ub, output_ub)
+                            self._do_with_last_dim_equal_one_per_loop(src_addr, dst_addr, max_rows_in_ub, input_ub,
+                                                                      output_ub)
                         with inst.if_scope(last_repeat_rows > 0):
                             src_addr.set_as((core_idx * rows_each_core + repeat_times * max_rows_in_ub) * \
                                             input_inner_dim)
                             dst_addr.set_as((core_idx * rows_each_core + repeat_times * max_rows_in_ub) * 1)
-                            self._do_with_last_dim_equal_one_per_loop(src_addr, dst_addr, last_repeat_rows,
-                                                                      input_ub, output_ub)
+                            self._do_with_last_dim_equal_one_per_loop(src_addr, dst_addr, last_repeat_rows, input_ub,
+                                                                      output_ub)
                     with inst.else_scope():
                         with inst.for_range(0, tail_rows_repeat_times) as tail_repeat_idx:
                             src_addr.set_as((core_idx * rows_each_core + tail_repeat_idx * max_rows_in_ub) * \
                                             input_inner_dim)
                             dst_addr.set_as((core_idx * rows_each_core + tail_repeat_idx * max_rows_in_ub) * 1)
-                            self._do_with_last_dim_equal_one_per_loop(src_addr, dst_addr, max_rows_in_ub,
-                                                                      input_ub, output_ub)
+                            self._do_with_last_dim_equal_one_per_loop(src_addr, dst_addr, max_rows_in_ub, input_ub,
+                                                                      output_ub)
                         with inst.if_scope(tail_last_repeat_rows > 0):
                             src_addr.set_as((core_idx * rows_each_core + tail_rows_repeat_times * max_rows_in_ub) * \
                                             input_inner_dim)
@@ -377,13 +401,13 @@ class StridedSlice:
                     with inst.for_range(0, repeat_times) as repeat_idx:
                         src_addr.set_as((core_idx * rows_each_core + repeat_idx * max_rows_in_ub) * input_inner_dim)
                         dst_addr.set_as((core_idx * rows_each_core + repeat_idx * max_rows_in_ub) * 1)
-                        self._do_with_last_dim_equal_one_per_loop(src_addr, dst_addr, max_rows_in_ub,
-                                                                  input_ub, output_ub)
+                        self._do_with_last_dim_equal_one_per_loop(src_addr, dst_addr, max_rows_in_ub, input_ub,
+                                                                  output_ub)
                     with inst.if_scope(last_repeat_rows > 0):
                         src_addr.set_as((core_idx * rows_each_core + repeat_times * max_rows_in_ub) * input_inner_dim)
                         dst_addr.set_as((core_idx * rows_each_core + repeat_times * max_rows_in_ub) * 1)
-                        self._do_with_last_dim_equal_one_per_loop(src_addr, dst_addr, last_repeat_rows,
-                                                                  input_ub, output_ub)
+                        self._do_with_last_dim_equal_one_per_loop(src_addr, dst_addr, last_repeat_rows, input_ub,
+                                                                  output_ub)
 
     def _do_with_last_dim_equal_one_per_loop(self, src_addr, dst_addr, cur_repeat_rows, input_ub, output_ub):
         """
@@ -504,12 +528,13 @@ class StridedSlice:
         aicore_num_used = inst.Scalar("int64", name="aicore_num_used")
         input_addr = inst.Scalar("int64", name="input_addr")
         output_addr = inst.Scalar("int64", name="output_addr")
-        max_rows_in_ub.set_as(floor_align(self.ub_size // self.tiling_param.input_shape[self.shape_length - 1],
-                                          self.block_element))
+        max_rows_in_ub.set_as(
+            floor_align(self.ub_size // self.tiling_param.input_shape[self.shape_length - 1], self.block_element))
         with inst.if_scope(max_rows_in_ub // self.block_element > Constant.MAX_REPEAT):
             max_rows_in_ub.set_as(Constant.MAX_REPEAT * self.block_element)
-        rows_each_core.set_as(self._ceil_32bytes_count(self._ceil_div(self.tiling_param.input_shape[0],
-                                                                      self.aicore_num), self.block_element))
+        rows_each_core.set_as(
+            self._ceil_32bytes_count(self._ceil_div(self.tiling_param.input_shape[0], self.aicore_num),
+                                     self.block_element))
         repeat_times.set_as(self._ceil_div(rows_each_core, max_rows_in_ub))
         last_repeat_rows.set_as(rows_each_core % max_rows_in_ub)
         with inst.if_scope(last_repeat_rows == 0):
@@ -596,40 +621,24 @@ class StridedSlice:
         with inst.for_range(0, self.block_element) as loop_idx:
             src_addr.set_as(input_addr + loop_idx * input_inner_dim + start_num)
             dst_addr.set_as(loop_idx * output_last_dim_part1)
-            inst.data_move(input_ub[dst_addr],
-                           self.input_gm[src_addr],
-                           0,
-                           cur_repeat_rows // self.block_element,
-                           output_last_dim_part1_block,
-                           input_inner_dim - output_last_dim_part1_block,
+            inst.data_move(input_ub[dst_addr], self.input_gm[src_addr], 0, cur_repeat_rows // self.block_element,
+                           output_last_dim_part1_block, input_inner_dim - output_last_dim_part1_block,
                            output_last_dim_part1 - output_last_dim_part1_block)
             src_addr.set_as(loop_idx * output_last_dim_part1)
             dst_addr.set_as(output_addr + loop_idx * output_inner_dim)
-            inst.data_move(self.output_gm[dst_addr],
-                           input_ub[src_addr],
-                           0,
-                           cur_repeat_rows // self.block_element,
-                           output_last_dim_part1_block,
-                           output_last_dim_part1 - output_last_dim_part1_block,
+            inst.data_move(self.output_gm[dst_addr], input_ub[src_addr], 0, cur_repeat_rows // self.block_element,
+                           output_last_dim_part1_block, output_last_dim_part1 - output_last_dim_part1_block,
                            output_inner_dim - output_last_dim_part1_block)
             with inst.if_scope(output_last_dim_part2 > 0):
-                inst.data_move(input_ub[loop_idx * self.block_element],
-                               self.input_gm[input_addr + loop_idx * input_inner_dim +
-                                             start_num +
-                                             (output_inner_dim - self.block_element)],
-                               0,
-                               cur_repeat_rows // self.block_element,
-                               1,
-                               input_inner_dim - 1,
-                               self.block_element - 1)
-                inst.data_move(self.output_gm[output_addr + loop_idx * output_inner_dim +
-                                              (output_inner_dim - self.block_element)],
-                               input_ub[loop_idx * self.block_element],
-                               0,
-                               cur_repeat_rows // self.block_element,
-                               1,
-                               self.block_element -1,
-                               output_inner_dim - 1)
+                inst.data_move(
+                    input_ub[loop_idx * self.block_element],
+                    self.input_gm[input_addr + loop_idx * input_inner_dim + start_num +
+                                  (output_inner_dim - self.block_element)], 0, cur_repeat_rows // self.block_element, 1,
+                    input_inner_dim - 1, self.block_element - 1)
+                inst.data_move(
+                    self.output_gm[output_addr + loop_idx * output_inner_dim + (output_inner_dim - self.block_element)],
+                    input_ub[loop_idx * self.block_element], 0, cur_repeat_rows // self.block_element, 1,
+                    self.block_element - 1, output_inner_dim - 1)
 
     def _do_with_data_move_tail_rows(self, rows, tail_rows_last_repeat, input_ub):
         """
@@ -652,11 +661,10 @@ class StridedSlice:
         input_addr = rows * input_inner_dim
         output_addr = rows * output_inner_dim
         with inst.for_range(0, tail_rows_last_repeat) as loop_idx:
-            inst.data_move(input_ub,
-                           self.input_gm[input_addr + loop_idx * input_inner_dim + start_num],
-                           0, 1, output_inner_dim_block, 0, 0)
-            inst.data_move(self.output_gm[output_addr + loop_idx * output_inner_dim],
-                           input_ub, 0, 1, output_inner_dim_block, 0, 0)
+            inst.data_move(input_ub, self.input_gm[input_addr + loop_idx * input_inner_dim + start_num], 0, 1,
+                           output_inner_dim_block, 0, 0)
+            inst.data_move(self.output_gm[output_addr + loop_idx * output_inner_dim], input_ub, 0, 1,
+                           output_inner_dim_block, 0, 0)
 
     def _do_only_slice_last_dim_with_vnchwconv(self, core_idx):
         """
@@ -678,7 +686,8 @@ class StridedSlice:
         ub_size = self.ub_size * multi_times // 2
         begin_value = self.tiling_param.begin[shape_length - 1] * multi_times
         element_each_block = self.block_element * multi_times
-        output_32bytes_align_rows = inst.Scalar("int64", name="output_32bytes_align_rows",
+        output_32bytes_align_rows = inst.Scalar("int64",
+                                                name="output_32bytes_align_rows",
                                                 init_value=element_each_block)
         with inst.if_scope(output_32bytes_align_rows % output_inner_dim == 0):
             output_32bytes_align_rows.set_as(output_32bytes_align_rows // output_inner_dim)
@@ -695,8 +704,8 @@ class StridedSlice:
         tail_rows_repeat_roll_back_rows = inst.Scalar("int64", name="tail_rows_repeat_roll_back_rows", init_value=0)
         rows_each_core.set_as(self._ceil_32bytes_count(self._ceil_div(out_dim, core_num), output_32bytes_align_rows))
         repeat_times.set_as(self._ceil_div(rows_each_core, max_rows_in_ub))
-        rows_each_repeat.set_as(self._ceil_32bytes_count(self._ceil_div(rows_each_core, repeat_times),
-                                                         output_32bytes_align_rows))
+        rows_each_repeat.set_as(
+            self._ceil_32bytes_count(self._ceil_div(rows_each_core, repeat_times), output_32bytes_align_rows))
         rows_each_core.set_as(rows_each_repeat * repeat_times)
         aicore_num_used.set_as(self._ceil_div(out_dim, rows_each_core))
         with inst.if_scope(aicore_num_used == 1):
@@ -717,8 +726,9 @@ class StridedSlice:
                                                                             output_32bytes_align_rows) - \
                                                    tail_rows_repeat_tail_count)
         tail_loop_times = self._ceil_div(tail_rows_repeat_times - 1, 16)
-        tail_last_loop_rows = inst.Scalar("int64", name="tail_last_loop_rows",
-                                          init_value=(tail_rows_repeat_times -1) % 16)
+        tail_last_loop_rows = inst.Scalar("int64",
+                                          name="tail_last_loop_rows",
+                                          init_value=(tail_rows_repeat_times - 1) % 16)
         with inst.if_scope(tail_last_loop_rows == 0):
             tail_last_loop_rows.set_as(16)
 
@@ -731,9 +741,15 @@ class StridedSlice:
 
         input_addr = inst.Scalar("int64", name="input_addr")
         output_addr = inst.Scalar("int64", name="output_addr")
-        param_dict = {"input_gm": input_gm, "output_gm": output_gm, "rows_each_repeat": rows_each_repeat,
-                      "input_inner_dim": input_inner_dim, "output_inner_dim": output_inner_dim,
-                      "begin_value": begin_value, "element_each_block": element_each_block}
+        param_dict = {
+            "input_gm": input_gm,
+            "output_gm": output_gm,
+            "rows_each_repeat": rows_each_repeat,
+            "input_inner_dim": input_inner_dim,
+            "output_inner_dim": output_inner_dim,
+            "begin_value": begin_value,
+            "element_each_block": element_each_block
+        }
 
         with inst.new_stmt_scope():
             input_ub = inst.Tensor(tensor_dtype, (ub_size,), scope=tik.scope_ubuf, name="input_ub")
@@ -835,10 +851,9 @@ class StridedSlice:
             src_addr_in = input_addr + loop_rows_idx * rows_each_repeat * input_inner_dim
             dst_addr_in = loop_rows_idx * ceil_align(rows_each_repeat * input_inner_dim, element_each_block)
             self._data_move(input_ub[dst_addr_in], input_gm[src_addr_in], rows_each_repeat * input_inner_dim)
-        self._do_with_input2vnchwconv(vnchw_conv_ub, input_ub, loop_count, vnchw_conv_repeat_times,
-                                      element_each_block)
-        inst.data_move(input_ub, vnchw_conv_ub[begin_value * 16], 0, rows_each_repeat,
-                       output_inner_dim, input_inner_dim - output_inner_dim, 0)
+        self._do_with_input2vnchwconv(vnchw_conv_ub, input_ub, loop_count, vnchw_conv_repeat_times, element_each_block)
+        inst.data_move(input_ub, vnchw_conv_ub[begin_value * 16], 0, rows_each_repeat, output_inner_dim,
+                       input_inner_dim - output_inner_dim, 0)
         vnchw_conv_repeat_times.set_as(self._ceil_div(rows_each_repeat * output_inner_dim, element_each_block))
         self._do_with_vnchwconv2output(vnchw_conv_ub, input_ub, vnchw_conv_repeat_times, element_each_block)
         self._data_move(output_gm[output_addr], vnchw_conv_ub, loop_rows * rows_each_repeat * output_inner_dim)
@@ -913,45 +928,27 @@ class StridedSlice:
                 row_loop_idx.set_as(row_idx + loop_idx * max_rows_per_data_move)
                 input_gm_addr = self._get_input_gm_addr(row_loop_idx)
                 output_gm_addr = self._get_output_gm_addr(row_loop_idx)
-                inst.data_move(
-                    ub,
-                    self.input_gm[input_gm_addr],
-                    0,
-                    max_rows_per_data_move,
-                    output_shape[dim_count - 1] // self.block_element,
-                    (input_shape[dim_count - 1] - output_shape[dim_count - 1]) // self.block_element,
-                    0)  # input gm -> ub
+                inst.data_move(ub, self.input_gm[input_gm_addr], 0, max_rows_per_data_move,
+                               output_shape[dim_count - 1] // self.block_element,
+                               (input_shape[dim_count - 1] - output_shape[dim_count - 1]) // self.block_element,
+                               0)  # input gm -> ub
 
-                inst.data_move(
-                    self.output_gm[output_gm_addr],
-                    ub,
-                    0,
-                    1,
-                    max_rows_per_data_move * output_shape[dim_count - 1] // self.block_element,
-                    0,
-                    0)  # ub -> output gm
+                inst.data_move(self.output_gm[output_gm_addr], ub, 0, 1,
+                               max_rows_per_data_move * output_shape[dim_count - 1] // self.block_element, 0,
+                               0)  # ub -> output gm
 
             num_remain_rows = num_rows - loops * max_rows_per_data_move
             with inst.if_scope(num_remain_rows > 0):
                 row_loop_idx.set_as(row_idx + loops * max_rows_per_data_move)
                 input_gm_addr = self._get_input_gm_addr(row_loop_idx)
                 output_gm_addr = self._get_output_gm_addr(row_loop_idx)
-                inst.data_move(
-                    ub,
-                    self.input_gm[input_gm_addr],
-                    0,
-                    num_remain_rows,
-                    output_shape[dim_count - 1] // self.block_element,
-                    (input_shape[dim_count - 1] - output_shape[dim_count - 1]) // self.block_element,
-                    0)  # input gm -> ub
-                inst.data_move(
-                    self.output_gm[output_gm_addr],
-                    ub,
-                    0,
-                    1,
-                    num_remain_rows * output_shape[dim_count - 1] // self.block_element,
-                    0,
-                    0)  # ub -> output gm
+                inst.data_move(ub, self.input_gm[input_gm_addr], 0, num_remain_rows,
+                               output_shape[dim_count - 1] // self.block_element,
+                               (input_shape[dim_count - 1] - output_shape[dim_count - 1]) // self.block_element,
+                               0)  # input gm -> ub
+                inst.data_move(self.output_gm[output_gm_addr], ub, 0, 1,
+                               num_remain_rows * output_shape[dim_count - 1] // self.block_element, 0,
+                               0)  # ub -> output gm
 
     def _do_large_last_dim(self, core_idx):
         self._do_large_last_dim_normal(core_idx)
@@ -995,8 +992,7 @@ class StridedSlice:
         output_gm = self.output_gm
         need_update_out_addr = inst.Scalar("int32", name="need_update_out_addr")
         need_update_out_addr.set_as(1)
-        output_gm_addr = inst.Scalar(self.tiling_param.dtype,
-                                     name="output_addr")
+        output_gm_addr = inst.Scalar(self.tiling_param.dtype, name="output_addr")
         with inst.new_stmt_scope():
             tmp_ub = inst.Tensor(self.dtype, (tmp_ub_size,), scope=tik.scope_ubuf, name="tmp_ub")
             ub = inst.Tensor(self.dtype, (ub_size,), scope=tik.scope_ubuf, name="out_ub")
@@ -1109,8 +1105,8 @@ class StridedSlice:
         input_shape = self.tiling_param.input_shape
         output_shape = self.tiling_param.output_shape
         out_loops = self._ceil_div(self.tiling_param.out_dim_with_vnchwconv, core_num)
-        compute_rows_each_inner_loops = self.ub_size_with_vnchwconv // (
-            16 * input_shape[self.shape_length - 1]) // 16 * 16
+        compute_rows_each_inner_loops = self.ub_size_with_vnchwconv // (16 *
+                                                                        input_shape[self.shape_length - 1]) // 16 * 16
 
         inner_loops = self._ceil_div(output_shape[self.shape_length - 2], compute_rows_each_inner_loops) - 1
         compute_rows_tail = output_shape[self.shape_length - 2] - inner_loops * compute_rows_each_inner_loops
@@ -1182,7 +1178,6 @@ class StridedSlice:
         """
         _do_each_matrix_align
         """
-        inst = self.tik_instance
         output_matrix_count = self.tiling_param.output_shape[self.shape_length - 1] * rows
         self._do_each_matrix_except_move_output_gm(input_gm_addr, output_gm_addr, rows, [ub1, ub2])
         self._data_move(self.output_gm[output_gm_addr], ub2, output_matrix_count)
@@ -1211,22 +1206,16 @@ class StridedSlice:
             inst.data_move(
                 ub1[i * Constant.MAX_NBURST * output_shape[self.shape_length - 1] * 16],
                 ub2[(i * Constant.MAX_NBURST * input_shape[self.shape_length - 1] + begin[self.shape_length - 1]) * 16],
-                0,
-                Constant.MAX_NBURST,
-                output_shape[self.shape_length - 1],
-                input_shape[self.shape_length - 1] - output_shape[self.shape_length - 1],
-                0)
+                0, Constant.MAX_NBURST, output_shape[self.shape_length - 1],
+                input_shape[self.shape_length - 1] - output_shape[self.shape_length - 1], 0)
 
         with inst.if_scope(rows % Constant.MAX_NBURST != 0):
             inst.data_move(
                 ub1[nburst_loop * Constant.MAX_NBURST * output_shape[self.shape_length - 1] * 16],
-                ub2[(nburst_loop * Constant.MAX_NBURST * input_shape[self.shape_length - 1] + begin[
-                    self.shape_length - 1]) * 16],
-                0,
-                rows % Constant.MAX_NBURST,
+                ub2[(nburst_loop * Constant.MAX_NBURST * input_shape[self.shape_length - 1] +
+                     begin[self.shape_length - 1]) * 16], 0, rows % Constant.MAX_NBURST,
                 output_shape[self.shape_length - 1],
-                input_shape[self.shape_length - 1] - output_shape[self.shape_length - 1],
-                0)
+                input_shape[self.shape_length - 1] - output_shape[self.shape_length - 1], 0)
 
         output_matrix_count = output_shape[self.shape_length - 1] * rows
         vnchwconv_loop = self._ceil_div(output_matrix_count, 16)
@@ -1251,8 +1240,8 @@ class StridedSlice:
             self._data_move(self.output_gm[output_gm_addr], ub2, floor_align_count)
             with inst.for_range(0, self.block_element, name="block_element_loop") as element_id:
                 ub_block[element_id] = ub2[output_matrix_count - self.block_element + element_id]
-            self._data_move(self.output_gm[output_gm_addr + output_matrix_count -
-                                           self.block_element], ub_block, self.block_element)
+            self._data_move(self.output_gm[output_gm_addr + output_matrix_count - self.block_element], ub_block,
+                            self.block_element)
 
         with inst.else_scope():
             self._data_move(self.output_gm[output_gm_addr], ub2, output_matrix_count)
@@ -1265,8 +1254,17 @@ class StridedSlice:
                             para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
-def strided_slice(input_x, begin, end, strides=None, output_x=None, begin_mask=0, end_mask=0,
-                  ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0, kernel_name="strided_slice"):
+def strided_slice(input_x,
+                  begin,
+                  end,
+                  strides=None,
+                  output_x=None,
+                  begin_mask=0,
+                  end_mask=0,
+                  ellipsis_mask=0,
+                  new_axis_mask=0,
+                  shrink_axis_mask=0,
+                  kernel_name="strided_slice"):
     """
     Extracts a strided slice of a tensor (generalized python array indexing).
     Roughly speaking, this op extracts a slice of size (end-begin)/stride
@@ -1319,10 +1317,8 @@ def strided_slice(input_x, begin, end, strides=None, output_x=None, begin_mask=0
     inst = strided_slice_instance.tik_instance
     opt_config = {"out_of_bound_sync_check": True}
     inst.BuildCCE(kernel_name=strided_slice_instance.kernel_name,
-                  inputs=(strided_slice_instance.input_gm,
-                          strided_slice_instance.begin_gm,
-                          strided_slice_instance.end_gm,
-                          strided_slice_instance.strides_gm),
+                  inputs=(strided_slice_instance.input_gm, strided_slice_instance.begin_gm,
+                          strided_slice_instance.end_gm, strided_slice_instance.strides_gm),
                   outputs=(strided_slice_instance.output_gm,),
                   flowtable=[strided_slice_instance.tiling_param.tiling_gm],
                   config=opt_config,

@@ -21,34 +21,40 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import tbe_context
 
-# max int64 value
-MAX_INT64_VALUE = 2**64 - 1
-# tiling param num
-TILING_ARG_NUM = 20
-# reserved ub size
-RESERVED_UB_SIZE = 8 * 1024
-# 8 bit
-EIGHT_BIT = 8
-# bytes of one block
-BLOCK_BYTES = 32
-# the vector size is 256B
-VECTOR_BYTE_SIZE = 256
-# neg two
-NEG_TWO = -2
-# neg one
-NEG_ONE = -1
-# int32 max value
-INT32_MAX = 2147483647
-# int32 min value
-INT32_MIN = -2147483648
-# fp32 max value
-FP32_MAX = 3.4 * (10**38)
-# fp32 min value
-FP32_MIN = -3.4 * (10**38)
-# fp16 max value
-FP16_MAX = 65504
-# fp16 min value
-FP16_MIN = -65504
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # max int64 value
+    MAX_INT64_VALUE = 2**64 - 1
+    # tiling param num
+    TILING_ARG_NUM = 20
+    # reserved ub size
+    RESERVED_UB_SIZE = 8 * 1024
+    # 8 bit
+    EIGHT_BIT = 8
+    # bytes of one block
+    BLOCK_BYTES = 32
+    # the vector size is 256B
+    VECTOR_BYTE_SIZE = 256
+    # neg two
+    NEG_TWO = -2
+    # neg one
+    NEG_ONE = -1
+    # int32 max value
+    INT32_MAX = 2147483647
+    # int32 min value
+    INT32_MIN = -2147483648
+    # fp32 max value
+    FP32_MAX = 3.4 * (10**38)
+    # fp32 min value
+    FP32_MIN = -3.4 * (10**38)
+    # fp16 max value
+    FP16_MAX = 65504
+    # fp16 min value
+    FP16_MIN = -65504
 
 
 def ceil_div(value_x, value_y):
@@ -58,8 +64,8 @@ def ceil_div(value_x, value_y):
     return (value_x + value_y - 1) // value_y
 
 
-# pylint: disable=too-many-arguments,too-many-instance-attributes,unused-argument
-# pylint: disable=too-many-public-methods,too-many-statements,too-many-lines,too-many-branches
+# 'pylint: disable=too-many-arguments,too-many-instance-attributes,unused-argument
+# 'pylint: disable=too-many-public-methods,too-many-statements,too-many-lines,too-many-branches
 class ScatterCommon():
     """
        Function: use to store scatter base parameters
@@ -102,12 +108,12 @@ class ScatterCommon():
         self.check_input_params()
 
         self.ai_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.ub_size_bytes = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE)
-        self.var_dtype_bytes_size = tbe_platform.get_bit_len(self.var_dtype) // EIGHT_BIT
-        self.indices_dtype_bytes_size = tbe_platform.get_bit_len(self.indices_dtype) // EIGHT_BIT
-        self.var_data_each_block = BLOCK_BYTES // self.var_dtype_bytes_size
-        self.indices_data_each_block = BLOCK_BYTES // self.indices_dtype_bytes_size
-        self.data_num_one_repeat = VECTOR_BYTE_SIZE // self.var_dtype_bytes_size
+        self.ub_size_bytes = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - Constant.RESERVED_UB_SIZE)
+        self.var_dtype_bytes_size = tbe_platform.get_bit_len(self.var_dtype) // Constant.EIGHT_BIT
+        self.indices_dtype_bytes_size = tbe_platform.get_bit_len(self.indices_dtype) // Constant.EIGHT_BIT
+        self.var_data_each_block = Constant.BLOCK_BYTES // self.var_dtype_bytes_size
+        self.indices_data_each_block = Constant.BLOCK_BYTES // self.indices_dtype_bytes_size
+        self.data_num_one_repeat = Constant.VECTOR_BYTE_SIZE // self.var_dtype_bytes_size
         self.support_vdiv = 1
 
         self.var_ub_num = self.ub_size_bytes // 8 * 3 // self.var_dtype_bytes_size
@@ -121,13 +127,21 @@ class ScatterCommon():
             self.temp_ub_num = self.ub_size_bytes // 16 * 5 // self.var_dtype_bytes_size
             self.indices_ub_num = self.ub_size_bytes // 16 // self.indices_dtype_bytes_size
 
-        self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
-        self.var_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,), name="var_gm", scope=tik.scope_gm)
-        self.indices_gm = self.tik_instance.Tensor(self.indices_dtype, (MAX_INT64_VALUE,), name="indices_gm", scope=tik.scope_gm)
-        self.updates_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,),
+        self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,),
+                                                  name="tiling_gm",
+                                                  scope=tik.scope_gm)
+        self.var_gm = self.tik_instance.Tensor(self.var_dtype, (Constant.MAX_INT64_VALUE,),
+                                               name="var_gm",
+                                               scope=tik.scope_gm)
+        self.indices_gm = self.tik_instance.Tensor(self.indices_dtype, (Constant.MAX_INT64_VALUE,),
+                                                   name="indices_gm",
+                                                   scope=tik.scope_gm)
+        self.updates_gm = self.tik_instance.Tensor(self.var_dtype, (Constant.MAX_INT64_VALUE,),
                                                    name="updates_gm",
                                                    scope=tik.scope_gm)
-        self.out_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,), name="out_gm", scope=tik.scope_gm)
+        self.out_gm = self.tik_instance.Tensor(self.var_dtype, (Constant.MAX_INT64_VALUE,),
+                                               name="out_gm",
+                                               scope=tik.scope_gm)
 
         self.var_ub = None
         self.updates_ub = None
@@ -295,14 +309,14 @@ class ScatterCommon():
         None
         """
         if self.var_dtype == "int32":
-            max_value = INT32_MAX
-            min_value = INT32_MIN
+            max_value = Constant.INT32_MAX
+            min_value = Constant.INT32_MIN
         if self.var_dtype == "float16":
-            max_value = FP16_MAX
-            min_value = FP16_MIN
+            max_value = Constant.FP16_MAX
+            min_value = Constant.FP16_MIN
         if self.var_dtype == "float32":
-            max_value = FP32_MAX
-            min_value = FP32_MIN
+            max_value = Constant.FP32_MAX
+            min_value = Constant.FP32_MIN
 
         if self.compute_type == "vsub":
             self.tik_instance.vector_dup(mask, src_ub, 0, 1, 1, 8)
@@ -347,9 +361,9 @@ class ScatterCommon():
             else:
                 self.tik_instance.vec_rec(mask, self.temp_ub, src2_ub, repeat_times, 8, 8)
                 self.tik_instance.vec_mul(mask, src2_ub, src2_ub, self.temp_ub, repeat_times, 8, 8, 8)
-                self.tik_instance.vec_adds(mask, src2_ub, src2_ub, NEG_TWO, repeat_times, 8, 8)
+                self.tik_instance.vec_adds(mask, src2_ub, src2_ub, Constant.NEG_TWO, repeat_times, 8, 8)
                 self.tik_instance.vec_mul(mask, src2_ub, src2_ub, self.temp_ub, repeat_times, 8, 8, 8)
-                self.tik_instance.vec_muls(mask, src2_ub, src2_ub, NEG_ONE, repeat_times, 8, 8)
+                self.tik_instance.vec_muls(mask, src2_ub, src2_ub, Constant.NEG_ONE, repeat_times, 8, 8)
                 self.tik_instance.vec_mul(mask, src1_ub, src1_ub, src2_ub, repeat_times, 8, 8, 8)
 
     def move_indices(self, indices_in_index, indice_num, mode):
@@ -948,7 +962,7 @@ class ScatterCommon():
         None
         """
         with self.tik_instance.for_range(0, self.ai_core_num, block_num=self.ai_core_num) as core_index:
-            self.tiling_ub = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,),
+            self.tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,),
                                                       name="tiling_ub",
                                                       scope=tik.scope_ubuf)
             self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 5, 0, 0)
@@ -1023,7 +1037,7 @@ class ScatterCommon():
                 "indices_size": self.indices_dtype_bytes_size,
                 "support_vdiv": self.support_vdiv
             })
-        
+
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                    inputs=(self.var_gm, self.indices_gm, self.updates_gm),
                                    outputs=(self.out_gm),

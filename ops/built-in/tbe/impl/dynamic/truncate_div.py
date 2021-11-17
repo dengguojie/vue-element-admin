@@ -27,7 +27,7 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=locally-disabled,too-many-locals,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-locals,unused-argument,invalid-name
 @register_operator_compute("TruncateDiv", op_mode="dynamic", support_fusion=True)
 def truncate_div_compute(input_x, input_y, output_x,
                          kernel_name="truncate_div"):

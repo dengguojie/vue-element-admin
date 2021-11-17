@@ -23,11 +23,7 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
-from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
-
-# shape size limit for aicore is 2**31
-SHAPE_SIZE_LIMIT = 2147483648
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments
@@ -97,9 +93,9 @@ def tanh_grad(y, dy, z, kernel_name="tanh_grad"):
     para_check.check_dtype(dtype, check_list, param_name="y")
     ins = classify([y], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
-    for (y,) in ins:
+    for (classify_y,) in ins:
         with tbe.compute():
-            shape = shape_util.variable_shape([y])
+            shape = shape_util.variable_shape([classify_y])
             fuseshape = [1]
             fuseshape[0] = functools.reduce(lambda x, y: x * y, shape[0])
             data_y = tvm.placeholder(fuseshape, dtype=dtype, name="data1")

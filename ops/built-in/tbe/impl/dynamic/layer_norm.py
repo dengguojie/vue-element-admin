@@ -36,7 +36,7 @@ from .layer_norm_tik import if_tik_support
 from .layer_norm_tik import _check_input_mode
 
 
-# pylint: disable=too-few-public-methods
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
@@ -44,8 +44,8 @@ class Constant:
     LAST_DIM_RANGE_SET = ((1, 1), (2, 64), (65, 2000), (2001, None))
 
 
-# pylint: disable=unused-argument,too-many-lines,invalid-name
-# pylint: disable=too-many-arguments,too-many-locals,unused-variable
+# 'pylint: disable=unused-argument,too-many-lines,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-locals,unused-variable
 def get_op_support_info(input_x,
                         input_gamma,
                         input_beta,
@@ -90,8 +90,8 @@ def get_op_support_info(input_x,
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=too-many-locals,too-many-statements,too-many-branches
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=too-many-locals,too-many-statements,too-many-branches
 def _division_sixteen(shape):
     """
     division_sixteen
@@ -129,7 +129,6 @@ def op_select_format(input_x,
     shape_gamma = shape_util.scalar2tensor_one(shape_gamma)
 
     # can not support Nz + ND
-    # while len(shape_gamma) >= 2 and  _division_sixteen(shape_x) = False
     if begin_params_axis == 0:
         if len(shape_gamma) >= 2 or (not _division_sixteen(shape_x)):
             input0 = util_select_op_base.gen_param(classify="input0",
@@ -511,7 +510,6 @@ def layer_norm_compute(input_x,
     shape_x = shape_util.shape_to_list(input_x.shape)
     dtype = input_x.dtype.lower()
     input_x1 = input_x
-    # cast_dtype = "float16"
     cast_dtype = dtype
     cast_dtype_precision = dtype
     is_cast = False
@@ -807,7 +805,6 @@ def layer_norm(input_x,
             "name": kernel_name,
             "tensor_list": tensors
         }
-        # tbe.cce_build_code(sch, config)
 
         tbe.build(schedules, config)
 
@@ -910,7 +907,7 @@ def generate_reduce_input(inputs_before_reduce, input_format):
     ]
 
     shape_list, range_list = _process_all_unknown_shape(shape_local, range_local)
-    max_len = max([len(x_shape) for x_shape in shape_list])
+    max_len = max((len(x_shape) for x_shape in shape_list))
     new_shape_local = [[1] * (max_len - len(x_shape)) + x_shape if len(x_shape) != max_len else x_shape
                        for x_shape in shape_list]
     if input_format == "FRACTAL_NZ":

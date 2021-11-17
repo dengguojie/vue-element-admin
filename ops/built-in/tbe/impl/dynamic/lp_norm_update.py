@@ -26,17 +26,23 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
 
-_CONST_INF = 2147483647
-_CONST_EPSILON_FP16 = 1e-7
-_CCE_PLAT = tbe_platform.get_soc_spec('SOC_VERSION')
 
-# pylint: disable=invalid-name,unused-argument,too-many-locals
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    CONST_INF = 2147483647
+    CONST_EPSILON_FP16 = 1e-7
+    CCE_PLAT = tbe_platform.get_soc_spec('SOC_VERSION')
+
+
+# 'pylint: disable=invalid-name,unused-argument,too-many-locals
 @register_operator_compute("LpNormUpdate", op_mode="dynamic", support_fusion=True)
 def lp_norm_update_compute(x, y, p, kernel_name):
     """
     Compute norm for p = 2.
     For precision considering, separate it from lp_norm_update_compute without using vlog.
-    
     Compute norm for p >= 3.
     When p equals other int value, lp_norm_update = pow(sum(pow(abs(input),p)),1/p).
     """
@@ -44,7 +50,7 @@ def lp_norm_update_compute(x, y, p, kernel_name):
     if p == 2:
         res = tbe.vsqrt(x, 1)
     else:
-        if "910" in _CCE_PLAT:
+        if "910" in Constant.CCE_PLAT:
             log_sum_x = tbe.vlog(x, 1)
         else:
             log_sum_x = tbe.vlog(x)
@@ -52,12 +58,12 @@ def lp_norm_update_compute(x, y, p, kernel_name):
         p_tensor = tbe.vadds(zero_tensor, tvm.const(p, dtype=log_sum_x.dtype))
         div_log_x = tbe.vdiv(log_sum_x, p_tensor)
         res = tbe.vexp(div_log_x)
-   
+
     return res
 
 
 @register_operator("LpNormUpdate")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT, 
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def lp_norm_update(x, y, p=2, epsilon=1e-12, kernel_name="lp_norm_update"):
     """
@@ -94,32 +100,33 @@ def lp_norm_update(x, y, p=2, epsilon=1e-12, kernel_name="lp_norm_update"):
     schedules = []
     tensors = []
     ins = classify([x], OpPatternMode.ELEWISE)
-    
+
     for (_x,) in ins:
         with tbe.compute():
-            shape_var_new = shape_util.variable_shape([_x,])[0]
+            shape_var_new = shape_util.variable_shape([
+                _x,
+            ])[0]
             input_data = tvm.placeholder(shape_var_new, name="input_data", dtype=x_type)
 
-            if (p in p_inf_list) or (p == _CONST_INF) or (p == -_CONST_INF - 1) or (p == 0) or (p == 1):
+            if (p in p_inf_list) or (p in (0, 1, Constant.CONST_INF, -Constant.CONST_INF - 1)):
                 res = input_data
             else:
                 res = lp_norm_update_compute(input_data, y, p, kernel_name)
 
-            if x_type == "float16" and float(epsilon) <= _CONST_EPSILON_FP16:
+            if x_type == "float16" and float(epsilon) <= Constant.CONST_EPSILON_FP16:
                 if epsilon == 0.0:
                     std_no = tvm.const(0.0, dtype=x_type)
                 else:
-                    std_no = tvm.const(_CONST_EPSILON_FP16, dtype=x_type)
+                    std_no = tvm.const(Constant.CONST_EPSILON_FP16, dtype=x_type)
             else:
                 std_no = tvm.const(float(epsilon), dtype=x_type)
             res = tbe.vmaxs(res, std_no)
-        
+
             tensors.append([input_data, res])
 
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
         schedules.append(sch)
 
-    config = {"name": kernel_name,
-              "tensor_list": tensors}
+    config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)

@@ -23,8 +23,8 @@ from impl.util.platform_adapter import tik
 from .strided_slice import StridedSlice
 
 
-# pylint: disable=locally-disabled,too-many-arguments,invalid-name,unused-argument
-# pylint: disable=unused-argument,too-many-locals,redefined-builtin
+# 'pylint: disable=locally-disabled,too-many-arguments,invalid-name,unused-argument
+# 'pylint: disable=unused-argument,too-many-locals,redefined-builtin
 @register_operator("Slice")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)

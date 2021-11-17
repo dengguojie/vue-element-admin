@@ -25,7 +25,7 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util import util_select_op_base
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     """
     select format dynamically \n
@@ -48,6 +48,8 @@ def op_select_format(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
     return param_dynamic_in_json
 
+
+# 'pylint:disable=too-many-locals
 @register_operator("SoftmaxV2")
 def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     """
@@ -74,12 +76,12 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
 
     shape = shape_util.shape_to_list(input_x.shape)
     dtype = input_x.dtype
-    axis = list(axis)
+    list_axis = list(axis)
     last_dim = len(input_x.shape) - 1
     vcmax_flag = False
 
     check_axis_list = [-1, last_dim]
-    for i in axis:
+    for i in list_axis:
         if i in check_axis_list:
             vcmax_flag = True
 
@@ -88,10 +90,10 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
             "te.lang.cce.reduce_max", "float32"):
         data_max_input = tbe.cast_to(input_x, "float16")
         data_max_output = tbe.reduce_max(data_max_input,
-                                         axis=axis, keepdims=True)
+                                         axis=list_axis, keepdims=True)
         data_max = tbe.cast_to(data_max_output, "float32")
     else:
-        data_max = tbe.reduce_max(input_x, axis=axis, keepdims=True)
+        data_max = tbe.reduce_max(input_x, axis=list_axis, keepdims=True)
 
     data_max = tbe.broadcast(data_max, shape)
     data_subtrac = tbe.vsub(input_x, data_max)
@@ -113,7 +115,7 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     if data_exp.dtype == "float16" and tbe_product in ("Ascend310",):
         data_exp = tbe.cast_to(data_exp, "float32")
         has_improve_precision = True
-    data_expsum = tbe.reduce_sum(data_exp, axis, keepdims=True)
+    data_expsum = tbe.reduce_sum(data_exp, list_axis, keepdims=True)
 
     data_expsum = tbe.broadcast(data_expsum, shape)
     output = tbe.vdiv(data_exp, data_expsum)
@@ -123,6 +125,7 @@ def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     return output
 
 
+# 'pylint:disable=invalid-name,too-many-locals
 @register_operator("SoftmaxV2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT), para_check.KERNEL_NAME)
@@ -157,14 +160,14 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
 
     shape = input_x.get("shape")
     dtype = input_x.get("dtype").lower()
-    if not isinstance(axis, int):
-        axis = list(axis)
 
     para_check.check_shape(shape, param_name="x")
     para_check.check_dtype(dtype, ("float16", "float32"), param_name="x")
-    if isinstance(axis, int):
-        axis = [axis]
-    input_axis = {"shape": [len(axis), ], "value": axis, "rel_pos_to_reduce": "axis"}
+    if not isinstance(axis, int):
+        list_axis = list(axis)
+    else:
+        list_axis = [axis]
+    input_axis = {"shape": [len(list_axis), ], "value": list_axis, "rel_pos_to_reduce": "axis"}
 
     schedules = []
     tensors = []
@@ -172,7 +175,7 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
 
     for (x, input_axis) in ins:
         with tbe.compute():
-            shape_var_new, _= shape_util.variable_shape([x, input_axis], op_mode="norm")
+            shape_var_new, _ = shape_util.variable_shape([x, input_axis], op_mode="norm")
             input_x = tvm.placeholder(shape_var_new, dtype=dtype, name="input_x")
             output = softmax_v2_compute(input_x, output_y, input_axis.get("value"), kernel_name)
             tensors.append([input_x, output])

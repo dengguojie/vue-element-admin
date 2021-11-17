@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
 """
 Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
 
@@ -150,7 +148,7 @@ class SplitD:
                                             scope=tik.scope_gm)
         outputs_gm = []
         for i in range(self.num_split):
-            tensor_name = "gm_output_" + str(i)
+            tensor_name = "gm_output_{}".format(i)
             gm_tensor = self.tik_instance.Tensor(self.input_dtype, (Constant.MAX_INT64,),
                                                  name=tensor_name, scope=tik.scope_gm)
             outputs_gm.append(gm_tensor)
@@ -226,13 +224,15 @@ class SplitD:
         self.loop_last_last_core.set_as(self.tiling_ub[17])
         self.loop_burst_len.set_as(0)
 
-    def ceil_div(self, value_x, value_y):
+    @staticmethod
+    def ceil_div(value_x, value_y):
         """
         do ceil division
         """
         return (value_x + value_y - 1) // value_y
 
-    def floor_div(self, value_x, value_y):
+    @staticmethod
+    def floor_div(value_x, value_y):
         """
         do ceil division
         """

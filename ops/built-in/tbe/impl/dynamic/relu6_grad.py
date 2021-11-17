@@ -26,8 +26,8 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=too-many-arguments,unused-argument
-# pylint: disable=too-many-locals,redefined-argument-from-local
+# 'pylint: disable=too-many-arguments,unused-argument
+# 'pylint: disable=too-many-locals,redefined-argument-from-local
 def relu6_grad_compute(input_grad, input_x, output_y, kernel_name="relu6_grad"):
     """
     Parameters
@@ -82,7 +82,7 @@ def relu6_grad_compute(input_grad, input_x, output_y, kernel_name="relu6_grad"):
     return final_res
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 @register_operator("Relu6Grad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)

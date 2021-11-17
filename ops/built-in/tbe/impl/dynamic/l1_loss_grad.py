@@ -27,7 +27,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=invalid-name,too-many-arguments,unused-argument,too-many-locals
+# 'pylint: disable=invalid-name,too-many-arguments,unused-argument,too-many-locals
 @register_operator_compute("L1LossGrad", op_mode="dynamic", support_fusion=True)
 def l1_loss_grad_compute(grads, predict, label, y, reduction="mean", kernel_name="l1_loss_grad"):
     """
@@ -72,7 +72,7 @@ def l1_loss_grad_compute(grads, predict, label, y, reduction="mean", kernel_name
     return res
 
 
-# pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-locals
 @register_operator("L1LossGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)

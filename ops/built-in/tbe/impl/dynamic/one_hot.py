@@ -24,7 +24,7 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
 
 
-# 'pylint: disable=too-few-public-methods
+# 'pylint:disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     The class for constant
@@ -59,6 +59,7 @@ class OneHot():
     The class of OneHot op
     """
 
+    # 'pylint: disable =too-many-arguments,too-many-statements
     def __init__(
             self,
             x,
@@ -746,6 +747,7 @@ class OneHot():
 
     # last axis with ub size is less than x and enough to off_value_tensor
     # some lines
+    # 'pylint: disable =too-many-statements
     def one_hot_last_axis_fourth_mode(self, id_number):
         """
         the fourth calculate mode when the axis is 0
@@ -1716,6 +1718,7 @@ class OneHot():
 
     # middle axis with ub size is less than x and enough to off_value_tensor
     # some lines
+    # 'pylint: disable =too-many-locals,too-many-statements
     def one_hot_middle_axis_third_mode(self, id_number):
         """
         the third calculate mode when the axis is 0 < axis < len(x_shape) - 1
@@ -2168,6 +2171,7 @@ class OneHot():
 
     # middle axis with ub size is less than x smaller than off_value_tensor
     # one line
+    # 'pylint: disable =too-many-locals,too-many-statements
     def one_hot_middle_axis_fourth_mode(self, id_number):
         """
         the fourth calculate mode when the axis is 0 < axis < len(x_shape) - 1
@@ -2456,6 +2460,7 @@ class OneHot():
                                         id_number)
 
 
+# 'pylint: disable =consider-using-f-string
 def check_supported(x, depth, on_value, off_value, y, axis,
                     kernel_name="one_hot"):
     """
@@ -2481,7 +2486,6 @@ def check_supported(x, depth, on_value, off_value, y, axis,
     True or False
     """
     x_shape = x.get("ori_shape")
-    y_shape = y.get("ori_shape")
     x_dtype = x.get("dtype").lower()
     depth_dtype = depth.get("dtype").lower()
     on_value_dtype = on_value.get("dtype").lower()
@@ -2498,15 +2502,15 @@ def check_supported(x, depth, on_value, off_value, y, axis,
         return False, reason
     # when static and x shape[0] is 2048 and axis is 0, one_hot is support
     shape_list = [(2048,),]
-    if not util_common.is_unknown([x, y]) and x_shape in shape_list and axis == 0:
+    if util_common.is_unknown([x, y]):
+        return True, ""
+    if x_shape in shape_list and axis == 0:
         reason = "when static and shape is 2048 and axis is 0"
         return True, reason
-    elif not util_common.is_unknown([x, y]):
-        # when static and the input0_shape ends wtih 1, the compilestatic process dose not support
-        reason = "when static, x_shape[0] is not 2048 or axis is not 0, one_hot not support"
-        return False, reason
+    # when static and the input0_shape ends wtih 1, the compilestatic process dose not support
+    reason = "when static, x_shape[0] is not 2048 or axis is not 0, one_hot not support"
+    return False, reason
 
-    return True, ""
 
 
 def _check_param(x, depth, on_value, off_value):
@@ -2541,8 +2545,8 @@ def _check_param(x, depth, on_value, off_value):
 
 
 # the register of OneHot op
+# 'pylint: disable=unused-argument,too-many-arguments
 @register_operator('OneHot')
-# 'pylint: disable=unused-argument
 def one_hot(x,
             depth,
             on_value,

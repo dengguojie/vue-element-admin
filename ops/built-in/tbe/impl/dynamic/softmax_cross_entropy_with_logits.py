@@ -27,12 +27,15 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import operation
 
-# compute needed,scalar -1
-SCALAR_MINUS_ONE = -1
 
-# limit of input dimvalue
-MAX_SHAPE_NUM = 10000000
-MAX_INT32_VALUE = 2147483647
+# 'pylint:disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    The class for constant
+    """
+    # compute needed,scalar -1
+    SCALAR_MINUS_ONE = -1
+    MAX_INT32_VALUE = 2147483647
 
 
 def _process_range(range0, range1):
@@ -64,9 +67,10 @@ def _process_range(range0, range1):
 
 
 def _range_to_int(range_val):
-    return MAX_INT32_VALUE if range_val is None else int(range_val)
+    return Constant.MAX_INT32_VALUE if range_val is None else int(range_val)
 
 
+# 'pylint: disable=too-many-locals,too-many-statements
 def variable_shape(inputs: list, support_broadcast=False):
     """
     :param inputs: all inputs
@@ -87,6 +91,7 @@ def variable_shape(inputs: list, support_broadcast=False):
             return then_case
         return else_case
 
+# 'pylint: disable=too-many-branches
     def _update_range(shape0, range0, shape1, range1):
         for index, _ in enumerate(range0):
             verify_shape = (shape0[index] != -1 and shape1[index] != -1) or \
@@ -178,7 +183,7 @@ def variable_shape(inputs: list, support_broadcast=False):
         _suffix = 0
         for d_shape, shape, _range in zip(d_shapes, shapes, ranges):
             if shape[i] == -1 and _range[i][0] == _range[i][1]:
-                operation.var("dim_" + str(_suffix) + "_" + str(i), (1, MAX_INT32_VALUE))
+                operation.var("dim_" + str(_suffix) + "_" + str(i), (1, Constant.MAX_INT32_VALUE))
                 d_shape.append(_range[i][0])
             elif shape[i] == -1:
                 if _var is None or need_two_vars:
@@ -187,13 +192,14 @@ def variable_shape(inputs: list, support_broadcast=False):
                     operation.var("dim_" + str(_suffix) + "_" + str(i), _range[i])
                 d_shape.append(_var)
             else:
-                operation.var("dim_" + str(_suffix) + "_" + str(i), (1, MAX_INT32_VALUE))
+                operation.var("dim_" + str(_suffix) + "_" + str(i), (1, Constant.MAX_INT32_VALUE))
                 d_shape.append(shape[i])
             _suffix += 1
 
     return d_shapes
 
 
+# 'pylint: disable=unused-argument,too-many-locals
 @register_operator_compute("SoftmaxCrossEntropyWithLogits", op_mode="dynamic", support_fusion=False)
 def softmax_cross_entropy_with_logits_compute(
         input_features,
@@ -270,7 +276,7 @@ def softmax_cross_entropy_with_logits_compute(
     data_log_tmp = tbe.vlog(data_sum_broadcast)
     data_log = tbe.vsub(data_sub, data_log_tmp)
     data_mul = tbe.vmul(input_labels, data_log)
-    data_muls = tbe.vmuls(data_mul, SCALAR_MINUS_ONE)
+    data_muls = tbe.vmuls(data_mul, Constant.SCALAR_MINUS_ONE)
     loss = tbe.reduce_sum(data_muls, axis=-1, keepdims=True)
     backprop = tbe.vsub(data_div, input_labels)
 
@@ -283,7 +289,7 @@ def softmax_cross_entropy_with_logits_compute(
     return res
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-locals,invalid-name
 @register_operator("SoftmaxCrossEntropyWithLogits", pattern="SoftmaxCrossEntropyWithLogits")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)

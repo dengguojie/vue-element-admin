@@ -1,31 +1,29 @@
-# Copyright 2021 Huawei Technologies Co., Ltd
+"""
+Copyright (C) 2021. Huawei Technologies Co., Ltd. All rights reserved.
 
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+This program is free software; you can redistribute it and/or modify
+it under the terms of the Apache License Version 2.0.You may not use
+this file except in compliance with the License.
 
-# http://www.apache.org/licenses/LICENSE-2.0
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+Apache License for more details at
+http://www.apache.org/licenses/LICENSE-2.0
 
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ============================================================================
+sync_batch_norm_backward_elemt
+"""
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
-from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
-from impl.util.platform_adapter import tbe_context
-from impl.util.platform_adapter import OpImplMode
 
 
+# 'pylint:disable=too-many-arguments,too-many-locals,unused-argument
 @register_operator_compute("SyncBatchNormBackwardElemt", op_mode="dynamic", support_fusion=True)
 def sync_batch_norm_backward_elemt_compute(grad_output,
                                            save_input,
@@ -73,6 +71,7 @@ def sync_batch_norm_backward_elemt_compute(grad_output,
     return grad_input
 
 
+# 'pylint:disable=too-many-arguments,too-many-locals
 def sync_batch_norm_backward_elemt(grad_output,
                                    save_input,
                                    mean,
@@ -103,7 +102,6 @@ def sync_batch_norm_backward_elemt(grad_output,
         A part of sum_dy_xmu
     kernel_name: str
         cce kernel name, default value is sync_batch_norm_backward_elemt
-    
     Returns
     -------
     None

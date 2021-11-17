@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-# pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 """
 sigmoid_cross_entropy_with_logits_grad_v2
 """
@@ -27,6 +27,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import tbe_context
 
 
+# 'pylint: disable=too-many-arguments
 @register_operator_compute("SigmoidCrossEntropyWithLogitsGradV2", op_mode="dynamic", support_fusion=True)
 def sigmoid_cross_entropy_with_logits_grad_v2_compute(predict, target,
                                                       dout, weight, pos_weight,
@@ -125,7 +126,7 @@ def sigmoid_cross_entropy_with_logits_grad_v2_compute(predict, target,
     return grad_output
 
 
-# 'pylint: disable=too-many-statements
+# 'pylint: disable=too-many-statements,too-many-arguments
 @register_operator("SigmoidCrossEntropyWithLogitsGradV2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,

@@ -166,8 +166,7 @@ class ResizeBilinearV2(OpBase):
             # calcu stride scalar flag
             with self.tik_instance.if_scope(self.tiling_in_height * self.tiling_in_width > self.stride_threshold):
                 self.scalar_is_src_stride.set_as(0)
-            with self.tik_instance.if_scope(
-                    self.tiling_out_height * self.tiling_out_width > self.dst_stride_threshold):
+            with self.tik_instance.if_scope(self.tiling_out_height * self.tiling_out_width > self.dst_stride_threshold):
                 self.scalar_is_dst_stride.set_as(0)
 
     def core_scedule_args(self, core_idx):
@@ -319,8 +318,7 @@ class ResizeBilinearV2(OpBase):
                 self.tik_instance.vmul(1, height_input_fp32, height_input_fp32, height_output_fp32[self.block_num:], 1,
                                        1, 1, 1, 8, 8, 8)
             else:
-                self.tik_instance.vdiv(1, height_input_fp32, height_input_fp32, height_output_fp32, 1, 1, 1, 1, 8, 8,
-                                       8)
+                self.tik_instance.vdiv(1, height_input_fp32, height_input_fp32, height_output_fp32, 1, 1, 1, 1, 8, 8, 8)
             self.resize_scale_h.set_as(height_input_fp32[0])
 
             with self.tik_instance.if_scope(tik.all(self.align_corners, self.tiling_out_width > 1)):
@@ -382,7 +380,7 @@ class ResizeBilinearV2(OpBase):
                 if mem_info is not None:
                     # when the fp32_point < 0, will modify to 0
                     self.tik_instance.vmax(64, calcu_out_in_idx_tmp_ub, calcu_out_in_idx_tmp_ub,
-                                           mem_info["zero"]["fp32"], vector_repeat_num, 1, 1, 0, 8, 8, 0)
+                                           mem_info["zero"].get("fp32"), vector_repeat_num, 1, 1, 0, 8, 8, 0)
             else:
                 # calcu: `idx * scale`
                 self.tik_instance.vmuls(64, calcu_out_in_idx_tmp_ub, src_idx_fp_ub, scale, vector_repeat_num, 1, 1, 8,
@@ -484,7 +482,7 @@ class ResizeBilinearV2(OpBase):
                                                     "vmax",
                                                     src1,
                                                     src1,
-                                                    mem_info["zero"]["fp32"],
+                                                    mem_info["zero"].get("fp32"),
                                                     idx_num,
                                                     src0_blk=4,
                                                     src1_blk=0,
@@ -508,7 +506,7 @@ class ResizeBilinearV2(OpBase):
                                                 "vadd",
                                                 src0_offset[8:],
                                                 src0_offset,
-                                                mem_info["one"]["int32"],
+                                                mem_info.get("one").get("int32"),
                                                 idx_num,
                                                 src1_blk=0,
                                                 src1_rep=0,
@@ -520,7 +518,7 @@ class ResizeBilinearV2(OpBase):
                                                 "vmin",
                                                 src0_offset,
                                                 src0_offset,
-                                                mem_info["in_width"]["int32"],
+                                                mem_info.get("in_width").get("int32"),
                                                 idx_num * 4,
                                                 src1_blk=0,
                                                 src1_rep=0)
@@ -528,7 +526,7 @@ class ResizeBilinearV2(OpBase):
                                                 "vmin",
                                                 src1,
                                                 src1,
-                                                mem_info["in_width"]["fp32"],
+                                                mem_info.get("in_width").get("fp32"),
                                                 idx_num * 4,
                                                 src1_blk=0,
                                                 src1_rep=0)
@@ -551,7 +549,7 @@ class ResizeBilinearV2(OpBase):
             util_tik_comm_func.tik_func_vcomple(self.tik_instance,
                                                 "vsub",
                                                 src1[8:],
-                                                mem_info["one"]["fp32"],
+                                                mem_info.get("one").get("fp32"),
                                                 src1,
                                                 idx_num,
                                                 src0_blk=0,
@@ -724,9 +722,7 @@ class ResizeBilinearV2(OpBase):
         # calcu is_src_stride_copy and is_dst_stride_copy use scalar end
 
         # init a scalar for w sigment one time
-        w_loop_sigment = self.tik_instance.Scalar("int32",
-                                                  name="w_loop_sigment",
-                                                  init_value=self.width_idx_sigment_num)
+        w_loop_sigment = self.tik_instance.Scalar("int32", name="w_loop_sigment", init_value=self.width_idx_sigment_num)
         with self.tik_instance.if_scope(tik.all(self.core_width_num < w_loop_sigment, self.core_width_num > 0)):
             w_loop_sigment.set_as(self.core_width_num)
 
@@ -787,7 +783,8 @@ class ResizeBilinearV2(OpBase):
                                                             name="height_idx_ub_fp32_start",
                                                             scope=tik.scope_ubuf)
 
-        self.tik_instance.vadds(64, height_idx_ub_fp32_start, mem_info["height_start"]["fp32"], 0.0, 1, 1, 0, 8, 0)
+        self.tik_instance.vadds(64, height_idx_ub_fp32_start,
+                                mem_info.get("height_start").get("fp32"), 0.0, 1, 1, 0, 8, 0)
         height_idx_ub_start = self.tik_instance.Tensor("int32", (64,), name="height_idx", scope=tik.scope_ubuf)
         height_weight_fp32_start = self.tik_instance.Tensor("float32", (128,),
                                                             name="height_weight_fp32_start",
@@ -809,8 +806,8 @@ class ResizeBilinearV2(OpBase):
                 self.idx_ub_fp32,
                 self.width_idx_sigment_num * 8,
                 des_weight_fp32_ub_list=[width_weight_ub, width_weight_ub[self.width_idx_sigment_num * 8:]],
-                max_idx_ub=mem_info["in_width"]["fp32"],
-                one_fp32_ub=mem_info["one"]["fp32"],
+                max_idx_ub=mem_info.get("in_width").get("fp32"),
+                one_fp32_ub=mem_info.get("one").get("fp32"),
                 mem_info=mem_info)
             self.tik_instance.vadds(64, self.idx_ub_fp32, self.idx_ub_fp32, scalar_idx_fp32,
                                     (self.width_idx_sigment_num * 8 + 63) // 64, 1, 1, 8, 8)
@@ -1011,8 +1008,8 @@ class ResizeBilinearV2(OpBase):
                     if self.output_dtype != input_top_ub.dtype:
                         output_cast_ub = input_top_ub.reinterpret_cast_to(self.output_dtype)
                         output_num = do_nc_num * w_do_len * self.images_shape_c0
-                        self.tik_instance.vconv(64, "", output_cast_ub, input_top_ub[0:], (output_num + 63) // 64, 1,
-                                                1, 4, 8)
+                        self.tik_instance.vconv(64, "", output_cast_ub, input_top_ub[0:], (output_num + 63) // 64, 1, 1,
+                                                4, 8)
                         output_ub = output_cast_ub[0:]
                     else:
                         output_ub = input_top_ub[0:]
@@ -1181,10 +1178,9 @@ class ResizeBilinearV2(OpBase):
                                     (copy_w_algin_num_in_ub * self.images_shape_c0) // self.output_block_num \
                                     - burst_len
 
-                                self.tik_instance.data_move(
-                                    output_ub[w_input_idx * w_algin_num * self.images_shape_c0],
-                                    input_ub[w_input_idx * self.images_shape_c0], 0, burst_num, burst_len,
-                                    src_burst_stride, dst_burst_stride)
+                                self.tik_instance.data_move(output_ub[w_input_idx * w_algin_num * self.images_shape_c0],
+                                                            input_ub[w_input_idx * self.images_shape_c0], 0, burst_num,
+                                                            burst_len, src_burst_stride, dst_burst_stride)
                                 copy_output_ub = output_ub
                     else:
                         total_num = do_nc_num * input_w_len * self.images_shape_c0
@@ -1368,8 +1364,8 @@ class ResizeBilinearV2(OpBase):
             self.tik_instance.vector_dup(8, function_default_int32_ub[40:], self.block_num * self.inner_bytes_size, 1,
                                          1, 8)
             # neg block byte
-            self.tik_instance.vector_dup(8, function_default_int32_ub[48:],
-                                         -1 * self.block_num * self.inner_bytes_size, 1, 1, 8)
+            self.tik_instance.vector_dup(8, function_default_int32_ub[48:], -1 * self.block_num * self.inner_bytes_size,
+                                         1, 1, 8)
             util_tik_comm_func.tik_func_vconv(self.tik_instance, function_default_fp32_ub, function_default_int32_ub,
                                               64)
 
@@ -1379,14 +1375,8 @@ class ResizeBilinearV2(OpBase):
         mem_default["in_width"] = {"int32": function_default_int32_ub[16:], "fp32": function_default_fp32_ub[16:]}
         mem_default["in_height"] = {"int32": function_default_int32_ub[24:], "fp32": function_default_fp32_ub[24:]}
         mem_default["height_start"] = {"int32": function_default_int32_ub[32:], "fp32": function_default_fp32_ub[32:]}
-        mem_default["block_byte_pos"] = {
-            "int32": function_default_int32_ub[40:],
-            "fp32": function_default_fp32_ub[40:]
-        }
-        mem_default["block_byte_neg"] = {
-            "int32": function_default_int32_ub[48:],
-            "fp32": function_default_fp32_ub[48:]
-        }
+        mem_default["block_byte_pos"] = {"int32": function_default_int32_ub[40:], "fp32": function_default_fp32_ub[40:]}
+        mem_default["block_byte_neg"] = {"int32": function_default_int32_ub[48:], "fp32": function_default_fp32_ub[48:]}
 
         # apply resize vbi ub
         mem_default["src0_offset"] = self.tik_instance.Tensor("int32", (self.width_idx_sigment_num * 4,),
@@ -1468,9 +1458,7 @@ class ResizeBilinearV2(OpBase):
                                 (self.width_idx_sigment_num + 63) // 64, 1, 1, 8, 8)
 
         # init a scalar for w sigment one time
-        w_loop_sigment = self.tik_instance.Scalar("int32",
-                                                  name="w_loop_sigment",
-                                                  init_value=self.width_idx_sigment_num)
+        w_loop_sigment = self.tik_instance.Scalar("int32", name="w_loop_sigment", init_value=self.width_idx_sigment_num)
 
         with self.tik_instance.if_scope(tik.all(self.core_width_num < w_loop_sigment, self.core_width_num > 0)):
             w_loop_sigment.set_as(self.core_width_num)
@@ -1523,7 +1511,8 @@ class ResizeBilinearV2(OpBase):
                                                             name="height_idx_ub_fp32_start",
                                                             scope=tik.scope_ubuf)
 
-        self.tik_instance.vadds(64, height_idx_ub_fp32_start, mem_info["height_start"]["fp32"], 0.0, 1, 1, 0, 8, 0)
+        self.tik_instance.vadds(64, height_idx_ub_fp32_start,
+                                mem_info.get("height_start").get("fp32"), 0.0, 1, 1, 0, 8, 0)
         height_idx_ub_start = self.tik_instance.Tensor("int32", (64,), name="height_idx", scope=tik.scope_ubuf)
         height_weight_fp32_start = self.tik_instance.Tensor("float32", (64,),
                                                             name="height_weight_fp32_start",
@@ -1533,11 +1522,11 @@ class ResizeBilinearV2(OpBase):
                               height_idx_ub_fp32_start,
                               8,
                               des_weight_fp32_ub_list=[height_weight_fp32_start, height_weight_fp32_start[8:]],
-                              max_idx_ub=mem_info["in_height"]["fp32"],
-                              max_idx_ub_int=mem_info["in_height"]["int32"],
-                              one_fp32_ub=mem_info["one"]["fp32"],
+                              max_idx_ub=mem_info.get("in_height").get("fp32"),
+                              max_idx_ub_int=mem_info.get("in_height").get("int32"),
+                              one_fp32_ub=mem_info.get("one").get("fp32"),
                               des_idx_ub_1=height_idx_ub_start[8:],
-                              one_int32_ub=mem_info["one"]["int32"],
+                              one_int32_ub=mem_info.get("one").get("int32"),
                               mem_info=mem_info)
 
         def _run_w_loop_default(w_loop_idx, w_do_len, h_loop_offset, h_do_len):
@@ -1642,11 +1631,11 @@ class ResizeBilinearV2(OpBase):
                                           height_idx_ub_fp32,
                                           8,
                                           des_weight_fp32_ub_list=[height_weight_ub, height_weight_ub[8:]],
-                                          max_idx_ub=mem_info["in_height"]["fp32"],
-                                          max_idx_ub_int=mem_info["in_height"]["int32"],
-                                          one_fp32_ub=mem_info["one"]["fp32"],
+                                          max_idx_ub=mem_info.get("in_height").get("fp32"),
+                                          max_idx_ub_int=mem_info.get("in_height").get("int32"),
+                                          one_fp32_ub=mem_info.get("one").get("fp32"),
                                           des_idx_ub_1=height_idx_ub[8:],
-                                          one_int32_ub=mem_info["one"]["int32"],
+                                          one_int32_ub=mem_info.get("one").get("int32"),
                                           mem_info=mem_info)
 
                     nc_gm_input_offset = \
@@ -1723,7 +1712,7 @@ class ResizeBilinearV2(OpBase):
                                                         "vadd",
                                                         src0_offset,
                                                         src0_offset,
-                                                        mem_info["block_byte_pos"]["int32"],
+                                                        mem_info.get("block_byte_pos").get("int32"),
                                                         self.width_idx_sigment_num * 4,
                                                         src1_blk=0,
                                                         src1_rep=0)
@@ -1734,7 +1723,7 @@ class ResizeBilinearV2(OpBase):
                                                         "vadd",
                                                         src0_offset,
                                                         src0_offset,
-                                                        mem_info["block_byte_neg"]["int32"],
+                                                        mem_info.get("block_byte_neg").get("int32"),
                                                         self.width_idx_sigment_num * 4,
                                                         src1_blk=0,
                                                         src1_rep=0)
@@ -1842,9 +1831,7 @@ class ResizeBilinearV2(OpBase):
                                 (self.width_idx_sigment_num + 63) // 64, 1, 1, 8, 8)
 
         # init a scalar for w sigment one time
-        w_loop_sigment = self.tik_instance.Scalar("int32",
-                                                  name="w_loop_sigment",
-                                                  init_value=self.width_idx_sigment_num)
+        w_loop_sigment = self.tik_instance.Scalar("int32", name="w_loop_sigment", init_value=self.width_idx_sigment_num)
 
         with self.tik_instance.if_scope(tik.all(self.core_width_num < w_loop_sigment, self.core_width_num > 0)):
             w_loop_sigment.set_as(self.core_width_num)
@@ -1897,7 +1884,8 @@ class ResizeBilinearV2(OpBase):
                                                             name="height_idx_ub_fp32_start",
                                                             scope=tik.scope_ubuf)
 
-        self.tik_instance.vadds(64, height_idx_ub_fp32_start, mem_info["height_start"]["fp32"], 0.0, 1, 1, 0, 8, 0)
+        self.tik_instance.vadds(64, height_idx_ub_fp32_start,
+                                mem_info.get("height_start").get("fp32"), 0.0, 1, 1, 0, 8, 0)
         height_idx_ub_start = self.tik_instance.Tensor("int32", (64,), name="height_idx", scope=tik.scope_ubuf)
         height_weight_fp32_start = self.tik_instance.Tensor("float32", (64,),
                                                             name="height_weight_fp32_start",
@@ -1907,11 +1895,11 @@ class ResizeBilinearV2(OpBase):
                               height_idx_ub_fp32_start,
                               8,
                               des_weight_fp32_ub_list=[height_weight_fp32_start, height_weight_fp32_start[8:]],
-                              max_idx_ub=mem_info["in_height"]["fp32"],
-                              max_idx_ub_int=mem_info["in_height"]["int32"],
-                              one_fp32_ub=mem_info["one"]["fp32"],
+                              max_idx_ub=mem_info.get("in_height").get("fp32"),
+                              max_idx_ub_int=mem_info.get("in_height").get("int32"),
+                              one_fp32_ub=mem_info.get("one").get("fp32"),
                               des_idx_ub_1=height_idx_ub_start[8:],
-                              one_int32_ub=mem_info["one"]["int32"],
+                              one_int32_ub=mem_info.get("one").get("int32"),
                               mem_info=mem_info)
 
         def _run_w_loop_default(w_loop_idx, w_do_len, h_loop_offset, h_do_len):
@@ -2013,19 +2001,19 @@ class ResizeBilinearV2(OpBase):
                     scalar_in_h_weight_1 = self.tik_instance.Scalar("float32", name="scalar_in_h_weight_1")
                     scalar_in_h_weight_1.set_as(height_weight_ub[8])
                     # calcu next h idx in height_idx_ub_fp32
-                    self.tik_instance.data_move(src0_vbi_offset, src0_offset, 0, 1,
-                                                self.width_idx_sigment_num * 4 // 8, 0, 0)
+                    self.tik_instance.data_move(src0_vbi_offset, src0_offset, 0, 1, self.width_idx_sigment_num * 4 // 8,
+                                                0, 0)
                     self.tik_instance.vadds(8, height_idx_ub_fp32, height_idx_ub_fp32, 1.0, 1, 1, 1, 8, 8)
                     self.calcu_out_in_idx(self.resize_scale_h,
                                           height_idx_ub,
                                           height_idx_ub_fp32,
                                           8,
                                           des_weight_fp32_ub_list=[height_weight_ub, height_weight_ub[8:]],
-                                          max_idx_ub=mem_info["in_height"]["fp32"],
-                                          max_idx_ub_int=mem_info["in_height"]["int32"],
-                                          one_fp32_ub=mem_info["one"]["fp32"],
+                                          max_idx_ub=mem_info.get("in_height").get("fp32"),
+                                          max_idx_ub_int=mem_info.get("in_height").get("int32"),
+                                          one_fp32_ub=mem_info.get("one").get("fp32"),
                                           des_idx_ub_1=height_idx_ub[8:],
-                                          one_int32_ub=mem_info["one"]["int32"],
+                                          one_int32_ub=mem_info.get("one").get("int32"),
                                           mem_info=mem_info)
 
                     nc_gm_input_offset = \
@@ -2220,7 +2208,7 @@ class ResizeBilinearV2(OpBase):
                                                 "vadd",
                                                 idx_ub_fp32_tmp,
                                                 idx_ub_fp32,
-                                                mem_info["width_start"]["fp32"],
+                                                mem_info.get("width_start").get("fp32"),
                                                 self.width_idx_sigment_num,
                                                 src1_blk=0,
                                                 src1_rep=0)
@@ -2230,17 +2218,17 @@ class ResizeBilinearV2(OpBase):
                                   self.width_idx_sigment_num,
                                   des_weight_fp32_ub_list=[width_weight_ub],
                                   des_idx_ub_1=width_idx_ub[self.height_idx_sigment_num:],
-                                  max_idx_ub=mem_info["in_width"]["fp32"],
-                                  max_idx_ub_int=mem_info["in_width"]["int32"],
-                                  one_fp32_ub=mem_info["one"]["fp32"],
-                                  one_int32_ub=mem_info["one"]["int32"],
+                                  max_idx_ub=mem_info.get("in_width").get("fp32"),
+                                  max_idx_ub_int=mem_info.get("in_width").get("int32"),
+                                  one_fp32_ub=mem_info.get("one").get("fp32"),
+                                  one_int32_ub=mem_info.get("one").get("int32"),
                                   mem_info=mem_info)
             # do vadds 0,1,2,3,4 + fp32_w_start_offset for per core
             util_tik_comm_func.tik_func_vcomple(self.tik_instance,
                                                 "vadd",
                                                 idx_ub_fp32_tmp,
                                                 idx_ub_fp32,
-                                                mem_info["height_start"]["fp32"],
+                                                mem_info.get("height_start").get("fp32"),
                                                 self.width_idx_sigment_num,
                                                 src1_blk=0,
                                                 src1_rep=0)
@@ -2250,10 +2238,10 @@ class ResizeBilinearV2(OpBase):
                                   self.height_idx_sigment_num,
                                   des_weight_fp32_ub_list=[height_weight_ub],
                                   des_idx_ub_1=height_idx_ub[self.height_idx_sigment_num:],
-                                  max_idx_ub=mem_info["in_height"]["fp32"],
-                                  max_idx_ub_int=mem_info["in_height"]["int32"],
-                                  one_fp32_ub=mem_info["one"]["fp32"],
-                                  one_int32_ub=mem_info["one"]["int32"],
+                                  max_idx_ub=mem_info.get("in_height").get("fp32"),
+                                  max_idx_ub_int=mem_info.get("in_height").get("int32"),
+                                  one_fp32_ub=mem_info.get("one").get("fp32"),
+                                  one_int32_ub=mem_info.get("one").get("int32"),
                                   mem_info=mem_info)
 
         nc_max_segment = self.tik_instance.Scalar("int32", name="nc_max_segment")
@@ -2390,15 +2378,13 @@ class ResizeBilinearV2(OpBase):
             image_top_ub_fp32_ping = self.tik_instance.Tensor(self.inner_dtype, (2 * max_nc * self.images_shape_c0,),
                                                               name="image_top_ub_fp32_ping",
                                                               scope=tik.scope_ubuf)
-            image_bottom_ub_fp32_ping = self.tik_instance.Tensor(self.inner_dtype,
-                                                                 (2 * max_nc * self.images_shape_c0,),
+            image_bottom_ub_fp32_ping = self.tik_instance.Tensor(self.inner_dtype, (2 * max_nc * self.images_shape_c0,),
                                                                  name="image_bottom_ub_fp32_ping",
                                                                  scope=tik.scope_ubuf)
             image_top_ub_fp32_pang = self.tik_instance.Tensor(self.inner_dtype, (2 * max_nc * self.images_shape_c0,),
                                                               name="image_top_ub_fp32_pang",
                                                               scope=tik.scope_ubuf)
-            image_bottom_ub_fp32_pang = self.tik_instance.Tensor(self.inner_dtype,
-                                                                 (2 * max_nc * self.images_shape_c0,),
+            image_bottom_ub_fp32_pang = self.tik_instance.Tensor(self.inner_dtype, (2 * max_nc * self.images_shape_c0,),
                                                                  name="image_bottom_ub_fp32_pang",
                                                                  scope=tik.scope_ubuf)
             ping_fp32_list = [image_top_ub_fp32_ping, image_bottom_ub_fp32_ping]

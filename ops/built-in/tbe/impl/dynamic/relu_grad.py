@@ -25,7 +25,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=too-many-locals,invalid-name
+# 'pylint: disable=too-many-locals,invalid-name
 def calculate_one_or_zero(input_tensor, dtype):
     """
     if input_tensor>0, then output is 1, or input_tensor <=0, then output is 0
@@ -78,7 +78,7 @@ def calculate_one_or_zero(input_tensor, dtype):
     return result
 
 
-# pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=locally-disabled,unused-argument
 def relu_grad_compute(input_gradients, input_features, output_backprops, kernel_name="relu_grad"):
     """
     calculate the backpropagation of relu operation

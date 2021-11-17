@@ -75,7 +75,7 @@ def get_op_support_info(x,
 
 # 'pylint: disable=too-many-instance-attributes,too-many-statements,too-many-locals,too-many-lines
 # 'pylint: disable=too-many-arguments,invalid-name
-class PadV3Init(object):
+class PadV3Init:
     """
     Function: class that execute pad_v3
     """

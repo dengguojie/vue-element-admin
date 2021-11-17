@@ -22,13 +22,13 @@ from impl.util.platform_adapter import tbe_platform
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class SparseApplyRMSProp(SparseApplyDynamic):
     """
         Function: use to store sparse_apply_rms_prop base parameters
     """
 
-    # pylint: disable=too-many-statements,too-many-arguments
+    # 'pylint: disable=too-many-statements,too-many-arguments
     def __init__(self, var, mean_square, mom, learning_rate, grad, indices, rho, momentum, epsilon, kernel_name):
         """
         Init sparse_apply_rms_prop base parameters
@@ -164,7 +164,7 @@ class SparseApplyRMSProp(SparseApplyDynamic):
             _func()
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name,too-many-locals
 @register_operator("SparseApplyRMSPropD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

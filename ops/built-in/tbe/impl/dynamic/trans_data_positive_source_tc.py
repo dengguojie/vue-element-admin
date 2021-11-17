@@ -341,7 +341,7 @@ def _gather_c0_with_gap_for_out(args):
             tik_inst.vnchwconv(True, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
 
 
-# pylint: disable=unused-variable, too-many-locals, too-many-locals
+# 'pylint: disable=unused-variable, too-many-locals, too-many-locals
 def _copy_data_out_1010(copy_out_args):
     """
     copy data from ub to gm for tiling mode 1010
@@ -478,7 +478,7 @@ def _vor_data_move_cr_lp(vor_args):
                                  dst_rep_stride, src0_rep_stride, src1_rep_stride)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _copy_data_out_1010_align_c0(copy_out_args):
     """
     copy data from ub to gm without padding axis C for tiling mode 1010
@@ -543,7 +543,7 @@ def _copy_data_out_1010_align_c0(copy_out_args):
                 tik_inst.data_move(dst_out_gm, dst_ub, 0, c1_cnt, out_crc_cnt // ele_per_block, 0, dst_stride_gap)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _copy_data_out_1010_le_vcol(copy_out_args):
     """
     copy data from ub to gm when axis n*c is less than or equal to vnchwconv col size for tiling mode 1010
@@ -586,7 +586,7 @@ def _copy_data_out_1010_le_vcol(copy_out_args):
             tik_inst.data_move(dst_out_gm, dst_ub, 0, 1, hc1_cnt * out_crc_cnt // ele_per_block, 0, 0)
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def _func_transform_1010(tensor_args, tp_args):
     """
     transform function for tiling mode 100
@@ -600,7 +600,7 @@ def _func_transform_1010(tensor_args, tp_args):
      nlc_last_line_cr_cnt, nlc_c_lp_cnt, nlc_c_left, lc_dst_cl_lp_cnt, lc_vnc_row_cl_left, lc_last_line_cl_cnt,
      lc_dst_cr_lp_cnt, lc_vnc_row_left, lc_last_line_cr_cnt, lc_c_lp_cnt, lc_c_left) = tp_args
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def _inner_func(args):
         (dst_cl_lp_cnt, vnc_row_cl_left, last_line_cl_cnt,
          dst_cr_lp_cnt, vnc_row_left, last_line_cr_cnt, c_lp_cnt, c_left) = args
@@ -731,7 +731,7 @@ def _split_left(args):
     next_left_size.set_as(pln_cl_size - last_left_size - mid_lp_cnt * cl_out_idx_0_size)
 
 
-# pylint: disable=unused-variable, too-many-locals
+# 'pylint: disable=unused-variable, too-many-locals
 def _copy_data_out_1011(copy_out_args, cl_offset_args):
     """
     copy data from ub to gm for tiling mode 1011
@@ -837,7 +837,7 @@ def _copy_data_out_1011(copy_out_args, cl_offset_args):
             _move_data_out(_inner_data_move_by_loop)
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def _func_transform_1011(tensor_args, tp_args):
     """
     transform function for tiling mode 100
@@ -851,7 +851,7 @@ def _func_transform_1011(tensor_args, tp_args):
      lc_src_cl_lp_cnt, lc_src_cl_left, lc_c_lp_cnt, lc_c_left, cl_out_idx_0_size, cl_out_idx_0_src_rsize,
      cl_out_idx_0_dst_asize, cl_out_idx_1_size, cl_out_idx_1_src_rsize, cl_out_idx_1_dst_asize) = tp_args
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def _inner_func(args):
         dst_r2nd_lp_cnt, dst_r2nd_left, src_cl_lp_cnt, src_cl_left, c_lp_cnt, c_left = args
         pl_c_size = tik_inst.Scalar(name="pl_c_size")
@@ -908,7 +908,7 @@ def _func_transform_1011(tensor_args, tp_args):
         _inner_func(lc_args)
 
 
-# pylint: disable=unused-argument, too-many-locals
+# 'pylint: disable=unused-argument, too-many-locals
 def trans_data_positive_source_tc(src, dst, src_format, dst_format, kernel_name="trans_data_positive_source_tc"):
     """
     positive transform for last dimension of source format is c

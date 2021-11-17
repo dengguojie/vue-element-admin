@@ -26,7 +26,7 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 @register_operator_compute("SmoothL1Loss", op_mode="dynamic", support_fusion=True)
 def smooth_l1_loss_compute(input_predict, input_label, output_loss, sigma, kernel_name="smooth_l1_loss"):
     """

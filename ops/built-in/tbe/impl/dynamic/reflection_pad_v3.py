@@ -45,7 +45,7 @@ class Constant:
 
 # 'pylint: disable=too-many-instance-attributes,too-many-statements,too-many-locals,too-many-lines
 # 'pylint: disable=too-many-arguments,invalid-name,useless-object-inheritance,unused-argument
-class ReflectionPadV3Init(object):
+class ReflectionPadV3Init:
     """
     Function: class that execute reflection_pad_v3
     """

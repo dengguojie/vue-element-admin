@@ -26,7 +26,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 @register_operator_compute("ReluGradV2", op_mode="dynamic", support_fusion=True)
 def relu_grad_v2_compute(gradients, mask, backprops,
                          kernel_name="relu_grad_v2"):

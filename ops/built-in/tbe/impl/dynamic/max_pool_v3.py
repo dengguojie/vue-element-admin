@@ -24,13 +24,19 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-_MAX_KERNEL_SIZE_H_MUL_W = 255
-_MAX_KERNEL_SIZE = 20
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    MAX_KERNEL_SIZE_H_MUL_W = 255
+    MAX_KERNEL_SIZE = 20
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # 'pylint: disable=invalid-name,too-many-statements
-# 'pylint: disable=self-assigning-variable
+# 'pylint: disable=self-assigning-variable,too-many-branches
 def check_window_rule(global_pooling, ksize, strides, padding_mode, data_format, kernel_name):
     """
     check ksize and strides of window in pooling
@@ -80,12 +86,13 @@ def check_window_rule(global_pooling, ksize, strides, padding_mode, data_format,
         error_manager_vector.raise_err_pad_mode_invalid("max_pool_v3", "SAME, VALID or CALCULATED", str(padding_mode))
 
     if not global_pooling:
-        is_support_kernel = (ksize[dim_h] * ksize[dim_w] <= _MAX_KERNEL_SIZE_H_MUL_W) or \
-            (ksize[dim_h] <= _MAX_KERNEL_SIZE and ksize[dim_w] <= _MAX_KERNEL_SIZE)
+        is_support_kernel = (ksize[dim_h] * ksize[dim_w] <= Constant.MAX_KERNEL_SIZE_H_MUL_W) or \
+            (ksize[dim_h] <= Constant.MAX_KERNEL_SIZE and ksize[dim_w] <= Constant.MAX_KERNEL_SIZE)
 
         if not is_support_kernel:
-            expected_value = "(ksize[dim_h]*ksize[dim_w]<=_MAX_KERNEL_SIZE_H_MUL_W) or \
-                (ksize[dim_h]<=_MAX_KERNEL_SIZE and ksize[dim_w]<=_MAX_KERNEL_SIZE)"
+            expected_value = "(ksize[dim_h]*ksize[dim_w]<=MAX_KERNEL_SIZE_H_MUL_W) or \
+                (ksize[dim_h]<=Constant.MAX_KERNEL_SIZE and ksize[dim_w]<=Constant.MAX_KERNEL_SIZE)"
+
             real_value = "Does not meet the restrictions"
             error_manager_vector.raise_err_input_value_invalid(kernel_name, "ksize_h and ksize_w", expected_value,
                                                                real_value)

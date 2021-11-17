@@ -28,9 +28,9 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import OpImplMode
 
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=unused-argument,invalid-name
-# pylint: disable=too-many-locals,redefined-argument-from-local
+# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=too-many-locals,redefined-argument-from-local
 def real_div_compute(x1, x2, y, kernel_name="real_div", impl_mode=OpImplMode.HIGH_PERFORMANCE):
     """
     calculating data's realdiv, c = a / b

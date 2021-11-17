@@ -30,7 +30,7 @@ SCALAR_MIN_FP16 = 2 ** (-24)
 SCALAR_MIN_FP32 = 2 ** (-126)
 
 
-# pylint: disable=unused-argument,redefined-argument-from-local
+# 'pylint: disable=unused-argument,redefined-argument-from-local
 def sign_compute(input_x, output_y, kernel_name="sign"):
     """
     compute for sign

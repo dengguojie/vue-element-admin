@@ -33,8 +33,8 @@ RESERVED_UB_SIZE = 8 * 1024
 # The max repeat_times of vadd instruction
 VADD_MAX_REPEAT_TIMES = 255
 
-# pylint: disable=too-many-instance-attributes,too-many-arguments,unused-argument
-# pylint: disable=too-many-locals,too-many-statements,unused-argument,invalid-name
+# 'pylint: disable=too-many-instance-attributes,too-many-arguments,unused-argument
+# 'pylint: disable=too-many-locals,too-many-statements,unused-argument,invalid-name
 class ResizeNearestNeighborV2Grad:
     """
     Function: use to store ResizeNearestNeighborV2Grad base parameters

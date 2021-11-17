@@ -24,11 +24,9 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 
-NONETYPE = type(None)
 
-
-# pylint: disable=unused-argument,invalid-name
-# pylint: disable=redefined-argument-from-local
+# 'pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=redefined-argument-from-local
 def reduce_sum_d_compute(x,
                          y,
                          axis=None,

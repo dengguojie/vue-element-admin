@@ -14,7 +14,7 @@
 # ============================================================================
 """
 dynamic swish_grad
-y = sigmoid(scale*x) + x*sigmoid'(scale*x)
+'y = sigmoid(scale*x) + x*sigmoid'(scale*x)'
 sigmoid' = sigmoid*(1 - sigmoid)
 let:
 A = fwd_input = x                   # input of swish forward
@@ -32,8 +32,8 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=invalid-name,too-many-locals,redefined-argument-from-local
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=invalid-name,too-many-locals,redefined-argument-from-local
 def swish_grad_compute(input_gradients, fwd_input, fwd_output, bkwd_output, beta, kernel_name="swish_grad"):
     """
     algorithm : swish grad compute
@@ -64,16 +64,15 @@ def swish_grad_compute(input_gradients, fwd_input, fwd_output, bkwd_output, beta
     # calculate 1-beta*B
     one_tensor = tbe.broadcast(tvm.const(1, dtype="float32"), fwd_output.shape)
     beta_output = tbe.vmuls(fwd_output, tvm.const(beta, dtype="float32"))
-    one_minus_B = tbe.vsub(one_tensor, beta_output)
+    one_minus_b = tbe.vsub(one_tensor, beta_output)
     # calculate B/A*(1 - scale*B)
-    swish_part = tbe.vmul(sigmoid_value, one_minus_B)
+    swish_part = tbe.vmul(sigmoid_value, one_minus_b)
     # calculate scale*B + B/A*(1 - scale*B)
     grad_x = tbe.vadd(beta_output, swish_part)
     if dtype == "float16":
         res = tbe.vmul(input_gradients, grad_x)
         return tbe.cast_to(res, "float16")
-    else:
-        return tbe.vmul(input_gradients, grad_x)
+    return tbe.vmul(input_gradients, grad_x)
 
 
 def check_op_dtype(dtype_input, dtype_x0, dtype_x1):

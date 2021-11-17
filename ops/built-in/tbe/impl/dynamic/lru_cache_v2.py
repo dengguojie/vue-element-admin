@@ -15,8 +15,8 @@
 """
 lru
 """
-# pylint: disable=unused-argument,too-many-arguments,invalid-name,no-self-use,too-many-branches
-# pylint: disable=too-many-instance-attributes,unnecessary-comprehension,inconsistent-return-statements
+# 'pylint: disable=unused-argument,too-many-arguments,invalid-name,no-self-use,too-many-branches
+# 'pylint: disable=too-many-instance-attributes,unnecessary-comprehension,inconsistent-return-statements
 import math
 from impl.util.util_tik_comm_func import OpBase
 from impl.util.platform_adapter import para_check
@@ -25,26 +25,33 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
 
-FP32_VECTOR_MASK_MAX = 64
-BLOCK_BYTES = 32
-SMMU_ID = 0
-DATA_MOV_STRIDE = 0
-DATA_MOV_NBURST = 1
-# vector instr stride 8 block
-VEC_STRIDE = 8
-# ub init all 0 value
-INIT_ZERO = 0
-# int32 in 32B
-ONE_BLK_INT32_NUMS = 8
-# int64 in 32B
-ONE_BLK_INT64_NUMS = 4
-# 8 bit = 1 Byte
-BYTE_BITS = 8
-TILING_NUMS = 8
-MODE0 = 0
-FP32_MIN_VALUE = 0.00001
 
-# pylint: disable=no-member,attribute-defined-outside-init,dangerous-default-value,consider-using-enumerate
+# 'pylint:disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    The class for constant
+    """
+    FP32_VECTOR_MASK_MAX = 64
+    BLOCK_BYTES = 32
+    SMMU_ID = 0
+    DATA_MOV_STRIDE = 0
+    DATA_MOV_NBURST = 1
+    # vector instr stride 8 block
+    VEC_STRIDE = 8
+    # ub init all 0 value
+    INIT_ZERO = 0
+    # int32 in 32B
+    ONE_BLK_INT32_NUMS = 8
+    # int64 in 32B
+    ONE_BLK_INT64_NUMS = 4
+    # 8 bit = 1 Byte
+    BYTE_BITS = 8
+    TILING_NUMS = 8
+    MODE0 = 0
+    FP32_MIN_VALUE = 0.00001
+
+
+# 'pylint: disable=no-member,attribute-defined-outside-init,dangerous-default-value,consider-using-enumerate
 
 
 class Lru(OpBase):
@@ -53,7 +60,7 @@ class Lru(OpBase):
        Modify : 2021-07-09
     """
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements,too-many-locals
     def __init__(self, index_list, data, cache, tag, is_last_call, out_data, out_cache, out_tag, index_offset_list,
                  not_in_cache_index_list, not_in_cache_number, pre_route_count, kernel_name):
         OpBase.__init__(self)
@@ -71,39 +78,39 @@ class Lru(OpBase):
         self.way_number = 64
         self.embedding_size = self.data_shape[-1]
         self.set_number = self.cache_size // self.embedding_size // self.way_number
-        self.set_number_ceil_64 = (
-            self.set_number + FP32_VECTOR_MASK_MAX - 1) // FP32_VECTOR_MASK_MAX * FP32_VECTOR_MASK_MAX
+        self.set_number_ceil_64 = (self.set_number + Constant.FP32_VECTOR_MASK_MAX -
+                                   1) // Constant.FP32_VECTOR_MASK_MAX * Constant.FP32_VECTOR_MASK_MAX
         self.pre_route_number = pre_route_count
         # input param check
         self.check_param()
         self.total_ub = tik.Dprofile().get_unified_buffer_size()
         self.aicore_num = 8  # only use 8 cores
         self.embedding_bytes = self.embedding_size * \
-            tbe_platform.get_bit_len(self.data_dtype) // BYTE_BITS
+            tbe_platform.get_bit_len(self.data_dtype) // Constant.BYTE_BITS
         self.tiling_dtype = "int64"
-        self.tiling_shape = (TILING_NUMS,)
+        self.tiling_shape = (Constant.TILING_NUMS,)
         # cal every core process sets
         self.index_list_ele_per_block = self._get_ele_block(self.index_list_dtype)
         self.tag_ele_per_block = self._get_ele_block(self.tag_dtype)
         self.tag_move_blocks = (self.way_number + self.tag_ele_per_block - 1) // self.tag_ele_per_block
         self.sorted_index_shape = self.way_number
-        self.sorted_index_blocks = int(self.sorted_index_shape / ONE_BLK_INT32_NUMS)
+        self.sorted_index_blocks = int(self.sorted_index_shape / Constant.ONE_BLK_INT32_NUMS)
         # The number of times that each core data cycle is moved in
         self.index_num_per_loop = 1024
         self.index_list_loop_times = None
         self.index_num_tail_loop = None
         # The blocks that need to be calculated in each cycle
         self.one_set_size = self.way_number * \
-            tbe_platform.get_bit_len(self.tag_dtype) // BYTE_BITS
+            tbe_platform.get_bit_len(self.tag_dtype) // Constant.BYTE_BITS
         # The blocks to be calculated in the last loop
         self.index_list_size = self.index_num_per_loop * \
-            tbe_platform.get_bit_len(self.index_list_dtype) // BYTE_BITS
+            tbe_platform.get_bit_len(self.index_list_dtype) // Constant.BYTE_BITS
         self.remain_ub_size = self.total_ub - self.index_list_size
         self.tag_set_nums_per_loop = 0
         self.tag_rate_int32 = tbe_platform.get_bit_len(self.tag_dtype) // 32
-        self.index_list_bytes = tbe_platform.get_bit_len(self.index_list_dtype) // BYTE_BITS
-        self.time_stamp_bytes = tbe_platform.get_bit_len(self.time_stamp_dtype) // BYTE_BITS
-        self.tag_bytes = tbe_platform.get_bit_len(self.tag_dtype) // BYTE_BITS
+        self.index_list_bytes = tbe_platform.get_bit_len(self.index_list_dtype) // Constant.BYTE_BITS
+        self.time_stamp_bytes = tbe_platform.get_bit_len(self.time_stamp_dtype) // Constant.BYTE_BITS
+        self.tag_bytes = tbe_platform.get_bit_len(self.tag_dtype) // Constant.BYTE_BITS
         # The number of elements to be calculated in each loop
         self.vector_mask_max = 0
         self.blk_stride = 0
@@ -121,7 +128,7 @@ class Lru(OpBase):
                                                        is_workspace=True,
                                                        scope=tik.scope_gm)
         # the last is iterate timestamp
-        self.time_stamp_wsp = self.tik_instance.Tensor(self.time_stamp_dtype, [self.set_number*self.way_number+1],
+        self.time_stamp_wsp = self.tik_instance.Tensor(self.time_stamp_dtype, [self.set_number * self.way_number + 1],
                                                        name="time_stamp_wsp",
                                                        is_global_tensor=True,
                                                        is_atomic_add=True,
@@ -145,11 +152,12 @@ class Lru(OpBase):
                                                           name="position_index_ub",
                                                           scope=tik.scope_ubuf)
 
-    def _get_ele_block(self, dtype):
+    @staticmethod
+    def _get_ele_block(dtype):
         """
         get this dtype block num
         """
-        return BLOCK_BYTES // (tbe_platform.get_bit_len(dtype) // BYTE_BITS)
+        return Constant.BLOCK_BYTES // (tbe_platform.get_bit_len(dtype) // Constant.BYTE_BITS)
 
     def tiling_args(self):
         """
@@ -162,8 +170,9 @@ class Lru(OpBase):
         self.index_list_len = self.tik_instance.Scalar(self.tiling_dtype, "index_list_len", init_value=0)
         self.index_loops_times = self.tik_instance.Scalar(self.tiling_dtype, "index_loops_times", init_value=0)
         self.index_num_tail_loop = self.tik_instance.Scalar(self.tiling_dtype, "index_num_tail_loop", init_value=0)
-        tiling_ub = self.tik_instance.Tensor("int64", (TILING_NUMS,), name="tiling_ub", scope=tik.scope_ubuf)
-        self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, TILING_NUMS // ONE_BLK_INT64_NUMS, 0, 0)
+        tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_NUMS,), name="tiling_ub", scope=tik.scope_ubuf)
+        self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1,
+                                    Constant.TILING_NUMS // Constant.ONE_BLK_INT64_NUMS, 0, 0)
         self.tiling_key.set_as(tiling_ub[0])
         self.index_list_len.set_as(tiling_ub[1])
         # cal index_list loop
@@ -214,7 +223,8 @@ class Lru(OpBase):
                                     self.way_number * self.tag_rate_int32 // 16, 0, 0)
         self.tik_instance.data_move(self.sorted_index_ub, self.sorted_index_gm, 0, 1, self.sorted_index_blocks, 0, 0)
         # scalar
-        self.iterate_timestamp_scalar = self.tik_instance.Scalar(self.time_stamp_dtype, "iterate_timestamp_scalar",
+        self.iterate_timestamp_scalar = self.tik_instance.Scalar(self.time_stamp_dtype,
+                                                                 "iterate_timestamp_scalar",
                                                                  init_value=0)
         self.index_list_offset = self.tik_instance.Scalar(self.tiling_dtype, "index_list_offset", init_value=0)
         self.rsvd_cnt = self.tik_instance.Scalar(dtype="uint32", name="rsvd_cnt", init_value=0)
@@ -223,14 +233,16 @@ class Lru(OpBase):
         self.index_lower_tmp = self.tik_instance.Scalar(dtype="int64", name="index_lower_tmp", init_value=0)
         self.index_upper = self.tik_instance.Scalar(dtype="int32", name="index_upper", init_value=0)
         self.index_lower = self.tik_instance.Scalar(dtype="int32", name="index_lower", init_value=0)
-        self.miss_cnt_ub = self.tik_instance.Tensor("int32", [self.set_number_ceil_64], name="miss_cnt_ub",
+        self.miss_cnt_ub = self.tik_instance.Tensor("int32", [self.set_number_ceil_64],
+                                                    name="miss_cnt_ub",
                                                     scope=tik.scope_ubuf)
-        self.cache_cnt_ub = self.tik_instance.Tensor("int32", [self.set_number_ceil_64], name="cache_cnt_ub",
-                                                    scope=tik.scope_ubuf)
-        self.tik_instance.vec_dup(FP32_VECTOR_MASK_MAX, self.miss_cnt_ub, INIT_ZERO,
-                                  self.set_number_ceil_64 // FP32_VECTOR_MASK_MAX, VEC_STRIDE)
-        self.tik_instance.vec_dup(FP32_VECTOR_MASK_MAX, self.cache_cnt_ub, INIT_ZERO,
-                                  self.set_number_ceil_64 // FP32_VECTOR_MASK_MAX, VEC_STRIDE)
+        self.cache_cnt_ub = self.tik_instance.Tensor("int32", [self.set_number_ceil_64],
+                                                     name="cache_cnt_ub",
+                                                     scope=tik.scope_ubuf)
+        self.tik_instance.vec_dup(Constant.FP32_VECTOR_MASK_MAX, self.miss_cnt_ub, Constant.INIT_ZERO,
+                                  self.set_number_ceil_64 // Constant.FP32_VECTOR_MASK_MAX, Constant.VEC_STRIDE)
+        self.tik_instance.vec_dup(Constant.FP32_VECTOR_MASK_MAX, self.cache_cnt_ub, Constant.INIT_ZERO,
+                                  self.set_number_ceil_64 // Constant.FP32_VECTOR_MASK_MAX, Constant.VEC_STRIDE)
         self.miss_cnt_scalar = self.tik_instance.Scalar(dtype="int32", name="miss_cnt_scalar", init_value=0)
         self.cache_cnt_scalar = self.tik_instance.Scalar(dtype="int32", name="cache_cnt_scalar", init_value=0)
         self.index_scalar = self.tik_instance.Scalar(dtype=self.index_list_dtype, name="index_scalar", init_value=0)
@@ -244,7 +256,7 @@ class Lru(OpBase):
                                                          init_value=0)
         self.atomic_add_index = self.tik_instance.Scalar(dtype=self.time_stamp_dtype,
                                                          name="atomic_add_index",
-                                                         init_value=FP32_MIN_VALUE)
+                                                         init_value=Constant.FP32_MIN_VALUE)
         self.offset_index = self.tik_instance.Scalar(dtype=self.index_list_dtype, name="offset_index", init_value=-1)
         self.way_index = self.tik_instance.Scalar(dtype="uint16", name="way_index", init_value=0)
 
@@ -268,17 +280,20 @@ class Lru(OpBase):
         self.not_in_cache_number_gm = self.output_gm_list[5]
 
     def iterate_timestamp_refresh(self):
+        """
+        iterate timestamp refresh
+        """
         self.time_stamp_ub[0].set_as(self.atomic_add_index)
         self.tik_instance.set_atomic_add(1)
-        self.tik_instance.data_move_pad(self.time_stamp_wsp[self.set_number*self.way_number],
-                                        self.time_stamp_ub, 1, self.time_stamp_bytes, 0, 0)
+        self.tik_instance.data_move_pad(self.time_stamp_wsp[self.set_number * self.way_number], self.time_stamp_ub, 1,
+                                        self.time_stamp_bytes, 0, 0)
         self.tik_instance.set_atomic_add(0)
-        self.tik_instance.data_move_pad(self.time_stamp_ub, self.time_stamp_wsp[self.set_number*self.way_number], 1,
+        self.tik_instance.data_move_pad(self.time_stamp_ub, self.time_stamp_wsp[self.set_number * self.way_number], 1,
                                         self.time_stamp_bytes, 0, 0)
         self.iterate_timestamp_scalar.set_as(self.time_stamp_ub[0])
 
-
-    def isPower(self, k):
+    @staticmethod
+    def isPower(k):
         """
         input is or not 2**n
         """
@@ -308,7 +323,7 @@ class Lru(OpBase):
             self.tiling_args()
             self.gm_scalar_init()
             self.iterate_timestamp_refresh()
-            with self.tik_instance.if_scope(self.tiling_key == MODE0):
+            with self.tik_instance.if_scope(self.tiling_key == Constant.MODE0):
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.for_range(0, self.index_loops_times) as index_loops:
                         self.index_list_offset.set_as(index_loops * self.index_num_per_loop)
@@ -318,7 +333,7 @@ class Lru(OpBase):
                             index_list_len = self.index_num_tail_loop
                         self.index_list_process_each_loop(self.index_list_offset, index_list_len, core_id)
                     self.after_process(core_id)
-        wr_compile_info = dict()
+        wr_compile_info = {}
         wr_compile_info["set_num"] = self.set_number
         wr_compile_info["time_stamp_wsp_size"] = self.time_stamp_bytes * (self.set_number * self.way_number + 1)
         wr_compile_info["miss_index_bytes"] = self.tag_bytes
@@ -337,16 +352,18 @@ class Lru(OpBase):
         # do vcmpvs in int32
         vcmpvs_repeats = self.way_number * self.tag_rate_int32 // 64
         # index_list move in
-        self.tik_instance.data_move(self.index_list_ub, self.index_list_gm[index_list_offset], SMMU_ID, DATA_MOV_NBURST,
-                                    self.index_list_blocks, DATA_MOV_STRIDE, DATA_MOV_STRIDE)
+        self.tik_instance.data_move(self.index_list_ub, self.index_list_gm[index_list_offset], Constant.SMMU_ID,
+                                    Constant.DATA_MOV_NBURST, self.index_list_blocks, Constant.DATA_MOV_STRIDE,
+                                    Constant.DATA_MOV_STRIDE)
         # index for loop
         with self.tik_instance.for_range(0, index_list_len) as index_id:
             self.index_scalar.set_as(self.index_list_ub[index_id])
             self.index_set.set_as((self.index_scalar >> int(math.log(self.pre_route_number, 2))) % self.set_number)
             self.index_core.set_as(self.index_set % self.aicore_num)
             with self.tik_instance.if_scope(self.index_core == core_id):
-                self.tik_instance.data_move(self.tag_one_set_ub, self.tag_gm[self.index_set * self.way_number], SMMU_ID,
-                                            DATA_MOV_NBURST, self.tag_move_blocks, DATA_MOV_STRIDE, DATA_MOV_STRIDE)
+                self.tik_instance.data_move(self.tag_one_set_ub, self.tag_gm[self.index_set * self.way_number],
+                                            Constant.SMMU_ID, Constant.DATA_MOV_NBURST, self.tag_move_blocks,
+                                            Constant.DATA_MOV_STRIDE, Constant.DATA_MOV_STRIDE)
                 if self.index_list_dtype == "int64":
                     self.index_upper_tmp.set_as(self.index_scalar >> 32)
                     self.index_lower_tmp.set_as(self.index_scalar & 0xffffffff)
@@ -458,6 +475,7 @@ class Lru(OpBase):
         self.tik_instance.data_move_pad(self.time_stamp_wsp[tag_index], self.time_stamp_ub, 1, self.time_stamp_bytes, 0,
                                         0)
 
+    # 'pylint: disable=consider-using-f-string
     def check_param(self):
         """
         check_param

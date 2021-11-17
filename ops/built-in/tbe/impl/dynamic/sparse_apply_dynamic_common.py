@@ -21,10 +21,16 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_context
 from impl.util import util_common
 
-MAX_INT32 = 2 ** 31 - 1
-GM_ALLOC_SHAPE = (MAX_INT32,)
-TILING_SHAPE = (16,)
-UB_2K_SIZE = 2 * 1024
+
+# 'pylint:disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    The class for constant
+    """
+    MAX_INT32 = 2**31 - 1
+    GM_ALLOC_SHAPE = (MAX_INT32,)
+    TILING_SHAPE = (16,)
+    UB_2K_SIZE = 2 * 1024
 
 
 def _get_dtype_byte(dtype):
@@ -53,16 +59,16 @@ def _isinstance_if(tik_instance, condition, fun):
             fun()
 
 
-# pylint: disable=too-many-arguments,too-many-locals,invalid-name
-# pylint: disable=too-many-instance-attributes
-class SparseApplyDynamic(object):
+# 'pylint: disable=too-many-arguments,too-many-locals,invalid-name
+# 'pylint: disable=too-many-instance-attributes,unnecessary-lambda,consider-using-enumerate
+class SparseApplyDynamic:
     """
     Base Class for sparse apply op
     For specific sparse apply op, such as sparse_apply_ftrl, need to inherit
     this class and implement calc function on their own.
     """
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def __init__(self, var, grad, indices, kernel_name):
         """
         Init sparse_apply  base parameters
@@ -110,11 +116,14 @@ class SparseApplyDynamic(object):
         self.ub_take_parts = 1
 
         self.indices_gm = self.tik_instance.Tensor(self.indices_dtype,
-                                                   GM_ALLOC_SHAPE,
+                                                   Constant.GM_ALLOC_SHAPE,
                                                    name="indices_gm",
                                                    scope=tik.scope_gm)
-        self.grad_gm = self.tik_instance.Tensor(self.grad_dtype, GM_ALLOC_SHAPE, name="grad_gm", scope=tik.scope_gm)
-        self.tiling_gm = self.tik_instance.Tensor("int32", TILING_SHAPE, name="tiling_gm", scope=tik.scope_gm)
+        self.grad_gm = self.tik_instance.Tensor(self.grad_dtype,
+                                                Constant.GM_ALLOC_SHAPE,
+                                                name="grad_gm",
+                                                scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor("int32", Constant.TILING_SHAPE, name="tiling_gm", scope=tik.scope_gm)
 
         self.rows = self.indices_shape[0]
         if len(self.grad_shape) > 1:
@@ -166,7 +175,7 @@ class SparseApplyDynamic(object):
 
     def _get_tiling_const(self):
         ub_indices_size = 4 * 1024
-        self.remain_size = self.ub_size_bytes - UB_2K_SIZE - ub_indices_size
+        self.remain_size = self.ub_size_bytes - Constant.UB_2K_SIZE - ub_indices_size
         self.one_part_size = self.remain_size // self.ub_take_parts
         self.cols_per_part = self.one_part_size // self.indices_dtype_bytes_size
         vector_eles = tbe_platform.VECTOR_INST_BLOCK_WIDTH // _get_dtype_byte("float32")
@@ -177,7 +186,10 @@ class SparseApplyDynamic(object):
         self.indices_ub_number = ub_indices_size // self.indices_dtype_bytes_size
 
     def _get_tiling_args(self):
-        self.tiling_ub = self.tik_instance.Tensor("int32", TILING_SHAPE, name="tiling_ub", scope=tik.scope_ubuf)
+        self.tiling_ub = self.tik_instance.Tensor("int32",
+                                                  Constant.TILING_SHAPE,
+                                                  name="tiling_ub",
+                                                  scope=tik.scope_ubuf)
         self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 2, 0, 0)
 
         self._get_tiling_const()
@@ -207,7 +219,7 @@ class SparseApplyDynamic(object):
         -------
         None
         """
-        tensor = self.tik_instance.Tensor(dtype, GM_ALLOC_SHAPE, name=name, scope=tik.scope_gm)
+        tensor = self.tik_instance.Tensor(dtype, Constant.GM_ALLOC_SHAPE, name=name, scope=tik.scope_gm)
         self.input_tensor.append(tensor)
         self.tensor_map[name] = tensor
 
@@ -242,7 +254,7 @@ class SparseApplyDynamic(object):
         -------
         None
         """
-        tensor = self.tik_instance.Tensor(dtype, GM_ALLOC_SHAPE, name=name, scope=tik.scope_gm)
+        tensor = self.tik_instance.Tensor(dtype, Constant.GM_ALLOC_SHAPE, name=name, scope=tik.scope_gm)
         self.output.append(tensor)
         self.tensor_map[name] = tensor
 
@@ -536,17 +548,21 @@ class SparseApplyDynamic(object):
 
         with self.tik_instance.if_scope(turning > 0):
             with self.tik_instance.if_scope(block_idx < turning):
-                _exec_front_last(self.tik_instance, num_indices_per_core + 1, batch_cnt, lambda offset, part_len:
-                self._travel_indices_batch(block_idx * (num_indices_per_core + 1) + offset, part_len))
+                _exec_front_last(
+                    self.tik_instance, num_indices_per_core + 1, batch_cnt,
+                    lambda offset, part_len: self._travel_indices_batch(block_idx *
+                                                                        (num_indices_per_core + 1) + offset, part_len))
             with self.tik_instance.else_scope():
-                _exec_front_last(self.tik_instance, num_indices_per_core, batch_cnt, lambda offset, part_len:
-                self._travel_indices_batch(
-                    turning * (num_indices_per_core + 1) + (block_idx - turning) * num_indices_per_core + offset,
-                    part_len))
+                _exec_front_last(
+                    self.tik_instance, num_indices_per_core, batch_cnt,
+                    lambda offset, part_len: self._travel_indices_batch(
+                        turning * (num_indices_per_core + 1) +
+                        (block_idx - turning) * num_indices_per_core + offset, part_len))
 
         with self.tik_instance.else_scope():
-            _exec_front_last(self.tik_instance, num_indices_per_core, batch_cnt, lambda offset, part_len:
-            self._travel_indices_batch(block_idx * num_indices_per_core + offset, part_len))
+            _exec_front_last(
+                self.tik_instance, num_indices_per_core, batch_cnt, lambda offset, part_len: self._travel_indices_batch(
+                    block_idx * num_indices_per_core + offset, part_len))
 
     def _calc_a_small_row(self, grad_idx):
         """
@@ -808,14 +824,15 @@ class SparseApplyDynamic(object):
         self._get_tiling_args()
         self._alloc_ub()
         self._travel_the_indices()
-        tbe_context.get_context().add_compile_info("vars", {
-            "core_num": self.core_num,
-            "ub_size": self.ub_size_bytes,
-            "indices_dsize": self.indices_dtype_bytes_size,
-            "ub_take_parts": 1,
-            "ub_block_num": len(self.ub_reserved) + 1,
-            "cache_threshold_col": self.cache_threshold_col
-        })
+        tbe_context.get_context().add_compile_info(
+            "vars", {
+                "core_num": self.core_num,
+                "ub_size": self.ub_size_bytes,
+                "indices_dsize": self.indices_dtype_bytes_size,
+                "ub_take_parts": 1,
+                "ub_block_num": len(self.ub_reserved) + 1,
+                "cache_threshold_col": self.cache_threshold_col
+            })
 
         inputs_gm = self.input_tensor + self.input_scalar_gm + [self.grad_gm, self.indices_gm]
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,

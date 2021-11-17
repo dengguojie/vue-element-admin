@@ -24,7 +24,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=locally-disabled,unused-argument,redefined-argument-from-local
+# 'pylint: disable=locally-disabled,unused-argument,redefined-argument-from-local
 def neg_compute(input_x, output_y, kernel_name="neg"):
     """
     compute neg

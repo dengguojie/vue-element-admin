@@ -25,13 +25,6 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 
-MIN_FP32 = 2 ** (-126)
-# min float16 value
-MIN_FP16 = 2 ** (-24)
-VALUE_ONE = 1
-
-SHAPE_SIZE_LIMIT = 200000000
-
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 # 'pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
@@ -135,7 +128,7 @@ def square_sum_v1(input_x, output1, attr1, attr2=True, kernel_name="square_sum_v
     dtype = input_x.get("dtype")
     input_dtype = dtype.lower()
 
-    input_axis = {"shape": [len(attr1),], "value": attr1, "rel_pos_to_reduce": "axis"}
+    input_axis = {"shape": [len(attr1)], "value": attr1, "rel_pos_to_reduce": "axis"}
     input_x["rel_pos_to_reduce"] = "before"
     ins = classify([input_x, input_axis], OpPatternMode.REDUCE,
                    {"keepdims": attr2 is True})

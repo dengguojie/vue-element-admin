@@ -28,7 +28,7 @@ from impl.util.platform_adapter import OpImplMode
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals,too-many-arguments,line-too-long
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,too-many-arguments,line-too-long
 @register_operator_compute("SigmoidCrossEntropyWithLogitsV2",
                            op_mode="SigmoidCrossEntropyWithLogitsV2",
                            support_fusion=False)
@@ -122,7 +122,7 @@ def sigmoid_cross_entropy_with_logits_v2_compute(predict, target, weight, pos_we
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
                             para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR,
                             para_check.KERNEL_NAME)
-# pylint: disable=too-many-arguments,C0412,R0915
+# 'pylint: disable=too-many-arguments,C0412,R0915
 def sigmoid_cross_entropy_with_logits_v2(predict,
                                          target,
                                          weight,

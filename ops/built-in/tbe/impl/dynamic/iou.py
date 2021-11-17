@@ -23,6 +23,8 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe_context
 
+
+# 'pylint:disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     The class for constant
@@ -89,12 +91,12 @@ def _get_align_int(int1, int2):
     return _get_ceil_int(int1, int2) * int2
 
 
-# pylint: disable=too-many-instance-attributes,invalid-name
+# 'pylint: disable=too-many-instance-attributes,invalid-name
 class Iou:
     """Function: use to finish Iou main functions
     """
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def __init__(self, bboxes, gtboxes, mode, eps):
         """
         init Iou parameters
@@ -209,7 +211,7 @@ class Iou:
         if self.product is False:
             self.bb_ub_segment = self.bb_ub_segment // 2
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def iou_process(self, core_id):
         """
         do process and schedule
@@ -756,7 +758,7 @@ class Iou:
                                1, 1, 8, 8, 8)
 
 
-# pylint: disable = unused-argument
+# 'pylint: disable = unused-argument,too-many-arguments
 @register_operator("Iou")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR,

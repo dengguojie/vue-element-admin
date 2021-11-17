@@ -57,7 +57,7 @@ install_stest() {
 
   if [ ! -z "${case_not_found}" ];then
     echo "[ERROR] st case not found:[${case_not_found}]"
-    exit $STATUS_FAILED
+    echo "exit $STATUS_FAILED"
   fi
 }
 

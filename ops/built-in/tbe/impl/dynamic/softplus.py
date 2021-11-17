@@ -26,6 +26,8 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
+
+# 'pylint:disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     The class for constant.
@@ -35,8 +37,8 @@ class Constant:
     NEG_ONE = -1
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
-# pylint: disable=invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=invalid-name
 @register_operator_compute("Softplus", op_mode="dynamic", support_fusion=True)
 def softplus_compute(input_x, y, kernel_name="softplus"):
     """

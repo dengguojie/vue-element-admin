@@ -29,8 +29,8 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import OpImplMode
 
 
-# pylint: disable=too-many-branches,too-many-arguments,too-many-locals
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=too-many-branches,too-many-arguments,too-many-locals
+# 'pylint: disable=unused-argument,invalid-name
 def reduce_mean_d_compute(x,
                           y,
                           axes,

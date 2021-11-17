@@ -29,7 +29,7 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import OpImplMode
 
 
-# pylint: disable=too-many-arguments,unused-argument,too-many-locals
+# 'pylint: disable=too-many-arguments,unused-argument,too-many-locals
 @register_operator_compute("KLDiv", op_mode="dynamic", support_fusion=True)
 def kl_div_compute(input_x, input_target, output_y, axis, reduction, batch_size, kernel_name="kl_div"):
     """
@@ -71,7 +71,7 @@ def kl_div_compute(input_x, input_target, output_y, axis, reduction, batch_size,
     target_gt_zero = tbe.vmaxs(input_target, 0)
 
     if input_x_dtype == "float16":
-        # algrithm : Y = `X*1024/(X*1024+ESP_MIN)`
+        # algrithm : `Y = X*1024/(X*1024+ESP_MIN)`
         # for float16, add a small number which value is 1.18e-7, so that the
         # divisor is not equal to 0, and for accuracy, multiply by a number
         # which value is 1024.
@@ -143,6 +143,7 @@ def _check_parameter(input_x, input_target):
         error_manager_vector.raise_err_input_dtype_not_supported('kl_div', 'input_x', ('float16',), dtype_x)
 
 
+# 'pylint: disable =invalid-name
 @register_operator("KLDiv")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
@@ -188,7 +189,7 @@ def kl_div(input_x, input_target, output_y, reduction, kernel_name="kl_div"):
     x_shape = input_x.get("shape")
     shape_len = len(x_shape)
     axis_list = list(range(shape_len))
-    input_axis = {"shape": [shape_len,], "value": axis_list, "rel_pos_to_reduce": "axis"}
+    input_axis = {"shape": [shape_len], "value": axis_list, "rel_pos_to_reduce": "axis"}
 
     ins = classify([input_x, input_target, input_axis], OpPatternMode.REDUCE, {"keepdims": False})
 

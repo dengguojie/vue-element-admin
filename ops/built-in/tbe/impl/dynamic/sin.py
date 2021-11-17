@@ -26,22 +26,28 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
 
-# define a string name of "float16"
-FLOAT_16 = "float16"
-# define a string name of "float32"
-FLOAT_32 = "float32"
 
-PI = 3.14159265358979
+# 'pylint:disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    The class for constant
+    """
+    # define a string name of "float16"
+    FLOAT_16 = "float16"
+    # define a string name of "float32"
+    FLOAT_32 = "float32"
 
-# the first factor to use Taylor series in circle
-FIRST_ORDER = 5
-# the last factor to use Taylor series in circle
-LAST_ORDER = 13
-# the first factor of Taylor series
-FIRST_FACTOR = -1.0 / 6.0
+    PI = 3.14159265358979
+
+    # the first factor to use Taylor series in circle
+    FIRST_ORDER = 5
+    # the last factor to use Taylor series in circle
+    LAST_ORDER = 13
+    # the first factor of Taylor series
+    FIRST_FACTOR = -1.0 / 6.0
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def _sin(x):
     """
     algorithm: sin
@@ -57,11 +63,11 @@ def _sin(x):
     res : the res of sin
     """
     input_x_power = tbe.vmul(x, x)
-    iter_value = tbe.vmul(tbe.vmuls(input_x_power, FIRST_FACTOR), x)
+    iter_value = tbe.vmul(tbe.vmuls(input_x_power, Constant.FIRST_FACTOR), x)
     res = tbe.vadd(x, iter_value)
 
-    i = FIRST_ORDER
-    while i < LAST_ORDER:
+    i = Constant.FIRST_ORDER
+    while i < Constant.LAST_ORDER:
         iter_value = tbe.vmuls(tbe.vmul(input_x_power, iter_value), -1.0 / (i * (i - 1)))
         res = tbe.vadd(res, iter_value)
 
@@ -71,7 +77,7 @@ def _sin(x):
     return res
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
 def sin_compute(x, y, kernel_name="sin"):
     """
     algorithm: sin
@@ -97,28 +103,28 @@ def sin_compute(x, y, kernel_name="sin"):
     cast_dtype = dtype
     if tbe_platform.api_check_support("tbe.dsl.vmul", "float32"):
         has_improve_precision = True
-        cast_dtype = FLOAT_32
+        cast_dtype = Constant.FLOAT_32
 
     # cast to type float32 when type is float16
-    if dtype == FLOAT_16 and has_improve_precision:
-        x = tbe.cast_to(x, FLOAT_32)
+    if dtype == Constant.FLOAT_16 and has_improve_precision:
+        x = tbe.cast_to(x, Constant.FLOAT_32)
 
-    pai_multiple = tbe.vmuls(x, 1 / PI)
+    pai_multiple = tbe.vmuls(x, 1 / Constant.PI)
     # `pai_round = tbe.round(pai_multiple)`
-    if not tbe_platform.api_check_support("tbe.dsl.round", "float32") and cast_dtype == FLOAT_32:
-        pai_16 = tbe.cast_to(pai_multiple, FLOAT_16)
+    if not tbe_platform.api_check_support("tbe.dsl.round", "float32") and cast_dtype == Constant.FLOAT_32:
+        pai_16 = tbe.cast_to(pai_multiple, Constant.FLOAT_16)
         round_float = tbe.cast_to(tbe.round(pai_16), cast_dtype)
     else:
         round_float = tbe.cast_to(tbe.round(pai_multiple), cast_dtype)
     # to adjust x to [-pai/2,pai/2]
-    x = tbe.vsub(x, tbe.vmuls(round_float, PI))
+    x = tbe.vsub(x, tbe.vmuls(round_float, Constant.PI))
 
     res = _sin(x)
 
     # if round is odd, the final result need to mutiply -1.Need to multipy 1/2 to get the ceil value
     ran_ = tbe.vmuls(round_float, 1 / 2)
-    if not tbe_platform.api_check_support("tbe.dsl.ceil", "float32") and cast_dtype == FLOAT_32:
-        ran_16 = tbe.cast_to(ran_, FLOAT_16)
+    if not tbe_platform.api_check_support("tbe.dsl.ceil", "float32") and cast_dtype == Constant.FLOAT_32:
+        ran_16 = tbe.cast_to(ran_, Constant.FLOAT_16)
         ceil_value = tbe.ceil(ran_16)
         ceil_value = tbe.cast_to(ceil_value, cast_dtype)
     else:
@@ -135,8 +141,8 @@ def sin_compute(x, y, kernel_name="sin"):
     res = tbe.vmul(res, odd_even_tensor)
 
     # cast the dtype to float16
-    if dtype == FLOAT_16 and has_improve_precision:
-        res = tbe.cast_to(res, FLOAT_16)
+    if dtype == Constant.FLOAT_16 and has_improve_precision:
+        res = tbe.cast_to(res, Constant.FLOAT_16)
 
     return res
 

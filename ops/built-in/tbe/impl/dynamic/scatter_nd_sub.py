@@ -22,20 +22,26 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-# max int64 value
-MAX_INT64_VALUE = 2**64 - 1
-# tiling param num
-TILING_ARG_NUM = 24
-# reserved ub size
-RESERVED_UB_SIZE = 8 * 1024
-# 8 bit
-EIGHT_BIT = 8
-# bytes of one block
-BLOCK_BYTES = 32
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # max int64 value
+    MAX_INT64_VALUE = 2**64 - 1
+    # tiling param num
+    TILING_ARG_NUM = 24
+    # reserved ub size
+    RESERVED_UB_SIZE = 8 * 1024
+    # 8 bit
+    EIGHT_BIT = 8
+    # bytes of one block
+    BLOCK_BYTES = 32
 
 
-# pylint: disable=too-many-arguments,too-many-instance-attributes
-# pylint: disable=invalid-name,attribute-defined-outside-init,unused-argument
+# 'pylint: disable=too-many-arguments,too-many-instance-attributes
+# 'pylint: disable=invalid-name,attribute-defined-outside-init,unused-argument
 class ScatterNdSub():
     """
     Function: use to store scatter_nd_sub base parameters
@@ -74,20 +80,29 @@ class ScatterNdSub():
         self.check_input_params()
 
         self.ai_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE
-        self.var_dtype_bytes_size = tbe_platform.get_bit_len(self.var_dtype) // EIGHT_BIT
-        self.indices_dtype_bytes_size = tbe_platform.get_bit_len(self.indice_dtype) // EIGHT_BIT
-        self.var_data_each_block = BLOCK_BYTES // self.var_dtype_bytes_size
-        self.indices_data_each_block = BLOCK_BYTES // self.indices_dtype_bytes_size
+        self.ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - Constant.RESERVED_UB_SIZE
+        self.var_dtype_bytes_size = tbe_platform.get_bit_len(self.var_dtype) // Constant.EIGHT_BIT
+        self.indices_dtype_bytes_size = tbe_platform.get_bit_len(self.indice_dtype) // Constant.EIGHT_BIT
+        self.var_data_each_block = Constant.BLOCK_BYTES // self.var_dtype_bytes_size
+        self.indices_data_each_block = Constant.BLOCK_BYTES // self.indices_dtype_bytes_size
 
         self.subs_ub_num = self.ub_size_bytes // 96 * 32 // self.var_dtype_bytes_size
         self.indices_ub_num = self.ub_size_bytes // 96 * 32 // self.indices_dtype_bytes_size
-        self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
-        self.var_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,), name="var_gm", scope=tik.scope_gm)
-        self.indices_gm = self.tik_instance.Tensor(self.indice_dtype, (MAX_INT64_VALUE,),
-                                                   name="indices_gm", scope=tik.scope_gm)
-        self.subs_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,), name="subs_gm", scope=tik.scope_gm)
-        self.out_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,), name="out_gm", scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,),
+                                                  name="tiling_gm",
+                                                  scope=tik.scope_gm)
+        self.var_gm = self.tik_instance.Tensor(self.var_dtype, (Constant.MAX_INT64_VALUE,),
+                                               name="var_gm",
+                                               scope=tik.scope_gm)
+        self.indices_gm = self.tik_instance.Tensor(self.indice_dtype, (Constant.MAX_INT64_VALUE,),
+                                                   name="indices_gm",
+                                                   scope=tik.scope_gm)
+        self.subs_gm = self.tik_instance.Tensor(self.var_dtype, (Constant.MAX_INT64_VALUE,),
+                                                name="subs_gm",
+                                                scope=tik.scope_gm)
+        self.out_gm = self.tik_instance.Tensor(self.var_dtype, (Constant.MAX_INT64_VALUE,),
+                                               name="out_gm",
+                                               scope=tik.scope_gm)
 
         self.subs_ub = None
         self.var_ub = None
@@ -269,7 +284,7 @@ class ScatterNdSub():
                 self.calc_indices(indices_ub_index)
                 with self.tik_instance.if_scope(self.core_loop_index * self.indice_step <= self.var_read_index):
                     with self.tik_instance.if_scope(
-                            (self.core_loop_index + 1) * self.indice_step > self.var_read_index):
+                        (self.core_loop_index + 1) * self.indice_step > self.var_read_index):
                         self.traversing_subs(indices_ub_index, indices_in_index, mode)
 
     def traversing_subs(self, indices_ub_index, indices_in_index, mode):
@@ -516,7 +531,7 @@ class ScatterNdSub():
         None
         """
         with self.tik_instance.for_range(0, self.ai_core_num, block_num=self.ai_core_num) as core_index:
-            self.tiling_ub = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,),
+            self.tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,),
                                                       name="tiling_ub",
                                                       scope=tik.scope_ubuf)
             self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 6, 0, 0)

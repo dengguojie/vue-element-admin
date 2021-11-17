@@ -16,11 +16,11 @@
 split
 """
 from __future__ import absolute_import
-from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
-from .split_v import SplitV
 from impl.util.platform_adapter import tbe_context
+from .split_v import SplitV
 
 
 def check_input_params(x, split_dim, y, num_split):

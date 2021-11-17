@@ -28,7 +28,7 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpImplMode
 
 
-# pylint: disable=unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=unused-argument,too-many-locals,invalid-name
 @register_operator_compute("Sigmoid", op_mode="dynamic", support_fusion=True)
 def sigmoid_compute(x, y, kernel_name="sigmoid"):
     """

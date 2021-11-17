@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
 """
 Copyright (C) 2016. Huawei Technologies Co., Ltd. All rights reserved.
 
@@ -24,10 +22,8 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
-SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
-
-# pylint: disable=redefined-builtin,unused-argument,too-many-locals
+# 'pylint: disable=redefined-builtin,unused-argument,too-many-locals
 def reciprocal_compute(input_x, output_y, kernel_name="reciprocal"):
     """
     reciprocal_compute

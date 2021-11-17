@@ -25,21 +25,27 @@ from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.util_select_op_base import get_op_cal_info
 
-# max int32
-MAX_INT32 = 2**31 - 1
-# tiling param num
-TILING_ARG_NUM = 32
-# reserved ub size
-RESERVED_UB_SIZE = 8 * 1024
-# 8 bit
-EIGHT_BIT = 8
-# bytes of one block
-BLOCK_BYTES = 32
-# repeat limit
-REPEAT_LIMIT = 255
+
+# 'pylint:disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    The class for constant
+    """
+    # max int32
+    MAX_INT32 = 2**31 - 1
+    # tiling param num
+    TILING_ARG_NUM = 32
+    # reserved ub size
+    RESERVED_UB_SIZE = 8 * 1024
+    # 8 bit
+    EIGHT_BIT = 8
+    # bytes of one block
+    BLOCK_BYTES = 32
+    # repeat limit
+    REPEAT_LIMIT = 255
 
 
-# pylint: disable=too-many-lines,unused-argument
+# 'pylint: disable=too-many-lines,unused-argument,invalid-name
 def get_op_support_info(x, block_shape, paddings, y, kernel_name="space_to_batch_nd"):
     """
     get op support info.
@@ -50,7 +56,8 @@ def get_op_support_info(x, block_shape, paddings, y, kernel_name="space_to_batch
     return op_cal_info_in_json
 
 
-# pylint: disable=invalid-name,too-many-locals,unnecessary-pass,too-many-return-statements
+# 'pylint: disable=invalid-name,too-many-locals,unnecessary-pass,too-many-return-statements
+# 'pylint: disable=consider-using-f-string
 def check_supported(x, block_shape, paddings, y, kernel_name="space_to_batch_nd"):
     """
     check supported dynamiclly. \n
@@ -75,8 +82,8 @@ def check_supported(x, block_shape, paddings, y, kernel_name="space_to_batch_nd"
     if len(block_s) != 1 or len(pad_s) != 2 or pad_s[1] != 2:
         reason = "shape of input is not supported, block_s is [%s], pad_s is [%s]" % (str(block_s), str(pad_s))
         return False, reason
-    reason = "when ori_format is [%s], shape of input is not supported," \
-             "ori_shape is [%s], block_s is [%s], pad_s is [%s]" % (ori_format, str(ori_shape), str(block_s), str(pad_s))
+    reason = "when ori_format is [%s], shape of input is not supported, ori_shape is [%s], " \
+             "block_s is [%s], pad_s is [%s]" % (ori_format, str(ori_shape), str(block_s), str(pad_s))
     if ori_format in ("NHWC",):
         if len(ori_shape) != 4 or block_s[0] != 2 or pad_s[0] != 2:
             if len(ori_shape) != 3 or block_s[0] != 1 or pad_s[0] != 1:
@@ -160,9 +167,9 @@ def op_select_format(x, block_shape, paddings, y, kernel_name="space_to_batch_nd
     return param_dynamic_in_json
 
 
-# pylint: disable=too-many-function-args,too-many-public-methods
-# pylint: disable=too-many-instance-attributes,unexpected-keyword-arg
-# pylint: disable=too-many-arguments,attribute-defined-outside-init,too-many-statements
+# 'pylint: disable=too-many-function-args,too-many-public-methods
+# 'pylint: disable=too-many-instance-attributes,unexpected-keyword-arg
+# 'pylint: disable=too-many-arguments,attribute-defined-outside-init,too-many-statements
 class SpaceToBatchND:
     """Performs space_to_batch_nd on input tensor
     5HD:
@@ -186,10 +193,10 @@ class SpaceToBatchND:
         self.kernel_name = kernel_name
         self.tik_instance = tik.Tik()
         self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.dtype_size = tbe_platform.get_bit_len(self.dtype) // EIGHT_BIT
-        self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE
+        self.dtype_size = tbe_platform.get_bit_len(self.dtype) // Constant.EIGHT_BIT
+        self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - Constant.RESERVED_UB_SIZE
         self.ub_ele = self.ub_size // self.dtype_size
-        self.blk_ele = BLOCK_BYTES // self.dtype_size
+        self.blk_ele = Constant.BLOCK_BYTES // self.dtype_size
         self.init_gm_tensor()
         self.mask_len = 64 if dtype.lower() == "float32" else 128
 
@@ -248,11 +255,15 @@ class SpaceToBatchND:
     def init_gm_tensor(self):
         """Init gm tensor
         """
-        self.tiling_gm = self.tik_instance.Tensor("int32", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
-        self.input_gm = self.tik_instance.Tensor(self.dtype, (MAX_INT32,), name="input_gm", scope=tik.scope_gm)
-        self.block_gm = self.tik_instance.Tensor("int32", (MAX_INT32,), name="block_shape", scope=tik.scope_gm)
-        self.paddings_gm = self.tik_instance.Tensor("int32", (MAX_INT32,), name="paddings", scope=tik.scope_gm)
-        self.output_gm = self.tik_instance.Tensor(self.dtype, (MAX_INT32,), name="output_gm", scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor("int32", (Constant.TILING_ARG_NUM,),
+                                                  name="tiling_gm",
+                                                  scope=tik.scope_gm)
+        self.input_gm = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,), name="input_gm", scope=tik.scope_gm)
+        self.block_gm = self.tik_instance.Tensor("int32", (Constant.MAX_INT32,), name="block_shape", scope=tik.scope_gm)
+        self.paddings_gm = self.tik_instance.Tensor("int32", (Constant.MAX_INT32,), name="paddings", scope=tik.scope_gm)
+        self.output_gm = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,),
+                                                  name="output_gm",
+                                                  scope=tik.scope_gm)
 
     def vector_dup_continuous(self, src, size):
         """vector_dup continuous function, set ubuf to 0
@@ -261,14 +272,14 @@ class SpaceToBatchND:
             dup_value = float(0)
             size_loop = size // self.mask_len
             size_left = size % self.mask_len
-            repeat_loop = size_loop // REPEAT_LIMIT
-            repeat_left = size_loop % REPEAT_LIMIT
+            repeat_loop = size_loop // Constant.REPEAT_LIMIT
+            repeat_left = size_loop % Constant.REPEAT_LIMIT
 
             with self.tik_instance.for_range(0, repeat_loop) as repeat_loop_idx:
-                repeat_offset = repeat_loop_idx * REPEAT_LIMIT * self.mask_len
-                self.tik_instance.vector_dup(self.mask_len, src[repeat_offset], dup_value, REPEAT_LIMIT, 1, 8)
+                repeat_offset = repeat_loop_idx * Constant.REPEAT_LIMIT * self.mask_len
+                self.tik_instance.vector_dup(self.mask_len, src[repeat_offset], dup_value, Constant.REPEAT_LIMIT, 1, 8)
             with self.tik_instance.if_scope(repeat_left > 0):
-                repeat_offset = repeat_loop * REPEAT_LIMIT * self.mask_len
+                repeat_offset = repeat_loop * Constant.REPEAT_LIMIT * self.mask_len
                 self.tik_instance.vector_dup(self.mask_len, src[repeat_offset], dup_value, repeat_left, 1, 8)
             with self.tik_instance.if_scope(size_left > 0):
                 size_offset = size_loop * self.mask_len
@@ -282,18 +293,18 @@ class SpaceToBatchND:
                 dup_value = float(0)
                 size_loop = size // self.mask_len
                 size_left = size % self.mask_len
-                repeat_loop = repeat // REPEAT_LIMIT
-                repeat_left = repeat % REPEAT_LIMIT
+                repeat_loop = repeat // Constant.REPEAT_LIMIT
+                repeat_left = repeat % Constant.REPEAT_LIMIT
 
                 def _inner(src, mask_len):
                     """exec repeat
                     """
                     with self.tik_instance.for_range(0, repeat_loop) as repeat_loop_idx:
-                        repeat_offset = repeat_loop_idx * REPEAT_LIMIT * dst_rep * self.blk_ele
-                        self.tik_instance.vector_dup(mask_len, src[repeat_offset], dup_value, REPEAT_LIMIT, dst_blk,
-                                                     dst_rep)
+                        repeat_offset = repeat_loop_idx * Constant.REPEAT_LIMIT * dst_rep * self.blk_ele
+                        self.tik_instance.vector_dup(mask_len, src[repeat_offset], dup_value, Constant.REPEAT_LIMIT,
+                                                     dst_blk, dst_rep)
                     with self.tik_instance.if_scope(repeat_left > 0):
-                        repeat_offset = repeat_loop * REPEAT_LIMIT * dst_rep * self.blk_ele
+                        repeat_offset = repeat_loop * Constant.REPEAT_LIMIT * dst_rep * self.blk_ele
                         self.tik_instance.vector_dup(mask_len, src[repeat_offset], dup_value, repeat_left, dst_blk,
                                                      dst_rep)
 
@@ -906,7 +917,7 @@ class SpaceToBatchND:
         """
         with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as core_idx:
             # define tiling ub and move tiling gm to tiling ub,then get tiling args
-            self.tiling_ub = self.tik_instance.Tensor("int32", (TILING_ARG_NUM,),
+            self.tiling_ub = self.tik_instance.Tensor("int32", (Constant.TILING_ARG_NUM,),
                                                       name="tiling_ub",
                                                       scope=tik.scope_ubuf)
             self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 4, 0, 0)

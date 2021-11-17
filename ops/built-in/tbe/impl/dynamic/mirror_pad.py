@@ -15,7 +15,6 @@
 """
 mirror_pad.py
 """
-from tbe.tvm.expr import NotEqualOp
 from impl import constant_util as constant
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tik
@@ -23,33 +22,37 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
 
-# tiling param nums
-TILING_NUMS = 20
-# 1 byte = 8 bit
-EIGHT_BIT = 8
-# bytes of one block
-BLOCK_BYTES = 32
-# vnchw the minest block
-TRANS_MIN_BLKS = 16
-# max int64
-MAX_INT64 = 2 ** 64 - 1
-# compute only zero axis, cut last dim
-MODE0 = 0
-# compute only one axis
-MODE1 = 1
-# network case
-MODE2 = 2
-# tiling mode 1 divide by outer:[0,1,2] inner:[3,4]
-AXIS_DIMS_3 = 3
-# tiling mode 0 divide by outer:[0,1,2,3] inner:[4]
-AXIS_DIMS_4 = 4
-# reserved ub size
-RESERVED_UB_SIZE = 10240
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # tiling param nums
+    TILING_NUMS = 20
+    # 1 byte = 8 bit
+    EIGHT_BIT = 8
+    # vnchw the minest block
+    TRANS_MIN_BLKS = 16
+    # max int64
+    MAX_INT64 = 2**64 - 1
+    # compute only zero axis, cut last dim
+    MODE0 = 0
+    # compute only one axis
+    MODE1 = 1
+    # network case
+    MODE2 = 2
+    # tiling mode 1 divide by outer:[0,1,2] inner:[3,4]
+    AXIS_DIMS_3 = 3
+    # tiling mode 0 divide by outer:[0,1,2,3] inner:[4]
+    AXIS_DIMS_4 = 4
+    # reserved ub size
+    RESERVED_UB_SIZE = 10240
 
 
-# pylint: disable=too-many-instance-attributes,too-many-statements,too-many-locals,too-many-lines
-# pylint: disable=too-many-arguments,invalid-name
-class MirrorPadInit(object):
+# 'pylint: disable=too-many-instance-attributes,too-many-statements,too-many-locals,too-many-lines
+# 'pylint: disable=too-many-arguments,invalid-name
+class MirrorPadInit:
     """
     Function: class that execute mirror_pad
     """
@@ -61,12 +64,12 @@ class MirrorPadInit(object):
         self.input_gm_list = []
         self.output_gm_list = []
         self.tiling_gm = None
-        self.unknown_max_shape = (MAX_INT64,)
+        self.unknown_max_shape = (Constant.MAX_INT64,)
         self.kernel_name = None
         self.opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True, "dynamic_tik": True}
         self.tiling_key = None
         self.tiling_dtype = "int64"
-        self.tiling_shape = (TILING_NUMS,)
+        self.tiling_shape = (Constant.TILING_NUMS,)
         self.kernel_name = kernel_name
         self.mode = mode
         # op para init
@@ -74,9 +77,9 @@ class MirrorPadInit(object):
         self.input_gm = None
         self.output_gm = None
         self.true_input_bytes_size = 0
-        self.inner_bytes_size = tbe_platform.get_bit_len(self.inner_dtype) // EIGHT_BIT
+        self.inner_bytes_size = tbe_platform.get_bit_len(self.inner_dtype) // Constant.EIGHT_BIT
         self.block_num = constant.BLOCK_SIZE // self.inner_bytes_size
-        self.output_dim4_max_cnt = (self.ub_size_bytes - RESERVED_UB_SIZE) // self.inner_bytes_size // 32
+        self.output_dim4_max_cnt = (self.ub_size_bytes - Constant.RESERVED_UB_SIZE) // self.inner_bytes_size // 32
         self.output_dim4_max_cnt_block_align = (self.output_dim4_max_cnt + self.block_num - 1) // self.block_num
         self.dtype_rate = None
         self.input_dim_0 = None
@@ -210,8 +213,8 @@ class MirrorPadInit(object):
             self.two_mode_diff = self.tik_instance.Scalar(self.tiling_dtype, "two_mode_diff", init_value=0)
         else:
             self.two_mode_diff = self.tik_instance.Scalar(self.tiling_dtype, "two_mode_diff", init_value=1)
-        tiling_ub = self.tik_instance.Tensor("int64", (TILING_NUMS,), name="tiling_ub", scope=tik.scope_ubuf)
-        self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, TILING_NUMS // 4, 0, 0)
+        tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_NUMS,), name="tiling_ub", scope=tik.scope_ubuf)
+        self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, Constant.TILING_NUMS // 4, 0, 0)
         self.tiling_key.set_as(tiling_ub[0])
         self.input_dim_0.set_as(tiling_ub[1])
         self.input_dim_1.set_as(tiling_ub[2])
@@ -244,7 +247,7 @@ class MirrorPadInit(object):
         """
         init gm tensor set tiling, input, paddings output tensor(gm)
         """
-        self.true_input_bytes_size = tbe_platform.get_bit_len(input_dict.get("dtype")) // EIGHT_BIT
+        self.true_input_bytes_size = tbe_platform.get_bit_len(input_dict.get("dtype")) // Constant.EIGHT_BIT
         self.dtype_rate = self.true_input_bytes_size // self.inner_bytes_size
         self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype,
                                                   self.tiling_shape,
@@ -274,7 +277,7 @@ class MirrorPadInit(object):
         self.in_and_out_indexes[1].set_as(self.dividends[17] / self.dividends[1])
         self.dividends[18].set_as(self.dividends[17] % self.dividends[1])
         self.in_and_out_indexes[2].set_as(self.dividends[18] / self.dividends[2])
-        if axis_nums == AXIS_DIMS_4:
+        if axis_nums == Constant.AXIS_DIMS_4:
             self.in_and_out_indexes[3].set_as(self.dividends[18] % self.dividends[2])
         with self.tik_instance.if_scope(self.input_dim_0 == self.output_dim_0):
             self.in_and_out_indexes[4].set_as(self.in_and_out_indexes[0])
@@ -303,7 +306,7 @@ class MirrorPadInit(object):
                 self.in_and_out_indexes[6].set_as(self.dividends[15] - self.in_and_out_indexes[2])
             with self.tik_instance.else_scope():
                 self.in_and_out_indexes[6].set_as(self.in_and_out_indexes[2] - self.pading_20)
-        if axis_nums == AXIS_DIMS_4:
+        if axis_nums == Constant.AXIS_DIMS_4:
             with self.tik_instance.if_scope(self.input_dim_3 == self.output_dim_3):
                 self.in_and_out_indexes[7].set_as(self.in_and_out_indexes[3])
             with self.tik_instance.else_scope():
@@ -313,10 +316,10 @@ class MirrorPadInit(object):
                     self.in_and_out_indexes[7].set_as(self.dividends[16] - self.in_and_out_indexes[3])
                 with self.tik_instance.else_scope():
                     self.in_and_out_indexes[7].set_as(self.in_and_out_indexes[3] - self.pading_30)
-        if axis_nums == AXIS_DIMS_3:
+        if axis_nums == Constant.AXIS_DIMS_3:
             self.outer_move_in_index.set_as(self.in_and_out_indexes[4] * self.dividends[3] +
                                             self.in_and_out_indexes[5] * self.input_dim_2 + self.in_and_out_indexes[6])
-        elif axis_nums == AXIS_DIMS_4:
+        elif axis_nums == Constant.AXIS_DIMS_4:
             self.outer_move_in_index.set_as(self.in_and_out_indexes[4] * self.dividends[3] +
                                             self.in_and_out_indexes[5] * self.dividends[4] +
                                             self.in_and_out_indexes[6] * self.input_dim_3 + self.in_and_out_indexes[7])
@@ -336,13 +339,13 @@ class MirrorPadInit(object):
         self.dividends[13].set_as(2 * self.tiling_input_shape[0] + self.pading_00 - 2 + self.two_mode_diff)
         self.dividends[14].set_as(2 * self.tiling_input_shape[1] + self.pading_10 - 2 + self.two_mode_diff)
         self.dividends[15].set_as(2 * self.tiling_input_shape[2] + self.pading_20 - 2 + self.two_mode_diff)
-        if axis_nums == AXIS_DIMS_3:
+        if axis_nums == Constant.AXIS_DIMS_3:
             self.dividends[0].set_as(self.tiling_output_shape[1] * self.tiling_output_shape[2])
             self.dividends[1].set_as(self.tiling_output_shape[2])
             self.dividends[2].set_as(1)
             # 3 -> self.input_dim_1 * self.input_dim_2
             self.dividends[3].set_as(self.input_dim_1 * self.input_dim_2)
-        elif axis_nums == AXIS_DIMS_4:
+        elif axis_nums == Constant.AXIS_DIMS_4:
             self.dividends[0].set_as(self.tiling_output_shape[1] * self.tiling_output_shape[2] *
                                      self.tiling_output_shape[3])
             self.dividends[1].set_as(self.tiling_output_shape[2] * self.tiling_output_shape[3])
@@ -360,12 +363,9 @@ class MirrorPadInit(object):
         """
         divide by outer:[0,1,2] inner:[3,4]
         """
-        self.set_dividends_scalars(AXIS_DIMS_3)
+        self.set_dividends_scalars(Constant.AXIS_DIMS_3)
         self.outer_move_out_core_offset.set_as(self.num_per_core * core_id)
-        self.address_rollback = self.tik_instance.ScalarArray(self.tiling_dtype,
-                                                              4,
-                                                              "address_rollback",
-                                                              init_value=0)
+        self.address_rollback = self.tik_instance.ScalarArray(self.tiling_dtype, 4, "address_rollback", init_value=0)
         self.address_rollback_sum = self.tik_instance.Scalar(self.tiling_dtype, "address_rollback_sum", init_value=0)
         with self.tik_instance.if_scope(self.pading_31 == 0):
             self.address_rollback[3].set_as(10)
@@ -384,12 +384,9 @@ class MirrorPadInit(object):
         """
         divide by outer:[0,1,2,3] inner:[4]
         """
-        self.set_dividends_scalars(AXIS_DIMS_4)
+        self.set_dividends_scalars(Constant.AXIS_DIMS_4)
         self.outer_move_out_core_offset.set_as(self.num_per_core * core_id)
-        self.address_rollback = self.tik_instance.ScalarArray(self.tiling_dtype,
-                                                              3,
-                                                              "address_rollback",
-                                                              init_value=0)
+        self.address_rollback = self.tik_instance.ScalarArray(self.tiling_dtype, 3, "address_rollback", init_value=0)
         self.address_rollback_sum = self.tik_instance.Scalar(self.tiling_dtype, "address_rollback_sum", init_value=0)
         self.outer_process_num = self.tik_instance.Scalar(self.tiling_dtype, "outer_process_num", init_value=0)
         with self.tik_instance.if_scope(core_id < self.core_used_num - 1):
@@ -405,7 +402,7 @@ class MirrorPadInit(object):
         padding_40 == 0 & padding_40 == 0 & dim4 32B align
         divide by outer:[0,1,2,3] inner:[4]
         """
-        self.set_dividends_scalars(AXIS_DIMS_4)
+        self.set_dividends_scalars(Constant.AXIS_DIMS_4)
         self.outer_move_out_core_offset.set_as(self.num_per_core * core_id)
         self.outer_process_num = self.tik_instance.Scalar(self.tiling_dtype, "outer_process_num", init_value=0)
         with self.tik_instance.if_scope(core_id < self.core_used_num - 1):
@@ -418,10 +415,10 @@ class MirrorPadInit(object):
         """
         mode_2 outer prcocess
         """
-        self.inner_process_prepare(MODE2)
+        self.inner_process_prepare(Constant.MODE2)
         self.process_blks = self.tik_instance.Scalar(self.tiling_dtype, "process_blks", init_value=0)
         self.segment_move_offset = self.tik_instance.Scalar(self.tiling_dtype, "segment_move_offset", init_value=0)
-        self.process_blks.set_as(self.output_dim_4 // TRANS_MIN_BLKS)
+        self.process_blks.set_as(self.output_dim_4 // Constant.TRANS_MIN_BLKS)
         segment_max_num = self.output_dim4_max_cnt_block_align * 32 // self.process_blks
         self.segment_total.set_as((self.outer_process_num + segment_max_num - 1) // segment_max_num)
         self.num_tail_segment.set_as(self.outer_process_num - (self.segment_total - 1) * segment_max_num)
@@ -436,7 +433,7 @@ class MirrorPadInit(object):
             self.segment_move_offset.set_as(self.outer_move_out_core_offset + i * segment_max_num)
             with self.tik_instance.for_range(0, self.inner_process_num) as j:
                 self.outer_move_out_index.set_as(self.segment_move_offset + j)
-                self.get_outer_move_in_index(AXIS_DIMS_4)
+                self.get_outer_move_in_index(Constant.AXIS_DIMS_4)
                 self.tik_instance.data_move(self.ub_mode2[self.output_dim_4 * j],
                                             self.input_gm[self.outer_move_in_index * self.output_dim_4], 0, 1,
                                             self.process_blks, 0, 0)
@@ -447,14 +444,14 @@ class MirrorPadInit(object):
         """
         mode_0 outer prcocess
         """
-        self.inner_process_prepare(MODE0)
+        self.inner_process_prepare(Constant.MODE0)
         with self.tik_instance.for_range(0, self.outer_process_num) as i:
             self.outer_move_out_index.set_as(self.outer_move_out_core_offset + i)
-            self.get_outer_move_in_index(AXIS_DIMS_4)
+            self.get_outer_move_in_index(Constant.AXIS_DIMS_4)
             with self.tik_instance.if_scope(i < self.outer_process_num - 1):
                 self.address_rollback[1].set_as(0)
             with self.tik_instance.else_scope():
-                with self.tik_instance.if_scope(self.pading_41 != TRANS_MIN_BLKS):
+                with self.tik_instance.if_scope(self.pading_41 != Constant.TRANS_MIN_BLKS):
                     self.address_rollback[1].set_as(1)
                 with self.tik_instance.else_scope():
                     self.address_rollback[1].set_as(0)
@@ -464,14 +461,14 @@ class MirrorPadInit(object):
         """
         mode_1 outer prcocess
         """
-        self.inner_process_prepare(MODE1)
+        self.inner_process_prepare(Constant.MODE1)
         with self.tik_instance.for_range(0, self.outer_process_num) as i:
             self.outer_move_out_index.set_as(self.outer_move_out_core_offset + i)
-            self.get_outer_move_in_index(AXIS_DIMS_3)
+            self.get_outer_move_in_index(Constant.AXIS_DIMS_3)
             with self.tik_instance.if_scope(i < self.outer_process_num - 1):
                 self.address_rollback[1].set_as(0)
             with self.tik_instance.else_scope():
-                with self.tik_instance.if_scope(self.output_dim_4 % TRANS_MIN_BLKS != 0):
+                with self.tik_instance.if_scope(self.output_dim_4 % Constant.TRANS_MIN_BLKS != 0):
                     self.address_rollback[1].set_as(1)
                 with self.tik_instance.else_scope():
                     self.address_rollback[1].set_as(0)
@@ -488,26 +485,26 @@ class MirrorPadInit(object):
                 (self.padding40_align_blocks + one_loop_process_blocks - 1) / one_loop_process_blocks)
             self.inner_process_nums_tail_loop.set_as(self.padding40_align_blocks -
                                                      (self.inner_loop_times - 1) * one_loop_process_blocks)
-            self.tail_loop_true_nums.set_as(self.pading_40 -
-                                            (self.inner_loop_times - 1) * one_loop_process_blocks * TRANS_MIN_BLKS)
+            self.tail_loop_true_nums.set_as(self.pading_40 - (self.inner_loop_times - 1) * one_loop_process_blocks *
+                                            Constant.TRANS_MIN_BLKS)
             self.move_in_start_blocks.set_as((self.inner_loop_times - 1) * one_loop_process_blocks)
             self.get_vnchw_stride(self.inner_process_nums_tail_loop, True)
             self.tik_instance.data_move(
-                self.ub_first,
-                self.input_gm[self.outer_move_in_index * self.input_dim_4 + self.move_in_start_blocks * TRANS_MIN_BLKS +
-                              (1 - self.two_mode_diff) * self.dtype_rate], 0, 1, self.inner_process_nums_tail_loop, 0,
-                0)
-            dst_list_0 = [self.ub_second[TRANS_MIN_BLKS * i] for i in range(TRANS_MIN_BLKS)]
-            src_list_0 = [self.ub_first] * TRANS_MIN_BLKS
+                self.ub_first, self.input_gm[self.outer_move_in_index * self.input_dim_4 +
+                                             self.move_in_start_blocks * Constant.TRANS_MIN_BLKS +
+                                             (1 - self.two_mode_diff) * self.dtype_rate], 0, 1,
+                self.inner_process_nums_tail_loop, 0, 0)
+            dst_list_0 = [self.ub_second[Constant.TRANS_MIN_BLKS * i] for i in range(Constant.TRANS_MIN_BLKS)]
+            src_list_0 = [self.ub_first] * Constant.TRANS_MIN_BLKS
             self.tik_instance.vnchwconv(False, False, dst_list_0, src_list_0, self.inner_process_nums_tail_loop,
                                         self.conv1_stride_0, self.conv1_stride_1)
             with self.tik_instance.for_range(0, self.tail_loop_true_nums / self.dtype_rate) as pading_40_index:
                 self.tik_instance.data_move(
-                    self.ub_first[pading_40_index * self.dtype_rate * TRANS_MIN_BLKS],
+                    self.ub_first[pading_40_index * self.dtype_rate * Constant.TRANS_MIN_BLKS],
                     self.ub_second[(self.tail_loop_true_nums / self.dtype_rate - pading_40_index - 1) *
-                                   self.dtype_rate * TRANS_MIN_BLKS], 0, 1, self.dtype_rate, 0, 0)
-            dst_list_1 = [self.ub_second[TRANS_MIN_BLKS * i] for i in range(TRANS_MIN_BLKS)]
-            src_list_1 = [self.ub_first[TRANS_MIN_BLKS * i] for i in range(TRANS_MIN_BLKS)]
+                                   self.dtype_rate * Constant.TRANS_MIN_BLKS], 0, 1, self.dtype_rate, 0, 0)
+            dst_list_1 = [self.ub_second[Constant.TRANS_MIN_BLKS * i] for i in range(Constant.TRANS_MIN_BLKS)]
+            src_list_1 = [self.ub_first[Constant.TRANS_MIN_BLKS * i] for i in range(Constant.TRANS_MIN_BLKS)]
             self.tik_instance.vnchwconv(False, False, dst_list_1, src_list_1, self.inner_process_nums_tail_loop,
                                         self.conv2_stride_0, self.conv2_stride_1)
             self.tik_instance.data_move(self.output_gm[self.outer_move_out_index * self.output_dim_4], self.ub_second,
@@ -518,27 +515,28 @@ class MirrorPadInit(object):
                     (self.inner_loop_times - 2 - inner_loop_index) * one_loop_process_blocks)
                 self.tik_instance.data_move(
                     self.ub_first, self.input_gm[self.outer_move_in_index * self.input_dim_4 +
-                                                 self.move_in_start_blocks * TRANS_MIN_BLKS +
+                                                 self.move_in_start_blocks * Constant.TRANS_MIN_BLKS +
                                                  (1 - self.two_mode_diff) * self.dtype_rate], 0, 1,
                     one_loop_process_blocks, 0, 0)
-                dst_list_0 = [self.ub_second[TRANS_MIN_BLKS * i] for i in range(TRANS_MIN_BLKS)]
-                src_list_0 = [self.ub_first] * TRANS_MIN_BLKS
+                dst_list_0 = [self.ub_second[Constant.TRANS_MIN_BLKS * i] for i in range(Constant.TRANS_MIN_BLKS)]
+                src_list_0 = [self.ub_first] * Constant.TRANS_MIN_BLKS
                 self.tik_instance.vnchwconv(False, False, dst_list_0, src_list_0, one_loop_process_blocks,
                                             self.conv1_stride_0, self.conv1_stride_1)
-                with self.tik_instance.for_range(0, one_loop_process_blocks * TRANS_MIN_BLKS /
+                with self.tik_instance.for_range(0, one_loop_process_blocks * Constant.TRANS_MIN_BLKS /
                                                  self.dtype_rate) as pading_40_index:
                     self.tik_instance.data_move(
-                        self.ub_first[pading_40_index * self.dtype_rate * TRANS_MIN_BLKS],
-                        self.ub_second[(one_loop_process_blocks * TRANS_MIN_BLKS / self.dtype_rate - pading_40_index -
-                                        1) * self.dtype_rate * TRANS_MIN_BLKS], 0, 1, self.dtype_rate, 0, 0)
-                dst_list_1 = [self.ub_second[TRANS_MIN_BLKS * i] for i in range(TRANS_MIN_BLKS)]
-                src_list_1 = [self.ub_first[TRANS_MIN_BLKS * i] for i in range(TRANS_MIN_BLKS)]
+                        self.ub_first[pading_40_index * self.dtype_rate * Constant.TRANS_MIN_BLKS],
+                        self.ub_second[(one_loop_process_blocks * Constant.TRANS_MIN_BLKS / self.dtype_rate -
+                                        pading_40_index - 1) * self.dtype_rate * Constant.TRANS_MIN_BLKS], 0, 1,
+                        self.dtype_rate, 0, 0)
+                dst_list_1 = [self.ub_second[Constant.TRANS_MIN_BLKS * i] for i in range(Constant.TRANS_MIN_BLKS)]
+                src_list_1 = [self.ub_first[Constant.TRANS_MIN_BLKS * i] for i in range(Constant.TRANS_MIN_BLKS)]
                 self.tik_instance.vnchwconv(False, False, dst_list_1, src_list_1, one_loop_process_blocks,
                                             self.conv2_stride_0, self.conv2_stride_1)
                 self.tik_instance.data_move(
                     self.output_gm[self.outer_move_out_index * self.output_dim_4 + self.tail_loop_true_nums +
-                                   inner_loop_index * one_loop_process_blocks * TRANS_MIN_BLKS], self.ub_second, 0, 1,
-                    one_loop_process_blocks, 0, 0)
+                                   inner_loop_index * one_loop_process_blocks * Constant.TRANS_MIN_BLKS],
+                    self.ub_second, 0, 1, one_loop_process_blocks, 0, 0)
         # do input_dim_4 segment
         one_loop_process_blocks = self.output_dim4_max_cnt_block_align * 16
         self.inner_loop_times.set_as(
@@ -550,19 +548,19 @@ class MirrorPadInit(object):
                 self.move_in_start_blocks.set_as(inner_loop_index * one_loop_process_blocks)
                 self.tik_instance.data_move(
                     self.ub_first, self.input_gm[self.outer_move_in_index * self.input_dim_4 +
-                                                 self.move_in_start_blocks * TRANS_MIN_BLKS], 0, 1,
+                                                 self.move_in_start_blocks * Constant.TRANS_MIN_BLKS], 0, 1,
                     one_loop_process_blocks, 0, 0)
                 self.tik_instance.data_move(
                     self.output_gm[self.outer_move_out_index * self.output_dim_4 + self.pading_40 +
-                                   self.move_in_start_blocks * TRANS_MIN_BLKS], self.ub_first, 0, 1,
+                                   self.move_in_start_blocks * Constant.TRANS_MIN_BLKS], self.ub_first, 0, 1,
                     one_loop_process_blocks, 0, 0)
             self.tik_instance.data_move(
                 self.ub_first, self.input_gm[self.outer_move_in_index * self.input_dim_4 + self.input_dim_4 -
-                                             self.inner_process_nums_tail_loop * TRANS_MIN_BLKS], 0, 1,
+                                             self.inner_process_nums_tail_loop * Constant.TRANS_MIN_BLKS], 0, 1,
                 self.inner_process_nums_tail_loop, 0, 0)
             self.tik_instance.data_move(
                 self.output_gm[self.outer_move_out_index * self.output_dim_4 + self.pading_40 + self.input_dim_4 -
-                               self.inner_process_nums_tail_loop * TRANS_MIN_BLKS], self.ub_first, 0, 1,
+                               self.inner_process_nums_tail_loop * Constant.TRANS_MIN_BLKS], self.ub_first, 0, 1,
                 self.inner_process_nums_tail_loop, 0, 0)
         with self.tik_instance.if_scope(self.inner_loop_times == 1):
             self.tik_instance.data_move(self.ub_first, self.input_gm[self.outer_move_in_index * self.input_dim_4], 0, 1,
@@ -571,11 +569,11 @@ class MirrorPadInit(object):
                                         self.ub_first, 0, 1, self.inner_process_nums_tail_loop - 1, 0, 0)
             self.tik_instance.data_move(
                 self.ub_first,
-                self.input_gm[self.outer_move_in_index * self.input_dim_4 + self.input_dim_4 - TRANS_MIN_BLKS], 0, 1, 1,
-                0, 0)
+                self.input_gm[self.outer_move_in_index * self.input_dim_4 + self.input_dim_4 - Constant.TRANS_MIN_BLKS],
+                0, 1, 1, 0, 0)
             self.tik_instance.data_move(
                 self.output_gm[self.outer_move_out_index * self.output_dim_4 + self.pading_40 + self.input_dim_4 -
-                               TRANS_MIN_BLKS], self.ub_first, 0, 1, 1, 0, 0)
+                               Constant.TRANS_MIN_BLKS], self.ub_first, 0, 1, 1, 0, 0)
         # do pading_41 segment
         with self.tik_instance.if_scope(self.pading_41 != 0):
             one_loop_process_blocks = self.output_dim4_max_cnt_block_align
@@ -583,44 +581,44 @@ class MirrorPadInit(object):
             with self.tik_instance.if_scope((self.pading_41 < 16) & (self.address_rollback_sum == 2)):
                 self.tik_instance.data_move(
                     self.ub_addr_rollback, self.input_gm[self.outer_move_in_index * self.input_dim_4 +
-                                                         self.input_dim_4 + self.pading_41 - TRANS_MIN_BLKS], 0, 1, 1,
-                    0, 0)
+                                                         self.input_dim_4 + self.pading_41 - Constant.TRANS_MIN_BLKS],
+                    0, 1, 1, 0, 0)
                 self.tik_instance.data_move(
                     self.ub_first, self.input_gm[self.outer_move_in_index * self.input_dim_4 + self.input_dim_4 -
-                                                 TRANS_MIN_BLKS + (self.two_mode_diff - 1) * self.dtype_rate], 0, 1, 1,
-                    0, 0)
+                                                 Constant.TRANS_MIN_BLKS + (self.two_mode_diff - 1) * self.dtype_rate],
+                    0, 1, 1, 0, 0)
                 with self.tik_instance.for_range(0, self.pading_41 / self.dtype_rate) as index_out:
                     with self.tik_instance.for_range(0, self.dtype_rate) as index_in:
-                        self.ub_addr_rollback[index_out * self.dtype_rate + TRANS_MIN_BLKS - self.pading_41 +
+                        self.ub_addr_rollback[index_out * self.dtype_rate + Constant.TRANS_MIN_BLKS - self.pading_41 +
                                               index_in].set_as(
-                                                  self.ub_first[TRANS_MIN_BLKS - (index_out + 1) * self.dtype_rate +
-                                                                index_in])
+                                                  self.ub_first[Constant.TRANS_MIN_BLKS -
+                                                                (index_out + 1) * self.dtype_rate + index_in])
                 self.tik_instance.data_move(
-                    self.output_gm[(self.outer_move_out_index + 1) * self.output_dim_4 - TRANS_MIN_BLKS],
+                    self.output_gm[(self.outer_move_out_index + 1) * self.output_dim_4 - Constant.TRANS_MIN_BLKS],
                     self.ub_addr_rollback, 0, 1, 1, 0, 0)
             with self.tik_instance.else_scope():
                 self.inner_loop_times.set_as(
                     (self.padding41_align_blocks + one_loop_process_blocks - 1) / one_loop_process_blocks)
                 self.inner_process_nums_tail_loop.set_as(self.padding41_align_blocks -
                                                          (self.inner_loop_times - 1) * one_loop_process_blocks)
-                self.tail_loop_true_nums.set_as(self.pading_41 -
-                                                (self.inner_loop_times - 1) * one_loop_process_blocks * TRANS_MIN_BLKS)
+                self.tail_loop_true_nums.set_as(self.pading_41 - (self.inner_loop_times - 1) * one_loop_process_blocks *
+                                                Constant.TRANS_MIN_BLKS)
                 self.tik_instance.data_move(
                     self.ub_first, self.input_gm[(self.outer_move_in_index + 1) * self.input_dim_4 -
                                                  self.tail_loop_true_nums + (self.two_mode_diff - 1) * self.dtype_rate],
                     0, 1, self.inner_process_nums_tail_loop, 0, 0)
-                dst_list_0 = [self.ub_second[TRANS_MIN_BLKS * i] for i in range(TRANS_MIN_BLKS)]
-                src_list_0 = [self.ub_first] * TRANS_MIN_BLKS
+                dst_list_0 = [self.ub_second[Constant.TRANS_MIN_BLKS * i] for i in range(Constant.TRANS_MIN_BLKS)]
+                src_list_0 = [self.ub_first] * Constant.TRANS_MIN_BLKS
                 self.get_vnchw_stride(self.inner_process_nums_tail_loop, True)
                 self.tik_instance.vnchwconv(False, False, dst_list_0, src_list_0, self.inner_process_nums_tail_loop,
                                             self.conv1_stride_0, self.conv1_stride_1)
                 with self.tik_instance.for_range(0, self.tail_loop_true_nums / self.dtype_rate) as pading_41_index:
                     self.tik_instance.data_move(
-                        self.ub_first[pading_41_index * self.dtype_rate * TRANS_MIN_BLKS],
+                        self.ub_first[pading_41_index * self.dtype_rate * Constant.TRANS_MIN_BLKS],
                         self.ub_second[(self.tail_loop_true_nums / self.dtype_rate - pading_41_index - 1) *
-                                       self.dtype_rate * TRANS_MIN_BLKS], 0, 1, self.dtype_rate, 0, 0)
-                dst_list_1 = [self.ub_second[TRANS_MIN_BLKS * i] for i in range(TRANS_MIN_BLKS)]
-                src_list_1 = [self.ub_first[TRANS_MIN_BLKS * i] for i in range(TRANS_MIN_BLKS)]
+                                       self.dtype_rate * Constant.TRANS_MIN_BLKS], 0, 1, self.dtype_rate, 0, 0)
+                dst_list_1 = [self.ub_second[Constant.TRANS_MIN_BLKS * i] for i in range(Constant.TRANS_MIN_BLKS)]
+                src_list_1 = [self.ub_first[Constant.TRANS_MIN_BLKS * i] for i in range(Constant.TRANS_MIN_BLKS)]
                 self.tik_instance.vnchwconv(False, False, dst_list_1, src_list_1, self.inner_process_nums_tail_loop,
                                             self.conv2_stride_0, self.conv2_stride_1)
                 with self.tik_instance.if_scope((self.address_rollback_sum == 2) & (self.inner_loop_times == 1)):
@@ -646,27 +644,28 @@ class MirrorPadInit(object):
                         self.ub_first,
                         self.input_gm[(self.outer_move_in_index + 1) * self.input_dim_4 - self.tail_loop_true_nums +
                                       (self.two_mode_diff - 1) * self.dtype_rate -
-                                      self.move_in_start_blocks * TRANS_MIN_BLKS], 0, 1, one_loop_process_blocks, 0, 0)
-                    dst_list_0 = [self.ub_second[TRANS_MIN_BLKS * i] for i in range(TRANS_MIN_BLKS)]
-                    src_list_0 = [self.ub_first] * TRANS_MIN_BLKS
+                                      self.move_in_start_blocks * Constant.TRANS_MIN_BLKS], 0, 1,
+                        one_loop_process_blocks, 0, 0)
+                    dst_list_0 = [self.ub_second[Constant.TRANS_MIN_BLKS * i] for i in range(Constant.TRANS_MIN_BLKS)]
+                    src_list_0 = [self.ub_first] * Constant.TRANS_MIN_BLKS
                     self.tik_instance.vnchwconv(False, False, dst_list_0, src_list_0, one_loop_process_blocks,
                                                 self.conv1_stride_0, self.conv1_stride_1)
-                    with self.tik_instance.for_range(0, one_loop_process_blocks * TRANS_MIN_BLKS /
-                                                     self.dtype_rate) as pading_41_index:
+                    with self.tik_instance.for_range(
+                            0, one_loop_process_blocks * Constant.TRANS_MIN_BLKS / self.dtype_rate) as pading_41_index:
                         self.tik_instance.data_move(
-                            self.ub_first[pading_41_index * self.dtype_rate * TRANS_MIN_BLKS],
-                            self.ub_second[(one_loop_process_blocks * TRANS_MIN_BLKS / self.dtype_rate -
-                                            pading_41_index - 1) * self.dtype_rate * TRANS_MIN_BLKS], 0, 1,
+                            self.ub_first[pading_41_index * self.dtype_rate * Constant.TRANS_MIN_BLKS],
+                            self.ub_second[(one_loop_process_blocks * Constant.TRANS_MIN_BLKS / self.dtype_rate -
+                                            pading_41_index - 1) * self.dtype_rate * Constant.TRANS_MIN_BLKS], 0, 1,
                             self.dtype_rate, 0, 0)
-                    dst_list_1 = [self.ub_second[TRANS_MIN_BLKS * i] for i in range(TRANS_MIN_BLKS)]
-                    src_list_1 = [self.ub_first[TRANS_MIN_BLKS * i] for i in range(TRANS_MIN_BLKS)]
+                    dst_list_1 = [self.ub_second[Constant.TRANS_MIN_BLKS * i] for i in range(Constant.TRANS_MIN_BLKS)]
+                    src_list_1 = [self.ub_first[Constant.TRANS_MIN_BLKS * i] for i in range(Constant.TRANS_MIN_BLKS)]
                     self.tik_instance.vnchwconv(False, False, dst_list_1, src_list_1, one_loop_process_blocks,
                                                 self.conv2_stride_0, self.conv2_stride_1)
                     self.tik_instance.data_move(
                         self.output_gm[self.outer_move_out_index * self.output_dim_4 + self.input_dim_4 +
                                        self.pading_40 + self.tail_loop_true_nums +
-                                       inner_loop_index * one_loop_process_blocks * TRANS_MIN_BLKS], self.ub_second, 0,
-                        1, one_loop_process_blocks, 0, 0)
+                                       inner_loop_index * one_loop_process_blocks * Constant.TRANS_MIN_BLKS],
+                        self.ub_second, 0, 1, one_loop_process_blocks, 0, 0)
 
     def get_vnchw_stride(self, line_num, is_last_dim):
         """
@@ -710,12 +709,12 @@ class MirrorPadInit(object):
                                                                 init_value=0)
         self.outer_move_in_index = self.tik_instance.Scalar(self.tiling_dtype, "outer_move_in_index", init_value=0)
         self.outer_move_out_index = self.tik_instance.Scalar(self.tiling_dtype, "outer_move_out_index", init_value=0)
-        if mode == MODE2:
+        if mode == Constant.MODE2:
             self.segment_total = self.tik_instance.Scalar(self.tiling_dtype, "segment_total", init_value=0)
             self.num_tail_segment = self.tik_instance.Scalar(self.tiling_dtype, "num_tail_segment", init_value=0)
-            self.segment_total.set_as((self.outer_process_num + TRANS_MIN_BLKS - 1) // TRANS_MIN_BLKS)
-            self.num_tail_segment.set_as(self.outer_process_num - (self.segment_total - 1) * TRANS_MIN_BLKS)
-        if mode in (MODE0, MODE1):
+            self.segment_total.set_as((self.outer_process_num + Constant.TRANS_MIN_BLKS - 1) // Constant.TRANS_MIN_BLKS)
+            self.num_tail_segment.set_as(self.outer_process_num - (self.segment_total - 1) * Constant.TRANS_MIN_BLKS)
+        if mode in (Constant.MODE0, Constant.MODE1):
             self.conv1_stride_0 = self.tik_instance.Scalar(self.tiling_dtype, "conv1_stride_0", init_value=0)
             self.conv1_stride_1 = self.tik_instance.Scalar(self.tiling_dtype, "conv1_stride_1", init_value=0)
             self.conv2_stride_0 = self.tik_instance.Scalar(self.tiling_dtype, "conv2_stride_0", init_value=0)
@@ -881,19 +880,19 @@ class MirrorPadInit(object):
             self.ub_first,
             self.input_gm[self.outer_move_in_index * self.inner_insize + self.start_line * self.input_dim_4], 0, 1,
             self.process_blks, 0, 0)
-        dst_list_0 = [self.ub_second[TRANS_MIN_BLKS * i] for i in range(TRANS_MIN_BLKS)]
-        src_list_0 = [self.ub_first] * TRANS_MIN_BLKS
+        dst_list_0 = [self.ub_second[Constant.TRANS_MIN_BLKS * i] for i in range(Constant.TRANS_MIN_BLKS)]
+        src_list_0 = [self.ub_first] * Constant.TRANS_MIN_BLKS
         self.tik_instance.vnchwconv(False, False, dst_list_0, src_list_0, self.process_blks, self.conv1_stride_0,
                                     self.conv1_stride_1)
         with self.tik_instance.for_range(0, self.now_process_lines) as line_index:
             self.tik_instance.data_move(
-                self.ub_first[line_index * self.input_dim_4 * TRANS_MIN_BLKS],
-                self.ub_second[(self.now_process_lines - line_index - 1) * self.input_dim_4 * TRANS_MIN_BLKS], 0, 1,
-                self.input_dim_4, 0, 0)
+                self.ub_first[line_index * self.input_dim_4 * Constant.TRANS_MIN_BLKS],
+                self.ub_second[(self.now_process_lines - line_index - 1) * self.input_dim_4 * Constant.TRANS_MIN_BLKS],
+                0, 1, self.input_dim_4, 0, 0)
         self.do_data_move_for_pading_dim_4(self.ub_first, self.ub_second, self.now_process_lines)
         self.process_blks.set_as((self.now_process_lines * self.output_dim_4 + 15) / 16)
-        dst_list_1 = [self.ub_first[TRANS_MIN_BLKS * i] for i in range(TRANS_MIN_BLKS)]
-        src_list_1 = [self.ub_second[TRANS_MIN_BLKS * i] for i in range(TRANS_MIN_BLKS)]
+        dst_list_1 = [self.ub_first[Constant.TRANS_MIN_BLKS * i] for i in range(Constant.TRANS_MIN_BLKS)]
+        src_list_1 = [self.ub_second[Constant.TRANS_MIN_BLKS * i] for i in range(Constant.TRANS_MIN_BLKS)]
         self.tik_instance.vnchwconv(False, False, dst_list_1, src_list_1, self.process_blks, self.conv2_stride_0,
                                     self.conv2_stride_1)
         self.tik_instance.data_move(
@@ -911,14 +910,14 @@ class MirrorPadInit(object):
             self.ub_first,
             self.input_gm[self.outer_move_in_index * self.inner_insize + self.move_out_start_line * self.input_dim_4],
             0, 1, self.process_blks, 0, 0)
-        dst_list_0 = [self.ub_second[TRANS_MIN_BLKS * i] for i in range(TRANS_MIN_BLKS)]
-        src_list_0 = [self.ub_first] * TRANS_MIN_BLKS
+        dst_list_0 = [self.ub_second[Constant.TRANS_MIN_BLKS * i] for i in range(Constant.TRANS_MIN_BLKS)]
+        src_list_0 = [self.ub_first] * Constant.TRANS_MIN_BLKS
         self.tik_instance.vnchwconv(False, False, dst_list_0, src_list_0, self.process_blks, self.conv1_stride_0,
                                     self.conv1_stride_1)
         self.do_data_move_for_pading_dim_4(self.ub_second, self.ub_first, self.now_process_lines)
         self.process_blks.set_as((self.now_process_lines * self.output_dim_4 + 15) / 16)
-        dst_list_1 = [self.ub_second[TRANS_MIN_BLKS * i] for i in range(TRANS_MIN_BLKS)]
-        src_list_1 = [self.ub_first[TRANS_MIN_BLKS * i] for i in range(TRANS_MIN_BLKS)]
+        dst_list_1 = [self.ub_second[Constant.TRANS_MIN_BLKS * i] for i in range(Constant.TRANS_MIN_BLKS)]
+        src_list_1 = [self.ub_first[Constant.TRANS_MIN_BLKS * i] for i in range(Constant.TRANS_MIN_BLKS)]
         self.tik_instance.vnchwconv(False, False, dst_list_1, src_list_1, self.process_blks, self.conv2_stride_0,
                                     self.conv2_stride_1)
         self.address_rollback_sum.set_as(self.address_rollback[0] + self.address_rollback[1] +
@@ -948,19 +947,19 @@ class MirrorPadInit(object):
             self.ub_first,
             self.input_gm[self.outer_move_in_index * self.inner_insize + self.start_line * self.input_dim_4], 0, 1,
             self.process_blks, 0, 0)
-        dst_list_0 = [self.ub_second[TRANS_MIN_BLKS * i] for i in range(TRANS_MIN_BLKS)]
-        src_list_0 = [self.ub_first] * TRANS_MIN_BLKS
+        dst_list_0 = [self.ub_second[Constant.TRANS_MIN_BLKS * i] for i in range(Constant.TRANS_MIN_BLKS)]
+        src_list_0 = [self.ub_first] * Constant.TRANS_MIN_BLKS
         self.tik_instance.vnchwconv(False, False, dst_list_0, src_list_0, self.process_blks, self.conv1_stride_0,
                                     self.conv1_stride_1)
         with self.tik_instance.for_range(0, self.now_process_lines) as line_index:
             self.tik_instance.data_move(
-                self.ub_first[line_index * self.input_dim_4 * TRANS_MIN_BLKS],
-                self.ub_second[(self.now_process_lines - line_index - 1) * self.input_dim_4 * TRANS_MIN_BLKS], 0, 1,
-                self.input_dim_4, 0, 0)
+                self.ub_first[line_index * self.input_dim_4 * Constant.TRANS_MIN_BLKS],
+                self.ub_second[(self.now_process_lines - line_index - 1) * self.input_dim_4 * Constant.TRANS_MIN_BLKS],
+                0, 1, self.input_dim_4, 0, 0)
         self.do_data_move_for_pading_dim_4(self.ub_first, self.ub_second, self.now_process_lines)
         self.process_blks.set_as((self.now_process_lines * self.output_dim_4 + 15) / 16)
-        dst_list_1 = [self.ub_first[TRANS_MIN_BLKS * i] for i in range(TRANS_MIN_BLKS)]
-        src_list_1 = [self.ub_second[TRANS_MIN_BLKS * i] for i in range(TRANS_MIN_BLKS)]
+        dst_list_1 = [self.ub_first[Constant.TRANS_MIN_BLKS * i] for i in range(Constant.TRANS_MIN_BLKS)]
+        src_list_1 = [self.ub_second[Constant.TRANS_MIN_BLKS * i] for i in range(Constant.TRANS_MIN_BLKS)]
         self.tik_instance.vnchwconv(False, False, dst_list_1, src_list_1, self.process_blks, self.conv2_stride_0,
                                     self.conv2_stride_1)
         self.address_rollback_sum.set_as(self.address_rollback[0] + self.address_rollback[1] +
@@ -984,18 +983,20 @@ class MirrorPadInit(object):
         """
         pading last dim by data_move
         """
-        self.tik_instance.data_move(out_ub[self.pading_40 * TRANS_MIN_BLKS], in_ub, 0, process_lines, self.input_dim_4,
-                                    0, self.pading_40 + self.pading_41)
+        self.tik_instance.data_move(out_ub[self.pading_40 * Constant.TRANS_MIN_BLKS], in_ub, 0, process_lines,
+                                    self.input_dim_4, 0, self.pading_40 + self.pading_41)
         with self.tik_instance.for_range(0, self.pading_40 / self.dtype_rate) as pading_40_index:
             self.tik_instance.data_move(
-                out_ub[pading_40_index * self.dtype_rate * TRANS_MIN_BLKS],
-                in_ub[(self.pading_40 - (pading_40_index + self.two_mode_diff) * self.dtype_rate) * TRANS_MIN_BLKS], 0,
-                process_lines, self.dtype_rate, self.input_dim_4 - self.dtype_rate, self.output_dim_4 - self.dtype_rate)
+                out_ub[pading_40_index * self.dtype_rate * Constant.TRANS_MIN_BLKS],
+                in_ub[(self.pading_40 - (pading_40_index + self.two_mode_diff) * self.dtype_rate) *
+                      Constant.TRANS_MIN_BLKS], 0, process_lines, self.dtype_rate, self.input_dim_4 - self.dtype_rate,
+                self.output_dim_4 - self.dtype_rate)
         with self.tik_instance.for_range(0, self.pading_41 / self.dtype_rate) as pading_41_index:
             self.tik_instance.data_move(
-                out_ub[(self.pading_40 + self.input_dim_4 + pading_41_index * self.dtype_rate) * TRANS_MIN_BLKS],
+                out_ub[(self.pading_40 + self.input_dim_4 + pading_41_index * self.dtype_rate) *
+                       Constant.TRANS_MIN_BLKS],
                 in_ub[(self.input_dim_4 - (pading_41_index + (2 - self.two_mode_diff)) * self.dtype_rate) *
-                      TRANS_MIN_BLKS], 0, process_lines, self.dtype_rate, self.input_dim_4 - self.dtype_rate,
+                      Constant.TRANS_MIN_BLKS], 0, process_lines, self.dtype_rate, self.input_dim_4 - self.dtype_rate,
                 self.output_dim_4 - self.dtype_rate)
 
     def mirror_pad_compute_tiling(self):
@@ -1005,13 +1006,13 @@ class MirrorPadInit(object):
         with self.tik_instance.for_range(0, self.core_nums, block_num=self.core_nums) as core_index:
             self.tiling_args()
             with self.tik_instance.if_scope(core_index < self.core_used_num):
-                with self.tik_instance.if_scope(self.tiling_key == MODE0):
+                with self.tik_instance.if_scope(self.tiling_key == Constant.MODE0):
                     with self.tik_instance.new_stmt_scope():
                         self.do_tiling_key_mode_0(core_index)
-                with self.tik_instance.if_scope(self.tiling_key == MODE1):
+                with self.tik_instance.if_scope(self.tiling_key == Constant.MODE1):
                     with self.tik_instance.new_stmt_scope():
                         self.do_tiling_key_mode_1(core_index)
-                with self.tik_instance.if_scope(self.tiling_key == MODE2):
+                with self.tik_instance.if_scope(self.tiling_key == Constant.MODE2):
                     with self.tik_instance.new_stmt_scope():
                         self.do_tiling_key_mode_2(core_index)
 
@@ -1019,13 +1020,13 @@ class MirrorPadInit(object):
         """
         mirror_pad_compute
         do_pad with different tiling key
-        MODE0: the last dim of output > 128*core_num, and cut by last dim
+        Constant.MODE0: the last dim of output > 128*core_num, and cut by last dim
                 and do pad with data move
-        MODE1: the last dim of output => 960, and cut by outer dim(0-3)
+        Constant.MODE1: the last dim of output => 960, and cut by outer dim(0-3)
                 and do pad with data move
         """
         self.mirror_pad_compute_tiling()
-        wr_compile_info = dict()
+        wr_compile_info = {}
         wr_compile_info["output_dim4_max_cnt"] = self.output_dim4_max_cnt
         wr_compile_info["core_num"] = self.core_nums
         wr_compile_info["dtype_rate"] = self.dtype_rate

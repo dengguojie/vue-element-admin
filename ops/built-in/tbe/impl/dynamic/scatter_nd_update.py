@@ -34,8 +34,8 @@ EIGHT_BIT = 8
 BLOCK_BYTES = 32
 
 
-# pylint: disable=too-many-arguments,too-many-instance-attributes
-# pylint: disable=invalid-name,attribute-defined-outside-init,unused-argument
+# 'pylint: disable=too-many-arguments,too-many-instance-attributes
+# 'pylint: disable=invalid-name,attribute-defined-outside-init,unused-argument
 class ScatterNdUpdate():
     """
     Function: use to store scatter_nd_update base parameters
@@ -86,7 +86,9 @@ class ScatterNdUpdate():
         self.indices_ub_num = self.ub_size_bytes // 2 // self.indices_dtype_bytes_size
         self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
         self.var_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,), name="var_gm", scope=tik.scope_gm)
-        self.indices_gm = self.tik_instance.Tensor(self.indices_dtype, (MAX_INT64_VALUE,), name="indices_gm", scope=tik.scope_gm)
+        self.indices_gm = self.tik_instance.Tensor(self.indices_dtype, (MAX_INT64_VALUE,),
+                                                   name="indices_gm",
+                                                   scope=tik.scope_gm)
         self.updates_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT64_VALUE,),
                                                    name="updates_gm",
                                                    scope=tik.scope_gm)
@@ -272,7 +274,7 @@ class ScatterNdUpdate():
                 self.calc_indices(indices_ub_index)
                 with self.tik_instance.if_scope(self.core_loop_index * self.indice_step <= self.var_read_index):
                     with self.tik_instance.if_scope(
-                            (self.core_loop_index + 1) * self.indice_step > self.var_read_index):
+                        (self.core_loop_index + 1) * self.indice_step > self.var_read_index):
                         self.traversing_updates(indices_ub_index, indices_in_index, mode)
 
     def traversing_updates(self, indices_ub_index, indices_in_index, mode):

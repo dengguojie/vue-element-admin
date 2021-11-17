@@ -14,7 +14,7 @@
 # ============================================================================
 """
 dynamic swish
-y = x * sigmoid(scale * x)
+'y = x * sigmoid(scale * x)'
 """
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
@@ -27,7 +27,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=unused-argument,too-many-locals,invalid-name
 @register_operator_compute("Swish", op_mode="dynamic", support_fusion=True)
 def swish_compute(data_input, y, scale, kernel_name="swish"):
     """
@@ -62,8 +62,7 @@ def swish_compute(data_input, y, scale, kernel_name="swish"):
     if dtype == "float16":
         res_fp32 = tbe.vdiv(data_input_fp32, tmp_sum)
         return tbe.cast_to(res_fp32, "float16")
-    else:
-        return tbe.vdiv(data_input, tmp_sum)
+    return tbe.vdiv(data_input, tmp_sum)
 
 
 @register_operator("Swish")

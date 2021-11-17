@@ -27,7 +27,7 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=too-many-arguments,unused-argument,too-many-locals
+# 'pylint: disable=too-many-arguments,unused-argument,too-many-locals
 @register_operator_compute("LarsV2Update", op_mode="dynamic", support_fusion=True)
 def lars_v2_update_compute(inputs_data, hyperparam, epsilon, use_clip, out, kernel_name="lars_v2_update"):
     """
@@ -85,7 +85,7 @@ def lars_v2_update_compute(inputs_data, hyperparam, epsilon, use_clip, out, kern
     return out
 
 
-# pylint: disable=too-many-arguments,unused-argument,too-many-locals
+# 'pylint: disable=too-many-arguments,unused-argument,too-many-locals
 @register_operator("LarsV2Update")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

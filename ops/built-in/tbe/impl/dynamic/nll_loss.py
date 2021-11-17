@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
 """
 Copyright (C) 2021. Huawei Technologies Co., Ltd. All rights reserved.
 
@@ -26,7 +24,7 @@ from impl.util.platform_adapter import tbe_context
 from impl import common_util
 
 
-# 'pylint: disable=too-few-public-methods
+# 'pylint:disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     The class for constant

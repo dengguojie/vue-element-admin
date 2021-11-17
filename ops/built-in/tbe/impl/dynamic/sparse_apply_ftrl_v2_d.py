@@ -20,13 +20,13 @@ from impl.util.platform_adapter import register_operator
 from impl.dynamic.sparse_apply_dynamic_common import SparseApplyDynamic
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class SparseApplyFtrl(SparseApplyDynamic):
     """
     Sub class inherited form SparseApply for sparse_apply_ftrl op
     """
 
-    # pylint: disable=invalid-name,too-many-arguments
+    # 'pylint: disable=invalid-name,too-many-arguments
     def __init__(self, var, accum, linear, grad, indices, lr, lr_power, l1, l2, l2_shrinkage, kernel_name):
         """
         init sparse_apply_ftrl  base parameters
@@ -132,7 +132,7 @@ class SparseApplyFtrl(SparseApplyDynamic):
             # `tmp = ln(accum_new)`
             self.tik_instance.vln(mask, tmp_ub, accum_ub, repeat_times, 1, 1, 8, 8)
 
-            # accum_new^(-lr_power)
+            # 'accum_new^(-lr_power)'
             self.tik_instance.vmuls(mask, tmp_ub, tmp_ub, -self.lr_power, repeat_times, 1, 1, 8, 8)
 
             # `tmp = accum_new ^ (-lr_power)`
@@ -180,7 +180,7 @@ class SparseApplyFtrl(SparseApplyDynamic):
             _func()
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name,too-many-locals
 @register_operator("SparseApplyFtrlV2D")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,

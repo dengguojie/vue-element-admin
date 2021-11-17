@@ -28,8 +28,6 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import get_current_build_config
 
-NONETYPE = type(None)
-
 
 def param_scale_check(shape_x, shape_scale, kernel_name="scale"):
     """
@@ -114,7 +112,7 @@ def _check_dtype(input_dtype, name):
         para_check.check_dtype(input_dtype, ["float16", "float32"], param_name=name)
 
 
-# pylint: disable=too-many-branches,too-many-arguments
+# 'pylint: disable=too-many-branches,too-many-arguments
 def _check_scale_shape_axis(shape_x, shape_scale, axis, num_axes, scale_from_blob, kernel_name="scale"):
     """
     Function to check if the shape is in line with norms.
@@ -251,7 +249,7 @@ def get_scale_shape(shape_x, shape_scale, axis_, num_axes, scale_from_blob):
     return shape
 
 
-# pylint: disable=too-many-locals,redefined-argument-from-local,invalid-name
+# 'pylint: disable=too-many-locals,redefined-argument-from-local,invalid-name
 def get_fusion_params(x_tensor, scale_tensor, bias_tensor, y):
     """
     Get L1 fusion_params
@@ -326,7 +324,7 @@ def get_fusion_params(x_tensor, scale_tensor, bias_tensor, y):
     return fusion_params
 
 
-# pylint: disable=invalid-name,redefined-outer-name
+# 'pylint: disable=invalid-name,redefined-outer-name
 def _fused_scale_compute(x, scale):
     """
     algorithm: Scale
@@ -369,7 +367,7 @@ def _fused_scale_compute(x, scale):
     return res
 
 
-# pylint: disable=invalid-name,redefined-outer-name,too-many-locals
+# 'pylint: disable=invalid-name,redefined-outer-name,too-many-locals
 def _fused_scale_bias_compute(x, scale, bias):
     """
     algorithm: Scale
@@ -425,7 +423,7 @@ def _fused_scale_bias_compute(x, scale, bias):
     return res
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 @register_operator_compute("Scale", op_mode="dynamic", support_fusion=False)
 def scale_compute(x, scale, bias, y, axis, num_axes, scale_from_blob, kernel_name="scale"):
     """
@@ -476,7 +474,7 @@ def scale_compute(x, scale, bias, y, axis, num_axes, scale_from_blob, kernel_nam
     return res
 
 
-# pylint: disable=too-many-locals,no-member,invalid-name,too-many-statements,line-too-long
+# 'pylint: disable=too-many-locals,no-member,invalid-name,too-many-statements,line-too-long
 @register_operator("Scale")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,

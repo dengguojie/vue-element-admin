@@ -38,8 +38,8 @@ SCALE_ALPHA_PRODUCT = 1.75809934085
 SCALAR_NEGATIVE_ONE = -1
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
-# pylint: disable=invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=invalid-name
 @register_operator_compute("Selu", op_mode="dynamic", support_fusion=True)
 def selu_compute(input_x, y, kernel_name="selu"):
     """

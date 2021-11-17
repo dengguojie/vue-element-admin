@@ -55,14 +55,14 @@ class Constant:
 # 'pylint: disable=too-many-lines,invalid-name,too-many-arguments,consider-using-in
 # 'pylint: disable=too-many-branches,too-many-instance-attributes,too-many-locals
 # 'pylint: disable=too-many-statements,no-self-use,too-few-public-methods
-# 'pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,consider-using-f-string
 def check_supported(x, y, argmax, ksize, strides, pads, dtype=Constant.DT_INT32, dilation=(1, 1, 1, 1),
                     ceil_mode=False, kernel_name="max_pool_with_argmax_v1"):
     """
     check whether ai_core is supported
     """
     if ksize[1] * ksize[2] > Constant.SCALAR_255:
-        reason = "ksize is too large, ksize is %s" % (str(ksize),)
+        reason = "ksize is too large, ksize is {}".format(ksize)
         return False, reason
 
     return True, ""
@@ -1317,7 +1317,7 @@ class MaxPoolWithargmaxPytorch:
         """
         half_time = self.tik_instance.Scalar("int32", name="half_time")
         half_time.set_as(length)
-        with self.tik_instance.for_range(0, length) as loop:
+        with self.tik_instance.for_range(0, length):
             with self.tik_instance.if_scope(half_time == 1):
                 pass
             with self.tik_instance.else_scope():
@@ -1538,7 +1538,7 @@ class MaxPoolWithargmaxPytorch:
         :param scalar1:
         :return:
         """
-        with self.tik_instance.for_range(0, 16 - scalar0) as idx:
+        with self.tik_instance.for_range(0, 16 - scalar0):
             scalar1.set_as(scalar1 * 2)
 
 

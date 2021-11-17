@@ -26,8 +26,8 @@ from impl.util.platform_adapter import tuple_sum
 from impl.util.platform_adapter import tbe_context
 
 
-# pylint: disable=unused-argument,too-many-arguments,too-many-locals
-# pylint: disable=too-many-statements,invalid-name
+# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
+# 'pylint: disable=too-many-statements,invalid-name
 @tbe_register.register_param_generalization("LayerNormBetaGammaBackpropV2")
 def layer_norm_beta_gamma_backprop_v2_generalization(input_dy, res_for_gamma, output_pd_gamma, output_pd_beta,
                                                      shape_gamma, impl_mode, generalize_config=None):
@@ -128,8 +128,7 @@ def calc_max_reduce_factor(dy_type, last_dim):
     ub_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     bytes_fp32 = 4
     bytes_fp16 = 2
-    if last_dim < 8:
-        last_dim = 8
+    last_dim = max(last_dim, 8)
     # 4 fp32 tensor
     bytes_independent = last_dim * 2 * bytes_fp32
     if dy_type == "float32":
@@ -177,7 +176,7 @@ def layer_norm_beta_gamma_backprop_v2(input_dy, res_for_gamma, output_pd_gamma,
     -------
     None
     """
-    MAX_LAST_FACTOR = 2048
+    max_last_factor = 2048
     dtype = input_dy.get("dtype").lower()
     shape_dy = input_dy.get("shape")
     dtype_x = res_for_gamma.get("dtype").lower()
@@ -216,7 +215,7 @@ def layer_norm_beta_gamma_backprop_v2(input_dy, res_for_gamma, output_pd_gamma,
         shape_data = (reduce_dim, normal_dim)
 
     if dynamic_normal:
-        max_reduce_factor = calc_max_reduce_factor(dtype, MAX_LAST_FACTOR)
+        max_reduce_factor = calc_max_reduce_factor(dtype, max_last_factor)
     else:
         max_reduce_factor = calc_max_reduce_factor(dtype, normal_dim)
 
@@ -226,7 +225,7 @@ def layer_norm_beta_gamma_backprop_v2(input_dy, res_for_gamma, output_pd_gamma,
     core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     tbe_context.get_context().add_compile_info("core_num", core_num)
     tbe_context.get_context().add_compile_info("max_reduce_factor", max_reduce_factor)
-    tbe_context.get_context().add_compile_info("max_last_factor", MAX_LAST_FACTOR)
+    tbe_context.get_context().add_compile_info("max_last_factor", max_last_factor)
     tbe_context.get_context().add_compile_info("shape_gamma", shape_gamma)
     tbe_context.get_context().add_compile_info("dynamic_reduce", dynamic_reduce)
     tbe_context.get_context().add_compile_info("dynamic_normal", dynamic_normal)

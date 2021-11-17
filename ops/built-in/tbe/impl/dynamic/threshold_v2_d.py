@@ -65,6 +65,7 @@ def threshold_v2_d_compute(x, y, threshold, value,
         data_res = tbe.cast_to(data_res, dtype_x)
     return data_res
 
+
 # 'pylint: disable=unused-argument,too-many-locals,invalid-name
 @register_operator("ThresholdV2D")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,

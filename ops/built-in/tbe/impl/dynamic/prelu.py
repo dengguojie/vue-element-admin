@@ -15,7 +15,6 @@
 """
 dynamic prelu
 """
-from impl.util import util_select_op_base
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
@@ -29,10 +28,9 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import tbe_platform
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
-from impl.util.util_select_op_base import get_op_cal_info
 
 
-# pylint: disable=locally-disabled,too-many-branches,too-many-statements,invalid-name,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-branches,too-many-statements,invalid-name,unused-argument,too-many-locals
 def op_select_format(x, weight, y, kernel_name="prelu"):
     """ calculating data
 
@@ -187,7 +185,7 @@ def broadcast_inputs_shape(x, weight):
     return shape_x, weight_shape_new
 
 
-# pylint: disable=unused-variable,too-many-branches,too-many-statements
+# 'pylint: disable=unused-variable,too-many-branches,too-many-statements
 def reshape(tensor_in, new_shape):
     """
     :params:
@@ -203,7 +201,7 @@ def reshape(tensor_in, new_shape):
     return tvm.compute(new_shape, lambda *indices: _nd2nz_compute(tensor_in, indices), name='reshape')
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @register_operator_compute("PRelu", op_mode="dynamic", support_fusion=False)
 def prelu_compute(input_x, weight_input, output_y, kernel_name="prelu"):
     """
@@ -252,7 +250,7 @@ def prelu_compute(input_x, weight_input, output_y, kernel_name="prelu"):
     return res
 
 
-# pylint: disable=too-many-locals,invalid-name
+# 'pylint: disable=too-many-locals,invalid-name
 @register_operator("PRelu")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)

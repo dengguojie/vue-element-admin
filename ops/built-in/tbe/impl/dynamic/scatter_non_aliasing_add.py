@@ -34,8 +34,8 @@ EIGHT_BIT = 8
 BLOCK_BYTES = 32
 
 
-# pylint: disable=too-many-arguments,too-many-instance-attributes
-# pylint: disable=invalid-name,attribute-defined-outside-init,unused-argument
+# 'pylint: disable=too-many-arguments,too-many-instance-attributes
+# 'pylint: disable=invalid-name,attribute-defined-outside-init,unused-argument
 class ScatterNonAliasingAdd():
     """
     Function: use to store scatter_non_aliasing_add base parameters

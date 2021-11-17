@@ -26,7 +26,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
 @register_operator_compute("Round", op_mode="dynamic", support_fusion=True)
 def round_compute(x, y, kernel_name="round"):
     """
@@ -60,7 +60,7 @@ def round_compute(x, y, kernel_name="round"):
     return result
 
 
-# pylint: disable=locally-disabled,redefined-builtin
+# 'pylint: disable=locally-disabled,redefined-builtin
 @register_operator("Round")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def round(x, y, kernel_name="round"):

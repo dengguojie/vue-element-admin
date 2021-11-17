@@ -26,16 +26,23 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
 
-_CONST_INF = 2147483647
 
-# pylint: disable=invalid-name,unused-argument,too-many-locals
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    CONST_INF = 2147483647
+
+
+# 'pylint: disable=invalid-name,unused-argument,too-many-locals,too-many-arguments
 def lp_norm_reduce_inf_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
     """
     Compute norm for p = "inf" or p = "-inf"
     When p equals inf, lp_norm_reduce equals the max absolute value of elements;
     when -inf, lp_norm_reduce equals the min absolute value of elements.
     """
-    if (p == "inf") or (p == _CONST_INF):
+    if p in ('inf', Constant.CONST_INF):
         reduce_support_fp32 = tbe_platform.api_check_support("tbe.dsl.reduce_max", "float32")
         if x_type == "float16" and reduce_support_fp32:
             abs_x = tbe.cast_to(abs_x, "float32")
@@ -52,7 +59,7 @@ def lp_norm_reduce_inf_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
         if x_type == "float16" and reduce_support_fp32:
             abs_x = tbe.cast_to(abs_x, "float32")
         elif x_type == "float32" and not reduce_support_fp32:
-            cast_support_f322f16 = tbe_platform.api_check_support("tbe.cast_to", "f322f16") 
+            cast_support_f322f16 = tbe_platform.api_check_support("tbe.cast_to", "f322f16")
             if cast_support_f322f16 and x_type == "float32":
                 abs_x = tbe.cast_to(abs_x, "float16")
             else:
@@ -60,9 +67,9 @@ def lp_norm_reduce_inf_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
         res = tbe.reduce_min(abs_x, axis=axes, keepdims=keepdim)
 
     return res
-    
 
-# pylint: disable=invalid-name,unused-argument,too-many-locals
+
+# 'pylint: disable=invalid-name,unused-argument,too-many-locals,too-many-arguments
 def lp_norm_reduce0_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     """
     Compute norm for p = 0.
@@ -83,7 +90,8 @@ def lp_norm_reduce0_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     res = tbe.reduce_sum(ele_tensor, axis=axes, keepdims=keepdim)
     return res
 
-# pylint: disable=invalid-name,unused-argument,too-many-locals
+
+# 'pylint: disable=invalid-name,unused-argument,too-many-locals,too-many-arguments
 def lp_norm_reduce1_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     """
     Compute norm for p = 1.
@@ -95,14 +103,15 @@ def lp_norm_reduce1_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     elif not sum_support_fp32 and x_type == "float32":
         cast_support_f322f16 = tbe_platform.api_check_support("tbe.cast_to", "f322f16")
         if cast_support_f322f16:
-            abs_x = tbe.cast_to(abs_x, "float16")            
+            abs_x = tbe.cast_to(abs_x, "float16")
         else:
             raise RuntimeError("Type of input x must be float16 since cast op cannot support f322f16")
 
     res = tbe.reduce_sum(abs_x, axis=axes, keepdims=keepdim)
     return res
 
-# pylint: disable=invalid-name,unused-argument,too-many-locals
+
+# 'pylint: disable=invalid-name,unused-argument,too-many-locals,too-many-arguments
 @register_operator_compute("LpNormReduce", op_mode="dynamic", support_fusion=True)
 def lp_norm_reduce_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
     """
@@ -120,16 +129,17 @@ def lp_norm_reduce_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
         else:
             raise RuntimeError("Type of input x must be float16 since cast op cannot support f322f16")
     prod_x = abs_x
-    for p_ix in range(1, p):
+    for _ in range(1, p):
         prod_x = tbe.vmul(prod_x, abs_x)
     res = tbe.reduce_sum(prod_x, axis=axes, keepdims=keepdim)
     return res
 
-# pylint: disable=invalid-name,unused-argument,too-many-locals
+
+# 'pylint: disable=invalid-name,unused-argument,too-many-locals,too-many-arguments
 @register_operator("LpNormReduce")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
-                            para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL,
-                            para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
+                            para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT,
+                            para_check.KERNEL_NAME)
 def lp_norm_reduce(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12, kernel_name="lp_norm_reduce"):
     """
     Computes norm for p equals 0, 1, 2, -inf, inf, or other integers.
@@ -172,31 +182,31 @@ def lp_norm_reduce(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12, kernel_na
     if isinstance(axes, int):
         axes = [axes]
     if axes is None:
-        axes = [i for i in range(no_shape)]
+        axes = list(range(no_shape))
     if len(axes) == 0:
-        axes = [i for i in range(no_shape)]
+        axes = list(range(no_shape))
 
     x["rel_pos_to_reduce"] = "before"
 
-    input_axis = {"shape": [len(axes), ], "value": axes, "rel_pos_to_reduce": "axis"}
+    input_axis = {"shape": [len(axes),], "value": axes, "rel_pos_to_reduce": "axis"}
     schedules = []
     tensors = []
     ins = classify([x, input_axis], OpPatternMode.REDUCE, {"keepdims": keepdim is True})
-    
-    for (_x, axes) in ins:
+
+    for (_x, _axes) in ins:
         with tbe.compute():
-            shape_var_new = shape_util.variable_shape([_x, axes], op_mode="reduce")[0]
+            shape_var_new = shape_util.variable_shape([_x, _axes], op_mode="reduce")[0]
             input_data = tvm.placeholder(shape_var_new, name="input_data", dtype=x_type)
             abs_data = tbe.vabs(input_data)
 
-            if (p in p_inf_list) or (p == _CONST_INF) or (p == -_CONST_INF - 1):
-                res = lp_norm_reduce_inf_compute(abs_data, x_type, y, p, axes.get("value"), keepdim, kernel_name)
+            if (p in p_inf_list) or (p == Constant.CONST_INF) or (p == -Constant.CONST_INF - 1):
+                res = lp_norm_reduce_inf_compute(abs_data, x_type, y, p, _axes.get("value"), keepdim, kernel_name)
             elif p == 0:
-                res = lp_norm_reduce0_compute(abs_data, x_type, y, axes.get("value"), keepdim, kernel_name)
+                res = lp_norm_reduce0_compute(abs_data, x_type, y, _axes.get("value"), keepdim, kernel_name)
             elif p == 1:
-                res = lp_norm_reduce1_compute(abs_data, x_type, y, axes.get("value"), keepdim, kernel_name)
+                res = lp_norm_reduce1_compute(abs_data, x_type, y, _axes.get("value"), keepdim, kernel_name)
             else:
-                res = lp_norm_reduce_compute(abs_data, x_type, y, p, axes.get("value"), keepdim, kernel_name)
+                res = lp_norm_reduce_compute(abs_data, x_type, y, p, _axes.get("value"), keepdim, kernel_name)
 
             if res.dtype != x_type:
                 res = tbe.cast_to(res, dtype=x_type)
@@ -207,7 +217,5 @@ def lp_norm_reduce(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12, kernel_na
             sch = tbe.auto_schedule(res)
         schedules.append(sch)
 
-    config = {"name": kernel_name,
-              "tensor_list": tensors}
+    config = {"name": kernel_name, "tensor_list": tensors}
     tbe.build(schedules, config)
-

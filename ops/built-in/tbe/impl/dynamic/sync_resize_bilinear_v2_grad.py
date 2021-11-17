@@ -1,39 +1,24 @@
-# Copyright 2021 Huawei Technologies Co., Ltd
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ============================================================================
 """
+Copyright (C) 2021. Huawei Technologies Co., Ltd. All rights reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the Apache License Version 2.0.You may not use
+this file except in compliance with the License.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+Apache License for more details at
+http://www.apache.org/licenses/LICENSE-2.0
+
 sync_resize_bilinear_v2_grad.py
 """
 
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import error_manager_vector
-
-MAX_INT32 = 2 ** 31 - 1
-TILING_NUM = 64
-MASK = 64
-
-TILING_MODE0 = 0
-TILING_MODE1 = 1
-TILING_MODE2 = 2
-TILING_MODE3 = 3
-TILING_MODE4 = 4
-TILING_MODE5 = 5
-TILING_MODE6 = 6
 
 
 def _check_param(grads, images, align_corners, half_pixel_centers):
@@ -56,8 +41,8 @@ def _check_param(grads, images, align_corners, half_pixel_centers):
     None
     """
     if align_corners and half_pixel_centers:
-        error_manager_vector.raise_err_specific_reson("sync_resize_bilinear_v2_grad",
-                                                      "align_corners and half_pixel_centers \
+        error_manager_vector.raise_err_specific_reson(
+            "sync_resize_bilinear_v2_grad", "align_corners and half_pixel_centers \
                                                       can not be set to true at the same time.")
     grads_dtype = grads.get("dtype")
     images_dtype = images.get("dtype")
@@ -65,13 +50,35 @@ def _check_param(grads, images, align_corners, half_pixel_centers):
     para_check.check_dtype(images_dtype, ["float32"])
 
 
-class SyncResizeBilinearV2Grad(object):
+# 'pylint:disable=too-many-instance-attributes,too-many-public-methods
+class SyncResizeBilinearV2Grad:
     """
     The class of SyncResizeBilinearV2Grad op
     """
 
-    def __init__(self, grads, images, size, ori_image_size, src_start_w, dst_start_w, align_corners=False,
-                 half_pixel_centers=False, kernel_name="sync_resize_bilinear_v2_grad"):
+    MAX_INT32 = 2**31 - 1
+    TILING_NUM = 64
+    MASK = 64
+
+    TILING_MODE0 = 0
+    TILING_MODE1 = 1
+    TILING_MODE2 = 2
+    TILING_MODE3 = 3
+    TILING_MODE4 = 4
+    TILING_MODE5 = 5
+    TILING_MODE6 = 6
+
+    # 'pylint:disable=too-many-arguments,invalid-name
+    def __init__(self,
+                 grads,
+                 images,
+                 size,
+                 ori_image_size,
+                 src_start_w,
+                 dst_start_w,
+                 align_corners=False,
+                 half_pixel_centers=False,
+                 kernel_name="sync_resize_bilinear_v2_grad"):
 
         self.tik_instance = tik.Tik(tik.Dprofile("v100", "cloud"))
 
@@ -97,13 +104,17 @@ class SyncResizeBilinearV2Grad(object):
         self.tensor_size = self.ub_size // self.grad_byte_size // 2
         self.c0 = 16
 
-        self.grads_gm = self.tik_instance.Tensor(self.grads_dtype, (MAX_INT32,), scope=tik.scope_gm,
+        self.grads_gm = self.tik_instance.Tensor(self.grads_dtype, (self.MAX_INT32,),
+                                                 scope=tik.scope_gm,
                                                  name="grads_gm")
-        self.images_gm = self.tik_instance.Tensor(self.images_dtype, (MAX_INT32,), scope=tik.scope_gm,
+        self.images_gm = self.tik_instance.Tensor(self.images_dtype, (self.MAX_INT32,),
+                                                  scope=tik.scope_gm,
                                                   name="images_gm")
-        self.output_gm = self.tik_instance.Tensor(self.grads_dtype, (MAX_INT32,), scope=tik.scope_gm,
-                                                  name="output_gm", is_atomic_add=True)
-        self.tiling_gm = self.tik_instance.Tensor("int32", (TILING_NUM,), scope=tik.scope_gm, name="tiling_gm")
+        self.output_gm = self.tik_instance.Tensor(self.grads_dtype, (self.MAX_INT32,),
+                                                  scope=tik.scope_gm,
+                                                  name="output_gm",
+                                                  is_atomic_add=True)
+        self.tiling_gm = self.tik_instance.Tensor("int32", (self.TILING_NUM,), scope=tik.scope_gm, name="tiling_gm")
         self.int_index_l1 = self.tik_instance.Tensor("int32", (4096, 8), name="int_index_l1", scope=tik.scope_cbuf)
         self.l_ratio_l1 = self.tik_instance.Tensor("int32", (4096, 8), name="wl_ratio_l1", scope=tik.scope_cbuf)
         self.r_ratio_l1 = self.tik_instance.Tensor("int32", (4096, 8), name="wr_ratio_l1", scope=tik.scope_cbuf)
@@ -125,7 +136,8 @@ class SyncResizeBilinearV2Grad(object):
         self.w_loop = None
         self.w_tail = None
 
-    class CommomScalar(object):
+    # 'pylint:disable=too-few-public-methods,too-many-instance-attributes
+    class CommomScalar:
         """
         define some scalar
         """
@@ -166,8 +178,8 @@ class SyncResizeBilinearV2Grad(object):
             r_ratio = self.tik_instance.Tensor("float32", (256, 8), name="r_ratio", scope=tik.scope_ubuf)
             count_num = self.tik_instance.Tensor("int32", (40, 16), name="count_num", scope=tik.scope_ubuf)
 
-            self.tik_instance.vec_dup(MASK, const_one, 1.0, 1, 8)
-            self.tik_instance.vec_dup(MASK, const_zero, 0.0, 1, 8)
+            self.tik_instance.vec_dup(self.MASK, const_one, 1.0, 1, 8)
+            self.tik_instance.vec_dup(self.MASK, const_zero, 0.0, 1, 8)
 
             self.l1_ratio(const_zero, const_one, l_ratio, r_ratio)
             self.l1_count(const_zero, count_num)
@@ -190,19 +202,19 @@ class SyncResizeBilinearV2Grad(object):
                 self.tik_instance.vec_dup(8, index_256[num_idx * 8], loop_idx * 256 + num_idx + self.dst_start_w, 1, 8)
 
             if self.half_pixel_centers:
-                self.tik_instance.vec_adds(MASK, index_256, index_256, 0.5, 32, 8, 8)
-                self.tik_instance.vec_muls(MASK, index_256, index_256, self.scale_w, 32, 8, 8)
-                self.tik_instance.vec_adds(MASK, index_256, index_256, -0.5, 32, 8, 8)
-                self.tik_instance.vec_max(MASK, index_256, index_256, const_zero, 32, 8, 8, 0)
+                self.tik_instance.vec_adds(self.MASK, index_256, index_256, 0.5, 32, 8, 8)
+                self.tik_instance.vec_muls(self.MASK, index_256, index_256, self.scale_w, 32, 8, 8)
+                self.tik_instance.vec_adds(self.MASK, index_256, index_256, -0.5, 32, 8, 8)
+                self.tik_instance.vec_max(self.MASK, index_256, index_256, const_zero, 32, 8, 8, 0)
             else:
-                self.tik_instance.vec_muls(MASK, index_256, index_256, self.scale_w, 32, 8, 8)
+                self.tik_instance.vec_muls(self.MASK, index_256, index_256, self.scale_w, 32, 8, 8)
 
-            self.tik_instance.vec_adds(MASK, index_256, index_256, float(-self.src_start_w), 32, 8, 8)
-            self.tik_instance.vec_conv(MASK, "floor", int_index, index_256, 32, 8, 8)
-            self.tik_instance.vec_conv(MASK, "", float_index, int_index, 32, 8, 8)
+            self.tik_instance.vec_adds(self.MASK, index_256, index_256, float(-self.src_start_w), 32, 8, 8)
+            self.tik_instance.vec_conv(self.MASK, "floor", int_index, index_256, 32, 8, 8)
+            self.tik_instance.vec_conv(self.MASK, "", float_index, int_index, 32, 8, 8)
 
-            self.tik_instance.vec_sub(MASK, r_ratio, index_256, float_index, 32, 8, 8, 8)
-            self.tik_instance.vec_sub(MASK, l_ratio, const_one, r_ratio, 32, 8, 0, 8)
+            self.tik_instance.vec_sub(self.MASK, r_ratio, index_256, float_index, 32, 8, 8, 8)
+            self.tik_instance.vec_sub(self.MASK, l_ratio, const_one, r_ratio, 32, 8, 0, 8)
 
             self.data_move(self.int_index_l1, int_index, [loop_idx * 256 * 8, 0], num=256 * 8)
             self.data_move(self.l_ratio_l1, l_ratio, [loop_idx * 256 * 8, 0], num=256 * 8)
@@ -226,16 +238,16 @@ class SyncResizeBilinearV2Grad(object):
             tmp_index[dst_w] = dst_w + self.dst_start_w
 
         if self.half_pixel_centers:
-            self.tik_instance.vec_adds(MASK, tmp_index, tmp_index, 0.5, 64, 8, 8)
-            self.tik_instance.vec_muls(MASK, tmp_index, tmp_index, self.scale_w, 64, 8, 8)
-            self.tik_instance.vec_adds(MASK, tmp_index, tmp_index, -0.5, 64, 8, 8)
-            self.tik_instance.vec_max(MASK, tmp_index, tmp_index, const_zero, 64, 8, 8, 0)
+            self.tik_instance.vec_adds(self.MASK, tmp_index, tmp_index, 0.5, 64, 8, 8)
+            self.tik_instance.vec_muls(self.MASK, tmp_index, tmp_index, self.scale_w, 64, 8, 8)
+            self.tik_instance.vec_adds(self.MASK, tmp_index, tmp_index, -0.5, 64, 8, 8)
+            self.tik_instance.vec_max(self.MASK, tmp_index, tmp_index, const_zero, 64, 8, 8, 0)
         else:
-            self.tik_instance.vec_muls(MASK, tmp_index, tmp_index, self.scale_w, 64, 8, 8)
+            self.tik_instance.vec_muls(self.MASK, tmp_index, tmp_index, self.scale_w, 64, 8, 8)
 
-        self.tik_instance.vec_adds(MASK, tmp_index, tmp_index, float(-self.src_start_w), 64, 8, 8)
-        self.tik_instance.vec_conv(MASK, "floor", tmp_int_index, tmp_index, 64, 8, 8)
-        self.tik_instance.vec_dup(MASK, count_num, 0, 10, 8)
+        self.tik_instance.vec_adds(self.MASK, tmp_index, tmp_index, float(-self.src_start_w), 64, 8, 8)
+        self.tik_instance.vec_conv(self.MASK, "floor", tmp_int_index, tmp_index, 64, 8, 8)
+        self.tik_instance.vec_dup(self.MASK, count_num, 0, 10, 8)
 
         with self.tik_instance.for_range(0, self.grads_w) as idx:
             with self.tik_instance.if_scope(idx < loop_scalar * 256):
@@ -280,8 +292,11 @@ class SyncResizeBilinearV2Grad(object):
         self.w_tail = self.tik_instance.Scalar("int32", name="w_tail")
 
         with self.tik_instance.new_stmt_scope():
-            tiling_ub = self.tik_instance.Tensor("int32", shape=(TILING_NUM,), scope=tik.scope_ubuf, name="tiling_ub")
-            self.data_move(tiling_ub, self.tiling_gm, [0, 0], num=TILING_NUM)
+            tiling_ub = self.tik_instance.Tensor("int32",
+                                                 shape=(self.TILING_NUM,),
+                                                 scope=tik.scope_ubuf,
+                                                 name="tiling_ub")
+            self.data_move(tiling_ub, self.tiling_gm, [0, 0], num=self.TILING_NUM)
 
             self.tiling_mode.set_as(tiling_ub[0])
             self.need_core_num.set_as(tiling_ub[1])
@@ -307,29 +322,29 @@ class SyncResizeBilinearV2Grad(object):
         :return:
         """
         self.get_tiling_params()
-        with self.tik_instance.if_scope(self.tiling_mode == TILING_MODE5):
+        with self.tik_instance.if_scope(self.tiling_mode == self.TILING_MODE5):
             self.l1_function()
 
         with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as core_idx:
-            with self.tik_instance.if_scope(self.tiling_mode == TILING_MODE0):
+            with self.tik_instance.if_scope(self.tiling_mode == self.TILING_MODE0):
                 with self.tik_instance.new_stmt_scope():
                     self.n2n(core_idx)
-            with self.tik_instance.if_scope(self.tiling_mode == TILING_MODE1):
+            with self.tik_instance.if_scope(self.tiling_mode == self.TILING_MODE1):
                 with self.tik_instance.new_stmt_scope():
                     self.one2n_small(core_idx)
-            with self.tik_instance.if_scope(self.tiling_mode == TILING_MODE2):
+            with self.tik_instance.if_scope(self.tiling_mode == self.TILING_MODE2):
                 with self.tik_instance.new_stmt_scope():
                     self.one2n_big(core_idx)
-            with self.tik_instance.if_scope(self.tiling_mode == TILING_MODE3):
+            with self.tik_instance.if_scope(self.tiling_mode == self.TILING_MODE3):
                 with self.tik_instance.new_stmt_scope():
                     self.n2one(core_idx)
-            with self.tik_instance.if_scope(self.tiling_mode == TILING_MODE4):
+            with self.tik_instance.if_scope(self.tiling_mode == self.TILING_MODE4):
                 with self.tik_instance.new_stmt_scope():
                     self.small_in_out(core_idx)
-            with self.tik_instance.if_scope(self.tiling_mode == TILING_MODE5):
+            with self.tik_instance.if_scope(self.tiling_mode == self.TILING_MODE5):
                 with self.tik_instance.new_stmt_scope():
                     self.normal_small(core_idx)
-            with self.tik_instance.if_scope(self.tiling_mode == TILING_MODE6):
+            with self.tik_instance.if_scope(self.tiling_mode == self.TILING_MODE6):
                 with self.tik_instance.new_stmt_scope():
                     self.normal_big(core_idx)
 
@@ -341,8 +356,11 @@ class SyncResizeBilinearV2Grad(object):
         self.tiling_compute()
         tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num})
         opt_config = {"out_of_bound_sync_check": True, "enable_const_fold": True}
-        self.tik_instance.BuildCCE(kernel_name=self.kernel_name, inputs=[self.grads_gm, self.images_gm],
-                                   outputs=[self.output_gm], flowtable=[self.tiling_gm], config=opt_config)
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=[self.grads_gm, self.images_gm],
+                                   outputs=[self.output_gm],
+                                   flowtable=[self.tiling_gm],
+                                   config=opt_config)
         return self.tik_instance
 
     @staticmethod
@@ -472,8 +490,18 @@ class SyncResizeBilinearV2Grad(object):
         self.get_stride(scalar.w_idx, scalar.w_stride, self.images_w)
         self.get_ratio(scalar.src_w, scalar.w_idx, scalar.wl_ratio, scalar.wr_ratio)
 
-    def calculate_grad(self, grad_ub, output_ub, grad_idx, output_idx_l, output_idx_r, l_ratio_scalar, r_ratio_scalar,
-                       repeat_time=1, dst_stride=0, src_stride=0):
+    # 'pylint:disable=too-many-arguments
+    def calculate_grad(self,
+                       grad_ub,
+                       output_ub,
+                       grad_idx,
+                       output_idx_l,
+                       output_idx_r,
+                       l_ratio_scalar,
+                       r_ratio_scalar,
+                       repeat_time=1,
+                       dst_stride=0,
+                       src_stride=0):
         """
         calculate grad by axpy
         """
@@ -487,9 +515,11 @@ class SyncResizeBilinearV2Grad(object):
         calculate output when input shape and grad shape are smaller than ub
         """
         # images: H0 * W0 < 2048, after resize: H1 * W1 < 2048
-        grads_ub = self.tik_instance.Tensor(self.grads_dtype, (self.tensor_size,), scope=tik.scope_ubuf,
+        grads_ub = self.tik_instance.Tensor(self.grads_dtype, (self.tensor_size,),
+                                            scope=tik.scope_ubuf,
                                             name="grads_ub")
-        output_ub = self.tik_instance.Tensor(self.grads_dtype, (self.tensor_size,), scope=tik.scope_ubuf,
+        output_ub = self.tik_instance.Tensor(self.grads_dtype, (self.tensor_size,),
+                                             scope=tik.scope_ubuf,
                                              name="output_ub")
 
         with self.tik_instance.if_scope(core_idx < self.need_core_num - 1):
@@ -522,6 +552,7 @@ class SyncResizeBilinearV2Grad(object):
                 self.small_in_loop(grads_ub, output_ub, scalar, dst_h, dst_w)
         self.data_move(self.output_gm, output_ub, offsets=[output_offset, 0], num=self.output_each_core)
 
+    # 'pylint:disable=too-many-arguments
     def small_in_loop(self, grads_ub, output_ub, scalar, dst_h, dst_w, base_grad_offset=0, big_grad=False):
         """
         loop function
@@ -538,13 +569,11 @@ class SyncResizeBilinearV2Grad(object):
         scalar.l_ratio.set_as(scalar.hl_ratio * scalar.wl_ratio)
         scalar.r_ratio.set_as(scalar.hl_ratio * scalar.wr_ratio)
 
-        self.calculate_grad(grads_ub, output_ub, grads_idx, output_idx00, output_idx01,
-                            scalar.l_ratio, scalar.r_ratio)
+        self.calculate_grad(grads_ub, output_ub, grads_idx, output_idx00, output_idx01, scalar.l_ratio, scalar.r_ratio)
 
         scalar.l_ratio.set_as(scalar.hr_ratio * scalar.wl_ratio)
         scalar.r_ratio.set_as(scalar.hr_ratio * scalar.wr_ratio)
-        self.calculate_grad(grads_ub, output_ub, grads_idx, output_idx10, output_idx11,
-                            scalar.l_ratio, scalar.r_ratio)
+        self.calculate_grad(grads_ub, output_ub, grads_idx, output_idx10, output_idx11, scalar.l_ratio, scalar.r_ratio)
 
     def normal_small(self, core_idx):
         """
@@ -565,6 +594,7 @@ class SyncResizeBilinearV2Grad(object):
                 self.small_in_each_core(grads_ub, output_ub, output_ub2, h_idx)
         self.tik_instance.set_atomic_add(0)
 
+    # 'pylint:disable=too-many-locals
     def small_in_each_core(self, grads_ub, output_ub, output_ub2, h_idx):
         """
         core function
@@ -598,10 +628,10 @@ class SyncResizeBilinearV2Grad(object):
                 self.data_move(int_index, self.int_index_l1, [0, loop_idx * 256 * 8], num=256 * 8)
                 self.data_move(l_ratio, self.l_ratio_l1, [0, loop_idx * 256 * 8], num=256 * 8)
                 self.data_move(r_ratio, self.r_ratio_l1, [0, loop_idx * 256 * 8], num=256 * 8)
-                self.tik_instance.vec_muls(MASK, l0_ratio, l_ratio, scalar.hl_ratio, 32, 8, 8)
-                self.tik_instance.vec_muls(MASK, r0_ratio, r_ratio, scalar.hl_ratio, 32, 8, 8)
-                self.tik_instance.vec_muls(MASK, l1_ratio, l_ratio, scalar.hr_ratio, 32, 8, 8)
-                self.tik_instance.vec_muls(MASK, r1_ratio, r_ratio, scalar.hr_ratio, 32, 8, 8)
+                self.tik_instance.vec_muls(self.MASK, l0_ratio, l_ratio, scalar.hl_ratio, 32, 8, 8)
+                self.tik_instance.vec_muls(self.MASK, r0_ratio, r_ratio, scalar.hl_ratio, 32, 8, 8)
+                self.tik_instance.vec_muls(self.MASK, l1_ratio, l_ratio, scalar.hr_ratio, 32, 8, 8)
+                self.tik_instance.vec_muls(self.MASK, r1_ratio, r_ratio, scalar.hr_ratio, 32, 8, 8)
 
                 with self.tik_instance.if_scope(loop_idx != self.w_loop - 1):
                     grad_offset = (nc1_idx * self.grads_h + h_idx) * self.grad_move_num + loop_idx * 256 * 16
@@ -625,19 +655,21 @@ class SyncResizeBilinearV2Grad(object):
             self.data_move(self.output_gm, output_ub, [gm_offset, 0], num=self.output_move_num)
             self.data_move(self.output_gm, output_ub2, [gm_offset2, 0], num=self.output_move_num)
 
+    # 'pylint:disable=too-many-arguments
     def small_in_mul(self, grads_ub, l0_ratio, r0_ratio, l1_ratio, r1_ratio, mul_out0, mul_out1):
         """
         mul function
         """
-        self.tik_instance.vmul(MASK, mul_out0[0], l0_ratio, grads_ub[0], 32, 4, 1, 2, 32, 8, 16)
-        self.tik_instance.vmul(MASK, mul_out0[8], l0_ratio, grads_ub[8], 32, 4, 1, 2, 32, 8, 16)
-        self.tik_instance.vmul(MASK, mul_out0[16], r0_ratio, grads_ub[0], 32, 4, 1, 2, 32, 8, 16)
-        self.tik_instance.vmul(MASK, mul_out0[24], r0_ratio, grads_ub[8], 32, 4, 1, 2, 32, 8, 16)
-        self.tik_instance.vmul(MASK, mul_out1[0], l1_ratio, grads_ub[0], 32, 4, 1, 2, 32, 8, 16)
-        self.tik_instance.vmul(MASK, mul_out1[8], l1_ratio, grads_ub[8], 32, 4, 1, 2, 32, 8, 16)
-        self.tik_instance.vmul(MASK, mul_out1[16], r1_ratio, grads_ub[0], 32, 4, 1, 2, 32, 8, 16)
-        self.tik_instance.vmul(MASK, mul_out1[24], r1_ratio, grads_ub[8], 32, 4, 1, 2, 32, 8, 16)
+        self.tik_instance.vmul(self.MASK, mul_out0[0], l0_ratio, grads_ub[0], 32, 4, 1, 2, 32, 8, 16)
+        self.tik_instance.vmul(self.MASK, mul_out0[8], l0_ratio, grads_ub[8], 32, 4, 1, 2, 32, 8, 16)
+        self.tik_instance.vmul(self.MASK, mul_out0[16], r0_ratio, grads_ub[0], 32, 4, 1, 2, 32, 8, 16)
+        self.tik_instance.vmul(self.MASK, mul_out0[24], r0_ratio, grads_ub[8], 32, 4, 1, 2, 32, 8, 16)
+        self.tik_instance.vmul(self.MASK, mul_out1[0], l1_ratio, grads_ub[0], 32, 4, 1, 2, 32, 8, 16)
+        self.tik_instance.vmul(self.MASK, mul_out1[8], l1_ratio, grads_ub[8], 32, 4, 1, 2, 32, 8, 16)
+        self.tik_instance.vmul(self.MASK, mul_out1[16], r1_ratio, grads_ub[0], 32, 4, 1, 2, 32, 8, 16)
+        self.tik_instance.vmul(self.MASK, mul_out1[24], r1_ratio, grads_ub[8], 32, 4, 1, 2, 32, 8, 16)
 
+    # 'pylint:disable=too-many-arguments
     def small_in_add(self, mul_out0, mul_out1, output_ub, output_ub2, count_num, src_w_idx, add_repeat, dst_w_idx,
                      w_out_begin, w_out_end):
         """
@@ -669,11 +701,14 @@ class SyncResizeBilinearV2Grad(object):
         calculate output when input shape and grad shape are big
         """
         self.tik_instance.set_atomic_add(1)
-        grads_ub = self.tik_instance.Tensor(self.grads_dtype, (self.tensor_size,), scope=tik.scope_ubuf,
+        grads_ub = self.tik_instance.Tensor(self.grads_dtype, (self.tensor_size,),
+                                            scope=tik.scope_ubuf,
                                             name="grads_ub")
-        output_ub = self.tik_instance.Tensor(self.grads_dtype, (self.tensor_size // 2,), scope=tik.scope_ubuf,
+        output_ub = self.tik_instance.Tensor(self.grads_dtype, (self.tensor_size // 2,),
+                                             scope=tik.scope_ubuf,
                                              name="output_ub")
-        output_ub2 = self.tik_instance.Tensor(self.grads_dtype, (self.tensor_size // 2,), scope=tik.scope_ubuf,
+        output_ub2 = self.tik_instance.Tensor(self.grads_dtype, (self.tensor_size // 2,),
+                                              scope=tik.scope_ubuf,
                                               name="output_ub2")
         with self.tik_instance.if_scope(core_idx < self.need_core_num - 1):
             with self.tik_instance.for_range(0, self.h_per_core) as per_idx:
@@ -690,6 +725,7 @@ class SyncResizeBilinearV2Grad(object):
                 self.big_each_core(grads_ub, output_ub, output_ub2, h_idx)
         self.tik_instance.set_atomic_add(0)
 
+    # 'pylint:disable=too-many-locals
     def big_each_core(self, grads_ub, output_ub, output_ub2, h_idx):
         """
         core function
@@ -754,6 +790,7 @@ class SyncResizeBilinearV2Grad(object):
                 self.dup_zero(output_ub, num=self.tensor_size // 2)
                 self.dup_zero(output_ub2, num=self.tensor_size // 2)
 
+    # 'pylint:disable=too-many-arguments,too-many-locals
     def big_in_loop(self, grads_ub, output_ub, output_ub2, scalar, h_idx, base_offset, base_w, max_w, use_max_w,
                     use_move_num, output_move_num, max_move_num, loop_init):
         """
@@ -781,27 +818,27 @@ class SyncResizeBilinearV2Grad(object):
                 scalar.l_ratio.set_as(scalar.hl_ratio * scalar.wl_ratio)
                 scalar.r_ratio.set_as(scalar.hl_ratio * scalar.wr_ratio)
 
-                self.calculate_grad(grads_ub, output_ub, grads_idx, scalar.output_idx00, output_idx01,
-                                    scalar.l_ratio, scalar.r_ratio)
+                self.calculate_grad(grads_ub, output_ub, grads_idx, scalar.output_idx00, output_idx01, scalar.l_ratio,
+                                    scalar.r_ratio)
 
                 scalar.l_ratio.set_as(scalar.hr_ratio * scalar.wl_ratio)
                 scalar.r_ratio.set_as(scalar.hr_ratio * scalar.wr_ratio)
 
-                self.calculate_grad(grads_ub, output_ub2, grads_idx, scalar.output_idx00, output_idx01,
-                                    scalar.l_ratio, scalar.r_ratio)
+                self.calculate_grad(grads_ub, output_ub2, grads_idx, scalar.output_idx00, output_idx01, scalar.l_ratio,
+                                    scalar.r_ratio)
 
             with self.tik_instance.else_scope():
                 scalar.l_ratio.set_as(scalar.hl_ratio * scalar.wl_ratio)
                 scalar.r_ratio.set_as(scalar.hl_ratio * scalar.wr_ratio)
 
-                self.calculate_grad(grads_ub, output_ub, grads_idx, scalar.output_idx00, output_idx01,
-                                    scalar.l_ratio, scalar.r_ratio)
+                self.calculate_grad(grads_ub, output_ub, grads_idx, scalar.output_idx00, output_idx01, scalar.l_ratio,
+                                    scalar.r_ratio)
 
                 scalar.l_ratio.set_as(scalar.hr_ratio * scalar.wl_ratio)
                 scalar.r_ratio.set_as(scalar.hr_ratio * scalar.wr_ratio)
 
-                self.calculate_grad(grads_ub, output_ub2, grads_idx, scalar.output_idx00, output_idx01,
-                                    scalar.l_ratio, scalar.r_ratio)
+                self.calculate_grad(grads_ub, output_ub2, grads_idx, scalar.output_idx00, output_idx01, scalar.l_ratio,
+                                    scalar.r_ratio)
 
         gm_offset = base_offset + loop_init * use_move_num
         gm_offset2 = gm_offset + scalar.h_stride * output_move_num
@@ -810,6 +847,7 @@ class SyncResizeBilinearV2Grad(object):
         self.dup_zero(output_ub, num=self.tensor_size // 2)
         self.dup_zero(output_ub2, num=self.tensor_size // 2)
 
+    # 'pylint:disable=too-many-arguments
     def big_in_loop2(self, grads_ub, output_ub, output_ub2, scalar, h_idx, base_w, max_w):
         """
         loop function
@@ -823,20 +861,21 @@ class SyncResizeBilinearV2Grad(object):
             scalar.l_ratio.set_as(scalar.hl_ratio * scalar.wl_ratio)
             scalar.r_ratio.set_as(scalar.hl_ratio * scalar.wr_ratio)
 
-            self.calculate_grad(grads_ub, output_ub, grads_idx, output_idx00, output_idx01,
-                                scalar.l_ratio, scalar.r_ratio)
+            self.calculate_grad(grads_ub, output_ub, grads_idx, output_idx00, output_idx01, scalar.l_ratio,
+                                scalar.r_ratio)
 
             scalar.l_ratio.set_as(scalar.hr_ratio * scalar.wl_ratio)
             scalar.r_ratio.set_as(scalar.hr_ratio * scalar.wr_ratio)
 
-            self.calculate_grad(grads_ub, output_ub2, grads_idx, output_idx00, output_idx01,
-                                scalar.l_ratio, scalar.r_ratio)
+            self.calculate_grad(grads_ub, output_ub2, grads_idx, output_idx00, output_idx01, scalar.l_ratio,
+                                scalar.r_ratio)
 
     def n2n(self, core_idx):
         """
         calculate output when input shape and grad shape are same
         """
-        grads_ub = self.tik_instance.Tensor(self.grads_dtype, (self.tensor_size,), scope=tik.scope_ubuf,
+        grads_ub = self.tik_instance.Tensor(self.grads_dtype, (self.tensor_size,),
+                                            scope=tik.scope_ubuf,
                                             name="grads_ub")
 
         with self.tik_instance.if_scope(core_idx < self.need_core_num - 1):
@@ -875,6 +914,7 @@ class SyncResizeBilinearV2Grad(object):
             with self.tik_instance.else_scope():
                 self.n2n_loop2(grads_ub, h_idx, loop, grad_move_num, tail_w)
 
+    # 'pylint:disable=too-many-arguments
     def n2n_loop(self, grads_ub, h_idx, loop, grad_move_num, tail_w):
         """
         loop function
@@ -892,6 +932,7 @@ class SyncResizeBilinearV2Grad(object):
                     self.data_move(grads_ub, self.grads_gm, [0, grads_offset], num=tail_w * self.c0)
                     self.data_move(self.output_gm, grads_ub, [grads_offset, 0], num=tail_w * self.c0)
 
+    # 'pylint:disable=too-many-arguments
     def n2n_loop2(self, grads_ub, h_idx, loop, grad_move_num, tail_w):
         """
         loop function
@@ -935,10 +976,12 @@ class SyncResizeBilinearV2Grad(object):
         """
         unit_w = 256
         iter_num = 8
-        w_grad_ub = self.tik_instance.Tensor(self.grads_dtype, (unit_w * self.c0,), scope=tik.scope_ubuf,
+        w_grad_ub = self.tik_instance.Tensor(self.grads_dtype, (unit_w * self.c0,),
+                                             scope=tik.scope_ubuf,
                                              name="w_grad_ub")
         self.dup_zero(w_grad_ub, num=unit_w * self.c0)
-        grads_ub = self.tik_instance.Tensor(self.grads_dtype, (self.tensor_size,), scope=tik.scope_ubuf,
+        grads_ub = self.tik_instance.Tensor(self.grads_dtype, (self.tensor_size,),
+                                            scope=tik.scope_ubuf,
                                             name="grads_ub")
         self.data_move(grads_ub, self.grads_gm, offsets=[0, grad_offset], num=self.grad_each_core)
 
@@ -952,7 +995,8 @@ class SyncResizeBilinearV2Grad(object):
         calculate output when input shape is [1,1] and grad shape is big
         """
         self.tik_instance.set_atomic_add(1)
-        grads_ub = self.tik_instance.Tensor(self.grads_dtype, (self.tensor_size,), scope=tik.scope_ubuf,
+        grads_ub = self.tik_instance.Tensor(self.grads_dtype, (self.tensor_size,),
+                                            scope=tik.scope_ubuf,
                                             name="grads_ub")
         with self.tik_instance.if_scope(core_idx < self.need_core_num - 1):
             with self.tik_instance.for_range(0, self.nc1_per_core) as per_idx:
@@ -981,7 +1025,8 @@ class SyncResizeBilinearV2Grad(object):
         offset = self.tik_instance.Scalar(dtype="int32", name="offset")
         offset.set_as(grad_offset)
 
-        w_grad_ub = self.tik_instance.Tensor(self.grads_dtype, (unit_w * self.c0,), scope=tik.scope_ubuf,
+        w_grad_ub = self.tik_instance.Tensor(self.grads_dtype, (unit_w * self.c0,),
+                                             scope=tik.scope_ubuf,
                                              name="w_grad_ub")
         self.dup_zero(w_grad_ub, num=unit_w * self.c0)
 
@@ -1004,8 +1049,7 @@ class SyncResizeBilinearV2Grad(object):
         """
         calculate output when grad shape is [1,1]
         """
-        grads_ub = self.tik_instance.Tensor(self.grads_dtype, (self.c0,), scope=tik.scope_ubuf,
-                                            name="grads_ub")
+        grads_ub = self.tik_instance.Tensor(self.grads_dtype, (self.c0,), scope=tik.scope_ubuf, name="grads_ub")
         with self.tik_instance.if_scope(core_idx < self.need_core_num - 1):
             with self.tik_instance.for_range(0, self.nc1_per_core) as per_idx:
                 self.dup_zero(grads_ub, num=self.c0)
@@ -1029,6 +1073,7 @@ class SyncResizeBilinearV2Grad(object):
         self.data_move(grads_ub, self.grads_gm, [0, grad_offset], num=self.c0)
         self.data_move(self.output_gm, grads_ub, [output_offset, 0], num=self.c0)
 
+    # 'pylint:disable=too-many-arguments
     def data_move(self, dst, src, offsets, num, src_stride=0, dst_stride=0):
         """
         move data from ub or gm to ub or gm
@@ -1037,7 +1082,12 @@ class SyncResizeBilinearV2Grad(object):
         sid = 0
         nburst = 1
         burst_len = (num + self.data_each_block - 1) // self.data_each_block
-        self.tik_instance.data_move(dst[dst_offset], src[src_offset], sid, nburst, burst_len, src_stride=src_stride,
+        self.tik_instance.data_move(dst[dst_offset],
+                                    src[src_offset],
+                                    sid,
+                                    nburst,
+                                    burst_len,
+                                    src_stride=src_stride,
                                     dst_stride=dst_stride)
 
     def dup_zero(self, dst, num=0, offset=0):
@@ -1062,6 +1112,7 @@ class SyncResizeBilinearV2Grad(object):
         if last_num > 0:
             self.tik_instance.vec_dup(last_num, dst[offset], dup_value, 1, 8)
 
+    # 'pylint:disable=too-many-arguments,too-many-locals
     def data_add(self, dst, src0, src1, offsets, num=0, dst_stride=8, src0_stride=8, src1_stride=8):
         """
         add data
@@ -1126,9 +1177,9 @@ class SyncResizeBilinearV2Grad(object):
         """
         for _ in range(iter_num):
             num = num // 2
-            if num // MASK > 0:
-                mask = MASK
-                repeat_time = num // MASK
+            if num // self.MASK > 0:
+                mask = self.MASK
+                repeat_time = num // self.MASK
             else:
                 mask = num
                 repeat_time = 1

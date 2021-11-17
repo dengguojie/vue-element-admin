@@ -27,7 +27,7 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_context
 
 
-# pylint: disable=too-many-locals,invalid-name,unused-argument,too-many-arguments
+# 'pylint: disable=too-many-locals,invalid-name,unused-argument,too-many-arguments
 @register_operator_compute("SmoothL1LossGradV2", op_mode="dynamic", support_fusion=False)
 def smooth_l1_loss_grad_v2_compute(input_predict,
                                    input_label,
@@ -129,7 +129,7 @@ def smooth_l1_loss_grad_v2_compute(input_predict,
     return res
 
 
-# pylint: disable=too-many-arguments,too-many-locals
+# 'pylint: disable=too-many-arguments,too-many-locals
 @register_operator("SmoothL1LossGradV2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,

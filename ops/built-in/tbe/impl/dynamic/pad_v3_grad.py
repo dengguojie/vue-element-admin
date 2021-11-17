@@ -19,38 +19,38 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
 from impl.dynamic.replication_pad_v3_grad import replication_pad_v3_grad
 
-# max int64
-MAX_INT64 = 2 ** 64 - 1
-# tiling param nums
-TILING_NUMS = 16
-# 1 byte = 8 bit
-EIGHT_BIT = 8
-# bytes of one block
-BLOCK_BYTES = 32
-# reserved ub size
-RESERVED_UB = 1024
-# vnchw the minest block
-TRANS_MIN_BLKS = 16
-MODE0 = 0
-MODE1 = 1
-MAX_MASK = 128
-# the block size
-BLOCK_SIZE = 32
-WORK_SIZE = 150000
-TOTAL = 6
-PER1 = 1
-PER2 = 2
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # max int64
+    MAX_INT64 = 2**64 - 1
+    # tiling param nums
+    TILING_NUMS = 16
+    # 1 byte = 8 bit
+    EIGHT_BIT = 8
+    # reserved ub size
+    RESERVED_UB = 1024
+    # vnchw the minest block
+    TRANS_MIN_BLKS = 16
+    MODE0 = 0
+    MODE1 = 1
+    MAX_MASK = 128
+    # the block size
+    BLOCK_SIZE = 32
+    WORK_SIZE = 150000
 
 
-# pylint: disable=too-many-instance-attributes,too-many-statements,too-many-locals,too-many-lines
-# pylint: disable=too-many-arguments,invalid-name
-class PadV3GradInit(object):
+# 'pylint: disable=too-many-instance-attributes,too-many-statements,too-many-locals,too-many-lines
+# 'pylint: disable=too-many-arguments,invalid-name
+class PadV3GradInit:
     """
     Function: class that execute pad_v3_grad
     """
 
-    def __init__(self, x, paddings, y, mode, padding_contiguous=True,
-                 kernel_name='pad_v3_grad'):
+    def __init__(self, x, paddings, y, mode, padding_contiguous=True, kernel_name='pad_v3_grad'):
         """
         init the op
         :param
@@ -65,9 +65,9 @@ class PadV3GradInit(object):
         None
         """
         self.tik_instance = tik.Tik()
-        self.unknown_max_shape = (MAX_INT64,)
+        self.unknown_max_shape = (Constant.MAX_INT64,)
         self.tiling_dtype = "int64"
-        self.tiling_shape = (TILING_NUMS,)
+        self.tiling_shape = (Constant.TILING_NUMS,)
 
         self.x_dtype = x.get("dtype")
         self.inner_dtype = "float16"
@@ -85,15 +85,15 @@ class PadV3GradInit(object):
         self.output_gm_list = []
         self.input_bytes_size = 0
 
-        self.inner_bytes_size = tbe_platform.get_bit_len(self.inner_dtype) // EIGHT_BIT
-        self.block_num = BLOCK_SIZE // self.inner_bytes_size
-        self.dump_mask_max_x = EIGHT_BIT * self.block_num
+        self.inner_bytes_size = tbe_platform.get_bit_len(self.inner_dtype) // Constant.EIGHT_BIT
+        self.block_num = Constant.BLOCK_SIZE // self.inner_bytes_size
+        self.dump_mask_max_x = Constant.EIGHT_BIT * self.block_num
         self.max_repeat_time = 255
 
-        self.ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB
+        self.ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - Constant.RESERVED_UB
         self.ub_number = self.ub_size_bytes // self.inner_bytes_size
         self.core_nums = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.workspace_shape = (WORK_SIZE * self.core_nums,)
+        self.workspace_shape = (Constant.WORK_SIZE * self.core_nums,)
 
         # tiling scalar init
         self.tiling_key = self.tik_instance.Scalar(self.tiling_dtype, "tiling_key", init_value=0)
@@ -141,6 +141,7 @@ class PadV3GradInit(object):
             self.not_last_core_num.set_as(tiling_ub[14])
             self.last_core_num.set_as(tiling_ub[15])
 
+    # 'pylint:disable=unused-argument
     def init_src_dst_gm(self, input_dict_list, output_dict_list, pad_input_idx=0, pad_outnput_idx=0):
         """
         init gm tensor set tiling, input, paddings output tensor(gm)
@@ -155,21 +156,27 @@ class PadV3GradInit(object):
         :return:
         None
         """
-        self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, self.tiling_shape,
-                                                  name="tiling_gm", scope=tik.scope_gm)
-        self.work_space = self.tik_instance.Tensor(self.inner_dtype, self.workspace_shape,
-                                                  name="work_space", scope=tik.scope_gm, is_workspace=True)
+        self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype,
+                                                  self.tiling_shape,
+                                                  name="tiling_gm",
+                                                  scope=tik.scope_gm)
+        self.work_space = self.tik_instance.Tensor(self.inner_dtype,
+                                                   self.workspace_shape,
+                                                   name="work_space",
+                                                   scope=tik.scope_gm,
+                                                   is_workspace=True)
         x_dtype = input_dict_list[0].get("dtype")
         paddings_dtype = input_dict_list[1].get("dtype")
         x_gm = self.tik_instance.Tensor(self.inner_dtype, self.unknown_max_shape, name="x", scope=tik.scope_gm)
-        paddings_gm = self.tik_instance.Tensor(paddings_dtype, self.unknown_max_shape,
-                                               name="paddings", scope=tik.scope_gm)
+        paddings_gm = self.tik_instance.Tensor(paddings_dtype,
+                                               self.unknown_max_shape,
+                                               name="paddings",
+                                               scope=tik.scope_gm)
         self.input_gm_list.append(x_gm)
         self.input_gm_list.append(paddings_gm)
-        
-        y_dtype = output_dict_list[0].get("dtype")
+
         y_gm = self.tik_instance.Tensor(self.inner_dtype, self.unknown_max_shape, name="y", scope=tik.scope_gm)
-        self.input_bytes_size = tbe_platform.get_bit_len(x_dtype) // EIGHT_BIT
+        self.input_bytes_size = tbe_platform.get_bit_len(x_dtype) // Constant.EIGHT_BIT
         self.output_gm_list.append(y_gm)
 
         self.input_gm = self.input_gm_list[pad_input_idx]
@@ -179,9 +186,8 @@ class PadV3GradInit(object):
         """
         pad_v3_grad_compute_tiling
         """
-        tiling_ub = self.tik_instance.Tensor("int64", (TILING_NUMS,),
-                                             name="tiling_ub", scope=tik.scope_ubuf)
-        self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, TILING_NUMS, 0, 0)
+        tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_NUMS,), name="tiling_ub", scope=tik.scope_ubuf)
+        self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, Constant.TILING_NUMS, 0, 0)
         self.core_uesd_num.set_as(tiling_ub[9])
         with self.tik_instance.for_range(0, self.core_nums, block_num=self.core_nums) as core_index:
             with self.tik_instance.if_scope(core_index < self.core_uesd_num):
@@ -211,19 +217,19 @@ class PadV3GradInit(object):
 
         align_input_dim_2.set_as(((self.tiling_input_dim_2 - 1) // self.block_num + 1) * self.block_num)
         align_input_dim_3.set_as(((self.tiling_input_dim_3 - 1) // self.block_num + 1) * self.block_num)
-        time_2.set_as(align_input_dim_2 // TRANS_MIN_BLKS)
-        time_3.set_as(align_input_dim_3 // TRANS_MIN_BLKS)
-        units.set_as((TRANS_MIN_BLKS - 1) // (self.tiling_output_dim_2 * self.tiling_output_dim_3) + 1)
+        time_2.set_as(align_input_dim_2 // Constant.TRANS_MIN_BLKS)
+        time_3.set_as(align_input_dim_3 // Constant.TRANS_MIN_BLKS)
+        units.set_as((Constant.TRANS_MIN_BLKS - 1) // (self.tiling_output_dim_2 * self.tiling_output_dim_3) + 1)
         first_ub_need_first_move_lines.set_as(units * self.tiling_output_dim_2 -
-                                              TRANS_MIN_BLKS // self.tiling_output_dim_3)
-        first_ub_not_complete_offset.set_as(self.tiling_output_dim_3 - ((TRANS_MIN_BLKS - (units - 1) *
-                                                                         self.tiling_output_dim_3 *
-                                                                         self.tiling_output_dim_2) %
-                                                                        self.tiling_output_dim_3))
-        first_ub_need_last_move_lines.set_as((TRANS_MIN_BLKS - (units - 1) * self.tiling_output_dim_3 *
-                                              self.tiling_output_dim_2) // self.tiling_output_dim_3)
-        first_ub_first_offset.set_as((first_ub_need_first_move_lines - 1)
-                                     * align_input_dim_3 + first_ub_not_complete_offset)
+                                              Constant.TRANS_MIN_BLKS // self.tiling_output_dim_3)
+        first_ub_not_complete_offset.set_as(self.tiling_output_dim_3 - (
+            (Constant.TRANS_MIN_BLKS -
+             (units - 1) * self.tiling_output_dim_3 * self.tiling_output_dim_2) % self.tiling_output_dim_3))
+        first_ub_need_last_move_lines.set_as(
+            (Constant.TRANS_MIN_BLKS -
+             (units - 1) * self.tiling_output_dim_3 * self.tiling_output_dim_2) // self.tiling_output_dim_3)
+        first_ub_first_offset.set_as((first_ub_need_first_move_lines - 1) * align_input_dim_3 +
+                                     first_ub_not_complete_offset)
 
         input_ele_per_core.set_as(self.not_last_core_num * self.tiling_input_dim_2 * self.tiling_input_dim_3)
         output_ele_per_core.set_as(self.not_last_core_num * self.tiling_output_dim_2 * self.tiling_output_dim_3)
@@ -231,165 +237,156 @@ class PadV3GradInit(object):
             ranges.set_as(self.last_core_num)
         with self.tik_instance.else_scope():
             ranges.set_as(self.not_last_core_num)
-            flag.set_as((output_ele_per_core - TRANS_MIN_BLKS) // (self.tiling_output_dim_3 * self.tiling_output_dim_2))
-            gm_offset.set_as((core_index + 1) * output_ele_per_core - TRANS_MIN_BLKS)
+            flag.set_as((output_ele_per_core - Constant.TRANS_MIN_BLKS) //
+                        (self.tiling_output_dim_3 * self.tiling_output_dim_2))
+            gm_offset.set_as((core_index + 1) * output_ele_per_core - Constant.TRANS_MIN_BLKS)
 
         with self.tik_instance.new_stmt_scope():
-            ping_ub_1 = self.tik_instance.Tensor(self.inner_dtype, (per_ub_size, ), name='ping_ub_1',
+            ping_ub_1 = self.tik_instance.Tensor(self.inner_dtype, (per_ub_size,),
+                                                 name='ping_ub_1',
                                                  scope=tik.scope_ubuf)
-            pang_ub_1 = self.tik_instance.Tensor(self.inner_dtype, (per_ub_size,), name='pang_ub_1',
+            pang_ub_1 = self.tik_instance.Tensor(self.inner_dtype, (per_ub_size,),
+                                                 name='pang_ub_1',
                                                  scope=tik.scope_ubuf)
-            self.block_less_16 = self.tik_instance.Tensor(self.inner_dtype, (TRANS_MIN_BLKS,), name='block_less_16',
+            self.block_less_16 = self.tik_instance.Tensor(self.inner_dtype, (Constant.TRANS_MIN_BLKS,),
+                                                          name='block_less_16',
                                                           scope=tik.scope_ubuf)
-            self.block_over_16 = self.tik_instance.Tensor(self.inner_dtype, (TRANS_MIN_BLKS,), name='block_over_16',
+            self.block_over_16 = self.tik_instance.Tensor(self.inner_dtype, (Constant.TRANS_MIN_BLKS,),
+                                                          name='block_over_16',
                                                           scope=tik.scope_ubuf)
             loop = self.tik_instance.Scalar('int64', name='loop')
             remain_mask = self.tik_instance.Scalar('int64', name='remain_mask')
             with self.tik_instance.for_range(0, ranges) as index:
-                loop.set_as(align_input_dim_3 // MAX_MASK)
-                remain_mask.set_as(align_input_dim_3 % MAX_MASK)
+                loop.set_as(align_input_dim_3 // Constant.MAX_MASK)
+                remain_mask.set_as(align_input_dim_3 % Constant.MAX_MASK)
                 with self.tik_instance.for_range(0, self.tiling_input_dim_2) as i:
-                    self.tik_instance.data_move(ping_ub_1[i * align_input_dim_3], 
-                                                self.input_gm[core_index * input_ele_per_core 
-                                                              + index * self.tiling_input_dim_2 
-                                                              * self.tiling_input_dim_3 
-                                                              + i * self.tiling_input_dim_3],
-                                                0, 1, align_input_dim_3 // self.block_num, 0, 0)
+                    self.tik_instance.data_move(
+                        ping_ub_1[i * align_input_dim_3],
+                        self.input_gm[core_index * input_ele_per_core +
+                                      index * self.tiling_input_dim_2 * self.tiling_input_dim_3 +
+                                      i * self.tiling_input_dim_3], 0, 1, align_input_dim_3 // self.block_num, 0, 0)
 
                 with self.tik_instance.for_range(0, self.padding_index_2) as i:
-                    self.tik_instance.vec_add(MAX_MASK,
-                                              ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) *
-                                                        align_input_dim_3],
-                                              ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) *
-                                                        align_input_dim_3],
-                                              ping_ub_1[i * align_input_dim_3],
-                                              loop, 8, 8, 8)
+                    self.tik_instance.vec_add(
+                        Constant.MAX_MASK,
+                        ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) * align_input_dim_3],
+                        ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) * align_input_dim_3],
+                        ping_ub_1[i * align_input_dim_3], loop, 8, 8, 8)
                     with self.tik_instance.if_scope(remain_mask > 0):
-                        self.tik_instance.vec_add(remain_mask,
-                                                  ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) *
-                                                            align_input_dim_3 + loop * MAX_MASK],
-                                                  ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) *
-                                                            align_input_dim_3 + loop * MAX_MASK],
-                                                  ping_ub_1[i * align_input_dim_3 + loop * MAX_MASK],
-                                                  1, 8, 8, 8)
+                        self.tik_instance.vec_add(
+                            remain_mask,
+                            ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) * align_input_dim_3 +
+                                      loop * Constant.MAX_MASK],
+                            ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) * align_input_dim_3 +
+                                      loop * Constant.MAX_MASK],
+                            ping_ub_1[i * align_input_dim_3 + loop * Constant.MAX_MASK], 1, 8, 8, 8)
 
                 with self.tik_instance.for_range(0, self.padding_index_3) as i:
-                    self.tik_instance.vec_add(MAX_MASK,
-                                              ping_ub_1[(self.tiling_input_dim_2 - 1 - self.padding_index_3 * 2 + i) *
-                                                        align_input_dim_3],
-                                              ping_ub_1[(self.tiling_input_dim_2 - 1 - self.padding_index_3 * 2 + i) *
-                                                        align_input_dim_3],
-                                              ping_ub_1[(self.tiling_input_dim_2 - 1 - i) * align_input_dim_3],
-                                              loop, 8, 8, 8)
+                    self.tik_instance.vec_add(
+                        Constant.MAX_MASK,
+                        ping_ub_1[(self.tiling_input_dim_2 - 1 - self.padding_index_3 * 2 + i) * align_input_dim_3],
+                        ping_ub_1[(self.tiling_input_dim_2 - 1 - self.padding_index_3 * 2 + i) * align_input_dim_3],
+                        ping_ub_1[(self.tiling_input_dim_2 - 1 - i) * align_input_dim_3], loop, 8, 8, 8)
                     with self.tik_instance.if_scope(remain_mask > 0):
-                        self.tik_instance.vec_add(remain_mask,
-                                                  ping_ub_1[(self.tiling_input_dim_2 - 1 - 
-                                                            self.padding_index_3 * 2 + i) *
-                                                            align_input_dim_3 + loop * MAX_MASK],
-                                                  ping_ub_1[(self.tiling_input_dim_2 - 1 - 
-                                                            self.padding_index_3 * 2 + i) *
-                                                            align_input_dim_3 + loop * MAX_MASK],
-                                                  ping_ub_1[(self.tiling_input_dim_2 - 1 - i) 
-                                                            * align_input_dim_3
-                                                            + loop * MAX_MASK],
-                                                  1, 8, 8, 8)
+                        self.tik_instance.vec_add(
+                            remain_mask,
+                            ping_ub_1[(self.tiling_input_dim_2 - 1 - self.padding_index_3 * 2 + i) * align_input_dim_3 +
+                                      loop * Constant.MAX_MASK],
+                            ping_ub_1[(self.tiling_input_dim_2 - 1 - self.padding_index_3 * 2 + i) * align_input_dim_3 +
+                                      loop * Constant.MAX_MASK],
+                            ping_ub_1[(self.tiling_input_dim_2 - 1 - i) * align_input_dim_3 + loop * Constant.MAX_MASK],
+                            1, 8, 8, 8)
 
                 with self.tik_instance.for_range(0, time_2) as i:
                     with self.tik_instance.for_range(0, time_3) as j:
                         src_list = []
                         dst_list = []
-                        for k in range(TRANS_MIN_BLKS):
-                            src_list.append(ping_ub_1[time_3 * TRANS_MIN_BLKS * TRANS_MIN_BLKS * i
-                                                      + TRANS_MIN_BLKS * j + time_3 * TRANS_MIN_BLKS *
-                                                                              (k + self.padding_index_2)])
-                            dst_list.append(pang_ub_1[time_2 * TRANS_MIN_BLKS * TRANS_MIN_BLKS * j
-                                                      + TRANS_MIN_BLKS * i + time_2 * TRANS_MIN_BLKS * k])
+                        for k in range(Constant.TRANS_MIN_BLKS):
+                            src_list.append(ping_ub_1[time_3 * Constant.TRANS_MIN_BLKS * Constant.TRANS_MIN_BLKS * i +
+                                                      Constant.TRANS_MIN_BLKS * j + time_3 * Constant.TRANS_MIN_BLKS *
+                                                      (k + self.padding_index_2)])
+                            dst_list.append(
+                                pang_ub_1[time_2 * Constant.TRANS_MIN_BLKS * Constant.TRANS_MIN_BLKS * j +
+                                          Constant.TRANS_MIN_BLKS * i + time_2 * Constant.TRANS_MIN_BLKS * k])
                         self.tik_instance.vnchwconv(True, False, dst_list, src_list, 1, 0, 0)
 
-                loop.set_as(align_input_dim_2 // MAX_MASK)
-                remain_mask.set_as(align_input_dim_2 % MAX_MASK)
+                loop.set_as(align_input_dim_2 // Constant.MAX_MASK)
+                remain_mask.set_as(align_input_dim_2 % Constant.MAX_MASK)
                 with self.tik_instance.for_range(0, self.padding_index_0) as i:
-                    self.tik_instance.vec_add(MAX_MASK,
-                                              pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) *
-                                                        align_input_dim_2],
-                                              pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) *
-                                                        align_input_dim_2],
-                                              pang_ub_1[i * align_input_dim_2], loop, 8, 8, 8)
+                    self.tik_instance.vec_add(
+                        Constant.MAX_MASK,
+                        pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) * align_input_dim_2],
+                        pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) * align_input_dim_2],
+                        pang_ub_1[i * align_input_dim_2], loop, 8, 8, 8)
                     with self.tik_instance.if_scope(remain_mask > 0):
-                        self.tik_instance.vec_add(remain_mask,
-                                                  pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) *
-                                                            align_input_dim_2 + MAX_MASK * loop],
-                                                  pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) *
-                                                            align_input_dim_2 + MAX_MASK * loop],
-                                                  pang_ub_1[i * align_input_dim_2 + MAX_MASK * loop], 1, 8, 8, 8)
+                        self.tik_instance.vec_add(
+                            remain_mask,
+                            pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) * align_input_dim_2 +
+                                      Constant.MAX_MASK * loop],
+                            pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) * align_input_dim_2 +
+                                      Constant.MAX_MASK * loop],
+                            pang_ub_1[i * align_input_dim_2 + Constant.MAX_MASK * loop], 1, 8, 8, 8)
 
                 with self.tik_instance.for_range(0, self.padding_index_1) as i:
-                    self.tik_instance.vec_add(MAX_MASK,
-                                              pang_ub_1[(self.tiling_input_dim_3 - 1 - self.padding_index_1 * 2 + i) *
-                                                        align_input_dim_2],
-                                              pang_ub_1[(self.tiling_input_dim_3 - 1 - self.padding_index_1 * 2 + i) *
-                                                        align_input_dim_2],
-                                              pang_ub_1[(self.tiling_input_dim_3 - 1 - i) * align_input_dim_2],
-                                              loop, 8, 8, 8)
+                    self.tik_instance.vec_add(
+                        Constant.MAX_MASK,
+                        pang_ub_1[(self.tiling_input_dim_3 - 1 - self.padding_index_1 * 2 + i) * align_input_dim_2],
+                        pang_ub_1[(self.tiling_input_dim_3 - 1 - self.padding_index_1 * 2 + i) * align_input_dim_2],
+                        pang_ub_1[(self.tiling_input_dim_3 - 1 - i) * align_input_dim_2], loop, 8, 8, 8)
                     with self.tik_instance.if_scope(remain_mask > 0):
-                        self.tik_instance.vec_add(remain_mask,
-                                                  pang_ub_1[(self.tiling_input_dim_3 - 1 - 
-                                                            self.padding_index_1 * 2 + i) *
-                                                            align_input_dim_2 + MAX_MASK * loop],
-                                                  pang_ub_1[(self.tiling_input_dim_3 - 1 - 
-                                                            self.padding_index_1 * 2 + i) *
-                                                            align_input_dim_2 + MAX_MASK * loop],
-                                                  pang_ub_1[(self.tiling_input_dim_3 - 1 - i) 
-                                                            * align_input_dim_2
-                                                            + MAX_MASK * loop],
-                                                  1, 8, 8, 8)
+                        self.tik_instance.vec_add(
+                            remain_mask,
+                            pang_ub_1[(self.tiling_input_dim_3 - 1 - self.padding_index_1 * 2 + i) * align_input_dim_2 +
+                                      Constant.MAX_MASK * loop],
+                            pang_ub_1[(self.tiling_input_dim_3 - 1 - self.padding_index_1 * 2 + i) * align_input_dim_2 +
+                                      Constant.MAX_MASK * loop],
+                            pang_ub_1[(self.tiling_input_dim_3 - 1 - i) * align_input_dim_2 + Constant.MAX_MASK * loop],
+                            1, 8, 8, 8)
 
                 with self.tik_instance.for_range(0, time_2) as i:
                     with self.tik_instance.for_range(0, time_3) as j:
                         src_list = []
                         dst_list = []
-                        for k in range(TRANS_MIN_BLKS):
-                            src_list.append(pang_ub_1[time_2 * TRANS_MIN_BLKS * TRANS_MIN_BLKS * j
-                                                      + TRANS_MIN_BLKS * i + time_2 * TRANS_MIN_BLKS *
+                        for k in range(Constant.TRANS_MIN_BLKS):
+                            src_list.append(pang_ub_1[time_2 * Constant.TRANS_MIN_BLKS * Constant.TRANS_MIN_BLKS * j +
+                                                      Constant.TRANS_MIN_BLKS * i + time_2 * Constant.TRANS_MIN_BLKS *
                                                       (k + self.padding_index_0)])
-                            dst_list.append(ping_ub_1[time_3 * TRANS_MIN_BLKS * TRANS_MIN_BLKS * i
-                                                      + TRANS_MIN_BLKS * j + time_3 * TRANS_MIN_BLKS * k])
+                            dst_list.append(
+                                ping_ub_1[time_3 * Constant.TRANS_MIN_BLKS * Constant.TRANS_MIN_BLKS * i +
+                                          Constant.TRANS_MIN_BLKS * j + time_3 * Constant.TRANS_MIN_BLKS * k])
                         self.tik_instance.vnchwconv(True, False, dst_list, src_list, 1, 0, 0)
 
                 align_output_dim_3 = self.tik_instance.Scalar('int64', name='align_output_dim_3')
                 align_output_dim_3.set_as(((self.tiling_output_dim_3 - 1) // self.block_num + 1) * self.block_num)
                 with self.tik_instance.if_scope(core_index == self.core_uesd_num - 1):
                     with self.tik_instance.for_range(0, self.tiling_output_dim_2) as i:
-                        self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core +
-                                                                   index * self.tiling_output_dim_2 *
-                                                                   self.tiling_output_dim_3 + i *
-                                                                   self.tiling_output_dim_3],
-                                                    ping_ub_1[i * align_input_dim_3],
-                                                    0, 1, align_output_dim_3 // self.block_num, 0, 0)
+                        self.tik_instance.data_move(
+                            self.output_gm[core_index * output_ele_per_core +
+                                           index * self.tiling_output_dim_2 * self.tiling_output_dim_3 +
+                                           i * self.tiling_output_dim_3], ping_ub_1[i * align_input_dim_3], 0, 1,
+                            align_output_dim_3 // self.block_num, 0, 0)
 
                 with self.tik_instance.if_scope(tik.all(self.core_uesd_num > 1, core_index < self.core_uesd_num - 1)):
-                    with self.tik_instance.if_scope(self.tiling_output_dim_3 <= TRANS_MIN_BLKS):
+                    with self.tik_instance.if_scope(self.tiling_output_dim_3 <= Constant.TRANS_MIN_BLKS):
                         with self.tik_instance.if_scope(index < flag):
                             with self.tik_instance.for_range(0, self.tiling_output_dim_2) as i:
-                                self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core +
-                                                                            index * self.tiling_output_dim_2 *
-                                                                            self.tiling_output_dim_3 + i *
-                                                                            self.tiling_output_dim_3],
-                                                            ping_ub_1[i * align_input_dim_3],
-                                                            0, 1, align_output_dim_3 // self.block_num, 0, 0)
+                                self.tik_instance.data_move(
+                                    self.output_gm[core_index * output_ele_per_core +
+                                                   index * self.tiling_output_dim_2 * self.tiling_output_dim_3 +
+                                                   i * self.tiling_output_dim_3], ping_ub_1[i * align_input_dim_3], 0,
+                                    1, align_output_dim_3 // self.block_num, 0, 0)
 
                         with self.tik_instance.if_scope(index == flag):
                             with self.tik_instance.for_range(0, first_ub_need_first_move_lines) as i:
-                                self.tik_instance.data_move(self.output_gm[core_index *
-                                                                           output_ele_per_core
-                                                                           + index *
-                                                                           self.tiling_output_dim_2
-                                                                           * self.tiling_output_dim_3
-                                                                           + i * self.tiling_output_dim_3],
-                                                            ping_ub_1[i * align_input_dim_3], 0, 1, 1, 0, 0)
+                                self.tik_instance.data_move(
+                                    self.output_gm[core_index * output_ele_per_core +
+                                                   index * self.tiling_output_dim_2 * self.tiling_output_dim_3 +
+                                                   i * self.tiling_output_dim_3], ping_ub_1[i * align_input_dim_3], 0,
+                                    1, 1, 0, 0)
 
-                            with self.tik_instance.for_range(first_ub_first_offset, (first_ub_need_first_move_lines - 1)
-                                    * align_input_dim_3 + self.tiling_output_dim_3) as i:
+                            with self.tik_instance.for_range(first_ub_first_offset,
+                                                             (first_ub_need_first_move_lines - 1) * align_input_dim_3 +
+                                                             self.tiling_output_dim_3) as i:
                                 self.block_less_16[i - first_ub_first_offset].set_as(ping_ub_1[i])
 
                             with self.tik_instance.for_range(first_ub_need_first_move_lines,
@@ -401,8 +398,8 @@ class PadV3GradInit(object):
                                                        self.tiling_output_dim_3 + j].set_as\
                                         (ping_ub_1[i * align_input_dim_3 + j])
                             with self.tik_instance.if_scope(flag == ranges - 1):
-                                self.tik_instance.data_move(self.output_gm[gm_offset], self.block_less_16, 0, 1,
-                                                            1, 0, 0)
+                                self.tik_instance.data_move(self.output_gm[gm_offset], self.block_less_16, 0, 1, 1, 0,
+                                                            0)
 
                         with self.tik_instance.if_scope(index > flag):
                             with self.tik_instance.for_range(0, self.tiling_output_dim_2) as i:
@@ -417,55 +414,52 @@ class PadV3GradInit(object):
                                                        self.tiling_output_dim_3 + j].set_as\
                                         (ping_ub_1[i * align_input_dim_3 + j])
                             with self.tik_instance.if_scope(index == ranges - 1):
-                                self.tik_instance.data_move(self.output_gm[gm_offset], self.block_less_16, 0,
-                                                            1, 1, 0, 0)
+                                self.tik_instance.data_move(self.output_gm[gm_offset], self.block_less_16, 0, 1, 1, 0,
+                                                            0)
 
-                    with self.tik_instance.if_scope(self.tiling_output_dim_3 > TRANS_MIN_BLKS):
+                    with self.tik_instance.if_scope(self.tiling_output_dim_3 > Constant.TRANS_MIN_BLKS):
                         with self.tik_instance.if_scope(index == ranges - 1):
                             with self.tik_instance.for_range(0, self.tiling_output_dim_2) as i:
                                 with self.tik_instance.if_scope(i == self.tiling_output_dim_2 - 1):
-                                    self.tik_instance.data_move(self.output_gm
-                                                                [core_index * output_ele_per_core + index *
-                                                                 self.tiling_output_dim_2 * self.tiling_output_dim_3 +
-                                                                 i * self.tiling_output_dim_3],
-                                                                ping_ub_1[i * align_input_dim_3], 0, 1,
-                                                                self.tiling_output_dim_3 // self.block_num, 0, 0)
-                                    with self.tik_instance.for_range((self.tiling_output_dim_3 // TRANS_MIN_BLKS
-                                                                          * TRANS_MIN_BLKS -
-                                                                          (TRANS_MIN_BLKS - self.tiling_output_dim_3
-                                                                              % TRANS_MIN_BLKS)),
-                                                                     self.tiling_output_dim_3) as j:
-                                        self.block_over_16[j - (self.tiling_output_dim_3 // TRANS_MIN_BLKS
-                                                                * TRANS_MIN_BLKS - (TRANS_MIN_BLKS -
+                                    self.tik_instance.data_move(
+                                        self.output_gm[core_index * output_ele_per_core +
+                                                       index * self.tiling_output_dim_2 * self.tiling_output_dim_3 +
+                                                       i * self.tiling_output_dim_3], ping_ub_1[i * align_input_dim_3],
+                                        0, 1, self.tiling_output_dim_3 // self.block_num, 0, 0)
+                                    with self.tik_instance.for_range(
+                                        (self.tiling_output_dim_3 // Constant.TRANS_MIN_BLKS * Constant.TRANS_MIN_BLKS -
+                                         (Constant.TRANS_MIN_BLKS -
+                                          self.tiling_output_dim_3 % Constant.TRANS_MIN_BLKS)),
+                                            self.tiling_output_dim_3) as j:
+                                        self.block_over_16[j - (self.tiling_output_dim_3 // Constant.TRANS_MIN_BLKS
+                                                                * Constant.TRANS_MIN_BLKS - (Constant.TRANS_MIN_BLKS -
                                                                                     self.tiling_output_dim_3
-                                                                                    % TRANS_MIN_BLKS))].set_as\
+                                                                                    % Constant.TRANS_MIN_BLKS))].set_as\
                                             (ping_ub_1[i * align_input_dim_3 + j])
-                                    self.tik_instance.data_move(self.output_gm
-                                                                [core_index * output_ele_per_core + index *
-                                                                 self.tiling_output_dim_2 * self.tiling_output_dim_3 +
-                                                                 i * self.tiling_output_dim_3 +
-                                                                 (self.tiling_output_dim_3 // TRANS_MIN_BLKS
-                                                                     * TRANS_MIN_BLKS -
-                                                                     (TRANS_MIN_BLKS - self.tiling_output_dim_3
-                                                                      % TRANS_MIN_BLKS))], self.block_over_16,
-                                                                0, 1, 1, 0, 0)
+                                    self.tik_instance.data_move(
+                                        self.output_gm[core_index * output_ele_per_core +
+                                                       index * self.tiling_output_dim_2 * self.tiling_output_dim_3 +
+                                                       i * self.tiling_output_dim_3 +
+                                                       (self.tiling_output_dim_3 // Constant.TRANS_MIN_BLKS *
+                                                        Constant.TRANS_MIN_BLKS -
+                                                        (Constant.TRANS_MIN_BLKS -
+                                                         self.tiling_output_dim_3 % Constant.TRANS_MIN_BLKS))],
+                                        self.block_over_16, 0, 1, 1, 0, 0)
 
                                 with self.tik_instance.else_scope():
-                                    self.tik_instance.data_move(self.output_gm
-                                                                [core_index * output_ele_per_core + index *
-                                                                 self.tiling_output_dim_2 * self.tiling_output_dim_3 +
-                                                                 i * self.tiling_output_dim_3],
-                                                                ping_ub_1[i * align_input_dim_3], 0, 1,
-                                                                align_output_dim_3 // self.block_num, 0, 0)
+                                    self.tik_instance.data_move(
+                                        self.output_gm[core_index * output_ele_per_core +
+                                                       index * self.tiling_output_dim_2 * self.tiling_output_dim_3 +
+                                                       i * self.tiling_output_dim_3], ping_ub_1[i * align_input_dim_3],
+                                        0, 1, align_output_dim_3 // self.block_num, 0, 0)
 
                         with self.tik_instance.else_scope():
                             with self.tik_instance.for_range(0, self.tiling_output_dim_2) as i:
-                                self.tik_instance.data_move(self.output_gm
-                                                            [core_index * output_ele_per_core + index *
-                                                             self.tiling_output_dim_2 * self.tiling_output_dim_3 +
-                                                             i * self.tiling_output_dim_3],
-                                                            ping_ub_1[i * align_input_dim_3], 0, 1, align_output_dim_3
-                                                            // self.block_num, 0, 0)
+                                self.tik_instance.data_move(
+                                    self.output_gm[core_index * output_ele_per_core +
+                                                   index * self.tiling_output_dim_2 * self.tiling_output_dim_3 +
+                                                   i * self.tiling_output_dim_3], ping_ub_1[i * align_input_dim_3], 0,
+                                    1, align_output_dim_3 // self.block_num, 0, 0)
 
     def do_tiling_key_mode_1(self, core_index):
         """
@@ -484,440 +478,423 @@ class PadV3GradInit(object):
             ranges.set_as(self.not_last_core_num)
 
         with self.tik_instance.new_stmt_scope():
-            ping_ub_1 = self.tik_instance.Tensor(self.inner_dtype, (per_ub_size, ), name='ping_ub_1',
-                                               scope=tik.scope_ubuf)
-            ping_ub_2 = self.tik_instance.Tensor(self.inner_dtype, (per_ub_size,), name='ping_ub_2',
+            ping_ub_1 = self.tik_instance.Tensor(self.inner_dtype, (per_ub_size,),
+                                                 name='ping_ub_1',
                                                  scope=tik.scope_ubuf)
-            pang_ub_1 = self.tik_instance.Tensor(self.inner_dtype, (per_ub_size,), name='pang_ub_1',
+            ping_ub_2 = self.tik_instance.Tensor(self.inner_dtype, (per_ub_size,),
+                                                 name='ping_ub_2',
                                                  scope=tik.scope_ubuf)
-            pang_ub_2 = self.tik_instance.Tensor(self.inner_dtype, (per_ub_size,), name='pang_ub_2',
+            pang_ub_1 = self.tik_instance.Tensor(self.inner_dtype, (per_ub_size,),
+                                                 name='pang_ub_1',
                                                  scope=tik.scope_ubuf)
-            block_ub = self.tik_instance.Tensor(self.inner_dtype, (TRANS_MIN_BLKS,), name='pang_ub_2',
+            pang_ub_2 = self.tik_instance.Tensor(self.inner_dtype, (per_ub_size,),
+                                                 name='pang_ub_2',
                                                  scope=tik.scope_ubuf)
+            block_ub = self.tik_instance.Tensor(self.inner_dtype, (Constant.TRANS_MIN_BLKS,),
+                                                name='pang_ub_2',
+                                                scope=tik.scope_ubuf)
 
             align_input_dim_3 = self.tik_instance.Scalar('int64', 'align_out_dim_3')
-            align_input_dim_3.set_as(((self.tiling_input_dim_3 - 1) // TRANS_MIN_BLKS + 1) * TRANS_MIN_BLKS)
+            align_input_dim_3.set_as(
+                ((self.tiling_input_dim_3 - 1) // Constant.TRANS_MIN_BLKS + 1) * Constant.TRANS_MIN_BLKS)
             time = self.tik_instance.Scalar('int64', name='time')
-            time.set_as(align_input_dim_3 // TRANS_MIN_BLKS)
+            time.set_as(align_input_dim_3 // Constant.TRANS_MIN_BLKS)
 
             loop = self.tik_instance.Scalar('int64', name='loop')
             remain_mask = self.tik_instance.Scalar('int64', name='remain_mask')
-            loop.set_as(align_input_dim_3 // MAX_MASK)
-            remain_mask.set_as(align_input_dim_3 % MAX_MASK)
+            loop.set_as(align_input_dim_3 // Constant.MAX_MASK)
+            remain_mask.set_as(align_input_dim_3 % Constant.MAX_MASK)
             with self.tik_instance.for_range(0, ranges) as index:
-                with self.tik_instance.for_range(0, TRANS_MIN_BLKS) as i:
-                    self.tik_instance.data_move(ping_ub_1[i * align_input_dim_3], self.input_gm[core_index *
-                                                                                                input_ele_per_core +
-                                                                                                index *
-                                                                         self.tiling_input_dim_2 *
-                                                                    self.tiling_input_dim_3 + i *
-                                                                                            self.tiling_input_dim_3]
-                                                , 0, 1, align_input_dim_3 // self.block_num, 0, 0)
-
+                with self.tik_instance.for_range(0, Constant.TRANS_MIN_BLKS) as i:
+                    self.tik_instance.data_move(
+                        ping_ub_1[i * align_input_dim_3],
+                        self.input_gm[core_index * input_ele_per_core +
+                                      index * self.tiling_input_dim_2 * self.tiling_input_dim_3 +
+                                      i * self.tiling_input_dim_3], 0, 1, align_input_dim_3 // self.block_num, 0, 0)
 
                 with self.tik_instance.for_range(0, self.padding_index_2) as i:
-                    self.tik_instance.vec_add(MAX_MASK,
-                                              ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) *
-                                                        align_input_dim_3],
-                                              ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) *
-                                                        align_input_dim_3],
-                                              ping_ub_1[i * align_input_dim_3],
-                                              loop, 8, 8, 8)
+                    self.tik_instance.vec_add(
+                        Constant.MAX_MASK,
+                        ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) * align_input_dim_3],
+                        ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) * align_input_dim_3],
+                        ping_ub_1[i * align_input_dim_3], loop, 8, 8, 8)
                     with self.tik_instance.if_scope(remain_mask > 0):
-                        self.tik_instance.vec_add(remain_mask,
-                                                  ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) *
-                                                            align_input_dim_3 + loop * MAX_MASK],
-                                                  ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) *
-                                                            align_input_dim_3 + loop * MAX_MASK],
-                                                  ping_ub_1[i * align_input_dim_3 + loop * MAX_MASK],
-                                                  1, 8, 8, 8)
+                        self.tik_instance.vec_add(
+                            remain_mask,
+                            ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) * align_input_dim_3 +
+                                      loop * Constant.MAX_MASK],
+                            ping_ub_1[(self.padding_index_2 + self.padding_index_2 - i) * align_input_dim_3 +
+                                      loop * Constant.MAX_MASK],
+                            ping_ub_1[i * align_input_dim_3 + loop * Constant.MAX_MASK], 1, 8, 8, 8)
 
-                with self.tik_instance.for_range(0, TRANS_MIN_BLKS) as i:
-                    self.tik_instance.data_move(ping_ub_1[(TRANS_MIN_BLKS + i) * align_input_dim_3],
-                                                self.input_gm[core_index * input_ele_per_core + index *
-                                                              self.tiling_input_dim_2 * self.tiling_input_dim_3 +
-                                                              (self.tiling_input_dim_2 - TRANS_MIN_BLKS + i)
-                                                              * self.tiling_input_dim_3], 0, 1,
-                                                align_input_dim_3 // self.block_num, 0, 0)
+                with self.tik_instance.for_range(0, Constant.TRANS_MIN_BLKS) as i:
+                    self.tik_instance.data_move(
+                        ping_ub_1[(Constant.TRANS_MIN_BLKS + i) * align_input_dim_3],
+                        self.input_gm[core_index * input_ele_per_core +
+                                      index * self.tiling_input_dim_2 * self.tiling_input_dim_3 +
+                                      (self.tiling_input_dim_2 - Constant.TRANS_MIN_BLKS + i) *
+                                      self.tiling_input_dim_3], 0, 1, align_input_dim_3 // self.block_num, 0, 0)
 
                 with self.tik_instance.for_range(0, self.padding_index_3) as i:
-                    self.tik_instance.vec_add(MAX_MASK,
-                                              ping_ub_1[TRANS_MIN_BLKS * align_input_dim_3 +
-                                                        (TRANS_MIN_BLKS - 1 - self.padding_index_3 * 2 + i) *
-                                                        align_input_dim_3],
-                                              ping_ub_1[TRANS_MIN_BLKS * align_input_dim_3 +
-                                                        (TRANS_MIN_BLKS - 1 - self.padding_index_3 * 2 + i) *
-                                                        align_input_dim_3],
-                                              ping_ub_1[TRANS_MIN_BLKS * align_input_dim_3 +
-                                                        (TRANS_MIN_BLKS - 1 - i) * align_input_dim_3],
-                                              loop, 8, 8, 8)
+                    self.tik_instance.vec_add(
+                        Constant.MAX_MASK,
+                        ping_ub_1[Constant.TRANS_MIN_BLKS * align_input_dim_3 +
+                                  (Constant.TRANS_MIN_BLKS - 1 - self.padding_index_3 * 2 + i) * align_input_dim_3],
+                        ping_ub_1[Constant.TRANS_MIN_BLKS * align_input_dim_3 +
+                                  (Constant.TRANS_MIN_BLKS - 1 - self.padding_index_3 * 2 + i) * align_input_dim_3],
+                        ping_ub_1[Constant.TRANS_MIN_BLKS * align_input_dim_3 +
+                                  (Constant.TRANS_MIN_BLKS - 1 - i) * align_input_dim_3], loop, 8, 8, 8)
                     with self.tik_instance.if_scope(remain_mask > 0):
-                        self.tik_instance.vec_add(remain_mask,
-                                                  ping_ub_1[TRANS_MIN_BLKS * align_input_dim_3 +
-                                                            (TRANS_MIN_BLKS - 1 - self.padding_index_3 * 2 + i) *
-                                                            align_input_dim_3 + loop * MAX_MASK],
-                                                  ping_ub_1[TRANS_MIN_BLKS * align_input_dim_3 +
-                                                            (TRANS_MIN_BLKS - 1 - self.padding_index_3 * 2 + i) *
-                                                            align_input_dim_3 + loop * MAX_MASK],
-                                                  ping_ub_1[TRANS_MIN_BLKS * align_input_dim_3 +
-                                                            (TRANS_MIN_BLKS - 1 - i) * align_input_dim_3 +
-                                                            loop * MAX_MASK],
-                                                  1, 8, 8, 8)
+                        self.tik_instance.vec_add(
+                            remain_mask,
+                            ping_ub_1[Constant.TRANS_MIN_BLKS * align_input_dim_3 +
+                                      (Constant.TRANS_MIN_BLKS - 1 - self.padding_index_3 * 2 + i) * align_input_dim_3 +
+                                      loop * Constant.MAX_MASK],
+                            ping_ub_1[Constant.TRANS_MIN_BLKS * align_input_dim_3 +
+                                      (Constant.TRANS_MIN_BLKS - 1 - self.padding_index_3 * 2 + i) * align_input_dim_3 +
+                                      loop * Constant.MAX_MASK],
+                            ping_ub_1[Constant.TRANS_MIN_BLKS * align_input_dim_3 +
+                                      (Constant.TRANS_MIN_BLKS - 1 - i) * align_input_dim_3 + loop * Constant.MAX_MASK],
+                            1, 8, 8, 8)
 
-                with self.tik_instance.for_range(self.padding_index_2, TRANS_MIN_BLKS) as i:
-                    self.tik_instance.data_move(ping_ub_2[(i - self.padding_index_2) * TRANS_MIN_BLKS],
-                                                ping_ub_1[i * align_input_dim_3],
-                                                0, 1, TRANS_MIN_BLKS // self.block_num, 0, 0)
+                with self.tik_instance.for_range(self.padding_index_2, Constant.TRANS_MIN_BLKS) as i:
+                    self.tik_instance.data_move(ping_ub_2[(i - self.padding_index_2) * Constant.TRANS_MIN_BLKS],
+                                                ping_ub_1[i * align_input_dim_3], 0, 1,
+                                                Constant.TRANS_MIN_BLKS // self.block_num, 0, 0)
 
-                with self.tik_instance.for_range(TRANS_MIN_BLKS, self.tiling_input_dim_2 - TRANS_MIN_BLKS) as i:
-                    self.tik_instance.data_move(ping_ub_2[(i - self.padding_index_2) * TRANS_MIN_BLKS],
-                                                self.input_gm[core_index * input_ele_per_core + index *
-                                                              self.tiling_input_dim_2 * self.tiling_input_dim_3 + i *
-                                                              self.tiling_input_dim_3],
-                                                0, 1, TRANS_MIN_BLKS // self.block_num, 0, 0)
+                with self.tik_instance.for_range(Constant.TRANS_MIN_BLKS,
+                                                 self.tiling_input_dim_2 - Constant.TRANS_MIN_BLKS) as i:
+                    self.tik_instance.data_move(
+                        ping_ub_2[(i - self.padding_index_2) * Constant.TRANS_MIN_BLKS],
+                        self.input_gm[core_index * input_ele_per_core +
+                                      index * self.tiling_input_dim_2 * self.tiling_input_dim_3 +
+                                      i * self.tiling_input_dim_3], 0, 1, Constant.TRANS_MIN_BLKS // self.block_num, 0,
+                        0)
 
-                with self.tik_instance.for_range(0, TRANS_MIN_BLKS - self.padding_index_3) as i:
-                    self.tik_instance.data_move(ping_ub_2[(i + self.tiling_output_dim_2 - TRANS_MIN_BLKS +
-                                                           self.padding_index_3) * TRANS_MIN_BLKS],
-                                                ping_ub_1[(TRANS_MIN_BLKS + i) * align_input_dim_3],
-                                                0, 1, TRANS_MIN_BLKS // self.block_num, 0, 0)
+                with self.tik_instance.for_range(0, Constant.TRANS_MIN_BLKS - self.padding_index_3) as i:
+                    self.tik_instance.data_move(
+                        ping_ub_2[(i + self.tiling_output_dim_2 - Constant.TRANS_MIN_BLKS + self.padding_index_3) *
+                                  Constant.TRANS_MIN_BLKS],
+                        ping_ub_1[(Constant.TRANS_MIN_BLKS + i) * align_input_dim_3], 0, 1,
+                        Constant.TRANS_MIN_BLKS // self.block_num, 0, 0)
 
                 align_inter = self.tik_instance.Scalar('int64', name='align_inter')
                 align_inter.set_as(((self.tiling_output_dim_2 - 1) // self.block_num + 1) * self.block_num)
                 time = self.tik_instance.Scalar('int64', name='time')
-                time.set_as(align_inter // TRANS_MIN_BLKS)
+                time.set_as(align_inter // Constant.TRANS_MIN_BLKS)
 
                 with self.tik_instance.for_range(0, time) as i:
                     src_list = []
                     dst_list = []
-                    for j in range(TRANS_MIN_BLKS):
-                        src_list.append(ping_ub_2[TRANS_MIN_BLKS * TRANS_MIN_BLKS * i + TRANS_MIN_BLKS * j])
-                        dst_list.append(pang_ub_1[time * TRANS_MIN_BLKS * j
-                                                  + TRANS_MIN_BLKS * i])
+                    for j in range(Constant.TRANS_MIN_BLKS):
+                        src_list.append(ping_ub_2[Constant.TRANS_MIN_BLKS * Constant.TRANS_MIN_BLKS * i +
+                                                  Constant.TRANS_MIN_BLKS * j])
+                        dst_list.append(pang_ub_1[time * Constant.TRANS_MIN_BLKS * j + Constant.TRANS_MIN_BLKS * i])
                     self.tik_instance.vnchwconv(True, False, dst_list, src_list, 1, 0, 0)
 
                 loop_col = self.tik_instance.Scalar('int64', name='loop_col')
                 remain_mask_col = self.tik_instance.Scalar('int64', name='remain_mask_col')
-                loop_col.set_as(align_inter // MAX_MASK)
-                remain_mask_col.set_as(align_inter % MAX_MASK)
+                loop_col.set_as(align_inter // Constant.MAX_MASK)
+                remain_mask_col.set_as(align_inter % Constant.MAX_MASK)
                 with self.tik_instance.for_range(0, self.padding_index_0) as i:
-                    self.tik_instance.vec_add(MAX_MASK,
-                                              pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) *
-                                                        align_inter],
-                                              pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) *
-                                                        align_inter], pang_ub_1[i * align_inter],
-                                              loop_col, 8, 8, 8)
+                    self.tik_instance.vec_add(
+                        Constant.MAX_MASK, pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) * align_inter],
+                        pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) * align_inter],
+                        pang_ub_1[i * align_inter], loop_col, 8, 8, 8)
                     with self.tik_instance.if_scope(remain_mask_col > 0):
-                        self.tik_instance.vec_add(remain_mask_col,
-                                                  pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) *
-                                                            align_inter + loop_col * MAX_MASK],
-                                                  pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) *
-                                                            align_inter + loop_col * MAX_MASK],
-                                                  pang_ub_1[i * align_inter + loop_col * MAX_MASK],
-                                                  1, 8, 8, 8)
+                        self.tik_instance.vec_add(
+                            remain_mask_col, pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) * align_inter +
+                                                       loop_col * Constant.MAX_MASK],
+                            pang_ub_1[(self.padding_index_0 + self.padding_index_0 - i) * align_inter +
+                                      loop_col * Constant.MAX_MASK],
+                            pang_ub_1[i * align_inter + loop_col * Constant.MAX_MASK], 1, 8, 8, 8)
 
                 with self.tik_instance.for_range(0, time) as i:
                     src_list = []
                     dst_list = []
-                    for j in range(TRANS_MIN_BLKS):
-                        src_list.append(pang_ub_1[time * TRANS_MIN_BLKS * (j + self.padding_index_0)
-                                                  + TRANS_MIN_BLKS * i])
-                        dst_list.append(ping_ub_2[TRANS_MIN_BLKS * TRANS_MIN_BLKS * i + TRANS_MIN_BLKS * j])
+                    for j in range(Constant.TRANS_MIN_BLKS):
+                        src_list.append(pang_ub_1[time * Constant.TRANS_MIN_BLKS * (j + self.padding_index_0) +
+                                                  Constant.TRANS_MIN_BLKS * i])
+                        dst_list.append(ping_ub_2[Constant.TRANS_MIN_BLKS * Constant.TRANS_MIN_BLKS * i +
+                                                  Constant.TRANS_MIN_BLKS * j])
                     self.tik_instance.vnchwconv(True, False, dst_list, src_list, 1, 0, 0)
 
-                self.tik_instance.data_move(self.work_space[core_index * WORK_SIZE], ping_ub_1, 0,
-                                            1, TRANS_MIN_BLKS * 2 *
-                                            align_input_dim_3 // self.block_num, 0, 0)
+                self.tik_instance.data_move(self.work_space[core_index * Constant.WORK_SIZE], ping_ub_1, 0, 1,
+                                            Constant.TRANS_MIN_BLKS * 2 * align_input_dim_3 // self.block_num, 0, 0)
 
-                with self.tik_instance.for_range(self.padding_index_2, TRANS_MIN_BLKS) as i:
-                    self.tik_instance.data_move(block_ub,
-                                                self.work_space[core_index * WORK_SIZE + i * align_input_dim_3 +
-                                                                self.tiling_input_dim_3 - TRANS_MIN_BLKS],
-                                                0, 1, TRANS_MIN_BLKS // self.block_num, 0, 0)
-                    self.tik_instance.data_move(pang_ub_1[(i - self.padding_index_2) * TRANS_MIN_BLKS],
-                                                block_ub,
-                                                0, 1, TRANS_MIN_BLKS // self.block_num, 0, 0)
+                with self.tik_instance.for_range(self.padding_index_2, Constant.TRANS_MIN_BLKS) as i:
+                    self.tik_instance.data_move(
+                        block_ub, self.work_space[core_index * Constant.WORK_SIZE + i * align_input_dim_3 +
+                                                  self.tiling_input_dim_3 - Constant.TRANS_MIN_BLKS], 0, 1,
+                        Constant.TRANS_MIN_BLKS // self.block_num, 0, 0)
+                    self.tik_instance.data_move(pang_ub_1[(i - self.padding_index_2) * Constant.TRANS_MIN_BLKS],
+                                                block_ub, 0, 1, Constant.TRANS_MIN_BLKS // self.block_num, 0, 0)
 
-                with self.tik_instance.for_range(TRANS_MIN_BLKS, self.tiling_input_dim_2 - TRANS_MIN_BLKS) as i:
-                    self.tik_instance.data_move(pang_ub_1[(i - self.padding_index_2) * TRANS_MIN_BLKS],
-                                                self.input_gm[core_index * input_ele_per_core + index *
-                                                              self.tiling_input_dim_2 * self.tiling_input_dim_3 +
-                                                              (i + 1) * self.tiling_input_dim_3 - TRANS_MIN_BLKS],
-                                                0, 1, TRANS_MIN_BLKS // self.block_num, 0, 0)
+                with self.tik_instance.for_range(Constant.TRANS_MIN_BLKS,
+                                                 self.tiling_input_dim_2 - Constant.TRANS_MIN_BLKS) as i:
+                    self.tik_instance.data_move(
+                        pang_ub_1[(i - self.padding_index_2) * Constant.TRANS_MIN_BLKS],
+                        self.input_gm[core_index * input_ele_per_core +
+                                      index * self.tiling_input_dim_2 * self.tiling_input_dim_3 +
+                                      (i + 1) * self.tiling_input_dim_3 - Constant.TRANS_MIN_BLKS], 0, 1,
+                        Constant.TRANS_MIN_BLKS // self.block_num, 0, 0)
 
-                with self.tik_instance.for_range(0, TRANS_MIN_BLKS - self.padding_index_3) as i:
-                    self.tik_instance.data_move(block_ub,
-                                                self.work_space[core_index * WORK_SIZE
-                                                                + (TRANS_MIN_BLKS + i)
-                                                                * align_input_dim_3
-                                                                + self.tiling_input_dim_3
-                                                                - TRANS_MIN_BLKS],
-                                                0, 1, TRANS_MIN_BLKS // self.block_num, 0, 0)
-                    self.tik_instance.data_move(pang_ub_1[(i + self.tiling_output_dim_2 - TRANS_MIN_BLKS +
-                                                           self.padding_index_3) * TRANS_MIN_BLKS],
-                                                block_ub,
-                                                0, 1, TRANS_MIN_BLKS // self.block_num, 0, 0)
+                with self.tik_instance.for_range(0, Constant.TRANS_MIN_BLKS - self.padding_index_3) as i:
+                    self.tik_instance.data_move(
+                        block_ub, self.work_space[core_index * Constant.WORK_SIZE +
+                                                  (Constant.TRANS_MIN_BLKS + i) * align_input_dim_3 +
+                                                  self.tiling_input_dim_3 - Constant.TRANS_MIN_BLKS], 0, 1,
+                        Constant.TRANS_MIN_BLKS // self.block_num, 0, 0)
+                    self.tik_instance.data_move(
+                        pang_ub_1[(i + self.tiling_output_dim_2 - Constant.TRANS_MIN_BLKS + self.padding_index_3) *
+                                  Constant.TRANS_MIN_BLKS], block_ub, 0, 1, Constant.TRANS_MIN_BLKS // self.block_num,
+                        0, 0)
 
                 with self.tik_instance.for_range(0, time) as i:
                     src_list = []
                     dst_list = []
-                    for j in range(TRANS_MIN_BLKS):
-                        src_list.append(pang_ub_1[TRANS_MIN_BLKS * TRANS_MIN_BLKS * i + TRANS_MIN_BLKS * j])
-                        dst_list.append(pang_ub_2[time * TRANS_MIN_BLKS * j
-                                                  + TRANS_MIN_BLKS * i])
+                    for j in range(Constant.TRANS_MIN_BLKS):
+                        src_list.append(pang_ub_1[Constant.TRANS_MIN_BLKS * Constant.TRANS_MIN_BLKS * i +
+                                                  Constant.TRANS_MIN_BLKS * j])
+                        dst_list.append(pang_ub_2[time * Constant.TRANS_MIN_BLKS * j + Constant.TRANS_MIN_BLKS * i])
                     self.tik_instance.vnchwconv(True, False, dst_list, src_list, 1, 0, 0)
 
                 with self.tik_instance.for_range(0, self.padding_index_1) as i:
-                    self.tik_instance.vec_add(MAX_MASK,
-                                              pang_ub_2[(TRANS_MIN_BLKS - 1 - self.padding_index_1 * 2 + i) *
-                                                        align_inter],
-                                              pang_ub_2[(TRANS_MIN_BLKS - 1 - self.padding_index_1 * 2 + i) *
-                                                        align_inter], pang_ub_2[(TRANS_MIN_BLKS - 1 - i) * align_inter],
-                                              loop_col, 8, 8, 8)
+                    self.tik_instance.vec_add(
+                        Constant.MAX_MASK,
+                        pang_ub_2[(Constant.TRANS_MIN_BLKS - 1 - self.padding_index_1 * 2 + i) * align_inter],
+                        pang_ub_2[(Constant.TRANS_MIN_BLKS - 1 - self.padding_index_1 * 2 + i) * align_inter],
+                        pang_ub_2[(Constant.TRANS_MIN_BLKS - 1 - i) * align_inter], loop_col, 8, 8, 8)
                     with self.tik_instance.if_scope(remain_mask_col > 0):
-                        self.tik_instance.vec_add(remain_mask_col,
-                                                  pang_ub_2[(TRANS_MIN_BLKS - 1 - self.padding_index_1 * 2 + i) *
-                                                            align_inter + loop_col * MAX_MASK],
-                                                  pang_ub_2[(TRANS_MIN_BLKS - 1 - self.padding_index_1 * 2 + i) *
-                                                            align_inter + loop_col * MAX_MASK],
-                                                  pang_ub_2[(TRANS_MIN_BLKS - 1 - i) * align_inter +
-                                                            loop_col * MAX_MASK], 1, 8, 8, 8)
+                        self.tik_instance.vec_add(
+                            remain_mask_col,
+                            pang_ub_2[(Constant.TRANS_MIN_BLKS - 1 - self.padding_index_1 * 2 + i) * align_inter +
+                                      loop_col * Constant.MAX_MASK],
+                            pang_ub_2[(Constant.TRANS_MIN_BLKS - 1 - self.padding_index_1 * 2 + i) * align_inter +
+                                      loop_col * Constant.MAX_MASK],
+                            pang_ub_2[(Constant.TRANS_MIN_BLKS - 1 - i) * align_inter + loop_col * Constant.MAX_MASK],
+                            1, 8, 8, 8)
 
                 with self.tik_instance.for_range(0, time) as i:
                     src_list = []
                     dst_list = []
-                    for j in range(TRANS_MIN_BLKS):
-                        src_list.append(pang_ub_2[time * TRANS_MIN_BLKS * j
-                                                  + TRANS_MIN_BLKS * i])
-                        dst_list.append(pang_ub_1[TRANS_MIN_BLKS * TRANS_MIN_BLKS * i + TRANS_MIN_BLKS * j])
+                    for j in range(Constant.TRANS_MIN_BLKS):
+                        src_list.append(pang_ub_2[time * Constant.TRANS_MIN_BLKS * j + Constant.TRANS_MIN_BLKS * i])
+                        dst_list.append(pang_ub_1[Constant.TRANS_MIN_BLKS * Constant.TRANS_MIN_BLKS * i +
+                                                  Constant.TRANS_MIN_BLKS * j])
                     self.tik_instance.vnchwconv(True, False, dst_list, src_list, 1, 0, 0)
 
                 burst = self.tik_instance.Scalar('int64', name='burst')
-                burst.set_as((self.tiling_output_dim_3 - (TRANS_MIN_BLKS - self.padding_index_0)) // TRANS_MIN_BLKS)
+                burst.set_as((self.tiling_output_dim_3 - (Constant.TRANS_MIN_BLKS - self.padding_index_0)) //
+                             Constant.TRANS_MIN_BLKS)
                 special_offset = self.tik_instance.Scalar(dtype='int64', name='special_offset')
-                special_offset.set_as((TRANS_MIN_BLKS - self.padding_index_0) + burst * TRANS_MIN_BLKS
-                                       - (TRANS_MIN_BLKS - ((self.padding_index_1 + self.tiling_output_dim_3)
-                                       - ((TRANS_MIN_BLKS - self.padding_index_0) + burst * TRANS_MIN_BLKS))))
+                special_offset.set_as(
+                    (Constant.TRANS_MIN_BLKS - self.padding_index_0) + burst * Constant.TRANS_MIN_BLKS -
+                    (Constant.TRANS_MIN_BLKS -
+                     ((self.padding_index_1 + self.tiling_output_dim_3) -
+                      ((Constant.TRANS_MIN_BLKS - self.padding_index_0) + burst * Constant.TRANS_MIN_BLKS))))
 
-                with self.tik_instance.for_range(0, TRANS_MIN_BLKS - self.padding_index_2) as i:
-                    self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core +
-                                                               index * self.tiling_output_dim_2 *
-                                                               self.tiling_output_dim_3 + i * self.tiling_output_dim_3],
-                                                ping_ub_2[i * TRANS_MIN_BLKS], 0, 1,
-                                                TRANS_MIN_BLKS // self.block_num, 0, 0)
-                    self.tik_instance.data_move(ping_ub_1,
-                                                self.work_space[WORK_SIZE * core_index + (i + self.padding_index_2)
-                                                                * align_input_dim_3 +
-                                                TRANS_MIN_BLKS], 0, 1,
-                                                burst, 0, 0)
-                    self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core +
-                                                               index * self.tiling_output_dim_2 *
-                                                               self.tiling_output_dim_3 + i * self.tiling_output_dim_3
-                                                + TRANS_MIN_BLKS - self.padding_index_0],
-                                                ping_ub_1, 0, 1,
-                                                burst, 0, 0)
-                    with self.tik_instance.if_scope(special_offset > ((TRANS_MIN_BLKS - self.padding_index_0)
-                                                                       + burst * TRANS_MIN_BLKS)):
+                with self.tik_instance.for_range(0, Constant.TRANS_MIN_BLKS - self.padding_index_2) as i:
+                    self.tik_instance.data_move(
+                        self.output_gm[core_index * output_ele_per_core +
+                                       index * self.tiling_output_dim_2 * self.tiling_output_dim_3 +
+                                       i * self.tiling_output_dim_3], ping_ub_2[i * Constant.TRANS_MIN_BLKS], 0, 1,
+                        Constant.TRANS_MIN_BLKS // self.block_num, 0, 0)
+                    self.tik_instance.data_move(
+                        ping_ub_1,
+                        self.work_space[Constant.WORK_SIZE * core_index +
+                                        (i + self.padding_index_2) * align_input_dim_3 + Constant.TRANS_MIN_BLKS], 0, 1,
+                        burst, 0, 0)
+                    self.tik_instance.data_move(
+                        self.output_gm[core_index * output_ele_per_core +
+                                       index * self.tiling_output_dim_2 * self.tiling_output_dim_3 +
+                                       i * self.tiling_output_dim_3 + Constant.TRANS_MIN_BLKS - self.padding_index_0],
+                        ping_ub_1, 0, 1, burst, 0, 0)
+                    with self.tik_instance.if_scope(special_offset > (
+                        (Constant.TRANS_MIN_BLKS - self.padding_index_0) + burst * Constant.TRANS_MIN_BLKS)):
                         new_block_ub = self.tik_instance.Tensor(self.inner_dtype, (self.block_num,),
-                                                                name='new_block_ub', scope=tik.scope_ubuf)
-                        self.tik_instance.data_move(new_block_ub,
-                                                    self.work_space[WORK_SIZE * core_index + (i + self.padding_index_2)
-                                                                    * align_input_dim_3 + TRANS_MIN_BLKS
-                                                                    + burst * TRANS_MIN_BLKS
-                                                                    - (TRANS_MIN_BLKS
-                                                                    - (special_offset
-                                                                    - ((TRANS_MIN_BLKS - self.padding_index_0)
-                                                                    + burst * TRANS_MIN_BLKS)))],
-                                                    0, 1, 1, 0, 0)
-                        self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core
-                                                                   + index * self.tiling_output_dim_2
-                                                                   * self.tiling_output_dim_3
-                                                                   + i * self.tiling_output_dim_3
-                                                                   + TRANS_MIN_BLKS - self.padding_index_0
-                                                                   + burst * TRANS_MIN_BLKS
-                                                                   - (TRANS_MIN_BLKS
-                                                                   - (special_offset
-                                                                   - ((TRANS_MIN_BLKS - self.padding_index_0)
-                                                                   + burst * TRANS_MIN_BLKS)))],
-                                                    new_block_ub,
-                                                    0, 1, 1, 0, 0)
-                    self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core +
-                                                               index * self.tiling_output_dim_2 *
-                                                               self.tiling_output_dim_3 + i * self.tiling_output_dim_3
-                                                + (TRANS_MIN_BLKS - self.padding_index_0) + burst * TRANS_MIN_BLKS
-                                                - (TRANS_MIN_BLKS - ((self.padding_index_1 + self.tiling_output_dim_3)
-                                                                     - ((TRANS_MIN_BLKS - self.padding_index_0) +
-                                                                        burst * TRANS_MIN_BLKS)))],
-                                                pang_ub_1[i * TRANS_MIN_BLKS], 0, 1,
-                                                TRANS_MIN_BLKS // self.block_num, 0, 0)
+                                                                name='new_block_ub',
+                                                                scope=tik.scope_ubuf)
+                        self.tik_instance.data_move(
+                            new_block_ub,
+                            self.work_space[Constant.WORK_SIZE * core_index +
+                                            (i + self.padding_index_2) * align_input_dim_3 + Constant.TRANS_MIN_BLKS +
+                                            burst * Constant.TRANS_MIN_BLKS -
+                                            (Constant.TRANS_MIN_BLKS -
+                                             (special_offset - ((Constant.TRANS_MIN_BLKS - self.padding_index_0) +
+                                                                burst * Constant.TRANS_MIN_BLKS)))], 0, 1, 1, 0, 0)
+                        self.tik_instance.data_move(
+                            self.output_gm[core_index * output_ele_per_core +
+                                           index * self.tiling_output_dim_2 * self.tiling_output_dim_3 +
+                                           i * self.tiling_output_dim_3 + Constant.TRANS_MIN_BLKS -
+                                           self.padding_index_0 + burst * Constant.TRANS_MIN_BLKS -
+                                           (Constant.TRANS_MIN_BLKS -
+                                            (special_offset - ((Constant.TRANS_MIN_BLKS - self.padding_index_0) +
+                                                               burst * Constant.TRANS_MIN_BLKS)))], new_block_ub, 0, 1,
+                            1, 0, 0)
+                    self.tik_instance.data_move(
+                        self.output_gm[
+                            core_index * output_ele_per_core +
+                            index * self.tiling_output_dim_2 * self.tiling_output_dim_3 + i * self.tiling_output_dim_3 +
+                            (Constant.TRANS_MIN_BLKS - self.padding_index_0) + burst * Constant.TRANS_MIN_BLKS -
+                            (Constant.TRANS_MIN_BLKS -
+                             ((self.padding_index_1 + self.tiling_output_dim_3) -
+                              ((Constant.TRANS_MIN_BLKS - self.padding_index_0) + burst * Constant.TRANS_MIN_BLKS)))],
+                        pang_ub_1[i * Constant.TRANS_MIN_BLKS], 0, 1, Constant.TRANS_MIN_BLKS // self.block_num, 0, 0)
 
-                with self.tik_instance.for_range(TRANS_MIN_BLKS - self.padding_index_2, self.tiling_output_dim_2 -
-                        (TRANS_MIN_BLKS - self.padding_index_3)) as i:
-                    self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core +
-                                                               index * self.tiling_output_dim_2 *
-                                                               self.tiling_output_dim_3 + i
-                                                               * self.tiling_output_dim_3],
-                                                ping_ub_2[i * TRANS_MIN_BLKS], 0, 1,
-                                                TRANS_MIN_BLKS // self.block_num, 0, 0)
-                    self.tik_instance.data_move(ping_ub_1,
-                                                self.input_gm[core_index * input_ele_per_core
-                                                              + index * self.tiling_input_dim_2
-                                                              * self.tiling_input_dim_3
-                                                              + (i + self.padding_index_2)
-                                                              * self.tiling_input_dim_3
-                                                              + TRANS_MIN_BLKS],
-                                                              0, 1, burst, 0, 0)
-                    self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core +
-                                                               index * self.tiling_output_dim_2 *
-                                                               self.tiling_output_dim_3 + i * self.tiling_output_dim_3
-                                                + TRANS_MIN_BLKS - self.padding_index_0],
-                                                ping_ub_1, 0, 1,
-                                                burst, 0, 0)
-                    with self.tik_instance.if_scope(special_offset > ((TRANS_MIN_BLKS - self.padding_index_0)
-                                                                       + burst * TRANS_MIN_BLKS)):
+                with self.tik_instance.for_range(
+                        Constant.TRANS_MIN_BLKS - self.padding_index_2,
+                        self.tiling_output_dim_2 - (Constant.TRANS_MIN_BLKS - self.padding_index_3)) as i:
+                    self.tik_instance.data_move(
+                        self.output_gm[core_index * output_ele_per_core +
+                                       index * self.tiling_output_dim_2 * self.tiling_output_dim_3 +
+                                       i * self.tiling_output_dim_3], ping_ub_2[i * Constant.TRANS_MIN_BLKS], 0, 1,
+                        Constant.TRANS_MIN_BLKS // self.block_num, 0, 0)
+                    self.tik_instance.data_move(
+                        ping_ub_1,
+                        self.input_gm[core_index * input_ele_per_core +
+                                      index * self.tiling_input_dim_2 * self.tiling_input_dim_3 +
+                                      (i + self.padding_index_2) * self.tiling_input_dim_3 + Constant.TRANS_MIN_BLKS],
+                        0, 1, burst, 0, 0)
+                    self.tik_instance.data_move(
+                        self.output_gm[core_index * output_ele_per_core +
+                                       index * self.tiling_output_dim_2 * self.tiling_output_dim_3 +
+                                       i * self.tiling_output_dim_3 + Constant.TRANS_MIN_BLKS - self.padding_index_0],
+                        ping_ub_1, 0, 1, burst, 0, 0)
+                    with self.tik_instance.if_scope(special_offset > (
+                        (Constant.TRANS_MIN_BLKS - self.padding_index_0) + burst * Constant.TRANS_MIN_BLKS)):
                         new_block_ub = self.tik_instance.Tensor(self.inner_dtype, (self.block_num,),
-                                                                name='new_block_ub', scope=tik.scope_ubuf)
-                        self.tik_instance.data_move(new_block_ub,
-                                                    self.input_gm[core_index * input_ele_per_core
-                                                                  + index * self.tiling_input_dim_2
-                                                                  * self.tiling_input_dim_3
-                                                                  + (i + self.padding_index_2)
-                                                                  * self.tiling_input_dim_3
-                                                                  + TRANS_MIN_BLKS
-                                                                  + burst * TRANS_MIN_BLKS
-                                                                  - (TRANS_MIN_BLKS
-                                                                  - (special_offset
-                                                                  - ((TRANS_MIN_BLKS - self.padding_index_0)
-                                                                  + burst * TRANS_MIN_BLKS)))],
-                                                    0, 1, 1, 0, 0)
-                        self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core
-                                                                   + index * self.tiling_output_dim_2
-                                                                   * self.tiling_output_dim_3
-                                                                   + i * self.tiling_output_dim_3
-                                                                   + TRANS_MIN_BLKS - self.padding_index_0
-                                                                   + burst * TRANS_MIN_BLKS
-                                                                   - (TRANS_MIN_BLKS
-                                                                   - (special_offset
-                                                                   - ((TRANS_MIN_BLKS - self.padding_index_0)
-                                                                   + burst * TRANS_MIN_BLKS)))],
-                                                    new_block_ub,
-                                                    0, 1, 1, 0, 0)
+                                                                name='new_block_ub',
+                                                                scope=tik.scope_ubuf)
+                        self.tik_instance.data_move(
+                            new_block_ub,
+                            self.input_gm[core_index * input_ele_per_core +
+                                          index * self.tiling_input_dim_2 * self.tiling_input_dim_3 +
+                                          (i + self.padding_index_2) * self.tiling_input_dim_3 +
+                                          Constant.TRANS_MIN_BLKS + burst * Constant.TRANS_MIN_BLKS -
+                                          (Constant.TRANS_MIN_BLKS -
+                                           (special_offset - ((Constant.TRANS_MIN_BLKS - self.padding_index_0) +
+                                                              burst * Constant.TRANS_MIN_BLKS)))], 0, 1, 1, 0, 0)
+                        self.tik_instance.data_move(
+                            self.output_gm[core_index * output_ele_per_core +
+                                           index * self.tiling_output_dim_2 * self.tiling_output_dim_3 +
+                                           i * self.tiling_output_dim_3 + Constant.TRANS_MIN_BLKS -
+                                           self.padding_index_0 + burst * Constant.TRANS_MIN_BLKS -
+                                           (Constant.TRANS_MIN_BLKS -
+                                            (special_offset - ((Constant.TRANS_MIN_BLKS - self.padding_index_0) +
+                                                               burst * Constant.TRANS_MIN_BLKS)))], new_block_ub, 0, 1,
+                            1, 0, 0)
 
-                    self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core +
-                                                               index * self.tiling_output_dim_2 *
-                                                               self.tiling_output_dim_3 + i * self.tiling_output_dim_3
-                                                + (TRANS_MIN_BLKS - self.padding_index_0) + burst * TRANS_MIN_BLKS
-                                                - (TRANS_MIN_BLKS - ((self.padding_index_1 + self.tiling_output_dim_3)
-                                                                     - ((TRANS_MIN_BLKS - self.padding_index_0) +
-                                                                        burst * TRANS_MIN_BLKS)))],
-                                                pang_ub_1[i * TRANS_MIN_BLKS], 0, 1,
-                                                TRANS_MIN_BLKS // self.block_num, 0, 0)
+                    self.tik_instance.data_move(
+                        self.output_gm[
+                            core_index * output_ele_per_core +
+                            index * self.tiling_output_dim_2 * self.tiling_output_dim_3 + i * self.tiling_output_dim_3 +
+                            (Constant.TRANS_MIN_BLKS - self.padding_index_0) + burst * Constant.TRANS_MIN_BLKS -
+                            (Constant.TRANS_MIN_BLKS -
+                             ((self.padding_index_1 + self.tiling_output_dim_3) -
+                              ((Constant.TRANS_MIN_BLKS - self.padding_index_0) + burst * Constant.TRANS_MIN_BLKS)))],
+                        pang_ub_1[i * Constant.TRANS_MIN_BLKS], 0, 1, Constant.TRANS_MIN_BLKS // self.block_num, 0, 0)
 
-                with self.tik_instance.for_range(self.tiling_output_dim_2 -
-                        (TRANS_MIN_BLKS - self.padding_index_3), self.tiling_output_dim_2) as i:
-                    self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core +
-                                                               index * self.tiling_output_dim_2 *
-                                                               self.tiling_output_dim_3 + i *
-                                                               self.tiling_output_dim_3],
-                                                ping_ub_2[i * TRANS_MIN_BLKS], 0, 1,
-                                                TRANS_MIN_BLKS // self.block_num, 0, 0)
-                    self.tik_instance.data_move(ping_ub_1,
-                                                self.work_space[WORK_SIZE * core_index + (i + TRANS_MIN_BLKS -
-                                                             (self.tiling_output_dim_2
-                                                             - (TRANS_MIN_BLKS - self.padding_index_3)))
-                                                                * align_input_dim_3 +
-                                                TRANS_MIN_BLKS], 0, 1,
-                                                burst, 0, 0)
-                    self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core +
-                                                               index * self.tiling_output_dim_2 *
-                                                               self.tiling_output_dim_3 + i *
-                                                               self.tiling_output_dim_3
-                                                + TRANS_MIN_BLKS - self.padding_index_0],
-                                                ping_ub_1, 0, 1,
-                                                burst, 0, 0)
-                    with self.tik_instance.if_scope(special_offset > ((TRANS_MIN_BLKS - self.padding_index_0)
-                                                                       + burst * TRANS_MIN_BLKS)):
-                            new_block_ub = self.tik_instance.Tensor(self.inner_dtype, (self.block_num,),
-                                                                    name='new_block_ub', scope=tik.scope_ubuf)
-                            self.tik_instance.data_move(new_block_ub,
-                                                        self.work_space[WORK_SIZE * core_index
-                                                                        + (i + TRANS_MIN_BLKS
-                                                                        - (self.tiling_output_dim_2
-                                                                        - (TRANS_MIN_BLKS - self.padding_index_3)))
-                                                                        * align_input_dim_3
-                                                                        + TRANS_MIN_BLKS + burst * TRANS_MIN_BLKS
-                                                                        - (TRANS_MIN_BLKS - (special_offset
-                                                                        - ((TRANS_MIN_BLKS - self.padding_index_0)
-                                                                        + burst * TRANS_MIN_BLKS)))],
-                                                        0, 1, 1, 0, 0)
-                            self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core
-                                                                       + index * self.tiling_output_dim_2
-                                                                       * self.tiling_output_dim_3
-                                                                       + i * self.tiling_output_dim_3
-                                                                       + TRANS_MIN_BLKS - self.padding_index_0
-                                                                       + burst * TRANS_MIN_BLKS
-                                                                       - (TRANS_MIN_BLKS - (special_offset
-                                                                       - ((TRANS_MIN_BLKS - self.padding_index_0)
-                                                                       + burst * TRANS_MIN_BLKS)))],
-                                                        new_block_ub,
-                                                        0, 1, 1, 0, 0)
+                with self.tik_instance.for_range(
+                        self.tiling_output_dim_2 - (Constant.TRANS_MIN_BLKS - self.padding_index_3),
+                        self.tiling_output_dim_2) as i:
+                    self.tik_instance.data_move(
+                        self.output_gm[core_index * output_ele_per_core +
+                                       index * self.tiling_output_dim_2 * self.tiling_output_dim_3 +
+                                       i * self.tiling_output_dim_3], ping_ub_2[i * Constant.TRANS_MIN_BLKS], 0, 1,
+                        Constant.TRANS_MIN_BLKS // self.block_num, 0, 0)
+                    self.tik_instance.data_move(
+                        ping_ub_1,
+                        self.work_space[Constant.WORK_SIZE * core_index +
+                                        (i + Constant.TRANS_MIN_BLKS -
+                                         (self.tiling_output_dim_2 -
+                                          (Constant.TRANS_MIN_BLKS - self.padding_index_3))) * align_input_dim_3 +
+                                        Constant.TRANS_MIN_BLKS], 0, 1, burst, 0, 0)
+                    self.tik_instance.data_move(
+                        self.output_gm[core_index * output_ele_per_core +
+                                       index * self.tiling_output_dim_2 * self.tiling_output_dim_3 +
+                                       i * self.tiling_output_dim_3 + Constant.TRANS_MIN_BLKS - self.padding_index_0],
+                        ping_ub_1, 0, 1, burst, 0, 0)
+                    with self.tik_instance.if_scope(special_offset > (
+                        (Constant.TRANS_MIN_BLKS - self.padding_index_0) + burst * Constant.TRANS_MIN_BLKS)):
+                        new_block_ub = self.tik_instance.Tensor(self.inner_dtype, (self.block_num,),
+                                                                name='new_block_ub',
+                                                                scope=tik.scope_ubuf)
+                        self.tik_instance.data_move(
+                            new_block_ub,
+                            self.work_space[Constant.WORK_SIZE * core_index +
+                                            (i + Constant.TRANS_MIN_BLKS -
+                                             (self.tiling_output_dim_2 -
+                                              (Constant.TRANS_MIN_BLKS - self.padding_index_3))) * align_input_dim_3 +
+                                            Constant.TRANS_MIN_BLKS + burst * Constant.TRANS_MIN_BLKS -
+                                            (Constant.TRANS_MIN_BLKS -
+                                             (special_offset - ((Constant.TRANS_MIN_BLKS - self.padding_index_0) +
+                                                                burst * Constant.TRANS_MIN_BLKS)))], 0, 1, 1, 0, 0)
+                        self.tik_instance.data_move(
+                            self.output_gm[core_index * output_ele_per_core +
+                                           index * self.tiling_output_dim_2 * self.tiling_output_dim_3 +
+                                           i * self.tiling_output_dim_3 + Constant.TRANS_MIN_BLKS -
+                                           self.padding_index_0 + burst * Constant.TRANS_MIN_BLKS -
+                                           (Constant.TRANS_MIN_BLKS -
+                                            (special_offset - ((Constant.TRANS_MIN_BLKS - self.padding_index_0) +
+                                                               burst * Constant.TRANS_MIN_BLKS)))], new_block_ub, 0, 1,
+                            1, 0, 0)
                     with self.tik_instance.if_scope(i == self.tiling_output_dim_2 - 1):
-                        with self.tik_instance.if_scope(special_offset > ((TRANS_MIN_BLKS - self.padding_index_0)
-                                                                           + burst * TRANS_MIN_BLKS)):
+                        with self.tik_instance.if_scope(special_offset > (
+                            (Constant.TRANS_MIN_BLKS - self.padding_index_0) + burst * Constant.TRANS_MIN_BLKS)):
                             new_block_ub = self.tik_instance.Tensor(self.inner_dtype, (self.block_num,),
-                                                                    name='new_block_ub', scope=tik.scope_ubuf)
-                            self.tik_instance.data_move(new_block_ub,
-                                                        self.work_space[WORK_SIZE * core_index
-                                                                        + (i + TRANS_MIN_BLKS
-                                                                        - (self.tiling_output_dim_2
-                                                                        - (TRANS_MIN_BLKS - self.padding_index_3)))
-                                                                        * align_input_dim_3
-                                                                        + TRANS_MIN_BLKS
-                                                                        + burst * TRANS_MIN_BLKS
-                                                                        - (TRANS_MIN_BLKS
-                                                                        - (special_offset
-                                                                        - ((TRANS_MIN_BLKS - self.padding_index_0)
-                                                                        + burst * TRANS_MIN_BLKS)))],
-                                                        0, 1, 1, 0, 0)
-                            with self.tik_instance.for_range(TRANS_MIN_BLKS - self.padding_index_0,
-                                                             TRANS_MIN_BLKS) as j:
-                                    block_ub[j - (TRANS_MIN_BLKS - self.padding_index_0)].set_as(new_block_ub[j])
+                                                                    name='new_block_ub',
+                                                                    scope=tik.scope_ubuf)
+                            self.tik_instance.data_move(
+                                new_block_ub,
+                                self.work_space[Constant.WORK_SIZE * core_index +
+                                                (i + Constant.TRANS_MIN_BLKS -
+                                                 (self.tiling_output_dim_2 -
+                                                  (Constant.TRANS_MIN_BLKS - self.padding_index_3))) * align_input_dim_3
+                                                + Constant.TRANS_MIN_BLKS + burst * Constant.TRANS_MIN_BLKS -
+                                                (Constant.TRANS_MIN_BLKS -
+                                                 (special_offset - ((Constant.TRANS_MIN_BLKS - self.padding_index_0) +
+                                                                    burst * Constant.TRANS_MIN_BLKS)))], 0, 1, 1, 0, 0)
+                            with self.tik_instance.for_range(Constant.TRANS_MIN_BLKS - self.padding_index_0,
+                                                             Constant.TRANS_MIN_BLKS) as j:
+                                block_ub[j - (Constant.TRANS_MIN_BLKS - self.padding_index_0)].set_as(new_block_ub[j])
                         with self.tik_instance.else_scope():
-                            with self.tik_instance.for_range(self.tiling_output_dim_3 - TRANS_MIN_BLKS
-                                                             - (TRANS_MIN_BLKS - self.padding_index_0),
-                                                             self.tiling_output_dim_3 - TRANS_MIN_BLKS
-                                                             - (TRANS_MIN_BLKS - self.padding_index_0)
-                                                             + self.padding_index_1) as j:
-                                block_ub[j - (self.tiling_output_dim_3 - TRANS_MIN_BLKS
-                                           - (TRANS_MIN_BLKS - self.padding_index_0))].set_as(ping_ub_1[j])
-                        with self.tik_instance.for_range(0, TRANS_MIN_BLKS - self.padding_index_1) as j:
-                            block_ub[j + self.padding_index_1].set_as(pang_ub_1[i * TRANS_MIN_BLKS + j])
-                        self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core +
-                                                                   index * self.tiling_output_dim_2 *
-                                                                   self.tiling_output_dim_3 + (i + 1) *
-                                                                   self.tiling_output_dim_3 - TRANS_MIN_BLKS],
-                                                    block_ub, 0, 1, 1, 0, 0)
+                            with self.tik_instance.for_range(
+                                    self.tiling_output_dim_3 - Constant.TRANS_MIN_BLKS -
+                                (Constant.TRANS_MIN_BLKS - self.padding_index_0),
+                                    self.tiling_output_dim_3 - Constant.TRANS_MIN_BLKS -
+                                (Constant.TRANS_MIN_BLKS - self.padding_index_0) + self.padding_index_1) as j:
+                                block_ub[j - (self.tiling_output_dim_3 - Constant.TRANS_MIN_BLKS -
+                                              (Constant.TRANS_MIN_BLKS - self.padding_index_0))].set_as(ping_ub_1[j])
+                        with self.tik_instance.for_range(0, Constant.TRANS_MIN_BLKS - self.padding_index_1) as j:
+                            block_ub[j + self.padding_index_1].set_as(pang_ub_1[i * Constant.TRANS_MIN_BLKS + j])
+                        self.tik_instance.data_move(
+                            self.output_gm[core_index * output_ele_per_core +
+                                           index * self.tiling_output_dim_2 * self.tiling_output_dim_3 +
+                                           (i + 1) * self.tiling_output_dim_3 - Constant.TRANS_MIN_BLKS], block_ub, 0,
+                            1, 1, 0, 0)
                     with self.tik_instance.else_scope():
-                        self.tik_instance.data_move(self.output_gm[core_index * output_ele_per_core +
-                                                                   index * self.tiling_output_dim_2 *
-                                                                   self.tiling_output_dim_3 + i *
-                                                                   self.tiling_output_dim_3
-                                                    + (TRANS_MIN_BLKS - self.padding_index_0) + burst * TRANS_MIN_BLKS
-                                                    - (TRANS_MIN_BLKS - ((self.padding_index_1 +
-                                                                          self.tiling_output_dim_3)
-                                                                         - ((TRANS_MIN_BLKS - self.padding_index_0) +
-                                                                            burst * TRANS_MIN_BLKS)))],
-                                                    pang_ub_1[i * TRANS_MIN_BLKS], 0, 1,
-                                                    TRANS_MIN_BLKS // self.block_num, 0, 0)
+                        self.tik_instance.data_move(
+                            self.output_gm[core_index * output_ele_per_core +
+                                           index * self.tiling_output_dim_2 * self.tiling_output_dim_3 +
+                                           i * self.tiling_output_dim_3 +
+                                           (Constant.TRANS_MIN_BLKS - self.padding_index_0) +
+                                           burst * Constant.TRANS_MIN_BLKS -
+                                           (Constant.TRANS_MIN_BLKS -
+                                            ((self.padding_index_1 + self.tiling_output_dim_3) -
+                                             ((Constant.TRANS_MIN_BLKS - self.padding_index_0) +
+                                              burst * Constant.TRANS_MIN_BLKS)))],
+                            pang_ub_1[i * Constant.TRANS_MIN_BLKS], 0, 1, Constant.TRANS_MIN_BLKS // self.block_num, 0,
+                            0)
 
     def do_pad(self, core_index):
         """
         do_pad with different tiling key
         """
-        with self.tik_instance.if_scope(self.tiling_key == MODE0):
+        with self.tik_instance.if_scope(self.tiling_key == Constant.MODE0):
             with self.tik_instance.new_stmt_scope():
                 self.do_tiling_key_mode_0(core_index)
-        with self.tik_instance.if_scope(self.tiling_key == MODE1):
+        with self.tik_instance.if_scope(self.tiling_key == Constant.MODE1):
             with self.tik_instance.new_stmt_scope():
                 self.do_tiling_key_mode_1(core_index)
 
@@ -929,7 +906,7 @@ class PadV3GradInit(object):
         opt_config = {"out_of_bound_sync_check": True}
 
         # add compile info
-        wr_compile_info = dict()
+        wr_compile_info = {}
         wr_compile_info["core_num"] = self.core_nums
         wr_compile_info["padding_contiguous"] = self.padding_contiguous
         if outer_compile_info is not None:
@@ -982,5 +959,6 @@ def pad_v3_grad(x, paddings, y, mode='reflect', padding_contiguous=True, kernel_
         obj = PadV3GradInit(x, paddings, y, mode, padding_contiguous, kernel_name)
         obj.init_src_dst_gm((x, paddings), (y,), pad_input_idx=0, pad_outnput_idx=0)
         return obj.pad_grad_compute()
-    elif mode == "edge":
+    if mode == "edge":
         return replication_pad_v3_grad(x, paddings, y, mode, padding_contiguous, kernel_name)
+    return None
