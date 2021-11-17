@@ -450,5 +450,6 @@ from .acts_ulq_input_grad import acts_ulq_input_grad
 from .acts_ulq import acts_ulq
 from .ifmr import ifmr
 
+from .prod_virial_se_a import prod_virial_se_a
 from .update_tensor_desc import update_tensor_desc
 from .reduce_mean_variance import reduce_mean_variance

@@ -302,6 +302,7 @@ set(_tf_plugins
   prelu_grad_plugin.cc
   prelu_plugin.cc
   print_plugin.cc
+  prod_virial_se_a_plugin.cc
   quantized_resize_bilinear_plugin.cc
   queue_close_plugin.cc
   queue_dequeue_many_plugin.cc
