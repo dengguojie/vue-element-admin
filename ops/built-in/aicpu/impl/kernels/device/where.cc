@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@
 
 namespace {
 const char *kWhere = "Where";
+constexpr int kInitStep = 2;
+constexpr int kRankNum = 2;
 
 #define WHERE_COMPUTE_CASE(DTYPE, TYPE)                              \
   case (DTYPE): {                                                    \
@@ -97,7 +99,7 @@ static uint32_t DoCompute(typename TTypes<T>::ConstTensor flat_input,
 
   // strides only for row major order
   dim_strides[DIMS - 1] = 1;
-  for(int i = DIMS - 2; i >= 0; --i) {
+  for(int i = DIMS - kInitStep; i >= 0; --i) {
     dim_strides[i] = dim_strides[i + 1] * input_dims[i + 1];
   }
   for (Eigen::DenseIndex n = 0; n < flat_input.size(); ++n) {
@@ -135,7 +137,7 @@ uint32_t WhereCpuKernel::WhereCompute(CpuKernelContext &ctx) {
     KERNEL_LOG_ERROR("Set output shape [%u] [%u] failed", num_true, rank);
     return KERNEL_STATUS_INNER_ERROR;
   }
-  Eigen::DSizes<Eigen::DenseIndex, 2> output_size{num_true, rank};
+  Eigen::DSizes<Eigen::DenseIndex, kRankNum> output_size{num_true, rank};
   typename TTypes<int64_t>::Matrix eigen_output(
           reinterpret_cast<int64_t*>(output->GetData()),
           output_size);
@@ -155,7 +157,6 @@ uint32_t WhereCpuKernel::WhereCompute(CpuKernelContext &ctx) {
       return KERNEL_STATUS_INNER_ERROR;
   }
   return KERNEL_STATUS_OK;
-
 }
 
 uint32_t WhereCpuKernel::Compute(CpuKernelContext &ctx) {
@@ -187,8 +188,7 @@ uint32_t WhereCpuKernel::Compute(CpuKernelContext &ctx) {
       return KERNEL_STATUS_INNER_ERROR;
   }
   return KERNEL_STATUS_OK;
-
 }
 
 REGISTER_CPU_KERNEL(kWhere, WhereCpuKernel);
-} //nemespace aicpu
+} // nemespace aicpu

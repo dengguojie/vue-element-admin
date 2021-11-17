@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@ using namespace std;
 namespace aicpu {
 namespace formats {
 namespace {
-
 bool CheckDataTypeSupport(DataType data_type) {
   return GetSizeByDataType(data_type) > 0 ? KERNEL_STATUS_OK
                                           : KERNEL_STATUS_PARAM_INVALID;
@@ -124,10 +123,10 @@ uint32_t TransShapeNhwcToFzWithGroups(const std::vector<int64_t> &src_shape,
   return TransShapeToFzWithGroups(n, c, h, w, data_type, dst_shape, groups);
 }
 
-//Supporting NHWC, NCHW, HWCN converte to FORMAT_FRACTAL_Z (GC1HWN1N0C0),
-//the final effect achieved is for the data to be distributed diagonally.
-//For example: When the input filter format is NCHW, calculated the Correspondence of
-//index between NCHW and FORMAT_FRACTAL_Z , then Convert the old filter to the new
+// Supporting NHWC, NCHW, HWCN converte to FORMAT_FRACTAL_Z (GC1HWN1N0C0),
+// the final effect achieved is for the data to be distributed diagonally.
+// For example: When the input filter format is NCHW, calculated the Correspondence of
+// index between NCHW and FORMAT_FRACTAL_Z , then Convert the old filter to the new
 // filter, and finally added 0 to the position where there is no data.
 uint32_t TransFormatToFzWithGroups(const TransArgs &args, TransResult &result,
                                    int64_t groups) {
@@ -159,7 +158,7 @@ uint32_t TransFormatToFzWithGroups(const TransArgs &args, TransResult &result,
     return KERNEL_STATUS_PARAM_INVALID;
   }
   int64_t cin_ori = c_dim;
-  //For this place , groups is not equal to 0, which had been checked in [Transdata] entrance.
+  // For this place , groups is not equal to 0, which had been checked in [Transdata] entrance.
   int64_t cout_ori = n_dim / groups;
   if (cin_ori == 0 || cout_ori == 0) {
     KERNEL_LOG_ERROR(
@@ -179,7 +178,7 @@ uint32_t TransFormatToFzWithGroups(const TransArgs &args, TransResult &result,
   int64_t c1_dim = cin_opt / cube_k;
   int64_t data_size = GetSizeByDataType(args.src_data_type);
   int64_t dst_size = GetItemNumByShape(args.dst_shape) * data_size;
-  //The input is empty tensor, we should return sucess directly.
+  // The input is empty tensor, we should return sucess directly.
   if (dst_size == 0) {
     result.length = static_cast<size_t>(dst_size);
     return KERNEL_STATUS_OK;

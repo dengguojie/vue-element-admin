@@ -39,15 +39,6 @@ const char *kBetainc = "Betainc";
     }                                                     \
     break;                                                \
   }
-
-#define SWITCH_PARALLEL(SHARD, end_num)                                   \
-  if (data_num <= kParallelDataNums) {                                    \
-    SHARD(0, end_num);                                                    \
-  } else {                                                                \
-    KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(                      \
-                            ctx, end_num, end_num / max_core_num, SHARD), \
-                        "Betainc #SHARD Compute failed.")                 \
-  }
 }  // namespace
 
 namespace aicpu {
@@ -97,6 +88,20 @@ uint32_t BetaincCpuKernel::Compute(CpuKernelContext &ctx) {
   return KERNEL_STATUS_OK;
 }
 
+uint32_t SwitchParallel(const std::function<void(int64_t, int64_t)> &func,
+                   size_t end_num, CpuKernelContext &ctx, int32_t max_core_num,
+                   int data_num)
+{
+  if (data_num <= kParallelDataNums) {
+    func(0, end_num);
+  } else {
+    KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(ctx, end_num, 
+                                                   end_num / max_core_num, func),
+                       "Betainc func Compute failed.");
+  }
+  return KERNEL_STATUS_OK;
+}
+
 template <typename T>
 uint32_t RunParallel(CpuKernelContext &ctx, std::vector<T *> data_pointers,
                      int data_num) {
@@ -118,9 +123,7 @@ uint32_t RunParallel(CpuKernelContext &ctx, std::vector<T *> data_pointers,
     output = Eigen::betainc(input_0, input_1, input_2);
   };
 
-  SWITCH_PARALLEL(shard_betainc, data_num);
-
-  return KERNEL_STATUS_OK;
+  return SwitchParallel(shard_betainc, data_num, ctx, max_core_num, data_num);
 }
 
 template <typename T>
