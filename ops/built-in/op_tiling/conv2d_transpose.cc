@@ -43,7 +43,7 @@ const size_t kConv2dTransInputSizeLimit = 2;
  * @return bool: success or not
  */
 bool Conv2DTransposeTiling(const std::string& opType, const ge::Operator& opParas, const nlohmann::json& opCompileInfo,
-                         utils::OpRunInfo& runInfo) {
+                           utils::OpRunInfo& runInfo) {
   ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(opParas);
   if (op_desc == nullptr) {
     GELOGE(ge::FAILED, "the op_desc is nullptr.");

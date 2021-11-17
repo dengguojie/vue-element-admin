@@ -138,32 +138,32 @@ namespace {
   using SliceTuple = std::tuple<int32_t, int32_t, int32_t, int32_t>;
 }
 
-typedef struct {
+struct AttrDataInfo {
   int32_t stride;
   int32_t pads;
   int64_t kernel;
-} AttrDataInfo;
-typedef struct {
+};
+struct AttrInfo {
   AttrDataInfo h_attr;
   AttrDataInfo w_attr;
-} AttrInfo;
-typedef struct {
+};
+struct PosInfo {
   int32_t n_position;
   int32_t h_position;
   int32_t w_position;
   int32_t c_position;
-} PosInfo;
-typedef struct {
+};
+struct ShapeValInfo {
   int64_t n_value;
   int64_t h_value;
   int64_t w_value;
   int64_t c_value;
-} ShapeValInfo;
-typedef struct {
+};
+struct OpDetailInfo {
   AscendString op_name;
   OpDescPtr op_desc;
   AscendString op_type;
-} OpDetailInfo;
+};
 // ----------------LSTM begin-------------------
 
 IMPLEMT_VERIFIER(LSTM, LSTMVerify) {
@@ -2882,10 +2882,10 @@ static void GetConstValue(const Tensor &const_tensor, const DataType &dtype, GeS
   }
 }
 
-static bool CheckAndSetInputSizes(Operator &op, const DataType &dtype, const std::string &tensor_name,
+static bool CheckAndSetInputSizes(const Operator &op, const DataType &dtype, const std::string &tensor_name,
                                   bool &is_input_size_const, GeTensorDescPtr &y_desc) {
   Tensor input_sizes_tensor;
-  if (op.GetInputConstData(tensor_name, input_sizes_tensor) != GRAPH_SUCCESS) {
+  if (op.GetInputConstData(tensor_name.c_str(), input_sizes_tensor) != GRAPH_SUCCESS) {
     return true;
   }
   GeShape input_sizes;
@@ -3066,7 +3066,7 @@ static void ResetConv2dbpOutShape(const AscendString &op_name, const GeShape &in
   }
 }
 
-static bool GetPosInfoByFormat(Format format, PosInfo &format_pos) {
+static bool GetPosInfoByFormat(const Format &format, PosInfo &format_pos) {
   std::string format_str = format2str[format];
   CHECK(format_str.length() != kConv2dDimSizeLimit, OP_LOGE("", "the format is not 4D"), return false);
   format_pos.n_position = format_str.find("N");
@@ -3182,7 +3182,7 @@ static bool InferConv2dBpInputOutShapeRange(const OpDetailInfo &op_info, GeTenso
   return true;
 }
 
-static bool SetConvGroups(OpDetailInfo &op_info, int64_t c_y_shape, int64_t c_filter) {
+static bool SetConvGroups(const OpDetailInfo &op_info, int64_t c_y_shape, int64_t c_filter) {
   OP_LOGD(op_info.op_name.GetString(), "Setgroups begin.");
   int32_t x_c = c_y_shape;
   int32_t w_c = c_filter;
@@ -3224,8 +3224,8 @@ static bool SetConvGroups(OpDetailInfo &op_info, int64_t c_y_shape, int64_t c_fi
   return true;
 }
 
-static bool SetConv2dbpPadsByPadding(OpDetailInfo &op_info, const GeShape &inputSizes, const PosInfo &y_format_pos,
-                                     const ShapeValInfo &filter_value) {
+static bool SetConv2dbpPadsByPadding(const OpDetailInfo &op_info, const GeShape &inputSizes,
+                                     const PosInfo &y_format_pos, const ShapeValInfo &filter_value) {
   OP_LOGD(op_info.op_name.GetString(), "Set Conv2dbp Padst By Padding begin.");
   AttrInfo attr_paras;
   CHECK(!GetConv2dBpAttrInfo(op_info, y_format_pos, filter_value, attr_paras),

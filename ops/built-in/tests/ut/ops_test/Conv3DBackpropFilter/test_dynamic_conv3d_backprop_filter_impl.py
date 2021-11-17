@@ -157,6 +157,16 @@ dynamic_shape_2_case = _run_api((-2,), "NDHWC", "float16",
                  [1, 2, 2, 2, 1], [-1, -1, -1, -1, -1, -1],
                  groups=1)
 
+# Test tensor is -2, and min range is negative
+dynamic_shape_negative_range_case = _run_api((-2,), "NDHWC", "float16",
+                 [(1, None), (1, None), (1, None), (1, None), (1, None)],
+                 (3, 3, 3, 256, 256), 'DHWCN', 'float32',
+                 [(3, 3), (3, 3), (3, 3), (256, 256), (256,256)],
+                 (-2,), "NDHWC", "float16",
+                 [(1, None), (1, None), (1, None), (1, None), (1, None)],
+                 [1, 2, 2, 2, 1], [0, 0, 0, 0, 0, 0],
+                 groups=1)
+
 # test pad_d < filter_d constraint
 invalid_pads = [4, 4, 0, 0, 0, 0]
 dynamic_invalid_pad_d_case = _run_api_v2(pads=invalid_pads)
@@ -340,6 +350,8 @@ ut_case.add_case(["Ascend910A"],
                  _gen_data_case(dynamic_invalid_groups_case, RuntimeError, "dynamic_invalid_groups_case", True))
 ut_case.add_case(["Ascend910A"],
                  _gen_data_case(dynamic_shape_2_case, "success", "dynamic_shape_2_case", True))
+ut_case.add_case(["Ascend910A"],
+                 _gen_data_case(dynamic_shape_negative_range_case, "success", "dynamic_shape_negative_range_case", True))
 ut_case.add_case(["Ascend910A"],
                  _gen_data_case(dynamic_invalid_pad_d_case, RuntimeError, "dynamic_invalid_pad_d_case", True))
 ut_case.add_case(["Ascend910A"],
