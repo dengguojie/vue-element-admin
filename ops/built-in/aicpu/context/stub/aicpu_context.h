@@ -65,7 +65,7 @@ status_t __attribute__((weak))
 GetThreadLocalCtx(const std::string &key, std::string &value);
 
 status_t __attribute__((weak))
-GetTaskAndStreamId(uint64_t taskId, uint32_t streamId);
+GetTaskAndStreamId(uint64_t &taskId, uint32_t &streamId);
 
 status_t RemoveThreadLocalCtx(const std::string &key);
 }  // namespace aicpu
