@@ -879,7 +879,6 @@ vector_B:
       - ops/built-in/tbe/impl/binary_cross_entropy.py
       - ops/built-in/tbe/impl/bn_infer.py
       - ops/built-in/tbe/impl/bn_infer_grad.py
-      - ops/built-in/tbe/impl/bn_training_reduce.py
       - ops/built-in/tbe/impl/bn_training_update_grad.py
       - ops/built-in/tbe/impl/bn_training_update_v2.py
       - ops/built-in/tbe/impl/bn_training_update_v3.py
@@ -975,6 +974,7 @@ vector_B:
       - ops/built-in/tbe/impl/dynamic/erfc.py
       - ops/built-in/tbe/impl/dynamic/exp.py
       - ops/built-in/tbe/impl/dynamic/expm1.py
+      - ops/built-in/tbe/impl/dynamic/diag_part.py
       - ops/built-in/tbe/impl/dynamic/fast_gelu.py
       - ops/built-in/tbe/impl/dynamic/fast_gelu_grad.py
       - ops/built-in/tbe/impl/dynamic/fills.py
