@@ -1,0 +1,2070 @@
+[
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_20_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "uint8"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "uint8"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "uint8"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_14_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          16,
+          32
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_6_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_3_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_19_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_11_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          16,
+          32
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_2_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_dynamic_shape_div_no_nan_dynamic_2_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          10
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          10
+        ]
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          10
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          10
+        ]
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_22_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          100,
+          100
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          100,
+          100
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          100,
+          100
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_25_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1024,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1024,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1024,
+          16
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_5_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "uint8"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "uint8"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "uint8"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_12_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16,
+          32
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_dynamic_shape_div_no_nan_dynamic_4_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1,
+          10
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          10
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1,
+          10
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          10
+        ]
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_16_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_dynamic_shape_div_no_nan_dynamic_1_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_15_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "uint8"
+        ],
+        "shape": [
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "uint8"
+        ],
+        "shape": [
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "uint8"
+        ],
+        "shape": [
+          16,
+          32
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_7_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_13_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          16,
+          32
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_9_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_18_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_24_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          16,
+          512
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          16,
+          512
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          16,
+          512
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_dynamic_shape_div_no_nan_dynamic_6_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          10,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1",
+        "shape_range": [
+          [
+            1,
+            65535
+          ],
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          10,
+          1
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          10,
+          1
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            65535
+          ],
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          10,
+          1
+        ]
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_17_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_10_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "uint8"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "uint8"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "uint8"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_21_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          11,
+          33
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          11,
+          33
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          11,
+          33
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_8_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_1_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_23_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          32,
+          128
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          32,
+          128
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          32,
+          128
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_static_shape_test_DivNoNan_auto_case_name_4_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "DivNoNan_dynamic_shape_div_no_nan_dynamic_5_ascend910a",
+    "op": "DivNoNan",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1,
+          10,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1",
+        "shape_range": [
+          [
+            1,
+            65535
+          ],
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          10,
+          1
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1,
+          10,
+          1
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            65535
+          ],
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          10,
+          1
+        ]
+      }
+    ]
+  }
+]

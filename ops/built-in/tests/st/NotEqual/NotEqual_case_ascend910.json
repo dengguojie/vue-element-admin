@@ -1,0 +1,206 @@
+[
+  {
+    "case_name": "NotEqual_static_shape_test_NotEqual_auto_case_name_77_ascend910a",
+    "op": "NotEqual",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "NotEqual_static_shape_test_NotEqual_auto_case_name_76_ascend910a",
+    "op": "NotEqual",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "NotEqual_static_shape_test_NotEqual_auto_case_name_78_ascend910a",
+    "op": "NotEqual",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "name": "y"
+      }
+    ]
+  }
+]

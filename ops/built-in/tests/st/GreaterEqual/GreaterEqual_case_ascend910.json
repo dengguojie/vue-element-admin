@@ -1,0 +1,345 @@
+[
+  {
+    "case_name": "GreaterEqual_static_shape_test_GreaterEqual_auto_case_name_4_ascend910a",
+    "op": "GreaterEqual",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          10,
+          11
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          10,
+          11
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          10,
+          11
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "GreaterEqual_static_shape_test_GreaterEqual_auto_case_name_1_ascend910a",
+    "op": "GreaterEqual",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          28,
+          28
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          28,
+          28
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          28,
+          28
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "GreaterEqual_static_shape_test_GreaterEqual_auto_case_name_2_ascend910a",
+    "op": "GreaterEqual",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          1,
+          2
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "GreaterEqual_dynamic_shape_dynamic_greater_equal_fp16_ND_ascend910a",
+    "op": "GreaterEqual",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2",
+        "shape_range": [
+          [
+            2,
+            16
+          ]
+        ],
+        "typical_shape": [
+          2
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          2
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            2,
+            16
+          ]
+        ],
+        "typical_shape": [
+          2
+        ]
+      }
+    ]
+  },
+  {
+    "case_name": "GreaterEqual_static_shape_test_GreaterEqual_auto_case_name_3_ascend910a",
+    "op": "GreaterEqual",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          32,
+          2,
+          7
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          32,
+          2,
+          7
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          32,
+          2,
+          7
+        ],
+        "name": "y"
+      }
+    ]
+  }
+]

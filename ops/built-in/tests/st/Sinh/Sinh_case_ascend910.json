@@ -1,0 +1,120 @@
+[
+  {
+    "case_name": "Sinh_dynamic_shape_Sinh_1__1_ascend910a",
+    "op": "Sinh",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ]
+  },
+  {
+    "case_name": "Sinh_dynamic_shape_Sinh_1_ascend910a",
+    "op": "Sinh",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ]
+  }
+]

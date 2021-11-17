@@ -1,0 +1,448 @@
+[
+  {
+    "case_name": "Asin_static_shape_test_Asin_auto_case_name_4_ascend910a",
+    "op": "Asin",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "Asin_static_shape_test_Asin_auto_case_name_1_ascend910a",
+    "op": "Asin",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "Asin_static_shape_test_Asin_auto_case_name_3_ascend910a",
+    "op": "Asin",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "Asin_static_shape_test_Asin_auto_case_name_8_ascend910a",
+    "op": "Asin",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "Asin_dynamic_shape_Asin_1_ascend910a",
+    "op": "Asin",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ]
+  },
+  {
+    "case_name": "Asin_static_shape_test_Asin_auto_case_name_5_ascend910a",
+    "op": "Asin",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          16,
+          32
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "Asin_static_shape_test_Asin_auto_case_name_9_ascend910a",
+    "op": "Asin",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "Asin_static_shape_test_Asin_auto_case_name_6_ascend910a",
+    "op": "Asin",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16,
+          32
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "Asin_static_shape_test_Asin_auto_case_name_2_ascend910a",
+    "op": "Asin",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "Asin_static_shape_test_Asin_auto_case_name_7_ascend910a",
+    "op": "Asin",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          16,
+          2,
+          32
+        ],
+        "name": "y"
+      }
+    ]
+  }
+]

@@ -1,0 +1,224 @@
+[
+  {
+    "case_name": "LeakyRelu_static_shape_test_LeakyRelu_auto_case_name_37_ascend910a",
+    "op": "LeakyRelu",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "negative_slope",
+        "type": "float",
+        "value": 0.0
+      }
+    ]
+  },
+  {
+    "case_name": "LeakyRelu_dynamic_shape_dynamic_leaky_relu_case1_ascend910a",
+    "op": "LeakyRelu",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "negative_slope",
+        "type": "float",
+        "value": 0.0
+      }
+    ]
+  },
+  {
+    "case_name": "LeakyRelu_static_shape_test_LeakyRelu_auto_case_name_36_ascend910a",
+    "op": "LeakyRelu",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "negative_slope",
+        "type": "float",
+        "value": 0.0
+      }
+    ]
+  },
+  {
+    "case_name": "LeakyRelu_static_shape_test_LeakyRelu_auto_case_name_35_ascend910a",
+    "op": "LeakyRelu",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "negative_slope",
+        "type": "float",
+        "value": 0.0
+      }
+    ]
+  }
+]

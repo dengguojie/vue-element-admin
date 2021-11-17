@@ -1,0 +1,140 @@
+[
+  {
+    "case_name": "TileD_dynamic_shape_dynamic_tile_d_fp16_ND__1_ascend910a",
+    "op": "TileD",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "bool"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "bool"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "multiples",
+        "type": "list_int",
+        "value": [
+          1,
+          2
+        ]
+      }
+    ]
+  },
+  {
+    "case_name": "TileD_dynamic_shape_dynamic_tile_d_fp16_ND_ascend910a",
+    "op": "TileD",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "multiples",
+        "type": "list_int",
+        "value": [
+          1,
+          2
+        ]
+      }
+    ]
+  }
+]

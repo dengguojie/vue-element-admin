@@ -1,0 +1,160 @@
+[
+  {
+    "case_name": "BNInferGrad_dynamic_shape_BNInferGrad_1_ascend910a",
+    "op": "BNInferGrad",
+    "input_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads",
+        "shape_range": [
+          [
+            1,
+            10
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ]
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "scale",
+        "shape_range": [
+          [
+            1,
+            10
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ]
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "batch_variance",
+        "shape_range": [
+          [
+            1,
+            10
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "name": "x_backprop",
+        "shape_range": [
+          [
+            1,
+            10
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 0.0001
+      }
+    ]
+  }
+]

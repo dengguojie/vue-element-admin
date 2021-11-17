@@ -1,0 +1,935 @@
+[
+  {
+    "case_name": "InstanceNorm_static_shape_test_right_001_ascend910a",
+    "op": "InstanceNorm",
+    "input_desc": [
+      {
+        "format": [
+          "NDHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          5,
+          8,
+          7,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "NDHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "gamma"
+      },
+      {
+        "format": [
+          "NDHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "beta"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NDHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          5,
+          8,
+          7,
+          16
+        ],
+        "name": "y"
+      },
+      {
+        "format": [
+          "NDHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          1,
+          1,
+          1,
+          16
+        ],
+        "name": "mean"
+      },
+      {
+        "format": [
+          "NDHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          1,
+          1,
+          1,
+          16
+        ],
+        "name": "variance"
+      }
+    ],
+    "attr": [
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NDHWC"
+      },
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 1e-06
+      }
+    ]
+  },
+  {
+    "case_name": "InstanceNorm_static_shape_test_right_002_ascend910a",
+    "op": "InstanceNorm",
+    "input_desc": [
+      {
+        "format": [
+          "NDHWC"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          2,
+          5,
+          8,
+          7,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "NDHWC"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "gamma"
+      },
+      {
+        "format": [
+          "NDHWC"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "beta"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NDHWC"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          2,
+          5,
+          8,
+          7,
+          16
+        ],
+        "name": "y"
+      },
+      {
+        "format": [
+          "NDHWC"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          2,
+          1,
+          1,
+          1,
+          16
+        ],
+        "name": "mean"
+      },
+      {
+        "format": [
+          "NDHWC"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          2,
+          1,
+          1,
+          1,
+          16
+        ],
+        "name": "variance"
+      }
+    ],
+    "attr": [
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NDHWC"
+      },
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 1e-06
+      }
+    ]
+  },
+  {
+    "case_name": "InstanceNorm_static_shape_test_right_005_ascend910a",
+    "op": "InstanceNorm",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          8,
+          7,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "gamma"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "beta"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          8,
+          7,
+          16
+        ],
+        "name": "y"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          1,
+          1,
+          16
+        ],
+        "name": "mean"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          1,
+          1,
+          16
+        ],
+        "name": "variance"
+      }
+    ],
+    "attr": [
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NDHWC"
+      },
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 1e-06
+      }
+    ]
+  },
+  {
+    "case_name": "InstanceNorm_static_shape_test_right_006_ascend910a",
+    "op": "InstanceNorm",
+    "input_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          16,
+          8,
+          7
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "gamma"
+      },
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "beta"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          16,
+          8,
+          7
+        ],
+        "name": "y"
+      },
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          16,
+          1,
+          1
+        ],
+        "name": "mean"
+      },
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          16,
+          1,
+          1
+        ],
+        "name": "variance"
+      }
+    ],
+    "attr": [
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NDHWC"
+      },
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 1e-06
+      }
+    ]
+  },
+  {
+    "case_name": "InstanceNorm_static_shape_test_right_004_ascend910a",
+    "op": "InstanceNorm",
+    "input_desc": [
+      {
+        "format": [
+          "NCDHW"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          2,
+          16,
+          5,
+          8,
+          7
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "NCDHW"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "gamma"
+      },
+      {
+        "format": [
+          "NCDHW"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "beta"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NCDHW"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          2,
+          16,
+          5,
+          8,
+          7
+        ],
+        "name": "y"
+      },
+      {
+        "format": [
+          "NCDHW"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          2,
+          16,
+          1,
+          1,
+          1
+        ],
+        "name": "mean"
+      },
+      {
+        "format": [
+          "NCDHW"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          2,
+          16,
+          1,
+          1,
+          1
+        ],
+        "name": "variance"
+      }
+    ],
+    "attr": [
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NDHWC"
+      },
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 1e-06
+      }
+    ]
+  },
+  {
+    "case_name": "InstanceNorm_static_shape_test_right_003_ascend910a",
+    "op": "InstanceNorm",
+    "input_desc": [
+      {
+        "format": [
+          "NCDHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          16,
+          5,
+          8,
+          7
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "NCDHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "gamma"
+      },
+      {
+        "format": [
+          "NCDHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "beta"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NCDHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          16,
+          5,
+          8,
+          7
+        ],
+        "name": "y"
+      },
+      {
+        "format": [
+          "NCDHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          16,
+          1,
+          1,
+          1
+        ],
+        "name": "mean"
+      },
+      {
+        "format": [
+          "NCDHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          16,
+          1,
+          1,
+          1
+        ],
+        "name": "variance"
+      }
+    ],
+    "attr": [
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NDHWC"
+      },
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 1e-06
+      }
+    ]
+  },
+  {
+    "case_name": "InstanceNorm_static_shape_test_right_007_ascend910a",
+    "op": "InstanceNorm",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          16,
+          8,
+          7
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "gamma"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "beta"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          16,
+          8,
+          7
+        ],
+        "name": "y"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          16,
+          1,
+          1
+        ],
+        "name": "mean"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          2,
+          16,
+          1,
+          1
+        ],
+        "name": "variance"
+      }
+    ],
+    "attr": [
+      {
+        "name": "data_format",
+        "type": "string",
+        "value": "NDHWC"
+      },
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 1e-06
+      }
+    ]
+  }
+]

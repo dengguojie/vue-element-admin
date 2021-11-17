@@ -1,0 +1,236 @@
+[
+  {
+    "case_name": "BNInfer_dynamic_shape_BNInfer_1_ascend910a",
+    "op": "BNInfer",
+    "input_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            10
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ]
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "scale",
+        "shape_range": [
+          [
+            1,
+            10
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ]
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "offset",
+        "shape_range": [
+          [
+            1,
+            10
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ]
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "mean",
+        "shape_range": [
+          [
+            1,
+            10
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ]
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "variance",
+        "shape_range": [
+          [
+            1,
+            10
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            10
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1,
+          1,
+          16
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 0.0001
+      }
+    ]
+  }
+]

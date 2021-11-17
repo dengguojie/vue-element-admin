@@ -1,0 +1,204 @@
+[
+  {
+    "case_name": "BesselI0e_static_shape_test_BesselI0e_auto_case_name_11_ascend910a",
+    "op": "BesselI0e",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "BesselI0e_static_shape_test_BesselI0e_auto_case_name_12_ascend910a",
+    "op": "BesselI0e",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          16,
+          32
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "BesselI0e_static_shape_test_BesselI0e_auto_case_name_13_ascend910a",
+    "op": "BesselI0e",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          3,
+          100,
+          16
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "BesselI0e_dynamic_shape_BesselI0e_1_ascend910a",
+    "op": "BesselI0e",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          15,
+          8,
+          375
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            15,
+            16
+          ]
+        ],
+        "typical_shape": [
+          15,
+          8,
+          375
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          15,
+          8,
+          375
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            15,
+            16
+          ]
+        ],
+        "typical_shape": [
+          15,
+          8,
+          375
+        ]
+      }
+    ]
+  }
+]

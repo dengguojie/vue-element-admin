@@ -1,0 +1,154 @@
+[
+  {
+    "case_name": "Log_dynamic_shape_abs_dynamic_1__1_ascend910a",
+    "op": "Log",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "base",
+        "type": "float",
+        "value": -1.0
+      },
+      {
+        "name": "scale",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "shift",
+        "type": "float",
+        "value": 0.0
+      }
+    ]
+  },
+  {
+    "case_name": "Log_dynamic_shape_abs_dynamic_1_ascend910a",
+    "op": "Log",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "base",
+        "type": "float",
+        "value": -1.0
+      },
+      {
+        "name": "scale",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "shift",
+        "type": "float",
+        "value": 0.0
+      }
+    ]
+  }
+]

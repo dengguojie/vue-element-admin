@@ -45,6 +45,7 @@ set_st_env() {
   fi
   #slog
   export ASCEND_SLOG_RPINT_TO_STDOUT=1
+  alias atc="atc log=info"
 }
 
 modify_for_cov() {

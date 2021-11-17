@@ -1,0 +1,82 @@
+[
+  {
+    "case_name": "Tile_dynamic_shape_dynamic_tile_d_fp16_ND__1_ascend910a",
+    "op": "Tile",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "multiples"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,1856 @@
+[
+  {
+    "case_name": "INInferV2D_static_shape_test_right_fp32_001_ascend910a",
+    "op": "INInferV2D",
+    "input_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          8,
+          7,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "gamma"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "beta"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "mean"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "variance"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "variance_sqrt"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          8,
+          7,
+          16
+        ],
+        "name": "y"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "name": "batch_mean"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "name": "batch_variance"
+      }
+    ]
+  },
+  {
+    "case_name": "INInferV2D_static_shape_in_infer_v2d_precision_case_004_ascend910a",
+    "op": "INInferV2D",
+    "input_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          7,
+          5,
+          18,
+          7,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          7,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "gamma"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          7,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "beta"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          7,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "mean"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          7,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "variance"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          7,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "variance_sqrt"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          7,
+          5,
+          18,
+          7,
+          16
+        ],
+        "name": "y"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          7,
+          5,
+          1,
+          1,
+          16
+        ],
+        "name": "batch_mean"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          7,
+          5,
+          1,
+          1,
+          16
+        ],
+        "name": "batch_variance"
+      }
+    ]
+  },
+  {
+    "case_name": "INInferV2D_static_shape_test_right_fp16_004_ascend910a",
+    "op": "INInferV2D",
+    "input_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          6,
+          5,
+          18,
+          7,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "gamma"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "beta"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "mean"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "variance"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "variance_sqrt"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          6,
+          5,
+          18,
+          7,
+          16
+        ],
+        "name": "y"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "name": "batch_mean"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "name": "batch_variance"
+      }
+    ]
+  },
+  {
+    "case_name": "INInferV2D_static_shape_in_infer_v2d_precision_case_003_ascend910a",
+    "op": "INInferV2D",
+    "input_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          7,
+          5,
+          18,
+          7,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          7,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "gamma"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          7,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "beta"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          7,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "mean"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          7,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "variance"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          7,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "variance_sqrt"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          7,
+          5,
+          18,
+          7,
+          16
+        ],
+        "name": "y"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          7,
+          5,
+          1,
+          1,
+          16
+        ],
+        "name": "batch_mean"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          7,
+          5,
+          1,
+          1,
+          16
+        ],
+        "name": "batch_variance"
+      }
+    ]
+  },
+  {
+    "case_name": "INInferV2D_static_shape_test_right_fp32_003_ascend910a",
+    "op": "INInferV2D",
+    "input_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          18,
+          7,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "gamma"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "beta"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "mean"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "variance"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "variance_sqrt"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          18,
+          7,
+          16
+        ],
+        "name": "y"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "name": "batch_mean"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "name": "batch_variance"
+      }
+    ]
+  },
+  {
+    "case_name": "INInferV2D_static_shape_test_right_fp16_002_ascend910a",
+    "op": "INInferV2D",
+    "input_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          6,
+          5,
+          8,
+          7,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "gamma"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "beta"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "mean"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "variance"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "variance_sqrt"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          6,
+          5,
+          8,
+          7,
+          16
+        ],
+        "name": "y"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "name": "batch_mean"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "name": "batch_variance"
+      }
+    ]
+  },
+  {
+    "case_name": "INInferV2D_static_shape_in_infer_v2d_precision_case_002_ascend910a",
+    "op": "INInferV2D",
+    "input_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          6,
+          5,
+          8,
+          7,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "gamma"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "beta"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "mean"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "variance"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "variance_sqrt"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          6,
+          5,
+          8,
+          7,
+          16
+        ],
+        "name": "y"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "name": "batch_mean"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "name": "batch_variance"
+      }
+    ]
+  },
+  {
+    "case_name": "INInferV2D_static_shape_test_error_001_ascend910a",
+    "op": "INInferV2D",
+    "input_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          8,
+          7,
+          6
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          6
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "gamma"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          6
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "beta"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          6
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "mean"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          6
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "variance"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          6
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "variance_sqrt"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          8,
+          7,
+          6
+        ],
+        "name": "y"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          6
+        ],
+        "name": "batch_mean"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          6
+        ],
+        "name": "batch_variance"
+      }
+    ]
+  },
+  {
+    "case_name": "INInferV2D_static_shape_in_infer_v2d_precision_case_001_ascend910a",
+    "op": "INInferV2D",
+    "input_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          8,
+          7,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "gamma"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "beta"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "mean"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "variance"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "variance_sqrt"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          8,
+          7,
+          16
+        ],
+        "name": "y"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "name": "batch_mean"
+      },
+      {
+        "format": [
+          "NC1HWC0"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          6,
+          5,
+          1,
+          1,
+          16
+        ],
+        "name": "batch_variance"
+      }
+    ]
+  }
+]

@@ -1,0 +1,439 @@
+[
+  {
+    "case_name": "TileWithAxis_static_shape_TileWithAxis_5_ascend910a",
+    "op": "TileWithAxis",
+    "input_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          459999
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          919998
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "tiles",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": -1
+      }
+    ]
+  },
+  {
+    "case_name": "TileWithAxis_dynamic_shape_TileWithAxis_1_ascend910a",
+    "op": "TileWithAxis",
+    "input_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          2,
+          4
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          2,
+          4
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "tiles",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "case_name": "TileWithAxis_dynamic_shape_TileWithAxis_2_ascend910a",
+    "op": "TileWithAxis",
+    "input_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          2,
+          4
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          2,
+          4
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          2,
+          4
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "tiles",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "case_name": "TileWithAxis_static_shape_TileWithAxis_2_ascend910a",
+    "op": "TileWithAxis",
+    "input_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          65,
+          75
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          130,
+          75
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "tiles",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      }
+    ]
+  },
+  {
+    "case_name": "TileWithAxis_static_shape_TileWithAxis_1_ascend910a",
+    "op": "TileWithAxis",
+    "input_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          5,
+          13,
+          4
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          10,
+          13,
+          4
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "tiles",
+        "type": "int",
+        "value": 2
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      }
+    ]
+  },
+  {
+    "case_name": "TileWithAxis_static_shape_TileWithAxis_4_ascend910a",
+    "op": "TileWithAxis",
+    "input_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          160000,
+          16
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          160000,
+          16
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "tiles",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": -1
+      }
+    ]
+  },
+  {
+    "case_name": "TileWithAxis_static_shape_TileWithAxis_3_ascend910a",
+    "op": "TileWithAxis",
+    "input_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          13,
+          7,
+          5,
+          3
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NCHW"
+        ],
+        "type": [
+          "int8"
+        ],
+        "shape": [
+          13,
+          7,
+          5,
+          3
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "tiles",
+        "type": "int",
+        "value": 1
+      },
+      {
+        "name": "axis",
+        "type": "int",
+        "value": 0
+      }
+    ]
+  }
+]

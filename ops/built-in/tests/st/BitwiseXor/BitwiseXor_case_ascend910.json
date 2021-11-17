@@ -1,0 +1,586 @@
+[
+  {
+    "case_name": "BitwiseXor_static_shape_test_BitwiseXor_auto_case_name_36_ascend910a",
+    "op": "BitwiseXor",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "uint16"
+        ],
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "uint16"
+        ],
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "uint16"
+        ],
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "BitwiseXor_dynamic_shape_BitwiseXor_4_ascend910a",
+    "op": "BitwiseXor",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          8,
+          375
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          15,
+          8,
+          375
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2",
+        "shape_range": [
+          [
+            15,
+            16
+          ]
+        ],
+        "typical_shape": [
+          15,
+          8,
+          375
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          15,
+          8,
+          375
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            15,
+            16
+          ]
+        ],
+        "typical_shape": [
+          15,
+          8,
+          375
+        ]
+      }
+    ]
+  },
+  {
+    "case_name": "BitwiseXor_dynamic_shape_BitwiseXor_2_ascend910a",
+    "op": "BitwiseXor",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          15,
+          8,
+          375
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1",
+        "shape_range": [
+          [
+            15,
+            16
+          ]
+        ],
+        "typical_shape": [
+          15,
+          8,
+          375
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          15,
+          8,
+          375
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2",
+        "shape_range": [
+          [
+            15,
+            16
+          ]
+        ],
+        "typical_shape": [
+          15,
+          8,
+          375
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          15,
+          8,
+          375
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            15,
+            16
+          ]
+        ],
+        "typical_shape": [
+          15,
+          8,
+          375
+        ]
+      }
+    ]
+  },
+  {
+    "case_name": "BitwiseXor_dynamic_shape_BitwiseXor_3_ascend910a",
+    "op": "BitwiseXor",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          15,
+          8,
+          375
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1",
+        "shape_range": [
+          [
+            15,
+            16
+          ]
+        ],
+        "typical_shape": [
+          15,
+          8,
+          375
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          8,
+          375
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          15,
+          8,
+          375
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            15,
+            16
+          ]
+        ],
+        "typical_shape": [
+          15,
+          8,
+          375
+        ]
+      }
+    ]
+  },
+  {
+    "case_name": "BitwiseXor_static_shape_test_BitwiseXor_auto_case_name_35_ascend910a",
+    "op": "BitwiseXor",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int16"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int16"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int16"
+        ],
+        "shape": [
+          1,
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "BitwiseXor_static_shape_test_BitwiseXor_auto_case_name_37_ascend910a",
+    "op": "BitwiseXor",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int16"
+        ],
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int16"
+        ],
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int16"
+        ],
+        "shape": [
+          1,
+          24,
+          1,
+          256
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "BitwiseXor_dynamic_shape_BitwiseXor_1_ascend910a",
+    "op": "BitwiseXor",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int16"
+        ],
+        "shape": [
+          15,
+          8,
+          375
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1",
+        "shape_range": [
+          [
+            15,
+            16
+          ]
+        ],
+        "typical_shape": [
+          15,
+          8,
+          375
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int16"
+        ],
+        "shape": [
+          15,
+          8,
+          375
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2",
+        "shape_range": [
+          [
+            15,
+            16
+          ]
+        ],
+        "typical_shape": [
+          15,
+          8,
+          375
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int16"
+        ],
+        "shape": [
+          15,
+          8,
+          375
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            15,
+            16
+          ]
+        ],
+        "typical_shape": [
+          15,
+          8,
+          375
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,140 @@
+[
+  {
+    "case_name": "Power_dynamic_shape_power_dynamic_1_ascend910a",
+    "op": "Power",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "power",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "scale",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "shift",
+        "type": "float",
+        "value": 0.0
+      }
+    ]
+  },
+  {
+    "case_name": "Power_static_shape_test_Power_auto_case_name_2_ascend910a",
+    "op": "Power",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          2,
+          16,
+          32
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "power",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "scale",
+        "type": "float",
+        "value": 1.0
+      },
+      {
+        "name": "shift",
+        "type": "float",
+        "value": 0.0
+      }
+    ]
+  }
+]

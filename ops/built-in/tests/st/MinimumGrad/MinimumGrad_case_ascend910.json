@@ -1,0 +1,154 @@
+[
+  {
+    "case_name": "MinimumGrad_dynamic_shape_MinimumGrad_1_ascend910a",
+    "op": "MinimumGrad",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads",
+        "shape_range": [
+          [
+            1,
+            10
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x1",
+        "shape_range": [
+          [
+            1,
+            10
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x2",
+        "shape_range": [
+          [
+            1,
+            10
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y1",
+        "shape_range": [
+          [
+            1,
+            10
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1
+        ],
+        "name": "y2",
+        "shape_range": [
+          [
+            1,
+            10
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "grad_x",
+        "type": "bool",
+        "value": true
+      },
+      {
+        "name": "grad_y",
+        "type": "bool",
+        "value": true
+      }
+    ]
+  }
+]
