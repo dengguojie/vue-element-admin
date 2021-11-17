@@ -465,10 +465,11 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     _check_attr_range_dw("stride's H", stride_h, STRIDE_HW_MIN, STRIDE_HW_MAX)
     _check_attr_range_dw("stride's W", stride_w, STRIDE_HW_MIN, STRIDE_HW_MAX)
     # check fmap_range
-    batch_range, _, h_range, w_range = fmap_range
+    batch_range, c_range, h_range, w_range = fmap_range
     batch_range = (max(batch_range[0], 1), batch_range[1])
     h_range = (max(h_range[0], 1), h_range[1])
     w_range = (max(w_range[0], 1), w_range[1])
+    fmap_range = batch_range, c_range, h_range, w_range
     _check_variable_range(h_range, FMAP_HW_MIN, FMAP_HW_MAX, "fmap_h")
     _check_variable_range(w_range, FMAP_HW_MIN, FMAP_HW_MAX, "fmap_w")
     name_lis = ['fmap_batch', 'fmap_c']
@@ -500,6 +501,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     dedy_c_range = (max(dedy_c_range[0], 1), dedy_c_range[1])
     dedy_h_range = (max(dedy_h_range[0], 1), dedy_h_range[1])
     dedy_w_range = (max(dedy_w_range[0], 1), dedy_w_range[1])
+    dedy_range = dedy_n_range, dedy_c_range, dedy_h_range, dedy_w_range
 
 
     _, pad, _ = _get_attrs(strides, pads, dilations, "NCHW")

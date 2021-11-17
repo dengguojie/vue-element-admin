@@ -250,6 +250,20 @@ def _avgpoolgrad_check_rule(input_grad, kernel_matrix, out_grad, ksize, strides,
     return stride_h, stride_w, shape_dy[y_c_idx]
 
 
+def _check_dynamic_range(grad_range):
+    grad_range_new = []
+    if grad_range.get('range') is not None:
+        for i in range(len(grad_range.get('range'))):
+            conver_middle = list(grad_range.get('range')[i])
+            conver_middle[0] = max(conver_middle[0], 1)
+            grad_final_range = tuple(conver_middle)
+            grad_range_new.append(grad_final_range)
+
+        grad_range['range'] = tuple(grad_range_new)
+
+    return grad_range
+
+
 def _collect_ori_tensors(ori_paras):
     """
     get valid tensors
@@ -537,12 +551,9 @@ def avg_pool_grad(orig_input_shape,
     -------
     None
     """
-    out_grad_range_new = []
-    if input_grad.get('range') is not None:
-        for i in range(len(input_grad.get('range'))):
-            out_grad_range_new.append((max(input_grad.get('range')[i][0], 1), 
-                                    input_grad.get('range')[i][1]))
-        input_grad['range'] = tuple(out_grad_range_new)
+    input_grad = _check_dynamic_range(input_grad)
+    out_grad = _check_dynamic_range(out_grad)
+
     stride_h, stride_w, input_c = _avgpoolgrad_check_rule(input_grad, kernel_matrix, out_grad, ksize, strides,
                                                           padding, data_format, kernel_name)
     
