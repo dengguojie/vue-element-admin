@@ -91,7 +91,7 @@ class GEMM_Schedule:
         """
         a_shape, b_shape, trans_flag = self._init_tiling_input(tensor_map)
         fixpipe_flag = util.get_fixpipe_flag(tensor_map)
-        fuse_num = 0
+        fuse_num = util.get_fused_num(tensor_map)
         info_dict = {
                 "op_type": "matmul",
                 "A_shape": a_shape,
@@ -197,15 +197,18 @@ class GEMM_Schedule:
         # set scope for simple a*b=c
         tensor_map = util.set_matmul_scope(all_tensor, sch, tensor_map)
         # if modify output fusion, please modify this function
-        tensor_map = util.set_out_scope(all_tensor, sch, tensor_map)
+        tensor_map = util.set_out_scope(all_tensor, leaf_tensor, sch, tensor_map)
+
+        # get ND and UB flag
         is_nd = (len(res.shape) in (2, 3))
+        handle_ub = tensor_map.get("ub_eltwise")
         print_ir_matmul("after set scope", sch)
         if in_dynamic():
             tiling = self.dynamic_para["tiling_strategy"]
         else:
             kernel_name = tensor_map["matmul_c_gm"].op.attrs["kernel_name"]
             tiling, fuse_num = self._get_tiling_matmul(kernel_name, tensor_map)
-            tiling = util.check_tiling(tiling, fuse_num, tensor_map)
+            tiling = util.check_tiling(tiling, fuse_num, tensor_map, handle_ub)
 
         # get tensor
         a_l1, b_l1, a_l0a, b_l0b, c_l0c, c_gm = (
@@ -233,7 +236,8 @@ class GEMM_Schedule:
         ub_factor = [tiling["CUB_matrix"][0]*tiling["CUB_matrix"][3],
                      tiling["CUB_matrix"][1]*tiling["CUB_matrix"][2]]
         ub_factor_parts = ub_factor if is_nd else ub_parts_nz
-        c_gm_emit_axis, fixpipe_axis = util.split_ub(c_gm, sch, l1_m_axis, l1_n_axis, ub_factor_parts, is_nd)
+        c_gm_emit_axis, fixpipe_axis = util.split_ub(c_gm, sch, l1_m_axis, l1_n_axis,
+                                                     ub_factor_parts, is_nd, handle_ub)
         # l1_m_axis = [al1_axis, l0c_m_axis, ub_m_axis], l1_n_axis = [bl1_attch, l0c_n_axis, ub_n_axis]
         # attach tensor of l0c and bias, c_slice_axis is l1_m_axis[1]
         sch[c_l0c].compute_at(sch[c_gm], l1_m_axis[1])
@@ -244,6 +248,7 @@ class GEMM_Schedule:
             (1, 1),
             (1, tbe_platform.CUBE_MKN[a_l0a.dtype]["mac"][1])
         )
+        util.attach_of_ub(sch, tensor_map, fixpipe_axis)
         util.attach_of_bias_table(sch, tensor_map, bl1_parts, l1_m_axis[1], batch_inner)
         util.attach_of_fixpipe(sch, tensor_map, bl1_parts, fixpipe_axis, batch_inner)
         # split k, k_axis = [l1a_k_axis, l1b_k_axis, l0_k_axis]

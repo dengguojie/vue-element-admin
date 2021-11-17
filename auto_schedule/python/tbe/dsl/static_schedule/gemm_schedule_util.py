@@ -18,6 +18,7 @@
 common function for gemm_schedule
 """
 from functools import reduce # pylint: disable=C0302
+import math
 
 from tbe import tvm
 from tbe.common import platform as tbe_platform
@@ -32,6 +33,12 @@ DATA_SIZE = {
     "int8": 1,
     "float32": 4,
     "int32": 4
+}
+FIXPIPE_SCOPE_MAP = {
+    "quant_scale_0": "local.FB0",
+    "relu_weight_0": "local.FB1",
+    "relu_weight_1": "local.FB2",
+    "quant_scale_1": "local.FB3"
 }
 
 # common math funtion
@@ -86,7 +93,7 @@ def get_all_tensors(res):
         for one_tensor in tensor_list:
             # check which tensor has not been checked
             if not one_tensor.op.input_tensors:
-                leaf_tensor[one_tensor.op.name] = tensor
+                leaf_tensor[tensor.op.name] = one_tensor
             if one_tensor.op.name not in all_tensor:
                 all_tensor[one_tensor.op.name] = one_tensor
                 get(one_tensor)
@@ -142,10 +149,11 @@ def set_matmul_scope(all_tensor, sch, tensor_map):
     return tensor_map
 
 
-def set_out_scope(all_tensor, sch, tensor_map):
+def set_out_scope(all_tensor, leaf_tensor, sch, tensor_map):
     """
     set scope for matmul
     :param all_tensor: all output tensor of matmul which before setscope
+    :param leaf_tensor: all input tensor of matmul which before setscope
     :param sch: schedule
     :param tensor_map: output tensor of matmul which after setscope
     :return: dict
@@ -153,11 +161,11 @@ def set_out_scope(all_tensor, sch, tensor_map):
     res = all_tensor.get("res")
     tensor_map["c_gm"] = res
     if res.op.tag != "gemm":
-        matmul_res = all_tensor.get("tensor_c_gm")
-        sch[matmul_res].compute_inline()
-        tensor_map["matmul_c_gm"] = matmul_res
-        fixpipe_new = False
-        tensor_map = set_matmul_fixpipe_scope(res, all_tensor, sch, tensor_map)
+        tensor_map["matmul_c_gm"] = all_tensor.get("tensor_c_gm")
+        if res.op.tag not in ("reform_fixpipe", "dequant_NZ", "requant_NZ", "NZ_trans_ND"):
+            tensor_map = set_matmul_ub_scope(res, all_tensor, leaf_tensor, sch, tensor_map)
+        else:
+            tensor_map = set_matmul_fixpipe_scope(res, all_tensor, sch, tensor_map)
     else:
         tensor_map["matmul_c_gm"] = res
 
@@ -167,22 +175,74 @@ def set_out_scope(all_tensor, sch, tensor_map):
 def set_matmul_fixpipe_scope(res, all_tensor, sch, tensor_map):
     """
     set scope for matmul
-    :param all_tensor: all output fixpipe tensor of matmul which before setscope
+    :param all_tensor: all  tensor of matmul which before setscope
     :param sch: schedule
     :param tensor_map: output fixpipe tensor of matmul which after setscope
     :return: dict
     """
     fixpipe_input_tensor = res.op.input_tensors[0]
+    fixpipe_fb_dict = {}
+    fixpipe_l1_list = []
     while (fixpipe_input_tensor.op.tag != "gemm"):
-        if fixpipe_input_tensor.op.tag in ("dequant_vector", "dequant_scale", "requant_vector", "requant_scale"):
+        if fixpipe_input_tensor.op.tag in ("dequant_vector", "requant_vector"):
             deq_input = fixpipe_input_tensor.op.input_tensors[1]
-            deq_ori_shape = list(i.value for i in deq_input.op.attrs["ori_shape"])
-            deq_dims = reduce(lambda x, y: x * y, deq_ori_shape[:])
-            if deq_dims > 1:
-                tensor_map["deq_l1"] = sch.cache_read(deq_input, tbe_platform_info.scope_cbuf, [fixpipe_input_tensor])
-                tensor_map["deq_fb"] = sch.cache_read(tensor_map["deq_l1"], "local.FB0", [fixpipe_input_tensor])
+            deq_l1 = sch.cache_read(deq_input, tbe_platform_info.scope_cbuf, [fixpipe_input_tensor])
+            deq_fb = sch.cache_read(deq_l1, "local.FB0", [fixpipe_input_tensor])
+            fixpipe_fb_dict["local.FB0"] = deq_fb
+            fixpipe_l1_list.append(deq_l1)
+        if fixpipe_input_tensor.op.tag == "fixpipe":
+            vector_params = fixpipe_input_tensor.op.attrs["vector_params"]
+            vector_tensors = fixpipe_input_tensor.op.attrs["vector_tensors"]
+            for idx, params_mem in enumerate(vector_params):
+                fixpipe_input = vector_tensors[idx]
+                fixpipe_input_l1 = sch.cache_read(fixpipe_input, tbe_platform_info.scope_cbuf, [fixpipe_input_tensor])
+                fixpipe_scope_name = FIXPIPE_SCOPE_MAP.get(params_mem.value)
+                if fixpipe_scope_name:
+                    fixpipe_input_fb = sch.cache_read(fixpipe_input_l1, fixpipe_scope_name, [fixpipe_input_tensor])
+                    fixpipe_l1_list.append(fixpipe_input_l1)
+                    fixpipe_fb_dict[fixpipe_scope_name] = fixpipe_input_fb
+                else:
+                    tensor_map["fixpipe_l1_eltwise"] = fixpipe_input_l1
         sch[fixpipe_input_tensor].compute_inline()
         fixpipe_input_tensor = fixpipe_input_tensor.op.input_tensors[0]
+    sch[tensor_map["matmul_c_gm"]].compute_inline()
+    tensor_map["fixpipe_fb"] = fixpipe_fb_dict
+    tensor_map["fixpipe_l1"] = fixpipe_l1_list
+
+    return tensor_map
+
+
+def set_matmul_ub_scope(res, all_tensor, leaf_tensor, sch, tensor_map):
+    """
+    set scope for matmul
+    :param all_tensor: all output tensor of matmul which before setscope
+    :param leaf_tensor: all input tensor of matmul which before setscope
+    :param sch: schedule
+    :param tensor_map: output fixpipe tensor of matmul which after setscope
+    :return: dict
+    """
+    ub_eltwise_input = []
+    ub_eltwise = []
+    tensor_map["fixpipe_to_ub"] = tensor_map["matmul_c_gm"]
+    for tensor_mem in all_tensor.values():
+        if "elewise_binary" in tensor_mem.op.tag:
+            if tensor_mem == res:
+                # hanle the last eltwise tensor
+                ub_write_tensor = sch.cache_write(tensor_mem, tbe_platform_info.scope_ubuf)
+            else:
+                # the eltwise between fixpipe and last tensor
+                sch[tensor_mem].set_scope(tbe_platform_info.scope_ubuf)
+                ub_write_tensor = tensor_mem
+            ub_eltwise.append(ub_write_tensor)
+            if len(tensor_mem.op.input_tensors) > 1:
+                input_tensor = leaf_tensor[tensor_mem.op.name]
+                ub_eltwise_input.append(sch.cache_read(input_tensor, tbe_platform_info.scope_ubuf, [ub_write_tensor]))
+        if tensor_mem.op.tag in ("reform_fixpipe", "dequant_NZ", "requant_NZ", "NZ_trans_ND"):
+            tensor_map["fixpipe_to_ub"] = tensor_mem
+            set_matmul_fixpipe_scope(tensor_mem, all_tensor, sch, tensor_map)
+    sch[tensor_map["fixpipe_to_ub"]].set_scope(tbe_platform_info.scope_ubuf)
+    tensor_map["ub_eltwise"] = ub_eltwise
+    tensor_map["ub_eltwise_input"] = ub_eltwise_input
 
     return tensor_map
 
@@ -195,10 +255,32 @@ def get_fixpipe_flag(tensor_map):
     :return: int, the flag of fixpipe
     """
     fixpipe_flag = 1
-    if tensor_map.get("deq_fb") is not None:
-        fixpipe_flag += 1
+    for fixpipe_scope in tensor_map.get("fixpipe_fb", {}).keys():
+        fixpipe_flag += int(math.pow(2, int(fixpipe_scope[-1])))
 
     return fixpipe_flag
+
+
+def get_fused_num(tensor_map):
+    """
+    get num of ub parts
+    :param tensor_map: tensor of matmul which after setscope
+    :return: int, the num of ub parts
+    """
+    fuse_num = 0
+    res_data_size = DATA_SIZE.get(tensor_map["c_gm"].dtype, 1)
+    ub_data_size = res_data_size
+    if tensor_map.get("ub_eltwise"):
+        fuse_num += 1
+        for ub_eltwise_mem in tensor_map["ub_eltwise"]:
+            ub_data_size = max(ub_data_size, DATA_SIZE.get(ub_eltwise_mem, 1))
+    if tensor_map.get("ub_eltwise_input"):
+        fuse_num += 1
+        for ub_eltwise_input_mem in tensor_map["ub_eltwise_input"]:
+            ub_data_size = max(ub_data_size, DATA_SIZE.get(ub_eltwise_input_mem, 1))
+    fuse_num *= int_ceil_div(ub_data_size, res_data_size)
+
+    return fuse_num
 
 
 def check_tiling_l1(tiling, tensor_map):
@@ -545,14 +627,34 @@ def attach_of_fixpipe(sch, tensor_map, bl1_parts, fixpipe_axis, fully_load_axis)
     :param fully_load_axis: fully load axis for tensor
     :return: None
     """
-    if tensor_map.get("deq_l1") is not None:
-        deq_l1 = tensor_map["deq_l1"]
-        deq_fb = tensor_map["deq_fb"]
-        sch[deq_fb].compute_at(sch[tensor_map["c_gm"]], fixpipe_axis) 
+    for fixpipe_l1_mem in tensor_map.get("fixpipe_l1", []):
         if bl1_parts[1] == 1:
-            sch[deq_l1].compute_at(sch[tensor_map["c_gm"]], fully_load_axis)
+            sch[fixpipe_l1_mem].compute_at(sch[tensor_map["c_gm"]], fully_load_axis)
         else:
-            sch[deq_l1].compute_at(sch[tensor_map["c_gm"]], fixpipe_axis)
+            sch[fixpipe_l1_mem].compute_at(sch[tensor_map["c_gm"]], fixpipe_axis)
+
+    if tensor_map.get("fixpipe_l1_eltwise") is not None:
+        sch[tensor_map["fixpipe_l1_eltwise"]].compute_at(sch[tensor_map["c_gm"]], fixpipe_axis)
+
+    for fixpipe_fb_mem in tensor_map.get("fixpipe_fb", {}).values():
+        sch[fixpipe_fb_mem].compute_at(sch[tensor_map["c_gm"]], fixpipe_axis)
+
+
+def attach_of_ub(sch, tensor_map, ub_axis):
+    """
+    attach tensor of fixpipe
+    :param sch: schedule
+    :param tensor_map: tensor of matmul
+    :param ub_axis: out load axis tensor for ub tenspr
+    :return: None
+    """
+    for ub_eltwise_mem in tensor_map.get("ub_eltwise", []):
+        sch[ub_eltwise_mem].compute_at(sch[tensor_map["c_gm"]], ub_axis)
+    for ub_eltwise_input_mem in tensor_map.get("ub_eltwise_input", []):
+        sch[ub_eltwise_input_mem].compute_at(sch[tensor_map["c_gm"]], ub_axis)
+    if tensor_map.get("fixpipe_to_ub") is not None:
+        fixpipe_to_ub = tensor_map["fixpipe_to_ub"]
+        sch[fixpipe_to_ub].compute_at(sch[tensor_map["c_gm"]], ub_axis)
 
 
 def attach_of_l1(sch, tensor_map, l1_attch_axis, al1_parts, bl1_parts):
@@ -614,11 +716,12 @@ def double_buffer_fp_and_bt(sch, tensor_map):
         bias_bt = tensor_map["bias_bt"]
         sch[bias_l1].double_buffer()
         sch[bias_bt].double_buffer()
-    if tensor_map.get("deq_l1") is not None:
-        deq_l1 = tensor_map["deq_l1"]
-        deq_fb = tensor_map["deq_fb"]
-        sch[deq_l1].double_buffer()
-        sch[deq_fb].double_buffer()
+    for fixpipe_l1_mem in tensor_map.get("fixpipe_l1", []):
+        sch[fixpipe_l1_mem].double_buffer()
+    if tensor_map.get("fixpipe_l1_eltwise") is not None:
+        sch[tensor_map["fixpipe_l1_eltwise"]].double_buffer()
+    for fixpipe_fb_mem in tensor_map.get("fixpipe_fb", {}).values():
+        sch[fixpipe_fb_mem].double_buffer()
 
 
 def double_buffer_ub(sch, tensor_map):
@@ -628,7 +731,13 @@ def double_buffer_ub(sch, tensor_map):
     :param tensor_map: tensor of matmul
     :return: None
     """
-    pass
+    for ub_eltwise_mem in tensor_map.get("ub_eltwise", []):
+        sch[ub_eltwise_mem].double_buffer()
+    for ub_eltwise_input_mem in tensor_map.get("ub_eltwise_input", []):
+        sch[ub_eltwise_input_mem].double_buffer()
+    if tensor_map.get("fixpipe_to_ub") is not None:
+        fixpipe_to_ub = tensor_map["fixpipe_to_ub"]
+        sch[fixpipe_to_ub].double_buffer()
 
 
 # emit func of matmul
@@ -713,11 +822,13 @@ def emit_insn_fp_and_bt(sch, tensor_map):
         bias_bt = tensor_map["bias_bt"]
         sch[bias_l1].emit_insn(bias_l1.op.axis[0], "dma_copy")
         sch[bias_bt].emit_insn(bias_bt.op.axis[0], "dma_copy")
-    if tensor_map.get("deq_l1") is not None:
-        deq_l1 = tensor_map["deq_l1"]
-        deq_fb = tensor_map["deq_fb"]
-        sch[deq_l1].emit_insn(deq_l1.op.axis[0], "dma_copy")
-        sch[deq_fb].emit_insn(deq_fb.op.axis[0], "dma_copy")
+    for fixpipe_l1_mem in tensor_map.get("fixpipe_l1", []):
+        sch[fixpipe_l1_mem].emit_insn(fixpipe_l1_mem.op.axis[0], "dma_copy")
+    if tensor_map.get("fixpipe_l1_eltwise") is not None:
+        fixpipe_l1_eltwise = tensor_map["fixpipe_l1_eltwise"]
+        sch[fixpipe_l1_eltwise].emit_insn(fixpipe_l1_eltwise.op.axis[0], "dma_copy")
+    for fixpipe_fb_mem in tensor_map.get("fixpipe_fb", {}).values():
+        sch[fixpipe_fb_mem].emit_insn(fixpipe_fb_mem.op.axis[0], "dma_copy")
 
 
 def emit_insn_ub(sch, tensor_map):
@@ -727,4 +838,10 @@ def emit_insn_ub(sch, tensor_map):
     :param tensor_map: tensor of matmul
     :return: None
     """
-    pass
+    for ub_eltwise_mem in tensor_map.get("ub_eltwise", []):
+        sch[ub_eltwise_mem].emit_insn(ub_eltwise_mem.op.axis[0], "vector_auto")
+    for ub_eltwise_input_mem in tensor_map.get("ub_eltwise_input", []):
+        sch[ub_eltwise_input_mem].emit_insn(ub_eltwise_input_mem.op.axis[0], "dma_copy")
+    if tensor_map.get("fixpipe_to_ub") is not None:
+        fixpipe_to_ub = tensor_map["fixpipe_to_ub"]
+        sch[fixpipe_to_ub].emit_insn(fixpipe_to_ub.op.axis[0], "dma_copy")
