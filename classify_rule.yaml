@@ -693,6 +693,8 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/arg_max_v2_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool_v2_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_multi_class_nms_enable_vector_core_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_multi_class_nms_enable_vector_core_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnorm_bninfer_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnorm_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/batchnormgrad_bninfergrad_fusion_pass.cc
@@ -1245,6 +1247,7 @@ vector_B:
       - ops/built-in/tests/ut/graph_fusion/ai_core/argmax_ops.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/argmaxv2_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/argmin_ops.cpp
+      - ops/built-in/tests/ut/graph_fusion/ai_core/batch_multi_class_nms_enable_vector_core_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/batch_norm_3d_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/batch_norm_3d_grad_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/batch_norm_cast_fusion_test.cpp
