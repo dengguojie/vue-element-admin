@@ -129,7 +129,7 @@ def _cube_3d_compute(fmap,
 
     _TENSOR_MAP["fmap"] = fmap
     _TENSOR_MAP["filter"] = weight
-
+    pads = list(pads)
     fmap_shape = tbe_utils.shape_util.shape_to_list(fmap.shape)
     batch_size = fmap_shape[0]
     fmap_d = fmap_shape[1]
