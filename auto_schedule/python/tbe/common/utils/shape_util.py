@@ -325,7 +325,7 @@ def _get_input_range_nchw(op_type, in_shape, in_format, in_range):
     return [tuple(r) if r else r for r in in_range]
 
 
-def _cube_variable_shape(inputs: list, attrs=None):
+def _cube_variable_shape(inputs: list):
     shape_out = []
 
     groups = 1
@@ -395,7 +395,7 @@ def _transpose_variable_shape(inputs: list):
     return shape_out
 
 
-def variable_shape(inputs: list, op_mode="elewise", attrs=None):
+def variable_shape(inputs: list, op_mode="elewise"):
     """
     :param inputs: all inputs
     :param op_mode: elewise or reduce
