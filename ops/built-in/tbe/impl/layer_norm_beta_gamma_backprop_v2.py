@@ -300,7 +300,7 @@ def update_shape_nz(shape_x):
 
     param_nz_axis = []
     for i, (xtem, gamma) in enumerate(zip(shape_x_nz, shape_gamma_nz)):
-        if xtem != gamma:
+        if xtem != gamma or (xtem == 1 and gamma == 1):
             param_nz_axis.append(i)
 
     param_nz = {"shape_x_nz": shape_x_nz, "shape_gamma_nz": shape_gamma_nz, "param_nz_axis": param_nz_axis}

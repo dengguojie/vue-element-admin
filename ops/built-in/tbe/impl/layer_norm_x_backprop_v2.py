@@ -829,7 +829,7 @@ def update_shape_nz(shape_x, shape_var, shape_gamma):
             reduce_nz_axis.append(i)
 
     for i, (xtem, gamma) in enumerate(zip(shape_x_nz, shape_gamma_nz)):
-        if xtem != gamma:
+        if xtem != gamma or (xtem == 1 and gamma == 1):
             param_nz_axis.append(i)
 
     mean_nz_num = 1.0
