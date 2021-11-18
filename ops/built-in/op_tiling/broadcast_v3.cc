@@ -1458,15 +1458,15 @@ bool BroadcastTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRun
 }
 
 bool BroadcastTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info,
-                                  const OpInfo& op_info) const {
+                                      const OpInfo& op_info) const {
   OP_LOGD(op_type.c_str(), "broadcast custom tiling running");
   v3::Broadcast broadcast(op_type, op_paras, broadcast_compile_info, run_info);
   return broadcast.BroadcastTiling(op_info);
 }
 
 std::shared_ptr<AutoTilingHandler> CreateBroadcastTilingHandler(const std::string& op_type,
-                                                                  const std::string& pattern,
-                                                                  const nlohmann::json& parsed_compile_info) {
+                                                                const std::string& pattern,
+                                                                const nlohmann::json& parsed_compile_info) {
   return std::make_shared<BroadcastTilingHandler>(op_type, pattern, parsed_compile_info);
 }
 

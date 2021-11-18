@@ -495,8 +495,8 @@ bool ElewiseTilingHandler::DoTiling(const ge::Operator& op_paras,
 }
 
 std::shared_ptr<AutoTilingHandler> CreateElewiseTilingHandler(const std::string& op_type,
-                                                                  const std::string& pattern,
-                                                                  const nlohmann::json& parsed_compile_info) {
+                                                              const std::string& pattern,
+                                                              const nlohmann::json& parsed_compile_info) {
   return std::make_shared<ElewiseTilingHandler>(op_type, pattern, parsed_compile_info);
 }
 }  // namespace optiling

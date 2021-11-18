@@ -20,10 +20,11 @@
  */
 #include "vector_tiling.h"
 #include "auto_tiling.h"
+#include <mutex>
 
 namespace optiling {
 
-static thread_local std::vector<std::shared_ptr<AutoTilingHandler>> handler_container;
+static std::vector<std::shared_ptr<AutoTilingHandler>> handler_container;
 
 /*
  * @brief: tiling function of ops
@@ -50,6 +51,7 @@ bool AutoTiling(const ge::Operator& op_paras, const void* handler,
 
 void* AutoTilingHandlerParser(const ge::Operator& op_paras, const ge::AscendString& compile_info_str) {
   // Print Info Log and get Pattern+OpType
+  static std::mutex vector_lock;
   OP_LOGI("AutoTiling", "Entering AutoTilingHandler Parser.");
   ge::AscendString ascend_op_type;
   ge::graphStatus ret = op_paras.GetOpType(ascend_op_type);
@@ -70,7 +72,9 @@ void* AutoTilingHandlerParser(const ge::Operator& op_paras, const ge::AscendStri
   const string& pattern = parsed_compile_info["_pattern"];
   std::shared_ptr<AutoTilingHandler> p_handler = CreateAutoTilingHandler(op_type, pattern,
                                                                          parsed_compile_info);
+  vector_lock.lock();
   handler_container.push_back(p_handler);
+  vector_lock.unlock();
   return p_handler.get();
 }
 

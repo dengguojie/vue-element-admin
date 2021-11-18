@@ -109,7 +109,7 @@ bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, co
                     utils::OpRunInfo& run_info, const OpInfo& op_info);
 
 std::shared_ptr<AutoTilingHandler> CreateAutoTilingHandler(const std::string& op_type, const std::string& pattern,
-                                                               const nlohmann::json& parsed_compile_info);
+                                                           const nlohmann::json& parsed_compile_info);
 }  // namespace optiling
 
 #endif  // OPS_BUILT_IN_OP_TILING_VECTOR_TILING_H_

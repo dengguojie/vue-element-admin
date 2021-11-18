@@ -1317,12 +1317,12 @@ bool ReduceTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRunInf
 }
 
 std::shared_ptr<AutoTilingHandler> CreateReduceTilingHandler(const std::string& op_type,
-                                                                 const std::string& pattern,
-                                                                 const nlohmann::json& parsed_compile_info) {
+                                                             const std::string& pattern,
+                                                             const nlohmann::json& parsed_compile_info) {
 
   auto reduceCompileInfoV3_ptr = std::make_shared<ReduceTilingHandler>(op_type, pattern, parsed_compile_info);
 
   return reduceCompileInfoV3_ptr->ParsedSuccess() ?
-                        reduceCompileInfoV3_ptr : std::shared_ptr<AutoTilingHandler >(nullptr);
+                        reduceCompileInfoV3_ptr : std::shared_ptr<AutoTilingHandler>(nullptr);
 }
 }  // namespace optiling
