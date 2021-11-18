@@ -78,4 +78,5 @@
 #include "condtake_ops.h"
 #include "warp_perspective_ops.h"
 #include "vector_search.h"
+#include "deep_md.h"
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_ALL_OPS_H_

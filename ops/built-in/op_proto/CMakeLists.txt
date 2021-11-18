@@ -121,6 +121,7 @@ set(_op_proto_srcs
   correlation.cc
   vector_search.cc
   cluster.cc
+  deep_md.cc
 )
 
 set(_op_proto_include
