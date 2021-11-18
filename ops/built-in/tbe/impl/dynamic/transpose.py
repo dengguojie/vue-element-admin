@@ -111,7 +111,7 @@ def _by_dynamic_static_union_version(shape, core_num):
     temporary function, for dynamic & static union version not fully verified
     """
     if core_num == 1:
-        white_list_shape_lhisi = [[1, 24, 3, 20]]
+        white_list_shape_lhisi = [[1, 24, 3, 20], [8, 128, 3, 21]]
         shape_t_lhisi = list(shape)
         if shape_t_lhisi in white_list_shape_lhisi:
             return True
