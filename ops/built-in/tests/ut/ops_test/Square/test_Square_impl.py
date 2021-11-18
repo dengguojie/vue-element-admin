@@ -26,6 +26,8 @@ ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], 
 ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (11, 33))
 ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (10, 12))
 ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (10, 13))
+ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (192000, 512000))
+ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32", "int32"], (512000, 512000))
 
 # ============ auto gen ["Ascend910"] test cases end =================
 

@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -124,7 +124,7 @@ uint32_t InplaceTopKDistanceCpuKernel::ModifyInput(std::vector<Item<T>> items_ve
   std::string order = inputs.order->GetString();
   KERNEL_LOG_INFO("InplaceTopKDistance attr order is [%s]", order.c_str());
 
-  if ("asc" == order) {
+  if (order == "asc") {
     KERNEL_LOG_INFO("InplaceTopKDistance modifyInput asc begin");
     uint64_t j = 0;
     for (auto i = items_vec.begin(); i < items_vec.begin() + topk_elements_num; i++, j++) {

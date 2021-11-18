@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,9 @@ constexpr const char *kStridedSlice = "StridedSlice";
 }
 
 namespace aicpu {
+template <typename T>
+static inline void DataLeftShift(T &data) {  data = data << 1;  }
+
 static uint32_t ProcessEllipsisMask(
     const std::vector<int64_t> &begin,
     const std::vector<int64_t> &end,
@@ -47,14 +50,14 @@ static uint32_t ProcessEllipsisMask(
     }
 
     j++;
-    bit_mask *= 2;
+    DataLeftShift(bit_mask);
     size_t ellipsis_bits = x_shape.size() - strides.size();
     int64_t bit_mask_tmp = 1;
     for (size_t k = 0; k < strides.size(); ++k) {
       if ((new_axis_mask & bit_mask_tmp) && !(ellipsis_mask & bit_mask_tmp)) {
         ellipsis_bits++;
       }
-      bit_mask_tmp *= 2;
+      DataLeftShift(bit_mask_tmp);
     }
     for (size_t k = 0; k <= ellipsis_bits; ++k) {
       begin_res.push_back(0);
@@ -184,7 +187,7 @@ uint32_t StridedSliceCpuKernel::InitParamsWithMasks(
                         "[%s] process masks failed.", kStridedSlice);
     i++;
     j++;
-    bit_mask *= 2;
+    DataLeftShift(bit_mask);
   }
 
   auto begin_iter = begin_res.begin();
