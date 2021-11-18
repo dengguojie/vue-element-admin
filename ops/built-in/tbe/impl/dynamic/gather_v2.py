@@ -2588,8 +2588,7 @@ class GatherV2():
                                                             "ub_size": self.ub_size,
                                                             "l1_size": self.l1_size,
                                                             "params_dsize": self.params_dsize,
-                                                            "indices_dsize": self.indices_dsize,
-                                                            "batch_dims": self.batch_dims
+                                                            "indices_dsize": self.indices_dsize
                                                             })
 
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
@@ -2630,8 +2629,7 @@ class GatherV2():
                                                             "ub_size": self.ub_size,
                                                             "l1_size": self.l1_size,
                                                             "params_dsize": self.params_dsize,
-                                                            "indices_dsize": self.indices_dsize,
-                                                            "batch_dims": self.batch_dims
+                                                            "indices_dsize": self.indices_dsize
                                                             })
 
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,

@@ -66,6 +66,7 @@ TEST_F(GatherTiling, gather_tiling_0) {
   TENSOR_INPUT(opParas, tensor_inputA, x);
   TENSOR_INPUT(opParas, tensor_inputB, indices);
   TENSOR_OUTPUT(opParas, tensor_output, y);
+  opParas.SetAttr("batch_dims", 0);
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
@@ -102,6 +103,7 @@ TEST_F(GatherTiling, gather_tiling_1) {
   TENSOR_INPUT(opParas, tensor_inputA, x);
   TENSOR_INPUT(opParas, tensor_inputB, indices);
   TENSOR_OUTPUT(opParas, tensor_output, y);
+  opParas.SetAttr("batch_dims", 1);
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
