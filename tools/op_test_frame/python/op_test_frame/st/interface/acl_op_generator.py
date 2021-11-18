@@ -24,10 +24,10 @@ from ..template.code_snippet import CodeTemplate
 from . import dynamic_handle
 
 
-def _get_desc_dic(tmp_dic, key_desc, testcase_struct):
+def _get_desc_dic(tmp_dic, key_desc, testcase_struct, output_path):
     tmp_dic[key_desc] = []
     input_name_list = []
-    for desc_dic in testcase_struct.get(key_desc):
+    for index, desc_dic in enumerate(testcase_struct.get(key_desc)):
         if desc_dic.get('ori_format') is not None and \
                 desc_dic.get('ori_shape') is not None:
             res_desc_dic = {
@@ -42,7 +42,8 @@ def _get_desc_dic(tmp_dic, key_desc, testcase_struct):
                 'type': desc_dic.get('type'),
                 'shape': desc_dic.get('shape')}
         # add is_const in acl_op.json
-        utils.ConstInput.add_const_info_in_acl_json(desc_dic, res_desc_dic)
+        utils.ConstInput.add_const_info_in_acl_json(desc_dic, res_desc_dic, output_path,
+                                                    testcase_struct.get(ConstManager.CASE_NAME), index)
         # Add name field for input*.paramType = optional or dynamic scenarios.
         input_name = desc_dic.get('name')
         if input_name is not None:
@@ -62,15 +63,15 @@ def _get_desc_dic(tmp_dic, key_desc, testcase_struct):
         tmp_dic[key_desc].append(res_desc_dic)
 
 
-def _get_testcase_dict(testcase_struct):
+def _get_testcase_dict(testcase_struct, output_path):
     # init dic with op name
     tmp_dic = {'op': testcase_struct.get('op')}
     # process input desc
     if "input_desc" in testcase_struct.keys():
-        _get_desc_dic(tmp_dic, "input_desc", testcase_struct)
+        _get_desc_dic(tmp_dic, "input_desc", testcase_struct, output_path)
     # process output desc
     if "output_desc" in testcase_struct.keys():
-        _get_desc_dic(tmp_dic, "output_desc", testcase_struct)
+        _get_desc_dic(tmp_dic, "output_desc", testcase_struct, output_path)
     # process attr
     if "attr" in testcase_struct.keys():
         tmp_dic['attr'] = []
@@ -83,13 +84,13 @@ def _get_testcase_dict(testcase_struct):
     return tmp_dic
 
 
-def _create_acl_op_json_content(testcase_list, compile_flag):
+def _create_acl_op_json_content(testcase_list, output_path, compile_flag):
     content = []
     if compile_flag is not None:
         compile_dic = {'compile_flag': compile_flag}
         content.append(compile_dic)
     for testcase_struct in testcase_list:
-        tmp_dic = _get_testcase_dict(testcase_struct)
+        tmp_dic = _get_testcase_dict(testcase_struct, output_path)
         # only append non-repetitive json struct
         if tmp_dic not in content:
             content.append(tmp_dic)
@@ -377,7 +378,8 @@ class AclOpGenerator:
                                 output_testcase_cpp_path)
 
         ## f3.prepare acl json content and write file
-        acl_json_content = _create_acl_op_json_content(self.testcase_list, self.compile_flag)
+        acl_json_content = _create_acl_op_json_content(
+            self.testcase_list, self.output_path, self.compile_flag)
         output_acl_op_json_path = self.output_path + \
                                   ConstManager.ACL_OP_JSON_RELATIVE_PATH
         _write_content_to_file(acl_json_content,

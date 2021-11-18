@@ -576,7 +576,7 @@ class ConstInput:
 
     def deal_with_const(self, input_desc, for_fuzz):
         """
-        Function: Update is_const field in input_desc dict.
+        Function: update is_const field in input_desc dict.
         return:
         """
         if self._check_is_const():
@@ -586,13 +586,18 @@ class ConstInput:
                 input_desc.update({ConstManager.IS_CONST: [self.is_const]})
 
     @staticmethod
-    def add_const_info_in_acl_json(desc_dict, res_desc_dic):
+    def add_const_info_in_acl_json(desc_dict, res_desc_dic, output_path, case_name, index):
         """
-        Function:Check whether there is an is_const field in the desc_dict,
+        Function: check whether there is an is_const field in the desc_dict,
         and then check whether there is a value field. Otherwise, use the
         data distribution and value range to generate constant value.
         Finally, deposit is_const and constant value to acl_op.json.
-        return:
+        Return:
+        desc_dict-> input or output information description
+        res_desc_dic-> a dict for format,shape,type information
+        output_path-> output path
+        case_name-> case name
+        index-> input/output index
         """
         input_shape = desc_dict.get('shape')
         dtype = desc_dict.get('type')
@@ -604,13 +609,15 @@ class ConstInput:
                     data = np.fromfile(case_value, np_type)
                     const_value = data.tolist()
                 else:
-                    const_value = desc_dict.get(ConstManager.VALUE)
+                    const_value = np.array(
+                        desc_dict.get(ConstManager.VALUE)).flatten().tolist()
             else:
+                # generate const value with data_distribute
                 range_min, range_max = desc_dict.get(ConstManager.VALUE_RANGE)
                 data = DataGenerator.gen_data(
                     input_shape, range_min, range_max, dtype,
                     desc_dict.get(ConstManager.DATA_DISTRIBUTE))
-                const_value = data.tolist()
+                const_value = ConstInput._generate_const_value(data, output_path, case_name, index)
             const_value_dict = {
                 ConstManager.IS_CONST: desc_dict.get(ConstManager.IS_CONST),
                 ConstManager.CONST_VALUE: const_value}
@@ -619,9 +626,9 @@ class ConstInput:
     @staticmethod
     def get_acl_const_status(testcase_struct):
         """
-        Function:Check input whether is a constant, and generate constant status
+        Function: check input whether is a constant, and generate constant status
         for inputConst variable in testcase.cpp.
-        return: const_status
+        Return: const_status
         """
         input_const_list = []
         const_status = ""
@@ -636,3 +643,16 @@ class ConstInput:
             acl_const_list.append(acl_const)
         const_status += ", ".join(acl_const_list)
         return const_status
+
+    @staticmethod
+    def _generate_const_value(data, output_path, case_name, index):
+        const_data = data.flatten()
+        # generate bin file to save const value and used by data generator module
+        output_path = os.path.join(output_path, 'run', 'out', 'test_data', 'data')
+        make_dirs(output_path)
+        file_path = os.path.join(output_path,
+                                 case_name + '_input_' + str(index) + '.bin')
+        const_data.tofile(file_path)
+        os.chmod(file_path, ConstManager.WRITE_MODES)
+        const_value = const_data.tolist()
+        return const_value

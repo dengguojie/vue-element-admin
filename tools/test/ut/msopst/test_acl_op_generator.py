@@ -15,7 +15,7 @@ class TestUtilsMethods(unittest.TestCase):
 
     def test_msopst_create_acl_op_json_content_error(self):
         with mock.patch('json.dumps', side_effect=TypeError):
-            acl_op_generator._create_acl_op_json_content("", None)
+            acl_op_generator._create_acl_op_json_content("", "", None)
 
     def test_msopst_append_content_to_file_error(self):
         with pytest.raises(utils.OpTestGenException) as error:

@@ -37,7 +37,16 @@ class DataGenerator:
                                             'out', 'test_data', 'data')
 
     @staticmethod
-    def gen_data_with_value(input_shape, value, dtype):
+    def _check_data_size(data, value, input_shape):
+        input_size = functools.reduce(lambda x, y: x * y, input_shape)
+        data_size = functools.reduce(lambda x, y: x * y, data.shape)
+        if input_size != data_size:
+            utils.print_error_log(
+                "The size of data from %s not equal to input shape size." % value)
+            raise utils.OpTestGenException(
+                ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
+
+    def gen_data_with_value(self, input_shape, value, dtype):
         """
         generate data with value
         :param input_shape: the data shape
@@ -48,12 +57,7 @@ class DataGenerator:
         dtype = utils.map_type_to_expect_type(dtype)
         if isinstance(value, str):
             data = np.fromfile(value, dtype)
-            input_size = functools.reduce(lambda x, y: x * y, input_shape)
-            data_size = functools.reduce(lambda x, y: x * y, data.shape)
-            if input_size != data_size:
-                utils.print_error_log("The size of data from %s not equal to input shape size." % value)
-                raise utils.OpTestGenException(
-                    ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
+            self._check_data_size(data, value, input_shape)
             data.shape = input_shape
             return data
         data = np.array(value, dtype=dtype)
@@ -188,30 +192,46 @@ class DataGenerator:
             file_path = os.path.join(
                 self.output_path,
                 case_name + '_input_' + str(index) + '.bin')
-            if os.path.exists(file_path):
-                utils.print_error_log(
-                    'The file %s already exists, please delete it then'
-                    ' retry.' % file_path)
-                raise utils.OpTestGenException(
-                    ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
-            data = self._gen_input_data(input_shape, input_desc, file_path)
-            try:
+            is_const_distribute = (input_desc.get(ConstManager.IS_CONST) and
+                                   input_desc.get(ConstManager.DATA_DISTRIBUTE) and
+                                   input_desc.get(ConstManager.VALUE) is None)
+            if is_const_distribute:
+                data_list = np.fromfile(file_path, dtype=input_desc.get('type'))
+                self._check_data_size(data_list, file_path, input_shape)
+                input_shape = tuple(input_shape)
+                data = np.array(data_list).reshape(input_shape)
                 input_dic = {
                     'value': data,
                     'dtype': input_desc.get('type'),
                     'shape': input_shape,
                     'format': input_desc.get('format')
                 }
-                data.tofile(file_path)
-                os.chmod(file_path, ConstManager.WRITE_MODES)
-            except OSError as error:
-                utils.print_warn_log(
-                    'Failed to generate data for %s. %s' % (
-                        file_path, error))
-                raise utils.OpTestGenException(
-                    ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
-            finally:
-                pass
+            else:
+                if os.path.exists(file_path):
+                    utils.print_error_log(
+                        'The file %s already exists, please delete it then'
+                        ' retry.' % file_path)
+                    raise utils.OpTestGenException(
+                        ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
+                data = self._gen_input_data(input_shape, input_desc, file_path)
+                try:
+                    input_dic = {
+                        'value': data,
+                        'dtype': input_desc.get('type'),
+                        'shape': input_shape,
+                        'format': input_desc.get('format')
+                    }
+                    data.tofile(file_path)
+                    os.chmod(file_path, ConstManager.WRITE_MODES)
+                except OSError as error:
+                    utils.print_warn_log(
+                        'Failed to generate data for %s. %s' % (
+                            file_path, error))
+                    raise utils.OpTestGenException(
+                        ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
+                finally:
+                    pass
+
             if input_desc.get('name'):
                 input_name = input_desc.get('name')
                 calc_func_params_tmp.update(
