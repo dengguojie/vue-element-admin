@@ -2721,7 +2721,7 @@ static graphStatus data_slice_conv2d_backprop_input(ge::Operator& op, vector<vec
   dedy_data_slice[i] = y_data_slice[i];
   CHECK_OP_FUNC(!AttrUtils::SetListListInt(tensor_desc_dedy, ge::ATTR_NAME_DATA_SLICE, dedy_data_slice),
             return GRAPH_FAILED, "set dedy data slice attr failed.");
-  if (!is_deconv_flag) {
+  if (!not_set_input_size) {
     if (i == kHDimNCHWIdx) {
       input_sizes[h_y_position] = y_extend;
     } else if (i == kWDimNCHWIdx) {
