@@ -145,12 +145,9 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
   int32_t ksize_w = compile_info_param.ksize_w;
   int32_t strides_h = compile_info_param.strides_h;
   int32_t strides_w = compile_info_param.strides_w;
-  int32_t padding = compile_info_param.padding;
   int32_t ceil_mode = compile_info_param.ceil_mode;
   int32_t pad_top = compile_info_param.pad_top;
-  int32_t pad_bottom = compile_info_param.pad_bottom;
   int32_t pad_left = compile_info_param.pad_left;
-  int32_t pad_right = compile_info_param.pad_right;
 
   // calc output height and width, pad infos
   param.pad_t = pad_top;
@@ -204,7 +201,6 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
       param.last_core_loop_left = param.last_core_ele % param.c_factor;
     } else if (ksize_h * param.pad_w * input_shape[4] <= one_sixth_ub_ele) {
       param.h_factor = (one_sixth_ub_ele / (param.pad_w * input_shape[4]) - ksize_h) / strides_h + 1;
-      int32_t h_loop = param.output_h / param.h_factor;
       param.tiling_mode = 2;
       CalCoreNum(param, param.n_c1, core_num);
       param.one_core_loop_num = param.output_h / param.h_factor;
