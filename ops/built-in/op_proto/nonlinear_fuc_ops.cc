@@ -1042,4 +1042,36 @@ IMPLEMT_VERIFIER(Shrink, ShrinkVerify) {
 COMMON_INFER_FUNC_REG(Shrink, ShrinkInferShape);
 VERIFY_FUNC_REG(Shrink, ShrinkVerify);
 // ----------------Shrink END---------------------
+
+// ---------------------ThresholdV2------------------------
+IMPLEMT_INFERFUNC(ThresholdV2, ThresholdV2InferShape) {
+  TensorDesc tensordesc_input = op.GetInputDescByName("x");
+  Shape input_shape = tensordesc_input.GetShape();
+  DataType input_dtype = tensordesc_input.GetDataType();
+  Format input_format = tensordesc_input.GetFormat();
+  std::vector<std::pair<int64_t, int64_t>> input_range;
+  tensordesc_input.GetShapeRange(input_range);
+
+  TensorDesc tensordesc_output = op.GetOutputDescByName("y");
+  tensordesc_output.SetShape(input_shape);
+  tensordesc_output.SetDataType(input_dtype);
+  tensordesc_output.SetFormat(input_format);
+  tensordesc_output.SetShapeRange(input_range);
+
+  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(ThresholdV2, ThresholdV2Verify) {
+  DataType input_type_x = op.GetInputDescByName("x").GetDataType();
+  DataType input_type_threshold = op.GetInputDescByName("threshold").GetDataType();
+  if (input_type_x != input_type_threshold) {
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(ThresholdV2, ThresholdV2InferShape);
+VERIFY_FUNC_REG(ThresholdV2, ThresholdV2Verify);
+// ---------------------ThresholdV2------------------------
 }  // namespace ge

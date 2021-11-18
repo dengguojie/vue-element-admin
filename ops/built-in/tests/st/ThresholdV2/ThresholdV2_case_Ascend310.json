@@ -1,0 +1,578 @@
+[
+    {
+        "case_name": "Test_ThresholdV2_001",
+        "op": "ThresholdV2",
+        "calc_expect_func_file": "st_calc_expect_func.py:calc_expect_func",
+        "input_desc": [
+            {
+                "name": "x",
+                "format": "ND",
+                "type": "float16",
+                "shape": [
+                    16
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    16
+                ],
+                "value_range": [
+                    0.1, 8.0
+                ],
+                "data_distribute": [
+                    "uniform"
+                ]
+            },
+            {
+                "name": "threshold",
+                "format": "ND",
+                "type": "float16",
+                "shape": [
+                    1
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    1
+                ],
+                "value": [
+                    5
+                ],
+                "is_const": false
+            },
+            {
+                "name": "value",
+                "format": "UNDEFINED",
+                "type": "UNDEFINED",
+                "shape": [
+                    1
+                ],
+                "ori_format": "UNDEFINED",
+                "ori_shape": [
+                    1
+                ],
+                "value": [
+                    0
+                ],
+                "is_const": false
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "y",
+                "format": "ND",
+                "type": "float16",
+                "shape": [
+                    16
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    16
+                ]
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Test_ThresholdV2_002",
+        "op": "ThresholdV2",
+        "calc_expect_func_file": "st_calc_expect_func.py:calc_expect_func",
+        "input_desc": [
+            {
+                "name": "x",
+                "format": "ND",
+                "type": "float16",
+                "shape": [
+                    8, 8
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    8, 8
+                ],
+                "value_range": [
+                    0.1, 8.0
+                ],
+                "data_distribute": [
+                    "uniform"
+                ]
+            },
+            {
+                "name": "threshold",
+                "format": "ND",
+                "type": "float16",
+                "shape": [
+                    1
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    1
+                ],
+                "value": [
+                    5
+                ],
+                "is_const": false
+            },
+            {
+                "name": "value",
+                "format": "UNDEFINED",
+                "type": "UNDEFINED",
+                "shape": [
+                    1
+                ],
+                "ori_format": "UNDEFINED",
+                "ori_shape": [
+                    1
+                ],
+                "value": [
+                    0
+                ],
+                "is_const": false
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "y",
+                "format": "ND",
+                "type": "float16",
+                "shape": [
+                    8, 8
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    8, 8
+                ]
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Test_ThresholdV2_003",
+        "op": "ThresholdV2",
+        "calc_expect_func_file": "st_calc_expect_func.py:calc_expect_func",
+        "input_desc": [
+            {
+                "name": "x",
+                "format": "ND",
+                "type": "int8",
+                "shape": [
+                    5, 6, 7
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    5, 6, 7
+                ],
+                "value_range": [
+                    0.1, 8.0
+                ],
+                "data_distribute": [
+                    "uniform"
+                ]
+            },
+            {
+                "name": "threshold",
+                "format": "ND",
+                "type": "int8",
+                "shape": [
+                    1
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    1
+                ],
+                "value": [
+                    5
+                ],
+                "is_const": false
+            },
+            {
+                "name": "value",
+                "format": "UNDEFINED",
+                "type": "UNDEFINED",
+                "shape": [
+                    1
+                ],
+                "ori_format": "UNDEFINED",
+                "ori_shape": [
+                    1
+                ],
+                "value": [
+                    0
+                ],
+                "is_const": false
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "y",
+                "format": "ND",
+                "type": "int8",
+                "shape": [
+                    5, 6, 7
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    5, 6, 7
+                ]
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Test_ThresholdV2_004",
+        "op": "ThresholdV2",
+        "calc_expect_func_file": "st_calc_expect_func.py:calc_expect_func",
+        "input_desc": [
+            {
+                "name": "x",
+                "format": "ND",
+                "type": "int32",
+                "shape": [
+                    5, 6, 7, 8
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    5, 6, 7, 8
+                ],
+                "value_range": [
+                    0.1, 8.0
+                ],
+                "data_distribute": [
+                    "uniform"
+                ]
+            },
+            {
+                "name": "threshold",
+                "format": "ND",
+                "type": "int32",
+                "shape": [
+                    1
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    1
+                ],
+                "value": [
+                    5
+                ],
+                "is_const": false
+            },
+            {
+                "name": "value",
+                "format": "UNDEFINED",
+                "type": "UNDEFINED",
+                "shape": [
+                    1
+                ],
+                "ori_format": "UNDEFINED",
+                "ori_shape": [
+                    1
+                ],
+                "value": [
+                    0
+                ],
+                "is_const": false
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "y",
+                "format": "ND",
+                "type": "int32",
+                "shape": [
+                    5, 6, 7, 8
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    5, 6, 7, 8
+                ]
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Test_ThresholdV2_005",
+        "op": "ThresholdV2",
+        "calc_expect_func_file": "st_calc_expect_func.py:calc_expect_func",
+        "input_desc": [
+            {
+                "name": "x",
+                "format": "ND",
+                "type": "uint8",
+                "shape": [
+                    3, 4, 5, 6, 7
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    3, 4, 5, 6, 7
+                ],
+                "value_range": [
+                    0.1, 8.0
+                ],
+                "data_distribute": [
+                    "uniform"
+                ]
+            },
+            {
+                "name": "threshold",
+                "format": "ND",
+                "type": "uint8",
+                "shape": [
+                    1
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    1
+                ],
+                "value": [
+                    5
+                ],
+                "is_const": false
+            },
+            {
+                "name": "value",
+                "format": "UNDEFINED",
+                "type": "UNDEFINED",
+                "shape": [
+                    1
+                ],
+                "ori_format": "UNDEFINED",
+                "ori_shape": [
+                    1
+                ],
+                "value": [
+                    0
+                ],
+                "is_const": false
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "y",
+                "format": "ND",
+                "type": "uint8",
+                "shape": [
+                    3, 4, 5, 6, 7
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    3, 4, 5, 6, 7
+                ]
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Test_ThresholdV2_006",
+        "op": "ThresholdV2",
+        "calc_expect_func_file": "st_calc_expect_func.py:calc_expect_func",
+        "input_desc": [
+            {
+                "name": "x",
+                "format": "ND",
+                "type": "float16",
+                "shape": [
+                    8, 8, 8, 8, 8, 8
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    8, 8, 8, 8, 8, 8
+                ],
+                "value_range": [
+                    0.1, 8.0
+                ],
+                "data_distribute": [
+                    "uniform"
+                ]
+            },
+            {
+                "name": "threshold",
+                "format": "ND",
+                "type": "float16",
+                "shape": [
+                    1
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    1
+                ],
+                "value": [
+                    5
+                ],
+                "is_const": false
+            },
+            {
+                "name": "value",
+                "format": "UNDEFINED",
+                "type": "UNDEFINED",
+                "shape": [
+                    1
+                ],
+                "ori_format": "UNDEFINED",
+                "ori_shape": [
+                    1
+                ],
+                "value": [
+                    0
+                ],
+                "is_const": false
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "y",
+                "format": "ND",
+                "type": "float16",
+                "shape": [
+                    8, 8, 8, 8, 8, 8
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    8, 8, 8, 8, 8, 8
+                ]
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Test_ThresholdV2_007",
+        "op": "ThresholdV2",
+        "calc_expect_func_file": "st_calc_expect_func.py:calc_expect_func",
+        "input_desc": [
+            {
+                "name": "x",
+                "format": "ND",
+                "type": "float16",
+                "shape": [
+                    3, 4, 5, 6, 7, 8, 9
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    3, 4, 5, 6, 7, 8, 9
+                ],
+                "value_range": [
+                    0.1, 8.0
+                ],
+                "data_distribute": [
+                    "uniform"
+                ]
+            },
+            {
+                "name": "threshold",
+                "format": "ND",
+                "type": "float16",
+                "shape": [
+                    1
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    1
+                ],
+                "value": [
+                    5
+                ],
+                "is_const": false
+            },
+            {
+                "name": "value",
+                "format": "UNDEFINED",
+                "type": "UNDEFINED",
+                "shape": [
+                    1
+                ],
+                "ori_format": "UNDEFINED",
+                "ori_shape": [
+                    1
+                ],
+                "value": [
+                    0
+                ],
+                "is_const": false
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "y",
+                "format": "ND",
+                "type": "float16",
+                "shape": [
+                    3, 4, 5, 6, 7, 8, 9
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    3, 4, 5, 6, 7, 8, 9
+                ]
+            }
+        ],
+        "attr": []
+    },
+    {
+        "case_name": "Test_ThresholdV2_008",
+        "op": "ThresholdV2",
+        "calc_expect_func_file": "st_calc_expect_func.py:calc_expect_func",
+        "input_desc": [
+            {
+                "name": "x",
+                "format": "ND",
+                "type": "float16",
+                "shape": [
+                    4, 4, 4, 4, 4, 4, 4, 4
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    4, 4, 4, 4, 4, 4, 4, 4
+                ],
+                "value_range": [
+                    0.1, 8.0
+                ],
+                "data_distribute": [
+                    "uniform"
+                ]
+            },
+            {
+                "name": "threshold",
+                "format": "ND",
+                "type": "float16",
+                "shape": [
+                    1
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    1
+                ],
+                "value": [
+                    5
+                ],
+                "is_const": false
+            },
+            {
+                "name": "value",
+                "format": "UNDEFINED",
+                "type": "UNDEFINED",
+                "shape": [
+                    1
+                ],
+                "ori_format": "UNDEFINED",
+                "ori_shape": [
+                    1
+                ],
+                "value": [
+                    0
+                ],
+                "is_const": false
+            }
+        ],
+        "output_desc": [
+            {
+                "name": "y",
+                "format": "ND",
+                "type": "float16",
+                "shape": [
+                    4, 4, 4, 4, 4, 4, 4, 4
+                ],
+                "ori_format": "ND",
+                "ori_shape": [
+                    4, 4, 4, 4, 4, 4, 4, 4
+                ]
+            }
+        ],
+        "attr": []
+    }
+]
