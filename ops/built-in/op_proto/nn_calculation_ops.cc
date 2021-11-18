@@ -829,15 +829,14 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
     inW = shapeIn.GetDim(wPosition);
   }
 
-  CHECK_OP_FUNC((!unknown_rank) && (inC < 1), return GRAPH_FAILED,
-                "x channel should be greater than or equal to 1. actual is: %d", (int)inC)
-
-  Format filterFormat = tensorDescW->GetFormat();
-  std::string filterFormatStr = format2str[filterFormat];
   int64_t fnPosition = 0;
   int64_t fcPosition = 0;
   int64_t fhPosition = 0;
   int64_t fwPosition = 0;
+
+  Format filterFormat = tensorDescW->GetFormat();
+  std::string filterFormatStr = format2str[filterFormat];
+
   if (!GetDimInFormat(string(op_name.GetString()), filterFormatStr, "N", fnPosition)) {
     return GRAPH_FAILED;
   }
@@ -856,8 +855,23 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
   filterH = shapeW.GetDim(fhPosition);
   filterW = shapeW.GetDim(fwPosition);
 
-  int64_t groups = 0;
-  groups = shapeIn.GetDim(cPosition);
+  // set range
+  bool is_dynamic = false;
+  // when static op or dynamic op phase_running, is_dynamic == false
+  if (shapeIn.IsUnknownShape() && (!shapeIn.IsUnknownDimNum())) {
+    is_dynamic = true;
+  }
+
+  if (is_dynamic && (inC == -1)) {
+      inC = filterC;
+  }
+
+  CHECK_OP_FUNC((!unknown_rank) && (inC < 1), return GRAPH_FAILED,
+                "x channel should be greater than or equal to 1. actual is: %d", (int)inC)
+
+  int64_t groups = 1;
+  op.GetAttr("groups", groups);
+  groups = inC;
   op.SetAttr("groups", groups);
   PROFILING_PROTO_AFTER_GET_SHAPE_REG()
   dilationH = dilation.at(hPosition);
@@ -911,12 +925,6 @@ IMPLEMT_COMMON_INFERFUNC(DepthwiseConv2DInferShape) {
     tensordesc_output->SetDataType(dataTypeIn);
   }
 
-  // set range
-  bool is_dynamic = false;
-  // when static op or dynamic op phase_running, is_dynamic == false
-  if (shapeIn.IsUnknownShape() && (!shapeIn.IsUnknownDimNum())) {
-    is_dynamic = true;
-  }
   if (is_dynamic) {
     vector<int64_t> attr_params = {strideH, strideW, dilationH, dilationW,
                                    padtop + padbottom, padleft + padright,

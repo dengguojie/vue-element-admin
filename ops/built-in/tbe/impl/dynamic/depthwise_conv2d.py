@@ -316,5 +316,5 @@ def depthwise_conv2d(
     filter["ori_format"] = "NCHW"
 
     conv2d(x, filter, bias, offset_w, y, strides, pads, dilations,
-           groups=x_c, data_format=data_format, offset_x=offset_x, kernel_name=kernel_name)
+           groups=filter_c, data_format=data_format, offset_x=offset_x, kernel_name=kernel_name)
 
