@@ -1795,11 +1795,23 @@ vector_B:
       - ops/built-in/tests/ut/plugin_test/onnx/test_add_onnx_plugin.cpp
       - ops/built-in/tests/ut/plugin_test/onnx/test_add_pb_gen.py
       - ops/built-in/tests/ut/plugin_test/tensorflow/CMakeLists.txt
+      - ops/built-in/tests/ut/plugin_test/tensorflow/dilation2DBackpropFilter_case_1.pb
+      - ops/built-in/tests/ut/plugin_test/tensorflow/dilation2DBackpropInput_case_1.pb
       - ops/built-in/tests/ut/plugin_test/tensorflow/instance_norm_1.pb
+      - ops/built-in/tests/ut/plugin_test/tensorflow/maxPool3D_case_1.pb
+      - ops/built-in/tests/ut/plugin_test/tensorflow/parallelConcat_case_1.pb
       - ops/built-in/tests/ut/plugin_test/tensorflow/resizebilineargrad_case_1.pb
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_dilation2d_backprop_filter_pb_gen.py
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_dilation2d_backprop_filter_plugin.cpp
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_dilation2d_backprop_input_pb_gen.py
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_dilation2d_backprop_input_plugin.cpp
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_dynamic_instance_norm_grad_scope_pass_plugin.cpp
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_dynamic_instance_norm_scope_pass_plugin.cpp
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_dynamic_rnn_scope_pass_test.cpp
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_max_pool3d_pb_gen.py
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_max_pool3d_plugin.cpp
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_parallel_concat_pb_gen.py
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_parallel_concat_plugin.cpp
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_resizebilineargrad_pb_gen.py
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_resizebilineargrad_plugin.cpp
   llt:
