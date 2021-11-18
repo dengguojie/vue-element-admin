@@ -292,8 +292,9 @@ bool BatchToSpaceNDTiling(const string& op_type, const TeOpParas& op_paras, cons
   // check and resize block_shape and crops
   if (input_format == "NC1HWC0") {
     if ((ori_format == "NHWC") && (block_vec.size() == 1) && (crops_vec.size() == 2)) {
-      block_vec.insert(block_vec.begin(), 1);
-      crops_vec.insert(crops_vec.begin(), 2, 0);
+      block_vec.push_back(1);
+      crops_vec.push_back(0);
+      crops_vec.push_back(0);
     } else if (((ori_format == "NHWC") || (ori_format == "NCHW")) && (block_vec.size() == 2) &&
                (crops_vec.size() == 4)) {
       ;

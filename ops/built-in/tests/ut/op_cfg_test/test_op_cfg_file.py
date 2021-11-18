@@ -59,7 +59,7 @@ class Test_OpConfig(unittest.TestCase):
         allow_input_info_keys = set(["name", "dtype", "format", "shape", "reshapeType",
                                      "needCompile", "shapesType", "valueDepend",
                                      "unknownshape_format", "valueDepend"])
-        allow_reshape_types = set(["N", "C", "H", "W", "NC", "CN", "NH", "NW", "CH", "NCH", "NHW", "NWC"])
+        allow_reshape_types = set(["N", "C", "H", "W", "NC", "CN", "NH", "NW", "CH", "NCH", "NHW", "NHC", "NWC"])
         allow_output_info_keys = set(["name", "dtype", "format", "shape", "reshapeType",
                                       "needCompile", "shapesType", "unknownshape_format"])
         allow_param_types = set(["required", "optional", "dynamic"])

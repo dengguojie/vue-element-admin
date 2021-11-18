@@ -509,6 +509,8 @@ def check_supported(x, y, block_shape, crops, kernel_name="batch_to_space_nd_d")
     ori_shape = x.get("ori_shape")
     block_shape = list(block_shape)
     crops = list(crops)
+    if tbe_platform.api_check_support("tik.vgatherb"):
+        return False, ""
     if ori_format in ("NHWC",) and len(ori_shape) == 3 and len(block_shape) == 1 and len(crops) == 2:
         if ori_shape[1] == 584:
             return True, ""

@@ -290,8 +290,9 @@ bool SpaceToBatchNDTiling(const string& op_type, const TeOpParas& op_paras, cons
   // check and resize block_shape and paddings
   if (input_format == "NC1HWC0") {
     if ((ori_format == "NHWC") && (block_vec.size() == 1) && (pads_vec.size() == 2)) {
-      block_vec.insert(block_vec.begin(), 1);
-      pads_vec.insert(pads_vec.begin(), 2, 0);
+      block_vec.push_back(1);
+      pads_vec.push_back(0);
+      pads_vec.push_back(0);
     } else if (((ori_format == "NHWC") || (ori_format == "NCHW")) && (block_vec.size() == 2) &&
                (pads_vec.size() == 4)) {
       ;

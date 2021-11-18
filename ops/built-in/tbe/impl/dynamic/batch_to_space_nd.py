@@ -16,16 +16,16 @@
 dynamic batch_to_space_nd
 """
 from impl.util.platform_adapter import tik
-from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import error_manager_vector
-from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import register_operator
+from impl.util.platform_adapter import error_manager_vector
 from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
+from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 # max int32
 MAX_INT32 = 2**31 - 1
@@ -80,9 +80,10 @@ def check_supported(x, block_shape, crops, y, kernel_name="batch_to_space_nd"):
     reason = "when ori_format is %s, the input_shape is not supported, \
                 ori_shape:%s block_shape:%s crop_shape:%s" % (ori_format, str(ori_shape), str(block_s), str(crop_s))
     if ori_format in ("NHWC",):
-        if len(ori_shape) != 4 or block_s[0] != 2 or crop_s[0] != 2:
-            if len(ori_shape) != 3 or block_s[0] != 1 or crop_s[0] != 1:
-                return False, reason
+        if (len(ori_shape) != 4 or block_s[0] != 2 or
+                crop_s[0] != 2) and (len(ori_shape) != 4 or block_s[0] != 1 or
+                                    crop_s[0] != 1) and (len(ori_shape) != 3 or block_s[0] != 1 or crop_s[0] != 1):
+            return False, reason
     elif ori_format in ("NCHW",):
         if len(ori_shape) != 4 or block_s[0] != 3 or crop_s[0] != 3:
             return False, reason
