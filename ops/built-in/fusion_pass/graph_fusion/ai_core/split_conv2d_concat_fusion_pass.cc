@@ -43,7 +43,6 @@ static const char kConcatv2Type[] = "ConcatV2";
 static const char kConcatType[] = "Concat";
 static const char kConv2dType[] = "Conv2D";
 static const char kSplitType[] = "Split";
-static const char kSplitVType[] = "SplitV";
 static const char kConstType[] = "Const";
 static const char kAttrGroups[] = "groups";
 static const char kNameCcatDim[] = "concat_dim";
@@ -73,7 +72,7 @@ vector<FusionPattern*> SplitConv2dConcatPass::DefinePatterns() {
   FusionPattern* pattern = new (std::nothrow) FusionPattern("SplitConv2dConcatPass");
   FUSION_PASS_CHECK(pattern == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "new a pattern object failed."),
                     return patterns);
-  pattern->AddOpDesc(kPatternSplit, {kSplitType, kSplitVType})
+  pattern->AddOpDesc(kPatternSplit, {kSplitType})
       .AddOpDesc(kPatternConv2D, {kConv2dType})
       .AddOpDesc(kPatternConcatv2, {kConcatv2Type, kConcatType})
       .SetInputs(kPatternConv2D, {kPatternSplit})
@@ -182,12 +181,7 @@ bool SplitConv2dConcatPass::AnalyzeMidLayer(ge::Node::Vistor<NodePtr>& spt_outpu
   */
 bool SplitConv2dConcatPass::VerifySptCcatAxis(OpDescPtr& conv_desc, NodePtr& split_node, NodePtr& ccat_node) {
   auto spt_inputs = split_node->GetInDataNodes();
-  NodePtr spt_const = nullptr;
-  if (split_node->GetType() == kSplitVType) {
-    spt_const = spt_inputs.at(2);
-  } else {
-    spt_const = spt_inputs.at(0);
-  }
+  NodePtr spt_const = spt_inputs.at(0);
   FUSION_PASS_CHECK(spt_const == nullptr,
                     OP_LOGW(fused_op_type_.c_str(), "split input const is null"), return false);
   FUSION_PASS_CHECK(spt_const->GetType() != kConstType,
@@ -250,9 +244,6 @@ bool SplitConv2dConcatPass::UpdateConv2dDesc(OpDescPtr& conv_desc, NodePtr& spli
   FUSION_PASS_CHECK(split_desc == nullptr,
                     OP_LOGW(fused_op_type_.c_str(), "split node's desc is null"), return false);
   GeTensorDesc split_in_tensor = split_desc->GetInputDesc(1);
-  if (split_node->GetType() == kSplitVType) {
-    split_in_tensor = split_desc->GetInputDesc(0);
-  }
   std::vector<int64_t> split_in_shape = split_in_tensor.GetOriginShape().GetDims();
   Format split_format = split_in_tensor.GetOriginFormat();
   OpDescPtr ccat_desc = ccat_node->GetOpDesc();
@@ -351,7 +342,7 @@ bool SplitConv2dConcatPass::AddConcatDesc(NodePtr& split_node, NodePtr& ccat_nod
   size_t a_in_cnt = a_input.size();
   for (size_t cout_in = 1; cout_in < a_in_cnt; ++cout_in) {
     OpDescPtr n_desc = AttrUtils::CloneOpDesc(ccat_desc);
-    FUSION_PASS_CHECK(n_desc == nullptr, OP_LOGW(fused_op_type_.c_str(), "clone concat desc failed"), return false);
+    FUSION_PASS_CHECK(n_desc == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "clone concat desc failed"), return false);
     n_desc->SetType(kCcatHostOp);
     n_desc->UpdateInputName(in_name);
     n_desc->UpdateOutputName(out_name);
@@ -435,51 +426,46 @@ bool SplitConv2dConcatPass::LinkNewConcat(ge::ComputeGraph& graph, NodePtr& spli
     int idx = out_anchor->GetIdx();
     InDataAnchorPtr conv_anchor = out_anchor->GetPeerInDataAnchors().at(0);
     FUSION_PASS_CHECK(conv_anchor == nullptr,
-                      OP_LOGW(fused_op_type_.c_str(), "get in data anchor failed"), return false);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "get in data anchor failed"), return false);
     NodePtr conv_node = conv_anchor->GetOwnerNode();
     FUSION_PASS_CHECK(conv_node == nullptr,
-                      OP_LOGW(fused_op_type_.c_str(), "get input node failed"), return false);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "get input node failed"), return false);
     size_t pos = 0;
     for (auto new_ccat : const_ccat) {
       InDataAnchorPtr new_ccat_in = new_ccat->GetInDataAnchor(idx);
       auto conv_in_anchor = conv_node->GetInDataAnchor(++pos);
       FUSION_PASS_CHECK(conv_in_anchor == nullptr,
-                        OP_LOGW(fused_op_type_.c_str(), "get in data anchor failed"), return false);
+                        CommonRuntimeErrLog(fused_op_type_.c_str(), "get in data anchor failed"), return false);
       auto conv_out_anchor = conv_in_anchor->GetPeerOutAnchor();
       FUSION_PASS_CHECK(conv_out_anchor == nullptr,
-                        OP_LOGW(fused_op_type_.c_str(), "get out anchor failed"), return false);
+                        CommonRuntimeErrLog(fused_op_type_.c_str(), "get out anchor failed"), return false);
       conv_out_anchor->Unlink(conv_in_anchor);
       Status add_res = GraphUtils::AddEdge(conv_out_anchor, new_ccat_in);
       FUSION_PASS_CHECK(add_res != GRAPH_SUCCESS,
-                        OP_LOGW(fused_op_type_.c_str(), "add edge from conv2d other input failed"), return false);
+                        CommonRuntimeErrLog(fused_op_type_.c_str(), "add edge from conv2d other input failed"), return false);
     }
   }
-  NodePtr axis_node = nullptr;
-  if (split_node->GetType() == kSplitVType) {
-    axis_node = split_node->GetInDataNodes().at(2);
-  } else {
-    axis_node = split_node->GetInDataNodes().at(0);
-  }
+  NodePtr axis_node = split_node->GetInDataNodes().at(0);
   FUSION_PASS_CHECK(axis_node == nullptr,
-                    OP_LOGW(fused_op_type_.c_str(), "get axis node failed"), return false);
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), "get axis node failed"), return false);
   OpDescPtr axis_desc = axis_node->GetOpDesc();
   FUSION_PASS_CHECK(axis_desc == nullptr,
-                    OP_LOGW(fused_op_type_.c_str(), "get axis node's desc failed"), return false);
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), "get axis node's desc failed"), return false);
   size_t count = 0;
   for (auto new_ccat : const_ccat) {
     OpDescPtr ccat_desc = new_ccat->GetOpDesc();
     FUSION_PASS_CHECK(ccat_desc == nullptr,
-                      OP_LOGW(fused_op_type_.c_str(), "get new ccat node's desc failed"), return false);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "get new ccat node's desc failed"), return false);
     int idx = ccat_desc->GetInputIndexByName(kNameCcatDim);
     InDataAnchorPtr last_in_anchor = new_ccat->GetInDataAnchor(idx);
     OpDescPtr new_axis_desc = AttrUtils::CloneOpDesc(axis_desc);
     FUSION_PASS_CHECK(new_axis_desc == nullptr,
-                      OP_LOGW(fused_op_type_.c_str(), "clone split input split_dim desc failed"), return false);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "clone split input split_dim desc failed"), return false);
     std::string cout_str = std::to_string(count++);
     new_axis_desc->SetName(axis_desc->GetName() + "/last_" + cout_str);
     NodePtr new_axis_node = graph.AddNode(new_axis_desc);
     FUSION_PASS_CHECK(new_axis_node == nullptr,
-                      OP_LOGW(fused_op_type_.c_str(), "add new axis node failed"), return false);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "add new axis node failed"), return false);
 
     GeTensorDesc ccat_tensor = ccat_desc->GetInputDesc(0);
     std::vector<int64_t> ccat_in_shape = ccat_tensor.GetOriginShape().GetDims();
@@ -493,13 +479,13 @@ bool SplitConv2dConcatPass::LinkNewConcat(ge::ComputeGraph& graph, NodePtr& spli
     axis.push_back(pos);
     vector<ge::GeTensorPtr> axis_weights = ge::OpDescUtils::MutableWeights(new_axis_node);
     FUSION_PASS_CHECK(axis_weights.size() < 1,
-                      OP_LOGW(fused_op_type_.c_str(), "axis weights get failed"), return false);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "axis weights get failed"), return false);
     ge::GeTensorPtr axis_ptr = axis_weights[0];
-    FUSION_PASS_CHECK(axis_ptr == nullptr, OP_LOGW(fused_op_type_.c_str(), "axis ptr is nullptr"), return false);
+    FUSION_PASS_CHECK(axis_ptr == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "axis ptr is nullptr"), return false);
     axis_ptr->SetData(reinterpret_cast<uint8_t*>(axis.data()), axis.size() * sizeof(int32_t));
     Status add_res = GraphUtils::AddEdge(new_axis_node->GetOutDataAnchor(0), last_in_anchor);
     FUSION_PASS_CHECK(add_res != GRAPH_SUCCESS,
-                      OP_LOGW(fused_op_type_.c_str(), "add edge from const dim node to new concat failed"),
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "add edge from const dim node to new concat failed"),
                       return false);
     const_dim.push_back(new_axis_node);
   }
@@ -519,34 +505,34 @@ bool SplitConv2dConcatPass::LinkGroupConv2d(NodePtr& group_conv, NodePtr& split_
                                             std::vector<NodePtr>& const_ccat) {
   auto in_anchor = split_node->GetInDataAnchor(1);
   FUSION_PASS_CHECK(in_anchor == nullptr,
-                    OP_LOGW(fused_op_type_.c_str(), "split input data anchor is null"), return false);
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), "split input data anchor is null"), return false);
   OutDataAnchorPtr pre_anchor = in_anchor->GetPeerOutAnchor();
   FUSION_PASS_CHECK(pre_anchor == nullptr,
-                    OP_LOGW(fused_op_type_.c_str(), "split input anchor is null"), return false);
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), "split input anchor is null"), return false);
   pre_anchor->Unlink(split_node->GetInDataAnchor(1));
   InDataAnchorPtr x_anchor = group_conv->GetInDataAnchor(0);
   FUSION_PASS_CHECK(x_anchor == nullptr,
-                    OP_LOGW(fused_op_type_.c_str(), "group conv2d input anchor is null"), return false);
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), "group conv2d input anchor is null"), return false);
   FUSION_PASS_CHECK(GraphUtils::AddEdge(pre_anchor, x_anchor) != GRAPH_SUCCESS,
-                    OP_LOGW(fused_op_type_.c_str(), "add edge from split input to conv2d failed"), return false);
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), "add edge from split input to conv2d failed"), return false);
   OutDataAnchorPtr ccat_out = ccat_node->GetOutDataAnchor(0);
   FUSION_PASS_CHECK(ccat_out == nullptr,
-                    OP_LOGW(fused_op_type_.c_str(), "concat output anchor is null"), return false);
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), "concat output anchor is null"), return false);
   OutDataAnchorPtr y_anchor = group_conv->GetOutDataAnchor(0);
-  FUSION_PASS_CHECK(y_anchor == nullptr, OP_LOGW(fused_op_type_.c_str(), "group conv2d output anchor is null"),
+  FUSION_PASS_CHECK(y_anchor == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "group conv2d output anchor is null"),
                     return false);
   auto peer_in_anchor = ccat_out->GetPeerInDataAnchors();
   for (auto next_anchor : peer_in_anchor) {
     ccat_out->Unlink(next_anchor);
     FUSION_PASS_CHECK(GraphUtils::AddEdge(y_anchor, next_anchor) != GRAPH_SUCCESS,
-                      OP_LOGW(fused_op_type_.c_str(), "add edge from conv2d output to concat next failed"),
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "add edge from conv2d output to concat next failed"),
                       return false);
   }
   size_t pos = 0;
   for (auto new_ccat : const_ccat) {
     Status add_res = GraphUtils::AddEdge(new_ccat->GetOutDataAnchor(0), group_conv->GetInDataAnchor(++pos));
     FUSION_PASS_CHECK(add_res != GRAPH_SUCCESS,
-                      OP_LOGW(fused_op_type_.c_str(), "add edge from conv2d to new concat failed"), return false);
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "add edge from conv2d to new concat failed"), return false);
   }
 
   return true;
@@ -574,9 +560,9 @@ Status SplitConv2dConcatPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
   OP_LOGD(fused_op_type_.c_str(), "Enter SplitConv2dConcatPass.");
   NodePtr split_node = GetNodeFromMapping(kPatternSplit, mapping);
   NodePtr ccat_node = GetNodeFromMapping(kPatternConcatv2, mapping);
-  FUSION_PASS_CHECK(split_node == nullptr, OP_LOGW(fused_op_type_.c_str(), "Split Node is null, fusion failed."),
+  FUSION_PASS_CHECK(split_node == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "Split Node is null, fusion failed."),
                     return PARAM_INVALID);
-  FUSION_PASS_CHECK(ccat_node == nullptr, OP_LOGW(fused_op_type_.c_str(), "Ccat Node is null, fusion failed."),
+  FUSION_PASS_CHECK(ccat_node == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "Ccat Node is null, fusion failed."),
                     return PARAM_INVALID);
   auto spt_output = split_node->GetOutDataNodes();
 
@@ -605,25 +591,25 @@ Status SplitConv2dConcatPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, 
 
   std::vector<NodePtr> const_dim;
   FUSION_PASS_CHECK(!LinkNewConcat(graph, split_node, const_ccat, const_dim),
-                    OP_LOGW(fused_op_type_.c_str(), "create concat last const node failed"), return FAILED);
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), "create concat last const node failed"), return FAILED);
   for (auto new_last : const_dim) {
     new_nodes.push_back(new_last);
   }
 
   FUSION_PASS_CHECK(!LinkGroupConv2d(group_conv, split_node, ccat_node, const_ccat),
-                    OP_LOGW(fused_op_type_.c_str(), "link group conv2d node and new nodes failed"), return FAILED);
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), "link group conv2d node and new nodes failed"), return FAILED);
 
   auto spt_inputs = split_node->GetInDataNodes();
   FUSION_PASS_CHECK(graph.RemoveNode(split_node) != GRAPH_SUCCESS,
-                    OP_LOGW(fused_op_type_.c_str(), "remove split node failed"), return FAILED);
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), "remove split node failed"), return FAILED);
   for (auto ccatInNode : ccat_node->GetInDataNodes()) {
     if (ccatInNode->GetType() == kConv2dType) {
       FUSION_PASS_CHECK(graph.RemoveNode(ccatInNode) != GRAPH_SUCCESS,
-                        OP_LOGW(fused_op_type_.c_str(), "remove unused conv2d node failed"), return FAILED);
+                        CommonRuntimeErrLog(fused_op_type_.c_str(), "remove unused conv2d node failed"), return FAILED);
     }
   }
   FUSION_PASS_CHECK(graph.RemoveNode(ccat_node) != GRAPH_SUCCESS,
-                    OP_LOGW(fused_op_type_.c_str(), "remove concat node failed"), return FAILED);
+                    CommonRuntimeErrLog(fused_op_type_.c_str(), "remove concat node failed"), return FAILED);
   OP_LOGD(fused_op_type_.c_str(), "Leave SplitConv2dConcatPass.");
 
   return SUCCESS;
