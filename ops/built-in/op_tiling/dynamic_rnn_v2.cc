@@ -24,6 +24,12 @@
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
 
+namespace {
+  constexpr int32_t DST_SHAPE_SIZE = 3;
+  constexpr int32_t DST_INPUT_SIZE = 2;
+  constexpr int32_t NUM_SIXTEEN = 16;
+}
+
 namespace optiling {
 static const int32_t MAX_BLOCK_DIM = 32;
 
@@ -59,32 +65,32 @@ int32_t GetRnnV2LibItem(const std::string& opType, const nlohmann::json& opCompi
   const nlohmann::json& allVars = opCompileInfoJson["vars"];
   if (allVars.empty()) {
     OP_LOGE(opType.c_str(), "op [DynamicRnnV2Tiling] : GetRnnV2LibItem, get vars failed.");
-    return -2;
+    return -1;
   }
   std::vector<std::vector<int64_t>> tune_shape_list;
   tune_shape_list = allVars["tune_shape_list"].get<std::vector<std::vector<int64_t>>>();
   if (tune_shape_list.empty()) {
     OP_LOGE(opType.c_str(), "op [DynamicRnnV2Tiling] : GetRnnV2LibItem, get tune_shape_list failed.");
-    return -2;
+    return -1;
   }
   for (int64_t i = 0; i < tune_shape_list.size(); i++) {
-    if (tune_shape_list[i].size() < 3) {
+    if (tune_shape_list[i].size() < DST_SHAPE_SIZE) {
       OP_LOGE(opType.c_str(), "op [DynamicRnnV2Tiling] : GetRnnV2LibItem, No matching schedule is found.");
-      return -2;
+      return -1;
     }
     if ((tune_shape_list[i][0] == -1) && (tune_shape_list[i][1] == -1)) {
       OP_LOGI(opType.c_str(), "op [DynamicRnnV2Tiling] : GetRnnV2LibItem, The corresponding schedule is",
              tune_shape_list[i][2]);
       return (int32_t)tune_shape_list[i][2];
     }
-    if ((tune_shape_list[i][0] == xShape[0]) && ((tune_shape_list[i][1] / 16) == xShape[2])) {
+    if ((tune_shape_list[i][0] == xShape[0]) && ((tune_shape_list[i][1] / NUM_SIXTEEN) == xShape[2])) {
       OP_LOGI(opType.c_str(), "op [DynamicRnnV2Tiling] : GetRnnV2LibItem, The corresponding schedule is",
              tune_shape_list[i][2]);
       return (int32_t)tune_shape_list[i][2];
     }
   }
   OP_LOGE(opType.c_str(), "op [DynamicRnnV2Tiling] : GetRnnV2LibItem, No matching schedule is found.");
-  return -2;
+  return -1;
 }
 
 /*
@@ -103,7 +109,7 @@ bool DynamicRnnV2Tiling(const std::string& opType, const TeOpParas& opParas, con
     return false;
   }
 
-  if (opParas.inputs.empty() || opParas.inputs.size() < 2 || opParas.inputs[0].tensor.empty() ||
+  if (opParas.inputs.empty() || opParas.inputs.size() < DST_INPUT_SIZE || opParas.inputs[0].tensor.empty() ||
       opParas.inputs[1].tensor.empty()) {
     ge::OpsOneInputShapeErrReport(opType.c_str(), "x or indices",
                                   "The length of inputs is less than 2 or the inputs is empty");
@@ -112,7 +118,7 @@ bool DynamicRnnV2Tiling(const std::string& opType, const TeOpParas& opParas, con
   }
 
   std::vector<int64_t> xShape = opParas.inputs[0].tensor[0].shape;
-  if (xShape.size() < 3) {
+  if (xShape.size() < DST_SHAPE_SIZE) {
     ge::OpsOneInputShapeErrReport(opType.c_str(), "x", "x.shape is invalid");
     OP_LOGE(opType.c_str(), "op [DynamicRnnV2Tiling] : CheckRnnV2TensorShape, x.shape is invalid.");
     return false;
@@ -123,7 +129,7 @@ bool DynamicRnnV2Tiling(const std::string& opType, const TeOpParas& opParas, con
   int32_t sequenceLength = xShape[0];
   int32_t dynamicRnnBatch = xShape[2];
   int32_t chequeIndex = GetRnnV2LibItem(opType, opInfo, xShape);
-  if (chequeIndex == -2) {
+  if (chequeIndex == -1) {
     OP_LOGE(opType.c_str(), "op [DynamicRnnV2Tiling] : No matching schedule is found.");
     return false;
   }

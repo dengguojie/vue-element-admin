@@ -29,6 +29,11 @@
 #include "error_log.h"
 
 using namespace ge;
+
+namespace {
+  constexpr int32_t ALIGN_BLOCK = 32;
+}
+
 namespace optiling {
 struct TilingParams {
   int32_t block_dim{0};
@@ -66,7 +71,7 @@ int32_t GetBlockSize(ge::DataType dtype) {
   int32_t block_size = 0;
   int32_t type_size = GetSizeByDataType(dtype);
   if(type_size > 0)
-    block_size = 32/type_size;
+    block_size = ALIGN_BLOCK/type_size;
 
   return block_size;
 }

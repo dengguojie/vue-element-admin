@@ -21,6 +21,12 @@
 #include "op_tiling.h"
 #include "op_tiling_util.h"
 
+namespace {
+  constexpr int32_t INPUT_MINIMUM_SIZE = 2;
+  constexpr int32_t UB_FACTOR = 16;
+  constexpr int32_t TILING_FACTOR_16 = 16;
+}
+
 namespace optiling {
 enum tiling_key {
   NO_REDUCE = 400,
@@ -117,7 +123,7 @@ bool LayerNormBetaGammaBackpropTiling(const std::string& op_type, const ge::Oper
   auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
   auto input0_desc = operator_info->MutableInputDesc(0);
   std::vector<int64_t> input_shape = input0_desc->MutableShape().GetDims();
-  if (input_shape.size() < 2) {
+  if (input_shape.size() < INPUT_MINIMUM_SIZE) {
     GELOGE(ge::FAILED, "LayerNormBetaGammaBackprop currrently not support input shape size less than 2.");
     return false;
   }
@@ -137,12 +143,12 @@ void NoReduceTiling(int32_t fused_dim, int32_t core_num, utils::OpRunInfo& run_i
   int32_t block_factor;
   int32_t ub_factor;
   int32_t block_dim = 1;
-  if (fused_dim < core_num * 16) {
+  if (fused_dim < core_num * TILING_FACTOR_16) {
     block_factor = fused_dim;
     ub_factor = fused_dim;
   } else {
     block_factor = (fused_dim + core_num - 1) / core_num;
-    ub_factor = 16;
+    ub_factor = UB_FACTOR;
     block_dim = core_num;
   }
   run_info.AddTilingData(fused_dim);

@@ -39,6 +39,7 @@ const int64_t TILING_MODE_2 = 2;
 const int64_t MAX_AXIS = 5;
 
 const int64_t BLOCK_NUM = 16;
+constexpr int32_t DIM_VAL = 16;
 
 struct MirrorPadCompileParams {
   int64_t core_num;
@@ -234,9 +235,9 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape, const std::v
                    (merge_input_shape_dims[2] + merge_paddings_values[4] + merge_paddings_values[5]);
   auto outer_num_mode_0 = outer_num * (merge_input_shape_dims[3] + merge_paddings_values[6] + merge_paddings_values[7]);
   bool input_dim3_addressrollback =
-      (tiling_params.tiling_input_dim_3 * output_dim_4 < 16) && tiling_params.tiling_padding_31 == 0;
+      (tiling_params.tiling_input_dim_3 * output_dim_4 < DIM_VAL) && tiling_params.tiling_padding_31 == 0;
   bool padding31_addressrollback =
-      (tiling_params.tiling_padding_31 * output_dim_4 < 16) && tiling_params.tiling_padding_31 != 0;
+      (tiling_params.tiling_padding_31 * output_dim_4 < DIM_VAL) && tiling_params.tiling_padding_31 != 0;
 
   // network case tiling mode
   if (output_dim_4 % BLOCK_NUM == 0 && output_dim_4 == tiling_params.tiling_input_dim_4) {

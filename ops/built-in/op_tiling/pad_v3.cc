@@ -28,6 +28,13 @@
 #include "op_log.h"
 #include "error_log.h"
 
+namespace {
+  constexpr int32_t OUTPUT_DIM = 960;
+  constexpr int32_t SHAPE_LEN = 2;
+  constexpr int32_t CORE_NUM = 128;
+  constexpr int32_t TILING_FACTOR_32 = 32;
+}
+
 namespace optiling {
 static const int64_t TILING_MODE_0 = 0;
 
@@ -297,7 +304,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
     tiling_params.tiling_key = TILING_MODE_5;
     tiling_params.tiling_input_dim_cut_axis = -1;
   }
-  else if (last_dim_output < 960) {
+  else if (last_dim_output < OUTPUT_DIM) {
     tiling_params.tiling_key = TILING_MODE_2;
     tiling_params.tiling_input_dim_cut_axis = 2;
     if (shape_len == 2 && (tiling_params.tiling_pading_41 + tiling_params.tiling_pading_40 == 0)) {
@@ -314,7 +321,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
       tiling_params.tiling_input_dim_3 = split_dim;
     }
   }
-  else if ((shape_len == 2 && last_dim_output > 128 * compile_params.core_num) || shape_len == 1) {
+  else if ((shape_len == SHAPE_LEN && last_dim_output > CORE_NUM * compile_params.core_num) || shape_len == 1) {
     tiling_params.tiling_key = TILING_MODE_0;
     tiling_params.tiling_input_dim_cut_axis = 0;
   }
@@ -382,7 +389,7 @@ bool PadV3Tiling(const std::string& op_type, const TeOpParas& op_paras, const nl
       run_info.block_dim = compile_params.core_num;
       std::vector<int64_t> workspace;
       if (compile_params.core_num > 1) {
-          workspace.push_back(compile_params.core_num * 32);
+          workspace.push_back(compile_params.core_num * TILING_FACTOR_32);
       }
       run_info.workspaces = workspace;
 

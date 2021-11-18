@@ -31,6 +31,11 @@
 using namespace std;
 
 using namespace ge;
+
+namespace {
+  constexpr int32_t BLOCK_DIM = 96;
+}
+
 namespace optiling {
 static void Serialize(utils::OpRunInfo& runInfo, const AsStridedInfo& asInfo) {
     vector<int64_t> tilingData;
@@ -39,7 +44,7 @@ static void Serialize(utils::OpRunInfo& runInfo, const AsStridedInfo& asInfo) {
     for (int64_t i = 0; i < static_cast<int64_t>(tilingData.size()); i++) {
         runInfo.AddTilingData(tilingData[i]);
     }
-    runInfo.SetBlockDim(96);
+    runInfo.SetBlockDim(BLOCK_DIM);
 };
 
 bool AsStridedTiling(const std::string &opType,

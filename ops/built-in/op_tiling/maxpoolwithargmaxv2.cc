@@ -26,6 +26,15 @@
 #include "op_log.h"
 #include "op_tiling.h"
 
+namespace {
+  constexpr int32_t TILING_FACTOR_2 = 2;
+  constexpr int32_t TILING_DIVIDE_6 = 6;
+  constexpr int32_t TILING_MODE_2 = 2;
+  constexpr int32_t TILING_MODE_3 = 3;
+  constexpr int32_t TILING_MODE_5 = 5;
+  constexpr int32_t ALLIGN_NUM = 16;
+}
+
 namespace optiling {
 using namespace ge;
 using namespace std;
@@ -152,14 +161,14 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
   // calc output height and width, pad infos
   param.pad_t = pad_top;
   param.pad_l = pad_left;
-  int32_t exact_h = param.input_h + 2 * param.pad_t - (ksize_h - 1) - 1 + ((ceil_mode == 1) ? (strides_h - 1) : 0);
+  int32_t exact_h = param.input_h + TILING_FACTOR_2 * param.pad_t - (ksize_h - 1) - 1 + ((ceil_mode == 1) ? (strides_h - 1) : 0);
   param.output_h = DivRtn(exact_h, strides_h) + 1;
   if (param.pad_t > 0) {
     if ((param.output_h - 1) * strides_h >= param.input_h + param.pad_t) {
       param.output_h = param.output_h - 1;
     }
   }
-  int32_t exact_w = param.input_w + 2 * param.pad_l - (ksize_w - 1) - 1 + ((ceil_mode == 1) ? (strides_w - 1) : 0);
+  int32_t exact_w = param.input_w + TILING_FACTOR_2 * param.pad_l - (ksize_w - 1) - 1 + ((ceil_mode == 1) ? (strides_w - 1) : 0);
   param.output_w = DivRtn(exact_w, strides_w) + 1;
   if (param.pad_l > 0) {
     if ((param.output_w - 1) * strides_w >= (param.input_w + param.pad_l)) {
@@ -189,7 +198,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     param.last_core_loop_num = param.last_core_ele / max_ele;
     param.last_core_loop_left = param.last_core_ele % max_ele;
   } else {
-    int32_t one_sixth_ub_ele = ub_ele / 6;
+    int32_t one_sixth_ub_ele = ub_ele / TILING_DIVIDE_6;
     param.n_c1 = input_shape[0] * input_shape[1];
     if (param.pad_h * param.pad_w * input_shape[4] <= one_sixth_ub_ele) {
       param.tiling_mode = 1;
@@ -201,7 +210,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
       param.last_core_loop_left = param.last_core_ele % param.c_factor;
     } else if (ksize_h * param.pad_w * input_shape[4] <= one_sixth_ub_ele) {
       param.h_factor = (one_sixth_ub_ele / (param.pad_w * input_shape[4]) - ksize_h) / strides_h + 1;
-      param.tiling_mode = 2;
+      param.tiling_mode = TILING_MODE_2;
       CalCoreNum(param, param.n_c1, core_num);
       param.one_core_loop_num = param.output_h / param.h_factor;
       param.one_core_loop_left = param.output_h % param.h_factor;
@@ -213,34 +222,34 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
       param.one_core_loop_left = param.output_w % param.w_factor;
       param.last_core_loop_num = param.one_core_loop_num;
       param.last_core_loop_left = param.one_core_loop_left;
-      param.tiling_mode = 3;
+      param.tiling_mode = TILING_MODE_3;
       CalCoreNum(param, param.n_c1, core_num);
     }
   }
-  if (param.w_factor % 16 != 0) {
-    param.align_w_factor = (param.w_factor / 16 + 1) * 16;
+  if (param.w_factor % ALLIGN_NUM != 0) {
+    param.align_w_factor = (param.w_factor / ALLIGN_NUM + 1) * ALLIGN_NUM;
   } else {
     param.align_w_factor = param.w_factor;
   }
-  if (param.one_core_loop_left % 16 != 0) {
-    param.align_w_loop_left = (param.one_core_loop_left / 16 + 1) * 16;
+  if (param.one_core_loop_left % ALLIGN_NUM != 0) {
+    param.align_w_loop_left = (param.one_core_loop_left / ALLIGN_NUM + 1) * ALLIGN_NUM;
   } else {
     param.align_w_loop_left = param.one_core_loop_left;
   }
-  if ((param.tiling_mode == 3) || (param.tiling_mode == 5)) {
+  if ((param.tiling_mode == TILING_MODE_3) || (param.tiling_mode == TILING_MODE_5)) {
     param.align_output_w = param.align_w_factor * param.one_core_loop_num + param.align_w_loop_left;
   } else {
-    if (param.output_w % 16 != 0) {
-      param.align_output_w = (param.output_w / 16 + 1) * 16;
+    if (param.output_w % ALLIGN_NUM != 0) {
+      param.align_output_w = (param.output_w / ALLIGN_NUM + 1) * ALLIGN_NUM;
     } else {
       param.align_output_w = param.output_w;
     }
   }
   param.align_output_hw = param.output_w * param.output_h;
-  if (param.align_output_hw % 16 != 0) {
-    param.align_output_hw = (param.align_output_hw / 16 + 1) * 16;
+  if (param.align_output_hw % ALLIGN_NUM != 0) {
+    param.align_output_hw = (param.align_output_hw / ALLIGN_NUM + 1) * ALLIGN_NUM;
   }
-  param.align_output_hw = (param.align_output_hw / 16 + 1) * 16;
+  param.align_output_hw = (param.align_output_hw / ALLIGN_NUM + 1) * ALLIGN_NUM;
 }
 
 static bool GetCompileInfo(const nlohmann::json& op_info, const string& name, int32_t& value) {

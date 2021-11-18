@@ -23,6 +23,10 @@
 #include "op_tiling.h"
 #include "error_log.h"
 
+namespace {
+  constexpr int32_t INPUT_SIZE = 2;
+}
+
 namespace optiling {
 struct ScanPQCodesTilingParams{
   int64_t bucketNumTotal;
@@ -59,7 +63,7 @@ bool ScanPQCodesTiling(const std::string& opType, const TeOpParas& op_paras, con
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "op_paras.inputs cannot be empty");
     return false;
   }
-  if (op_paras.inputs.size() < 2) {
+  if (op_paras.inputs.size() < INPUT_SIZE) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "op_paras.inputs.size() < 2.");
     return false;
   }

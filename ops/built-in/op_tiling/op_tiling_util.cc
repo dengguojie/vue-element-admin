@@ -25,6 +25,13 @@
 #include "op_tiling_util.h"
 #include "graph/utils/op_desc_utils.h"
 
+namespace {
+  constexpr int32_t DATA_BLOCK_4 = 4;
+  constexpr int32_t DATA_BLOCK_8 = 8;
+  constexpr int32_t DATA_BLOCK_16 = 16;
+  constexpr int32_t DATA_BLOCK_32 = 32;
+}
+
 namespace optiling {
 using namespace std;
 
@@ -73,13 +80,13 @@ vector<vector<int64_t>> GetInputShapes(const ge::Operator& paras) {
 int64_t GetDataBlockElems(const ge::DataType& dtype) {
   int64_t dataBlock = 0;
   if (dtype == DT_FLOAT || dtype == DT_INT32 || dtype == DT_UINT32) {
-    dataBlock = 8;
+    dataBlock = DATA_BLOCK_8;
   } else if (dtype == DT_FLOAT16 || dtype == DT_INT16 || dtype == DT_UINT16) {
-    dataBlock = 16;
+    dataBlock = DATA_BLOCK_16;
   } else if (dtype == DT_INT8 || dtype == DT_UINT8) {
-    dataBlock = 32;
+    dataBlock = DATA_BLOCK_32;
   } else if (dtype == DT_INT64 || dtype == DT_UINT64) {
-    dataBlock = 4;
+    dataBlock = DATA_BLOCK_4;
   }
   return dataBlock;
 }

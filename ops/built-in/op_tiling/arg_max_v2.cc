@@ -30,6 +30,10 @@
 #include "error_log.h"
 #include "securec.h"
 
+namespace {
+  constexpr int32_t BASE_DIM_SIZE = 8;
+}
+
 namespace optiling {
 using namespace ge;
 using namespace std;
@@ -140,7 +144,7 @@ static void CalTilingParam(TilingParam& param, const ge::Shape& input_shape, con
 
     // calc core number at first dim size
     int32_t core_number = core_num;
-    if (param.first_dim_size < 8) {
+    if (param.first_dim_size < BASE_DIM_SIZE) {
       core_number = 1;
     }
     int32_t core_segment = GetCeilInt(param.first_dim_size, core_number);

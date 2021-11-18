@@ -29,6 +29,7 @@ const char* kScopeTypeBatchnorm = "batchnorm";
 const char* kScopeTypeMoments = "moments";
 const char* kScopeRltType = "LayerNorm";
 const char* kOpType = "LayerNorm";
+constexpr int32_t DST_OUTSIZE = 6;
 }  // namespace
 
 std::vector<ScopeFusionPatterns> ScopeLayerNormPass::DefinePatterns() {
@@ -76,7 +77,7 @@ Status ScopeLayerNormPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& sc
             std::vector<std::string> outputs;
             mode_def->GetAttr("_origin_graph_node_outputs", outputs);
             OP_LOGI(kOpType, "layernorm data_out_num is %zu", outputs.size());
-            if (outputs.size() >= 6) {
+            if (outputs.size() >= DST_OUTSIZE) {
                 OP_LOGI(kOpType, "output size is 6, not scope");
                 return FAILED;
             }

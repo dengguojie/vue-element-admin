@@ -21,6 +21,14 @@
 #include "op_tiling.h"
 #include "op_tiling_util.h"
 
+namespace {
+  constexpr int32_t WO_CUT_64 = 64;
+  constexpr int32_t WO_CUT_32 = 32;
+  constexpr int32_t WO_CUT_8 = 8;
+  constexpr int32_t WO_CUT_2 = 2;
+  constexpr int32_t BASE_DIM_NUM = 2;
+}
+
 namespace optiling {
 // CASE1 CASE2 CASE3 CASE7 CASE8 CASE9 cut nc1h axis for block parallel, CASE1 CASE3 CASE7 CASE8 CASE9 cut nc1h_in
 // and CASE2 cut wo.
@@ -67,16 +75,16 @@ vector<int32_t> GetTilingData(int32_t nc1h, int32_t wo, int32_t max_w_in_ub, int
       tiling_data.push_back(CASE2);
       tiling_data.push_back(nc1h_factor);
       tiling_data.push_back(wo_factor);
-    } else if (wo <= max_w_in_ub / 64) {
+    } else if (wo <= max_w_in_ub / WO_CUT_64) {
       tiling_data.push_back(CASE9);
       tiling_data.push_back(nc1h_factor);
-    } else if (wo <= max_w_in_ub / 32) {
+    } else if (wo <= max_w_in_ub / WO_CUT_32) {
       tiling_data.push_back(CASE8);
       tiling_data.push_back(nc1h_factor);
-    } else if (wo <= max_w_in_ub / 8) {
+    } else if (wo <= max_w_in_ub / WO_CUT_8) {
       tiling_data.push_back(CASE7);
       tiling_data.push_back(nc1h_factor);
-    } else if (wo <= max_w_in_ub / 2) {
+    } else if (wo <= max_w_in_ub / WO_CUT_2) {
       tiling_data.push_back(CASE1);
       tiling_data.push_back(nc1h_factor);
     } else {
@@ -84,7 +92,7 @@ vector<int32_t> GetTilingData(int32_t nc1h, int32_t wo, int32_t max_w_in_ub, int
       tiling_data.push_back(nc1h_factor);
     }
   } else {
-    if (wo < 2) {
+    if (wo < BASE_DIM_NUM) {
       // wo dim is not large enough to cut for block parallel
       block_dim = nc1h;
       tiling_data.push_back(CASE6);

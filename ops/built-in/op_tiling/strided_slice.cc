@@ -42,6 +42,15 @@ using namespace ge;
 
 const int32_t BYTE_BLOCK = 32;
 const size_t MAX_SUPPORTED_DIMS = 8;
+constexpr int32_t SHAPE_LEN = 2;
+constexpr int32_t TILING_FACTOR_2 = 2;
+constexpr int32_t TILING_FACTOR_16 = 2;
+constexpr int32_t BYTE_SIZE = 32;
+constexpr int32_t TILING_MODE_5 = 5;
+constexpr int32_t TILING_MODE_6 = 6;
+constexpr int32_t TILING_MODE_7 = 7;
+constexpr int32_t TILING_MODE_8 = 8;
+constexpr int32_t TILING_FACTOR_256 = 256;
 
 std::string SliceParameters::to_string() const {
   string result = "input_shape:" + ops::to_string(input);
@@ -116,31 +125,31 @@ static void SetTilingMode(SliceParameters& parameters, int32_t core_num, const g
     parameters.tiling_mode = 2;
   }
 
-  if (parameters.output_shape[shape_len - 1] * dtype_size < BYTE_BLOCK && shape_len >= 2 && dtype == DT_FLOAT16 &&
+  if (parameters.output_shape[shape_len - 1] * dtype_size < BYTE_BLOCK && shape_len >= SHAPE_LEN && dtype == DT_FLOAT16 &&
       CalShapeMul(parameters.output_shape, 0, shape_len - 3) % core_num == 0 &&
       parameters.output_shape[shape_len - 2] >= 16 &&
-      parameters.input[shape_len - 1] * 256 <= CalVnchwUbSize(ub_size, dtype_size)) {
+      parameters.input[shape_len - 1] * TILING_FACTOR_256 <= CalVnchwUbSize(ub_size, dtype_size)) {
     parameters.tiling_mode = 3;
   }
 
   if (shape_len >= 2 && parameters.output_shape[shape_len - 1] * dtype_size % BYTE_BLOCK == 0 &&
       parameters.input[shape_len - 1] * dtype_size % BYTE_BLOCK == 0 &&
-      IsShapeEqualExceptLast(parameters.input, parameters.output_shape, shape_len - 2) &&
+      IsShapeEqualExceptLast(parameters.input, parameters.output_shape, shape_len - SHAPE_LEN) &&
       ub_size >= 2 * parameters.output_shape[shape_len - 1] * dtype_size &&
       (parameters.input[shape_len - 1] - parameters.output_shape[shape_len - 1]) * dtype_size <= STRIDE_LIMIT) {
     parameters.tiling_mode = 4;
   }
 
-  if (shape_len == 2 && IsShapeEqualExceptLast(parameters.input, parameters.output_shape, shape_len - 2) &&
-      parameters.output_shape[shape_len - 1] * dtype_size > 32 &&
-      parameters.input[shape_len - 1] * BYTE_BLOCK * 2 <= ub_size &&
-      parameters.input[shape_len - 1] * dtype_size > 32) {
-    parameters.tiling_mode = 6;
+  if (shape_len == SHAPE_LEN && IsShapeEqualExceptLast(parameters.input, parameters.output_shape, shape_len - SHAPE_LEN) &&
+      parameters.output_shape[shape_len - 1] * dtype_size > BYTE_SIZE &&
+      parameters.input[shape_len - 1] * BYTE_BLOCK * TILING_FACTOR_2 <= ub_size &&
+      parameters.input[shape_len - 1] * dtype_size > BYTE_SIZE) {
+    parameters.tiling_mode = TILING_MODE_6;
   }
 
-  if (shape_len == 2 && IsShapeEqualExceptLast(parameters.input, parameters.output_shape, shape_len - 2) &&
+  if (shape_len == SHAPE_LEN && IsShapeEqualExceptLast(parameters.input, parameters.output_shape, shape_len - SHAPE_LEN) &&
       parameters.output_shape[shape_len - 1] == 1 && BYTE_BLOCK * (parameters.input[shape_len - 1] + 1) < ub_size) {
-    parameters.tiling_mode = 8;
+    parameters.tiling_mode = TILING_MODE_8;
   }
 
   int64_t multi_times = dtype_size / float16_type_size;
@@ -152,15 +161,15 @@ static void SetTilingMode(SliceParameters& parameters, int32_t core_num, const g
   } else if (output_inner_dims % output_32bytes_align_rows == 0) {
     output_32bytes_align_rows = 1;
   }
-  int64_t need_ub_size = input_inner_dims * 16 * 2;
-  if (shape_len == 2 && IsShapeEqualExceptLast(parameters.input, parameters.output_shape, shape_len - 2) &&
+  int64_t need_ub_size = input_inner_dims * TILING_FACTOR_16 * TILING_FACTOR_2;
+  if (shape_len == SHAPE_LEN && IsShapeEqualExceptLast(parameters.input, parameters.output_shape, shape_len - SHAPE_LEN) &&
       need_ub_size * BYTE_BLOCK / dtype_size * output_32bytes_align_rows < ub_size &&
       dtype_size % float16_type_size == 0) {
-    parameters.tiling_mode = 5;
+    parameters.tiling_mode = TILING_MODE_5;
   }
 
   if (shape_len == 1 && parameters.stride_list[0] == 1) {
-    parameters.tiling_mode = 7;
+    parameters.tiling_mode = TILING_MODE_7;
   }
 
   OP_LOGD(opType.c_str(), "parameters.tiling_mode: %lld", parameters.tiling_mode);

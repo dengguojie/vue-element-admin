@@ -30,6 +30,12 @@
 #include "vector_tiling_profiling.h"
 #include "graph/utils/op_desc_utils.h"
 
+namespace {
+  constexpr int32_t HALF_UB = 2;
+  constexpr int32_t DATA_VALUE = 1024;
+  constexpr int32_t NUM_32 = 32;
+}
+
 namespace optiling {
 const int64_t BLOCK_SIZE = 32;
 const int64_t PARAMS_CACHED_UB = 100 * 1024;
@@ -735,13 +741,13 @@ bool TilingWithoutBatchDims(GatherV2TilingParams& run_params, const GatherCompil
   int64_t res_ub_size = half_ub_size;  // store params row data
   int64_t half_ub_indices_elem = half_ub_size / compile_params.indices_d_size;
   int64_t indices_num_per_loop = half_ub_indices_elem;
-  int64_t half_remain_ub_size = (available_ub_size - PARAMS_CACHED_UB) / 2;
+  int64_t half_remain_ub_size = (available_ub_size - PARAMS_CACHED_UB) / HALF_UB;
   int64_t half_remain_params_elem = half_remain_ub_size / compile_params.params_d_size;
   int64_t half_ub_params_elem = half_ub_size / compile_params.params_d_size;
 
   // the data of the formula gained from actual tests
   // set a gate value for tiling_mode_7 to optimized some data_move processes
-  float mode_7_gate_value = 56.5 - 0.012 * run_params.params_total / 1024;
+  float mode_7_gate_value = 56.5 - 0.012 * run_params.params_total / DATA_VALUE;
 
   if (run_params.params_pre >= compile_params.core_num && params_row_ceil <= half_ub_params_elem &&
       (run_params.params_row * compile_params.params_d_size < BLOCK_SIZE ||
@@ -1014,7 +1020,7 @@ bool TilingWithBatchDims(GatherV2TilingParams& run_params, const GatherCompilePa
   int64_t block_num = BLOCK_SIZE / compile_params.params_d_size;
   ParasPreProcess(run_params, compile_params, shape_info, axis);
 
-  run_params.half_remain_ub_size = (available_ub_size - PARAMS_CACHED_UB) / 2;
+  run_params.half_remain_ub_size = (available_ub_size - PARAMS_CACHED_UB) / HALF_UB;
   int64_t half_remain_params_elem = run_params.half_remain_ub_size / compile_params.params_d_size;
   int64_t half_ub_params_elem = run_params.half_ub_size / compile_params.params_d_size;
 
@@ -1042,7 +1048,7 @@ bool TilingWithBatchDims(GatherV2TilingParams& run_params, const GatherCompilePa
   if (run_params.params_row * compile_params.params_d_size < BLOCK_SIZE) {
     if (run_params.indices_row * run_params.params_row * compile_params.params_d_size <= BLOCK_SIZE) {
       if (run_params.params_pre * run_params.indices_row * run_params.params_row * compile_params.params_d_size <=
-          32 * BLOCK_SIZE) {
+          NUM_32 * BLOCK_SIZE) {
         if (run_params.indices_num_each_core * run_params.params_row * compile_params.params_d_size <= BLOCK_SIZE) {
           CalNeedCoreWithBatchDims(run_params, compile_params);
         }

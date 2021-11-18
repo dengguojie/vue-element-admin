@@ -35,6 +35,8 @@ namespace optiling {
 const int64_t TILING_MODE_0 = 0;
 // use 8 cores all time
 const int64_t BLOCKDIM = 8;
+constexpr int32_t INPUT_DESC_SIZE = 5;
+constexpr int32_t OUTPUT_DESC_SIZE = 6;
 
 struct LRUCacheV2CompileParams {
   int64_t set_num;
@@ -117,14 +119,14 @@ bool LRUCacheV2Tiling(const std::string& op_type, const ge::Operator& op_paras, 
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get operator_info error.");
     return false;
   }
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < INPUT_DESC_SIZE; i++) {
     auto opdesc = operator_info->MutableInputDesc(i);
     if (opdesc == nullptr) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_%d shape error.", i);
       return false;
     }
   }
-  for (int i = 0; i < 6; i++) {
+  for (int i = 0; i < OUTPUT_DESC_SIZE; i++) {
     auto opdesc = operator_info->MutableOutputDesc(i);
     if (opdesc == nullptr) {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get output_%d shape error.", i);

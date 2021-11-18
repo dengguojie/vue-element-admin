@@ -25,6 +25,10 @@
 #include "op_tiling.h"
 #include "op_tiling_util.h"
 
+namespace {
+  constexpr int32_t BLOCK_DIM_NUM = 32;
+}
+
 namespace optiling {
 
 bool ConfusionSoftmaxGradTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
@@ -37,7 +41,7 @@ bool ConfusionSoftmaxGradTiling(const std::string& op_type, const ge::Operator& 
   int32_t d = input_shape[1];
   int32_t c = input_shape[2];
 
-  run_info.SetBlockDim(32);
+  run_info.SetBlockDim(BLOCK_DIM_NUM);
 
   int32_t base_key = 10000000;
 

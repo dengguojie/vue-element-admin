@@ -28,6 +28,10 @@
 #include "op_tiling.h"
 
 
+namespace {
+  constexpr int32_t BLOCK_DIM_SIZE = 30;
+}
+
 namespace optiling {
 using namespace ge;
 
@@ -56,7 +60,7 @@ bool IFMRTiling(const std::string& op_type, const TeOpParas& op_paras, const nlo
     int32_t data_num = static_cast<int32_t>(data_size);
     ByteBufferPut(run_info.tiling_data, data_num);
 
-    run_info.block_dim = 30;
+    run_info.block_dim = BLOCK_DIM_SIZE;
     std::vector<int64_t> workspace;
     workspace.push_back(barrier_workspace_size);
     workspace.push_back(loss_workspace_size);

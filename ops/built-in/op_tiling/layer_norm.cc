@@ -54,6 +54,9 @@ const int32_t TYPE_SIZE_16 = 2;
 const int32_t TYPE_SIZE_32 = 4;
 const int32_t NUM_BSA = 100;
 const int32_t NUM_USA = 10;
+const int32_t BLOCK_BYTE_SIZE = 32;
+const int32_t TILING_FACTOR_8 = 8;
+const int32_t TILING_DIVIDE_2 = 2;
 
 struct layerNormOpInfo {
   /* data */
@@ -557,8 +560,8 @@ void TilingCommonSplitUB(const int32_t ub_block_inner, const int32_t block_axis,
     }
     bool reset_switch = false;
     while (fuse_num > max_ub_size) {
-      fuse_num = fuse_num / 2;
-      block_inner = block_inner / 2;
+      fuse_num = fuse_num / TILING_DIVIDE_2;
+      block_inner = block_inner / TILING_DIVIDE_2;
       reset_switch = true;
     }
     if (reset_switch) {
@@ -614,8 +617,8 @@ void TilingCommonGenerate(const int32_t block_axis, std::vector<int64_t> input_x
     }
     bool reset_switch = false;
     while (fuse_num > max_ub_size) {
-      fuse_num = fuse_num / 2;
-      block_inner = block_inner / 2;
+      fuse_num = fuse_num / TILING_DIVIDE_2;
+      block_inner = block_inner / TILING_DIVIDE_2;
       ub_block_inner = block_inner;
       reset_switch = true;
     }
@@ -781,7 +784,7 @@ void LayerNormTikTiling(std::vector<int64_t> input_x, int32_t begin_norm_axis, c
   if (batch_num <= core_num) {
     ub_size = ub_max_byte;
   } else {
-    ub_size = ub_max_byte / 2;
+    ub_size = ub_max_byte / TILING_DIVIDE_2;
   }
 
   // expand tensor:batch_mean_ub, batch_mean_square_ub, batch_variance_ub,
@@ -822,9 +825,9 @@ void LayerNormTikTiling(std::vector<int64_t> input_x, int32_t begin_norm_axis, c
   // tiling_data
   int32_t gm_block_num = block_size / ub_data_size;
   int32_t workspace_mean = (batch_num + gm_block_num) * ub_data_size;
-  int32_t workspace_sync = core_num * 8;
+  int32_t workspace_sync = core_num * TILING_FACTOR_8;
   int32_t non_y_workspace = workspace_mean > workspace_sync ? workspace_mean : workspace_sync;
-  non_y_workspace = (non_y_workspace + 32 - 1) / 32 * 32;
+  non_y_workspace = (non_y_workspace + BLOCK_BYTE_SIZE - 1) / BLOCK_BYTE_SIZE * BLOCK_BYTE_SIZE;
   std::vector<int64_t> workspaces;
   if ((ub_type != gm_type) && atomic_clean_diff_shape) {
     workspaces = {batch_num * data_num * ub_data_size, non_y_workspace, non_y_workspace, non_y_workspace};

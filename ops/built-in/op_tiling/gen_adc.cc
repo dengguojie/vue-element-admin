@@ -25,6 +25,10 @@
 #include "op_log.h"
 #include "error_log.h"
 
+namespace {
+  constexpr int32_t INPUT_LENGTH = 4;
+}
+
 namespace optiling {
 const int64_t BLOCK_SIZE = 32;  // one block size is 32 Bytes
 
@@ -47,7 +51,7 @@ bool checkInputParams(const std::string& opType, const TeOpParas& opParas, const
     OP_LOGE(opType.c_str(), "op[GenADCTiling] opInfo json error.");
     return false;
   }
-  if (opParas.inputs.size() < 4) {
+  if (opParas.inputs.size() < INPUT_LENGTH) {
     ge::OpsOneInputShapeErrReport(opType.c_str(), "inputs", "The length of inputs is less than 4");
     OP_LOGE(opType.c_str(), "op[GenADCTiling] The length of inputs is less than 4.");
     return false;

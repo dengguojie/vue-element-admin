@@ -52,6 +52,9 @@ const int32_t TILING_MODE_6 = 6;
 const int32_t TILING_MODE_7 = 7;
 
 const int32_t TRANSPOSE_SIZE = 256;
+constexpr int32_t SPLIT_NUM = 16;
+constexpr int32_t ALLIGN_NUM_16 = 16;
+constexpr int32_t ALLIGN_NUM_15 = 15;
 
 namespace optiling {
 struct SplitVTilingParams {
@@ -361,7 +364,7 @@ bool CalSplitVRunningParams(SplitVTilingParams& runParams, int64_t inputElems, s
     }
     runParams.needCoreNum = coreNum;
   } else {
-    if (inputDType == ge::DT_FLOAT16 && numSplit <= 16 && shapeAfter == numSplit &&
+    if (inputDType == ge::DT_FLOAT16 && numSplit <= SPLIT_NUM && shapeAfter == numSplit &&
         inputElems >= TRANSPOSE_SIZE * numSplit) {
       GELOGD("op [SplitVTiling] : mode 4");
       runParams.tilingMode = TILING_MODE_4;
@@ -437,7 +440,7 @@ bool CalSplitVRunningParams(SplitVTilingParams& runParams, int64_t inputElems, s
       runParams.tilingMode = TILING_MODE_6;
 
       CalSpecialParams(runParams, coreNum, dataBlock, shapeBefore);
-    } else if (isSplitV && inputDType == ge::DT_FLOAT16 && numSplit <= 16 &&
+    } else if (isSplitV && inputDType == ge::DT_FLOAT16 && numSplit <= SPLIT_NUM &&
                CheckMode7(sizeSplitsVec, dataBlock, shapeAfterDim, shapeAfter, shapeBefore)) {
       // 16 is the max of numSplit, size_split[-1] is 32B align, sum of size_split[0:15] cannot exceed 32B
       GELOGD("op [SplitVTiling] : mode 7");
@@ -643,7 +646,7 @@ bool SplitVTiling(const std::string& opType, const ge::Operator& opParas, const 
     int64_t size = sizeSplitsVec.size();
     if (input_format == ge::FORMAT_FRACTAL_NZ) {
       for (int in = 0; in < size; in++) {
-        sizeSplitsVec[in] = (sizeSplitsVec[in]  + 15) / 16;
+        sizeSplitsVec[in] = (sizeSplitsVec[in]  +  ALLIGN_NUM_15) / ALLIGN_NUM_16;
       }
     }
     if (!CheckSplitVAttr(splitDim, numSplit, inputShape, sizeSplitsVec)) {

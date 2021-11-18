@@ -30,6 +30,10 @@
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
 
+namespace {
+  constexpr int32_t INPUT_BASE_SIZE = 3;
+}
+
 namespace optiling {
 static const int WORKSPACE_SIZE = 4096;
 static const int BLOCK_SIZE = 4096;
@@ -93,7 +97,7 @@ bool DynamicGruV2Tiling(const std::string& opType, const TeOpParas& opParas, con
     return false;
   }
 
-  if (opParas.inputs.size() < 3 || opParas.inputs[0].tensor.empty() ||
+  if (opParas.inputs.size() < INPUT_BASE_SIZE || opParas.inputs[0].tensor.empty() ||
       opParas.inputs[1].tensor.empty()) {
     OP_LOGE(opType.c_str(), "op DynamicGruV2Tiling: input shape error.");
     return false;

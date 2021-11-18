@@ -23,6 +23,8 @@
 namespace optiling {
 const int64_t TILING_100110_HW_THRESHOLD = 64;
 const int64_t TILING_100110_NC1_THRESHOLD = 32;
+constexpr int32_t TILING_KEY_100110 = 100110;
+constexpr int32_t TILING_KEY_100000 = 100000;
 const int64_t SHAPE_C0 = 16;
 
 // tiling_key format: 000000
@@ -122,7 +124,7 @@ bool GetResizeBilinearV2Tiling(const ResizeClassCompileParams& compile_params, R
     GetTilingForNoBilinear(compile_params, tiling_params);
     return true;
   }
-  if ((compile_params.tuneParams.tiling_key == 100110 || compile_params.tuneParams.tiling_key == 100000) &&
+  if ((compile_params.tuneParams.tiling_key == TILING_KEY_100110 || compile_params.tuneParams.tiling_key == TILING_KEY_100000) &&
       compile_params.tuneParams.cut_batch_c1_num * compile_params.tuneParams.cut_height_num *
               compile_params.tuneParams.cut_width_num <=
           compile_params.core_num) {

@@ -27,6 +27,9 @@
 #include "op_tiling.h"
 #include <math.h>
 
+namespace {
+  constexpr int32_t NUM_128 = 128;
+}
 namespace optiling {
 struct TilingParam {
   // input x line num
@@ -55,7 +58,7 @@ static void CalTilingParam(TilingParam& param, int64_t input_num, int64_t aicore
   param.input_num = sqrt(input_num);
   int num_per_core = (param.input_num + aicore_num - 1) / aicore_num;
   num_per_core = max(1, num_per_core);
-  num_per_core = ((num_per_core + 128 - 1) / 128) * 128;
+  num_per_core = ((num_per_core + NUM_128 - 1) / NUM_128) * NUM_128;
   param.act_core_num = (param.input_num + num_per_core - 1) / num_per_core;
   param.one_core_num = num_per_core;
   param.last_core_num = param.input_num - (param.act_core_num - 1) * num_per_core;

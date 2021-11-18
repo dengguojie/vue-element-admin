@@ -25,6 +25,10 @@
 #include "op_log.h"
 #include "op_tiling.h"
 
+namespace {
+  constexpr int32_t NUM_64 = 64;
+}
+
 namespace optiling {
 struct TilingParam {
   // input x value num
@@ -53,7 +57,7 @@ static void CalTilingParam(TilingParam& param, int64_t input_num, int64_t aicore
   param.input_num = input_num;
   int num_per_core = (input_num + aicore_num - 1) / aicore_num;
   num_per_core = max(1, num_per_core);
-  num_per_core = ((num_per_core + 64 - 1) / 64) * 64;
+  num_per_core = ((num_per_core + NUM_64 - 1) / NUM_64) * NUM_64;
   param.act_core_num = (input_num + num_per_core - 1) / num_per_core;
   param.one_core_num = num_per_core;
   param.last_core_num = input_num - (param.act_core_num - 1) * num_per_core;

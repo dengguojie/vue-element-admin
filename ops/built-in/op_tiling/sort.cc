@@ -42,6 +42,12 @@ namespace optiling
   const int64_t WORKSPACE_DIM = 3;
   const int64_t WORKSPACE_SIZE = 1073741824;
 
+  constexpr int32_t ALLIGN_NUM_3 = 3;
+  constexpr int32_t ALLIGN_NUM_4 = 4;
+  constexpr int32_t ALLIGN_NUM_15 = 15;
+  constexpr int32_t TILING_DIVIDE_16 = 16;
+  constexpr int32_t TILING_FACTOR_16 = 16;
+
   struct SortTilingParams
   {
     int32_t tiling_mode_scalar;
@@ -68,7 +74,7 @@ namespace optiling
     while (regions > 1)
     {
       level += 1;
-      regions = (regions + 3) / 4;
+      regions = (regions + ALLIGN_NUM_3) / ALLIGN_NUM_4;
       if (regions <= 1)
       {
         break;
@@ -179,10 +185,10 @@ namespace optiling
     }
     OP_LOGI("op[%s] GetSortCompileParams success.", op_type.c_str());
 
-    cols_padding = ((col + 15) / 16) * 16;
+    cols_padding = ((col + ALLIGN_NUM_15) / TILING_DIVIDE_16) * TILING_FACTOR_16;
     col_block_padding = ((col + 2047) / 2048) * 2048;
     if (col > 2048) {
-       tiling_mode = 2;
+       tiling_mode = TILING_MODE_2;
        col_tail_loop = GetSortLoopTimes(cols_padding - COL_PER_PART);
     }
    // get other tiling para

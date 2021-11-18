@@ -29,6 +29,10 @@
 #include "vector_tiling_profiling.h"
 #include "graph/utils/op_desc_utils.h"
 
+namespace {
+  constexpr int32_t DIM_NUM = 2;
+}
+
 namespace optiling {
 using namespace ge;
 using namespace std;
@@ -99,7 +103,7 @@ static bool CheckParams(const string& op, const GeShape& x_shape, const GeShape&
                   VECTOR_INNER_ERR_REPORT_TILIING(op, "The dimension of x can not be 0."),
                   return false);
 
-  if (x_shape.GetDimNum() == 2 && x_shape.GetDim(0) != target_shape.GetDim(0)) {
+  if (x_shape.GetDimNum() == DIM_NUM && x_shape.GetDim(0) != target_shape.GetDim(0)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op, "The first dimension of x and target should be equal.");
     return false;
   }

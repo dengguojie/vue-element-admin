@@ -19,6 +19,12 @@
 #include "error_log.h"
 #include "op_log.h"
 
+namespace {
+  constexpr int32_t NUM_SIXTEEN = 16;
+  constexpr int32_t NUM_EIGHT = 8;
+  constexpr int32_t NUM_TWO = 2;
+  constexpr int32_t ALLIGN_SIZE = 256;   
+}
 
 namespace optiling {
 static const int INPUT_SIZE = 9;
@@ -113,9 +119,9 @@ bool DynamicGRUCellGradTiling(const std::string& op_type, const TeOpParas& op_pa
   std::string hDType = op_paras.inputs[0].tensor[0].dtype;
   // get input data type size
   int64_t dataTypeSize = TYPE_SIZE[hDType];
-  int64_t t_state_and_tiling_size = (16 * dataTypeSize + 16 * 8) * 2;
+  int64_t t_state_and_tiling_size = (NUM_SIXTEEN * dataTypeSize + NUM_SIXTEEN * NUM_EIGHT) * NUM_TWO;
   int64_t ub_max_ele_num = (ubByteSize - t_state_and_tiling_size) / dataTypeSize;
-  int64_t align = 256 / dataTypeSize;
+  int64_t align = ALLIGN_SIZE / dataTypeSize;
 
   // get tiling para
   std::map<std::string, int64_t> tilingPara = {{"coreNum", 0}, {"loopNum", 0},     {"loopEle", 0},     {"blockSize", 0},
@@ -146,7 +152,7 @@ bool DynamicGRUCellGradTiling(const std::string& op_type, const TeOpParas& op_pa
     return true;
   }
   int64_t coreNum = deviceCoreNum;
-  int64_t maxBlockEleNum = (ub_max_ele_num / 8 / 2 / align) * align;
+  int64_t maxBlockEleNum = (ub_max_ele_num / NUM_EIGHT / NUM_TWO / align) * align;
   int64_t loopNum = shapeSize / (maxBlockEleNum * coreNum);
   int64_t loopEle = maxBlockEleNum;
   int64_t blockSize = loopEle * loopNum;

@@ -30,6 +30,7 @@ namespace {
 const char * const kScopeType = "layer_norm_grad";
 const char * const kScopeRltType = "LayerNormGrad";
 const char * const kOpType = "LayerNormGrad";
+constexpr int32_t DST_OUTSIZE = 2;
 }  // namespace
 
 std::vector<ScopeFusionPatterns> ScopeLayerNormGradPass::DefinePatterns() {
@@ -203,7 +204,7 @@ Status ScopeLayerNormGradPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>
             std::vector<std::string>outputs;
             mode_def->GetAttr("_origin_graph_node_outputs",outputs);
             OP_LOGI(kOpType, "Reshape node data_out_num is %zu", outputs.size());
-            if (outputs.size() == 2) {
+            if (outputs.size() == DST_OUTSIZE) {
                 OP_LOGI(kOpType, "Reshape output size is 2, not fusion scope");
                 return FAILED;
             }

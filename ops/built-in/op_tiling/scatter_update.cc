@@ -45,6 +45,8 @@ const int64_t TILING_MODE_4 = 4;
 const int64_t TILING_MODE_5 = 5;
 // div 0 check
 const int64_t ZERO = 0;
+constexpr int32_t BYTE_SIZE_2 = 2;
+constexpr int32_t BYTE_SIZE_4 = 4;
 
 struct ScatterUpdateTilingParams {
   int64_t tilingMode;
@@ -135,13 +137,13 @@ void CalRunningParams(const std::string& opType, ScatterUpdateTilingParams& runP
   if (opType == "InplaceUpdate") {
     int64_t dtype_bytes_size = 0;
     if (var_dtype == "float16") {
-      dtype_bytes_size = 2;
+      dtype_bytes_size = BYTE_SIZE_2;
     }
     if (var_dtype == "float32") {
-      dtype_bytes_size = 4;
+      dtype_bytes_size = BYTE_SIZE_4;
     }
     if (var_dtype == "int32") {
-      dtype_bytes_size = 4;
+      dtype_bytes_size = BYTE_SIZE_4;
     }
     runParams.each_core_compute_num = runParams.indiceStep * var_num;
     runParams.each_core_loop_num = (runParams.each_core_compute_num * dtype_bytes_size) / halfUbSize;

@@ -26,6 +26,13 @@
 #include "op_log.h"
 #include "op_tiling.h"
 
+namespace {
+  constexpr int32_t PADDING_VALUE = 2;
+  constexpr int32_t TILING_MODE_6 = 6;
+  constexpr int32_t TILING_MODE_7 = 7;
+  
+}
+
 namespace optiling {
 using namespace ge;
 using namespace std;
@@ -147,7 +154,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     param.pad_b = param.pad_h - param.input_h - param.pad_t > 0 ? param.pad_h - param.input_h - param.pad_t : 0;
     param.pad_l = (param.pad_w - param.input_w) / 2 > 0 ? (param.pad_w - param.input_w) / 2 : 0;
     param.pad_r = param.pad_w - param.input_w - param.pad_l > 0 ? param.pad_w - param.input_w - param.pad_l : 0;
-  } else if (padding == 2) {
+  } else if (padding == PADDING_VALUE) {
     if (ceil_mode == 1) {
       param.output_h = (param.input_h + pad_top + pad_bottom - ksize_h + strides_h + strides_h - 1) / strides_h;
       param.output_w = (param.input_w + pad_left + pad_right - ksize_w + strides_w + strides_w - 1) / strides_w;
@@ -200,7 +207,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     param.n_c1 = input_shape[0] * input_shape[1];
     CalCoreNum(param, param.n_c1, core_num);
     if (ub_ele >= (input_shape[2] * input_shape[3] * input_shape[4])) {
-      param.tiling_mode = 6;
+      param.tiling_mode = TILING_MODE_6;
     } else {
       param.h_factor = ub_ele / input_shape[4];  // acutal is hw_factor
       int32_t input_hw_num = param.input_h * param.input_w;
@@ -209,7 +216,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
       param.one_core_loop_left = input_hw_num % param.h_factor;
       param.last_core_loop_num = param.one_core_loop_num;
       param.last_core_loop_left = param.one_core_loop_left;
-      param.tiling_mode = 7;
+      param.tiling_mode = TILING_MODE_7;
     }
     return;
   }

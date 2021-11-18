@@ -28,6 +28,12 @@
 #include "vector_tiling_profiling.h"
 #include "graph/utils/op_desc_utils.h"
 
+namespace {
+  constexpr int32_t TILING_FACTOR_2 = 2;
+  constexpr int32_t TILING_DIVIDE_3 = 3;
+  constexpr int32_t RESIZE_VALUE_3 = 3;
+}
+
 namespace optiling {
 const int64_t BLOCK_SIZE = 32;
 // define the redution mode for int64_t
@@ -262,7 +268,7 @@ int64_t CalculUbSizeLargeWeight(int64_t& x_size, int64_t& target_size, int64_t& 
   weight_size = data_one_block;
   // 2: x_size and weight_size used one block
   // 3: target, valid_x, valid_weight equally divide the remaining space
-  target_size = GetFloorDiv(ub_size - 2 * data_one_block, 3);
+  target_size = GetFloorDiv(ub_size - TILING_FACTOR_2 * data_one_block, TILING_DIVIDE_3);
   // target_size 32byte unit
   ub_max_line = target_size - GetMod(target_size, data_one_block);
   return ub_max_line;
@@ -277,7 +283,7 @@ bool NLLLossParseFunc(const std::string& op_type,
   }
   const nlohmann::json& all_vars = compile_info["vars"];
 
-  compile_value.resize(3);
+  compile_value.resize(RESIZE_VALUE_3);
 
   // get core_num value
   OP_TILING_CHECK(!GetCompileValue(all_vars, "core_num", compile_value[0]),
