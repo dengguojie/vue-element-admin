@@ -89,6 +89,12 @@ case8 = scale_cce((2, 3, 2, 3, 4), (1, 3, 1, 1, 1), (1, 3, 1, 1, 1), (2, 3, 2, 3
                   "ND", "ND", "ND", "ND",
                   -1, 1, True, RuntimeError, "scale_8")
 
+case9 = scale_cce((1, 1, 448, 448, 16), (1, 1, 448, 448, 16), (1, 1, 448, 448, 16), (1, 1, 448, 448, 16),
+                  (1, 1, 448, 448, 16), (1, 1, 448, 448, 16), (1, 1, 448, 448, 16), (1, 1, 448, 448, 16),
+                  "float16", "float16", "float16", "float16",
+                  "ND", "ND", "ND", "ND",
+                  "ND", "ND", "ND", "ND",
+                  0, -1, False, "success", "scale_9")
 
 ut_case.add_case("Ascend910", case1)
 ut_case.add_case("Ascend910", case2)
@@ -98,7 +104,7 @@ ut_case.add_case("Ascend910A", case5)
 ut_case.add_case("Ascend910A", case6)
 ut_case.add_case("Ascend910A", case7)
 ut_case.add_case("Ascend910A", case8)
-
+ut_case.add_case("Ascend910A", case9)
 
 
 def calc_expect_func(x, scale, bias, y, axis, num_axes, scale_from_blob):
@@ -264,4 +270,37 @@ def test_op_select_format(test_arg):
     __test_util_commom()
 
 
+def test_op_select_format_001(test_arg):
+    from te.platform.cce_conf import te_set_version
+    from impl.scale import op_select_format
+    te_set_version("SD3403")
+    op_select_format(
+        {
+            "shape": (16, 16, 16, 16),
+            "dtype": "float16",
+            "format": "NCHW",
+            "ori_shape": (16, 16, 16, 16),
+            "ori_format": "NCHW"
+        }, {
+            "shape": (16, 16, 16, 16),
+            "dtype": "float16",
+            "format": "NCHW",
+            "ori_shape": (16, 16, 16, 16),
+            "ori_format": "NCHW"
+        }, None, None)
+    op_select_format({
+        "shape": (2,),
+        "dtype": "float16",
+        "format": "ND",
+        "ori_shape": (2,),
+        "ori_format": "ND"
+    }, {
+        "shape": (2,),
+        "dtype": "float16",
+        "format": "ND",
+        "ori_shape": (2,),
+        "ori_format": "ND"
+    }, None, None)
+
+ut_case.add_cust_test_func(test_func=test_op_select_format_001)
 ut_case.add_cust_test_func(support_soc="all", test_func=test_op_select_format)

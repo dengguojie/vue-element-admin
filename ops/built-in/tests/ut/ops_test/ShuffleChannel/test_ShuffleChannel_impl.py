@@ -127,6 +127,49 @@ ut_case.add_precision_case("all", {"params": [{"shape": (32, 32, 16, 5), "dtype"
 
 # ============ auto gen ["Ascend910"] test cases end =================
 
+def test_shuffle_channel_001(test_arg):
+    from te.platform.cce_conf import te_set_version
+    from impl.shuffle_channel import shuffle_channel
+    te_set_version("SD3403")
+    shuffle_channel(
+        {
+            "shape": (1, 4, 3),
+            "dtype": "int16",
+            "format": "NCHW",
+            'ori_shape': (1, 4, 3),
+            'ori_format': "NCHW"
+        }, {
+            "shape": (1, 4, 3),
+            "dtype": "int16",
+            "format": "NCHW",
+            'ori_shape': (1, 4, 3),
+            'ori_format': "NCHW"
+        }, 2)
+
+
+def test_get_op_support_info_001(test_arg):
+    from impl.shuffle_channel import get_op_support_info
+    get_op_support_info(
+        {
+            "shape": (1, 4, 3),
+            "dtype": "int16",
+            "format": "NCHW",
+            'ori_shape': (1, 4, 3),
+            'ori_format': "NCHW"
+        }, None)
+    get_op_support_info(
+        {
+            "shape": (1, 4, 3),
+            "dtype": "int16",
+            "format": "NHWC",
+            'ori_shape': (1, 4, 3),
+            'ori_format': "NCHW"
+        }, None)
+
+
+ut_case.add_cust_test_func(test_func=test_shuffle_channel_001)
+ut_case.add_cust_test_func(test_func=test_get_op_support_info_001)
+
 if __name__ == '__main__':
     user_home_path = os.path.expanduser("~")
     simulator_lib_path = os.path.join(user_home_path, ".mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")

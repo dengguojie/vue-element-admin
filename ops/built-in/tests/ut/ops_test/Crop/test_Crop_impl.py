@@ -108,4 +108,42 @@ ut_case.add_precision_case("all",
 #                            gen_crop_precision_case((64, 88, 140, 120), (32, 40, 70, 60), "float16", "success", -3,
 #                                                    (0, 0, 0), kernel_name="crop_5"))
 
+def test_op_select_format_001(test_arg):
+    from impl.crop import op_select_format
+    op_select_format({"shape": (16, 16, 16, 16), "dtype": "int8", "format": "NCHW", "ori_shape": (16, 16, 16, 16), "ori_format": "NCHW"},
+                     None, None)
 
+def test_get_input_offset_list_001(test_arg):
+    from impl.crop import _get_input_offset_list
+    _get_input_offset_list(0, (16, 16, 16, 16), (16, 16, 16, 16), [64, 88, 140, 120], 2, 6)
+
+def test_get_input_offset_001(test_arg):
+    from impl.util.platform_adapter import tik
+    from impl.crop import _get_input_offset
+    _get_input_offset((16, 16, 16, 16), (16, 16, 16, 16), [64, 88, 140, 120], 64, 
+                        3, tik.Tik().Scalar(dtype="int32", init_value=0))
+
+def test_get_tail_num_001(test_arg):
+    from impl.crop import _get_tail_num
+    _get_tail_num(4, 0, 8, 2, 1)
+    _get_tail_num(4, 1, 8, 2, 2)
+
+ut_case.add_cust_test_func(test_func=test_op_select_format_001)
+ut_case.add_cust_test_func(test_func=test_get_input_offset_list_001)
+ut_case.add_cust_test_func(test_func=test_get_input_offset_001)
+ut_case.add_cust_test_func(test_func=test_get_tail_num_001)
+
+def test_crop_001(test_arg):
+    from te.platform.cce_conf import te_set_version
+    from impl.crop import crop
+    te_set_version("Ascend710")
+    crop({"shape": (1, 21, 568, 568), "dtype": "int32", "format": "NCHW", "ori_shape": (1, 21, 568, 568), "ori_format": "NCHW"},
+         {"shape": (1, 3, 500, 500), "dtype": "int32", "format": "NCHW", "ori_shape": (1, 3, 500, 500), "ori_format": "NCHW"},
+         {"shape": (1, 3, 500, 500), "dtype": "int32", "format": "NCHW", "ori_shape": (1, 3, 500, 500), "ori_format": "NCHW"},
+                    0, [0, 3, 4, 5])
+    te_set_version("Ascend710")
+ut_case.add_cust_test_func(test_func=test_crop_001)
+
+if __name__ == "__main":
+    ut_case.run(["Ascend910A", "Ascend310", "Ascend710"])
+    exit(0)

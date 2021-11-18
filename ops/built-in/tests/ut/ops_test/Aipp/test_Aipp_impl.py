@@ -156,6 +156,51 @@ ut_case.add_case(["Ascend310", "Ascend910A"],
                  gen_static_aipp_case((1, 1, 258, 240, 4), (1, 1, 258, 240, 4), "int8", "int8", "NC1HWC0_C04",
                                       "NC1HWC0", aipp_config10, "aipp_10", RuntimeError))
 
+aipp_config_dict11 = aipp_config_dict.copy()
+del aipp_config_dict11["input_format"]
+aipp_config11 = json.dumps(aipp_config_dict11)
+ut_case.add_case(["Ascend310", "Ascend910A"],
+                 gen_static_aipp_case((1, 4, 418, 416, 4), (1, 4, 258, 240, 4), "int8", "int8", "NC1HWC0_C04", "NC1HWC0",
+                                      aipp_config11, "aipp_11", RuntimeError))
+
+aipp_config_dict12 = aipp_config_dict.copy()
+aipp_config_dict12["input_format"] = "RGB888_U8"
+aipp_config12 = json.dumps(aipp_config_dict12)
+ut_case.add_case(["Ascend310", "Ascend910A"],
+                 gen_static_aipp_case((1, 4, 418, 416, 4), (1, 4, 258, 240, 4), "int8", "int8", "NC1HWC0_C04", "NC1HWC0",
+                                      aipp_config12, "aipp_12", RuntimeError))             
+
+aipp_config_dict13 = aipp_config_dict.copy()
+aipp_config_dict13["input_format"] = "YUV400_U8"
+aipp_config_dict13["csc_switch"] = 1
+aipp_config13 = json.dumps(aipp_config_dict13)
+ut_case.add_case(["Ascend310", "Ascend910A"],
+                 gen_static_aipp_case((1, 4, 418, 416, 4), (1, 4, 258, 240, 4), "int8", "int8", "NCHW", "NC1HWC0",
+                                      aipp_config13, "aipp_13", RuntimeError))   
+
+aipp_config_dict13["input_format"] = "RGB24"
+aipp_config14 = json.dumps(aipp_config_dict13)
+ut_case.add_case(["Ascend310", "Ascend910A"],
+                 gen_static_aipp_case((1, 4, 418, 416, 3), (1, 4, 258, 240, 4), "int8", "int8", "NCHW", "NC1HWC0",
+                                      aipp_config14, "aipp_14", RuntimeError))   
+
+aipp_config_dict13["input_format"] = "RGB24_IR"
+aipp_config15 = json.dumps(aipp_config_dict13)
+ut_case.add_case(["Ascend310", "Ascend910A"],
+                 gen_static_aipp_case((1, 3, 418, 416, 3), (1, 4, 258, 240, 4), "int8", "int8", "NCHW", "NC1HWC0",
+                                      aipp_config15, "aipp_15", RuntimeError)) 
+
+aipp_config_dict13["input_format"] = "RAW16"
+aipp_config16 = json.dumps(aipp_config_dict13)
+ut_case.add_case(["Ascend310", "Ascend910A"],
+                 gen_static_aipp_case((1, 3, 418, 416, 3), (1, 4, 258, 240, 4), "int8", "int8", "NCHW", "NC1HWC0",
+                                      aipp_config16, "aipp_16", RuntimeError)) 
+
+aipp_config_dict13["input_format"] = "NC1HWC0DI_FP16"
+aipp_config17 = json.dumps(aipp_config_dict13)
+ut_case.add_case(["Ascend310", "Ascend910A"],
+                 gen_static_aipp_case((1, 3, 418, 416, 3), (1, 4, 258, 240, 4), "int8", "int8", "NCHW", "NC1HWC0",
+                                      aipp_config17, "aipp_17", RuntimeError)) 
 
 def gen_dynamic_aipp_case(input_shape, output_shape, dtype_x, dtype_y, format, output_format,
                           aipp_config_json, case_name_val, expect):
@@ -198,6 +243,33 @@ def test_set_spr2_spr9_1(test_arg):
     aipp_config_dict15["input_format"] = "AYUV444_U8"
     set_spr2_spr9(tvm.ir_builder.create(), aipp_config_dict15, "float16", "SD3403", "NC1HWC0")
 
+def test_aipp_001(test_arg):
+    from te.platform.cce_conf import te_set_version
+    from impl.aipp import aipp
+    te_set_version("SD3403")
+    aipp(
+        {
+            "shape": (1, 1, 224, 224),
+            "dtype": "uint8",
+            "ori_shape": (1, 1, 224, 224),
+            "ori_format": "NCHW",
+            "format": "NCHW"
+        }, {
+            "shape": (10000,),
+            "dtype": "uint8",
+            "ori_shape": (10000,),
+            "ori_format": "ND",
+            "format": "ND"
+        }, {
+            "shape": (1, 1, 223, 223, 16),
+            "dtype": "float16",
+            "ori_shape": (1, 1, 223, 223, 16),
+            "ori_format": "NCHW",
+            "format": "NC1HWC0"
+        }, aipp_config_dynamic)
+    te_set_version("SD3403")
+
+ut_case.add_cust_test_func(test_func=test_aipp_001)
 ut_case.add_cust_test_func(test_func=test_set_spr2_spr9_1)
 
 if __name__ == '__main__':

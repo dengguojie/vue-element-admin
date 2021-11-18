@@ -125,7 +125,7 @@ case12 = {"params": [{"shape": (16, 256, 30, 2), "dtype": "float32", "format": "
                     1, False, 1,
                     ],
          "case_name": "ArgMaxWithKd_12",
-         "expect": "success",
+         "expect": RuntimeError,
          "support_expect": True}
 
 case13 = {"params": [{"shape": (16, 1, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 1, 16, 16),"ori_format": "NCHW"}, #x
@@ -242,8 +242,7 @@ ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case11)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case13)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case14)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case15)
-set_current_compile_soc_info('Ascend710')
-ut_case.add_case(["Ascend710"], case12)
+ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case12)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case16)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case17)
 ut_case.add_case(["Ascend910A","Ascend310","Ascend710"], case18)
@@ -290,6 +289,86 @@ ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (2,16,16), "dtype
                                          "expect": "success",
                                          "calc_expect_func": calc_expect_func,
                                          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)})
+
+def test_arg_max_with_kd_001(test_arg):
+    from te.platform.cce_conf import te_set_version
+    from impl.arg_max_with_kd import arg_max_with_kd
+    te_set_version("Ascend710")
+    arg_max_with_kd({"shape": (5, 8,16,16), "dtype": "float32", "format": "NCHW", "ori_shape": (5, 8,16,16),"ori_format": "NCHW"},
+                    {"shape": (5, 8,16,16), "dtype": "float32", "format": "NCHW", "ori_shape": (5, 8,16,16),"ori_format": "NCHW"},
+                    {"shape": (5, 8,16,16), "dtype": "float32", "format": "NCHW", "ori_shape": (5, 8,16,16),"ori_format": "NCHW"},
+                    10000, False, 1)
+    arg_max_with_kd({"shape": (2,16,16), "dtype": "float32", "format": "NCHW", "ori_shape": (2,16,16),"ori_format": "NCHW"},
+                    {"shape": (2,16,16), "dtype": "float32", "format": "NCHW", "ori_shape": (2,16,16),"ori_format": "NCHW"},
+                    {"shape": (2,16,16), "dtype": "float32", "format": "NCHW", "ori_shape": (2,16,16),"ori_format": "NCHW"},
+                    10000, False, 1)
+    arg_max_with_kd({"shape": (2,10,1028,1,16), "dtype": "float32", "format": "NCHW", "ori_shape": (2,10,1028,1,16),"ori_format": "NCHW"},
+                    {"shape": (2,10,1028,1,16), "dtype": "float32", "format": "NCHW", "ori_shape": (2,10,1028,1,16),"ori_format": "NCHW"},
+                    {"shape": (2,10,1028,1,16), "dtype": "float32", "format": "NCHW", "ori_shape": (2,10,1028,1,16),"ori_format": "NCHW"},
+                    10000, False, 1)
+    arg_max_with_kd({"shape": (2, 3, 2, 16, 16), "dtype": "float32", "format": "NC1HWC0", "ori_shape": (2, 2,16,16),"ori_format": "NCHW"},
+                    {"shape": (2, 3, 2, 16, 16), "dtype": "float32", "format": "NC1HWC0", "ori_shape": (2, 2,16,16),"ori_format": "NCHW"},
+                    {"shape": (2, 3, 2, 16, 16), "dtype": "float32", "format": "NC1HWC0", "ori_shape": (2, 2,16,16),"ori_format": "NCHW"},
+                    0, False, 1)
+    arg_max_with_kd({"shape": (16, 16, 1, 1), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 16, 1, 1),"ori_format": "NCHW"},
+                    {"shape": (16, 16, 1, 1), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 16, 1, 1),"ori_format": "NCHW"},
+                    {"shape": (16, 16, 1, 1), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 16, 1, 1),"ori_format": "NCHW"},
+                    1, False, 1)
+    arg_max_with_kd({"shape": (5, 8, 16, 16), "dtype": "float32", "format": "NCHW", "ori_shape": (5, 8,16,16),"ori_format": "NCHW"},
+                    {"shape": (5, 8, 16, 16), "dtype": "float32", "format": "NCHW", "ori_shape": (5, 8,16,16),"ori_format": "NCHW"},
+                    {"shape": (5, 8, 16, 16), "dtype": "float32", "format": "NCHW", "ori_shape": (5, 8,16,16),"ori_format": "NCHW"},
+                    3, True, 1)
+    arg_max_with_kd({"shape": (16, 1, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 1, 16, 16),"ori_format": "NCHW"},
+                    {"shape": (16, 1, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 1, 16, 16),"ori_format": "NCHW"},
+                    {"shape": (16, 1, 16, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (16, 1, 16, 16),"ori_format": "NCHW"},
+                    1, True, 1)
+    arg_max_with_kd({"shape": (10240, 2, 8, 1), "dtype": "float32", "format": "NCHW", "ori_shape": (10240, 2, 8, 1),"ori_format": "NCHW"},
+                    {"shape": (10240, 2, 8, 1), "dtype": "float32", "format": "NCHW", "ori_shape": (10240, 2, 8, 1),"ori_format": "NCHW"},
+                    {"shape": (10240, 2, 8, 1), "dtype": "float32", "format": "NCHW", "ori_shape": (10240, 2, 8, 1),"ori_format": "NCHW"},
+                    1, False, 1)
+    arg_max_with_kd({"shape": (16, 256, 30, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 256, 30, 2),"ori_format": "NCHW"},
+                    {"shape": (16, 256, 30, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 256, 30, 2),"ori_format": "NCHW"},
+                    {"shape": (16, 256, 30, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 256, 30, 2),"ori_format": "NCHW"},
+                    1, False, 1)
+    arg_max_with_kd({"shape": (16, 256, 256, 256), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 256, 256, 256),"ori_format": "NCHW"},
+                    {"shape": (16, 256, 256, 256), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 256, 256, 256),"ori_format": "NCHW"},
+                    {"shape": (16, 256, 256, 256), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 256, 256, 256),"ori_format": "NCHW"},
+                    1, True, 1)
+    arg_max_with_kd({"shape": (16, 64, 256, 256), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 64, 256, 256),"ori_format": "NCHW"},
+                    {"shape": (16, 64, 256, 256), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 64, 256, 256),"ori_format": "NCHW"},
+                    {"shape": (16, 64, 256, 256), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 64, 256, 256),"ori_format": "NCHW"},
+                    1, True, 1,)
+    arg_max_with_kd({"shape": (16, 16, 1, 1), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 16, 1, 1),"ori_format": "NCHW"},
+                    {"shape": (16, 16, 1, 1), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 16, 1, 1),"ori_format": "NCHW"},
+                    {"shape": (16, 16, 1, 1), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 16, 1, 1),"ori_format": "NCHW"},
+                    1, True, 1)
+    arg_max_with_kd({"shape": (16, 16, 1, 1), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 16, 1, 1),"ori_format": "NCHW"},
+                    {"shape": (16, 16, 1, 1), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 16, 1, 1),"ori_format": "NCHW"},
+                    {"shape": (16, 16, 1, 1), "dtype": "float32", "format": "NCHW", "ori_shape": (16, 16, 1, 1),"ori_format": "NCHW"},
+                    10000, True, 1)
+    arg_max_with_kd({"shape": (2,16,16), "dtype": "float32", "format": "NCHW", "ori_shape": (2,16,16),"ori_format": "NCHW"},
+                    {"shape": (2,16,16), "dtype": "float32", "format": "NCHW", "ori_shape": (2,16,16),"ori_format": "NCHW"},
+                    {"shape": (2,16,16), "dtype": "float32", "format": "NCHW", "ori_shape": (2,16,16),"ori_format": "NCHW"},
+                    10000, True, 1)
+    arg_max_with_kd({"shape": (2,10,1028,1,16), "dtype": "float32", "format": "NCHW", "ori_shape": (2,10,1028,1,16),"ori_format": "NCHW"},
+                    {"shape": (2,10,1028,1,16), "dtype": "float32", "format": "NCHW", "ori_shape": (2,10,1028,1,16),"ori_format": "NCHW"},
+                    {"shape": (2,10,1028,1,16), "dtype": "float32", "format": "NCHW", "ori_shape": (2,10,1028,1,16),"ori_format": "NCHW"},
+                    10000, True, 1)
+    arg_max_with_kd({"shape": (10240, 2, 8, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (10240, 2, 8, 1),"ori_format": "NCHW"}, #x
+                    {"shape": (10240, 2, 8, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (10240, 2, 8, 1),"ori_format": "NCHW"}, #h
+                    {"shape": (10240, 2, 8, 1), "dtype": "float16", "format": "NCHW", "ori_shape": (10240, 2, 8, 1),"ori_format": "NCHW"}, #h
+                    10000, False, 1)
+    arg_max_with_kd({"shape": (5, 8,16,15), "dtype": "float16", "format": "NCHW", "ori_shape": (5, 8,16,16),"ori_format": "NCHW"}, #x
+                    {"shape": (5, 8,16,15), "dtype": "float16", "format": "NCHW", "ori_shape": (5, 8,16,16),"ori_format": "NCHW"}, #h
+                    {"shape": (5, 8,16,15), "dtype": "float16", "format": "NCHW", "ori_shape": (5, 8,16,16),"ori_format": "NCHW"}, #h
+                    3, True, 1,)
+    arg_max_with_kd({"shape": (5, 8,16,15), "dtype": "float32", "format": "NCHW", "ori_shape": (5, 8,16,16),"ori_format": "NCHW"}, #x
+                    {"shape": (5, 8,16,15), "dtype": "float32", "format": "NCHW", "ori_shape": (5, 8,16,16),"ori_format": "NCHW"}, #h
+                    {"shape": (5, 8,16,15), "dtype": "float32", "format": "NCHW", "ori_shape": (5, 8,16,16),"ori_format": "NCHW"}, #h
+                    3, True, 1,)
+    te_set_version("Ascend710")
+ut_case.add_cust_test_func(test_func=test_arg_max_with_kd_001)
+
 if __name__ == '__main__':
     user_home_path = os.path.expanduser("~")
     simulator_lib_path = os.path.join(user_home_path, ".mindstudio/huawei/adk/1.75.T15.0.B150/toolkit/tools/simulator")
