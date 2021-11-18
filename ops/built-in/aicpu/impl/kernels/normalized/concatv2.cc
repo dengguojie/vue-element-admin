@@ -81,7 +81,7 @@ uint32_t ConcatV2CpuKernel::CheckAndInitParams(CpuKernelContext &ctx) {
   data_type_ = input0_ptr->GetDataType();
   KERNEL_LOG_INFO("data type[%d]", data_type_);
   axis_ = concat_dim < 0 ? concat_dim + input_dims_ : concat_dim;
-  KERNEL_CHECK_FALSE((0 <= axis_ && axis_ < input_dims_),
+  KERNEL_CHECK_FALSE((axis_ >= 0 && axis_ < input_dims_),
                      KERNEL_STATUS_PARAM_INVALID,
                      "Input concat_dim need in the "
                      "range[%d, %d), but got %lld.",
