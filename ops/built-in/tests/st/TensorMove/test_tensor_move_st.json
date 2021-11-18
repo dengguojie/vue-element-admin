@@ -1,0 +1,132 @@
+[
+    {
+        "case_name": "Test_TensorMove_001",
+        "op": "TensorMove",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [-1,-1,-1,-1],
+                "typical_shape": [2, 2, 30, 30],
+                "shape_range": [[1, 1000],[1, 1000],[1, 1000],[1, 1000]],
+                "type": "float16",
+                "value_range": [[1, 1]],
+                "data_distribute": "uniform",
+                "name": "x"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [-1,-1,-1,-1],
+                "typical_shape": [2, 2, 30, 30],
+                "shape_range": [[1, 1000],[1, 1000],[1, 1000],[1, 1000]],
+                "type": "float16",
+                "name": "y"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_TensorMove_002",
+        "op": "TensorMove",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [-1,-1,-1,-1,-1],
+                "typical_shape": [1, 2, 3, 3, 30],
+                "shape_range": [[1, 10],[1, 10],[1, 10],[1, 10],[1, 100]],
+                "type": "float32",
+                "value_range": [[1, 100]],
+                "data_distribute": "uniform",
+                "name": "x"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [-1,-1,-1,-1,-1],
+                "typical_shape": [1, 2, 3, 3, 30],
+                "shape_range": [[1, 10],[1, 10],[1, 10],[1, 10],[1, 100]],
+                "type": "float32",
+                "name": "y"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_TensorMove_003",
+        "op": "TensorMove",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [-1],
+                "typical_shape": [1],
+                "shape_range": [[1, 10]],
+                "type": "int32",
+                "value_range": [[1, 100]],
+                "data_distribute": "uniform",
+                "name": "x"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [-1],
+                "typical_shape": [1],
+                "shape_range": [[1, 10]],
+                "type": "int32",
+                "name": "y"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_TensorMove_004",
+        "op": "TensorMove",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [-1,-1,-1,-1,-1,-1,-1,-1],
+                "typical_shape": [1, 2, 3, 3, 30, 12, 16, 16],
+                "shape_range": [[1, 10],[1, 10],[1, 10],[1, 10],[20, 100],[10, 20],[10, 20],[1, 100]],
+                "type": "uint8",
+                "value_range": [[1, 100]],
+                "data_distribute": "uniform",
+                "name": "x"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [-1,-1,-1,-1,-1,-1,-1,-1],
+                "typical_shape": [1, 2, 3, 3, 30, 12, 16, 16],
+                "shape_range": [[1, 10],[1, 10],[1, 10],[1, 10],[20, 100],[10, 20],[10, 20],[1, 100]],
+                "type": "uint8",
+                "name": "y"
+            }
+        ]
+    },
+    {
+        "case_name": "Test_TensorMove_005",
+        "op": "TensorMove",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [-1,-1,-1,-1,-1,-1,-1,-1],
+                "typical_shape": [1, 2, 3, 3, 30, 12, 16, 16],
+                "shape_range": [[1, 10],[1, 10],[1, 10],[1, 10],[20, 100],[10, 20],[10, 20],[1, 100]],
+                "type": "int8",
+                "value_range": [[1, 2]],
+                "data_distribute": "uniform",
+                "name": "x"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [-1,-1,-1,-1,-1,-1,-1,-1],
+                "typical_shape": [1, 2, 3, 3, 30, 12, 16, 16],
+                "shape_range": [[1, 10],[1, 10],[1, 10],[1, 10],[20, 100],[10, 20],[10, 20],[1, 100]],
+                "type": "int8",
+                "name": "y"
+            }
+        ]
+    }
+]
