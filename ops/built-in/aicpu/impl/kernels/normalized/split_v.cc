@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,14 +22,14 @@ const char *kSplitV = "SplitV";
 
 namespace aicpu {
 uint32_t SplitVCpuKernel::CheckAndInitParams(CpuKernelContext &ctx) {
-  //get Attr num_split
+  // get Attr num_split
   AttrValue *num_split_ptr = ctx.GetAttr("num_split");
   KERNEL_CHECK_NULLPTR(num_split_ptr, KERNEL_STATUS_PARAM_INVALID,
                        "Get attr num_split failed.");
   num_split_ = num_split_ptr->GetInt();
   KERNEL_CHECK_FALSE((num_split_ >= 1), KERNEL_STATUS_PARAM_INVALID,
                      "Attr num_split must >= 1, but got attr num_split[%lld]", num_split_);
-  //get input split_dim
+  // get input split_dim
   Tensor *split_dim_ptr = ctx.Input(2);
   KERNEL_CHECK_NULLPTR(split_dim_ptr, KERNEL_STATUS_PARAM_INVALID,
                        "Get input split_dim failed.");
@@ -47,7 +47,7 @@ uint32_t SplitVCpuKernel::CheckAndInitParams(CpuKernelContext &ctx) {
   split_dim_ = *(reinterpret_cast<int32_t *>(split_dim_data_ptr));
   KERNEL_CHECK_FALSE((split_dim_ >= 0), KERNEL_STATUS_PARAM_INVALID,
                      "Input split_dim must >= 0, but got input split_dim[%lld]", split_dim_);
-  //get input value
+  // get input value
   Tensor *value_ptr = ctx.Input(0);
   KERNEL_CHECK_NULLPTR(value_ptr, KERNEL_STATUS_PARAM_INVALID,
                        "Get input value failed.");
@@ -65,7 +65,7 @@ uint32_t SplitVCpuKernel::CheckAndInitParams(CpuKernelContext &ctx) {
   value_shape_vec_ = value_shape_ptr->GetDimSizes();
   data_type_ = value_ptr->GetDataType();
   value_num_ = value_ptr->NumElements();
-  //get input size_splits
+  // get input size_splits
   Tensor *size_splits_ptr = ctx.Input(1);
   KERNEL_CHECK_NULLPTR(size_splits_ptr, KERNEL_STATUS_PARAM_INVALID,
                        "Get input size_splits failed.");
@@ -95,7 +95,7 @@ uint32_t SplitVCpuKernel::CheckAndInitParams(CpuKernelContext &ctx) {
     KERNEL_CHECK_FALSE((GetSizeSplits<int64_t>(size_splits_data_ptr, real_dim) == KERNEL_STATUS_OK),
                        KERNEL_STATUS_PARAM_INVALID, "GetSizeSplits failed.");
   }
-  //get output data
+  // get output data
   output_ptr_vec_.resize(num_split_);
   for (int64_t i = 0; i < num_split_; i++) {
     Tensor *output_ptr = ctx.Output(i);

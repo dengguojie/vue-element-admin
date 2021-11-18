@@ -1,5 +1,5 @@
 /**
-* Copyright 2020 Huawei Technologies Co., Ltd
+* Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 #include <cmath>
 #include <algorithm>
 #include <chrono>
+#include <securec.h>
 
 #include "cpu_kernel_utils.h"
 #include "cpu_kernel.h"
@@ -53,7 +54,6 @@ const uint32_t kTotalThetaNumber = 6;
     }                                                                  \
     break;                                                             \
   }                                                               
-
 }
 
 namespace aicpu {
@@ -289,7 +289,7 @@ uint32_t SpatialTransformerCpuKernel::DoCompute5D(CpuKernelContext &ctx) {
         x_ref_0 = 1.0f - x_ref_1;
         y_ref_0 = 1.0f - y_ref_1;
 
-        memset(res, 0.0f, sizeof(float) * input_c0_);
+        memset_s(res, sizeof(float) * input_c0_, 0.0f, sizeof(float) * input_c0_);
 
         m = x_floor;
         n = y_floor;
