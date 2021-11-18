@@ -23,26 +23,23 @@
 namespace optiling {
 
 extern std::shared_ptr<AutoTilingHandler> CreateNormTilingHandler(const std::string& op_type,
-                                                                      const std::string& pattern,
-                                                                      const nlohmann::json& parsed_compile_info);
+                                                                  const std::string& pattern,
+                                                                  const nlohmann::json& parsed_compile_info);
 extern std::shared_ptr<AutoTilingHandler> CreateTransposeDslTilingHandler(
   const std::string& op_type,
   const std::string& pattern,
   const nlohmann::json& parsed_compile_info);
 extern std::shared_ptr<AutoTilingHandler> CreateElewiseTilingHandler(const std::string& op_type,
-                                                                         const std::string& pattern,
-                                                                         const nlohmann::json& parsed_compile_info);
-extern std::shared_ptr<AutoTilingHandler> CreateBroadcastTilingHandler(const std::string& op_type,
-                                                                         const std::string& pattern,
-                                                                         const nlohmann::json& parsed_compile_info);
+                                                                     const std::string& pattern,
+                                                                     const nlohmann::json& parsed_compile_info);
 extern std::shared_ptr<AutoTilingHandler> CreateReduceTilingHandler(const std::string& op_type,
-                                                                        const std::string& pattern,
-                                                                        const nlohmann::json& parsed_compile_info);
+                                                                    const std::string& pattern,
+                                                                    const nlohmann::json& parsed_compile_info);
 
 const std::vector<vector<int32_t>> OpInfo::dummy_variable;
 
 std::shared_ptr<AutoTilingHandler> CreateAutoTilingHandler(const std::string& op_type, const std::string& pattern,
-                                                               const nlohmann::json& parsed_compile_info) {
+                                                           const nlohmann::json& parsed_compile_info) {
   OP_LOGI(op_type.c_str(), "Entering AutoTiling Compile Info Parser for pattern %s", pattern.c_str());
   try {
     if (pattern == "CommReduce") {
@@ -50,7 +47,7 @@ std::shared_ptr<AutoTilingHandler> CreateAutoTilingHandler(const std::string& op
     } else if (pattern == "ElemWise") {
       return CreateElewiseTilingHandler(op_type, pattern, parsed_compile_info);
     } else if (pattern == "Broadcast") {
-      return CreateBroadcastTilingHandler(op_type, pattern, parsed_compile_info);
+      return CreateElewiseTilingHandler(op_type, pattern, parsed_compile_info);
     } else if (pattern == "Norm") {
       return CreateNormTilingHandler(op_type, pattern, parsed_compile_info);
     } else if (pattern == "Transpose") {

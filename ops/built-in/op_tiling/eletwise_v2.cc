@@ -588,4 +588,20 @@ bool EletwiseTiling(const std::string& op_type, const ge::Operator& op_paras, co
   }
   return ret;
 }
+
+bool ElewiseTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const {
+  return EletwiseTiling(op_type, op_paras, compile_info, run_info);
+}
+
+bool ElewiseTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info,
+                                  const OpInfo& op_info) const {
+  return EletwiseTiling(op_type, op_paras, compile_info, run_info, op_info);
+}
+
+std::shared_ptr<AutoTilingHandler> CreateElewiseTilingHandler(const std::string& op_type,
+                                                              const std::string& pattern,
+                                                              const nlohmann::json& parsed_compile_info) {
+  return std::make_shared<ElewiseTilingHandler>(op_type, pattern, parsed_compile_info);
+}
+
 }  // namespace optiling
