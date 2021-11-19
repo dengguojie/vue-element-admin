@@ -835,7 +835,7 @@ static graphStatus ConcatInferShapeCommon(Operator& op, const int64_t dy_input_s
       }
     }
 
-    if (output_concat_dim_range.first != 0 && output_concat_dim_range.second != 0 &&
+    if (output_concat_dim_range.second != 0 &&
         static_cast<uint64_t>(non_negative_axis) < output_shape_ranges.size()) {
       output_shape_ranges[non_negative_axis] = output_concat_dim_range;
     }

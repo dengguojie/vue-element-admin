@@ -53,7 +53,7 @@
 
 #define VECTOR_FUSION_INNER_ERR_REPORT(op_name, err_msg, ...)\
   do { \
-    OP_LOGE(op_name, ##__VA_ARGS__); \
+    OP_LOGE(op_name, err_msg, ##__VA_ARGS__); \
     REPORT_INNER_ERROR(GetViewErrorCodeStr(ViewErrorCode::VECTOR_INNER_ERROR), \
     "op[%s], " err_msg, get_op_name(op_name), ##__VA_ARGS__); \
   } while (0)

@@ -948,7 +948,7 @@ bool GetConstValue(const Operator& op, const Tensor& const_tensor, const DataTyp
     size = const_tensor.GetSize() / sizeof(int64_t);
     for (size_t i = 0; i < size; ++i) {
       const_data.push_back(((int64_t)(*(const_data_ptr + i))));
-      OP_LOGD(op.GetName().c_str(), "const data int64 fusion pass ====== %d", (int64_t)(*(const_data_ptr + i)));
+      OP_LOGD(op.GetName().c_str(), "const data int64 fusion pass ====== %ld", (int64_t)(*(const_data_ptr + i)));
     }
   }
   return true;
