@@ -178,8 +178,8 @@ def _check_shape_is_same(var, accum, grad):
                                                            error_detail)
 
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=too-many-locals,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=too-many-locals,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("apply_proximal_adagrad_d")
 def apply_proximal_adagrad_d_compute(var, accum, lr, l1, l2, grad, var_out,
                                      accum_out, use_locking=False,

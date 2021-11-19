@@ -26,8 +26,8 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=too-many-arguments,invalid-name,too-many-locals
-# pylint: disable=unused-argument
+# 'pylint: disable=too-many-arguments,invalid-name,too-many-locals
+# 'pylint: disable=unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register('apply_rms_prop_d')
 def apply_rms_prop_d_compute(var,
                              ms,
@@ -104,7 +104,7 @@ def _get_placeholder(dict_list, name_list):
     return list_placeholder
 
 
-# pylint: disable=too-many-arguments,unused-argument,unbalanced-tuple-unpacking
+# 'pylint: disable=too-many-arguments,unused-argument,unbalanced-tuple-unpacking
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,

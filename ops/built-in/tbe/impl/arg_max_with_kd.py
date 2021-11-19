@@ -15,7 +15,7 @@
 """
 arg_max_with_kd
 """
-# pylint: disable=too-many-lines,import-error
+# 'pylint: disable=too-many-lines,import-error
 import te.platform as tbe_platform
 from te import tik
 from te.utils import shape_util
@@ -152,8 +152,8 @@ def _get_tail_mask_for_b32(tail_len):
     return mask_h, mask_l
 
 
-# pylint: disable=invalid-name,too-many-boolean-expressions,unused-argument,too-many-arguments
-# pylint: disable=too-many-locals,too-many-branches
+# 'pylint: disable=invalid-name,too-many-boolean-expressions,unused-argument,too-many-arguments
+# 'pylint: disable=too-many-locals,too-many-branches
 def op_select_format(x, indices, values, axis=AXIS_DEFAULT, out_max_val=False, topk=1,
                      kernel_name="arg_max_with_kd"):
     """
@@ -250,8 +250,8 @@ def op_select_format(x, indices, values, axis=AXIS_DEFAULT, out_max_val=False, t
     return param_dynamic_in_json
 
 
-# pylint: disable=invalid-name,too-many-arguments,too-many-locals,too-many-branches
-# pylint: disable=too-many-statements
+# 'pylint: disable=invalid-name,too-many-arguments,too-many-locals,too-many-branches
+# 'pylint: disable=too-many-statements
 @para_check.check_input_type(dict, dict, dict, int, bool, int, str)
 def arg_max_with_kd(x, indices, values, axis=AXIS_DEFAULT, out_max_val=False, topk=1,
                     kernel_name="arg_max_with_kd"):
@@ -322,7 +322,6 @@ def arg_max_with_kd(x, indices, values, axis=AXIS_DEFAULT, out_max_val=False, to
         para_check.check_shape_rule(shape_x, min_dim=1, max_dim=8)
 
         # check axis
-        # constraints: axis is between -len(shape_x) and len(shape_x)
         axis = shape_util.axis_check(len(shape_x), axis)
 
         axis_size = shape_x[axis]
@@ -349,13 +348,13 @@ def arg_max_with_kd(x, indices, values, axis=AXIS_DEFAULT, out_max_val=False, to
     return max_index.argmax_compute()
 
 
-# pylint: disable=too-many-public-methods
+# 'pylint: disable=too-many-public-methods
 class ArgMax():
     """
        Function: use to implement arg_max_with_kd functionality
     """
 
-    # pylint: disable=too-many-instance-attributes
+    # 'pylint: disable=too-many-instance-attributes
     def __init__(self, shape_x, dtype_x, axis, out_max_val, out_max_index, topk, kernel_name):
         """
         init parameters

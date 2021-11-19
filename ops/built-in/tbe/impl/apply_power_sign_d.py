@@ -32,8 +32,8 @@ class Constant:
     CONST_ONE_NA = -1.0
 
 
-# pylint: disable=locally-disabled,invalid-name
-# pylint: disable=too-many-locals
+# 'pylint: disable=locally-disabled,invalid-name
+# 'pylint: disable=too-many-locals
 def _compute_m_t(m, beta, grad):
     beta_tmp = tvm.compute(m.shape,
                            lambda *indice: m(*indice) * beta[0],
@@ -88,7 +88,7 @@ def _compute_process(input_list):
     return var_t, m_t
 
 
-# pylint: disable=locally-disabled, too-many-arguments, unused-argument
+# 'pylint: disable=locally-disabled, too-many-arguments, unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("apply_power_sign_d")
 def apply_power_sign_d_compute(var,
                                m,

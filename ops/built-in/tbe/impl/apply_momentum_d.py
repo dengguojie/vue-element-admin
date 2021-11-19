@@ -30,8 +30,8 @@ class Constant:
     NUM_ZERO = 0.0
 
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=unused-argument,invalid-name,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("apply_momentum")
 def apply_momentum_compute_d(var,
                              accum,

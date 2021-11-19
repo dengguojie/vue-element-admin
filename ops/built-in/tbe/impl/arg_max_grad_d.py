@@ -15,7 +15,7 @@
 """
 arg_max_grad
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 import te.lang.cce as tbe
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
@@ -24,7 +24,7 @@ from te.utils.error_manager import error_manager_vector
 from te.utils import para_check
 
 
-# pylint: disable=invalid-name,unused-argument,too-many-statements,too-many-arguments
+# 'pylint: disable=invalid-name,unused-argument,too-many-statements,too-many-arguments
 @fusion_manager.register("arg_max_grad_d")
 def arg_max_grad_d_compute(var, indices, updates, assist, y, dimension=0, kernel_name="arg_max_grad_d"):
     """
@@ -39,7 +39,7 @@ def arg_max_grad_d_compute(var, indices, updates, assist, y, dimension=0, kernel
     return res
 
 
-# pylint: disable=invalid-name,unused-argument,too-many-statements,too-many-arguments,too-many-locals
+# 'pylint: disable=invalid-name,unused-argument,too-many-statements,too-many-arguments,too-many-locals
 def arg_max_grad_d_check_param(var, indices, updates, assist, y, kernel_name="arg_max_grad_d"):
     """
     check input param
@@ -77,7 +77,7 @@ def arg_max_grad_d_check_param(var, indices, updates, assist, y, kernel_name="ar
     para_check.check_dtype(dtype_assist, check_list, param_name="assist")
 
 
-# pylint: disable=too-many-arguments,too-many-locals
+# 'pylint: disable=too-many-arguments,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)

@@ -32,7 +32,7 @@ class Constant:
     NUM_ONE_NA = -1.0
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("apply_centered_rms_prop_d")
 def apply_centered_rms_prop_d_compute(var,
                                       mg,

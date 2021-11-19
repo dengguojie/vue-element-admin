@@ -129,7 +129,7 @@ bool DynamicGRUCellGradTiling(const std::string& op_type, const TeOpParas& op_pa
                                           {"tSize", 0},   {"fuseSize", 0}};
   const std::vector<int64_t>& dnxShape = op_paras.outputs[2].tensor[0].shape;
   int64_t shapeSize = dnxShape[0];
-  for (int i = 1; i < dnxShape.size(); i++) {
+  for (size_t i = 1; i < dnxShape.size(); i++) {
     shapeSize = shapeSize * dnxShape[i];
   }
 

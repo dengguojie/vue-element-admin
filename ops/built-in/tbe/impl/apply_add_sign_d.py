@@ -34,8 +34,8 @@ class Constant:
     CONST_ONE_NEG = -1
 
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=unused-argument,invalid-name,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("apply_add_sign_d")
 def apply_add_sign_d_compute(var,
                              m,

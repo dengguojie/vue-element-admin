@@ -35,7 +35,7 @@ class Constant:
     NUM_N_ONE = -1.0
 
 
-# pylint: disable=too-many-arguments,invalid-name,too-many-locals,unused-argument
+# 'pylint: disable=too-many-arguments,invalid-name,too-many-locals,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("apply_adam_with_amsgrad_d")
 def apply_adam_with_amsgrad_d_compute(var,
                                       m,
@@ -141,7 +141,7 @@ def _check_para_and_getplaceholder(scalar_input, tensor_input, input_dict):
     return list_placeholder
 
 
-# pylint: disable=too-many-arguments,unused-argument,too-many-locals,unbalanced-tuple-unpacking
+# 'pylint: disable=too-many-arguments,unused-argument,too-many-locals,unbalanced-tuple-unpacking
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,

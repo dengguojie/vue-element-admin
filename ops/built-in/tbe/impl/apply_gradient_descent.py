@@ -22,7 +22,7 @@ from te.utils import para_check
 from impl.util import util_apply_op_schedule
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("apply_gradient_descent")
 def apply_gradient_descent_compute(var,
                                    alpha,

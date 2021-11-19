@@ -59,6 +59,9 @@ ge::NodePtr DynamicRNNGradAlignFusionPass::GetConstNodeOne(ge::NodePtr dynamicRN
   ge::GeTensorPtr assitPtr = nullptr;
   int64_t matrixSize = (n_size + 15) / 16 * 16 * 16 * t_size;
   unique_ptr<float[]> inputAssit(new (std::nothrow) float[matrixSize]());
+  FUSION_PASS_CHECK(inputAssit.get() == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT("DynamicRnnGrad", "The inputAssit is NULL"),
+                    failStatus = true);
   auto retMem = memset_s(inputAssit.get(), matrixSize, 1, matrixSize);
   FUSION_PASS_CHECK(retMem != EOK,
                     VECTOR_FUSION_INNER_ERR_REPORT("DynamicRnnGrad", "Failed to operate memset_s function."),
