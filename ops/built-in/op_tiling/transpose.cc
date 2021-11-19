@@ -6182,6 +6182,7 @@ void SerializeTilingData(utils::OpRunInfo& runInfo, const CompilerInfo& compiler
       break;
     case SCENARIO_10:
       SerializeScenario5(runInfo, compilerInfo, shapeInfo, runtimeInfo);
+      break;
     case SCENARIO_11:
       SerializeScenario11(runInfo, compilerInfo, shapeInfo, runtimeInfo);
       break;
