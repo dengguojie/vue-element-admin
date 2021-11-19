@@ -83,6 +83,29 @@ def softmax_grad_compute(softmax, grad_softmax, grad_x, axis,
 
     return res
 
+
+def update_5hd_axis(origin_format, axis, input_format):
+    """
+    update the axis of 5hd format
+    data using for compute and schedule
+    """
+    if hasattr(axis, 'index'):
+        axis = axis[0]
+
+    axis_str = origin_format[axis]
+    offset_6hd = 1 if input_format == "NDC1HWC0" else 0
+
+    dict_format_axis = {
+        "N": [0,],
+        "C": [-4, -1],
+        "H": [2 + offset_6hd,],
+        "W": [3 + offset_6hd,],
+        "D": [1,]
+    }
+
+    return dict_format_axis[axis_str]
+
+
 # 'pylint: disable=variable_type_changed
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT),
@@ -116,6 +139,7 @@ def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_gr
     shape_softmax = softmax.get("shape")
     shape_grad_softmax = grad_softmax.get("shape")
     dtype_softmax = softmax.get("dtype")
+    input_format = softmax.get("format")
 
     if not isinstance(axis, int):
         axis = list(axis)
@@ -123,8 +147,6 @@ def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_gr
     shape_util.compare_tensor_dict_key(softmax, grad_softmax, "dtype")
     para_check.check_shape(shape_softmax, param_name="softmax")
     para_check.check_shape(shape_grad_softmax, param_name="grad_softmax")
-
-    axis = shape_util.axis_check(len(shape_softmax), axis)
 
     check_list = ("float16", "float32")
     input_dtype = dtype_softmax.lower()
@@ -134,6 +156,10 @@ def softmax_grad(softmax, grad_softmax, grad_x, axis=-1, kernel_name="softmax_gr
         shape_softmax, shape_grad_softmax, shape_max = \
             shape_util.broadcast_shapes(shape_softmax, shape_grad_softmax, param_name_input1="softmax",
                                         param_name_input2="grad_softmax")
+
+    if input_format in ("NC1HWC0", "NDC1HWC0"):
+        axis = update_5hd_axis(softmax.get("ori_format"), axis, input_format)
+    axis = shape_util.axis_check(len(shape_softmax), axis)
 
     shape_softmax, axis = shape_util.shape_refine(list(shape_softmax), axis)
     shape_softmax, axis = shape_util.simplify_axis_shape(shape_softmax, axis)
