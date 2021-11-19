@@ -56,6 +56,10 @@ static void PrintTilingParam(const TilingParam& param) {
 
 static void CalTilingParam(TilingParam& param, int64_t input_num, int64_t aicore_num) {
   param.input_num = sqrt(input_num);
+  if(aicore_num == 0){
+      VECTOR_INNER_ERR_REPORT_TILIING("diag_part", "aicore_num = 0 is not support");
+      return;
+  }
   int num_per_core = (param.input_num + aicore_num - 1) / aicore_num;
   num_per_core = max(1, num_per_core);
   num_per_core = ((num_per_core + NUM_128 - 1) / NUM_128) * NUM_128;

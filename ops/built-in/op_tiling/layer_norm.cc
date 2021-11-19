@@ -761,7 +761,7 @@ std::vector<int32_t> split_shape(std::vector<int64_t> shape_split, int32_t dim_s
   return res;
 }
 
-void LayerNormTikTiling(std::vector<int64_t> input_x, int32_t begin_norm_axis, const ge::DataType &gm_type,
+void LayerNormTikTiling(const std::vector<int64_t> &input_x, int32_t begin_norm_axis, const ge::DataType &gm_type,
                         int32_t ub_max_byte, int32_t core_num, const string &tik_mode, utils::OpRunInfo &run_info,
                         bool atomic_clean_diff_shape) {
   int32_t tiling_mode = 1;

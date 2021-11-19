@@ -47,6 +47,10 @@ int64_t padCommon::_accumulate(int64_t index, const std::vector<int64_t>* shape_
 }
 
 int64_t padCommon::_align(int64_t value, int64_t align_vol) {
+  if(align_vol == 0){
+      VECTOR_INNER_ERR_REPORT_TILIING("pad_common", "align_vol = 0 is not support");
+      return -1;
+  }
   return (value % align_vol != 0) ? (value / align_vol + 1) * align_vol : value;
 }
 
@@ -84,10 +88,9 @@ void padCommon::InitTilingParams(PadDTilingParams& params, int num) {
 int padCommon::CheckBranch(const std::vector<int64_t>& inShape, const std::vector<int64_t>& outShape,
                            const std::vector<std::vector<int64_t>>& padding, int numBit, int model) {
   int64_t axis = inShape.size() - 1;
-  int64_t in_padding = 0;
   int64_t input = 0;
   while (axis >= 0) {
-    in_padding = padding[axis][model] * _prod(axis + 1, outShape);
+    int64_t in_padding = padding[axis][model] * _prod(axis + 1, outShape);
     input = _prod(axis, inShape);
     if (in_padding > 0) {
       if (in_padding * numBit % MINI_UNIT != 0 || input * numBit % MINI_UNIT != 0) {
@@ -130,8 +133,8 @@ void padCommon::fused_special(std::vector<int64_t>& out, std::vector<int64_t> in
                               std::vector<std::vector<int64_t>>& out_pad, std::vector<std::vector<int64_t>> in_pad,
                               bool mark) {
   std::vector<int64_t> sample = {0, 0};
-  int64_t temp = 1;
   if (head_ptr != 0) {
+    int64_t temp = 1;
     if (in_pad[head_ptr] != sample) {
       for (int64_t i = head_ptr - 1; i >= 0; i--) {
         temp *= in[i];
@@ -216,11 +219,13 @@ void padCommon::GetDepth(const std::vector<int64_t>& inShape, const std::vector<
    * "Depth": to decide: recursion layer will used which axises for cores.
    * */
   using namespace std;
+  if(numBit == 0){
+      VECTOR_INNER_ERR_REPORT_TILIING("pad_common", "numbit = 0 is not support");
+      return;
+  }
   int block_num = MINI_UNIT / numBit;
-  int64_t top_vol = 0;
-  int64_t bottom_vol = 0;
-  int64_t pro_value = 0;
   int64_t size = inShape.size();
+  int64_t pro_value = 0;
 
   // Eliminate "1" in head: [1,1,2,..,] -> [2,...]
   for (int i = 1; i <= size; i++) {
@@ -244,6 +249,8 @@ void padCommon::GetDepth(const std::vector<int64_t>& inShape, const std::vector<
   // can't satisfy regulation of circulation layer.
   // In align, min(depth) = 1, In not align, min(depth) = 0.
   if (branch == 0) {
+    int64_t top_vol = 0;
+    int64_t bottom_vol = 0;
     while (depth > 0) {
       top_vol = _prod(depth, outShape) * padding[depth - 1][0];
       bottom_vol = _prod(depth, outShape) * padding[depth - 1][1];
@@ -271,8 +278,10 @@ void padCommon::_calc_core_circulation(int branch, int index, const std::string&
    * core_gap_0 == core_gap_1: Because prod is always less than MaxCore in the func.
    * */
   int64_t virCore = 0;
-  int64_t loop_0 = 0;
-  int64_t loop_1 = 0;
+  if(numBit == 0){
+      VECTOR_INNER_ERR_REPORT_TILIING("pad_common", "numbit = 0 is not support");
+      return;
+  }
   int64_t block_num = MINI_UNIT / numBit;
   int64_t prod = std::accumulate(inShape.begin(), inShape.begin() + index, 1, std::multiplies<int64_t>());
   if (vol->at(index) > 0) {
@@ -282,8 +291,8 @@ void padCommon::_calc_core_circulation(int branch, int index, const std::string&
     div_core->at(index) =
         (virCore <= maxCore) ? virCore - 1 : (virCore % maxCore == 0) ? maxCore - 1 : virCore % maxCore - 1;
 
-    loop_0 = (virCore % maxCore > 0) ? virCore / maxCore + 1 : virCore / maxCore;
-    loop_1 = (div_core->at(index) + 1 != total_core->at(index)) ? loop_0 - 1 : loop_0;
+    int64_t loop_0 = (virCore % maxCore > 0) ? virCore / maxCore + 1 : virCore / maxCore;
+    int64_t loop_1 = (div_core->at(index) + 1 != total_core->at(index)) ? loop_0 - 1 : loop_0;
 
     core_vol_0->at(index) = (prod != 1) ? loop_0 * vol->at(index) : block_num * loop_0;
     core_vol_1->at(index) = (prod != 1) ? loop_1 * vol->at(index) : block_num * loop_1;
@@ -431,6 +440,10 @@ void padCommon::GetRecurCore(PadDTilingParams& params, const std::vector<int64_t
    */
   using namespace std;
   int64_t depth = params.depth;
+  if(numBit == 0){
+      VECTOR_INNER_ERR_REPORT_TILIING("pad_common", "numbit = 0 is not support");
+      return;
+  }
   int64_t block = MINI_UNIT / numBit;
   int64_t baseCore = accumulate(inShape.begin(), inShape.begin() + depth - 1, 1, std::multiplies<int64_t>());
   int64_t size = inShape.size();
@@ -534,6 +547,10 @@ void padCommon::GetRecurCorePro(PadDTilingParams& params, const std::vector<int6
    */
   using namespace std;
   int64_t depth = params.depth;
+  if(numBit == 0){
+    VECTOR_INNER_ERR_REPORT_TILIING("pad_common", "num_bit = 0 is not support");
+    return;
+  }
   int64_t block = MINI_UNIT / numBit;
   int64_t baseCore = 0;
   int64_t baseData = 0;
@@ -678,7 +695,7 @@ void padCommon::PrintRunningParams(const PadDTilingParams& params) {
   GELOGI("cond: [%d] .", params.cond);
   GELOGI("address: [%d] .", params.address);
 
-  vector<vector<int64_t>> vector_params = {
+  vector< vector<int64_t> > vector_params = {
       params.top_vol,           params.top_address,       params.top_div_core,      params.top_total_core,
       params.top_core_vol_0,    params.top_core_vol_1,    params.top_core_gap_0,    params.top_core_gap_1,
       params.bottom_vol,        params.bottom_address,    params.bottom_div_core,   params.bottom_total_core,
@@ -739,7 +756,7 @@ void padCommon::SetRunningParams(const PadDTilingParams& params, OpRunInfo& runI
   ByteBufferPut(runInfo.tiling_data, int64_t(params.address));
 
   // vector_params(recur_padding special)
-  vector<vector<int64_t>> vector_params = {
+  vector< vector<int64_t> > vector_params = {
       params.top_vol,           params.top_address,       params.top_div_core,      params.top_total_core,
       params.top_core_vol_0,    params.top_core_vol_1,    params.top_core_gap_0,    params.top_core_gap_1,
       params.bottom_vol,        params.bottom_address,    params.bottom_div_core,   params.bottom_total_core,

@@ -88,20 +88,20 @@ void InitGatherElementsParams(GatherElementsTilingParams& params) {
 
 void SetGatherElementsParams(GatherElementsTilingParams& Params, OpRunInfo& runInfo) {
   // set tiling data
-  ByteBufferPut(runInfo.tiling_data, Params.tilingMode); //1
-  ByteBufferPut(runInfo.tiling_data, Params.paramsPre); //2
-  ByteBufferPut(runInfo.tiling_data, Params.paramsAxis); //3
-  ByteBufferPut(runInfo.tiling_data, Params.paramsRow); //4
-  ByteBufferPut(runInfo.tiling_data, Params.indicesNum); //5
-  ByteBufferPut(runInfo.tiling_data, Params.need_core_num); //6
-  ByteBufferPut(runInfo.tiling_data, Params.indices_num_each_core); //7
-  ByteBufferPut(runInfo.tiling_data, Params.indices_num_remaining); //8
-  ByteBufferPut(runInfo.tiling_data, Params.indices_loop_num); //9
-  ByteBufferPut(runInfo.tiling_data, Params.indices_row_num_once); //10
-  ByteBufferPut(runInfo.tiling_data, Params.indices_row_num_last); //11
-  ByteBufferPut(runInfo.tiling_data, Params.paramsTotal); //12
-  ByteBufferPut(runInfo.tiling_data, Params.remaining_block_remain); //13
-  ByteBufferPut(runInfo.tiling_data, Params.remaining_block_num); //14
+  ByteBufferPut(runInfo.tiling_data, Params.tilingMode); // 1
+  ByteBufferPut(runInfo.tiling_data, Params.paramsPre); // 2
+  ByteBufferPut(runInfo.tiling_data, Params.paramsAxis); // 3
+  ByteBufferPut(runInfo.tiling_data, Params.paramsRow); // 4
+  ByteBufferPut(runInfo.tiling_data, Params.indicesNum); // 5
+  ByteBufferPut(runInfo.tiling_data, Params.need_core_num); // 6
+  ByteBufferPut(runInfo.tiling_data, Params.indices_num_each_core); // 7
+  ByteBufferPut(runInfo.tiling_data, Params.indices_num_remaining); // 8
+  ByteBufferPut(runInfo.tiling_data, Params.indices_loop_num); // 9
+  ByteBufferPut(runInfo.tiling_data, Params.indices_row_num_once); // 10
+  ByteBufferPut(runInfo.tiling_data, Params.indices_row_num_last); // 11
+  ByteBufferPut(runInfo.tiling_data, Params.paramsTotal); // 12
+  ByteBufferPut(runInfo.tiling_data, Params.remaining_block_remain); // 13
+  ByteBufferPut(runInfo.tiling_data, Params.remaining_block_num); // 14
 }
 
 void PrintGatherElementsParams(const GatherElementsTilingParams& params) {

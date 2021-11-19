@@ -22,21 +22,28 @@ bool L1LossGradTiling(const std::string& op_type, const TeOpParas& op_paras, con
   bool ret = EletwiseTiling(op_type, op_paras, op_info, run_info);
   std::vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
 
-  float reduce_mean_cof = 1.0;
   if (op_info.count("reduce_mean_cof_dtype") > 0) {
     const std::string& reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<std::string>();
+    float reduce_mean_cof = 1.0;
     if (reduce_mean_cof_dtype == "float32") {
       for (uint32_t i = 0; i < input_shape.size(); i++) {
+        if(input_shape[i] == 0){
+          VECTOR_INNER_ERR_REPORT_TILIING("l1_loss_grad", "inputshape = 0 is not support");
+          return false;
+        }
         reduce_mean_cof = reduce_mean_cof / input_shape[i];
       }
       ByteBufferPut(run_info.tiling_data, (float)reduce_mean_cof);
       OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);
     } else if (reduce_mean_cof_dtype == "float16") {
       for (uint32_t i = 0; i < input_shape.size(); i++) {
+        if(input_shape[i] == 0){
+          VECTOR_INNER_ERR_REPORT_TILIING("l1_loss_grad", "inputshape = 0 is not support");
+          return false;
+        }
         reduce_mean_cof = reduce_mean_cof / input_shape[i];
       }
-      fe::fp16_t reduce_mean_cof_fp16;
-      reduce_mean_cof_fp16 = reduce_mean_cof;
+      fe::fp16_t reduce_mean_cof_fp16 = reduce_mean_cof;
       ByteBufferPut(run_info.tiling_data, (fe::fp16_t)reduce_mean_cof_fp16);
       ByteBufferPut(run_info.tiling_data, (uint16_t)0);
       OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);

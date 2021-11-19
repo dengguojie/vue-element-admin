@@ -100,6 +100,10 @@ bool ScanPQCodesTiling(const std::string& opType, const TeOpParas& op_paras, con
     bucketNumTotal = bucketShape[0];
   }
   bucketNumPerCore = ScanPQCodesCeilDiv(bucketNumTotal, coreNums);
+  if (bucketNumPerCore == 0) {
+      VECTOR_INNER_ERR_REPORT_TILIING("scan_pq", "bucketNumPerCore is 0.");
+      return false;
+  }
   bucketNumLeft = bucketNumTotal % bucketNumPerCore;
   coreUsedNum = ScanPQCodesCeilDiv(bucketNumTotal, bucketNumPerCore);
   bucketStartBase = (bucketShape[0] / splitCount) * splitIndex;

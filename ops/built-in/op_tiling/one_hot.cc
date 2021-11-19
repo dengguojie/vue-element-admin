@@ -132,11 +132,7 @@ namespace optiling{
 
     int32_t CalTensorNumel(std::vector<int64_t> tensor_shape)
     {
-        int32_t numel = 1;
-        for (auto ele : tensor_shape)
-        {
-            numel *= ele;
-        }
+        int32_t numel = std::accumulate(tensor_shape.begin(), tensor_shape.end(), 1, std::multiplies<int>());
         return numel;
     }
 

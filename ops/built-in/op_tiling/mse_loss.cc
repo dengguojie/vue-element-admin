@@ -65,8 +65,7 @@ bool MseLossTiling(const std::string& op_type, const TeOpParas& op_paras, const 
           reduce_mean_cof = reduce_mean_cof / input_shape[i];
         }
       }
-      fe::fp16_t reduce_mean_cof_fp16;
-      reduce_mean_cof_fp16 = reduce_mean_cof;
+      fe::fp16_t reduce_mean_cof_fp16 = reduce_mean_cof;
       ByteBufferPut(run_info.tiling_data, (fe::fp16_t)reduce_mean_cof_fp16);
       ByteBufferPut(run_info.tiling_data, (uint16_t)0);
       OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);

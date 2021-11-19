@@ -41,7 +41,7 @@ bool SelectTiling(const std::string& op_type, const ge::Operator& op_paras, cons
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
   if(condition_shape.size() < x1_shape.size()) condition_shape.resize(x1_shape.size(), 1);
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
-  vector<vector<int64_t>> inputshapes = {condition_shape, x1_shape};
+  vector< vector<int64_t> > inputshapes = {condition_shape, x1_shape};
   ge::DataType type = operator_info->MutableInputDesc(0)->GetDataType();
   OpInfo eletwise_info(inputshapes, type);
   PROFILING_TILING_AFTER_CALCU_TILING_REG();

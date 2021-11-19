@@ -61,7 +61,7 @@ bool GetReduceAxis(const std::string& op_type, const ge::Operator& op_paras, con
   // Get ori reduce aixs
   std::vector<int64_t> values;
   if(op_type == "ReduceMean") {
-    //input axes index is 1
+    // input axes index is 1
     int axes_idx = 1;
     if (op_info.count("axes_idx") > 0) {
       auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
@@ -122,9 +122,9 @@ bool ReduceMeanTiling(const std::string& op_type, const ge::Operator& op_paras, 
     return ret;
   }
   PROFILING_TILING_AFTER_CALCU_TILING_REG();
-  float reduce_mean_cof = 1.0;
   if (op_info.count("reduce_mean_cof_dtype") > 0) {
     const std::string& reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<std::string>();
+    float reduce_mean_cof = 1.0;
     if (reduce_mean_cof_dtype == "float32") {
       for (uint32_t i = 0; i < input_shape.size(); i++) {
         if (input_shape[i] == 0) {
@@ -144,11 +144,14 @@ bool ReduceMeanTiling(const std::string& op_type, const ge::Operator& op_paras, 
           return ret;
         } 
         if (IsInVector(reduce_axis, i)) {
+        if(input_shape[i] == 0){
+          VECTOR_INNER_ERR_REPORT_TILIING("reduce_mean", "inputshape = 0 is not support");
+          return false;
+        }
           reduce_mean_cof = reduce_mean_cof / input_shape[i];
         }
       }
-      fe::fp16_t reduce_mean_cof_fp16;
-      reduce_mean_cof_fp16 = reduce_mean_cof;
+      fe::fp16_t reduce_mean_cof_fp16 = reduce_mean_cof;
       run_info.AddTilingData((fe::fp16_t)reduce_mean_cof_fp16);
       run_info.AddTilingData((uint16_t)0);
       OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);

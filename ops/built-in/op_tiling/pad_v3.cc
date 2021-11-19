@@ -290,11 +290,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
                          + tiling_params.tiling_pading_50 + tiling_params.tiling_pading_51;
   
   bool all_zero = true;
-  for (auto ele: merge_paddings_values) {
-    if (ele != 0) {
-      all_zero = false;
-    }
-  }
+  all_zero = std::all_of(merge_paddings_values.begin(), merge_paddings_values.end(), [](int64_t &item) {return item == 0;});
 
   if (all_zero) {
     tiling_params.tiling_key = TILING_MODE_4;

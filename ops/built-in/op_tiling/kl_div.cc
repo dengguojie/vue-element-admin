@@ -47,9 +47,9 @@ bool KLDivTiling(const std::string& op_type, const ge::Operator& op_paras, const
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "The dim0 cannot be zero!");
     return false;
   }
-  float reduce_mean_cof = 1.0;
   if (op_info.count("reduce_mean_cof_dtype") > 0) {
     const std::string& reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<std::string>();
+    float reduce_mean_cof = 1.0;
     if (reduce_mean_cof_dtype == "float32") {
       reduce_mean_cof = reduce_mean_cof / dim0;
       run_info.AddTilingData(reduce_mean_cof);
