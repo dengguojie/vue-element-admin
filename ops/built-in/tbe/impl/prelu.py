@@ -73,7 +73,8 @@ def op_select_format(x, weight, y, kernel_name="prelu"):
         dtype_base_out = dtype_base_out + dtype_base
         format_x = format_x + ["NC1HWC0"] * len(dtype_base)
         format_weight = format_weight + ["ND"] * len(dtype_base)
-    elif not (len(weight_shape) == 3 and weight_shape[-1] == 1 and len(weight_shape) != sum(weight_shape)):
+    elif not (len(weight_shape) == 3 and weight_shape[-1] == 1 and len(weight_shape) != sum(weight_shape) and
+                      weight_ori_format != "NCHW"):
         dtype_base_out = dtype_base_out + dtype_base
         format_x = format_x + ["NC1HWC0"] * len(dtype_base)
         format_weight = format_weight + ["NC1HWC0"] * len(dtype_base)
