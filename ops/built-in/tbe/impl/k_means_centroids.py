@@ -37,17 +37,13 @@ MAX_K_SIZE = 1792
 INT64_SIZE = 2 ** 63 - 1
 INDEX_DTYPE = "int32"
 MASK_DTYPE = "uint64"
-
-dtype_dict = {
-    "float16": 2,
-    "float32": 4,
-    "int32": 4,
-    "uint32": 4,
-    "int64": 8
-}
+M_DIM_NET = 4096
+N_DIM_NET = 1048576
+K_DIM_NET_1 = 128
+K_DIM_NET_2 = 32
 
 
-class KMeansCentroids(object):
+class KMeansCentroids:
     """
     class of k-means centroids operator
     """
@@ -66,11 +62,13 @@ class KMeansCentroids(object):
         self.use_actual_distance = para_dict.get("use_actual_distance")
         self.kernel_name = para_dict.get("kernel_name")
         impl_mode = para_dict.get("impl_mode")
-        self.high_perf = True if impl_mode == "high_performance" else False
+        self.high_perf = (impl_mode == "high_performance")
         self.vcmin_fp32_supported = tbe_platform.api_check_support("tik.vcmin", "float32")
         self._get_platform_info()
         self.tik_instance = tik.Tik()
+        self.tiling = {}
         self._get_tiling()
+        self._init_tiling_params()
         self._tiling_process()
         self._init_tensor()
 
@@ -105,35 +103,7 @@ class KMeansCentroids(object):
         shape_x2 = self.input_x2.get("shape")
         m_dim, k_dim = shape_x1
         n_dim, _ = shape_x2
-        self.tiling_para = {
-            "l0_m": 1,
-            "l0_n": 1,
-            "aub_m": 1,
-            "bub_n": 1,
-            "cub_n": 1,
-            "k1": k_dim // 16,
-            "block_dim_m": 1
-        }
-
-        # network case 1: m_128_1048576
-        # network case 2: m_32_1048576
-        # network case 3: m_32_10000000
-        default_case_1 = (128, 1048576)
-        default_case_2 = (32, 1048576)
-        default_case_3 = (32, 10000000)
-        default_cases = [default_case_1, default_case_2, default_case_3]
-        target_case = (k_dim, n_dim)
-        self.cube_unit = 16
-        if target_case in default_cases:
-            self._default_tiling(k_dim)
-        else:
-            self._formula_tiling(m_dim, k_dim, n_dim)
-        self._fillin_tiling()
-
-    def _default_tiling(self, k_dim):
-        """ default tiling
-        """
-        self.tiling_para = {
+        tiling_para = {
             "l0_m": 16,
             "l0_n": 8,
             "aub_m": 16,
@@ -142,9 +112,22 @@ class KMeansCentroids(object):
             "k1": k_dim // 16,
             "block_dim_m": 1
         }
+
+        self.cube_unit = 16
+        is_large_net_case = ((k_dim == K_DIM_NET_1 or k_dim == K_DIM_NET_2) and
+            (m_dim >= M_DIM_NET) and (n_dim >= N_DIM_NET))
+        if is_large_net_case:
+            tiling_para = self._default_tiling(k_dim, tiling_para)
+        else:
+            tiling_para = self._formula_tiling(m_dim, k_dim, n_dim)
+        self._fillin_tiling(tiling_para)
+
+    def _default_tiling(self, k_dim, tiling_para):
+        """ default tiling
+        """
         if not self.vcmin_fp32_supported and not self.high_perf:
-            if k_dim == 128:
-                self.tiling_para = {
+            if k_dim == K_DIM_NET_1:
+                tiling_para = {
                     "l0_m": 16,
                     "l0_n": 14,
                     "aub_m": 16,
@@ -153,8 +136,8 @@ class KMeansCentroids(object):
                     "k1": k_dim // 16,
                     "block_dim_m": 1
                 }
-            elif k_dim == 32:
-                self.tiling_para = {
+            elif k_dim == K_DIM_NET_2:
+                tiling_para = {
                     "l0_m": 4,
                     "l0_n": 30,
                     "aub_m": 4,
@@ -163,10 +146,9 @@ class KMeansCentroids(object):
                     "k1": k_dim // 16,
                     "block_dim_m": 1
                 }
+        return tiling_para
 
     def _formula_tiling(self, m_dim, k_dim, n_dim):
-        self.fp16_byte = FP16_TYPE
-        self.fp32_byte = FP32_TYPE
         m_div_16 = m_dim // self.cube_unit
         k_div_16 = k_dim // self.cube_unit
         n_div_16 = n_dim // self.cube_unit
@@ -175,7 +157,7 @@ class KMeansCentroids(object):
         mkn_single_core = single_core_m // self.cube_unit, k_div_16, n_div_16
         l0_m, l0_n = self._get_l0_tiling(mkn_single_core)
         aub_m, bub_n, cub_n = self._get_mkn_ub(l0_m, l0_n, k_div_16)
-        self.tiling_para = {
+        tiling_para = {
             "l0_m": l0_m,
             "l0_n": l0_n,
             "aub_m": aub_m,
@@ -184,15 +166,16 @@ class KMeansCentroids(object):
             "k1": k_div_16,
             "block_dim_m": 1
         }
+        return tiling_para
 
-    def _fillin_tiling(self):
-        l0_m = self.tiling_para.get('l0_m')
-        l0_n = self.tiling_para.get('l0_n')
-        aub_m = self.tiling_para.get('aub_m')
-        bub_n = self.tiling_para.get('bub_n')
-        cub_n = self.tiling_para.get('cub_n')
-        k1 = self.tiling_para.get('k1')
-        block_dim_m = self.tiling_para.get('block_dim_m')
+    def _fillin_tiling(self, tiling_para):
+        l0_m = tiling_para.get('l0_m')
+        l0_n = tiling_para.get('l0_n')
+        aub_m = tiling_para.get('aub_m')
+        bub_n = tiling_para.get('bub_n')
+        cub_n = tiling_para.get('cub_n')
+        k1 = tiling_para.get('k1')
+        block_dim_m = tiling_para.get('block_dim_m')
         if l0_n > bub_n:
             l0_n = bub_n
             cub_n = min(cub_n, bub_n)
@@ -220,74 +203,80 @@ class KMeansCentroids(object):
         }
 
     def _get_l0_tiling(self, mkn_single_core):
-        sgcore_m, sgcore_k, sgcore_n = mkn_single_core
         l0a_buffer_size = tbe_platform.get_soc_spec("L0A_SIZE")
         l0c_buffer_size = tbe_platform.get_soc_spec("L0C_SIZE")
-        l0a_m_max = l0a_buffer_size // self.fp16_byte // sgcore_k // self.cube_unit // self.cube_unit
+        l0a_m_max = l0a_buffer_size // FP16_TYPE // mkn_single_core[1] // self.cube_unit // self.cube_unit
         l0b_n_max = l0a_m_max
         min_cost = float('inf')
-        bandwidth = 22.17
-        target_mn = []
+        target_mn = [1, 1]
         if not self.vcmin_fp32_supported and self.high_perf:
             # Set m_tiling to be smaller than or equal to 16*16,
             # because some tensors, such as vcmin_input_fp16, are set as a fixed value 256.
             l0a_m_max = min(l0a_m_max, 16)
         for l0_m in range(1, l0a_m_max + 1):
-            l0c_n_max = l0c_buffer_size // self.fp32_byte // l0_m // self.cube_unit // self.cube_unit
-            m_loop = self._ceil(sgcore_m, l0_m)
+            l0c_n_max = l0c_buffer_size // FP32_TYPE // l0_m // self.cube_unit // self.cube_unit
+            m_loop = self._ceil(mkn_single_core[0], l0_m)
             for l0_n in range(1, min(l0b_n_max, l0c_n_max) + 1):
-                n_loop = self._ceil(sgcore_n, l0_n)
-                n_one_loop_cost = self._calc_n_one_loop_cost(l0_m, l0_n)
-                a_load_size = l0_m * sgcore_k * self.cube_unit * self.cube_unit * self.fp32_byte
-                b_load_size = l0_n * sgcore_k * self.cube_unit * self.cube_unit * self.fp32_byte
-                a_load_time = a_load_size / bandwidth
-                b_load_time = b_load_size / bandwidth
-                cur_cost = m_loop * (a_load_time + b_load_time + n_loop * n_one_loop_cost)
+                cur_cost = self._calc_cost(l0_m, l0_n, m_loop, mkn_single_core)
                 if cur_cost < min_cost:
                     min_cost = cur_cost
                     target_mn = [l0_m, l0_n]
         return target_mn
 
+    def _calc_cost(self, l0_m, l0_n, m_loop, mkn_single_core):
+        bandwidth = 22.17
+        n_loop = self._ceil(mkn_single_core[2], l0_n)
+        n_one_loop_cost = self._calc_n_one_loop_cost(l0_m, l0_n)
+        a_load_size = l0_m * mkn_single_core[1] * self.cube_unit * self.cube_unit * FP32_TYPE
+        b_load_size = l0_n * mkn_single_core[1] * self.cube_unit * self.cube_unit * FP32_TYPE
+        a_load_time = a_load_size / bandwidth
+        b_load_time = b_load_size / bandwidth
+        return m_loop * (a_load_time + b_load_time + n_loop * n_one_loop_cost)
+
     def _get_mkn_ub(self, l0_m, l0_n, k_div_16):
         ub_buffer_size = tbe_platform.get_soc_spec("UB_SIZE")
-        global_ub = l0_m * self.cube_unit * 2 * self.fp32_byte
-        global_ub += 8 * 2 * self.fp32_byte
+        global_ub = l0_m * self.cube_unit * 2 * FP32_TYPE
+        global_ub += 8 * 2 * FP32_TYPE
         bub_size = ub_buffer_size - global_ub
         l0_m_factor_lis = sorted(self._get_factors(l0_m), reverse=True)
         l0_n_factor_lis = sorted(self._get_factors(l0_n), reverse=True)
         aub_m = 1
         bub_n = 1
-        cub_n = 1
 
         for aub_m in l0_m_factor_lis:
             aub_tensor_count = 4
-            tensor_size = aub_m * k_div_16 * aub_tensor_count * self.cube_unit * self.cube_unit * self.fp16_byte
+            tensor_size = aub_m * k_div_16 * aub_tensor_count * self.cube_unit * self.cube_unit * FP16_TYPE
             if tensor_size <= ub_buffer_size:
                 break
 
         for bub_n in l0_n_factor_lis:
             bub_tensor_count = 4
-            tensor_size = bub_n * k_div_16 * bub_tensor_count * self.cube_unit * self.cube_unit * self.fp16_byte
+            tensor_size = bub_n * k_div_16 * bub_tensor_count * self.cube_unit * self.cube_unit * FP16_TYPE
             if tensor_size <= bub_size:
                 break
 
+        cub_n = self._calc_cub_n(l0_n_factor_lis, l0_m, global_ub, ub_buffer_size)
+
+        return aub_m, bub_n, cub_n
+
+    def _calc_cub_n(self, l0_n_factor_lis, l0_m, global_ub, ub_buffer_size):
+        cub_n = 1
         for cub_n in l0_n_factor_lis:
             matmul_tensor_count = 2
-            matmul_out = matmul_tensor_count * self.fp32_byte * cub_n * l0_m * self.cube_unit * self.cube_unit
+            matmul_out = matmul_tensor_count * FP32_TYPE * cub_n * l0_m * self.cube_unit * self.cube_unit
             local_tensor_count = 5
-            local_size = local_tensor_count * self.fp32_byte * l0_m * self.cube_unit
+            local_size = local_tensor_count * FP32_TYPE * l0_m * self.cube_unit
             if not self.vcmin_fp32_supported and self.high_perf:
-                extra_size = VNCHWCONV_MIN_SIZE * cub_n * self.cube_unit * self.fp16_byte
+                extra_size = VNCHWCONV_MIN_SIZE * cub_n * self.cube_unit * FP16_TYPE
                 # VNCHWCONV_MIN_SIZE * 11 is the total size of extra tensors in high_performance mode
-                extra_size += VNCHWCONV_MIN_SIZE * 11 * self.fp16_byte
-                extra_size += VNCHWCONV_MIN_SIZE * self.fp32_byte
+                extra_size += VNCHWCONV_MIN_SIZE * 11 * FP16_TYPE
+                extra_size += VNCHWCONV_MIN_SIZE * FP32_TYPE
                 local_size += extra_size
-            sum_square_y_size = cub_n * self.cube_unit * self.fp32_byte
+            sum_square_y_size = cub_n * self.cube_unit * FP32_TYPE
             tensor_size = matmul_out + local_size + sum_square_y_size + global_ub
             if tensor_size <= ub_buffer_size:
                 break
-
-        return aub_m, bub_n, cub_n
+        return cub_n
 
     def _calc_n_one_loop_cost(self, l0_m, l0_n):
         fp32_parallelism = 64
@@ -298,13 +287,51 @@ class KMeansCentroids(object):
             m_count = 7
             sum_cost = mn_cost * mn_count + m_cost * m_count
             return sum_cost
-        else:
-            one_loop_unit = 8
-            mn_count = 3
-            get_min_loop = (l0_m * self.cube_unit) // one_loop_unit
-            cmpare_cost = 433
-            sum_cost = mn_cost * mn_count + get_min_loop * cmpare_cost
-            return sum_cost
+
+        one_loop_unit = 8
+        mn_count = 3
+        get_min_loop = (l0_m * self.cube_unit) // one_loop_unit
+        cmpare_cost = 433
+        sum_cost = mn_cost * mn_count + get_min_loop * cmpare_cost
+        return sum_cost
+
+    def _init_tiling_params(self):
+        # matmul
+        self.m_each_core = 16
+        self.m_last_core = 0
+        self.n_each_core = 16
+        self.n_last_core = 0
+        self.m_tiling_loop = 0
+        self.m_tiling_left = 0
+        self.m_last_tiling_loop = 0
+        self.m_last_tiling_left = 0
+        self.n_tiling_loop = 0
+        self.n_tiling_left = 0
+        self.m_tiling_ub_loop = 1
+        self.n_tiling_ub_loop = 1
+        self.n_tiling_cub_loop = 0
+        self.n_tiling_cub_left = 0
+        self.shape_x_ub = (16, 16)
+        self.shape_x_ub_trans = (1, 16, 16)
+        self.shape_y_ub = (16, 16)
+        self.shape_y_ub_trans = (1, 16, 16)
+        self.shape_x_l1 = (1, 16, 16)
+        self.shape_y_l1 = (1, 16, 16)
+        self.shape_x_l0a = (1, 1, 16, 16)
+        self.shape_y_l0b = (1, 1, 16, 16)
+        self.shape_z_l0c = (1, 16, 16)
+        self.shape_z_ub = (1, 16, 16)
+        self.shape_z_ub_extend = (1, 17, 16)
+        self.shape_z_ub_nd = (16, 16)
+        # argmin
+        self.m_tiling = 16
+        self.n_tiling = 16
+        self.shape_input_3_ub = (16, 1)
+        self.shape_input_4_ub = (1, 16)
+        self.shape_broadcast_ub = (16, 16)
+        self.shape_broadcast_ub_extend = (17, 16)
+        self.shape_global_min_distance_ub = (16,)
+        self.shape_total_distance = (1,)
 
     def _tiling_process(self):
         """
@@ -315,11 +342,20 @@ class KMeansCentroids(object):
         self._tiling_one_core_matmul()
         self._tiling_one_core_argmin()
 
+    def _check_tiling_key(self, tiling_dict, keys):
+        for key in keys:
+            if key not in tiling_dict:
+                reason = "Key error, %s not in tiling." % key
+                error_manager_cube.raise_err_message_cube("k_means_centroids", reason)
+
     def _tiling_multi_core(self):
         """ tiling in multi-core level
         """
         shape_x1 = self.input_x1.get("shape")
         shape_x2 = self.input_x2.get("shape")
+        self._check_tiling_key(self.tiling,
+            ["AUB_shape", "block_dim", "AL0_matrix", "CL0_matrix",
+             "CUB_matrix", "BUB_shape", "BL0_matrix"])
         if shape_x1[0] < self.aic_cnt * self.tiling["AUB_shape"][1]:
             self.aic_cnt = self._ceil(shape_x1[0], self.tiling["AUB_shape"][1])
         # m axis bounds multi-core
@@ -354,21 +390,20 @@ class KMeansCentroids(object):
     def _tiling_one_core_matmul(self):
         """ matmul tiling in each core
         """
-        k_aub, m_aub = self.tiling["AUB_shape"][:2]
-        k_bub, n_bub = self.tiling["BUB_shape"][:2]
-        k_al1, m_al1 = self.tiling["AL1_shape"][0], \
-            self.tiling["AL1_shape"][1] * self.tiling["AL0_matrix"][0] * self.tiling["AL0_matrix"][2]
-        k_bl1, n_bl1 = self.tiling["BL1_shape"][0], \
-            self.tiling["BL1_shape"][1] * self.tiling["BL0_matrix"][1] * self.tiling["BL0_matrix"][2]
+        self._check_tiling_key(self.tiling,
+            ["AUB_shape", "BUB_shape", "AL1_shape", "AL0_matrix",
+             "BL1_shape", "BL0_matrix", "CL0_matrix", "CUB_matrix"])
+        m_aub = self.tiling["AUB_shape"][1]
+        n_bub = self.tiling["BUB_shape"][1]
+        m_al1 = self.tiling["AL1_shape"][1] * self.tiling["AL0_matrix"][0] * self.tiling["AL0_matrix"][2]
+        n_bl1 = self.tiling["BL1_shape"][1] * self.tiling["BL0_matrix"][1] * self.tiling["BL0_matrix"][2]
         ma, ka, m0, k0 = self.tiling["AL0_matrix"][:4]
-        kb, nb, n0, k0 = self.tiling["BL0_matrix"][:4]
+        kb, nb, n0 = self.tiling["BL0_matrix"][:3]
         nc, mc = self.tiling["CL0_matrix"][:2]
         nc_factor, mc_factor = self.tiling["CUB_matrix"][:2]
 
         self.m_tiling_loop = self.m_each_core // m_aub
         self.m_tiling_left = self.m_each_core % m_aub
-        self.m_last_tiling_loop = 0
-        self.m_last_tiling_left = 0
         if self.m_last_core > 0:
             self.m_last_tiling_loop = self.m_last_core // m_aub
             self.m_last_tiling_left = self.m_last_core % m_aub
@@ -377,19 +412,17 @@ class KMeansCentroids(object):
 
         self.m_tiling_ub_loop = mc // mc_factor
         self.n_tiling_ub_loop = nc // nc_factor
-        self.n_tiling_cub_loop = 0
-        self.n_tiling_cub_left = 0
         if self.n_tiling_left > 0:
             self.n_tiling_cub_loop = self.n_tiling_left // (nc_factor * n0)
             self.n_tiling_cub_left = self.n_tiling_left % (nc_factor * n0)
 
-        self.shape_x_ub = (m_aub, k_aub)
-        self.shape_x_ub_trans = (self._ceil(m_aub, 16), k_aub, 16)
-        self.shape_y_ub = (n_bub, k_bub)
-        self.shape_y_ub_trans = (self._ceil(n_bub, 16), k_bub, 16)
+        self.shape_x_ub = (m_aub, self.tiling["AUB_shape"][0])
+        self.shape_x_ub_trans = (self._ceil(m_aub, 16), self.tiling["AUB_shape"][0], 16)
+        self.shape_y_ub = (n_bub, self.tiling["BUB_shape"][0])
+        self.shape_y_ub_trans = (self._ceil(n_bub, 16), self.tiling["BUB_shape"][0], 16)
 
-        self.shape_x_l1 = (self._ceil(m_al1, 16), k_al1, 16)
-        self.shape_y_l1 = (self._ceil(n_bl1, 16), k_bl1, 16)
+        self.shape_x_l1 = (self._ceil(m_al1, 16), self.tiling["AL1_shape"][0], 16)
+        self.shape_y_l1 = (self._ceil(n_bl1, 16), self.tiling["BL1_shape"][0], 16)
         self.shape_x_l0a = (ma, ka, m0, k0)
         self.shape_y_l0b = (kb, nb, n0, k0)
         self.shape_z_l0c = (nc, mc * m0, n0)
@@ -401,6 +434,7 @@ class KMeansCentroids(object):
     def _tiling_one_core_argmin(self):
         """ argmin and UnsortedSegmentSum tiling in each core
         """
+        self._check_tiling_key(self.tiling, ["CUB_matrix"])
         nc_factor, mc_factor, m0, n0 = self.tiling["CUB_matrix"][:4]
         self.m_tiling = mc_factor * m0
         self.n_tiling = nc_factor * n0
@@ -409,7 +443,6 @@ class KMeansCentroids(object):
         self.shape_broadcast_ub = (self.m_tiling, self.n_tiling)
         self.shape_broadcast_ub_extend = (self.m_tiling + 1, self.n_tiling)
         self.shape_global_min_distance_ub = (self.m_tiling * self.m_tiling_ub_loop,)
-        self.shape_total_distance = (1,)
 
     def _init_tensor(self):
         """ init fixed-shape tensor
@@ -420,7 +453,7 @@ class KMeansCentroids(object):
         self.input_dtype = self.input_x1.get("dtype")
         output_dtype = self.output_y1.get("dtype")
         n_gm, d_gm = shape_x2
-        self.ub_min_num = UB_BLOCK_SIZE // dtype_dict[self.input_dtype]
+        self.ub_min_num = UB_BLOCK_SIZE // FP32_TYPE
 
         self.data_input_gm_1 = self.tik_instance.Tensor(self.input_dtype, shape_x1,
                                                         name="data_input_gm_1", scope=tik.scope_gm)
@@ -561,10 +594,10 @@ class KMeansCentroids(object):
         """ init tensor of global domain in ub buffer
         """
         if self.vcmin_fp32_supported or self.high_perf:
-            self.global_index_dtype = self.input_dtype
+            global_index_dtype = self.input_dtype
         else:
-            self.global_index_dtype = INDEX_DTYPE
-        self.global_min_index_ub = self.tik_instance.Tensor(self.global_index_dtype, self.shape_global_min_distance_ub,
+            global_index_dtype = INDEX_DTYPE
+        self.global_min_index_ub = self.tik_instance.Tensor(global_index_dtype, self.shape_global_min_distance_ub,
                                                             name="global_min_index_ub", scope=tik.scope_ubuf)
         self.output_count_ub = self.tik_instance.Tensor(self.input_dtype, (self.ub_min_num,),
                                                         name="output_count_ub", scope=tik.scope_ubuf)
@@ -647,6 +680,7 @@ class KMeansCentroids(object):
         -------------
         None
         """
+        self._check_tiling_key(self.tiling, ["AUB_shape"])
         m_aub = self.tiling["AUB_shape"][1]
         with self.tik_instance.if_scope(tik.all(blk_idx == self.aic_cnt - 1, self.m_last_core > 0)):
             if self.m_last_tiling_loop > 0:
@@ -695,16 +729,19 @@ class KMeansCentroids(object):
             self.tik_instance.vector_dup(vdup_mask_left, self.global_min_distance_ub[vdup_rpt * FP32_MASK],
                                          self.scalar_max_fp32, 1, 1, 8)
 
+        self._check_tiling_key(self.tiling, ["BUB_shape"])
         n_bub = self.tiling["BUB_shape"][1]
+        param_dict = {"is_last_core": is_last_core, "is_m_tail": is_m_tail, "is_n_tail": False}
         if self.n_tiling_loop > 0:
             with self.tik_instance.for_range(0, self.n_tiling_loop) as nt_idx:
                 start_gm = nt_idx * n_bub
                 self._matmul_gm_to_l0b_db(self.data_input_gm_2[start_gm:(start_gm + n_bub), :])
-                self._mmad(start_gm, is_last_core=is_last_core, is_m_tail=is_m_tail)
+                self._mmad(start_gm, param_dict)
         if self.n_tiling_left > 0:
             start_gm = self.n_tiling_loop * n_bub
             self._matmul_gm_to_l0b_tail(self.data_input_gm_2[start_gm:, :])
-            self._mmad(start_gm, is_last_core=is_last_core, is_m_tail=is_m_tail, is_n_tail=True)
+            param_dict["is_n_tail"] = True
+            self._mmad(start_gm, param_dict)
 
         self._unsorted_segment_sum(m_gm_idx, is_last_core=is_last_core, is_m_tail=is_m_tail)
 
@@ -786,6 +823,8 @@ class KMeansCentroids(object):
         -------------
         None
         """
+        self._check_tiling_key(self.tiling, ["manual_pingpong_buffer"])
+        self._check_tiling_key(self.tiling["manual_pingpong_buffer"], ["AUB_pbuffer"])
         double_buffer = self.tiling["manual_pingpong_buffer"]["AUB_pbuffer"]
         m_aub, k_aub = tensor_a_gm.shape
         m_aub //= double_buffer
@@ -861,6 +900,8 @@ class KMeansCentroids(object):
         -------------
         None
         """
+        self._check_tiling_key(self.tiling, ["manual_pingpong_buffer"])
+        self._check_tiling_key(self.tiling["manual_pingpong_buffer"], ["BUB_pbuffer"])
         double_buffer = self.tiling["manual_pingpong_buffer"]["BUB_pbuffer"]
         n_bub, k_bub = tensor_b_gm.shape
         n_bub //= double_buffer
@@ -889,14 +930,17 @@ class KMeansCentroids(object):
 
         self.nz_to_zn(self.data_input_l0b, self.data_input_l1_2, self.shape_y_l0b)
 
-    def _mmad(self, n_gm_idx, is_last_core=False, is_m_tail=False, is_n_tail=False):
+    def _mmad(self, n_gm_idx, param_dict):
         """
         mmad: A x B = C
 
         Parameters:
         -------------
         n_gm_idx: global index of n axis in gm, expr
-        is_n_tail: whether axis n has tail in each core, bool
+        param_dict: include below
+            is_last_core: whether is last core, bool
+            is_m_tail: whether axis m has tail in each core
+            is_n_tail: whether axis n has tail in each core, bool
 
         Returns:
         -------------
@@ -909,29 +953,32 @@ class KMeansCentroids(object):
         self.tik_instance.mmad(self.data_output_l0c, self.data_input_l0a, self.data_input_l0b,
                                mmad_m, mmad_k, mmad_n, 0)
 
-        nc_factor, mc_factor, m0, n0 = self.tiling["CUB_matrix"][:4]
-        if is_n_tail:
+        self._check_tiling_key(self.tiling, ["CUB_matrix"])
+        param_dict_argmin = {"is_last_core": param_dict.get("is_last_core", False),
+                             "is_m_tail": param_dict.get("is_m_tail", False),
+                             "is_n_tail": False}
+        if param_dict["is_n_tail"]:
             if self.n_tiling_cub_loop > 0:
                 with self.tik_instance.for_range(0, self.n_tiling_cub_loop) as ntc_idx:
-                    start_gm = n_gm_idx + ntc_idx * nc_factor * n0
-                    start_l0c = ntc_idx * nc_factor
+                    start_gm = n_gm_idx + ntc_idx * self.tiling["CUB_matrix"][0] * 16
+                    start_l0c = ntc_idx * self.tiling["CUB_matrix"][0]
                     self._matmul_l0c_to_ub(0, start_l0c, self.shape_z_ub)
-                    self._argmin(start_gm, 0, is_last_core=is_last_core, is_m_tail=is_m_tail)
+                    self._argmin(start_gm, 0, param_dict_argmin)
             if self.n_tiling_cub_left > 0:
-                start_gm = n_gm_idx + self.n_tiling_cub_loop * nc_factor * n0
-                start_l0c = self.n_tiling_cub_loop * nc_factor
-                shape_z_ub = (self._ceil(self.n_tiling_cub_left, n0), mc_factor * m0, n0)
+                start_gm = n_gm_idx + self.n_tiling_cub_loop * self.tiling["CUB_matrix"][0] * 16
+                start_l0c = self.n_tiling_cub_loop * self.tiling["CUB_matrix"][0]
+                shape_z_ub = (self._ceil(self.n_tiling_cub_left, 16), self.tiling["CUB_matrix"][1] * 16, 16)
                 self._matmul_l0c_to_ub(0, start_l0c, shape_z_ub, is_n_tail=True)
-                self._argmin(start_gm, 0, is_last_core=is_last_core, is_m_tail=is_m_tail,
-                             is_n_tail=True)
+                param_dict_argmin["is_n_tail"] = True
+                self._argmin(start_gm, 0, param_dict_argmin)
         else:
             with self.tik_instance.for_range(0, self.m_tiling_ub_loop) as mtu_idx:
-                m_l0c_idx = mtu_idx * mc_factor * m0
+                m_l0c_idx = mtu_idx * self.tiling["CUB_matrix"][1] * 16
                 with self.tik_instance.for_range(0, self.n_tiling_ub_loop) as ntu_idx:
-                    start_gm = n_gm_idx + ntu_idx * nc_factor * n0
-                    start_l0c = ntu_idx * nc_factor
+                    start_gm = n_gm_idx + ntu_idx * self.tiling["CUB_matrix"][0] * 16
+                    start_l0c = ntu_idx * self.tiling["CUB_matrix"][0]
                     self._matmul_l0c_to_ub(m_l0c_idx, start_l0c, self.shape_z_ub)
-                    self._argmin(start_gm, m_l0c_idx, is_last_core=is_last_core, is_m_tail=is_m_tail)
+                    self._argmin(start_gm, m_l0c_idx, param_dict_argmin)
 
     def _matmul_l0c_to_ub(self, m_l0c_idx, n_l0c_idx, shape_z_ub, is_n_tail=False):
         """
@@ -961,7 +1008,7 @@ class KMeansCentroids(object):
         self._nz_to_nd(self.matmul_output_ub_nd[:, :nc_factor * n0],
                        self.matmul_output_ub[:nc_factor, :, :], shape_z_ub, is_n_tail=is_n_tail)
 
-    def _argmin(self, n_gm_idx, m_l0c_idx, is_last_core=False, is_m_tail=False, is_n_tail=False):
+    def _argmin(self, n_gm_idx, m_l0c_idx, param_dict):
         """
         compute argmin in ub buffer
 
@@ -969,14 +1016,18 @@ class KMeansCentroids(object):
         -------------
         n_gm_idx: global index of axis n in gm, expr
         m_l0c_idx: local index of axis m in l0c, expr
-        is_last_core: whether is last core,bool
-        is_m_tail: whether axis m has tail in each core, bool
-        is_n_tail: whether axis n has tail in cub, bool
+        param_dict: include below
+            is_last_core: whether is last core,bool
+            is_m_tail: whether axis m has tail in each core, bool
+            is_n_tail: whether axis n has tail in cub, bool
 
         Returns:
         -------------
         None
         """
+        is_last_core = param_dict.get("is_last_core", False)
+        is_m_tail = param_dict.get("is_m_tail", False)
+        is_n_tail = param_dict.get("is_n_tail", False)
         m_tiling = self.m_tiling
         n_tiling = self.n_tiling
         if is_m_tail:
@@ -1564,13 +1615,11 @@ class KMeansCentroids(object):
         -------------
         None
         """
-        m, n = shape_t
-        size = m * n
-        repeat = size // FP32_MASK
-        left = size % FP32_MASK
+        n = shape_t[1]
+        repeat = (shape_t[0] * n) // FP32_MASK
+        left = (shape_t[0] * n) % FP32_MASK
         repeat_loop = repeat // VECTOR_REPEAT_MAX
         repeat_left = repeat % VECTOR_REPEAT_MAX
-        round_mode = ""
         if src_dtype == "float32":
             dst_rep_stride = 4
             src_rep_stride = 8
@@ -1580,18 +1629,18 @@ class KMeansCentroids(object):
         if repeat_loop > 0:
             with self.tik_instance.for_range(0, repeat_loop) as rpt_idx:
                 offset = rpt_idx * VECTOR_REPEAT_MAX * FP32_MASK
-                self.tik_instance.vconv(FP32_MASK, round_mode, dst[offset // n, offset % n],
+                self.tik_instance.vconv(FP32_MASK, "", dst[offset // n, offset % n],
                                         src[offset // n, offset % n], VECTOR_REPEAT_MAX,
                                         1, 1, dst_rep_stride, src_rep_stride)
 
         if repeat_left > 0:
             offset = repeat_loop * VECTOR_REPEAT_MAX * FP32_MASK
-            self.tik_instance.vconv(FP32_MASK, round_mode, dst[offset // n, offset % n], src[offset // n, offset % n],
+            self.tik_instance.vconv(FP32_MASK, "", dst[offset // n, offset % n], src[offset // n, offset % n],
                                     repeat_left, 1, 1, dst_rep_stride, src_rep_stride)
 
         if left > 0:
             offset = repeat * FP32_MASK
-            self.tik_instance.vconv(left, round_mode, dst[offset // n, offset % n], src[offset // n, offset % n],
+            self.tik_instance.vconv(left, "", dst[offset // n, offset % n], src[offset // n, offset % n],
                                     1, 1, 1, dst_rep_stride, src_rep_stride)
 
     def nd_to_zn_3d(self, dst, src, shape_x_trans):
@@ -1757,28 +1806,26 @@ class KMeansCentroids(object):
         -------------
         None
         """
+        for key in ("m1_255_idx", "rpt_idx", "mask", "repeat_times", "shape_z_ub", "is_n_tail"):
+            if key not in nz_to_nd_para:
+                error_manager_cube.raise_err_message_cube("k_means_centroids",
+                                                          "Lost key %s of nz_to_nd_para." % key)
         # default params
-        m1_255_idx = nz_to_nd_para.get('m1_255_idx')
-        rpt_idx = nz_to_nd_para.get('rpt_idx')
-        mask = nz_to_nd_para.get('mask')
-        repeat_times = nz_to_nd_para.get('repeat_times')
-        shape_z_ub = nz_to_nd_para.get("shape_z_ub")
-        is_n_tail = nz_to_nd_para.get("is_n_tail")
         scalar = 0
         dst_blk_stride = 2
-        src_blk_stride = shape_z_ub[1] * 2 + EXTEND_LENGTH
-        dst_rep_stride = shape_z_ub[0] * 2
-        if is_n_tail:
+        src_blk_stride = nz_to_nd_para["shape_z_ub"][1] * 2 + EXTEND_LENGTH
+        dst_rep_stride = nz_to_nd_para["shape_z_ub"][0] * 2
+        if nz_to_nd_para["is_n_tail"]:
             dst_rep_stride = self.shape_z_ub[0] * 2
         src_rep_stride = 2
 
-        dst_part1 = dst[m1_255_idx * VECTOR_REPEAT_MAX, rpt_idx * 64]
-        src_part1 = src[rpt_idx * 4, m1_255_idx * VECTOR_REPEAT_MAX, 0]
-        dst_part2 = dst[m1_255_idx * VECTOR_REPEAT_MAX, rpt_idx * 64 + 8]
-        src_part2 = src[rpt_idx * 4, m1_255_idx * VECTOR_REPEAT_MAX, 8]
-        self.tik_instance.vadds(mask, dst_part1, src_part1, scalar, repeat_times,
+        dst_part1 = dst[nz_to_nd_para["m1_255_idx"] * VECTOR_REPEAT_MAX, nz_to_nd_para["rpt_idx"] * 64]
+        src_part1 = src[nz_to_nd_para["rpt_idx"] * 4, nz_to_nd_para["m1_255_idx"] * VECTOR_REPEAT_MAX, 0]
+        dst_part2 = dst[nz_to_nd_para["m1_255_idx"] * VECTOR_REPEAT_MAX, nz_to_nd_para["rpt_idx"] * 64 + 8]
+        src_part2 = src[nz_to_nd_para["rpt_idx"] * 4, nz_to_nd_para["m1_255_idx"] * VECTOR_REPEAT_MAX, 8]
+        self.tik_instance.vadds(nz_to_nd_para["mask"], dst_part1, src_part1, scalar, nz_to_nd_para["repeat_times"],
                                 dst_blk_stride, src_blk_stride, dst_rep_stride, src_rep_stride)
-        self.tik_instance.vadds(mask, dst_part2, src_part2, scalar, repeat_times,
+        self.tik_instance.vadds(nz_to_nd_para["mask"], dst_part2, src_part2, scalar, nz_to_nd_para["repeat_times"],
                                 dst_blk_stride, src_blk_stride, dst_rep_stride, src_rep_stride)
 
     def _binary_operator(self, dst, src0, src1, operator):
@@ -1796,17 +1843,20 @@ class KMeansCentroids(object):
         -------------
         None
         """
-        m, n = self.shape_z_ub_nd
+        n = self.shape_z_ub_nd[1]
 
         binary_operator_dict = {
             "vsub": self.tik_instance.vsub,
             "vadd": self.tik_instance.vadd
         }
+        if operator not in binary_operator_dict:
+            error_manager_cube.raise_err_message_cube("k_means_centroids",
+                                                      "Illegal binary operator.")
+
         unit = 64  # for fp32
         func = binary_operator_dict[operator]
-        size = m * n
-        repeat = size // unit
-        left = size % unit
+        repeat = (self.shape_z_ub_nd[0] * n) // unit
+        left = (self.shape_z_ub_nd[0] * n) % unit
         repeat_loop = repeat // VECTOR_REPEAT_MAX
         repeat_left = repeat % VECTOR_REPEAT_MAX
 
@@ -1844,17 +1894,19 @@ class KMeansCentroids(object):
         -------------
         None
         """
-        m, n = self.shape_z_ub_nd
+        n = self.shape_z_ub_nd[1]
 
         monocular_operator_dict = {
             "vmuls": self.tik_instance.vmuls
         }
+        if operator not in monocular_operator_dict:
+            error_manager_cube.raise_err_message_cube("k_means_centroids",
+                                                      "Illegal monocular operator.")
 
         unit = 64  # for fp32
         func = monocular_operator_dict[operator]
-        size = m * n
-        repeat = size // unit
-        left = size % unit
+        repeat = (self.shape_z_ub_nd[0] * n) // unit
+        left = (self.shape_z_ub_nd[0] * n) % unit
         repeat_loop = repeat // VECTOR_REPEAT_MAX
         repeat_left = repeat % VECTOR_REPEAT_MAX
 
@@ -2014,21 +2066,22 @@ def _data_type_check(para_dict):
     -------------
     None
     """
-    x = para_dict.get("x")
-    y = para_dict.get("y")
-    sum_square_x = para_dict.get("sum_square_x")
-    sum_square_y = para_dict.get("sum_square_y")
-    segment_sum = para_dict.get("segment_sum")
-    segment_count = para_dict.get("segment_count")
-    kmean_total_sum = para_dict.get("kmean_total_sum")
+    for key in ("x", "y", "sum_square_x", "sum_square_y",
+                "segment_sum", "segment_count", "kmean_total_sum"):
+        if key not in para_dict:
+            error_manager_cube.raise_err_message_cube("k_means_centroids",
+                                                      "Lost key %s of para_dict." % key)
+        if isinstance(para_dict[key], dict) and ("dtype" not in para_dict[key]):
+            error_manager_cube.raise_err_message_cube("k_means_centroids", "Key error, lost dtype.")
 
+    sum_square_x = para_dict.get("sum_square_x")
     support_dtype = ("float32",)
-    input1_dtype = x.get("dtype")
-    input2_dtype = y.get("dtype")
-    input4_dtype = sum_square_y.get("dtype")
-    output1_dtype = segment_sum.get("dtype")
-    output2_dtype = segment_count.get("dtype")
-    output3_dtype = kmean_total_sum.get("dtype")
+    input1_dtype = para_dict["x"]["dtype"]
+    input2_dtype = para_dict["y"]["dtype"]
+    input4_dtype = para_dict["sum_square_y"]["dtype"]
+    output1_dtype = para_dict["segment_sum"]["dtype"]
+    output2_dtype = para_dict["segment_count"]["dtype"]
+    output3_dtype = para_dict["kmean_total_sum"]["dtype"]
 
     if sum_square_x:
         input3_dtype = sum_square_x.get("dtype")
