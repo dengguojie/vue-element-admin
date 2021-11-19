@@ -221,6 +221,9 @@ def check_supported(input_x, perm, output_y, kernel_name="dynamic_transpose"):
             if tbe_context.get_context().get_build_type() == "fuzzily_build":
                 return True, ""
 
+    if tbe_platform.api_check_support("tik.vcopy"):
+        return True, ""
+
     return False, ""
 
 

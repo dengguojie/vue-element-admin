@@ -75,6 +75,9 @@ def check_supported(x, target, weight, y, total_weight, reduction="mean", ignore
     -------
     (is_supported, description)
     """
+    if tbe_platform.api_check_support("tik.vgatherb"):
+        return True, ""
+
     x_shape = x.get("ori_shape")
 
     if util_common.is_unknown([x, target, weight]):

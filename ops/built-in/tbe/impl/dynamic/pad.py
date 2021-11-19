@@ -160,6 +160,7 @@ class PadInit(OpBase):
         self.ub_number = self.ub_size_bytes // self.inner_bytes_size
         # default copy data number in one time
         self.copy_num = 6400
+        self.tiling_two_max_output_size = None
 
         self.pad_scalar = self.tik_instance.Scalar(init_value=0, dtype=self.inner_dtype)
         # tiling scaler init
@@ -658,7 +659,9 @@ class PadInit(OpBase):
         do_pad_with_vnchw_for_last_two_dim when tiling key = 2
         """
         max_line_in_ub = 16
-        max_output_size = 480 * 2
+        # 512:预留大小; 8:内部申请8块内存; 16:max_line_in_ub; 16:16对齐; 2:fp16占用2个字节
+        max_output_size = min(((self.ub_number - 512) // 8 // 16 // 16) * 16, 480*2)
+        self.tiling_two_max_output_size = max_output_size
         second_dim_input_num = self.tiling_input_shape[-2]
         third_dim_input_num = self.tiling_input_shape[-1]
         third_dim_output_num = self.tiling_output_shape[-1]
@@ -903,7 +906,8 @@ class PadInit(OpBase):
         do_pad_with_vnchw_for_last_three_dim when tiling key = 3
         """
         max_line_in_ub = 16
-        max_output_size = 480 * 2
+        max_output_size = min(((self.ub_number - 512) // 8 // 16 // 16) * 16, 480*2)
+        self.tiling_two_max_output_size = max_output_size
         first_dim_input_num = self.tiling_input_shape[-3]
         second_dim_input_num = self.tiling_input_shape[-2]
         third_dim_input_num = self.tiling_input_shape[-1]
@@ -1132,7 +1136,12 @@ class PadInit(OpBase):
         # input_dtype is fp16/int16 dtype_rate == 1
         # input_dtype is fp32/int32 dtype_rate == 2
         dtype_rate = self.input_bytes_size // self.inner_bytes_size
-        wr_compile_info = {"ub_size": self.ub_number, "core_num": self.core_nums, "dtype_rate": dtype_rate}
+        wr_compile_info = {
+            "ub_size": self.ub_number,
+            "core_num": self.core_nums,
+            "dtype_rate": dtype_rate,
+            "tiling_two_max_output_size": self.tiling_two_max_output_size
+        }
 
         # for StridedSliceGrad add attr to compile info
         if outer_compile_info is not None:

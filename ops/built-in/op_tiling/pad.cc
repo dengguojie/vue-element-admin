@@ -44,6 +44,9 @@ const int64_t SHAPE_C0 = 16;
 
 const int64_t MAX_SHAPE_LEN = 8;
 
+const int64_t COMPILE_INFO_SIZE_4 = 4;
+
+const int64_t COMPILE_INFO_SIZE_9 = 9;
 // define a map format with N(D)CHW dim idx vector
 const map<Format, vector<int32_t>>& FORMAT_FOR_NCHW_IDX = {
     {FORMAT_NCHW, {0, 1, 2, 3}},     {FORMAT_NHWC, {0, 3, 1, 2}},     {FORMAT_HWCN, {3, 2, 0, 1}},
@@ -78,6 +81,7 @@ struct PadCompileParams {
   uint64_t ellipsis_mask;
   uint64_t new_axis_mask;
   uint64_t shrink_axis_mask;
+  uint64_t tiling_two_max_output_size;
 };
 
 struct PadTilingParams {
@@ -139,23 +143,24 @@ void InitRunningParams(PadTilingParams& params) {
 }
 
 static bool GetPadCompileParams(const std::vector<int64_t>& compile_info, PadCompileParams& compile_params) {
-  OP_TILING_CHECK(compile_info.size() < 3,
-                  VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "the compile info num must >= 3, is %zu",
+  OP_TILING_CHECK(compile_info.size() < COMPILE_INFO_SIZE_4,
+                  VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "the compile info num must >= 4, is %zu",
                                                   compile_info.size()),
                   return false);
   compile_params.core_num = compile_info[0];
   compile_params.ub_size = compile_info[1];
   compile_params.dtype_rate = compile_info[2];
+  compile_params.tiling_two_max_output_size = compile_info[3];
   if (compile_params.op_type == OP_STRIDED_SLICE_GRAD) {
-    OP_TILING_CHECK(compile_info.size() != 8,
-                    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "the compile info num must == 8, is %zu",
+    OP_TILING_CHECK(compile_info.size() != COMPILE_INFO_SIZE_9,
+                    VECTOR_INNER_ERR_REPORT_TILIING(compile_params.op_type, "the compile info num must == 9, is %zu",
                                                     compile_info.size()),
                     return false);
-    compile_params.begin_mask = static_cast<std::uint64_t>(compile_info[3]);
-    compile_params.end_mask = static_cast<std::uint64_t>(compile_info[4]);
-    compile_params.ellipsis_mask = static_cast<std::uint64_t>(compile_info[5]);
-    compile_params.new_axis_mask = static_cast<std::uint64_t>(compile_info[6]);
-    compile_params.shrink_axis_mask = static_cast<std::uint64_t>(compile_info[7]);
+    compile_params.begin_mask = static_cast<std::uint64_t>(compile_info[4]);
+    compile_params.end_mask = static_cast<std::uint64_t>(compile_info[5]);
+    compile_params.ellipsis_mask = static_cast<std::uint64_t>(compile_info[6]);
+    compile_params.new_axis_mask = static_cast<std::uint64_t>(compile_info[7]);
+    compile_params.shrink_axis_mask = static_cast<std::uint64_t>(compile_info[8]);
   }
   return true;
 }
@@ -410,7 +415,8 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape, const std::v
 
   auto last_dim_output =
       tiling_params.tiling_input_dim_7 + tiling_params.tiling_pading_70 + tiling_params.tiling_pading_71;
-  if (last_dim_output < 960) {
+  OP_LOGD(compile_params.op_type, "tiling_two_max_output_size=%ld. ", compile_params.tiling_two_max_output_size);
+  if (last_dim_output < compile_params.tiling_two_max_output_size) {
     tiling_params.tiling_key = TILING_MODE_2;
     tiling_params.tiling_input_dim_cut_axis = 2;
     if (shape_len == 2 && (tiling_params.tiling_pading_60 + tiling_params.tiling_pading_61 == 0)) {
@@ -458,7 +464,7 @@ bool PadTiling(const std::string& op_type, const ge::Operator& op_paras, const s
     OP_TILING_CHECK(!CalcuPaddingForStridedSliceGrad(op_paras, compile_params, paddings_const_values, input_shape),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "calcu paddings const value failed."), return false);
   } else {
-    //the paddings input index is 1
+    // the paddings input index is 1
     OP_TILING_CHECK(!ops::GetConstIntData(op_paras, 1, paddings_const_values),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get paddings const value failed."), return false);
   }
@@ -519,11 +525,13 @@ bool PadTiling(const std::string& op_type, const ge::Operator& op_paras, const s
   return true;
 }
 
-static const std::vector<std::string> PAD_COMPILE_INFO_KEY = {"core_num", "ub_size", "dtype_rate"};
-REGISTER_OP_TILING_V3_WITH_VECTOR(Pad, PadTiling, PAD_COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
+static const std::vector<std::string> PAD_COMPILE_INFO_KEY = {"core_num", "ub_size", "dtype_rate",
+                                                              "tiling_two_max_output_size"};
+static const std::map<std::string, std::int64_t> OPTIONAL_VALUE = {{"tiling_two_max_output_size", 960}};
+REGISTER_OP_TILING_V3_WITH_VECTOR(Pad, PadTiling, PAD_COMPILE_INFO_KEY, OPTIONAL_VALUE);
 // register tiling interface of the StridedSliceGrad op.
-static const std::vector<std::string>& STRIDED_COMPILE_INFO_KEY = {"core_num",      "ub_size",         "dtype_rate",
-                                                                   "begin_mask",    "end_mask",        "ellipsis_mask",
-                                                                   "new_axis_mask", "shrink_axis_mask"};
-REGISTER_OP_TILING_V3_WITH_VECTOR(StridedSliceGrad, PadTiling, STRIDED_COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
+static const std::vector<std::string>& STRIDED_COMPILE_INFO_KEY = {
+    "core_num",      "ub_size",       "dtype_rate",      "tiling_two_max_output_size", "begin_mask", "end_mask",
+    "ellipsis_mask", "new_axis_mask", "shrink_axis_mask"};
+REGISTER_OP_TILING_V3_WITH_VECTOR(StridedSliceGrad, PadTiling, STRIDED_COMPILE_INFO_KEY, OPTIONAL_VALUE);
 }  // namespace optiling
