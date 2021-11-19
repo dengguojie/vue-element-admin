@@ -388,7 +388,7 @@ def _transpose_variable_shape(inputs: list):
     shape_out = []
     for i, x in enumerate(shape_x):
         if x == -1:
-            _var = operation.var_inner("_dim_" + str(i), range_x[i])
+            _var = operation.var_inner(f"_dim_{i}", range_x[i])
             shape_out.append(_var)
         else:
             shape_out.append(x)
