@@ -25,7 +25,6 @@ matmul_ND_case_succ = [
     ((256,284), (16, 16), (256, 284), "float16", "float16", "ND", True, False, False, "dynamic_matmul_ND_succcase3"),
 ]
 
-
 matmul_case_error = [
     # dtype error
     ((1, 4), (1, 2), (2, 4), "float32", "float16", "NZ", False, False, False, "dynamic_matmul_errorcase0", "dtype"),
@@ -43,7 +42,6 @@ matmul_case_error = [
     ((-1, 4), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, "dynamic_matmul_errorcase8", "range_error"),
     ((1, -1), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, "dynamic_matmul_errorcase9", "range_error"),
     ((5, 1), (1, 2), (2, 4), "float16", "float16", "NZ", False, False, False, "dynamic_matmul_errorcase10", "range_error"),
-
 ]
 
 

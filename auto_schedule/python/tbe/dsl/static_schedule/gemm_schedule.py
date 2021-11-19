@@ -29,6 +29,11 @@ from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.base.operation import in_dynamic
 from . import gemm_schedule_util as util
 
+def _get_value(shape_object):
+    """
+    get the value of shape_object when having attr "value"
+    """
+    return shape_object.value if hasattr(shape_object, "value") else shape_object
 
 def print_ir_matmul(process, sch):
     """
@@ -119,17 +124,16 @@ class GEMM_Schedule:
         tiling = get_tiling(info_dict)
         return tiling, fuse_num
 
-
     def _get_al1_bound(self, tiling, tensor_map):
         """
         cal the l1 bound of al1
         """
-        m_parts = util.int_ceil_div(tensor_map["a_l0a"].shape[-4].value, tiling["CL0_matrix"][1])
+        m_parts = util.int_ceil_div(_get_value(tensor_map["a_l0a"].shape[-4]), tiling["CL0_matrix"][1])
         if tiling["AL1_shape"]:
             k_bound = tiling["AL1_shape"][0]
             al1_parts = util.int_ceil_div(m_parts, tiling["AL1_shape"][1])
         else:
-            k_bound = tensor_map["a_l0a"].shape[-3].value * tensor_map["a_l0a"].shape[-1].value
+            k_bound = _get_value(tensor_map["a_l0a"].shape[-3]) * _get_value(tensor_map["a_l0a"].shape[-1])
             al1_parts = m_parts
         m_factors = util.int_ceil_div(al1_parts, tiling["block_dim"][2])
         m_bound = m_factors * tiling["CL0_matrix"][1] * tiling["CL0_matrix"][2]
@@ -140,12 +144,12 @@ class GEMM_Schedule:
         """
         cal the l1 bound of bl1
         """
-        n_parts = util.int_ceil_div(tensor_map["b_l0b"].shape[-3].value, tiling["CL0_matrix"][0])
+        n_parts = util.int_ceil_div(_get_value(tensor_map["b_l0b"].shape[-3]), tiling["CL0_matrix"][0])
         if tiling["BL1_shape"]:
             k_bound = tiling["BL1_shape"][0]
             bl1_parts = util.int_ceil_div(n_parts, tiling["BL1_shape"][1])
         else:
-            k_bound = tensor_map["b_l0b"].shape[-4].value * tensor_map["b_l0b"].shape[-1].value
+            k_bound = _get_value(tensor_map["b_l0b"].shape[-4]) * _get_value(tensor_map["b_l0b"].shape[-1])
             bl1_parts = n_parts
         n_factors = util.int_ceil_div(bl1_parts, tiling["block_dim"][1])
         n_bound = n_factors * tiling["CL0_matrix"][0] * tiling["CL0_matrix"][3]

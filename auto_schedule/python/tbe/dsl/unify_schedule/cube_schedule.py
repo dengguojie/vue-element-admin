@@ -19,6 +19,7 @@ cube schedule
 """
 
 from tbe import tvm
+from tbe.common.platform import intrinsic_check_support
 from tbe.dsl.base.operation import register_schedule
 from tbe.dsl.static_schedule.conv_schedule import CceConvOp
 from tbe.dsl.static_schedule.conv2d_backprop_filter_schedule import \
@@ -27,11 +28,12 @@ from tbe.dsl.static_schedule.conv2d_backprop_input_schedule import \
     CceConv2dBackpropInputOp
 from tbe.dsl.static_schedule.conv3d_backprop_filter_schedule import \
     CceConv3dBackpropFilterOp
-from tbe.dsl.static_schedule.gemm_integrated_schedule import gemm_schedule
-
+from tbe.dsl.static_schedule.gemm_schedule import gemm_schedule as gemm_schedule1
+from tbe.dsl.static_schedule.gemm_integrated_schedule import gemm_schedule as gemm_schedule2  
 from .constants import Pattern
 
 
+gemm_schedule = gemm_schedule2
 @register_schedule(pattern=Pattern.CONV3D_BACKPROP_FILTER)
 def schedule(outs, tiling_case):
     """
@@ -125,6 +127,9 @@ class ConvSchedule:
         return self._schedule
 
     def do_mat_mul_schedule(self):
+        if intrinsic_check_support("Intrinsic_fix_pipe_l0c2out"):
+            global gemm_schedule
+            gemm_schedule = gemm_schedule1
         gemm_schedule(self._outs[0], [self._schedule],
                       {"tiling_strategy": self._tiling_strategy,
                        "m_k_n_shape": self._m_k_n_shape,

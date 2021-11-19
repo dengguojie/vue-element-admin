@@ -25,12 +25,15 @@ import itertools
 from functools import reduce
 from itertools import product
 
+from tbe.common.platform import intrinsic_check_support
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.context import op_context
 from tbe.common import platform as tbe_platform
 from tbe.common.utils.errormgr import error_manager_cube
-from tbe.dsl.compute.gemm_integrated_compute import GEMMComputeParam
+
+from tbe.dsl.compute.mmad_compute import MatMulComputeParam as GEMMComputeParam1
+from tbe.dsl.compute.gemm_integrated_compute import GEMMComputeParam as GEMMComputeParam2
 from tbe.dsl.base.operation import add_compile_info
 from tbe.dsl.base.operation import get_te_var
 from tbe.dsl.base.operation import register_tiling_case
@@ -42,6 +45,7 @@ from .cube_tilingcase import TilingUtils as utils
 from .constants import Pattern
 
 
+GEMMComputeParam = GEMMComputeParam2
 K_LEN = 2
 M_LEN = 2
 N_LEN = 2
@@ -466,6 +470,9 @@ def calc_matmul(outs, option=None):
     -------
     list of dict, each dict for a tiling case
     """
+    if intrinsic_check_support("Intrinsic_fix_pipe_l0c2out"):
+        global GEMMComputeParam
+        GEMMComputeParam = GEMMComputeParam1
 
     mode = GEMMComputeParam.dynamic_mode
     # The variables is named x_ori in ND format, otherwise named x
@@ -531,6 +538,8 @@ class MatmulTiling(CubeTilingOp):
         self.use_cache_tiling = True if (
             self.format_a != "ND" and self.format_b != "ND" and not self.bias_flag and self.none_range_area) else False
 
+        if intrinsic_check_support("Intrinsic_data_move_l0c2out"):
+            self.use_cache_tiling = False
         self._get_calc_info()
         self.key = ("A_shape", "B_shape")
         self.op_type = "matmul"

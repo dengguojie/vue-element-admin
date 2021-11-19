@@ -24,6 +24,7 @@ from tbe import tvm
 from tbe.common import platform as tbe_platform
 from tbe.common.platform import platform_info as tbe_platform_info
 from tbe.common.utils.errormgr import error_manager_util
+from tbe.dsl.base.operation import in_dynamic
 
 BATCH_MATMUL_LEN_ND = 3
 BATCH_MATMUL_LEN_NZ = 5
@@ -416,7 +417,7 @@ def get_aicore_factor(tiling, tensor_map):
     # get l0c
     l0a_dtype = tensor_map["a_l0a"].dtype
     block_reduce = tbe_platform.CUBE_MKN.get(l0a_dtype).get("mac")[1]
-    m_dim, k_dim = shape_to_list(tensor_map["a_l0a"].shape)[-4:-2]
+    m_dim = shape_to_list(tensor_map["a_l0a"].shape)[-4]
     n_dim = shape_to_list(tensor_map["b_l0b"].shape)[-3]
 
     l0c_tiling_factor = tiling["CL0_matrix"][0:2]
@@ -442,19 +443,19 @@ def get_aicore_factor(tiling, tensor_map):
     # patrs for GM to AL1, AL1_shape = [(batch), n/16, k/16, 16, 16]
     if tiling["AL1_shape"]:
         al1_parts = [
-            int_ceil_div(k_dim, tiling["AL1_shape"][0] // block_reduce),
+            tiling["AL1_shape"][0] // block_reduce // tiling["AL0_matrix"][1],
             int_ceil_div(l0c_parts[1], tiling["AL1_shape"][1])
         ]
     else:
-        al1_parts = [1, 1]
+        al1_parts = [None, 1]
 
     if tiling["BL1_shape"]:
         bl1_parts = [
-            int_ceil_div(k_dim, tiling["BL1_shape"][0] // block_reduce),
+            tiling["BL1_shape"][0] // block_reduce // tiling["AL0_matrix"][1],
             int_ceil_div(l0c_parts[0], tiling["BL1_shape"][1])
         ]
     else:
-        bl1_parts = [1, 1]
+        bl1_parts = [None, 1]
 
     return l0c_tiling_factor, l0c_ub_parts, al1_parts, bl1_parts
 
@@ -563,20 +564,29 @@ def split_k(c_l0c, sch, l0c_k_factor, l1a_k_part, l1b_k_part):
     :param l0c_k_factor: the k factor in mmad cal
     :param l1a_k_part: the k parts from L1A to L0c
     :param l1b_k_part: the k parts from L1B to L0c
-    :return: None
+    :return: [al1_k, bl1_k, l0k]
     """
     k_out, k_inner = sch[c_l0c].op.reduce_axis
     l0c_axis = sch[c_l0c].op.axis
     k_outer_outer, k_outer_inner = sch[c_l0c].split(k_out, l0c_k_factor)
     sch[c_l0c].reorder(k_outer_outer, *l0c_axis, k_outer_inner, k_inner)
 
-    l1_parts_max = max(l1a_k_part, l1b_k_part)
-    l1_parts_min = min(l1a_k_part, l1b_k_part)
-    k_outer_outer_outer, k_outer_outer_inner = sch[c_l0c].split(k_outer_outer, nparts=l1_parts_max)
-    k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[c_l0c].split(k_outer_outer_outer, nparts=l1_parts_min)
-    if l1a_k_part > l1b_k_part:
-        return [k_outer_outer_outer_inner, k_outer_outer_outer_outer, k_outer_outer_inner]
-    return [k_outer_outer_outer_outer, k_outer_outer_outer_inner, k_outer_outer_inner]
+    if l1a_k_part is not None and l1b_k_part is not None:
+        l1_parts_inner = min(l1a_k_part, l1b_k_part)
+        l1_parts_outer = max(l1a_k_part, l1b_k_part) // l1_parts_inner
+        k_outer_outer_outer, k_outer_outer_inner = sch[c_l0c].split(k_outer_outer, l1_parts_inner)
+        k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[c_l0c].split(k_outer_outer_outer, l1_parts_outer)
+    elif l1a_k_part is None and l1b_k_part is None:
+        k_outer_outer_outer, k_outer_outer_inner = sch[c_l0c].split(k_outer_outer, nparts=1)
+        k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[c_l0c].split(k_outer_outer_outer, nparts=1)
+    else:
+        l1_parts_inner = l1a_k_part if l1a_k_part is not None else l1b_k_part
+        k_outer_outer_outer, k_outer_outer_inner = sch[c_l0c].split(k_outer_outer, l1_parts_inner)
+        k_outer_outer_outer_outer, k_outer_outer_outer_inner = sch[c_l0c].split(k_outer_outer_outer, nparts=1)
+
+    if l1a_k_part is None or (l1b_k_part is not None and l1a_k_part > l1b_k_part):
+        return [k_outer_outer_outer_outer, k_outer_outer_outer_inner, k_outer_outer_inner]
+    return [k_outer_outer_outer_inner, k_outer_outer_outer_outer, k_outer_outer_inner]
 
 
 def reorder_l1_mn_axis(sch, tiling, al1_m_parts, bl1_n_parts):
@@ -588,7 +598,13 @@ def reorder_l1_mn_axis(sch, tiling, al1_m_parts, bl1_n_parts):
     :param bl1_parts: tilling parts for bl1
     :return: None
     """
-    reorder_flag = False
+    if in_dynamic():
+        if tiling["AL1_shape"] == []:
+            return True
+        if tiling["BL1_shape"] != [] and tiling["AL1_shape"][1] > tiling["BL1_shape"][1]:
+            return True
+        return False
+
     if al1_m_parts != 1 and bl1_n_parts != 1:
         l0a_size = reduce(lambda x, y: x * y, tiling["AL0_matrix"])
         l0b_size = reduce(lambda x, y: x * y, tiling["BL0_matrix"])
@@ -617,7 +633,7 @@ def attach_of_bias_table(sch, tensor_map, bl1_parts, c_slice_axis, fully_load_ax
     if tensor_map.get("bias_l1") is not None:
         bias_l1 = tensor_map["bias_l1"]
         bias_bt = tensor_map["bias_bt"]
-        sch[bias_bt].compute_at(sch[tensor_map["c_gm"]], c_slice_axis)        
+        sch[bias_bt].compute_at(sch[tensor_map["c_gm"]], c_slice_axis)
         if bl1_parts[1] == 1:
             sch[bias_l1].compute_at(sch[tensor_map["c_gm"]], fully_load_axis)
         else:
@@ -676,11 +692,11 @@ def attach_of_l1(sch, tensor_map, l1_attch_axis, al1_parts, bl1_parts):
     """
     a_l1 = tensor_map["a_l1"]
     b_l1 = tensor_map["b_l1"]
-    if al1_parts[0] == 1:
+    if al1_parts[0] is None:
         sch[a_l1].compute_at(sch[tensor_map["c_gm"]], l1_attch_axis[2])
     else:
         sch[a_l1].compute_at(sch[tensor_map["c_l0c"]], l1_attch_axis[0])
-    if bl1_parts[0] == 1:
+    if bl1_parts[0] is None:
         sch[b_l1].compute_at(sch[tensor_map["c_gm"]], l1_attch_axis[3])
     else:
         sch[b_l1].compute_at(sch[tensor_map["c_l0c"]], l1_attch_axis[1])

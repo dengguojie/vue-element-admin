@@ -96,7 +96,8 @@ CONV3D_COMPUTE = {
 }
 
 MAT_MUL_COMPUTE = {
-    "matmul"
+    "matmul",
+    "gemm"
 }
 
 CONV3D_BP_INPUT_COMPUTE = {

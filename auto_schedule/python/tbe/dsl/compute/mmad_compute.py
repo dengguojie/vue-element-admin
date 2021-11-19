@@ -31,6 +31,7 @@ from tbe.common.testing.dsl_source_info import source_info_decorator
 from tbe.common.utils import broadcast_shapes
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.common.utils.errormgr import error_manager_cube
+from tbe.dsl.base.operation import in_dynamic
 from tbe.dsl.compute import cube_util
 from tbe.dsl.compute import util as compute_util
 import topi
@@ -3776,6 +3777,11 @@ def _get_core_num_tiling(m_shape,  # pylint: disable=too-many-locals
 
     return m_factor, n_factor
 
+def _get_value(shape_object):
+    """
+    get the value of shape_object when having attr "value"
+    """
+    return shape_object.value if hasattr(shape_object, "value") else shape_object
 
 @tbe_utils.para_check.check_input_type(tvm.tensor.Tensor, tvm.tensor.Tensor, bool, bool, str,
                              str, float, float, str, (type(None), tvm.tensor.Tensor),
@@ -3957,6 +3963,24 @@ def _matmul_cv_split(tensor_a,
 
     return res
 
+class MatMulComputeParam:
+    """
+    be used by gemm_tilingcase
+    """
+    tiling_info_dict = {}
+    dynamic_mode = None
+    batch_a = False
+    batch_b = False
+    format_a = "Fractal_NZ"
+    format_b = "Fractal_NZ"
+    m_var_name = None
+    k_var_name = None
+    n_var_name = None
+    block_in = tbe_platform.BLOCK_IN
+    block_out = tbe_platform.BLOCK_OUT
+    block_reduce = tbe_platform.BLOCK_REDUCE
+    def __init__(self) -> None:
+        pass
 
 class MatMulCompute:
     """
@@ -4043,12 +4067,99 @@ class MatMulCompute:
         Return None
         """
         # set l1 shape
-        self._check_attrs()
+        if not in_dynamic():
+            self._check_attrs()
         self._get_l1_shape()
         # C = A * B
+        
+        tensor_a_length = len(self.tensor_a.shape)
+        tensor_b_length = len(self.tensor_b.shape)
+
+        MatMulComputeParam.batch_a = (tensor_a_length == 5)
+        MatMulComputeParam.batch_b = (tensor_b_length == 5)
+
         a_matrix = self._get_a_matrix()
         b_matrix = self._get_b_matrix()
         self.c_matrix = self._compute_c_matrix(a_matrix, b_matrix)
+        self._set_dynamic_param(a_matrix, b_matrix)
+
+    def _set_dynamic_param(self, a_matrix, b_matrix):
+        """
+        set MatmulComputeParam to support for tilingcase
+        """
+
+
+        if in_dynamic():
+            if MatMulComputeParam.batch_a:
+                MatMulComputeParam.dynamic_mode = "dynamic_mknb"
+            else:
+                MatMulComputeParam.dynamic_mode = "dynamic_mkn"
+
+        MatMulComputeParam.m_var_name = "m"
+        MatMulComputeParam.n_var_name = "n"
+        MatMulComputeParam.k_var_name = "k"
+        MatMulComputeParam.tiling_info_dict = {
+            "A_shape": self._get_a_shape_in_nc1hwc0(a_matrix),
+            "B_shape": self._get_b_shape_in_nc1hwc0(b_matrix),
+            "C_shape": None,
+            "A_dtype": self.tensor_a.dtype,
+            "B_dtype": self.tensor_b.dtype,
+            "C_dtype": self.c_matrix.dtype,
+            "mad_dtype": self.matrix_type,
+            "padl": 0,
+            "padr": 0,
+            "padu": 0,
+            "padd": 0,
+            "strideH": 1,
+            "strideW": 1,
+            "strideH_expand": 1,
+            "strideW_expand": 1,
+            "dilationH": self._get_trans_flag(not self.trans_a, not self.trans_b),
+            "dilationW": 1,
+            "group": 1,
+            "fused_double_operand_num": 0,
+            "bias_flag": (self.tensor_bias is not None),
+            "op_tag": "matmul",
+            "op_type": "matmul",
+            "kernel_name": self.kernel_name,
+            "dynamic_shape_flag": True,
+            "trans_a": not self.trans_a,
+            "trans_b": not self.trans_b
+        }
+
+    def _get_trans_flag(self, transpose_a, transpose_b):
+        """
+        get trans flag inorder to get tiling
+        """
+        trans_flag = 1
+        if transpose_a:
+            if transpose_b:
+                trans_flag = 4
+            else:
+                trans_flag = 2
+        elif transpose_b:
+            trans_flag = 3
+        return trans_flag
+
+    def _get_a_shape_in_nc1hwc0(self, tensor_a_l0a):
+        """
+        get a shape's format nc1hwc0 inorder to get tiling
+        """
+        if MatMulComputeParam.batch_a:
+            return [tensor_a_l0a.shape[0], tensor_a_l0a.shape[2], tensor_a_l0a.shape[1], 16, 16]
+        else:
+            return [1, tensor_a_l0a.shape[1], tensor_a_l0a.shape[0], 16, 16]
+
+    def _get_b_shape_in_nc1hwc0(self, tensor_b_l0b):
+        """
+        get b shape's format nc1hwc0 inorder to get tiling
+        """
+        if MatMulComputeParam.batch_b:
+            return [tensor_b_l0b.shape[1] * 16, tensor_b_l0b.shape[2], 1, 1, 16]
+        else:
+            return [tensor_b_l0b.shape[0] * 16, tensor_b_l0b.shape[1], 1, 1, 16]
+
+
 
     def _get_a_matrix_fp32(self, temp_tensor_a):
         """get a_matrix for float32 input
@@ -4113,7 +4224,7 @@ class MatMulCompute:
                               self._ceil_div(self.km_shape, block_reduce_multiple_in),
                               self.block_in,
                               self.block_reduce]
-            if self.batch_shape_a:
+            if MatMulComputeParam.batch_a:
                 a_matrix_shape.insert(0, self.batch_shape_a)
             a_matrix = tvm.compute(
                 a_matrix_shape, lambda *indices:
@@ -4128,7 +4239,7 @@ class MatMulCompute:
             a_matrix = self._get_a_matrix_fp32(self.tensor_a)
         else:
             a_matrix_shape = [self.m_shape, self.km_shape, self.block_in, self.block_reduce]
-            if self.batch_shape_a:
+            if MatMulComputeParam.batch_a:
                 a_matrix_shape.insert(0, self.batch_shape_a)
             if self.trans_a:
                 a_matrix = tvm.compute(
@@ -4213,7 +4324,7 @@ class MatMulCompute:
                                       self.n_shape * block_reduce_multiple_out,
                                       self.block_out,
                                       self.block_reduce]
-                    if self.batch_shape_b:
+                    if MatMulComputeParam.batch_b:
                         b_matrix_shape.insert(0, self.batch_shape_b)
                     b_matrix = tvm.compute(
                         b_matrix_shape,
@@ -4227,7 +4338,7 @@ class MatMulCompute:
                                       attrs={"transpose_b":"true"})
                 else:
                     b_matrix_shape = [self.kn_shape, self.n_shape, self.block_out, self.block_reduce]
-                    if self.batch_shape_b:
+                    if MatMulComputeParam.batch_b:
                         b_matrix_shape.insert(0, self.batch_shape_b)
                     b_matrix = tvm.compute(
                         b_matrix_shape,
@@ -4263,7 +4374,7 @@ class MatMulCompute:
         output_shape = [self._ceil_div(self.origin_n_shape, self.block_out),
                         self._ceil_div(self.origin_m_shape, self.block_in),
                         self.block_in, self.block_out]
-        if self.batch_shape_a:
+        if MatMulComputeParam.batch_a:
             l0c_shape.insert(0, self.batch_shape_a)
             ori_shape.insert(0, self.batch_shape_a)
             output_shape.insert(0, self.batch_shape_a)
@@ -4274,7 +4385,7 @@ class MatMulCompute:
                     tvm.all(reduce_kb.var * self.block_reduce + reduce_kp.var < self.origin_reduce_axis),
                     (a_matrix_in(*indices[:-4], indices[-3], reduce_kb, indices[-2], reduce_kp) *
                      (b_matrix_in(*indices[:-4], reduce_kb, indices[-4], indices[-1], reduce_kp)
-                     if self.batch_shape_b else b_matrix_in(reduce_kb, indices[-4], indices[-1], reduce_kp))
+                     if MatMulComputeParam.batch_b else b_matrix_in(reduce_kb, indices[-4], indices[-1], reduce_kp))
                      ).astype(self.matrix_type)),
                     axis=[reduce_kb, reduce_kp]),
                 name="tensor_c_matrix",
@@ -4288,7 +4399,7 @@ class MatMulCompute:
                     tvm.all(reduce_kb.var * self.block_reduce + reduce_kp.var < self.origin_reduce_axis), 
                     (a_matrix_in(*indices[:-4], indices[-3], reduce_kb, indices[-2], reduce_kp) *
                      (b_matrix_in(*indices[:-4], reduce_kb, indices[-4], indices[-1], reduce_kp)
-                     if self.batch_shape_b else b_matrix_in(reduce_kb, indices[-4], indices[-1], reduce_kp))
+                     if MatMulComputeParam.batch_b else b_matrix_in(reduce_kb, indices[-4], indices[-1], reduce_kp))
                      ).astype(self.matrix_type) +
                     self.tensor_bias[indices[-4]*self.block_out + indices[-1]]),
                     axis=[reduce_kb, reduce_kp]),
@@ -4336,31 +4447,38 @@ class MatMulCompute:
         # matrix A
         self.batch_shape_a = None
         if len(self.tensor_a.shape) == BATCH_MATMUL_LENGTH:
-            self.batch_shape_a = self.tensor_a.shape[0].value
+            self.batch_shape_a = _get_value(self.tensor_a.shape[0])
         self.batch_shape_b = None
         if len(self.tensor_b.shape) == BATCH_MATMUL_LENGTH:
-            self.batch_shape_b = self.tensor_b.shape[0].value
+            self.batch_shape_b = _get_value(self.tensor_b.shape[0])
 
         # matrix A
         if self.format_a == "FRACTAL_NZ":
             # trans [(batch), K, M, 16, 16/32], not trans [(batch), M, K, 16, 16/32]
-            self.m_shape = self.tensor_a.shape[-3].value if self.trans_a else self.tensor_a.shape[-4].value
-            self.km_shape = self.tensor_a.shape[-4].value if self.trans_a else self.tensor_a.shape[-3].value
-            origin_shape = self.tensor_a.op.attrs["ori_shape"]
-            self.origin_m_shape = origin_shape[-2] if self.trans_a else origin_shape[-1]
-            self.origin_reduce_axis = origin_shape[-1] if self.trans_a else origin_shape[-2]
+            self.m_shape = _get_value(self.tensor_a.shape[-3]) if self.trans_a else _get_value(self.tensor_a.shape[-4])
+            self.km_shape = _get_value(self.tensor_a.shape[-4]) if self.trans_a else _get_value(self.tensor_a.shape[-3])
+            if in_dynamic():
+                self.origin_m_shape = self.m_shape * _get_value(self.tensor_a.shape[-2])
+                self.origin_reduce_axis = self.km_shape * _get_value(self.tensor_a.shape[-1])
+            else:
+                origin_shape = self.tensor_a.op.attrs["ori_shape"]
+                self.origin_m_shape = origin_shape[-2] if self.trans_a else origin_shape[-1]
+                self.origin_reduce_axis = origin_shape[-1] if self.trans_a else origin_shape[-2]
         else:
             error_manager_cube.raise_err_specific("MatMul", "tensor_a only supported NZ format")
 
         # matrix B
         if self.format_b in ("FRACTAL_NZ", "FRACTAL_Z"):
             # trans [(batch), N, K, 16, 16/32], not trans [(batch), K, N, 16, 16/32]
-            self.kn_shape = self.tensor_b.shape[-3].value if self.trans_b else self.tensor_b.shape[-4].value
-            self.n_shape = self.tensor_b.shape[-4].value if self.trans_b else self.tensor_b.shape[-3].value
-            origin_shape = self.tensor_b.op.attrs["ori_shape"]
-            if self.format_b == "FRACTAL_NZ":
-                self.origin_n_shape = origin_shape[-1] if self.trans_b else origin_shape[-2]
+            self.kn_shape = _get_value(self.tensor_b.shape[-3]) if self.trans_b else _get_value(self.tensor_b.shape[-4])
+            self.n_shape = _get_value(self.tensor_b.shape[-4]) if self.trans_b else _get_value(self.tensor_b.shape[-3])
+            if in_dynamic():
+                self.origin_n_shape = self.n_shape * _get_value(self.tensor_b.shape[-2])
             else:
-                self.origin_n_shape = origin_shape[-2] if self.trans_b else origin_shape[-1]
+                origin_shape = self.tensor_b.op.attrs["ori_shape"]
+                if self.format_b == "FRACTAL_NZ":
+                    self.origin_n_shape = origin_shape[-1] if self.trans_b else origin_shape[-2]
+                else:
+                    self.origin_n_shape = origin_shape[-2] if self.trans_b else origin_shape[-1]
         else:
             error_manager_cube.raise_err_specific("MatMul", "tensor_b only supported NZ and Z format")

@@ -414,7 +414,6 @@ def test_mock_cases(test_args):
 ut_case.add_cust_test_func(test_func=test_mock_cases)
 
 
-
 def test_matmul_api(test_arg):
     import tbe.dsl as tbe
     shape_a = [1, 1, 16, 16]

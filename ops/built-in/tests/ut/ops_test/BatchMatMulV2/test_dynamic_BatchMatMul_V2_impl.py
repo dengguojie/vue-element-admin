@@ -1,12 +1,31 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+import tbe
 from sys import flags
 from op_test_frame.ut import OpUT
 from math import ceil
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
+from te.platform.cce_conf import te_set_version
 from impl.dynamic.batch_matmul_v2 import get_op_support_info
 CUBE_BLOCK = 16
 ut_case = OpUT("BatchMatMulV2", "impl.dynamic.batch_matmul_v2", "batch_matmul_v2")
+
+vals = {("CORE_NUM", ): 48,
+        ("CUBE_VECTOR_SPLIT",): True,
+        ("UB_SIZE", ): 196608,
+        ("L0A_SIZE", ): 65536,
+        ("L0B_SIZE", ): 65536,
+        ("L1_SIZE", ): 196608,
+        ("L0C_SIZE", ): 131072,
+        ("Compiler_arch",): "dav-c220-cube",
+        ("AICORE_TYPE",):"AiCore",
+        ("Intrinsic_fix_pipe_l0c2out",):True,
+        ("SOC_VERSION",): "Ascend920A"
+        }
+def side_effects(*args):
+    return vals[args]
 
 
 # batch_range, m_range, k_range, n_range, src_dtype, dst_dtype, format, trans_a, trans_b, bias_flag, batchb_flag, case_name
@@ -26,7 +45,13 @@ matmul_case = [
     (((1, 2), ), (63, 66), (1, 2), (4, 7), "float16", "float16", "NZ", False, False, False, True, "dynamic_matmul_v2_errorcase7"),
     (((32, 2048), ), (1, 8), (1, 12), (1, 12), "float16", "float16", "NZ", False, False, False, True, "dynamic_matmul_v2_success1")
 ]
-
+# batch_range, m_range, k_range, n_range, src_dtype, dst_dtype, format, trans_a, trans_b, bias_flag, batchb_flag, case_name
+matmul_case_920 = [
+    (((1, 1), ), (4, 4), (4, 4), (4, 4), "float16", "float16", "NZ", False, False, False, True, "dynamic_matmul_v2_case1"),
+    (((32, 2048), ), (1, 8), (1, 12), (1, 12), "float16", "float16", "NZ", False, True, False, True, "dynamic_matmul_v2_case2"),
+    (((2, 8), ), (8, 16), (8, 15), (4, 8), "float16", "float16", "NZ", True, False, False, False, "dynamic_matmul_v2_case3"),
+    (((3, 9), ), (1, 4), (1, 2), (1, 12), "float16", "float16", "NZ", True, True, False, True, "dynamic_matmul_v2_case4")
+]
 
 def gen_batch_matmul_dynamic(batch_range, m_range, k_range, n_range, src_dtype, dst_dtype,
                              format, trans_a, trans_b, bias_flag, batchb_flag, case_name, error_mode=None):
@@ -117,6 +142,25 @@ def test_op_check_supported_empty_range(test_arg):
     input_x1_dynamic = {"ori_shape": (-1, -1, -1), "shape": (-1, -1, -1, 16, 16), "range": ((1,3), (2,3), (3,5)), "dtype": 'float16'}
     input_x2_dynamic = {"ori_shape": (2, 16, 16), "shape": (2, 1, 1, 16, 16), "range": (), "dtype": 'float16'}
     check_supported(input_x1_dynamic, input_x2_dynamic)
+
+def test_dynamic_batchmamtul_920_mock(test_args):
+    for case in matmul_case_920:
+        result = gen_batch_matmul_dynamic(*case)
+        input_x1, input_x2, bias, _, output_z, trans_a, trans_b = result["params"]
+        from impl.dynamic.batch_matmul_v2 import batch_matmul_compute
+        from te.tvm.target import cce
+        with tbe.common.context.op_context.OpContext("dynamic"):
+            from impl.util.platform_adapter import tbe as tbe1
+            with tbe1.compute():
+                res = batch_matmul_compute(input_x1, input_x2, bias, None, output_z,
+                      trans_a, trans_b, 0, "matmul")
+            from impl.util.platform_adapter import tvm
+            with tvm.target.cce():
+                tbe1.auto_schedule(res.get("op_res"))
+
+with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
+    with patch("tbe.common.platform.platform_info.intrinsic_check_support", MagicMock(side_effect=side_effects)):
+        ut_case.add_cust_test_func(test_func=test_dynamic_batchmamtul_920_mock)
 
 for case in matmul_case:
     ut_case.add_case("Ascend910A", gen_batch_matmul_dynamic(*case))
