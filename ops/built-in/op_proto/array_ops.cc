@@ -42,6 +42,7 @@ const char* const kAttrAxis = "attr axis";
 const char* const kAttrNumAxes = "attr num_axes";
 const char* const kPreOpInputShapeRange = "_pre_op_in_range";
 const int64_t kMaxDimNum = 8;
+const size_t kAxesSize = 2UL;
 
 IMPLEMT_INFERFUNC(MatrixBandPart, MatrixBandPartInfer) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
@@ -2048,6 +2049,138 @@ IMPL_INFER_VALUE_RANGE_FUNC(Shape, ShapeValueRangeInferFunc){
 
 INFER_VALUE_RANGE_CUSTOM_FUNC_REG(Shape, INPUT_IS_DYNAMIC, ShapeValueRangeInferFunc);
 
+static graphStatus CheckAxes(const std::vector<vector<int64_t>> &axes, const Operator &op,
+                             const OpDescPtr &op_desc) {
+  AscendString name;
+  (void)op.GetName(name);
+  AscendString type;
+  (void)op.GetOpType(type);
+  // check axes not empty
+  if (axes.empty()) {
+    GeInfershapeErrReport(name.GetString(), type.GetString(), "attr axes", "axes is empty");
+    GE_OP_LOGE(name.GetString(), "Attr [axes] is empty");
+    return GRAPH_FAILED;
+  }
+  // check axes valid
+  for (auto axis : axes) {
+    if (axis.size() != kAxesSize) {
+      std::string reason = "axis size is " + std::to_string(axis.size()) + ", where 2 is requested";
+      GeInfershapeErrReport(name.GetString(), type.GetString(), "attr axes", reason);
+      GE_OP_LOGE(name.GetString(), "Attr [axes] value is invalid.");
+      return GRAPH_FAILED;
+    }
+
+    if (axis[0] >= static_cast<int64_t>(op.GetInputsSize()) ||
+        axis[1] >= static_cast<int64_t>(op_desc->MutableInputDesc(axis[0])->MutableShape().GetDimNum())) {
+      std::string reason =
+      "axes[" + std::to_string(axis[0]) + "," + std::to_string(axis[1]) + "] is not invalid";
+      GeInfershapeErrReport(name.GetString(), type.GetString(), "attr axes", reason);
+      GE_OP_LOGE(name.GetString(), "Attr [axes] value is invalid.");
+      return GRAPH_FAILED;
+    }
+  }
+  return GRAPH_SUCCESS;
+}
+
+static graphStatus GetValidInputs(const Operator &op, std::vector<std::vector<int64_t>> &axes) {
+  AscendString name;
+  (void)op.GetName(name);
+  // get axes
+  if (op.GetAttr("axes", axes) != GRAPH_SUCCESS) {
+    OpsGetAttrErrReport(name.GetString(), "axes");
+    GE_OP_LOGE(name.GetString(), "Get attr [axes] failed.");
+    return GRAPH_FAILED;
+  }
+  // check input not empty
+  if (op.GetInputsSize() == 0) {
+    OpsMissInputErrReport(name.GetString(),"input");
+    GE_OP_LOGE(name.GetString(), "Input is empty");
+    return GRAPH_FAILED;
+  }
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_INFERFUNC(GatherShapes, GatherShapesInfer) {
+  AscendString name;
+  (void)op.GetName(name);
+  GE_OP_LOGD(name.GetString(), "Enter gathershapes infershape");
+  std::vector<std::vector<int64_t>> axes;
+  if (GetValidInputs(op, axes) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  bool hasUnknownRank = false;
+  // check dims
+  for (size_t i = 0; i < op.GetInputsSize(); i++) {
+    auto input_dims = op_desc->MutableInputDesc(i)->MutableShape().GetDims();
+    if (input_dims == UNKNOWN_RANK) {
+      hasUnknownRank = true;
+      break;
+    }
+  }
+  // do some check when input does not have unknown rank
+  if (!hasUnknownRank) {
+    auto ret = CheckAxes(axes, op, op_desc);
+    if (ret != GRAPH_SUCCESS) {
+      return ret;
+    }
+  }
+  std::vector<int64_t> output_shape{static_cast<int64_t>(axes.size())};
+  auto shape_desc = op_desc->MutableOutputDesc("shape");
+  shape_desc->SetShape(ge::GeShape(output_shape));
+  shape_desc->SetOriginShape(ge::GeShape(output_shape));
+  uint32_t out_type = DT_INT32;
+  (void)op.GetAttr("dtype", out_type);
+  shape_desc->SetDataType((DataType)out_type);
+  GE_OP_LOGD(name.GetString(), "End gathershapes infershape");
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(GatherShapes, GatherShapesInfer);
+
+static graphStatus GatherShapesValueRangeInfer(const Operator &op) {
+ std::vector<std::vector<int64_t>> axes;
+  if (GetValidInputs(op, axes) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  // check dims
+  for (size_t i = 0; i < op.GetInputsSize(); i++) {
+    auto input_dims = op_desc->MutableInputDesc(i)->MutableShape().GetDims();
+    if (input_dims == UNKNOWN_RANK) {
+      return GRAPH_FAILED;
+    }
+  }
+  if (CheckAxes(axes, op, op_desc) != GRAPH_SUCCESS) {
+    return GRAPH_FAILED;
+  }
+  std::vector<std::pair<int64_t, int64_t>> out_value_range;
+  for (auto axis : axes) {
+    std::vector<std::pair<int64_t, int64_t>> in_shape_range;
+    op_desc->MutableInputDesc(axis[0])->GetShapeRange(in_shape_range);
+    if (in_shape_range.empty()) {
+      AscendString name;
+      (void)op.GetName(name);
+      GE_OP_LOGW(name.GetString(), "Input shape range is empty");
+      continue;
+    }
+    auto &ele_value_range = in_shape_range[axis[1]];
+    // -1 in value range is valid, which needs to be converted to INT64_MAX
+    if (ele_value_range.second == -1) {
+      ele_value_range.second = INT64_MAX;
+    }
+    out_value_range.emplace_back(ele_value_range);
+  }
+  auto shape_desc = op_desc->MutableOutputDesc("shape");
+  shape_desc->SetValueRange(out_value_range);
+  return GRAPH_SUCCESS;
+}
+
+IMPL_INFER_VALUE_RANGE_FUNC(GatherShapes, GatherShapesValueRangeInferFunc){
+  return GatherShapesValueRangeInfer(op);
+}
+
+INFER_VALUE_RANGE_CUSTOM_FUNC_REG(GatherShapes, INPUT_IS_DYNAMIC, GatherShapesValueRangeInferFunc);
 
 IMPLEMT_INFERFUNC(ShapeN, ShapeNInfer) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);

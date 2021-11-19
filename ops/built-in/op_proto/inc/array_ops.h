@@ -1015,6 +1015,25 @@ REG_OP(Shape)
     .OP_END_FACTORY_REG(Shape)
 
 /**
+*@brief Gather selected dims of input which returns the shape of tensor shape after gathershapes.\n
+
+*@par Inputs:
+*x: A list of input tensors. It's a dynamic input. \n
+
+*@par Attributes:
+*axes: Select some dims of input. \n
+
+*@par Outputs:
+*shape: The shape of tensor shape after gathershapes. \n
+*/
+REG_OP(GatherShapes)
+    .DYNAMIC_INPUT(x, TensorType::ALL())
+    .OUTPUT(shape, TensorType({DT_INT32, DT_INT64}))
+    .REQUIRED_ATTR(axes, ListListInt)
+    .ATTR(dtype, Int, DT_INT32)
+    .OP_END_FACTORY_REG(GatherShapes)
+
+/**
 *@brief Returns shape of tensors. \n
 
 *@par Inputs:

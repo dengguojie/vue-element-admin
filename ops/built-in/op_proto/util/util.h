@@ -211,6 +211,8 @@ bool GetConstValue(const ge::Operator& op, const std::string& key_name, bool& at
 
 bool GetConstValue(const ge::Operator& op, const std::string& key_name, std::vector<int32_t>& attr_value);
 
+bool IsSliceUnknownShape(const std::vector<int64_t> &dim_vec, const int64_t &begin, const int64_t &end);
+
 /**
  * Get int type const value from tensor data
  * @param [in] data const tensor data

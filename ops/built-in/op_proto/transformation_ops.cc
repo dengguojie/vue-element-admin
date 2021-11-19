@@ -2823,88 +2823,166 @@ IMPLEMT_COMMON_INFERFUNC(ConfusionTransposeDInferShape) {
 COMMON_INFER_FUNC_REG(ConfusionTransposeD, ConfusionTransposeDInferShape);
 
 // -----------------FlattenV2 Op-------------------------
-IMPLEMT_VERIFIER(FlattenV2, FlattenV2Verify) {
-  int64_t axis = 0;
-  int64_t endAxis = 0;
-  TensorDesc xDesc = op.GetInputDesc("x");
+static void GetAndConvertAxis(const Operator &op, int64_t &axis, int64_t &end_axis) {
   if (GRAPH_SUCCESS != op.GetAttr("axis", axis)) {
     axis = 1;
   }
-  if (GRAPH_SUCCESS != op.GetAttr("end_axis", endAxis)) {
-    endAxis = -1;
+  if (GRAPH_SUCCESS != op.GetAttr("end_axis", end_axis)) {
+    end_axis = -1;
   }
+  TensorDesc x_desc = op.GetInputDescByName("x");
+  int64_t real_dim_cnt = x_desc.GetRealDimCnt();
+  AscendString name;
+  (void)op.GetName(name);
+  OP_LOGD(name.GetString(), "real_dim_cnt is %lld", real_dim_cnt);
 
-  int64_t realDimCnt = xDesc.GetRealDimCnt();
-
+  // convert axis to positive
   if (axis < 0) {
-    axis += realDimCnt;
+    axis += real_dim_cnt;
   }
-  if (endAxis < 0) {
-    endAxis += realDimCnt;
+  if (end_axis < 0) {
+    end_axis += real_dim_cnt;
   }
+}
 
-  if (axis < 0 || axis >= realDimCnt) {
+IMPLEMT_VERIFIER(FlattenV2, FlattenV2Verify) {
+  TensorDesc x_desc = op.GetInputDescByName("x");
+  if (x_desc.GetShape().GetDims() == UNKNOWN_RANK) {
+    OP_LOGE("[ERROR] shape is unknown rank");
+    return GRAPH_FAILED;
+  }
+  int64_t axis = 0;
+  int64_t end_axis = 0;
+  GetAndConvertAxis(op, axis, end_axis);
+  int64_t real_dim_cnt = x_desc.GetRealDimCnt();
+  if (axis < 0 || axis >= real_dim_cnt) {
     OP_LOGE("[ERROR] axis out of range!");
     return GRAPH_FAILED;
   }
-  if (endAxis < 0 || endAxis >= realDimCnt) {
+  if (end_axis < 0 || end_axis >= real_dim_cnt) {
     OP_LOGE("[ERROR] end_axis out of range!");
     return GRAPH_FAILED;
   }
-  if (axis > endAxis) {
+  if (axis > end_axis) {
     OP_LOGE("[ERROR] axis after end_axis!");
     return GRAPH_FAILED;
   }
-
   return GRAPH_SUCCESS;
 }
 
-IMPLEMT_COMMON_INFERFUNC(FlattenV2InferShape) {
-  OP_LOGI(op.GetName().c_str(), "Enter FlattenV2 proto inferfunction!");
-  TensorDesc xDesc = op.GetInputDesc("x");
-  auto xShapeDim = xDesc.GetShape().GetDims();
-  auto xDtype = xDesc.GetDataType();
+static graphStatus InferDynamicShapeFlattenV2(Operator &op, const TensorDesc &x_desc,
+                                              std::vector<int64_t> &y_shape_dim) {
+  std::vector<std::pair<int64_t, int64_t>> x_shape_range;
+  if (x_desc.GetShapeRange(x_shape_range) != GRAPH_SUCCESS) {
+    OP_LOGE("[ERROR] get input shape range failed");
+    return GRAPH_FAILED;
+  }
+  std::vector<int64_t> x_shape_dim = x_desc.GetShape().GetDims();
+  if (x_shape_range.empty() && IsUnKnownShape(x_shape_dim)) {
+    OP_LOGE("[ERROR] shape range is empty with dynamic shape");
+    return GRAPH_FAILED;
+  }
 
+  std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   int64_t axis = 0;
-  int64_t endAxis = 0;
-  int64_t realDimCnt = xDesc.GetRealDimCnt();
-
-  if (GRAPH_SUCCESS != op.GetAttr("axis", axis)) {
-    axis = 1;
-  }
-  if (GRAPH_SUCCESS != op.GetAttr("end_axis", endAxis)) {
-    endAxis = -1;
-  }
-
-  if (axis < 0) {
-    axis += realDimCnt;
-  }
-  if (endAxis < 0) {
-    endAxis += realDimCnt;
-  }
-
-  std::vector<int64_t> yShapeDim;
-
+  int64_t end_axis = 0;
+  GetAndConvertAxis(op, axis, end_axis);
   for (int64_t i = 0; i < axis; i++) {
-    yShapeDim.push_back(xShapeDim[i]);
+    y_shape_dim.emplace_back(x_shape_dim[i]);
+    output_shape_range.emplace_back(x_shape_range[i]);
   }
 
-  int64_t dimVal = 1;
-  for (int64_t i = axis; i < endAxis + 1; i++) {
-    dimVal = dimVal * xShapeDim[i];
+  if (IsSliceUnknownShape(x_shape_dim, axis, end_axis)) {
+    int64_t lower_bound = 1;
+    int64_t upper_bound = 1;
+    std::vector<int64_t> upper_bound_lst;
+    for (int64_t i = axis; i < end_axis + 1; i++) {
+      lower_bound = lower_bound * x_shape_range[i].first;
+      upper_bound = upper_bound * x_shape_range[i].second;
+      upper_bound_lst.emplace_back(x_shape_range[i].second);
+    }
+    // when upper_bound is -1, it is real upper bound
+    if (IsUnKnownShape(upper_bound_lst)) {
+      output_shape_range.emplace_back(std::make_pair(lower_bound, -1));
+    } else {
+      output_shape_range.emplace_back(std::make_pair(lower_bound, upper_bound));
+    }
+    y_shape_dim.emplace_back(-1);
+  } else {
+    int64_t dim_val = 1;
+    for (int64_t i = axis; i < end_axis + 1; i++) {
+      dim_val = dim_val * x_shape_dim[i];
+    }
+    y_shape_dim.emplace_back(dim_val);
+    output_shape_range.emplace_back(std::make_pair(dim_val, dim_val));
   }
-  yShapeDim.push_back(dimVal);
+  auto real_dim_cnt = x_shape_dim.size();
+  for (int64_t i = end_axis + 1; i < static_cast<int64_t>(real_dim_cnt); i++) {
+    y_shape_dim.emplace_back(x_shape_dim[i]);
+    output_shape_range.emplace_back(x_shape_range[i]);
+  }
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto y_desc_ptr = op_desc->MutableOutputDesc(0);
+  y_desc_ptr->SetShapeRange(output_shape_range);
+  y_desc_ptr->SetOriginShapeRange(output_shape_range);
+  return GRAPH_SUCCESS;
+}
 
-  for (int64_t i = endAxis + 1; i < realDimCnt; i++) {
-    yShapeDim.push_back(xShapeDim[i]);
+static void InferConstShapeFlattenV2(const Operator &op, const TensorDesc &x_desc, std::vector<int64_t> &y_shape_dim) {
+  int64_t axis = 0;
+  int64_t end_axis = 0;
+  GetAndConvertAxis(op, axis, end_axis);
+  auto x_shape_dim = x_desc.GetShape().GetDims();
+  for (int64_t i = 0; i < axis; i++) {
+    y_shape_dim.emplace_back(x_shape_dim[i]);
   }
 
-  Shape yShape(yShapeDim);
-  TensorDesc yDesc = op.GetOutputDesc("y");
-  yDesc.SetShape(yShape);
-  yDesc.SetDataType(xDtype);
-  op.UpdateOutputDesc("y", yDesc);
+  int dim_val = 1;
+  for (int64_t i = axis; i < end_axis + 1; i++) {
+    dim_val = dim_val * x_shape_dim[i];
+  }
+  y_shape_dim.emplace_back(dim_val);
 
+  auto real_dim_cnt = x_shape_dim.size();
+  for (int64_t i = end_axis + 1; i < static_cast<int64_t>(real_dim_cnt); i++) {
+    y_shape_dim.emplace_back(x_shape_dim[i]);
+  }
+}
+
+IMPLEMT_COMMON_INFERFUNC(FlattenV2InferShape) {
+  AscendString name;
+  (void)op.GetName(name);
+  OP_LOGD(name.GetString(), "Enter FlattenV2 proto inferfunction!");
+  TensorDesc x_desc = op.GetInputDescByName("x");
+  std::vector<int64_t> x_shape_dim = x_desc.GetShape().GetDims();
+  if (x_shape_dim == UNKNOWN_RANK) {
+    op.UpdateOutputDesc("y", x_desc);
+    return GRAPH_SUCCESS;
+  }
+
+  bool IsDynamicShape = false;
+  if (IsUnKnownShape(x_shape_dim)) {
+    IsDynamicShape = true;
+  }
+
+  std::vector<int64_t> y_shape_dim;
+  if (IsDynamicShape) {
+    // dynamic shape infer
+    auto ret = InferDynamicShapeFlattenV2(op, x_desc, y_shape_dim);
+    if (ret != GRAPH_SUCCESS) {
+      return ret;
+    }
+  } else {
+    // const shape
+    InferConstShapeFlattenV2(op, x_desc, y_shape_dim);
+  }
+
+  auto x_dtype = x_desc.GetDataType();
+  Shape y_shape(y_shape_dim);
+  TensorDesc y_desc = op.GetOutputDescByName("y");
+  y_desc.SetShape(y_shape);
+  y_desc.SetDataType(x_dtype);
+  op.UpdateOutputDesc("y", y_desc);
   return GRAPH_SUCCESS;
 }
 

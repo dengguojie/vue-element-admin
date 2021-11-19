@@ -1737,6 +1737,16 @@ void ReshapeRangeInfer(const Operator &op, const std::vector<std::pair<int64_t, 
 }
 
 }
-
+bool IsSliceUnknownShape(const std::vector<int64_t> &dim_vec, const int64_t &begin, const int64_t &end) {
+  if (begin < 0 || end >= static_cast<int64_t>(dim_vec.size())) {
+    GE_OP_LOGE("FlattenV2", "index is out of range");
+    return false;
+  }
+  for (int64_t i = begin; i < end + 1; i++) {
+    if (dim_vec[i] == -1) {
+      return true;
+    }
+  }
+    return false;
+}
 }  // namespace ge
-
