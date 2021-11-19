@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
-# 'pylint: disable=too-many-lines
 """
 Copyright (C) 2020. Huawei Technologies Co., Ltd. All rights reserved.
 
@@ -16,7 +13,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 topk_v2
 """
-from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import para_check
 from impl.dynamic.top_k_d import top_k_d
 from impl.util.platform_adapter import register_operator
