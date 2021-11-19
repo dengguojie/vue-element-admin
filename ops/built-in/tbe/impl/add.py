@@ -400,6 +400,15 @@ def op_select_format(input_x, input_y, output_z, kernel_name="add"):
         format_list_input1 = format_list0
         format_list_output = format_list0
         unknownshape_format_list = ["ND"] * len(dtype_total)
+    elif x_flag["5d"] and len(shape_y) == 1 and x_cdim == shape_y[0]:
+        for dtype in dtype_list:
+            dtype_total = dtype_total + [dtype] * 1
+        format_list0 = ["NDC1HWC0"] * len(format_list) + format_nd * len_format_list
+        format_list1 = format_nd * len(format_list) + format_nd * len_format_list
+        format_list_input0 = format_list1
+        format_list_input1 = format_list0
+        format_list_output = format_list0
+        unknownshape_format_list = ["ND"] * len(dtype_total)
     # ND+ND,5HD+5HD
     else:
         format_list_input0 = format_list

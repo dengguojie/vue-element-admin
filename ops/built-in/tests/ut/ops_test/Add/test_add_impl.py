@@ -225,6 +225,13 @@ def test_op_select_format(test_arg):
                      {"shape": (1,), "dtype": "float32", "format": "NHWC", "ori_shape": (),
                       "ori_format": "NHWC", "sub_format" : 0},
                      "test_add_op_select_format_18")
+    op_select_format({"shape": (32, 2, 2, 16, 108), "dtype": "float16", "format": "NDHWC", "ori_shape": (32, 2, 2, 16, 108),
+                      "ori_format": "NDHWC", "sub_format" : 0},
+                     {"shape": (108,), "dtype": "float16", "format": "NDHWC", "ori_shape": (108,),
+                      "ori_format": "NDHWC", "sub_format" : 0},
+                     {"shape": (32, 2, 2, 16, 108), "dtype": "float16", "format": "NDHWC", "ori_shape": (32, 2, 2, 16, 108),
+                      "ori_format": "NDHWC", "sub_format" : 0},
+                     "test_add_op_select_format_19")
 
     def __test_util_commom():
         input_parm = ({"shape": (1,), "dtype": "float32", "format": "NHWC", "ori_shape": (1,), "ori_format": "NHWC", "sub_format" : 0},
