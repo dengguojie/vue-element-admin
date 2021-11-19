@@ -771,7 +771,8 @@ static graphStatus ConcatInferShapeCommon(Operator& op, const int64_t dy_input_s
     auto input_shape_dims = desc->MutableShape().GetDims();
     if (!JoinShapes(output_shape_dims, input_shape_dims, non_negative_axis)) {
       vector<vector<int64_t>> shapes = {output_shape_dims, input_shape_dims};
-      std::string err_msg = OtherErrMsg(ConcatString("the input shape dims should be equal except merge axis."));
+      std::string err_msg = OtherErrMsg(ConcatString("the input shape dims should be equal except merge axis,"
+                                                     "shapes:", ops::to_string(shapes), "axis:", std::to_string(axis)));
       VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
       return GRAPH_FAILED;
     }
