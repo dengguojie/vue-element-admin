@@ -392,3 +392,20 @@ TEST_F(strided_slice_v3, strided_slice_v3_infer_shape_range_net1) {
   EXPECT_EQ(output_shape, expected_output_shape);
   EXPECT_EQ(output_shape_range, expected_shape_range);
 }
+
+TEST_F(strided_slice_v3, strided_slice_v3_infer_shape_range_ends_max) {
+  std::vector<int64_t> output_shape;
+  std::vector<std::pair<int64_t,int64_t>> output_shape_range;
+  test_static<int64_t>({1, -1, 256} ,
+                {1},
+                {9223372036854775807},
+                {1},
+                {1},
+                {},
+                output_shape, output_shape_range);
+
+  std::vector<int64_t> expected_output_shape = {1, -1, 256};
+  std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1, 1}, {0, -1}, {256, 256}};
+  EXPECT_EQ(output_shape, expected_output_shape);
+  EXPECT_EQ(output_shape_range, expected_shape_range);
+}

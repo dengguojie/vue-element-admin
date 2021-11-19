@@ -4105,6 +4105,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
 
   //process end list and begin list accoring to the axes values start
   uint64_t axes_mask = 0;
+  uint64_t ends_mask = 0;
   if(axes_valid){
     // clamp x to [MIN_INT ~ MAX_INT]
     auto clamp = [=](int64_t x) {
@@ -4139,6 +4140,13 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
     }
     //assign the proceseed value back to slice params
     axes_mask = ~axes_mask;
+    ends_mask = axes_mask;
+    constexpr int64_t MAX_INT64 = ((uint64_t)(-1)) >> 1;
+    for (int i = 0; i < processed_end.size(); ++i) {
+      if (processed_end[i] == MAX_INT64 || processed_end[i] == MAX_INT) {
+        ends_mask = (1 << i) | ends_mask;
+      }
+    }
     slice_params.begin_list.assign(processed_begin.begin(),processed_begin.end());
     slice_params.end_list.assign(processed_end.begin(),processed_end.end());
     slice_params.stride_list.assign(processed_stride.begin(),processed_stride.end());
@@ -4150,7 +4158,6 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
   if (input_ranges.empty()) {
     MakeUpShapeRange(shape.GetDims(), input_ranges);
   }
-
   size_t dim_num = shape.GetDimNum();
 
   if (dim_num == 0) {
@@ -4182,7 +4189,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV2InferShape) {
       slice_params.stride_list,
       input_ranges,
       axes_mask,
-      axes_mask,
+      ends_mask,
       slice_masks.ellipsis_mask,
       slice_masks.new_axis_mask,
       slice_masks.shrink_axis_mask,
@@ -4696,6 +4703,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
 
   //process end list and begin list accoring to the axes values start
   uint64_t axes_mask = 0;
+  uint64_t ends_mask = 0;
   if(has_axes){
     //pre fill the values to the vector
     std::vector<int64_t> processed_begin(rank_num, 0);
@@ -4725,6 +4733,13 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
     }
     //assign the proceseed value back to slice params
     axes_mask = ~axes_mask;
+    ends_mask = axes_mask;
+    constexpr int64_t MAX_INT64 = ((uint64_t)(-1)) >> 1;
+    for (int i = 0; i < processed_end.size(); ++i) {
+      if (processed_end[i] == MAX_INT64) {
+        ends_mask = (1 << i) | ends_mask;
+      }
+    }
     slice_params.begin_list.assign(processed_begin.begin(),processed_begin.end());
     slice_params.end_list.assign(processed_end.begin(),processed_end.end());
     slice_params.stride_list.assign(processed_stride.begin(),processed_stride.end());
@@ -4764,7 +4779,7 @@ IMPLEMT_COMMON_INFERFUNC(StridedSliceV3InferShape) {
       slice_params.stride_list,
       input_ranges,
       axes_mask,
-      axes_mask,
+      ends_mask,
       slice_masks.ellipsis_mask,
       slice_masks.new_axis_mask,
       slice_masks.shrink_axis_mask,
