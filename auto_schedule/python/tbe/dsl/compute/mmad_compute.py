@@ -4278,7 +4278,9 @@ class MatMulCompute:
                      ).astype(self.matrix_type)),
                     axis=[reduce_kb, reduce_kp]),
                 name="tensor_c_matrix",
-                attrs={"impl_mode": self.impl_mode})
+                tag="gemm",
+                attrs={"kernel_name": self.kernel_name,
+                       "impl_mode": self.impl_mode})
         else:
             tensor_c_matrix = tvm.compute(
                 l0c_shape,
@@ -4291,7 +4293,9 @@ class MatMulCompute:
                     self.tensor_bias[indices[-4]*self.block_out + indices[-1]]),
                     axis=[reduce_kb, reduce_kp]),
                 name='tensor_c_matrix',
-                attrs={"impl_mode": self.impl_mode})
+                tag="gemm",
+                attrs={"kernel_name": self.kernel_name,
+                       "impl_mode": self.impl_mode})
         if self.dst_dtype == "float32" and self.src_dtype == "float32":
             output_shape[-4] = self._ceil_div(self.origin_n_shape, self.block_reduce)
             output_shape[-1] = self.block_reduce
@@ -4305,17 +4309,15 @@ class MatMulCompute:
                                                  self.block_out).astype(self.dst_dtype),
                 tag="gemm",
                 name="tensor_c_gm",
-                attrs={"kernel_name": self.kernel_name,
-                       "ori_shape": ori_shape,
+                attrs={"ori_shape": ori_shape,
                        "shape": output_shape})
         else:
             tensor_c_gm = tvm.compute(output_shape,
                                     lambda *indices: tensor_c_matrix(*indices).astype(self.dst_dtype),
                                     tag="gemm",
                                     name="tensor_c_gm",
-                                    attrs={"kernel_name": self.kernel_name,
-                                            "ori_shape": ori_shape,
-                                            "shape": output_shape})
+                                    attrs={"ori_shape": ori_shape,
+                                           "shape": output_shape})
 
         return tensor_c_gm
 

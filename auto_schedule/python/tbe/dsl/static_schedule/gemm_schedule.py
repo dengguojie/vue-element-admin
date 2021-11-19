@@ -206,7 +206,7 @@ class GEMM_Schedule:
         if in_dynamic():
             tiling = self.dynamic_para["tiling_strategy"]
         else:
-            kernel_name = tensor_map["matmul_c_gm"].op.attrs["kernel_name"]
+            kernel_name = tensor_map["c_l0c"].op.attrs["kernel_name"]
             tiling, fuse_num = self._get_tiling_matmul(kernel_name, tensor_map)
             tiling = util.check_tiling(tiling, fuse_num, tensor_map, handle_ub)
 
