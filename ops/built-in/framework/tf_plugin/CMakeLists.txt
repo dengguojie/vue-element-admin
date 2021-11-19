@@ -232,6 +232,8 @@ set(_tf_plugins
   lars_v2_plugin.cc
   layer_norm_grad_plugin.cc
   layer_norm_plugin.cc
+  fused_layer_norm_plugin.cc
+  fused_layer_norm_grad_plugin.cc
   instance_norm_plugin.cc
   instance_norm_grad_plugin.cc
   leaky_relu_grad_plugin.cc
