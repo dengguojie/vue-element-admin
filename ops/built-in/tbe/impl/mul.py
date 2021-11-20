@@ -555,6 +555,7 @@ def op_select_format(x, y, output, kernel_name="mul"):
 
     shape_x = shape_util.scalar2tensor_one(shape_x)
     shape_y = shape_util.scalar2tensor_one(shape_y)
+    reduce_x = functools.reduce(lambda x, y: x*y, shape_x)
     reduce_y = functools.reduce(lambda x, y: x*y, shape_y)
 
     format_4d_list = ["NCHW", "NHWC", "HWCN"]
@@ -632,7 +633,7 @@ def op_select_format(x, y, output, kernel_name="mul"):
                                (format_y in ("NCHW", "HWCN") and
                                 (y_cdim == shape_x[0] or y_cdim == 1 or shape_x[0] == 1 or shape_x[0] // 16 == 1)))) or \
                              (len(shape_y) == 1 and x_flag["4d"] and format_x == format_y and
-                              (format_x in ("NHWC",) or
+                              ((format_x in ("NHWC",) and reduce_x != 1) or
                                (format_x in ("NCHW", "HWCN") and
                                 (x_cdim == shape_y[0] or x_cdim == 1 or shape_y[0] == 1 or shape_y[0] // 16 == 1)))) or \
                              (x_flag["4d"] and y_flag["4d"] and x_cdim % 16 == 0 and y_cdim % 16 == 0 and ())
