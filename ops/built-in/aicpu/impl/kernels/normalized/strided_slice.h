@@ -74,8 +74,12 @@ class StridedSliceCpuKernel : public CpuKernel {
     KERNEL_CHECK_NULLPTR(y_tensor, KERNEL_STATUS_INNER_ERROR,
                         "[CalStridedSlice] check y_tensor is [nullptr].");
     T* x_data = static_cast<T *>(x_tensor->GetData());
-    KERNEL_CHECK_NULLPTR(x_data, KERNEL_STATUS_INNER_ERROR,
-                        "[CalStridedSlice] check x_data is [nullptr].");
+    if (x_data == nullptr){
+        KERNEL_LOG_WARN("where x_data is a nullptr");
+        y_tensor->SetData(nullptr);
+        y_tensor->SetTensorShape(nullptr);
+        return KERNEL_STATUS_OK;
+    }
     T* y_data = static_cast<T *>(y_tensor->GetData());
     KERNEL_CHECK_NULLPTR(y_data, KERNEL_STATUS_INNER_ERROR,
                         "[CalStridedSlice] check y_data is [nullptr].");
