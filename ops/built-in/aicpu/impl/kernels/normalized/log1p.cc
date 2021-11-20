@@ -105,6 +105,7 @@ uint32_t Log1pCpuKernel::Log1pCompute(CpuKernelContext &ctx) {
                             "[%llu] must be at least more than -1.", i);
         *(output_y + i) = Eigen::numext::log1p(*(input_x + i));
       }
+      return KERNEL_STATUS_OK;
     };
     KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(ctx, data_num, data_num / max_core_num, shard_log1p),
                                 "Log1p Compute failed.")
@@ -158,6 +159,7 @@ uint32_t Log1pCpuKernel::Log1pComputeComplex(CpuKernelContext &ctx) {
           *(output_y + i) = Eigen::numext::log1p(*(input_x + i));
         }
       }
+      return KERNEL_STATUS_OK;
     };
     KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(ctx, data_num, data_num / max_core_num, shard_log1p),
                                 "Log1p Compute failed.")
