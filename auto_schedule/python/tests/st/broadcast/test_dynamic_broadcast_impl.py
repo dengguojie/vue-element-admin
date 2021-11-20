@@ -80,7 +80,6 @@ case2 = {
         True
 }
 
-
 ut_case.add_case("all", case1)
 ut_case.add_case("all", case2)
 

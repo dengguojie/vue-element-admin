@@ -84,7 +84,6 @@ case2 = {
 ut_case.add_case("all", case1)
 ut_case.add_case("all", case2)
 
-
 def calc_expect_func(x, y, z):
     x_value = x.get("value")
     y_shape = y.get("run_shape")

@@ -154,8 +154,8 @@ ut_case.add_precision_case(
 
 ut_case.add_precision_case(
     "all", {
-        "params": [{"shape": (1, 448, 448, 3), "dtype": "uint8", "param_type": "input"},
-                   {"shape": (1, 448, 448, 3), "dtype": "float32", "param_type": "output"},
+        "params": [{"shape": (602112,), "dtype": "uint8", "param_type": "input"},
+                   {"shape": (602112,), "dtype": "float32", "param_type": "output"},
                    "float32",
                    False
                    ],

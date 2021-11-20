@@ -149,6 +149,9 @@ class BaseBroadcastSchedule:
 
         self._compute_at_map = {}
 
+        self._copy_out_tensors = set()
+        self._remove_out_tensors = set()
+
         self._need_do_block = False
         self._block_dims = 1
         self._block_split_axis = -1 if self._tiling_case.block_split_axis is None \
@@ -254,7 +257,16 @@ class BaseBroadcastSchedule:
                     broadcast_num += 1
             return broadcast_num
 
+        def _pre_handle_placeholder(tensors):
+            for out in tensors:
+                if util.is_placeholder(out):
+                    self._copy_out_tensors.add(_copy_node(out))
+                    self._remove_out_tensors.add(out)
+            self._out_tensors.update(self._copy_out_tensors)
+            self._out_tensors = self._out_tensors - self._remove_out_tensors
+
         self._out_tensors = set(self._outs)
+        _pre_handle_placeholder(self._out_tensors)
 
         visited_tensors = set()
         for out in self._out_tensors:
@@ -302,7 +314,7 @@ class BaseBroadcastSchedule:
                 self._middle_out_cache_read_buffer_map[tensor_i] = buffer_tensor
 
     def _calc_cache_write(self):
-        self._cache_write_tensors.update(self._out_tensors)
+        self._cache_write_tensors.update(self._out_tensors - self._copy_out_tensors)
 
     def _do_cache_write(self):
         for tensor_i in self._cache_write_tensors:
@@ -1072,4 +1084,10 @@ def _fake_node(tensors):
     with tvm.tag_scope(FAKE_NODE_TAG):
         res = tvm.compute(shape, _fake_compute, name="fake_node")
 
+    return res
+
+def _copy_node(tensor):
+    shape = tensor.shape
+    with tvm.tag_scope("dma_copy"):
+        res = tvm.compute(shape, lambda *i:tensor(*i), name ="copy_node")
     return res
