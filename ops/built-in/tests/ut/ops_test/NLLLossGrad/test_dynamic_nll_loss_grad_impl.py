@@ -4,6 +4,32 @@ from op_test_frame.ut import OpUT
 
 ut_case = OpUT("NLLLossGrad", "impl.dynamic.nll_loss_grad", "nll_loss_grad")
 
+def test_op_check_supported(test_arg):
+    from impl.dynamic.nll_loss_grad import check_supported
+    check_supported({"shape": (-1, -1), "dtype": "float32", "format": "ND", "ori_shape": (-1, -1), "ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
+                    {"shape": (-1,), "dtype": "int32", "format": "ND", "ori_shape": (-1,), "ori_format": "ND"},
+                    {"shape": (-1,), "dtype": "float32", "format": "ND", "ori_shape": (-1,), "ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
+                    {"shape": (2, 16), "dtype": "float32", "format": "ND", "ori_shape": (2, 16), "ori_format": "ND"},
+                    "sum", -100)
+
+    check_supported({"shape": (2, 16), "dtype": "float32", "format": "ND", "ori_shape": (2, 16), "ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
+                    {"shape": (2,), "dtype": "int32", "format": "ND", "ori_shape": (2,), "ori_format": "ND"},
+                    {"shape": (16,), "dtype": "float32", "format": "ND", "ori_shape": (16,), "ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
+                    {"shape": (2, 16), "dtype": "float32", "format": "ND", "ori_shape": (2, 16), "ori_format": "ND"},
+                    "sum", -100)
+
+    check_supported({"shape": (818497, 2), "dtype": "float32", "format": "ND", "ori_shape": (818497, 2), "ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
+                    {"shape": (818497,), "dtype": "int32", "format": "ND", "ori_shape": (818497,), "ori_format": "ND"},
+                    {"shape": (2,), "dtype": "float32", "format": "ND", "ori_shape": (2,), "ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
+                    {"shape": (818497, 2), "dtype": "float32", "format": "ND", "ori_shape": (818497, 2), "ori_format": "ND"},
+                    "sum", -100)
+
 
 def gen_nlllossgrad_case(dynamic_input_shape_list, ori_input_shape_list, dtype, dtype_target, src_format, reduction,
                          ignore_idx, case_name_val, expect):
@@ -107,5 +133,6 @@ ut_case.add_case(["Ascend910A"],
                                       [(2, 16), (2,), (2,), (16,), (1,)],
                                       "float32", "int32", "ND", "test", 3, "case_14", RuntimeError))
 
+ut_case.add_cust_test_func(test_func=test_op_check_supported)
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

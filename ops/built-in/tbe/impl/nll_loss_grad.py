@@ -34,6 +34,41 @@ ONE_KB = 1024
 NUM_SIXTYFOUR = MASK64
 
 
+# 'pylint: disable=unused-argument, invalid-name, too-many-arguments
+def check_supported(x, y_grad, target, weight, total_weight, x_grad, reduction="mean", ignore_index=-100,
+                    kernel_name="nll_loss_grad"):
+    """
+    check nllloss grad supported
+
+    Parameters
+    ----------
+    x : dict
+        shape and dtype of input, the length of shape should be two or one.
+    y_grad : dict
+        shape and dtype of input, the length of shape must be one.
+    target : dict
+        shape and dtype of input, the length of shape only support one.
+    total_weight : dict
+        shape and dtype of input, it is a scalar.
+    weight : dict or None
+        the length of shape only support one when weight is dict.
+    x_grad: dict
+        It's a tensor with shape(minibatch, ) when reduction == 'none' and
+        the input is 2D. Otherwise, the output is a scalar.
+    reduction: str
+        default value is "mean"
+    ignore_index: int
+        default value is -100
+    kernel_name : str
+        kernel name, default value is "nll_loss_grad"
+
+    Returns
+    -------
+    (is_supported, description)
+    """
+    return True, ""
+
+
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 # 'pylint: disable=too-many-arguments
 def _shape_and_dtype_check(x, y_grad, target, weight, total_weight, reduction,

@@ -17,6 +17,7 @@ nll_loss_grad
 """
 from impl.common_util import get_data_size
 from impl.constant_util import MASK64
+from impl.util import util_common
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
@@ -41,6 +42,69 @@ class Constant:
     MAX_INT64_VALUE = 2**64 - 1
     # used for tiling data
     TILING_CTRL_PARAM = ("int64", 128)
+
+
+# 'pylint: disable=unused-argument, invalid-name, too-many-arguments
+def check_supported(x, y_grad, target, weight, total_weight, x_grad, reduction="mean", ignore_index=-100,
+                    kernel_name="nll_loss_grad"):
+    """
+    check nllloss grad supported
+
+    Parameters
+    ----------
+    x : dict
+        shape and dtype of input, the length of shape should be two or one.
+    y_grad : dict
+        shape and dtype of input, the length of shape must be one.
+    target : dict
+        shape and dtype of input, the length of shape only support one.
+    total_weight : dict
+        shape and dtype of input, it is a scalar.
+    weight : dict or None
+        the length of shape only support one when weight is dict.
+    x_grad: dict
+        It's a tensor with shape(minibatch, ) when reduction == 'none' and
+        the input is 2D. Otherwise, the output is a scalar.
+    reduction: str
+        default value is "mean"
+    ignore_index: int
+        default value is -100
+    kernel_name : str
+        kernel name, default value is "nll_loss_grad"
+
+    Returns
+    -------
+    (is_supported, description)
+    """
+    x_shape = x.get("ori_shape")
+
+    if util_common.is_unknown([x, target, weight]):
+        return True, ""
+
+    if _dynamic_static_union(x_shape, reduction):
+        return True, ""
+
+    return False, ""
+
+
+def _dynamic_static_union(shape, reduction):
+    """
+    for dynamic and static union fully verified
+    """
+    white_list_dict = {
+        "none": [[818497, 2], [7353474, 2]],
+        "sum": [[818497, 2], [7353474, 2]],
+        "mean": [[818497, 2], [7353474, 2]]
+    }
+
+    if reduction not in white_list_dict:
+        return False
+
+    x_shape = list(shape)
+    if x_shape in white_list_dict[reduction]:
+        return True
+
+    return False
 
 
 # 'pylint: disable=unused-argument, invalid-name, too-many-arguments, too-many-locals

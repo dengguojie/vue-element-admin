@@ -110,6 +110,18 @@ ut_case.add_precision_case(["Ascend910A"], {
     "precision_standard": precision_info.PrecisionStandard(0.0001, 0.0001)
 })
 
+def test_op_check_supported(test_arg):
+    from impl.nll_loss_grad import check_supported
+    check_supported({"shape": (2, 16), "dtype": "float32", "format": "ND", "ori_shape": (2, 16), "ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
+                    {"shape": (2,), "dtype": "int32", "format": "ND", "ori_shape": (2,), "ori_format": "ND"},
+                    {"shape": (16,), "dtype": "float32", "format": "ND", "ori_shape": (16,), "ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
+                    {"shape": (2, 16), "dtype": "float32", "format": "ND", "ori_shape": (2, 16), "ori_format": "ND"},
+                    "sum", -100)
+
+ut_case.add_cust_test_func(test_func=test_op_check_supported)
+
 if __name__ == '__main__':
     ut_case.run(["Ascend910"], simulator_mode="pv",
                 simulator_lib_path="/home/z00511265/.mindstudio/huawei/adk/1.75.T13.0.B130/toolkit/tools/simulator")
