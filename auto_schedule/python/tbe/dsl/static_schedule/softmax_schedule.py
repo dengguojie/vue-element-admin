@@ -154,7 +154,8 @@ class SoftmaxSchedule(VectorSchedule):
                     break
 
             self._pattern = util.pattern_identify(self._cache_write_tensors)
-            if self._pattern in ("softmax_grad_fp32","confusion_softmax_grad_fp32_1980"):
+            if self._pattern in ("softmax_grad_fp32","confusion_softmax_grad_fp32_1980",\
+                                 "softmax_grad_ext_fp16_01"):
                 self._is_this_schedule_support = False
 
             if self._is_this_schedule_support:

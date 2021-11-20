@@ -592,6 +592,16 @@ softmax_grad_ext_fp32_1980 = ['elewise_binary_mul',
                               'elewise_binary_mul',
                               'broadcast_for_tensor']
 
+softmax_grad_ext_fp16_01 = ['elewise_binary_mul',
+                            'elewise_binary_mul',
+                            'broadcast_for_tensor',
+                            'elewise_binary_sub',
+                            'broadcast_for_tensor',
+                            'elewise_single_cast|not_auto_cast',
+                            'reduce_sum',
+                            'elewise_single_cast|not_auto_cast',
+                            'elewise_binary_mul']
+
 data = {"layernorm_fp16_1980": layernorm_fp16_1980,
         "layernorm_fp32_1980": layernorm_fp32_1980,
         "layernorm_V2_fp16_1980": layernorm_v2_fp16_1980,
@@ -619,6 +629,7 @@ data = {"layernorm_fp16_1980": layernorm_fp16_1980,
         "log_softmax_grad_fp32_1980": log_softmax_grad_fp32_1980,
         "softmax_grad_ext_fp16_1980": softmax_grad_ext_fp16_1980,
         "softmax_grad_ext_fp32_1980": softmax_grad_ext_fp32_1980,
+        "softmax_grad_ext_fp16_01": softmax_grad_ext_fp16_01,
         "layernorm_fp16_nz_non16": layernorm_fp16_nz_non16,
         "layernorm_fp32_nz_non16": layernorm_fp32_nz_non16, }
 
@@ -644,6 +655,7 @@ width = {"layernorm_fp16_nz_non16": 10,
          "softmax_fp16_nz_non16": 5.5,
          "softmax_fp32_nz_non16": 5.5,
          "softmax_grad_fp32": 5.5,
+         "softmax_grad_ext_fp16_01": 5.5,
          "confusion_softmax_grad_fp16_1980": 5.5,
          "confusion_softmax_grad_fp32_1980": 5.5,
          "log_softmax_fp16_1980": 5.5,
