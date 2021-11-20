@@ -673,14 +673,6 @@ def op_select_format(x, y, output, kernel_name="mul"):
         unknownshape_format_list = ["ND"] * len(dtype_total)
         param_list = _gen_para(dtype_total, format_list1, format_list0, format_list0,
                                             unknownshape_format_list, shape_x, shape_y)
-    elif x_flag["5d"] and len(shape_y) == 1 and x_cdim == shape_y[0]:
-        for dtype in dtype_list:
-            dtype_total = dtype_total + [dtype] * 1
-        format_list0 = ["NDC1HWC0"] * len(format_list) + format_nd * len_format_list
-        format_list1 = format_nd * len(format_list) + format_nd * len_format_list
-        unknownshape_format_list = ["ND"] * len(dtype_total)
-        param_list = _gen_para(dtype_total, format_list1, format_list0, format_list0,
-                               unknownshape_format_list, shape_x, shape_y)
     # ND+ND,5HD+5HD
     else:
 
