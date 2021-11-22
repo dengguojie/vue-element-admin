@@ -178,6 +178,7 @@ def lp_norm_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
 
 
 # 'pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-branches
 @register_operator("LpNorm")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL,

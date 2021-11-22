@@ -25,8 +25,8 @@ _CONST_INF = 2147483647
 _CONST_EPSILON_FP16 = 1e-7
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=unused-variable
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("lp_norm")
 def lp_norm_inf_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
     """
@@ -63,8 +63,8 @@ def lp_norm_inf_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
     return res
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=unused-variable
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=unused-variable
 def lp_norm0_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     """
     Compute norm for p = 0.
@@ -88,8 +88,8 @@ def lp_norm0_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     return res
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=unused-variable
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=unused-variable
 def lp_norm1_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     """
     Compute norm for p = 1.
@@ -111,8 +111,8 @@ def lp_norm1_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     return res
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=unused-variable
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=unused-variable
 def lp_norm2_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     """
     Compute norm for p = 2.
@@ -135,8 +135,8 @@ def lp_norm2_compute(abs_x, x_type, y, axes, keepdim, kernel_name):
     return res
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=unused-variable
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=unused-variable
 def lp_norm_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
     """
     Compute norm for p >= 3.
@@ -171,8 +171,8 @@ def lp_norm_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
     return exp_div_x
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=unused-variable
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=unused-variable
 def lp_norm(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12, kernel_name="lp_norm"):
     """
     Computes norm for p equals 0, 1, 2, -inf, inf, or other integers.

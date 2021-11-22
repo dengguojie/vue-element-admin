@@ -115,7 +115,7 @@ class AContainer(a_lib.ObjWithConst):
             return ((cur_num + align_unit - 1) // align_unit) * align_unit
         raise ValueError("not supported dtype:{}".format(dtype))
 
-    # pylint: disable=no-self-use
+    # 'pylint: disable=no-self-use
     def get_c0_num(self, dtype):
         """
         get c0

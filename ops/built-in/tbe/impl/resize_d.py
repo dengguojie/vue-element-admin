@@ -26,9 +26,10 @@ from te import platform as cce
 UB_SIZE = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
 
 
-class ResizeBicubic(object):
+class ResizeBicubic:
     """ResizeBicubic main functions
     """
+    # 'pylint: disable=too-many-arguments
     def __init__(self, x, sizes, scales, coordinate_transformation_mode, cubic_coeff_a, kernel_name="resize_d"):
         """init ResizeNearestNeighbor base parameters
         """
@@ -64,6 +65,8 @@ class ResizeBicubic(object):
         self.x_gm = self.tik_instance.Tensor(self.x_dtype, self.x_shape, name="x_gm", scope=tik.scope_gm)
         self.output_gm = self.tik_instance.Tensor(self.x_dtype, output_shape, name="output_gm", scope=tik.scope_gm)
 
+    # 'pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-statements
     def resize_bicubic_compute(self):
         """
         Bicubic main part.
@@ -174,7 +177,8 @@ class ResizeBicubic(object):
 
         return self.tik_instance
 
-    def check_param1(self, sizes, scales):
+    @staticmethod
+    def check_param1(sizes, scales):
         """
         check size of sizes and scales
 
@@ -191,7 +195,8 @@ class ResizeBicubic(object):
             raise RuntimeError("It is expected scales_size equals to 2, + \
                                 but got scales_size {}.".format(len(scales)))
 
-    def check_param2(self, in_size_h, in_size_w, out_size_h, out_size_w):
+    @staticmethod
+    def check_param2(in_size_h, in_size_w, out_size_h, out_size_w):
         """
         check in_size_h, in_size_w, out_size_h and out_size_w
 
@@ -302,6 +307,8 @@ class ResizeBicubic(object):
 
         return move_offset
 
+    # 'pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-statements
     def upsample_get_value_bounded(self, c, move_offset1, move_offset2, move_offset3, move_offset4):
         """
         Get the value of the point by move_offset.
@@ -368,7 +375,9 @@ class ResizeBicubic(object):
 
         return X_ub(x_ub1, x_ub2, x_ub3, x_ub4)
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-statements
     def cubic_interp1d(self, x_a, x_b, x_c, x_d, index_scalar, input_index, in_length, out_length, flag):
         """
         Interpolation algorithm main part.
@@ -389,7 +398,7 @@ class ResizeBicubic(object):
         coeffs3 = self.tik_instance.Scalar(dtype="float32")
         coeffs4 = self.tik_instance.Scalar(dtype="float32")
 
-        A = self.cubic_coeff_a
+        a = self.cubic_coeff_a
         temp_scalar = self.tik_instance.Scalar(dtype="int32", init_value=input_index)
         cast_input_index = self.tik_instance.Scalar(dtype="float32")
         self.tik_instance.scalar_conv('none', cast_input_index, temp_scalar)
@@ -424,13 +433,13 @@ class ResizeBicubic(object):
                     two_length.set_as(out_length * out_length)
                     three_length.set_as(out_length * out_length * out_length)
                     x1.set_as((index_scalar + 0.5) * in_length - (0.5 + input_index_scalar) * out_length)
-            coeffs1.set_as(((A * (x1 + one_length) - 5.0 * A * one_length) * (x1 + one_length) + 8.0 * A * two_length) *
-                           (x1 + one_length) - 4.0 * A * three_length)
-            coeffs2.set_as(((A + 2.0) * x1 - (A + 3.0) * one_length) * x1 * x1 + 1.0 * three_length)
+            coeffs1.set_as(((a * (x1 + one_length) - 5.0 * a * one_length) * (x1 + one_length) + 8.0 * a * two_length) *
+                           (x1 + one_length) - 4.0 * a * three_length)
+            coeffs2.set_as(((a + 2.0) * x1 - (a + 3.0) * one_length) * x1 * x1 + 1.0 * three_length)
             x2 = one_length - x1
-            coeffs3.set_as(((A + 2.0) * x2 - (A + 3.0) * one_length) * x2 * x2 + 1.0 * three_length)
-            coeffs4.set_as(((A * (x2 + one_length) - 5.0 * A * one_length) * (x2 + one_length) + 8.0 * A * two_length) *
-                           (x2 + one_length) - 4.0 * A * three_length)
+            coeffs3.set_as(((a + 2.0) * x2 - (a + 3.0) * one_length) * x2 * x2 + 1.0 * three_length)
+            coeffs4.set_as(((a * (x2 + one_length) - 5.0 * a * one_length) * (x2 + one_length) + 8.0 * a * two_length) *
+                           (x2 + one_length) - 4.0 * a * three_length)
         else:
             coeffs1.set_as(0.0)
             coeffs2.set_as(1.0)
@@ -550,10 +559,12 @@ class ResizeBicubic(object):
                 self.tik_instance.data_move(self.output_gm[out_max_offset], temp_ub, 0, 1, 1, 0, 0)
 
 
-class ResizeLinear(object):
+class ResizeLinear:
     """
     ResizeLinear main functions
     """
+    # 'pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-locals
     def __init__(self, x, sizes, scales, coordinate_transformation_mode="align_corners", kernel_name="resize_d"):
 
         self.tik_instance = tik.Tik()
@@ -626,11 +637,11 @@ class ResizeLinear(object):
                                                           name="res_lastdim_ub",
                                                           scope=tik.scope_ubuf)
                 with self.tik_instance.for_range(0, self.data_each_block) as j:
-                    currentIndex = i * self.data_each_block + j
-                    current_dim1 = currentIndex // self.size
+                    current_index = i * self.data_each_block + j
+                    current_dim1 = current_index // self.size
                     res_lastdim_ub[j].set_as(
                         self.get_number_in_global_memory(current_dim1 * self.dim2) if self.size ==
-                        1 else self.compute_helper(self.scale_w, currentIndex % self.size, current_dim1 * self.dim2))
+                        1 else self.compute_helper(self.scale_w, current_index % self.size, current_dim1 * self.dim2))
                 self.tik_instance.data_move(self.output_gm[i * self.data_each_block], res_lastdim_ub, 0, 1, 1, 0, 0)
 
             remainder = self.output_num % self.data_each_block
@@ -640,11 +651,11 @@ class ResizeLinear(object):
                                                           name="res_lastdim_ub",
                                                           scope=tik.scope_ubuf)
                 with self.tik_instance.for_range(0, self.data_each_block) as k:
-                    currentIndex = remainder_begin_index + k
-                    current_dim1 = currentIndex // self.size
+                    current_index = remainder_begin_index + k
+                    current_dim1 = current_index // self.size
                     res_lastdim_ub[k].set_as(
                         self.get_number_in_global_memory(current_dim1 * self.dim2) if self.size ==
-                        1 else self.compute_helper(self.scale_w, CurrentIndex % self.size, current_dim1 * self.dim2))
+                        1 else self.compute_helper(self.scale_w, current_index % self.size, current_dim1 * self.dim2))
                 self.tik_instance.data_move(self.output_gm[remainder_begin_index], res_lastdim_ub, 0, 1, 1, 0, 0)
 
         else:
@@ -740,36 +751,36 @@ class ResizeLinear(object):
 
         """
         # Cal real
-        real_W = self.tik_instance.Scalar("float32", name="real_W")
+        real_w = self.tik_instance.Scalar("float32", name="real_w")
         k = self.tik_instance.Scalar("float32", init_value=output_block_offset)
-        temp_W = self.tik_instance.Scalar("float32")
+        temp_w = self.tik_instance.Scalar("float32")
         with self.tik_instance.if_scope(self.coordinate_transformation_mode == "align_corners"):
-            temp_W.set_as(scale_w * k)
+            temp_w.set_as(scale_w * k)
         with self.tik_instance.else_scope():
             temp = self.tik_instance.Scalar(dtype="float32", init_value=scale_w * (k + 0.5) - 0.5)
             with self.tik_instance.if_scope(temp < 0):
-                temp_W.set_as(0.)
+                temp_w.set_as(0.)
             with self.tik_instance.else_scope():
-                temp_W.set_as(temp)
-        real_W.set_as(temp_W)
+                temp_w.set_as(temp)
+        real_w.set_as(temp_w)
 
-        # Cal Integer of real_W
-        coefficient_W = self.tik_instance.Scalar("int32", name="coefficient_W")
-        self.tik_instance.scalar_conv('floor', coefficient_W, real_W)
+        # Cal Integer of real_w
+        coefficient_w = self.tik_instance.Scalar("int32", name="coefficient_w")
+        self.tik_instance.scalar_conv('floor', coefficient_w, real_w)
 
-        # Cal Decimal of real_W
+        # Cal Decimal of real_w
         coefficient_lambda = self.tik_instance.Scalar("float32", name="coefficient_lambda")
-        coefficient_lambda.set_as(real_W - coefficient_W)
+        coefficient_lambda.set_as(real_w - coefficient_w)
 
-        # Cal 1.0 - Decimal of real_W
+        # Cal 1.0 - Decimal of real_w
         coefficient_lambda0 = self.tik_instance.Scalar("float32", name="coefficient_lambda0")
         coefficient_lambda0.set_as(1.0 - coefficient_lambda)
 
-        index = self.tik_instance.Scalar("int32", init_value=input_dim_offset + coefficient_W)
+        index = self.tik_instance.Scalar("int32", init_value=input_dim_offset + coefficient_w)
         temp2 = self.tik_instance.Scalar(self.x_dtype, init_value=self.get_number_in_global_memory(index))
 
         offset = self.tik_instance.Scalar(dtype="int32", init_value=1)
-        with self.tik_instance.if_scope(coefficient_W == (self.dim2 - 1)):
+        with self.tik_instance.if_scope(coefficient_w == (self.dim2 - 1)):
             offset.set_as(0)
 
         temp4 = self.tik_instance.Scalar(self.x_dtype, init_value=self.get_number_in_global_memory(offset + index))
@@ -779,7 +790,8 @@ class ResizeLinear(object):
 
         return res
 
-    def check_param1(self, dim_redundancy, in_size_w, out_size_w):
+    @staticmethod
+    def check_param1(dim_redundancy, in_size_w, out_size_w):
         """
         check  in_size_w, out_size_w:
         in_size_w and out_size_w should be greater than 0
@@ -821,11 +833,11 @@ class ResizeLinear(object):
         None
         """
         # check sizes
-        if len(sizes) is not 1:
+        if len(sizes) != 1:
             raise RuntimeError("It is expected len(sizes) equals to 1.")
 
         # check scales
-        if len(scales) is not 1 and scales is not None:
+        if len(scales) != 1 and scales is not None:
             raise RuntimeError("It is expected len(scales) equals to 1.")
 
         #check scales value
@@ -838,8 +850,8 @@ class ResizeLinear(object):
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_STR,
                             para_check.KERNEL_NAME)
-# pylint: disable=too-many-arguments
-# pylint: disable=W0613
+# 'pylint: disable=too-many-arguments
+# 'pylint: disable=W0613
 def resize_d(x,
              y,
              sizes,
@@ -894,14 +906,15 @@ def resize_d(x,
     -------
     None
     """
+    res = None
     x_dim = len(x.get("shape"))
     if mode == "cubic" and x_dim == 4:
         resize_bicubic_instance = ResizeBicubic(x, sizes, scales, coordinate_transformation_mode, cubic_coeff_a,
                                                 kernel_name)
-        return resize_bicubic_instance.resize_bicubic_compute()
+        res = resize_bicubic_instance.resize_bicubic_compute()
     elif mode == "linear" and x_dim == 4:
         resize_linear = ResizeLinear(x, sizes, scales, coordinate_transformation_mode, kernel_name)
-
-        return resize_linear.resize_linear_compute()
+        res = resize_linear.resize_linear_compute()
     else:
         raise RuntimeError("Not supported at the moment.")
+    return res

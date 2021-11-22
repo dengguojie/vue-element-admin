@@ -28,7 +28,11 @@ from impl.util.util_select_op_base import get_dynamic_param_in_json
 NONETYPE = type(None)
 
 
+# pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
 def check_param_range(param_name, min_value, max_value, real_value, op_name='ssd_detection_output'):
+    """
+    check_param_range
+    """
     error_manager_vector.raise_err_input_param_range_invalid("scale", param_name, str(min_value),
                                                              str(max_value), str(real_value))
 
@@ -52,13 +56,12 @@ def op_select_format(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True
     > x : Tensor of (shape=(2), "ND")
     > scale : Tensor of (shape=(2), "ND")
     """
-    shape_x_ori = x.get("ori_shape")
     shape_scale_ori = scale.get("ori_shape")
     shape_scale = scale.get("ori_shape")
+    shape_x_ori = x.get("ori_shape")
 
-    length_x_ori = len(shape_x_ori)
-    length_scale_ori = len(shape_scale_ori)
     length_scale = len(shape_scale)
+    length_x_ori = len(shape_x_ori)
 
     if (length_scale == 1 and shape_scale[0] == 1) or length_scale == 0:
         format_scale = "ND,ND,ND,ND"
@@ -157,12 +160,15 @@ def param_scale_check(shape_x, shape_scale):
         if length_x != length_scale:
             error_manager_vector.raise_err_specific_reson("scale", "the dims of input tensor x and tensor \
                                                           scale should be equal, but actually are \
-                                                          [{}] and [{}]".format(str(length_x), str(length_scale)))
+                                                          [{}] and [{}]"
+                                                          .format(str(length_x), str(length_scale)))
 
         for i in range(length_scale):
             if shape_scale[i] != shape_x[i] and shape_scale[i] != 1:
-                error_manager_vector.raise_err_specific_reson("scale", "the inputs[{}][{}}] could not be broadcast \
-                                                              together with shapes[{}][{}].".format("x", "scale",
+                error_manager_vector.raise_err_specific_reson("scale", "the inputs[{}][{}] could \
+                                                                       not be broadcast \
+                                                              together with shapes[{}][{}]."
+                                                              .format("x", "scale",
                                                               str(shape_x), str(shape_scale)))
 
 
@@ -246,10 +252,12 @@ def _check_scale_shape_axis(shape_x, shape_scale, axis, num_axes, scale_from_blo
     error_info = {}
 
     if (axis >= length_x) or (axis < (-length_x)):
-        error_manager_vector.raise_err_input_param_range_invalid("scale", "axis", str(-length_x), str(length_x - 1), str(axis))
+        error_manager_vector.raise_err_input_param_range_invalid("scale", "axis",
+                                                                 str(-length_x), str(length_x - 1), str(axis))
 
     if num_axes < -1:
-        error_manager_vector.raise_err_input_value_invalid("scale", "num_axes", "non-negative or -1", str(num_axes))
+        error_manager_vector.raise_err_input_value_invalid("scale", "num_axes",
+                                                           "non-negative or -1", str(num_axes))
 
     if axis < 0:
         axis_ = length_x + axis
@@ -261,11 +269,14 @@ def _check_scale_shape_axis(shape_x, shape_scale, axis, num_axes, scale_from_blo
         if num_axes == -1:
             scale_num = length_x - axis_
             if length_scale != scale_num:
-                    error_manager_vector.raise_err_specific_reson("scale", "length_scale[{}] and scale_num[{}] must be equal \
-                                                                  ".format(length_scale, scale_num))
+                error_manager_vector.raise_err_specific_reson("scale",
+                                                              "length_scale[{}] and \
+                                                               scale_num[{}] must be equal "
+                                                              .format(length_scale, scale_num))
             for i in range(scale_num):
                 if shape_x[axis_ + i] != shape_scale[i]:
-                    error_manager_vector.raise_err_inputs_shape_not_equal("scale", "shape_x", "shape_scale", str(shape_x[axis_ + i]),
+                    error_manager_vector.raise_err_inputs_shape_not_equal("scale", "shape_x", "shape_scale",
+                                                                          str(shape_x[axis_ + i]),
                                                                           str(shape_scale[i]), str(shape_scale[i]))
         if num_axes == 0:
             if length_scale != 1 or shape_scale[0] != 1:
@@ -273,13 +284,16 @@ def _check_scale_shape_axis(shape_x, shape_scale, axis, num_axes, scale_from_blo
         if num_axes > 0:
             num_axis = axis_ + num_axes
             if num_axis > length_x:
-                error_manager_vector.raise_err_specific_reson("scale", "scale shape extends x shape when applied")
+                error_manager_vector.raise_err_specific_reson("scale", "scale shape \
+                                                                       extends x shape when applied")
             if length_scale != num_axes:
-                error_manager_vector.raise_err_specific_reson("scale", "length_scale[{}] and num_axes[{}] must be equal \
-                                                              ".format(length_scale, num_axes))
+                error_manager_vector.raise_err_specific_reson("scale",
+                                                              "length_scale[{}] and num_axes[{}] must be equal"
+                                                              .format(length_scale, num_axes))
             for i in range(num_axes):
                 if shape_x[axis_ + i] != shape_scale[i]:
-                    error_manager_vector.raise_err_inputs_shape_not_equal("scale", "shape_x", "shape_scale", str(shape_x[axis_ + i]),
+                    error_manager_vector.raise_err_inputs_shape_not_equal("scale", "shape_x", "shape_scale",
+                                                                          str(shape_x[axis_ + i]),
                                                                           str(shape_scale[i]), str(shape_scale[i]))
 
     # from bottom
@@ -287,11 +301,14 @@ def _check_scale_shape_axis(shape_x, shape_scale, axis, num_axes, scale_from_blo
         if not(length_scale == 1 and shape_scale[0] == 1):
             scale_num = axis_ + length_scale
             if scale_num > length_x:
-                error_manager_vector.raise_err_specific_reson("scale", "scale shape extends x shape when applied")
+                error_manager_vector.raise_err_specific_reson("scale", "scale shape extends \
+                                                                       x shape when applied")
             for i in range(length_scale):
                 if shape_x[axis_ + i] != shape_scale[i]:
-                    error_manager_vector.raise_err_specific_reson("scale", "Dimensions shape_x[{}] and shape_scale[{}] must be equal \
-                                                                  ".format(shape_x[axis_ + i],  shape_scale[i]))
+                    error_manager_vector.raise_err_specific_reson("scale",
+                                                                  "Dimensions shape_x[{}] and \
+                                                                  shape_scale[{}] must be equal"
+                                                                  .format(shape_x[axis_ + i], shape_scale[i]))
 
 
 def get_scale_shape(shape_x, shape_scale, axis_, num_axes, scale_from_blob):
@@ -348,8 +365,9 @@ def get_fusion_params(x_tensor, scale_tensor, bias_tensor, y):
     Parameters
     ----------
     x_tensor : tensor of input data
+    scale_tensor: scale_tensor
+    bias_tensor: bias_tensor
     y : dict of output data
-    x_tensor_num: input tensor num
     Returns
     -------
     fusion_params
@@ -358,12 +376,12 @@ def get_fusion_params(x_tensor, scale_tensor, bias_tensor, y):
     is_l1_depth_fusion = False
 
     input_tensor = [x_tensor, scale_tensor, bias_tensor]
-    for x_tensor in input_tensor:
-        if x_tensor is not None:
+    for ele in input_tensor:
+        if ele is not None:
             l1_fusion_type = -1
             if fusion_manager.get_build_cfg() != "disable":
-                l1_fusion_type = x_tensor.op.attrs["L1_fusion_type"].value \
-                    if "L1_fusion_type" in x_tensor.op.attrs else -1
+                l1_fusion_type = ele.op.attrs["L1_fusion_type"].value \
+                    if "L1_fusion_type" in ele.op.attrs else -1
                 if l1_fusion_type == 1:
                     error_manager_vector.raise_err_specific_reson("scale",
                                         "Scale does not support l1 width fusion")

@@ -20,7 +20,7 @@ from impl.ascend import VecCmd
 from impl.ascend import VecExecutor
 
 
-# pylint: disable=useless-object-inheritance
+# 'pylint: disable=useless-object-inheritance
 class CommonMethod(object):
     """
     CommonMethod
@@ -34,8 +34,8 @@ class CommonMethod(object):
         self._pro_data_num = self._cont.const_proposal_data_num
         self._pro_repeat_num = self._cont.const_proposal_repeat_num
 
-    # pylint: disable=no-self-use
-    def ceil_div(self, dividend, divisor):
+    @staticmethod
+    def ceil_div(dividend, divisor):
         """
         ceil div
         """
@@ -92,8 +92,9 @@ class CommonMethod(object):
         last_loop_num = all_data_num - each_loop_num * (loop_times - 1)
         return loop_times, last_loop_num
 
-    # pylint: disable=no-self-use
-    def vector_dup(self, tensor, num, data_num=None, offset=0):
+    # 'pylint: disable=no-self-use
+    @staticmethod
+    def vector_dup(tensor, num, data_num=None, offset=0):
         """
         vector dup
         """
@@ -149,7 +150,7 @@ class CommonMethod(object):
         return result
 
 
-# pylint: disable=useless-object-inheritance
+# 'pylint: disable=useless-object-inheritance
 class MergeSort(object):
     """
     MergeSort
@@ -201,7 +202,7 @@ class MergeSort(object):
             each_loop_index_num //= 2
         return self._ub_pro_num_max, self._ub_sort_num, each_loop_index_num
 
-    # pylint: disable=too-many-arguments,too-many-locals
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def get_top_proposal(self, result_proposal, batch_index, boxes_num, sort_num, get_proposal_ub, args):
         """
         algorithm: sort proposal
@@ -234,7 +235,7 @@ class MergeSort(object):
         else:
             raise RuntimeError("merge sort not support")
 
-    # pylint: disable=too-many-arguments,too-many-locals
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _get_top_proposal_l1(self, result_proposal, batch_index, result_index,
                              boxes_num, proposal_num, start_index,
                              sort_num_align, get_proposal_ub, args):
@@ -318,7 +319,7 @@ class MergeSort(object):
         ub_proposal_1, ub_proposal_2 = ub_proposal_2, ub_proposal_1
         return ub_proposal_1, ub_proposal_2
 
-    # pylint: disable=too-many-arguments,too-many-locals
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _merge_sort_channel_all(self, ub_proposal_1, ub_proposal_2,
                                 repeat_times, element_count, proposal_num):
         """
@@ -354,7 +355,7 @@ class MergeSort(object):
             ub_proposal_1, ub_proposal_2 = ub_proposal_2, ub_proposal_1
         return ub_proposal_1, ub_proposal_2, element_count
 
-    # pylint: disable=too-many-arguments,too-many-locals
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _sort_other_proposal(self, result_proposal, batch_index, boxes_num,
                              sort_num_align, get_proposal_ub, args):
         last_boxes_num = boxes_num - self._ub_pro_num_max
@@ -373,7 +374,7 @@ class MergeSort(object):
                     result_proposal, batch_index, last_loop_boxes_num,
                     start_index_gm, sort_num_align, get_proposal_ub, args)
 
-    # pylint: disable=too-many-arguments,too-many-locals
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _get_merge_sort_out(self, result_proposal, batch_index, boxes_num,
                             start_index_gm, sort_num_align,
                             get_proposal_ub, args):
@@ -398,7 +399,7 @@ class MergeSort(object):
         sort_num_all = sort_num_align * merge_times + sort_num_align_last
         self._merge_sort_out_mode(result_proposal, batch_index, sort_num_all, sort_num_align)
 
-    # pylint: disable=too-many-arguments,too-many-locals
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _merge_sort_out_mode(self, result_proposal, batch_index, sort_num_all, sort_num_align):
         block_move_in = sort_num_all // self._block_pro_num
         ub_proposal_1 = self._tik_inst.Tensor(self._data_type, (self._ub_pro_num_max, self._pro_data_num),
@@ -412,7 +413,7 @@ class MergeSort(object):
         block_move_out = sort_num_align // self._block_pro_num
         self._tik_inst.data_move(result_proposal[batch_index, 0, 0], ub_proposal_1, 0, 1, block_move_out, 0, 0)
 
-    # pylint: disable=too-many-arguments,too-many-locals
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def get_top_proposal_large(self, dst_gm, src_gm, batch_index, boxes_num,
                                sort_num, get_proposal_ub, args):
         """
@@ -466,7 +467,7 @@ class MergeSort(object):
         self._merge_sort_large_num(
             dst_gm, src_gm, batch_index, sort_num_align, loop_info_all)
 
-    # pylint: disable=too-many-arguments,too-many-locals
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _merge_sort_large_num(self, dst_gm, src_gm, batch_index, sort_num_align, loop_info_all):
         for loop_info in loop_info_all:
             _, c_num_next, sorted_num, next_sorted_num, src_gm_rem_list, last_src_gm_rem_list = loop_info
@@ -485,7 +486,7 @@ class MergeSort(object):
                         result_index, start_index, last_src_gm_rem_list,
                         sort_num_align, sorted_num)
 
-    # pylint: disable=too-many-arguments,too-many-locals
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def large_get_loop_info(self, sort_num_align, src_gm_sorted_num):
         """
         get recursion info
@@ -512,7 +513,7 @@ class MergeSort(object):
             src_gm_sorted_num[-1] = last_next_sorted_num
         return loop_info_all
 
-    # pylint: disable=too-many-arguments,too-many-locals
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def merge_sort_gm_loop(self, dst_gm, src_gm, batch_index,
                            result_index, start_index, src_gm_rem_list,
                            sort_num_align, sorted_num):
@@ -542,7 +543,7 @@ class MergeSort(object):
                 result_index, start_index, src_gm_rem_list,
                 sort_num_align, sorted_num)
 
-    # pylint: disable=too-many-arguments,too-many-locals
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _large_src_to_dst(self, dst_gm, src_gm, batch_index, result_index,
                           start_index, pro_num):
         """
@@ -576,7 +577,7 @@ class MergeSort(object):
                         dst_gm[batch_index, result_index_loop, 0], ub_pro,
                         0, 1, last_loop_block_num, 0, 0)
 
-    # pylint: disable=too-many-arguments,too-many-locals
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _merge_sort_gm_channels(self, dst_gm, src_gm, batch_index,
                                 result_index_start_, start_index_,
                                 src_gm_rem_list, sort_num_align, sorted_num):
@@ -642,7 +643,7 @@ class MergeSort(object):
         result_index_ = self._tik_inst.Scalar(self._int_type, init_value=0)
         return valid_bit_, list_index_, block_num_, selected_num_sum_, selected_num_, rem_num_all_, result_index_
 
-    # pylint: disable=too-many-arguments,too-many-locals
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _large_init_scalar_list(self, src_ub, ub_data_num, src_gm_rem_list,
                                 start_index_, sorted_num):
         """
@@ -681,7 +682,7 @@ class MergeSort(object):
             return pro_num
         return (pro_num + (self._block_pro_num - 1)) // self._block_pro_num
 
-    # pylint: disable=too-many-arguments,too-many-locals
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _large_gm_to_ub(self, src_gm, batch_index,
                         const_all, const_list_all):
         """
@@ -701,7 +702,7 @@ class MergeSort(object):
                 list_index_.set_as(list_index_ + 1)
         return valid_bit_, slot_map_list_, src_ub_list_
 
-    # pylint: disable=too-many-arguments,too-many-locals
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _large_gm_to_ub_move(self, src_gm, batch_index, list_num, ub_data_num, valid_bit_, list_index_, block_num_,
                              src_gm_idx_list_, src_gm_rem_list_, src_ub_list_, src_ub_num_list_, list_idx):
         """
@@ -736,7 +737,7 @@ class MergeSort(object):
                     list_num, src_gm_idx_list_, src_gm_rem_list_,
                     dst_ub_num_list_, slot_map_list_, slot_idx)
 
-    # pylint: disable=too-many-arguments,too-many-locals
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _large_update_scalar_start(self, list_num, src_gm_idx_list_, src_gm_rem_list_,
                                    dst_ub_num_list_, slot_map_list_, slot_idx):
         """

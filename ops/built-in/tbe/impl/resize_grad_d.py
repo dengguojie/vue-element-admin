@@ -17,10 +17,10 @@ resize_grad_d
 """
 
 import functools as fctool
+import math
 from te import tik
 from te.utils import para_check
 from te.utils import shape_util
-import math
 import te.platform as tp
 import numpy as np
 
@@ -29,7 +29,9 @@ ERROR_TOLERANCE = 0.0001
 UB_SIZE = tp.cce_conf.get_soc_spec(tp.cce_conf.UB_SIZE)
 
 
-#pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
+# 'pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_FLOAT, para_check.OPTION_ATTR_STR,
@@ -112,6 +114,7 @@ def resize_grad_d(grads, y, original_size, roi, scales, coordinate_transformatio
     """
     x_dim = len(grads.get("shape"))
     shape_size = len(original_size)
+    res = None
     if mode == "cubic" and shape_size == 4:
         shape_grads = shape_util.scalar2tensor_one(grads.get("shape"))
         para_check.check_shape_size(shape_grads, SHAPE_SIZE_LIMIT)
@@ -125,24 +128,24 @@ def resize_grad_d(grads, y, original_size, roi, scales, coordinate_transformatio
             cubic_coeff_a,
             kernel_name=kernel_name)
         res = upsamplebicubic2d_backward_instance.upsamplebicubic2d_backward_compute()
-        return res
     elif mode == "linear" and x_dim == 4:
         resize_linear = ResizeLinearBackward(grads,
                                              original_size,
                                              scales,
                                              coordinate_transformation_mode,
                                              kernel_name)
-        return resize_linear.resize_linear_compute()
+        res = resize_linear.resize_linear_compute()
     else:
         raise RuntimeError("Upsample Not supported.")
+    return res
 
 
-class UpSampleBicubic2dBackward(object):
+class UpSampleBicubic2dBackward:
     """
     Class UpSampleBicubic2dBackward
     Main part of op ResizeGradD(op_type).Upsample_bicubic2d_backward(pytorch interface)
     """
-
+    # 'pylint: disable=too-many-arguments
     def __init__(self, grads, original_size, scales, coordinate_transformation_mode,
                  cubic_coeff_a, kernel_name="resize_grad_d"):
         """
@@ -151,8 +154,7 @@ class UpSampleBicubic2dBackward(object):
         tik_instance
         """
         self.kernel_name = kernel_name
-        self.align_corners = (
-            True if coordinate_transformation_mode == "align_corners" else False)
+        self.align_corners = (coordinate_transformation_mode == "align_corners")
         self.shape_grads = grads.get("shape")
         self.dtype_grads = grads.get("dtype")
         self.tik_instance = tik.Tik(tik.Dprofile())
@@ -270,7 +272,7 @@ class UpSampleBicubic2dBackward(object):
                 self.tik_instance.data_move(self.output_gm[move_offset], output_ub_temp,
                                             0, 1, math.ceil(last_num / self.data_each_block), 0, 0)
 
-        # special case ,input has the same size as output just copy
+    # special case ,input has the same size as output just copy
     def upsamplebicubic2d_backward_compute_same_size(self):
         """
         Special case, input and output images have the same size,just copy.
@@ -298,6 +300,7 @@ class UpSampleBicubic2dBackward(object):
             self.tik_instance.data_move(self.output_gm[move_offset], input_grads_ub,
                                         0, 1, math.ceil(last_num / self.data_each_block), 0, 0)
 
+    # 'pylint: disable=too-many-locals
     def upsamplebicubic2d_backward_compute_general(self):
         """
         Main compute logic of upsample_bicubic2d_backward(PyTorch Interface, TBE op_name is ResizeGradD)
@@ -429,12 +432,13 @@ class UpSampleBicubic2dBackward(object):
         -------
         float
         """
+        res = 0
         if output_size > 1:
             if align_corners:
-                return (input_size - 1) / (output_size - 1)
+                res = (input_size - 1) / (output_size - 1)
             else:
-                return self.compute_scales_value(scale, input_size, output_size)
-        return 0
+                res = self.compute_scales_value(scale, input_size, output_size)
+        return res
 
     @staticmethod
     def compute_scales_value(scale, input_size, output_size):
@@ -448,7 +452,10 @@ class UpSampleBicubic2dBackward(object):
             return 1.0 / scale
         return input_size / output_size
 
-    def area_pixel_compute_source_index(self, scale, dst_index, align_corners):
+    # 'pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-locals
+    @staticmethod
+    def area_pixel_compute_source_index(scale, dst_index, align_corners):
         """
         Compute index in input image according to scale and index of output image
         :param scale : float
@@ -485,7 +492,7 @@ class UpSampleBicubic2dBackward(object):
         two_length = self.tik_instance.Scalar(dtype="float32")
         three_length = self.tik_instance.Scalar(dtype="float32")
         x1 = self.tik_instance.Scalar(dtype="float32")
-        A = self.cubic_coeff_a  # -0.75
+        a = self.cubic_coeff_a  # -0.75
         if flag == 0:
             scale = self.scales[1]  # x direction
         else:
@@ -511,15 +518,15 @@ class UpSampleBicubic2dBackward(object):
                     three_length.set_as(out_length * out_length * out_length)
                     x1.set_as((output_scalar + 0.5) * in_length -
                               (0.5 + input_index_scalar) * out_length)
-            coeffs_ub[0].set_as((((A * (x1 + one_length) - 5.0 * A * one_length) * (x1 + one_length) +
-                                  8.0 * A * two_length) * (x1 + one_length) - 4.0 * A * three_length) / three_length)
-            coeffs_ub[1].set_as((((A + 2.0) * x1 - (A + 3.0) * one_length)
+            coeffs_ub[0].set_as((((a * (x1 + one_length) - 5.0 * a * one_length) * (x1 + one_length) +
+                                  8.0 * a * two_length) * (x1 + one_length) - 4.0 * a * three_length) / three_length)
+            coeffs_ub[1].set_as((((a + 2.0) * x1 - (a + 3.0) * one_length)
                                  * x1 * x1 + 1.0 * three_length) / three_length)
             x2 = one_length - x1
-            coeffs_ub[2].set_as((((A + 2.0) * x2 - (A + 3.0) * one_length)
+            coeffs_ub[2].set_as((((a + 2.0) * x2 - (a + 3.0) * one_length)
                                  * x2 * x2 + 1.0 * three_length) / three_length)
-            coeffs_ub[3].set_as((((A * (x2 + one_length) - 5.0 * A * one_length) * (x2 + one_length) +
-                                  8.0 * A * two_length) * (x2 + one_length) - 4.0 * A * three_length) / three_length)
+            coeffs_ub[3].set_as((((a * (x2 + one_length) - 5.0 * a * one_length) * (x2 + one_length) +
+                                  8.0 * a * two_length) * (x2 + one_length) - 4.0 * a * three_length) / three_length)
 
         else:
             coeffs_ub[0].set_as(0.0)
@@ -528,6 +535,8 @@ class UpSampleBicubic2dBackward(object):
             coeffs_ub[3].set_as(0.0)
         return coeffs_ub
 
+    # 'pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-locals
     def upsample_increment_value_bounded(self, output_ub, output_pos, width, height, x, y, value):
         """
         Compute upsample increment value bounded
@@ -621,10 +630,11 @@ class UpSampleBicubic2dBackward(object):
                                             0, 1, 1, 0, 0)
 
 
-class ResizeLinearBackward(object):
+class ResizeLinearBackward:
     """
     ResizeLinearBackward main functions
     """
+    # 'pylint: disable=too-many-arguments
     def __init__(self,
                  x,
                  original_size,
@@ -831,7 +841,8 @@ class ResizeLinearBackward(object):
         with self.tik_instance.for_range(0, self.data_each_block) as i:
             ub[i].set_as(temp)
 
-    def check_param1(self, dim_redundancy, in_size_w, out_size_w):
+    @staticmethod
+    def check_param1(dim_redundancy, in_size_w, out_size_w):
         """
         check  in_size_w, out_size_w:
         in_size_w and out_size_w should be greater than 0
@@ -874,10 +885,9 @@ class ResizeLinearBackward(object):
         """
 
         # check scales
-        if len(scales) is not 1 and scales is not None:
+        if len(scales) != 1 and scales is not None:
             raise RuntimeError("It is expected len(scales) equals to 1.")
 
         #check scales value
         if scales is not None and (self.dim2 / sizes[-1] - scales[0]) > ERROR_TOLERANCE:
             raise RuntimeError("It is expected scales[0] equals to sizes[0] / x.shape[2].")
-
