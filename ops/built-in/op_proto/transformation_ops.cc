@@ -888,30 +888,6 @@ IMPLEMT_COMMON_INFERFUNC(FlattenInferShape) {
 COMMON_INFER_FUNC_REG(Flatten, FlattenInferShape);
 // ----------------Flatten Op End-------------------
 
-int64_t GetMax(const std::vector<int64_t>& vec) {
-  int64_t resValue = vec[0];
-
-  for (auto v : vec) {
-    if (resValue < v) {
-      resValue = v;
-    }
-  }
-
-  return resValue;
-}
-
-int64_t GetMin(const std::vector<int64_t>& vec) {
-  int64_t resValue = vec[0];
-
-  for (auto v : vec) {
-    if (resValue > v) {
-      resValue = v;
-    }
-  }
-
-  return resValue;
-}
-
 // ----------------Transpose Op Begin-------------------
 static graphStatus TransposeCommonInferShape(const std::vector<int64_t>& perm_list, Operator& op) {
   PROFILING_PROTO_INIT(op.GetName().c_str());
