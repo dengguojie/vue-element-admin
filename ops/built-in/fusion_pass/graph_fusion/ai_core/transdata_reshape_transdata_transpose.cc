@@ -244,9 +244,8 @@ Status TransdataTransposeFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
 
   // transdata1 input length must be 5
   if (transdata_diminfo1_shape.size() != 5) {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
-                                   "Node[%s]'s dimsize is [%zu], cannot be applied to fusion pass.",
-                                   transdata_node1->GetName().c_str(), transdata_diminfo1_shape.size());
+    OP_LOGW(FUSED_OP_TYPE.c_str(),"Node[%s]'s dimsize is [%zu], cannot be applied to fusion pass.",
+            transdata_node1->GetName().c_str(), transdata_diminfo1_shape.size());
     return NOT_CHANGED;
   }
   if (transdata1_origin_shape[transdata1_origin_shape.size() - 1] % 16 != 0 ||
