@@ -25,8 +25,13 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-# 2pi, the cycle of cosin
-TWO_PI = 2 * 3.14159265358979
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # 2pi, the cycle of cosin
+    TWO_PI = 2 * 3.14159265358979
 
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals
@@ -62,7 +67,7 @@ def cos_compute(input_x, output_y, kernel_name="cos"):
         has_improve_precision = True
 
     # round the input
-    vmu_ = tbe.vmuls(input_x, 1.0 / TWO_PI)
+    vmu_ = tbe.vmuls(input_x, 1.0 / Constant.TWO_PI)
     if not tbe_platform.api_check_support("tbe.dsl.round", "float32") and dtype == "float32":
         input_x_ = tbe.cast_to(vmu_, "float16")
         round_fp = tbe.round(input_x_)
@@ -70,7 +75,7 @@ def cos_compute(input_x, output_y, kernel_name="cos"):
         round_fp = tbe.round(vmu_)
 
     round_fp32 = tbe.cast_to(round_fp, dtype)
-    input_x_round = tbe.vsub(input_x, tbe.vmuls(round_fp32, TWO_PI))
+    input_x_round = tbe.vsub(input_x, tbe.vmuls(round_fp32, Constant.TWO_PI))
 
     # the initial value one
     const_res = tvm.const(1.0, dtype=dtype)

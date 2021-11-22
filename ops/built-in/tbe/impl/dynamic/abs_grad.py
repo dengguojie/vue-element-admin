@@ -42,7 +42,6 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-
 # 'pylint: disable=unused-argument,too-many-locals,invalid-name
 @register_operator_compute("AbsGrad", op_mode="dynamic", support_fusion=True)
 def abs_grad_compute(y, dy, z, kernel_name="abs_grad"):

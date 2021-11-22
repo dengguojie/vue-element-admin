@@ -27,17 +27,21 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_context
 
-# define a scalar, value = 1
-SCALAR_ONE = 1
-# define a scalar, value = -1
-SCALAR_NEGTIVE_ONE = -1
-# define a scalar, value = -1
-SCALAR_EPS = 1e-12
-NoneType = type(None)
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # `define a scalar, value = 1`
+    SCALAR_ONE = 1
+    # `define a scalar, value = -1`
+    SCALAR_NEGTIVE_ONE = -1
+    # `define a scalar, value = -1`
+    SCALAR_EPS = 1e-12
 
 
-# pylint: disable=locally-disabled,unused-argument
-# pylint: disable=too-many-arguments,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=too-many-arguments,invalid-name,too-many-locals
 @register_operator_compute("BinaryCrossEntropyGrad", op_mode="dynamic", support_fusion=False)
 def binary_cross_entropy_grad_compute(x, y, grad_output, weight, output,
                                       reduction, kernel_name):
@@ -88,20 +92,20 @@ def binary_cross_entropy_grad_compute(x, y, grad_output, weight, output,
     val1 = tbe.vsub(x, y)
     if support is True:
         minus_predict = tbe.vmuls(
-            x, tvm.const(SCALAR_NEGTIVE_ONE, dtype="float32"))
+            x, tvm.const(Constant.SCALAR_NEGTIVE_ONE, dtype="float32"))
 
         val2_tmp = tbe.vadds(
-            minus_predict, tvm.const(SCALAR_ONE, dtype="float32"))
+            minus_predict, tvm.const(Constant.SCALAR_ONE, dtype="float32"))
         val2 = tbe.vmul(x, val2_tmp)
-        val2 = tbe.vmaxs(val2, tvm.const(SCALAR_EPS, dtype="float32"))
+        val2 = tbe.vmaxs(val2, tvm.const(Constant.SCALAR_EPS, dtype="float32"))
     else:
         minus_predict = tbe.vmuls(
-            x, tvm.const(SCALAR_NEGTIVE_ONE, dtype="float16"))
+            x, tvm.const(Constant.SCALAR_NEGTIVE_ONE, dtype="float16"))
 
         val2_tmp = tbe.vadds(
-            minus_predict, tvm.const(SCALAR_ONE, dtype="float16"))
+            minus_predict, tvm.const(Constant.SCALAR_ONE, dtype="float16"))
         val2 = tbe.vmul(x, val2_tmp)
-        val2 = tbe.vmaxs(val2, tvm.const(SCALAR_EPS, dtype="float16"))
+        val2 = tbe.vmaxs(val2, tvm.const(Constant.SCALAR_EPS, dtype="float16"))
     result = tbe.vdiv(val1, val2)
     if weight is not None:
         result = tbe.vmul(weight, result)
@@ -127,7 +131,7 @@ def binary_cross_entropy_grad_compute(x, y, grad_output, weight, output,
     return result
 
 
-# pylint: disable=invalid-name,too-many-locals,too-many-statements
+# 'pylint: disable=invalid-name,too-many-locals,too-many-statements,unused-variable
 @register_operator("BinaryCrossEntropyGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,

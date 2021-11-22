@@ -26,7 +26,7 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=locally-disabled,unused-argument
 @register_operator_compute("Inv", op_mode="dynamic", support_fusion=True)
 def inv_compute(input_x, output_y, kernel_name="inv"):
     """
@@ -46,12 +46,12 @@ def inv_compute(input_x, output_y, kernel_name="inv"):
     res: TVM tensor
         the result of compute
     """
-    SCALAR_ONE = 1
+    scalar_one = 1
 
     dtype = input_x.dtype
     shape = shape_util.shape_to_list(input_x.shape)
 
-    temp_const = tvm.const(SCALAR_ONE, dtype=dtype)
+    temp_const = tvm.const(scalar_one, dtype=dtype)
 
     if dtype == "int32":
         input_x = tbe.cast_to(input_x, "float32")

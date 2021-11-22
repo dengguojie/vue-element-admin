@@ -21,11 +21,15 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.util_select_op_base import get_op_cal_info
 
-
-# Tiling Arg size for int64
-TILING_ARG_NUM = 4
-# the input num for one input
-MAX_INPUT_RANK = 64
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # Tiling Arg size for int64
+    TILING_ARG_NUM = 4
+    # the input num for one input
+    MAX_INPUT_RANK = 64
 
 
 # 'pylint: disable=locally-disabled,unused-argument,invalid-name
@@ -82,7 +86,7 @@ class ConcatOffsetCompute(object):
         self.tik_instance = tik.Tik()
         self.concat_dim_gm = self.tik_instance.Tensor(self.concat_dim_dtype, (1,),
                                                       name="concat_dim_gm", scope=tik.scope_gm)
-        self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="ting_gm", scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="ting_gm", scope=tik.scope_gm)
         self.gm_input_list = []
         self.gm_output_list = []
         self.init_gm_mem(x)
@@ -92,7 +96,7 @@ class ConcatOffsetCompute(object):
         init_gm_mem , gm_input_list and gm_output_list
         """
         for i, input_dict in enumerate(input_list):
-            _input_shape = [MAX_INPUT_RANK]
+            _input_shape = [Constant.MAX_INPUT_RANK]
             _input_dtype = input_dict.get("dtype").lower()
             _input_name = "x_input_list" + str(i)
             _input_gm = self.tik_instance.Tensor(_input_dtype, _input_shape, name=_input_name, scope=tik.scope_gm)
@@ -109,7 +113,7 @@ class ConcatOffsetCompute(object):
         input_x_num = self.tik_instance.Scalar("int64", name="input_x_num")
         vcetor_mask = self.tik_instance.Scalar("int64", name="vcetor_mask")
         tiling_ub = \
-            self.tik_instance.Tensor("int64", [TILING_ARG_NUM], name="tiling_ub", scope=tik.scope_ubuf)
+            self.tik_instance.Tensor("int64", [Constant.TILING_ARG_NUM], name="tiling_ub", scope=tik.scope_ubuf)
         self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, 1, 0, 0)
         input_x_num.set_as(tiling_ub[0])
         input_x_num.set_as((input_x_num + 7) // 8)
@@ -124,13 +128,13 @@ class ConcatOffsetCompute(object):
             vcetor_mask.set_as(vcetor_mask * 2)
 
         data_row1_ub = \
-            self.tik_instance.Tensor(self.input_dtype, [MAX_INPUT_RANK], name="data_row1_ub", scope=tik.scope_ubuf)
+            self.tik_instance.Tensor(self.input_dtype, [Constant.MAX_INPUT_RANK], name="data_row1_ub", scope=tik.scope_ubuf)
         data_row2_ping = \
-            self.tik_instance.Tensor(self.input_dtype, [MAX_INPUT_RANK], name="data_row2_ping", scope=tik.scope_ubuf)
+            self.tik_instance.Tensor(self.input_dtype, [Constant.MAX_INPUT_RANK], name="data_row2_ping", scope=tik.scope_ubuf)
         data_row2_pang = \
-            self.tik_instance.Tensor(self.input_dtype, [MAX_INPUT_RANK], name="data_row2_pang", scope=tik.scope_ubuf)
+            self.tik_instance.Tensor(self.input_dtype, [Constant.MAX_INPUT_RANK], name="data_row2_pang", scope=tik.scope_ubuf)
 
-        self.tik_instance.vector_dup(MAX_INPUT_RANK, data_row1_ub, 0, 1, 1, 1)
+        self.tik_instance.vector_dup(Constant.MAX_INPUT_RANK, data_row1_ub, 0, 1, 1, 1)
 
         # copy out the first output
         self.tik_instance.data_move(self.gm_output_list[0], data_row1_ub, 0, 1, input_x_num, 0, 0)

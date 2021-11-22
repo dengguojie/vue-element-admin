@@ -30,8 +30,8 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.common_util import get_attr
 
 
-# pylint: disable=too-many-arguments,invalid-name,too-many-locals
-# pylint: disable=unused-argument
+# 'pylint: disable=too-many-arguments,invalid-name,too-many-locals
+# 'pylint: disable=unused-argument
 def rho_gs_compute(rho, grad_square_ms, dtype):
     """
     get the rho_gs

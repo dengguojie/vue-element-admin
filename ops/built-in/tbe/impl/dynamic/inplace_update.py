@@ -18,12 +18,11 @@ inplace_update
 from impl.dynamic.scatter_update import ScatterUpdate
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
-from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import tbe_context
 
 
-# pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-branches
-# pylint: disable=superfluous-parens
+# 'pylint: disable=locally-disabled,invalid-name,unused-argument,too-many-branches
+# 'pylint: disable=superfluous-parens
 def check_supported(x, indices, v, kernel_name):
     """
     func to check input params

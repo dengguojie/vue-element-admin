@@ -26,6 +26,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -84,7 +85,7 @@ def apply_adadelta_d_compute(var,
     -------
     None
     """
-    NUM_ONE = 1.0
+    num_one = 1.0
     dtype = var.dtype
     has_improve_precision = False
     if dtype == "float16" and \
@@ -100,7 +101,7 @@ def apply_adadelta_d_compute(var,
         epsilon = tbe.cast_to(epsilon, "float32")
         grad = tbe.cast_to(grad, "float32")
 
-    scalar_one = tbe.broadcast(tvm.const(NUM_ONE, "float32"), rho.shape)
+    scalar_one = tbe.broadcast(tvm.const(num_one, "float32"), rho.shape)
     tensor_rho_gs = tbe.vsub(scalar_one, rho)
     scalar_rho = rho[0]
     scalar_epsilon = epsilon[0]

@@ -17,7 +17,7 @@ concat_v2_d: Concatenates tensors along one dimension.
             tf ConcactV2 op
 
 """
-# 'pylint: disable=too-many-lines,consider-using-f-string
+# 'pylint: disable=too-many-lines
 from __future__ import absolute_import
 import math
 
@@ -35,13 +35,16 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util import util_common
 
-MAX_SIZE = 2 ** 31 - 1
-VNCHW_BLOCK_SIZE = 512
-VNCHW_ELEMENT_FP16 = VNCHW_BLOCK_SIZE // 2
-DATA_MOVE_MAX_REPEAT = 4095
-DATA_MOVE_MAX_STRIDE = 65535
-MAX_REPEAT_STRIDE = 255
-MAX_REPEAT_TIMES = 255
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    MAX_SIZE = 2 ** 31 - 1
+    VNCHW_BLOCK_SIZE = 512
+    VNCHW_ELEMENT_FP16 = 256
+    DATA_MOVE_MAX_REPEAT = 4095
+    MAX_REPEAT_TIMES = 255
 
 
 # 'pylint: disable=cell-var-from-loop
@@ -79,7 +82,7 @@ def _get_mask2concat_ub(instance: tik.Tik, count, src_index, dtype):
         count = count * ori_dtype_size // dtype_size
         src_index = ceil_div(src_index * ori_dtype_size, dtype_size)
 
-    # {dtype_size: (max_hight_mask, max_low_mask)}
+    # `{dtype_size: (max_hight_mask, max_low_mask)}`
     dtype_vadd_mask_map = {
         2: (2 ** 64 - 1, 2 ** 64 - 1),
         4: (0, 2 ** 64 - 1)
@@ -117,30 +120,32 @@ def _get_mask2concat_ub(instance: tik.Tik, count, src_index, dtype):
     return [h_64_mask, l_64_mask]
 
 
+# 'pylint: disable=invalid-name
 def _vadd(instance: tik.Tik, mask, dst: tik.Tensor, src0: tik.Tensor, src1: tik.Tensor, repeat_times,
           dst_blk_stride, src0_blk_stride, src1_blk_stride,
           dst_rep_stride, src0_rep_stride, src1_rep_stride):
     """
     _vadd
     """
+    MAX_REPEAT_STRIDE = 255
     dtype_size = common_util.get_data_size(dst.dtype)
     block_element = constant.BLOCK_SIZE // dtype_size
     with instance.if_scope(dst_rep_stride <= MAX_REPEAT_STRIDE):
-        loop_times = repeat_times // MAX_REPEAT_TIMES
-        tail_times = repeat_times % MAX_REPEAT_TIMES
+        loop_times = repeat_times // Constant.MAX_REPEAT_TIMES
+        tail_times = repeat_times % Constant.MAX_REPEAT_TIMES
         with instance.for_range(0, loop_times) as loop_index:
             instance.vadd(mask,
-                          dst[dst_rep_stride * block_element * MAX_REPEAT_TIMES * loop_index],
-                          src0[src0_rep_stride * block_element * MAX_REPEAT_TIMES * loop_index],
-                          src1[src1_rep_stride * block_element * MAX_REPEAT_TIMES * loop_index],
-                          MAX_REPEAT_TIMES,
+                          dst[dst_rep_stride * block_element * Constant.MAX_REPEAT_TIMES * loop_index],
+                          src0[src0_rep_stride * block_element * Constant.MAX_REPEAT_TIMES * loop_index],
+                          src1[src1_rep_stride * block_element * Constant.MAX_REPEAT_TIMES * loop_index],
+                          Constant.MAX_REPEAT_TIMES,
                           dst_blk_stride, src0_blk_stride, src1_blk_stride,
                           dst_rep_stride, src0_rep_stride, src1_rep_stride)
         with instance.if_scope(tail_times > 0):
             instance.vadd(mask,
-                          dst[dst_rep_stride * block_element * MAX_REPEAT_TIMES * loop_times],
-                          src0[src0_rep_stride * block_element * MAX_REPEAT_TIMES * loop_times],
-                          src1[src1_rep_stride * block_element * MAX_REPEAT_TIMES * loop_times],
+                          dst[dst_rep_stride * block_element * Constant.MAX_REPEAT_TIMES * loop_times],
+                          src0[src0_rep_stride * block_element * Constant.MAX_REPEAT_TIMES * loop_times],
+                          src1[src1_rep_stride * block_element * Constant.MAX_REPEAT_TIMES * loop_times],
                           tail_times,
                           dst_blk_stride, src0_blk_stride, src1_blk_stride,
                           dst_rep_stride, src0_rep_stride, src1_rep_stride)
@@ -203,24 +208,25 @@ def _concat_ub_vadd(instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, dst_ind
                 _vadd(instance, tail_count, dst[new_dst_index], src[new_src_index], zero_ub, row_count, 1, 1, 0,
                       dst_row_stride, src_row_stride, 0)
 
-
+# 'pylint: disable=invalid-name
 def _data_move_all_align(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, nburst, burst, dst_stride):
     """
     _data_move_all_align
     """
+    DATA_MOVE_MAX_STRIDE = 65535
     inst = tik_instance
     type_size = common_util.get_data_size(dst.dtype)
     block_element = constant.BLOCK_SIZE // type_size
     with inst.if_scope(dst_stride <= DATA_MOVE_MAX_STRIDE):
-        data_move_loops = ceil_div(nburst, DATA_MOVE_MAX_REPEAT)
+        data_move_loops = ceil_div(nburst, Constant.DATA_MOVE_MAX_REPEAT)
         with inst.for_range(0, data_move_loops) as idx:
-            out_addr = DATA_MOVE_MAX_REPEAT * (burst + dst_stride) * idx * block_element
-            in_addr = DATA_MOVE_MAX_REPEAT * burst * idx * block_element
-            with inst.if_scope(idx * DATA_MOVE_MAX_REPEAT + DATA_MOVE_MAX_REPEAT <= nburst):
-                repeat_times = DATA_MOVE_MAX_REPEAT
+            out_addr = Constant.DATA_MOVE_MAX_REPEAT * (burst + dst_stride) * idx * block_element
+            in_addr = Constant.DATA_MOVE_MAX_REPEAT * burst * idx * block_element
+            with inst.if_scope(idx * Constant.DATA_MOVE_MAX_REPEAT + Constant.DATA_MOVE_MAX_REPEAT <= nburst):
+                repeat_times = Constant.DATA_MOVE_MAX_REPEAT
                 inst.data_move(dst[out_addr], src[in_addr], 0, repeat_times, burst, 0, dst_stride)
             with inst.else_scope():
-                repeat_times = nburst - DATA_MOVE_MAX_REPEAT * idx
+                repeat_times = nburst - Constant.DATA_MOVE_MAX_REPEAT * idx
                 inst.data_move(dst[out_addr], src[in_addr], 0, repeat_times, burst, 0, dst_stride)
     with inst.else_scope():
         with inst.for_range(0, nburst) as row_idx:
@@ -396,8 +402,8 @@ class ConcatV2:
         self.axis = axis
 
         self.dtype = input_values[0].get("dtype").lower()
-        self.output_shape = (MAX_SIZE,)
-        self.input_shape = (MAX_SIZE,)
+        self.output_shape = (Constant.MAX_SIZE,)
+        self.input_shape = (Constant.MAX_SIZE,)
 
         self.input_tensors, self.output_tensor = self._init_gm_tensor(self.input_shape, self.output_shape,
                                                                       len(input_values),
@@ -770,7 +776,7 @@ class ConcatV2:
                                        max_inner_dim == min_inner_dim,
                                        ub_can_storage_lines_vnchwconv >= output_inner_dim,
                                        16 % min_inner_dim == 0,
-                                       out_dims * min_inner_dim * self.type_size >= VNCHW_BLOCK_SIZE)):
+                                       out_dims * min_inner_dim * self.type_size >= Constant.VNCHW_BLOCK_SIZE)):
                 self._concat_with_vnchwconv(core_idx, out_dims, ub_len)
             with inst.else_scope():
                 with inst.if_scope(tik.all(output_inner_dim >= self.ele_each_block,
@@ -1129,7 +1135,7 @@ class ConcatV2:
         inst = self.tik_instance
         output_inner_dim = self.tiling_param.output_inner_length
         inner_dim = self.tiling_param.min_inner_dim
-        vnchwconv_input_lines = VNCHW_ELEMENT_FP16 // inner_dim
+        vnchwconv_input_lines = Constant.VNCHW_ELEMENT_FP16 // inner_dim
         output_lines_vnchwconv = inst.Scalar(dtype="int64", name="output_lines_vnchwconv")
         output_lines_vnchwconv.set_as(ub_len // len(self.input_tensors) // inner_dim //
                                       vnchwconv_input_lines * vnchwconv_input_lines)
@@ -1144,7 +1150,7 @@ class ConcatV2:
         for index, _ in enumerate(input_tensors):
             _, output_idx = self.tiling_param.get_dims(index)
             all_in_ub_index.append(inst.Scalar(dtype="int64", init_value=output_idx * output_lines_vnchwconv))
-        repeat_times = ceil_div(inner_dim * output_lines_vnchwconv, VNCHW_ELEMENT_FP16)
+        repeat_times = ceil_div(inner_dim * output_lines_vnchwconv, Constant.VNCHW_ELEMENT_FP16)
         tensor_count = len(input_tensors)
         with inst.new_stmt_scope():
             # when input count is 64, double buffer will make ccec compile stack overflow
@@ -1175,7 +1181,8 @@ class ConcatV2:
                     for index, _ in enumerate(input_tensors):
                         dst_list = [in_ub[index * self.ele_each_block + self.ele_each_block * tensor_count * i]
                                     for i in range(16)]
-                        src_list = [out_ub[index * VNCHW_ELEMENT_FP16 + self.ele_each_block * i] for i in range(16)]
+                        src_list = [out_ub[index * Constant.VNCHW_ELEMENT_FP16 + self.ele_each_block * i] \
+                        for i in range(16)]
                         with inst.if_scope(repeat_times == 1):
                             inst.vnchwconv(False, False, dst_list, src_list, repeat_times, 0, 0)
                         with inst.else_scope():
@@ -1260,6 +1267,7 @@ def _check_shape(input_values, shape_name):
                                                                   len(shape_input),
                                                                   dim_num,
                                                                   dim_num)
+
 
 # 'pylint: disable=unused-argument
 def _check_params(input_values, axis):

@@ -27,11 +27,15 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
 
-
-# define minimum value for float32
-MIN_FLOAT = 2 ** (-126)
-# define reciprocal of half of minimum value for float32
-HALF_MIN_FLOAT_R = 2 ** 62
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # define minimum value for float32
+    MIN_FLOAT = 2 ** (-126)
+    # define reciprocal of half of minimum value for float32
+    HALF_MIN_FLOAT_R = 2 ** 62
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -56,19 +60,19 @@ def _less_compare_float32(data_x, data_y):
     # minimum num of float32 2**(-126)
     if tbe_platform.api_check_support("tbe.dsl.vmaxs", data_x.dtype):
         res_sub = tbe.vsub(data_y, data_x)
-        res_min = tbe.vmins(res_sub, tvm.const(MIN_FLOAT, dtype="float32"))
+        res_min = tbe.vmins(res_sub, tvm.const(Constant.MIN_FLOAT, dtype="float32"))
         res_max = tbe.vmaxs(res_min, tvm.const(0, dtype="float32"))
     else:
         data_zero = tbe.vmuls(data_x, 0)
-        data_min = tbe.vadds(data_zero, tvm.const(MIN_FLOAT, dtype="float32"))
+        data_min = tbe.vadds(data_zero, tvm.const(Constant.MIN_FLOAT, dtype="float32"))
         res_sub = tbe.vsub(data_y, data_x)
         res_min = tbe.vmin(res_sub, data_min)
         res_max = tbe.vmax(res_min, data_zero)
 
     # max num of float32 is 2**126
     # but cce can only support 2**62, so use (2**62)*(2**62)*(2**2) instead
-    res_muled = tbe.vmuls(res_max, tvm.const(HALF_MIN_FLOAT_R, dtype="float32"))
-    res_muled = tbe.vmuls(res_muled, tvm.const(HALF_MIN_FLOAT_R, dtype="float32"))
+    res_muled = tbe.vmuls(res_max, tvm.const(Constant.HALF_MIN_FLOAT_R, dtype="float32"))
+    res_muled = tbe.vmuls(res_muled, tvm.const(Constant.HALF_MIN_FLOAT_R, dtype="float32"))
     res = tbe.vmuls(res_muled, tvm.const(2 ** 2, dtype="float32"))
 
     return res

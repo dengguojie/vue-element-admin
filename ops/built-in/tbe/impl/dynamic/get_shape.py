@@ -19,8 +19,6 @@ get_shape
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
-from impl.util.platform_adapter import tbe_context
-from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
 
 
@@ -38,7 +36,8 @@ def _ceil(x_1, x_2):
     return (x_1 + x_2 - 1) // x_2
 
 
-class GetShape(object):
+# 'pylint: disable=too-many-instance-attributes
+class GetShape():
     """
     class for operator GetShape
     """
@@ -53,7 +52,7 @@ class GetShape(object):
         para_check.check_dtype(self.y_dtype, ("int32"), param_name="y_dtype")
         if self.y_shape_value > Constant.Y_SHAPE_SIZE:
             rule = "GetShape output size should not be greater than 128"
-            error_manager_vector.raise_err_check_params_rules(self.kernel_name, rule)
+            error_manager_vector.raise_err_specific_reson(self.kernel_name, rule)
         self.tik_instance = tik.Tik(tik.Dprofile())
         self.x_gm = []
         for i in range(self.input_tensor_num):
@@ -86,6 +85,7 @@ class GetShape(object):
         return self.tik_instance
 
 
+# 'pylint: disable=invalid-name
 @register_operator("GetShape")
 @para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def get_shape(x, y, kernel_name="get_shape"):
@@ -100,5 +100,5 @@ def get_shape(x, y, kernel_name="get_shape"):
         kernel name, default value is "get_shape"
     """
 
-    get_shape = GetShape(x, y, kernel_name)
-    return get_shape.get_shape_compute()
+    get_shape_value = GetShape(x, y, kernel_name)
+    return get_shape_value.get_shape_compute()

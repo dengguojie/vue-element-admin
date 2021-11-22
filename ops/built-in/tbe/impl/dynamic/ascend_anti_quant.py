@@ -21,13 +21,12 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import register_operator
-from impl.util.platform_adapter import error_manager_vector
 from impl import ascend_quant_util as util
 
 
-# pylint: disable=too-many-arguments,invalid-name,unused-argument
-# pylint: disable=unnecessary-lambda
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-arguments,invalid-name,unused-argument
+# 'pylint: disable=unnecessary-lambda
+# 'pylint: disable=too-many-locals
 def _check_params(x, y, scale, offset, sqrt_mode, kernel_name):
     """
     check the parameters including shape, dtype, kernel_name, attr.
@@ -160,7 +159,7 @@ def ascend_anti_quant_compute(x, y, scale, offset, sqrt_mode=False, kernel_name=
     return res
 
 
-# pylint: disable=too-many-arguments,invalid-name,unused-argument
+# 'pylint: disable=too-many-arguments,invalid-name,unused-argument
 @register_operator("AscendAntiQuant", pattern="anti_quant")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
                             para_check.REQUIRED_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)

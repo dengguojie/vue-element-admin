@@ -23,16 +23,18 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-# max int32
-MAX_INT32 = 2 ** 31 - 1
-# ting param num
-TILING_ARG_NUM = 16
-# reserved ub size
-RESERVED_UB_SIZE = 8 * 1024
-# MAX REPEAT NUM
-MAX_REPEAT_NUM = 254
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # max int32
+    MAX_INT32 = 2 ** 31 - 1
+    # ting param num
+    TILING_ARG_NUM = 16
 
 
+# 'pylint: disable=invalid-name
 class DropOutDoMask:
     """
     Function: use to store dropoutdomask base parameters
@@ -40,6 +42,10 @@ class DropOutDoMask:
     """
 
     def __init__(self, var, mask, keep_prob, var_out, kernel_name):
+        # reserved ub size
+        RESERVED_UB_SIZE = 8 * 1024
+        # MAX REPEAT NUM
+        MAX_REPEAT_NUM = 254
         self.tik_instance = tik.Tik(tik.Dprofile)
         self.var_dtype = var.get("dtype").lower()
         self.mask_dtype = mask.get("dtype").lower()
@@ -62,12 +68,14 @@ class DropOutDoMask:
         self.block_num = 16 if self.var_dtype == "float16" else 8
         self.vcetor_num = self.block_num * 8
         self.max_process_num = MAX_REPEAT_NUM * self.vcetor_num
-        self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="ting_gm", scope=tik.scope_gm)
-        self.var_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT32,), name="var_gm", scope=tik.scope_gm)
-        self.keep_prob_gm = self.tik_instance.Tensor(self.keep_prob_dtype, (MAX_INT32,),
+        self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="ting_gm", \
+        scope=tik.scope_gm)
+        self.var_gm = self.tik_instance.Tensor(self.var_dtype, (Constant.MAX_INT32,), name="var_gm", scope=tik.scope_gm)
+        self.keep_prob_gm = self.tik_instance.Tensor(self.keep_prob_dtype, (Constant.MAX_INT32,),
                                                      name="keep_prob_gm", scope=tik.scope_gm)
-        self.mask_gm = self.tik_instance.Tensor(self.mask_dtype, (MAX_INT32,), name="mask_gm", scope=tik.scope_gm)
-        self.out_gm = self.tik_instance.Tensor(self.var_dtype, (MAX_INT32,), name="out_gm", scope=tik.scope_gm)
+        self.mask_gm = self.tik_instance.Tensor(self.mask_dtype, (Constant.MAX_INT32,), name="mask_gm", \
+        scope=tik.scope_gm)
+        self.out_gm = self.tik_instance.Tensor(self.var_dtype, (Constant.MAX_INT32,), name="out_gm", scope=tik.scope_gm)
 
         self.is_suport_vdiv = tbe_platform.api_check_support("tik.vdiv", self.keep_prob_dtype)
         # init ub
@@ -218,7 +226,7 @@ class DropOutDoMask:
         main process of dropout_do_mask
         """
         with self.tik_instance.for_range(0, self.ai_core_num, block_num=self.ai_core_num) as _core_idx:
-            self.tiling_ub = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,),
+            self.tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,),
                                                       name="tiling_ub", scope=tik.scope_ubuf)
             self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 2, 0, 0)
             self._tiling_args()

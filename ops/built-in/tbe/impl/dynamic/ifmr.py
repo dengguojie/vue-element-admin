@@ -16,28 +16,21 @@ http://www.apache.org/licenses/LICENSE-2.0
 IFMR
 """
 
-# pylint: disable=import-error
+# 'pylint: disable=import-error
 from math import ceil
 from tbe import tik
 from impl.util.platform_adapter import para_check
 from tbe.common.platform.platform_info import get_bit_len
 from impl.util.platform_adapter import register_operator
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=too-many-branches, too-many-statements, too-many-locals, attribute-defined-outside-init
-# pylint: disable=too-many-instance-attributes, no-self-use, too-many-instance-attributes, protected-access
-# pylint: disable=too-few-public-methods
-
-SCALAR_MAX_FP16 = (2 ** 16 - 1)
-SHAPE_SIZE_LIMIT = 2 ** 31 - 1
-MAX_BINS = 8192
-MAX_STEPS = 4096
-ESP = 1.192092896e-07
-
-
-# pylint: disable=unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=too-many-branches, too-many-statements, too-many-locals, attribute-defined-outside-init
+# 'pylint: disable=too-many-instance-attributes, no-self-use, too-many-instance-attributes, protected-access
+# 'pylint: disable=too-few-public-methods
+# 'pylint: disable=unused-argument,invalid-name
 class Reconstruction():
     """IFMR: input feature map reconstruction"""
+    # 'pylint: disable=unused-argument,invalid-name
     def __init__(
             self,
             input_data,
@@ -57,6 +50,8 @@ class Reconstruction():
         # variable. The name with suffix "size" represent the memory
         # space of variable. The name with suffix "repeat" represent
         # the number of repeat time when processing this variable.
+        SHAPE_SIZE_LIMIT = 2 ** 31 - 1
+        MAX_BINS = 8192
         self.tik_instance = tik.Tik(tik.Dprofile())
         self.aicore_num = 30
         self.unified_buffer_size = tik.Dprofile().get_unified_buffer_size()
@@ -531,7 +526,10 @@ class Reconstruction():
         self.tik_instance.tensor_mov(
             self.loss_workspace[index * self.loss_each_core], self.loss_ub, '', 1, burst_len, 0, 0)
 
+    # 'pylint: disable=invalid-name
     def _reduce_and_output(self):
+        SCALAR_MAX_FP16 = (2 ** 16 - 1)
+        ESP = 1.192092896e-07
         # sum of all loss
         total_loss = self.tik_instance.Tensor('float32', (self.loss_each_core,), tik.scope_ubuf, 'total_loss')
 

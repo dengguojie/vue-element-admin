@@ -29,6 +29,7 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import register_operator
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     The class for constant
@@ -47,8 +48,8 @@ class Constant:
     MIN_FP32 = 2 ** (-126)
 
 
-# pylint: disable=locally-disabled,unused-argument
-# pylint: disable=too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=too-many-locals
 def tanh_compute(input_x, output_y, kernel_name="tanh"):
     """
     algorithm: tanh
@@ -156,7 +157,7 @@ def _result_grad_compute(placeholders):
     """
     placeholders: data_x, data_gelu
     return: res_grad
-    res_grad = res/x +
+    `res_grad = res/x +`
        x*0.5*(1 - tanh(math_four)*tanh(math_four))*
        np.sqrt(2 / np.pi)*(1 + 3*0.044715*x2)
     """
@@ -166,7 +167,7 @@ def _result_grad_compute(placeholders):
     result3, tanh_math_four_result = _result3_compute(data_x)
     mul_result2_3 = tbe.vmul(result2, result3)
 
-    # compute res1 = res/x = f1 = x*(0.5*(1+tanh_math_four_result))
+    # `compute res1 = res/x = f1 = x*(0.5*(1+tanh_math_four_result))`
     mul_compute_1 = tbe.vadds(tanh_math_four_result, 1)
     mul_compute_2 = tbe.vmuls(mul_compute_1, 0.5)
 
@@ -227,6 +228,7 @@ def gelu_grad_compute(input_dy, input_x, input_y,
     return result
 
 
+# 'pylint: disable=invalid-name
 @register_operator("GeluGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,

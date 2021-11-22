@@ -26,8 +26,8 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=too-many-locals,unused-argument
-# pylint: disable=too-many-statements,too-many-branches,invalid-name
+# 'pylint: disable=too-many-locals,unused-argument
+# 'pylint: disable=too-many-statements,too-many-branches,invalid-name
 def check_equal(a, b):
     """
     check whether a equal to b or not

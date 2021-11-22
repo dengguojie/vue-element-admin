@@ -15,24 +15,24 @@
 """
 dynamic data_format_dim_map
 
-  Op_description :
-    Returns the dimension index in the destination data format given the one in.
+Op_description :
+Returns the dimension index in the destination data format given the one in.
 
-    # data_format_dim_map(
-    #   x,
-    #   y,
-    #   src_format,
-    #   dst_format,
-    #   kernel_name='data_format_dim_map')
+# data_format_dim_map(
+#   x,
+#   y,
+#   src_format,
+#   dst_format,
+#   kernel_name='data_format_dim_map')
 
-  Supportive_dtype_format :
-    ['int32']
-    ['ND', 'NCHW', 'NHWC', 'NC1HWC0']
+Supportive_dtype_format :
+['int32']
+['ND', 'NCHW', 'NHWC', 'NC1HWC0']
 
-  Constraint :
-    [1] All : `x` Must be in the range [-4, 4).
-    [2] All : `src_format` and `dst_format` must be length of 4.
-    [3] All : shape size limit is 2147483648.
+Constraint :
+[1] All : `x` Must be in the range [-4, 4).
+[2] All : `src_format` and `dst_format` must be length of 4.
+[3] All : shape size limit is 2147483648.
 """
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
@@ -44,11 +44,18 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
-# mod rhs
-MOD_RHS = 4
-# quarter
-QUARTER = 0.25
 
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # mod rhs
+    MOD_RHS = 4
+
+
+# 'pylint: disable=invalid-name
 def _data_format_dim_map_mod(data):
     """
     mod function based on TF
@@ -61,13 +68,14 @@ def _data_format_dim_map_mod(data):
     -------
     data mod by 4
     """
-
+    # quarter
+    QUARTER = 0.25
     data = tbe.cast_to(data, 'float16')
-    data = tbe.vadds(data, MOD_RHS)
+    data = tbe.vadds(data, Constant.MOD_RHS)
     data_div_4 = tbe.vmuls(data, QUARTER)
     data_floor = tbe.floor(data_div_4)
     data_floor = tbe.cast_to(data_floor, 'float16')
-    data_mul_4 = tbe.vmuls(data_floor, MOD_RHS)
+    data_mul_4 = tbe.vmuls(data_floor, Constant.MOD_RHS)
     data_mod = tbe.vsub(data, data_mul_4)
     return data_mod
 

@@ -21,6 +21,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -43,6 +44,7 @@ class Constant:
     # tiling arg num
     TILING_ARG_NUM = 24
 
+
 def _get_ceil_int(int1, int2):
     """Get ceil int
     """
@@ -60,14 +62,14 @@ class Argmax():
         """Init Argmax base parameters
         """
         # reserved ub size
-        RESERVED_UB_SIZE = 8 * 1024
+        reserved_ub_size = 8 * 1024
         self.tik_instance = tik.Tik()
         self.dtype_x = dtype_x
         self.axis = dimension
         self.kernel_name = kernel_name
         self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         self.dtype_size = tbe_platform.get_bit_len(self.dtype_x) // 8
-        self.ub_ele = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE) // self.dtype_size
+        self.ub_ele = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - reserved_ub_size) // self.dtype_size
         self.segment = Constant.MAX_SEGMENT_LEN  # only for arg at last dim
         self.data_each_block = 8
         self.data_each_vector = 64
@@ -129,10 +131,12 @@ class Argmax():
     def init_gm_tensor(self):
         """Init gm tensor
         """
-        self.tiling_gm = self.tik_instance.Tensor("int32", (Constant.TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor("int32", (Constant.TILING_ARG_NUM,), name="tiling_gm", \
+        scope=tik.scope_gm)
         self.data_gm = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_INT32,), name="data_gm", scope=tik.scope_gm)
         self.result_gm = self.tik_instance.Tensor("int32", (Constant.MAX_INT32,), name="result_gm", scope=tik.scope_gm)
-        self.result_gm_2 = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_INT32,), name="result_gm_2", scope=tik.scope_gm)
+        self.result_gm_2 = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_INT32,), name="result_gm_2", \
+        scope=tik.scope_gm)
 
     def do_not_last(self, segment, gm_in_offset, gm_out_offset):
         """process for a segment when arg not last dim
@@ -149,7 +153,8 @@ class Argmax():
 
         repeat = _get_ceil_int(segment, self.data_each_vector)
         with self.tik_instance.for_range(1, self.axis_size, thread_num=2) as axis_i:
-            ub_b = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN,), name="ub_b", scope=tik.scope_ubuf)
+            ub_b = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN,), name="ub_b", \
+            scope=tik.scope_ubuf)
             ub_mask = self.tik_instance.Tensor("uint64", (Constant.MAX_SEGMENT_LEN // Constant.OUT_MASK,),
                                                name="ub_mask",
                                                scope=tik.scope_ubuf)
@@ -199,7 +204,8 @@ class Argmax():
         self.tik_instance.vector_dup(Constant.OUT_MASK, ub_c, 0, int64_num, 1, 8)
 
         with self.tik_instance.for_range(1, self.axis_size, thread_num=2) as axis_i:
-            ub_b = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN,), name="ub_b", scope=tik.scope_ubuf)
+            ub_b = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN,), name="ub_b", \
+            scope=tik.scope_ubuf)
             ub_mask = self.tik_instance.Tensor("uint64", (Constant.MAX_SEGMENT_LEN // Constant.OUT_MASK,),
                                                name="ub_mask",
                                                scope=tik.scope_ubuf)
@@ -259,7 +265,8 @@ class Argmax():
         dst_stride = dst_stride // self.data_each_block
 
         def _run_one_sigment(axis_idx, axis_len):
-            ub_b = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN,), name="ub_b", scope=tik.scope_ubuf)
+            ub_b = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN,), name="ub_b", \
+            scope=tik.scope_ubuf)
             ub_mask = self.tik_instance.Tensor("uint64", (Constant.MAX_SEGMENT_LEN // Constant.OUT_MASK,),
                                                name="ub_mask",
                                                scope=tik.scope_ubuf)
@@ -316,17 +323,20 @@ class Argmax():
                 gm_in_offset = first_idx * self.axis_size * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN
                 gm_out_offset = first_idx * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN
                 not_last_axis_fuc(pro_len, gm_in_offset, gm_out_offset)
-                gm_in_offset = first_idx * self.axis_size * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN + offset
+                gm_in_offset = first_idx * self.axis_size * self.last_dim_size + segment_loop * \
+                Constant.MAX_SEGMENT_LEN + offset
                 gm_out_offset = first_idx * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN + offset
                 not_last_axis_fuc(pro_len, gm_in_offset, gm_out_offset)
             with self.tik_instance.else_scope():
                 with self.tik_instance.if_scope(segment_tail_data % self.data_each_block == 0):
                     gm_in_offset = first_idx * self.axis_size * self.last_dim_size + segment_loop * \
                                    Constant.MAX_SEGMENT_LEN + offset_data
-                    gm_out_offset = first_idx * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN + offset_data
+                    gm_out_offset = first_idx * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN + \
+                    offset_data
                     not_last_axis_fuc(segment_tail_data, gm_in_offset, gm_out_offset)
                 with self.tik_instance.else_scope():
-                    gm_in_offset = first_idx * self.axis_size * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN
+                    gm_in_offset = first_idx * self.axis_size * self.last_dim_size + segment_loop * \
+                    Constant.MAX_SEGMENT_LEN
                     gm_out_offset = first_idx * self.last_dim_size + segment_loop * Constant.MAX_SEGMENT_LEN
                     not_last_axis_fuc(segment_tail_data, gm_in_offset, gm_out_offset)
 
@@ -560,7 +570,8 @@ class Argmax():
             ub_result = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN,),
                                                  name="ub_result",
                                                  scope=tik.scope_ubuf)
-            ub_data = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN,), name="ub_data", scope=tik.scope_ubuf)
+            ub_data = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN,), name="ub_data", \
+            scope=tik.scope_ubuf)
             # move in
             gm_in_offset = first_idx * self.axis_size
             self.tik_instance.data_move(ub_data, self.data_gm[gm_in_offset], 0, 1,
@@ -759,7 +770,8 @@ class Argmax():
                 ub_second_result = self.tik_instance.Tensor(self.dtype_x, (self.data_each_vector,),
                                                             name="ub_second_result",
                                                             scope=tik.scope_ubuf)
-                self.tik_instance.vcmax([Constant.MASK_0_1, Constant.MASK_0_1], ub_second_result, ub_result, _repeat_times, 1, 1, 8)
+                self.tik_instance.vcmax([Constant.MASK_0_1, Constant.MASK_0_1], ub_second_result, ub_result, \
+                _repeat_times, 1, 1, 8)
 
                 ub_third_result = self.tik_instance.Tensor(self.dtype_x, (self.data_each_vector,),
                                                            name="ub_third_result",

@@ -15,22 +15,22 @@
 """
 dynamic elu_grad
 
-  Op_description :
-    do element-wise elu operation.
+Op_description :
+do element-wise elu operation.
 
-    # elu_grad(
-    #   grads,
-    #   activations,
-    #   y,
-    #   kernel_name='cce_elu_grad')
+# elu_grad(
+#   grads,
+#   activations,
+#   y,
+#   kernel_name='cce_elu_grad')
 
-  Supportive_dtype_format :
-    ["float16", "float32"]
-    ['ND', 'NCHW', 'NHWC', 'NC1HWC0']
+Supportive_dtype_format :
+["float16", "float32"]
+['ND', 'NCHW', 'NHWC', 'NC1HWC0']
 
-  Constraint :
-    [1] All : `grads` and `activations` must have the same shape and type.
-    [2] All : shape size limit is 2147483648.
+Constraint :
+[1] All : `grads` and `activations` must have the same shape and type.
+[2] All : shape size limit is 2147483648.
 """
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
@@ -43,8 +43,6 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
 
-NUM_ZERO = 0.0
-NUM_ONE = 1.0
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals
 @register_operator_compute("EluGrad", op_mode="dynamic", support_fusion=True)
@@ -67,6 +65,8 @@ def elu_grad_compute(grads, activations, y, kernel_name="elu_grad"):
     -------
     """
 
+    NUM_ZERO = 0.0
+    NUM_ONE = 1.0
     dtype = grads.dtype.lower()
     dtype_present = grads.dtype.lower()
     shape = grads.shape

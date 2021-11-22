@@ -14,7 +14,7 @@
 # ============================================================================
 """
 dynamic hard_swish
-f(x) = min(max(0,x+3), 6) * x / 6
+`f(x) = min(max(0,x+3), 6) * x / 6`
 """
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe
@@ -25,13 +25,19 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-# constants used in the equation
-CONST_THREE = 3
-CONST_SIX = 6
-CONST_ONE_IN_SIX = 1 / 6
+
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    The class for constant
+    """
+    # constants used in the equation
+    CONST_THREE = 3
+    CONST_SIX = 6
+    CONST_ONE_IN_SIX = 1 / 6
 
 
-# pylint: disable=unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=unused-argument,too-many-locals,invalid-name
 @register_operator_compute("HardSwish", op_mode="dynamic", support_fusion=True)
 def hard_swish_compute(input_x, output_y, kernel_name="hard_swish"):
     """
@@ -53,18 +59,18 @@ def hard_swish_compute(input_x, output_y, kernel_name="hard_swish"):
     dtype = input_x.dtype
     if dtype == "float16":
         input_x_fp32 = tbe.cast_to(input_x, "float32")
-        input_add3 = tbe.vadds(input_x_fp32, tvm.const(CONST_THREE, "float32"))
+        input_add3 = tbe.vadds(input_x_fp32, tvm.const(Constant.CONST_THREE, "float32"))
         max_res = tbe.vmaxs(input_add3, tvm.const(0, "float32"))
-        relu6_res = tbe.vmins(max_res, tvm.const(CONST_SIX, "float32"))
-        relu6_res_ov6 = tbe.vmuls(relu6_res, tvm.const(CONST_ONE_IN_SIX, "float32"))
+        relu6_res = tbe.vmins(max_res, tvm.const(Constant.CONST_SIX, "float32"))
+        relu6_res_ov6 = tbe.vmuls(relu6_res, tvm.const(Constant.CONST_ONE_IN_SIX, "float32"))
         res_fp32 = tbe.vmul(input_x_fp32, relu6_res_ov6)
         return tbe.cast_to(res_fp32, "float16")
-    else:
-        input_add3 = tbe.vadds(input_x, tvm.const(CONST_THREE, "float32"))
-        max_res = tbe.vmaxs(input_add3, tvm.const(0, "float32"))
-        relu6_res = tbe.vmins(max_res, tvm.const(CONST_SIX, "float32"))
-        relu6_res_ov6 = tbe.vmuls(relu6_res, tvm.const(CONST_ONE_IN_SIX, "float32"))
-        return tbe.vmul(input_x, relu6_res_ov6)
+    input_add3 = tbe.vadds(input_x, tvm.const(Constant.CONST_THREE, "float32"))
+    max_res = tbe.vmaxs(input_add3, tvm.const(0, "float32"))
+    relu6_res = tbe.vmins(max_res, tvm.const(Constant.CONST_SIX, "float32"))
+    relu6_res_ov6 = tbe.vmuls(relu6_res, tvm.const(Constant.CONST_ONE_IN_SIX, "float32"))
+    return tbe.vmul(input_x, relu6_res_ov6)
+
 
 @register_operator("HardSwish")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)

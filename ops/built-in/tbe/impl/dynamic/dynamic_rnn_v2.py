@@ -50,21 +50,6 @@ from te.tvm.schedule import create_schedule
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
-# the max size of SHAPE is 2^31
-MAX_INT32 = 2 ** 31 - 1
-MAX_SHAPE_SIZE = MAX_INT32
-# one block size takes up 32b
-BLOCK_SIZE = 32
-# data type of int32
-INT32 = "int32"
-TILING_ARG_NUM = 3
-TYPE_LEN_DICT = {"float16": 2,
-                 "float32": 4,
-                 "int8": 1,
-                 "uint8": 1,
-                 "int32": 4,
-                 "int64": 8, }
-
 
 def sigmoid_compute(input_x):
     """
@@ -574,6 +559,17 @@ def dynamic_rnn_v2(input_x, weight_input, weight_hidden, bias, seq_length, init_
     -------
     None
     """
+    # one block size takes up 32b
+    BLOCK_SIZE = 32
+    # data type of int32
+    INT32 = "int32"
+    TILING_ARG_NUM = 3
+    TYPE_LEN_DICT = {"float16": 2,
+                    "float32": 4,
+                    "int8": 1,
+                    "uint8": 1,
+                    "int32": 4,
+                    "int64": 8, }
     is_dynamic = True
     compile_mode = tbe_context.get_context().get_addition("hybrid_compile_mode")
 
@@ -752,7 +748,6 @@ def dynamic_rnn_v2(input_x, weight_input, weight_hidden, bias, seq_length, init_
         loop_m = m_size // cut_m
 
     rl_idx_list_first = []
-    rl_idx_list_last = []
     with tik_instance.for_range(0, loop_t) as loop_i:
         with tik_instance.for_range(0, loop_m) as loop_j:
 
@@ -827,7 +822,7 @@ def dynamic_rnn_v2(input_x, weight_input, weight_hidden, bias, seq_length, init_
 
                 with tik_instance.if_scope(loop_i > 0):
                     is_first_round = False
-                    rl_idx_list_last = tik_instance.call_module(
+                    tik_instance.call_module(
                         function=dynamic_rnn_tik,
                         input_tensors=input_list,
                         output_tensors=output_list,
@@ -932,7 +927,6 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
 
     shape_x_input = input_x.shape
     shape_w_i = weight_i.shape
-    shape_w_h = weight_h.shape
 
     t_size = 1
     if is_dynamic:
@@ -1373,13 +1367,13 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
         if is_dynamic:
             sch_list, tune_shape_list = s
             index_list = []
-            for i in range(len(tune_shape_list)):
-                index_list.append(tune_shape_list[i][2])
+            for index, _ in enumerate(tune_shape_list):
+                index_list.append(tune_shape_list[index][2])
 
             if sch_list is not None and len(sch_list) > 0:
-                for i in range(len(sch_list)):
-                    sch_list[i].set_constraint(
-                        expr.And(input_x.shape[2] <= tune_shape_list[i][1], input_x.shape[2] > 0))
+                for index,sch_list_value in enumerate(sch_list):
+                    sch_list_value.set_constraint(
+                        expr.And(input_x.shape[2] <= tune_shape_list[index][1], input_x.shape[2] > 0))
                 tbe_context.get_context().add_compile_info("vars", {"tune_shape_list": tune_shape_list})
                 return return_list, sch_list, index_list
         else:
@@ -1702,84 +1696,84 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
     s[c_ub_2].double_buffer()
 
     # set bound
-    SHAPE_A_Z_BIGZ = 1 * factor_l1_m * factor_l1_k_1 * 16 * 16
-    SHAPE_B_1 = 1 * factor_l1_k_1 * 1 * factor_l1_n * 16 * 16
-    SHAPE_B_2 = 1 * factor_l1_k_2 * 1 * factor_l1_n * 16 * 16
-    SHAPE_C_1 = 1 * 4 * factor_l1_n * factor_l1_m * 16 * 16
-    SHAPE_C_2 = 1 * 4 * factor_l1_n * factor_l1_m * 16 * 16
-    SHAPE_BIAS = 1 * 4 * factor_l1_n * 1 * 16 * 16
-    SHAPE_H = 1 * factor_l1_k_2 * factor_l1_m * 16 * 16
-    SHAPE_I = 1 * factor_l1_n * factor_l1_m * 16 * 16
-    SHAPE_H_Z_BIGZ = 1 * factor_l1_m * factor_l1_k_2 * 16 * 16
+    shape_a_z_bigz = 1 * factor_l1_m * factor_l1_k_1 * 16 * 16
+    shape_b_1 = 1 * factor_l1_k_1 * 1 * factor_l1_n * 16 * 16
+    shape_b_2 = 1 * factor_l1_k_2 * 1 * factor_l1_n * 16 * 16
+    shape_c_1 = 1 * 4 * factor_l1_n * factor_l1_m * 16 * 16
+    shape_c_2 = 1 * 4 * factor_l1_n * factor_l1_m * 16 * 16
+    shape_bias = 1 * 4 * factor_l1_n * 1 * 16 * 16
+    shape_h = 1 * factor_l1_k_2 * factor_l1_m * 16 * 16
+    shape_i = 1 * factor_l1_n * factor_l1_m * 16 * 16
+    shape_h_z_bigz = 1 * factor_l1_m * factor_l1_k_2 * 16 * 16
 
     for tensor in elewise_tensors:
         if tensor != barrier_tensor:
-            s[tensor].set_buffer_size(SHAPE_I)
+            s[tensor].set_buffer_size(shape_i)
 
-    s[s_state_h_ub].set_buffer_size(SHAPE_H)
-    s[s_state_c_ub].set_buffer_size(SHAPE_I)
+    s[s_state_h_ub].set_buffer_size(shape_h)
+    s[s_state_c_ub].set_buffer_size(shape_i)
 
-    s[a_l1_1].set_buffer_size(SHAPE_A_Z_BIGZ)
-    s[b_l1_1].set_buffer_size(SHAPE_B_1)
-    s[a_l0a_1].set_buffer_size(SHAPE_A_Z_BIGZ)
-    s[b_l0b_1].set_buffer_size(SHAPE_B_1)
-    s[c_l0c_1].set_buffer_size(SHAPE_C_1)
-    s[c_ub_1].set_buffer_size(SHAPE_C_1)
+    s[a_l1_1].set_buffer_size(shape_a_z_bigz)
+    s[b_l1_1].set_buffer_size(shape_b_1)
+    s[a_l0a_1].set_buffer_size(shape_a_z_bigz)
+    s[b_l0b_1].set_buffer_size(shape_b_1)
+    s[c_l0c_1].set_buffer_size(shape_c_1)
+    s[c_ub_1].set_buffer_size(shape_c_1)
 
     if bias is not None:
-        s[bias_ub].set_buffer_size(SHAPE_BIAS)
+        s[bias_ub].set_buffer_size(shape_bias)
         if fp16_input_output:
-            s[bias_ub_fp32].set_buffer_size(SHAPE_BIAS)
-        s[bias_bc_ub].set_buffer_size(SHAPE_C_1)
+            s[bias_ub_fp32].set_buffer_size(shape_bias)
+        s[bias_bc_ub].set_buffer_size(shape_c_1)
 
-    s[a_l1_2].set_buffer_size(SHAPE_H_Z_BIGZ)
-    s[b_l1_2].set_buffer_size(SHAPE_B_2)
-    s[a_l0a_2].set_buffer_size(SHAPE_H_Z_BIGZ)
-    s[b_l0b_2].set_buffer_size(SHAPE_B_2)
-    s[c_l0c_2].set_buffer_size(SHAPE_C_2)
-    s[c_ub_2].set_buffer_size(SHAPE_C_2)
-    s[c_ub_bias].set_buffer_size(SHAPE_C_2)
+    s[a_l1_2].set_buffer_size(shape_h_z_bigz)
+    s[b_l1_2].set_buffer_size(shape_b_2)
+    s[a_l0a_2].set_buffer_size(shape_h_z_bigz)
+    s[b_l0b_2].set_buffer_size(shape_b_2)
+    s[c_l0c_2].set_buffer_size(shape_c_2)
+    s[c_ub_2].set_buffer_size(shape_c_2)
+    s[c_ub_bias].set_buffer_size(shape_c_2)
 
-    s[i_t].set_buffer_size(SHAPE_I)
-    s[j_t].set_buffer_size(SHAPE_I)
-    s[f_t].set_buffer_size(SHAPE_I)
-    s[o_t].set_buffer_size(SHAPE_I)
+    s[i_t].set_buffer_size(shape_i)
+    s[j_t].set_buffer_size(shape_i)
+    s[f_t].set_buffer_size(shape_i)
+    s[o_t].set_buffer_size(shape_i)
 
-    s[f_t_sigmoid_ub].set_buffer_size(SHAPE_I)
-    s[i_t_sigmoid_ub].set_buffer_size(SHAPE_I)
-    s[o_t_sigmoid_ub].set_buffer_size(SHAPE_I)
-    s[j_t_tanh_ub].set_buffer_size(SHAPE_I)
+    s[f_t_sigmoid_ub].set_buffer_size(shape_i)
+    s[i_t_sigmoid_ub].set_buffer_size(shape_i)
+    s[o_t_sigmoid_ub].set_buffer_size(shape_i)
+    s[j_t_tanh_ub].set_buffer_size(shape_i)
 
     if is_gate_output:
         if fp16_input_output:
-            s[f_t_sigmoid_fp16].set_buffer_size(SHAPE_I)
-            s[i_t_sigmoid_fp16].set_buffer_size(SHAPE_I)
-            s[o_t_sigmoid_fp16].set_buffer_size(SHAPE_I)
-            s[j_t_tanh_fp16].set_buffer_size(SHAPE_I)
+            s[f_t_sigmoid_fp16].set_buffer_size(shape_i)
+            s[i_t_sigmoid_fp16].set_buffer_size(shape_i)
+            s[o_t_sigmoid_fp16].set_buffer_size(shape_i)
+            s[j_t_tanh_fp16].set_buffer_size(shape_i)
         if fp16_input_output:
-            s[s_state_c_back_fp32].set_buffer_size(SHAPE_I)
+            s[s_state_c_back_fp32].set_buffer_size(shape_i)
 
     if bias_dtype == 'float16':
-        s[update_c_fp16].set_buffer_size(SHAPE_I)
+        s[update_c_fp16].set_buffer_size(shape_i)
 
     if bias_dtype == 'float16':
-        s[update_c_fp16_back].set_buffer_size(SHAPE_I)
-        s[update_c_fp16_back_fp32].set_buffer_size(SHAPE_I)
+        s[update_c_fp16_back].set_buffer_size(shape_i)
+        s[update_c_fp16_back_fp32].set_buffer_size(shape_i)
     else:
-        s[update_c_fp32_back].set_buffer_size(SHAPE_I)
+        s[update_c_fp32_back].set_buffer_size(shape_i)
 
     if is_gate_output:
         if fp16_input_output:
-            s[c_t_tanh_fp16].set_buffer_size(SHAPE_I)
+            s[c_t_tanh_fp16].set_buffer_size(shape_i)
 
     if fp16_input_output:
-        s[update_h_fp16].set_buffer_size(SHAPE_I)
-        s[update_h_gm_as_y_back].set_buffer_size(SHAPE_I)
-        s[last_update_h_back].set_buffer_size(SHAPE_I)
+        s[update_h_fp16].set_buffer_size(shape_i)
+        s[update_h_gm_as_y_back].set_buffer_size(shape_i)
+        s[last_update_h_back].set_buffer_size(shape_i)
     else:
-        s[update_h_gm_as_y_back].set_buffer_size(SHAPE_I)
-        s[update_h_fp16_cast].set_buffer_size(SHAPE_I)
-        s[last_update_h_back].set_buffer_size(SHAPE_I)
+        s[update_h_gm_as_y_back].set_buffer_size(shape_i)
+        s[update_h_fp16_cast].set_buffer_size(shape_i)
+        s[last_update_h_back].set_buffer_size(shape_i)
 
     # emit_insn
     s[a_l1_1].emit_insn(a_l1_1.op.axis[0], 'dma_copy')

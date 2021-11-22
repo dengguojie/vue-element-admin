@@ -28,26 +28,28 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
 
-N_DIM = 0
-C_DIM = 1
-H_DIM = 2
-W_DIM = 3
-NONETYPE = type(None)
-DYNAMIC_FLAG = -1
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    N_DIM = 0
+    C_DIM = 1
+    H_DIM = 2
+    W_DIM = 3
+    NONETYPE = type(None)
+    DYNAMIC_FLAG = -1
+    # kh, kw must be in [1,255]
+    KSIZE_HW_MIN = 1
+    KSIZE_HW_MAX = 255
+    # padH, padW must be in [0,255]
+    PAD_MIN = 0
+    PAD_MAX = 255
+    # stride must be in [1,63]
+    STRIDE_MIN = 1
+    STRIDE_MAX = 63
 
-# kh, kw must be in [1,255]
-KSIZE_HW_MIN = 1
-KSIZE_HW_MAX = 255
-
-# padH, padW must be in [0,255]
-PAD_MIN = 0
-PAD_MAX = 255
-
-# stride must be in [1,63]
-STRIDE_MIN = 1
-STRIDE_MAX = 63
-
-
+# 'pylint: disable=unused-variable,too-many-arguments,too-many-locals,too-many-arguments,invalid-name
 def get_attr_nchw_format(input_shape, ksize, strides, data_format):
     """
     get attr nchw format
@@ -66,7 +68,7 @@ def get_attr_nchw_format(input_shape, ksize, strides, data_format):
 
     return input_shape, ksize, strides
 
-
+# 'pylint: disable=unused-variable,too-many-arguments,too-many-locals,too-many-arguments,invalid-name
 def check_avgpoolv2_params(input_shape, input_type, output_shape, output_type, ksize, strides,
                            padding, pads):
     """
@@ -88,49 +90,49 @@ def check_avgpoolv2_params(input_shape, input_type, output_shape, output_type, k
         error_manager_vector.raise_err_specific_reson("AvgPoolV2", "Padding mode only support CALCULATED, "
                                                       "VALID or SAME!")
 
-    if ksize[H_DIM] == -1 or ksize[W_DIM] == -1:
+    if ksize[Constant.H_DIM] == -1 or ksize[Constant.W_DIM] == -1:
         error_manager_vector.raise_err_specific_reson("AvgPoolV2", "The ksize of the H and W dimensions "
                                                       "must be more than zero")
-    if strides[H_DIM] == -1 or strides[W_DIM] == -1:
+    if strides[Constant.H_DIM] == -1 or strides[Constant.W_DIM] == -1:
         error_manager_vector.raise_err_specific_reson("AvgPoolV2", "The strides of the H and W dimensions "
                                                       "must be more than zero")
 
     # pads must be less than ksize
-    if pads[0] >= ksize[H_DIM] or pads[1] >= ksize[H_DIM]:
+    if pads[0] >= ksize[Constant.H_DIM] or pads[1] >= ksize[Constant.H_DIM]:
         error_manager_vector.raise_err_specific_reson("AvgPoolV2", "Pad_h must be less than kernel_h")
-    if pads[2] >= ksize[W_DIM] or pads[3] >= ksize[W_DIM]:
+    if pads[2] >= ksize[Constant.W_DIM] or pads[3] >= ksize[Constant.W_DIM]:
         error_manager_vector.raise_err_specific_reson("AvgPoolV2", "Pad_w must be less than kernel_w")
 
     # The ksize/strides of the N and C dimensions are 1
-    if ksize[N_DIM] != 1 or ksize[C_DIM] != 1:
+    if ksize[Constant.N_DIM] != 1 or ksize[Constant.C_DIM] != 1:
         error_manager_vector.raise_err_specific_reson("AvgPoolV2", "The ksize of the N and C dimensions are 1")
-    if strides[N_DIM] != 1 or strides[C_DIM] != 1:
+    if strides[Constant.N_DIM] != 1 or strides[Constant.C_DIM] != 1:
         error_manager_vector.raise_err_specific_reson("AvgPoolV2", "The strides of the N and C dimensions are 1")
 
 def check_cube_params(input_shape, ksize, strides, pads):
     """
     check params valid
     """
-    if input_shape[C_DIM] == -1:
+    if input_shape[Constant.C_DIM] == -1:
         error_manager_vector.raise_err_specific_reson("AvgPoolV2", "Don't support dynamic in C dimensions")
 
-    range_value = "".join([str(KSIZE_HW_MIN), ",", str(KSIZE_HW_MAX)])
-    if ksize[H_DIM] < KSIZE_HW_MIN or ksize[H_DIM] > KSIZE_HW_MAX:
-        error_manager_vector.raise_err_attr_range_invalid("AvgPoolV2", range_value, "kernel_h", str(ksize[H_DIM]))
-    if ksize[W_DIM] < KSIZE_HW_MIN or ksize[W_DIM] > KSIZE_HW_MAX:
-        error_manager_vector.raise_err_attr_range_invalid("AvgPoolV2", range_value, "kernel_h", str(ksize[W_DIM]))
+    range_value = "".join([str(Constant.KSIZE_HW_MIN), ",", str(Constant.KSIZE_HW_MAX)])
+    if ksize[Constant.H_DIM] < Constant.KSIZE_HW_MIN or ksize[Constant.H_DIM] > Constant.KSIZE_HW_MAX:
+        error_manager_vector.raise_err_attr_range_invalid("AvgPoolV2", range_value, "kernel_h", str(ksize[Constant.H_DIM]))
+    if ksize[Constant.W_DIM] < Constant.KSIZE_HW_MIN or ksize[Constant.W_DIM] > Constant.KSIZE_HW_MAX:
+        error_manager_vector.raise_err_attr_range_invalid("AvgPoolV2", range_value, "kernel_h", str(ksize[Constant.W_DIM]))
 
-    range_value = "".join([str(STRIDE_MIN), ",", str(STRIDE_MAX)])
-    if strides[H_DIM] < STRIDE_MIN or strides[H_DIM] > STRIDE_MAX:
-        error_manager_vector.raise_err_attr_range_invalid("AvgPoolV2", range_value, "stride_h", str(strides[H_DIM]))
-    if strides[W_DIM] < STRIDE_MIN or strides[W_DIM] > STRIDE_MAX:
-        error_manager_vector.raise_err_attr_range_invalid("AvgPoolV2", range_value, "stride_w", str(strides[W_DIM]))
+    range_value = "".join([str(Constant.STRIDE_MIN), ",", str(Constant.STRIDE_MAX)])
+    if strides[Constant.H_DIM] < Constant.STRIDE_MIN or strides[Constant.H_DIM] > Constant.STRIDE_MAX:
+        error_manager_vector.raise_err_attr_range_invalid("AvgPoolV2", range_value, "stride_h", str(strides[Constant.H_DIM]))
+    if strides[Constant.W_DIM] < Constant.STRIDE_MIN or strides[Constant.W_DIM] > Constant.STRIDE_MAX:
+        error_manager_vector.raise_err_attr_range_invalid("AvgPoolV2", range_value, "stride_w", str(strides[Constant.W_DIM]))
 
-    range_value = "".join([str(PAD_MIN), ",", str(PAD_MAX)])
-    if DYNAMIC_FLAG in pads:
+    range_value = "".join([str(Constant.PAD_MIN), ",", str(Constant.PAD_MAX)])
+    if Constant.DYNAMIC_FLAG in pads:
         return
     for pad_value in pads:
-        if pad_value < PAD_MIN or pad_value > PAD_MAX:
+        if pad_value < Constant.PAD_MIN or pad_value > Constant.PAD_MAX:
             error_manager_vector.raise_err_attr_range_invalid("AvgPoolV2", range_value, "pads", str(pad_value))
 
 def get_correct_pad(in_pad):
@@ -144,13 +146,14 @@ def get_correct_pad(in_pad):
 
     return out_pad
 
+# 'pylint: disable=unused-variable,too-many-arguments,too-many-locals,too-many-arguments,invalid-name
 def calculate_pads(input_shape, ksize, strides, padding, pads, ceil_mode, hw_dynamic_flag):
     """
     calculate pads
     """
-    input_h, input_w = input_shape[H_DIM], input_shape[W_DIM]
-    k_h, k_w = ksize[H_DIM], ksize[W_DIM]
-    stride_h, stride_w = strides[H_DIM], strides[W_DIM]
+    input_h, input_w = input_shape[Constant.H_DIM], input_shape[Constant.W_DIM]
+    k_h, k_w = ksize[Constant.H_DIM], ksize[Constant.W_DIM]
+    stride_h, stride_w = strides[Constant.H_DIM], strides[Constant.W_DIM]
 
     if padding == "SAME":
         if hw_dynamic_flag:
@@ -181,7 +184,7 @@ def calculate_pads(input_shape, ksize, strides, padding, pads, ceil_mode, hw_dyn
             pad_right = get_correct_pad((output_w - 1)*stride_w + k_w - input_w - pad_left)
 
             correct_pads = [pad_top, pad_bottom, pad_left, pad_right]
-    else: #VALID
+    else:
         if ceil_mode:
             if hw_dynamic_flag:
                 correct_pads = [0, 0, 0, 0]
@@ -197,13 +200,14 @@ def calculate_pads(input_shape, ksize, strides, padding, pads, ceil_mode, hw_dyn
 
     return correct_pads
 
+# 'pylint: disable=unused-variable,too-many-arguments,too-many-locals,too-many-arguments,invalid-name
 def calculate_pads_expr(in_shape_nc1hwc0, ksize, strides, padding, cor_pads, ceil_mode, hw_dynamic_flag):
     """
     calculate dynamic pads var
     """
-    input_h, input_w = in_shape_nc1hwc0[H_DIM], in_shape_nc1hwc0[W_DIM]
-    k_h, k_w = ksize[H_DIM], ksize[W_DIM]
-    stride_h, stride_w = strides[H_DIM], strides[W_DIM]
+    input_h, input_w = in_shape_nc1hwc0[Constant.H_DIM], in_shape_nc1hwc0[Constant.W_DIM]
+    k_h, k_w = ksize[Constant.H_DIM], ksize[Constant.W_DIM]
+    stride_h, stride_w = strides[Constant.H_DIM], strides[Constant.W_DIM]
 
     if hw_dynamic_flag:
         # calculate pad expr
@@ -260,14 +264,18 @@ def set_default_para():
     return default_para
 
 def check_hw_is_dynamic(input_shape):
-    # input_shape format NCHW
-    if input_shape[H_DIM] == -1 or input_shape[W_DIM] == -1:
+    """
+    input_shape format NCHW
+    """
+    if input_shape[Constant.H_DIM] == -1 or input_shape[Constant.W_DIM] == -1:
         return True
 
     return False
 
+# 'pylint: disable=unused-variable,too-many-arguments,too-many-locals
+# 'pylint: disable=too-many-arguments,invalid-name,too-many-statements
 @register_operator("AvgPoolV2")
-@para_check.check_input_type(dict, (dict, NONETYPE), dict, (list, tuple), (list, tuple),
+@para_check.check_input_type(dict, (dict, Constant.NONETYPE), dict, (list, tuple), (list, tuple),
                              str, (list, tuple), str, bool, bool, bool, str)
 def avg_pool_v2(x, weight, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 0, 0),
                 data_format="NCHW", global_pooling=False, ceil_mode=False,
@@ -328,8 +336,8 @@ def avg_pool_v2(x, weight, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 
     check_avgpoolv2_params(input_shape, input_type, output_shape, output_type, ksize, strides,
                            padding, pads)
     # add strides compile_info
-    tbe_context.get_context().add_compile_info("strides_h", strides[H_DIM])
-    tbe_context.get_context().add_compile_info("strides_w", strides[W_DIM])
+    tbe_context.get_context().add_compile_info("strides_h", strides[Constant.H_DIM])
+    tbe_context.get_context().add_compile_info("strides_w", strides[Constant.W_DIM])
     if weight is not None:
         dilations = [1, 1, 1, 1]
         hw_dynamic_flag = check_hw_is_dynamic(input_shape)
@@ -340,7 +348,7 @@ def avg_pool_v2(x, weight, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 
         # check cube params
         check_cube_params(input_shape, ksize, strides, cor_pads)
 
-        groups = filter_shape[N_DIM]
+        groups = filter_shape[Constant.N_DIM]
         default_para = set_default_para()
         # avgpool2 no support bias, offset_w, offset_x
         bias = None
@@ -365,10 +373,10 @@ def avg_pool_v2(x, weight, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 
                             {"bias_tensor": paras.get("bias_tensor"),
                              "offset_w_tensor": offset_w,
                              "pad_h": [pad_t, pad_b], "pad_w": [pad_l, pad_r],
-                             "stride_h": strides[H_DIM], "stride_w": strides[W_DIM],
-                             "dilate_h": dilations[H_DIM], "dilate_w": dilations[W_DIM],
-                             "filter_h": paras.get("w_shape")[H_DIM],
-                             "filter_w": paras.get("w_shape")[W_DIM],
+                             "stride_h": strides[Constant.H_DIM], "stride_w": strides[Constant.W_DIM],
+                             "dilate_h": dilations[Constant.H_DIM], "dilate_w": dilations[Constant.W_DIM],
+                             "filter_h": paras.get("w_shape")[Constant.H_DIM],
+                             "filter_w": paras.get("w_shape")[Constant.W_DIM],
                              "offset_x": offset_x,
                              "res_dtype": output_type,
                              "fusion_para": default_para.get("fusion_para"),
@@ -392,8 +400,8 @@ def avg_pool_v2(x, weight, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 
             out_h = ConvParam.h_out
             out_w = ConvParam.w_out
 
-            k_h, k_w = ksize[H_DIM], ksize[W_DIM]
-            stride_h, stride_w = strides[H_DIM], strides[W_DIM]
+            k_h, k_w = ksize[Constant.H_DIM], ksize[Constant.W_DIM]
+            stride_h, stride_w = strides[Constant.H_DIM], strides[Constant.W_DIM]
             # factor area same when exclusive=False or no padding
             if not exclusive or (padding == "VALID" and not ceil_mode):
                 c_ub_avg = tvm.compute(res_shape, lambda n, c1, m, c0:

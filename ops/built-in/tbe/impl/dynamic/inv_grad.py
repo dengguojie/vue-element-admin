@@ -27,7 +27,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=locally-disabled,unused-argument
 @register_operator_compute("InvGrad", op_mode="dynamic", support_fusion=True)
 def inv_grad_compute(input_y, input_dy, output_z, kernel_name="inv_grad"):
     """
@@ -49,17 +49,16 @@ def inv_grad_compute(input_y, input_dy, output_z, kernel_name="inv_grad"):
     res: TVM tensor
         the result of compute
     """
-    SCALAR_NEGATIVE_ONE = -1
-
+    scalar_negative_one = -1
     shape_y = shape_util.shape_to_list(input_y.shape)
     dtype = input_y.dtype
 
-    inv_const = tvm.const(SCALAR_NEGATIVE_ONE, dtype=dtype)
+    inv_const = tvm.const(scalar_negative_one, dtype=dtype)
     has_improve_precision = False
     if dtype in ("float16", "int8"):
         if tbe_platform.api_check_support("tbe.dsl.vmuls",
                                           "float32"):
-            inv_const = tvm.const(SCALAR_NEGATIVE_ONE, dtype="float32")
+            inv_const = tvm.const(scalar_negative_one, dtype="float32")
             input_y = tbe.cast_to(input_y, "float32")
             input_dy = tbe.cast_to(input_dy, "float32")
             has_improve_precision = True
@@ -78,6 +77,7 @@ def inv_grad_compute(input_y, input_dy, output_z, kernel_name="inv_grad"):
     return res
 
 
+# 'pylint: disable=too-many-locals
 @register_operator("InvGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,

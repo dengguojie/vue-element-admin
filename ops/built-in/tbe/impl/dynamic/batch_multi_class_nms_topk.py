@@ -20,7 +20,7 @@ from impl.util.platform_adapter import tik
 from impl import common_util
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def _vconcat(instance, dst, src, mode, cnt, dst_offset=0,
              src_offset=0):
     """
@@ -39,7 +39,7 @@ def _vconcat(instance, dst, src, mode, cnt, dst_offset=0,
             repeat_remain, mode)
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def _vrpsort16(instance, dst, src, cnt, dst_offset=0, src_offset=0):
     """
     _vrpsort16
@@ -76,7 +76,7 @@ def _vrpsort16_scalar(
         instance.vrpsort16(dst[dst_offset + 255 * 16 * 8 * repeat_255], src[src_offset + 255 *
                             16 * 8 * repeat_255], repeat_remain)
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def _merge_region(instance, out_ub, dst, src, rows, cols):
     """
     merge_region
@@ -147,8 +147,7 @@ def _merge_loop_scalar(
         region_list_reg.set_as((region_list_reg + 3) // 4)
 
 
-# pylint:
-# disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements
+# 'pylint:disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements
 def _merge_recur(instance,
                  out_ub,
                  dst_ub,
@@ -261,7 +260,7 @@ def _merge_recur(instance,
                         last_dim, next_total_region_list, level + 1,
                         region_offset)
 
-
+# 'pylint:disable=locally-disabled,too-many-arguments,too-many-locals
 def _merge_recur_scalar(tik_instance,
                         src_ub,
                         dst_ub,
@@ -424,4 +423,3 @@ def sort_with_ub(instance, src_ub_list, dst_ub, sorted_num):
     element_count_list = [sorted_num] * 4
     valid_bit = 2 ** ub_count - 1
     instance.vmrgsort4(dst_ub, src_ub_list, element_count_list, False, valid_bit, repeat_times=1)
-

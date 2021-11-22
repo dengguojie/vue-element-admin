@@ -29,9 +29,6 @@ from te.lang.cce import vmuls
 from te.lang.cce import vrec
 from te.lang.cce import vsub
 from te.platform.cce_conf import api_check_support
-from te.tvm import expr
-# from te.domain.rl_bank import rl_bank
-from tbe.common.rl_bank import rl_bank
 from te.domain.rl_bank import bank_manager
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
@@ -40,21 +37,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_platform
-from impl.util.platform_adapter import tbe_context
 
-
-# the max size of SHAPE is 2^31
-MAX_INT32 = 2**31 - 1
-MAX_SHAPE_SIZE = MAX_INT32
-# one block size takes up 32b
-BLOCK_SIZE = 32
-# data type of int32
-INT32 = "int32"
-TILING_ARG_NUM = 3
-
-
-TYPE_LEN_DICT = {"float16": 2, "float32": 4, "int8": 1, "uint8": 1,
-                 "int32": 4, "int64": 8, }
 
 def _sigmoid_compute(input_x):
     """
@@ -207,7 +190,8 @@ def ceil_value(value, factor):
     """
     return (value + factor - 1) // factor
 
-
+# 'pylint: disable=too-many-branches,unused-variable,too-many-statements,too-many-locals,invalid-name
+# 'pylint: disable=too-many-arguments,unused-argument
 def _check_dtype(x, weight_input, weight_hidden, bias_input, bias_hidden,
                  init_h, y, output_h, update, reset, new, hidden_new):
     """
@@ -241,7 +225,8 @@ def _check_dtype(x, weight_input, weight_hidden, bias_input, bias_hidden,
     if hidden_new is not None:
         _check_equal_bias_dtype(hidden_new, "hidden_new")
 
-
+# 'pylint: disable=too-many-branches,unused-variable,too-many-statements,too-many-locals,invalid-name
+# 'pylint: disable=too-many-arguments,unused-argument
 def _check_param(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_length,
                  y, output_h, update, reset, new, hidden_new):
     """
@@ -352,6 +337,8 @@ class ReuseType(enum.Enum):
     REUSE_AFTERCUT = 3
 
 
+# 'pylint: disable=too-many-branches,unused-variable,too-many-statements,too-many-locals,invalid-name
+# 'pylint: disable=too-many-arguments,unused-argument
 @register_operator("DynamicGRUV2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.OPTION_INPUT,
@@ -371,7 +358,14 @@ def dynamic_gru_v2(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_
     dynamic_gru_v2
     """
 
+    # one block size takes up 32b
+    BLOCK_SIZE = 32
+    # data type of int32
+    INT32 = "int32"
+    TILING_ARG_NUM = 3
     is_dynamic = True
+    TYPE_LEN_DICT = {"float16": 2, "float32": 4, "int8": 1, "uint8": 1,
+                 "int32": 4, "int64": 8, }
     """
     from tbe.common.context import get_context
 
@@ -460,6 +454,7 @@ def dynamic_gru_v2(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_
                       kernel_name, is_sync, reuse_type, is_dynamic, t_size, m_size, in_x, hidden_size, tiling_index)
 
 
+# 'pylint: disable=too-many-branches,unused-variable,too-many-statements,too-many-locals,invalid-name,too-many-arguments
 def _solution(tik_instance, tiling_gm, x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type,
               is_dynamic, t_size, m_size, in_x, hidden_size, tiling_index):
     """
@@ -578,7 +573,7 @@ def _solution(tik_instance, tiling_gm, x, bias_input, bias_hidden, seq_length, i
             output_list = [update_y_gm_var, update_h_gm_var, i_t_gm_var, r_t_gm_var, n_t_gm_var, hn_t_gm_var]
         else:
             output_list = [update_y_gm_var, update_h_gm_var]
-        
+
         call_module_config = {}
 
         if is_dynamic:
@@ -644,7 +639,7 @@ def _solution(tik_instance, tiling_gm, x, bias_input, bias_hidden, seq_length, i
                               build_input_list,
                               build_output_list)
 
-
+# 'pylint: disable=unnecessary-lambda,unused-variable
 def _dynamic_gru_v2_inner(input_list, custom_list):
     """
     inner part of tik loop
@@ -1036,6 +1031,7 @@ def _dynamic_gru_v2_inner(input_list, custom_list):
     # schedule
     sch = tvm.schedule.create_schedule([update_h_gm.op])
 
+    # 'pylint: disable=invalid-name,unused-variable
     def gen_reversed_subgraph_list(out_tensor, tensor_list):
         """
         traverse tensors by Depth-First-Search
@@ -1339,7 +1335,7 @@ def _dynamic_gru_v2_inner(input_list, custom_list):
         sch[s_state_h].emit_insn(s_state_h.op.axis[0], "vector_broadcast")
         sch[s_state_h_fp16].emit_insn(s_state_h_fp16.op.axis[0], "vector_conv")
         if seq_mask_gm is not None:
-                sch[s_state_h_ub_for_element].emit_insn(s_state_h_ub_for_element.op.axis[0], 'vector_broadcast')
+            sch[s_state_h_ub_for_element].emit_insn(s_state_h_ub_for_element.op.axis[0], 'vector_broadcast')
     else:
         if fp16_input_output:
             sch[s_state_h_fp16].emit_insn(s_state_h_fp16.op.axis[0], "dma_copy")

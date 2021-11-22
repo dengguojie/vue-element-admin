@@ -90,7 +90,7 @@ def apply_adagrad_d_compute(var,
     -------
     None
     """
-    NUM_ZERO = 0.0
+    num_zero = 0.0
     input_dtype = var.dtype
 
     if input_dtype == "float16" and tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):
@@ -104,7 +104,7 @@ def apply_adagrad_d_compute(var,
         grad_square = tbe.vmul(grad, grad)
         accum = tbe.vadd(accum, grad_square)
     elif input_dtype == 'float32':
-        accum = tbe.vadds(accum, tvm.const(NUM_ZERO, "float32"))
+        accum = tbe.vadds(accum, tvm.const(num_zero, "float32"))
     lr_grad = tbe.vmuls(grad, beta1_lr)
     sqrtdata = tbe.vsqrt(accum)
     update = tbe.vdiv(lr_grad, sqrtdata)
@@ -116,6 +116,7 @@ def apply_adagrad_d_compute(var,
         res2 = tbe.cast_to(res2, "float16")
 
     return [res1, res2]
+
 
 # 'pylint: disable=too-many-arguments
 @register_operator("ApplyAdagradD")

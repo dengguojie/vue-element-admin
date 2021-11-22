@@ -25,11 +25,8 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import OpImplMode
 
 
-CONST_1 = 1
-
-
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
-# 'pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals,invalid-name
 @register_operator_compute("FastGeluGrad", op_mode="dynamic", support_fusion=True)
 def fast_gelu_grad_compute(input_dy, input_x, output_z, kernel_name="fast_gelu_grad",
                            impl_mode=OpImplMode.HIGH_PERFORMANCE):
@@ -55,6 +52,7 @@ def fast_gelu_grad_compute(input_dy, input_x, output_z, kernel_name="fast_gelu_g
     -------
     A TVM tensor same as input placeholders.
     """
+    CONST_1 = 1
     attr = 1.702
     dtype = input_x.dtype
     attr_opp = 0 - attr

@@ -15,20 +15,20 @@
 """
 bessel_i0e
 
-  Op_description :
-    Computes the Bessel i0e function of `x` element-wise
+Op_description :
+Computes the Bessel i0e function of `x` element-wise
 
-    # bessel_i0e(
-    #   x,
-    #   y,
-    #   kernel_name="bessel_i0e")
+# bessel_i0e(
+#   x,
+#   y,
+#   kernel_name="bessel_i0e")
 
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
+Supportive_dtype_format :
+['float16', 'float32']
+['ALL']
 
-  Constraint :
-    [1] All : shape size limit is 2147483648.
+Constraint :
+[1] All : shape size limit is 2147483648.
 """
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
@@ -40,16 +40,21 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-# const value
-ITR_BEFORE = (1.0, 3.5156229, 3.0899424, 1.2067492, 0.2659732, 0.0360768, 0.0045813)
-ITR_AFTER = (0.39894228, 0.01328592, 0.00225319, -0.00157565, 0.00916281,
-             -0.02057706, 0.02635537, -0.01647633, 0.00392377)
-LEN_BEFORE = 7
-LEN_AFTER = 9
-CONST_LIMIT = 15.0 / 4
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # const value
+    ITR_BEFORE = (1.0, 3.5156229, 3.0899424, 1.2067492, 0.2659732, 0.0360768, 0.0045813)
+    ITR_AFTER = (0.39894228, 0.01328592, 0.00225319, -0.00157565, 0.00916281,
+                -0.02057706, 0.02635537, -0.01647633, 0.00392377)
+    LEN_BEFORE = 7
+    LEN_AFTER = 9
+    CONST_LIMIT = 15.0 / 4
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals,
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals,
 @register_operator_compute("BesselI0e", op_mode="dynamic", support_fusion=True)
 def bessel_i0e_compute(x, y, kernel_name="bessel_i0e"):
     """
@@ -88,17 +93,17 @@ def bessel_i0e_compute(x, y, kernel_name="bessel_i0e"):
     abs_data = tbe.vabs(x)
 
     # compute bessel_i0e for data in (-3.75, 3.75)
-    broad_const_limit = tbe.broadcast(tvm.const(CONST_LIMIT, x.dtype), shape_input)
+    broad_const_limit = tbe.broadcast(tvm.const(Constant.CONST_LIMIT, x.dtype), shape_input)
     before_abs_data = tbe.vmin(abs_data, broad_const_limit)
     data = tbe.vdiv(before_abs_data, broad_const_limit)
     square_data = tbe.vmul(data, data)
 
-    before_res = tbe.vmuls(square_data, tvm.const(ITR_BEFORE[LEN_BEFORE - 1]))
-    before_res = tbe.vadds(before_res, ITR_BEFORE[LEN_BEFORE - 2])
-    for index in reversed(range(LEN_BEFORE - 2)):
+    before_res = tbe.vmuls(square_data, tvm.const(Constant.ITR_BEFORE[Constant.LEN_BEFORE - 1]))
+    before_res = tbe.vadds(before_res, Constant.ITR_BEFORE[Constant.LEN_BEFORE - 2])
+    for index in reversed(range(Constant.LEN_BEFORE - 2)):
         before_res = tbe.vmul(before_res, square_data)
-        before_res = tbe.vadds(before_res, ITR_BEFORE[index])
-    
+        before_res = tbe.vadds(before_res, Constant.ITR_BEFORE[index])
+
     if before_abs_data.dtype == "float32" and not tbe_platform.api_check_support("tbe.dsl.vexp", "float32"):
         before_abs_data = tbe.cast_to(before_abs_data, "float16")
         has_cast_to_float16 = True
@@ -111,11 +116,11 @@ def bessel_i0e_compute(x, y, kernel_name="bessel_i0e"):
     # compute bessel_i0e for data in other domain
     data = tbe.vdiv(broad_const_limit, abs_data)
 
-    after_res = tbe.vmuls(data, tvm.const(ITR_AFTER[LEN_AFTER - 1]))
-    after_res = tbe.vadds(after_res, ITR_AFTER[LEN_AFTER - 2])
-    for index in reversed(range(LEN_AFTER - 2)):
+    after_res = tbe.vmuls(data, tvm.const(Constant.ITR_AFTER[Constant.LEN_AFTER - 1]))
+    after_res = tbe.vadds(after_res, Constant.ITR_AFTER[Constant.LEN_AFTER - 2])
+    for index in reversed(range(Constant.LEN_AFTER - 2)):
         after_res = tbe.vmul(after_res, data)
-        after_res = tbe.vadds(after_res, ITR_AFTER[index])
+        after_res = tbe.vadds(after_res, Constant.ITR_AFTER[index])
 
     sqrt_data = tbe.vsqrt(abs_data, 1)
 

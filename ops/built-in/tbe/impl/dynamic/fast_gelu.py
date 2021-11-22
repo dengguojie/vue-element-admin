@@ -25,9 +25,6 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import OpImplMode
 
-# const value
-CONST_1 = 1
-
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
 # 'pylint: disable=too-many-locals,unused-variable
@@ -49,6 +46,8 @@ def fast_gelu_compute(input_x, output_y, kernel_name="fast_gelu", impl_mode=OpIm
     -------
      A TVM tensor same as input placeholders.
     """
+    # const value
+    CONST_1 = 1
     attr = 1.702
     dtype = input_x.dtype.lower()
     attr_opp = 0 - attr

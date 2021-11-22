@@ -26,27 +26,12 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-# define a scalar , value = -1
-SCALAR_NEGATIVE_ONE = -1.0
-# define taylor negative threshold , value = -0.7
-TAYLOR_NEGATIVE_THRESHOLD = -0.7
-# define taylor positive threshold , value = 1.7
-TAYLOR_POSITIVE_THRESHOLD = 1.7
-# define second order parameter , value = 1 / 2.0
-TAYLOR_SECOND_ORDER_PARAM = 1 / 2.0
-# define third order parameter , value = 1 / 6.0
-TAYLOR_THIRD_ORDER_PARAM = 1 / 6.0
-# define fourth order parameter , value = 1 / 24.0
-TAYLOR_FOURTH_ORDER_PARAM = 1 / 24.0
-# define fifth order parameter , value = 1 / 120.0
-TAYLOR_FIFTH_ORDER_PARAM = 1 / 120.0
-# define sixth order parameter , value = 1 / 720.0
-TAYLOR_SIXTH_ORDER_PARAM = 1 / 720.0
-# define seventh order parameter , value = 1 / 5040.0
-TAYLOR_SEVENTH_ORDER_PARAM = 1 / 5040.0
 
 
-# 'pylint: disable=locally-disabled,too-many-locals
+
+
+
+# 'pylint: disable=locally-disabled,too-many-locals,invalid-name
 def _expm1_taylor_compute(input_x):
     """
     Calculate e^x - 1, Use seventh order taylor expansion
@@ -62,6 +47,18 @@ def _expm1_taylor_compute(input_x):
     Returns : A Tensor. Has the same type as input_x.
     -------
     """
+    # define second order parameter , value = 1 / 2.0
+    TAYLOR_SECOND_ORDER_PARAM = 1 / 2.0
+    # define third order parameter , value = 1 / 6.0
+    TAYLOR_THIRD_ORDER_PARAM = 1 / 6.0
+    # define fourth order parameter , value = 1 / 24.0
+    TAYLOR_FOURTH_ORDER_PARAM = 1 / 24.0
+    # define fifth order parameter , value = 1 / 120.0
+    TAYLOR_FIFTH_ORDER_PARAM = 1 / 120.0
+    # define sixth order parameter , value = 1 / 720.0
+    TAYLOR_SIXTH_ORDER_PARAM = 1 / 720.0
+    # define seventh order parameter , value = 1 / 5040.0
+    TAYLOR_SEVENTH_ORDER_PARAM = 1 / 5040.0
     # calculate second order tayloy section : x^2 / 2!
     taylor_second_order_param = tvm.const(TAYLOR_SECOND_ORDER_PARAM, "float32")
     data_power_2 = tbe.vmul(input_x, input_x)
@@ -109,6 +106,7 @@ def _expm1_taylor_compute(input_x):
     return res
 
 
+# 'pylint: disable=locally-disabled,too-many-locals,invalid-name
 def _expm1_mini_compute(mini_res, input_x, shape):
     """
     do element-wise e^x - 1 compute in mini scene
@@ -128,6 +126,10 @@ def _expm1_mini_compute(mini_res, input_x, shape):
     Returns : A Tensor. Has the same type as mini_res.
     -------
     """
+    # define taylor negative threshold , value = -0.7
+    TAYLOR_NEGATIVE_THRESHOLD = -0.7
+    # define taylor positive threshold , value = 1.7
+    TAYLOR_POSITIVE_THRESHOLD = 1.7
     taylor_res = _expm1_taylor_compute(input_x)
 
     input_right_border = tvm.const(TAYLOR_POSITIVE_THRESHOLD, "float32")
@@ -145,7 +147,7 @@ def _expm1_mini_compute(mini_res, input_x, shape):
     return mini_res
 
 
-# 'pylint: disable=locally-disabled,too-many-locals,unused-argument
+# 'pylint: disable=locally-disabled,too-many-locals,unused-argument,invalid-name
 @register_operator_compute("Expm1", op_mode="dynamic", support_fusion=True)
 def expm1_compute(input_x, output_y, kernel_name="expm1"):
     """
@@ -170,6 +172,8 @@ def expm1_compute(input_x, output_y, kernel_name="expm1"):
     -------
     res : the result of compute
     """
+    # `define a scalar , value = -1`
+    SCALAR_NEGATIVE_ONE = -1.0
     dtype = input_x.dtype
     shape = input_x.shape
     flag_cloud = tbe_platform.api_check_support("tbe.dsl.vexp", "float32")

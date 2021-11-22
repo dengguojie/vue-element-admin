@@ -25,14 +25,6 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-SHAPE_SIZE_LIMIT = 2 ** 30  # shape limit
-SIZE_SIXTEEN = 16
-BATCH_MATMUL_LENGTH = 5
-BATCH_LENGTH_1 = 1
-BATCH_LENGTH_2 = 2
-BATCH_LENGTH_3 = 3
-
-
 def _shape_broadcast(data_1, data_2):
     """
     broadcast the two input

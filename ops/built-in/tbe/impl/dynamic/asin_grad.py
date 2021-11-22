@@ -15,22 +15,22 @@
 """
 asin_grad
 
-  Op_description :
-    Computes gradients for Asin operation
+Op_description :
+Computes gradients for Asin operation
 
-    # asin_grad(
-    #   y,
-    #   dy,
-    #   z,
-    #   kernel_name="cce_asin_grad")
+# asin_grad(
+#   y,
+#   dy,
+#   z,
+#   kernel_name="cce_asin_grad")
 
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
+Supportive_dtype_format :
+['float16', 'float32']
+['ALL']
 
-  Constraint :
-    [1] All : 'y' and 'dy' must have the same type and shape.
-    [2] All : shape size limit is 2147483648.
+Constraint :
+[1] All : 'y' and 'dy' must have the same type and shape.
+[2] All : shape size limit is 2147483648.
 """
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
@@ -42,12 +42,10 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
 
-# scalar in asin_grad and Newton's equation
-NUM_MINUS_ONE = -1
-NUM_ONE = 1
 
 
-# pylint: disable=unused-argument,invalid-name,too-many-locals
+
+# 'pylint: disable=unused-argument,invalid-name,too-many-locals
 def asin_grad_compute(y, dy, z, kernel_name="asin_grad"):
     """
     do element-wise asin_grad compute
@@ -66,12 +64,15 @@ def asin_grad_compute(y, dy, z, kernel_name="asin_grad"):
     -------
     """
 
+    # scalar in asin_grad and Newton's equation
+    NUM_MINUS_ONE = -1
+    NUM_ONE = 1
     dtype = y.dtype
     if dtype == "float16" and tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):
         y = tbe.cast_to(y, "float32")
         dy = tbe.cast_to(dy, "float32")
 
-    # step 1: calculate num_to_vrsqrt = 1 - y^2
+    # `step 1: calculate num_to_vrsqrt = 1 - y^2`
     data = tbe.vmul(y, y)
     data = tbe.vmuls(data, tvm.const(NUM_MINUS_ONE, y.dtype))
     num_to_vrsqrt = tbe.vadds(data, tvm.const(NUM_ONE, y.dtype))

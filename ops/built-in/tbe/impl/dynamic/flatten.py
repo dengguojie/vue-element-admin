@@ -24,12 +24,16 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.util_select_op_base import get_op_cal_info
 
-# max int32
-MAX_INT32 = 2**31 - 1
-# tiling param num
-TILING_ARG_NUM = 16
-# reserved ub size
-RESERVED_UB_SIZE = 8 * 1024
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # max int32
+    MAX_INT32 = 2**31 - 1
+    # tiling param num
+    TILING_ARG_NUM = 16
 
 
 # 'pylint: disable = invalid-name,unused-argument,too-many-instance-attributes
@@ -59,6 +63,8 @@ class Flatten:
     def __init__(self, src, dst, kernel_name):
         """Init flatten parameters
         """
+        # reserved ub size
+        RESERVED_UB_SIZE = 8 * 1024
         self.tik_instance = tik.Tik()
         self.src_dtype = src.get("dtype").lower()
         self.dst_dtype = dst.get("dtype").lower()
@@ -75,7 +81,7 @@ class Flatten:
             error_manager_vector.raise_err_inputs_dtype_not_equal("Flatten", "src", "dst", self.src_dtype,
                                                                   self.dst_dtype)
         self.kernel_name = kernel_name
-        # get dtype size, float16 size = 2 byte / float32 size = 4 byte
+        # `get dtype size, float16 size = 2 byte / float32 size = 4 byte`
         self.dtype_size = tbe_platform.get_bit_len(self.src_dtype) // 8
 
         self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
@@ -86,9 +92,9 @@ class Flatten:
         self.copy_segment = (_get_ceil_int(self.copy_segment, self.data_len_one_block) - 1) * self.data_len_one_block
 
         # input and output tensor in gm
-        self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
-        self.src_gm = self.tik_instance.Tensor(self.src_dtype, (MAX_INT32,), name="src_gm", scope=tik.scope_gm)
-        self.dst_gm = self.tik_instance.Tensor(self.dst_dtype, (MAX_INT32,), name="dst_gm", scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
+        self.src_gm = self.tik_instance.Tensor(self.src_dtype, (Constant.MAX_INT32,), name="src_gm", scope=tik.scope_gm)
+        self.dst_gm = self.tik_instance.Tensor(self.dst_dtype, (Constant.MAX_INT32,), name="dst_gm", scope=tik.scope_gm)
         self.tiling_ub = None
 
         # tiling args
@@ -130,7 +136,7 @@ class Flatten:
     def flatten_compute(self):
         """Flatten compute
         """
-        self.tiling_ub = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_ub", scope=tik.scope_ubuf)
+        self.tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_ub", scope=tik.scope_ubuf)
         self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 2, 0, 0)
         self._tiling_args()
         # core process

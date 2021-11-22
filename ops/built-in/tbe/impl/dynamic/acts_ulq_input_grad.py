@@ -25,6 +25,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator_compute
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -58,6 +59,7 @@ def acts_ulq_input_grad_compute(data_y_grad, data_clamp_min_mask, data_clamp_max
     x_grad = tbe.vmul(data_y_grad, signal)
 
     return x_grad
+
 
 # 'pylint: disable=too-many-branches
 @register_operator('ActsULQInputGrad')

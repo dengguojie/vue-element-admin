@@ -27,7 +27,7 @@ from impl.util.platform_adapter import register_operator_compute
 from impl import ascend_quant_util as util
 
 
-# pylint: disable=invalid-name,unused-argument,unnecessary-lambda,too-many-arguments,too-many-locals
+# 'pylint: disable=invalid-name,unused-argument,unnecessary-lambda,too-many-arguments,too-many-locals
 @register_operator_compute("AscendDequantS16", op_mode="dynamic", support_fusion=True)
 def ascend_dequant_s16_compute(x0, deq_scale, x1, y, relu_flag=False, kernel_name="ascend_dequant_s16"):
     """
@@ -49,7 +49,7 @@ def ascend_dequant_s16_compute(x0, deq_scale, x1, y, relu_flag=False, kernel_nam
     x0_shape = x0.shape
 
     conv_flag = 0
-    if len(x0.op.input_tensors) and ('mad1' in x0.op.input_tensors[0].name or \
+    if len(x0.op.input_tensors) > 0 and ('mad1' in x0.op.input_tensors[0].name or \
             'convolution_c_col_bias' in x0.op.input_tensors[0].name):
         conv_flag = 1
 

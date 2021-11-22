@@ -43,6 +43,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -63,6 +64,7 @@ class Constant:
         0.01396484375)
     # TAYLOR COUNT
     TAYLOR_COUNT = 7
+
 
 def _taylor_compute(data_x, x_square=None):
     """
@@ -131,9 +133,9 @@ def acos_compute(x, y, kernel_name="acos"):
         has_improve_precision = True
 
     # negative min float16 value
-    NEG_MIN_FP16 = -2 ** (-24)
+    neg_min_fp16 = -2 ** (-24)
     # to fix bug for input data is 1.0
-    x = tbe.vadds(x, NEG_MIN_FP16)
+    x = tbe.vadds(x, neg_min_fp16)
     # Sign mask
     sign = util_compute.sign(x)
 
@@ -163,9 +165,9 @@ def acos_compute(x, y, kernel_name="acos"):
     choice_2 = tbe.vadds(choice_2, tvm.const(Constant.NUM_ONE, x.dtype))
 
     # min float16 * 2
-    TWO_MIN_FP16 = 2 ** (-23)
+    two_min_fp16 = 2 ** (-23)
     # to fix bug for input data is 1.0
-    x = tbe.vadds(x, TWO_MIN_FP16)
+    x = tbe.vadds(x, two_min_fp16)
     res_2 = tbe.vmul(x, x)
     res_2 = tbe.vmuls(res_2, tvm.const(Constant.NEG_NUM_ONE, x.dtype))
     res_2 = tbe.vadds(res_2, tvm.const(Constant.NUM_ONE, x.dtype))

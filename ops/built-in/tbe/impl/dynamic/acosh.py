@@ -41,7 +41,6 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 
-
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 def acosh_compute(input_data, output_res, kernel_name="acosh"):
     """
@@ -60,14 +59,14 @@ def acosh_compute(input_data, output_res, kernel_name="acosh"):
     -------
     """
     data = input_data
-    CONST_NEG_ONE = -1.0
+    const_neg_one = -1.0
 
     input_dtype = data.dtype.lower()
     if input_dtype == "float16" and tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):
         data = tbe.cast_to(data, "float32")
 
     res = tbe.vmul(data, data)
-    res = tbe.vadds(res, tvm.const(CONST_NEG_ONE, data.dtype))
+    res = tbe.vadds(res, tvm.const(const_neg_one, data.dtype))
     res = tbe.vsqrt(res, 1)
     res = tbe.vadd(res, data)
     if res.dtype == "float32" and not tbe_platform.api_check_support("tbe.dsl.vlog", "float32"):

@@ -23,9 +23,6 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 
-MAX_SUPPORT_SHAPE = 1 << 30  # Limit of all dims' product
-SPECIAL_SHAPE_NUM = 10000000  # Limit of one dim
-
 
 # 'pylint: disable=inconsistent-return-statements,too-many-function-args
 def _int8_uint8_process(data, dst_type):

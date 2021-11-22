@@ -21,26 +21,32 @@ from impl.util.platform_adapter import tik
 from tbe.dsl.base.operation import add_compile_info
 from te.utils import para_check
 
-INT32_MAX_NUM = 2 * 32 - 1
-TILLING_ARG_NUM = 12
-T_STATE_NUM = 1
-INT64 = 'int64'
-INT32 = 'int32'
-FORWARD = 'UNIDIRECTIONAL'
-TILLING_PARA_INDEX_MAP = {
-    't_size': 0,
-    'eleEachCore': 1,
-    'outLoopNum': 2,
-    'outLoopEleNum': 3,
-    'innerLoopNum': 4,
-    'innerLoopEleNum': 5,
-    'lastLoopEleNum': 6,
-    'ubSize': 7,
-    'hiddenSize': 8,
-    'batchSize': 9,
-    'useCoreNum': 10,
-    'fuseSize': 11,
-}
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    INT32_MAX_NUM = 2 * 32 - 1
+    TILLING_ARG_NUM = 12
+    T_STATE_NUM = 1
+    INT64 = 'int64'
+    INT32 = 'int32'
+    FORWARD = 'UNIDIRECTIONAL'
+    TILLING_PARA_INDEX_MAP = {
+        't_size': 0,
+        'eleEachCore': 1,
+        'outLoopNum': 2,
+        'outLoopEleNum': 3,
+        'innerLoopNum': 4,
+        'innerLoopEleNum': 5,
+        'lastLoopEleNum': 6,
+        'ubSize': 7,
+        'hiddenSize': 8,
+        'batchSize': 9,
+        'useCoreNum': 10,
+        'fuseSize': 11,
+    }
 
 
 # 'pylint: disable=too-many-instance-attributes
@@ -128,7 +134,7 @@ class LstmCellGradInput:
 
         self.tik_instance = tik.Tik(tik.Dprofile())
         self.aicore_num = self.tik_instance.d_profiling.get_aicore_num()
-        self.use_core_num = self.tik_instance.Scalar(INT64, name='use_core_num')
+        self.use_core_num = self.tik_instance.Scalar(Constant.INT64, name='use_core_num')
 
         self.init_gm_tensor()
 
@@ -184,44 +190,44 @@ class LstmCellGradInput:
         if self.dht_out_dtype is not None:
             self.gm_dht_out = self.tik_instance.Tensor(
                 self.dht_out_dtype,
-                (INT32_MAX_NUM,),
+                (Constant.INT32_MAX_NUM,),
                 name="gm_dht_out",
                 scope=tik.scope_gm)
         self.gm_dht = self.tik_instance.Tensor(
-            self.dht_dtype, (INT32_MAX_NUM,), name="gm_dht", scope=tik.scope_gm)
+            self.dht_dtype, (Constant.INT32_MAX_NUM,), name="gm_dht", scope=tik.scope_gm)
         self.gm_dct = self.tik_instance.Tensor(
-            self.dct_dtype, (INT32_MAX_NUM,), name="gm_dct", scope=tik.scope_gm)
+            self.dct_dtype, (Constant.INT32_MAX_NUM,), name="gm_dct", scope=tik.scope_gm)
         self.gm_it = self.tik_instance.Tensor(
-            self.it_dtype, (INT32_MAX_NUM,), name="gm_it", scope=tik.scope_gm)
+            self.it_dtype, (Constant.INT32_MAX_NUM,), name="gm_it", scope=tik.scope_gm)
         self.gm_ft = self.tik_instance.Tensor(
-            self.ft_dtype, (INT32_MAX_NUM,), name="gm_ft", scope=tik.scope_gm)
+            self.ft_dtype, (Constant.INT32_MAX_NUM,), name="gm_ft", scope=tik.scope_gm)
         self.gm_jt = self.tik_instance.Tensor(
-            self.jt_dtype, (INT32_MAX_NUM,), name="gm_jt", scope=tik.scope_gm)
+            self.jt_dtype, (Constant.INT32_MAX_NUM,), name="gm_jt", scope=tik.scope_gm)
         self.gm_ot = self.tik_instance.Tensor(
-            self.ot_dtype, (INT32_MAX_NUM,), name="gm_ot", scope=tik.scope_gm)
+            self.ot_dtype, (Constant.INT32_MAX_NUM,), name="gm_ot", scope=tik.scope_gm)
         self.gm_tanh_ct = self.tik_instance.Tensor(
             self.tanh_ct_dtype,
-            (INT32_MAX_NUM,),
+            (Constant.INT32_MAX_NUM,),
             name="gm_tanh_ct",
             scope=tik.scope_gm)
         self.gm_c = self.tik_instance.Tensor(
-            self.c_dtype, (INT32_MAX_NUM,), name="gm_c", scope=tik.scope_gm)
+            self.c_dtype, (Constant.INT32_MAX_NUM,), name="gm_c", scope=tik.scope_gm)
         self.gm_init_c = self.tik_instance.Tensor(
-            self.c_dtype, (INT32_MAX_NUM,), name="gm_init_c", scope=tik.scope_gm)
+            self.c_dtype, (Constant.INT32_MAX_NUM,), name="gm_init_c", scope=tik.scope_gm)
         if self.mask_shape is not None:
             self.gm_mask = self.tik_instance.Tensor(
-                self.c_dtype, (INT32_MAX_NUM,), name="gm_mask", scope=tik.scope_gm)
+                self.c_dtype, (Constant.INT32_MAX_NUM,), name="gm_mask", scope=tik.scope_gm)
         self.gm_t_state = self.tik_instance.Tensor(
-            INT32, (T_STATE_NUM,), name="gm_t_state", scope=tik.scope_gm)
+            Constant.INT32, (Constant.T_STATE_NUM,), name="gm_t_state", scope=tik.scope_gm)
         self.tilling_gm = self.tik_instance.Tensor(
-            INT64, (TILLING_ARG_NUM,), name="tilling_gm", scope=tik.scope_gm)
+            Constant.INT64, (Constant.TILLING_ARG_NUM,), name="tilling_gm", scope=tik.scope_gm)
         # output gm
         self.gm_dct1 = self.tik_instance.Tensor(
-            self.c_dtype, (INT32_MAX_NUM,), name="gm_dct1", scope=tik.scope_gm)
+            self.c_dtype, (Constant.INT32_MAX_NUM,), name="gm_dct1", scope=tik.scope_gm)
 
         self.gm_dgate = self.tik_instance.Tensor(
             self.dgate_dtype,
-            (INT32_MAX_NUM,),
+            (Constant.INT32_MAX_NUM,),
             name="gm_dgate",
             scope=tik.scope_gm)
 
@@ -291,8 +297,8 @@ class LstmCellGrad(LstmCellGradInput):
         self.v_ele_each_block = 32 // dtype_bytes_size
 
         self.ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-        t_state_and_tilling_size = ((T_STATE_NUM + 15) // 16 * 16 * dtype_bytes_size + (
-                TILLING_ARG_NUM + 15) // 16 * 16 * int64_bytes_size) * 2
+        t_state_and_tilling_size = ((Constant.T_STATE_NUM + 15) // 16 * 16 * dtype_bytes_size + (
+                Constant.TILLING_ARG_NUM + 15) // 16 * 16 * int64_bytes_size) * 2
         ub_max_ele_num = (self.ub_size_bytes - t_state_and_tilling_size) // dtype_bytes_size
         align = 256
         self.max_block_ele_num = (ub_max_ele_num // self.ub_pice_num // 2 // align) * align
@@ -343,32 +349,33 @@ class LstmCellGrad(LstmCellGradInput):
         set tilling params
         """
 
-        tilling_ub = self.tik_instance.Tensor(INT64, (TILLING_ARG_NUM,), name="tilling_ub", scope=tik.scope_ubuf)
-        burst = (TILLING_ARG_NUM * 8 + 15) // 16 * 16 // 32
+        tilling_ub = self.tik_instance.Tensor(Constant.INT64, (Constant.TILLING_ARG_NUM,), name="tilling_ub", \
+        scope=tik.scope_ubuf)
+        burst = (Constant.TILLING_ARG_NUM * 8 + 15) // 16 * 16 // 32
         self.tik_instance.data_move(tilling_ub, self.tilling_gm, 0, 1, burst, 0, 0)
-        self.t_size = self.tik_instance.Scalar(INT64, name='t_size')
-        self.t_size.set_as(tilling_ub[TILLING_PARA_INDEX_MAP['t_size']])
-        self.ele_each_core = self.tik_instance.Scalar(INT64, name='ele_each_core')
-        self.ele_each_core.set_as(tilling_ub[TILLING_PARA_INDEX_MAP['eleEachCore']])
-        self.out_loop_num = self.tik_instance.Scalar(INT64, name='out_loop_num')
-        self.out_loop_num.set_as(tilling_ub[TILLING_PARA_INDEX_MAP['outLoopNum']])
-        self.out_loop_ele_num = self.tik_instance.Scalar(INT64, name='out_loop_ele_num')
-        self.out_loop_ele_num.set_as(tilling_ub[TILLING_PARA_INDEX_MAP['outLoopEleNum']])
-        self.inner_loop_num = self.tik_instance.Scalar(INT64, name='inner_loop_num')
-        self.inner_loop_num.set_as(tilling_ub[TILLING_PARA_INDEX_MAP['innerLoopNum']])
-        self.inner_loop_ele_num = self.tik_instance.Scalar(INT64, name='inner_loop_ele_num')
-        self.inner_loop_ele_num.set_as(tilling_ub[TILLING_PARA_INDEX_MAP['innerLoopEleNum']])
-        self.last_loop_ele_num = self.tik_instance.Scalar(INT64, name='last_loop_ele_num')
-        self.last_loop_ele_num.set_as(tilling_ub[TILLING_PARA_INDEX_MAP['lastLoopEleNum']])
-        self.ub_size = self.tik_instance.Scalar(INT64, name='ub_size')
-        self.ub_size.set_as(tilling_ub[TILLING_PARA_INDEX_MAP['ubSize']])
-        self.hidden_size = self.tik_instance.Scalar(INT64, name='hidden_size')
-        self.hidden_size.set_as(tilling_ub[TILLING_PARA_INDEX_MAP['hiddenSize']])
-        self.batch_size = self.tik_instance.Scalar(INT64, name='batch_size')
-        self.batch_size.set_as(tilling_ub[TILLING_PARA_INDEX_MAP['batchSize']])
-        self.fuse_size = self.tik_instance.Scalar(INT64, name='fuse_size')
-        self.fuse_size.set_as(tilling_ub[TILLING_PARA_INDEX_MAP['fuseSize']])
-        self.use_core_num.set_as(tilling_ub[TILLING_PARA_INDEX_MAP['useCoreNum']])
+        self.t_size = self.tik_instance.Scalar(Constant.INT64, name='t_size')
+        self.t_size.set_as(tilling_ub[Constant.TILLING_PARA_INDEX_MAP['t_size']])
+        self.ele_each_core = self.tik_instance.Scalar(Constant.INT64, name='ele_each_core')
+        self.ele_each_core.set_as(tilling_ub[Constant.TILLING_PARA_INDEX_MAP['eleEachCore']])
+        self.out_loop_num = self.tik_instance.Scalar(Constant.INT64, name='out_loop_num')
+        self.out_loop_num.set_as(tilling_ub[Constant.TILLING_PARA_INDEX_MAP['outLoopNum']])
+        self.out_loop_ele_num = self.tik_instance.Scalar(Constant.INT64, name='out_loop_ele_num')
+        self.out_loop_ele_num.set_as(tilling_ub[Constant.TILLING_PARA_INDEX_MAP['outLoopEleNum']])
+        self.inner_loop_num = self.tik_instance.Scalar(Constant.INT64, name='inner_loop_num')
+        self.inner_loop_num.set_as(tilling_ub[Constant.TILLING_PARA_INDEX_MAP['innerLoopNum']])
+        self.inner_loop_ele_num = self.tik_instance.Scalar(Constant.INT64, name='inner_loop_ele_num')
+        self.inner_loop_ele_num.set_as(tilling_ub[Constant.TILLING_PARA_INDEX_MAP['innerLoopEleNum']])
+        self.last_loop_ele_num = self.tik_instance.Scalar(Constant.INT64, name='last_loop_ele_num')
+        self.last_loop_ele_num.set_as(tilling_ub[Constant.TILLING_PARA_INDEX_MAP['lastLoopEleNum']])
+        self.ub_size = self.tik_instance.Scalar(Constant.INT64, name='ub_size')
+        self.ub_size.set_as(tilling_ub[Constant.TILLING_PARA_INDEX_MAP['ubSize']])
+        self.hidden_size = self.tik_instance.Scalar(Constant.INT64, name='hidden_size')
+        self.hidden_size.set_as(tilling_ub[Constant.TILLING_PARA_INDEX_MAP['hiddenSize']])
+        self.batch_size = self.tik_instance.Scalar(Constant.INT64, name='batch_size')
+        self.batch_size.set_as(tilling_ub[Constant.TILLING_PARA_INDEX_MAP['batchSize']])
+        self.fuse_size = self.tik_instance.Scalar(Constant.INT64, name='fuse_size')
+        self.fuse_size.set_as(tilling_ub[Constant.TILLING_PARA_INDEX_MAP['fuseSize']])
+        self.use_core_num.set_as(tilling_ub[Constant.TILLING_PARA_INDEX_MAP['useCoreNum']])
 
     def init_ub(self):
         """
@@ -621,13 +628,13 @@ class LstmCellGrad(LstmCellGradInput):
         t_offset
         """
         self.ub_t_state = self.tik_instance.Tensor(
-            INT32, (4,),
+            Constant.INT32, (4,),
             name="ub_t_state",
             scope=tik.scope_ubuf
         )
         self.tik_instance.data_move(self.ub_t_state, self.gm_t_state, 0, 1, 1, 0, 0)
-        self.t_state = self.tik_instance.Scalar(INT32, name='t_state', init_value=self.ub_t_state[0])
-        if self.direction == FORWARD:
+        self.t_state = self.tik_instance.Scalar(Constant.INT32, name='t_state', init_value=self.ub_t_state[0])
+        if self.direction == Constant.FORWARD:
             t_offset = self.t_size - self.t_state - 1
         else:
             t_offset = self.t_state
@@ -694,7 +701,7 @@ class LstmCellGrad(LstmCellGradInput):
         with self.tik_instance.if_scope(self.inner_loop_num > 0):
             with self.tik_instance.for_range(0, self.inner_loop_num) as index:
                 start_index = loop_offset + index * self.inner_loop_ele_num
-                if self.direction == FORWARD:
+                if self.direction == Constant.FORWARD:
                     self.input_data_move_in(start_index, t_offset * self.fuse_size + start_index,
                                             (t_offset - 1) * self.fuse_size + start_index, self.inner_loop_ele_num)
                 else:
@@ -708,7 +715,7 @@ class LstmCellGrad(LstmCellGradInput):
         with self.tik_instance.if_scope(self.last_loop_ele_num > 0):
             start_index = (
                     loop_offset + self.inner_loop_num * self.inner_loop_ele_num)
-            if self.direction == FORWARD:
+            if self.direction == Constant.FORWARD:
                 self.input_data_move_in(start_index, t_offset * self.fuse_size + start_index,
                                         (t_offset - 1) * self.fuse_size + start_index, self.last_loop_ele_num)
             else:

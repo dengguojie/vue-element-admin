@@ -15,19 +15,19 @@
 """
 fills
 
-  Op_description :
-    This operation creates a tensor of shape `dims` and fills it with `value`.
+Op_description :
+This operation creates a tensor of shape `dims` and fills it with `value`.
 
-    # fills(
-    #   x,
-    #   y,
-    #   value,
-    #   kernel_name='fills'
-    # )
+# fills(
+#   x,
+#   y,
+#   value,
+#   kernel_name='fills'
+# )
 
-  Supportive_dtype_format :
-    ['int32', 'float32', 'float16']
-    all format
+Supportive_dtype_format :
+['int32', 'float32', 'float16']
+all format
 """
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe

@@ -33,11 +33,15 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import tuple_sum
 
-CONST = "const"
-ORIGINAL = "original"
-BN_REDUCE = "bn_reduce"
-VAR_BOUND_LIMIT = 2147483647
-BLOCK_SIZE_BYTE = 32
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    CONST = "const"
+    BN_REDUCE = "bn_reduce"
+    VAR_BOUND_LIMIT = 2147483647
+    BLOCK_SIZE_BYTE = 32
 
 # <dsl insn, pass insn> mapping
 INSN_MAPPING = {
@@ -65,7 +69,7 @@ DTYPE_BYTE_MAPPING = {
 }
 
 
-@operation.register_schedule(pattern=BN_REDUCE)
+@operation.register_schedule(pattern=Constant.BN_REDUCE)
 def schedule(outs, tiling_case):
     '''
     :param outs:
@@ -96,7 +100,7 @@ def schedule(outs, tiling_case):
     return real_schedule
 
 
-@operation.register_tiling_case(pattern=BN_REDUCE)
+@operation.register_tiling_case(pattern=Constant.BN_REDUCE)
 def calc_tiling_case(outs, options=None):
     """
     bn training reduce tiling case interface
@@ -125,7 +129,7 @@ def calc_tiling_case(outs, options=None):
     else:
         tiling_case_list += tiling_instance.calculate_atomic_tiling_cases(single_reduce_info)
 
-    if operation.get_context().get("_mode") == CONST:
+    if operation.get_context().get("_mode") == Constant.CONST:
         if single_reduce_info.reduce_axis_indices == [0, 2, 3]:
             return tiling_instance.gen_const_tiling_case(single_reduce_info, compute_graph_info, True)
 
@@ -176,7 +180,7 @@ def bn_training_reduce_compute(x, sum, square_sum, axis, kernel_name="bn_trainin
 
 
 # pylint: disable=too-many-locals, too-many-statements
-@register_operator("BNTrainingReduce", pattern=BN_REDUCE)
+@register_operator("BNTrainingReduce", pattern=Constant.BN_REDUCE)
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def bn_training_reduce(x, sum, square_sum, kernel_name="bn_training_reduce"):
@@ -226,13 +230,13 @@ def bn_training_reduce(x, sum, square_sum, kernel_name="bn_training_reduce"):
             return max([s[i] for s in shape_local])
 
         def _select_min_upper_bound(input_list):
-            min_ele = VAR_BOUND_LIMIT + 1
+            min_ele = Constant.VAR_BOUND_LIMIT + 1
             for ele in input_list:
                 if ele is None:
                     continue
                 if ele < min_ele:
                     min_ele = ele
-            return min_ele if min_ele != VAR_BOUND_LIMIT + 1 else None
+            return min_ele if min_ele != Constant.VAR_BOUND_LIMIT + 1 else None
 
         def _get_range(i):
             if shape_out[i] != -1:
@@ -263,7 +267,7 @@ def bn_training_reduce(x, sum, square_sum, kernel_name="bn_training_reduce"):
         :return:
         """
         for (x, axis) in ins:
-            if x['mode'] == CONST and axis['value'][0] == 0:
+            if x['mode'] == Constant.CONST and axis['value'][0] == 0:
                 x['shape'].insert(0, 1)
                 axis['value'] = [x + 1 for x in axis['value']]
         return ins
@@ -286,7 +290,7 @@ def bn_training_reduce(x, sum, square_sum, kernel_name="bn_training_reduce"):
     if data_format == "NC1HWC0" and x['shape'][-1] < 0:
         error_detail = "The input x dim C0 should be a const value. x['shape'][-1]：", x['shape'][-1]
         error_manager_vector.raise_err_specific_reson("bn_training_reduce", error_detail)
-  
+
     # check dtype
     check_list = ("float16", "float32")
     para_check.check_dtype(dtype, check_list, param_name="x")
@@ -299,8 +303,9 @@ def bn_training_reduce(x, sum, square_sum, kernel_name="bn_training_reduce"):
     dup_x['shape'] = normalised_x['shape']
     dup_x['range'] = normalised_x['range']
     is_const = all(x > 0 for x in dup_x['shape'])
+    ORIGINAL = "original"
     if is_const:
-        dup_x['mode'] = CONST
+        dup_x['mode'] = Constant.CONST
         tbe_context.get_context().add_compile_info("ori_const_shape", dup_x['shape'])
     else:
         dup_x['mode'] = ORIGINAL
@@ -310,7 +315,7 @@ def bn_training_reduce(x, sum, square_sum, kernel_name="bn_training_reduce"):
     shape_len = len(x['shape'])
 
     axis_checked = shape_util.axis_check(shape_len, ori_reduce_axis)
-    input_axis = {'shape': [len(axis_checked),], 'value': axis_checked, 'rel_pos_to_reduce': 'axis'}
+    input_axis = {'shape': [len(axis_checked), ], 'value': axis_checked, 'rel_pos_to_reduce': 'axis'}
     ins = classify([x, input_axis], OpPatternMode.REDUCE, {'keepdims': True})
     ins = simply_input(ins)
 
@@ -335,7 +340,7 @@ def bn_training_reduce(x, sum, square_sum, kernel_name="bn_training_reduce"):
         with tvm.target.cce():
             sch = tbe.auto_schedule(res)
             schedules.append(sch)
-            if _x['mode'] == CONST and sch:
+            if _x['mode'] == Constant.CONST and sch:
                 break
 
     # build
@@ -343,7 +348,7 @@ def bn_training_reduce(x, sum, square_sum, kernel_name="bn_training_reduce"):
     tbe.build(schedules, config)
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class ComputeGraphInfo:
     """
     Operator Compute Graph Info collector and container
@@ -451,7 +456,8 @@ class ComputeGraphInfo:
         elif isinstance(root_tensor, tvm.tensor.Tensor):
             _recursive_func(root_tensor, visited_list, tensor_consumers_map, tensor_producers_map)
         else:
-            error_manager_vector.raise_err_input_format_invalid("bn_training_reduce", "dfs_compute_graph()", ["list, tuple, Tensor"], str(type(root_tensor)))
+            error_manager_vector.raise_err_input_format_invalid("bn_training_reduce", "dfs_compute_graph()", \
+            ["list, tuple, Tensor"], str(type(root_tensor)))
         return list(visited_list), tensor_consumers_map, tensor_producers_map
 
     def get_all_tensors_before_reduce(self, output_tensors):
@@ -509,7 +515,7 @@ class TilingStrategy(Enum):
     NONE_CUT = auto()
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class BNReduceInfo:
     """
     bn training reduce info object calss
@@ -614,7 +620,7 @@ class BNReduceInfo:
         :param reduce_axis_index
         :return the last axis or the last serials axises that are not in reduce_axis
         """
-        # shape_before_reduce:(ak+1,rk,...,r2,a2,r1,a1) or (ak,rk,...,r2,a1,r1)
+        # `shape_before_reduce:(ak+1,rk,...,r2,a2,r1,a1) or (ak,rk,...,r2,a1,r1)`
         # find a1 position, a1 may contain continues axis
         a1_end_index = None
         for i in range(len(shape_before_reduce) - 1, -1, -1):
@@ -679,7 +685,7 @@ class BNReduceInfo:
         :param reduce_axis_index
         :return:
         """
-        # shape_before_reduce: (a4,r4,a3,r3,a2,r2,a1,r1)
+        # `shape_before_reduce: (a4,r4,a3,r3,a2,r2,a1,r1)`
 
         orignal_to_reorder_axis_map = {}
         reorder_to_orignal_axis_map = {}
@@ -703,7 +709,7 @@ class BNReduceInfo:
         return reordered_shape, reorder_to_orignal_axis_map, orignal_to_reorder_axis_map
 
 
-# pylint: disable=too-few-public-methods
+# 'pylint: disable=too-few-public-methods
 class ReduceTilingCase:
     """
     bn training reduce tiling case object class
@@ -761,7 +767,7 @@ class GenBnReduceTilingCase:
         :param tiling:
         :return:
         """
-        # tiling: single_case
+        # `tiling: single_case`
         shape = reduce_info.shape_before_reduce
         reduce_axis_idx = reduce_info.reduce_axis_indices
         block_split_axis = tiling.block_split_axis_index
@@ -772,7 +778,7 @@ class GenBnReduceTilingCase:
 
         shape_type, db_flag = 0, 0
 
-        if operation.get_context().get("_mode") == CONST:
+        if operation.get_context().get("_mode") == Constant.CONST:
             ori_axis = tbe_context.get_context().get_compile_info().get("ori_axis")
             tiling_key = self._gen_const_tiling_key(ori_axis)
         else:
@@ -781,7 +787,7 @@ class GenBnReduceTilingCase:
 
         tiling.tiling_key = tiling_key
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def gen_const_tiling_case(self, single_reduce_info, compute_graph_info, customised_input=False):
         """
         :param single_reduce_info:
@@ -941,7 +947,8 @@ class GenBnReduceTilingCase:
             block_size = 4
         else:
             excepted_dtype_list = ["float32", "fp32", "int32", "bool", "int8", "uint8", "float16", "fp16", "int64"]
-            error_manager_vector.raise_err_input_dtype_not_supported("bn_training_reduce", "dtype", excepted_dtype_list, dtype)
+            error_manager_vector.raise_err_input_dtype_not_supported("bn_training_reduce", "dtype", \
+            excepted_dtype_list, dtype)
         return block_size
 
     @staticmethod
@@ -987,7 +994,7 @@ class GenBnReduceTilingCase:
                 tiling_case_list.append(tiling_case)
         return tiling_case_list
 
-    # pylint: disable=too-many-locals, too-many-arguments
+    # 'pylint: disable=too-many-locals, too-many-arguments
     @staticmethod
     def _get_tiling_key(atomic, db_flag, shape_type, block_split_axis, ub_split_axis, shape, reduce_idx_list,
                         is_customised, is_fuse_hn):
@@ -1013,8 +1020,9 @@ class GenBnReduceTilingCase:
             rule = [range(2), range(100), range(9), range(9), range(1000), range(2), range(2)]
             name = ["db_flag", "shape_type", "block_split_axis", "ub_split_axis", "pattern", "customised", "fuse_hn"]
             if value not in rule[idx]:
-                error_manager_vector.raise_err_input_value_invalid("bn_training_reduce", name[idx], str(rule[idx]), value)
-        
+                error_manager_vector.raise_err_input_value_invalid("bn_training_reduce", name[idx], \
+                str(rule[idx]), value)
+
         def _get_pattern_key(_shape, _reduce_idx_list):
             """
             :param _shape:
@@ -1124,7 +1132,7 @@ class GenBnReduceTilingCase:
         return tiling_case_list
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class BnReduceCustomisedSchedule:
     """
     customised schedule
@@ -1306,7 +1314,7 @@ class BnReduceCustomisedSchedule:
             ub_split_reduce_axis = 2
         return ub_split_reduce_axis
 
-    # pylint: disable=too-many-locals, too-many-branches, too-many-statements
+    # 'pylint: disable=too-many-locals, too-many-branches, too-many-statements
     def _do_tiling_cut_c1(self):
         """
         block split on C1 axis
@@ -1365,7 +1373,7 @@ class BnReduceCustomisedSchedule:
                                   sum_x_ub_h_reduce_axis, sum_x_ub_w_axis, sum_x_ub_outer, sum_x_ub_inner,
                                   sum_x_ub_c0_axis)
 
-        # pylint: disable=too-many-arguments
+        # 'pylint: disable=too-many-arguments
         def do_compute_at(sch, data_ub, sum_x, sum_x_ub, sum_x_ub_outer, cast_0_ub, data_mul_ub, is_mte3_opt,
                           sum_x_block_inner_outer, sum_x_block_inner):
             """
@@ -1400,7 +1408,7 @@ class BnReduceCustomisedSchedule:
         if self.need_db:
             sch[self.data_ub].double_buffer()
 
-        # pylint: disable=too-many-arguments
+        # 'pylint: disable=too-many-arguments
         def do_emit_insn(sch, sum_x, sum_x_ub, sum_x_ub_inner, sum_x_c0_axis, data_ub, cast_0_ub, data_mul_ub):
             """
             :param sch:
@@ -1726,7 +1734,8 @@ class BnReduceCustomisedSchedule:
         """
         valid_types = (int, tvm.expr.Expr)
         if not isinstance(expr, valid_types):
-            error_manager_vector.raise_err_input_dtype_not_supported("bn_training_reduce", "expr", "(int, expr)", type(expr))
+            error_manager_vector.raise_err_input_dtype_not_supported("bn_training_reduce", "expr", "(int, expr)", \
+            type(expr))
 
         if isinstance(expr, int):
             return expr, expr
@@ -1739,7 +1748,7 @@ class BnReduceCustomisedSchedule:
             if _a is None or _b is None:
                 return None
             _bound = _a * _b
-            return None if _bound > VAR_BOUND_LIMIT else _bound
+            return None if _bound > Constant.VAR_BOUND_LIMIT else _bound
 
         def _max(_a, _b):
             if _a is None or _b is None:
@@ -1754,10 +1763,10 @@ class BnReduceCustomisedSchedule:
         def _parse(_expr):
             if isinstance(_expr, tvm.expr.ConstExpr):
                 return _expr.value, _expr.value
-            elif isinstance(_expr, tvm.expr.Var):
+            if isinstance(_expr, tvm.expr.Var):
                 bound = operation.get_te_var(_expr.name).get_bound()
                 return bound[0], bound[1]
-            elif isinstance(_expr, tvm.expr.Mul):
+            if isinstance(_expr, tvm.expr.Mul):
                 left_lower, left_upper = _parse(_expr.a)
                 right_lower, right_upper = _parse(_expr.b)
                 _lower, _upper = _mul(left_lower, right_lower), _mul(left_upper, right_upper)
@@ -1766,19 +1775,20 @@ class BnReduceCustomisedSchedule:
                 right_lower, right_upper = _parse(_expr.b)
                 _lower, _upper = _min(left_lower, right_lower), _max(left_upper, right_upper)
             else:
-                error_manager_vector.raise_err_input_dtype_not_supported("bn_training_reduce", "_expr", "(ConstExpr, Var, Mul, Max)", type(_expr))
+                error_manager_vector.raise_err_input_dtype_not_supported("bn_training_reduce", "_expr", \
+                "(ConstExpr, Var, Mul, Max)", type(_expr))
             return _lower, _upper
 
         return _parse(expr)
 
 
-# pylint: disable=too-few-public-methods, too-many-instance-attributes
+# 'pylint: disable=too-few-public-methods, too-many-instance-attributes
 class BnReduceAtomicSchedule:
     """
     ReduceAtomicSchedule: base class of bn training reduce atomic schedule
     Returns
     """
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def __init__(self, tiling_case, graph_info, reduce_info):
         self._op = []
         self._origin_op = []
@@ -2222,7 +2232,7 @@ class BnReduceAtomicSchedule:
             else:
                 error_detail = 'undefined tensor, _tensor:%s' % _tensor
                 error_manager_vector.raise_err_specific_reson("bn_training_reduce", error_detail)
-        
+
             return _space
 
         for tensor in self._cache_read_tensors_and_buffer_map:
@@ -2267,7 +2277,7 @@ class BnReduceAtomicSchedule:
             for i in self._cache_read_tensors_and_buffer_map:
                 if i in tensor_list:
                     read_buffer = self._cache_read_tensors_and_buffer_map[i]
-                    align_factor = BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[read_buffer.dtype]
+                    align_factor = Constant.BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[read_buffer.dtype]
                     para = {
                         "align_axis_var": read_buffer.op.axis[align_axis],
                         "align_factor": align_factor,
@@ -2277,7 +2287,7 @@ class BnReduceAtomicSchedule:
             for i in self._cache_write_tensors_and_buffer_map:
                 if i in tensor_list:
                     write_buffer = self._cache_write_tensors_and_buffer_map[i]
-                    align_factor = BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[write_buffer.dtype]
+                    align_factor = Constant.BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[write_buffer.dtype]
                     para = {
                         "align_axis_var": write_buffer.op.axis[align_axis],
                         "align_factor": align_factor,
@@ -2286,7 +2296,7 @@ class BnReduceAtomicSchedule:
                     self._storage_align_para[write_buffer] = para
             for tensor in self._mid_output_tensors:
                 if tensor in tensor_list:
-                    align_factor = BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[tensor.dtype]
+                    align_factor = Constant.BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[tensor.dtype]
                     para = {
                         "align_axis_var": tensor.op.axis[mid_out_align_axis],
                         "align_factor": align_factor,
@@ -2311,7 +2321,7 @@ class BnReduceAtomicSchedule:
                 return
             res_align_axis = res_a1_start_index - 1
 
-            align_factor = BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[self._final_out_tensor_ub_rf.dtype]
+            align_factor = Constant.BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[self._final_out_tensor_ub_rf.dtype]
             para = {
                 "align_axis_var": self._final_out_tensor_ub_rf.op.axis[res_align_axis + self._axis_offset],
                 "align_factor": align_factor,
@@ -2501,8 +2511,9 @@ class BnReduceAtomicSchedule:
 
         reduce_axis_index = self._reduce_info["reduce_axis_index"]
         if block_split_axis not in reduce_axis_index:
-            error_manager_vector.raise_err_input_value_invalid("bn_training_reduce", "block_split_axis", reduce_axis_index, block_split_axis)
-     
+            error_manager_vector.raise_err_input_value_invalid("bn_training_reduce", "block_split_axis", \
+            reduce_axis_index, block_split_axis)
+
         if "axis_var" in block_tiling_para.keys() and \
                 block_tiling_para["axis_var"] is not None:
             axis_var = block_tiling_para["axis_var"]
@@ -2626,7 +2637,7 @@ class BnReduceAtomicSchedule:
         """
         :return:
         """
-        if operation.get_context().get("_mode") == CONST:
+        if operation.get_context().get("_mode") == Constant.CONST:
             return
         ub_tiling_para_list = self._reduce_tiling_para["ub_tiling"]
         ub_tiling_para = ub_tiling_para_list[0]
@@ -2699,7 +2710,7 @@ class BnReduceAtomicSchedule:
         if a1_end_index is None:
             error_detail = "errCode:E90001, detailed_cause:a1_end_index can not be none!"
             error_manager_vector.raise_err_specific_reson("bn_training_reduce", error_detail)
-   
+
         # reorder tensor before reduce,
         # for shape (r4,a4,r3,a3,r2,a2,r1,a1),
         # the orignal ir is (r4,a4,r3,a3,r2,a2,r1,a1),
@@ -2739,7 +2750,7 @@ class BnReduceAtomicSchedule:
                 reordered_axis_list = __get_reorder_list(tensor)
                 self._schedule[tensor].reorder(*(reordered_axis_list))
 
-    # pylint: disable=too-many-branches
+    # 'pylint: disable=too-many-branches
     def _reorder_reduce_last_axis_before_reduce(self):
         """
         :return:
@@ -3274,7 +3285,7 @@ class BnReduceAtomicSchedule:
             if a1_end_index is None:
                 error_detail = "errCode:E90001, detailed_cause:a1_end_index can not be none!"
                 error_manager_vector.raise_err_specific_reson("bn_training_reduce", error_detail)
-    
+
             if ub_split_axis < a1_start_index and \
                     ub_split_axis not in reduce_axis_index:
                 res_ub_inner = ub_tiling_tensor.op.reduce_axis[-1]

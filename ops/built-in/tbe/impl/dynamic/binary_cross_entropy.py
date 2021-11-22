@@ -27,14 +27,17 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_context
 
-# eps value
-SCALAR_EPS = 1e-12
-# the type of None
-NoneType = type(None)
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # eps value
+    SCALAR_EPS = 1e-12
 
 
-# pylint: disable=invalid-name,too-many-arguments
-# pylint: disable=unused-argument,too-many-locals
+# 'pylint: disable=invalid-name,too-many-arguments,too-many-branches
+# 'pylint: disable=unused-argument,too-many-locals,too-many-statements
 @register_operator_compute("BinaryCrossEntropy", op_mode="dynamic", support_fusion=False)
 def binary_cross_entropy_compute(x, y, weight, output, axis,
                                  reduction, kernel_name):
@@ -85,7 +88,7 @@ def binary_cross_entropy_compute(x, y, weight, output, axis,
     const_one = tvm.const(1, trans_dtype)
     const_neg_one = tvm.const(-1, trans_dtype)
     # calcu value : y * log(x)
-    x = tbe.vmaxs(x, tvm.const(SCALAR_EPS, trans_dtype))
+    x = tbe.vmaxs(x, tvm.const(Constant.SCALAR_EPS, trans_dtype))
     x_log_tmp = tbe.vlog(x)
     data_mul1 = tbe.vmul(x_log_tmp, y)
     # calcu value : (1-y) * log(1-x)
@@ -93,7 +96,7 @@ def binary_cross_entropy_compute(x, y, weight, output, axis,
     x1_tmp = tbe.vadds(x_neg_tmp, const_one)
     y_neg_tmp = tbe.vmuls(y, const_neg_one)
     y1_tmp = tbe.vadds(y_neg_tmp, const_one)
-    x1_tmp = tbe.vmaxs(x1_tmp, tvm.const(SCALAR_EPS, trans_dtype))
+    x1_tmp = tbe.vmaxs(x1_tmp, tvm.const(Constant.SCALAR_EPS, trans_dtype))
     x1_log_tmp = tbe.vlog(x1_tmp)
     data_mul2 = tbe.vmul(x1_log_tmp, y1_tmp)
     # calcu value : y * log(x) + (1-y) * log(1-x)
@@ -129,7 +132,7 @@ def binary_cross_entropy_compute(x, y, weight, output, axis,
 
     return result
 
-
+# 'pylint: disable=too-many-statements
 @register_operator("BinaryCrossEntropy")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
@@ -203,7 +206,7 @@ def binary_cross_entropy(x, y, weight, output,
     axis = []
     for i, _ in enumerate(predict_shape):
         axis.append(i)
-    input_axis = {"shape": [len(axis),], "value": axis, "rel_pos_to_reduce": "axis"}
+    input_axis = {"shape": [len(axis), ], "value": axis, "rel_pos_to_reduce": "axis"}
 
     schedules, tensors = [], []
     if reduction != "none" and weight is not None:

@@ -21,12 +21,17 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
 
-RESERVE_SIZE = 16 * 1024
-MAX_INT32 = 2 ** 31 - 1
-SCALAR_TENSOR_SIZE = 32
-TILING_ARG_NUM = 64
-TILING_MODE_1 = 1
-GRAD_TENSOR_PART = 512
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    RESERVE_SIZE = 16 * 1024
+    MAX_INT32 = 2 ** 31 - 1
+    SCALAR_TENSOR_SIZE = 32
+    TILING_ARG_NUM = 64
+    TILING_MODE_1 = 1
+    GRAD_TENSOR_PART = 512
 
 
 class EmbeddingDenseGrad():
@@ -101,18 +106,18 @@ class EmbeddingDenseGrad():
         if self.num_weights // self.aicore_num > 0:
             self.ub_indices_size = (self.ub_size_bytes - (self.num_weights // self.aicore_num + self.num_weights %
                                                           self.aicore_num) * self.dtype_bytes_size_counts
-                                    - RESERVE_SIZE) \
-            // (GRAD_TENSOR_PART * self.dtype_bytes_size_grad + self.dtype_bytes_size_indices) // \
+                                    - Constant.RESERVE_SIZE) \
+            // (Constant.GRAD_TENSOR_PART * self.dtype_bytes_size_grad + self.dtype_bytes_size_indices) // \
             self.indices_each_block * self.indices_each_block
             self.counts_size = self.num_weights // self.aicore_num + self.num_weights % self.aicore_num
         else:
             self.ub_indices_size = (self.ub_size_bytes - self.num_weights * self.dtype_bytes_size_counts
-                                    - RESERVE_SIZE) \
-                // (GRAD_TENSOR_PART * self.dtype_bytes_size_grad + self.dtype_bytes_size_indices) // \
+                                    - Constant.RESERVE_SIZE) \
+                // (Constant.GRAD_TENSOR_PART * self.dtype_bytes_size_grad + self.dtype_bytes_size_indices) // \
                 self.indices_each_block * self.indices_each_block
             self.counts_size = self.num_weights
             self.aicore_num = 1
-        self.ub_grad_size = self.ub_indices_size * GRAD_TENSOR_PART
+        self.ub_grad_size = self.ub_indices_size * Constant.GRAD_TENSOR_PART
         '''The vector instruction calculates a maximum of 8 blocks per repeat.
         This parameter is the maximum value of the mask when grad performs vector calculation'''
         self.vector_mask_max_grad = 8 * self.grad_each_block
@@ -121,7 +126,7 @@ class EmbeddingDenseGrad():
         self.vector_max_repeat = 255
         self.vector_mask_max_counts = 8 * self.counts_each_block
         self.vec_max_grad_element = self.vector_max_repeat * self.vector_mask_max_grad
-        self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, (TILING_ARG_NUM,), name='tiling_gm',
+        self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, (Constant.TILING_ARG_NUM,), name='tiling_gm',
                                                   scope=tik.scope_gm)
         self.indices = None
         self.scale_float = None
@@ -180,16 +185,16 @@ class EmbeddingDenseGrad():
                 self.end = self.num_weights
             with self.tik_instance.else_scope():
                 self.end = (block_id + 1) * self.num_weights // self.aicore_num
-            tiling_ub = self.tik_instance.Tensor(self.tiling_dtype, (TILING_ARG_NUM,), name='tiling_ub',
+            tiling_ub = self.tik_instance.Tensor(self.tiling_dtype, (Constant.TILING_ARG_NUM,), name='tiling_ub',
                                                  scope=tik.scope_ubuf)
-            self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, SCALAR_TENSOR_SIZE //
+            self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, Constant.SCALAR_TENSOR_SIZE //
                                         self.tiling_each_block, 0, 0)
             self.get_tiling_args(tiling_ub)
             self.fill_grad_weight()
             self.ub_to_data_fill_counts()
             mode_of_cal = self.tik_instance.Scalar(self.dtype_indices, name='mode_of_cal')
             mode_of_cal.set_as(tiling_ub[2])
-            with self.tik_instance.if_scope(mode_of_cal == TILING_MODE_1):
+            with self.tik_instance.if_scope(mode_of_cal == Constant.TILING_MODE_1):
                 self.first_cal_mode()
 
         self.tik_instance.BuildCCE(
@@ -214,11 +219,11 @@ class EmbeddingDenseGrad():
         None
         """
         # Allocate space for grad, indices and grad_weight on gm
-        self.grad_weight = self.tik_instance.Tensor(self.dtype_grad, (MAX_INT32, ),
+        self.grad_weight = self.tik_instance.Tensor(self.dtype_grad, (Constant.MAX_INT32, ),
                                                     name="grad_weight", scope=tik.scope_gm)
-        self.indices = self.tik_instance.Tensor(self.dtype_indices, (MAX_INT32, ), name="indices",
+        self.indices = self.tik_instance.Tensor(self.dtype_indices, (Constant.MAX_INT32, ), name="indices",
                                                 scope=tik.scope_gm)
-        self.grad = self.tik_instance.Tensor(self.dtype_grad, (MAX_INT32, ), name="grad", scope=tik.scope_gm)
+        self.grad = self.tik_instance.Tensor(self.dtype_grad, (Constant.MAX_INT32, ), name="grad", scope=tik.scope_gm)
 
     def fill_grad_weight(self):
         """
@@ -235,7 +240,7 @@ class EmbeddingDenseGrad():
         # Create a new space to initialize grad_weightm
         with self.tik_instance.new_stmt_scope():
             # Initialize fill_tensor with 0, which is used to initialize grad_weight later
-            fill_tensor = self.tik_instance.Tensor(self.dtype_grad, (GRAD_TENSOR_PART * 2, ), name="fill_tensor",
+            fill_tensor = self.tik_instance.Tensor(self.dtype_grad, (Constant.GRAD_TENSOR_PART * 2, ), name="fill_tensor",
                                                    scope=tik.scope_ubuf)
             # Define scalar_float0 to fill grad_weight
             scalar_float0 = self.tik_instance.Scalar(init_value=0, dtype=self.dtype_grad)
@@ -364,7 +369,7 @@ class EmbeddingDenseGrad():
         None
         """
         self.add_tensor = self.tik_instance.Tensor(
-            self.dtype_grad, (1, 2 * GRAD_TENSOR_PART), name="add_tensor", scope=tik.scope_ubuf)
+            self.dtype_grad, (1, 2 * Constant.GRAD_TENSOR_PART), name="add_tensor", scope=tik.scope_ubuf)
         self.scale_int = self.tik_instance.Scalar(dtype=self.dtype_indices)
         self.scale_float = self.tik_instance.Scalar(
             init_value=1.0, dtype=self.dtype_grad)
@@ -372,7 +377,7 @@ class EmbeddingDenseGrad():
         self.k = self.tik_instance.Scalar(dtype=self.dtype_indices, name='k')
         # Move indexes and grad blocks from gm to ub
         line_num = self.tik_instance.Scalar(dtype='int32', name='line_num')
-        line_num.set_as(self.ub_grad_size // GRAD_TENSOR_PART // 2)
+        line_num.set_as(self.ub_grad_size // Constant.GRAD_TENSOR_PART // 2)
         with self.tik_instance.for_range(0, self.numel_indices // line_num) as i1:
             self.tik_instance.data_move(self.indices_ub, self.indices[i1 * line_num], 0, 1,
                                         line_num // self.indices_each_block, 0, 0)

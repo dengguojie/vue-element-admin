@@ -15,24 +15,23 @@
 """
 atan_grad
 
-  Op_description :
-    Computes gradients for Atan operation
+Op_description :
+Computes gradients for Atan operation
 
-    # atan_grad(
-    #   y,
-    #   dy,
-    #   z,
-    #   kernel_name="cce_atan_grad")
+# atan_grad(
+#   y,
+#   dy,
+#   z,
+#   kernel_name="cce_atan_grad")
 
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
+Supportive_dtype_format :
+['float16', 'float32']
+['ALL']
 
-  Constraint :
-    [1] All : 'y' and 'dy' must have the same type and shape.
-    [2] All : shape size limit is 2147483648.
+Constraint :
+[1] All : 'y' and 'dy' must have the same type and shape.
+[2] All : shape size limit is 2147483648.
 """
-import operator
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
@@ -43,10 +42,10 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
-CONST_ONE = 1
 
 
-# pylint: disable=unused-argument,invalid-name,too-many-locals
+
+# 'pylint: disable=unused-argument,invalid-name,too-many-locals
 def atan_grad_compute(y, dy, z, kernel_name="atan_grad"):
     """
     Calculation for backward gradient
@@ -67,6 +66,7 @@ def atan_grad_compute(y, dy, z, kernel_name="atan_grad"):
     result res
     """
 
+    CONST_ONE = 1
     scalar_one = tvm.const(CONST_ONE, "float32")
     dtype = y.dtype
 
@@ -116,9 +116,9 @@ def atan_grad(y, dy, z, kernel_name="atan_grad"):
     para_check.check_dtype(dtype_grad, check_list, param_name="dy")
     ins = classify([y, dy], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
-    for (y, dy) in ins:
+    for (ins_y, ins_dy) in ins:
         with tbe.compute():
-            shape_y, shape_dy = shape_util.variable_shape([y, dy])
+            shape_y, shape_dy = shape_util.variable_shape([ins_y, ins_dy])
             data_input = tvm.placeholder(shape_y, name="input_data", dtype=dtype)
             grad = tvm.placeholder(shape_dy, name="input_grad", dtype=dtype_grad)
             res = atan_grad_compute(data_input, grad, z, kernel_name)

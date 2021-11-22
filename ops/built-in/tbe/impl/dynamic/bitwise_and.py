@@ -26,7 +26,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=unused-argument,invalid-name
 @register_operator_compute("BitwiseAnd", op_mode="dynamic", support_fusion=False)
 def bitwise_and_compute(x1, x2, y, kernel_name="bitwise_and"):
     """
@@ -96,7 +96,7 @@ def _pre_broadcast(x1, x2, y, kernel_name):
         x1["shape"] = [1] * (len(shape_y) - len(shape_x)) + shape_x
     elif len(shape_x) > len(shape_y):
         x2["range"] = [(1, 1)] * (len(shape_x) - len(shape_y)) + range_y
-        x2["shape"] = [1]* (len(shape_x) - len(shape_y)) + shape_y
+        x2["shape"] = [1] * (len(shape_x) - len(shape_y)) + shape_y
     else:
         pass
 
@@ -111,7 +111,7 @@ def _pre_broadcast(x1, x2, y, kernel_name):
 
     return x1, x2, dtype_x
 
-
+# 'pylint: disable=too-many-locals
 @register_operator("BitwiseAnd")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)

@@ -23,7 +23,8 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
 
-# pylint: disable=too-many-lines,too-many-locals,too-many-statements,too-many-arguments,unused-argument
+# 'pylint: disable=too-many-lines,too-many-locals,too-many-statements,too-many-arguments,unused-argument
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant

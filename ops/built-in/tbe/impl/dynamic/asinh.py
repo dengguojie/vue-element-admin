@@ -15,23 +15,22 @@
 """
 asinh
 
-  Op_description :
-    Computes inverse hyperbolic sine of x element-wise
+Op_description :
+Computes inverse hyperbolic sine of x element-wise
 
-    # asinh(
-    #   input_x,
-    #   output_y,
-    #   kernel_name="cce_asinh")
+# asinh(
+#   input_x,
+#   output_y,
+#   kernel_name="cce_asinh")
 
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
+Supportive_dtype_format :
+['float16', 'float32']
+['ALL']
 
-  Constraint :
-    [1] All : shape size limit is 2147483648.
+Constraint :
+[1] All : shape size limit is 2147483648.
 
 """
-import functools
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
@@ -42,43 +41,34 @@ from impl.util import util_compute
 
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
-from functools import reduce as reduce_ins
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-# shape limit
-SHAPE_SIZE_LIMIT = 2147483648
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # Log threshold
+    CONST_LOG_THRESHOLD_1 = 0.6666666666666667
+    CONST_LOG_THRESHOLD_2 = 0.3333333333333333
 
-# Newton Factor
-CONST_NEWTON_FACTOR = 0.5
-CONST_NEWTON_FACTOR_NEG = -0.5
+    # Log value
+    LOG_FOUR_THREE = 0.28768207245178085
+    LOG_FIVE_THREE = 0.5108256237659907
 
-# Log threshold
-CONST_LOG_THRESHOLD_1 = 0.6666666666666667
-CONST_LOG_THRESHOLD_2 = 0.3333333333333333
+    # const value
+    CONST_NEG_ONE = -1
+    CONST_ZERO = 0
+    CONST_ONE = 1
+    CONST_TWO = 2
 
-# Log value
-LOG_FOUR_THREE = 0.28768207245178085
-LOG_FIVE_THREE = 0.5108256237659907
-LOG_FIVE_TWO = 0.916290731874155
+    CONST_THREE_FOUR = 0.75
 
-# const value
-CONST_NEG_ONE = -1
-CONST_ZERO = 0
-CONST_ONE = 1
-CONST_TWO = 2
-CONST_ONE_THREE = 0.3333333333333333
-CONST_THREE_FOUR = 0.75
-CONST_ONE_FIVE = 0.2
-CONST_ONE_FOUR_NEG = -0.25
-CONST_FIVE_TWO = 0.4
-CONST_DOT_SIX = 0.6
-FLOAT_16_MAX = 32768
-# min float16 value
-MIN_FP16 = 2 ** (-24)
+    CONST_DOT_SIX = 0.6
+    FLOAT_16_MAX = 32768
 
-
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals,invalid-name
 @register_operator_compute("Asinh", op_mode="dynamic", support_fusion=True)
 def asinh_compute_mini(input_x, output_y, kernel_name="asinh"):
     """
@@ -98,6 +88,7 @@ def asinh_compute_mini(input_x, output_y, kernel_name="asinh"):
 
     """
 
+    MIN_FP16 = 2 ** (-24)
     inp_dtype = input_x.dtype.lower()
     shape = input_x.shape
     has_improve_precision = False
@@ -111,22 +102,22 @@ def asinh_compute_mini(input_x, output_y, kernel_name="asinh"):
     input_x1 = tbe.vadds(input_x1, MIN_FP16)
     data_1_x = tbe.vrec(input_x1)
     data_1_x_square = tbe.vmul(data_1_x, data_1_x)
-    data_1_x_square = tbe.vadds(data_1_x_square, tvm.const(CONST_ONE, "float32"))
+    data_1_x_square = tbe.vadds(data_1_x_square, tvm.const(Constant.CONST_ONE, "float32"))
     data_s_1_sqrt = _newton_sqrt(data_1_x_square, inp_dtype)
     data_res = tbe.vmul(data_s_1_sqrt, input_x1)
     data_res = tbe.vadd(input_x1, data_res)
     result = _log_taylor(data_res, shape)
-    res_neg = tbe.vmuls(result, tvm.const(CONST_NEG_ONE, inp_dtype))
+    res_neg = tbe.vmuls(result, tvm.const(Constant.CONST_NEG_ONE, inp_dtype))
 
     if input_x.dtype == result.dtype and tbe_platform.api_check_support("tbe.dsl.vcmpsel", input_x.dtype):
         res = tbe.vcmpsel(
             input_x,
-            tvm.const(CONST_ZERO, input_x.dtype),
+            tvm.const(Constant.CONST_ZERO, input_x.dtype),
             'le',
             res_neg,
             result)
     else:
-        const_zero_tensor = tbe.broadcast(tvm.const(CONST_ZERO, input_x.dtype), shape)
+        const_zero_tensor = tbe.broadcast(tvm.const(Constant.CONST_ZERO, input_x.dtype), shape)
         compare_one = tbe.vcmp(input_x, const_zero_tensor, "le")
         res = tbe.vsel(compare_one, res_neg, result)
 
@@ -164,16 +155,16 @@ def asinh_compute_cloud(input_x, output_y, kernel_name="asinh"):
         input_x = tbe.cast_to(input_x, "float32")
         has_improve_precision = True
         inp_dtype = "float32"
-        
+
     if inp_dtype == "float32" and \
-            not (tbe_platform.api_check_support("tbe.dsl.vlog", "float32")):
+            not tbe_platform.api_check_support("tbe.dsl.vlog", "float32"):
         input_x = tbe.cast_to(input_x, "float16")
         check_support_flag = True
         inp_dtype = "float16"
 
     data_abs = tbe.vabs(input_x)
     data_x_square = tbe.vmul(data_abs, data_abs)
-    data_add = tbe.vadds(data_x_square, tvm.const(CONST_ONE, inp_dtype))
+    data_add = tbe.vadds(data_x_square, tvm.const(Constant.CONST_ONE, inp_dtype))
     data_s_1_sqrt = tbe.vsqrt(data_add)
     data_res = tbe.vadd(data_s_1_sqrt, data_abs)
     result = tbe.vlog(data_res)
@@ -181,7 +172,7 @@ def asinh_compute_cloud(input_x, output_y, kernel_name="asinh"):
 
     if has_improve_precision:
         res = tbe.cast_to(res, "float16")
-    if check_support_flag == True:
+    if check_support_flag is True:
         res = tbe.cast_to(res, "float32")
 
     return res
@@ -205,6 +196,7 @@ def _newton_iter(data, data_x0, dtype):
 
     """
     # Newton begin:
+    CONST_NEWTON_FACTOR = 0.5
     data_newton = tbe.vrec(data)
     data_newton = tbe.vmul(data_x0, data_newton)
     data_newton = tbe.vadd(data_newton, data)
@@ -251,27 +243,27 @@ def _log_taylor(data_x, shape):
     res :  return of log
 
     """
-    data = tbe.vadds(data_x, tvm.const(CONST_NEG_ONE, "float32"))
+    data = tbe.vadds(data_x, tvm.const(Constant.CONST_NEG_ONE, "float32"))
     data_1 = tbe.vadds(
         data,
-        tvm.const(CONST_NEG_ONE * CONST_LOG_THRESHOLD_1, "float32"))
+        tvm.const(Constant.CONST_NEG_ONE * Constant.CONST_LOG_THRESHOLD_1, "float32"))
     if tbe_platform.api_check_support("te.lang.cce.vcmpsel", "float32"):
         data_sel = tbe.vcmpsel(
             data,
-            tvm.const(CONST_LOG_THRESHOLD_1, data.dtype),
+            tvm.const(Constant.CONST_LOG_THRESHOLD_1, data.dtype),
             'ge',
-            tbe.vmuls(data_1, tvm.const(CONST_DOT_SIX, "float32")),
+            tbe.vmuls(data_1, tvm.const(Constant.CONST_DOT_SIX, "float32")),
             data)
         data_sel = tbe.cast_to(data_sel, "float32")
         data_2 = tbe.vadds(
             data_sel,
-            tvm.const(CONST_NEG_ONE * CONST_LOG_THRESHOLD_2, "float32"))
+            tvm.const(Constant.CONST_NEG_ONE * Constant.CONST_LOG_THRESHOLD_2, "float32"))
         data_vmuls = tbe.vmuls(
             data_2,
-            tvm.const(CONST_THREE_FOUR, "float32"))
+            tvm.const(Constant.CONST_THREE_FOUR, "float32"))
         data_sel_1 = tbe.vcmpsel(
             data_sel,
-            tvm.const(CONST_LOG_THRESHOLD_2, data_sel.dtype),
+            tvm.const(Constant.CONST_LOG_THRESHOLD_2, data_sel.dtype),
             'ge',
             data_vmuls,
             data_sel)
@@ -280,49 +272,49 @@ def _log_taylor(data_x, shape):
         # add log(4/3)
         res = tbe.vcmpsel(
             data_sel,
-            tvm.const(CONST_LOG_THRESHOLD_2, data_sel.dtype),
+            tvm.const(Constant.CONST_LOG_THRESHOLD_2, data_sel.dtype),
             'ge',
-            tbe.vadds(taylor, tvm.const(LOG_FOUR_THREE, "float32")),
+            tbe.vadds(taylor, tvm.const(Constant.LOG_FOUR_THREE, "float32")),
             taylor)
         res = tbe.cast_to(res, "float32")
         # add log(5/3)
         data = tbe.cast_to(data, "float32")
         res = tbe.vcmpsel(
             data,
-            tvm.const(CONST_LOG_THRESHOLD_1, data.dtype),
+            tvm.const(Constant.CONST_LOG_THRESHOLD_1, data.dtype),
             'ge',
-            tbe.vadds(taylor, tvm.const(LOG_FIVE_THREE, "float32")),
+            tbe.vadds(taylor, tvm.const(Constant.LOG_FIVE_THREE, "float32")),
             res)
     else:
         threshold_1 = tbe.broadcast(
-            tvm.const(CONST_LOG_THRESHOLD_1, "float32"), shape)
+            tvm.const(Constant.CONST_LOG_THRESHOLD_1, "float32"), shape)
         index_1 = tbe.vcmp(data, threshold_1, 'ge')
         data_sel = tbe.vsel(
             index_1,
-            tbe.vmuls(data_1, tvm.const(CONST_DOT_SIX, "float32")),
+            tbe.vmuls(data_1, tvm.const(Constant.CONST_DOT_SIX, "float32")),
             data)
         data_sel = tbe.cast_to(data_sel, "float32")
 
         threshold_2 = tbe.broadcast(
-            tvm.const(CONST_LOG_THRESHOLD_2, "float32"), shape)
+            tvm.const(Constant.CONST_LOG_THRESHOLD_2, "float32"), shape)
         index_2 = tbe.vcmp(data_sel, threshold_2, 'ge')
         data_2 = tbe.vadds(
             data_sel,
-            tvm.const(CONST_NEG_ONE * CONST_LOG_THRESHOLD_2, "float32"))
+            tvm.const(Constant.CONST_NEG_ONE * Constant.CONST_LOG_THRESHOLD_2, "float32"))
         data_vmuls = tbe.vmuls(
             data_2,
-            tvm.const(CONST_THREE_FOUR, "float32"))
+            tvm.const(Constant.CONST_THREE_FOUR, "float32"))
         data_sel = tbe.vsel(index_2, data_vmuls, data_sel)
         data_sel = tbe.cast_to(data_sel, "float32")
         taylor = _taylor_compute(data_sel)
         # add log(4/3)
         res = tbe.vsel(
             index_2,
-            tbe.vadds(taylor, tvm.const(LOG_FOUR_THREE, "float32")),
+            tbe.vadds(taylor, tvm.const(Constant.LOG_FOUR_THREE, "float32")),
             taylor)
         res = tbe.cast_to(res, "float32")
         # add log(5/3)
-        res = tbe.vsel(index_1, tbe.vadds(taylor, tvm.const(LOG_FIVE_THREE, "float32")), res)
+        res = tbe.vsel(index_1, tbe.vadds(taylor, tvm.const(Constant.LOG_FIVE_THREE, "float32")), res)
     res = tbe.cast_to(res, "float32")
     # d: vlog:
     res = _log_compute(data_x, res, shape)
@@ -343,6 +335,10 @@ def _taylor_compute(data):
     None
 
     """
+    CONST_NEWTON_FACTOR_NEG = -0.5
+    CONST_ONE_THREE = 0.3333333333333333
+    CONST_ONE_FIVE = 0.2
+    CONST_ONE_FOUR_NEG = -0.25
     # 0.2x - 0.25
     taylor_five = tbe.vmuls(data, tvm.const(CONST_ONE_FIVE, "float32"))
     taylor_four_1 = tbe.vadds(taylor_five, tvm.const(CONST_ONE_FOUR_NEG, "float32"))
@@ -356,7 +352,7 @@ def _taylor_compute(data):
         tvm.const(CONST_NEWTON_FACTOR_NEG, "float32"))
     # (((0.2x - 0.25)x + 0.33333)x - 0.5)x+1
     taylor_two_2 = tbe.vmul(taylor_two_1, data)
-    taylor_one = tbe.vadds(taylor_two_2, tvm.const(CONST_ONE, "float32"))
+    taylor_one = tbe.vadds(taylor_two_2, tvm.const(Constant.CONST_ONE, "float32"))
     # ((((0.2x - 0.25)x + 0.33333)x - 0.5)x + 1)x
     taylor = tbe.vmul(taylor_one, data)
 
@@ -377,16 +373,18 @@ def _log_compute(data_x, res, shape):
     res : return of log
 
     """
+    LOG_FIVE_TWO = 0.916290731874155
+    CONST_FIVE_TWO = 0.4
     # if data > 2, use vlog
     if data_x.dtype == res.dtype and tbe_platform.api_check_support("tbe.dsl.vcmpsel", data_x.dtype):
         res = tbe.vcmpsel(
             data_x,
-            tvm.const(CONST_TWO, data_x.dtype),
+            tvm.const(Constant.CONST_TWO, data_x.dtype),
             'ge',
             tbe.vlog(data_x),
             res)
     else:
-        threshold_3 = tbe.broadcast(tvm.const(CONST_TWO, "float32"), shape)
+        threshold_3 = tbe.broadcast(tvm.const(Constant.CONST_TWO, "float32"), shape)
         index_3 = tbe.vcmp(data_x, threshold_3, 'ge')
         res = tbe.vsel(index_3, tbe.vlog(data_x), res)
 
@@ -397,13 +395,13 @@ def _log_compute(data_x, res, shape):
     if data_x.dtype == res.dtype and tbe_platform.api_check_support("tbe.dsl.vcmpsel", data_x.dtype):
         res = tbe.vcmpsel(
             data_x,
-            tvm.const(FLOAT_16_MAX, data_x.dtype),
+            tvm.const(Constant.FLOAT_16_MAX, data_x.dtype),
             'ge',
             res_overflow,
             res)
     else:
         float_16_max_tensor = tbe.broadcast(
-            tvm.const(FLOAT_16_MAX, "float32"), shape)
+            tvm.const(Constant.FLOAT_16_MAX, "float32"), shape)
         index_4 = tbe.vcmp(data_x, float_16_max_tensor, 'ge')
         res = tbe.vsel(index_4, res_overflow, res)
     res = tbe.cast_to(res, "float32")

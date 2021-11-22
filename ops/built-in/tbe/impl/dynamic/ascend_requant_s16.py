@@ -26,7 +26,7 @@ from impl.util.platform_adapter import register_operator_compute
 from impl import ascend_quant_util as util
 
 
-# pylint: disable=invalid-name,unused-argument,unnecessary-lambda,too-many-arguments,too-many-locals
+# 'pylint: disable=invalid-name,unused-argument,unnecessary-lambda,too-many-arguments,too-many-locals
 @register_operator_compute("AscendRequantS16", op_mode="dynamic", support_fusion=True)
 def ascend_requant_s16_compute(x0, req_scale, x1, y0, y1, dual_output, relu_flag, kernel_name='ascend_requant_s16'):
     """

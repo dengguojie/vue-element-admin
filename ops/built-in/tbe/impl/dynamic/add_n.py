@@ -29,6 +29,7 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator_compute
 from impl.util import fusion_util
 
+
 # 'pylint: disable=unused-argument
 @register_operator_compute("AddN", op_mode="dynamic", support_fusion=True)
 def add_n_fusion_compute(datas, output, tensor_num, kernel_name="add_n"):

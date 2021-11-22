@@ -27,10 +27,15 @@ from impl.util.platform_adapter import buildcfg
 from tbe.tvm.cce_build_module import build_fatbin
 from tbe.tvm.build_module import build_config
 
-C0 = 16
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    C0 = 16
 
 
-# pylint: disable=too-many-arguments,too-many-locals,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-locals,unused-argument,invalid-name
 @register_operator_compute("avg_pool_1d", op_mode="dynamic", support_fusion=True)
 def avg_pool_1d_compute(x,
                         div,
@@ -116,7 +121,7 @@ def avg_pool_1d_compute(x,
     return res, reduce_tensor_list, tensor_list
 
 
-# pylint: disable=too-many-statements,invalid-name
+# 'pylint: disable=too-many-statements,invalid-name,unused-variable
 def _avg_pool_1d_schedule(res, fmap_wo_var, reduce_tensor_list, tensor_list, cut_nc1h_for_block, cut_wo_for_block,
                           cut_wo_block_in, nc1h_in_factor, cut_wo, wo_ub_factor_max, ksize, strides):
     """
@@ -182,11 +187,11 @@ def _avg_pool_1d_schedule(res, fmap_wo_var, reduce_tensor_list, tensor_list, cut
             compute_at_axis = fuse_in_out
             emit_insn_axis = fuse_in_in
 
-            sch[tensor_div_in_ub].set_buffer_size(wo_ub_factor_max * C0)
-            sch[tensor_ub_mul].set_buffer_size(wo_ub_factor_max * C0)
+            sch[tensor_div_in_ub].set_buffer_size(wo_ub_factor_max * Constant.C0)
+            sch[tensor_ub_mul].set_buffer_size(wo_ub_factor_max * Constant.C0)
             for i in range(ksize - 1):
-                sch[reduce_tensor_list[i]].set_buffer_size(wo_ub_factor_max * C0)
-            sch[tensor_zero].set_buffer_size(wo_ub_factor_max * C0 * (strides + ksize))
+                sch[reduce_tensor_list[i]].set_buffer_size(wo_ub_factor_max * Constant.C0)
+            sch[tensor_zero].set_buffer_size(wo_ub_factor_max * Constant.C0 * (strides + ksize))
 
     else:
         if cut_wo_for_block:
@@ -231,7 +236,7 @@ def _avg_pool_1d_schedule(res, fmap_wo_var, reduce_tensor_list, tensor_list, cut
     return sch, factor_vars
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name,unused-variable
 @register_operator("AvgPool1DD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_INT,
@@ -299,15 +304,6 @@ def avg_pool_1d(x_dict,
     shape_vars = [fmap_nc1h_var, fmap_wi_var, fmap_wo_var]
 
     core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-    """
-    tiling case:
-    case1: cut_nc1h_for_block=True, cut_nc11_in=True, others=False
-    case2: cut_nc1h_for_block=True, cut_wo=True, others=False
-    case3: cut_nc1h_for_block=True, others=False
-    case4: cut_wo_for_block=True, cut_wo_block_in=True, others=False
-    case5: cut_wo_for_block=True, others=False
-    case6: all=False
-    """
 
     case1 = {"cut_nc1h_for_block": True, "nc1h_in_factor": [8, 2], "cut_wo": False, "cut_wo_for_block": False,
              "cut_wo_block_in": False, "nc1h_range": (core_num, None)}
@@ -334,7 +330,7 @@ def avg_pool_1d(x_dict,
     ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     dtype_bytes_size = tbe_platform.get_bit_len(dtype) // 8
     total_ele = ub_size_bytes // dtype_bytes_size
-    wo_ub_factor_max = total_ele // C0 // (strides + 2 * ksize + 1)
+    wo_ub_factor_max = total_ele // Constant.C0 // (strides + 2 * ksize + 1)
     for idx, case in enumerate(tiling_case):
         key = idx
         sch, factor_vars = _avg_pool_1d_schedule(res, fmap_wo_var, reduce_tensor_list, tensor_list,

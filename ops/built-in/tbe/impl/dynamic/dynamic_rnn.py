@@ -19,7 +19,6 @@ import operator
 
 import numpy as np
 from impl.util.platform_adapter import register_operator
-from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_context
 from te.lang.cce import broadcast
 from te.lang.cce import cast_to
@@ -54,25 +53,6 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# the max size of SHAPE is 2^31
-MAX_INT32 = 2**31 - 1
-MAX_SHAPE_SIZE = MAX_INT32
-# one block size takes up 32b
-BLOCK_SIZE = 32
-# data type of int32
-INT32 = "int32"
-TILING_ARG_NUM = 3
-
-SHAPEAZBIGZ_GLOBAL = 1 * 12 * 1 * 16 * 16
-SHAPEB_GLOBAL = 1 * 12 * 1 * 1 * 16 * 16
-SHAPEC_GLOBAL = 1 * 4 * 1 * 1 * 16 * 16
-SHAPEBIAS_GLOBAL = 1 * 4 * 1 * 1 * 1 * 16
-SHAPEH_GLOBAL = 1 * 12 * 1 * 16 * 16
-SHAPEI_GLOBAL = 1 * 1 * 1 * 16 * 16
-
-TYPE_LEN_DICT = {"float16": 2, "float32": 4, "int8": 1, "uint8": 1,
-                 "int32": 4, "int64": 8, }
-
 # 'pylint: disable=invalid-name
 def sigmoid(x):
     """
@@ -84,7 +64,7 @@ def sigmoid(x):
 
 
 # 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals,too-many-nested-blocks,invalid-name
-def matrix_to_zZ(matrix, shape, dtype):
+def matrix_to_zz(matrix, shape, dtype):
     """
     ND(m, k) to zZ
     """
@@ -123,7 +103,7 @@ def matrix_to_zZ(matrix, shape, dtype):
 
 
 # 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
-def matrix_to_nZ(matrix, shape, dtype):
+def matrix_to_nz(matrix, shape, dtype):
     """
     ND(k, n) to nZ
     """
@@ -163,7 +143,7 @@ def matrix_to_nZ(matrix, shape, dtype):
 
 
 # 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
-def matrix_to_zN(matrix, shape, dtype):
+def matrix_to_zn(matrix, shape, dtype):
     """
     ND(m, n) to zN
     """
@@ -211,7 +191,7 @@ def matrix_to_zN(matrix, shape, dtype):
 
 
 # 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals,too-many-nested-blocks,invalid-name
-def maxtrix_zN_reverse(matrix, shape, dtype):
+def maxtrix_zn_reverse(matrix, shape, dtype):
     """
     maxtrix zN reverse
     """
@@ -244,7 +224,7 @@ def maxtrix_zN_reverse(matrix, shape, dtype):
 
 
 # 'pylint: disable=too-many-nested-blocks,invalid-name
-def maxtrix_nZ_reverse(matrix, shape, dtype):
+def maxtrix_nz_reverse(matrix, shape, dtype):
     """
     maxtrix nZ reverse
     """
@@ -332,9 +312,9 @@ def dynamic_rnn_np(input_data_list,
         init_from_gm = True
 
     x_data = input_data_list[0]
-    x_data = maxtrix_zN_reverse(x_data.flatten(), shape_x_input, np.float16)
+    x_data = maxtrix_zn_reverse(x_data.flatten(), shape_x_input, np.float16)
     w_data = input_data_list[1]
-    w_data = maxtrix_nZ_reverse(w_data.flatten(), shape_w_input, np.float16)
+    w_data = maxtrix_nz_reverse(w_data.flatten(), shape_w_input, np.float16)
     bias_num = input_data_list[2].flatten()
 
     if init_from_gm:
@@ -399,13 +379,13 @@ def dynamic_rnn_np(input_data_list,
     output_tanc = output_tanc.reshape(t_size, batch, hidden).astype(src_type)
     outputy = output_h
 
-    output_c = matrix_to_zN(output_c, output_c.shape, src_type).reshape(shape_output)
-    output_h = matrix_to_zN(output_h, output_h.shape, src_type).reshape(shape_output)
-    output_i = matrix_to_zN(output_i, output_i.shape, src_type).reshape(shape_output)
-    output_j = matrix_to_zN(output_j, output_j.shape, src_type).reshape(shape_output)
-    output_f = matrix_to_zN(output_f, output_f.shape, src_type).reshape(shape_output)
-    output_o = matrix_to_zN(output_o, output_o.shape, src_type).reshape(shape_output)
-    output_tanc = matrix_to_zN(output_tanc, output_tanc.shape, src_type).reshape(shape_output)
+    output_c = matrix_to_zn(output_c, output_c.shape, src_type).reshape(shape_output)
+    output_h = matrix_to_zn(output_h, output_h.shape, src_type).reshape(shape_output)
+    output_i = matrix_to_zn(output_i, output_i.shape, src_type).reshape(shape_output)
+    output_j = matrix_to_zn(output_j, output_j.shape, src_type).reshape(shape_output)
+    output_f = matrix_to_zn(output_f, output_f.shape, src_type).reshape(shape_output)
+    output_o = matrix_to_zn(output_o, output_o.shape, src_type).reshape(shape_output)
+    output_tanc = matrix_to_zn(output_tanc, output_tanc.shape, src_type).reshape(shape_output)
     outputy = output_h
 
     return [outputy, output_h, output_c, output_i, output_j, output_f, output_o, output_tanc]
@@ -540,6 +520,7 @@ def get_lstm_tiling():
     :return:
     """
     return (1, 1, 12, 1, 1, 12)
+
 
 def ceil_value(value, factor):
     """
@@ -821,22 +802,15 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
     """
     dynamic_rnn
     """
-
+    # one block size takes up 32b
+    BLOCK_SIZE = 32
+    # data type of int32
+    INT32 = "int32"
+    TILING_ARG_NUM = 3
+    TYPE_LEN_DICT = {"float16": 2, "float32": 4, "int8": 1, "uint8": 1,
+                 "int32": 4, "int64": 8, }
     is_dynamic = True
-    """
-    from tbe.common.context import get_context
 
-    compile_mode = context.get_addition("hybrid_compile_mode")
-
-    if compile_mode is None:
-        compile_mode = "multi_template"
-
-    if compile_mode not in ["single_template", "multi_template"]:
-        error_manager_vector.raise_err_specific_reson("DynamicRNN", "compile_mode is not support, please check!")
-
-    if compile_mode == "single_template":
-        is_dynamic = False
-    """
     check_prama_dtype(input_x, weight, bias, init_h, init_c, y, output_h,
                       output_c, i, j, f, o, tanhc)
 
@@ -907,7 +881,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
     sync = tik_instance.Tensor(shape=(512,), dtype="int64", scope=scope_gm, name='sync',
                                is_workspace=True, is_atomic_add=True)
 
-    # sync = None
+    # `sync = None`
 
     input_x = tik_instance.Tensor(shape=shape_x, dtype=input_dtype,
                                   scope=scope_gm, name='input_x')
@@ -996,7 +970,6 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
         loop_m = m_size // cut_m
 
     rl_idx_list_first = []
-    rl_idx_list_last = []
 
     with tik_instance.for_range(0, loop_t) as loop_i:
 
@@ -1098,7 +1071,6 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                 output_list = [update_h_gm_var, update_c_gm_var,
                                update_h_gm_as_y_var]
 
-            call_module_config = {}
 
             if is_dynamic:
                 with tik_instance.if_scope(loop_i == 0):
@@ -1113,7 +1085,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
 
                 with tik_instance.if_scope(loop_i > 0):
                     is_first_round = False
-                    rl_idx_list_last = tik_instance.call_module(
+                    tik_instance.call_module(
                         function=dynamic_rnn_tik,
                         input_tensors=input_list,
                         output_tensors=output_list,
@@ -1310,7 +1282,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                                   ),
                        name="a_ub_else", tag="concat")
 
-    # a_ub_if_else = a_ub_if + a_ub_else
+    # `a_ub_if_else = a_ub_if + a_ub_else`
     a_ub_if_else = tvm.compute(shape_a_z_bigz, lambda *indices: a_ub_if(*indices) + a_ub_else(*indices),
                                name="a_ub_if_else", tag="empty_intrin")
 
@@ -1526,7 +1498,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                 shape_h,
                 lambda *indices: seq_mask_ub(*indices).astype('float32'),
                 name="seq_mask_ub_fp32_drnn_cast",
-                tag="elewise_single_cast")   
+                tag="elewise_single_cast")
         update_c_tmp = vadd(update_c_diff, s_state_c_ub_temp)
         update_c = vmul(update_c_tmp, seq_mask_ub_fp32)
 
@@ -1594,9 +1566,9 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
             c_t_tanh_ub = c_t_tanh_back_fp32
 
     update_h = vmul(c_t_tanh_ub, o_t_sigmoid_ub)
-    
+
     if seq_mask_gm is not None:
-        # update_h = vmul(update_h, seq_mask_ub)
+        # `update_h = vmul(update_h, seq_mask_ub)`
         update_h = vmul(update_h, seq_mask_ub_fp32)
 
     if fp16_input_output:
@@ -1669,12 +1641,13 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     return_list, s = rl_bank.tik_dsl_bank_proc(return_list, sync_tensor=sync0, dynamic=True)
     sch_list, tune_shape_list = s
     index_list = []
-    for i in range(len(tune_shape_list)):
-        index_list.append(tune_shape_list[i][2])
+    for index, _ in enumerate(tune_shape_list):
+        index_list.append(tune_shape_list[index][2])
     if sch_list is not None and len(sch_list) > 0:
         if is_dynamic:
-            for i in range(len(sch_list)):
-                sch_list[i].set_constraint(expr.And(input_x.shape[2] <= tune_shape_list[i][1], input_x.shape[2] > 0))
+            for index,sch_list_value in enumerate(sch_list):
+                sch_list_value.set_constraint(expr.And(input_x.shape[2] <= tune_shape_list[index][1], \
+                input_x.shape[2] > 0))
         tbe_context.get_context().add_compile_info("vars", {"tune_shape_list": tune_shape_list})
         return return_list, sch_list, index_list
 
@@ -1724,7 +1697,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     if seq_mask_gm is not None:
         s[s_state_h_ub_for_element].set_scope(scope_ubuf)
 
-    # s[a_ub].set_scope(scope_ubuf)
+    # `s[a_ub].set_scope(scope_ubuf)`
     s[a_ub_if].set_scope(scope_ubuf)
     s[a_ub_else].set_scope(scope_ubuf)
     s[a_ub_if_else].set_scope(scope_ubuf)
@@ -1766,7 +1739,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         s[update_h_fp16_cast].set_scope(scope_ubuf)
 
     s[update_h_gm_as_y_back].set_scope(scope_ubuf)
-    
+
     if seq_mask_gm is not None:
         s[seq_mask_ub].set_scope(scope_ubuf)
         s[seq_mask_ub_fp32].set_scope(scope_ubuf)
@@ -1780,12 +1753,12 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     factor_l0_m, factor_l0_n, factor_l0_k = \
         get_lstm_tiling()
 
-    SHAPEAZBIGZ = 1 * factor_l1_m * factor_l1_k * 16 * 16
-    SHAPEB = 1 * factor_l1_k * 1 * factor_l1_n * 16 * 16
-    SHAPEC = 1 * 4 * factor_l1_n * factor_l1_m * 16 * 16
-    SHAPEBIAS = 1 * 4 * factor_l1_n * 1 * 16 * 16
-    SHAPEH = 1 * factor_l1_k * factor_l1_m * 16 * 16
-    SHAPEI = 1 * factor_l1_n * factor_l1_m * 16 * 16
+    shapeazbigz = 1 * factor_l1_m * factor_l1_k * 16 * 16
+    shapeb = 1 * factor_l1_k * 1 * factor_l1_n * 16 * 16
+    shapec = 1 * 4 * factor_l1_n * factor_l1_m * 16 * 16
+    shapebias = 1 * 4 * factor_l1_n * 1 * 16 * 16
+    shapeh = 1 * factor_l1_k * factor_l1_m * 16 * 16
+    shapei = 1 * factor_l1_n * factor_l1_m * 16 * 16
 
     l1_n_outer, l1_n_inner = \
         s[c_l0c].split(c_l0c.op.axis[2],
@@ -1812,7 +1785,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                      c_l0c.op.axis[4 + 1], l0_k_inner,
                      c_l0c.op.reduce_axis[1])
 
-    # s[a_ub].compute_at(s[c_l0c], l1_k_outer)
+    # `s[a_ub].compute_at(s[c_l0c], l1_k_outer)`
     s[a_ub_if].compute_at(s[c_l0c], l1_k_outer)
     s[a_ub_else].compute_at(s[c_l0c], l1_k_outer)
     s[a_ub_if_else].compute_at(s[c_l0c], l1_k_outer)
@@ -1967,7 +1940,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     s[a_l0a].emit_insn(a_l0a.op.axis[0], 'dma_copy')
     s[b_l0b].emit_insn(b_l0b.op.axis[0], 'dma_copy')
 
-    # s[a_ub].emit_insn(a_ub.op.axis[0], 'dma_copy')
+    # `s[a_ub].emit_insn(a_ub.op.axis[0], 'dma_copy')`
     s[a_ub_if].emit_insn(a_ub_if.op.axis[0], 'dma_copy')
     s[a_ub_else].emit_insn(a_ub_else.op.axis[0], 'dma_copy')
     s[a_ub_if_else].emit_insn(a_ub_if_else.op.axis[0], 'phony_insn')
@@ -2004,80 +1977,80 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         if tensor != barrier_tensor:
             insn = get_emit_insn_map(tensor)
             s[tensor].emit_insn(tensor.op.axis[0], insn)
-            s[tensor].set_buffer_size(SHAPEI)
+            s[tensor].set_buffer_size(shapei)
 
     # set bound
 
     if is_first_round:
         if is_global_init:
-            s[s_state_h_ub].set_buffer_size(SHAPEH)
-            s[s_state_c_ub].set_buffer_size(SHAPEI)
+            s[s_state_h_ub].set_buffer_size(shapeh)
+            s[s_state_c_ub].set_buffer_size(shapei)
         else:
-            s[s_state_h_ub].set_buffer_size(SHAPEH)
-            s[s_state_c_ub].set_buffer_size(SHAPEI)
+            s[s_state_h_ub].set_buffer_size(shapeh)
+            s[s_state_c_ub].set_buffer_size(shapei)
     else:
-        s[s_state_h_ub].set_buffer_size(SHAPEH)
-        s[s_state_c_ub].set_buffer_size(SHAPEI)
+        s[s_state_h_ub].set_buffer_size(shapeh)
+        s[s_state_c_ub].set_buffer_size(shapei)
 
-    s[a_ub_if].set_buffer_size(SHAPEAZBIGZ)
-    s[a_ub_else].set_buffer_size(SHAPEAZBIGZ)
-    s[a_ub_if_else].set_buffer_size(SHAPEAZBIGZ)
+    s[a_ub_if].set_buffer_size(shapeazbigz)
+    s[a_ub_else].set_buffer_size(shapeazbigz)
+    s[a_ub_if_else].set_buffer_size(shapeazbigz)
 
-    s[a_l1].set_buffer_size(SHAPEAZBIGZ)
-    s[b_l1].set_buffer_size(SHAPEB)
-    s[a_l0a].set_buffer_size(SHAPEAZBIGZ)
-    s[b_l0b].set_buffer_size(SHAPEB)
-    s[c_l0c].set_buffer_size(SHAPEC)
-    s[c_ub].set_buffer_size(SHAPEC)
-    s[bias_ub].set_buffer_size(SHAPEBIAS)
+    s[a_l1].set_buffer_size(shapeazbigz)
+    s[b_l1].set_buffer_size(shapeb)
+    s[a_l0a].set_buffer_size(shapeazbigz)
+    s[b_l0b].set_buffer_size(shapeb)
+    s[c_l0c].set_buffer_size(shapec)
+    s[c_ub].set_buffer_size(shapec)
+    s[bias_ub].set_buffer_size(shapebias)
 
     if fp16_input_output:
-        s[bias_ub_fp32].set_buffer_size(SHAPEBIAS)
+        s[bias_ub_fp32].set_buffer_size(shapebias)
 
-    s[bias_bc_ub].set_buffer_size(SHAPEC)
-    s[c_ub_bias].set_buffer_size(SHAPEC)
+    s[bias_bc_ub].set_buffer_size(shapec)
+    s[c_ub_bias].set_buffer_size(shapec)
 
-    s[i_t].set_buffer_size(SHAPEI)
-    s[j_t].set_buffer_size(SHAPEI)
-    s[f_t].set_buffer_size(SHAPEI)
-    s[o_t].set_buffer_size(SHAPEI)
+    s[i_t].set_buffer_size(shapei)
+    s[j_t].set_buffer_size(shapei)
+    s[f_t].set_buffer_size(shapei)
+    s[o_t].set_buffer_size(shapei)
 
-    s[f_t_sigmoid_ub].set_buffer_size(SHAPEI)
-    s[i_t_sigmoid_ub].set_buffer_size(SHAPEI)
-    s[o_t_sigmoid_ub].set_buffer_size(SHAPEI)
-    s[j_t_tanh_ub].set_buffer_size(SHAPEI)
+    s[f_t_sigmoid_ub].set_buffer_size(shapei)
+    s[i_t_sigmoid_ub].set_buffer_size(shapei)
+    s[o_t_sigmoid_ub].set_buffer_size(shapei)
+    s[j_t_tanh_ub].set_buffer_size(shapei)
 
     if is_gate_output:
         if fp16_input_output:
-            s[f_t_sigmoid_fp16].set_buffer_size(SHAPEI)
-            s[i_t_sigmoid_fp16].set_buffer_size(SHAPEI)
-            s[o_t_sigmoid_fp16].set_buffer_size(SHAPEI)
-            s[j_t_tanh_fp16].set_buffer_size(SHAPEI)
+            s[f_t_sigmoid_fp16].set_buffer_size(shapei)
+            s[i_t_sigmoid_fp16].set_buffer_size(shapei)
+            s[o_t_sigmoid_fp16].set_buffer_size(shapei)
+            s[j_t_tanh_fp16].set_buffer_size(shapei)
 
         if fp16_input_output:
-            s[s_state_c_back_fp32].set_buffer_size(SHAPEI)
+            s[s_state_c_back_fp32].set_buffer_size(shapei)
 
     if bias_dtype == 'float16':
-        s[update_c_fp16].set_buffer_size(SHAPEI)
+        s[update_c_fp16].set_buffer_size(shapei)
 
     if bias_dtype == 'float16':
-        s[update_c_fp16_back].set_buffer_size(SHAPEI)
-        s[update_c_fp16_back_fp32].set_buffer_size(SHAPEI)
+        s[update_c_fp16_back].set_buffer_size(shapei)
+        s[update_c_fp16_back_fp32].set_buffer_size(shapei)
     else:
-        s[update_c_fp32_back].set_buffer_size(SHAPEI)
+        s[update_c_fp32_back].set_buffer_size(shapei)
 
-    s[c_t_tanh_ub].set_buffer_size(SHAPEI)
+    s[c_t_tanh_ub].set_buffer_size(shapei)
 
     if is_gate_output:
         if fp16_input_output:
-            s[c_t_tanh_fp16].set_buffer_size(SHAPEI)
+            s[c_t_tanh_fp16].set_buffer_size(shapei)
 
     if fp16_input_output:
-        s[update_h_fp16].set_buffer_size(SHAPEI)
-        s[update_h_gm_as_y_back].set_buffer_size(SHAPEI)
+        s[update_h_fp16].set_buffer_size(shapei)
+        s[update_h_gm_as_y_back].set_buffer_size(shapei)
     else:
-        s[update_h_gm_as_y_back].set_buffer_size(SHAPEI)
-        s[update_h_fp16_cast].set_buffer_size(SHAPEI)
+        s[update_h_gm_as_y_back].set_buffer_size(shapei)
+        s[update_h_fp16_cast].set_buffer_size(shapei)
 
     s[bias_ub].emit_insn(bias_ub.op.axis[0], 'dma_copy')
 

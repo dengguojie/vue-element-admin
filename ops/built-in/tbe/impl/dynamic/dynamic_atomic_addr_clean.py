@@ -21,25 +21,25 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-# max_int32
-MAX_INT32 = 2 ** 31 - 1
 
-# full mask for fp32
-MASK_FP32 = 64
-
-# max repeat time of vector instruction
-MAX_REPEAT_TIME = 255
-
-# max tiling params num
-MAX_TILING_PARAMS_NUM = 64
-
-# int32 byte
-INT32_BYTE = 4
-
-# block byte
-BLOCK_BYTE = 32
-
-ZERO_FP32 = 0.0
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # max_int32
+    MAX_INT32 = 2 ** 31 - 1
+    # full mask for fp32
+    MASK_FP32 = 64
+    # max repeat time of vector instruction
+    MAX_REPEAT_TIME = 255
+    # max tiling params num
+    MAX_TILING_PARAMS_NUM = 64
+    # int32 byte
+    INT32_BYTE = 4
+    # block byte
+    BLOCK_BYTE = 32
+    ZERO_FP32 = 0.0
 
 
 def _tik_get_ub_size(is_double_buffer=True):
@@ -86,10 +86,10 @@ class DynamicAtomicAddrClean():
         self.workspace_num = len(size_list)
         self.workspace_addrs = []
         self.ub_size = _tik_get_ub_size(self.is_double_buffer)
-        self.gm_tensor = self.tik_instance.Tensor("float32", (MAX_INT32,),
+        self.gm_tensor = self.tik_instance.Tensor("float32", (Constant.MAX_INT32,),
                                                   tik.scope_gm, "gm_tensor")
         self.tiling_gm = self.tik_instance.Tensor("int32",
-                                                  (MAX_TILING_PARAMS_NUM,),
+                                                  (Constant.MAX_TILING_PARAMS_NUM,),
                                                   tik.scope_gm, "tiling_gm")
 
         # 'pylint: disable=too-few-public-methods
@@ -124,7 +124,7 @@ class DynamicAtomicAddrClean():
                         dtype="int32",
                         name="burst_len_full_mask_repeat_time")
 
-        # pyint: disable=too-few-public-methods
+        # 'pylint: disable=too-few-public-methods
         class InitInputScalar():
             """
             InitInputScalar
@@ -183,7 +183,7 @@ class DynamicAtomicAddrClean():
         self.obj_common_input_scalar = CommonInputScalar(self.tik_instance)
         self.obj_init_input_scalar = InitInputScalar(self.tik_instance)
         self.ub_tensor = self.tik_instance.Tensor("float32", (
-            MASK_FP32 * MAX_REPEAT_TIME,), tik.scope_ubuf, "ub_tensor")
+            Constant.MASK_FP32 * Constant.MAX_REPEAT_TIME,), tik.scope_ubuf, "ub_tensor")
 
     # 'pylint: disable=unused-argument
     def addr_clean(self, workspace_addrs):
@@ -201,8 +201,8 @@ class DynamicAtomicAddrClean():
                 with self.tik_instance.for_range(
                         0, self.obj_init_input_scalar.init_times_full_mask_repeat_time_front_core) as init_index:
                     # front part front core full mask full repeat time
-                    self.tik_instance.vector_dup(MASK_FP32, self.ub_tensor[0],
-                                                 ZERO_FP32, MAX_REPEAT_TIME, 1, 8)
+                    self.tik_instance.vector_dup(Constant.MASK_FP32, self.ub_tensor[0],
+                                                 Constant.ZERO_FP32, Constant.MAX_REPEAT_TIME, 1, 8)
                     gm_offset = core_index * self.obj_init_input_scalar.ele_num_front_core + \
                                 init_index * self.obj_common_input_scalar.ele_num_full_mask_repeat_time
                     ub_offset = 0
@@ -216,8 +216,8 @@ class DynamicAtomicAddrClean():
                 with self.tik_instance.if_scope(
                         self.obj_init_input_scalar.
                         init_times_full_mask_repeat_time_front_core == 0):
-                    self.tik_instance.vector_dup(MASK_FP32, self.ub_tensor[0],
-                                                 ZERO_FP32,
+                    self.tik_instance.vector_dup(Constant.MASK_FP32, self.ub_tensor[0],
+                                                 Constant.ZERO_FP32,
                                                  self.obj_init_input_scalar.
                                                  repeat_time_last_part_front_core,
                                                  1, 8)
@@ -238,9 +238,9 @@ class DynamicAtomicAddrClean():
                 with self.tik_instance.for_range(
                         0, self.obj_init_input_scalar.init_times_full_mask_repeat_time_last_core) as init_index:
                     # front part last core full mask full repeat time
-                    self.tik_instance.vector_dup(MASK_FP32, self.ub_tensor[0],
-                                                 ZERO_FP32,
-                                                 MAX_REPEAT_TIME, 1, 8)
+                    self.tik_instance.vector_dup(Constant.MASK_FP32, self.ub_tensor[0],
+                                                 Constant.ZERO_FP32,
+                                                 Constant.MAX_REPEAT_TIME, 1, 8)
                     gm_offset = \
                         core_index * self.obj_init_input_scalar.ele_num_front_core \
                         + init_index * self.obj_common_input_scalar.ele_num_full_mask_repeat_time
@@ -254,8 +254,8 @@ class DynamicAtomicAddrClean():
                 # last part last core
                 with self.tik_instance.if_scope(
                         self.obj_init_input_scalar.init_times_full_mask_repeat_time_last_core == 0):
-                    self.tik_instance.vector_dup(MASK_FP32, self.ub_tensor[0],
-                                                 ZERO_FP32,
+                    self.tik_instance.vector_dup(Constant.MASK_FP32, self.ub_tensor[0],
+                                                 Constant.ZERO_FP32,
                                                  self.obj_init_input_scalar.
                                                  repeat_time_last_part_last_core,
                                                  1, 8)
@@ -275,15 +275,15 @@ class DynamicAtomicAddrClean():
         tik_instance_fun
         """
         for idx in range(self.workspace_num):
-            addr_gm = self.tik_instance.Tensor("float32", (MAX_INT32,),
+            addr_gm = self.tik_instance.Tensor("float32", (Constant.MAX_INT32,),
                                                tik.scope_gm, "".join(["gm_tensor", str(idx)]))
             with self.tik_instance.new_stmt_scope():
                 # mov tiling data from gm to ub, and set_as scalar
                 tiling_ub = self.tik_instance.Tensor("int32",
-                                                     (MAX_TILING_PARAMS_NUM, ),
+                                                     (Constant.MAX_TILING_PARAMS_NUM, ),
                                                      tik.scope_ubuf, "tiling_ub")
                 self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1,
-                                            MAX_TILING_PARAMS_NUM * INT32_BYTE // BLOCK_BYTE,
+                                            Constant.MAX_TILING_PARAMS_NUM * Constant.INT32_BYTE // Constant.BLOCK_BYTE,
                                             0, 0)
                 input_scalar_index = 0 + idx * 14
                 # common part input scalar

@@ -22,21 +22,25 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-# max int32
-MAX_INT32 = 2 ** 31 - 1
-# tiling param num
-TILING_ARG_NUM = 16
-# reserved ub size
-RESERVED_UB_SIZE = 8 * 1024
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # max int32
+    MAX_INT32 = 2 ** 31 - 1
+    # tiling param num
+    TILING_ARG_NUM = 16
 
-
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes,invalid-name
 class Assign:
     """
     Class for Dynamic shape operator Assign
     """
 
     def __init__(self, ref, value, output, kernel_name):
+        # reserved ub size
+        RESERVED_UB_SIZE = 8 * 1024
         self.tik_instance = tik.Tik(tik.Dprofile)
         self.ref_dtype = ref.get("dtype").lower()
         self.value_dtype = value.get("dtype").lower()
@@ -69,10 +73,14 @@ class Assign:
 
         self.max_tensor_size = self.max_burst_len * self.ele_per_block
 
-        self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
-        self.ref_gm = self.tik_instance.Tensor(self.ref_dtype, (MAX_INT32,), name="ref_gm", scope=tik.scope_gm)
-        self.value_gm = self.tik_instance.Tensor(self.value_dtype, (MAX_INT32,), name="value_gm", scope=tik.scope_gm)
-        self.out_gm = self.tik_instance.Tensor(self.ref_dtype, (MAX_INT32,), name="out_gm", scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_gm", \
+        scope=tik.scope_gm)
+        self.ref_gm = self.tik_instance.Tensor(self.ref_dtype, (Constant.MAX_INT32,), name="ref_gm", \
+        scope=tik.scope_gm)
+        self.value_gm = self.tik_instance.Tensor(self.value_dtype, (Constant.MAX_INT32,), name="value_gm", \
+        scope=tik.scope_gm)
+        self.out_gm = self.tik_instance.Tensor(self.ref_dtype, (Constant.MAX_INT32,), name="out_gm", \
+        scope=tik.scope_gm)
 
         self.tiling_ub = None
         self.value_ub = None
@@ -122,7 +130,7 @@ class Assign:
         The tik implementation of operator Assign
         """
         with self.tik_instance.for_range(0, self.ai_core_num, block_num=self.ai_core_num) as _core_idx:
-            self.tiling_ub = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,),
+            self.tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,),
                                                       name="tiling_ub", scope=tik.scope_ubuf)
             self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 2, 0, 0)
             self._tiling_args()

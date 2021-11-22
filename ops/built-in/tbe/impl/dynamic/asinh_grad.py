@@ -15,22 +15,22 @@
 """
 asinh_grad
 
-  Op_description :
-    Computes gradients for Asinh operation
+Op_description :
+Computes gradients for Asinh operation
 
-    # asinh_grad(
-    #   y,
-    #   dy,
-    #   z,
-    #   kernel_name="cce_asinh_grad")
+# asinh_grad(
+#   y,
+#   dy,
+#   z,
+#   kernel_name="cce_asinh_grad")
 
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
+Supportive_dtype_format :
+['float16', 'float32']
+['ALL']
 
-  Constraint :
-    [1] All : 'y' and 'dy' must have the same type and shape.
-    [2] All : shape size limit is 2147483648.
+Constraint :
+[1] All : 'y' and 'dy' must have the same type and shape.
+[2] All : shape size limit is 2147483648.
 
 """
 from impl.util.platform_adapter import tbe
@@ -44,17 +44,14 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import error_manager_vector
 
-# scalar in asinh_grad
-NUM_MINUS_ONE = -1
-NUM_TWO = 2
-NUM_ONE = 1
-NUM_REPEAT = 0.125
-
-# scalar 1/2! , 1/4! and 1/6! used in taylor
-TAYLOR_SECOND = 0.5
-TAYLOR_FOURTH = 1 / 24.0
-TAYLOR_SIXTH = 1 / 720.0
-
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # scalar in asinh_grad
+    NUM_TWO = 2
+    NUM_ONE = 1
 
 def _cosh_taylor_compute(data):
     """
@@ -69,6 +66,9 @@ def _cosh_taylor_compute(data):
     A Tensor represents cosh(data). Has the same type as data.
     """
 
+    TAYLOR_SECOND = 0.5
+    TAYLOR_FOURTH = 1 / 24.0
+    TAYLOR_SIXTH = 1 / 720.0
     # x^2 / 6!
     pow_2 = tbe.vmul(data, data)
     pow_2_div = tbe.vmuls(pow_2, tvm.const(TAYLOR_SIXTH, data.dtype))
@@ -82,7 +82,7 @@ def _cosh_taylor_compute(data):
 
     # 1 + x^2( 1/2! + x^2( 1/4! + x^2/6!))
     pow_6 = tbe.vmul(pow_4_plus, pow_2)
-    res = tbe.vadds(pow_6, tvm.const(NUM_ONE, data.dtype))
+    res = tbe.vadds(pow_6, tvm.const(Constant.NUM_ONE, data.dtype))
 
     return res
 
@@ -100,14 +100,15 @@ def _cosh_repeat(data):
     A Tensor represents f(2x). Has the same type as data.
     """
 
+    NUM_MINUS_ONE = -1
     data_square = tbe.vmul(data, data)
-    data_mul = tbe.vmuls(data_square, tvm.const(NUM_TWO, data.dtype))
+    data_mul = tbe.vmuls(data_square, tvm.const(Constant.NUM_TWO, data.dtype))
     res = tbe.vadds(data_mul, tvm.const(NUM_MINUS_ONE, data.dtype))
 
     return res
 
 
-# pylint: disable=unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=unused-argument,invalid-name,too-many-locals
 @register_operator_compute("AsinhGrad", op_mode="dynamic", support_fusion=True)
 def asinh_grad_compute(y, dy, output_res, kernel_name="cce_asinh_grad"):
     """
@@ -128,6 +129,7 @@ def asinh_grad_compute(y, dy, output_res, kernel_name="cce_asinh_grad"):
     dy * (1/cosh(y))
     """
 
+    NUM_REPEAT = 0.125
     dtype = y.dtype
     if dtype == "float16" and \
             tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):
@@ -136,12 +138,12 @@ def asinh_grad_compute(y, dy, output_res, kernel_name="cce_asinh_grad"):
 
     if tbe_platform.api_check_support('tbe.dsl.vexp', 'float32'):
         # use vexp,vdiv api for high efficiency computation
-        # cosh(y) = (e^y + e^-y) / 2
+        # `cosh(y) = (e^y + e^-y) / 2`
         #           (e^2y + 1) / 2e^y
         exp_pos = tbe.vexp(y)
         res = tbe.vmul(exp_pos, exp_pos)
-        res = tbe.vadds(res, tvm.const(NUM_ONE, y.dtype))
-        data_dy1 = tbe.vmuls(dy, tvm.const(NUM_TWO, y.dtype))
+        res = tbe.vadds(res, tvm.const(Constant.NUM_ONE, y.dtype))
+        data_dy1 = tbe.vmuls(dy, tvm.const(Constant.NUM_TWO, y.dtype))
         data_dy1 = tbe.vmul(data_dy1, exp_pos)
         res = tbe.vdiv(data_dy1, res)
     else:

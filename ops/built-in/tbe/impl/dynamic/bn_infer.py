@@ -89,8 +89,8 @@ def _check_dtype(dtype_x, dtype_scale, dtype_offset,
     para_check.check_dtype(dtype_variance.lower(), ("float32", "float16"), param_name="variance")
 
 
-# pylint: disable=locally-disabled,invalid-name,too-many-arguments
-# pylint: disable=locally-disabled,too-many-locals,unused-argument
+# 'pylint: disable=locally-disabled,invalid-name,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-locals,unused-argument
 @register_operator_compute("BNInfer", op_mode="dynamic", support_fusion=True)
 def bn_infer_compute(x, scale, offset, mean, variance,
                      y, epsilon, kernel_name="bn_inf"):
@@ -127,7 +127,7 @@ def bn_infer_compute(x, scale, offset, mean, variance,
     shape_offset = shape_util.shape_to_list(offset.shape)
     shape_mean = shape_util.shape_to_list(mean.shape)
     shape_variance = shape_util.shape_to_list(variance.shape)
-    
+
     shape_x, shape_scale, shape_offset, shape_mean, shape_variance, shape_max = shape_util.unify_broadcast_shapes(
         [shape_x, shape_scale, shape_offset, shape_mean, shape_variance])
 
@@ -136,7 +136,7 @@ def bn_infer_compute(x, scale, offset, mean, variance,
     scale = tbe.broadcast(scale, shape_max)
     offset = tbe.broadcast(offset, shape_max)
     mean = tbe.broadcast(mean, shape_max)
-    variance = tbe.broadcast(variance,shape_max)
+    variance = tbe.broadcast(variance, shape_max)
 
     multiplier_add = tbe.vadds(variance, epsilon)
     multiplier_sqrt = tbe.vsqrt(multiplier_add)

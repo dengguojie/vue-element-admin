@@ -27,18 +27,17 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 
-# max int32
-MAX_INT32 = 2**31 - 1
-# tiling param num
-TILING_ARG_NUM = 32
-# reserved ub size
-RESERVED_UB_SIZE = 8 * 1024
-# 8 bit
-EIGHT_BIT = 8
-# bytes of one block
-BLOCK_BYTES = 32
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # max int32
+    MAX_INT32 = 2**31 - 1
+    # tiling param num
+    TILING_ARG_NUM = 32
 
-
+# 'pylint: disable=unused-argument,invalid-name
 def get_op_support_info(x, block_shape, crops, y, kernel_name="batch_to_space_nd"):
     """get op support info."""
     format_x = x.get("format").upper()
@@ -52,7 +51,7 @@ def get_op_support_info(x, block_shape, crops, y, kernel_name="batch_to_space_nd
     return op_cal_info_in_json
 
 
-# pylint: disable=invalid-name,unused-argument,too-many-locals,unnecessary-pass,too-many-return-statements
+# 'pylint: disable=invalid-name,unused-argument,too-many-locals,unnecessary-pass,too-many-return-statements
 def check_supported(x, block_shape, crops, y, kernel_name="batch_to_space_nd"):
     """
     check supported dynamiclly. \n
@@ -100,9 +99,9 @@ def op_select_format(x, block_shape, crops, y, kernel_name="batch_to_space_nd"):
     """
     select format dynamiclly. \n
     op_select_format support desc: \n
-    1.when ori_format is 'NHWC' or 'NCHW', input_format is 'NC1HWC0' 
+    1.when ori_format is 'NHWC' or 'NCHW', input_format is 'NC1HWC0'
 
-        for example:
+        `for example:`
             ori:
                 x              shape = [16,16,16,16]           format = 'NHWC'
                 block_shape    shape = [2,]                    format = 'ND'
@@ -162,8 +161,9 @@ def op_select_format(x, block_shape, crops, y, kernel_name="batch_to_space_nd"):
     return param_dynamic_in_json
 
 
-# pylint: disable=invalid-name,unused-argument,too-many-instance-attributes,too-many-function-args
-# pylint: disable=attribute-defined-outside-init,too-many-locals,too-many-arguments,too-many-statements
+# 'pylint: disable=invalid-name,unused-argument,too-many-instance-attributes,too-many-function-args
+# 'pylint: disable=attribute-defined-outside-init,too-many-locals,too-many-arguments,too-many-statements
+# 'pylint: disable=too-many-public-methods
 class BatchToSpaceND:
     """Performs batch_to_space_nd on input tensor
     5HD:
@@ -181,6 +181,9 @@ class BatchToSpaceND:
     def __init__(self, dtype, block_size, kernel_name):
         """Init batch_to_space_nd parameters
         """
+        RESERVED_UB_SIZE = 8 * 1024
+        EIGHT_BIT = 8
+        BLOCK_BYTES = 32
         self.dtype = dtype
         # zero means batch_to_space_nd; not zeros means batch_to_space
         self.block_size = block_size
@@ -246,11 +249,12 @@ class BatchToSpaceND:
     def init_gm_tensor(self):
         """Init gm tensor
         """
-        self.tiling_gm = self.tik_instance.Tensor("int32", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
-        self.input_gm = self.tik_instance.Tensor(self.dtype, (MAX_INT32,), name="input_gm", scope=tik.scope_gm)
-        self.block_gm = self.tik_instance.Tensor("int32", (MAX_INT32,), name="block_shape", scope=tik.scope_gm)
-        self.crops_gm = self.tik_instance.Tensor("int32", (MAX_INT32,), name="crops", scope=tik.scope_gm)
-        self.output_gm = self.tik_instance.Tensor(self.dtype, (MAX_INT32,), name="output_gm", scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor("int32", (Constant.TILING_ARG_NUM,), name="tiling_gm", \
+        scope=tik.scope_gm)
+        self.input_gm = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,), name="input_gm", scope=tik.scope_gm)
+        self.block_gm = self.tik_instance.Tensor("int32", (Constant.MAX_INT32,), name="block_shape", scope=tik.scope_gm)
+        self.crops_gm = self.tik_instance.Tensor("int32", (Constant.MAX_INT32,), name="crops", scope=tik.scope_gm)
+        self.output_gm = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,), name="output_gm", scope=tik.scope_gm)
 
     # function for 5hd
     def run_block_h_5hd(self, ub_a, ub_b, core_idx, ele_idx, idx_bh):
@@ -386,8 +390,9 @@ class BatchToSpaceND:
                     # move in
                     offset_gm_in = (idx_bh * self.block_w + idx_bw) * self.output_b * self.channel_one * \
                                    self.input_h * self.input_w * self.channel_zero + \
-                                   (idx_ob * self.channel_one + idx_c1) * self.input_h * self.input_w * self.channel_zero +\
-                                   (core_idx * self.one_core_ele + ele_idx) * self.input_w * self.channel_zero
+                                   (idx_ob * self.channel_one + idx_c1) * self.input_h * self.input_w * \
+                                   self.channel_zero +(core_idx * self.one_core_ele + ele_idx) * self.input_w * \
+                                   self.channel_zero
                     offset_ub_in = idx_bw * self.input_w * self.channel_zero
                     self.tik_instance.data_move(ub_a[offset_ub_in], self.input_gm[offset_gm_in], 0, 1,
                                                 self.input_w * self.channel_zero // self.blk_ele, 0, 0)
@@ -401,7 +406,8 @@ class BatchToSpaceND:
 
             # move out
             offset_gm_out = (idx_ob * self.channel_one + idx_c1) * self.output_h * self.output_w * self.channel_zero +\
-                            ((core_idx * self.one_core_ele + ele_idx) * self.block_h + idx_bh - self.crops_t) * self.output_w * self.channel_zero
+                            ((core_idx * self.one_core_ele + ele_idx) * self.block_h + idx_bh - self.crops_t) * \
+                            self.output_w * self.channel_zero
 
             offset_ub_out = self.crops_l * self.channel_zero
             self.tik_instance.data_move(self.output_gm[offset_gm_out], ub_b[offset_ub_out], 0, 1,
@@ -804,7 +810,7 @@ class BatchToSpaceND:
         """
         with self.tik_instance.for_range(0, self.core_num, block_num=self.core_num) as core_idx:
             # define tiling ub and move tiling gm to tiling ub,then get tiling args
-            self.tiling_ub = self.tik_instance.Tensor("int32", (TILING_ARG_NUM,),
+            self.tiling_ub = self.tik_instance.Tensor("int32", (Constant.TILING_ARG_NUM,),
                                                       name="tiling_ub",
                                                       scope=tik.scope_ubuf)
             self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 4, 0, 0)

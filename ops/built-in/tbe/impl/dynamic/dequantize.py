@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name,too-many-arguments,unused-variable,too-many-function-args
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name,too-many-arguments
+# 'pylint: disable=unused-variable,too-many-function-args
 """
 dequantize op, Dequantize the 'input' tensor into a float tensor.
 """
@@ -26,6 +27,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
+
 
 def _min_combined_mode_compute(input_tensor, broadcast_min_range, broadcast_max_range):
     """

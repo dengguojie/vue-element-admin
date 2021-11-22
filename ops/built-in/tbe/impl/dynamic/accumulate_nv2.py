@@ -27,6 +27,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import error_manager_vector
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -35,6 +36,7 @@ class Constant:
     MIN_TENSOR_NUM = 1
     MAX_TENSOR_NUM = 40
     NUM_ONE = 1
+
 
 # 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 @register_operator_compute("AccumulateNV2", op_mode="dynamic", support_fusion=True)

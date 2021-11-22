@@ -17,21 +17,26 @@ lstm_grad
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
-from .dynamic_gru_cell_base import TikOpBase
 from tbe.common.utils import errormgr
-
-OP_NAME = "DynamicGRUGradCell"
-
-TILING_ARG_NUM = 10
-INT64 = 'int64'
-INT32 = 'int32'
-INT32_MAX_NUM = 2**32 - 1
-max_block_ele_num = 7936
+from .dynamic_gru_cell_base import TikOpBase
 
 
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    OP_NAME = "DynamicGRUGradCell"
+    TILING_ARG_NUM = 10
+    INT64 = 'int64'
+    INT32 = 'int32'
+    INT32_MAX_NUM = 2**32 - 1
+    max_block_ele_num = 7936
+
+
+# 'pylint: disable=too-many-arguments,invalid-name
 def _check_dtype(dh_pre_t, h, dy, dh, update, reset, new, hidden_new, init_h, t_state):
     """
     check parameters type
@@ -48,6 +53,7 @@ def _check_dtype(dh_pre_t, h, dy, dh, update, reset, new, hidden_new, init_h, t_
     para_check.check_dtype(t_state["dtype"], ["int32"], "t_state")
 
 
+# 'pylint: disable=too-many-arguments,invalid-name
 def _check_param(dh_pre_t, h, dy, dh, update, reset, new, hidden_new, init_h):
     """
     check parameters
@@ -69,18 +75,18 @@ def _check_attr(gate_order):
     """
     if gate_order not in ['zrh', 'rzh']:
         rule_desc = "gate_order should be zrh or rzh, but current attr is " + gate_order
-        errormgr.raise_err_check_params_rules(OP_NAME, rule_desc, 'gate_order', gate_order)
+        errormgr.raise_err_check_params_rules(Constant.OP_NAME, rule_desc, 'gate_order', gate_order)
 
-
+# 'pylint: disable=too-many-statements,too-many-locals,unused-argument,invalid-name,too-many-instance-attributes
 class DynamicGRUCellGrad(TikOpBase):
     """ DynamicGRUCellGrad
     """
-
+    # 'pylint: disable=too-many-statements,too-many-locals,unused-argument,invalid-name
     def __init__(self, tik_instance, h, gate_order, kernel_name):
         """ init DynamicGRUCellGrad
         """
         super(DynamicGRUCellGrad, self).__init__(tik_instance)
-        self.tiling_dtype = INT64
+        self.tiling_dtype = Constant.INT64
         self.t_size = None
         self.fuse_size = None
         self.max_core_num = None
@@ -96,8 +102,8 @@ class DynamicGRUCellGrad(TikOpBase):
         t_state_and_tiling_size = (16 * self.input_data_size + 16 * 8) * 2
         align = 256 // self.input_data_size
         ub_max_ele_num = (self.ub_byte_size - t_state_and_tiling_size) // self.input_data_size
-        self.max_block_ele_num = (ub_max_ele_num // 8 // 2 // align) * align
-        self.max_mem_size = self.input_data_size * self.max_block_ele_num
+        self.Constant.max_block_ele_num = (ub_max_ele_num // 8 // 2 // align) * align
+        self.max_mem_size = self.input_data_size * self.Constant.max_block_ele_num
 
         # t offset for dy, update, reset, new, hidden_new
         self.t_offset = self.tik_instance.Scalar(self.tiling_dtype, name="t_offset", init_value=0)
@@ -105,27 +111,31 @@ class DynamicGRUCellGrad(TikOpBase):
         self.ht_offset = self.tik_instance.Scalar(self.tiling_dtype, name="ht_offset", init_value=0)
 
         # input
-        self.dh_pre_t = self.tik_instance.Tensor(self.dtype, (INT32_MAX_NUM,), tbe_platform.scope_gm, "dh_pre_t")
-        self.h = self.tik_instance.Tensor(self.dtype, (INT32_MAX_NUM,), tbe_platform.scope_gm, "h")
-        self.dy = self.tik_instance.Tensor(self.dtype, (INT32_MAX_NUM,), tbe_platform.scope_gm, "dy")
-        self.dh = self.tik_instance.Tensor(self.dtype, (INT32_MAX_NUM,), tbe_platform.scope_gm, "dh")
-        self.i2 = self.tik_instance.Tensor(self.dtype, (INT32_MAX_NUM,), tbe_platform.scope_gm, "update")
-        self.r2 = self.tik_instance.Tensor(self.dtype, (INT32_MAX_NUM,), tbe_platform.scope_gm, "reset")
-        self.n2 = self.tik_instance.Tensor(self.dtype, (INT32_MAX_NUM,), tbe_platform.scope_gm, "n2")
-        self.n2_mid = self.tik_instance.Tensor(self.dtype, (INT32_MAX_NUM,), tbe_platform.scope_gm, "hidden_new")
-        self.init_h = self.tik_instance.Tensor(self.dtype, (INT32_MAX_NUM,), tbe_platform.scope_gm, "init_h")
-        self.t_state_gm = self.tik_instance.Tensor(INT32, (1,), tbe_platform.scope_gm, "t_state")
-        self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, (TILING_ARG_NUM + 2,), tbe_platform.scope_gm,
-                                                  "ddr_arg")
+        self.dh_pre_t = self.tik_instance.Tensor(self.dtype, (Constant.INT32_MAX_NUM,), \
+        tbe_platform.scope_gm, "dh_pre_t")
+        self.h = self.tik_instance.Tensor(self.dtype, (Constant.INT32_MAX_NUM,), tbe_platform.scope_gm, "h")
+        self.dy = self.tik_instance.Tensor(self.dtype, (Constant.INT32_MAX_NUM,), tbe_platform.scope_gm, "dy")
+        self.dh = self.tik_instance.Tensor(self.dtype, (Constant.INT32_MAX_NUM,), tbe_platform.scope_gm, "dh")
+        self.i2 = self.tik_instance.Tensor(self.dtype, (Constant.INT32_MAX_NUM,), tbe_platform.scope_gm, "update")
+        self.r2 = self.tik_instance.Tensor(self.dtype, (Constant.INT32_MAX_NUM,), tbe_platform.scope_gm, "reset")
+        self.n2 = self.tik_instance.Tensor(self.dtype, (Constant.INT32_MAX_NUM,), tbe_platform.scope_gm, "n2")
+        self.n2_mid = self.tik_instance.Tensor(self.dtype, (Constant.INT32_MAX_NUM,), \
+        tbe_platform.scope_gm, "hidden_new")
+        self.init_h = self.tik_instance.Tensor(self.dtype, (Constant.INT32_MAX_NUM,), tbe_platform.scope_gm, "init_h")
+        self.t_state_gm = self.tik_instance.Tensor(Constant.INT32, (1,), tbe_platform.scope_gm, "t_state")
+        self.tiling_gm = self.tik_instance.Tensor(self.tiling_dtype, (Constant.TILING_ARG_NUM + 2,), \
+        tbe_platform.scope_gm, "ddr_arg")
 
         # output
-        self.dh_prev = self.tik_instance.Tensor(self.dtype, (INT32_MAX_NUM,), tbe_platform.scope_gm, "dh_prev")
-        self.d_gate_h = self.tik_instance.Tensor(self.dtype, (INT32_MAX_NUM,), tbe_platform.scope_gm, "d_gate_h")
-        self.dnt_x = self.tik_instance.Tensor(self.dtype, (INT32_MAX_NUM,), tbe_platform.scope_gm, "dnt_x")
+        self.dh_prev = self.tik_instance.Tensor(self.dtype, (Constant.INT32_MAX_NUM,), tbe_platform.scope_gm, "dh_prev")
+        self.d_gate_h = self.tik_instance.Tensor(self.dtype, (Constant.INT32_MAX_NUM,), \
+        tbe_platform.scope_gm, "d_gate_h")
+        self.dnt_x = self.tik_instance.Tensor(self.dtype, (Constant.INT32_MAX_NUM,), tbe_platform.scope_gm, "dnt_x")
 
     def _build_tiling_info(self):
-        tiling_ub = self.tik_instance.Tensor(self.tiling_dtype, (TILING_ARG_NUM + 2,), tik.scope_ubuf, "tiling_ub")
-        self.move_data(tiling_ub, self.tiling_gm, self.tiling_dtype, (TILING_ARG_NUM + 2,))
+        tiling_ub = self.tik_instance.Tensor(self.tiling_dtype, (Constant.TILING_ARG_NUM + 2,), \
+        tik.scope_ubuf, "tiling_ub")
+        self.move_data(tiling_ub, self.tiling_gm, self.tiling_dtype, (Constant.TILING_ARG_NUM + 2,))
 
         self.fuse_size = self.tik_instance.Scalar(self.tiling_dtype, name='fuse_size')
         self.fuse_size.set_as(tiling_ub[9])
@@ -180,11 +190,12 @@ class DynamicGRUCellGrad(TikOpBase):
         })
 
     def _set_t_state(self):
-        t_state_ub = self.tik_instance.Tensor(INT32, (4,), tbe_platform.scope_ubuf, "t_state_ub")
+        t_state_ub = self.tik_instance.Tensor(Constant.INT32, (4,), tbe_platform.scope_ubuf, "t_state_ub")
         self.tik_instance.data_move(t_state_ub, self.t_state_gm, 0, 1, 1, 0, 0)
-        self.t_state = self.tik_instance.Scalar(INT32, name="t_state")
+        self.t_state = self.tik_instance.Scalar(Constant.INT32, name="t_state")
         self.t_state.set_as(t_state_ub[0])
 
+    # 'pylint: disable=too-many-statements,too-many-locals,unused-argument,invalid-name
     def _do_compute(self, input_offset, ele_num):
         """
         do compute
@@ -274,16 +285,16 @@ class DynamicGRUCellGrad(TikOpBase):
                 self.move_data(h1, self.h[self.ht_offset * self.fuse_size + input_offset], self.dtype, shape)
             h1_sub_n2 = h1
             self.vsub_func(h1_sub_n2, h1, n2, shape)
-            # (1-i2)*i2
+            # `(1-i2)*i2`
             one_i2_mul_i2 = one_sub_i2
             self.vmul_func(one_i2_mul_i2, one_sub_i2, i2, shape)  # free i2
-            # (dh2 + dy)*(1-i2)*i2
+            # `(dh2 + dy)*(1-i2)*i2`
             dh2_mul_i2 = one_i2_mul_i2
             self.vmul_func(dh2_mul_i2, one_i2_mul_i2, dh_add_dy, shape)
-            # (h1-n2)*(dh2 + dy)*(1-i2)*i2
+            # `(h1-n2)*(dh2 + dy)*(1-i2)*i2`
             di2 = dh2_mul_i2
             self.vmul_func(di2, dh2_mul_i2, h1_sub_n2, shape)  # free h1
-            # di2 -> out
+            # `di2 -> out`
             if self.gate_order == "zrh":
                 offset = input_offset
             else:
@@ -346,6 +357,7 @@ class DynamicGRUCellGrad(TikOpBase):
                         self._do_compute(base_offset, tiling["tail_last_ele"])
 
 
+# 'pylint: disable=too-many-arguments,too-many-locals,unused-argument
 @register_operator('DynamicGRUCellGrad')
 def dynamic_gru_cell_grad(dh_pre_t,
                           h,

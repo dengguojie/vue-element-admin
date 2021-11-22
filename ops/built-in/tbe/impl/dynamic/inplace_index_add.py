@@ -29,11 +29,12 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     The class for constant
     """
-    MAX_INT64_VALUE = 2**64 -1
+    MAX_INT64_VALUE = 2 ** 64 -1
     TILING_ARG_NUM = 8
     RESERVED_UB_SIZE = 8 * 1024
     EIGHT_BIT = 8
@@ -71,7 +72,7 @@ class Constant:
     UPDATE_NUMS_BLOCK_3 = INDICES_NUMS_BLOCK_3 = 32
 
 
-# pylint: disable=unused-argument,undefined-variable
+# 'pylint: disable=unused-argument,undefined-variable,too-many-arguments
 def get_op_support_info(var, indices, updates, var_out, axis, kernel_name="index_add"):
     """
     get_op_support_info
@@ -94,8 +95,8 @@ def get_op_support_info(var, indices, updates, var_out, axis, kernel_name="index
     return op_cal_info_in_json
 
 
-# pylint: disable=too-many-arguments,too-many-instance-attributes
-# pylint: disable=invalid-name,bad-continuation,attribute-defined-outside-init,unused-argument
+# 'pylint: disable=too-many-arguments,too-many-instance-attributes,too-many-methods,too-many-public-methods
+# 'pylint: disable=invalid-name,bad-continuation,attribute-defined-outside-init,unused-argument
 class InplaceIndexAdd():
     """
        Function: use to store scatter base parameters
@@ -811,7 +812,7 @@ class InplaceIndexAdd():
         return self.tik_instance
 
 
-#pylint: disable=unused-argument
+#'pylint: disable=unused-argument
 @register_operator("InplaceIndexAdd")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)

@@ -26,6 +26,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
 
+
 def div_compute(input_x, input_y, output_z, kernel_name="div"):
     """
     div compute

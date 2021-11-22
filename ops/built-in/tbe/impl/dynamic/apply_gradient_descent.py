@@ -72,6 +72,7 @@ def apply_gradient_descent_compute(var,
 
     return reuse_var
 
+
 # 'pylint: disable=too-many-locals
 @register_operator("ApplyGradientDescent")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

@@ -28,18 +28,18 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def _tanh_parameter_compute(placeholders):
-    CSVALUE = tvm.const(0.044715, "float32")
+    csvalue = tvm.const(0.044715, "float32")
     mul_0 = tbe.vmul(placeholders, placeholders)
     pow_0 = tbe.vmul(mul_0, placeholders)
-    mul_1 = tbe.vmuls(pow_0, CSVALUE)
+    mul_1 = tbe.vmuls(pow_0, csvalue)
     result = tbe.vadd(placeholders, mul_1)
 
     return result
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
 @register_operator_compute("Gelu", op_mode="dynamic", support_fusion=True)
 def gelu_compute(input_x, output_y, kernel_name="gelu"):
     """
@@ -71,17 +71,17 @@ def gelu_compute(input_x, output_y, kernel_name="gelu"):
         input_x = tbe.cast_to(input_x, "float32")
         dtype = input_x.dtype
 
-    # formula; gelu(x) = 0.5*x*(1.0+tanh(np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x,3))))
-    # formula; tanh(y) = 2/(1+exp(-2y)) - 1
+    # `formula; gelu(x) = 0.5*x*(1.0+tanh(np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x,3))))`
+    # `formula; tanh(y) = 2/(1+exp(-2y)) - 1`
 
     # simplize
-    # formula; gelu(x) = x/(1+e^(-y))
+    # `formula; gelu(x) = x/(1+e^(-y))`
     # the formula is y = 2*np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x,3))
 
     # to avoid overflow, keep exp negative
-    # formula; gelu(x) = x/(1+e^(-|y|)) * v_const
+    # `formula; gelu(x) = x/(1+e^(-|y|)) * v_const`
     # the formula is y = 2*np.sqrt(2/np.pi)*(x+0.044715*tf.pow(x,3))
-    # formula; v_const = 1 if x > 0  , e^y  if x < 0
+    # `formula; v_const = 1 if x > 0  , e^y  if x < 0`
     # formula; `2*np.sqrt(2/np.pi)`
     const_0 = tvm.const(1.5957691, "float32")
     const_1 = tvm.const(1.0, "float32")
@@ -123,6 +123,7 @@ def gelu_compute(input_x, output_y, kernel_name="gelu"):
     return result
 
 
+# 'pylint: disable=invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 @register_operator("Gelu")

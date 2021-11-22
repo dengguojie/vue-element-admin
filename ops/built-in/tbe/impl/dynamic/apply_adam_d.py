@@ -179,7 +179,7 @@ def _output_var_t_compute_use_nesterov(var, lr_t, m_t, beta1, grad, epsilon, v_t
 def _output_var_t_compute(var, lr_t, m_t, epsilon, v_t):
     """
     _output_var_t_compute
-    var_t = var - lr_t * m_t / (epsilon + sqrt(v_t))
+    `var_t = var - lr_t * m_t / (epsilon + sqrt(v_t))`
     """
     # `formula; lr_t * m_t`
     v_mul_left = tbe.vmul(lr_t, m_t)

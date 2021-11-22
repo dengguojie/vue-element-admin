@@ -15,17 +15,17 @@
 """
 gather_nd
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
-from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_platform as tbe_platform_adapter
 from impl import constant_util as constant
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     The class for constant
@@ -67,7 +67,7 @@ class Constant:
 
 
     TYPE_LEN_DICT = {"float16": 2, "float32": 4, "int8": 1, "uint8": 1,
-                     "int32": 4, "int64": 8,}
+                     "int32": 4, "int64": 8, }
 
 
 def ceil_value(value, factor):
@@ -102,8 +102,8 @@ def align_value(value, factor):
     return (value + factor - 1) // factor * factor
 
 
-# pylint: disable=invalid-name, too-many-locals, too-many-arguments, too-many-public-methods
-# pylint: disable=too-many-instance-attributes, too-many-lines
+# 'pylint: disable=invalid-name, too-many-locals, too-many-arguments, too-many-public-methods
+# 'pylint: disable=too-many-instance-attributes, too-many-lines
 class GatherNd():
     """
     Function: class that execute gather_nd
@@ -1198,7 +1198,7 @@ class GatherNd():
         -------
         None
         """
-        if tbe_platform.api_check_support("tik.vgatherb"):
+        if tbe_platform_adapter.api_check_support("tik.vgatherb"):
             self.compute_mode_32b_aligned(half_ub_size, block_id, self.x)
         else:
             tik_instance = self.tik_instance

@@ -25,7 +25,8 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
 
 
-class GenADC(object):
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class GenADC():
     """
     Class for Dynamic shape operator GenADC
     """
@@ -36,6 +37,7 @@ class GenADC(object):
     DISTANCE_TYPE_L2SQR = "l2sqr"
     DISTANCE_TYPE_INNER_PRODUCT = "inner_product"
 
+    # 'pylint: disable=too-many-arguments,too-many-statements
     def __init__(self, query, code_book, centroids, bucket_list, adc_tables, distance_type, kernel_name):
         self.kernel_name = kernel_name
 
@@ -65,7 +67,7 @@ class GenADC(object):
         self.distance_type = distance_type
         if self.distance_type not in (GenADC.DISTANCE_TYPE_L2SQR, GenADC.DISTANCE_TYPE_INNER_PRODUCT):
             rule = "Distance type should be l2sqr or inner_product"
-            error_manager_vector.raise_err_check_params_rules(self.distance_type, rule)
+            error_manager_vector.raise_err_specific_reson(self.distance_type, rule)
 
         self.dim_d = self.query_shape[0]
         self.dim_m = self.code_book_shape[0]
@@ -74,15 +76,15 @@ class GenADC(object):
 
         if self.dim_d != self.dim_m * self.dim_dsub:
             rule = "Failed to check the division of subspaces."
-            error_manager_vector.raise_err_check_params_rules(self.kernel_name, rule)
+            error_manager_vector.raise_err_specific_reson(self.kernel_name, rule)
 
         if self.dim_d < 128:
             if self.dim_m % 8 != 0:
                 rule = "The number of subspaces (M) should be a multiple of 8."
-                error_manager_vector.raise_err_check_params_rules(self.kernel_name, rule)
+                error_manager_vector.raise_err_specific_reson(self.kernel_name, rule)
         elif self.dim_d % 128 != 0:
             rule = "If d is greater than 128, it should be a multiple of 128."
-            error_manager_vector.raise_err_check_params_rules(self.kernel_name, rule)
+            error_manager_vector.raise_err_specific_reson(self.kernel_name, rule)
 
         self.dim_m_stride = 8
         self.dim_ksub_stride = 1
@@ -135,6 +137,7 @@ class GenADC(object):
 
         self.reduce_0_local_ub = None
 
+    # 'pylint: disable=invalid-name
     def _get_m_ksub_factors(self):
         """
         compute k factor and m factor
@@ -176,10 +179,11 @@ class GenADC(object):
         self.bucket_list_burst_len.set_as(self.tiling_ub[2])
         self.remain_bucket_list_burst_len.set_as(self.tiling_ub[3])
         self.core_used_num.set_as(self.tiling_ub[4])
-        if type(self.dim_ns) is not int:
+        if not isinstance(self.dim_ns, int):
             self.dim_ns.set_as(self.tiling_ub[5])
 
-    def _compute_burst_len(self, dtype, shape):
+    @staticmethod
+    def _compute_burst_len(dtype, shape):
         block_bite_size = 32
         dtype_bytes = tbe_platform.get_bit_len(dtype) // 8
         data_each_block = block_bite_size // dtype_bytes
@@ -203,7 +207,7 @@ class GenADC(object):
         bucket_list_dtype_bytes = tbe_platform.get_bit_len(self.bucket_list_dtype) // 8
         bucket_list_num_each_block = 32 // bucket_list_dtype_bytes
 
-        if type(self.dim_ns) is not int:
+        if not isinstance(self.dim_ns, int):
             bucket_list_ub_len = (self.row_num_each_core + bucket_list_num_each_block - 1) // \
                                     bucket_list_num_each_block * bucket_list_num_each_block
         else:
@@ -296,6 +300,7 @@ class GenADC(object):
 
         self._compute_distance(block_i, core_row_offset, process_row)
 
+    # 'pylint: disable=too-many-arguments,too-many-statements
     def _compute_distance(self, block_i, core_row_offset, process_row):
         """
         Compute adc distance.
@@ -461,6 +466,7 @@ class GenADC(object):
                         _compute_reduce_for_multiple_eles()
 
 
+# 'pylint: disable=too-many-arguments,too-many-statements
 @register_operator("GenADC")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR,

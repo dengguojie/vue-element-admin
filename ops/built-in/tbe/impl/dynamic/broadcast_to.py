@@ -26,7 +26,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @register_operator_compute("BroadcastTo", op_mode="dynamic", support_fusion=False)
 def broadcast_to_compute(x, shape, y, kernel_name="broadcast_to"):
     """
@@ -53,7 +53,7 @@ def broadcast_to_compute(x, shape, y, kernel_name="broadcast_to"):
     return res
 
 
-# pylint: disable=too-many-locals,too-many-statements
+# 'pylint: disable=too-many-locals,too-many-statements
 @register_operator("BroadcastTo")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)

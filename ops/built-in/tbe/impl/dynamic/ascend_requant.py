@@ -26,7 +26,8 @@ from impl.util.platform_adapter import register_operator_compute
 from impl import ascend_quant_util as util
 
 
-# pylint: disable=invalid-name,unused-argument,unnecessary-lambda,too-many-arguments,too-many-locals
+# 'pylint: disable=invalid-name,unused-argument,unnecessary-lambda,too-many-arguments,too-many-locals
+# 'pylint: disable=too-many-statements,too-many-branches
 @register_operator_compute("AscendRequant", op_mode="dynamic", support_fusion=True)
 def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend_requant"):
     """
@@ -48,7 +49,7 @@ def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend
     x_shape_list = shape_util.shape_to_list(x_shape)
 
     conv_flag = 0
-    if len(x.op.input_tensors) and ('mad1' in x.op.input_tensors[0].name or \
+    if len(x.op.input_tensors) > 0 and ('mad1' in x.op.input_tensors[0].name or \
             'convolution_c_col_bias' in x.op.input_tensors[0].name):
         conv_flag = 1
 

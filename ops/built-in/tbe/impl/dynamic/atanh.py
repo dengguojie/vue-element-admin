@@ -30,6 +30,7 @@ atanh
   Constraint :
     [1] All : shape size limit is 2147483648.
 """
+import functools
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
@@ -37,16 +38,10 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
-import functools
 from impl.util.platform_adapter import register_operator
 
-# const value
-CONST_HALF = 0.5
-CONST_ONE = 1
-CONST_NEG_ONE = -1
 
-
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 def atanh_compute(x, y, kernel_name="atanh"):
     """
     Algrithm : atanh(x) = 0.5 * log((1 + x) / (1 - x)) if abs(x) < 1
@@ -96,6 +91,10 @@ def _compute(data_input, shape):
     data_res :  return of atanh
     """
 
+    # const value
+    CONST_HALF = 0.5
+    CONST_ONE = 1
+    CONST_NEG_ONE = -1
     data_1_sum_x = tbe.vadds(data_input, tvm.const(CONST_ONE, data_input.dtype))
     data_sub_x = tbe.vmuls(data_input, tvm.const(CONST_NEG_ONE, data_input.dtype))
     data_1_sub_x = tbe.vadds(data_sub_x, tvm.const(CONST_ONE, data_input.dtype))
@@ -133,9 +132,9 @@ def atanh(x, y, kernel_name="atanh"):
     para_check.check_dtype(dtype, check_list, param_name="x")
     ins = classify([x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
-    for (x,) in ins:
+    for (ins_x,) in ins:
         with tbe.compute():
-            shape_x = shape_util.variable_shape([x])
+            shape_x = shape_util.variable_shape([ins_x])
             fuseshape = [1]
             fuseshape[0] = functools.reduce(lambda x, y: x * y, shape_x[0])
             input_data = tvm.placeholder(fuseshape, dtype, "input_data")

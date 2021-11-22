@@ -33,7 +33,7 @@ def get_op_support_info(x, indices, y, validate_indices=True, batch_dims=0, kern
     format_indices = indices.get("format").upper()
     shape_indices_len = len(indices.get("shape"))
     if format_x == "ND" and format_indices == "ND":
-        axis_split_matrix=[]
+        axis_split_matrix = []
         for j in range(shape_indices_len):
             split_0 = [SplitInput([1, [j], [-1], [-1]]), SplitOutput([0, [j]])]
             axis_split_matrix.append(split_0)

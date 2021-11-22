@@ -25,6 +25,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
+# 'pylint: disable=unused-variable,unused-argument,invalid-name
 @register_operator_compute("AxpyV2", op_mode="dynamic", support_fusion=True)
 def axpy_v2_compute(x1, x2, alpha, y, kernel_name="axpy_v2"):
     """
@@ -81,7 +82,7 @@ def axpy_v2_compute(x1, x2, alpha, y, kernel_name="axpy_v2"):
         res = tbe.cast_to(res, dtype)
     return res
 
-
+# 'pylint: disable=too-many-locals,invalid-name
 @register_operator("AxpyV2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,
@@ -123,9 +124,9 @@ def axpy_v2(x1, x2, alpha, y, kernel_name="axpy_v2"):
     para_check.check_elewise_shape_range([x1, x2])
     ins = classify([x1, x2, alpha], OpPatternMode.ELEWISE_WITH_BROADCAST)
     schedules, tensors = [], []
-    for(x1, x2, alpha) in ins:
+    for(ins_x1, ins_x2, ins_alpha) in ins:
         with tbe.compute():
-            x_shape, y_shape, alpha_shape = shape_util.variable_shape([x1, x2, alpha])
+            x_shape, y_shape, alpha_shape = shape_util.variable_shape([ins_x1, ins_x2, ins_alpha])
             data1 = tvm.placeholder(x_shape, dtype=dtype_x1, name="data1")
             data2 = tvm.placeholder(y_shape, dtype=dtype_x2, name="data2")
             alpha_input = tvm.placeholder(alpha_shape, dtype=alpha_dtype, name="alpha_input")

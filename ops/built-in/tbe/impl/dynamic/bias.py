@@ -28,9 +28,9 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=too-few-public-methods
-# pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
-# pylint: disable=too-many-boolean-expressions,too-many-locals,unused-variable
+# 'pylint: disable=too-few-public-methods
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
+# 'pylint: disable=too-many-boolean-expressions,too-many-locals,unused-variable
 def _param_bias_check(shape_x, shape_bias):
     """
     Function to check if the shape is in line with norms.
@@ -84,7 +84,7 @@ def _get_param_bias_shape_and_range(shape_x, shape_bias, range_bias):
     return shape, bias_range
 
 
-# pylint: disable=too-many-branches
+# 'pylint: disable=too-many-branches
 def _check_shape_axis(shape_x, shape_bias, axis, num_axes, bias_from_blob):
     """
     Function to check if the shape is in line with norms.
@@ -244,7 +244,7 @@ def _check_dtype(dtype_x, dtype_bias):
     para_check.check_dtype(dtype_bias, check_tuple, param_name="bias")
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
 @register_operator_compute("bias", op_mode="dynamic", support_fusion=False)
 def bias_compute(x, bias, y, axis, num_axes, bias_from_blob, kernel_name="bias"):
     """
@@ -285,7 +285,7 @@ def bias_compute(x, bias, y, axis, num_axes, bias_from_blob, kernel_name="bias")
     return res
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 @register_operator("Bias")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,

@@ -25,6 +25,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -33,6 +34,7 @@ class Constant:
     CONST_ZERO = 0
     CONST_ONE = 1
     CONST_ONE_NEG = -1
+
 
 # 'pylint: disable=locally-disabled,too-many-arguments
 # 'pylint: disable=unused-argument,invalid-name,too-many-locals

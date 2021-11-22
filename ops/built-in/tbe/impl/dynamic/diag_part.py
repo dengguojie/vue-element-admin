@@ -23,16 +23,21 @@ from impl.util import util_tik_comm_func
 from impl import common_util
 from impl import constant_util as constant
 
-# tiling arg num
-TILING_ARG_NUM = 4
-# MAX INT 64
-MAX_INT64 = 2 ** 64 - 1
-# MAX BURST LEN
-MAX_BURST_LEN = 65535
-# NUM_128
-NUM_128 = 128
-# NUM_64
-NUM_64 = 64
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # tiling arg num
+    TILING_ARG_NUM = 4
+    # MAX INT 64
+    MAX_INT64 = 2 ** 64 - 1
+    # NUM_128
+    NUM_128 = 128
+    # NUM_64
+    NUM_64 = 64
+
 
 # 'pylint: disable=unused-argument,invalid-name,too-many-lines,line-too-long,no-self-use
 # 'pylint: disable=,too-many-locals,attribute-defined-outside-init,too-many-instance-attributes
@@ -55,16 +60,18 @@ class DiagPart():
 
         self.tiling_line_num = self.tik_instance.Scalar("int64", name="tiling_input_num", init_value=1)
         self.tiling_act_core_num = self.tik_instance.Scalar("int64", name="tiling_act_core_num", init_value=1)
-        self.tiling_each_core_line_num = self.tik_instance.Scalar("int64", name="tiling_each_core_line_num", init_value=1)
-        self.tiling_last_core_line_num = self.tik_instance.Scalar("int64", name="tiling_last_core_line_num", init_value=1)
+        self.tiling_each_core_line_num = self.tik_instance.Scalar("int64", name="tiling_each_core_line_num", \
+        init_value=1)
+        self.tiling_last_core_line_num = self.tik_instance.Scalar("int64", name="tiling_last_core_line_num", \
+        init_value=1)
 
         # get ai_core num
         self.ai_core_num = self.tik_profiling.get_aicore_num()
 
         # assist space
         dtype_bytes_size = common_util.get_data_size(self.dtype_x)
-        dtype_tiling_bytes_size = common_util.get_data_size("int64") * TILING_ARG_NUM
-        dtype_assist_bytes_size = dtype_bytes_size * NUM_128 * NUM_128
+        dtype_tiling_bytes_size = common_util.get_data_size("int64") * Constant.TILING_ARG_NUM
+        dtype_assist_bytes_size = dtype_bytes_size * Constant.NUM_128 * Constant.NUM_128
 
         # get ub size
         self.ub_size_bytes = self.tik_profiling.get_unified_buffer_size() - dtype_tiling_bytes_size - \
@@ -78,10 +85,10 @@ class DiagPart():
                                self.data_each_block)
 
         # make gm tensor
-        self.input_x_gm = self.tik_instance.Tensor(self.dtype_x, (MAX_INT64,), name="input_x_gm", scope=tik.scope_gm)
-        self.output_gm = self.tik_instance.Tensor(self.dtype_x, (MAX_INT64,),
+        self.input_x_gm = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_INT64,), name="input_x_gm", scope=tik.scope_gm)
+        self.output_gm = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_INT64,),
                                                   name="output_gm", scope=tik.scope_gm)
-        self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
 
     def _diag_part_compute_tiling(self):
         """
@@ -91,7 +98,7 @@ class DiagPart():
             tiling_each_core_line_num: line number of one each aicore need to compute except last aicore
             tiling_last_core_line_num: line number of one last aicore need to compute
         """
-        self.tiling_ub = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_ub", scope=tik.scope_ubuf)
+        self.tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_ub", scope=tik.scope_ubuf)
         self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 4, 0, 0)
         self.tiling_line_num.set_as(self.tiling_ub[0])
         self.tiling_act_core_num.set_as(self.tiling_ub[1])
@@ -105,7 +112,7 @@ class DiagPart():
         assist_data = [[0] * 128 for _ in range(128)]
         for i in range(0, 128):
             assist_data[i][i] = 1
-        self.assist_gm = self.tik_instance.Tensor(self.dtype_x, (NUM_128, NUM_128), name="assist_gm",
+        self.assist_gm = self.tik_instance.Tensor(self.dtype_x, (Constant.NUM_128, Constant.NUM_128), name="assist_gm",
                                                   scope=tik.scope_gm, init_value=assist_data)
 
     def core_scedule_args(self, core_idx):
@@ -115,7 +122,7 @@ class DiagPart():
         with self.tik_instance.if_scope(core_idx < self.tiling_act_core_num - 1):
             self.each_core_scedule(core_idx, self.tiling_each_core_line_num)
         with self.tik_instance.if_scope(core_idx == self.tiling_act_core_num - 1):
-            with self.tik_instance.if_scope(self.tiling_line_num >= NUM_128):
+            with self.tik_instance.if_scope(self.tiling_line_num >= Constant.NUM_128):
                 self.each_core_scedule(core_idx, self.tiling_last_core_line_num)
             with self.tik_instance.else_scope():
                 self.small_shape_scedule()
@@ -124,81 +131,83 @@ class DiagPart():
         """
         each_core_scedule
         """
-        burst_len = NUM_128 // self.data_each_block
+        burst_len = Constant.NUM_128 // self.data_each_block
         self.tik_instance.data_move(self.assist_ub,
                                     self.assist_gm,
-                                    0, NUM_128, burst_len, 0, 0)
+                                    0, Constant.NUM_128, burst_len, 0, 0)
 
         move_offset = core_idx * self.tiling_each_core_line_num * self.tiling_line_num + \
                       core_idx * self.tiling_each_core_line_num
 
         dtype_flag = 1
-        nburst = NUM_128
-        need_compute_line_num = NUM_128
+        nburst = Constant.NUM_128
+        need_compute_line_num = Constant.NUM_128
         if self.dtype_x == "float32" or "int32":
             dtype_flag = 2
-            nburst = NUM_64
+            nburst = Constant.NUM_64
 
-        loop_num = compute_line_num // (NUM_128 // dtype_flag)
+        loop_num = compute_line_num // (Constant.NUM_128 // dtype_flag)
         output_offset = core_idx * self.tiling_each_core_line_num
         with self.tik_instance.for_range(0, loop_num) as loop_index:
             x_gm_move_offset = move_offset + \
-                               loop_index * NUM_128 // dtype_flag * self.tiling_line_num + \
-                               loop_index * NUM_128 // dtype_flag
+                               loop_index * Constant.NUM_128 // dtype_flag * self.tiling_line_num + \
+                               loop_index * Constant.NUM_128 // dtype_flag
 
             with self.tik_instance.if_scope(self.tiling_line_num % self.data_each_block == 0):
-                src_stride = (self.tiling_line_num - NUM_128 // dtype_flag) // self.data_each_block
-                burst_len = NUM_128 // dtype_flag // self.data_each_block
+                src_stride = (self.tiling_line_num - Constant.NUM_128 // dtype_flag) // self.data_each_block
+                burst_len = Constant.NUM_128 // dtype_flag // self.data_each_block
                 self.tik_instance.data_move(self.input_x_ub,
                                             self.input_x_gm[x_gm_move_offset],
                                             0, nburst, burst_len, src_stride, 0)
 
             with self.tik_instance.if_scope(self.tiling_line_num % self.data_each_block != 0):
-                burst_len = NUM_128 // dtype_flag // self.data_each_block
-                with self.tik_instance.for_range(0, NUM_128 // dtype_flag) as line_index:
+                burst_len = Constant.NUM_128 // dtype_flag // self.data_each_block
+                with self.tik_instance.for_range(0, Constant.NUM_128 // dtype_flag) as line_index:
                     move_x_gm_move_offset = x_gm_move_offset + line_index * self.tiling_line_num
                     if dtype_flag == 1:
-                        x_ub_offset = line_index * NUM_128
+                        x_ub_offset = line_index * Constant.NUM_128
                     if dtype_flag == 2:
-                        x_ub_offset = line_index * NUM_64
+                        x_ub_offset = line_index * Constant.NUM_64
                     self.tik_instance.data_move(self.input_x_ub[x_ub_offset],
                                                 self.input_x_gm[move_x_gm_move_offset],
                                                 0, 1, burst_len, 0, 0)
 
             if dtype_flag == 1:
-                loop_output_offset = output_offset + loop_index * NUM_128
+                loop_output_offset = output_offset + loop_index * Constant.NUM_128
             if dtype_flag == 2:
-                loop_output_offset = output_offset + loop_index * NUM_64
-                need_compute_line_num = NUM_64
+                loop_output_offset = output_offset + loop_index * Constant.NUM_64
+                need_compute_line_num = Constant.NUM_64
             self.compute_each_loop(0, need_compute_line_num, loop_output_offset)
 
-        last_line_num = compute_line_num - (loop_num * NUM_128 // dtype_flag)
+        last_line_num = compute_line_num - (loop_num * Constant.NUM_128 // dtype_flag)
         with self.tik_instance.if_scope(last_line_num > 0):
-            back_offset = NUM_128 // dtype_flag - (last_line_num % (NUM_128 // dtype_flag))
+            back_offset = Constant.NUM_128 // dtype_flag - (last_line_num % (Constant.NUM_128 // dtype_flag))
             last_x_gm_move_offset = core_idx * self.tiling_each_core_line_num * self.tiling_line_num + \
                                     core_idx * self.tiling_each_core_line_num + \
-                                    loop_num * NUM_128 // dtype_flag * self.tiling_line_num + \
-                                    loop_num * NUM_128 // dtype_flag - \
+                                    loop_num * Constant.NUM_128 // dtype_flag * self.tiling_line_num + \
+                                    loop_num * Constant.NUM_128 // dtype_flag - \
                                     back_offset * self.tiling_line_num - back_offset
 
-            burst_len = NUM_128 // dtype_flag // self.data_each_block
-            with self.tik_instance.for_range(0, NUM_128 // dtype_flag) as line_index:
+            burst_len = Constant.NUM_128 // dtype_flag // self.data_each_block
+            with self.tik_instance.for_range(0, Constant.NUM_128 // dtype_flag) as line_index:
                 last_x_gm_move_offset += line_index * self.tiling_line_num
-                x_ub_offset = line_index * NUM_128 // dtype_flag
+                x_ub_offset = line_index * Constant.NUM_128 // dtype_flag
                 self.tik_instance.data_move(self.input_x_ub[x_ub_offset],
                                             self.input_x_gm[last_x_gm_move_offset],
                                             0, 1, burst_len, 0, 0)
             if dtype_flag == 1:
-                output_offset += loop_num * NUM_128 - back_offset
-                self.compute_each_loop(0, NUM_128, output_offset)
+                output_offset += loop_num * Constant.NUM_128 - back_offset
+                self.compute_each_loop(0, Constant.NUM_128, output_offset)
             if dtype_flag == 2:
-                output_offset += loop_num * NUM_64 - back_offset
-                self.compute_each_loop(0, NUM_64, output_offset)
+                output_offset += loop_num * Constant.NUM_64 - back_offset
+                self.compute_each_loop(0, Constant.NUM_64, output_offset)
 
     def small_shape_scedule(self):
         """
         small_shape_scedule
         """
+        # MAX BURST LEN
+        MAX_BURST_LEN = 65535
         burst_len = util_tik_comm_func.ceil_div(self.tiling_line_num * self.tiling_line_num, self.data_each_block)
         nburst = util_tik_comm_func.ceil_div(burst_len, MAX_BURST_LEN)
         burst_len = util_tik_comm_func.ceil_div(burst_len, nburst)
@@ -222,7 +231,7 @@ class DiagPart():
             #make ub tensor
             self.input_x_ub = self.tik_instance.Tensor(self.dtype_x, (self.ub_tensor_size,),
                                                        name="input_x_ub", scope=tik.scope_ubuf)
-            self.assist_ub = self.tik_instance.Tensor(self.dtype_x, (NUM_128, NUM_128),
+            self.assist_ub = self.tik_instance.Tensor(self.dtype_x, (Constant.NUM_128, Constant.NUM_128),
                                                       name="assist_ub", scope=tik.scope_ubuf)
             self.core_scedule_args(index)
 
@@ -246,7 +255,7 @@ class DiagPart():
         compute_each_loop
         """
         rep_stride = util_tik_comm_func.ceil_div(compute_num, self.data_each_block)
-        assist_rep_stride = NUM_128 // self.data_each_block
+        assist_rep_stride = Constant.NUM_128 // self.data_each_block
         self.tik_instance.vmul(compute_num,
                                self.input_x_ub,
                                self.assist_ub,
@@ -263,6 +272,7 @@ class DiagPart():
         self.tik_instance.data_move(self.output_gm[output_offset],
                                     self.input_x_ub,
                                     0, 1, burst_len, 0, 0)
+
 
 @register_operator("DiagPart")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,

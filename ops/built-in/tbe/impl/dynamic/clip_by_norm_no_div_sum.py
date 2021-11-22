@@ -25,7 +25,6 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import tbe_platform
 
-SHAPE_SIZE_LIMIT = 2147483648
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name

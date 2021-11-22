@@ -15,20 +15,20 @@
 """
 bessel_i1e
 
-  Op_description :
-    Computes the Bessel i0e function of `x` element-wise
+Op_description :
+Computes the Bessel i0e function of `x` element-wise
 
-    # bessel_i1e(
-    #   x,
-    #   y,
-    #   kernel_name="bessel_i1e")
+# bessel_i1e(
+#   x,
+#   y,
+#   kernel_name="bessel_i1e")
 
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
+Supportive_dtype_format :
+['float16', 'float32']
+['ALL']
 
-  Constraint :
-    [1] All : shape size limit is 2147483648.
+Constraint :
+[1] All : shape size limit is 2147483648.
 """
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
@@ -41,17 +41,21 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util import util_compute
 
-# const value for adjust precision
-ITR_BEFORE = (0.5, 0.87890594, 0.51498869, 0.15084934, 0.02658773, 0.00301532, 0.00032411)
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # const value for adjust precision
+    ITR_BEFORE = (0.5, 0.87890594, 0.51498869, 0.15084934, 0.02658773, 0.00301532, 0.00032411)
 
-ITR_AFTER = (0.39894228, -0.03988024, -0.00362018,
-             0.00163801, -0.01031555, 0.02282967,
-             -0.02895312, 0.01787654, -0.00420059)
+    ITR_AFTER = (0.39894228, -0.03988024, -0.00362018,
+                0.00163801, -0.01031555, 0.02282967,
+                -0.02895312, 0.01787654, -0.00420059)
 
-LEN_BEFORE = 7
-LEN_AFTER = 9
-CONST_LIMIT = 15.0 / 4
-
+    LEN_BEFORE = 7
+    LEN_AFTER = 9
+    CONST_LIMIT = 15.0 / 4
 
 def _before_res_compute(abs_data, const_limit):
     """
@@ -73,11 +77,11 @@ def _before_res_compute(abs_data, const_limit):
     data = tbe.vdiv(abs_data, const_limit)
     data_square = tbe.vmul(data, data)
 
-    before_res = tbe.vmuls(data_square, tvm.const(ITR_BEFORE[LEN_BEFORE - 1]))
-    before_res = tbe.vadds(before_res, ITR_BEFORE[LEN_BEFORE - 2])
-    for index in reversed(range(LEN_BEFORE - 2)):
+    before_res = tbe.vmuls(data_square, tvm.const(Constant.ITR_BEFORE[Constant.LEN_BEFORE - 1]))
+    before_res = tbe.vadds(before_res, Constant.ITR_BEFORE[Constant.LEN_BEFORE - 2])
+    for index in reversed(range(Constant.LEN_BEFORE - 2)):
         before_res = tbe.vmul(before_res, data_square)
-        before_res = tbe.vadds(before_res, ITR_BEFORE[index])
+        before_res = tbe.vadds(before_res, Constant.ITR_BEFORE[index])
 
     tensor_exp = tbe.vexp(abs_data)
     before_res = tbe.vdiv(before_res, tensor_exp)
@@ -106,11 +110,11 @@ def _after_res_compute(abs_data, const_limit):
 
     data = tbe.vdiv(const_limit, abs_data)
 
-    after_res = tbe.vmuls(data, tvm.const(ITR_AFTER[LEN_AFTER - 1]))
-    after_res = tbe.vadds(after_res, ITR_AFTER[LEN_AFTER - 2])
-    for index in reversed(range(LEN_AFTER - 2)):
+    after_res = tbe.vmuls(data, tvm.const(Constant.ITR_AFTER[Constant.LEN_AFTER - 1]))
+    after_res = tbe.vadds(after_res, Constant.ITR_AFTER[Constant.LEN_AFTER - 2])
+    for index in reversed(range(Constant.LEN_AFTER - 2)):
         after_res = tbe.vmul(after_res, data)
-        after_res = tbe.vadds(after_res, ITR_AFTER[index])
+        after_res = tbe.vadds(after_res, Constant.ITR_AFTER[index])
 
     tensor_sqrt = tbe.vsqrt(abs_data, 1)
 
@@ -119,7 +123,7 @@ def _after_res_compute(abs_data, const_limit):
     return after_res
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 @register_operator_compute("BesselI1e", op_mode="dynamic", support_fusion=True)
 def bessel_i1e_compute(x, y, kernel_name="bessel_i1e"):
     """
@@ -155,7 +159,7 @@ def bessel_i1e_compute(x, y, kernel_name="bessel_i1e"):
 
     abs_data = tbe.vabs(x)
 
-    broad_const_limit = tbe.broadcast(tvm.const(CONST_LIMIT, x.dtype), shape_input)
+    broad_const_limit = tbe.broadcast(tvm.const(Constant.CONST_LIMIT, x.dtype), shape_input)
     before_res = _before_res_compute(abs_data, broad_const_limit)
     after_res = _after_res_compute(abs_data, broad_const_limit)
 

@@ -26,6 +26,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import tbe_platform
 
+
 def _check_format_nd(data_format, origin_foramt):
     """
     Function to check if the shape is in line with norms.
@@ -50,8 +51,8 @@ def _check_format_nd(data_format, origin_foramt):
                                                           "The origin format only supports NCHW when format is NCHW")
 
 
-# pylint: disable=too-many-branches,too-many-arguments,too-many-locals
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=too-many-branches,too-many-arguments,too-many-locals
+# 'pylint: disable=unused-argument,invalid-name
 def bn_training_reduce_grad_compute(grads,
                                     x,
                                     diff_scale,
@@ -199,7 +200,7 @@ def _check_shape(shape_grads, shape_diff_scale, data_format):
         error_manager_vector.raise_err_specific_reson("bn_training_reduce_grad", error_reson)
 
 
-# pylint: disable=too-many-statements
+# 'pylint: disable=too-many-statements
 @register_operator("BNTrainingReduceGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

@@ -25,13 +25,8 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 
 
-CONST_HALF = 0.5
-CONST_ONE_IN_THREE = 0.33333334
-CONST_THREE = 3.0
-
-
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=invalid-name,too-many-locals,redefined-argument-from-local
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=invalid-name,too-many-locals,redefined-argument-from-local
 def hard_swish_grad_compute(input_grad, input_x, output_y, kernel_name="hardswish_grad"):
     """
     Parameters
@@ -54,6 +49,9 @@ def hard_swish_grad_compute(input_grad, input_x, output_y, kernel_name="hardswis
     input_x_grad = x / 3 + 0.5   if -3 <= x <= 3,
     input_x_grad = 1             if x > 3
     """
+    CONST_HALF = 0.5
+    CONST_ONE_IN_THREE = 0.33333334
+    CONST_THREE = 3.0
     input_dtype = input_x.dtype
     if input_dtype == "float16":
         input_x = tbe.cast_to(input_x, "float32")
@@ -65,8 +63,7 @@ def hard_swish_grad_compute(input_grad, input_x, output_y, kernel_name="hardswis
     if input_dtype == "float16":
         res = tbe.vmul(input_grad, output_x)
         return tbe.cast_to(res, input_dtype)
-    else:
-        return tbe.vmul(input_grad, output_x)
+    return tbe.vmul(input_grad, output_x)
 
 
 @register_operator("HardSwishGrad")

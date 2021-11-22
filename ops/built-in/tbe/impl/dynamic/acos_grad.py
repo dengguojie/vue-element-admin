@@ -43,6 +43,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -50,6 +51,7 @@ class Constant:
     """
     # newton eqation is x1 = x0(3-a*(x0^2))/2
     NUM_MINUS_ONE = -1
+
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals,invalid-name
 @register_operator_compute("AcosGrad", op_mode="dynamic", support_fusion=True)
@@ -68,7 +70,7 @@ def acos_grad_compute(y, dy, z, kernel_name="acos_grad"):
 
     dtype = y.dtype
     dtype_1 = dtype
-    NUM_ONE = 1
+    num_one = 1
     if dtype == "float16" and \
             tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):
         y = tbe.cast_to(y, "float32")
@@ -77,7 +79,7 @@ def acos_grad_compute(y, dy, z, kernel_name="acos_grad"):
 
     data1_square = tbe.vmul(y, y)
     data1_square = tbe.vmuls(data1_square, tvm.const(Constant.NUM_MINUS_ONE, dtype=dtype))
-    data1_square = tbe.vadds(data1_square, tvm.const(NUM_ONE, dtype=dtype))
+    data1_square = tbe.vadds(data1_square, tvm.const(num_one, dtype=dtype))
 
     data1_reciprocal = tbe.vsqrt(data1_square, 1)
     data1_reciprocal = tbe.vdiv(dy, data1_reciprocal)

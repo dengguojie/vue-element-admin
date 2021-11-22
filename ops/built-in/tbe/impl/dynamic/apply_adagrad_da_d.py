@@ -27,6 +27,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -141,7 +142,7 @@ def apply_adagrad_da_d_compute(var, gradient_accumulator,
     x_value = tbe.vmuls(lr, tvm.const(Constant.NUM_M_ONE, cast_type))
     x_value = tbe.vmuls(tmp_val, x_value[0])
 
-    # y_value is l2 * global_step * lr + sqrt(grad_squared_accum)
+    # `y_value is l2 * global_step * lr + sqrt(grad_squared_accum)`
     pro_val = tbe.vmul(l2, global_step)
     pro_val = tbe.vmul(pro_val, lr)
 

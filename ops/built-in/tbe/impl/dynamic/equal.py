@@ -25,19 +25,6 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
 
-# define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
-SCALAR_MIN_FP32 = 2 ** (-126)
-# define a scalar, value = 2**(50)
-SCALAR_MUL_FP32 = 2 ** 50
-# define a scalar, value = 2**(26)
-SCALAR_MUL2_FP32 = 2 ** 26
-# define a scalar, value = 2**(-24), minimun num of float16 2**(-24)
-SCALAR_MIN_FP16 = 2 ** (-24)
-# define a scalar, value = 2**(12)
-SCALAR_MUL_FP16 = 2 ** 12
-# define a scalar, value = 1
-SCALAR_ONE = 1
-
 
 # 'pylint: disable=unused-argument,invalid-name
 # 'pylint: disable=too-many-locals,redefined-argument-from-local
@@ -61,6 +48,19 @@ def equal_compute(input_x, input_y, output_z, kernel_name="equal"):
     res: TVM tensor
         the result of compute
     """
+    # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
+    SCALAR_MIN_FP32 = 2 ** (-126)
+    # 'define a scalar, value = 2**(50)'
+    SCALAR_MUL_FP32 = 2 ** 50
+    # 'define a scalar, value = 2**(26)'
+    SCALAR_MUL2_FP32 = 2 ** 26
+    # define a scalar, value = 2**(-24), minimun num of float16 2**(-24)
+    SCALAR_MIN_FP16 = 2 ** (-24)
+    # 'define a scalar, value = 2**(12)'
+    SCALAR_MUL_FP16 = 2 ** 12
+    # 'define a scalar, value = 1'
+    SCALAR_ONE = 1
+
     dtype_x = input_x.dtype
     shape_x = shape_util.shape_to_list(input_x.shape)
     shape_y = shape_util.shape_to_list(input_y.shape)

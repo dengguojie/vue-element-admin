@@ -25,28 +25,29 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import error_manager_vector
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     The class for constant
     """
     # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
     SCALAR_MIN_FP32 = 2 ** (-126)
-    # define a scalar, value = 2**(62)
+    # `define a scalar, value = 2**(62)`
     SCALAR_MUL_FP32 = 2 ** (62)
-    # define a scalar, value = 2**(2)
+    # `define a scalar, value = 2**(2)`
     SCALAR_MUL1_FP32 = 2 ** (2)
     # define a scalar, value = 2**(-24), minimun num of float16 2**(-24)
     SCALAR_MIN_FP16 = 2 ** (-24)
-    # define a scalar, value = 2**(12)
+    # `define a scalar, value = 2**(12)`
     SCALAR_MUL_FP16 = 2 ** (12)
-    # define a scalar, value = 1
+    # `define a scalar, value = 1`
     SCALAR_ONE = 1
-    # define a scalar, value = 0
+    # `define a scalar, value = 0`
     SCALAR_ZERO = 0
 
 
-# pylint: disable=unused-argument,invalid-name
-# pylint: disable=too-many-locals,redefined-argument-from-local
+# 'pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=too-many-locals,redefined-argument-from-local
 def _greater_equal_compare(data, shape, dtype, data_min):
     """
     greater equal compare.

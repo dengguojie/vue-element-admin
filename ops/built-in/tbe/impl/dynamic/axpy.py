@@ -26,7 +26,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.common_util import get_attr
 
 
-# pylint: disable=invalid-name,too-many-locals, unused-argument
+# 'pylint: disable=invalid-name,too-many-locals, unused-argument
 @register_operator_compute("Axpy", op_mode="dynamic", support_fusion=True)
 def axpy_compute(x1, x2, y, alpha, kernel_name="axpy"):
     """

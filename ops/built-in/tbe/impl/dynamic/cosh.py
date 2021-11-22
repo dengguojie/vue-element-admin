@@ -26,15 +26,16 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-# define a scaler , value = -1
-SCALER_NEGATIVE_ONE = -1
-# define a scaler , value = 0.5
-SCALER_ZERO_POINT_FIVE = 0.5
-# define a scaler , value = 2
-SCALAR_TWO = 2
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # `define a scaler , value = -1`
+    SCALER_NEGATIVE_ONE = -1
 
 
-# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name
 @register_operator_compute("Cosh", op_mode="dynamic", support_fusion=True)
 def cosh_compute(input_x, output_cosh, kernel_name="cosh"):
     """
@@ -55,6 +56,10 @@ def cosh_compute(input_x, output_cosh, kernel_name="cosh"):
     res: TVM tensor
         the result of compute
     """
+    # `define a scaler , value = 0.5`
+    SCALER_ZERO_POINT_FIVE = 0.5
+    # `define a scaler , value = 2`
+    SCALAR_TWO = 2
     dtype = input_x.dtype
     dtype_ = input_x.dtype
     shape = input_x.shape
@@ -69,13 +74,13 @@ def cosh_compute(input_x, output_cosh, kernel_name="cosh"):
         dtype = "float16"
         has_improve_precision = True
 
-    data_mul = tbe.vmuls(input_x, tvm.const(SCALER_NEGATIVE_ONE, dtype))
+    data_mul = tbe.vmuls(input_x, tvm.const(Constant.SCALER_NEGATIVE_ONE, dtype))
     data_exp = tbe.vexp(data_mul)
     data_exp_x = tbe.vmuls(data_exp, tvm.const(SCALER_ZERO_POINT_FIVE, dtype))
 
     tensor_two = tbe.broadcast(tvm.const(SCALAR_TWO, dtype), shape)
     data_ln2 = tbe.vlog(tensor_two)
-    data_neg_ln2 = tbe.vmuls(data_ln2, tvm.const(SCALER_NEGATIVE_ONE, dtype))
+    data_neg_ln2 = tbe.vmuls(data_ln2, tvm.const(Constant.SCALER_NEGATIVE_ONE, dtype))
     data_x = tbe.vadd(input_x, data_neg_ln2)
     data_exp_data = tbe.vexp(data_x)
 

@@ -28,6 +28,7 @@ from impl.util.platform_adapter import tbe_platform as tbe_platform_adapter
 from impl import constant_util as constant
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
@@ -139,8 +140,8 @@ class Constant:
     TILING_MODE_41 = 41
 
 
-# pylint: disable=too-many-public-methods,invalid-name,too-many-arguments,too-many-locals
-# pylint: disable=too-many-lines,too-many-instance-attributes,too-many-statements,unused-argument
+# 'pylint: disable=too-many-public-methods,invalid-name,too-many-arguments,too-many-locals
+# 'pylint: disable=too-many-lines,too-many-instance-attributes,too-many-statements,unused-argument
 def ceil_value(value, factor):
     """
     if not divide exactly then plus 1
@@ -2022,6 +2023,7 @@ class GatherV2():
         self.cached_types["cached_types_params"] = cached_types_params
         self.cached_types["cached_types_indices"] = cached_types_indices
 
+    #'pylint:disable=E1136
     def params_row_less_than_32b(self, indices_loop_offset, batch_i, block_id, pre_i, is_last):
         """
         process for params row is less than 32 Bytes
@@ -2108,6 +2110,7 @@ class GatherV2():
             with tik_instance.else_scope():
                 tik_instance.data_move(self.y[output_offset], res_ub, 0, 1, burst_len_res, 0, 0)
 
+    #'pylint:disable=E1136
     def params_row_more_than_32b(self, indices_loop_offset, batch_i, block_id, pre_i, is_last):
         """
         process for params row is more than 32 Bytes
@@ -2147,6 +2150,7 @@ class GatherV2():
         tik_instance.data_move(self.y[output_offset], res_ub, 0, 1, burst_len_row - 1, 0, 0)
         tik_instance.data_move(self.y[output_offset + (self.params_row - self.block_elem)], block_ub, 0, 1, 1, 0, 0)
 
+    #'pylint:disable=E1136
     def params_row_aligned(self, indices_loop_offset, batch_i, block_id, pre_i, is_last):
         """
         process for params row is aligned
@@ -2266,6 +2270,7 @@ class GatherV2():
                     tik_instance.data_move(self.y[output_offset + (self.params_row - self.one_row_tail)], res_ub,
                                            0, 1, burst_len_sub_row_last, 0, 0)
 
+    #'pylint:disable=E1136
     def small_indices_row(self, batch_i, block_id, is_last):
         """
         process for small indices row
@@ -2346,6 +2351,7 @@ class GatherV2():
             with tik_instance.else_scope():
                 tik_instance.data_move(self.y[output_offset], res_ub, 0, 1, burst_len_res, 0, 0)
 
+    #'pylint:disable=E1136
     def small_params_row(self, block_id, is_last):
         """
         process for small params row
@@ -2471,6 +2477,7 @@ class GatherV2():
                                    0, 0)
             self.inner_loop_with_batch_dims(indices_loop_offset, batch_i, block_id, pre_i, 1)
 
+    #'pylint:disable=E1136
     def compute_with_batch_dims(self, avl_ub_size, block_id):
         """
         compute for tiling mode with batch_dims

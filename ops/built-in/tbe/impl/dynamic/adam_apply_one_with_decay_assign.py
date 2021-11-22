@@ -27,6 +27,7 @@ from impl.util import fusion_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -319,6 +320,7 @@ def adam_apply_one_with_decay_assign_compute(input0, input1, input2, input3, inp
     y2 = sub_compute(input3, mul_5, kernel_name="sub")
 
     return y0, y1, y2
+
 
 # 'pylint: disable=too-many-branches
 @register_operator("AdamApplyOneWithDecayAssign")

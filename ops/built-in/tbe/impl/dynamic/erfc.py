@@ -26,25 +26,10 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-# define a scaler, value = 1
-SCALER_ONE = 1
-# define a scaler, value = -1
-SCALER_NEGATIVE_ONE = -1
-# define a scaler, value = -0.47047, only used in compute of erfc and erf
-SCALER_P = 0.47047
-# define a scaler, value = 0.3480242, only used in compute of erfc and erf
-SCALER_A = 0.3480242
-# define a scaler, value = -0.0958798, only used in compute of erfc and erf
-SCALER_B = -0.0958798
-# define a scaler, value = 0.7478556, only used in compute of erfc and erf
-SCALER_C = 0.7478556
-# define a scaler, value = 32768
-SCALER_FP16_MAX = 32768
-# define a scaler, value = 2**(-15)
-SCALER_FP16_MIN = 2 ** (-15)
 
 
-# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,too-many-statements
+
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,too-many-statements,invalid-name
 @register_operator_compute("Erfc", op_mode="dynamic", support_fusion=True)
 def erfc_compute(input_x, output_y, kernel_name="erfc"):
     """
@@ -64,6 +49,22 @@ def erfc_compute(input_x, output_y, kernel_name="erfc"):
     erfc_result: TVM tensor
         the =result of compute
     """
+    # `define a scaler, value = 1`
+    SCALER_ONE = 1
+    # `define a scaler, value = -1`
+    SCALER_NEGATIVE_ONE = -1
+    # define a scaler, value = -0.47047, only used in compute of erfc and erf
+    SCALER_P = 0.47047
+    # define a scaler, value = 0.3480242, only used in compute of erfc and erf
+    SCALER_A = 0.3480242
+    # define a scaler, value = -0.0958798, only used in compute of erfc and erf
+    SCALER_B = -0.0958798
+    # define a scaler, value = 0.7478556, only used in compute of erfc and erf
+    SCALER_C = 0.7478556
+    # `define a scaler, value = 32768`
+    SCALER_FP16_MAX = 32768
+    # `define a scaler, value = 2**(-15)`
+    SCALER_FP16_MIN = 2 ** (-15)
     dtype = input_x.dtype
     dtype_ = input_x.dtype
     shape = shape_util.shape_to_list(input_x.shape)

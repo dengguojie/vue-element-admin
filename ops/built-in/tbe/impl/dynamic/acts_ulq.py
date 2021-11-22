@@ -25,6 +25,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator_compute
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -34,7 +35,8 @@ class Constant:
     CALCULATE_TYPE = 'float32'
 
 
-# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals,invalid-name,too-many-locals,too-many-statements
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals
+# 'pylint: disable=invalid-name,too-many-locals,too-many-statements
 @register_operator_compute('ActsULQ', op_mode='dynamic', support_fusion=False)
 def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
     """
@@ -60,7 +62,7 @@ def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
     shape_data = shape_util.shape_to_list(data.shape)
     shape_clamp_min = shape_util.shape_to_list(clamp_min.shape)
     shape_clamp_max = shape_util.shape_to_list(clamp_max.shape)
-    EPS = 1.192092896e-07
+    eps = 1.192092896e-07
 
     _, _, shape_broadcast = shape_util.broadcast_shapes(
         shape_data, shape_clamp_min, param_name_input1='data', param_name_input2='clamp_min')
@@ -77,7 +79,7 @@ def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
     else:
         ori_clip_min = tbe.vmins(clamp_min, tvm.const(0, Constant.CALCULATE_TYPE))
 
-    ori_clip_max = tbe.vmaxs(clamp_max, tvm.const(step * EPS, Constant.CALCULATE_TYPE))
+    ori_clip_max = tbe.vmaxs(clamp_max, tvm.const(step * eps, Constant.CALCULATE_TYPE))
 
     scale = tbe.vsub(ori_clip_max, ori_clip_min)
     scale = tbe.vdiv(scale, tbe.broadcast(tvm.const(step, Constant.CALCULATE_TYPE), scale.shape))
@@ -131,6 +133,7 @@ def acts_ulq_compute(data, clamp_min, clamp_max, fixed_min, step, kernel_name):
     clamp_max_mask = tbe.cast_to(clamp_max_mask, dtype)
 
     return [output, clamp_min_mask, clamp_max_mask, clamped_loss]
+
 
 # 'pylint: disable=too-many-branches,too-many-statements
 @register_operator('ActsULQ')

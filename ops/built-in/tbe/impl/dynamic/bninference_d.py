@@ -29,7 +29,7 @@ from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import get_current_build_config
 
 
-# pylint: disable=invalid-name,redefined-outer-name
+# 'pylint: disable=invalid-name,redefined-outer-name,too-many-locals
 def _fused_scale_bias_compute(x, mean, variance, scale, bias):
     """
     algorithm: Scale
@@ -85,7 +85,7 @@ def _fused_scale_bias_compute(x, mean, variance, scale, bias):
     return res
 
 
-# pylint: disable=invalid-name,redefined-outer-name
+# 'pylint: disable=invalid-name,redefined-outer-name,too-many-locals
 def _fused_scale_compute(x, mean, variance, scale):
     """
     algorithm: Scale
@@ -137,7 +137,7 @@ def _fused_scale_compute(x, mean, variance, scale):
     return res
 
 
-# pylint: disable=invalid-name,redefined-outer-name
+# 'pylint: disable=invalid-name,redefined-outer-name
 def _fused_compute(x, mean, variance):
     """
     Parameters
@@ -170,7 +170,8 @@ def _fused_compute(x, mean, variance):
     return res_y
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name,protected-access
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name,protected-access
+# 'pylint: disable=too-many-arguments
 @register_operator_compute("BNInferenceD", op_mode="dynamic", support_fusion=False)
 def bninference_d_compute(x, mean, variance, scale, bias, y,
                           momentum, epsilon, use_global_stats, mode):
@@ -229,6 +230,7 @@ def bninference_d_compute(x, mean, variance, scale, bias, y,
     return res
 
 
+# 'pylint: disable=too-many-arguments
 def get_fusion_params(x, mean, variance, scale, bias, y):
     """
     Get L1 fusion_params
@@ -249,26 +251,26 @@ def get_fusion_params(x, mean, variance, scale, bias, y):
     is_l1_depth_fusion = False
 
     input_tensor = [x, mean, variance, scale, bias]
-    for x in input_tensor:
-        if x is not None:
+    for x_input_tensor in input_tensor:
+        if x_input_tensor is not None:
             l1_fusion_type = -1
             if not get_current_build_config("enable_op_prebuild"):
-                l1_fusion_type = x.op.attrs["L1_fusion_type"].value \
-                    if "L1_fusion_type" in x.op.attrs else -1
+                l1_fusion_type = x_input_tensor.op.attrs["L1_fusion_type"].value \
+                    if "L1_fusion_type" in x_input_tensor.op.attrs else -1
                 if l1_fusion_type == 1:
                     error_detail = 'bninference does not support l1 width fusion, l1_fusion_type:', l1_fusion_type
                     error_manager_vector.raise_err_specific_reson("bninference_d", error_detail)
             is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
-            in_l1_flag = x.op.attrs["addr_type"].value == 1 \
-                if "addr_type" in x.op.attrs else False
+            in_l1_flag = x_input_tensor.op.attrs["addr_type"].value == 1 \
+                if "addr_type" in x_input_tensor.op.attrs else False
             in_l1_flag_list.append(in_l1_flag)
-            in_valid_shape = x.op.attrs["valid_shape"] \
-                if "valid_shape" in x.op.attrs else []
+            in_valid_shape = x_input_tensor.op.attrs["valid_shape"] \
+                if "valid_shape" in x_input_tensor.op.attrs else []
             in_valid_shape_list.append(in_valid_shape)
-            in_slice_offset = x.op.attrs["slice_offset"] \
-                if "slice_offset" in x.op.attrs else []
+            in_slice_offset = x_input_tensor.op.attrs["slice_offset"] \
+                if "slice_offset" in x_input_tensor.op.attrs else []
             in_slice_offset_list.append(in_slice_offset)
-            in_select_read_flag = x.op.tag == "read_select_5d"
+            in_select_read_flag = x_input_tensor.op.tag == "read_select_5d"
             in_select_read_flag_list.append(in_select_read_flag)
 
     l1_fusion_type = 0 if is_l1_depth_fusion else -1
@@ -296,6 +298,7 @@ def get_fusion_params(x, mean, variance, scale, bias, y):
     return fusion_params
 
 
+# 'pylint: disable=too-many-branches
 def brodcast_inputs_shape(x, mean, variance, scale, offset):
     """
     :param x:x tensor
@@ -396,6 +399,9 @@ def get_param_scale_shape(shape_x, shape_scale):
 
 
 def get_l1_paras(x):
+    """
+    Function to get_l1_paras.
+    """
     l1_fusion_type = -1
     if not get_current_build_config("enable_op_prebuild"):
         l1_fusion_type = x.get('L1_fusion_type', -1)
@@ -414,7 +420,7 @@ def get_l1_paras(x):
     return attr_x, l1_fusion_type
 
 
-# pylint: disable=locally-disabled,no-member
+# 'pylint: disable=locally-disabled,no-member,too-many-arguments,too-many-statements
 @register_operator("BNInferenceD")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
@@ -455,7 +461,6 @@ def bninference_d(x, mean, variance, scale, offset, y, momentum, epsilon,
     None
     """
     # check format
-    format_x = x.get("format")
     format_data = x.get("format")
     excepted_format_list = ["ND", "NC1HWC0", "NCHW", "NHWC"]
     para_check.check_format(format_data, excepted_format_list, param_name="x")

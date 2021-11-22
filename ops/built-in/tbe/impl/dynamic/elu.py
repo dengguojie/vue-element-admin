@@ -14,20 +14,20 @@
 # ============================================================================
 """
 dynamic elu
-  Op_description :
-    do element-wise elu operation.
+Op_description :
+do element-wise elu operation.
 
-    # elu(
-    #   x,
-    #   y,
-    #   kernel_name='cce_elu')
+# elu(
+#   x,
+#   y,
+#   kernel_name='cce_elu')
 
-  Supportive_dtype_format :
-    ["float16", "float32"]
-    ['ND', 'NCHW', 'NHWC', 'NC1HWC0']
+Supportive_dtype_format :
+["float16", "float32"]
+['ND', 'NCHW', 'NHWC', 'NC1HWC0']
 
-  Constraint :
-    [1] All : shape size limit is 2147483648
+Constraint :
+[1] All : shape size limit is 2147483648
 
 """
 
@@ -41,10 +41,8 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
-# shape limit 2**31
-SHAPE_SIZE_LIMIT = 2147483648
-NUM_ZERO = 0.0
-NUM_ONE_NEG = -1.0
+
+
 
 
 def _elu_computer_performance(data, scalar_one_neg):
@@ -55,7 +53,9 @@ def _elu_computer_performance(data, scalar_one_neg):
     return negative_data, positive_data
 
 
+# 'pylint: disable=invalid-name
 def _elu_computer_precision(data, dtype):
+    NUM_ZERO = 0.0
     scalar_zero = tvm.const(NUM_ZERO, dtype)
     negative_data = tbe.vmins(data, scalar_zero)
     positive_data = tbe.vmaxs(data, scalar_zero)
@@ -84,6 +84,7 @@ def elu_compute(x, y, alpha, kernel_name="elu"):
     Returns : A Tensor. Has the same type as data_input.
     -------
     """
+    NUM_ONE_NEG = -1.0
     data = x
     dtype = data.dtype
     has_improve_precision = False

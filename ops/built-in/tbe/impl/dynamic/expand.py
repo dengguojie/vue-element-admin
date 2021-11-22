@@ -49,7 +49,7 @@ def expand_compute(x, shape):
     if dtype in ('uint8', 'int8'):
         x = tbe.cast_to(x, 'float16')
         compute_dtype = 'float16'
-        
+
     shape_in = x.shape
     _, _, shape_max = shape_util.broadcast_shapes(shape_in, shape)
 
@@ -64,7 +64,6 @@ def expand_compute(x, shape):
         return tbe.cast_to(output_tensor, dtype, f1628IntegerFlag=True)
 
     return output_tensor
-
 
 
 # 'pylint: disable=too-many-locals,too-many-statements,invalid-name
@@ -102,9 +101,9 @@ def expand(x, shape, y, kernel_name="expand"):
     input_shape_shape = list(shape.get("shape"))
 
     check_list = ('float16', 'float32', 'int8', 'uint8', 'int32')
-    para_check.check_dtype(input_x_dtype, check_list, param_name = "x")
+    para_check.check_dtype(input_x_dtype, check_list, param_name="x")
     check_list = ('int32', 'int64')
-    para_check.check_dtype(input_shape_dtype, check_list, param_name = "shape")
+    para_check.check_dtype(input_shape_dtype, check_list, param_name="shape")
 
     if len(input_shape_shape) > 1:
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "shape", "shape should be 1D")

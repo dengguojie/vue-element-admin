@@ -45,12 +45,14 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant
     """
     NUM_ONE = 1
+
 
 def _taylor_sinh_compute(input_data):
     """
@@ -62,25 +64,25 @@ def _taylor_sinh_compute(input_data):
     ----------------
     """
 
-    TAYLOR_SECOND_ORDER_PARAM = 0.1666666666666666666666666666666666
-    TAYLOR_THIRD_ORDER_PARAM = 0.0083333333333333333333333333333333
-    TAYLOR_FOURTH_ORDER_PARAM = 0.0001984126984126984126984126984126
+    taylor_second_order_param = 0.1666666666666666666666666666666666
+    taylor_third_order_param = 0.0083333333333333333333333333333333
+    taylor_fourth_order_param = 0.0001984126984126984126984126984126
     # x^2 / 7!
     data_power_2 = tbe.vmul(input_data, input_data)
     data_power_res = tbe.vmuls(
         data_power_2,
-        tvm.const(TAYLOR_FOURTH_ORDER_PARAM, input_data.dtype))
+        tvm.const(taylor_fourth_order_param, input_data.dtype))
 
     # 1/5! + x^2 / 7!
     data_power_res = tbe.vadds(
         data_power_res,
-        tvm.const(TAYLOR_THIRD_ORDER_PARAM, input_data.dtype))
+        tvm.const(taylor_third_order_param, input_data.dtype))
 
     # 1/3! + x^2( 1/5! + x^2/7!)
     data_power_res = tbe.vmul(data_power_res, data_power_2)
     data_power_res = tbe.vadds(
         data_power_res,
-        tvm.const(TAYLOR_SECOND_ORDER_PARAM, input_data.dtype))
+        tvm.const(taylor_second_order_param, input_data.dtype))
 
     # 1 + x^2( 1/3! + x^2(1/5! + x^2/7!))
     data_power_res = tbe.vmul(data_power_res, data_power_2)
@@ -104,7 +106,7 @@ def _sinh_repeat_with_sqrt(data):
     ----------------
     """
 
-    NUM_TWO = 2
+    num_two = 2
     data_square = tbe.vmul(data, data)
     data_square = tbe.vadds(data_square, tvm.const(Constant.NUM_ONE,
                                                    data.dtype))
@@ -112,7 +114,7 @@ def _sinh_repeat_with_sqrt(data):
     data_square = tbe.vsqrt(data_square, 1)
 
     data_square = tbe.vmul(data_square, data)
-    data_square = tbe.vmuls(data_square, tvm.const(NUM_TWO,
+    data_square = tbe.vmuls(data_square, tvm.const(num_two,
                                                    data.dtype))
 
     return data_square
@@ -133,7 +135,7 @@ def acosh_grad_compute(y, dy, z, kernel_name="acos_grad"):
     ----------------
     """
 
-    NUM_REPEAT = 0.125
+    num_repeat = 0.125
     dtype = y.dtype
     dtype_1 = dtype
     if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):
@@ -141,7 +143,7 @@ def acosh_grad_compute(y, dy, z, kernel_name="acos_grad"):
         dy = tbe.cast_to(dy, "float32")
         dtype = "float32"
 
-    data_y = tbe.vmuls(y, tvm.const(NUM_REPEAT, dtype))
+    data_y = tbe.vmuls(y, tvm.const(num_repeat, dtype))
     sinh_value_0 = _taylor_sinh_compute(data_y)
     sinh_value_1 = _sinh_repeat_with_sqrt(sinh_value_0)
     sinh_value_2 = _sinh_repeat_with_sqrt(sinh_value_1)

@@ -24,7 +24,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=unused-argument,too-many-locals
+# 'pylint: disable=unused-argument,too-many-locals
 def assign_add_compute(ref, value, output, kernel_name="assign_add"):
     """
     implementation of operator assign_add

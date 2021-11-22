@@ -26,8 +26,8 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=too-many-arguments,too-many-locals
-# pylint: disable=pointless-string-statement,no-else-return,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-locals
+# 'pylint: disable=pointless-string-statement,no-else-return,unused-argument,invalid-name
 @register_operator_compute("HardtanhGrad", op_mode="dynamic", support_fusion=True)
 def hardtanh_grad_compute(input_result, input_grad, output_y, min_val=-1.0, max_val=1.0, kernel_name="hardtanh_grad"):
     """
@@ -56,7 +56,7 @@ def hardtanh_grad_compute(input_result, input_grad, output_y, min_val=-1.0, max_
     """
     Please refer to the TE DSL Manual, And code here with TE DSL.
     """
-    INF_FP32_VAL = 1e-10
+    inf_fp32_val = 1e-10
 
     in_data_type = input_result.dtype.lower()
     f_min = tvm.const(min_val, dtype="float32")
@@ -84,7 +84,7 @@ def hardtanh_grad_compute(input_result, input_grad, output_y, min_val=-1.0, max_
         sub_min = tmp_max
     mul_max_min = tbe.vmul(sub_max, sub_min)
 
-    add_inf = tbe.vadds(mul_max_min, tvm.const(INF_FP32_VAL, dtype="float32"))
+    add_inf = tbe.vadds(mul_max_min, tvm.const(inf_fp32_val , dtype="float32"))
     div_res = tbe.vdiv(mul_max_min, add_inf)
 
     if in_data_type == "float16":

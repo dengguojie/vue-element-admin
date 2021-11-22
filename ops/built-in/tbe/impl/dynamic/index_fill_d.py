@@ -27,6 +27,7 @@ from impl.util.platform_adapter import register_operator_compute
 
 
 
+#'pylint: disable=unused-argument,too-many-locals,too-many-statements,too-many-arguments,invalid-name
 @register_operator_compute("IndexFillD", op_mode="dynamic", support_fusion=True)
 def index_fill_d_compute(x, assist1, assist2):
     """
@@ -64,7 +65,7 @@ def index_fill_d_compute(x, assist1, assist2):
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
-#pylint: disable=unused-argument
+#'pylint: disable=unused-argument,too-many-locals,too-many-statements,too-many-arguments,invalid-name
 def index_fill_d(x, assist1, assist2, y, dim, kernel_name="index_fill_d"):
     """
     Fills the elements of the self tensor with value val by selecting the indices in the order given in index.(PyTorch)

@@ -15,8 +15,8 @@
 """
 bias_add_grad
 """
-# pylint: disable=locally-disabled,invalid-name
-# pylint: disable=unnecessary-comprehension,global-statement
+# 'pylint: disable=locally-disabled,invalid-name
+# 'pylint: disable=unnecessary-comprehension,global-statement
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_platform
@@ -31,8 +31,8 @@ from impl.util.platform_adapter import register_operator
 REDUCE_LIST = None
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-branches
-# pylint: disable=locally-disabled,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-branches
+# 'pylint: disable=locally-disabled,too-many-locals
 def _infer_axes(input_data_format, data_format, shape):
     """
     To infer sum operate axis by input_data format and data_format

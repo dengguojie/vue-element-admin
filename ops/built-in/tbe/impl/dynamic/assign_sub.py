@@ -28,7 +28,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @register_operator_compute("AssignSub", op_mode="dynamic", support_fusion=True)
 def assign_sub_compute(var, value, output_z, kernel_name="assign_sub"):
     """
@@ -59,7 +59,7 @@ def assign_sub_compute(var, value, output_z, kernel_name="assign_sub"):
         res = tbe.cast_to(res, dtype)
     return res
 
-
+# 'pylint: disable=too-many-locals
 @register_operator("AssignSub")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,

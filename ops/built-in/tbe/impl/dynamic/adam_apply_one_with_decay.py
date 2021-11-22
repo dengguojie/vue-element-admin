@@ -25,6 +25,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -34,6 +35,7 @@ class Constant:
     NUM_ELEVEN = 11
     NUM_ZERO = 0
     DYNAMIC_NUM = -1
+
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # 'pylint: disable=locally-disabled,too-many-locals,too-many-statements

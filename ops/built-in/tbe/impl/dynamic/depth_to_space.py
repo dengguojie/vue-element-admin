@@ -26,11 +26,13 @@ from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
-CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-BLOCK_SIZE = 32
-MAX_INT64_VALUE = 2**64 - 1
-TILING_MAX_SIZE_GM = 2048  # 16KB
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    MAX_INT64_VALUE = 2**64 - 1
 
 
 # 'pylint: disable=invalid-name,unused-argument,too-many-arguments
@@ -79,6 +81,10 @@ def depth_to_space(x, y, block_size, mode='DCR', data_format='NHWC', kernel_name
     -------
     tik_instance: tik_instance
     """
+    CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+    UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+    BLOCK_SIZE = 32
+    TILING_MAX_SIZE_GM = 2048  # 16KB
     input_shape = x.get("shape")
     input_dtype = x.get("dtype").lower()
     para_check.check_shape(input_shape, param_name="x")
@@ -90,8 +96,8 @@ def depth_to_space(x, y, block_size, mode='DCR', data_format='NHWC', kernel_name
 
     # run tick
     tik_inst = tik.Tik()
-    data_in = tik_inst.Tensor(input_dtype, (MAX_INT64_VALUE,), tik.scope_gm, "data_in")
-    data_out = tik_inst.Tensor(input_dtype, (MAX_INT64_VALUE,), tik.scope_gm, "data_out")
+    data_in = tik_inst.Tensor(input_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "data_in")
+    data_out = tik_inst.Tensor(input_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "data_out")
     data_workspace = tik_inst.Tensor(input_dtype, (1024,), tik.scope_gm, "data_workspace", is_workspace=True)
     data_tiling = tik_inst.Tensor("int64", (TILING_MAX_SIZE_GM,), tik.scope_gm, "data_tiling")
     tensor_list = [data_in, None, data_out, data_workspace, data_tiling]

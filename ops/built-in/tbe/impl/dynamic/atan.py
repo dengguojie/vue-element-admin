@@ -15,42 +15,43 @@
 """
 atan
 
-  Op_description :
-    Computes the trignometric inverse tangent of x element-wise
+Op_description :
+Computes the trignometric inverse tangent of x element-wise
 
-    # atan(
-    #   x,
-    #   y,
-    #   kernel_name="cce_atan")
+# atan(
+#   x,
+#   y,
+#   kernel_name="cce_atan")
 
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
+Supportive_dtype_format :
+['float16', 'float32']
+['ALL']
 
-  Constraint :
-    [1] All : shape size limit is 2147483648.
+Constraint :
+[1] All : shape size limit is 2147483648.
 
 """
+import functools
 from impl.util import util_compute
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
-import functools
 from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
-CONST_POS_ONE = 1.0
-CONST_PI_BY_FOUR = 0.78539816339744830961566084581988
-CONST_PI_BY_EIGHT = 0.39269908169872415480783042290994
-CONST_ITERTOR = 6
-CONST_ITERTOR2 = 4
-TAN_PI_BY_EIGHT = 0.4142135623730950
-
-TAYLOR = (1.0, -1.0 / 3, 1.0 / 5, -1.0 / 7, 1.0 / 9, -1.0 / 11, 1.0 / 13)
-
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    CONST_POS_ONE = 1.0
+    CONST_ITERTOR = 6
+    CONST_ITERTOR2 = 4
+    TAN_PI_BY_EIGHT = 0.4142135623730950
+    TAYLOR = (1.0, -1.0 / 3, 1.0 / 5, -1.0 / 7, 1.0 / 9, -1.0 / 11, 1.0 / 13)
 
 def _do_taylor(input_data):
     """
@@ -72,29 +73,30 @@ def _do_taylor(input_data):
 
     """
 
+    CONST_PI_BY_EIGHT = 0.39269908169872415480783042290994
     shape_input = input_data.shape
     dtype_input = input_data.dtype
 
-    tensor_offset = tbe.broadcast(tvm.const(TAN_PI_BY_EIGHT, dtype_input), shape_input)
-    denominator_data = tbe.vmuls(input_data, TAN_PI_BY_EIGHT)
-    denominator_data = tbe.vadds(denominator_data, CONST_POS_ONE)
+    tensor_offset = tbe.broadcast(tvm.const(Constant.TAN_PI_BY_EIGHT, dtype_input), shape_input)
+    denominator_data = tbe.vmuls(input_data, Constant.TAN_PI_BY_EIGHT)
+    denominator_data = tbe.vadds(denominator_data, Constant.CONST_POS_ONE)
     molecule = tbe.vsub(input_data, tensor_offset)
     data = tbe.vdiv(molecule, denominator_data)
     data = tbe.vabs(data)
 
     square_data = tbe.vmul(data, data)
-    res = tbe.broadcast(tvm.const(TAYLOR[CONST_ITERTOR], dtype_input), shape_input)
-    for i in reversed(range(CONST_ITERTOR)):
+    res = tbe.broadcast(tvm.const(Constant.TAYLOR[Constant.CONST_ITERTOR], dtype_input), shape_input)
+    for i in reversed(range(Constant.CONST_ITERTOR)):
         res = tbe.vmul(res, square_data)
-        res = tbe.vadds(res, TAYLOR[i])
+        res = tbe.vadds(res, Constant.TAYLOR[i])
     res = tbe.vmul(res, data)
     res = tbe.vadds(res, CONST_PI_BY_EIGHT)
 
     square_data = tbe.vmul(input_data, input_data)
-    res2 = tbe.broadcast(tvm.const(TAYLOR[CONST_ITERTOR2], dtype_input), shape_input)
-    for i in reversed(range(CONST_ITERTOR2)):
+    res2 = tbe.broadcast(tvm.const(Constant.TAYLOR[Constant.CONST_ITERTOR2], dtype_input), shape_input)
+    for i in reversed(range(Constant.CONST_ITERTOR2)):
         res2 = tbe.vmul(res2, square_data)
-        res2 = tbe.vadds(res2, TAYLOR[i])
+        res2 = tbe.vadds(res2, Constant.TAYLOR[i])
     res2 = tbe.vmul(res2, input_data)
 
     res = tbe.vmin(res, res2)
@@ -102,7 +104,7 @@ def _do_taylor(input_data):
     return res
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 def atan_compute(x, y, kernel_name="atan"):
     """
     Algorithm: atan
@@ -123,6 +125,7 @@ def atan_compute(x, y, kernel_name="atan"):
 
     """
 
+    CONST_PI_BY_FOUR = 0.78539816339744830961566084581988
     dtype = x.dtype
     shape = x.shape
 
@@ -130,7 +133,7 @@ def atan_compute(x, y, kernel_name="atan"):
         x = tbe.cast_to(x, "float32")
     abs_data = tbe.vabs(x)
 
-    tensor_one = tbe.broadcast(tvm.const(CONST_POS_ONE, x.dtype), shape)
+    tensor_one = tbe.broadcast(tvm.const(Constant.CONST_POS_ONE, x.dtype), shape)
 
     abs_data_sub_one = tbe.vsub(abs_data, tensor_one)
     abs_data_add_one = tbe.vadd(abs_data, tensor_one)
@@ -179,9 +182,9 @@ def atan(x, y, kernel_name="atan"):
     para_check.check_dtype(dtype, check_list, param_name="x")
     ins = classify([x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
-    for (x,) in ins:
+    for (ins_x,) in ins:
         with tbe.compute():
-            shape_x = shape_util.variable_shape([x])
+            shape_x = shape_util.variable_shape([ins_x])
             fuseshape = [1]
             fuseshape[0] = functools.reduce(lambda x, y: x * y, shape_x[0])
             input_data = tvm.placeholder(fuseshape, name="input_data", dtype=dtype)

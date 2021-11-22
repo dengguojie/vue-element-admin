@@ -26,6 +26,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
 
+
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 @register_operator_compute("AddMatMatElements", op_mode="dynamic", support_fusion=True)
 def add_mat_mat_elements_compute(c, a, b, beta, alpha, c_out, kernel_name="add_mat_mat_elements"):
@@ -67,6 +68,7 @@ def add_mat_mat_elements_compute(c, a, b, beta, alpha, c_out, kernel_name="add_m
 
     res = tbe.vadd(c_out, ab_val)
     return res
+
 
 # 'pylint: disable=too-many-locals
 @register_operator("AddMatMatElements")

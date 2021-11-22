@@ -21,6 +21,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -62,13 +63,13 @@ class Argmin():
         """Init Argmin base parameters
         """
         # reserved ub size
-        RESERVED_UB_SIZE = 8 * 1024
+        reserved_ub_size = 8 * 1024
         self.tik_instance = tik.Tik()
         self.dtype_x = dtype_x
         self.kernel_name = kernel_name
         self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         self.dtype_size = tbe_platform.get_bit_len(self.dtype_x) // 8
-        self.ub_ele = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE) // self.dtype_size
+        self.ub_ele = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - reserved_ub_size) // self.dtype_size
         self.segment = Constant.MAX_SEGMENT_LEN  # only for arg at last dim
         self.data_each_block = 8
         self.data_each_vector = 64

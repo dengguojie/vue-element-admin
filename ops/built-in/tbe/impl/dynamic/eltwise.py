@@ -201,7 +201,6 @@ def _eltwise_check_para(x, y, mode=1, coeff=[],
         error_manager_vector.raise_err_check_params_rules("eltwise", "mode only support 0,1,2", "mode", mode)
 
 
-# 'pylint: disable=consider-using-f-string
 @register_operator("Eltwise")
 @para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_LIST_FLOAT, para_check.KERNEL_NAME)

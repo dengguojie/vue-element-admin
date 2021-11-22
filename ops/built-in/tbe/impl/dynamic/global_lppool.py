@@ -29,7 +29,7 @@ from tbe.common.utils.errormgr import raise_err_input_dtype_not_supported
 from impl.dynamic.power import power_compute
 from impl.dynamic.reduce_sum_d import reduce_sum_d_compute
 
-
+# 'pylint: disable=too-many-locals,invalid-name
 @register_operator_compute("GlobalLpPool", op_mode="dynamic", support_fusion=True)
 def global_lppool_compute(x, y, p, axis):
     """
@@ -54,6 +54,7 @@ def global_lppool_compute(x, y, p, axis):
     return p_y
 
 
+# 'pylint: disable=invalid-name
 @register_operator("GlobalLpPool")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.KERNEL_NAME)
@@ -63,7 +64,7 @@ def global_lppool(input_x, output_y, p=2.0, kernel_name="global_lppool"):
     :param output_y: dict, include shape and dtype, dtype must be one of [float16, float32]
     :param p: power, float, default to 2.0
     :param kernel_name: str, default to global_lppool
-    :return: 
+    :return:
     """
     shape = input_x.get("shape")
     input_dtype = input_x.get("dtype").lower()

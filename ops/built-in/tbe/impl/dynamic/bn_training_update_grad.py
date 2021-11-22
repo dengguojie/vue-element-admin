@@ -20,11 +20,6 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
 from tbe.common.utils import shape_util
 from tbe.common.utils.errormgr import error_manager_vector
-from impl.util import util_select_op_base
-from impl.util.util_select_op_base import SplitInput
-from impl.util.util_select_op_base import SplitOutput
-from impl.util.util_select_op_base import get_op_cal_info
-from tbe.dsl.unify_schedule.constants import Pattern
 from tbe.dsl.base.operation import get_context
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
@@ -36,6 +31,7 @@ from tbe.dsl.base.operation import add_compile_info
 
 SCALAR_ONE = 1
 DYNAMIC_DIM = -1
+
 
 def _check_format_nd(data_format, origin_foramt):
     """
@@ -61,6 +57,7 @@ def _check_format_nd(data_format, origin_foramt):
             error_manager_vector.raise_err_specific_reson("bn_training_update_grad", error_reson)
 
 
+# 'pylint: disable=too-many-statements,too-many-arguments,too-many-locals,invalid-name,unused-argument
 @register_operator_compute("BNTrainingUpdateGrad", op_mode="dynamic", support_fusion=False)
 def bn_training_update_grad_compute(grads, x, batch_mean, batch_variance,
                                     diff_scale, diff_offset, epsilon,
@@ -129,6 +126,8 @@ def bn_training_update_grad_compute(grads, x, batch_mean, batch_variance,
     res_list = [diff_scale, diff_offset]
     return res_list
 
+
+# 'pylint: disable=too-many-statements,too-many-arguments,too-many-locals,invalid-name,unused-argument
 @register_operator("BNTrainingUpdateGrad", "BNTrainingUpdateGrad")
 def bn_training_update_grad(grads, x, batch_mean, batch_variance,
                             diff_scale, diff_offset, epsilon=0.0001,
@@ -188,12 +187,14 @@ def bn_training_update_grad(grads, x, batch_mean, batch_variance,
     if data_format == "NDC1HWC0":
         shape_grads = [shape_grads[0] * shape_grads[1], shape_grads[2], shape_grads[3], shape_grads[4], shape_grads[5]]
         shape_x = [shape_x[0] * shape_x[1], shape_x[2], shape_x[3], shape_x[4], shape_x[5]]
-        shape_batch_mean = [shape_batch_mean[0] * shape_batch_mean[1], shape_batch_mean[2], shape_batch_mean[3], shape_batch_mean[4], shape_batch_mean[5]]
-        shape_batch_variance = [shape_batch_variance[0] * shape_batch_variance[1], shape_batch_variance[2], shape_batch_variance[3], shape_batch_variance[4], shape_batch_variance[5]]
+        shape_batch_mean = [shape_batch_mean[0] * shape_batch_mean[1], shape_batch_mean[2], shape_batch_mean[3], \
+        shape_batch_mean[4], shape_batch_mean[5]]
+        shape_batch_variance = [shape_batch_variance[0] * shape_batch_variance[1], shape_batch_variance[2], \
+        shape_batch_variance[3], shape_batch_variance[4], shape_batch_variance[5]]
 
     schedules = []
     tensors = []
-    
+
     ins = [[{'shape': shape_grads, 'range': range_grads, 'const_shape': shape_grads},
             {'shape': shape_x, 'range': range_x, 'const_shape': shape_x},
             {'shape': shape_batch_mean, 'range': range_batch_mean, 'const_shape': shape_batch_mean},
@@ -233,7 +234,7 @@ def bn_training_update_grad(grads, x, batch_mean, batch_variance,
                 batch_variance_input = tvm.placeholder(shape_batch_variance,
                                                     name="batch_variance_input",
                                                     dtype=batch_variance_dtype)
-            
+
             get_context().get_current_compute().add("mode", mode)
             add_compile_info("mode", mode)
 

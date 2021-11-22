@@ -28,7 +28,7 @@ from impl.util.platform_adapter import error_manager_vector
 from impl import ascend_quant_util as quant_util
 
 
-# pylint: disable=too-many-arguments,invalid-name,unused-argument,unnecessary-lambda,too-many-locals
+# 'pylint: disable=too-many-arguments,invalid-name,unused-argument,unnecessary-lambda,too-many-locals
 @register_operator_compute("AscendQuant", op_mode="dynamic", support_fusion=True)
 def ascend_quant_compute(x, y, scale, offset, sqrt_mode=False, round_mode="Round", dst_type=2,
                          kernel_name="ascend_quant"):

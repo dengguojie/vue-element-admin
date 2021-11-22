@@ -25,6 +25,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator_compute
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -68,6 +69,7 @@ def act_ulq_clamp_max_grad_compute(
     clamp_max_grad = tbe.reduce_sum(clamp_max_grad, axis)
 
     return clamp_max_grad
+
 
 # 'pylint: disable=too-many-locals,too-many-branches,too-many-statements
 @register_operator('ActULQClampMaxGrad')

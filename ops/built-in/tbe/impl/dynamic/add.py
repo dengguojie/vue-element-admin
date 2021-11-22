@@ -72,6 +72,7 @@ def add_compute(input_x, input_y, output_z, kernel_name="add"):
 
     return res
 
+
 # 'pylint: disable=too-many-locals
 @register_operator("Add")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,

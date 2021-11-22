@@ -25,7 +25,7 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-# pylint: disable = unused-argument,too-many-locals,invalid-name
+# 'pylint: disable = unused-argument,too-many-locals,invalid-name
 def get_op_support_info(x, crops, y, block_size, kernel_name="batch_to_space"):
     """get op support info
     """
@@ -41,7 +41,7 @@ def get_op_support_info(x, crops, y, block_size, kernel_name="batch_to_space"):
     return op_cal_info_in_json
 
 
-# pylint: disable=invalid-name,unused-argument
+# 'pylint: disable=invalid-name,unused-argument
 @register_operator("BatchToSpace")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)

@@ -27,8 +27,6 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-
-
 # 'pylint: disable=too-many-arguments,invalid-name,too-many-locals,unused-argument
 @register_operator_compute("ApplyAdamWithAmsgradD", op_mode="dynamic", support_fusion=True)
 def apply_adam_with_amsgrad_d_compute(var,
@@ -57,16 +55,16 @@ def apply_adam_with_amsgrad_d_compute(var,
     :param epsilon: epsilon, const
     :param grad: grad, placeholder
     """
-    NUM_ONE = 1.0
-    NUM_N_ONE = -1.0
+    num_one = 1.0
+    num_n_one = -1.0
     inp_dtype = var.dtype
     # check the instruction supports or not
     vmul_support = tbe_platform.api_check_support("tbe.dsl.vmul", "float32")
     if inp_dtype == "float32" and not vmul_support:
         error_manager_vector.raise_err_input_dtype_not_supported(kernel_name, 'var', [], inp_dtype)
 
-    one = tvm.const(NUM_ONE, "float32")
-    neg_one = tvm.const(NUM_N_ONE, "float32")
+    one = tvm.const(num_one, "float32")
+    neg_one = tvm.const(num_n_one, "float32")
 
     beta1_power = tbe.broadcast(beta1_power, var.shape)
     beta2_power = tbe.broadcast(beta2_power, var.shape)

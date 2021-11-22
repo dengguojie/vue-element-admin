@@ -40,6 +40,7 @@ def _broadcast_nz(tensor, shape):
     tensor = tbe.broadcast(tensor, shape)
     return tensor
 
+
 @register_operator_compute("ConfusionSoftmaxGrad", op_mode="dynamic", support_fusion=False)
 def confusion_softmax_grad_compute(grad_dict, grad, x, y,
                                    kernel_name="confusion_softmax_grad"):
@@ -93,6 +94,7 @@ def confusion_softmax_grad_compute(grad_dict, grad, x, y,
     res = tbe.vsub(grad, data_sum_tmp)
 
     return res
+
 
 @register_operator("ConfusionSoftmaxGrad", "ConfusionSoftmaxGrad")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

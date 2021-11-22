@@ -148,7 +148,7 @@ def fused_mul_apply_momentum(var,
     """
 
     var_dtype = var.get("dtype").lower()
-    accum_dtype= accum.get("dtype").lower()
+    accum_dtype = accum.get("dtype").lower()
     lr_dtype = lr.get("dtype").lower()
     x1_dtype = x1.get("dtype").lower()
     momentum_dtype = momentum.get("dtype").lower()

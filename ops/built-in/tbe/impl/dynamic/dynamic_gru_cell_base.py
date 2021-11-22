@@ -17,7 +17,13 @@ import functools
 import impl.constant_util as constant
 from impl import common_util
 
-MAX_REPEAT_NUM = 255
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    MAX_REPEAT_NUM = 255
 
 
 class TikOpBase:
@@ -65,6 +71,7 @@ class TikOpBase:
 
         return front_mask, last_mask, repeat_times
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _double_vector_func(self,
                             func_name,
                             dest,
@@ -81,17 +88,17 @@ class TikOpBase:
                       constant.STRIDE_ONE, constant.STRIDE_ONE, constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT,
                       constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT)
         with self.tik_instance.else_scope():
-            with self.tik_instance.if_scope(repeat_times > MAX_REPEAT_NUM):
+            with self.tik_instance.if_scope(repeat_times > Constant.MAX_REPEAT_NUM):
                 rest_repeat_num = repeat_times
-                loop_count = repeat_times // MAX_REPEAT_NUM
+                loop_count = repeat_times // Constant.MAX_REPEAT_NUM
                 with self.tik_instance.for_range(0, loop_count) as i:
-                    vector_offset = i * MAX_REPEAT_NUM * front_mask
-                    func_name(front_mask, dest[vector_offset], src0[vector_offset], src1[vector_offset], MAX_REPEAT_NUM,
+                    vector_offset = i * Constant.MAX_REPEAT_NUM * front_mask
+                    func_name(front_mask, dest[vector_offset], src0[vector_offset], src1[vector_offset], Constant.MAX_REPEAT_NUM,
                               constant.STRIDE_ONE, constant.STRIDE_ONE, constant.STRIDE_ONE,
                               constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT)
-                    rest_repeat_num = rest_repeat_num - MAX_REPEAT_NUM
+                    rest_repeat_num = rest_repeat_num - Constant.MAX_REPEAT_NUM
                 with self.tik_instance.if_scope(rest_repeat_num != 1):
-                    vector_offset = loop_count * MAX_REPEAT_NUM * front_mask
+                    vector_offset = loop_count * Constant.MAX_REPEAT_NUM * front_mask
                     func_name(front_mask, dest[vector_offset], src0[vector_offset], src1[vector_offset],
                               rest_repeat_num - 1, constant.STRIDE_ONE, constant.STRIDE_ONE, constant.STRIDE_ONE,
                               constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT)
@@ -115,6 +122,7 @@ class TikOpBase:
                               constant.STRIDE_ONE, constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT,
                               constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT)
 
+    # 'pylint: disable=too-many-arguments
     def _vector_scalar_func(self, func_name, dest, src0, scalar_val, compute_shape):
         front_mask, last_mask, repeat_times = \
             self._get_mask_and_repeat(compute_shape, dest.dtype)
@@ -122,18 +130,18 @@ class TikOpBase:
             func_name(front_mask, dest, src0, scalar_val, constant.REPEAT_TIME_ONCE, constant.STRIDE_ONE,
                       constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT)
         with self.tik_instance.else_scope():
-            with self.tik_instance.if_scope(repeat_times > MAX_REPEAT_NUM):
+            with self.tik_instance.if_scope(repeat_times > Constant.MAX_REPEAT_NUM):
                 rest_repeat_num = repeat_times
-                loop_count = rest_repeat_num // MAX_REPEAT_NUM
+                loop_count = rest_repeat_num // Constant.MAX_REPEAT_NUM
                 with self.tik_instance.for_range(0, loop_count) as i:
-                    vector_offset = i * MAX_REPEAT_NUM * front_mask
-                    func_name(front_mask, dest[vector_offset], src0[vector_offset], scalar_val, MAX_REPEAT_NUM,
+                    vector_offset = i * Constant.MAX_REPEAT_NUM * front_mask
+                    func_name(front_mask, dest[vector_offset], src0[vector_offset], scalar_val, Constant.MAX_REPEAT_NUM,
                               constant.STRIDE_ONE, constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT,
                               constant.REPEAT_STRIDE_EIGHT)
-                    rest_repeat_num = rest_repeat_num - MAX_REPEAT_NUM
+                    rest_repeat_num = rest_repeat_num - Constant.MAX_REPEAT_NUM
 
                 with self.tik_instance.if_scope(rest_repeat_num != 1):
-                    vector_offset = loop_count * MAX_REPEAT_NUM * front_mask
+                    vector_offset = loop_count * Constant.MAX_REPEAT_NUM * front_mask
                     func_name(front_mask, dest[vector_offset], src0[vector_offset], scalar_val, rest_repeat_num - 1,
                               constant.STRIDE_ONE, constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT,
                               constant.REPEAT_STRIDE_EIGHT)
@@ -160,17 +168,17 @@ class TikOpBase:
             func_name(front_mask, dest, scalar_val, constant.REPEAT_TIME_ONCE, constant.STRIDE_ONE,
                       constant.REPEAT_STRIDE_EIGHT)
         with self.tik_instance.else_scope():
-            with self.tik_instance.if_scope(repeat_times > MAX_REPEAT_NUM):
+            with self.tik_instance.if_scope(repeat_times > Constant.MAX_REPEAT_NUM):
                 rest_repeat_num = repeat_times
-                count = repeat_times // MAX_REPEAT_NUM
+                count = repeat_times // Constant.MAX_REPEAT_NUM
                 with self.tik_instance.for_range(0, count) as loop_i:
-                    vector_offset = loop_i * MAX_REPEAT_NUM * front_mask
+                    vector_offset = loop_i * Constant.MAX_REPEAT_NUM * front_mask
 
-                    func_name(front_mask, dest[vector_offset], scalar_val, MAX_REPEAT_NUM, constant.STRIDE_ONE,
+                    func_name(front_mask, dest[vector_offset], scalar_val, Constant.MAX_REPEAT_NUM, constant.STRIDE_ONE,
                               constant.REPEAT_STRIDE_EIGHT)
-                    rest_repeat_num = rest_repeat_num - MAX_REPEAT_NUM
+                    rest_repeat_num = rest_repeat_num - Constant.MAX_REPEAT_NUM
                 with self.tik_instance.if_scope(rest_repeat_num != 1):
-                    vector_offset = count * MAX_REPEAT_NUM * front_mask
+                    vector_offset = count * Constant.MAX_REPEAT_NUM * front_mask
                     func_name(front_mask, dest[vector_offset], scalar_val, rest_repeat_num - 1, constant.STRIDE_ONE,
                               constant.REPEAT_STRIDE_EIGHT)
                 vector_offset = (repeat_times - 1) * front_mask
@@ -189,7 +197,7 @@ class TikOpBase:
         if repeat_times == 1:
             func_name(front_mask, dest, src, constant.REPEAT_TIME_ONCE, constant.STRIDE_ONE, constant.STRIDE_ONE,
                       constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT)
-        elif repeat_times <= MAX_REPEAT_NUM:
+        elif repeat_times <= Constant.MAX_REPEAT_NUM:
             func_name(front_mask, dest, src, repeat_times - 1, constant.STRIDE_ONE, constant.STRIDE_ONE,
                       constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT)
             vector_offset = (repeat_times - 1) * front_mask
@@ -199,14 +207,14 @@ class TikOpBase:
         else:
             rest_repeat_num = repeat_times
             count = 0
-            while rest_repeat_num > MAX_REPEAT_NUM:
-                vector_offset = count * MAX_REPEAT_NUM * front_mask
-                func_name(front_mask, dest[vector_offset], src[vector_offset], MAX_REPEAT_NUM, constant.STRIDE_ONE,
+            while rest_repeat_num > Constant.MAX_REPEAT_NUM:
+                vector_offset = count * Constant.MAX_REPEAT_NUM * front_mask
+                func_name(front_mask, dest[vector_offset], src[vector_offset], Constant.MAX_REPEAT_NUM, constant.STRIDE_ONE,
                           constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT)
                 count = count + 1
-                rest_repeat_num = rest_repeat_num - MAX_REPEAT_NUM
+                rest_repeat_num = rest_repeat_num - Constant.MAX_REPEAT_NUM
             if rest_repeat_num != 1:
-                vector_offset = count * MAX_REPEAT_NUM * front_mask
+                vector_offset = count * Constant.MAX_REPEAT_NUM * front_mask
                 func_name(front_mask, dest[vector_offset], src[vector_offset], rest_repeat_num - 1, constant.STRIDE_ONE,
                           constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT)
             vector_offset = (repeat_times - 1) * front_mask
@@ -214,6 +222,7 @@ class TikOpBase:
                       constant.STRIDE_ONE, constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT,
                       constant.REPEAT_STRIDE_EIGHT)
 
+    # 'pylint: disable=too-many-arguments
     def vmul_func(self, dest, src0, src1, compute_shape, dest_offset=0, src0_offset=0, src1_offset=0):
         """
         vmul_func
@@ -221,6 +230,7 @@ class TikOpBase:
         self._double_vector_func(self.tik_instance.vmul, dest, src0, src1, compute_shape, dest_offset, src0_offset,
                                  src1_offset)
 
+    # 'pylint: disable=too-many-arguments
     def vadd_func(self, dest, src0, src1, compute_shape, dest_offset=0, src0_offset=0, src1_offset=0):
         """
         vadd_func
