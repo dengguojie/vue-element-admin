@@ -70,7 +70,7 @@ def shrink_compute(input_x, output_y, lambd, bias, kernel_name="Shrink"):
     return result
 
 
-# 'pylint: disable=too-many-locals,consider-using-f-string
+# 'pylint: disable=too-many-locals
 @register_operator("Shrink")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT,

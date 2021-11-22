@@ -50,6 +50,7 @@ class Constant:
     THRESHOLD_VALUE = 8192
     BLOCK = 32
 
+
 # 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 def get_op_support_info(x,
                         paddings,

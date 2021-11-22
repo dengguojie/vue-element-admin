@@ -15,22 +15,22 @@
 """
 relu_v2
 
-  Op_description :
-    Algrithm: relu_v2(x) = x and 1 when x > 0 , else 0, 0
-
-    # relu_v2(
-    #   x,
-    #   y,
-    #   mask,
-    #   kernel_name='relu_v2')
-
-  Supportive_dtype_format :
-    ['float16', 'float32', 'int8', 'int32', 'uint8']
-    ['ND', 'NCHW', 'NHWC', 'NC1HWC0']
-
-  Constraint :
-    [1] All : the last dim of `x` must be mutiply of 8.
-    [2] All : shape size limit is 2147483648.
+'  Op_description :
+'    Algrithm: relu_v2(x) = x and 1 when x > 0 , else 0, 0
+'
+'    # relu_v2(
+'    #   x,
+'    #   y,
+'    #   mask,
+'    #   kernel_name='relu_v2')
+'
+'  Supportive_dtype_format :
+'    ['float16', 'float32', 'int8', 'int32', 'uint8']
+'    ['ND', 'NCHW', 'NHWC', 'NC1HWC0']
+'
+'  Constraint :
+'    [1] All : the last dim of `x` must be mutiply of 8.
+'    [2] All : shape size limit is 2147483648.
 """
 # noinspection PyInterpreter
 from impl.util.platform_adapter import tbe

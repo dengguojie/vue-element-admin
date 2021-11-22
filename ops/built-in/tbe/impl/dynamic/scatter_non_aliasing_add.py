@@ -628,7 +628,7 @@ class ScatterNonAliasingAdd():
             })
 
 
-#pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @register_operator("ScatterNonAliasingAdd")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)

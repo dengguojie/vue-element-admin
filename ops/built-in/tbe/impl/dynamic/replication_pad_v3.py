@@ -31,7 +31,7 @@ class Constant:
     MAX_INT64 = 2**64 - 1
     # tiling param nums
     TILING_NUMS = 16
-    # 1 byte = 8 bit
+    # '1 byte = 8 bit'
     EIGHT_BIT = 8
     # reserved ub size
     RESERVED_UB = 1024
@@ -934,8 +934,7 @@ class ReplicationPadV3Init:
                                   * align_out_dim_3 + self.tiling_output_dim_3
                                   - first_ub_first_offset +
                                   (i - first_ub_need_first_move_lines) *
-                                  self.tiling_output_dim_3 + j].set_as \
-                        (ping_ub_1[i * align_out_dim_3 + j])
+                                  self.tiling_output_dim_3 + j].set_as(ping_ub_1[i * align_out_dim_3 + j])
             with self.tik_instance.if_scope(flag == ranges - 1):
                 self.tik_instance.data_move(self.output_gm[gm_offset], block_less_16, 0, 1, 1, 0, 0)
 
@@ -954,8 +953,7 @@ class ReplicationPadV3Init:
                                   - first_ub_first_offset +
                                   first_ub_need_last_move_lines *
                                   self.tiling_output_dim_3 + i *
-                                  self.tiling_output_dim_3 + j].set_as \
-                        (ping_ub_1[i * align_out_dim_3 + j])
+                                  self.tiling_output_dim_3 + j].set_as(ping_ub_1[i * align_out_dim_3 + j])
             with self.tik_instance.if_scope(index == ranges - 1):
                 self.tik_instance.data_move(self.output_gm[gm_offset], block_less_16, 0, 1, 1, 0, 0)
 

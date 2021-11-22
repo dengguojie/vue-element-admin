@@ -2460,7 +2460,6 @@ class OneHot():
                                         id_number)
 
 
-# 'pylint: disable =consider-using-f-string
 def check_supported(x, depth, on_value, off_value, y, axis,
                     kernel_name="one_hot"):
     """
@@ -2501,7 +2500,7 @@ def check_supported(x, depth, on_value, off_value, y, axis,
         reason = "on_value not in (\"float16\", \"float32\", \"int32\"), but is %s" % on_value_dtype
         return False, reason
     # when static and x shape[0] is 2048 and axis is 0, one_hot is support
-    shape_list = [(2048,),]
+    shape_list = [(2048,)]
     if util_common.is_unknown([x, y]):
         return True, ""
     if x_shape in shape_list and axis == 0:

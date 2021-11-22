@@ -55,7 +55,7 @@ class Constant:
 # 'pylint: disable=too-many-lines,invalid-name,too-many-arguments,consider-using-in
 # 'pylint: disable=too-many-branches,too-many-instance-attributes,too-many-locals
 # 'pylint: disable=too-many-statements,no-self-use,too-few-public-methods
-# 'pylint: disable=unused-argument,consider-using-f-string
+# 'pylint: disable=unused-argument
 def check_supported(x, y, argmax, ksize, strides, pads, dtype=Constant.DT_INT32, dilation=(1, 1, 1, 1),
                     ceil_mode=False, kernel_name="max_pool_with_argmax_v1"):
     """

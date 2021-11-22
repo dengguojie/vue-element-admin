@@ -44,7 +44,7 @@ class Constant:
     ONE_BLK_INT32_NUMS = 8
     # int64 in 32B
     ONE_BLK_INT64_NUMS = 4
-    # 8 bit = 1 Byte
+    # '8 bit = 1 Byte'
     BYTE_BITS = 8
     TILING_NUMS = 8
     MODE0 = 0
@@ -293,7 +293,7 @@ class Lru(OpBase):
         self.iterate_timestamp_scalar.set_as(self.time_stamp_ub[0])
 
     @staticmethod
-    def isPower(k):
+    def is_power(k):
         """
         input is or not 2**n
         """
@@ -475,7 +475,6 @@ class Lru(OpBase):
         self.tik_instance.data_move_pad(self.time_stamp_wsp[tag_index], self.time_stamp_ub, 1, self.time_stamp_bytes, 0,
                                         0)
 
-    # 'pylint: disable=consider-using-f-string
     def check_param(self):
         """
         check_param
@@ -513,7 +512,7 @@ class Lru(OpBase):
         para_check.check_dtype(self.tag_dtype, check_list_input_list, param_name="tag")
         para_check.check_dtype(self.cache_dtype, check_list_data, param_name="cache")
         para_check.check_dtype(self.data_dtype, check_list_data, param_name="data")
-        if not self.isPower(self.set_number):
+        if not self.is_power(self.set_number):
             error_info = {}
             error_info['errCode'] = 'E80000'
             error_info['op_name'] = 'lru'
@@ -524,7 +523,7 @@ class Lru(OpBase):
                 error_info, "In op[{op_name}], the parameter[{param_name}] "
                 "should be [{expected_value}], but actually "
                 "is [{real_value}].".format(**error_info))
-        if not self.isPower(self.pre_route_number):
+        if not self.is_power(self.pre_route_number):
             error_info = {}
             error_info['errCode'] = 'E80000'
             error_info['op_name'] = 'lru'

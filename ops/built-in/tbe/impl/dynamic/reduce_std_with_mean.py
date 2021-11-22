@@ -112,7 +112,6 @@ def reduce_std_with_mean_compute(x, mean, dim, unbiased, keepdim, invert, epsilo
         if y.dtype != x_type:
             y = tbe.cast_to(y, dtype=x_type)
 
-        # return variance
         return y
 
     var_epsilon = tbe.vadds(var, tvm.const(epsilon, dtype=var.dtype))
@@ -182,7 +181,7 @@ def reduce_std_with_mean(x,
     if hasattr(dim, 'index'):
         dim = list(dim)
     dim = shape_util.axis_check(shape_len, dim)
-    input_axis = {"shape": [len(dim),], "value": dim, "rel_pos_to_reduce": "axis"}
+    input_axis = {"shape": [len(dim)], "value": dim, "rel_pos_to_reduce": "axis"}
 
     schedules = []
     tensors = []

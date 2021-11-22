@@ -25,8 +25,11 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
 
-# 'pylint: disable=too-few-public-methods
+# 'pylint:disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
+    """
+    The class for constant
+    """
     # tiling param num
     TILING_ARG_NUM = 24
     # reserved ub size
@@ -1046,7 +1049,7 @@ class MaxPool:
         with self.tik_instance.if_scope(repeat_left > 0):
             self.tik_instance.vmax(
                 Constant.MASK, tmp_ub, ub_in[repeat_loop * Constant.MASK * Constant.REPEAT_LIMIT], tmp_ub,
-                repeat_left,1, 1, 1, 0, 8, 0)
+                repeat_left, 1, 1, 1, 0, 8, 0)
         with self.tik_instance.if_scope(size_left > 0):
             self.tik_instance.vmax(size_left, tmp_ub, ub_in[size_loop * Constant.MASK], tmp_ub, 1, 1, 1, 1, 0, 8, 0)
         for i in range(Constant.BLOCK_PROCESS_NUM):

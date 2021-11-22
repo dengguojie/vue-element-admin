@@ -569,7 +569,7 @@ class ScatterNdSub():
             })
 
 
-#pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @register_operator("ScatterNdSub")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)

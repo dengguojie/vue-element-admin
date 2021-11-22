@@ -579,7 +579,7 @@ class StridedSlice:
                             self._do_with_data_move_per_loop(input_addr, output_addr, input_ub, tail_repeat_rows)
                         with inst.if_scope(tail_rows_last_repeat > 0):
                             self._do_with_data_move_tail_rows((aicore_num_used - 1) * rows_each_core + \
-                                                            (tail_rows_repeat_times -1) * max_rows_in_ub + \
+                                                            (tail_rows_repeat_times - 1) * max_rows_in_ub + \
                                                             tail_repeat_rows, tail_rows_last_repeat, input_ub)
                 with inst.else_scope():
                     with inst.if_scope(core_idx < aicore_num_used):
@@ -796,10 +796,10 @@ class StridedSlice:
                             param_dict["loop_rows"] = tail_last_loop_rows
                             self._do_with_vnchwconv_per_loop(param_dict)
                         input_addr.set_as(rows_each_core * input_inner_dim * (aicore_num_used - 1) + \
-                                          (tail_rows_repeat_times -1) * rows_each_repeat * input_inner_dim - \
+                                          (tail_rows_repeat_times - 1) * rows_each_repeat * input_inner_dim - \
                                           tail_rows_repeat_roll_back_rows * input_inner_dim)
                         output_addr.set_as(rows_each_core * output_inner_dim * (aicore_num_used - 1) + \
-                                           (tail_rows_repeat_times -1) * rows_each_repeat * output_inner_dim - \
+                                           (tail_rows_repeat_times - 1) * rows_each_repeat * output_inner_dim - \
                                            tail_rows_repeat_roll_back_rows * output_inner_dim)
                         param_dict["input_addr"] = input_addr
                         param_dict["output_addr"] = output_addr

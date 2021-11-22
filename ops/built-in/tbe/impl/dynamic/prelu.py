@@ -65,13 +65,13 @@ def op_select_format(x, weight, y, kernel_name="prelu"):
         format_weight = ["ND", "ND", "ND", "ND"]
         dtype_base_out = ["float16", "float", "float16", "float"]
 
-    if len(x_shape) >= 2 and len(weight_shape) >= 2 and x_shape[-1] == weight_shape[-1] \
-            and x_shape[-2] == weight_shape[-2] and not (x_shape[-1] == -1 or x_shape[-2] == -1) \
-            and not (weight_shape[-2] == -1 or weight_shape[-2] == -1) \
-            and not (weight_shape[-2] == -2 or weight_shape[-2] == -2):
-        dtype_base_out = dtype_base_out + dtype_base
-        format_x = format_x + ["FRACTAL_NZ"] * len(dtype_base)
-        format_weight = format_weight + ["FRACTAL_NZ"] * len(dtype_base)
+    if len(x_shape) >= 2 and len(weight_shape) >= 2:
+        if x_shape[-1] == weight_shape[-1] and x_shape[-2] == weight_shape[-2] \
+            and not (x_shape[-1] == -1 or x_shape[-2] == -1) \
+            and weight_shape[-1] not in (-1, -2) and weight_shape[-2] not in (-1, -2):
+            dtype_base_out = dtype_base_out + dtype_base
+            format_x = format_x + ["FRACTAL_NZ"] * len(dtype_base)
+            format_weight = format_weight + ["FRACTAL_NZ"] * len(dtype_base)
     if len(x_shape) == 2 and len(weight_shape) == 1:
         dtype_base_out = dtype_base_out + dtype_base
         format_x = format_x + ["FRACTAL_NZ"] * len(dtype_base)
@@ -105,7 +105,7 @@ def op_select_format(x, weight, y, kernel_name="prelu"):
     return param_dynamic_in_json
 
 
-#pylint: disable=invalid-name,too-many-branches,too-many-statements
+# 'pylint: disable=invalid-name,too-many-branches,too-many-statements
 def broadcast_inputs_shape(x, weight):
     """
     :params:
@@ -142,7 +142,7 @@ def broadcast_inputs_shape(x, weight):
             c0 = shape_x[5]
             weight_shape_new = [1, 1, c1, 1, 1, c0]
     elif format_x == "FRACTAL_NZ":
-        if w_dim == 1 and shape_w[0] ==1:
+        if w_dim == 1 and shape_w[0] == 1:
             weight_shape_new = [1] * x_dim
         elif w_dim == 1:
             weight_shape_new = [1] * x_dim
@@ -170,7 +170,7 @@ def broadcast_inputs_shape(x, weight):
             shape_x, weight_shape_new = shape_list[0], shape_list[1]
         else:
             weight_shape_new = [1]
-    # input_x:DIM = 2,3,4,5,6,7...
+    # 'input_x:DIM = 2,3,4,5,6,7...'
     else:
         if (shape_w[0] != shape_x[1] and shape_w[0] != 1) or (w_dim not in (1, x_dim - 1)):
             shape_list = shape_util.broadcast_shapes(shape_x, shape_w, param_name_input1="x",
@@ -231,7 +231,7 @@ def prelu_compute(input_x, weight_input, output_y, kernel_name="prelu"):
     if "format" in input_x.op.attrs and "format" in weight_input.op.attrs:
         format_x = input_x.op.attrs["format"].value
         format_weight = weight_input.op.attrs["format"].value
-        if format_x == "FRACTAL_NZ" and format_weight != "FRACTAL_NZ": 
+        if format_x == "FRACTAL_NZ" and format_weight != "FRACTAL_NZ":
             target_shape = [1] * len(shape_x)
             if sum(shape_weight) != 1:
                 target_shape[0] = shape_x[0]

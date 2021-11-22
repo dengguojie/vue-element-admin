@@ -30,7 +30,7 @@ class Constant:
     """
     # tiling param nums
     TILING_NUMS = 20
-    # 1 byte = 8 bit
+    # '1 byte = 8 bit'
     EIGHT_BIT = 8
     # vnchw the minest block
     TRANS_MIN_BLKS = 16
@@ -1026,10 +1026,11 @@ class MirrorPadInit:
                 and do pad with data move
         """
         self.mirror_pad_compute_tiling()
-        wr_compile_info = {}
-        wr_compile_info["output_dim4_max_cnt"] = self.output_dim4_max_cnt
-        wr_compile_info["core_num"] = self.core_nums
-        wr_compile_info["dtype_rate"] = self.dtype_rate
+        wr_compile_info = {
+            "output_dim4_max_cnt": self.output_dim4_max_cnt,
+            "core_num": self.core_nums,
+            "dtype_rate": self.dtype_rate
+        }
         tbe_context.get_context().add_compile_info("vars", wr_compile_info)
         flowtable_list = [self.tiling_gm]
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,

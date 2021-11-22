@@ -283,8 +283,8 @@ class LayerNormalizeBase:
         if self.output_mean_var:
             self.tik_inst.set_atomic_add(1)
             block_num = self._ceil_div(batch_num, self.ub_block_data_num)
-            self.data_move(mean_gm[batch_index_start,], batch_mean_ub, 0, 1, block_num, 0, 0)
-            self.data_move(variance_gm[batch_index_start,], batch_variance_ub, 0, 1, block_num, 0, 0)
+            self.data_move(mean_gm[batch_index_start], batch_mean_ub, 0, 1, block_num, 0, 0)
+            self.data_move(variance_gm[batch_index_start], batch_variance_ub, 0, 1, block_num, 0, 0)
             self.tik_inst.set_atomic_add(0)
 
     def _mean_var_move_out_each_max_batch(self, batch_index_start, batch_num):
@@ -324,11 +324,11 @@ class LayerNormalizeBase:
             VecCmd(cmd_name="vconv", dst_name="mean_gm_type_ub", src0_name="mean_ub_type_ub", round_mode=""),
             VecCmd(cmd_name="vconv", dst_name="var_gm_type_ub", src0_name="var_ub_type_ub", round_mode="")
         ]
-        self.data_move(mean_ub_type_ub, self.mean_ub_type[batch_index_start,], 0, 1, block_num_move_in, 0, 0)
-        self.data_move(var_ub_type_ub, self.variance_ub_type[batch_index_start,], 0, 1, block_num_move_in, 0, 0)
+        self.data_move(mean_ub_type_ub, self.mean_ub_type[batch_index_start], 0, 1, block_num_move_in, 0, 0)
+        self.data_move(var_ub_type_ub, self.variance_ub_type[batch_index_start], 0, 1, block_num_move_in, 0, 0)
         VecExecutor.exec_vec_cmd(buf_mean_all, cmd_vconv, "mean_ub_type_ub")
-        self.data_move(self.mean[batch_index_start,], mean_gm_type_ub, 0, 1, block_num_move_out, 0, 0)
-        self.data_move(self.variance[batch_index_start,], var_gm_type_ub, 0, 1, block_num_move_out, 0, 0)
+        self.data_move(self.mean[batch_index_start], mean_gm_type_ub, 0, 1, block_num_move_out, 0, 0)
+        self.data_move(self.variance[batch_index_start], var_gm_type_ub, 0, 1, block_num_move_out, 0, 0)
 
     def _count_rec_std_ne_mean(self, buf_mean_all):
         cmd_count_rec_std_ne_mean = [

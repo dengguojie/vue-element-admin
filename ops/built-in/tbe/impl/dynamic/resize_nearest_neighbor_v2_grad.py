@@ -22,16 +22,23 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util import util_tik_comm_func
 
-# max uint16
-MAX_UINT16 = 2 ** 16 - 1
-# max int64
-MAX_INT64 = 2 ** 63 - 1
-# tiling param num
-TILING_ARG_NUM = 16
-# reserved ub size
-RESERVED_UB_SIZE = 8 * 1024
-# The max repeat_times of vadd instruction
-VADD_MAX_REPEAT_TIMES = 255
+
+# 'pylint:disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    The class for constant
+    """
+    # max uint16
+    MAX_UINT16 = 2 ** 16 - 1
+    # max int64
+    MAX_INT64 = 2 ** 63 - 1
+    # tiling param num
+    TILING_ARG_NUM = 16
+    # reserved ub size
+    RESERVED_UB_SIZE = 8 * 1024
+    # The max repeat_times of vadd instruction
+    VADD_MAX_REPEAT_TIMES = 255
+
 
 # 'pylint: disable=too-many-instance-attributes,too-many-arguments,unused-argument
 # 'pylint: disable=too-many-locals,too-many-statements,unused-argument,invalid-name
@@ -53,7 +60,7 @@ class ResizeNearestNeighborV2Grad:
 
         self.kernel_name = kernel_name
         self.ai_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.ub_size_bytes = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE)
+        self.ub_size_bytes = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - Constant.RESERVED_UB_SIZE)
 
         self.elememts_vector_fp16 = tbe_platform.ELEMENTS_VECTOR_OP_FP16
 
@@ -64,15 +71,16 @@ class ResizeNearestNeighborV2Grad:
         self.grads_shape_c0 = 16
         self.height_idx_segment_num = 512
         self.width_idx_segment_num = 512
-        self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,),
+                                                  name="tiling_gm", scope=tik.scope_gm)
 
-        self.grads_gm = self.tik_instance.Tensor(self.grads_dtype, [MAX_INT64],
+        self.grads_gm = self.tik_instance.Tensor(self.grads_dtype, [Constant.MAX_INT64],
                                                  name="grads_gm", scope=tik.scope_gm)
         self.size_gm = self.tik_instance.Tensor(self.size_dtype, (2,),
                                                 name="size_gm", scope=tik.scope_gm)
-        self.out_gm = self.tik_instance.Tensor(self.grads_dtype, [MAX_INT64],
+        self.out_gm = self.tik_instance.Tensor(self.grads_dtype, [Constant.MAX_INT64],
                                                name="out_gm", scope=tik.scope_gm, is_atomic_add=True)
-        self.stride_threshold = MAX_UINT16 if self.grads_dtype in ("float16",) else MAX_UINT16 // 2
+        self.stride_threshold = Constant.MAX_UINT16 if self.grads_dtype in ("float16",) else Constant.MAX_UINT16 // 2
         self.is_suport_vdiv = tbe_platform.api_check_support("tik.vdiv", "float32")
         # init tiling data
         self.resize_scale_h = self.tik_instance.Scalar("float32", name="resize_scale_h")
@@ -235,13 +243,13 @@ class ResizeNearestNeighborV2Grad:
                                                                name="calcu_out_in_idx_tmp_ub", scope=tik.scope_ubuf)
             vector_repeat_num = (idx_num + 63) // 64
             if self.half_pixel_centers:
-                # calcu: (idx + 0.5) * scale
+                # 'calcu: (idx + 0.5) * scale'
                 self.tik_instance.vadds(64, calcu_out_in_idx_tmp_ub, src_idx_fp_ub, 0.5,
                                         vector_repeat_num, 1, 1, 8, 8)
                 self.tik_instance.vmuls(64, calcu_out_in_idx_tmp_ub, calcu_out_in_idx_tmp_ub, scale,
                                         vector_repeat_num, 1, 1, 8, 8)
             else:
-                # calcu: idx * scale
+                # 'calcu: idx * scale'
                 self.tik_instance.vmuls(64, calcu_out_in_idx_tmp_ub, src_idx_fp_ub, scale,
                                         vector_repeat_num, 1, 1, 8, 8)
             if self.align_corners:
@@ -307,7 +315,7 @@ class ResizeNearestNeighborV2Grad:
         nc_max_segment = self.tik_instance.Scalar("int64", name="nc_max_segment")
         nc_max_segment.set_as(self.ub_max_num // (w_loop_segment * self.grads_shape_c0))
         if is_big_to_small:
-            self.tik_instance.scalar_min(nc_max_segment, nc_max_segment, VADD_MAX_REPEAT_TIMES)
+            self.tik_instance.scalar_min(nc_max_segment, nc_max_segment, Constant.VADD_MAX_REPEAT_TIMES)
         nc_loop = self.core_nc_num // nc_max_segment
         nc_tail = self.core_nc_num % nc_max_segment
 
@@ -858,7 +866,7 @@ class ResizeNearestNeighborV2Grad:
         """
         with self.tik_instance.for_range(0, self.ai_core_num, block_num=self.ai_core_num) as _core_idx:
             with self.tik_instance.new_stmt_scope():
-                tiling_ub = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,),
+                tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,),
                                                      name="tiling_ub", scope=tik.scope_ubuf)
                 self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, 4, 0, 0)
                 self._tiling_args(tiling_ub, "read")

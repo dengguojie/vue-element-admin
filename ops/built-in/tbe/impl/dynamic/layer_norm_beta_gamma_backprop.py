@@ -529,7 +529,6 @@ def layer_norm_beta_gamma_backprop_compute(input_dy, input_x, input_variance,
     return res_list
 
 
-
 # 'pylint: disable=too-many-arguments,too-many-locals
 @register_operator("LayerNormBetaGammaBackprop", pattern="Layer_norm_beta_gamma_backprop")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

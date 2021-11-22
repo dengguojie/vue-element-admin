@@ -56,7 +56,7 @@ def align_value(value, factor):
 
 
 # 'pylint: disable=invalid-name,too-many-statements,too-many-locals,too-many-arguments
-# 'pylint: disable=too-many-instance-attributes,too-many-public-methods,too-many-lines,consider-using-f-string
+# 'pylint: disable=too-many-instance-attributes,too-many-public-methods,too-many-lines
 class SplitV():
     """
     Function: class that execute split_v

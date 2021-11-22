@@ -80,7 +80,7 @@ def check_supported(x, y, argmax, ksize, strides, pads, dtype=Constant.DT_INT32,
 
 # 'pylint: disable=too-many-lines,invalid-name,too-many-arguments,consider-using-in
 # 'pylint: disable=too-many-branches,too-many-instance-attributes,too-many-locals
-# 'pylint: disable=too-many-statements,no-self-use,too-few-public-methods
+# 'pylint: disable=too-many-statements,no-self-use,too-many-public-methods
 # 'pylint: disable=unused-argument
 class MaxPoolWithargmaxPytorch:
     """
@@ -1341,7 +1341,7 @@ def max_pool_with_argmax_v2(x, y, argmax, ksize, strides, pads, dtype=Constant.D
     :param kernel_name: the kernel's name
     :return: tik_instance
     """
-    [dim_n, dim_c, dim_h, dim_w] = _check_param(x, ksize, strides, pads, dtype, dilation, ceil_mode, kernel_name)
+    [_, _, dim_h, dim_w] = _check_param(x, ksize, strides, pads, dtype, dilation, ceil_mode, kernel_name)
     obj = MaxPoolWithargmaxPytorch([ksize[dim_h], ksize[dim_w]], [strides[dim_h], strides[dim_w]],
                                    [pads[dim_h], pads[dim_w]], x.get("dtype").lower(),
                                    dilation, ceil_mode, kernel_name)

@@ -57,7 +57,6 @@ def get_op_support_info(x, block_shape, paddings, y, kernel_name="space_to_batch
 
 
 # 'pylint: disable=invalid-name,too-many-locals,unnecessary-pass,too-many-return-statements
-# 'pylint: disable=consider-using-f-string
 def check_supported(x, block_shape, paddings, y, kernel_name="space_to_batch_nd"):
     """
     check supported dynamiclly. \n

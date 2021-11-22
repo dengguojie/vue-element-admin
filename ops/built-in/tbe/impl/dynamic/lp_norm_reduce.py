@@ -188,7 +188,7 @@ def lp_norm_reduce(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12, kernel_na
 
     x["rel_pos_to_reduce"] = "before"
 
-    input_axis = {"shape": [len(axes),], "value": axes, "rel_pos_to_reduce": "axis"}
+    input_axis = {"shape": [len(axes)], "value": axes, "rel_pos_to_reduce": "axis"}
     schedules = []
     tensors = []
     ins = classify([x, input_axis], OpPatternMode.REDUCE, {"keepdims": keepdim is True})

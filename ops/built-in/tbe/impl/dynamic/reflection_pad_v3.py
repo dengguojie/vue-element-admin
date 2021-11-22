@@ -324,7 +324,7 @@ class ReflectionPadV3Init:
                 with self.tik_instance.if_scope(time_2 == 1):
                     with self.tik_instance.for_range(0, self.padding_index_0) as i:
                         self.tik_instance.data_move(ping_ub_2[i * Constant.TRANS_MIN_BLKS],
-                                                    pang_ub_1[(self.padding_index_0- i) * align_output_dim_2], 0, 1,
+                                                    pang_ub_1[(self.padding_index_0 - i) * align_output_dim_2], 0, 1,
                                                     1, 0, 0)
                     with self.tik_instance.for_range(0, self.tiling_input_dim_3) as i:
                         self.tik_instance.data_move(ping_ub_2[(self.padding_index_0 + i) * Constant.TRANS_MIN_BLKS],
@@ -1036,8 +1036,7 @@ class ReflectionPadV3Init:
                                   * align_out_dim_3 + self.tiling_output_dim_3
                                   - first_ub_first_offset +
                                   (i - first_ub_need_first_move_lines) *
-                                  self.tiling_output_dim_3 + j].set_as \
-                        (ping_ub_1[i * align_out_dim_3 + j])
+                                  self.tiling_output_dim_3 + j].set_as(ping_ub_1[i * align_out_dim_3 + j])
             with self.tik_instance.if_scope(flag == ranges - 1):
                 self.tik_instance.data_move(self.output_gm[gm_offset], block_less_16, 0, 1,
                                             1, 0, 0)
@@ -1051,14 +1050,12 @@ class ReflectionPadV3Init:
             with self.tik_instance.for_range(0, self.tiling_output_dim_2) as i:
                 with self.tik_instance.for_range(0, self.tiling_output_dim_3) as j:
                     block_less_16[(index - flag - 1) * self.tiling_output_dim_3 *
-                                  self.tiling_output_dim_2 + (
-                                      first_ub_need_first_move_lines - 1)
+                                  self.tiling_output_dim_2 + (first_ub_need_first_move_lines - 1)
                                   * align_out_dim_3 + self.tiling_output_dim_3
                                   - first_ub_first_offset +
                                   first_ub_need_last_move_lines *
                                   self.tiling_output_dim_3 + i *
-                                  self.tiling_output_dim_3 + j].set_as \
-                        (ping_ub_1[i * align_out_dim_3 + j])
+                                  self.tiling_output_dim_3 + j].set_as(ping_ub_1[i * align_out_dim_3 + j])
             with self.tik_instance.if_scope(index == ranges - 1):
                 self.tik_instance.data_move(self.output_gm[gm_offset], block_less_16, 0,
                                             1, 1, 0, 0)

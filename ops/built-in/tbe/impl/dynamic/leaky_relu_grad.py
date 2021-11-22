@@ -80,9 +80,9 @@ def leaky_relu_grad_compute(g, x, y, negative_slope=0,
     result_sub = tbe.vadds(result_tmp_right, tvm.const(-1, "float32"))
     result_abs = tbe.vabs(result_sub)
     #check whether attr is None
-    negative_slope = get_attr(negative_slope, "negative_slope",
+    negative_slope_attr = get_attr(negative_slope, "negative_slope",
                               dtype, negative_slope_dtype)
-    result_tmp_left = tbe.vmuls(result_abs, negative_slope)
+    result_tmp_left = tbe.vmuls(result_abs, negative_slope_attr)
 
     result_tmp = tbe.vadd(result_tmp_left, result_tmp_right)
 

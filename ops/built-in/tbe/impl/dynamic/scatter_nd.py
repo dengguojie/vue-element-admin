@@ -24,18 +24,24 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-# max int64 value
-MAX_INT64_VALUE = 2**64 - 1
-# tiling param num
-TILING_ARG_NUM = 36
-# reserved ub size
-RESERVED_UB_SIZE = 8 * 1024
-# 8 bit
-EIGHT_BIT = 8
-# bytes of one block
-BLOCK_BYTES = 32
-# the vector size is 256B
-VECTOR_BYTE_SIZE = 256
+
+# 'pylint:disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    The class for constant
+    """
+    # max int64 value
+    MAX_INT64_VALUE = 2**64 - 1
+    # tiling param num
+    TILING_ARG_NUM = 36
+    # reserved ub size
+    RESERVED_UB_SIZE = 8 * 1024
+    # 8 bit
+    EIGHT_BIT = 8
+    # bytes of one block
+    BLOCK_BYTES = 32
+    # the vector size is 256B
+    VECTOR_BYTE_SIZE = 256
 
 
 def ceil_div(value_x, value_y):
@@ -113,12 +119,12 @@ class ScatterNd():
         self.check_input_params()
 
         self.ai_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.ub_size_bytes = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE)
-        self.updates_dtype_bytes_size = tbe_platform.get_bit_len(self.updates_dtype) // EIGHT_BIT
-        self.indices_dtype_bytes_size = tbe_platform.get_bit_len(self.indices_dtype) // EIGHT_BIT
-        self.updates_data_each_block = BLOCK_BYTES // self.updates_dtype_bytes_size
-        self.indices_data_each_block = BLOCK_BYTES // self.indices_dtype_bytes_size
-        self.data_num_one_repeat = VECTOR_BYTE_SIZE // self.updates_dtype_bytes_size
+        self.ub_size_bytes = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - Constant.RESERVED_UB_SIZE)
+        self.updates_dtype_bytes_size = tbe_platform.get_bit_len(self.updates_dtype) // Constant.EIGHT_BIT
+        self.indices_dtype_bytes_size = tbe_platform.get_bit_len(self.indices_dtype) // Constant.EIGHT_BIT
+        self.updates_data_each_block = Constant.BLOCK_BYTES // self.updates_dtype_bytes_size
+        self.indices_data_each_block = Constant.BLOCK_BYTES // self.indices_dtype_bytes_size
+        self.data_num_one_repeat = Constant.VECTOR_BYTE_SIZE // self.updates_dtype_bytes_size
         self.support_atomic = 0
 
         if tbe_platform.api_check_support("tik.set_atomic_add") and self.updates_dtype == "float32":
@@ -138,17 +144,18 @@ class ScatterNd():
             self.last_var_num = None
             self.var_offset = None
 
-        self.out_gm = self.tik_instance.Tensor(self.updates_dtype, (MAX_INT64_VALUE,),
+        self.out_gm = self.tik_instance.Tensor(self.updates_dtype, (Constant.MAX_INT64_VALUE,),
                                                name="out_gm",
                                                scope=tik.scope_gm,
                                                is_atomic_add=True)
 
-        self.tiling_gm = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
-        self.shape_gm = self.tik_instance.Tensor("int32", (MAX_INT64_VALUE,), name="shape", scope=tik.scope_gm)
-        self.indices_gm = self.tik_instance.Tensor(self.indices_dtype, (MAX_INT64_VALUE,),
+        self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,),
+                                                  name="tiling_gm", scope=tik.scope_gm)
+        self.shape_gm = self.tik_instance.Tensor("int32", (Constant.MAX_INT64_VALUE,), name="shape", scope=tik.scope_gm)
+        self.indices_gm = self.tik_instance.Tensor(self.indices_dtype, (Constant.MAX_INT64_VALUE,),
                                                    name="indices_gm",
                                                    scope=tik.scope_gm)
-        self.updates_gm = self.tik_instance.Tensor(self.updates_dtype, (MAX_INT64_VALUE,),
+        self.updates_gm = self.tik_instance.Tensor(self.updates_dtype, (Constant.MAX_INT64_VALUE,),
                                                    name="updates_gm",
                                                    scope=tik.scope_gm)
 
@@ -1342,7 +1349,7 @@ class ScatterNd():
         None
         """
         with self.tik_instance.for_range(0, self.ai_core_num, block_num=self.ai_core_num) as core_index:
-            self.tiling_ub = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,),
+            self.tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,),
                                                       name="tiling_ub",
                                                       scope=tik.scope_ubuf)
             self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 9, 0, 0)

@@ -45,7 +45,7 @@ def relu6_grad_compute(input_grad, input_x, output_y, kernel_name="relu6_grad"):
     ------
     compute result of relu6grad
     """
-    # input_x<=6 and input_x>=0
+    # 'input_x<=6 and input_x>=0'
     # get min between input and 6
     min_positive_6 = tbe.vmins(input_x, 6)
     # get max between input and 0
