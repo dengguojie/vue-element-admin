@@ -235,27 +235,36 @@ INFER_FUNC_REG(LSTM, LSTMInferShape);
 VERIFY_FUNC_REG(LSTM, LSTMVerify);
 // ----------------LSTM end------------------
 
-// ----------------DepthwiseConv2d Op-------------------
-// Obtains the value of the constant tensor.
-
-static void InferHWDepthwiseConv2D(int32_t input, int32_t kernel, int32_t pad, int32_t stride,
-                                   int32_t dilation, vector<int64_t> output_slice, vector<int64_t>& data_slice,
-                                   bool& start_add_pad, bool& end_add_pad) {
-  // calc start rule: (i_start + pad_h)/stride_h = output_start
-  int64_t i_start = output_slice[0] * stride - pad;
-  if (i_start < 0) {
-    start_add_pad = true;
-    i_start = 0;
+// cal new_pad_value for conv/depthwise/conv_compress(data slice info)
+static void InferHWConv2D(int32_t input, int32_t kernel, int32_t pad, int32_t stride,
+                          int32_t dilation, vector<int64_t> output_slice, vector<int64_t>& data_slice,
+                          int64_t* start_add_pad, int64_t* end_add_pad) {
+  OP_LOGD("InferHWConv2D:", "input:%d kernel:%d pad:%d stride:%d dilation:%d start_add_pad:%ld end_add_pad:%ld\n",
+          input, kernel, pad, stride, dilation, *start_add_pad, *end_add_pad);
+  if (output_slice.size() >= 2) { // output slice has 2 dim(h_start, h_end)
+    // calc start rule: (i_start + pad_h)/stride_h = output_start
+    int64_t i_start = output_slice[0] * stride - pad;
+    if (i_start < 0) {
+      *start_add_pad = -i_start;
+      i_start = 0;
+    } else {
+      *start_add_pad = 0;
+    }
+    // calc end rule: (iend_start + pad_h)/stride_h = output_end
+    // iend_end = iend_start + dilation*(kernel_h-1)
+    int64_t i_end = output_slice[1] * stride - pad + dilation * (kernel - 1);
+    if (i_end >= input) {
+      *end_add_pad = i_end - input + 1;
+      i_end = input - 1;
+    } else {
+      *end_add_pad = 0;
+    }
+    data_slice = {i_start, i_end};
+    OP_LOGD("InferHWConv2D:", "i_start:%ld i_end:%ld output_slice[0]:%ld output_slice[1]:%ld\n",
+            i_start, i_end, output_slice[0], output_slice[1]);
   }
-  // calc end rule: (iend_start + pad_h)/stride_h = output_end
-  // iend_end = iend_start + dilation*(kernel_h-1)
-  int64_t i_end = output_slice[1] * stride - pad + dilation * (kernel - 1);
-  if (i_end >= input) {
-    end_add_pad = true;
-    i_end = input - 1;
-  }
-  data_slice = {i_start, i_end};
 }
+// ----------------DepthwiseConv2d Op-------------------
 /*!
   * @brief provide DepthwiseConv2D operator slice data
   * @param DepthwiseConv2D Operator type.
@@ -346,36 +355,28 @@ IMPLEMT_INFER_DATA_SLICE(DepthwiseConv2D, DepthwiseConv2DInferDataSlice) {
               CUBE_INNER_ERR_REPORT(op_name.GetString(), "input x dynamic h do not support split."),
               return GRAPH_FAILED);
         vector<int64_t> ih_slice;
-        bool top_add_pad = false;
-        bool bom_add_pad = false;
-        InferHWDepthwiseConv2D(ih, kh, padt, strh, dilh, y_data_slice[i], ih_slice, top_add_pad, bom_add_pad);
+        int64_t top_add_pad = pad_list[0];
+        int64_t bom_add_pad = pad_list[1];
+        InferHWConv2D(ih, kh, padt, strh, dilh, y_data_slice[i], ih_slice, &top_add_pad, &bom_add_pad);
         OP_LOGD(op_name.GetString(),
                 "DepthwiseConv2D h axis slice ori_scope is [%d,%d], calced output scope is [%d,%d]",
                 ih_slice[0], ih_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
-        if (!top_add_pad) {
-          new_pad_lists[0] = 0;
-        }
-        if (!bom_add_pad) {
-          new_pad_lists[1] = 0;
-        }
+        new_pad_lists[0] = top_add_pad;
+        new_pad_lists[1] = bom_add_pad;
         x_data_slice[i] = ih_slice;
       } else if (i == 3) {
         CHECK(iw == -1,
               CUBE_INNER_ERR_REPORT(op_name.GetString(), "input x dynamic w do not support split."),
               return GRAPH_FAILED);
         vector<int64_t> iw_slice;
-        bool left_add_pad = false;
-        bool right_add_pad = false;
-        InferHWDepthwiseConv2D(iw, kw, padl, strw, dilw, y_data_slice[i], iw_slice, left_add_pad, right_add_pad);
+        int64_t left_add_pad = pad_list[2];
+        int64_t right_add_pad = pad_list[3];
+        InferHWConv2D(iw, kw, padl, strw, dilw, y_data_slice[i], iw_slice, &left_add_pad, &right_add_pad);
         OP_LOGD(op_name.GetString(),
                 "DepthwiseConv2D w axis slice ori_scope is [%d,%d], calced output scope is [%d,%d]",
                 iw_slice[0], iw_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
-        if (!left_add_pad) {
-          new_pad_lists[2] = 0;
-        }
-        if (!right_add_pad) {
-          new_pad_lists[3] = 0;
-        }
+        new_pad_lists[2] = left_add_pad;
+        new_pad_lists[3] = right_add_pad;
         x_data_slice[i] = iw_slice;
       } else {
         bool is_dyn = (i == 0) && (x_shape[0] == -1);
@@ -4739,24 +4740,6 @@ IMPLEMT_VERIFIER(Conv2D, Conv2DVerify) {
   return GRAPH_SUCCESS;
 }
 
-static void InferHWConv2D(int32_t input, int32_t kernel, int32_t pad, int32_t stride,
-                          int32_t dilation, vector<int64_t> output_slice, vector<int64_t>& data_slice,
-                          bool& start_add_pad, bool& end_add_pad) {
-  // calc start rule: (i_start + pad_h)/stride_h = output_start
-  int64_t i_start = output_slice[0] * stride - pad;
-  if (i_start < 0) {
-    start_add_pad = true;
-    i_start = 0;
-  }
-  // calc end rule: (iend_start + pad_h)/stride_h = output_end
-  // iend_end = iend_start + dilation*(kernel_h-1)
-  int64_t i_end = output_slice[1] * stride - pad + dilation * (kernel - 1);
-  if (i_end >= input) {
-    end_add_pad = true;
-    i_end = input - 1;
-  }
-  data_slice = {i_start, i_end};
-}
 /*!
   * @brief provide Conv2D operator slice data
   * @param Conv2D Operator type.
@@ -4855,34 +4838,26 @@ IMPLEMT_INFER_DATA_SLICE(Conv2D, Conv2DInferDataSlice) {
               CUBE_INNER_ERR_REPORT(op_name.GetString(), "input x dynamic h do not support split."),
               return GRAPH_FAILED);
         vector<int64_t> ih_slice;
-        bool top_add_pad = false;
-        bool bom_add_pad = false;
-        InferHWConv2D(ih, kh, padt, strh, dilh, y_data_slice[i], ih_slice, top_add_pad, bom_add_pad);
+        int64_t top_add_pad = pad_list[0];
+        int64_t bom_add_pad = pad_list[1];
+        InferHWConv2D(ih, kh, padt, strh, dilh, y_data_slice[i], ih_slice, &top_add_pad, &bom_add_pad);
         OP_LOGD(op_name.GetString(), "conv2d h axis slice ori_scope is [%d,%d], output scope is [%d,%d]",
                 ih_slice[0], ih_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
-        if (!top_add_pad) {
-          new_pad_lists[0] = 0;
-        }
-        if (!bom_add_pad) {
-          new_pad_lists[1] = 0;
-        }
+        new_pad_lists[0] = top_add_pad;
+        new_pad_lists[1] = bom_add_pad;
         x_data_slice[i] = ih_slice;
       } else if (i == 3) {
         CHECK(iw == -1,
               CUBE_INNER_ERR_REPORT(op_name.GetString(), "input x dynamic w do not support split."),
               return GRAPH_FAILED);
         vector<int64_t> iw_slice;
-        bool left_add_pad = false;
-        bool right_add_pad = false;
-        InferHWConv2D(iw, kw, padl, strw, dilw, y_data_slice[i], iw_slice, left_add_pad, right_add_pad);
+        int64_t left_add_pad = pad_list[2];
+        int64_t right_add_pad = pad_list[3];
+        InferHWConv2D(iw, kw, padl, strw, dilw, y_data_slice[i], iw_slice, &left_add_pad, &right_add_pad);
         OP_LOGD(op_name.GetString(), "conv2d w axis slice ori_scope is [%d,%d], output scope is [%d,%d]",
                 iw_slice[0], iw_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
-        if (!left_add_pad) {
-          new_pad_lists[2] = 0;
-        }
-        if (!right_add_pad) {
-          new_pad_lists[3] = 0;
-        }
+        new_pad_lists[2] = left_add_pad;
+        new_pad_lists[3] = right_add_pad;
         x_data_slice[i] = iw_slice;
       } else {
         bool is_dyn = (i == 0) && (x_shape[0] == -1);
@@ -5196,31 +5171,23 @@ IMPLEMT_INFER_DATA_SLICE(Conv2DCompress, Conv2DCompressInferDataSlice) {
       have_slice = true;
       if (i == 2) {
         vector<int64_t> ih_slice;
-        bool top_add_pad = false;
-        bool bom_add_pad = false;
-        InferHWConv2D(ih, kh, padt, strh, dilh, y_data_slice[i], ih_slice, top_add_pad, bom_add_pad);
+        int64_t top_add_pad = pad_list[0];
+        int64_t bom_add_pad = pad_list[1];
+        InferHWConv2D(ih, kh, padt, strh, dilh, y_data_slice[i], ih_slice, &top_add_pad, &bom_add_pad);
         OP_LOGD(op_name.GetString(), "conv2d h axis slice ori_scope is [%d, %d], output scope is [%d, %d]",
                 ih_slice[0], ih_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
-        if (!top_add_pad) {
-          new_pad_lists[0] = 0;
-        }
-        if (!bom_add_pad) {
-          new_pad_lists[1] = 0;
-        }
+        new_pad_lists[0] = top_add_pad;
+        new_pad_lists[1] = bom_add_pad;
         x_data_slice[i] = ih_slice;
       } else if (i == 3) {
         vector<int64_t> iw_slice;
-        bool left_add_pad = false;
-        bool right_add_pad = false;
-        InferHWConv2D(iw, kw, padl, strw, dilw, y_data_slice[i], iw_slice, left_add_pad, right_add_pad);
+        int64_t left_add_pad = pad_list[2];
+        int64_t right_add_pad = pad_list[3];
+        InferHWConv2D(iw, kw, padl, strw, dilw, y_data_slice[i], iw_slice, &left_add_pad, &right_add_pad);
         OP_LOGD(op_name.GetString(), "conv2d w axis slice ori_scope is [%d, %d], output scope is [%d, %d]",
                 iw_slice[0], iw_slice[1], y_data_slice[i][0], y_data_slice[i][1]);
-        if (!left_add_pad) {
-          new_pad_lists[2] = 0;
-        }
-        if (!right_add_pad) {
-          new_pad_lists[3] = 0;
-        }
+        new_pad_lists[2] = left_add_pad;
+        new_pad_lists[3] = right_add_pad;
         x_data_slice[i] = iw_slice;
       } else {
         x_data_slice[i] = y_data_slice[i];

@@ -43,7 +43,7 @@ TEST_F(DepthwiseConv2DProtoTest, depthwiseconv2dSplicDataTest) {
     depthwiseconv2d.SetAttr("strides", {1, 1, 1, 1});
     depthwiseconv2d.SetAttr("pads", {1, 1, 1, 1});
     depthwiseconv2d.SetAttr("dilations", {2, 2, 2, 2});
-    std::vector<std::vector<int64_t>> y_data_slice ={{0,3}, {4,6}, {0,62}, {3,10}, {5,7}};
+    std::vector<std::vector<int64_t>> y_data_slice ={{0,3}, {4,6}, {0,61}, {3,10}, {5,7}};
     auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(depthwiseconv2d);
     ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
     ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);

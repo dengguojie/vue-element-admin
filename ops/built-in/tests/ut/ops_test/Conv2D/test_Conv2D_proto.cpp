@@ -495,7 +495,7 @@ TEST_F(Conv2DProtoTest, conv2dSplicDataTest) {
     conv2d.SetAttr("strides", {1, 1, 1, 1});
     conv2d.SetAttr("pads", {1, 1, 1, 1});
     conv2d.SetAttr("dilations", {2, 2, 2, 2});
-    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {0,62}, {3,10}, {}};
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {0,61}, {3,10}, {}};
     auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(conv2d);
     ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
     ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
@@ -516,6 +516,35 @@ TEST_F(Conv2DProtoTest, conv2dSplicDataTest) {
     EXPECT_EQ(expect_pads, pads);
 }
 
+TEST_F(Conv2DProtoTest, conv2dSplicDataTest02) {
+    ge::op::Conv2D conv2d;
+    conv2d.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
+    conv2d.UpdateInputDesc("filter", create_desc_with_ori({3, 3, 16, 1}, ge::DT_FLOAT16, ge::FORMAT_HWCN,{3, 3, 16, 1},ge::FORMAT_HWCN));
+    conv2d.UpdateOutputDesc("y", create_desc_with_ori({4,64,64,1}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4,64,64,1},ge::FORMAT_NHWC));
+    conv2d.SetAttr("strides", {1, 1, 1, 1});
+    conv2d.SetAttr("pads", {1, 1, 1, 1});
+    conv2d.SetAttr("dilations", {1, 1, 1, 1});
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {0,63}, {1,62}, {}};
+    auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(conv2d);
+    ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+    ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+    std::vector<std::vector<int64_t>> tt;
+    ge::AttrUtils::GetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, tt);
+
+    auto status = op_desc->InferDataSlice();
+    ge::GeTensorDescPtr tensor_desc_x = op_desc->MutableInputDesc("x");
+    std::vector<std::vector<int64_t>> x_data_slice;
+    ge::AttrUtils::GetListListInt(tensor_desc_x, ge::ATTR_NAME_DATA_SLICE, x_data_slice);
+
+    std::vector<std::vector<int64_t>> expect_x_data_slice = {{}, {}, {0,63}, {0,63}, {}};
+    EXPECT_EQ(expect_x_data_slice, x_data_slice);
+
+    std::vector<int> pads;
+    conv2d.GetAttr("pads",pads);
+    std::vector<int> expect_pads = {1, 1, 0, 0};
+    EXPECT_EQ(expect_pads, pads);
+}
+
 TEST_F(Conv2DProtoTest, conv2dcompressSplitDataTest01) {
     ge::op::Conv2DCompress conv2dcompress;
     conv2dcompress.UpdateInputDesc("x", create_desc_with_ori({4, 64, 64, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC,{4, 64, 64, 16},ge::FORMAT_NHWC));
@@ -524,7 +553,7 @@ TEST_F(Conv2DProtoTest, conv2dcompressSplitDataTest01) {
     conv2dcompress.SetAttr("strides", {1, 1, 1, 1});
     conv2dcompress.SetAttr("pads", {1, 1, 1, 1});
     conv2dcompress.SetAttr("dilations", {2, 2, 2, 2});
-    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {0,62}, {3,10}, {}};
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {0,61}, {3,10}, {}};
     auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(conv2dcompress);
     ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
     ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
@@ -553,7 +582,7 @@ TEST_F(Conv2DProtoTest, conv2dcompressSplitDataTest02) {
     conv2dcompress.SetAttr("strides", {1, 1, 1, 1});
     conv2dcompress.SetAttr("pads", {1, 1, 1, 1});
     conv2dcompress.SetAttr("dilations", {2, 2, 2, 2});
-    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {3,10}, {0,62}, {}};
+    std::vector<std::vector<int64_t>> y_data_slice ={{}, {}, {3,10}, {0,61}, {}};
     auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(conv2dcompress);
     ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
     ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
