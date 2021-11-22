@@ -1,11 +1,13 @@
-onnx-parser_test:U
+onnx-parser_test:]
 
 xy"Softmax*
-axis Softmax_v11Z
-x
-
-
-b
+axis Softmax_v11Z
+x
+
+
+
+
+b
 y
 
 

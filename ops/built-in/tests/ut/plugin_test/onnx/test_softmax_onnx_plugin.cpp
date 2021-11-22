@@ -53,7 +53,7 @@ TEST_F(softmax_onnx_plugin_test, softmax_onnx_plugin_test_case_2) {
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 6);
+  EXPECT_EQ(nodes.size(), 2);
 }
 
 TEST_F(softmax_onnx_plugin_test, softmax_onnx_plugin_test_case_4) {
@@ -72,7 +72,7 @@ TEST_F(softmax_onnx_plugin_test, softmax_onnx_plugin_test_case_4) {
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   // check op count, some op need check op attr, op input count.
   std::vector<ge::GNode> nodes = graph.GetAllNodes();
-  EXPECT_EQ(nodes.size(), 6);
+  EXPECT_EQ(nodes.size(), 2);
 }
 
 TEST_F(softmax_onnx_plugin_test, softmax_onnx_plugin_test_case_5) {

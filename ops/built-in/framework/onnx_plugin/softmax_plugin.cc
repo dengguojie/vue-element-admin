@@ -59,32 +59,34 @@ Status ParseParamsSoftmaxV11(const Message *op_src, ge::Operator &op_dest) {
     ONNX_PLUGIN_LOGE(op_dest.GetName().c_str(), "acquire attr from NodeProto failed.");
     return FAILED;
   }
-  if (v_axis.empty()) {
-    // default value in version 8 9 10 11 12.
-    v_axis.push_back(1);
-  }
   op_dest.SetAttr("axes", v_axis);
   return SUCCESS;
 }
 
 Status ParseOpToGraphSoftmax(const ge::Operator& op, Graph& graph) {
   auto data0 = op::Data("data0").set_attr_index(0);
-  auto identity = op::Identity().set_input_x(data0);
   std::vector<int> axis;
   if (op.GetAttr("axes", axis) != SUCCESS) {
     ONNX_PLUGIN_LOGE(op.GetName().c_str(), "GetAttr axes fail");
     return FAILED;
   }
-  if (axis.empty()) {
-    axis.push_back(1);
-  }
-  auto flatten = op::Flatten().set_input_x(identity).set_attr_axis(axis[0]);
-  auto shape = op::Shape().set_input_x(identity);
-  auto softmax = op::SoftmaxV2().set_input_x(flatten).set_attr_axes({1});
-  auto reshape = op::Reshape().set_input_x(softmax).set_input_shape(shape);
+  
   std::vector<ge::Operator> inputs = {data0};
   std::vector<std::pair<ge::Operator, std::vector<size_t>>> output_indexs;
-  output_indexs.emplace_back(reshape, std::vector<size_t>{0});
+  if (!axis.empty() && (axis[0] == 1 || axis[0] == -1)) {
+    auto softmax = op::SoftmaxV2().set_input_x(data0).set_attr_axes({axis[0]});
+    output_indexs.emplace_back(softmax, std::vector<size_t>{0});
+  } else {
+    if (axis.empty()) {
+      axis.push_back(1);
+    }
+    auto identity = op::Identity().set_input_x(data0);
+    auto flatten = op::Flatten().set_input_x(identity).set_attr_axis(axis[0]);
+    auto shape = op::Shape().set_input_x(identity);
+    auto softmax = op::SoftmaxV2().set_input_x(flatten).set_attr_axes({1});
+    auto reshape = op::Reshape().set_input_x(softmax).set_input_shape(shape);
+    output_indexs.emplace_back(reshape, std::vector<size_t>{0});
+  }
   graph.SetInputs(inputs).SetOutputs(output_indexs);
   return SUCCESS;
 }

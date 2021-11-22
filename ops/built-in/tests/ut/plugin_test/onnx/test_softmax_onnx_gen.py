@@ -5,13 +5,13 @@ from onnx import TensorProto
 
 def make_softmax_v11():
     """v11"""
-    x = helper.make_tensor_value_info('x', TensorProto.FLOAT, [1, 3])
+    x = helper.make_tensor_value_info('x', TensorProto.FLOAT, [3,4,5,6])
     y = helper.make_tensor_value_info('y', TensorProto.FLOAT, [1, 3])
     node_def = helper.make_node(
         'Softmax',
         inputs=['x'],
         outputs=['y'],
-        axis=1
+        axis=2
     )
 
     graph = helper.make_graph(
