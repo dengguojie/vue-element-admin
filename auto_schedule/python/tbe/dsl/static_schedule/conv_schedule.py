@@ -4363,17 +4363,24 @@ class CceConvOp:
             sch[bl0].mem_unique()
             if "int32_bias" not in tensor_map.keys() and not ConvParam.convbn1_flag:
                 sch[c_col].mem_unique()
-        
+
         def _handle_transdata_ubfusion():
             if res.op.tag == "conv2d_data_rm" and res.op.input_tensors[0].op.tag == "5HD_trans_NCHW":
                 # conv+transdata ub fusion, cout must be 1
                 transdata_tensor = res.op.input_tensors[0]
                 # hardware must process 16*16 block, cout is 1, so need reserved extras 15*16 ub space
-                storage_bound = c_tiling_factor[1] + 15 * 16 
+                storage_bound = c_tiling_factor[1] + 15 * 16
                 process_tensor = transdata_tensor.op.input_tensors[0]
                 sch[transdata_tensor].set_buffer_size(storage_bound)
+                # vnchwconv min emit size is 16*16
+                sch[transdata_tensor].buffer_align((1, 1), (1, 1), (16, 16))
                 sch[transdata_tensor].split(sch[transdata_tensor].op.axis[2], 16)
-                sch[transdata_tensor].emit_insn(sch[transdata_tensor].op.axis[0], "vnchwconv")
+                # when hout*wout less then 16, use data move instead of vnchwconv
+                vnchwconv_inner_size = 16
+                if c_tiling_factor[1] > vnchwconv_inner_size:
+                    sch[transdata_tensor].emit_insn(sch[transdata_tensor].op.axis[0], "vnchwconv")
+                else:
+                    sch[transdata_tensor].emit_insn(sch[transdata_tensor].op.axis[0], "data_mov")
                 # need storage_align all tensors between res tensor and c_ub tensor
                 while True:
                     if process_tensor.op.name == tensor_map["c_ub"].op.name:
