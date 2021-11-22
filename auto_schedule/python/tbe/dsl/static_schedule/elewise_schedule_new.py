@@ -482,7 +482,7 @@ class ElewiseSchedule(VectorSchedule):
                     block_split_axis = block_split_axis - 1
                     block_split_inner_size = 1
 
-        if block_split_axis != 0 or (block_split_axis == 0 and 
+        if block_split_axis != 0 or (block_split_axis == 0 and
                                      block_split_inner_size != shape[0]):
             if len(self._mid_output_tensors) > 1:
                 for tensor in self._mid_output_tensors:
@@ -492,7 +492,7 @@ class ElewiseSchedule(VectorSchedule):
                         continue
 
                     _tmp_block_inner = math.ceil(_out_shape[block_split_axis] / block_split_outer_size)
-                    
+
                     if block_split_axis == len(_out_shape) - 1:
                         _block_size = _tmp_block_inner * DTYPE_WIDTH_MAP[_out_dtype] * 2
                     else:
@@ -789,7 +789,7 @@ class ElewiseSchedule(VectorSchedule):
             data_size = 1
             for i in range(ub_split_axis + 1, len(shape), 1):
                 data_size = data_size * shape[i]
-            size = DTYPE_WIDTH_MAP[dtype] * 2 * ub_split_inner * data_size
+            size = DTYPE_WIDTH_MAP.get(dtype) * 2 * ub_split_inner * data_size
             if size < 32:
                 return True
             if int(size) % max_ub_count != 0:
@@ -1310,7 +1310,7 @@ class ElewiseSchedule(VectorSchedule):
                 self._compute_at_map[read_buffer] = para
 
         for i in self._cache_write_tensors_and_buffer_map:
-            write_buffer = self._cache_write_tensors_and_buffer_map[i]
+            write_buffer = self._cache_write_tensors_and_buffer_map.get(i)
             if self._is_preload_fused_axis_scene:
                 para = {"parent": self._schedule[res],
                         "scope": preload_fused_axis}
@@ -1392,13 +1392,13 @@ class ElewiseSchedule(VectorSchedule):
 
         shape = self._shape_to_list(self._last_output_tensor.shape)
 
-        block_tiling_para = self._tiling_para["block_tiling"]
-        block_split_axis = block_tiling_para["axis"]
-        block_split_inner_size = block_tiling_para["factor"]
+        block_tiling_para = self._tiling_para.get("block_tiling")
+        block_split_axis = block_tiling_para.get("axis")
+        block_split_inner_size = block_tiling_para.get("factor")
 
-        ub_tiling_para = self._tiling_para["ub_tiling"]
-        ub_split_axis = ub_tiling_para["axis"]
-        ub_split_inner = ub_tiling_para["factor"]
+        ub_tiling_para = self._tiling_para.get("ub_tiling")
+        ub_split_axis = ub_tiling_para.get("axis")
+        ub_split_inner = ub_tiling_para.get("factor")
         if self._need_db is None:
             self._need_db = self._need_double_buffer(
                 shape, block_split_axis, block_split_inner_size, ub_split_axis,
@@ -1646,7 +1646,7 @@ class ElewiseSchedule(VectorSchedule):
             pragma = "vector_axpy"
 
         if src_buffer in self._cache_read_tensors_and_buffer_map:
-            reuse_buffer = self._cache_read_tensors_and_buffer_map[src_buffer]
+            reuse_buffer = self._cache_read_tensors_and_buffer_map.get(src_buffer)
         else:
             reuse_buffer = self._cache_write_tensors_and_buffer_map[src_buffer]
 
@@ -3281,11 +3281,9 @@ class ElewiseSchedule(VectorSchedule):
         def _op_width(op_node):
             num_type = op_node.dtype
             if num_type.lower() not in DTYPE_WIDTH_MAP.keys():
-                dict_args = dict()
-                dict_args["errCode"] = "E90001"
-                dict_args["detailed_cause"] = "The dtype must be bool, s8, " \
-                                               "u8, f16, s16, u16, f32, s32, " \
-                                               "u32, s64, u64, [%s] is unsupported!" % num_type
+                dict_args = {"errCode": "E90001",
+                             "detailed_cause": f"The dtype must be bool, s8, u8, f16, s16, u16, f32, s32, u32, s64, "
+                                               f"u64, [{num_type}] is unsupported!"}
                 raise RuntimeError(dict_args, get_error_message(dict_args))
 
             tmp_width = 0
@@ -3307,7 +3305,7 @@ class ElewiseSchedule(VectorSchedule):
                 elif tag.find("cmpsel") != -1:
                     tmp_width = 3 * DTYPE_WIDTH_MAP[num_type.lower()]
 
-            return DTYPE_WIDTH_MAP[num_type.lower()] + tmp_width
+            return DTYPE_WIDTH_MAP.get(num_type.lower()) + tmp_width
 
         op_graph = {}
         for op_node in self._origin_op:
@@ -3363,9 +3361,8 @@ class ElewiseSchedule(VectorSchedule):
             total_width = __update_total_width(total_width)
 
         if not total_width:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "Can not calculate with no compute, total_width is [%s]" % total_width
+            dict_args = {"errCode": "E90001",
+                         "detailed_cause": f"Can not calculate with no compute, total_width is [{total_width}]"}
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
         max_bound = total_width * 128
@@ -3425,9 +3422,7 @@ class ElewiseSchedule(VectorSchedule):
         elif tmp_op["op"].find("reduce") != -1:
             if self._have_reduce and not hasattr(self,
                                                  util.REDUCE_MULTI_PRIME_KEY):
-                dict_args = dict()
-                dict_args["errCode"] = "E90003"
-                dict_args["detailed_cause"] = "Only support one time reduce"
+                dict_args = {"errCode": "E90003", "detailed_cause": "Only support one time reduce"}
                 raise RuntimeError(dict_args, get_error_message(dict_args))
             self._have_reduce = True
             tmp_op["reduce_axis"] = list(op_node.reduce_axis)

@@ -300,9 +300,7 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
     if isinstance(outs, (tuple, list)):
         if len(outs) > 1:
             if not check_support_muti_output(outs):
-                dict_args = dict()
-                dict_args["errCode"] = "E90003"
-                dict_args["detailed_cause"] = "Only vector op support muti output now"
+                dict_args = {"errCode": "E90003", "detailed_cause": "Only vector op support multi output now"}
                 raise RuntimeError(dict_args, get_error_message(dict_args))
             out_tmp = outs
         else:
@@ -423,10 +421,8 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
             cce_op = CceOp(scope_ubuf, need_tensorize=True,
                            need_pragma=True)
             if len(outs) > 1:
-                dict_args = dict()
-                dict_args["errCode"] = "E90003"
-                dict_args["detailed_cause"] = "cpu schedule not support " \
-                                              "muti-output, outputs num is [%s]" % len(outs)
+                dict_args = {"errCode": "E90003",
+                             "detailed_cause": f"cpu schedule not support multi-output, outputs num is [{len(outs)}]"}
                 raise RuntimeError(dict_args, get_error_message(dict_args))
             schedule = cce_op.cpu_schedule(outs[0])
     schedule.cce_special = {}
@@ -550,12 +546,10 @@ def decl_memory(buffer_scope):
             return tvm.make.node("MemoryInfo",
                                  unit_bits=32 * 8,
                                  max_simd_bits=32 * 8,
-                                 max_num_bits=get_soc_spec("UB_SIZE") * 8,
+                                 max_num_bits=get_soc_spec("UB_SIZE") * 8, 
                                  head_address=tvm.const(0, 'int32'))
     except tvm._ffi.base.TVMError:  # pylint: disable=W0212
-        dict_args = dict()
-        dict_args["errCode"] = "E90003"
-        dict_args["detailed_cause"] = "declare memory failed!"
+        dict_args = {"errCode": "E90003", "detailed_cause": "declare memory failed!"}
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
@@ -771,7 +765,7 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
                                                     "pooling2d_max",
                                                     "pooling2d_gap",
                                                     "pooling2d_gmp"):
-                        sch_map[update_tensor] = sch_map[tensor_i]
+                        sch_map[update_tensor] = sch_map.get(tensor_i)
                         if update_tensor not in res_list:
                             spec_mid_list.append(update_tensor)
                         spec_mid_list.remove(tensor_i)
@@ -827,7 +821,7 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
         for out in outs:
             spec_node = __find_attatch_spec_node(out)
             if spec_node is not None and \
-                    out not in spec_node_to_output_map[spec_node]:
+                    out not in spec_node_to_output_map.get(spec_node):
                 spec_node_to_output_map[spec_node].append(out)
 
         return spec_node_to_output_map
@@ -1316,11 +1310,8 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
                                 sort_keys=True, indent=4,
                                 separators=(',', ':'))
             else:
-                dict_args = dict()
-                dict_args["errCode"] = "E90001"
-                dict_args["detailed_cause"] = "The file [%s] does not exist, " \
-                                              "please check the path." \
-                                              % (fname)
+                dict_args = {"errCode": "E90001",
+                             "detailed_cause": f"The file [{fname}] does not exist, please check the path."}
                 raise RuntimeError(dict_args, get_error_message(dict_args))
 
         def _shape_to_list(shape):
@@ -1432,18 +1423,16 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
 
     for key in local_config_map:
         key_exist_flag = (config_map.get(key) is not None) and \
-                         (isinstance(config_map[key], type(local_config_map[key])) or
-                          (local_config_map[key] is None))
+                         (isinstance(config_map[key], type(local_config_map.get(key))) or
+                          (local_config_map.get(key) is None))
         if key_exist_flag:
-            local_config_map[key] = config_map[key]
+            local_config_map[key] = config_map.get(key)
 
-    config_tensor_list = local_config_map["tensor_list"]
+    config_tensor_list = local_config_map.get("tensor_list")
 
     if config_tensor_list is None:
-        dict_args = dict()
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "Please infer correct parameter of " \
-                                      "tensor list throught the key of 'tensor_list'"
+        dict_args = {"errCode": "E90001",
+                     "detailed_cause": "Please infer correct parameter of tensor list through the key of 'tensor_list'"}
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     real_out_tensors = sch.cce_special["real_out_tensor"]
@@ -1475,11 +1464,11 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
     te_util.L1CommonParam.l1_fusion_tensors_map = None
 
     tensor_list = tensor_list + l1_fusion_tensors
-    _build(sch, tensor_list, local_config_map["name"])
+    _build(sch, tensor_list, local_config_map.get("name"))
 
     with buildcfg.build_config(**build_map):
         if not get_current_build_config("enable_op_prebuild"):
-            _write_workspace_info(special_tensor_list, local_config_map["name"])
+            _write_workspace_info(special_tensor_list, local_config_map.get("name"))
 
     cce_emitinsn_params.cceEmitParamsIns.clear_param()
 
@@ -1489,9 +1478,7 @@ class ScheduleDispatch:
     @generic_dispatch(key=1)
     def handle_case(self, case):
         """handle case"""
-        dict_args = dict()
-        dict_args["errCode"] = "E90003"
-        dict_args["detailed_cause"] = "Unknown key %d in generic_dispatch" % (key)
+        dict_args = {"errCode": "E90003", "detailed_cause": f"Unknown key {key} in generic_dispatch"}
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     @handle_case.register('segment')

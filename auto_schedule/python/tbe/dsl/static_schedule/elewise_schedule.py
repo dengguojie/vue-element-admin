@@ -218,9 +218,8 @@ class CceOp:
             self._total_size = \
                 get_soc_spec("UB_SIZE") // 2
         else:
-            dict_args = dict()
-            dict_args["errCode"] = "E90003"
-            dict_args["detailed_cause"] = "only support UB buffer now, while scope is [%s]" % self._scope
+            dict_args = {"errCode": "E90003",
+                         "detailed_cause": "only support UB buffer now, while scope is [{self._scope}]"}
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
         self._emit_insn_map = {"elewise_single_cast": "vector_conv",
@@ -416,7 +415,7 @@ class CceOp:
         for i in range(len(self._shape_before_reduce)):
             if i not in self._reduce_axis_num:
                 shape.append(self._shape_before_reduce[i])
-        reduce_node_last_axis_size = DTYPE_WIDTH_MAP[dtype] * 2 * self._shape_mul(shape)
+        reduce_node_last_axis_size = DTYPE_WIDTH_MAP.get(dtype) * 2 * self._shape_mul(shape)
 
         if reduce_node_last_axis_size <= 32:
             return True
@@ -434,7 +433,7 @@ class CceOp:
             # for (126,15,15) [-2] not 32B align, can not enable multi core
             if not self._need_storage_align_falg and ub_split_axis in self._reduce_axis_num and \
                     ub_split_axis - self._split_axis == 1 and \
-                    DTYPE_WIDTH_MAP[dtype] * 2 * self._shape_mul(
+                    DTYPE_WIDTH_MAP.get(dtype) * 2 * self._shape_mul(
                             self._shape_before_reduce[ub_split_axis + 1:]) < 32:
                 return False
             return True
@@ -625,10 +624,9 @@ class CceOp:
             shape_input = self._shape_to_list(self._origin_tensor[-1].shape)
 
             if len(shape_res) != len(shape_input):
-                dict_args = dict()
-                dict_args["errCode"] = "E90001"
-                dict_args["detailed_cause"] = "shape length for res[%s] and input[%s] are diff." \
-                                               % (len(shape_res), len(shape_input))
+                dict_args = {"errCode": "E90001",
+                             "detailed_cause": f"shape length for res[{len(shape_res)}] and "
+                                               f"input[{len(shape_input)}] are diff."}
                 raise RuntimeError(dict_args, get_error_message(dict_args))
             broadcast_axis = len(shape_res) - 1
             for i in range(len(shape_res) - 1, 0, -1):
@@ -772,11 +770,9 @@ class CceOp:
         def _op_width(tensor_op):
             num_type = tensor_op.dtype
             if num_type.lower() not in DTYPE_WIDTH_MAP.keys():
-                dict_args = dict()
-                dict_args["errCode"] = "E90001"
-                dict_args["detailed_cause"] = "The dtype must be bool, s8, " \
-                                               "u8, f16, s16, u16, f32, s32, " \
-                                               "u32, s64, u64, [%s] is unsupported!" % num_type
+                dict_args = {"errCode": "E90001",
+                             "detailed_cause": f"The dtype must be bool, s8, u8, f16, s16, u16, f32, s32, u32, s64, "
+                                               f"u64, [{num_type}] is unsupported!"}
                 raise RuntimeError(dict_args, get_error_message(dict_args))
 
             tmp_width = 0
@@ -836,9 +832,8 @@ class CceOp:
             total_width = total_width + 2
 
         if not total_width:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "Can not calculate with no compute, total_width is [%s]" % total_width
+            dict_args = {"errCode": "E90001",
+                         "detailed_cause": f"Can not calculate with no compute, total_width is [{total_width}]"}
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
         max_bound = total_width*128
@@ -1688,10 +1683,9 @@ class CceOp:
         shape_input = self._shape_to_list(self._origin_tensor[-1].shape)
 
         if len(shape_res) != len(shape_input):
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "shape length for res[%s] and input[%s] are diff." \
-                                           % (len(shape_res), len(shape_input))
+            dict_args = {"errCode": "E90001",
+                         "detailed_cause": f"shape length for res[{len(shape_res)}] and"
+                                           f" input[{len(shape_input)}] are diff."}
             raise RuntimeError(dict_args, get_error_message(dict_args))
         broadcast_axis = len(shape_res) - 1
         for i in range(len(shape_res) - 1, 0, -1):
@@ -1980,7 +1974,7 @@ class CceOp:
                 return
 
             for i in self._read_cache:
-                cache_read_buffer = self._cache_buffer_map[i]
+                cache_read_buffer = self._cache_buffer_map.get(i)
                 align_factor, _ = util.get_align_factor(
                     cache_read_buffer.dtype)
                 align_factor = __do_256_bits_align_for_vcmpv(align_factor, cache_read_buffer.dtype, i)
@@ -2945,7 +2939,7 @@ class CceOp:
                     self._res_tensor.dtype == "float32":
                 align_axis_before = self._reduce_axis_num[-1]
                 for i in self._read_cache:
-                    cache_read_buffer = self._cache_buffer_map[i]
+                    cache_read_buffer = self._cache_buffer_map.get(i)
                     align_factor, _ = util.get_align_factor(
                         cache_read_buffer.dtype)
                     self._schedule[cache_read_buffer].storage_align(
@@ -4049,9 +4043,7 @@ class CceOp:
 
             reduce_tensorize_for_op()
         else:
-            dict_args = dict()
-            dict_args["errCode"] = "E90003"
-            dict_args["detailed_cause"] = "%s not support" % lop["op"]
+            dict_args = {"errCode": "E90003", "detailed_cause": "%s not support" % lop["op"]}
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
         def _do_storage_align_for_multi_out(cache_buffer_for_res):
@@ -4159,9 +4151,7 @@ class CceOp:
                 tmp_op["args"] = [tensor_op.body[0]]
         elif tmp_op["op"].find("reduce") != -1:
             if self._have_reduce:
-                dict_args = dict()
-                dict_args["errCode"] = "E90003"
-                dict_args["detailed_cause"] = "Only support one time reduce"
+                dict_args = {"errCode": "E90003", "detailed_cause": "Only support one time reduce"}
                 raise RuntimeError(dict_args, get_error_message(dict_args))
             self._have_reduce = True
             tmp_op["reduce_axis"] = list(tensor_op.reduce_axis)
@@ -4338,7 +4328,7 @@ class CceOp:
             res_dict[sort_list[i]] = i
 
         for i in sorted(res_dict.keys()):
-            index.append(res_dict[i])
+            index.append(res_dict.get(i))
 
         return index
 
@@ -4389,7 +4379,7 @@ class CceOp:
                                                           self._ub_max_buff)
 
         # emit_insn include double_buffer
-        if self.dsl_type == DSL_REDUCE_TYPE_MAP["single_reduce_sum_float32"]:
+        if self.dsl_type == DSL_REDUCE_TYPE_MAP.get("single_reduce_sum_float32"):
             self._schedule[self._res_tensor].emit_insn(self.xinner[0],
                                                        "reduce_2_3_axis_reduce_sum_optimal")
         elif self.dsl_type == DSL_REDUCE_TYPE_MAP["cast_single_reduce_sum_4d"]:
@@ -4468,7 +4458,7 @@ class CceOp:
         # 5HD: copy to ub limitation UB_MAX_ENABLE_BUFF, copy command limitation 4096
         # vector compute 256B align
         verify_5d = len(shape) == 5 and \
-            self.dsl_type == DSL_REDUCE_TYPE_MAP["single_reduce_sum_float32"] and \
+            self.dsl_type == DSL_REDUCE_TYPE_MAP.get("single_reduce_sum_float32") and \
             dtype == "float32" and shape[4] == block_width_fp16
         verify_buff_limit_5d = (buffer_size * 3) * type_len_map[dtype] * 2 < self._ub_max_buff
         verify_vector_align_5d = (buffer_size // shape[3]) % ELEMENTS_VECTOR_OP_FP16 == 0
@@ -4482,8 +4472,8 @@ class CceOp:
 
         # 4d: 32B align need: buffer_size % 16(8 for fp32) == 0
         verify_4d = len(shape) == 4 and \
-            (self.dsl_type == DSL_REDUCE_TYPE_MAP["cast_single_reduce_sum_4d"] or
-             self.dsl_type == DSL_REDUCE_TYPE_MAP["cast_single_reduce_mean_4d"]) and \
+            (self.dsl_type == DSL_REDUCE_TYPE_MAP.get("cast_single_reduce_sum_4d") or
+             self.dsl_type == DSL_REDUCE_TYPE_MAP.get("cast_single_reduce_mean_4d")) and \
             dtype == "float16"
         verify_vector_align_4d = buffer_size % block_width == 0
         verify_buff_size_4d = buffer_size >= min_size

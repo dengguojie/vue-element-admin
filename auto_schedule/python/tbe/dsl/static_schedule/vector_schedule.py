@@ -284,9 +284,7 @@ class VectorSchedule(object):
         l1_fusion_type = self._fusion_params.get("l1_fusion_type",
                                                  GET_DEFAULT_VALUE)
         if l1_fusion_type == L1_BREADTH_FUSION:
-            dict_args = dict()
-            dict_args["errCode"] = "E90003"
-            dict_args["detailed_cause"] = "L1 fusion only support depth fusion!"
+            dict_args = {"errCode": "E90003", "detailed_cause": "L1 fusion only support depth fusion!"}
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
         self._is_l1fusion = l1_fusion_type == L1_DEPTH_FUSION

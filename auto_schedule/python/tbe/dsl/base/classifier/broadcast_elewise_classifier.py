@@ -185,9 +185,8 @@ class BroadcastElewiseClassifier:
             if len(no_one_range) > 0:
                 mied_range = get_range_intersection(no_one_range)
                 if mied_range is None:
-                    dict_args = dict()
-                    dict_args["errCode"] = "E90001"
-                    dict_args["detailed_cause"] = "input shape error, shape range no intersection"
+                    dict_args = {"errCode": "E90001",
+                                 "detailed_cause": "input shape error, shape range no intersection"}
                     raise RuntimeError(dict_args, get_error_message(dict_args))
                 for i, r in enumerate(_range):
                     if 1 in r:

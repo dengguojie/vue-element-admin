@@ -882,13 +882,13 @@ class ReduceAtomicSchedule(VectorSchedule):
         output_align_factor, _ = util.get_align_factor(output_align_type)
 
         for key in self._cache_read_tensors_and_buffer_map:
-            cache_read_buffer = self._cache_read_tensors_and_buffer_map[key]
+            cache_read_buffer = self._cache_read_tensors_and_buffer_map.get(key)
             self._schedule[cache_read_buffer].storage_align(
                 cache_read_buffer.op.axis[align_axis], input_align_factor, 0)
 
         for key in self._cache_write_tensors_and_buffer_map:
             if key != self._res_tensor:
-                cache_write_buffer = self._cache_write_tensors_and_buffer_map[key]
+                cache_write_buffer = self._cache_write_tensors_and_buffer_map.get(key)
                 self._schedule[cache_write_buffer].storage_align(
                     cache_write_buffer.op.axis[align_axis],
                     output_align_factor, 0)
@@ -1434,17 +1434,17 @@ class ReduceAtomicSchedule(VectorSchedule):
         """
         :return:
         """
-        block_tiling_result = self._reduce_tiling_result["block_tiling"]
-        block_tiling_tensor = block_tiling_result["tiling_tensor"]
-        block_split_axis = block_tiling_result["axis"]
-        res_block_inner = block_tiling_result["inner_itervar"]
+        block_tiling_result = self._reduce_tiling_result.get("block_tiling")
+        block_tiling_tensor = block_tiling_result.get("tiling_tensor")
+        block_split_axis = block_tiling_result.get("axis")
+        res_block_inner = block_tiling_result.get("inner_itervar")
 
         ub_tiling_result_list = []
-        ub_tiling_para_list = self._reduce_tiling_para["ub_tiling"]
+        ub_tiling_para_list = self._reduce_tiling_para.get("ub_tiling")
         ub_tiling_para = ub_tiling_para_list[0]
-        ub_tiling_tensor = ub_tiling_para["tiling_tensor"]
-        ub_split_axis = ub_tiling_para["axis"]
-        ub_split_inner = ub_tiling_para["factor"]
+        ub_tiling_tensor = ub_tiling_para.get("tiling_tensor")
+        ub_split_axis = ub_tiling_para.get("axis")
+        ub_split_inner = ub_tiling_para.get("factor")
 
         if ub_tiling_tensor is not None:
             if block_tiling_tensor is not None and block_split_axis == ub_split_axis \
@@ -2041,20 +2041,20 @@ class ReduceAtomicSchedule(VectorSchedule):
         """
         ub_tiling_result_list = self._reduce_tiling_result["ub_tiling"]
         ub_tiling_result = ub_tiling_result_list[0]
-        ub_tiling_tensor = ub_tiling_result["tiling_tensor"]
-        res_ub_inner = ub_tiling_result["inner_itervar"]
+        ub_tiling_tensor = ub_tiling_result.get("tiling_tensor")
+        res_ub_inner = ub_tiling_result.get("inner_itervar")
 
         self._get_emit_insn_map()
         self._get_reg_emit_insn_map()
 
         for i in self._cache_read_tensors_and_buffer_map:
-            read_buffer = self._cache_read_tensors_and_buffer_map[i]
+            read_buffer = self._cache_read_tensors_and_buffer_map.get(i)
             para = {"scope": read_buffer.op.axis[0],
                     "instruction": 'dma_copy'}
             self._emit_insn_map[read_buffer] = para
 
         for i in self._cache_write_tensors_and_buffer_map:
-            write_buffer = self._cache_write_tensors_and_buffer_map[i]
+            write_buffer = self._cache_write_tensors_and_buffer_map.get(i)
             insn = self._calculate_emit_insn_map(write_buffer)
             if insn == "unified_broadcast":
                 if not self._is_broadcast_last_axis_tensor(i):
@@ -2121,7 +2121,7 @@ class ReduceAtomicSchedule(VectorSchedule):
                 last_reduce_index = self._reduce_info["reduce_index_map"][
                     ak_end_index + 1]
 
-                block_tiling_result = self._reduce_tiling_result["block_tiling"]
+                block_tiling_result = self._reduce_tiling_result.get("block_tiling")
                 block_split_axis = block_tiling_result["axis"]
                 reduce_index_map = self._reduce_info["reduce_index_map"]
                 block_reduce_index = reduce_index_map[block_split_axis]
@@ -2214,7 +2214,7 @@ class ReduceAtomicSchedule(VectorSchedule):
         None
         """
         # pylint: disable=invalid-sequence-index
-        ub_tiling_result = self._reduce_tiling_result["ub_tiling"]
+        ub_tiling_result = self._reduce_tiling_result.get("ub_tiling")
         ub_split_axis = ub_tiling_result["axis"]
 
         op_cmd = lop["op"].split("_")
@@ -2379,11 +2379,9 @@ class ReduceAtomicSchedule(VectorSchedule):
         def _op_width(op_node):
             num_type = op_node.dtype
             if num_type.lower() not in DTYPE_WIDTH_MAP.keys():
-                dict_args = dict()
-                dict_args["errCode"] = "E90001"
-                dict_args["detailed_cause"] = "The dtype must be bool, s8, " \
-                                              "u8, f16, s16, u16, f32, s32, " \
-                                              "u32, s64, u64, [%s] is unsupported!" % num_type
+                dict_args = {"errCode": "E90001",
+                             "detailed_cause": f"The dtype must be bool, s8, u8, f16, s16, u16, f32, s32,"
+                                               f"u32, s64, u64, [{num_type}] is unsupported!"}
                 raise RuntimeError(dict_args, get_error_message(dict_args))
             tmp_width = 0
             if op_node.op.tag is not None:
@@ -2404,7 +2402,7 @@ class ReduceAtomicSchedule(VectorSchedule):
                 elif tag.find("cmpsel") != -1:
                     tmp_width = 3 * DTYPE_WIDTH_MAP[num_type.lower()]
 
-            return DTYPE_WIDTH_MAP[num_type.lower()] + tmp_width
+            return DTYPE_WIDTH_MAP.get(num_type.lower()) + tmp_width
 
         op_graph = {}
         for op_node in self._origin_op:
@@ -2446,10 +2444,8 @@ class ReduceAtomicSchedule(VectorSchedule):
         self._total_size = self._total_size // 2  # div 2 for double buffer
         total_width = self._get_total_width()
         if not total_width:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "Can not calculate with no compute, " \
-                                          "total_width is [%s]" % total_width
+            dict_args = {"errCode": "E90001",
+                         "detailed_cause": f"Can not calculate with no compute, total_width is [{total_width}]"}
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
         max_bound = total_width * 128

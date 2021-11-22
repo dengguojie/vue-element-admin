@@ -434,9 +434,7 @@ class CceSpeelOp(CceOp):
                 self._schedule[cache_buffer].emit_insn(
                     tensorize_axis, "reduce_nlst_axis_" + lop["op"])
         else:
-            dict_args = dict()
-            dict_args["errCode"] = "E90003"
-            dict_args["detailed_cause"] = "%s not support" % lop["op"]
+            dict_args = {"errCode": "E90003", "detailed_cause": "%s not support" % lop["op"]}
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
         if 'cache_read_for_res' in lop.keys():

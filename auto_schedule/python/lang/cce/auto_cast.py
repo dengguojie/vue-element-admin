@@ -45,19 +45,16 @@ def auto_cast_of_elewise(func, *args, **kwargs):
     def _check_args_type(args):
         if len(args) in (1, 2, 3):
             if not isinstance(args[0], tvm.tensor.Tensor):
-                dict_args = dict()
-                dict_args["errCode"] = "E90001"
-                dict_args["detailed_cause"] = "The first input type must be [%s]" \
-                                              ", while type is [%s]" \
-                                              % ('tvm.tensor', type(args[0]))
+                dict_args = {
+                    "errCode": "E90001",
+                    "detailed_cause": f"The first input type must be [tvm.tensor], while type is [{type(args[0])}]"}
                 raise RuntimeError(dict_args, get_error_message(dict_args))
             if len(args) == 3:
                 if not isinstance(args[1], tvm.tensor.Tensor):
-                    dict_args = dict()
-                    dict_args["errCode"] = "E90001"
-                    dict_args["detailed_cause"] = "The second input type must be [%s], " \
-                                                  "while type is [%s]" \
-                                                  % ('tvm.tensor', type(args[0]))
+                    dict_args = {
+                        "errCode": "E90001",
+                        "detailed_cause":
+                            f"The second input type must be [tvm.tensor], while type is [{type(args[0])}]"}
                     raise RuntimeError(dict_args, get_error_message(dict_args))
 
     _check_args_type(args)
@@ -153,13 +150,10 @@ def auto_cast_of_elewise(func, *args, **kwargs):
                 tensor_2_t = tensor_2
 
                 if dtype_0 != dtype_1 or dtype_0 != dtype_2 or dtype_2 != dtype_1:
-                    dict_args = dict()
-                    dict_args["errCode"] = "E90001"
-                    dict_args["detailed_cause"] = "Input tensors must has same dtype! " \
-                                                  "while dtype_0 is [%s], " \
-                                                  "dtype_1 is [%s], " \
-                                                  "dtype_2 is [%s]" \
-                                                  % (dtype_0, dtype_1, dtype_2)
+                    dict_args = {
+                        "errCode": "E90001",
+                        "detailed_cause": f"Input tensors must has same dtype! while dtype_0 is [{dtype_0}], "
+                                          f"dtype_1 is [{dtype_1}], dtype_2 is [{dtype_2}]"}
                     raise RuntimeError(dict_args, get_error_message(dict_args))
 
                 is_support_dtype0 = intrinsic_check_support("Intrinsic_"+intr,
@@ -279,18 +273,16 @@ def auto_cast_of_reduce(func, *args, **kwargs):
 
         if dtype not in supported_dtypes:
             soc_ver = get_soc_spec("SOC_VERSION")
-            dict_args = dict()
-            dict_args["errCode"] = "E90002"
-            dict_args["detailed_cause"] = "[%s] do not support [%s] in [%s] !" % (intr, dtype, soc_ver)
+            dict_args = {
+                "errCode": "E90002",
+                "detailed_cause": f"[{intr}] do not support [{dtype}] in [{soc_ver}] !"}
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if len(args) == 3 or len(args) == 4:
         if not isinstance(args[0], tvm.tensor.Tensor):
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "The first input type must be [%s]" \
-                                          ", while type is [%s]" \
-                                          % ('tvm.tensor', type(args[0]))
+            dict_args = {
+                "errCode": "E90001",
+                "detailed_cause": f"The first input type must be [tvm.tensor], while type is [{type(args[0])}]"}
 
         raw_tensor = args[0]
         axis = args[1]
@@ -311,9 +303,7 @@ def auto_cast_of_reduce(func, *args, **kwargs):
 
         supported_dtypes = dsl_support_dtype(intr)
         if not supported_dtypes:
-            dict_args = dict()
-            dict_args["errCode"] = "E90002"
-            dict_args["detailed_cause"] = "[%s] is not supported!" % intr
+            dict_args = {"errCode": "E90002", "detailed_cause": f"[{intr}] is not supported!"}
             raise RuntimeError(dict_args, get_error_message(dict_args))
         # dynamic shape do not perform auto cast
         if in_dynamic_and_static_unify():
@@ -360,19 +350,16 @@ def auto_cast_of_cast(func, *args, **kwargs):
 
     if len(args) == 1:
         if not isinstance(args[0], tvm.tensor.Tensor):
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "The first input type must be [%s]," \
-                                          " while type is [%s]" % ('tvm.tensor', type(args[0]))
+            dict_args = {
+                "errCode": "E90001",
+                "detailed_cause": f"The first input type must be [tvm.tensor], while type is [{type(args[0])}]"}
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
         raw_tensor = args[0]
 
         supported_dtypes = dsl_support_dtype(intr)
         if not supported_dtypes:
-            dict_args = dict()
-            dict_args["errCode"] = "E90002"
-            dict_args["detailed_cause"] = "[%s] is not supported!" % intr
+            dict_args = {"errCode": "E90002", "detailed_cause": f"[{intr}] is not supported!"}
             raise RuntimeError(dict_args, get_error_message(dict_args))
         temp_tensor = auto_cast_tensor(raw_tensor, intr, supported_dtypes)
 

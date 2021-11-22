@@ -74,10 +74,10 @@ def _cast(raw_tensor, dst_dtype, is_auto_cast=True):
             raw_tensor = _cast_op(raw_tensor, "int16", 'elewise_single_cast')
             src_dtype = raw_tensor.dtype
         else:
-            dict_args = dict()
-            dict_args["errCode"] = "E90002"
-            dict_args["detailed_cause"] = "Unsupported cast type! src_dtype is [%s]," \
-                                          " dst_dtype is [%s]" % (src_dtype.lower(), dst_dtype.lower())
+            dict_args = {
+                "errCode": "E90002",
+                "detailed_cause": f"Unsupported cast type! src_dtype is [{src_dtype.lower()}], "
+                                  f"dst_dtype is [{dst_dtype.lower()}]"}
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
     # Default cast_type is "cast", while float casting to int32 or int16 is "trunc"
@@ -112,9 +112,7 @@ def _cast_op(input_tensor, output_dtype, op_type, is_auto_cast=True):
     elif op_type == "elewise_single_round_d":
         lambda_func = lambda *indice: tensor(*indice).astype(output_dtype)
     else:
-        dict_args = dict()
-        dict_args["errCode"] = "E90003"
-        dict_args["detailed_cause"] = "operation %s not support yet." % op_type
+        dict_args = {"errCode": "E90003", "detailed_cause": f"operation {op_type} not support yet."}
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     name = op_type.split("_")[-1] + "_" + str(NAME_INDEX[0])

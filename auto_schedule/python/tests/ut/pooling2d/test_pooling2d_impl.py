@@ -372,6 +372,7 @@ def test_max_pool2d_not_support_kernel_para(_):
 
     return True
 
+
 def test_check_outsize_pad_with_ceil(_):
     """
     @return: Ture
@@ -393,6 +394,27 @@ def test_check_outsize_pad_with_ceil(_):
 
     return True
 
+
+def test_check_ub_tiling(_):
+    """
+    check raise error msg for function _check_ub_tiling
+    @return: Ture
+    """
+
+    data_mode = 0
+    pooling_mode = "AVG"
+    out_size_w, window_h, window_w = (1, 3, 3)
+    padding_mode = "SAME"
+    from tbe.dsl.compute.pooling2d import _check_ub_tiling
+
+    try:
+        _check_ub_tiling(data_mode, pooling_mode, padding_mode, out_size_w, window_h, window_w, 16, 0)
+    except RuntimeError as e:
+        print(e.args[0].get("detailed_cause"))
+
+    return True
+
+
 test_func_list = [
     test_pooling2d_para_check_tensor_in,
     test_pooling2d_para_check_window,
@@ -406,6 +428,7 @@ test_func_list = [
     test_pooling2d_check_pooling_mode_with_padding_mode,
     test_max_pool2d_not_support_kernel_para,
     test_check_outsize_pad_with_ceil,
+    test_check_ub_tiling,
 ]
 for item in test_func_list:
     ut_case.add_cust_test_func(test_func=item)

@@ -49,9 +49,7 @@ def _auto_cast_of_tuple_reduce(func, *args, **kwargs):
     func_name = func.__name__
     supported_types = ("float16", "float32")
     if func_name != "tuple_sum":
-        dict_args = dict()
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "function name [%s] must be tuple_sum" % func_name
+        dict_args = {"errCode": "E90001", "detailed_cause": f"function name [{func_name}] must be tuple_sum"}
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     def _is_last_axis(shape, axis):
@@ -63,19 +61,15 @@ def _auto_cast_of_tuple_reduce(func, *args, **kwargs):
 
     def _check_tensor(tensor_list):
         if len(tensor_list) != 2:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "Tuple reduce input tensors must be 2. " \
-                                    "while is [%s]" % len(tensor_list)
+            dict_args = {"errCode": "E90001",
+                         "detailed_cause": f"Tuple reduce input tensors must be 2. while is [{len(tensor_list)}]"}
             raise RuntimeError(dict_args, get_error_message(dict_args))
         shape1 = shape_to_list(tensor_list[0].shape)
         shape2 = shape_to_list(tensor_list[1].shape)
         if shape1 != shape2:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "Tuple reduce input tensors must " \
-                                          "have same shape. while shape1 is [%s], " \
-                                          "shape2 is [%s]" % (shape1, shape2)
+            dict_args = {"errCode": "E90001",
+                         "detailed_cause": f"Tuple reduce input tensors must have same shape. "
+                                           f"while shape1 is [{shape1}], shape2 is [{shape2}]"}
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
     def _deal_tensor_dtype(raw_tensor, supported_types):
@@ -94,10 +88,9 @@ def _auto_cast_of_tuple_reduce(func, *args, **kwargs):
 
     if len(args) == 3:
         if not isinstance(args[0], (tuple, list)):
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "The first input type must be list" \
-                                          " or tuple, while type is [%s]" % type(args[0])
+            dict_args = {
+                "errCode": "E90001",
+                "detailed_cause": f"The first input type must be list or tuple, while type is [{type(args[0])}]"}
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
         raw_tensor_list = args[0]
@@ -143,9 +136,7 @@ def _tuple_reduce_op(input_tensor_list, axis, in_op, keepdims=False):
     keepdims : if true, retains reduced dimensions with length 1, default value is None
     """
     if axis is None:
-        dict_args = dict()
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "The axis is None!"
+        dict_args = {"errCode": "E90001", "detailed_cause": "The axis is None!"}
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     check_input_tensor_shape(input_tensor_list[0])
@@ -210,10 +201,8 @@ def _tuple_reduce_op(input_tensor_list, axis, in_op, keepdims=False):
     if in_op.lower() == "tuple_reduce_sum":
         reduce_func = tuple_sum_func
     else:
-        dict_args = dict()
-        dict_args["errCode"] = "E90003"
-        dict_args["detailed_cause"] = "Not Support yet for op [%s], " \
-                                      "in_op must be tuple_reduce_sum" % in_op
+        dict_args = {"errCode": "E90003",
+                     "detailed_cause": f"Not Support yet for op [{in_op}], in_op must be tuple_reduce_sum"}
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     op_tensor = input_tensor_list[0]

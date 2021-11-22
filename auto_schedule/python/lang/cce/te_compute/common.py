@@ -63,10 +63,8 @@ def cast_to_round(data, dtype):
                   DeprecationWarning)
     dtype = dtype.lower()
     if dtype != "int32":
-        dict_args = dict()
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "The cast output dtype must be int32," \
-                                      " while is [%s]" % dtype
+        dict_args = {"errCode": "E90001",
+                     "detailed_cause": f"The cast output dtype must be int32, while is [{dtype}]"}
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     src_dtype = data.dtype.lower()
@@ -111,7 +109,7 @@ def im2col_6d(input_img,
     """
 
     # pylint: disable=too-many-locals
-    warnings.warn("te.lang.cce.te_compute.common.im2col_6d is deprecated, " \
+    warnings.warn("te.lang.cce.te_compute.common.im2col_6d is deprecated, "
                   "please replace it with the func tbe.dsl.compute.common.im2col_6d",
                   DeprecationWarning)
     from tbe.dsl.compute.common import im2col_6d
@@ -123,7 +121,8 @@ def im2col_fractal(a_im2col_shape, in_a, dst='ca', tag=None):
     im2col_fractal
     """
     warnings.warn(
-        "te.lang.cce.te_compute.common.im2col_fractal is deprecated, please replace it with tbe.dsl.compute.common.im2col_fractal",
+        "te.lang.cce.te_compute.common.im2col_fractal is deprecated, "
+        "please replace it with tbe.dsl.compute.common.im2col_fractal",
         DeprecationWarning)
     from tbe.dsl.compute.common import im2col_fractal
     return im2col_fractal(a_im2col_shape, in_a, dst, tag)
@@ -136,7 +135,7 @@ def im2col_fractal_6d(a_im2col_shape, in_a):
     last_dim = in_a.shape[-1]
 
     # pylint: disable=too-many-locals
-    warnings.warn("te.lang.cce.te_compute.common.im2col_fractal_6d is deprecated, " \
+    warnings.warn("te.lang.cce.te_compute.common.im2col_fractal_6d is deprecated, "
                   "please replace it with the func tbe.dsl.compute.common.im2col_fractal_6d",
                   DeprecationWarning)
     from tbe.dsl.compute.common import im2col_fractal_6d
@@ -193,11 +192,9 @@ def tf_get_windowed_output_size(input_size, filter_size, stride, padding_type):
     padding_size: int, feature map padding size
     """
     if padding_type == 'EXPLICIT':
-        dict_args = dict()
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "tf_get_windowed_output_size does not" \
-                                      " handle EXPLITCIT padding; " \
-                                      "call tf_get_windowed_output_size_verbose instead."
+        dict_args = {"errCode": "E90001",
+                     "detailed_cause": "tf_get_windowed_output_size does not handle EXPLITCIT padding; "
+                                       "call tf_get_windowed_output_size_verbose instead."}
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     # pylint: disable=invalid-name
@@ -267,16 +264,12 @@ def tf_get_windowed_output_size_verbose_v2(input_size, filter_size,
     padding_after: int, feature map padding after size
     """
     if stride <= 0:
-        dict_args = dict()
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "Stride must be > 0, but stride is [%s]" % stride
+        dict_args = {"errCode": "E90001", "detailed_cause": f"Stride must be > 0, but stride is [{stride}]"}
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     if dilation_rate < 1:
-        dict_args = dict()
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "dilation_rate must be >= 1, " \
-                                      "but dilation_rate is [%s]" % dilation_rate
+        dict_args = {"errCode": "E90001",
+                     "detailed_cause": f"dilation_rate must be >= 1, but dilation_rate is [{dilation_rate}]"}
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     effective_filter_size = (filter_size - 1) * dilation_rate + 1
@@ -291,10 +284,9 @@ def tf_get_windowed_output_size_verbose_v2(input_size, filter_size,
         padding_before = padding_needed // 2
         padding_after = padding_needed - padding_before
     else:
-        dict_args = dict()
-        dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "Unsupported padding type [%s], " \
-                                      "padding_type must be VALID or SAME" % padding_type
+        dict_args = {
+            "errCode": "E90001",
+            "detailed_cause": f"Unsupported padding type [{padding_type}], padding_type must be VALID or SAME"}
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
     return output_size, padding_before, padding_after

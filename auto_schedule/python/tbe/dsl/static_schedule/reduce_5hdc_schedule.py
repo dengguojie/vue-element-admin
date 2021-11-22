@@ -134,12 +134,9 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
         expected_5hd_shape = [self.ori_shape[0], expected_c1,
                               self.ori_shape[1], self.ori_shape[2], 16]
         if self.in_shape != expected_5hd_shape:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "Expected 5HD shape not match, " \
-                                          "please check input parameters: " \
-                                          "Ori_shape: [%s], " \
-                                          "Expect_shape: [%s]" % (self.ori_shape, expected_5hd_shape)
+            dict_args = {"errCode": "E90001",
+                         "detailed_cause": f"Expected 5HD shape not match, please check input parameters: "
+                                           f"Ori_shape: [{self.ori_shape}], Expect_shape: [{expected_5hd_shape}]"}
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
     def collect_info(self, out_tensors, sch_list):
@@ -149,12 +146,9 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
         self._all_tensors, self._input_tensors, \
             self._mid_tensors, self.tensor_map = dfs_tensor_graph(self._out_tensor)
         if len(self._input_tensors) != 1:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "[Reduce5HDCSchedule] Reduce 5HD C" \
-                                          " axis should have only one input " \
-                                          "tensor, while tensors num is [%s]" \
-                                          % len(self._input_tensors)
+            dict_args = {"errCode": "E90001",
+                         "detailed_cause": f"[Reduce5HDCSchedule] Reduce 5HD C axis should have only one input "
+                                           f"tensor, while tensors num is [{len(self._input_tensors)}]"}
             raise RuntimeError(dict_args, get_error_message(dict_args))
         self._input_tensor = self._input_tensors[0]
         self.in_shape = list(map(int, self._input_tensor.shape))
@@ -193,11 +187,9 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
                 if self.reduce_node is None:
                     self.reduce_node = tensor
                 else:
-                    dict_args = dict()
-                    dict_args["errCode"] = "E90003"
-                    dict_args[
-                        "detailed_cause"] = "5HDC Schedule detected multiple" \
-                                            " reduce node, reduce_node is [%s]" % self.reduce_node
+                    dict_args = {"errCode": "E90003",
+                                 "detailed_cause": f"5HDC Schedule detected multiple"
+                                                   f" reduce node, reduce_node is [{self.reduce_node}]"}
                     raise RuntimeError(dict_args, get_error_message(dict_args))
         reduce_in_shape = list(map(int, self.reduce_node.op.input_tensors[0].shape))
         reduce_out_shape = list(map(int, self.reduce_node.shape))

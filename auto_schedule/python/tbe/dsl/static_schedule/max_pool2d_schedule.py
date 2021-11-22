@@ -283,15 +283,11 @@ def _tiling(context, core_n):
         return False
 
     if _try_tiling(ub_size0 // 2):
-        return True, factors["c1_factor"], factors["ho_factor"], factors[
-            "wo_factor"]
+        return True, factors.get("c1_factor"), factors.get("ho_factor"), factors.get("wo_factor")
     if _try_tiling(ub_size0):
-        return False, factors["c1_factor"], factors["ho_factor"], factors[
-            "wo_factor"]
-    dict_args = dict()
-    dict_args["errCode"] = "E90003"
-    dict_args["detailed_cause"] = "Cannot find tiling, kw [%s] and kh [%s] " \
-                                  "is too big!" % (k_w, k_h)
+        return False, factors.get("c1_factor"), factors.get("ho_factor"), factors.get("wo_factor")
+    dict_args = {"errCode": "E90003",
+                 "detailed_cause": f"Cannot find tiling, kw [{k_w}] and kh [{k_h}] is too big!"}
     raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
@@ -564,7 +560,7 @@ def schedule(res, sch_list):
 
     # dequant params
     pool_tensors = _crawl_pool_tensor(pool_res)
-    pool_x = pool_tensors["tx_ub_c"].op.input_tensors[0]
+    pool_x = pool_tensors.get("tx_ub_c").op.input_tensors[0]
     fused_dequant = pool_x.op.tag == ASCEND_ANTI_QUANT_TAG
     context["fused_dequant"] = fused_dequant
     if fused_dequant:
@@ -684,7 +680,7 @@ def schedule(res, sch_list):
             _set_scope(sch, [pool_res], scope_ubuf)
             sch[pool_res].compute_at(sch[res], res3o)
             tx_rh_name = "tx_rh" + str(k_h - 1)
-            sch[pool_res].reused_by(pool_tensors[tx_rh_name])
+            sch[pool_res].reused_by(pool_tensors.get(tx_rh_name))
             sch[pool_res].emit_insn(pool_res.op.axis[1], "phony_insn")
 
         # schedule dequant

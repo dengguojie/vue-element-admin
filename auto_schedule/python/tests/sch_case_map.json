@@ -362,5 +362,20 @@
     ],
     "auto_schedule/python/tbe/dsl/base/context.py":[
         "context"
+    ],
+    "auto_schedule/python/tbe/dsl/static_schedule/cce_schedule.py":[
+        "cce_schedule"
+    ],
+    "auto_schedule/python/tbe/dsl/static_schedule/elewise_schedule.py":[
+        "elewise_schedule"
+    ],
+    "auto_schedule/python/tbe/dsl/static_schedule/elewise_speel_schedule.py":[
+        "elewise_speel_schedule"
+    ],
+    "auto_schedule/python/tbe/dsl/static_schedule/pooling2d_schedule.py":[
+        "pooling2d_schedule"
+    ],
+    "auto_schedule/python/tbe/dsl/static_schedule/vector_schedule.py":[
+        "vector_schedule"
     ]
 }

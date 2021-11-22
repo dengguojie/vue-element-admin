@@ -299,9 +299,9 @@ class ReduceMultiSchedule(ElewiseSchedule):
         None
         """
         res = self._last_output_tensor
-        ub_tiling_result = self._tiling_result["ub_tiling"]
-        ub_split_axis = ub_tiling_result["axis"]
-        res_ub_inner = ub_tiling_result["inner_itervar"]
+        ub_tiling_result = self._tiling_result.get("ub_tiling")
+        ub_split_axis = ub_tiling_result.get("axis")
+        res_ub_inner = ub_tiling_result.get("inner_itervar")
 
         self._get_emit_insn_map()
         self._get_reg_emit_insn_map()
@@ -682,10 +682,8 @@ class ReduceMultiSchedule(ElewiseSchedule):
         else:
             total_width = self._get_total_width() + 1
         if not total_width:
-            dict_args = dict()
-            dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "Can not calculate with no compute, " \
-                                          "total_width is [%s]" % total_width
+            dict_args = {"errCode": "E90001",
+                         "detailed_cause": f"Can not calculate with no compute, total_width is [{total_width}]"}
             raise RuntimeError(dict_args, get_error_message(dict_args))
         self._max_ub_count = int(total_size / total_width)
         # align by repeat
@@ -969,12 +967,12 @@ class ReduceMultiSchedule(ElewiseSchedule):
         for d_i in range(len(self._default_shape)):
             res_axes.append(res.op.axis[d_i])
         # get params
-        block_tiling_para = self._tiling_para["block_tiling"]
-        block_tiling_axes = block_tiling_para["axes"]
-        block_tiling_factor = block_tiling_para["factor"]
-        ub_tiling_para = self._tiling_para["ub_tiling"]
-        ub_tiling_axis = ub_tiling_para["axis"]
-        ub_tiling_factor = ub_tiling_para["factor"]
+        block_tiling_para = self._tiling_para.get("block_tiling")
+        block_tiling_axes = block_tiling_para.get("axes")
+        block_tiling_factor = block_tiling_para.get("factor")
+        ub_tiling_para = self._tiling_para.get("ub_tiling")
+        ub_tiling_axis = ub_tiling_para.get("axis")
+        ub_tiling_factor = ub_tiling_para.get("factor")
         # make init
         if self._tiling_strategy == util.TILING_RADICAL:
             # block tiling
@@ -1015,9 +1013,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
             ub_target_axis = res_axes[ub_tiling_axis]
             res_ub_outer, res_ub_inner = sch[res].split(ub_target_axis, factor=ub_tiling_factor)
         else:
-            dict_args = dict()
-            dict_args["errCode"] = "E90003"
-            dict_args["detailed_cause"] = "Tiling Falied!"
+            dict_args = {"errCode": "E90003", "detailed_cause": "Tiling Falied!"}
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
         # reorder

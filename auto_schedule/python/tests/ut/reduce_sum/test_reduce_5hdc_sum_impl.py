@@ -6,8 +6,45 @@ import warnings
 
 from te import tvm
 import te.lang.cce as tbe
+from tbe.dsl.static_schedule.reduce_5hdc_schedule import *
 
 warnings.filterwarnings("ignore")
+
+
+ut_case = OpUT("reduce_sum", "reduce_sum.test_reduce_5hdc_sum_impl", "dsl_reduce_5hdc_sum")
+
+
+def test_format_check(_):
+    try:
+        reduce_5hdc = Reduce5HDCSchedule()
+        reduce_5hdc.ori_shape = [1, 6, 7, 5]
+        reduce_5hdc.in_shape = [1, 2, 7, 5, 16]
+        reduce_5hdc.format_check()
+    except RuntimeError as e:
+        print(e.args[0].get("detailed_cause"))
+    return True
+
+
+def test_obtain_tensor_info(_):
+    try:
+        reduce_5hdc = Reduce5HDCSchedule()
+        data1 = tvm.placeholder((1,16,16,16), name='data1', dtype="float16")
+        data2 = tvm.placeholder((1,16,16,16), name='data1', dtype="float16")
+        res1 = tbe.sum(data1, [-1, ], False)
+        res2 = tbe.sum(data2, [-1, ], False)
+        reduce_5hdc._all_tensors = [res1, res2]
+        reduce_5hdc.obtain_tensor_info()
+    except RuntimeError as e:
+        print(e.args[0].get("detailed_cause"))
+    return True
+
+
+test_func_list = [
+    test_format_check,
+    test_obtain_tensor_info,
+]
+for item in test_func_list:
+    ut_case.add_cust_test_func(test_func=item)
 
 
 def dsl_reduce_5hdc_sum(x, _, axis, keep_dim, kernel_name='dsl_reduce_5hdc_sum'):
@@ -30,9 +67,6 @@ def dsl_reduce_5hdc_sum(x, _, axis, keep_dim, kernel_name='dsl_reduce_5hdc_sum')
         "tensor_list": tensor_list
     }
     tbe.cce_build_code(sch, config)
-
-
-ut_case = OpUT("reduce_sum", "reduce_sum.test_reduce_5hdc_sum_impl", "dsl_reduce_5hdc_sum")
 
 
 case1 = {
@@ -81,8 +115,8 @@ compile_case_list = [
     case1, case2, case3, case4
 ]
 
-for item in compile_case_list:
-    ut_case.add_case(case=item)
+# for item in compile_case_list:
+#     ut_case.add_case(case=item)
 
 
 if __name__ == '__main__':

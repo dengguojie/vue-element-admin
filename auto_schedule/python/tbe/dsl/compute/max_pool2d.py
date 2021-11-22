@@ -44,12 +44,10 @@ def max_pool2d(t_x, pooling_params, fusion_params):
     is_support_kernel = (k_h * k_w <= _MAX_KERNEL_SIZE_H_MUL_W) or \
                         (k_h <= _MAX_KERNEL_SIZE and k_w <= _MAX_KERNEL_SIZE)
     if not is_support_kernel:
-        dict_args = dict()
-        dict_args["errCode"] = "E90003"
-        dict_args["detailed_cause"] = "kw [%s] and kh [%s] is too big! " \
-                                      "maxpool schedule only support " \
-                                      "(k_h * k_w <= _MAX_KERNEL_SIZE_H_MUL_W) " \
-                                      "or (k_h <= _MAX_KERNEL_SIZE and k_w <= _MAX_KERNEL_SIZE)" % (k_w, k_h)
+        dict_args = {"errCode": "E90003",
+                     "detailed_cause": "kw [%s] and kh [%s] is too big! maxpool schedule only support "
+                                       "(k_h * k_w <= _MAX_KERNEL_SIZE_H_MUL_W) or "
+                                       "(k_h <= _MAX_KERNEL_SIZE and k_w <= _MAX_KERNEL_SIZE)" % (k_w, k_h)}
         raise RuntimeError(dict_args, get_error_message(dict_args))
     s_h, s_w = pooling_params["stride_h"], pooling_params["stride_w"]
     dtype = t_x.dtype
