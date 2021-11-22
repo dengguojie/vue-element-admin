@@ -44,13 +44,19 @@ const int32_t BYTE_BLOCK = 32;
 const size_t MAX_SUPPORTED_DIMS = 8;
 constexpr int32_t SHAPE_LEN = 2;
 constexpr int32_t TILING_FACTOR_2 = 2;
-constexpr int32_t TILING_FACTOR_16 = 2;
+constexpr int32_t TILING_FACTOR_16 = 16;
 constexpr int32_t BYTE_SIZE = 32;
 constexpr int32_t TILING_MODE_5 = 5;
 constexpr int32_t TILING_MODE_6 = 6;
 constexpr int32_t TILING_MODE_7 = 7;
 constexpr int32_t TILING_MODE_8 = 8;
 constexpr int32_t TILING_FACTOR_256 = 256;
+static const std::pair<int64_t, std::string> BEGIN_MASK_ATTR_INFO{0, "begin_mask"};
+static const std::pair<int64_t, std::string> END_MASK_ATTR_INFO{1, "end_mask"};
+static const std::pair<int64_t, std::string> ELLIPSIS_MASK_ATTR_INFO{2, "ellipsis_mask"};
+static const std::pair<int64_t, std::string> NEW_AXIS_MASK_ATTR_INFO{3, "new_axis_mask"};
+static const std::pair<int64_t, std::string> SHRINK_AXIS_MASK_ATTR_INFO{4, "shrink_axis_mask"};
+static const uint32_t MASK_ATTR_DEFAULT_VALUE = 0;
 
 std::string SliceParameters::to_string() const {
   string result = "input_shape:" + ops::to_string(input);
@@ -190,9 +196,10 @@ static void SetRuningParams(const SliceParameters& params, utils::OpRunInfo& run
   }
 }
 
-static bool GetStridedSliceSocParams(const std::string& opType, const nlohmann::json& opCompileInfo, int32_t& core_num,
-                                     uint32_t& begin_mask, uint32_t& end_mask, uint32_t& ellipsis_mask,
-                                     uint32_t& new_axis_mask, uint32_t& shrink_axis_mask, int32_t& ub_size) {
+static bool GetStridedSliceSocParams(const std::string& opType, const ge::Operator& op_paras,
+                                     const nlohmann::json& opCompileInfo, int32_t& core_num, uint32_t& begin_mask,
+                                     uint32_t& end_mask, uint32_t& ellipsis_mask, uint32_t& new_axis_mask,
+                                     uint32_t& shrink_axis_mask, int32_t& ub_size) {
   using namespace nlohmann;
   const auto& allVars = opCompileInfo["vars"];
   if (allVars.count("block_dim") == 0) {
@@ -201,41 +208,18 @@ static bool GetStridedSliceSocParams(const std::string& opType, const nlohmann::
   }
   core_num = allVars["block_dim"].get<std::int32_t>();
 
-  if (allVars.count("begin_mask") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get begin_mask error");
-    return false;
-  }
-  begin_mask = allVars["begin_mask"].get<std::uint32_t>();
-
-  if (allVars.count("end_mask") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get end_mask error");
-    return false;
-  }
-  end_mask = allVars["end_mask"].get<std::uint32_t>();
-
-  if (allVars.count("ellipsis_mask") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get ellipsis_mask error");
-    return false;
-  }
-  ellipsis_mask = allVars["ellipsis_mask"].get<std::uint32_t>();
-
-  if (allVars.count("new_axis_mask") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get new_axis_mask error");
-    return false;
-  }
-  new_axis_mask = allVars["new_axis_mask"].get<std::uint32_t>();
-
-  if (allVars.count("shrink_axis_mask") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get shrink_axis_mask error");
-    return false;
-  }
-  shrink_axis_mask = allVars["shrink_axis_mask"].get<std::int32_t>();
-
   if (allVars.count("ub_size") == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get ub_size error");
     return false;
   }
   ub_size = allVars["ub_size"].get<std::int32_t>();
+
+  ops::GetAttrValue(op_paras, BEGIN_MASK_ATTR_INFO, begin_mask, MASK_ATTR_DEFAULT_VALUE);
+  ops::GetAttrValue(op_paras, END_MASK_ATTR_INFO, end_mask, MASK_ATTR_DEFAULT_VALUE);
+  ops::GetAttrValue(op_paras, ELLIPSIS_MASK_ATTR_INFO, ellipsis_mask, MASK_ATTR_DEFAULT_VALUE);
+  ops::GetAttrValue(op_paras, NEW_AXIS_MASK_ATTR_INFO, new_axis_mask, MASK_ATTR_DEFAULT_VALUE);
+  ops::GetAttrValue(op_paras, SHRINK_AXIS_MASK_ATTR_INFO, shrink_axis_mask, MASK_ATTR_DEFAULT_VALUE);
+
   return true;
 }
 
@@ -413,8 +397,8 @@ bool StridedSliceTiling(const std::string& opType, const ge::Operator& opParas, 
 
   int32_t core_num = 0;
   int32_t ub_size = 0;
-  bool flag = GetStridedSliceSocParams(opType, opCompileInfo, core_num, slice_masks.begin_mask, slice_masks.end_mask,
-                                       slice_masks.ellipsis_mask, slice_masks.new_axis_mask,
+  bool flag = GetStridedSliceSocParams(opType, opParas, opCompileInfo, core_num, slice_masks.begin_mask,
+                                       slice_masks.end_mask, slice_masks.ellipsis_mask, slice_masks.new_axis_mask,
                                        slice_masks.shrink_axis_mask, ub_size);
   OP_LOGD(opType.c_str(), "param ub_size: %d", ub_size);
 

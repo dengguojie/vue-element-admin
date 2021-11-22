@@ -1325,11 +1325,6 @@ def strided_slice(input_x,
                   enable_l2=False)
 
     tbe_context.get_context().add_compile_info("vars", {"block_dim": strided_slice_instance.aicore_num,
-                                                        "begin_mask": strided_slice_instance.begin_mask,
-                                                        "end_mask": strided_slice_instance.end_mask,
-                                                        "ellipsis_mask": strided_slice_instance.ellipsis_mask,
-                                                        "new_axis_mask": strided_slice_instance.new_axis_mask,
-                                                        "shrink_axis_mask": strided_slice_instance.shrink_axis_mask,
                                                         "ub_size": tik.Dprofile().get_unified_buffer_size() - \
                                                                    Constant.Tiling_UB_SIZE})
     return inst

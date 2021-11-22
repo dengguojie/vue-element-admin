@@ -66,6 +66,11 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_no_mask) {
   TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(int32_t));
   TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(int32_t));
   TENSOR_OUTPUT(opParas, tensorOutput, y);
+  opParas.SetAttr("begin_mask", 0);
+  opParas.SetAttr("end_mask", 0);
+  opParas.SetAttr("ellipsis_mask", 0);
+  opParas.SetAttr("new_axis_mask", 0);
+  opParas.SetAttr("shrink_axis_mask", 0);
 
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 262144}})";
@@ -113,6 +118,11 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_with_mask1) {
   TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(int32_t));
   TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(int32_t));
   TENSOR_OUTPUT(opParas, tensorOutput, y);
+  opParas.SetAttr("begin_mask", 0);
+  opParas.SetAttr("end_mask", 0);
+  opParas.SetAttr("ellipsis_mask", 1);
+  opParas.SetAttr("new_axis_mask", 0);
+  opParas.SetAttr("shrink_axis_mask", 2);
 
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 1, "new_axis_mask": 0, "shrink_axis_mask": 2, "ub_size": 262144}})";
@@ -155,6 +165,11 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_int64_const) {
   TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(int64_t));
   TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(int64_t));
   TENSOR_OUTPUT(opParas, tensorOutput, y);
+  opParas.SetAttr("begin_mask", 0);
+  opParas.SetAttr("end_mask", 0);
+  opParas.SetAttr("ellipsis_mask", 1);
+  opParas.SetAttr("new_axis_mask", 0);
+  opParas.SetAttr("shrink_axis_mask", 2);
 
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 1, "new_axis_mask": 0, "shrink_axis_mask": 2, "ub_size": 262144}})";
@@ -197,6 +212,12 @@ TEST_F(stried_slice_tiling, stried_slice_no_mask) {
   TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(int32_t));
   TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(int32_t));
   TENSOR_OUTPUT(opParas, tensorOutput, y);
+  opParas.SetAttr("begin_mask", 0);
+  opParas.SetAttr("end_mask", 0);
+  opParas.SetAttr("ellipsis_mask", 1);
+  opParas.SetAttr("new_axis_mask", 0);
+  opParas.SetAttr("shrink_axis_mask", 2);
+
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "end_mask": 0, "ellipsis_mask": 1, "new_axis_mask": 0, "shrink_axis_mask": 2}})";
 
@@ -236,6 +257,11 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_no_inputs) {
   TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(int32_t));
   TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(int32_t));
   TENSOR_OUTPUT(opParas, tensorOutput, y);
+  opParas.SetAttr("begin_mask", 0);
+  opParas.SetAttr("end_mask", 0);
+  opParas.SetAttr("ellipsis_mask", 1);
+  opParas.SetAttr("new_axis_mask", 0);
+  opParas.SetAttr("shrink_axis_mask", 2);
 
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 1, "new_axis_mask": 0, "shrink_axis_mask": 2}})";
@@ -277,6 +303,11 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_too_large_dims) {
   TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(int32_t));
   TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(int32_t));
   TENSOR_OUTPUT(opParas, tensorOutput, y);
+  opParas.SetAttr("begin_mask", 0);
+  opParas.SetAttr("end_mask", 0);
+  opParas.SetAttr("ellipsis_mask", 1);
+  opParas.SetAttr("new_axis_mask", 0);
+  opParas.SetAttr("shrink_axis_mask", 2);
 
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 1, "new_axis_mask": 0, "shrink_axis_mask": 2}})";
@@ -318,6 +349,11 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_get_const_value_failed) {
   TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(float));
   TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(float));
   TENSOR_OUTPUT(opParas, tensorOutput, y);
+  opParas.SetAttr("begin_mask", 0);
+  opParas.SetAttr("end_mask", 0);
+  opParas.SetAttr("ellipsis_mask", 0);
+  opParas.SetAttr("new_axis_mask", 0);
+  opParas.SetAttr("shrink_axis_mask", 0);
 
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0}})";
@@ -359,6 +395,11 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_invalid_stride) {
   TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(int32_t));
   TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(int32_t));
   TENSOR_OUTPUT(opParas, tensorOutput, y);
+  opParas.SetAttr("begin_mask", 0);
+  opParas.SetAttr("end_mask", 0);
+  opParas.SetAttr("ellipsis_mask", 0);
+  opParas.SetAttr("new_axis_mask", 0);
+  opParas.SetAttr("shrink_axis_mask", 0);
 
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0}})";
@@ -401,6 +442,11 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_unsupported_stride) {
   TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(int32_t));
   TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(int32_t));
   TENSOR_OUTPUT(opParas, tensorOutput, y);
+  opParas.SetAttr("begin_mask", 0);
+  opParas.SetAttr("end_mask", 0);
+  opParas.SetAttr("ellipsis_mask", 0);
+  opParas.SetAttr("new_axis_mask", 0);
+  opParas.SetAttr("shrink_axis_mask", 0);
 
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0}})";
@@ -442,6 +488,11 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_fused_dims) {
   TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(int32_t));
   TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(int32_t));
   TENSOR_OUTPUT(opParas, tensorOutput, y);
+  opParas.SetAttr("begin_mask", 0);
+  opParas.SetAttr("end_mask", 0);
+  opParas.SetAttr("ellipsis_mask", 0);
+  opParas.SetAttr("new_axis_mask", 0);
+  opParas.SetAttr("shrink_axis_mask", 0);
 
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 262144}})";
@@ -482,6 +533,12 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_mode_3) {
   TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(int32_t));
   TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(int32_t));
   TENSOR_OUTPUT(opParas, tensorOutput, y);
+  opParas.SetAttr("begin_mask", 0);
+  opParas.SetAttr("end_mask", 0);
+  opParas.SetAttr("ellipsis_mask", 0);
+  opParas.SetAttr("new_axis_mask", 0);
+  opParas.SetAttr("shrink_axis_mask", 0);
+
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 261762}})";
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
@@ -519,6 +576,12 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_mode_5) {
   TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(int32_t));
   TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(int32_t));
   TENSOR_OUTPUT(opParas, tensorOutput, y);
+  opParas.SetAttr("begin_mask", 0);
+  opParas.SetAttr("end_mask", 0);
+  opParas.SetAttr("ellipsis_mask", 0);
+  opParas.SetAttr("new_axis_mask", 0);
+  opParas.SetAttr("shrink_axis_mask", 0);
+
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 261762}})";
 
@@ -556,6 +619,12 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_mode_6) {
   TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(int32_t));
   TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(int32_t));
   TENSOR_OUTPUT(opParas, tensorOutput, y);
+  opParas.SetAttr("begin_mask", 0);
+  opParas.SetAttr("end_mask", 0);
+  opParas.SetAttr("ellipsis_mask", 0);
+  opParas.SetAttr("new_axis_mask", 0);
+  opParas.SetAttr("shrink_axis_mask", 0);
+
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 261762}})";
 
@@ -593,6 +662,12 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_mode_7) {
   TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(int32_t));
   TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(int32_t));
   TENSOR_OUTPUT(opParas, tensorOutput, y);
+  opParas.SetAttr("begin_mask", 0);
+  opParas.SetAttr("end_mask", 0);
+  opParas.SetAttr("ellipsis_mask", 0);
+  opParas.SetAttr("new_axis_mask", 0);
+  opParas.SetAttr("shrink_axis_mask", 0);
+
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 261762}})";
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
@@ -629,6 +704,12 @@ TEST_F(stried_slice_tiling, stried_slice_tiling_mode_8) {
   TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(int32_t));
   TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(int32_t));
   TENSOR_OUTPUT(opParas, tensorOutput, y);
+  opParas.SetAttr("begin_mask", 0);
+  opParas.SetAttr("end_mask", 0);
+  opParas.SetAttr("ellipsis_mask", 0);
+  opParas.SetAttr("new_axis_mask", 0);
+  opParas.SetAttr("shrink_axis_mask", 0);
+
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 261762}})";
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
@@ -665,6 +746,12 @@ TEST_F(stried_slice_tiling, stried_slice_outshape_0) {
   TENSOR_INPUT_CONST(opParas, tensorInput2, end, (const uint8_t*)end.data(), end.size() * sizeof(int32_t));
   TENSOR_INPUT_CONST(opParas, tensorInput3, strides, (const uint8_t*)strides.data(), strides.size() * sizeof(int32_t));
   TENSOR_OUTPUT(opParas, tensorOutput, y);
+  opParas.SetAttr("begin_mask", 0);
+  opParas.SetAttr("end_mask", 0);
+  opParas.SetAttr("ellipsis_mask", 0);
+  opParas.SetAttr("new_axis_mask", 0);
+  opParas.SetAttr("shrink_axis_mask", 0);
+
   std::string compileInfo =
       R"({"vars": {"block_dim": 32, "begin_mask": 0, "end_mask": 0, "ellipsis_mask": 0, "new_axis_mask": 0, "shrink_axis_mask": 0, "ub_size": 261762}})";
   optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);

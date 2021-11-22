@@ -77,6 +77,26 @@ bool GetAttrValue(const T& paras, const std::pair<int64_t, std::string>& attr_in
  * @return bool: flag of success or not
  */
 template <typename T>
+bool GetAttrValue(const T& paras, const std::pair<int64_t, std::string>& attr_info, uint32_t& value,
+                  const uint32_t default_value) {
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(paras);
+  if (!AttrUtils::GetInt(op_desc, attr_info.second, value)) {
+    OP_LOGW("GetAttrValue", "Get the attr of %s is failed. set the default value", attr_info.second.c_str());
+    value = default_value;
+  }
+  OP_LOGD("GetAttrValue", "Get the attr of %s is %d", attr_info.second.c_str(), value);
+  return true;
+}
+
+/*
+ * @brief: read constvalue from paras store into values
+ * @param [in] paras: ge::Operator
+ * @param [in] attr_info: attr info pair(attr_idx, attr_name)
+ * @param [out] value: store value.
+ * @param [in] default_value: default_value
+ * @return bool: flag of success or not
+ */
+template <typename T>
 bool GetAttrValue(const T& paras, const std::pair<int64_t, std::string>& attr_info, bool& value,
                   const bool default_value) {
   auto op_desc = OpDescUtils::GetOpDescFromOperator(paras);
