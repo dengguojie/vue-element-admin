@@ -38,7 +38,12 @@ from op_test_frame.utils import file_util
 
 from op_test_frame.ut.op_ut_case_info import CaseUsage
 
-DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    This class for Constant.
+    """
+    DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
 
 
 # 'pylint: disable=too-few-public-methods,too-many-arguments,too-many-branches,too-many-statements
@@ -183,7 +188,6 @@ def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
     try:
         if sys.modules.get(run_arg.op_module_name):
             print("[INFO]reload module for coverage ,moule name:", sys.modules.get(run_arg.op_module_name))
-            import importlib # 'pylint: disable=import-outside-toplevel
             importlib.reload(sys.modules.get(run_arg.op_module_name))
         case_dir = os.path.dirname(os.path.realpath(run_arg.case_file))
         case_module_name = os.path.basename(os.path.realpath(run_arg.case_file))[:-3]
@@ -242,7 +246,7 @@ def _build_cov_data_path(cov_report_path):
     cov_combine_path = os.path.join(os.path.realpath(cov_report_path), "combine_data_path")
     if os.path.exists(cov_combine_path):
         shutil.rmtree(cov_combine_path)
-    file_util.makedirs(cov_combine_path, mode=DATA_DIR_MODES)
+    file_util.makedirs(cov_combine_path, mode=Constant.DATA_DIR_MODES)
     return cov_combine_path
 
 
@@ -250,7 +254,7 @@ def _build_report_data_path(test_report_path):
     rpt_combine_path = os.path.join(os.path.realpath(test_report_path), "combine_rpt_path")
     if os.path.exists(rpt_combine_path):
         shutil.rmtree(rpt_combine_path)
-    file_util.makedirs(rpt_combine_path, mode=DATA_DIR_MODES)
+    file_util.makedirs(rpt_combine_path, mode=Constant.DATA_DIR_MODES)
     return rpt_combine_path
 
 

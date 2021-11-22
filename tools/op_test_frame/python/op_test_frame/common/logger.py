@@ -23,12 +23,13 @@ import inspect
 import traceback
 from datetime import datetime
 
-DEBUG = "DEBUG"
-INFO = "INFO"
-WARN = "WARN"
-ERROR = "ERROR"
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    This class for Constant.
+    """
 
-LOG_LEVEL = "INFO"
+    LOG_LEVEL = "INFO"
 
 
 def set_logger_level(level):
@@ -37,8 +38,8 @@ def set_logger_level(level):
     :param level: level
     :return: None
     """
-    global LOG_LEVEL  # 'pylint: disable=global-statement
-    LOG_LEVEL = level
+    
+    Constant.LOG_LEVEL = level
 
 
 def log(level, file_name, line, msg):
@@ -63,6 +64,7 @@ def log_warn(msg):
     :param msg: log msg
     :return: None
     """
+    WARN = "WARN"
     caller = inspect.stack()[1]
     log(WARN, caller.filename, caller.lineno, msg)
 
@@ -73,7 +75,8 @@ def log_debug(msg):
     :param msg: log msg
     :return: None
     """
-    if LOG_LEVEL not in ("DEBUG",):
+    DEBUG = "DEBUG"
+    if Constant.LOG_LEVEL not in ("DEBUG",):
         return
     caller = inspect.stack()[1]
     log(DEBUG, caller.filename, caller.lineno, msg)
@@ -85,7 +88,8 @@ def log_info(msg):
     :param msg: log msg
     :return: None
     """
-    if LOG_LEVEL not in ("DEBUG", "INFO"):
+    INFO = "INFO"
+    if Constant.LOG_LEVEL not in ("DEBUG", "INFO"):
         return
     caller = inspect.stack()[1]
     log(INFO, caller.filename, caller.lineno, msg)
@@ -97,6 +101,7 @@ def log_err(msg, print_trace=False):
     :param msg: log msg
     :return: None
     """
+    ERROR = "ERROR"
     caller = inspect.stack()[1]
     log(ERROR, caller.filename, caller.lineno, msg)
     if print_trace:

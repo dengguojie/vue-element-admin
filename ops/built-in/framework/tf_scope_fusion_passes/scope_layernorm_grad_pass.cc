@@ -45,7 +45,7 @@ std::string ScopeLayerNormGradPass::PassName() {
   return std::string("ScopeLayerNormGradPass");
 }
 
-void ScopeLayerNormGradPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
+void const ScopeLayerNormGradPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
   OP_LOGD(kOpType, "Enter ScopeLayerNormGradPass GenScopePatterns");
   // recognize moments
   std::vector<ScopePattern*> batch1;
@@ -197,11 +197,11 @@ Status ScopeLayerNormGradPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>
     const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map_mul = scope->AllNodesMap();
     for (auto& it : nodes_map_mul) {
         auto mode_def = it.second;
-        if(mode_def->GetName().find("gradients_2/discriminator_2/d_ln2/LayerNorm/"
+        if (mode_def->GetName().find("gradients_2/discriminator_2/d_ln2/LayerNorm/"
         "batchnorm/mul_grad/Reshape") != std::string::npos) {
             OP_LOGI(kOpType, "ScopeLayerNormGradPass Reshape name is found");
             std::vector<std::string>outputs;
-            mode_def->GetAttr("_origin_graph_node_outputs",outputs);
+            mode_def->GetAttr("_origin_graph_node_outputs", outputs);
             OP_LOGI(kOpType, "Reshape node data_out_num is %zu", outputs.size());
             if (outputs.size() == 2) {
                 OP_LOGI(kOpType, "Reshape output size is 2, not fusion scope");
@@ -212,7 +212,7 @@ Status ScopeLayerNormGradPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>
           OP_LOGI(kOpType, "gradients/vit-b16/Transformer/encoderblock is found");
           if (mode_def->GetName().find("LayerNorm_2/batchnorm/mul_grad/Mul") != std::string::npos) {
             if (mode_def->GetOpType() == "Mul") {
-              OP_LOGI(kOpType, "Mul is found,name is %s",mode_def->GetName().c_str());
+              OP_LOGI(kOpType, "Mul is found,name is %s", mode_def->GetName().c_str());
               auto input_desc0 = mode_def->GetInputDesc(0);
               std::string input_name = ScopeUtil::StringReplaceAll(input_desc0.GetName(), "^", "");
               auto input_desc1 = mode_def->GetInputDesc(1);
@@ -241,7 +241,7 @@ Status ScopeLayerNormGradPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>
   return (!(results.empty())) ? SUCCESS : FAILED;
 }
 
-void ScopeLayerNormGradPass::FindInputIndex(const Scope* scope, int& index, const std::string& name,
+void const ScopeLayerNormGradPass::FindInputIndex(const Scope* scope, int& index, const std::string& name,
                                             const std::string& base_name) {
   if (scope == nullptr) {
     OP_LOGE(kOpType, "scope is nullptr.");
@@ -273,7 +273,7 @@ void ScopeLayerNormGradPass::FindInputIndex(const Scope* scope, int& index, cons
   }
 }
 
-void ScopeLayerNormGradPass::IsConnectReshape(const Scope* scope, const std::string& name, bool& is_connected_reshape) {
+void const ScopeLayerNormGradPass::IsConnectReshape(const Scope* scope, const std::string& name, bool& is_connected_reshape) {
   if (scope == nullptr) {
     OP_LOGE(kOpType, "scope is nullptr.");
     return;
@@ -316,7 +316,7 @@ void ScopeLayerNormGradPass::OutputGammaBetaProcess(const std::vector<Scope*>& s
   }
 }
 
-void ScopeLayerNormGradPass::FindInputXIndex(const Scope* scope, int& index) {
+void const ScopeLayerNormGradPass::FindInputXIndex(const Scope* scope, int& index) {
   if (scope == nullptr) {
     OP_LOGE(kOpType, "scope is nullptr.");
     return;

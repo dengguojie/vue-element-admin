@@ -28,7 +28,6 @@ from op_test_frame.utils import file_util
 from op_test_frame.common import logger
 from . import rts_info
 
-ONLINE_PROF_MAX_PMU_NUM = 8
 
 
 # 'pylint: disable=too-few-public-methods,too-many-instance-attributes
@@ -48,6 +47,7 @@ class rtProfDataInfo_t(ctypes.Structure):
     """
     Class rtProfDataInfo_t
     """
+    ONLINE_PROF_MAX_PMU_NUM = 8
     _fields_ = [('stubfunc', ctypes.c_void_p),
                 ('blockDim', ctypes.c_uint32),
                 ('args', ctypes.c_void_p),
@@ -152,7 +152,8 @@ class AscendRTSApi:
         logger.log_info("find runtime so path is: %s" % rts_so_path)
         self.rtsdll = ctypes.CDLL(rts_so_path)
 
-    def _init_simulator_so_path(self, simulator_mode, soc_version, simulator_lib_path):
+    @staticmethod
+    def _init_simulator_so_path(simulator_mode, soc_version, simulator_lib_path):
         simulator_lib_realpath = os.path.realpath(simulator_lib_path)
         simulator_lib_dir = os.path.join(simulator_lib_realpath, soc_version, "lib")
         if not os.path.exists(simulator_lib_dir):

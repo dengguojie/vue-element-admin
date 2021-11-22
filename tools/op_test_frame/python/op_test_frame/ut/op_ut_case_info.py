@@ -283,12 +283,15 @@ class OpUTCustomCase(OpUTBaseCase):
                               case_line_num=json_obj.get("case_line_num"),
                               test_func_name=json_obj.get("test_func_name"))
 
-
-STAGE_COMPILE = "ut_compile"
-STAGE_RUN = "ut_run_on_model"
-STAGE_GEN_EXPECT = "ut_gen_expect"
-STAGE_COMPARE_PRECISION = "ut_compare_precision"
-STAGE_CUST_FUNC = "ut_cust_func"
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    This class for Constant.
+    """
+    STAGE_COMPILE = "ut_compile"
+    STAGE_RUN = "ut_run_on_model"
+    STAGE_COMPARE_PRECISION = "ut_compare_precision"
+    STAGE_CUST_FUNC = "ut_cust_func"
 
 
 class OpUTStageResult:

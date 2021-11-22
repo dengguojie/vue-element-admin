@@ -30,9 +30,14 @@ from te.tik import all as _all
 from te.tik import any as _any
 from impl.util import util_select_op_base
 
-PRE_NMS_TOPN = 1024
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    This class for Constant.
+    """
+    PRE_NMS_TOPN = 1024
 
-UB_NUM = 10240
+    UB_NUM = 10240
 
 
 # 'pylint: disable=unused-argument, too-many-locals, too-many-arguments
@@ -61,7 +66,7 @@ def yolo_v5_detection_output_d(x, box_out, box_out_num, biases,
                                N=10, resize_origin_img_to_net=False,
                                out_box_dim=3, alpha=2.0,
                                kernel_name="yolo_v5_detection_output_d"):
-                                 
+
     """
     yolo_v5_detection_output_d
 
@@ -165,11 +170,11 @@ class DetectionOutput(ClsProbComputer):
           None
         """
         super(DetectionOutput, self).__init__(input_dict)
-        self.max_ub_num = UB_NUM
+        self.max_ub_num = Constant.UB_NUM
         if cce_conf.get_soc_spec(
                 cce_conf.UB_SIZE) // 1024 < 200 or \
                 self.dtype == constant.DATA_TYPE_FP32:
-            self.max_ub_num = UB_NUM // 2
+            self.max_ub_num = Constant.UB_NUM // 2
 
         self.obj_num = self.boxes * self.totalwh
         self.bbox = self.instance.Tensor(self.dtype,
@@ -268,7 +273,7 @@ class DetectionOutput(ClsProbComputer):
         index_ub = None
         if cce_conf.get_soc_spec("SOC_VERSION") in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
-            index_ub = self.instance.Tensor("int32", (PRE_NMS_TOPN,),
+            index_ub = self.instance.Tensor("int32", (Constant.PRE_NMS_TOPN,),
                                             name="index_ub",
                                             scope=cce_params.scope_ubuf)
         index_offset = self.instance.Scalar("int32")
@@ -299,7 +304,7 @@ class DetectionOutput(ClsProbComputer):
         -------
         None
         """
-        proposals_ub = self.instance.Tensor(self.dtype, (PRE_NMS_TOPN * 8,),
+        proposals_ub = self.instance.Tensor(self.dtype, (Constant.PRE_NMS_TOPN * 8,),
                                             name="proposals_ub",
                                             scope=cce_params.scope_ubuf)
         mask = None
@@ -324,7 +329,7 @@ class DetectionOutput(ClsProbComputer):
         use_gm_mask.set_as(0)
         param["use_gm_mask"] = use_gm_mask
         with self.instance.new_stmt_scope():
-            xyhw_ub = self.instance.Tensor(self.dtype, (4, PRE_NMS_TOPN),
+            xyhw_ub = self.instance.Tensor(self.dtype, (4, Constant.PRE_NMS_TOPN),
                                            name="xyhw_ub",
                                            scope=cce_params.scope_ubuf)
             if cce_conf.get_soc_spec("SOC_VERSION") not in (
@@ -339,7 +344,7 @@ class DetectionOutput(ClsProbComputer):
             if cce_conf.get_soc_spec("SOC_VERSION") in (
                     "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 self.get_xyhw_by_index(xyhw_ub, param)
-            x1y1x2y2_ub = self.instance.Tensor(self.dtype, (4, PRE_NMS_TOPN),
+            x1y1x2y2_ub = self.instance.Tensor(self.dtype, (4, Constant.PRE_NMS_TOPN),
                                                name="x1y1x2y2_ub",
                                                scope=cce_params.scope_ubuf)
             param["x1y1x2y2_ub"] = x1y1x2y2_ub
@@ -399,7 +404,7 @@ class DetectionOutput(ClsProbComputer):
             obj_ub = self.instance.Tensor(self.dtype, (self.max_ub_num,),
                                           name="obj_ub",
                                           scope=cce_params.scope_ubuf)
-            with self.instance.if_scope(param["count"] < PRE_NMS_TOPN):
+            with self.instance.if_scope(param["count"] < Constant.PRE_NMS_TOPN):
                 with self.instance.if_scope(cycle == obj_loop_times - 1):
                     param["obj_total"].set_as(obj_last_ub_size * self.dsize)
                     ub_num.set_as(obj_last_ub_size)
@@ -493,8 +498,8 @@ class DetectionOutput(ClsProbComputer):
                                   mask[param["mask_offset"]],
                                   repeats, 1, 8, 1, 0, scalar,
                                   mask_mode="counter")
-            with self.instance.if_scope(param["count"] + scalar > PRE_NMS_TOPN):
-                total_size = (PRE_NMS_TOPN - param["count"]) * self.dsize
+            with self.instance.if_scope(param["count"] + scalar > Constant.PRE_NMS_TOPN):
+                total_size = (Constant.PRE_NMS_TOPN - param["count"]) * self.dsize
                 nburst = get_datamove_nburst(self.instance, total_size)
                 self.instance.data_move(xyhw_ub[0, param["count"]], reduce_xyhw,
                                         0, 1,
@@ -521,7 +526,7 @@ class DetectionOutput(ClsProbComputer):
                 self.instance.data_move(xyhw_ub[3, param["count"]], reduce_xyhw,
                                         0, 1,
                                         nburst, 0, 0)
-                param["count"].set_as(PRE_NMS_TOPN)
+                param["count"].set_as(Constant.PRE_NMS_TOPN)
             with self.instance.else_scope():
                 self.instance.vreduce(mask_tmp, xyhw_ub[0, param["count"]],
                                       coords_ub_xyhw[0, 0],
@@ -579,8 +584,8 @@ class DetectionOutput(ClsProbComputer):
                               mask[param["mask_offset"]], param["repeats"], 1,
                               8, 1, 0, param["scalar"], mask_mode="counter")
         with self.instance.if_scope(
-                param["count"] + param["scalar"] > PRE_NMS_TOPN):
-            param["scalar"].set_as(PRE_NMS_TOPN - param["count"])
+                param["count"] + param["scalar"] > Constant.PRE_NMS_TOPN):
+            param["scalar"].set_as(Constant.PRE_NMS_TOPN - param["count"])
         with self.instance.for_range(0, param["scalar"]) as index:
             xyhw_ub[0, param["count"] + index].set_as(reduce_xyhw[index])
         scalar_tmp = self.instance.Scalar("uint32")
@@ -831,11 +836,11 @@ class DetectionOutput(ClsProbComputer):
 
         count_offset = self.instance.Scalar(dtype="int32")
         offset = self.instance.Scalar(dtype="int32")
-        proposals_selected = self.instance.Tensor(self.dtype, (PRE_NMS_TOPN, 8),
+        proposals_selected = self.instance.Tensor(self.dtype, (Constant.PRE_NMS_TOPN, 8),
                                                   name="proposals_selected",
                                                   scope=cce_params.scope_ubuf)
 
-        ret_label_ub = self.instance.Tensor(self.dtype, (6, PRE_NMS_TOPN),
+        ret_label_ub = self.instance.Tensor(self.dtype, (6, Constant.PRE_NMS_TOPN),
                                             name="ret_label_ub",
                                             scope=cce_params.scope_ubuf)
         class_ret_ub = self.instance.Tensor(self.dtype, (128,),
@@ -880,7 +885,7 @@ class DetectionOutput(ClsProbComputer):
             repeats = selected_count // 16
             with self.instance.if_scope(selected_count % 16 != 0):
                 repeats = repeats + 1
-            ret_ub = self.instance.Tensor(self.dtype, (5, PRE_NMS_TOPN),
+            ret_ub = self.instance.Tensor(self.dtype, (5, Constant.PRE_NMS_TOPN),
                                           name="ret_ub",
                                           scope=cce_params.scope_ubuf)
             self.instance.vextract(ret_ub[0, 0], proposals_selected[0], repeats,
@@ -930,14 +935,14 @@ class DetectionOutput(ClsProbComputer):
         mask_offset.set_as(0)
         mask_cycle = self.instance.Scalar("int32")
         mask_cycle.set_as(0)
-        classes_ub_nms = self.instance.Tensor(self.dtype, (PRE_NMS_TOPN,),
+        classes_ub_nms = self.instance.Tensor(self.dtype, (Constant.PRE_NMS_TOPN,),
                                               name="classes_ub_nms",
                                               scope=cce_params.scope_ubuf)
         param["classes_ub_nms"] = classes_ub_nms
         with self.instance.new_stmt_scope():
             with self.instance.for_range(0, param["loop_cycle"]) as inner_cycle:
                 with self.instance.if_scope(
-                        param["count_offset"] < PRE_NMS_TOPN):
+                        param["count_offset"] < Constant.PRE_NMS_TOPN):
                     with self.instance.if_scope(
                             inner_cycle == param["loop_cycle"] - 1):
                         param["obj_total"].set_as(
@@ -969,7 +974,7 @@ class DetectionOutput(ClsProbComputer):
                     "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 self.instance.vconcat(param["proposals_ub"],
                                       param["classes_ub_nms"],
-                                      PRE_NMS_TOPN // 16, 4)
+                                      Constant.PRE_NMS_TOPN // 16, 4)
 
         iou_count = self.instance.Scalar(dtype="int32")
         iou_count.set_as(0)
@@ -1028,7 +1033,7 @@ class DetectionOutput(ClsProbComputer):
 
         if cce_conf.get_soc_spec("SOC_VERSION") in (
                 "Ascend310", "Ascend910"):
-            threshold = self.instance.Tensor(self.dtype, (PRE_NMS_TOPN,),
+            threshold = self.instance.Tensor(self.dtype, (Constant.PRE_NMS_TOPN,),
                                              scope=cce_params.scope_ubuf,
                                              name="threshold")
             self.instance.vec_dup(self.mask, threshold[0],
@@ -1171,13 +1176,13 @@ class DetectionOutput(ClsProbComputer):
                                       param["mask"][param["mask_offset"]],
                                       repeats, 1, 8, 1, 0, scalar,
                                       mask_mode="counter")
-                with self.instance.if_scope(param["count_offset"] + scalar > PRE_NMS_TOPN):
-                    total_size = (PRE_NMS_TOPN - param["count_offset"]) * self.dsize
+                with self.instance.if_scope(param["count_offset"] + scalar > Constant.PRE_NMS_TOPN):
+                    total_size = (Constant.PRE_NMS_TOPN - param["count_offset"]) * self.dsize
                     nburst = get_datamove_nburst(self.instance, total_size)
                     self.instance.data_move(
                         param["classes_ub_nms"][param["count_offset"]],
                         reduce_xyhw, 0, 1, nburst, 0, 0)
-                    param["count_offset"].set_as(PRE_NMS_TOPN)
+                    param["count_offset"].set_as(Constant.PRE_NMS_TOPN)
                 with self.instance.else_scope():
                     self.instance.vreduce(param["ub_num"],
                                           param["classes_ub_nms"][
@@ -1200,8 +1205,8 @@ class DetectionOutput(ClsProbComputer):
                                       8, 1, 0,
                                       scalar, mask_mode="counter")
                 with self.instance.if_scope(
-                        param["count_offset"] + scalar > PRE_NMS_TOPN):
-                    scalar.set_as(PRE_NMS_TOPN - param["count_offset"])
+                        param["count_offset"] + scalar > Constant.PRE_NMS_TOPN):
+                    scalar.set_as(Constant.PRE_NMS_TOPN - param["count_offset"])
                 with self.instance.for_range(0, scalar) as index:
                     offset = param["count_offset"] + index
                     param["classes_ub_nms"][offset].set_as(reduce_xyhw[index])
@@ -1227,11 +1232,11 @@ class DetectionOutput(ClsProbComputer):
         """
         selected_class = self.instance.Scalar(dtype="uint32")
         selected_class.set_as(0)
-        selected_tmp = self.instance.Tensor(self.dtype, (PRE_NMS_TOPN, 8),
+        selected_tmp = self.instance.Tensor(self.dtype, (Constant.PRE_NMS_TOPN, 8),
                                             name="selected_tmp",
                                             scope=cce_params.scope_ubuf)
         self.instance.vec_dup(self.mask, selected_tmp, 0.0,
-                              PRE_NMS_TOPN * 8 * self.dsize // 256, 8)
+                              Constant.PRE_NMS_TOPN * 8 * self.dsize // 256, 8)
         with self.instance.new_stmt_scope():
             if cce_conf.get_soc_spec("SOC_VERSION") in (
                     "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
@@ -1349,19 +1354,19 @@ class DetectionOutput(ClsProbComputer):
         x1y1x2y2_ub = param["x1y1x2y2_ub"]
         class_ub = param["classes_ub_nms"]
         pat_type = "uint16" if self.dtype == "float16" else "uint32"
-        pat_size = PRE_NMS_TOPN // 16 if self.dtype == "float16" else \
-            PRE_NMS_TOPN // 32
-        pattern = self.instance.Tensor(pat_type, (PRE_NMS_TOPN, ),
+        pat_size = Constant.PRE_NMS_TOPN // 16 if self.dtype == "float16" else \
+            Constant.PRE_NMS_TOPN // 32
+        pattern = self.instance.Tensor(pat_type, (Constant.PRE_NMS_TOPN, ),
                                        name="pattern", scope=cce_params.scope_ubuf)
         self.instance.vec_dup(pat_size, pattern, 0, 1, 4)
         repeats = (param["count_offset"] * self.dsize + 255) // 256
         self.instance.vcmpvs_gt(pattern, class_ub,
                                 self.classes_threshold, repeats, 1, 8)
 
-        reduce_xy = self.instance.Tensor(self.dtype, (PRE_NMS_TOPN, ),
+        reduce_xy = self.instance.Tensor(self.dtype, (Constant.PRE_NMS_TOPN, ),
                                          name="reduce_xy", scope=cce_params.scope_ubuf)
         self.instance.vec_dup(self.mask, reduce_xy, 0.0,
-                              PRE_NMS_TOPN * self.dsize // 256, 8)
+                              Constant.PRE_NMS_TOPN * self.dsize // 256, 8)
 
         self.instance.vreduce(param["count_offset"], reduce_xy,
                               x1y1x2y2_ub[0, 0], pattern, 1,
@@ -1437,7 +1442,7 @@ class DetectionOutput(ClsProbComputer):
         -------
         None
         """
-        iou_num = PRE_NMS_TOPN
+        iou_num = Constant.PRE_NMS_TOPN
         if cce_conf.get_soc_spec("SOC_VERSION") in (
                 "Hi3796CV300ES", "Hi3796CV300CS", "SD3403") or \
                 self.dtype == constant.DATA_TYPE_FP32:
@@ -1596,13 +1601,13 @@ class DetectionOutput(ClsProbComputer):
         -------
         None
         """
-        proposals_ub_tmp = self.instance.Tensor(self.dtype, (PRE_NMS_TOPN * 8,),
+        proposals_ub_tmp = self.instance.Tensor(self.dtype, (Constant.PRE_NMS_TOPN * 8,),
                                                 name="proposals_ub_tmp",
                                                 scope=cce_params.scope_ubuf)
         each_proposal_num = 8
-        repeats = PRE_NMS_TOPN // 16
+        repeats = Constant.PRE_NMS_TOPN // 16
         self.instance.vrpsort16(proposals_ub_tmp, proposals_ub, repeats)
-        repeats = PRE_NMS_TOPN // 64
+        repeats = Constant.PRE_NMS_TOPN // 64
         offset = 16 * each_proposal_num
         length = 16
 

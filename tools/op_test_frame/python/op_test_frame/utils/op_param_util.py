@@ -17,7 +17,6 @@
 """
 op param util module
 """
-import random
 import secrets
 import json
 import copy

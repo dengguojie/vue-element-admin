@@ -33,7 +33,7 @@ Status AutoMappingFnPartitionedCall(const google::protobuf::Message* op_src, ge:
   return SUCCESS;
 }
 
-Status ParseSubgraphPostFnPartitionedCall(const std::string& subgraph_name, const ge::Graph& graph) {
+Status ParseSubgraphPostFnPartitionedCall(const ge::Graph& graph) {
   return AutoMappingSubgraphIndex(
       graph, [](int data_index) { return data_index; }, [](int retval_index) { return retval_index; });
 }

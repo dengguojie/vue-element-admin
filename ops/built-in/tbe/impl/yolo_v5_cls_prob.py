@@ -22,29 +22,34 @@ from impl import common_util
 from impl import constant_util as constant
 from impl import yolo_v5_correct_region_box
 
-# param for nms compute
-PRE_NMS_TOPN = 1024
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    This class for Constant.
+    """
+    # param for nms compute
+    PRE_NMS_TOPN = 1024
 
-# one repeat
-REPEAT_ONE = 1
+    # one repeat
+    REPEAT_ONE = 1
 
-# one nburst
-NBURST_ONE = 1
+    # one nburst
+    NBURST_ONE = 1
 
-# value one
-VALUE_ONE = 1
+    # value one
+    VALUE_ONE = 1
 
-# stride eight for ISA
-STRIDE_EIGHT = 8
+    # stride eight for ISA
+    STRIDE_EIGHT = 8
 
-# stride zero for dma
-GAP_ZERO = 0
+    # stride zero for dma
+    GAP_ZERO = 0
 
-# sid for dma
-SID = 0
+    # sid for dma
+    SID = 0
 
-# value zero
-VALUE_ZERO = 0
+    # value zero
+    VALUE_ZERO = 0
 
 
 def check_param_range(param_name, min_value, max_value, real_value,
@@ -64,9 +69,9 @@ def check_param_range(param_name, min_value, max_value, real_value,
     raise RuntimeError(error_info,
                        "In op[%s], the parameter[%s] should be"
                        " in the range of [%s, %s], but actually is [%s]."
-                       % (error_info['opname'], error_info['param_name'],
-                          error_info['min_value'], error_info['max_value'],
-                          error_info['real_value']))
+                       % (error_info.get('opname'), error_info.get('param_name'),
+                          error_info.get('min_value'), error_info.get('max_value'),
+                          error_info.get('real_value')))
 
 
 # 'pylint: disable=too-many-ancestors
@@ -128,7 +133,7 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
           -------
           None
         """
-        out_offset = VALUE_ZERO
+        out_offset = Constant.VALUE_ZERO
         for i in range(self.yolo_num):
             with self.instance.new_stmt_scope():
                 self.handle_clsprob(i, batch, param, out_offset)
@@ -164,7 +169,7 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
         in_param["obj_gm_offset"] = param['obj_gm_offset']
         if tbe_platform.get_soc_spec("SOC_VERSION") in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
-            in_param['index_offset'].set_as(out_offset)
+            in_param.get('index_offset').set_as(out_offset)
         if self.boxes * self.width[idx] * self.height[idx] * self.dsize < \
                 self.one_max_size // 2:
             self.small_clsprob(batch, in_param)
@@ -223,10 +228,10 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
         mask_scalar = self.instance.Scalar("uint16", name="mask_scalar")
         mask_scalar.set_as(sum_mask_ub[0])
         with self.instance.if_scope(mask_scalar != 0):
-            with self.instance.if_scope(param['count'] < PRE_NMS_TOPN):
+            with self.instance.if_scope(param['count'] < Constant.PRE_NMS_TOPN):
                 with self.instance.for_range(0, length) as mask_index:
                     param['index_offset'].set_as(param['index_offset'] + 1)
-                    with self.instance.if_scope(param['count'] < PRE_NMS_TOPN):
+                    with self.instance.if_scope(param['count'] < Constant.PRE_NMS_TOPN):
                         mask_scalar.set_as(param['reduce_mask_ub'][mask_index])
 
                         # 1 fp16 == 15360 uint16
@@ -258,22 +263,22 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
         """
         self.init_small_clsprob_param(param)
         self.instance.vec_muls(self.mask, param['zero_tensor'],
-                               param['zero_tensor'], VALUE_ZERO, REPEAT_ONE,
-                               STRIDE_EIGHT, STRIDE_EIGHT)
+                               param['zero_tensor'], Constant.VALUE_ZERO, Constant.REPEAT_ONE,
+                               Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
-        self.instance.data_move(param['ub_a'], param['obj_data'][batch, 0], SID,
-                                NBURST_ONE, param['burlen'], GAP_ZERO, GAP_ZERO)
+        self.instance.data_move(param['ub_a'], param['obj_data'][batch, 0], Constant.SID,
+                                Constant.NBURST_ONE, param['burlen'], Constant.GAP_ZERO, Constant.GAP_ZERO)
         if tbe_platform.get_soc_spec("SOC_VERSION") not in (
                 "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             self.instance.data_move(self.obj_data[param['obj_gm_offset']],
-                                    param['ub_a'], SID,
-                                    NBURST_ONE, param['burlen'], GAP_ZERO,
-                                    GAP_ZERO)
+                                    param['ub_a'], Constant.SID,
+                                    Constant.NBURST_ONE, param['burlen'], Constant.GAP_ZERO,
+                                    Constant.GAP_ZERO)
             param['obj_gm_offset'].set_as(param['obj_gm_offset'] +
                                           self.boxes * param['h'] * param['w'])
         # if obj_data < obj_threshold
         self.instance.vec_dup(self.mask, param['ub_b'], self.obj_threshold,
-                              param['repeat'], STRIDE_EIGHT)
+                              param['repeat'], Constant.STRIDE_EIGHT)
 
         ones_ub = self.instance.Tensor(self.dtype, (128,), name="ones_ub",
                                        scope=tbe_platform.scope_ubuf)
@@ -290,7 +295,7 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
         last_index_len.set_as(param['total_len'] % index_len)
         with self.instance.if_scope(last_index_len == 0):
             last_index_len.set_as(index_len)
-        with self.instance.for_range(VALUE_ZERO, param['repeat']) as cycle:
+        with self.instance.for_range(Constant.VALUE_ZERO, param['repeat']) as cycle:
             sel = self.instance.Tensor("uint16", (8, ), name="sel",
                                        scope=tbe_platform.scope_ubuf)
             self.instance.vec_dup(8, sel, 0, 1, 8)
@@ -298,13 +303,13 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
                                       param['ub_b'][param['num'] * cycle],
                                       1, 8, 8)
 
-            self.instance.vec_sel(self.mask, VALUE_ZERO,
+            self.instance.vec_sel(self.mask, Constant.VALUE_ZERO,
                                   param['ub_a'][param['num'] * cycle],
                                   sel,
                                   param['ub_a'][param['num'] * cycle],
-                                  param['zero_tensor'], REPEAT_ONE)
+                                  param['zero_tensor'], Constant.REPEAT_ONE)
             self.instance.vec_sel(self.mask, 0, reduce_mask_ub[0], sel,
-                                  ones_ub[0], zeros_ub[0], REPEAT_ONE,
+                                  ones_ub[0], zeros_ub[0], Constant.REPEAT_ONE,
                                   constant.STRIDE_ONE)
             param['reduce_mask_ub'] = reduce_mask_ub
             with self.instance.if_scope(cycle == param['repeat'] - 1):
@@ -312,7 +317,7 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
             self.set_index_ub(param, index_len)
         param['faces_in_loop'], param['last_loop'], param['loop'] = \
             self.get_faces_params(param['adj_len'], self.classes)
-        with self.instance.for_range(VALUE_ZERO, param['loop']) as loop_idx:
+        with self.instance.for_range(Constant.VALUE_ZERO, param['loop']) as loop_idx:
 
             ub_c = self.instance.Tensor(self.dtype,
                                         (self.one_max_size // self.dsize,),
@@ -322,7 +327,7 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
                                             scope=tbe_platform.scope_ubuf,
                                             name="last_32b")
             faces = self.instance.Scalar("int32")
-            with self.instance.if_scope(loop_idx != param['loop'] - VALUE_ONE):
+            with self.instance.if_scope(loop_idx != param['loop'] - Constant.VALUE_ONE):
                 faces.set_as(param['faces_in_loop'])
             with self.instance.else_scope():
                 faces.set_as(param['last_loop'])
@@ -334,14 +339,14 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
                                     param['clz_data'][batch,
                                                       param['faces_in_loop'] *
                                                       loop_idx, 0],
-                                    SID, NBURST_ONE, param['burlen'],
-                                    GAP_ZERO, GAP_ZERO)
+                                    Constant.SID, Constant.NBURST_ONE, param['burlen'],
+                                    Constant.GAP_ZERO, Constant.GAP_ZERO)
             # burlen for mov out
             param['burlen'].set_as(
                 self.get_burlen(param["h"] * param["w"] * self.boxes))
 
             # a face = h*w*box
-            with self.instance.for_range(VALUE_ZERO, faces,
+            with self.instance.for_range(Constant.VALUE_ZERO, faces,
                                          thread_num=2) as loop:
                 param['ub_d'] = self.instance.Tensor(
                     self.dtype, (self.one_max_size // self.dsize,),
@@ -353,27 +358,27 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
 
                 self.instance.vec_mul(self.mask, param['ub_d'],
                                       ub_c[start_idx], param['ub_a'],
-                                      param['repeat'], STRIDE_EIGHT,
-                                      STRIDE_EIGHT, STRIDE_EIGHT)
+                                      param['repeat'], Constant.STRIDE_EIGHT,
+                                      Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
                 # last loop
-                if self.tail_len != VALUE_ZERO and \
+                if self.tail_len != Constant.VALUE_ZERO and \
                         param['h'] == self.height[-1] and \
                         param['w'] == self.width[-1]:
-                    param['burlen'].set_as(param['burlen'] - VALUE_ONE)
-                    with self.instance.if_scope(param['burlen'] > VALUE_ZERO):
+                    param['burlen'].set_as(param['burlen'] - Constant.VALUE_ONE)
+                    with self.instance.if_scope(param['burlen'] > Constant.VALUE_ZERO):
                         self.instance.data_move(
                             self.inter_classes[
                                 batch, co_id, param['out_offset']],
-                            param['ub_d'], SID, NBURST_ONE, param['burlen'],
-                            GAP_ZERO, GAP_ZERO)
+                            param['ub_d'], Constant.SID, Constant.NBURST_ONE, param['burlen'],
+                            Constant.GAP_ZERO, Constant.GAP_ZERO)
                     param['burlen'].set_as(param['burlen'] + 1)
                     tail_idx = self.instance.Scalar(name="tail_idx")
                     tail_idx.set_as(self.last_len - self.len_32b)
                     self.instance.data_move(last_32b, self.inter_classes[
                         batch, co_id, param['out_offset'] + tail_idx],
-                                            SID, NBURST_ONE, VALUE_ONE,
-                                            GAP_ZERO, GAP_ZERO)
-                    with self.instance.for_range(VALUE_ZERO,
+                                            Constant.SID, Constant.NBURST_ONE, Constant.VALUE_ONE,
+                                            Constant.GAP_ZERO, Constant.GAP_ZERO)
+                    with self.instance.for_range(Constant.VALUE_ZERO,
                                                  self.tail_len) as cycle:
                         tmp_scalar = self.instance.Scalar(self.dtype)
                         tmp_scalar.set_as(
@@ -385,14 +390,14 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
                     self.instance.data_move(
                         self.inter_classes[batch, co_id, param['out_offset'] +
                                            tail_idx],
-                        last_32b, SID, NBURST_ONE, VALUE_ONE,
-                        GAP_ZERO, GAP_ZERO)
+                        last_32b, Constant.SID, Constant.NBURST_ONE, Constant.VALUE_ONE,
+                        Constant.GAP_ZERO, Constant.GAP_ZERO)
 
                 else:
                     self.instance.data_move(
                         self.inter_classes[batch, co_id, param['out_offset']],
-                        param['ub_d'], SID, NBURST_ONE, param['burlen'],
-                        GAP_ZERO, GAP_ZERO)
+                        param['ub_d'], Constant.SID, Constant.NBURST_ONE, param['burlen'],
+                        Constant.GAP_ZERO, Constant.GAP_ZERO)
 
     def init_small_clsprob_param(self, param):
         """
@@ -454,34 +459,34 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
         each_len = self.instance.Scalar("int32")
 
         each_len.set_as(param['mov_len'])
-        with self.instance.for_range(VALUE_ZERO, param['mov_loop']) as loop:
+        with self.instance.for_range(Constant.VALUE_ZERO, param['mov_loop']) as loop:
             self.init_bigcls_param(loop, param)
             self.instance.vec_muls(self.mask, param['zero_tensor'],
-                                   param['zero_tensor'], VALUE_ZERO, REPEAT_ONE,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   param['zero_tensor'], Constant.VALUE_ZERO, Constant.REPEAT_ONE,
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
             # move obj data to ub a
             self.instance.data_move(param['ub_a'],
                                     param['obj_data'][
                                         batch, param['mov_len'] * loop],
-                                    SID,
-                                    NBURST_ONE, param['burlen'], GAP_ZERO,
-                                    GAP_ZERO)
+                                    Constant.SID,
+                                    Constant.NBURST_ONE, param['burlen'], Constant.GAP_ZERO,
+                                    Constant.GAP_ZERO)
 
             # if obj_data < obj_threshold
             self.instance.vec_dup(self.mask, param['ub_b'], self.obj_threshold,
-                                  param['repeat'], STRIDE_EIGHT)
+                                  param['repeat'], Constant.STRIDE_EIGHT)
 
             reduce_mask_ub = self.instance.Tensor(self.dtype, (128,),
                                                   name="reduce_mask_ub",
                                                   scope=tbe_platform.scope_ubuf)
             ones_ub = self.instance.Tensor(self.dtype, (128,), name="ones_ub",
                                            scope=tbe_platform.scope_ubuf)
-            self.instance.vec_dup(self.mask, ones_ub[0], VALUE_ONE, REPEAT_ONE,
-                                  STRIDE_EIGHT)
+            self.instance.vec_dup(self.mask, ones_ub[0], Constant.VALUE_ONE, Constant.REPEAT_ONE,
+                                  Constant.STRIDE_EIGHT)
             zeros_ub = self.instance.Tensor(self.dtype, (128,), name="zeros_ub",
                                             scope=tbe_platform.scope_ubuf)
-            self.instance.vec_dup(self.mask, zeros_ub[0], VALUE_ZERO,
-                                  REPEAT_ONE, STRIDE_EIGHT)
+            self.instance.vec_dup(self.mask, zeros_ub[0], Constant.VALUE_ZERO,
+                                  Constant.REPEAT_ONE, Constant.STRIDE_EIGHT)
 
             with self.instance.if_scope(loop == param['mov_loop'] - 1):
                 each_len.set_as(param['last_len'])
@@ -495,9 +500,9 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
             if tbe_platform.get_soc_spec("SOC_VERSION") not in (
                     "Ascend310", "Ascend910", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 self.instance.data_move(self.obj_data[param['obj_gm_offset']],
-                                        param['ub_a'], SID,
-                                        NBURST_ONE, param['burlen'], GAP_ZERO,
-                                        GAP_ZERO)
+                                        param['ub_a'], Constant.SID,
+                                        Constant.NBURST_ONE, param['burlen'], Constant.GAP_ZERO,
+                                        Constant.GAP_ZERO)
                 with self.instance.if_scope(loop == param['mov_loop'] - 1):
                     param['obj_gm_offset'].set_as(param['obj_gm_offset'] +
                                                   param['last_len'])
@@ -505,7 +510,7 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
                     param['obj_gm_offset'].set_as(param['obj_gm_offset'] +
                                                   param['mov_len'])
 
-            with self.instance.for_range(VALUE_ZERO, param['repeat']) as cycle:
+            with self.instance.for_range(Constant.VALUE_ZERO, param['repeat']) as cycle:
                 sel = self.instance.Tensor("uint16", (8, ),
                                            name="sel",
                                            scope=tbe_platform.scope_ubuf)
@@ -514,10 +519,10 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
                                           param['ub_a'][param['num'] * cycle],
                                           param['ub_b'][param['num'] * cycle],
                                           1, 8, 8)
-                self.instance.vec_sel(self.mask, VALUE_ZERO,
+                self.instance.vec_sel(self.mask, Constant.VALUE_ZERO,
                                       param['ub_a'][param['num'] * cycle],
                                       sel, param['ub_a'][param['num'] * cycle],
-                                      param['zero_tensor'], REPEAT_ONE)
+                                      param['zero_tensor'], Constant.REPEAT_ONE)
 
                 self.instance.vec_sel(self.mask, 0, reduce_mask_ub[0], sel,
                                       ones_ub[0], zeros_ub[0], 1, 1)
@@ -529,7 +534,7 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
             thread_num = 2
             if self.classes == 1:
                 thread_num = 1
-            with self.instance.for_range(VALUE_ZERO, self.classes,
+            with self.instance.for_range(Constant.VALUE_ZERO, self.classes,
                                          thread_num=thread_num) as co_id:
 
                 param['ub_c'] = self.instance.Tensor(self.dtype,
@@ -539,28 +544,28 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
 
                 # move classes data to ub c
                 self.instance.data_move(param['ub_c'], param['clz_data'][
-                    batch, co_id, param['mov_len'] * loop], SID, NBURST_ONE,
-                                        param['burlen'], GAP_ZERO, GAP_ZERO)
+                    batch, co_id, param['mov_len'] * loop], Constant.SID, Constant.NBURST_ONE,
+                                        param['burlen'], Constant.GAP_ZERO, Constant.GAP_ZERO)
 
                 self.instance.vec_mul(self.mask, param['ub_c'], param['ub_a'],
                                       param['ub_c'], param['repeat'],
-                                      STRIDE_EIGHT, STRIDE_EIGHT, STRIDE_EIGHT)
+                                      Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
-                if self.tail_len != VALUE_ZERO and \
+                if self.tail_len != Constant.VALUE_ZERO and \
                         param['h'] == self.height[-1] and \
                         param['w'] == self.width[-1]:
                     with self.instance.if_scope(
-                            loop == param['mov_loop'] - VALUE_ONE):
-                        param['burlen'].set_as(param['burlen'] - VALUE_ONE)
+                            loop == param['mov_loop'] - Constant.VALUE_ONE):
+                        param['burlen'].set_as(param['burlen'] - Constant.VALUE_ONE)
                         with self.instance.if_scope(
-                                param['burlen'] > VALUE_ZERO):
+                                param['burlen'] > Constant.VALUE_ZERO):
                             self.instance.data_move(
                                 self.inter_classes[batch, co_id,
                                                    param['out_offset'] +
                                                    param['mov_len'] * loop],
-                                param['ub_c'], SID, NBURST_ONE, param['burlen'],
-                                GAP_ZERO, GAP_ZERO)
-                        param['burlen'].set_as(param['burlen'] + VALUE_ONE)
+                                param['ub_c'], Constant.SID, Constant.NBURST_ONE, param['burlen'],
+                                Constant.GAP_ZERO, Constant.GAP_ZERO)
+                        param['burlen'].set_as(param['burlen'] + Constant.VALUE_ONE)
                         tail_idx = self.instance.Scalar(name="tail_idx")
                         tail_idx.set_as(param['last_len'] - self.len_32b)
                         self.instance.data_move(
@@ -569,8 +574,8 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
                                                param['out_offset'] +
                                                param['mov_len'] * loop +
                                                tail_idx],
-                            SID, NBURST_ONE, VALUE_ONE, GAP_ZERO, GAP_ZERO)
-                        with self.instance.for_range(VALUE_ZERO,
+                            Constant.SID, Constant.NBURST_ONE, Constant.VALUE_ONE, Constant.GAP_ZERO, Constant.GAP_ZERO)
+                        with self.instance.for_range(Constant.VALUE_ZERO,
                                                      self.tail_len) as cycle:
                             scalar = self.instance.Scalar(self.dtype)
                             scalar.set_as(param['ub_c'][param['last_len'] \
@@ -581,22 +586,22 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
                         offset = param['out_offset'] + param['mov_len'] * loop \
                                  + tail_idx
                         dest = self.inter_classes[batch, co_id, offset]
-                        self.instance.data_move(dest, param['last_32b'], SID,
-                                                NBURST_ONE,
-                                                VALUE_ONE, GAP_ZERO, GAP_ZERO)
+                        self.instance.data_move(dest, param['last_32b'], Constant.SID,
+                                                Constant.NBURST_ONE,
+                                                Constant.VALUE_ONE, Constant.GAP_ZERO, Constant.GAP_ZERO)
                     with self.instance.else_scope():
                         offset = param['out_offset'] + param['mov_len'] * loop
                         self.instance.data_move(
                             self.inter_classes[batch, co_id, offset],
-                            param['ub_c'], SID, NBURST_ONE,
-                            param['burlen'], GAP_ZERO, GAP_ZERO)
+                            param['ub_c'], Constant.SID, Constant.NBURST_ONE,
+                            param['burlen'], Constant.GAP_ZERO, Constant.GAP_ZERO)
                 else:
                     dest = self.inter_classes[
                         batch, co_id, param['out_offset'] + \
                         param['mov_len'] * loop]
                     self.instance.data_move(dest, param['ub_c'],
-                                            SID, NBURST_ONE, param['burlen'],
-                                            GAP_ZERO, GAP_ZERO)
+                                            Constant.SID, Constant.NBURST_ONE, param['burlen'],
+                                            Constant.GAP_ZERO, Constant.GAP_ZERO)
 
     def init_bigcls_param(self, loop, param):
         """
@@ -635,7 +640,7 @@ class ClsProbComputer(yolo_v5_correct_region_box.CorrectBoxComputer):
         param['burlen'] = self.instance.Scalar(name="burlen")
         param['repeat'] = self.instance.Scalar(name="repeat")
         param['num'] = constant.VECTOR_BYTE_SIZE // self.dsize
-        with self.instance.if_scope(loop == param['mov_loop'] - VALUE_ONE):
+        with self.instance.if_scope(loop == param['mov_loop'] - Constant.VALUE_ONE):
             param['burlen'].set_as(self.get_burlen(param['last_len']))
             param['repeat'].set_as(self.get_repeat(param['last_len']))
         with self.instance.else_scope():
@@ -708,23 +713,23 @@ def check_param(input_dict):
         raise RuntimeError(error_info,
                            "In op[%s], the parameter[%s] should be [%s],"
                            " but actually is [%s]." %
-                           (error_info['opname'], error_info['param_name'],
-                            error_info['expect_value'],
-                            error_info['real_value']))
+                           (error_info.get('opname'), error_info.get('param_name'),
+                            error_info.get('expect_value'),
+                            error_info.get('real_value')))
     max_box_number_per_batch = input_dict.get("max_box_number_per_batch")
     dtype = input_dict.get("box_info")[0].get("dtype")
     if tbe_platform.get_soc_spec("SOC_VERSION") in (
             "Hi3796CV300ES", "Hi3796CV300CS", "SD3403") \
             or dtype == constant.DATA_TYPE_FP32:
-        if pre_nms_topn > PRE_NMS_TOPN // 2 or pre_nms_topn <= 0:
-            check_param_range("pre_nms_topn", 1, PRE_NMS_TOPN // 2,
+        if pre_nms_topn > Constant.PRE_NMS_TOPN // 2 or pre_nms_topn <= 0:
+            check_param_range("pre_nms_topn", 1, Constant.PRE_NMS_TOPN // 2,
                               pre_nms_topn)
     else:
-        if pre_nms_topn > PRE_NMS_TOPN or pre_nms_topn <= 0:
-            check_param_range("pre_nms_topn", 1, PRE_NMS_TOPN, pre_nms_topn)
+        if pre_nms_topn > Constant.PRE_NMS_TOPN or pre_nms_topn <= 0:
+            check_param_range("pre_nms_topn", 1, Constant.PRE_NMS_TOPN, pre_nms_topn)
 
-    if max_box_number_per_batch > PRE_NMS_TOPN or max_box_number_per_batch <= 0:
-        check_param_range("max_box_number_per_batch", 1, PRE_NMS_TOPN,
+    if max_box_number_per_batch > Constant.PRE_NMS_TOPN or max_box_number_per_batch <= 0:
+        check_param_range("max_box_number_per_batch", 1, Constant.PRE_NMS_TOPN,
                           max_box_number_per_batch)
 
     dsize = common_util.get_data_size(input_dict.get("box_info")[0].get("dtype"))

@@ -32,7 +32,7 @@ Status AutoMappingFnCase(const google::protobuf::Message* op_src, ge::Operator& 
   return SUCCESS;
 }
 
-Status ParseSubgraphPostFnCase(const std::string& subgraph_name, const ge::Graph& graph) {
+Status ParseSubgraphPostFnCase(const ge::Graph& graph) {
   return AutoMappingSubgraphIndex(
       graph, [](int data_index) { return data_index + 1; }, [](int retval_index) { return retval_index; });
 }

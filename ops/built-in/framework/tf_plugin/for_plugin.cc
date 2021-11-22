@@ -34,7 +34,7 @@ Status AutoMappingFnFor(const google::protobuf::Message* op_src, ge::Operator& o
   return SUCCESS;
 }
 
-Status ParseSubgraphPostFnFor(const std::string& subgraph_name, const ge::Graph& graph) {
+Status ParseSubgraphPostFnFor(const ge::Graph& graph) {
   return AutoMappingSubgraphIndex(
       graph, [](int data_index) { return (data_index == 0) ? 0 : data_index + INDEX_2; },
       [](int retval_index) { return retval_index; });
