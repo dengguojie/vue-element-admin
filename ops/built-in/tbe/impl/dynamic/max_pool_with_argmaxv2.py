@@ -1279,6 +1279,12 @@ def _check_param(x, ksize, strides, pads, dtype, dilation, ceil_mode, kernel_nam
         real_value = strides[dim_w]
         error_manager_vector.raise_err_input_value_invalid(kernel_name, "strides_w", expected_value, real_value)
 
+    if strides[dim_h] > 2048:
+        raise RuntimeError("strides h too large")
+
+    if strides[dim_w] > 2048:
+        raise RuntimeError("strides w too large")
+
     if len(pads) != 4:
         raise RuntimeError("Invalid padding params, padding dim must be 4.")
 

@@ -47,10 +47,35 @@ case4 = {"params": [{"shape": (2,4,256,1000,16), "dtype": "float16", "format": "
          "format_expect": [],
          "support_expect": True}
 
+# Fail case
+case5 = {"params": [{"shape": (2,4,256,1000,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (2,4,256,1000,16),"ori_format": "NC1HWC0"},
+                    {"shape": (2,4,51,200,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (2,4,51,200,16),"ori_format": "NC1HWC0"},
+                    {"shape": (2,4,25,639,16), "dtype": "uint16", "format": "NC1HWC0", "ori_shape": (2,4,25,639,16),"ori_format": "NC1HWC0"},
+                    [1, 1, 5, 5],
+                    [1, 1, 3000, 5],
+                    [1, 1, 0, 0]],
+         "case_name": "max_pool_with_arxmax_v2_4",
+         "expect": RuntimeError,
+         "format_expect": [],
+         "support_expect": True}
+
+case6 = {"params": [{"shape": (2,4,256,1000,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (2,4,256,1000,16),"ori_format": "NC1HWC0"},
+                    {"shape": (2,4,51,200,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (2,4,51,200,16),"ori_format": "NC1HWC0"},
+                    {"shape": (2,4,25,639,16), "dtype": "uint16", "format": "NC1HWC0", "ori_shape": (2,4,25,639,16),"ori_format": "NC1HWC0"},
+                    [1, 1, 5, 5],
+                    [1, 1, 5, 3100],
+                    [1, 1, 0, 0]],
+         "case_name": "max_pool_with_arxmax_v2_5",
+         "expect": RuntimeError,
+         "format_expect": [],
+         "support_expect": True}
+
 ut_case.add_case(["Ascend310", "Ascend910A"], case1)
 ut_case.add_case(["Ascend310", "Ascend910A"], case2)
 ut_case.add_case(["Ascend310", "Ascend910A"], case3)
 ut_case.add_case(["Ascend310", "Ascend910A"], case4)
+ut_case.add_case(["Ascend310", "Ascend910A"], case5)
+ut_case.add_case(["Ascend310", "Ascend910A"], case6)
 
 if __name__ == '__main__':
     # ut_case.run()

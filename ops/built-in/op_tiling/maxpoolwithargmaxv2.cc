@@ -89,8 +89,8 @@ static void PrintTilingParam(const TilingParam& param) {
   OP_LOGD("MaxPoolWithArgmaxV2Tiling ",
           "(tiling_mode,act_core_num,one_core_ele,last_core_ele,input_h,input_w,output_h,output_w,pad_h,pad_w,pad_t,"
           "pad_b,pad_l,pad_r,c_factor,h_factor,w_factor,one_core_loop_num,one_core_loop_left,last_core_loop_num,"
-          "last_core_loop_left,n_c1,align_w_factor,align_w_loop_left,align_output_w,align_output_hw):
-          (%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d)",
+          "last_core_loop_left,n_c1,align_w_factor,align_w_loop_left,align_output_w,align_output_hw):"
+          "(%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d)",
           param.tiling_mode, param.act_core_num, param.one_core_ele, param.last_core_ele, param.input_h, param.input_w,
           param.output_h, param.output_w, param.pad_h, param.pad_w, param.pad_t, param.pad_b, param.pad_l, param.pad_r,
           param.c_factor, param.h_factor, param.w_factor, param.one_core_loop_num, param.one_core_loop_left,
@@ -161,14 +161,16 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
   // calc output height and width, pad infos
   param.pad_t = pad_top;
   param.pad_l = pad_left;
-  int32_t exact_h = param.input_h + TILING_FACTOR_2 * param.pad_t - (ksize_h - 1) - 1 + ((ceil_mode == 1) ? (strides_h - 1) : 0);
+  int32_t exact_h = param.input_h + TILING_FACTOR_2 * param.pad_t - (ksize_h - 1) - 1 +
+                    ((ceil_mode == 1) ? (strides_h - 1) : 0);
   param.output_h = DivRtn(exact_h, strides_h) + 1;
   if (param.pad_t > 0) {
     if ((param.output_h - 1) * strides_h >= param.input_h + param.pad_t) {
       param.output_h = param.output_h - 1;
     }
   }
-  int32_t exact_w = param.input_w + TILING_FACTOR_2 * param.pad_l - (ksize_w - 1) - 1 + ((ceil_mode == 1) ? (strides_w - 1) : 0);
+  int32_t exact_w = param.input_w + TILING_FACTOR_2 * param.pad_l - (ksize_w - 1) - 1 +
+                    ((ceil_mode == 1) ? (strides_w - 1) : 0);
   param.output_w = DivRtn(exact_w, strides_w) + 1;
   if (param.pad_l > 0) {
     if ((param.output_w - 1) * strides_w >= (param.input_w + param.pad_l)) {
@@ -343,6 +345,16 @@ bool MaxPoolWithArgmaxV2Tiling(const string& op_type, const TeOpParas& op_paras,
                    VECTOR_INNER_ERR_REPORT_TILIING(
                    op_type, "Output size should be larger than zero."),
                    return false);
+
+  OP_TILING_CHECK((param.output_h - 1) * compile_info_param.strides_h - param.pad_t >= param.input_h,
+                  VECTOR_INNER_ERR_REPORT_TILIING(
+                  op_type, "Last kernel is not in the scope of input feature on h dim."),
+                  return false);
+
+  OP_TILING_CHECK((param.output_w - 1) * compile_info_param.strides_w - param.pad_l >= param.input_w,
+                VECTOR_INNER_ERR_REPORT_TILIING(
+                op_type, "Last kernel is not in the scope of input feature on w dim."),
+                return false);
 
   if ((compile_info_param.pad_left > 0) || (compile_info_param.pad_top > 0)) {
     OP_TILING_CHECK(((param.output_w - 1) * compile_info_param.strides_w >=
