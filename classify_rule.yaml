@@ -1797,6 +1797,10 @@ vector_B:
       - ops/built-in/tests/ut/plugin_test/tensorflow/CMakeLists.txt
       - ops/built-in/tests/ut/plugin_test/tensorflow/instance_norm_1.pb
       - ops/built-in/tests/ut/plugin_test/tensorflow/resizebilineargrad_case_1.pb
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_cast_pb_gen.py
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_cast_plugin.cpp
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_decode_csv_pb_gen.py
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_decode_csv_plugin.cpp
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_dilation2d_backprop_filter_pb_gen.py
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_dilation2d_backprop_filter_plugin.cpp
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_dilation2d_backprop_input_pb_gen.py
@@ -1806,6 +1810,10 @@ vector_B:
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_dynamic_rnn_scope_pass_test.cpp
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_max_pool3d_pb_gen.py
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_max_pool3d_plugin.cpp
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_max_pool3d_grad_grad_pb_gen.py
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_max_pool3d_grad_grad_plugin.cpp
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_max_pool3d_grad_pb_gen.py
+      - ops/built-in/tests/ut/plugin_test/tensorflow/test_max_pool3d_grad_plugin.cpp
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_parallel_concat_pb_gen.py
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_parallel_concat_plugin.cpp
       - ops/built-in/tests/ut/plugin_test/tensorflow/test_resizebilineargrad_pb_gen.py
