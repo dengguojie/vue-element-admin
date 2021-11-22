@@ -1593,6 +1593,11 @@ def in_update_schedule(res, input_tensors):
 
     x_input = input_tensors[-1]
     sum_input = input_tensors[0]
+    for tensor in input_tensors:
+        if tensor.op.name == "x_input":
+            x_input = tensor
+        if tensor.op.name == "variance_input":
+            sum_input = tensor
     shape_x = shape_to_list(x_input.shape)
     shape_sum = shape_to_list(sum_input.shape)
 

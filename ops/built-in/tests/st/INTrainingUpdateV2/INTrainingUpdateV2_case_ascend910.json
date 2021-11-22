@@ -1,0 +1,364 @@
+[
+  {
+    "op": "INTrainingUpdateV2",
+    "calc_expect_func_file": "in_training_update_v2_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          2,
+          32,
+          32,
+          16
+        ],
+        "ori_shape": [
+          2,
+          16,
+          32,
+          32,
+          32
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDHWC",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          1,
+          1,
+          32
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDHWC",
+        "name": "sum",
+        "type": "float32"
+      },
+       {
+        "shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          1,
+          1,
+          32
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDHWC",
+        "name": "square_sum",
+        "type": "float32"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          1,
+          1,
+          32
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDHWC",
+        "name": "gamma",
+        "type": "float32"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          1,
+          1,
+          32
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDHWC",
+        "name": "beta",
+        "type": "float32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          16,
+          2,
+          32,
+          32,
+          16
+        ],
+        "ori_shape": [
+          2,
+          16,
+          32,
+          32,
+          32
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDHWC",
+        "name": "y",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          1,
+          1,
+          32
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDHWC",
+        "name": "batch_mean",
+        "type": "float32"
+      },
+      {
+        "shape": [
+          2,
+          1,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          1,
+          1,
+          32
+        ],
+        "format": "NDC1HWC0",
+        "ori_format": "NDHWC",
+        "name": "batch_variance",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "momentum",
+        "type": "float",
+        "value": 0.1
+      },
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 0.00001
+      }
+    ],
+    "case_name": "test_INTrainingUpdateV2_000"
+  },
+  {
+    "op": "INTrainingUpdateV2",
+    "calc_expect_func_file": "in_training_update_v2_golden.py:calc_expect_func",
+    "input_desc": [
+      {
+        "shape": [
+          2,
+          2,
+          32,
+          32,
+          16
+        ],
+        "ori_shape": [
+          2,
+          32,
+          32,
+          32
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NHWC",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          1,
+          32
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NHWC",
+        "name": "sum",
+        "type": "float32"
+      },
+       {
+        "shape": [
+          2,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          1,
+          32
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NHWC",
+        "name": "square_sum",
+        "type": "float32"
+      },
+      {
+        "shape": [
+          2,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          1,
+          32
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NHWC",
+        "name": "gamma",
+        "type": "float32"
+      },
+      {
+        "shape": [
+          2,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          1,
+          32
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NHWC",
+        "name": "beta",
+        "type": "float32"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          2,
+          2,
+          32,
+          32,
+          16
+        ],
+        "ori_shape": [
+          2,
+          32,
+          32,
+          32
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NHWC",
+        "name": "y",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          2,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          1,
+          32
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NHWC",
+        "name": "batch_mean",
+        "type": "float32"
+      },
+      {
+        "shape": [
+          2,
+          2,
+          1,
+          1,
+          16
+        ],
+        "ori_shape": [
+          2,
+          1,
+          1,
+          32
+        ],
+        "format": "NC1HWC0",
+        "ori_format": "NHWC",
+        "name": "batch_variance",
+        "type": "float32"
+      }
+    ],
+    "attr": [
+      {
+        "name": "momentum",
+        "type": "float",
+        "value": 0.1
+      },
+      {
+        "name": "epsilon",
+        "type": "float",
+        "value": 0.00001
+      }
+    ],
+    "case_name": "test_INTrainingUpdateV2_001"
+  }
+]

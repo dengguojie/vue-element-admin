@@ -22,6 +22,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
+import te.platform as tbe_platform
 
 
 # 'pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-arguments
@@ -94,6 +95,7 @@ def op_select_format(x,
     return param_dynamic_in_json
 
 
+@tbe_platform.fusion_manager.fusion_manager.register("in_training_update_v2")
 def in_training_update_compute(x,
                                sum,
                                square_sum,
@@ -106,7 +108,6 @@ def in_training_update_compute(x,
                                variance_out,
                                momentum,
                                epsilon,
-                               format_x,
                                kernel_name="in_training_update_v2"):
     """
     DSL description of the instancenorm operator's mathematical calculation process
@@ -144,54 +145,70 @@ def in_training_update_compute(x,
         [result, result_mean, result_variance]
     """
     shape_x = shape_util.shape_to_list(x.shape)
+    shape_sum = shape_util.shape_to_list(sum.shape)
     dtype_x = x.dtype.lower()
+    num = 1
+    if "format" in x.op.attrs:
+        format_x = x.op.attrs["format"].value
+        if format_x in ("NDC1HWC0",):
+            if len(shape_x) == 5:
+                num = shape_x[1] * shape_x[3]
+            else:
+                num = shape_x[1] * shape_x[3] * shape_x[4]
+        else:
+            num = shape_x[2] * shape_x[3]
 
     # compute the instance normalization of x
     if dtype_x == "float16":
         x = tbe.cast_to(x, "float32")
 
-    if format_x in ("NDC1HWC0",):  # only support NDC1HWC0 and NC1HWC0
-        num = shape_x[1] * shape_x[3]
-    else:
-        num = shape_x[2] * shape_x[3]
-
     num_rec = 1.0 / num
     # compute the saved mean of x
-    compute_mean = tbe.vmuls(sum, num_rec)
-    mean_boardcast = tbe.broadcast(compute_mean, shape_x)
+    save_mean_reduce = tbe.vmuls(sum, num_rec)
 
     # compute the saved variance of x
     variance_div = tbe.vmuls(square_sum, num_rec)
-    variance_square = tbe.vmul(compute_mean, compute_mean)
-    compute_var = tbe.vsub(variance_div, variance_square)
+    variance_square = tbe.vmul(save_mean_reduce, save_mean_reduce)
+    save_variance_reduce = tbe.vsub(variance_div, variance_square)
 
-    x_mean = tbe.vsub(x, mean_boardcast)
-    multiplier_add = tbe.vadds(compute_var, epsilon)
-    multiplier_sqrt = tbe.vsqrt(multiplier_add)
-    sqrt_boardcast = tbe.broadcast(multiplier_sqrt, shape_x)
-    mean_wo_scale = tbe.vdiv(x_mean, sqrt_boardcast)
-    result = mean_wo_scale
+    # compute the coefficient of y
     if gamma is not None and beta is not None:
-        gamma = tbe.broadcast(gamma, shape_x)
-        beta = tbe.broadcast(beta, shape_x)
-        gamma_scale = tbe.vmul(result, gamma)
-        result = tbe.vadd(gamma_scale, beta)
+        multiplier_add = tbe.vadds(save_variance_reduce, epsilon)
+        multiplier_sqrt = tbe.vsqrt(multiplier_add)
+        gamma = tbe.broadcast(gamma, shape_sum)
+        multiplier_div = tbe.vdiv(gamma, multiplier_sqrt)
+        multiplier = tbe.broadcast(multiplier_div, shape_x)
+
+        addend_mul = tbe.vmul(multiplier_div, save_mean_reduce)
+        beta = tbe.broadcast(beta, shape_sum)
+        addend_sub = tbe.vsub(beta, addend_mul)
+        addend = tbe.broadcast(addend_sub, shape_x)
+
+        x_mul = tbe.vmul(multiplier, x)
+        res_y = tbe.vadd(x_mul, addend)
+    else:
+        mean_broadcast = tbe.broadcast(save_mean_reduce, shape_x)
+        x_mean = tbe.vsub(x, mean_broadcast)
+        multiplier_add = tbe.vadds(save_variance_reduce, epsilon)
+        multiplier_sqrt = tbe.vsqrt(multiplier_add)
+        sqrt_broadcast = tbe.broadcast(multiplier_sqrt, shape_x)
+        res_y = tbe.vdiv(x_mean, sqrt_broadcast)
 
     if dtype_x == "float16":
-        result = tbe.cast_to(result, "float16")
+        res_y = tbe.cast_to(res_y, dtype_x)
 
     if num == 1:
         batch_var_scalar = 0.0
     else:
         batch_var_scalar = float(num) / (num - 1)
 
-    result_mean = compute_mean
-    result_variance = tbe.vmuls(compute_var, batch_var_scalar)
+    result_mean = save_mean_reduce
+    result_variance = tbe.vmuls(save_variance_reduce, batch_var_scalar)
 
     # if input mean and var, use input values and momentum to update
     if mean is not None and variance is not None:
         factor_reverse = 1.0 - momentum
-        mean_mul = tbe.vmuls(compute_mean, momentum)
+        mean_mul = tbe.vmuls(save_mean_reduce, momentum)
         mean_mul_rev = tbe.vmuls(mean, factor_reverse)
         result_mean = tbe.vadd(mean_mul, mean_mul_rev)
 
@@ -199,7 +216,7 @@ def in_training_update_compute(x,
         var_mul_rev = tbe.vmuls(variance, factor_reverse)
         result_variance = tbe.vadd(var_mul, var_mul_rev)
 
-    return [result, result_mean, result_variance]
+    return [res_y, result_mean, result_variance]
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
@@ -279,8 +296,8 @@ def in_training_update_v2(x,
             shape_square_sum[0], shape_square_sum[1], shape_square_sum[2], shape_square_sum[3] * shape_square_sum[4],
             shape_square_sum[5]
         ]
-
-    x_input = tvm.placeholder(shape_x, name="x_input", dtype=dtype_x.lower())
+    attr = {"format": format_x}
+    x_input = tvm.placeholder(shape_x, name="x_input", dtype=dtype_x.lower(), attrs=attr)
     sum_input = tvm.placeholder(shape_sum, name="sum_input", dtype=dtype_sum.lower())
     square_sum_input = tvm.placeholder(shape_square_sum, name="square_sum_input", dtype=dtype_square_sum.lower())
     gamma_input, beta_input, mean_input, var_input = None, None, None, None
@@ -337,7 +354,6 @@ def in_training_update_v2(x,
                                      batch_variance,
                                      momentum,
                                      epsilon,
-                                     format_x,
                                      kernel_name=kernel_name)
 
     with tvm.target.cce():
@@ -345,8 +361,8 @@ def in_training_update_v2(x,
 
     if use_mean:
         if scale:
-            tensor_list = [x_input, sum_input, square_sum_input, gamma_input, beta_input, mean_input, var_input
-                          ] + list(res)
+            tensor_list = [x_input, sum_input, square_sum_input, gamma_input,
+                           beta_input, mean_input, var_input] + list(res)
         else:
             tensor_list = [x_input, sum_input, square_sum_input, mean_input, var_input] + list(res)
     else:
