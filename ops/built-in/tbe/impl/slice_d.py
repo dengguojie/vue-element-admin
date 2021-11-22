@@ -7425,14 +7425,13 @@ def _use_strided_slice(ori_x, ori_y):
     input_format = ori_x.get("format")
     if input_format not in ("NDC1HWC0", "NHWC", "NCHW", "ND", "NCDHW", "NDHWC"):
         return False
-
     dtype = ori_x.get("dtype")
     input_shape = ori_x.get("ori_shape")
     output_shape = ori_y.get("ori_shape")
     type_size = cce.cce_intrin.get_bit_len(dtype) // 8
-    if input_shape and output_shape and output_shape[-1] % type_size == 0:
+    block_align = BLOCK_SIZE // type_size
+    if input_shape and output_shape and output_shape[-1] % block_align == 0:
         return False
-
     return True
 
 
