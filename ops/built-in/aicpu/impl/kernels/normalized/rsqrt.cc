@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All right reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -86,11 +86,9 @@ template <typename T>
 uint32_t RsqrtCpuKernel::RsqrtCompute(Tensor *x, Tensor *y, int64_t data_num,
                                       CpuKernelContext &ctx) {
   auto input_x = reinterpret_cast<T *>(x->GetData());
-  KERNEL_CHECK_NULLPTR(input_x, KERNEL_STATUS_PARAM_INVALID,
-                       "Get input data failed")
+  KERNEL_CHECK_NULLPTR(input_x, KERNEL_STATUS_PARAM_INVALID, "Get input data failed")
   auto output_y = reinterpret_cast<T *>(y->GetData());
-  KERNEL_CHECK_NULLPTR(output_y, KERNEL_STATUS_PARAM_INVALID,
-                       "Get output data failed")
+  KERNEL_CHECK_NULLPTR(output_y, KERNEL_STATUS_PARAM_INVALID,"Get output data failed")
   if (data_num <= kParallelDataNums) {
     for (int64_t i = 0; i < data_num; i++) {
       if (x->GetDataType() == DT_FLOAT16) {

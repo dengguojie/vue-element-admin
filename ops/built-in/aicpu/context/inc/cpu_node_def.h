@@ -109,7 +109,7 @@ class AICPU_VISIBILITY NodeDef {
   std::unordered_map<std::string, std::shared_ptr<AttrValue> > Attrs() const;
 
  private:
-  NodeDef(NodeDefImpl *impl);
+  explicit NodeDef(NodeDefImpl *impl);
 
  private:
   std::shared_ptr<NodeDefImpl> impl_{nullptr};

@@ -116,25 +116,16 @@ template <typename T>
 uint32_t SigmoidCpuKernel::SigmoidComputeComplex(CpuKernelContext &ctx) {
   auto input_x = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto output_y = reinterpret_cast<T *>(ctx.Output(0)->GetData());
-  auto data_type = ctx.Input(0)->GetDataType();
   int64_t data_num = ctx.Input(0)->NumElements();
   int64_t data_size = data_num * sizeof(T);
   typedef Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>   ArrayxXd;
   ArrayxXd array_x(1, data_num);
 
   if(data_size <= kParallelDataNums){
-    if (data_type == DT_COMPLEX64){
-      for (int64_t i = 0; i < data_num; i++){
-        *(output_y + i) = static_cast<T>(1) / 
-                          (static_cast<T>(1) + (static_cast<T>(1) / 
-                          Eigen::numext::exp(*(input_x + i))));
-      }
-    }else{
-      for (int64_t i = 0; i < data_num; i++) {
-        *(output_y + i) = static_cast<T>(1) / 
-                          (static_cast<T>(1) + (static_cast<T>(1) / 
-                          Eigen::numext::exp(*(input_x + i))));
-      }
+    for (int64_t i = 0; i < data_num; i++){
+      *(output_y + i) = static_cast<T>(1) / 
+                        (static_cast<T>(1) + (static_cast<T>(1) / 
+                        Eigen::numext::exp(*(input_x + i))));
     }
     return KERNEL_STATUS_OK;
   }else{
@@ -146,15 +137,9 @@ uint32_t SigmoidCpuKernel::SigmoidComputeComplex(CpuKernelContext &ctx) {
     }
     auto shard_sigmoid = [&](size_t start, size_t end){
       for (size_t i = start; i < end; i++){
-        if (data_type == DT_COMPLEX64){
-          *(output_y + i) = static_cast<T>(1) / 
-                            (static_cast<T>(1) + (static_cast<T>(1) / 
-                            Eigen::numext::exp(*(input_x + i))));
-        }else{
-          *(output_y + i) = static_cast<T>(1) / 
-                            (static_cast<T>(1) + (static_cast<T>(1) / 
-                            Eigen::numext::exp(*(input_x + i))));
-        }
+        *(output_y + i) = static_cast<T>(1) / 
+                          (static_cast<T>(1) + (static_cast<T>(1) / 
+                          Eigen::numext::exp(*(input_x + i))));
       }
     };
     KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(ctx, data_num, data_num / max_core_num, shard_sigmoid),

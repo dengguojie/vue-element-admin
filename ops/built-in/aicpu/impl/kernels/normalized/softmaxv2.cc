@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,8 @@
 #include "log.h"
 #include "status.h"
 #include "utils/kernel_util.h"
+#include "securec.h"
+
 namespace {
 const std::uint32_t kSoftmaxV2InputNum{1};
 const std::uint32_t kSoftmaxV2OutputNum{1};
@@ -69,7 +71,7 @@ inline std::uint32_t ComputeSoftmaxV2Kernel(const CpuKernelContext &ctx) {
   length = inner_size * outer_size;
   T dims_exp_sum[length];
   T dims_maximum[length];
-  memset(dims_exp_sum, 0, length * sizeof(T));
+  (void)memset_s(dims_exp_sum, length * sizeof(T), 0, length * sizeof(T));
   bool parallel_flag = false;
   if (total > paralled_data_num) {
     parallel_flag = true;
