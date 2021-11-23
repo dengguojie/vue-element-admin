@@ -19,7 +19,7 @@ from te import platform as tbe_platform
 from te.utils import para_check
 
 
-# pylint: disable=singleton-comparison
+# 'pylint: disable=singleton-comparison
 def map_index_vec_dup(tik_instance, mask, dst, const, length):
     """
     :param tik_instance:
@@ -39,7 +39,7 @@ def map_index_vec_dup(tik_instance, mask, dst, const, length):
             tik_instance.vec_dup(tail, dst[number * mask], const, 1, 8)
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def map_index_vec_sub(tik_instance, mask, dst, src0, src1, length):
     """
     :param tik_instance:
@@ -60,14 +60,14 @@ def map_index_vec_sub(tik_instance, mask, dst, src0, src1, length):
             tik_instance.vec_sub(tail, dst[number * mask], src0[number * mask], src1, 1, 8, 8, 8)
 
 
-# pylint: disable=too-many-instance-attributes,too-few-public-methods,too-many-statements
+# 'pylint: disable=too-many-instance-attributes,too-few-public-methods,too-many-statements
 class MapIndexProcess:
     """
     MapIndexProcess
     """
 
-    # pylint: disable=invalid-name,unused-variable,redefined-builtin
-    # pylint: disable=too-many-instance-attributes,too-few-public-methods
+    # 'pylint: disable=invalid-name,unused-variable,redefined-builtin
+    # 'pylint: disable=too-many-instance-attributes,too-few-public-methods
     def __init__(self, input_data):
         """
         :param input_data:
@@ -115,7 +115,7 @@ class MapIndexProcess:
         self.tik_instance.data_move(self.x_ub, self.x, 0, 1, x_dim_align // 8, 0, 0, 0)
         self.tik_instance.data_move(self.data_seq_ub, self.data_seq, 0, 1, self.data_seq_length // 8, 0, 0, 0)
 
-    # pylint: disable=too-many-locals,too-many-statements,too-few-public-methods
+    # 'pylint: disable=too-many-locals,too-many-statements,too-few-public-methods
     def cce_map_index(self, kernel_name="map_index"):
         """
         :param kernel_name:

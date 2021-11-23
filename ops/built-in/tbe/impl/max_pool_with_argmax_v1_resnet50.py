@@ -63,7 +63,11 @@ def _ceil_div(value, factor):
 
 # 'pylint: disable=locally-disabled, too-many-instance-attributes
 # 'pylint: disable=too-few-public-methods
-class MaxPoolWithArgmaxV1Resnet50(object):
+class MaxPoolWithArgmaxV1Resnet50:
+    """
+    MaxPoolWithArgmaxV1Resnet50
+    """
+    # 'pylint: disable=too-many-arguments
     def __init__(self, x, ksize, strides, padding, dtype, dilation, ceil_mode, kernel_name):
         """
         init MaxPoolWithargmax parameters
@@ -143,6 +147,7 @@ class MaxPoolWithArgmaxV1Resnet50(object):
 
         self._tik_instance_function_init()
 
+    # 'pylint: disable=too-many-arguments
     @staticmethod
     def _pooling_output_shape_pad_lr(input_size, kernel_size, pad_l, pad_r, stride, dilation, ceil_mode):
         temp = input_size + pad_l + pad_r - dilation * (kernel_size - 1) - 1
@@ -158,9 +163,11 @@ class MaxPoolWithArgmaxV1Resnet50(object):
 
         return output_size
 
+    # 'pylint: disable=too-many-arguments
     def _pooling_output_shape(self, input_size, kernel_size, pad, stride, dilation, ceil_mode):
         return self._pooling_output_shape_pad_lr(input_size, kernel_size, pad, pad, stride, dilation, ceil_mode)
 
+    # 'pylint: disable=too-many-arguments
     @staticmethod
     def _pool2d_shape_check(kernel_h, kernel_w, stride_h, stride_w,
                             pad_h, pad_w, dilation_h, dilation_w, output_h,
@@ -184,6 +191,7 @@ class MaxPoolWithArgmaxV1Resnet50(object):
         if output_h < 1 or output_w < 1:
             raise RuntimeError("Output size is too small ", "outW= ", output_w, "outH= ", output_h)
 
+    # 'pylint: disable=too-many-locals
     def _calc_out_size_and_pad(self):
         pad_h = self.padding[1]
         pad_w = self.padding[2]
@@ -275,7 +283,7 @@ class MaxPoolWithArgmaxV1Resnet50(object):
             self.tik_inst.vector_dup(single_vec_fp16_mask, ub_buff[vec_repeat_time * vec_fp16_mask],
                                      pad_value, res_vec_length // single_vec_fp16_mask, 1, 1)
 
-    # 'pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _load_gm_to_ub_ping(self, ub_buff, output_block_h, input_fmap_gm, input_gm_idx, looph):
         """
         load data from gm to ub
@@ -324,6 +332,7 @@ class MaxPoolWithArgmaxV1Resnet50(object):
                         input_fmap_gm[input_gm_idx + cur_h * self.in_size_w * c0_dim + cur_w * c0_dim],
                         0, gm_len, 1, 1, 0)
 
+    # 'pylint: disable=too-many-locals
     def _load_gm_to_ub_pong(self, ub_buff, output_block_h, input_fmap_gm, input_gm_idx, looph):
         """
         load data from gm to ub
@@ -536,6 +545,7 @@ class MaxPoolWithArgmaxV1Resnet50(object):
             self.input_idx.set_as(self.input_idx + self.fm_size * DIM_C0)
             self.l1_idx.set_as(self.l1_idx + self.fm_size * 16)
 
+    # 'pylint: disable=too-many-locals
     def tik_instance_function(self, kernel_name):
         """
         implementation of max_pool_with_argmax and return the tik instance
@@ -619,7 +629,8 @@ def is_max_pool_with_argmax_param(x, ksize, strides, padding):
 
     return False
 
-# 'pylint: disable=unused-argument
+
+# 'pylint: disable=unused-argument,too-many-arguments
 def max_pool_with_argmax_v1_resnet50(x, y, argmax, ksize, strides, pads, dtype=DT_INT32, dilation=(1, 1, 1, 1),
                                      ceil_mode=False, kernel_name="max_pool_with_argmax_v1"):
     """

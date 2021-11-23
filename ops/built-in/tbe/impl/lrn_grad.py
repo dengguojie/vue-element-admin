@@ -17,17 +17,22 @@ lrn_grad
 """
 import math
 from te import tik
-
 from te import platform as tbe_platform
-from impl import common_util
-from impl import constant_util as constant
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from impl import common_util
+from impl import constant_util as constant
 
-MAX_REPEAT = 255
-MAX_STRIDE = 65535
-MORE_THREE_RADIUS = 3
-MORE_TWO_RADIUS = 2
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    This class for Constant.
+    """
+    MAX_REPEAT = 255
+    MAX_STRIDE = 65535
+    MORE_THREE_RADIUS = 3
+    MORE_TWO_RADIUS = 2
 
 
 def _get_ub_segment_size(need_ub_segment_count):
@@ -60,10 +65,10 @@ def _double_vector_func(func, dest, src0, src1, count):
     src_rep_stride = _get_rep_stride(element_count, src0.dtype)
 
     while remain > 0:
-        if remain > element_count * MAX_REPEAT:
-            func(element_count, dest[index], src0[index], src1[index], MAX_REPEAT, 1, 1, 1, dst_rep_stride,
+        if remain > element_count * Constant.MAX_REPEAT:
+            func(element_count, dest[index], src0[index], src1[index], Constant.MAX_REPEAT, 1, 1, 1, dst_rep_stride,
                  src_rep_stride, src_rep_stride)
-            handle_count = element_count * MAX_REPEAT
+            handle_count = element_count * Constant.MAX_REPEAT
         elif remain > element_count:
             repeat_times = remain // element_count
             func(element_count, dest[index], src0[index], src1[index], repeat_times, 1, 1, 1, dst_rep_stride,
@@ -92,10 +97,10 @@ def _vector_scalar_func(func, dest, src0, scalar_value, count):
     src_rep_stride = _get_rep_stride(element_count, src0.dtype)
 
     while remain > 0:
-        if remain > element_count * MAX_REPEAT:
-            func(element_count, dest[index], src0[index], scalar_value, MAX_REPEAT, 1, 1, dst_rep_stride,
+        if remain > element_count * Constant.MAX_REPEAT:
+            func(element_count, dest[index], src0[index], scalar_value, Constant.MAX_REPEAT, 1, 1, dst_rep_stride,
                  src_rep_stride)
-            handle_count = element_count * MAX_REPEAT
+            handle_count = element_count * Constant.MAX_REPEAT
         elif remain > element_count:
             repeat_times = remain // element_count
             func(element_count, dest[index], src0[index], scalar_value, repeat_times, 1, 1, dst_rep_stride,
@@ -122,9 +127,9 @@ def _single_vector_func(func, dest, src, count):
     src_rep_stride = _get_rep_stride(element_count, src.dtype)
 
     while remain > 0:
-        if remain > element_count * MAX_REPEAT:
-            func(element_count, dest[index], src[index], MAX_REPEAT, 1, 1, dst_rep_stride, src_rep_stride)
-            handle_count = element_count * MAX_REPEAT
+        if remain > element_count * Constant.MAX_REPEAT:
+            func(element_count, dest[index], src[index], Constant.MAX_REPEAT, 1, 1, dst_rep_stride, src_rep_stride)
+            handle_count = element_count * Constant.MAX_REPEAT
         elif remain > element_count:
             repeat_times = remain // element_count
             func(element_count, dest[index], src[index], repeat_times, 1, 1, dst_rep_stride, src_rep_stride)
@@ -136,14 +141,14 @@ def _single_vector_func(func, dest, src, count):
         remain -= handle_count
 
 
-# pylint: disable=too-many-instance-attributes, attribute-defined-outside-init
-# pylint: disable=too-many-lines, too-few-public-methods
+# 'pylint: disable=too-many-instance-attributes, attribute-defined-outside-init
+# 'pylint: disable=too-many-lines, too-few-public-methods
 class LrnGrad:
     """
      implementation of lrn_grad
     """
 
-    # pylint: disable=locally-disabled,too-many-locals,too-many-arguments
+    # 'pylint: disable=locally-disabled,too-many-locals,too-many-arguments
     def __init__(self, shape, dtype, depth_radius=5, bias=1, alpha=1, beta=0.5, kernel_name="lrn_grad"):
         self.shape = shape
         dtype = dtype.lower()
@@ -239,10 +244,10 @@ class LrnGrad:
         radius = self.depth_radius
         ub_output_count = channels_out * factor
 
-        ub_input_shape = (ub_output_count + MORE_THREE_RADIUS * radius * factor,)
-        ub_pre_norm_shape = (ub_output_count + (MORE_THREE_RADIUS * radius + 1) * factor,)
-        ub_norm_shape = (ub_output_count + MORE_TWO_RADIUS * radius * factor,)
-        ub_pre_norm2_shape = (ub_output_count + (MORE_TWO_RADIUS * radius + 1) * factor,)
+        ub_input_shape = (ub_output_count + Constant.MORE_THREE_RADIUS * radius * factor,)
+        ub_pre_norm_shape = (ub_output_count + (Constant.MORE_THREE_RADIUS * radius + 1) * factor,)
+        ub_norm_shape = (ub_output_count + Constant.MORE_TWO_RADIUS * radius * factor,)
+        ub_pre_norm2_shape = (ub_output_count + (Constant.MORE_TWO_RADIUS * radius + 1) * factor,)
         ub_norm2_shape = (ub_output_count + radius * factor,)
         ub_output_shape = (ub_output_count,)
 
@@ -277,7 +282,7 @@ class LrnGrad:
         if self.tail * dtype_size % constant.BLOCK_SIZE == 0:
             src_stride = (height * width - count) * dtype_size // \
                          constant.BLOCK_SIZE
-            if src_stride <= MAX_STRIDE:
+            if src_stride <= Constant.MAX_STRIDE:
                 tik_instance.data_move(data_move_ub, src, 0, repeats, burst, src_stride, 0)
             else:
                 count_one_burst = burst * constant.BLOCK_SIZE // self.dtype_size
@@ -323,7 +328,7 @@ class LrnGrad:
         if self.tail * dtype_size % constant.BLOCK_SIZE == 0:
             desc_stride = (width * height - count) * dtype_size // \
                           constant.BLOCK_SIZE
-            if desc_stride <= MAX_STRIDE:
+            if desc_stride <= Constant.MAX_STRIDE:
                 tik_instance.data_move(dest, data_move_ub, 0, repeats, burst, 0, desc_stride)
             else:
                 count_one_burst = burst * constant.BLOCK_SIZE // self.dtype_size
@@ -355,10 +360,10 @@ class LrnGrad:
         src_rep_stride = _get_rep_stride(constant.MASK64, src.dtype)
 
         while remain > 0:
-            if remain > constant.MASK64 * MAX_REPEAT:
-                tik_instance.vconv(constant.MASK64, "", dest[index], src[index], MAX_REPEAT, 1, 1, dst_rep_stride,
-                                   src_rep_stride)
-                handle_count = constant.MASK64 * MAX_REPEAT
+            if remain > constant.MASK64 * Constant.MAX_REPEAT:
+                tik_instance.vconv(constant.MASK64, "", dest[index], src[index], Constant.MAX_REPEAT,
+                                   1, 1, dst_rep_stride, src_rep_stride)
+                handle_count = constant.MASK64 * Constant.MAX_REPEAT
             elif remain > constant.MASK64:
                 repeat_times = remain // constant.MASK64
                 tik_instance.vconv(constant.MASK64, "", dest[index], src[index], repeat_times, 1, 1, dst_rep_stride,
@@ -411,7 +416,7 @@ class LrnGrad:
         tik_instance = self.tik_instance
         _single_vector_func(tik_instance.vrec, dest, src, count)
 
-    # pylint: disable=invalid-name
+    # 'pylint: disable=invalid-name
     def _vpow(self, dest, x, y, count):
         """
         pow compute
@@ -624,12 +629,12 @@ class LrnGrad:
         while cut_hw_factor_size < self.ub_dtype_size \
                 and channels_out_one_loop > 1:
             im_seg_count = channels_out_one_loop + \
-                           MORE_THREE_RADIUS * radius
+                           Constant.MORE_THREE_RADIUS * radius
             ig_seg_count = im_seg_count
             om_seg_count = im_seg_count
             pre_norm_seg_count = im_seg_count + 1
             norm_seg_count = channels_out_one_loop + \
-                             MORE_TWO_RADIUS * radius
+                             Constant.MORE_TWO_RADIUS * radius
             norm_beta_seg_count = norm_seg_count
             pre_norm2_seg_count = norm_seg_count + 1
             norm2_seg_count = channels_out_one_loop + radius
@@ -731,7 +736,7 @@ class LrnGrad:
             self._cut_channels_compute(count_one_window, 0, tail_c, 0)
             self._ub2gm(gm_index, count, tail_c)
         else:
-            channels = channels_count + MORE_THREE_RADIUS * radius
+            channels = channels_count + Constant.MORE_THREE_RADIUS * radius
             self._all_gm2ub_cut_channels(gm_index, count, 0, channels)
             self._cut_channels_compute(count_one_window, 0, channels, 0)
             self._ub2gm(gm_index, count, channels_count)
@@ -739,30 +744,31 @@ class LrnGrad:
                 self._backup_ub_cut_channels(count_one_window, True)
             if loop_c > 1:
                 channels = channels_count
-                ub_idx = MORE_THREE_RADIUS * radius * count_one_window
+                ub_idx = Constant.MORE_THREE_RADIUS * radius * count_one_window
                 with tik_instance.for_range(1, loop_c) as c_idx:
-                    gm_in_idx = gm_index + width * height * (MORE_THREE_RADIUS * radius + channels_count * c_idx)
+                    gm_in_idx = gm_index + width * height * \
+                                (Constant.MORE_THREE_RADIUS * radius + channels_count * c_idx)
                     gm_out_idx = gm_index + (channels_count * c_idx * width * height)
-                    if tail_c > MORE_THREE_RADIUS * radius:
+                    if tail_c > Constant.MORE_THREE_RADIUS * radius:
                         self._all_gm2ub_cut_channels(gm_in_idx, count, ub_idx, channels)
                     else:
                         with tik_instance.if_scope(c_idx != loop_c - 1):
                             self._all_gm2ub_cut_channels(gm_in_idx, count, ub_idx, channels)
                         with tik_instance.else_scope():
-                            if channels + tail_c - MORE_THREE_RADIUS * radius > 0:
+                            if channels + tail_c - Constant.MORE_THREE_RADIUS * radius > 0:
                                 self._all_gm2ub_cut_channels(gm_in_idx, count, ub_idx,
-                                                             channels + tail_c - MORE_THREE_RADIUS * radius)
+                                                             channels + tail_c - Constant.MORE_THREE_RADIUS * radius)
                     self._cut_channels_compute(count_one_window, ub_idx, channels, channels_count * c_idx)
                     self._ub2gm(gm_out_idx, count, channels)
 
                     self._backup_ub_cut_channels(count_one_window, False)
             if tail_c > 0:
-                gm_in_idx = gm_index + width * height * (MORE_THREE_RADIUS * radius + channels_count * loop_c)
+                gm_in_idx = gm_index + width * height * (Constant.MORE_THREE_RADIUS * radius + channels_count * loop_c)
                 gm_out_idx = gm_index + (channels_count * loop_c * width * height)
-                ub_idx = MORE_THREE_RADIUS * radius * count_one_window
+                ub_idx = Constant.MORE_THREE_RADIUS * radius * count_one_window
 
-                if tail_c > MORE_THREE_RADIUS * radius:
-                    tail_channels = tail_c - MORE_THREE_RADIUS * radius
+                if tail_c > Constant.MORE_THREE_RADIUS * radius:
+                    tail_channels = tail_c - Constant.MORE_THREE_RADIUS * radius
                     self._all_gm2ub_cut_channels(gm_in_idx, count, ub_idx, tail_channels)
                 self._cut_channels_compute(count_one_window, ub_idx, tail_c, channels_count * loop_c)
                 self._ub2gm(gm_out_idx, count, tail_c)
@@ -772,7 +778,7 @@ class LrnGrad:
         self._gm2ub(self.input_grads_ub[ub_idx:], self.data_input_grads[gm_index], count, channels)
         self._gm2ub(self.output_image_ub[ub_idx:], self.data_output_image[gm_index], count, channels)
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def _cut_channels_compute(self, count_one_window, ub_idx, channels, channel_idx):
         radius = self.depth_radius
         count_one_loop = channels * count_one_window
@@ -786,15 +792,15 @@ class LrnGrad:
             channels_count = channels - radius
             second_channels_out = channels_count - radius
             norm_count = count_one_loop - radius * count_one_window
-            output_count = count_one_loop - MORE_THREE_RADIUS * radius * \
+            output_count = count_one_loop - Constant.MORE_THREE_RADIUS * radius * \
                            count_one_window
             sum_first_start_idx = 0
             sum_second_start_idx = 0
             square_value_ub_idx = 0
         else:
-            norm_ub_idx = MORE_TWO_RADIUS * radius * count_one_window
+            norm_ub_idx = Constant.MORE_TWO_RADIUS * radius * count_one_window
             norm_ub2_idx = radius * count_one_window
-            input_ub_idx = MORE_THREE_RADIUS * radius * count_one_window
+            input_ub_idx = Constant.MORE_THREE_RADIUS * radius * count_one_window
             pre_norm_ub_idx = norm_ub_idx + count_one_window
             pre_norm2_ub_idx = norm_ub2_idx + count_one_window
             square_value_ub_idx = input_ub_idx + count_one_window
@@ -802,7 +808,7 @@ class LrnGrad:
             second_channels_out = channels
             norm_count = count_one_loop
             output_count = count_one_loop
-            sum_first_start_idx = channel_idx + MORE_TWO_RADIUS * radius
+            sum_first_start_idx = channel_idx + Constant.MORE_TWO_RADIUS * radius
             sum_second_start_idx = channel_idx + radius
 
         to_square_ub = self.input_image_ub[input_ub_idx:]
@@ -847,27 +853,28 @@ class LrnGrad:
         radius = self.depth_radius
         if radius != 0:
             self._vadds(self.input_image_ub[0:], self.input_image_ub[src_idx:], 0.0,
-                        MORE_THREE_RADIUS * radius * count_one_window)
+                        Constant.MORE_THREE_RADIUS * radius * count_one_window)
 
             self._vadds(self.input_grads_ub[0:], self.input_grads_ub[src_idx:], 0.0,
-                        MORE_THREE_RADIUS * radius * count_one_window)
+                        Constant.MORE_THREE_RADIUS * radius * count_one_window)
 
             self._vadds(self.output_image_ub[0:], self.output_image_ub[src_idx:], 0.0,
-                        MORE_THREE_RADIUS * radius * count_one_window)
+                        Constant.MORE_THREE_RADIUS * radius * count_one_window)
 
-            self._vadds(self.norm_ub[0:], self.norm_ub[src_idx:], 0.0, MORE_TWO_RADIUS * radius * count_one_window)
+            self._vadds(self.norm_ub[0:], self.norm_ub[src_idx:], 0.0,
+                        Constant.MORE_TWO_RADIUS * radius * count_one_window)
 
             self._vadds(self.norm_beta_ub[0:], self.norm_beta_ub[src_idx:], 0.0,
-                        MORE_TWO_RADIUS * radius * count_one_window)
+                        Constant.MORE_TWO_RADIUS * radius * count_one_window)
 
             norm2_ub = self.norm2_ub
             self._vadds(norm2_ub, norm2_ub[src_idx:], 0.0, radius * count_one_window)
 
         self._vadds(self.pre_norm_ub[0:], self.pre_norm_ub[pre_norm_idx:], 0.0,
-                    MORE_THREE_RADIUS * radius * count_one_window + count_one_window)
+                    Constant.MORE_THREE_RADIUS * radius * count_one_window + count_one_window)
 
         self._vadds(self.pre_norm2_ub[0:], self.pre_norm2_ub[pre_norm_idx:], 0.0,
-                    MORE_TWO_RADIUS * radius * count_one_window + count_one_window)
+                    Constant.MORE_TWO_RADIUS * radius * count_one_window + count_one_window)
 
 
 def _check_param(input_grads, input_image, output_image, depth_radius, kernel_name):
@@ -903,7 +910,7 @@ def _check_param(input_grads, input_image, output_image, depth_radius, kernel_na
         error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "depth_radius", depth_radius)
 
 
-# pylint: disable=too-many-arguments, unused-argument, invalid-name
+# 'pylint: disable=too-many-arguments, unused-argument, invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
                             (para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT),

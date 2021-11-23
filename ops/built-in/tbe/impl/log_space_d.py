@@ -22,7 +22,7 @@ from te.utils import para_check
 
 
 @fusion_manager.register("log_space_d")
-#pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
 def log_space_d_compute(assist, y, start, end, steps=100, base=10.0, dtype=1, kernel_name="log_space_d"):
     """
     calculating data
@@ -93,6 +93,7 @@ def log_space_d_compute(assist, y, start, end, steps=100, base=10.0, dtype=1, ke
     return  rs
 
 
+# 'pylint: disable=too-many-arguments,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_FLOAT,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_FLOAT,

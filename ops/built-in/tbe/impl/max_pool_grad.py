@@ -29,7 +29,7 @@ from impl.load3d_common_func import img2col
 
 # 'pylint: disable=too-few-public-methods,too-many-statements,too-many-branches,no-self-use
 # 'pylint: disable=too-many-instance-attributes,unused-argument,too-many-lines
-# 'pylint: disable=too-many-lines,too-many-locals,too-many-statements,unused-variable
+# 'pylint: disable=too-many-lines,too-many-locals,too-many-statements,unused-variable,too-many-arguments
 def op_select_format(x1, x2, grad, y, ksize, strides,
                      padding, data_format="NHWC", kernel_name="maxpoolgrad"):
     """
@@ -222,6 +222,7 @@ def init_coordinate(tik_instance, pad_x_top, xi_coordinate):
     return xi_coord
 
 
+# 'pylint: disable=too-many-arguments
 def calc_pad(tik_instance, pad_top, pad_bottom,
              xi_coord, xi_value, boundary):
     """
@@ -396,6 +397,7 @@ def _check_param(ori_input, ori_output, grad, ksize, strides, padding, kernel_na
         error_manager_vector.raise_err_input_param_not_in_range('max_pool_grad', "strides", 1, 63, strides)
 
 
+# 'pylint: disable=too-many-return-statements
 def _branch_choice(ori_input_shape, ksize, strides, padding, data_format):
     atomic_flag = False
     if data_format == "NCHW":
@@ -953,7 +955,7 @@ class MaxpoolGrad:
                     src[src_start + repeate_max_time * MAX_VECTOR_REPEATE_TIME * mask_value +
                         remain_repeate_time * mask_value], 1, 1, 1, dst_stride, src_stride)
 
-    # 'pylint: disable=too-many-branches
+    # 'pylint: disable=too-many-branches,too-many-statements
     def _vector_op(self, operator, src1, src2, dst, dtype, ele_num, stride_cofig=None, offset=None):
         if dtype == "float16":
             repeate_times = ele_num // VECTOR_FP16_SIZE
@@ -1374,6 +1376,7 @@ class MaxpoolGrad:
                             _cal_shape_ele(temp_tensor_ub.shape), None, [0, each_process_ho * self.stride_h * wi * C0])
         return remained_hi
 
+    # 'pylint: disable=too-many-statements
     def _tilling_factor(self, ori_input_shape, pad):
         pad_left, pad_right, pad_top, _ = pad
         c0_local = ori_input_shape[-1]
@@ -1599,6 +1602,7 @@ class MaxpoolGrad:
         need_cut_wo = True
         return True, need_cut_ho, need_cut_wo, 1, each_process_wo
 
+    # 'pylint: disable=too-many-statements
     def _not_tilling(self, n_index, c1_index, each_process_ho_block, each_process_hi_block, mov_len_ho, mov_len_hi,
                      start_ho_index, start_hi_index, start_threshold, offset_gm_block, shape, pad):
 
@@ -1793,6 +1797,7 @@ class MaxpoolGrad:
                                                 col2img_fp16_ub[pad_top * wi * C0 + pad_left * C0], 0,
                                                 each_process_hi_block, self.wi * C0 // 16, pad_left + pad_right, 0)
 
+    # 'pylint: disable=too-many-statements
     def _global_mode(self, n_index, c1_index, mov_len_ho, mov_len_hi, start_ho_index, start_hi_index, shape):
         fp16_data_size = tbe_platform.get_bit_len("float16") // 8
         shape_ho, shape_wo, shape_hi, _ = shape

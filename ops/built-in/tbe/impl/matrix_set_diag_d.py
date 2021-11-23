@@ -27,6 +27,7 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant.

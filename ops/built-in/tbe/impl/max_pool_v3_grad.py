@@ -177,6 +177,7 @@ def init_coordinate(tik_instance, pad_x_top, xi_coordinate):
     return xi_coord
 
 
+# 'pylint: disable=too-many-arguments
 def calc_pad(tik_instance, pad_top, pad_bottom,
              xi_coord, xi_value, boundary):
     """
@@ -307,6 +308,7 @@ def check_param(ori_input, ori_output, grad, ksize, strides, padding, data_forma
         error_manager_vector.raise_err_input_format_invalid("max_pool_v3", "x", "NC1HWC0, NCHW, NHWC", str(data_format))
 
 
+# 'pylint: disable=too-many-locals,too-many-return-statements
 def branch_choice(ori_input_shape, ksize, strides, padding, pads, data_format, ceil_mode):
     """
     choose branch
@@ -377,7 +379,6 @@ def branch_choice(ori_input_shape, ksize, strides, padding, pads, data_format, c
     if fmap_h >= 200000:
         return True
     c0_local = ori_input_shape[-1]
-    input_l1_size = cal_byte_size(ori_input_shape, "float16")
     # each type of buffer's bit size
     fp16_data_size = tbe_platform.get_bit_len("float16") // 8
     fp32_data_size = tbe_platform.get_bit_len("float32") // 8

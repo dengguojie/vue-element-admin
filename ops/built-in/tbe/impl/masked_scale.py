@@ -81,7 +81,7 @@ def get_format_same(dtype_list, format_list, dtype_total, mask_dtypes):
     return dtypes, formats
 
 
-# 'pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-locals
 def op_select_format(x, mask, y, value=1.0, kernel_name="masked_scale"):
     """
     Parameters

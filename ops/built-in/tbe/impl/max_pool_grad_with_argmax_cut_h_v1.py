@@ -40,7 +40,7 @@ class MaxpoolGradBase():
     """
     parameter for max_pool_grad_with_pool
     """
-
+    # 'pylint: disable=too-many-locals
     def __init__(self, grad, argmax, input_x, ksize, strides, padding, dilation, ceil_mode):
         """
         init compare and bit pack base parameters
@@ -162,6 +162,7 @@ class MaxpoolGradBase():
                 self.tik_instance.data_move(
                     mask_l1[iter_time * max_repeat_time], mask_gm[cur_mask_idx], constant.SID, 1, res_iter_time, 0, 0)
 
+    # 'pylint: disable=too-many-locals,too-many-branches,too-many-statements
     def tik_instance_cut_nc1_cut_h(self, kernel_name):
         """
         function for max_pool_grad_with_pool calc for normal shape
@@ -448,6 +449,7 @@ class MaxpoolGradBase():
                                    outputs=(data_output), enable_l2=False)
         return self.tik_instance
 
+    # 'pylint: disable=too-many-locals,too-many-branches,too-many-statements
     def tik_instance_cut_nc1h_cut_h(self, kernel_name):
         """
         function for max_pool_grad_with_pool calc for normal shape

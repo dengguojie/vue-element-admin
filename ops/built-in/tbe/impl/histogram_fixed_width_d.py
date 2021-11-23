@@ -892,7 +892,7 @@ def _histogram_fixed_width_ir(dst, src, nbins, shape_list):
                                      name='m') as pre_index:
         _run_fuc(Constant.SEGMENT_SIZE_COPY_GM_TO_UB,
                  pre_index * Constant.SEGMENT_SIZE_COPY_GM_TO_UB, params.src_ub)
-    # tail_data process; len = data_len % Constant.SEGMENT_SIZE_COPY_GM_TO_UB
+    # `tail_data process; len = data_len % Constant.SEGMENT_SIZE_COPY_GM_TO_UB`
     if loop_and_mask_list[1] == 1:
         _run_fuc(params.data_shape[0] % Constant.SEGMENT_SIZE_COPY_GM_TO_UB,
                  loop_and_mask_list[0] * Constant.SEGMENT_SIZE_COPY_GM_TO_UB,

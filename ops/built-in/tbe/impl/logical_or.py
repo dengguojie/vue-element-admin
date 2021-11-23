@@ -22,8 +22,8 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
-# pylint: disable=unused-argument,invalid-name,unused-variable
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals
+# 'pylint: disable=unused-argument,invalid-name,unused-variable
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("logical_or")
 def logical_or_compute(x1, x2, y, kernel_name="logical_or"):
     """

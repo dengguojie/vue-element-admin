@@ -29,7 +29,7 @@ SCALAR_255 = 255
 SCALAR_20 = 20
 
 
-# 'pylint: disable=unused-argument,unused-variable
+# 'pylint: disable=unused-argument,unused-variable,too-many-arguments
 def check_supported(input_data, output_data, ksize, strides, padding,
                                 data_format="NC1HWC0", kernel_name="max_pool"):
     """

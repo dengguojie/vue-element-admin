@@ -15,9 +15,9 @@
 """
 layer_norm_beta_gamma_backprop_v2
 """
+import functools
 import operator
 import te.lang.cce as tbe
-import functools
 
 from te import tvm
 from te import platform as tbe_platform

@@ -872,7 +872,7 @@ def _box_shape_check(input_name, shape):
         error_manager_vector.raise_err_input_shape_invalid("iou", input_name, error_detail)
 
 
-# 'pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments
 @tbe_platform.fusion_manager.fusion_manager.register("iou")
 def iou_compute(bboxes, gtboxes, overlap, mode, eps, kernel_name):
     """
@@ -910,7 +910,7 @@ def iou_compute(bboxes, gtboxes, overlap, mode, eps, kernel_name):
     return iou_res.run_tik(kernel_name)
 
 
-# 'pylint: disable = unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR,
                             para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
