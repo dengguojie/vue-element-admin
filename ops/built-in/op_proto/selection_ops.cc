@@ -2282,6 +2282,7 @@ IMPLEMT_COMMON_INFERFUNC(SliceInferShape) {
 }
 
 COMMON_INFER_FUNC_REG(Slice, SliceInferShape);
+INFER_VALUE_RANGE_DEFAULT_REG(Slice);
 // ----------------Slice Op End----------------------
 
 // ----------------OneHotD--------------------------

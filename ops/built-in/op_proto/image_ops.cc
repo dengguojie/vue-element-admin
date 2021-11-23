@@ -1740,6 +1740,7 @@ IMPLEMT_COMMON_INFERFUNC(ResizeBilinearV2InferShape) {
 }
 
 COMMON_INFER_FUNC_REG(ResizeBilinearV2, ResizeBilinearV2InferShape);
+INFER_VALUE_RANGE_DEFAULT_REG(ResizeBilinearV2);
 // ---------------ResizeBilinearV2 Op End-------------------
 
 // ---------------ResizeBilinearV2D Op Start-------------------
@@ -2040,6 +2041,7 @@ IMPLEMT_COMMON_INFERFUNC(ResizeNearestNeighborV2InferShape) {
   return GRAPH_SUCCESS;
 }
 COMMON_INFER_FUNC_REG(ResizeNearestNeighborV2, ResizeNearestNeighborV2InferShape);
+INFER_VALUE_RANGE_DEFAULT_REG(ResizeNearestNeighborV2);
 // ---------------ResizeNearestNeighborV2 Op End-------------------
 
 // ---------------ResizeBilinearV2Grad Op Start-------------------
