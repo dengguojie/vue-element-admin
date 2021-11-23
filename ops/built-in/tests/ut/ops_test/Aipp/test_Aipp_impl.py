@@ -89,7 +89,7 @@ ut_case.add_case(["Ascend310"],
 aipp_config_dict["crop"] = 1
 aipp_config_dict["padding"] = 1
 aipp_config3 = json.dumps(aipp_config_dict)
-
+aipp_config_dict21 = aipp_config_dict.copy()
 ut_case.add_case(["Ascend310", "Ascend710"],
                  gen_static_aipp_case((1,3,418,416), (1,1,258,240,32),
                                       "uint8", "uint8", "NCHW", "NC1HWC0", aipp_config3, "aipp_3", "success"))
@@ -202,6 +202,29 @@ ut_case.add_case(["Ascend310", "Ascend910A"],
                  gen_static_aipp_case((1, 3, 418, 416, 3), (1, 4, 258, 240, 4), "int8", "int8", "NCHW", "NC1HWC0",
                                       aipp_config17, "aipp_17", RuntimeError)) 
 
+aipp_config_dict20 = aipp_config_dict.copy()
+aipp_config_dict20["input_format"] = "NC1HWC0DI_S8"
+aipp_config_dict20["csc_switch"] = 0
+aipp_config20 = json.dumps(aipp_config_dict20)
+
+ut_case.add_case(["Ascend310", "Ascend910A"],
+                 gen_static_aipp_case((1, 1, 418, 416, 4), (1, 1, 418, 416, 4), "uint8", "float16", "NCHW", "NC1HWC0",
+                                      aipp_config20, "aipp_18", RuntimeError))
+
+ut_case.add_case(["Ascend310", "Ascend910A"],
+                 gen_static_aipp_case((1, 1, 418, 416, 4), (1, 1, 418, 416, 4), "int8", "float16", "NCHW", "NC1HWC0",
+                                      aipp_config20, "aipp_19", RuntimeError))
+
+aipp_config_dict20["input_format"] = "NC1HWC0DI_FP16"
+aipp_config21 = json.dumps(aipp_config_dict20)
+ut_case.add_case(["Ascend310", "Ascend910A"],
+                 gen_static_aipp_case((1, 1, 418, 416, 4), (1, 1, 418, 416, 4), "uint8", "float16", "NCHW", "NC1HWC0",
+                                      aipp_config21, "aipp_20", RuntimeError))
+
+ut_case.add_case(["Ascend310", "Ascend910A"],
+                 gen_static_aipp_case((1, 1, 418, 416, 4), (1, 1, 418, 416, 4), "float16", "int8", "NCHW", "NC1HWC0",
+                                      aipp_config21, "aipp_21", RuntimeError))
+
 def gen_dynamic_aipp_case(input_shape, output_shape, dtype_x, dtype_y, format, output_format,
                           aipp_config_json, case_name_val, expect):
     return {"params": [{"shape": input_shape, "dtype": dtype_x, "ori_shape": input_shape, "ori_format": format, "format": format},
@@ -242,6 +265,10 @@ def test_set_spr2_spr9_1(test_arg):
     aipp_config_dict15["padding"] = 1
     aipp_config_dict15["input_format"] = "AYUV444_U8"
     set_spr2_spr9(tvm.ir_builder.create(), aipp_config_dict15, "float16", "SD3403", "NC1HWC0")
+    aipp_config_dict16 = aipp_config_dict.copy()
+    aipp_config_dict16["input_format"] = "YUV420SP_U8"
+    aipp_config_dict16["csc_switch"] = 1
+    set_spr2_spr9(tvm.ir_builder.create(), aipp_config_dict16, "float16", "SD3403", "NC1HWC0")
 
 def test_aipp_001(test_arg):
     from te.platform.cce_conf import te_set_version
@@ -269,6 +296,219 @@ def test_aipp_001(test_arg):
         }, aipp_config_dynamic)
     te_set_version("SD3403")
 
+def test_get_spr9_001(test_arg):
+    from impl.aipp_comm import get_spr9
+    aipp_config_dict17 = aipp_config_dict.copy()
+    aipp_config_dict17["input_format"] = "NC1HWC0DI_FP16"
+    get_spr9(aipp_config_dict17, "float16")
+    aipp_config_dict17["input_format"] = "ARGB8888_U8"
+    get_spr9(aipp_config_dict17, "float16")
+    aipp_config_dict17["input_format"] = "XRGB8888_U8"
+    get_spr9(aipp_config_dict17, "float16")
+    aipp_config_dict17["input_format"] = "YUYV_U8"
+    get_spr9(aipp_config_dict17, "float16")
+    aipp_config_dict17["input_format"] = "YUV422SP_U8"
+    get_spr9(aipp_config_dict17, "float16")
+    aipp_config_dict17["input_format"] = "RAW12"
+    get_spr9(aipp_config_dict17, "float16")
+    aipp_config_dict17["input_format"] = "RAW16"
+    get_spr9(aipp_config_dict17, "float16")
+    aipp_config_dict17["input_format"] = "RGB16"
+    get_spr9(aipp_config_dict17, "float16")
+    aipp_config_dict17["input_format"] = "RGB20"
+    get_spr9(aipp_config_dict17, "float16")
+    aipp_config_dict17["input_format"] = "RGB24"
+    get_spr9(aipp_config_dict17, "float16")
+    aipp_config_dict17["input_format"] = "RGB8_IR"
+    get_spr9(aipp_config_dict17, "float16")
+    aipp_config_dict17["input_format"] = "RGB16_IR"
+    get_spr9(aipp_config_dict17, "float16")
+    aipp_config_dict17["input_format"] = "RGB24_IR"
+    aipp_config_dict17["raw_rgbir_to_f16_n"] = 0
+    get_spr9(aipp_config_dict17, "float16", "NC1HWC0_C04")
+
+
+def test_get_spr2_spr9_001(test_arg):
+    from impl.aipp_comm import get_spr2_spr9
+    aipp_config_dict18 = aipp_config_dict.copy()
+    aipp_map = {}
+    aipp_config_dict18["input_format"] = "YUV400_U8"
+    aipp_config_dict18["csc_switch"] = 0
+    get_spr2_spr9(aipp_config_dict18, "float16", "SD3403", "NCHW", aipp_map)
+    aipp_config_dict18["input_format"] = "RAW12"
+    get_spr2_spr9(aipp_config_dict18, "float16", "SD3403", "NCHW", aipp_map)
+
+
+def test_set_aipp_default_params_001(test_arg):
+    from impl.aipp_comm import set_aipp_default_params
+    aipp_config_dict19 = aipp_config_dict.copy()
+    aipp_config_dict19["csc_switch"] = 1
+    del aipp_config_dict19["matrix_r0c0"]
+    del aipp_config_dict19["matrix_r0c1"]
+    del aipp_config_dict19["matrix_r0c2"]
+    del aipp_config_dict19["matrix_r1c0"]
+    del aipp_config_dict19["matrix_r1c1"]
+    del aipp_config_dict19["matrix_r1c2"]
+    del aipp_config_dict19["matrix_r2c0"]
+    del aipp_config_dict19["matrix_r2c1"]
+    del aipp_config_dict19["matrix_r2c2"]
+    del aipp_config_dict19["input_bias_0"]
+    del aipp_config_dict19["input_bias_1"]
+    del aipp_config_dict19["input_bias_2"]
+    set_aipp_default_params(aipp_config_dict19)
+
+
+def test_check_aipp_dtype_001(test_arg):
+    from impl.aipp import aipp
+    from tbe.common.platform.platform_info import set_current_compile_soc_info
+    set_current_compile_soc_info("Ascend615")
+    aipp_config_dict = aipp_config_dict20.copy()
+    aipp_config_dict["input_format"] = "RGB16"
+    aipp_config = json.dumps(aipp_config_dict)
+    try:
+        aipp(*((gen_static_aipp_case((1, 3, 418, 416, 4), (
+            1, 1, 418, 416, 4), "int8", "int8", "NCHW", "NC1HWC0", aipp_config, "aipp_23", RuntimeError))["params"]))
+    except RuntimeError as e:
+        pass
+
+    try:
+        aipp(*((gen_static_aipp_case((1, 3, 418, 416, 4), (
+            1, 1, 418, 416, 4), "uint16", "int8", "NCHW", "NC1HWC0", aipp_config, "aipp_23", RuntimeError))["params"]))
+    except RuntimeError as e:
+        pass
+
+    aipp_config_dict["input_format"] = "RGB20"
+    aipp_config = json.dumps(aipp_config_dict)
+    try:
+        aipp(*((gen_static_aipp_case((1, 3, 418, 416, 4), (
+            1, 1, 418, 416, 4), "int8", "int8", "NCHW", "NC1HWC0", aipp_config, "aipp_23", RuntimeError))["params"]))
+    except RuntimeError as e:
+        pass
+
+    try:
+        aipp(*((gen_static_aipp_case((1, 3, 418, 416, 4), (
+            1, 1, 418, 416, 4), "uint32", "int8", "NCHW", "NC1HWC0", aipp_config, "aipp_23", RuntimeError))["params"]))
+    except RuntimeError as e:
+        pass
+
+    aipp_config_dict["input_format"] = "RGB8_IR"
+    aipp_config = json.dumps(aipp_config_dict)
+    try:
+        aipp(*((gen_static_aipp_case((1, 3, 418, 416, 4), (
+            1, 1, 418, 416, 4), "int8", "int8", "NCHW", "NC1HWC0", aipp_config, "aipp_23", RuntimeError))["params"]))
+    except RuntimeError as e:
+        pass
+
+    set_current_compile_soc_info("Ascend320")
+    aipp_config_dict["input_format"] = "RAW8"
+    aipp_config = json.dumps(aipp_config_dict)
+    try:
+        aipp(*((gen_static_aipp_case((1, 1, 418, 416, 4), (
+            1, 1, 418, 416, 4), "int8", "int8", "NCHW", "NC1HWC0", aipp_config, "aipp_23", RuntimeError))["params"]))
+    except RuntimeError as e:
+        pass
+
+    aipp_config_dict["input_format"] = "RAW10"
+    aipp_config = json.dumps(aipp_config_dict)
+    try:
+        aipp(*((gen_static_aipp_case((1, 1, 418, 416, 4), (
+            1, 1, 418, 416, 4), "int8", "int8", "NCHW", "NC1HWC0", aipp_config, "aipp_23", RuntimeError))["params"]))
+    except RuntimeError as e:
+        pass
+
+    set_current_compile_soc_info("SD3403")
+    aipp_config_dict21["resize"] = 1
+    aipp_config = json.dumps(aipp_config_dict21)
+    aipp(*((gen_static_aipp_case((1, 3, 418, 416), (
+        1, 1, 258, 240, 32), "uint8", "uint8", "NCHW", "NC1HWC0", aipp_config, "aipp_24", "success"))["params"]))
+
+    aipp(*((gen_static_aipp_case((1, 3, 258, 3), (
+        1, 1, 258, 25, 32), "uint8", "uint8", "NHWC", "NC1HWC0", aipp_config, "aipp_24", "success"))["params"]))
+
+    aipp(*((gen_static_aipp_case((1, 3, 258, 3), (
+        1, 1, 258, 25, 4), "uint8", "uint8", "NHWC", "NC1HWC0_C04", aipp_config, "aipp_24", "success"))["params"]))
+
+    aipp_config_dict21["input_format"] = "RGB16"
+    aipp_config = json.dumps(aipp_config_dict21)
+    try:
+        aipp(*((gen_static_aipp_case((1, 3, 258, 3), (1, 3, 258, 25, 4), "uint8", "uint8", "NCHW", "NC1HWC0_C04",
+                                     aipp_config, "aipp_23", RuntimeError))["params"]))
+    except RuntimeError as e:
+        pass
+    try:
+        aipp(*((gen_static_aipp_case((1, 3, 258, 3), (1, 3, 258, 25, 4), "uint8", "uint8", "NHWC", "NC1HWC0_C04",
+                                     aipp_config, "aipp_23", RuntimeError))["params"]))
+    except RuntimeError as e:
+        pass
+
+    aipp_config_dict22 = aipp_config_dict21.copy()
+    aipp_config_dict22["csc_switch"] = 1
+    del aipp_config_dict22["resize"]
+    aipp_config = json.dumps(aipp_config_dict22)
+    try:
+        aipp(*((gen_static_aipp_case((1, 3, 258, 1), (1, 1, 258, 25, 4), "uint8", "uint8", "NCHW", "NC1HWC0_C04",
+                                     aipp_config, "aipp_24", RuntimeError))["params"]))
+    except RuntimeError as e:
+        pass
+
+    aipp_config_dict["input_format"] = "YUV420SP_U8"
+    aipp_config_dict["src_image_size_w"] = 415
+    aipp_config = json.dumps(aipp_config_dict)
+    try:
+        aipp(*((gen_static_aipp_case((1, 3, 258, 1), (1, 1, 258, 25, 4), "uint8", "uint8", "NCHW", "NC1HWC0_C04",
+                                     aipp_config, "aipp_24", RuntimeError))["params"]))
+    except RuntimeError as e:
+        pass
+
+    aipp_config_dict["input_format"] = "YUV422SP_U8"
+    aipp_config_dict["src_image_size_w"] = 415
+    aipp_config = json.dumps(aipp_config_dict)
+    try:
+        aipp(*((gen_static_aipp_case((1, 1, 258, 1), (1, 1, 258, 25, 4), "uint8", "uint8", "NCHW", "NC1HWC0_C04",
+                                     aipp_config, "aipp_24", RuntimeError))["params"]))
+    except RuntimeError as e:
+        pass
+
+    aipp_config_dict["input_format"] = "uint16"
+    aipp_config_dict["src_image_size_w"] = 415
+    aipp_config = json.dumps(aipp_config_dict)
+    try:
+        aipp(*((gen_static_aipp_case((1, 1, 258, 1), (1, 1, 258, 25, 4), "uint8", "uint8", "NCHW", "NC1HWC0_C04",
+                                     aipp_config, "aipp_24", RuntimeError))["params"]))
+    except RuntimeError as e:
+        pass
+
+    aipp_config_dict["input_format"] = "RGB888_U8"
+    aipp_config_dict["src_image_size_w"] = 415
+    aipp_config = json.dumps(aipp_config_dict)
+    try:
+        aipp(*((gen_static_aipp_case((1, 3, 258, 1), (1, 1, 258, 25, 4), "uint8", "uint8", "NCHW", "NC1HWC0_C04",
+                                     aipp_config, "aipp_24", RuntimeError))["params"]))
+    except RuntimeError as e:
+        pass
+
+    aipp_config_dict["input_format"] = "XRGB8888_U8"
+    aipp_config_dict["src_image_size_w"] = 415
+    aipp_config = json.dumps(aipp_config_dict)
+    try:
+        aipp(*((gen_static_aipp_case((1, 4, 258, 4), (1, 1, 258, 25, 4), "uint8", "uint8", "NCHW", "NC1HWC0_C04",
+                                     aipp_config, "aipp_24", RuntimeError))["params"]))
+    except RuntimeError as e:
+        pass
+
+    aipp_config_dict["input_format"] = "YUYV_U8"
+    aipp_config_dict["src_image_size_w"] = 2
+    aipp_config = json.dumps(aipp_config_dict)
+    try:
+        aipp(*((gen_static_aipp_case((1, 3, 258, 1), (1, 1, 258, 25, 4), "uint8", "uint8", "NCHW", "NC1HWC0_C04",
+                                     aipp_config, "aipp_24", RuntimeError))["params"]))
+    except RuntimeError as e:
+        pass
+
+ut_case.add_cust_test_func(test_func=test_check_aipp_dtype_001)
+ut_case.add_cust_test_func(test_func=test_get_spr9_001)
+ut_case.add_cust_test_func(test_func=test_get_spr2_spr9_001)
+ut_case.add_cust_test_func(test_func=test_set_aipp_default_params_001)
 ut_case.add_cust_test_func(test_func=test_aipp_001)
 ut_case.add_cust_test_func(test_func=test_set_spr2_spr9_1)
 

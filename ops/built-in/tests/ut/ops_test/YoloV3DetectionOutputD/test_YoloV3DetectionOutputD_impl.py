@@ -91,6 +91,31 @@ ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)
 
+def test_yolo_v3_detection_output_d_001(test_arg):
+    from impl.yolo_v3_detection_output_d import yolo_v3_detection_output_d
+    from tbe.common.platform.platform_info import set_current_compile_soc_info
+    set_current_compile_soc_info("Ascend710")
+    yolo_v3_detection_output_d(*(gen_data(2, 6, 6, 6, 6, 6, 6, "float16", 1, 2, True, 0.5, 0.5, 0.45, biases1, biases2,
+                                          biases3, 1024, 512, 1024, 4).get("params")))
+
+    yolo_v3_detection_output_d(*(gen_data(2, 32, 40, 6, 6, 6, 6, "float32", 1, 2, True, 0.5, 0.5, 0.45, biases1,
+                                          biases2, biases3, 1024, 512, 1024, 4).get("params")))
+
+    yolo_v3_detection_output_d(*(gen_data(2, 6, 6, 32, 42, 6, 6, "float32", 1, 2, True, 0.5, 0.5, 0.45, biases1,
+                                          biases2, biases3, 1024, 512, 1024, 4).get("params")))
+
+    yolo_v3_detection_output_d(*(gen_data(2, 33, 41, 6, 6, 33, 41, "float32", 1, 2, True, 0.5, 0.5, 0.45, biases1,
+                                          biases2, biases3, 1024, 512, 1024, 4).get("params")))
+
+    yolo_v3_detection_output_d(*(gen_data(2, 61, 63, 61, 63, 61, 63, "float32", 1, 2, True, 0.5, 0.5, 0.45, biases1,
+                                          biases2, biases3, 1024, 512, 1024, 4).get("params")))
+
+    yolo_v3_detection_output_d(*(gen_data(2, 60, 64, 60, 64, 60, 64, "float32", 1, 2, True, 0.5, 0.5, 0.45, biases1,
+                                          biases2, biases3, 1024, 512, 1024, 4).get("params")))
+
+
+ut_case.add_cust_test_func(test_func=test_yolo_v3_detection_output_d_001)
+
 if __name__ == '__main__':
     ut_case.run(["Ascend310", "Ascend710", "Ascend910A"])
     exit(0)
