@@ -147,16 +147,10 @@ class RunUTCaseFileArgs:  # pylint: disable=too-many-instance-attributes,too-few
 
 def _run_ut_case_file(run_arg: RunUTCaseFileArgs):
     logger.log_info("start run: %s" % run_arg.case_file)
-
-    # 规避st执行时的一个import异常，为定位到根因，
-    # 该方法会对覆盖率统计有一定影响
-    if not run_arg.simulator_mode:
-        import tbe
         
     res = True
     if run_arg.cov_report:
-        ut_cover = coverage.Coverage(source=["tbe.common.context", "tbe.common.utils", 
-            "tbe.dsl", "te.lang","te.utils"],
+        ut_cover = coverage.Coverage(source=["tbe", "te"],
                                      data_file=run_arg.cov_data_path)
         ut_cover.start()
 
@@ -343,8 +337,7 @@ def run_ut(case_dir, soc_version, case_name=None,  # pylint: disable=too-many-ar
 
     if cov_report and len(multiprocess_run_args) > 0:
         total_cov_data_file = os.path.join(cov_report_path, ".coverage")
-        cov = coverage.Coverage(source=["tbe.common.context", "tbe.common.utils", 
-            "tbe.dsl", "te.lang","te.utils"], data_file=total_cov_data_file)
+        cov = coverage.Coverage(source=["tbe", "te"], data_file=total_cov_data_file)
         combine_files = [os.path.join(cov_combine_dir, cov_file) for cov_file in os.listdir(cov_combine_dir)]
         cov.combine(combine_files)
         cov.save()
