@@ -2638,24 +2638,45 @@ def general_schedule(
             )
 
     def _c_col_buffer_tile():
+        axis_split_list, axis_unit, axis_offset = sch_agent[c_ddr].get_axis_split_list_and_extend(2)
         l0c_attach = sch_agent.apply_var(sch[c_col])
         if l0c_attach is not None:
-            sch[c_col].buffer_tile(
-            (None, 1),
-            (None, None),
-            (None, None),
-            (None, None),
-            (None, None),
-            (None, None),
-            (None, None),
-            )
-            if c_add_bias is not None:
-                sch[c_add_bias].buffer_tile(
-                (None, 1),
-                (None, None),
-                (None, None),
-                (None, None),
-                (None, None),)
+            ddr_idx = list(sch[c_ddr].leaf_iter_vars).index(l0c_attach)
+            ddr_var_list = sch[c_ddr].leaf_iter_vars[0:ddr_idx]
+            cl0_matrix_n = tiling["CL0_matrix"][0]
+            for var in ddr_var_list[::-1]:
+                if var in axis_split_list:
+                    c1_idx = axis_split_list.index(var)
+                    axis = axis_split_list[0:c1_idx + 1]
+                    unit = axis_unit[0:c1_idx + 1]
+                    offset = axis_offset[0:c1_idx + 1]
+                    c_offset = 0
+                    for idx in range(c1_idx + 1):
+                        offset_idx = (offset[idx] * 2 if deconv_res.dtype == "int8" else offset[idx])
+                        factor_len = (0 if unit[idx] == 1 else offset_idx)
+                        c_offset = c_offset + axis[idx] * factor_len
+                    # remove limit of C1 axis except deconv_requant_fuison
+                    if deconv_res.dtype != "int8":
+                        c_offset, cl0_matrix_n = None, None
+
+                    sch[c_col].buffer_tile(
+                    (None, 1),
+                    (None, None),
+                    (c_offset, cl0_matrix_n),
+                    (None, None),
+                    (None, None),
+                    (None, None),
+                    (None, None),
+                    )
+                    if c_add_bias is not None:
+                        sch[c_add_bias].buffer_tile(
+                        (None, 1),
+                        (None, None),
+                        (c_offset, cl0_matrix_n),
+                        (None, None),
+                        (None, None),)
+                    break
+
     ax_core = _bind_core()
     if is_conv1d_situation:
         _conv1d_split_tile()
