@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# coding: utf-8
 # Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +35,10 @@ N_BURST = 4095
 # max value of src_stride/dst_stride in data_move
 MAX_STRIDE = 65535
 
-
+# 'pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-branches
+# 'pylint: disable=too-many-statements
+# 'pylint: disable=too-few-public-methods
 class StridedSliceStridesLargerThanOne:
     """
     StridedSliceStridesLargerThanOne
@@ -363,6 +368,7 @@ class StridedSliceStridesLargerThanOne:
                 row_id = blk_idx * self.rows_each_core + (self.loop_times - 1) * 16 * self.rows_each_repeat
                 self._do_with_vnchwconv_last_strides_per_loop(self.rows_each_repeat, row_id, self.last_loop_rows)
 
+    # 'pylint: disable=too-many-local-variables
     def _do_with_vnchwconv_last_strides_per_loop(self, rows_each_repeat, row_id, loop_rows):
         """
         slice multiple rows of input data at one loop
@@ -444,6 +450,7 @@ class StridedSliceStridesLargerThanOne:
                 with inst.if_scope(ub_data_count > 0):
                     ub2gm(inst, self.output_gm[dst_addr], out_ub, ub_data_count)
 
+    # 'pylint: disable=too-many-local-variables
     def _add_tail(self, input_ub, out_ub, row_id, ub_data_count):
         """
         additional data rows are processed so that the output data is 32B aligned.
@@ -508,6 +515,8 @@ class StridedSliceStridesLargerThanOne:
                 row_id = (self.aicore_num_used - 1) * self.rows_each_core + (self.tail_loop_times - 1) * 16
                 self._do_with_vnchwconv_per_loop_large(row_id, self.tail_last_loop_rows)
 
+    # 'pylint: disable=too-many-local-variables
+    # 'pylint: disable=too-many-arguments
     def _do_with_vnchwconv_per_loop_large(self, row_id, loop_rows):
         """
         slice a row of input data multiple times
@@ -648,6 +657,7 @@ class StridedSliceStridesLargerThanOne:
             else:
                 self._do_with_vnchwconv_ub2gm(vnchw_conv_ub, input_ub, output_addr, loop_rows, rows_each_repeat)
 
+    # 'pylint: disable=too-many-arguments
     def _do_with_vnchwconv_ub2gm(self, vnchw_conv_ub, input_ub, output_addr, loop_rows, rows_each_repeat):
         """
         rearrange data in ub with vnchwconv instruction, and move data form ub to gm
@@ -826,7 +836,7 @@ class StridedSliceStridesLargerThanOne:
                                    config=opt_config)
         return self.tik_instance
 
-
+# 'pylint: disable=too-many-arguments
 def strided_slice_strides_larger_than_one(input_shape, dtype, begin, end, strides, kernel_name):
     """
     strided_slice for strides larger than one

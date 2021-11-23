@@ -15,8 +15,8 @@
 """
 stn_compute
 """
-# pylint: disable=too-many-locals,too-many-arguments,no-self-use,unused-argument
-# pylint: disable=too-many-instance-attributes,unused-argument
+# 'pylint: disable=too-many-locals,too-many-arguments,no-self-use,unused-argument
+# 'pylint: disable=too-many-instance-attributes,unused-argument
 import math
 import functools
 

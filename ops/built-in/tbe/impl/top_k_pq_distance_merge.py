@@ -1,4 +1,6 @@
 
+#!/usr/bin/env python
+# coding: utf-8
 # Copyright 2020 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +19,6 @@
 top_k_pq_distance_merge
 """
 import math
-import te.platform as tbe_platform
 from te import tik
 from impl import common_util
 from impl import constant_util as constant
@@ -28,6 +29,8 @@ MIN_VAL = -65504
 MASK_FP32 = 64
 
 
+# 'pylint: disable=too-many-arguments
+# 'pylint: disable=too-few-public-methods
 class TopKPQDistanceMerge(object):
     """class for top_k_pq_distance_merge"""
 
@@ -118,6 +121,7 @@ class TopKPQDistanceMerge(object):
         self.gm_topk_index = self.tik_instance.Tensor(self.topk_index_dtype, self.topk_index_shape,
                                                       name="ptopk_index_gm", scope=tik.scope_gm)
 
+    # 'pylint: disable=too-many-locals
     def topk_pq_distance_merge_compute(self):
         sorted_distance_ub = self.tik_instance.Tensor(self.sorted_distance_dtype, (4 * self.handle_num_align_16,),
                                                       name="sorted_distance_ub", scope=tik.scope_ubuf)
@@ -201,6 +205,7 @@ class TopKPQDistanceMerge(object):
         return self.tik_instance
 
 
+# 'pylint: disable=too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)

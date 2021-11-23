@@ -15,8 +15,8 @@
 """
 target_crop_and_resize
 """
-# pylint: disable=invalid-name,unused-argument,unused-variable,too-many-statements
-# pylint: disable=too-many-arguments,too-many-locals
+# 'pylint: disable=invalid-name,unused-argument,unused-variable,too-many-statements
+# 'pylint: disable=too-many-arguments,too-many-locals
 from te import tvm
 from te import platform as tbe_platform
 from te.utils import para_check

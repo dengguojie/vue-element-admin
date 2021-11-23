@@ -26,7 +26,7 @@ PAD_IDX_LIST = (0, 1)
 FRAME_LEVEL = 2
 
 
-# pylint: disable=too-many-locals, inconsistent-return-statements, too-many-statements
+# 'pylint: disable=too-many-locals, inconsistent-return-statements, too-many-statements
 def _renew_input_output_shape_format(in_shape, out_shape, in_format, out_format):
     """
     renew shape and format to adapt tiling process
@@ -102,7 +102,7 @@ def _renew_input_output_shape_format(in_shape, out_shape, in_format, out_format)
     return [in_shape, out_shape] + [in_format, out_format]
 
 
-# pylint: disable=too-many-locals, too-many-statements, unused-variable
+# 'pylint: disable=too-many-locals, too-many-statements, unused-variable
 def _get_mc_info_positive_1010(cl_args, c_args, cr_args):
     """
     get multiple core axis position for tiling mode 1010
@@ -205,7 +205,7 @@ def _get_mc_info_positive_1010(cl_args, c_args, cr_args):
     return tiling_params
 
 
-# pylint: disable=too-many-locals, too-many-statements
+# 'pylint: disable=too-many-locals, too-many-statements
 def _get_mc_info_positive_1011(r2nd_args, c_args, cl_args):
     """
     get multiple core axis position for tiling mode 1011
@@ -295,7 +295,8 @@ def _get_mc_info_positive_1011(r2nd_args, c_args, cl_args):
     return tiling_params
 
 
-# pylint: disable=unbalanced-tuple-unpacking
+# 'pylint: disable=unbalanced-tuple-unpacking
+# 'pylint: disable=too-many-branches
 def _get_tiling_params_1010(tiling_args):
     """
     get tiling parameters for tiling mode 1010
@@ -425,7 +426,7 @@ def _get_tiling_params_1010(tiling_args):
     return sub_tiling_params
 
 
-# pylint: disable=unbalanced-tuple-unpacking
+# 'pylint: disable=unbalanced-tuple-unpacking
 def _get_tiling_params_1011(tiling_args):
     """
     get tiling parameters for tiling mode 1011
@@ -508,8 +509,8 @@ def _get_tiling_params_1011(tiling_args):
     return sub_tiling_params
 
 
-# pylint: disable=redefined-builtin, too-many-statements, too-many-branches, unbalanced-tuple-unpacking
-# pylint: disable=simplifiable-if-expression
+# 'pylint: disable=redefined-builtin, too-many-statements, too-many-branches, unbalanced-tuple-unpacking
+# 'pylint: disable=simplifiable-if-expression
 def _tiling_params_positive(args):
     """
     calculate real tiling params for positive transform and last axis of source format is not c
@@ -858,7 +859,7 @@ def _gather_c0_with_gap_for_out(args):
             tik_inst.vnchwconv(True, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _copy_data_out_1010(copy_out_args):
     """
     copy data from ub to gm for tiling mode 1010
@@ -995,7 +996,7 @@ def _vor_data_move_cr_lp(vor_args):
                                  dst_rep_stride, src0_rep_stride, src1_rep_stride)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _copy_data_out_1010_align_c0(copy_out_args):
     """
     copy data from ub to gm without padding axis C for tiling mode 1010
@@ -1060,7 +1061,7 @@ def _copy_data_out_1010_align_c0(copy_out_args):
                 tik_inst.data_move(dst_out_gm, dst_ub, 0, c1_cnt, out_crc_cnt // ele_per_block, 0, dst_stride_gap)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _copy_data_out_1010_le_vcol(copy_out_args):
     """
     copy data from ub to gm when axis n*c is less than or equal to vnchwconv col size for tiling mode 1010
@@ -1246,7 +1247,7 @@ def _split_left(args):
     next_left_size.set_as(pln_cl_size - last_left_size - mid_lp_cnt * cl_out_idx_0_size)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _copy_data_out_1011(copy_out_args, cl_offset_args):
     """
     copy data from ub to gm for tiling mode 1011

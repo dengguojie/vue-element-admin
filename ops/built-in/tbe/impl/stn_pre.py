@@ -22,7 +22,7 @@ from te.utils import para_check
 from te import tik
 
 
-# pylint: disable=too-many-arguments,unused-argument
+# 'pylint: disable=too-many-arguments,unused-argument
 @para_check.check_op_params(para_check.OPTION_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_LIST_INT,
@@ -73,12 +73,12 @@ def stn_pre(theta, w_index, h_index, pos_coef, pos_offset,
     return stn_instance
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class SpatialTransformer:
     """
     SpatialTransformer operate is
     """
-    # pylint: disable=no-member
+    # 'pylint: disable=no-member
 
     def __init__(self, theta, w_index, h_index, pos_coef,
                  pos_offset, size, default_theta, use_default_theta, kernel_name='stn_pre'):
@@ -166,7 +166,7 @@ class SpatialTransformer:
 
         return self.tik_instance
 
-    # pylint: disable=too-many-locals,too-many-branches,too-many-statements
+    # 'pylint: disable=too-many-locals,too-many-branches,too-many-statements
     def process_on_each_core(self, batch_id, each_batch_loop_count):
         """
         process_on_each_core is

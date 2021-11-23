@@ -30,8 +30,8 @@ NEED_CAST_DTYPES = ("float32", "int32")
 VNC_SUPPORT_DTYPES = ("int8", "uint8", "float16")
 
 
-# pylint: disable=too-many-locals, inconsistent-return-statements, too-many-lines, too-many-return-statements,
-# pylint: disable=too-many-statements
+# 'pylint: disable=too-many-locals, inconsistent-return-statements, too-many-lines, too-many-return-statements,
+# 'pylint: disable=too-many-statements
 def _renew_input_output_shape_format(in_shape, out_shape):
     """
     renew shape and format to adapt tiling process
@@ -50,7 +50,7 @@ def _renew_input_output_shape_format(in_shape, out_shape):
     return new_params_nd
 
 
-# pylint: disable=too-many-statements, unused-variable
+# 'pylint: disable=too-many-statements, unused-variable
 def _get_mc_info_negative(cr_args, c_args, cl_args):
     """
     get multiple core axis position for negative transform
@@ -148,7 +148,7 @@ def _get_mc_info_negative(cr_args, c_args, cl_args):
     return tiling_params
 
 
-# pylint: disable=redefined-builtin, unbalanced-tuple-unpacking, too-many-branches
+# 'pylint: disable=redefined-builtin, unbalanced-tuple-unpacking, too-many-branches
 def _tiling_params_negative(args):
     """
     calculate real tiling params for negative transform and last axis of target format is not c
@@ -289,7 +289,8 @@ def _tiling_params_negative(args):
      tp_200_nlc_cr_left, tp_200_lc_cl_lp_cnt, tp_200_lc_c_lp_cnt, tp_200_lc_cr_lp_cnt,
      tp_200_lc_cl_left, tp_200_lc_c_left, tp_200_lc_cr_left) = _get_mc_info_negative(cr_args, c_args, cl_args)
 
-    sub_tiling_params = [tp_200_tiling_mode, tp_200_ub_offset, tp_200_mc_pos, tp_200_used_core_cnt, tp_200_hidden_cnt, tp_200_c0_len,
+    sub_tiling_params = [tp_200_tiling_mode, tp_200_ub_offset, tp_200_mc_pos, 
+                         tp_200_used_core_cnt, tp_200_hidden_cnt, tp_200_c0_len,
                          tp_200_core_step_in, tp_200_core_step_out, tp_200_nlc_cr_lp_cnt, tp_200_nlc_c_lp_cnt,
                          tp_200_nlc_cl_lp_cnt, tp_200_nlc_cr_left, tp_200_nlc_c_left, tp_200_nlc_cl_left,
                          tp_200_lc_cr_lp_cnt, tp_200_lc_c_lp_cnt, tp_200_lc_cl_lp_cnt, tp_200_lc_cr_left,
@@ -319,7 +320,8 @@ def _get_tiling_params_func(args):
 
     (in_shape_new, out_shape_new,
      in_format_new, out_format_new) = _renew_input_output_shape_format(in_shape, out_shape)
-    args_get_tp = in_shape_new, out_shape_new, in_format_new, out_format_new, block_elem_cnt, ub_size, in_dtype, hidden_size
+    args_get_tp = in_shape_new, out_shape_new, in_format_new, out_format_new, 
+                  block_elem_cnt, ub_size, in_dtype, hidden_size
     tiling_params = _tiling_params_negative(args_get_tp)
 
     return tiling_params
@@ -539,7 +541,8 @@ def _update_output_offset(args):
     """
 
     (cl_lp_idx, dst_cl_lp_step_out, cl_backend, dst_cl_step_out, c_lp_idx, src_c_lp_step_out, cr_lp_idx,
-     hidden_dst_cr_lp_step_out, cr_backend, dst_cr_step_out, hidden_core_step_out, c_backend, src_c_step_out, block_idx) = args
+     hidden_dst_cr_lp_step_out, cr_backend, dst_cr_step_out, 
+     hidden_core_step_out, c_backend, src_c_step_out, block_idx) = args
 
     out_offset = (cl_lp_idx * dst_cl_lp_step_out - cl_backend * dst_cl_step_out +
                   hidden_dst_cr_lp_step_out - cr_backend * dst_cr_step_out +
@@ -568,7 +571,7 @@ def _move_data_in_cr_cl_one_dims(args):
                                    0, 1, tdc.ceil_div(cr_pln_size * c0_len, ele_per_block), 0, 0)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _copy_data_in_0(in_offset_args, tik_args):
     """
     copy data from gm to ub for transform such as nc1hwc0 -> nchw
@@ -598,10 +601,11 @@ def _copy_data_in_0(in_offset_args, tik_args):
                 _move_data_in_cr_cl_one_dims(data_in_args)
         with tik_inst.else_scope():
             tik_inst.data_move(src_ub, src_in_gm[base_gm_offset],
-                               0, c_plp_size * hidden_cnt, hidden_size * c0_len // ele_per_block, c0_len - hidden_size % c0_len, 0)
+                               0, c_plp_size * hidden_cnt, hidden_size * c0_len // ele_per_block, 
+                               c0_len - hidden_size % c0_len, 0)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _copy_data_out(copy_out_args):
     """
     copy data from ub to gm
@@ -717,7 +721,8 @@ def _func_transform_200(tensor_args, tp_args):
     """
 
     tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, ele_per_block, hidden_size, in_dtype = tensor_args
-    (tiling_mode, ub_offset, mc_pos, used_core_cnt, hidden_cnt, c0_len, core_step_in, core_step_out, nlc_cr_lp_cnt, nlc_c_lp_cnt,
+    (tiling_mode, ub_offset, mc_pos, used_core_cnt, hidden_cnt, c0_len, 
+     core_step_in, core_step_out, nlc_cr_lp_cnt, nlc_c_lp_cnt,
      nlc_cl_lp_cnt, nlc_cr_left, nlc_c_left, nlc_cl_left, lc_cr_lp_cnt, lc_c_lp_cnt, lc_cl_lp_cnt, lc_cr_left,
      lc_c_left, lc_cl_left, dst_cr_lp_unit, src_c_lp_unit, dst_cl_lp_unit, dst_cr_step_in, dst_cr_step_out,
      dst_cr_lp_step_in, dst_cr_lp_step_out, dst_c_size, src_c_step_in, src_c_step_out, src_c_lp_step_in,

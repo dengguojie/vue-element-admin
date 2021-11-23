@@ -35,7 +35,7 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 @fusion_manager.register("swish_grad")
 def swish_grad_compute(input_gradients, fwd_input, fwd_output, bkwd_output, beta, kernel_name="swish_grad"):
     """
@@ -90,6 +90,7 @@ def check_op_dtype(dtype_input, dtype_x0, dtype_x1):
     para_check.check_dtype(dtype_input, check_list)
 
 
+# 'pylint: disable=too-many-local-variables
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_OUTPUT,
                  OPTION_ATTR_FLOAT, KERNEL_NAME)
 def swish_grad(input_data, x0, x1, output_y, scale=1.0, kernel_name="swish_grad"):

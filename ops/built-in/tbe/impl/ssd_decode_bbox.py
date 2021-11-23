@@ -15,7 +15,7 @@
 """
 ssd_decode_bbox
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 import math
 
 import te.platform as tbe_platform
@@ -24,8 +24,8 @@ from impl import constant_util as constant
 from impl import common_util
 
 
-# pylint: disable=too-many-instance-attributes,too-few-public-methods
-# pylint: disable=super-with-arguments
+# 'pylint: disable=too-many-instance-attributes,too-few-public-methods
+# 'pylint: disable=super-with-arguments
 class SSDDectionParamInit():
     """
     define SSDDectionParamInit class
@@ -65,7 +65,7 @@ class SSDDectionParamInit():
         self.background_label_id = input_dict.get("background_label_id")
 
 
-# pylint: disable=too-many-instance-attributes,too-many-public-methods
+# 'pylint: disable=too-many-instance-attributes,too-many-public-methods
 class SSDDecodeBBox(SSDDectionParamInit):
     """
     define SSDDecodeBBox class
@@ -195,7 +195,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
 
         return block_num, outer_loop, outer_tail
 
-    # pylint: disable=no-self-use
+    # 'pylint: disable=no-self-use
     def get_shape_total_number(self, shape):
         """
         get shape total number
@@ -365,7 +365,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
 
         return prior_width, prior_height, prior_center_x, prior_center_y, prior_var_dest_ub
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def compute_decode_bbox_center_size(self, batch, data_offset, prior_data, is_tail):
         """
         compute decection out code type 2
@@ -979,7 +979,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
         self.instance.data_move(self.loc_data_parser_gm[batch, 3, loc_gm_offset],
                                 loc_vnch_ub[48], 0, loc_burst_val, 1, 15, 0)
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def parser_loc_data(self, batch):
         """
         parser loc data
@@ -1028,7 +1028,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
                                       length, loc_gm_offset, loc_burst_val),
                                      (loc_ub, loc_vnch_ub))
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def parser_loc_data_v200(self, batch):
         """
         parser loc data
@@ -1124,7 +1124,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
                     self.loc_data_parser_gm[batch, 3, loc_gm_offset],
                     loc_dst_ub, 0, 1, burst_val, 0, 0)
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def get_loc_data(self, batch, data_offset, loc_dst_ub, is_tail):
         """
         get loc data
@@ -1152,7 +1152,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
                                                             data_offset//4],
                                     0, 1, loc_burst_val, 0, 0)
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def parser_conf_data(self, batch):
         """
         parser conf data
@@ -1274,7 +1274,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
         if not self.variance_encoded_in_target:
             self.parser_prior_var_data(batch)
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def parser_prior_bbox_data(self, batch):
         """
         parser priorbox data
@@ -1343,7 +1343,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
                                            prior_bbox_vnch_ub,
                                            self.prior_bbox_parser_gm))
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def parser_prior_var_data(self, batch):
         """
         parser priorbox data
@@ -1690,7 +1690,7 @@ class SSDDecodeBBox(SSDDectionParamInit):
                     self.prior_variance_parser_gm[batch, 3, prior_var_gm_offset],
                     prior_var_dst_ub, 0, 1, burst_val, 0, 0)
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def get_priorbox_data(self, prior_bbox_info, is_tail):
         """
         get priorbox data
