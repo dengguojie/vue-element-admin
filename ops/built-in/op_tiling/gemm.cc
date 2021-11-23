@@ -58,6 +58,7 @@ const int64_t kBlockReduce = 16;
 const int64_t kBlockReduceS8 = 32;
 const int64_t kBlockOut = 16;
 const int64_t BLOCK_SIZE = 16;
+const int64_t CACHE_TILING_ID_LEN = 7;
 
 namespace optiling {
 
@@ -346,27 +347,29 @@ void SetRunInfo(const bool& isBatchMatmulMode, const string& tiling_id, const js
   } else {
     run_info.AddTilingData(static_cast<int32_t>(runinfoparas.params.n));
   }
-  run_info.AddTilingData(static_cast<int32_t>(runinfoparas.batch_single_core));
-  run_info.AddTilingData(static_cast<int32_t>(runinfoparas.m_single_core));
-  run_info.AddTilingData(static_cast<int32_t>(runinfoparas.n_single_core));
-  run_info.AddTilingData(static_cast<int32_t>(runinfoparas.batch_dim));
-  run_info.AddTilingData(static_cast<int32_t>(runinfoparas.n_dim));
-  run_info.AddTilingData(static_cast<int32_t>(runinfoparas.m_dim));
-  run_info.AddTilingData(static_cast<int32_t>(runinfoparas.m_al1));
-  run_info.AddTilingData(static_cast<int32_t>(runinfoparas.n_bl1));
-  run_info.AddTilingData(static_cast<int32_t>(runinfoparas.cub_n1));
-  run_info.AddTilingData(static_cast<int32_t>(runinfoparas.m_l0));
-  run_info.AddTilingData(static_cast<int32_t>(runinfoparas.k_l0));
-  run_info.AddTilingData(static_cast<int32_t>(runinfoparas.n_ub_l0_time));
-  run_info.AddTilingData(static_cast<int32_t>(runinfoparas.kal0_factor));
-  run_info.AddTilingData(static_cast<int32_t>(runinfoparas.kbl0_factor));
-  run_info.AddTilingData(static_cast<int32_t>(runinfoparas.kal1_factor));
-  run_info.AddTilingData(static_cast<int32_t>(runinfoparas.kbl1_factor));
-  run_info.AddTilingData(static_cast<int32_t>(runinfoparas.kal1_16));
-  run_info.AddTilingData(static_cast<int32_t>(runinfoparas.kbl1_16));
-  run_info.AddTilingData(static_cast<int32_t>(runinfoparas.kl1_times));
   if (isBatchMatmulMode) {
     run_info.AddTilingData(static_cast<int32_t>(runinfoparas.params.batch));
+  }
+  if (tiling_id.length() == CACHE_TILING_ID_LEN) {
+    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.batch_single_core));
+    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.m_single_core));
+    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.n_single_core));
+    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.batch_dim));
+    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.n_dim));
+    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.m_dim));
+    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.m_al1));
+    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.n_bl1));
+    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.cub_n1));
+    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.m_l0));
+    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.k_l0));
+    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.n_ub_l0_time));
+    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.kal0_factor));
+    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.kbl0_factor));
+    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.kal1_factor));
+    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.kbl1_factor));
+    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.kal1_16));
+    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.kbl1_16));
+    run_info.AddTilingData(static_cast<int32_t>(runinfoparas.kl1_times));
   }
 }
 
