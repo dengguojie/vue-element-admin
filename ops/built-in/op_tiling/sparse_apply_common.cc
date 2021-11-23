@@ -51,7 +51,7 @@ bool CalSparseApplyCommonTiling(const std::string& op_type, const nlohmann::json
     int32_t num_indices = indices_shape[0];
     int32_t each_row_data_num = 1;
     if (grad_shape.size() > 1) {
-        for (int i = 1; i < grad_shape.size(); i++) {
+        for (unsigned int i = 1; i < grad_shape.size(); i++) {
             each_row_data_num *= grad_shape[i];
         }
     }

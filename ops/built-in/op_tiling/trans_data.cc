@@ -30,6 +30,10 @@
 namespace optiling {
 using namespace ge;
 
+constexpr int64_t BLOCK_BYTE_SIZE = 32;
+constexpr int64_t NI_16 = 16;
+constexpr int64_t C0_16 = 16;
+constexpr int64_t C0_32 = 32;
 int64_t GetC0SizeWithType(DataType& dtype) {
   if (dtype == DT_INT8 || dtype == DT_UINT8) {
     return C0_32;
@@ -578,9 +582,9 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
 
 bool IsDoWithPositiveSourceNtc100(const ge::Format& src_format, const ge::Format& dst_format) {
   const std::vector<std::pair<ge::Format, ge::Format>> support_src_dst_formats = {
-    {FORMAT_NCDHW, FORMAT_NDC1HWC0}, {FORMAT_NCHW, FORMAT_NC1HWC0}, {FORMAT_HWCN, FORMAT_FRACTAL_Z},
-    {FORMAT_DHWCN, FORMAT_FRACTAL_Z_3D}, {FORMAT_NCDHW, FORMAT_FRACTAL_Z_3D}, {FORMAT_ND, FORMAT_FRACTAL_Z},
-    {FORMAT_NCHW, FORMAT_FRACTAL_Z}
+      {FORMAT_NCDHW, FORMAT_NDC1HWC0}, {FORMAT_NCHW, FORMAT_NC1HWC0}, {FORMAT_HWCN, FORMAT_FRACTAL_Z},
+      {FORMAT_DHWCN, FORMAT_FRACTAL_Z_3D}, {FORMAT_NCDHW, FORMAT_FRACTAL_Z_3D}, {FORMAT_ND, FORMAT_FRACTAL_Z},
+      {FORMAT_NCHW, FORMAT_FRACTAL_Z}
   };
   return std::find(support_src_dst_formats.begin(), support_src_dst_formats.end(),
                    std::pair<ge::Format, ge::Format>(src_format, dst_format)) != support_src_dst_formats.end();
@@ -588,9 +592,9 @@ bool IsDoWithPositiveSourceNtc100(const ge::Format& src_format, const ge::Format
 
 bool IsDoWithNegativeTargetTc201(const ge::Format& src_format, const ge::Format& dst_format) {
   const std::vector<std::pair<ge::Format, ge::Format>> support_src_dst_formats = {
-    {FORMAT_NC1HWC0, FORMAT_NHWC}, {FORMAT_FRACTAL_NZ, FORMAT_ND}, {FORMAT_FRACTAL_NZ, FORMAT_NCHW},
-    {FORMAT_FRACTAL_NZ, FORMAT_NHWC}, {FORMAT_FRACTAL_Z_3D, FORMAT_NDHWC}, {FORMAT_FRACTAL_NZ, FORMAT_NC1HWC0},
-    {FORMAT_NDC1HWC0, FORMAT_NDHWC}
+      {FORMAT_NC1HWC0, FORMAT_NHWC}, {FORMAT_FRACTAL_NZ, FORMAT_ND}, {FORMAT_FRACTAL_NZ, FORMAT_NCHW},
+      {FORMAT_FRACTAL_NZ, FORMAT_NHWC}, {FORMAT_FRACTAL_Z_3D, FORMAT_NDHWC}, {FORMAT_FRACTAL_NZ, FORMAT_NC1HWC0},
+      {FORMAT_NDC1HWC0, FORMAT_NDHWC}
   };
   return std::find(support_src_dst_formats.begin(), support_src_dst_formats.end(),
                    std::pair<ge::Format, ge::Format>(src_format, dst_format)) != support_src_dst_formats.end();
@@ -598,9 +602,9 @@ bool IsDoWithNegativeTargetTc201(const ge::Format& src_format, const ge::Format&
 
 bool IsDoWithNegativeTargetNtc200(const ge::Format& src_format, const ge::Format& dst_format) {
   const std::vector<std::pair<ge::Format, ge::Format>> support_src_dst_formats = {
-    {FORMAT_NC1HWC0, FORMAT_NCHW}, {FORMAT_FRACTAL_Z, FORMAT_HWCN}, {FORMAT_FRACTAL_Z, FORMAT_NCHW},
-    {FORMAT_FRACTAL_Z, FORMAT_ND}, {FORMAT_FRACTAL_Z_3D, FORMAT_NCDHW}, {FORMAT_FRACTAL_Z_3D, FORMAT_DHWCN},
-    {FORMAT_NDC1HWC0, FORMAT_NCDHW}
+      {FORMAT_NC1HWC0, FORMAT_NCHW}, {FORMAT_FRACTAL_Z, FORMAT_HWCN}, {FORMAT_FRACTAL_Z, FORMAT_NCHW},
+      {FORMAT_FRACTAL_Z, FORMAT_ND}, {FORMAT_FRACTAL_Z_3D, FORMAT_NCDHW}, {FORMAT_FRACTAL_Z_3D, FORMAT_DHWCN},
+      {FORMAT_NDC1HWC0, FORMAT_NCDHW}
   };
   return std::find(support_src_dst_formats.begin(), support_src_dst_formats.end(),
                    std::pair<ge::Format, ge::Format>(src_format, dst_format)) != support_src_dst_formats.end();
@@ -639,7 +643,7 @@ bool TransDataTiling(const std::string& op_type, const ge::Operator& op_paras, c
   ge::Format src_format = input_desc->GetFormat();
   ge::Format dst_format = output_desc->GetFormat();
   OP_LOGD(op_type, "Input format is [%s], Output format is [%s].",
-	  to_string(src_format).c_str(), to_string(dst_format).c_str());
+	      to_string(src_format).c_str(), to_string(dst_format).c_str());
   std::vector<int64_t> in_shape = input_desc->MutableShape().GetDims();
   std::vector<int64_t> out_shape = output_desc->MutableShape().GetDims();
   auto data_type = input_desc->GetDataType();

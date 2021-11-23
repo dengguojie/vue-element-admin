@@ -30,6 +30,9 @@
 
 namespace optiling {
 const int32_t TC_FRAME_LEVEL = 2;
+constexpr int64_t NI_16 = 16;
+constexpr int64_t C0_16 = 16;
+constexpr int64_t VNC_LINES = 16;
 
 bool GetMcInfoNegative201(int64_t& dst_r2nd_lp_cnt, int64_t dst_r2nd_left, int64_t& src_cl_lp_cnt,
                           int64_t src_cl_left, int64_t& src_left_lp_cnt, int64_t src_left_left,
@@ -128,7 +131,7 @@ bool GetMcInfoNegative201(int64_t& dst_r2nd_lp_cnt, int64_t dst_r2nd_left, int64
 
 bool TilingNegativeTc201(vector<int64_t>& in_shape, vector<int64_t>& out_shape, std::string& src_format,
                          std::string& dst_format, int64_t& core_num, int64_t& block_elem_cnt, DataType& dtype,
-                         int64_t& ub_size, TransDataTc201Param& params) {
+                         const int64_t& ub_size, TransDataTc201Param& params) {
   if (src_format.length() < 2 || dst_format.length() < 2) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "TilingNegativeTc201 Failed.");
     return false;
@@ -265,8 +268,8 @@ bool TilingNegativeTc201(vector<int64_t>& in_shape, vector<int64_t>& out_shape, 
     params.dst_r2nd_lp_unit = GetFloorDiv(params.dst_r2nd_lp_unit, block_elem_cnt) * block_elem_cnt;
   }
   // to avoid bank conflict
-  if (params.tiling_mode == TILING_MODE_2010 && params.dst_r2nd_lp_unit*dtype_factor % NI_16 == 0 &&
-      (params.dst_r2nd_lp_unit < params.src_cl_lp_unit || params.src_cl_lp_unit*dtype_factor % NI_16 == 0)) {
+  if (params.tiling_mode == TILING_MODE_201_0 && params.dst_r2nd_lp_unit * dtype_factor % NI_16 == 0 &&
+      (params.dst_r2nd_lp_unit < params.src_cl_lp_unit || params.src_cl_lp_unit * dtype_factor % NI_16 == 0)) {
     params.dst_r2nd_lp_unit -= 1;
   }
   int64_t dst_r2nd_lp_cnt = GetCeilDiv(axis_dst_r2nd_size, params.dst_r2nd_lp_unit);

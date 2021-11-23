@@ -31,6 +31,9 @@
 namespace optiling
 {
   const int32_t FRAME_LEVEL = 2;
+  constexpr int64_t NI_16 = 16;
+  constexpr int64_t C0_16 = 16;
+  constexpr int64_t VNC_LINES = 16;
 
   bool GetFullLpCnt(const int64_t &core_num, const int64_t &src_lp_cnt, int64_t &full_lp_cnt) {
     int64_t tmp_full_lp_cnt = GetFloorDiv(src_lp_cnt, core_num) > 0 ? core_num : 0;
