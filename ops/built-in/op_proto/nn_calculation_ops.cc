@@ -136,6 +136,7 @@ namespace {
   const int32_t MAX_RANGE = std::numeric_limits<int32_t>::max();
   const std::vector<int64_t> DYNAMIC_DIM_ALL = {-2};
   using SliceTuple = std::tuple<int32_t, int32_t, int32_t, int32_t>;
+  using OutputTuple = std::tuple<GeTensorDescPtr, bool>;
 }
 
 struct AttrDataInfo {
@@ -2907,17 +2908,11 @@ static bool CheckAndSetInputSizes(const Operator &op, const DataType &dtype, con
 
 static void SetConv2dBpInputOutRange(const OpDescPtr &op_desc, size_t idx, const AttrDataInfo &attrParams,
                                      const std::vector<std::pair<int64_t, int64_t>> &dy_range,
-                                     std::vector<std::pair<int64_t, int64_t>> &dx_range,
-                                     int64_t const_dx_value, bool is_input_size_const) {
+                                     std::vector<std::pair<int64_t, int64_t>> &dx_range) {
   OP_LOGD("", "start reset out range for -1");
   int64_t low = dy_range[idx].first;
   int64_t high = dy_range[idx].second;
   std::string padding;
-  if (is_input_size_const && high == -1) {
-    dx_range[idx].first = const_dx_value;
-    dx_range[idx].second = const_dx_value;
-    return;
-  }
   if (AttrUtils::GetStr(op_desc, "padding", padding) && padding == "SAME") {
     dx_range[idx].first = attrParams.stride * (low - 1) + 1;
     dx_range[idx].second = attrParams.stride * high;
@@ -2993,7 +2988,10 @@ static bool GetConv2dBpAttrInfo(const OpDetailInfo &op_info, const PosInfo &y_fo
 static bool SetConv2dBpInputOutShapeRange(const OpDetailInfo &op_info, const PosInfo &y_format_pos,
                                           const ShapeValInfo &filter_value, const GeShape &input_shape,
                                           std::vector<std::pair<int64_t, int64_t>> &input_range,
-                                          GeTensorDescPtr &y_desc, bool is_input_size_const) {
+                                          OutputTuple &y_infer_info) {
+  GeTensorDescPtr y_desc;
+  bool is_input_size_const;
+  std::tie(y_desc, is_input_size_const) = y_infer_info;
   int64_t groups = 1;
   if (!AttrUtils::GetInt(op_info.op_desc, "groups", groups)) {
     OP_LOGD(op_info.op_name.GetString(), "no groups setting, use groups as 1");
@@ -3040,18 +3038,17 @@ static bool SetConv2dBpInputOutShapeRange(const OpDetailInfo &op_info, const Pos
   y_range[w_y_position] = std::make_pair(dx_w, dx_w);
   y_range[c_y_position] = std::make_pair(dx_c, dx_c);
   if (input_range.size() == kConv2dDimSizeLimit) {
-    y_range[n_y_position] = input_range[n_y_position];
-    if (is_input_size_const && input_range[n_y_position].second == -1) {
-      y_range[n_y_position].first = y_shape.GetDim(n_y_position);
-      y_range[n_y_position].second = y_shape.GetDim(n_y_position);
+    bool is_infer_shape = !is_input_size_const || input_range[n_y_position].second != -1;
+    if (is_infer_shape) {
+      y_range[n_y_position] = input_range[n_y_position];
     }
-    if (dx_h == -1 || input_h == -1) {
-      SetConv2dBpInputOutRange(op_info.op_desc, h_y_position, attr_paras.h_attr, input_range, y_range,
-                               dx_h, is_input_size_const);
+    is_infer_shape = dx_h == -1 || (input_h == -1 && input_range[h_y_position].second != -1);
+    if (is_infer_shape) {
+      SetConv2dBpInputOutRange(op_info.op_desc, h_y_position, attr_paras.h_attr, input_range, y_range);
     }
-    if (dx_w == -1 || input_w == -1) {
-      SetConv2dBpInputOutRange(op_info.op_desc, w_y_position, attr_paras.w_attr, input_range, y_range,
-                               dx_w, is_input_size_const);
+    is_infer_shape = dx_w == -1 || (input_w == -1 && input_range[w_y_position].second != -1);
+    if (is_infer_shape) {
+      SetConv2dBpInputOutRange(op_info.op_desc, w_y_position, attr_paras.w_attr, input_range, y_range);
     }
     y_desc->SetShapeRange(y_range);
   }
@@ -3128,9 +3125,12 @@ static void SetPadsByPaddingForDynamic(const AscendString &op_name, const OpDesc
   }
 }
 
-static bool InferConv2dBpInputOutShapeRange(const OpDetailInfo &op_info, GeTensorDescPtr &input_sizes_desc,
+static bool InferConv2dBpInputOutShapeRange(const OpDetailInfo &op_info, const GeTensorDescPtr &input_sizes_desc,
                                             const ShapeValInfo &filter_value, const GeTensorDescPtr &input_desc,
-                                            GeTensorDescPtr &y_desc, bool is_input_size_const) {
+                                            OutputTuple& y_infer_info) {
+  GeTensorDescPtr y_desc;
+  bool is_input_size_const;
+  std::tie(y_desc, is_input_size_const) = y_infer_info;
   const GeShape &input_shape = input_desc->GetShape();
   std::vector<std::pair<int64_t, int64_t>> input_range;
   input_desc->GetShapeRange(input_range);
@@ -3163,8 +3163,7 @@ static bool InferConv2dBpInputOutShapeRange(const OpDetailInfo &op_info, GeTenso
   } else {
     CHECK(!ResetInputRange(op_info.op_name, input_desc, input_shape, input_range),
           OP_LOGE(op_info.op_name.GetString(), "the input range is unvalid"), return false);
-    CHECK(!SetConv2dBpInputOutShapeRange(op_info, y_format_pos, filter_value, input_shape, input_range, y_desc,
-                                         is_input_size_const),
+    CHECK(!SetConv2dBpInputOutShapeRange(op_info, y_format_pos, filter_value, input_shape, input_range, y_infer_info),
           OP_LOGE(op_info.op_name.GetString(), "set out shape and range failed."), return false);
   }
 
@@ -3342,10 +3341,11 @@ IMPLEMT_INFERFUNC(Conv2DBackpropInput, Conv2DBackpropInputInfer) {
 
   ShapeValInfo filter_value;
   CHECK_OP_FUNC(!GetFilterValues(filter_desc, filter_value), return GRAPH_FAILED, "get filter_value fail.");
+  OutputTuple y_infer_info(y_desc, is_input_size_const);
   // dynamic shape scene
   if (!is_input_size_const || is_dynamic) {
-    CHECK_OP_FUNC(!InferConv2dBpInputOutShapeRange(op_info, input_sizes_desc, filter_value, out_backprop_desc, y_desc,
-                                                   is_input_size_const),
+    CHECK_OP_FUNC(!InferConv2dBpInputOutShapeRange(op_info, input_sizes_desc, filter_value, out_backprop_desc,
+                                                   y_infer_info),
                   return GRAPH_FAILED, "infer out shape and range fail.");
     GeShape &out_shape = y_desc->MutableShape();
     bool is_force_dynamic =
@@ -3785,14 +3785,14 @@ IMPLEMT_INFERFUNC(Conv2DBackpropFilter, Conv2DBackpropFilterInfer) {
   if (!is_filter_sizes_const) {
     GeShape filter_sizes({-1, -1, -1, -1});
     if (!unknown_rank_outbp) {
-      filter_sizes.SetDim(filter_format_pos.c_position, out_backprop_sizes.GetDim(x_format_pos.c_position));
+      filter_sizes.SetDim(filter_format_pos.n_position, out_backprop_sizes.GetDim(x_format_pos.c_position));
     }
     int32_t groups_ori = 1;
     AttrUtils::GetInt(op_info.op_desc, "groups", groups_ori);
     CHECK_INFO(groups_ori == 0, return GRAPH_FAILED, "Get illegal groups: groups should not be zero.");
     CHECK_INFO(x_c % groups_ori != 0, return GRAPH_FAILED,
                "Get illegal groups: fmap's channel must be a multiple of groups.");
-    filter_sizes.SetDim(filter_format_pos.n_position, x_c / groups_ori);
+    filter_sizes.SetDim(filter_format_pos.c_position, x_c / groups_ori);
     y_desc->SetShape(filter_sizes);
   }
 
@@ -9697,11 +9697,10 @@ IMPLEMT_INFERFUNC(Conv2DTranspose, Conv2DTransposeInfer) {
 
   ShapeValInfo filter_value;
   CHECK_OP_FUNC(!GetFilterValues(filter_desc, filter_value), return GRAPH_FAILED, "get filter_value fail.");
-
+  OutputTuple y_infer_info(y_desc, is_input_size_const);
   // dynamic shape scene
   if (!is_input_size_const) {
-    CHECK_OP_FUNC(!InferConv2dBpInputOutShapeRange(op_info, input_sizes_desc, filter_value, x_desc, y_desc,
-                                                   is_input_size_const),
+    CHECK_OP_FUNC(!InferConv2dBpInputOutShapeRange(op_info, input_sizes_desc, filter_value, x_desc, y_infer_info),
                   return GRAPH_FAILED, "infer out shape and range fail.");
     GeShape &out_shape = y_desc->MutableShape();
     bool is_force_dynamic =
