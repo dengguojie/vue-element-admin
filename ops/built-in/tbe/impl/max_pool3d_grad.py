@@ -16,11 +16,13 @@
 max_pool3d_grad
 """
 # 'pylint: disable=too-many-lines,import-error
+import functools
 import math
 from te import tik
 from te import platform as tbe_platform
 from te.utils.error_manager import error_manager_vector
 from impl.util.platform_adapter import para_check
+from impl.load3d_common_func import img2col
 
 # available number of cores
 MAX_CORE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
@@ -221,6 +223,8 @@ class MaxPool3DGradCompute:
         self.orig_y_gm = None
         self.grads_gm = None
         self.ou_y_gm = None
+
+        self.check_load3d_support = tbe_platform.cce_conf.api_check_support("tik.load3dv1")
 
     def set_tik_instance(self):
         """
@@ -1223,18 +1227,25 @@ class MaxPool3DGradCompute:
                     with tik_instance.for_range(0, self.kh, thread_num=1) as idx_h:
                         with tik_instance.for_range(0, self.kw, thread_num=1) as idx_w:
                             src_l1 = (idx_do * self.sd + idx_d) * hi * wi * c0
-                            tik_instance.load3dv1(col_in_buf[0],
-                                                  l1_in_buf[src_l1],
-                                                  [0, 0, 0, 0],
-                                                  hi, wi, 0,
-                                                  idx_w, idx_h,
-                                                  0, 0,
-                                                  self.sw, self.sh,
-                                                  self.kw, self.kh,
-                                                  1, 1, 1, 1,
-                                                  repeat_times, 0,
-                                                  MIN_VALUE_FP16
-                                                  )
+                            if self.check_load3d_support:
+                                tik_instance.load3dv1(col_in_buf[0],
+                                                      l1_in_buf[src_l1],
+                                                      [0, 0, 0, 0],
+                                                      hi, wi, 0,
+                                                      idx_w, idx_h,
+                                                      0, 0,
+                                                      self.sw, self.sh,
+                                                      self.kw, self.kh,
+                                                      1, 1, 1, 1,
+                                                      repeat_times, 0,
+                                                      MIN_VALUE_FP16
+                                                      )
+                            else:
+                                col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
+                                self.set_vector_dup(
+                                    tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
+                                img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
+                                        hi, wi, self.kh, self.kw, self.sh, self.sw, repeat_times, 1, [0, 0, 0, 0])
 
                             # ---calculate mask---
                             with tik_instance.if_scope(tik.all(idx_d == 0,
@@ -1452,18 +1463,25 @@ class MaxPool3DGradCompute:
                         with tik_instance.for_range(0, self.kh, thread_num=1) as idx_h:
                             with tik_instance.for_range(0, self.kw, thread_num=1) as idx_w:
                                 src_l1 = (idx_do * self.sd + idx_d) * hi * wi * c0
-                                tik_instance.load3dv1(col_in_buf[0],
-                                                      l1_in_buf[src_l1],
-                                                      [0, 0, 0, 0],
-                                                      hi, wi, 0,
-                                                      idx_w, idx_h,
-                                                      0, 0,
-                                                      self.sw, self.sh,
-                                                      self.kw, self.kh,
-                                                      1, 1, 1, 1,
-                                                      repeat_times, 0,
-                                                      MIN_VALUE_FP16
-                                                      )
+                                if self.check_load3d_support:
+                                    tik_instance.load3dv1(col_in_buf[0],
+                                                          l1_in_buf[src_l1],
+                                                          [0, 0, 0, 0],
+                                                          hi, wi, 0,
+                                                          idx_w, idx_h,
+                                                          0, 0,
+                                                          self.sw, self.sh,
+                                                          self.kw, self.kh,
+                                                          1, 1, 1, 1,
+                                                          repeat_times, 0,
+                                                          MIN_VALUE_FP16
+                                                          )
+                                else:
+                                    col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
+                                    self.set_vector_dup(
+                                        tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
+                                    img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
+                                            hi, wi, self.kh, self.kw, self.sh, self.sw, repeat_times, 1, [0, 0, 0, 0])
 
                                 # ---calculate mask---
                                 idx_list = [idx_do, idx_d, idx_h, idx_w]
@@ -1741,18 +1759,25 @@ class MaxPool3DGradCompute:
                         with tik_instance.for_range(0, self.kh, thread_num=1) as idx_h:
                             with tik_instance.for_range(0, self.kw, thread_num=1) as idx_w:
                                 src_l1 = (idx_do * self.sd + idx_d) * hi_batch * wi * c0
-                                tik_instance.load3dv1(col_in_buf[0],
-                                                      l1_in_buf[src_l1],
-                                                      [0, 0, 0, 0],
-                                                      hi, wi, 0,
-                                                      idx_w, idx_h,
-                                                      0, 0,
-                                                      self.sw, self.sh,
-                                                      self.kw, self.kh,
-                                                      1, 1, 1, 1,
-                                                      repeat_times, 0,
-                                                      MIN_VALUE_FP16
-                                                      )
+                                if self.check_load3d_support:
+                                    tik_instance.load3dv1(col_in_buf[0],
+                                                          l1_in_buf[src_l1],
+                                                          [0, 0, 0, 0],
+                                                          hi, wi, 0,
+                                                          idx_w, idx_h,
+                                                          0, 0,
+                                                          self.sw, self.sh,
+                                                          self.kw, self.kh,
+                                                          1, 1, 1, 1,
+                                                          repeat_times, 0,
+                                                          MIN_VALUE_FP16
+                                                          )
+                                else:
+                                    col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
+                                    self.set_vector_dup(
+                                        tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
+                                    img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
+                                            hi, wi, self.kh, self.kw, self.sh, self.sw, repeat_times, 1, [0, 0, 0, 0])
 
                                 # ---calculate mask---
                                 idx_list = [idx_do, idx_d, idx_h, idx_w]
@@ -2086,18 +2111,26 @@ class MaxPool3DGradCompute:
                         with tik_instance.for_range(0, self.kh, thread_num=1) as idx_h:
                             with tik_instance.for_range(0, self.kw, thread_num=1) as idx_w:
                                 src_l1 = (idx_do * self.sd + idx_d) * hi_batch * wi_batch * c0
-                                tik_instance.load3dv1(col_in_buf[0],
-                                                      l1_in_buf[src_l1],
-                                                      [0, 0, 0, 0],
-                                                      hi_val, wi_val, 0,
-                                                      idx_w, idx_h,
-                                                      0, 0,
-                                                      self.sw, self.sh,
-                                                      self.kw, self.kh,
-                                                      1, 1, 1, 1,
-                                                      repeat_times, 0,
-                                                      MIN_VALUE_FP16
-                                                      )
+                                if self.check_load3d_support:
+                                    tik_instance.load3dv1(col_in_buf[0],
+                                                          l1_in_buf[src_l1],
+                                                          [0, 0, 0, 0],
+                                                          hi_val, wi_val, 0,
+                                                          idx_w, idx_h,
+                                                          0, 0,
+                                                          self.sw, self.sh,
+                                                          self.kw, self.kh,
+                                                          1, 1, 1, 1,
+                                                          repeat_times, 0,
+                                                          MIN_VALUE_FP16
+                                                          )
+                                else:
+                                    col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
+                                    self.set_vector_dup(
+                                        tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
+                                    img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
+                                            hi_val, wi_val, self.kh, self.kw, self.sh, self.sw, repeat_times,
+                                            1, [0, 0, 0, 0])
 
                                 # ---calculate mask---
                                 idx_list = [idx_do, idx_d, idx_h, idx_w]
@@ -2295,18 +2328,26 @@ class MaxPool3DGradCompute:
                         with tik_instance.for_range(0, self.kh, thread_num=1) as idx_h:
                             with tik_instance.for_range(0, self.kw, thread_num=1) as idx_w:
                                 src_l1 = (idx_do * self.sd + idx_d) * hi_batch * wi_batch * c0
-                                tik_instance.load3dv1(col_in_buf[0],
-                                                      l1_in_buf[src_l1],
-                                                      [0, 0, 0, 0],
-                                                      hi_batch, wi_batch, 0,
-                                                      idx_w, idx_h,
-                                                      0, 0,
-                                                      self.sw, self.sh,
-                                                      self.kw, self.kh,
-                                                      1, 1, 1, 1,
-                                                      repeat_times, 0,
-                                                      MIN_VALUE_FP16
-                                                      )
+                                if self.check_load3d_support:
+                                    tik_instance.load3dv1(col_in_buf[0],
+                                                          l1_in_buf[src_l1],
+                                                          [0, 0, 0, 0],
+                                                          hi_batch, wi_batch, 0,
+                                                          idx_w, idx_h,
+                                                          0, 0,
+                                                          self.sw, self.sh,
+                                                          self.kw, self.kh,
+                                                          1, 1, 1, 1,
+                                                          repeat_times, 0,
+                                                          MIN_VALUE_FP16
+                                                          )
+                                else:
+                                    col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
+                                    self.set_vector_dup(
+                                        tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
+                                    img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
+                                            hi_batch, wi_batch, self.kh, self.kw, self.sh, self.sw, repeat_times,
+                                            1, [0, 0, 0, 0])
 
                                 # ---calculate mask---
                                 idx_list = [idx_do, idx_d, idx_h, idx_w]
@@ -2541,18 +2582,26 @@ class MaxPool3DGradCompute:
                         with tik_instance.for_range(0, self.kh, thread_num=1) as idx_h:
                             with tik_instance.for_range(0, self.kw, thread_num=1) as idx_w:
                                 src_l1 = (idx_do * self.sd + idx_d) * hi_batch * wi_batch * c0
-                                tik_instance.load3dv1(col_in_buf[0],
-                                                      l1_in_buf[src_l1],
-                                                      [0, 0, 0, 0],
-                                                      hi, wi_batch, 0,
-                                                      idx_w, idx_h,
-                                                      0, 0,
-                                                      self.sw, self.sh,
-                                                      self.kw, self.kh,
-                                                      1, 1, 1, 1,
-                                                      repeat_times, 0,
-                                                      MIN_VALUE_FP16
-                                                      )
+                                if self.check_load3d_support:
+                                    tik_instance.load3dv1(col_in_buf[0],
+                                                          l1_in_buf[src_l1],
+                                                          [0, 0, 0, 0],
+                                                          hi, wi_batch, 0,
+                                                          idx_w, idx_h,
+                                                          0, 0,
+                                                          self.sw, self.sh,
+                                                          self.kw, self.kh,
+                                                          1, 1, 1, 1,
+                                                          repeat_times, 0,
+                                                          MIN_VALUE_FP16
+                                                          )
+                                else:
+                                    col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
+                                    self.set_vector_dup(
+                                        tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
+                                    img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
+                                            hi, wi_batch, self.kh, self.kw, self.sh, self.sw, repeat_times,
+                                            1, [0, 0, 0, 0])
 
                                 # ---calculate mask---
                                 idx_list = [idx_do, idx_d, idx_h, idx_w]
@@ -2825,18 +2874,26 @@ class MaxPool3DGradCompute:
                         with tik_instance.for_range(0, self.kh, thread_num=1) as idx_h:
                             with tik_instance.for_range(0, self.kw, thread_num=1) as idx_w:
                                 src_l1 = (idx_do * self.sd + idx_d) * hi_batch * wi_batch * c0
-                                tik_instance.load3dv1(col_in_buf[0],
-                                                      l1_in_buf[src_l1],
-                                                      [0, 0, 0, 0],
-                                                      hi_val, wi_val, 0,
-                                                      idx_w, idx_h,
-                                                      0, 0,
-                                                      self.sw, self.sh,
-                                                      self.kw, self.kh,
-                                                      1, 1, 1, 1,
-                                                      repeat_times, 0,
-                                                      MIN_VALUE_FP16
-                                                      )
+                                if self.check_load3d_support:
+                                    tik_instance.load3dv1(col_in_buf[0],
+                                                          l1_in_buf[src_l1],
+                                                          [0, 0, 0, 0],
+                                                          hi_val, wi_val, 0,
+                                                          idx_w, idx_h,
+                                                          0, 0,
+                                                          self.sw, self.sh,
+                                                          self.kw, self.kh,
+                                                          1, 1, 1, 1,
+                                                          repeat_times, 0,
+                                                          MIN_VALUE_FP16
+                                                          )
+                                else:
+                                    col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
+                                    self.set_vector_dup(
+                                        tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
+                                    img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w, 0, 0,
+                                            hi_val, wi_val, self.kh, self.kw, self.sh, self.sw, repeat_times,
+                                            1, [0, 0, 0, 0])
 
                                 # ---calculate mask---
                                 idx_list = [idx_do, idx_d, idx_h, idx_w]
@@ -3073,19 +3130,27 @@ class MaxPool3DGradCompute:
                                 src_l1 = (idx_do * self.sd + idx_d) * hi_batch * wi_batch * c0
 
                                 with tik_instance.if_scope(load3d_mark != 1):
-                                    tik_instance.load3dv1(col_in_buf[0],
-                                                          l1_in_buf[src_l1],
-                                                          pad_hw_list,
-                                                          hi_batch, wi_batch, 0,
-                                                          idx_w, idx_h,
-                                                          -pad_hw_left,
-                                                          -pad_hw_top,
-                                                          self.sw, self.sh,
-                                                          self.kw, self.kh,
-                                                          1, 1, 1, 1,
-                                                          repeat_times, 0,
-                                                          MIN_VALUE_FP16
-                                                          )
+                                    if self.check_load3d_support:
+                                        tik_instance.load3dv1(col_in_buf[0],
+                                                              l1_in_buf[src_l1],
+                                                              pad_hw_list,
+                                                              hi_batch, wi_batch, 0,
+                                                              idx_w, idx_h,
+                                                              -pad_hw_left,
+                                                              -pad_hw_top,
+                                                              self.sw, self.sh,
+                                                              self.kw, self.kh,
+                                                              1, 1, 1, 1,
+                                                              repeat_times, 0,
+                                                              MIN_VALUE_FP16
+                                                              )
+                                    else:
+                                        col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
+                                        self.set_vector_dup(
+                                            tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
+                                        img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w,
+                                                -pad_hw_top, -pad_hw_left, hi_batch, wi_batch, self.kh, self.kw,
+                                                self.sh, self.sw, repeat_times, 1, pad_hw_list)
 
                                 # ---calculate mask---
                                 idx_list = [idx_do, idx_d, idx_h, idx_w]
@@ -3387,19 +3452,27 @@ class MaxPool3DGradCompute:
                                 with tik_instance.if_scope(load3d_mark != 1):
                                     # in the case, l1_h must be hi_val to assure
                                     # correctness of result after filled.
-                                    tik_instance.load3dv1(col_in_buf[0],
-                                                          l1_in_buf[src_l1],
-                                                          pad_hw_list,
-                                                          hi_val, wi_batch, 0,
-                                                          idx_w, idx_h,
-                                                          -pad_hw_left,
-                                                          -h_top,
-                                                          self.sw, self.sh,
-                                                          self.kw, self.kh,
-                                                          1, 1, 1, 1,
-                                                          repeat_times, 0,
-                                                          MIN_VALUE_FP16
-                                                          )
+                                    if self.check_load3d_support:
+                                        tik_instance.load3dv1(col_in_buf[0],
+                                                              l1_in_buf[src_l1],
+                                                              pad_hw_list,
+                                                              hi_val, wi_batch, 0,
+                                                              idx_w, idx_h,
+                                                              -pad_hw_left,
+                                                              -h_top,
+                                                              self.sw, self.sh,
+                                                              self.kw, self.kh,
+                                                              1, 1, 1, 1,
+                                                              repeat_times, 0,
+                                                              MIN_VALUE_FP16
+                                                              )
+                                    else:
+                                        col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
+                                        self.set_vector_dup(
+                                            tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
+                                        img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w,
+                                                -h_top, -pad_hw_left, hi_val, wi_batch, self.kh, self.kw,
+                                                self.sh, self.sw, repeat_times, 1, pad_hw_list)
 
                                 # ---calculate mask---
                                 idx_list = [idx_do, idx_d, idx_h, idx_w]
@@ -3732,18 +3805,26 @@ class MaxPool3DGradCompute:
                                 src_l1 = (idx_do * self.sd + idx_d) * hi_batch * wi_batch * c0
 
                                 with tik_instance.if_scope(load3d_mark != 1):
-                                    tik_instance.load3dv1(col_in_buf[0],
-                                                          l1_in_buf[src_l1],
-                                                          pad_hw_list,
-                                                          hi_val, wi_val, 0,
-                                                          idx_w, idx_h,
-                                                          -w_top, -h_top,
-                                                          self.sw, self.sh,
-                                                          self.kw, self.kh,
-                                                          1, 1, 1, 1,
-                                                          repeat_times, 0,
-                                                          MIN_VALUE_FP16
-                                                          )
+                                    if self.check_load3d_support:
+                                        tik_instance.load3dv1(col_in_buf[0],
+                                                              l1_in_buf[src_l1],
+                                                              pad_hw_list,
+                                                              hi_val, wi_val, 0,
+                                                              idx_w, idx_h,
+                                                              -w_top, -h_top,
+                                                              self.sw, self.sh,
+                                                              self.kw, self.kh,
+                                                              1, 1, 1, 1,
+                                                              repeat_times, 0,
+                                                              MIN_VALUE_FP16
+                                                              )
+                                    else:
+                                        col_in_buf_shape = functools.reduce(lambda x, y: x * y, col_in_buf.shape)
+                                        self.set_vector_dup(
+                                            tik_instance, col_in_buf_shape, col_in_buf, 0, MIN_VALUE_FP16, "float16")
+                                        img2col(tik_instance, l1_in_buf, col_in_buf, src_l1, 0, idx_h, idx_w,
+                                                -h_top, -w_top, hi_val, wi_val, self.kh, self.kw, self.sh, self.sw,
+                                                repeat_times, 1, pad_hw_list)
 
                                 # ---calculate mask---
                                 idx_list = [idx_do, idx_d, idx_h, idx_w]

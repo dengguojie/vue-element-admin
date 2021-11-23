@@ -393,7 +393,7 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
     tvm_ir = tvm.ir_builder.create()
 
     FP16_MIN_VALUE = 64511
-    SCALAR_DTYPE = "int32"
+    SCALAR_DTYPE = "int64"
     FMATRIX_DTYPE = "uint64"
     MASK_DTYPE = "uint16"
     CMPV_DTYPE = "uint8"
@@ -401,6 +401,12 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
     VECTOR_INST_BLOCK_SIZE = tbe_platform.VECTOR_INST_BLOCK_WIDTH // data_size
     DOUBLE_BUFFER = 2
     LOAD3D_MAX_REPEAT = 255
+    VECTOR_FP16_SIZE = 128
+    MAX_VECTOR_REPEATE_TIME = 255
+    # load3d process num per repeat
+    LOAD3D_NUM_PER_REPEAT = 256
+    # load3d max loop count for repeat_mode = 0
+    MAX_LOOP_COUNT = 16
 
     shape_in = (int(i.value) for i in orig_x.shape)
     fmap_n, fmap_c1, fmap_h, fmap_w, fmap_c0 = shape_in
@@ -415,6 +421,8 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
         fmap_h, kernel_h, stride_h, padding)
     output_w, pad_l, pad_r = tbe.te_compute.common.tf_get_windowed_output_size_verbose(
         fmap_w, kernel_w, stride_w, padding)
+    check_load3d_support = tbe_platform.cce_conf.api_check_support("tik.load3dv1")
+
     if output_h != out_h:
         error_manager_vector.raise_err_check_params_rules('max_pool_grad_grad',
                                                           'height in ori_output must be %d' % out_h, 'ho', output_h)
@@ -547,8 +555,12 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
             offset = (((n * fmap_c1 + c1) * fmap_h + pos_n_stride_h) * fmap_w + wi_min[0]) * fmap_c0
             repeat_time = tvm.min(kernel_h, fmap_h - pos_n_stride_h)
             src_repeat_burst_length = fmap_w - burst_length
-            # set fmatrix using updated scalar: actual_pad_top_value and actual_pad_left_value
-            _set_cut_w_fmatrix(repeat_time, burst_length, actual_pad_top_value, pad_b, actual_pad_left_value, pad_r)
+            if check_load3d_support:
+                # set fmatrix using updated scalar: actual_pad_top_value and actual_pad_left_value
+                _set_cut_w_fmatrix(repeat_time, burst_length, actual_pad_top_value, pad_b, actual_pad_left_value, pad_r)
+            else:
+                fmatrix_h[0] = repeat_time
+                fmatrix_w[0] = burst_length
 
         gm_buffer = [orig_x, grads]
         l1_buffer = [orig_x_l1, grads_l1]
@@ -591,8 +603,12 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
         return actual_pad_top, pad_l
 
     def _set_const_fmatrix(fmap_h, pad_t, pad_b, pad_l, pad_r):
-        config = fmap_w | fmap_h << 16 | pad_l << 32 | pad_r << 40 | pad_t << 48 | pad_b << 56
-        tvm_ir.emit(tvm.call_extern(orig_x.dtype, "set_fmatrix", tvm.const(config, dtype=FMATRIX_DTYPE)))
+        if check_load3d_support:
+            config = fmap_w | fmap_h << 16 | pad_l << 32 | pad_r << 40 | pad_t << 48 | pad_b << 56
+            tvm_ir.emit(tvm.call_extern(orig_x.dtype, "set_fmatrix", tvm.const(config, dtype=FMATRIX_DTYPE)))
+        else:
+            fmatrix_h[0] = tvm.const(fmap_h, SCALAR_DTYPE)
+            fmatrix_w[0] = tvm.const(fmap_w, SCALAR_DTYPE)
         actual_pad_top_value[0] = tvm.const(pad_t, FMATRIX_DTYPE)
         actual_pad_left_value[0] = tvm.const(pad_l, FMATRIX_DTYPE)
 
@@ -607,6 +623,130 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
         first_h = first_ho * stride_h - actual_pad_top_value[0]
         return first_w, first_h
 
+    def _dup_const_min_fp16(ub_buffer, shape, value):
+        ele_num = 1
+        for i in shape:
+            ele_num *= int(i)
+
+        if ub_buffer.dtype == "float16":
+            repeat = ele_num // VECTOR_FP16_SIZE
+            remain = ele_num % VECTOR_FP16_SIZE
+            mask_value = VECTOR_FP16_SIZE
+        else:
+            error_manager_vector.raise_err_input_dtype_not_supported("max_pool_grad_grad", "ori_input",
+                                                                     ("float16", ), ub_buffer.dtype)
+
+        repeat_loop = repeat // MAX_VECTOR_REPEATE_TIME
+        remain_repeat = repeat % MAX_VECTOR_REPEATE_TIME
+
+        if repeat_loop > 0:
+            tbe_platform.reset_mask_insn(tvm_ir, ub_buffer.dtype, bits=mask_value)
+            with tvm_ir.for_range(0, repeat_loop) as i:
+                tvm_ir.emit(
+                    tvm.call_extern(ub_buffer.dtype, "vector_dup",
+                                    ub_buffer.access_ptr("w", offset=MAX_VECTOR_REPEATE_TIME * mask_value * i),
+                                    tvm.const(value, ub_buffer.dtype), MAX_VECTOR_REPEATE_TIME, 1, 1, 8, 8))
+
+        if remain_repeat > 0:
+            tbe_platform.reset_mask_insn(tvm_ir, ub_buffer.dtype, bits=mask_value)
+            tvm_ir.emit(
+                tvm.call_extern(ub_buffer.dtype, "vector_dup",
+                                ub_buffer.access_ptr("w", offset=MAX_VECTOR_REPEATE_TIME * mask_value * repeat_loop),
+                                tvm.const(value, ub_buffer.dtype), remain_repeat, 1, 1, 8, 8))
+
+        if remain > 0:
+            tbe_platform.reset_mask_insn(tvm_ir, ub_buffer.dtype, bits=remain)
+            tvm_ir.emit(
+                tvm.call_extern(ub_buffer.dtype, "vector_dup",
+                                ub_buffer.access_ptr("w", offset=MAX_VECTOR_REPEATE_TIME * mask_value * repeat_loop +
+                                                                 remain_repeat * mask_value),
+                                tvm.const(value, ub_buffer.dtype), 1, 1, 1, 8, 8))
+
+    def _img2col(l1_buffer, ub_buffer, l1_start_offset, ub_start_offset, l1_h, l1_w, pos_wk, pos_hk,
+                 first_wi, first_hi, repeat_mode, repeat_times):
+        padding_l1_h = l1_h + pad_t + pad_b
+        padding_l1_w = l1_w + pad_l + pad_r
+
+        ho = tvm_ir.allocate(SCALAR_DTYPE, (1), name='ho', scope=tbe_platform.scope_reg)
+        top_wo = tvm_ir.allocate(SCALAR_DTYPE, (1), name='top_wo', scope=tbe_platform.scope_reg)
+        wo = tvm_ir.allocate(SCALAR_DTYPE, (1), name='wo', scope=tbe_platform.scope_reg)
+        ho[0] = (padding_l1_h - pad_t - first_hi + stride_h - 1) // stride_h - 1
+        top_wo[0] = (padding_l1_w - pad_l - first_wi - kernel_w) // stride_w + 1
+        wo[0] = (padding_l1_w - kernel_w) // stride_w + 1
+        index_wo_min = tvm_ir.allocate(SCALAR_DTYPE, (1), name='index_wo_min', scope=tbe_platform.scope_reg)
+        index_wo_max = tvm_ir.allocate(SCALAR_DTYPE, (1), name='index_wo_max', scope=tbe_platform.scope_reg)
+        n_burst = tvm_ir.allocate(SCALAR_DTYPE, (1), name='n_burst', scope=tbe_platform.scope_reg)
+        index_ho = tvm_ir.allocate(SCALAR_DTYPE, (1), name='index_ho', scope=tbe_platform.scope_reg)
+
+        def _load3d_l1_to_ub(idx_ho, index_kh, index_kw, max_wo, top_wi, first_wo, pad_left):
+            index_h = stride_h * (idx_ho + 1) + index_kh + first_hi + pad_t
+            with tvm_ir.if_scope(tvm.all(index_h >= pad_t, index_h < l1_h + pad_t)):
+                # `for (0, wo) as index_wo:`
+                # `index_w = index_kw + left_top_w_scalar + pad_left + stride_w * index_wo`
+                # `index_w in range [pad_left, l1_w + pad_left)`
+                index_wo_min[0] = (pad_l - index_kw - top_wi - pad_left + stride_w - 1) // stride_w
+                index_wo_max[0] = (l1_w + pad_l - index_kw - top_wi - pad_left - 1) // stride_w
+                with tvm_ir.if_scope(index_wo_min[0] < 0):
+                    index_wo_min[0] = tvm.const(0, SCALAR_DTYPE)
+                with tvm_ir.if_scope(index_wo_max[0] >= max_wo):
+                    index_wo_max[0] = max_wo - 1
+                n_burst[0] = index_wo_max[0] - index_wo_min[0] + 1
+                index_ho[0] = idx_ho
+                with tvm_ir.if_scope(index_ho[0] == -1):
+                    index_ho[0] = tvm.const(0, SCALAR_DTYPE)
+
+                # load num cannot exceed repeat_times * 256
+                with tvm_ir.if_scope((first_wo + wo[0] * index_ho[0] + index_wo_max[0] + 1) * fmap_c0 >
+                                     repeat_times * LOAD3D_NUM_PER_REPEAT):
+                    n_burst[0] = repeat_times * LOAD3D_NUM_PER_REPEAT // fmap_c0 - first_wo - \
+                                 wo[0] * index_ho[0] - index_wo_min[0]
+                # `if index_wo_max < 0, n_burst = 0`
+                with tvm_ir.if_scope((l1_w + pad_l - index_kw - top_wi - pad_left) < 1):
+                    n_burst[0] = tvm.const(0, SCALAR_DTYPE)
+
+                with tvm_ir.if_scope(n_burst[0] > 0):
+                    index_w = stride_w * index_wo_min[0] + index_kw + top_wi + pad_left
+                    offset_l1 = ((index_h - pad_t) * l1_w + (index_w - pad_l)) * fmap_c0
+                    if repeat_mode == 1:
+                        offset_ub = (first_wo + wo[0] * index_ho[0] + index_wo_min[0]) * fmap_c0
+                    else:
+                        offset_ub = (index_kh * kernel_w + index_kw) * LOAD3D_NUM_PER_REPEAT + \
+                                    (first_wo + wo[0] * index_ho[0] + index_wo_min[0]) * fmap_c0
+                    tvm_ir.emit(
+                        tvm.call_extern(ub_buffer.dtype, "copy_cbuf_to_ubuf",
+                                        ub_buffer.access_ptr("w", offset=ub_start_offset + offset_ub),
+                                        l1_buffer.access_ptr("r", offset=l1_start_offset + offset_l1),
+                                        0, n_burst[0], 1, stride_w - 1, 0))
+
+        if repeat_mode == 1:
+            # process first ho
+            _load3d_l1_to_ub(tvm.const(-1, SCALAR_DTYPE), pos_hk, pos_wk, top_wo[0], first_wi, 0, pad_l)
+            # process remain ho
+            with tvm_ir.for_range(0, ho[0]) as idx_ho:
+                _load3d_l1_to_ub(idx_ho, pos_hk, pos_wk, wo[0], tvm.const(0, SCALAR_DTYPE), top_wo[0], 0)
+        else:
+            with tvm_ir.if_scope(top_wo[0] >= MAX_LOOP_COUNT):
+                with tvm_ir.for_range(pos_hk, kernel_h, name="kh", dtype=SCALAR_DTYPE) as idx_kh:
+                    with tvm_ir.for_range(pos_wk, kernel_w, name="kw", dtype=SCALAR_DTYPE) as idx_kw:
+                        _load3d_l1_to_ub(tvm.const(-1, SCALAR_DTYPE), idx_kh, idx_kw,
+                                         tvm.const(MAX_LOOP_COUNT, SCALAR_DTYPE), first_wi, 0, pad_l)
+            with tvm_ir.else_scope():
+                remain_wo = tvm_ir.allocate(SCALAR_DTYPE, (1), name='remain_wo', scope=tbe_platform.scope_reg)
+                remain_wo[0] = tvm.const(0, SCALAR_DTYPE)
+                with tvm_ir.if_scope((top_wo[0] + ho[0] * wo[0]) > MAX_LOOP_COUNT):
+                    ho[0] = (MAX_LOOP_COUNT - top_wo[0]) // wo[0]
+                    remain_wo[0] = (MAX_LOOP_COUNT - top_wo[0]) % wo[0]
+
+                with tvm_ir.for_range(pos_hk, kernel_h, name="kh", dtype=SCALAR_DTYPE) as idx_kh:
+                    with tvm_ir.for_range(pos_wk, kernel_w, name="kw", dtype=SCALAR_DTYPE) as idx_kw:
+                        # process top ho
+                        _load3d_l1_to_ub(tvm.const(-1, SCALAR_DTYPE), idx_kh, idx_kw, top_wo[0], first_wi, 0, pad_l)
+                        # process remain ho
+                        with tvm_ir.for_range(0, ho[0]) as idx_ho:
+                            _load3d_l1_to_ub(idx_ho, idx_kh, idx_kw, wo[0], tvm.const(0, SCALAR_DTYPE), top_wo[0], 0)
+                        # process remain wo
+                        _load3d_l1_to_ub(ho[0], idx_kh, idx_kw, remain_wo[0], tvm.const(0, SCALAR_DTYPE), top_wo[0], 0)
+
     def _img_to_col_horizontal(l1_buffer, ub_buffer, actual_tiling_ub_howo_i, howo_o, howo_i, actual_pad_top_value,
                                actual_pad_left_value):
         conv_format_shape = (kernel_h, kernel_w, fmap_c0, fmap_c0)
@@ -614,25 +754,36 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
         first_w, first_h = _get_first_lefttop(howo_o, howo_i, actual_pad_top_value, actual_pad_left_value)
 
         def _load3d(ub_buffer):
+            if not check_load3d_support:
+                _dup_const_min_fp16(ub_buffer, ub_buffer.shape, FP16_MIN_VALUE)
+
             cnt = (kernel_w * kernel_h + LOAD3D_MAX_REPEAT - 1) // LOAD3D_MAX_REPEAT
             with tvm_ir.for_range(0, cnt - 1, name="l_i", dtype=SCALAR_DTYPE) as l_i:
                 cur_khkw = l_i * LOAD3D_MAX_REPEAT
                 offset = cur_khkw * BLOCK_SIZE * BLOCK_SIZE
                 first_kh = cur_khkw // kernel_w
                 first_kw = cur_khkw - first_kh * kernel_w
-                tvm_ir.emit(
-                    tvm.call_extern(ub_buffer.dtype, "img2col_cbuf_to_ub", ub_buffer.access_ptr("w", offset=offset),
-                                    l1_buffer.access_ptr("r"), first_kw, first_kh, first_w, first_h, 0, stride_w,
-                                    stride_h, kernel_w, kernel_h, 1, 1, 1, 0, LOAD3D_MAX_REPEAT, csize_call))
+                if check_load3d_support:
+                    tvm_ir.emit(
+                        tvm.call_extern(ub_buffer.dtype, "img2col_cbuf_to_ub", ub_buffer.access_ptr("w", offset=offset),
+                                        l1_buffer.access_ptr("r"), first_kw, first_kh, first_w, first_h, 0, stride_w,
+                                        stride_h, kernel_w, kernel_h, 1, 1, 1, 0, LOAD3D_MAX_REPEAT, csize_call))
+                else:
+                    _img2col(l1_buffer, ub_buffer, 0, offset, fmatrix_h[0], fmatrix_w[0], first_kw, first_kh,
+                             first_w, first_h, 0, LOAD3D_MAX_REPEAT)
             cur_khkw = (cnt - 1) * LOAD3D_MAX_REPEAT
             offset = cur_khkw * BLOCK_SIZE * BLOCK_SIZE
             first_kh = cur_khkw // kernel_w
             first_kw = cur_khkw - first_kh * kernel_w
             last_repeat = kernel_w * kernel_h - cur_khkw
-            tvm_ir.emit(
-                tvm.call_extern(ub_buffer.dtype, "img2col_cbuf_to_ub", ub_buffer.access_ptr("w", offset=offset),
-                                l1_buffer.access_ptr("r"), first_kw, first_kh, first_w, first_h, 0, stride_w, stride_h,
-                                kernel_w, kernel_h, 1, 1, 1, 0, last_repeat, csize_call))
+            if check_load3d_support:
+                tvm_ir.emit(
+                    tvm.call_extern(ub_buffer.dtype, "img2col_cbuf_to_ub", ub_buffer.access_ptr("w", offset=offset),
+                                    l1_buffer.access_ptr("r"), first_kw, first_kh, first_w, first_h, 0, stride_w,
+                                    stride_h, kernel_w, kernel_h, 1, 1, 1, 0, last_repeat, csize_call))
+            else:
+                _img2col(l1_buffer, ub_buffer, 0, offset, fmatrix_h[0], fmatrix_w[0], first_kw, first_kh,
+                         first_w, first_h, 0, last_repeat)
 
         if actual_tiling_ub_howo_i == 1:
             _load3d(ub_buffer)
@@ -661,22 +812,28 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
         csize_call = tvm.call_pure_intrin("float16", "tvm_cce_string_print", 'CSIZE0')
         ub_offset = 0 if not is_ub_offset else actual_tiling_ub_howo_i * fmap_c0 * fmap_c0 * (kh * kernel_w + kw)
         first_w, first_h = _get_first_lefttop(howo_o, 0, actual_pad_top_value, actual_pad_left_value)
-        tvm_ir.emit(
-            tvm.call_extern(ub_buffer.dtype, "img2col_cbuf_to_ub", ub_buffer.access_ptr("w", offset=ub_offset),
-                            l1_buffer.access_ptr("r"), kw, kh, first_w, first_h, 0, stride_w, stride_h, kernel_w,
-                            kernel_h, 1, 1, 1, 1, actual_tiling_ub_howo_i, csize_call))
+        if check_load3d_support:
+            tvm_ir.emit(
+                tvm.call_extern(ub_buffer.dtype, "img2col_cbuf_to_ub", ub_buffer.access_ptr("w", offset=ub_offset),
+                                l1_buffer.access_ptr("r"), kw, kh, first_w, first_h, 0, stride_w, stride_h, kernel_w,
+                                kernel_h, 1, 1, 1, 1, actual_tiling_ub_howo_i, csize_call))
+        else:
+            _img2col(l1_buffer, ub_buffer, 0, ub_offset, fmatrix_h[0], fmatrix_w[0], kw, kh,
+                     first_w, first_h, 1, actual_tiling_ub_howo_i)
 
     def _orig_x_to_col(orig_x_l1, actual_tiling_ub_howo_i, actual_pad_top_value, actual_pad_left_value, howo_o):
         orig_x_col_shape = (tiling_ub_howo_i, kernel_h * kernel_w, fmap_c0, fmap_c0)
         orig_x_ub = _new_alloc(tvm_ir, orig_x_l1.dtype, orig_x_col_shape, "orig_x_ub", tbe_platform.scope_ubuf,
                                ub_tiling["buffer"])
-        if actual_tiling_ub_howo_i < kernel_h * kernel_w:
+        if check_load3d_support:
             _set_padding_value(FP16_MIN_VALUE)
+        if actual_tiling_ub_howo_i < kernel_h * kernel_w:
             with tvm_ir.for_range(0, actual_tiling_ub_howo_i, name="howo_i") as howo_i:
                 _img_to_col_horizontal(orig_x_l1, orig_x_ub, actual_tiling_ub_howo_i, howo_o, howo_i,
                                        actual_pad_top_value, actual_pad_left_value)
         else:
-            _set_padding_value(FP16_MIN_VALUE)
+            if not check_load3d_support:
+                _dup_const_min_fp16(orig_x_ub, orig_x_col_shape, FP16_MIN_VALUE)
             with tvm_ir.for_range(0, kernel_h, name="kh") as kh:
                 with tvm_ir.for_range(0, kernel_w, name="kw") as kw:
                     _img_to_col_vertical(orig_x_l1, orig_x_ub, actual_tiling_ub_howo_i, howo_o, kh, kw,
@@ -697,6 +854,8 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
         grads_col_shape = (tiling_ub_howo_i, fmap_c0, fmap_c0)
         grads_ub = _new_alloc(tvm_ir, grads_l1.dtype, grads_col_shape, "grads_ub", tbe_platform.scope_ubuf,
                               ub_tiling["buffer"])
+        if not check_load3d_support:
+            _dup_const_min_fp16(grads_ub, grads_col_shape, 0)
         _img_to_col_vertical(grads_l1, grads_ub, tiling_ub_howo_i, howo_o, kh, kw, actual_pad_top_value,
                              actual_pad_left_value)
         return grads_ub
@@ -770,7 +929,8 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
         mask_shape = (_ceil_to(tiling_ub_howo_i, tbe_platform.VECTOR_INST_BLOCK_NUM), fmap_c0)
         mask_repeat = actual_tiling_ub_howo_i * fmap_c0 * fmap_c0 // VECTOR_INST_BLOCK_SIZE
         b16_repeat = (actual_tiling_ub_howo_i * fmap_c0 + VECTOR_INST_BLOCK_SIZE - 1) // VECTOR_INST_BLOCK_SIZE
-        _set_padding_value(0)
+        if check_load3d_support:
+            _set_padding_value(0)
         if kernel_h * kernel_w == 1:
             grads_ub = _img_to_col_grads(grads_l1, howo_o, 0, 0, actual_pad_top_value, actual_pad_left_value)
             mask_ori = _new_alloc(tvm_ir, MASK_DTYPE, mask_shape, "mask_ori", tbe_platform.scope_ubuf,
@@ -916,6 +1076,8 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
 
     const_0_ub = _dup_const_0()
     # def scalars, which would be used and updated on device, set in _set_const_fmatrix
+    fmatrix_h = [0]
+    fmatrix_w = [0]
     actual_pad_top_value = tvm_ir.allocate(FMATRIX_DTYPE, (1), name='actual_pad_top_value',
                                            scope=tbe_platform.scope_reg)
     actual_pad_left_value = tvm_ir.allocate(FMATRIX_DTYPE, (1), name='actual_pad_left_value',

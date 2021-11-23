@@ -16,6 +16,7 @@
 max_pool3d_with_argmax
 """
 import math
+import functools
 from functools import partial
 from abc import ABCMeta
 from abc import abstractmethod
@@ -25,7 +26,7 @@ from enum import unique
 from te import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
-
+from impl.load3d_common_func import img2col
 
 @unique
 class L1MoveStrategy(Enum):
@@ -105,6 +106,7 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
 
         self.l1_strategy = L1MoveStrategy.EMPTY
         self.ub_kernel_stg = UbKernelStrategy.EMPTY
+        self.check_load3d_support = tbe_platform.api_check_support("tik.load3dv1")
 
         # encapsulate the data_move function when the data is continue.
         self._move_ctn = partial(self.inst.data_move,
@@ -145,33 +147,67 @@ class MaxPool3DWithArgmax(metaclass=ABCMeta):
                src0_rep_stride=8,
                src1_rep_stride=8)
 
+    def _vector_dup(self, src, src_start, shape, dup_reg):
+        VECTOR_FP16_SIZE = 128
+        MAX_VECTOR_REPEAT_TIME = 255
+
+        ele_num = functools.reduce(lambda x, y: x * y, shape)
+        total_repeat_time = ele_num // VECTOR_FP16_SIZE
+        remain_ele = ele_num % VECTOR_FP16_SIZE
+        mask_value = VECTOR_FP16_SIZE
+        repeat_max_time = total_repeat_time // MAX_VECTOR_REPEAT_TIME
+        remain_repeat_time = total_repeat_time % MAX_VECTOR_REPEAT_TIME
+
+        with self.inst.for_range(0, repeat_max_time) as loop:
+            self.inst.vector_dup(mask_value, src[src_start + loop * MAX_VECTOR_REPEAT_TIME * mask_value],
+                                 dup_reg, MAX_VECTOR_REPEAT_TIME, 1, 8)
+
+        if remain_repeat_time > 0:
+            self.inst.vector_dup(mask_value, src[src_start + repeat_max_time * MAX_VECTOR_REPEAT_TIME * mask_value],
+                                 dup_reg, remain_repeat_time, 1, 8)
+
+        if remain_ele > 0:
+            self.inst.vector_dup(remain_ele, src[src_start + repeat_max_time * MAX_VECTOR_REPEAT_TIME * mask_value +
+                                                 remain_repeat_time * mask_value], dup_reg, 1, 1, 8)
+
     def _img2col(self, aux_l1, big_matrix_ub, l1_begin_pos, rep_times):
         if self.ub_kernel_stg is UbKernelStrategy.WHOLE_KERNEL:
+            if not self.check_load3d_support:
+                self._vector_dup(big_matrix_ub, 0, big_matrix_ub.shape, 0)
             with self.inst.for_range(0, self.k_d) as tmp_kd:
                 # we adopt the scheme that repeat_mode = 1
                 with self.inst.for_range(0, self.k_h) as tmp_kh:
                     with self.inst.for_range(0, self.k_w) as tmp_kw:
-                        self.inst.load3dv1(
-                            big_matrix_ub[tmp_kd * self.k_h * self.k_w + tmp_kh * self.k_w + tmp_kw, 0],
-                            aux_l1,
-                            (0, 0, 0, 0),
-                            aux_l1.shape[2],
-                            aux_l1.shape[3],
-                            tmp_kd,
-                            tmp_kw,
-                            tmp_kh,
-                            left_top_w=l1_begin_pos[1],
-                            left_top_h=l1_begin_pos[0],
-                            stride_w=self.stride_w,
-                            stride_h=self.stride_h,
-                            filter_w=self.k_w,
-                            filter_h=self.k_h,
-                            dilation_filter_w=1,
-                            dilation_filter_h=1,
-                            jump_offset=1,
-                            repeat_mode=1,
-                            repeat_time=rep_times
-                        )
+                        if self.check_load3d_support:
+                            self.inst.load3dv1(
+                                big_matrix_ub[tmp_kd * self.k_h * self.k_w + tmp_kh * self.k_w + tmp_kw, 0],
+                                aux_l1,
+                                (0, 0, 0, 0),
+                                aux_l1.shape[2],
+                                aux_l1.shape[3],
+                                tmp_kd,
+                                tmp_kw,
+                                tmp_kh,
+                                left_top_w=l1_begin_pos[1],
+                                left_top_h=l1_begin_pos[0],
+                                stride_w=self.stride_w,
+                                stride_h=self.stride_h,
+                                filter_w=self.k_w,
+                                filter_h=self.k_h,
+                                dilation_filter_w=1,
+                                dilation_filter_h=1,
+                                jump_offset=1,
+                                repeat_mode=1,
+                                repeat_time=rep_times
+                            )
+                        else:
+                            _, _, shape_h, shape_w, _ = aux_l1.shape
+                            l1_start_offset = tmp_kd * shape_h * shape_w * self.C0
+                            img2col(
+                                self.inst, aux_l1, big_matrix_ub, l1_start_offset,
+                                (tmp_kd * self.k_h * self.k_w + tmp_kh * self.k_w + tmp_kw) * big_matrix_ub.shape[1],
+                                tmp_kh, tmp_kw, l1_begin_pos[0], l1_begin_pos[1], aux_l1.shape[2], aux_l1.shape[3],
+                                self.k_h, self.k_w, self.stride_h, self.stride_w, rep_times, 1, (0, 0, 0, 0))
 
     # 'pylint: diable=too-many-arguments
     def _calc_maxline(self, max_line_ub, big_matrix_ub, line_blk, super_line_loop, super_line_tail):
