@@ -45,10 +45,10 @@ get_arch_and_filename(){
     computer_arch=`uname -m`
     if [[ "$computer_arch" =~ "x86" ]];then
       arch="x86"
-      filename="x86_ubuntu_os_devtoolset_package"
+      filename="ai_cann_x86"
     elif [[ "$computer_arch" =~ "aarch64" ]];then
       arch="aarch64"
-      filename="arm_erler29_os_devtoolset_package"
+      filename="ai_cann_arm"
     else
       echo "not support $arch"
     fi
@@ -116,8 +116,8 @@ extract_pack(){
     #chmod 744 $dir/${filename}.zip
     pwd
     unzip -d ./out ./${filename}.zip
-    chmod -R 744 out/${filename}
-    cd out/${filename}
+    chmod -R 744 out/
+    cd out/version/${filename}
 }
 
 install_Ascend(){
@@ -126,20 +126,31 @@ install_Ascend(){
       useradd HwHiAiUser
       set -e
     fi
-    
-    for pack in atc opp toolkit
-      do 
-        if [ -f ./Ascend-${pack}* ];then
-          if [ ${pack} == "atc" ];then
-            ./Ascend-${pack}* --pylocal --full 
-          else 
-            ./Ascend-${pack}*  --full
-          fi
+    opp=`ls | grep opp | grep -v atlas`
+    for pack in compiler toolkit runtime
+      do
+        if [ -f ./CANN-${pack}* ];then
+          ./CANN-${pack}*  --full
         else
           echo "The ${pack} package does not exist, please check "
           exit -1
         fi
       done
+    if [ -f ./$opp ];then
+      ./$opp  --full
+    else
+      echo "The $opp package does not exist, please check "
+      exit -1
+    fi
+    if [ $UID -eq 0 ];then
+      if [  -d "/usr/local/Ascend" ];then
+        ln -s  /usr/local/Ascend/x86_64-linux/lib64/libruntime.so  /usr/local/Ascend/atc/lib64/libruntime.so
+      fi
+    else
+      ln -s  ~/Ascend/x86_64-linux/lib64/libruntime.so  ~/Ascend/atc/lib64/libruntime.so
+    fi
+
+    
 }
 
 if [[ "$install_local" =~ "FALSE" ]];then

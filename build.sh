@@ -462,10 +462,10 @@ checkopts() {
                             ./scripts/install_etrans.sh $username $pwsswd $day
                             exit 0;;
            install_local) rm -rf ./ascend_download/out
-                          if [[ -f "./ascend_download/x86_ubuntu_os_devtoolset_package.zip" ]];then
+                          if [[ -f "./ascend_download/ai_cann_x86.zip" ]];then
                             chmod 744 ./scripts/install_etrans.sh
                             ./scripts/install_etrans.sh "install_local"
-                          elif [[ -f "./ascend_download/arm_erler29_os_devtoolset_package.zip" ]];then
+                          elif [[ -f "./ascend_download/ai_cann_arm.zip" ]];then
                             chmod 744 ./scripts/install_etrans.sh
                             ./scripts/install_etrans.sh "install_local"
                           else
