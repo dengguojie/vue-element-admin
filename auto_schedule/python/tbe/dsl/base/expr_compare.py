@@ -23,6 +23,11 @@ from tbe.tvm import expr
 
 
 def is_true(expr, dict_args):
+    """
+    :param expr: condition
+    :param dict_args: error message
+    :return: RuntimeError
+    """
     if expr:
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
@@ -46,6 +51,13 @@ def _te_expr2sympy_expr(te_expr):
 
 
 def expr_equal(expr_a, expr_b, condition=None):
+    """
+    Judge equal for expr, not support for condition now.
+    :param expr_a:
+    :param expr_b:
+    :param condition:
+    :return:
+    """
     is_true(condition is not None,
             {"errCode": "E90001",
             "detailed_cause": "Now, not support condition"})

@@ -99,6 +99,10 @@ class L1CommonParam(object):
 
 
 def parse_tbe_compile_para(compile_para):
+    """
+    :params:
+    :compile_para: real compile parameter
+    """
     tbe_compile_para = {}
     pipeline_opt = 0
     read_write_bank_conflict = 0

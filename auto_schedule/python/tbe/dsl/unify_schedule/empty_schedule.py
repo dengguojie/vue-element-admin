@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
+"""
+empty schedule
+"""
 from .vector_schedule import VectorSchedule
 
 

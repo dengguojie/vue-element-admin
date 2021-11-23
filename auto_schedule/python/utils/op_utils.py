@@ -697,6 +697,14 @@ def check_range(shape, shape_range, min_dim=0,  # 'pylint: disable=too-many-argu
 
 
 def check_dynamic_shape(shape, max_dim=DIM_LIMIT, max_rank=RANK_LIMIT, param_name=PARAM_NAME):
+    """
+    check invalid for dynamic shape
+    :param shape:
+    :param max_dim: default is 2 ** 31 - 1
+    :param max_rank: default is 8
+    :param param_name: default is empty string
+    :return:
+    """
     if len(shape) < MIN_UNKOWN_SHAPE_RANK or len(shape) > max_rank:
         error_info = {}
         error_info['errCode'] = OP_ERROR_CODE_012

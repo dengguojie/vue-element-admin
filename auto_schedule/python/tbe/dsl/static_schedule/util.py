@@ -105,6 +105,11 @@ class L1CommonParam(object):
 
 
 def parse_tbe_compile_para(compile_para):
+    """
+    get tbe compile parameter form compile parameter
+    :param compile_para:
+    :return:
+    """
     tbe_compile_para = {}
     pipeline_opt = 0
     read_write_bank_conflict = 0

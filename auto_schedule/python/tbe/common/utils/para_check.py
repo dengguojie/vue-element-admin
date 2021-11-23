@@ -113,6 +113,9 @@ OP_ERROR_CODE_027 = 'E80027'
 
 # OpParamInfoKey && TensorFormat :Internal Use Only
 class OpParamInfoKey(Enum):
+    """
+    Op Parameter Info enum
+    """
     SHAPE = "shape"
     FORMAT = "format"
     ORI_SHAPE = "ori_shape"
@@ -122,6 +125,9 @@ class OpParamInfoKey(Enum):
 
 
 class TensorFormat(Enum):
+    """
+    Tensor Format enum
+    """
     ND = "ND"
     NCHW = "NCHW"
     NHWC = "NHWC"

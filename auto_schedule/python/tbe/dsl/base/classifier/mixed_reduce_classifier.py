@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
+"""
+classifier of shape in mixed reduce axis
+"""
 from tbe.common.utils import shape_util
 from . import reduce_helper as helper
 from . import util

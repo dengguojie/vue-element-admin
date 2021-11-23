@@ -1219,6 +1219,22 @@ def pooling3d_max_grad_grad(orig_input, orig_output, grad_grad, assist_tensor,
                             ksize, strides, pads=(0, 0, 0, 0, 0, 0),
                             data_format="NDHWC",
                             padding="SAME"):
+    """
+    :params:
+    :orig_input : dict, shape and dtype of input_data,
+                 shape is 6 dims, format is NDC1HWC0
+    :orig_output : dict, result of max_pool3d(orig_input, ksize, ...)
+    :grad_grad: dict, input grad of grad
+    :assist_tensor: dict, helper matrix, it's content is 8,7,6,5,4,3,2,1
+                if kernel is 2 x 2 x 2
+    :ksize : list or tuple, the window of max_pool3d,
+            only support max_pool3d in D or H or W
+    :strides : list or tuple, the stride of max_pool3d window,
+              only support max_pool3d in D or H or W
+    :pads : reserved.
+    :padding : str, the mode of padding, support SAME or VALID
+    :return: pooling result
+    """
     warnings.warn(
         "pooling3d_max_grad_grad is deprecated, please replace it with max_pooling3d_grad_grad",
         DeprecationWarning, stacklevel=STACKLEVEL_FOR_DSL_NO_AUTOCAST)

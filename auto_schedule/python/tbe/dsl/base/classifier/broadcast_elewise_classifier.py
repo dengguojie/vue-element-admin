@@ -104,6 +104,9 @@ class BroadcastElewiseClassifier:
         return [clone_complete(x) for x in self.ins]
 
     def check_update_unknown_rank(self):
+        """
+        check for -2, modify ins and and set is_unknown_rank flag
+        """
         is_unknown_rank = False
         for _in in self.ins:
             shapes = list(_in["shape"])
@@ -119,6 +122,9 @@ class BroadcastElewiseClassifier:
         self.is_unknown_rank = is_unknown_rank
 
     def check_update_empty_shape(self):
+        """
+        check for empty shape, modify ins and set maybe_empty_tensor flag
+        """
         is_empty_shape = False
         for _in in self.ins:
             shapes, ranges = list(_in["shape"]), list(_in.get("range"))

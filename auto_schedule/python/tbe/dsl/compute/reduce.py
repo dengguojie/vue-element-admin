@@ -71,6 +71,11 @@ NAME_INDEX = [0]
 
 
 def is_true(expr, dict_args):
+    """
+    :param expr: condition
+    :param dict_args: error message
+    :return: RuntimeError
+    """
     if expr:
         raise RuntimeError(dict_args, get_error_message(dict_args))
 

@@ -87,6 +87,9 @@ DTYPE_AND_PAD_RNTIRE_SIZE_MAP = {
 
 
 class CalcNormTilingCase(Computation):
+    """
+    compute Norm Tiling
+    """
     def __init__(self, outs, option):
         self.outs = outs
         self.option = option
@@ -131,6 +134,11 @@ class CalcNormTilingCase(Computation):
 
 
 def get_block_size(dtype):
+    """
+    get block size through dtype.
+    :param dtype: Now only support bool, int8, uint8, float16, float32, int32, int64
+    :return: block size
+    """
     if dtype not in DTYPE_AND_BLOCK_SIZE_MAP:
         _raise_error("[%s] is not support type in norm" % dtype)
 
@@ -386,6 +394,13 @@ def _gen_const_tiling_case(norm_info, compute_graph_info):
 
 
 def reorder_reduce_shape(shape_before_reduce, reduce_axis_index, is_reduce_last_axis):
+    """
+    reorder for reduce shape
+    :param shape_before_reduce:
+    :param reduce_axis_index:
+    :param is_reduce_last_axis:
+    :return:
+    """
     return _reorder_reduce_last_shape(shape_before_reduce, reduce_axis_index) if is_reduce_last_axis else \
         _reorder_reduce_nlast_shape(shape_before_reduce, reduce_axis_index)
 
@@ -579,6 +594,9 @@ class NormComputeGraphInfo:
         self.calc_coexisting_quantities_and_temp_buffer_size()
 
     def collect_info(self, output_tensors: Iterable[Tensor]):
+        """
+        Collect necessary information
+        """
         self.output_tensor_set = set(output_tensors)
         self.tensor_list, self.tensor_consumers_map, self.tensor_producers_map = \
             self.dfs_compute_graph(self.output_tensor_set,
@@ -610,11 +628,19 @@ class NormComputeGraphInfo:
         self.gen_endpoint_output_tensor_set()
 
     def gen_endpoint_output_tensor_set(self):
+        """
+        get endpoint tensor
+        :return:
+        """
         for output_tensor in self.output_tensor_set:
             if not self.tensor_consumers_map[output_tensor]:
                 self.endpoint_output_tensor_set.add(output_tensor)
 
     def gen_mid_tensor_sets(self):
+        """
+        get middle tensor
+        :return:
+        """
         # mid_output_tensor_set
         # mid_tensor_set
         for tensor in self.tensor_list:
@@ -627,6 +653,12 @@ class NormComputeGraphInfo:
 
     @staticmethod
     def eq_tvm_shape(shape_a: List, shape_b: List):
+        """
+        compare two tvm shape
+        :param shape_a:
+        :param shape_b:
+        :return: True or False
+        """
         length_a = len(shape_a)
         length_b = len(shape_b)
         if length_a != length_b:
@@ -650,6 +682,9 @@ class NormComputeGraphInfo:
                           hooks: Tuple[Tuple[Callable[[Tensor], bool],
                                              Callable[[Tensor], Any],
                                              Callable[[Tensor], Any]], ...]):
+        """
+        compute graph using dfs algorithm
+        """
         def recursive_func(_root_tensor: Tensor,
                            _visited_list: Set[Tensor],
                            _tensor_consumers_map: Dict[Tensor, Union[Set[Tensor]]],
@@ -692,6 +727,12 @@ class NormComputeGraphInfo:
 
     @staticmethod
     def dfs_sub_compute_graph(root_tensor: Union[Iterable[Tensor], Tensor], other_workspace_tensor_set: Set[Tensor]):
+        """
+        compute graph using dfs algorithm
+        :param root_tensor:
+        :param other_workspace_tensor_set:
+        :return:
+        """
         def recursive_func(_root_tensor: Tensor,
                            _visited_list: Set[Tensor],
                            _tensor_consumers_map: Dict[Tensor, Union[Set[Tensor]]],
@@ -727,7 +768,10 @@ class NormComputeGraphInfo:
         return list(visited_list), tensor_consumers_map, tensor_producers_map
 
     def get_tensors_before_and_after_reduce(self):
-        # Assume all reduce node have the same shape, axis and keepdims
+        """
+        Assume all reduce node have the same shape, axis and keepdims
+        :return:
+        """
         reduce_tensor = list(self.reduce_tensor_set)[0]
         shape_after_reduce = list(reduce_tensor.shape)
         shape_before_reduce = list(reduce_tensor.op.input_tensors[0].shape)
@@ -867,6 +911,10 @@ class NormComputeGraphInfo:
         }
 
     def calc_coexisting_quantities_and_temp_buffer_size(self):
+        """
+        calculate the number of coexisting quantities and temp buffer size
+        :return:
+        """
         def _correct_ub_size_by_cmp_sel(_tensor):
             if util.is_vcmp_insn(_tensor):
                 self.temp_ub_size += BLOCK_SIZE_BYTE * (VCMP_INPUT_NUMBER - len(_tensor.op.input_tensors))
@@ -1134,6 +1182,9 @@ class NormComputeGraphInfo:
 
 
 class NormInfo:
+    """
+    class for norm information
+    """
     def __init__(self, compute_graph_info: NormComputeGraphInfo):
         self.graph_info: NormComputeGraphInfo = compute_graph_info
         # Assume all reduce node have the same shape, axis and keepdims
@@ -1158,6 +1209,9 @@ class NormInfo:
 
 
 class NormTilingCase:
+    """
+    class for Norm tiling case information
+    """
     def __init__(self):
         self.block_split_axis_index = None
         self.block_factor = None

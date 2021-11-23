@@ -125,6 +125,9 @@ def classify(ins: list, extra_params: dict):
 
 
 class NormClassifier:
+    """
+    classifier of Norm
+    """
 
     def __init__(self, ins: list, fuse_axis: bool):
         self.ins = ins
@@ -141,6 +144,9 @@ class NormClassifier:
         self.f_shape, self.f_ranges, self.f_reduce_axes = self._simplify()
 
     def classify(self):
+        """
+        do classify
+        """
         if get_current_build_config("enable_op_prebuild"):
             return [helper.ins_of_prebuild(self.ins, self.reduce_axes)]
 
