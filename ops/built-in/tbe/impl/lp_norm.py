@@ -21,8 +21,14 @@ from te import tvm
 import te.platform as tbe_platform
 from te.utils import para_check
 
-_CONST_INF = 2147483647
-_CONST_EPSILON_FP16 = 1e-7
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    CONST_INF = 2147483647
+
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # 'pylint: disable=unused-variable
@@ -33,7 +39,7 @@ def lp_norm_inf_compute(abs_x, x_type, y, p, axes, keepdim, kernel_name):
     When p equals inf, lp_norm equals the max absolute value of elements;
     when -inf, lp_norm equals the min absolute value of elements.
     """
-    if (p == "inf") or (p == _CONST_INF):
+    if p in ("inf", Constant.CONST_INF):
         reduce_support_fp32 = tbe_platform.api_check_support("te.lang.cce.reduce_max", "float32")
         if x_type == "float16" and reduce_support_fp32:
             abs_x = tbe.cast_to(abs_x, "float32")
@@ -202,6 +208,7 @@ def lp_norm(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12, kernel_name="lp_
     -------
     None
     """
+    _CONST_EPSILON_FP16 = 1e-7
     para_check.check_kernel_name(kernel_name)
     xtype_list = ["float16", "float32"]
     x_type = x.get("dtype").lower()
@@ -213,13 +220,13 @@ def lp_norm(x, y, p=2, axes=None, keepdim=False, epsilon=1e-12, kernel_name="lp_
     if isinstance(axes, int):
         axes = [axes]
     if axes is None:
-        axes = [i for i in range(no_shape)]
+        axes = list(range(no_shape))
     if len(axes) == 0:
-        axes = [i for i in range(no_shape)]
+        axes = list(range(no_shape))
     input_data = tvm.placeholder(x_shape, dtype=x_type, name="input_data")
     abs_data = tbe.vabs(input_data)
 
-    if (p in p_inf_list) or (p == _CONST_INF) or (p == -_CONST_INF - 1):
+    if (p in p_inf_list) or (p == Constant.CONST_INF) or (p == -Constant.CONST_INF - 1):
         res = lp_norm_inf_compute(abs_data, x_type, y, p, axes, keepdim, kernel_name)
     elif p == 0:
         res = lp_norm0_compute(abs_data, x_type, y, axes, keepdim, kernel_name)
