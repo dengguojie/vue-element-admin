@@ -1876,11 +1876,23 @@ class GemmSchedule(object):
         is_from_repository = not self._get_zero_tiling(tiling_res)
         return tiling_res, is_from_repository
 
+    def _handle_env(self, env_name, default_value):
+        env_value = os.environ.get(env_name, default_value)
+        if env_value in ("False", "FALSE", False):
+            env_value = False
+        elif env_value in ("True", "TRUE", True):
+            env_value = True
+        else:
+            env_value = default_value
+
+        return env_value
+
     def _get_tiling_after_cmp(self, info_dict, new_fused_num):
         tiling_res = None
         current_tiling_type = get_tiling_type()
-        repeat_tune_mode = os.environ.get("REPEAT_TUNE", False)
-        if current_tiling_type == "auto_tiling" and (not repeat_tune_mode):
+        repeat_tune_mode = self._handle_env("REPEAT_TUNE", False)
+        enable_tune_bank = self._handle_env("ENABLE_TUNE_BANK", True)
+        if current_tiling_type == "auto_tiling" and (not repeat_tune_mode) and enable_tune_bank:
             tiling_res, is_from_repository = self._get_tiling_form_repository(current_tiling_type, info_dict)
             if is_from_repository:
                 return tiling_res
