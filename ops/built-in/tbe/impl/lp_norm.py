@@ -22,7 +22,7 @@ import te.platform as tbe_platform
 from te.utils import para_check
 
 _CONST_INF = 2147483647
-
+_CONST_EPSILON_FP16 = 1e-7
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # 'pylint: disable=unused-variable
