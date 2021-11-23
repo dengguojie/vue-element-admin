@@ -128,5 +128,31 @@
                 "name": "y"
             }
         ]
+    },
+    {
+        "case_name": "Test_TensorMove_006",
+        "op": "TensorMove",
+        "input_desc": [
+            {
+                "format": "ND",
+                "shape": [-1,-1,-1,-1,-1,-1,-1,-1],
+                "typical_shape": [1, 2, 3, 3, 30, 12, 16, 16],
+                "shape_range": [[1, 10],[1, 10],[1, 10],[1, 10],[20, 100],[10, 20],[10, 20],[1, 100]],
+                "type": "bool",
+                "value_range": [[1, 2]],
+                "data_distribute": "uniform",
+                "name": "x"
+            }
+        ],
+        "output_desc": [
+            {
+                "format": "ND",
+                "shape": [-1,-1,-1,-1,-1,-1,-1,-1],
+                "typical_shape": [1, 2, 3, 3, 30, 12, 16, 16],
+                "shape_range": [[1, 10],[1, 10],[1, 10],[1, 10],[20, 100],[10, 20],[10, 20],[1, 100]],
+                "type": "bool",
+                "name": "y"
+            }
+        ]
     }
 ]

@@ -82,8 +82,7 @@ class TensorMove:
         """
         self.src_dtype = src.get("dtype").lower()
         self.dst_dtype = dst.get("dtype").lower()
-        if self.src_dtype == "bool":
-            self.src_dtype = "int8"
+        if self.dst_dtype == "bool":
             self.dst_dtype = "int8"
         # get dtype size, float16 size = 2 byte or float32 size = 4 byte
         self.dtype_size = \
