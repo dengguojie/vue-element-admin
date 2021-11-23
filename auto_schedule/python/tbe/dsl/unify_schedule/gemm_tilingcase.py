@@ -538,7 +538,7 @@ class MatmulTiling(CubeTilingOp):
         self.use_cache_tiling = True if (
             self.format_a != "ND" and self.format_b != "ND" and not self.bias_flag and self.none_range_area) else False
 
-        if intrinsic_check_support("Intrinsic_data_move_l0c2out"):
+        if intrinsic_check_support("Intrinsic_fix_pipe_l0c2out"):
             self.use_cache_tiling = False
         self._get_calc_info()
         self.key = ("A_shape", "B_shape")

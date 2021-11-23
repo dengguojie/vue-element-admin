@@ -22,7 +22,6 @@ vals = {("CORE_NUM", ): 48,
         ("Compiler_arch",): "dav-c220-cube",
         ("AICORE_TYPE",):"AiCore",
         ("Intrinsic_fix_pipe_l0c2out",):True,
-        ("SOC_VERSION",): "Ascend920A"
         }
 def side_effects(*args):
     return vals[args]
@@ -50,7 +49,8 @@ matmul_case_920 = [
     (((1, 1), ), (4, 4), (4, 4), (4, 4), "float16", "float16", "NZ", False, False, False, True, "dynamic_matmul_v2_case1"),
     (((32, 2048), ), (1, 8), (1, 12), (1, 12), "float16", "float16", "NZ", False, True, False, True, "dynamic_matmul_v2_case2"),
     (((2, 8), ), (8, 16), (8, 15), (4, 8), "float16", "float16", "NZ", True, False, False, False, "dynamic_matmul_v2_case3"),
-    (((3, 9), ), (1, 4), (1, 2), (1, 12), "float16", "float16", "NZ", True, True, False, True, "dynamic_matmul_v2_case4")
+    (((3, 9), ), (1, 4), (1, 2), (1, 12), "float16", "float16", "NZ", True, True, False, True, "dynamic_matmul_v2_case4"),
+    (((1, 256), ), (16, 33), (1, 16), (4, 16), "float16", "float16", "NZ", False, False, False, True, "dynamic_matmul_v2_case5")
 ]
 
 def gen_batch_matmul_dynamic(batch_range, m_range, k_range, n_range, src_dtype, dst_dtype,
