@@ -104,7 +104,7 @@ OP_ERROR_CODE_026 = 'E80026'
 OP_ERROR_CODE_027 = 'E80027'
 
 
-class OpParamInfoKey:  # pylint: disable=too-few-public-methods
+class OpParamInfoKey:  # 'pylint: disable=too-few-public-methods
     """
     Define op params
     """
@@ -120,7 +120,7 @@ class OpParamInfoKey:  # pylint: disable=too-few-public-methods
     RANGE = "range"
 
 
-class TensorFormat:  # pylint: disable=too-few-public-methods
+class TensorFormat:  # 'pylint: disable=too-few-public-methods
     """
     Define op params
     """
@@ -156,8 +156,8 @@ OP_NAME = ""
 PARAM_NAME = ""
 
 
-def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-statements
-                    **type_kwargs):  # pylint: disable=unused-argument,
+def check_op_params(*type_args,  # 'pylint: disable=too-many-locals,too-many-statements
+                    **type_kwargs):  # 'pylint: disable=unused-argument,
     """
     check op params
     """
@@ -604,9 +604,9 @@ def check_op_params(*type_args,  # pylint: disable=too-many-locals,too-many-stat
     return _out_wrapper
 
 
-def check_range(shape, shape_range, min_dim=0,  # pylint: disable=too-many-arguments
-                max_dim=RANK_LIMIT, max_shape_num=MAX_UNKOWN_SHAPE_NUM,  # pylint: disable=too-many-arguments
-                param_name=PARAM_NAME):  # pylint: disable=too-many-arguments
+def check_range(shape, shape_range, min_dim=0,  # 'pylint: disable=too-many-arguments
+                max_dim=RANK_LIMIT, max_shape_num=MAX_UNKOWN_SHAPE_NUM,  # 'pylint: disable=too-many-arguments
+                param_name=PARAM_NAME):  # 'pylint: disable=too-many-arguments
     """
     check rule for tensor shape
     """
@@ -725,9 +725,9 @@ def check_dynamic_shape(shape, max_dim=DIM_LIMIT, max_rank=RANK_LIMIT, param_nam
                                % (error_info['param_name'], -2, max_dim, dim))
 
 
-def check_shape(shape, min_dim=0, max_dim=DIM_LIMIT,  # pylint: disable=too-many-arguments
-                min_rank=0, max_rank=RANK_LIMIT,  # pylint: disable=too-many-arguments
-                min_size=0, max_size=SHAPE_SIZE_LIMIT, param_name=PARAM_NAME):  # pylint: disable=too-many-arguments
+def check_shape(shape, min_dim=0, max_dim=DIM_LIMIT,  # 'pylint: disable=too-many-arguments
+                min_rank=0, max_rank=RANK_LIMIT,  # 'pylint: disable=too-many-arguments
+                min_size=0, max_size=SHAPE_SIZE_LIMIT, param_name=PARAM_NAME):  # 'pylint: disable=too-many-arguments
     """
     check shape size
     """

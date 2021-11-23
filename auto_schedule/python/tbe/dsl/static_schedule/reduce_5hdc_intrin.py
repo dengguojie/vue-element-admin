@@ -56,7 +56,7 @@ def reduce_5hdc_reduce_sum(stmt):
     return reduce_5hdc(stmt, "sum")
 
 
-def reduce_5hdc(stmt, intrin_cmd):  # pylint: disable=R0914, R0915
+def reduce_5hdc(stmt, intrin_cmd):  # 'pylint: disable=R0914, R0915
     """5HDC reduce"""
     ir_builder = tvm.ir_builder.create()
     c_var = str(stmt.value).replace("\"", "")
@@ -164,7 +164,7 @@ def reduce_5hdc(stmt, intrin_cmd):  # pylint: disable=R0914, R0915
     return ir_builder.get()
 
 
-def do_reduce(ir_builder, intrin_cmd, sch,  # pylint: disable=R0913
+def do_reduce(ir_builder, intrin_cmd, sch,  # 'pylint: disable=R0913
               input_buffer, output_buffer=None, mid_clean_enabled=False):
     """Distribute reduce algorithm by reduce_sch"""
     if output_buffer is None:
@@ -180,7 +180,7 @@ def do_reduce(ir_builder, intrin_cmd, sch,  # pylint: disable=R0913
                         output_buffer, is_c1, c1_inv_size)
 
 
-def last_axis_reduce(ir_builder, intrin_cmd, reduce_src, reduce_factor,  # pylint: disable=R0913
+def last_axis_reduce(ir_builder, intrin_cmd, reduce_src, reduce_factor,  # 'pylint: disable=R0913
                      input_buffer, output_buffer, need_clean, clean_factor):
     """last axis reduce"""
     if reduce_factor != 16:
@@ -205,7 +205,7 @@ def last_axis_reduce(ir_builder, intrin_cmd, reduce_src, reduce_factor,  # pylin
         raise RuntimeError("Last axis reduce does not support fp32 or int32")
 
 
-def mid_axis_reduce(ir_builder, intrin_cmd, reduce_src,  # pylint: disable=R0913, R0914
+def mid_axis_reduce(ir_builder, intrin_cmd, reduce_src,  # 'pylint: disable=R0913, R0914
                     reduce_unit, reduce_factor,
                     input_buffer, output_buffer, need_clean, clean_factor):
     """non-last axis reduce"""
@@ -243,7 +243,7 @@ def mid_axis_reduce(ir_builder, intrin_cmd, reduce_src,  # pylint: disable=R0913
                                            remains, dst_offset, src_offset)
 
 
-def vector_insn_factory_vcg(ir_b, cmd, dst_buffer, src_buffer,  # pylint: disable=R0913
+def vector_insn_factory_vcg(ir_b, cmd, dst_buffer, src_buffer,  # 'pylint: disable=R0913
                             repeat, dst_stride, src_stride, rem, dst_offset, src_offset):
     """Generate vcgxxx intrin, factory function"""
     reset_mask_insn(ir_b, dst_buffer.dtype)
@@ -282,7 +282,7 @@ def vector_insn_factory_vcg(ir_b, cmd, dst_buffer, src_buffer,  # pylint: disabl
     reset_mask_insn(ir_b, dst_buffer.dtype)
 
 
-def vector_insn_factory_normal(ir_b, cmd, dst_buffer, src_buffer,  # pylint: disable=R0913
+def vector_insn_factory_normal(ir_b, cmd, dst_buffer, src_buffer,  # 'pylint: disable=R0913
                                repeat, dst_stride, src_stride, rem, dst_offset, src_offset):
     """Generate normal vector intrin, factory function"""
     reset_mask_insn(ir_b, dst_buffer.dtype)
@@ -325,7 +325,7 @@ def vector_insn_factory_normal(ir_b, cmd, dst_buffer, src_buffer,  # pylint: dis
     reset_mask_insn(ir_b, dst_buffer.dtype)
 
 
-def vector_insn_factor_clean(ir_builder, cmd, src_buffer,  # pylint: disable=R0913, R0914, R0912
+def vector_insn_factor_clean(ir_builder, cmd, src_buffer,  # 'pylint: disable=R0913, R0914, R0912
                              repeat_times, remains, src_offset, clean_factor):
     """Repair 5HD format, for vcgmax, replace 0 with fp16_min, for vcgadd, replace with 0"""
     num_fill_dict = {

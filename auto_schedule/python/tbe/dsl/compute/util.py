@@ -17,7 +17,7 @@
 """
 util
 """
-# pylint: disable=import-error
+# 'pylint: disable=import-error
 from decorator import decorator
 from tbe import tvm
 from tbe.common.platform import ASCEND_310
@@ -821,7 +821,7 @@ def dsl_check_support(dsl_api, dtype=None):
     return True
 
 
-# pylint: disable=too-many-branches
+# 'pylint: disable=too-many-branches
 @decorator
 def dtype_check_decorator(func, *args, **kwargs):
     """
@@ -1144,7 +1144,7 @@ def reduce_axis_check(shape_len, axis):
     if not hasattr(axis, 'index'):
         axis = _axis_value_type_check(shape_len, axis)
         return axis
-    # pylint: disable=consider-using-enumerate
+    # 'pylint: disable=consider-using-enumerate
     for i in range(len(axis)):
         axis[i] = _axis_value_type_check(shape_len, axis[i])
 

@@ -41,7 +41,7 @@ UINT8_MAXIMUM = 255
 ME_LIMITS_LIST = [[3200, 10], [840, 12]] # MEB limits case, because of over stack
 
 
-def last_axis_broadcast(*args):  # pylint: disable=too-many-locals, too-many-statements
+def last_axis_broadcast(*args):  # 'pylint: disable=too-many-locals, too-many-statements
     """Do last axis broadcast
     There are currently 3 ways to do last axis broadcast:
     1. Direct scalar move DSM
@@ -152,7 +152,7 @@ def is_mg_supported(broadcast_src, broadcast_factor, dtype_byte_size, align_fact
     return False
 
 
-def mid_axis_broadcast(*args):  # pylint: disable=too-many-locals, too-many-statements
+def mid_axis_broadcast(*args):  # 'pylint: disable=too-many-locals, too-many-statements
     """Do mid axis broadcast"""
     ir_builder, index, input_buffer, output_buffer, \
         broadcast_src, broadcast_unit, broadcast_factor, scope = args
@@ -224,7 +224,7 @@ def mid_axis_broadcast(*args):  # pylint: disable=too-many-locals, too-many-stat
     return result_buffer
 
 
-def mask_grouping_broadcast(*args):  # pylint: disable=too-many-locals, too-many-statements
+def mask_grouping_broadcast(*args):  # 'pylint: disable=too-many-locals, too-many-statements
     """MGB broadcast algorithm"""
     ir_builder, _, input_tensor, output_tensor, \
         broadcast_src, broadcast_factor, scope = args
@@ -338,7 +338,7 @@ def mask_grouping_broadcast(*args):  # pylint: disable=too-many-locals, too-many
     return output_tensor
 
 
-def get_instr(vector_inst_one_repeat_size,  # pylint: disable=too-many-locals
+def get_instr(vector_inst_one_repeat_size,  # 'pylint: disable=too-many-locals
               line_index, total_line, unit_per_line, align_factor):
     """Generally, each line needs two instr, broadcast me and remain for next Except last line"""
     # Start address for each line
@@ -424,7 +424,7 @@ def find_pattern(_addrs):
     return distance, index_stride
 
 
-def broadcast_for_tensor_unaligned_emit_insn(inputs):  # pylint: disable=too-many-locals
+def broadcast_for_tensor_unaligned_emit_insn(inputs):  # 'pylint: disable=too-many-locals
     """Emit Insn for the previous function"""
     addr_index_in_mask, addrs, dtype, ir_builder, \
         mask_insn, outs, pattern, reg, remain, rpt, \
@@ -488,7 +488,7 @@ def broadcast_for_tensor_unaligned_emit_insn(inputs):  # pylint: disable=too-man
                                  reg[loop_idx], 1, 1, 1, 8, 8))
 
 
-def broadcast_last_axis_aligned(*args):  # pylint: disable=too-many-locals
+def broadcast_last_axis_aligned(*args):  # 'pylint: disable=too-many-locals
     """LFA broadcast algorithm"""
     ir_builder, _, input_buffer, output_buffer, \
         broadcast_src, broadcast_factor, scope = args
@@ -556,7 +556,7 @@ def broadcast_last_axis_aligned(*args):  # pylint: disable=too-many-locals
     return output_buffer
 
 
-def common_unaligned_broadcast_last_axis(*args):  # pylint: disable=too-many-locals
+def common_unaligned_broadcast_last_axis(*args):  # 'pylint: disable=too-many-locals
     """API for translating last axis DSM to common DSM"""
     ir_builder, index, input_buffer, output_buffer, \
         broadcast_src, broadcast_factor, scope = args
@@ -564,7 +564,7 @@ def common_unaligned_broadcast_last_axis(*args):  # pylint: disable=too-many-loc
                                       broadcast_src, 1, broadcast_factor, scope)
 
 
-def common_unaligned_broadcast(*args):  # pylint: disable=too-many-locals
+def common_unaligned_broadcast(*args):  # 'pylint: disable=too-many-locals
     """DSM Broadcast algorithm"""
     ir_builder, _, input_buffer, output_buffer, \
         broadcast_src, broadcast_unit, broadcast_factor, scope = args
@@ -619,7 +619,7 @@ def common_unaligned_broadcast(*args):  # pylint: disable=too-many-locals
     return output_buffer
 
 
-def compound_unaligned_broadcast(*args):  # pylint: disable=too-many-locals
+def compound_unaligned_broadcast(*args):  # 'pylint: disable=too-many-locals
     """CSM Broadcast algorithm"""
     ir_builder, idx, input_buffer, output_buffer, \
         broadcast_src, broadcast_unit, broadcast_factor, scope = args
@@ -665,7 +665,7 @@ def compound_unaligned_broadcast(*args):  # pylint: disable=too-many-locals
     return output_buffer
 
 
-def full_aligned_broadcast(*args, remain=0):  # pylint: disable=too-many-locals
+def full_aligned_broadcast(*args, remain=0):  # 'pylint: disable=too-many-locals
     """FA Broadcast algorithm"""
     ir_builder, _, input_buffer, output_buffer, \
         broadcast_src, broadcast_unit, broadcast_factor, scope = args
@@ -732,7 +732,7 @@ def is_support_full_aligned_broadcast_vector_enhanced(broadcast_unit, broadcast_
     return False
 
 
-def full_aligned_broadcast_dma(*args, remain):  # pylint: disable=too-many-locals
+def full_aligned_broadcast_dma(*args, remain):  # 'pylint: disable=too-many-locals
     """Use copy_ubuf_to_ubuf when broadcast_unit is larger"""
     ir_builder, _, input_buffer, output_buffer, \
         broadcast_src, broadcast_unit, broadcast_factor, scope = args
@@ -813,7 +813,7 @@ def full_aligned_broadcast_dma(*args, remain):  # pylint: disable=too-many-local
     return output_buffer
 
 
-def full_aligned_broadcast_vector(*args, remain=0):  # pylint: disable=too-many-locals
+def full_aligned_broadcast_vector(*args, remain=0):  # 'pylint: disable=too-many-locals
     """Use vor when broadcast_factor is larger"""
     ir_builder, _, input_buffer, output_buffer, \
         broadcast_src, broadcast_unit, broadcast_factor, scope = args
@@ -932,7 +932,7 @@ def full_aligned_broadcast_vector(*args, remain=0):  # pylint: disable=too-many-
     return output_buffer
 
 
-def full_aligned_broadcast_vector_enhanced(*args):  # pylint: disable=too-many-locals
+def full_aligned_broadcast_vector_enhanced(*args):  # 'pylint: disable=too-many-locals
     """Use vor enhanced when broadcast_src is larger"""
     ir_builder, _, input_buffer, output_buffer, \
         broadcast_src, broadcast_unit, broadcast_factor, scope = args
@@ -1013,7 +1013,7 @@ def full_aligned_broadcast_vector_enhanced(*args):  # pylint: disable=too-many-l
     return output_buffer
 
 
-def semi_aligned_broadcast(*args):  # pylint: disable=too-many-locals, too-many-statements
+def semi_aligned_broadcast(*args):  # 'pylint: disable=too-many-locals, too-many-statements
     """SA Broadcast algorithm"""
     ir_builder, index, input_buffer, output_buffer, \
         broadcast_src, broadcast_unit, broadcast_factor, scope = args
@@ -1051,7 +1051,7 @@ def semi_aligned_broadcast(*args):  # pylint: disable=too-many-locals, too-many-
     return original_output_buffer
 
 
-def full_aligned_last_axis_transpose(*args):  # pylint: disable=too-many-locals, too-many-statements
+def full_aligned_last_axis_transpose(*args):  # 'pylint: disable=too-many-locals, too-many-statements
     """Full Aligned Last Axis Transpose Broadcast algorithm"""
     ir_builder, index, input_buffer, output_buffer, \
         broadcast_src, broadcast_factor, scope = args
@@ -1086,7 +1086,7 @@ def full_aligned_last_axis_transpose(*args):  # pylint: disable=too-many-locals,
     return output_buffer
 
 
-def last_axis_transpose_broadcast(*args):  # pylint: disable=too-many-locals, too-many-statements
+def last_axis_transpose_broadcast(*args):  # 'pylint: disable=too-many-locals, too-many-statements
     """Last Axis Transpose Broadcast algorithm"""
     ir_builder, index, input_buffer, output_buffer, \
         broadcast_src, broadcast_factor, scope = args
@@ -1301,7 +1301,7 @@ def get_buffer_shape(buffer):
     return size
 
 
-def vector_insn_factory_normal(ir_b, cmd, dst_buffer, src_buffer,  # pylint: disable=R0913, R0914
+def vector_insn_factory_normal(ir_b, cmd, dst_buffer, src_buffer,  # 'pylint: disable=R0913, R0914
                                src1_buffer, elem, dst_stride=1, src_stride=1, src1_stride=1,
                                dst_repstr=8, src_repstr=8, src1_repstr=8,
                                dst_offset=0, src_offset=0, src1_offset=0, _repeat_size=128):
@@ -1371,7 +1371,7 @@ def vector_insn_factory_normal(ir_b, cmd, dst_buffer, src_buffer,  # pylint: dis
     reset_mask_insn(ir_b, dst_buffer.dtype)
 
 
-def vector_dup_factory_aligned(ir_builder, dst_buffer, src_const,  # pylint: disable=R0913, R0914
+def vector_dup_factory_aligned(ir_builder, dst_buffer, src_const,  # 'pylint: disable=R0913, R0914
                                repeat, dst_offset, _repeat_size=128):
     """Generate vector_dup intrin, factory function"""
     block_size, dtype_size = get_align_factor(dst_buffer.dtype)

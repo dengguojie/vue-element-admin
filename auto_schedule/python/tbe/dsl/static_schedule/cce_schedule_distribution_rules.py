@@ -422,7 +422,7 @@ class OpPatternRules:
         return False
 
 
-class OpSubPatternRules:  # pylint: disable=R0903
+class OpSubPatternRules:  # 'pylint: disable=R0903
     """Rules for matching subpatterns"""
     @staticmethod
     def simple_pattern_rule(flags: dict, pattern, mapping, *args) -> bool:

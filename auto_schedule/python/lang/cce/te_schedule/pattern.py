@@ -19,7 +19,7 @@ common function
 """
 P_NONE = "pattern_none"
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 layernorm_fp16_1980 = ['elewise_single_cast|not_auto_cast',
                        'elewise_binary_add',
                        'elewise_binary_mul',

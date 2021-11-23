@@ -21,7 +21,7 @@ TensorEngine APIs.
 Using those API to develop operators, you can use the "Auto_schedule" create
 schedule.
 """
-# pylint: disable=redefined-builtin
+# 'pylint: disable=redefined-builtin
 from .broadcast_compute import broadcast
 from .cast_compute import ceil
 from .cast_compute import floor

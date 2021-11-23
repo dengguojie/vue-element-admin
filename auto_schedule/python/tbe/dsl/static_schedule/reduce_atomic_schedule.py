@@ -44,7 +44,7 @@ DTYPE_WIDTH_MAP = {"float16": 1,
                    "bool": 0.5}
 
 
-# pylint: disable=too-many-locals, too-many-return-statements,too-few-public-methods,too-many-arguments,too-many-statements,no-self-use,too-many-lines,too-many-instance-attributes,too-many-branches,
+# 'pylint: disable=too-many-locals, too-many-return-statements,too-few-public-methods,too-many-arguments,too-many-statements,no-self-use,too-many-lines,too-many-instance-attributes,too-many-branches,
 class ReduceAtomicSchedule(VectorSchedule):
     """
     class of cce elewise schedule
@@ -137,7 +137,7 @@ class ReduceAtomicSchedule(VectorSchedule):
             ASCEND_710: ["float32", "float16"]
         }
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def _construct_compute_graph(self, out_tensors, spec_node_list):
         """
         record relate context imformations of operations
@@ -295,7 +295,7 @@ class ReduceAtomicSchedule(VectorSchedule):
             return True
         return False
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def _select_tiling_case(self):
 
         shape_before_reduce = self._reduce_info["shape_before_reduce"]
@@ -362,7 +362,7 @@ class ReduceAtomicSchedule(VectorSchedule):
             # if (ak+1)*ak*..*a2 > rk*..*r2*r1, do not need atomic
             reduce_size = 1
             for i in reduce_axis_index:
-                # pylint: disable=unsubscriptable-object
+                # 'pylint: disable=unsubscriptable-object
                 reduce_size = reduce_size * shape_before_reduce[i]
             if size >= reduce_size:
                 return False
@@ -427,7 +427,7 @@ class ReduceAtomicSchedule(VectorSchedule):
             # use (rk,,..,r2,r1) to do block tiling
             to_do_block_tiling_shape = []
             for i in reduce_axis_index:
-                # pylint: disable=unsubscriptable-object
+                # 'pylint: disable=unsubscriptable-object
                 to_do_block_tiling_shape.append(shape_before_reduce[i])
             split_axis, block_split_inner, _ = self._get_block_tiling(
                 to_do_block_tiling_shape, dtype)
@@ -453,12 +453,12 @@ class ReduceAtomicSchedule(VectorSchedule):
             none_reduce_size = 1
             for i, _ in enumerate(shape_before_reduce):
                 if i not in reduce_axis_index:
-                    # pylint: disable=unsubscriptable-object
+                    # 'pylint: disable=unsubscriptable-object
                     none_reduce_size = none_reduce_size * shape_before_reduce[i]
             size = 1
             for i in range(0, r1_start_index):
                 if i in reduce_axis_index:
-                    # pylint: disable=unsubscriptable-object
+                    # 'pylint: disable=unsubscriptable-object
                     size = size * shape_before_reduce[i]
             core_num = get_soc_spec("CORE_NUM")
             if none_reduce_size / core_num > size:
@@ -467,7 +467,7 @@ class ReduceAtomicSchedule(VectorSchedule):
             # r1 large than ub_max or r1 is 32b align
             last_axis_size = 1
             for i in range(r1_start_index, r1_end_index + 1):
-                # pylint: disable=unsubscriptable-object
+                # 'pylint: disable=unsubscriptable-object
                 last_axis_size = last_axis_size * shape_before_reduce[i]
             if self._is_last_axis_large_than_ub_max(last_axis_size, dtype):
                 return True
@@ -540,7 +540,7 @@ class ReduceAtomicSchedule(VectorSchedule):
         for tensor in self._broadcast_tensors:
             shape = self._shape_to_list(tensor.op.input_tensors[0].shape)
             for i, ele in enumerate(shape):
-                # pylint: disable=unsubscriptable-object
+                # 'pylint: disable=unsubscriptable-object
                 if ele != shape_before_reduce[i]:
                     if ele not in index:
                         index.append(i)
@@ -893,7 +893,7 @@ class ReduceAtomicSchedule(VectorSchedule):
                     cache_write_buffer.op.axis[align_axis],
                     output_align_factor, 0)
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def _reduce_not_last_atomic_tiling(self, shape_before_reduce,
                                        reduce_axis_index, max_ub_count, dtype):
         """
@@ -1107,7 +1107,7 @@ class ReduceAtomicSchedule(VectorSchedule):
 
         return r1_start_index, r1_end_index
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     @staticmethod
     def _reorder_reduce_last_shape(shape_before_reduce, reduce_axis_index):
         """
@@ -1154,7 +1154,7 @@ class ReduceAtomicSchedule(VectorSchedule):
         return reordered_shape, reorder_to_orignal_axis_map, \
             orignal_to_reorder_axis_map
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def _reduce_last_axis_32b_align_atomic_tiling(self, shape_before_reduce,
                                                   reduce_axis_index,
                                                   max_ub_count, dtype):
@@ -1259,7 +1259,7 @@ class ReduceAtomicSchedule(VectorSchedule):
         reduce_axis_index = self._reduce_info["reduce_axis_index"]
         to_do_tiling_shape = []
         for i, _ in enumerate(reduce_axis_index):
-            # pylint: disable=unsubscriptable-object
+            # 'pylint: disable=unsubscriptable-object
             to_do_tiling_shape.append(shape_before_reduce[reduce_axis_index[i]])
 
         if self._is_supported_atomic_add():
@@ -1271,7 +1271,7 @@ class ReduceAtomicSchedule(VectorSchedule):
 
         else:
             block_split_axis = 0
-            # pylint: disable=unsubscriptable-object
+            # 'pylint: disable=unsubscriptable-object
             block_split_inner = shape_before_reduce[block_split_axis]
             ub_split_axis, ub_split_inner = self._get_ub_tiling(
                 shape_before_reduce, block_split_axis, block_split_inner,
@@ -1289,7 +1289,7 @@ class ReduceAtomicSchedule(VectorSchedule):
 
         return block_split_axis, block_split_inner, ub_split_axis, ub_split_inner
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def _calculate_tiling(self):
         """
         calculate tiling strategy
@@ -1334,10 +1334,10 @@ class ReduceAtomicSchedule(VectorSchedule):
             self._tiling_case = 3
         else:
             block_split_axis = 0
-            # pylint: disable=unsubscriptable-object
+            # 'pylint: disable=unsubscriptable-object
             block_inner = shape_before_reduce[0]
             ub_split_axis = -1
-            # pylint: disable=unsubscriptable-object
+            # 'pylint: disable=unsubscriptable-object
             ub_inner = shape_before_reduce[-1]
 
         res_tensor = self._res_tensor
@@ -1429,7 +1429,7 @@ class ReduceAtomicSchedule(VectorSchedule):
                                "inner_itervar": res_block_inner}
         self._reduce_tiling_result["block_tiling"] = block_tiling_result
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def _do_ub_tiling(self):
         """
         :return:
@@ -1615,7 +1615,7 @@ class ReduceAtomicSchedule(VectorSchedule):
 
         self._schedule[out_tensor_ub_rf].reorder(*(ub_rf_reordered_axis_list))
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def _reorder_atomic_reduce_not_last_axis(self, out_tensor_ub_rf, out_tensor_global):
         """
         :param out_tensor_ub_rf:
@@ -2213,7 +2213,7 @@ class ReduceAtomicSchedule(VectorSchedule):
         -------
         None
         """
-        # pylint: disable=invalid-sequence-index
+        # 'pylint: disable=invalid-sequence-index
         ub_tiling_result = self._reduce_tiling_result.get("ub_tiling")
         ub_split_axis = ub_tiling_result["axis"]
 

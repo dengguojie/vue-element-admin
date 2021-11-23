@@ -24,7 +24,7 @@ from . import util
 from .elewise_schedule_new import ElewiseSchedule
 
 
-# pylint: disable=too-many-return-statements,too-few-public-methods,too-many-arguments,too-many-statements,no-self-use,too-many-lines,too-many-instance-attributes,too-many-branches,
+# 'pylint: disable=too-many-return-statements,too-few-public-methods,too-many-arguments,too-many-statements,no-self-use,too-many-lines,too-many-instance-attributes,too-many-branches,
 class ElewiseMultiSchedule(ElewiseSchedule):
     """
     class of cce elewise schedule
@@ -38,7 +38,7 @@ class ElewiseMultiSchedule(ElewiseSchedule):
     ElewiseSchedule_instance : instance of ElewiseSchedule
     """
 
-    # pylint: disable=arguments-differ
+    # 'pylint: disable=arguments-differ
     def do_schedule(self, out_tensors, sch, spec_node_list):
         """
         auto_schedule for cce AI-CORE
@@ -68,7 +68,7 @@ class ElewiseMultiSchedule(ElewiseSchedule):
         self._construct_compute_graph(out_tensors, spec_node_list)
 
         # init for block num
-        # pylint: disable=attribute-defined-outside-init
+        # 'pylint: disable=attribute-defined-outside-init
         self._block_num = util.INIT_SIZE
         if self.__calculate_align():
             return False
@@ -117,7 +117,7 @@ class ElewiseMultiSchedule(ElewiseSchedule):
         Schedule, mock schedule
 
         """
-        # pylint: disable=invalid-name, attribute-defined-outside-init
+        # 'pylint: disable=invalid-name, attribute-defined-outside-init
         temp_mid_output_tensors_dst_tensor_map = {}
         temp_mid_output_tensors_in_ub = []
         self._mid_output_tensors_in_gm = []
@@ -133,7 +133,7 @@ class ElewiseMultiSchedule(ElewiseSchedule):
         self._buffer_tile_out = out_tensors
 
         # make mid output tensors copy itself to out
-        # pylint: disable=unnecessary-lambda
+        # 'pylint: disable=unnecessary-lambda
         for out in temp_mid_output_tensors_in_ub:
             with tvm.tag_scope(util.SET_GM_SCOPE_TAG):
                 out_gm = tvm.compute(out.shape, lambda *i: out(*i),
@@ -169,7 +169,7 @@ class ElewiseMultiSchedule(ElewiseSchedule):
         cur_shape_size = util.get_shape_size(shape)
         block_per_num = int(util.VECTOR_ONE_BLOCK_UNIT / min_type_bitsize)
         max_core_num = int(cur_shape_size // block_per_num)
-        # pylint: disable=attribute-defined-outside-init
+        # 'pylint: disable=attribute-defined-outside-init
         self._block_num = min(cur_core_num, max_core_num)
         return False
 

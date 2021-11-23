@@ -43,7 +43,7 @@ from .util import util_astype
 NAME_INDEX = [0]
 
 
-# pylint: disable=too-many-locals, too-many-branches, too-many-statements
+# 'pylint: disable=too-many-locals, too-many-branches, too-many-statements
 @decorator
 def _auto_cast_of_elewise(func, *args, **kwargs):
     """
@@ -453,7 +453,7 @@ def __vlog_calculate_by_taylor(data_x):
     """
     calculate ln(raw_tensor), use taylor expansion to calculate log
     """
-    # pylint: disable=too-many-locals, too-many-statements
+    # 'pylint: disable=too-many-locals, too-many-statements
     from .cast import cast_to
     # Log threshold
     const_log_threshold_1 = 0.6666666666666667
@@ -485,7 +485,7 @@ def __vlog_calculate_by_taylor(data_x):
     shape = data_x.shape
 
     def _taylor_compute(data):
-        # pylint: disable=too-many-locals
+        # 'pylint: disable=too-many-locals
         taylor_nine = vmuls(data, tvm.const(const_one_nine, dtype))
         taylor_eight_1 = vadds(taylor_nine,
                                tvm.const(const_one_eight_neg, dtype))
@@ -525,7 +525,7 @@ def __vlog_calculate_by_taylor(data_x):
         res : return of log
 
         """
-        # pylint: disable=too-many-locals
+        # 'pylint: disable=too-many-locals
         # if data > 2, use vlog
         threshold_3 = tbe.dsl.broadcast(tvm.const(const_two, dtype), shape)
         if in_dynamic_and_static_unify():
@@ -547,7 +547,7 @@ def __vlog_calculate_by_taylor(data_x):
         return res
 
     def _log_compute_block_lt_2_gt_1(data_x, shape):
-        # pylint: disable=too-many-locals
+        # 'pylint: disable=too-many-locals
         # phase1: index_1:data>(5/3)&&data<2
         data = vadds(data_x, tvm.const(const_neg_one, dtype))
         threshold_1 = tbe.dsl.broadcast(tvm.const(const_log_threshold_1, dtype), shape)
@@ -906,7 +906,7 @@ def _check_elewise_single_shape(input_tensor):
                                           % input_tensor.shape[i].value
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
-# pylint: disable=too-many-locals, too-many-branches, too-many-statements
+# 'pylint: disable=too-many-locals, too-many-branches, too-many-statements
 
 
 def __single_elewise_op(input_tensor, dtype, op_name, args=None):
@@ -984,7 +984,7 @@ def __single_elewise_op(input_tensor, dtype, op_name, args=None):
             name = name_pre + str(NAME_INDEX[0])
             NAME_INDEX[0] += 1
             # compute tmp_negative = -1*temp_mul
-            # pylint: disable=cell-var-from-loop
+            # 'pylint: disable=cell-var-from-loop
             with tvm.tag_scope("elewise_single_VS_mul"):
                 tmp_negative = tvm.compute(
                     shape,
@@ -994,7 +994,7 @@ def __single_elewise_op(input_tensor, dtype, op_name, args=None):
             name = name_pre + str(NAME_INDEX[0])
             NAME_INDEX[0] += 1
             # compute tmp_plus = 2 + tmp_negative
-            # pylint: disable=cell-var-from-loop
+            # 'pylint: disable=cell-var-from-loop
             with tvm.tag_scope("elewise_single_VS_add"):
                 tmp_plus = tvm.compute(
                     shape,
@@ -1003,7 +1003,7 @@ def __single_elewise_op(input_tensor, dtype, op_name, args=None):
             name = name_pre + str(NAME_INDEX[0])
             NAME_INDEX[0] += 1
             # compute tmp = x(n-1)*tmp_plus
-            # pylint: disable=cell-var-from-loop
+            # 'pylint: disable=cell-var-from-loop
             with tvm.tag_scope("elewise_binary_mul"):
                 tmp = tvm.compute(shape,
                                   lambda *indice: tmp_plus(*indice) * tmp(*indice),
@@ -1103,7 +1103,7 @@ def __vmod_cloud(lhs, rhs):
     return _cast(res, dtype)
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def __vmod_mini(lhs, rhs):
     from .cast import floor
     dtype = rhs.dtype
@@ -1436,7 +1436,7 @@ def _vcmp_supported_types(mode):
     return supported_types
 
 
-# pylint: disable=too-many-branches, too-many-statements
+# 'pylint: disable=too-many-branches, too-many-statements
 @source_info_decorator()
 @dtype_check_decorator
 def vcmp(lhs, rhs, operation='lt', mode='bool'):
@@ -1730,7 +1730,7 @@ def vlogic(lhs, rhs=None, operation='logic_and'):
     return __binary_elewise_op(lhs, rhs, "elewise_binary_logic", args=[operation[6:]])
 
 
-# pylint: disable=too-many-locals, too-many-branches, too-many-statements
+# 'pylint: disable=too-many-locals, too-many-branches, too-many-statements
 def __binary_elewise_op(tensor_l, tensor_r, op_name, args=None):
     """
     factory method of binary elewise operations
@@ -2171,7 +2171,7 @@ def _vsel_bit_shape_check(condition, input_tensor):
             raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
-# pylint: disable=too-many-branches, too-many-statements
+# 'pylint: disable=too-many-branches, too-many-statements
 @source_info_decorator()
 @dtype_check_decorator
 def vsel(condition, lhs, rhs):

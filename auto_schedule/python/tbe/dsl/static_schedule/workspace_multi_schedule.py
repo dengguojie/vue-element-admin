@@ -24,10 +24,10 @@ from . import util
 from .cce_schedule_declarations import OpSpecTypes
 
 
-# pylint: too-many-return-statements,too-few-public-methods,
-# pylint: too-many-arguments,too-many-statements,no-self-use,too-many-lines,
-# pylint: too-many-instance-attributes,too-many-branches,
-class WorkspaceMultiSchedule():  # pylint: disable=too-many-instance-attributes
+# 'pylint: too-many-return-statements,too-few-public-methods,
+# 'pylint: too-many-arguments,too-many-statements,no-self-use,too-many-lines,
+# 'pylint: too-many-instance-attributes,too-many-branches,
+class WorkspaceMultiSchedule():  # 'pylint: disable=too-many-instance-attributes
     """
     class of cce schedule for enable multi core in workspace
 
@@ -65,7 +65,7 @@ class WorkspaceMultiSchedule():  # pylint: disable=too-many-instance-attributes
         """
         self._op_type = op_type
 
-    # pylint: disable=attribute-defined-outside-init, unused-argument, arguments-differ
+    # 'pylint: disable=attribute-defined-outside-init, unused-argument, arguments-differ
     def update_schedule(self, spec_node_list, sch_list, spec_mid_list):
         """
         use fake node to fuse multi out in order to compute at
@@ -105,7 +105,7 @@ class WorkspaceMultiSchedule():  # pylint: disable=too-many-instance-attributes
         self._schedule = tvm.create_schedule([self._res.op])
         sch_list[0] = self._schedule
 
-    # pylint: disable=attribute-defined-outside-init, unused-argument, arguments-differ
+    # 'pylint: disable=attribute-defined-outside-init, unused-argument, arguments-differ
     def do_schedule(self, workspace_info):
         """
         do schedule for enable multi core in workspace
@@ -127,7 +127,7 @@ class WorkspaceMultiSchedule():  # pylint: disable=too-many-instance-attributes
 
         return
 
-    # pylint: disable=attribute-defined-outside-init, unused-argument, arguments-differ
+    # 'pylint: disable=attribute-defined-outside-init, unused-argument, arguments-differ
     def _check_for_limit(self):
         if len(self._res.shape) != 2 and self._op_type != OpSpecTypes.MVN:
             return False
@@ -145,7 +145,7 @@ class WorkspaceMultiSchedule():  # pylint: disable=too-many-instance-attributes
                 next_list += tensor.op.input_tensors
         return True
 
-    def _calculate_basic_info(self):  # pylint: disable=too-many-branches
+    def _calculate_basic_info(self):  # 'pylint: disable=too-many-branches
         def __is_tiling_factor_right(block_cut_size):
             if self._op_type == OpSpecTypes.MVN:
                 align_type = self._res.dtype

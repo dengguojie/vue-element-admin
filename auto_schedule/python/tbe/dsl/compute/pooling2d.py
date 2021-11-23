@@ -44,7 +44,7 @@ _DEFAULT_VALUE = -1
 _L1_DEPTH_FUSION = 0
 _L1_BREADTH_FUSION = 1
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 _OP_TAG = "pooling2d_"
 
 
@@ -92,7 +92,7 @@ def _check_fmap_shape(batch_size, c1_value, in_size_h, in_size_w, c_block_size):
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
-# pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
+# 'pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
 @source_info_decorator()
 def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
               pad=(0, 0, 0, 0), dilation=(1, 1), data_mode=1, ceil_mode=0,
@@ -350,7 +350,7 @@ def pooling2d(tensor_in, window, stride, pooling_mode, padding_mode="SAME",
     return res
 
 
-# pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
+# 'pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
 def _check_attr_rule(tensor_in, window, stride, pooling_mode, padding_mode, pad=(0, 0, 0, 0),
                      dilation=(1, 1), data_mode=0, ceil_mode=0):
     """
@@ -534,7 +534,7 @@ def _check_stride_rule(tensor_in, data_mode, padding_mode, pooling_mode, window,
                                                            window_h, window_w, stride)
 
 
-# pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
+# 'pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
 def _get_pooling_mode_with_padding_mode(padding_mode, pooling_mode, in_size_h, in_size_w,
                                         window_h, window_w, stride):
     """
@@ -552,7 +552,7 @@ def _get_pooling_mode_with_padding_mode(padding_mode, pooling_mode, in_size_h, i
     # is defined as GAP or GMP
     # that means there is no SAME mode in GAP and GMP
     # others are all handled as normal AVG or MAX pooling.
-    # pylint: disable=no-else-raise
+    # 'pylint: disable=no-else-raise
     if padding_mode == "VALID":
         pooling_mode = _get_pooling_mode_with_valid_padding_mode(in_size_h, in_size_w, pooling_mode, window_h,
                                                                  window_w)
@@ -598,7 +598,7 @@ def _get_pooling_mode_with_valid_padding_mode(in_size_h, in_size_w, pooling_mode
     return pooling_mode
 
 
-# pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
+# 'pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
 def _check_ub_tiling(data_mode, pooling_mode, padding_mode, out_size_w, window_h, window_w,
                      c_block_size, ub_size):
     """
@@ -636,7 +636,7 @@ def _check_ub_tiling(data_mode, pooling_mode, padding_mode, out_size_w, window_h
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
-# pylint: disable=too-many-locals, too-many-arguments
+# 'pylint: disable=too-many-locals, too-many-arguments
 def _get_ub_data_size(out_size_w, window_h, window_w, c_block_size, enable_avg_mean_factor):
     """
     :param out_size_w: output tensor
@@ -655,7 +655,7 @@ def _get_ub_data_size(out_size_w, window_h, window_w, c_block_size, enable_avg_m
     return data_size
 
 
-# pylint: disable=too-many-locals, too-many-arguments
+# 'pylint: disable=too-many-locals, too-many-arguments
 def _get_avg_mean_factor_size(enable_avg_mean_factor, out_size_w, c_block_size):
     """
     :param enable_avg_mean_factor: avg calculate factor
@@ -668,7 +668,7 @@ def _get_avg_mean_factor_size(enable_avg_mean_factor, out_size_w, c_block_size):
     return 0
 
 
-# pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
+# 'pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
 def _get_out_size_and_pad_with_ceil_mode(ceil_mode, in_size_h, in_size_w, window_h, window_w,
                                          stride_h, stride_w, dilation_h, dilation_w, pad_top,
                                          pad_bottom, pad_left, pad_right):
@@ -733,7 +733,7 @@ def _get_out_size_and_pad_with_ceil_mode(ceil_mode, in_size_h, in_size_w, window
     return out_size_h, out_size_w, pad_top, pad_bottom, pad_left, pad_right
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def get_caffe_out_size_and_pad(ceil_mode, in_size_h, in_size_w, window_h, window_w,
                                stride_h, stride_w, dilation_h, dilation_w, pad_top,
                                pad_bottom, pad_left, pad_right):
@@ -760,7 +760,7 @@ def get_caffe_out_size_and_pad(ceil_mode, in_size_h, in_size_w, window_h, window
                                                 pad_bottom, pad_left, pad_right)
 
 
-# pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
+# 'pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-arguments
 def _get_out_size_and_pad_with_padding_mode(padding_mode, in_size_h, in_size_w, window_h, window_w,
                                             stride_h, stride_w, dilation_h, dilation_w, pad_top,
                                             pad_bottom, pad_left, pad_right,
@@ -860,7 +860,7 @@ def _get_schedule_padding_mode(data_mode, padding_mode):
     return padding_mode
 
 
-# pylint: disable=too-many-locals, too-many-arguments
+# 'pylint: disable=too-many-locals, too-many-arguments
 def _pooling2d_avg(fmap_img2col_ub, res_output_shape, window_h, window_w, pooling_params,
                    setfmatrix_dict, fusion_params):
     """
@@ -920,7 +920,7 @@ def _pooling2d_avg(fmap_img2col_ub, res_output_shape, window_h, window_w, poolin
     return res
 
 
-# pylint: disable=too-many-locals, too-many-arguments
+# 'pylint: disable=too-many-locals, too-many-arguments
 def _pooling2d_gmp(tensor_in_ub, res_output_shape, window_h, window_w, pooling_params,
                    setfmatrix_dict, fusion_params, impl_mode="high_performance"):
     """
@@ -966,7 +966,7 @@ def _pooling2d_gmp(tensor_in_ub, res_output_shape, window_h, window_w, pooling_p
     return res
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def _pooling2d_gap(tensor_in_ub, res_output_shape, window_h, window_w, pooling_params,
                    setfmatrix_dict, fusion_params, impl_mode="high_performance"):
     """

@@ -56,7 +56,7 @@ L1_DEPTH_FUSION = 0
 L1_BREADTH_FUSION = 1
 
 
-# pylint: disable=no-self-use, too-many-instance-attributes, too-few-public-methods, redefined-builtin, useless-object-inheritance
+# 'pylint: disable=no-self-use, too-many-instance-attributes, too-few-public-methods, redefined-builtin, useless-object-inheritance
 class VectorSchedule(object):
     """
     Base class of cce vector schedule
@@ -469,7 +469,7 @@ class VectorSchedule(object):
             self._schedule[res].bind(self._multi_core_fused_axis, block)
 
         if self._batch_bind_only:
-            res = self._last_output_tensor  # pylint: disable=no-member
+            res = self._last_output_tensor  # 'pylint: disable=no-member
             ub_tiling_result = self._tiling_result["ub_tiling"]
             res_ub_outer = ub_tiling_result["outer_itervar"]
             self._schedule[res].pragma(res_ub_outer,
@@ -638,7 +638,7 @@ class VectorSchedule(object):
     # The backend does not support non-divisible split+fuse,
     # so block tiling needs to be adjusted to divide the split for
     # non-divisible split
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def _modify_block_tiling(self, shape, data_size, block_split_axis,
                              block_split_inner_size, multi_core_threshold,
                              block_split_outer_size):
@@ -699,7 +699,7 @@ class VectorSchedule(object):
         factors.sort()
         return factors
 
-    def _get_ub_tiling(self,  # pylint: disable=too-many-locals, too-many-branches
+    def _get_ub_tiling(self,  # 'pylint: disable=too-many-locals, too-many-branches
                        shape, block_tiling_axis, block_tiling_inner_loop,
                        max_ub_count, divisible_split=False):
         last_axis = len(shape) - 1
@@ -791,7 +791,7 @@ class VectorSchedule(object):
 
         return ub_split_inner_factor
 
-    # pylint: disable=too-many-locals, too-many-branches, too-many-arguments, too-many-return-statements
+    # 'pylint: disable=too-many-locals, too-many-branches, too-many-arguments, too-many-return-statements
     def _is_need_modify_block_and_ub_tiling(self, shape, dtype,
                                             block_split_axis,
                                             block_split_inner_size,

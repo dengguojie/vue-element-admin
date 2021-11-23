@@ -157,7 +157,7 @@ def unsorted_segment_max(tensor, segment_ids, num_segments, init_value=0):
                         init_value, tensor.dtype, "segment_max")
 
 
-# pylint: disable=too-many-arguments, unused-argument
+# 'pylint: disable=too-many-arguments, unused-argument
 def __segment_tensor_op(tensor, segment_ids, num_segments, init_value, output_dtype, segment_op):
     """
     factory method of segment operations
@@ -205,12 +205,12 @@ def __segment_tensor_op(tensor, segment_ids, num_segments, init_value, output_dt
     return tmp
 
 
-# pylint: disable=too-many-locals, too-many-statements, too-many-arguments
+# 'pylint: disable=too-many-locals, too-many-statements, too-many-arguments
 def __segment_op(tensor, segment_ids, num_segments, init_value, output_dtype, segment_op):
     """
     factory method of segment operations
     """
-    # pylint: disable=consider-merging-isinstance
+    # 'pylint: disable=consider-merging-isinstance
     if not isinstance(num_segments, int):
         raise RuntimeError("the type of num_segments must be int")
     if not isinstance(init_value, (int, float)):

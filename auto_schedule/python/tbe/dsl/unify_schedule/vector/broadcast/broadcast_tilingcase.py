@@ -17,7 +17,7 @@
 """
 broadcast tiling case
 """
-from enum import Enum  # pylint: disable=E0611
+from enum import Enum  # 'pylint: disable=E0611
 from enum import auto
 from typing import Optional
 

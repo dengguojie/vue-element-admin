@@ -17,7 +17,7 @@
 """
 common function
 """
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 bn_update_grad_pattern_list = [
     [
         "tuple_reduce_sum",
@@ -129,7 +129,7 @@ bn_update_grad_pattern_list = [
     ]
 ]
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 layer_norm_grad_pattern_list = [
     # for layer_norm_beta_gamma_backprop_v2
     [
@@ -238,7 +238,7 @@ layer_norm_grad_pattern_list = [
     ]
 ]
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 bn_update_pattern_list = [
     # for cloud
     [
@@ -796,7 +796,7 @@ gn_update_pattern_list = [
     ]
 ]
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 softmax_cross_entropy_with_logits_pattern_list = [
     # [NHW,C] fp32
     [
@@ -901,7 +901,7 @@ softmax_cross_entropy_with_logits_pattern_list = [
     ]
 ]
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 bn_grad_reduce_pattern_list = [
     # fp16
     [
@@ -1127,7 +1127,7 @@ bn_grad_reduce_pattern_list = [
     ]
 ]
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 l2_loss_pattern_list = [
     "reduce_sum",
     "elewise_binary_mul",
@@ -1135,7 +1135,7 @@ l2_loss_pattern_list = [
     "placeholder"
 ]
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 bn_reduce_pattern_list = [
     [
         "tuple_reduce_sum",
@@ -1152,7 +1152,7 @@ bn_reduce_pattern_list = [
     ]
 ]
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 l2loss_mul_addn_pattern_list = [
     [
         "elewise_binary_add",
@@ -1167,7 +1167,7 @@ l2loss_mul_addn_pattern_list = [
     ]
 ]
 
-softmax_dfs_tag_list = [  # pylint: disable=invalid-name
+softmax_dfs_tag_list = [  # 'pylint: disable=invalid-name
     # softmax_v2 fp16 nz for special cases
     [
         'elewise_single_cast|not_auto_cast',
@@ -1627,7 +1627,7 @@ softmax_dfs_tag_list = [  # pylint: disable=invalid-name
 
 ]
 
-l2_normalize_dfs_tag_list = [  # pylint: disable=invalid-name
+l2_normalize_dfs_tag_list = [  # 'pylint: disable=invalid-name
     # fp32
     [
         "elewise_binary_div",
@@ -1671,7 +1671,7 @@ l2_normalize_dfs_tag_list = [  # pylint: disable=invalid-name
     ],
 ]
 
-relu_v2_tag_list = [  # pylint: disable=invalid-name
+relu_v2_tag_list = [  # 'pylint: disable=invalid-name
     # fp16
     [
         "elewise_single_relu",
@@ -1769,7 +1769,7 @@ threshold_grad_v2_d_tag_list = [
     ],
 ]
 
-truncate_div_tag_list = [  # pylint: disable=invalid-name
+truncate_div_tag_list = [  # 'pylint: disable=invalid-name
     # mini_fp16
     [
         "elewise_binary_mul",
@@ -1795,7 +1795,7 @@ truncate_div_tag_list = [  # pylint: disable=invalid-name
     ],
 ]
 
-reduce_mean_2d_aligned_mid_reduce_no_cast_list = [  # pylint: disable=invalid-name
+reduce_mean_2d_aligned_mid_reduce_no_cast_list = [  # 'pylint: disable=invalid-name
     [
         "reduce_sum",
         "elewise_single_VS_mul",

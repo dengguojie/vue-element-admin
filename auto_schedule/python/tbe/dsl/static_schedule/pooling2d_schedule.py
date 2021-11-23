@@ -73,7 +73,7 @@ def _get_l1fusion_device_core_num(is_l1fusion):
     return device_core_num
 
 
-# Example: pylint: disable=R0914,R0915
+# Example: 'pylint: disable=R0914,R0915
 def pooling2d_tiling(pooling_params, fusion_params=None):
     """
     :params:
@@ -146,7 +146,7 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
         del fmap_img2col_choose_list[:]
         del step_h_choose_list[:]
 
-    # pylint: too-many-locals, too-many-branches, too-many-statements
+    # 'pylint: too-many-locals, too-many-branches, too-many-statements
     def _try_tiling(ub_tiling_size, l1_tiling_size):
         _clean_residue()
 
@@ -163,7 +163,7 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
                 return False
             return True
 
-        # pylint: too-many-nested-blocks
+        # 'pylint: too-many-nested-blocks
         def _find_tiling(need_cut_c1=False):
             """
             :gm -> l1 find the max cut
@@ -559,7 +559,7 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
         if need_cut_c1:
             _find_tiling(need_cut_c1)
 
-        # Example: pylint: disable=R0912
+        # Example: 'pylint: disable=R0912
         def _find_tiling_not_cutl1_2_ub(is_cut_each_c1=False):
             """
             :cutCi and cutH together, but no need cut l1 to ub
@@ -643,7 +643,7 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
                 if is_break:
                     break
 
-        def _find_tiling_cut_c1_then_cut_howo():  # pylint: disable=R0914,R0915
+        def _find_tiling_cut_c1_then_cut_howo():  # 'pylint: disable=R0914,R0915
             cut_l1_to_ub_factor = 1
             ho_wo_16_outer_factor = (out_size_h * out_size_w +
                                      c_block_size - 1) // c_block_size
@@ -829,7 +829,7 @@ def pooling2d_tiling(pooling_params, fusion_params=None):
     return result_list
 
 
-# pylint: disable=too-many-locals, too-many-branches, too-many-statements
+# 'pylint: disable=too-many-locals, too-many-branches, too-many-statements
 def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_performance"):
     """
     :params:
@@ -862,7 +862,7 @@ def pooling2d_global_tiling(pooling_params, fusion_params=None, impl_mode="high_
     tiling_params = {}
     fp32_ability = _check_fp32_ability(pooling_mode, impl_mode)
 
-    # pylint: disable=too-many-nested-blocks
+    # 'pylint: disable=too-many-nested-blocks
     def _try_tiling(ub_size):
         tiling_params.clear()
         bind_core_gap = max(c1_value, device_core_num)
@@ -1259,7 +1259,7 @@ def _check_fp32_ability(pooling_mode, impl_mode):
     return is_support_fp32_ability
 
 
-# pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-nested-blocks
+# 'pylint: disable=too-many-locals, too-many-branches, too-many-statements, too-many-nested-blocks
 def pooling2d_schedule(res, sch_list):
     """
     :params:
@@ -1663,7 +1663,7 @@ def pooling2d_schedule(res, sch_list):
                                                           (1, INT8_ALIGN)
                                                           )
 
-        # pylint: disable=too-many-branches, too-many-statements
+        # 'pylint: disable=too-many-branches, too-many-statements
         def schedule_cuth_cut_l1_to_ub():
             """
             :schedule of cut l1 to ub
@@ -1838,7 +1838,7 @@ def pooling2d_schedule(res, sch_list):
 
             _process_emit_insn()
 
-        # pylint: disable=too-many-branches, too-many-statements
+        # 'pylint: disable=too-many-branches, too-many-statements
         def schedule_cuth():
             """
             :schedule for cuth
@@ -2244,7 +2244,7 @@ def pooling_global_quant_schedule(
     if not fusion_params:
         fusion_params = {}
 
-    # pylint: too-many-arguments
+    # 'pylint: too-many-arguments
     l1_fusion_type = fusion_params.get("l1_fusion_type", DEFAULT_VALUE)
     in_l1_flag = fusion_params.get("in_l1_flag", False)
     out_l1_flag = fusion_params.get("out_l1_flag", False)

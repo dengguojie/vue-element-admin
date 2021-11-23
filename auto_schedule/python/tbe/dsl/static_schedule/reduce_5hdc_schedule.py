@@ -33,7 +33,7 @@ from .util import get_align_factor
 SINGLE_CORE_BYTE_SIZE_THRESHOLD = 32
 
 
-class Reduce5HDCSchedule:  # pylint: disable=R0902
+class Reduce5HDCSchedule:  # 'pylint: disable=R0902
     """Schedule for reduce 5HD C axis"""
 
     def __init__(self):
@@ -223,7 +223,7 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
             else:
                 self.reduce_idx.append(idx)
 
-    def calculate_tiling(self, intermediate=None):  # pylint: disable=R0912
+    def calculate_tiling(self, intermediate=None):  # 'pylint: disable=R0912
         """Get calculation unit info"""
 
         # Simple liveness simulator
@@ -479,7 +479,7 @@ class Reduce5HDCSchedule:  # pylint: disable=R0902
         if self.block_outer is None:
             self.block_outer = self.block_inner
 
-    def _do_block_tiling(self, out_stage):  # pylint: disable=R0912
+    def _do_block_tiling(self, out_stage):  # 'pylint: disable=R0912
         """Apply block tiling"""
         block_tiling_axis = None
         core_num = 1

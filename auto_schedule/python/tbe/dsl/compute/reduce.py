@@ -19,7 +19,7 @@ reduction compute
 """
 import warnings
 
-# pylint: disable=import-error
+# 'pylint: disable=import-error
 from decorator import decorator
 from tbe import tvm
 from tbe.common.platform.platform_info import get_soc_spec
@@ -75,7 +75,7 @@ def is_true(expr, dict_args):
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
 
-# pylint: disable=too-many-branches
+# 'pylint: disable=too-many-branches
 @decorator
 def _para_check_of_reduce(func, *args, **kwargs):
     '''
@@ -154,7 +154,7 @@ def _para_check_of_reduce(func, *args, **kwargs):
     return func(*args, **kwargs)
 
 
-# pylint: disable=redefined-builtin
+# 'pylint: disable=redefined-builtin
 @source_info_decorator()
 @_para_check_of_reduce
 def reduce_sum(raw_tensor, axis, keepdims=False):
@@ -191,7 +191,7 @@ def reduce_min(raw_tensor, axis, keepdims=False, impl_mode="high_performance"):
     return _single_reduce_op(raw_tensor, axis, "reduce_min", keepdims)
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @source_info_decorator()
 @_para_check_of_reduce
 def reduce_max(raw_tensor, axis, keepdims=False, impl_mode="high_performance"):
@@ -228,7 +228,7 @@ def reduce_prod(raw_tensor, axis, keepdims=False):
     return _single_reduce_op(raw_tensor, axis, "reduce_prod", keepdims)
 
 
-def _single_reduce_op(input_tensor,  # pylint: disable=too-many-statements
+def _single_reduce_op(input_tensor,  # 'pylint: disable=too-many-statements
                       axis, in_op, keepdims=False):
     """
     factory method of single reduce operations

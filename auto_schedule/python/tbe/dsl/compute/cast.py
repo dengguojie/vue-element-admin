@@ -17,7 +17,7 @@
 """
 cast
 """
-# pylint: disable=import-error
+# 'pylint: disable=import-error
 import warnings
 
 import tbe.dsl
@@ -187,7 +187,7 @@ def _floor(raw_tensor):
     return _cast_op(raw_tensor, dst_dtype, "elewise_single_floor")
 
 
-# pylint: disable=redefined-builtin
+# 'pylint: disable=redefined-builtin
 @source_info_decorator()
 @_para_check_of_cast
 def round(raw_tensor, dst_dtype="int32"):
@@ -331,7 +331,7 @@ def _cast_op_for_protogenes(tensor, op_type, shape):
     return tvm.compute(shape, lambda_func, name=name)
 
 
-# pylint: disable=too-many-locals, invalid-name
+# 'pylint: disable=too-many-locals, invalid-name
 @source_info_decorator()
 def cast_to(data, dtype, f1628IntegerFlag=True):
     """

@@ -45,7 +45,7 @@ MULTI_BROADCAST_ENHANCEMENT_FACTOR = 2.5
 MULTI_BROADCAST_ENHANCEMENT_FOR_FACTOR = 32
 
 
-class PureBroadcastSchedule:  # pylint: disable=R0902
+class PureBroadcastSchedule:  # 'pylint: disable=R0902
     """Pure Broadcast Schedule"""
 
     def __init__(self):
@@ -96,7 +96,7 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
         """Get real output tensors we are using"""
         return self.real_outs
 
-    def do_schedule(self,  # pylint: disable=too-many-locals, too-many-statements
+    def do_schedule(self,  # 'pylint: disable=too-many-locals, too-many-statements
                     out: Tensor,
                     sch: Schedule) -> Schedule:
         """Execute schedule generating sequence"""
@@ -239,7 +239,7 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
                                                self.broadcast_target_shape[self.ub_tiling_axis]):
             self.calculate_block_tiling()
 
-    def calculate_ub_tiling(self):  # pylint: disable=R0911, R1710
+    def calculate_ub_tiling(self):  # 'pylint: disable=R0911, R1710
         """Get calculation unit by calculating ub tiling strategy"""
         if self.ub_tiling_axis is None:
             self.ub_tiling_axis = len(self.broadcast_target_shape) - 1
@@ -712,7 +712,7 @@ class PureBroadcastSchedule:  # pylint: disable=R0902
 
 
 @tvm.register_func("tvm.intrin.cce.unified_broadcast")
-def unified_broadcast(stmt_op):  # pylint: disable=too-many-locals, too-many-statements
+def unified_broadcast(stmt_op):  # 'pylint: disable=too-many-locals, too-many-statements
     """Universal broadcast operation"""
 
     # Get workspace scope if there is one, use local.UB as default value
@@ -811,7 +811,7 @@ def unified_broadcast(stmt_op):  # pylint: disable=too-many-locals, too-many-sta
     return ir_builder.get()
 
 
-def loop_broadcast(*args):  # pylint: disable=too-many-locals, too-many-statements
+def loop_broadcast(*args):  # 'pylint: disable=too-many-locals, too-many-statements
     """Extracted from unified_broadcast for static check"""
     align_factor, broadcast_schedule, dtype_byte_size, input_buffer, ir_builder, \
         list_product, output_buffer, target_shape, scope = args
@@ -841,7 +841,7 @@ def loop_broadcast(*args):  # pylint: disable=too-many-locals, too-many-statemen
                      scope)
 
 
-def do_broadcast(ir_builder,  # pylint: disable=too-many-locals, too-many-arguments
+def do_broadcast(ir_builder,  # 'pylint: disable=too-many-locals, too-many-arguments
                  index, input_buffer, output_buffer,
                  broadcast_src, broadcast_unit, broadcast_factor, scope):
     """Pick broadcast algorithm"""

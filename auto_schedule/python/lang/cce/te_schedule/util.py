@@ -331,7 +331,7 @@ def get_shape_size_ext(shape, value=None):
     return shape_size
 
 
-# pylint: disable=too-many-branches, too-many-return-statements
+# 'pylint: disable=too-many-branches, too-many-return-statements
 def tiling_from_front_to_back(shape, max_size, align_factor=None,
                               is_divisible=False):
     """
@@ -344,7 +344,7 @@ def tiling_from_front_to_back(shape, max_size, align_factor=None,
     """
     bound_size = 1
     split_axis = 0
-    # pylint: disable=consider-using-enumerate
+    # 'pylint: disable=consider-using-enumerate
     for i in range(len(shape)):
         bound_size = shape[i] * bound_size
         split_axis = i
@@ -405,7 +405,7 @@ def tiling_from_front_to_back(shape, max_size, align_factor=None,
     return outer, inner, split_axis
 
 
-# pylint: disable=too-many-branches, too-many-return-statements
+# 'pylint: disable=too-many-branches, too-many-return-statements
 def tiling_from_back_to_front(shape, max_size, align_factor=None,
                               is_divisible=False):
     """
@@ -446,7 +446,7 @@ def tiling_from_back_to_front(shape, max_size, align_factor=None,
         mod2count_splitaxis = get_mod2_count(shape[split_axis])
         mod2count_all = mod2count_reduceshape + mod2count_splitaxis
 
-        # pylint: disable=no-else-return
+        # 'pylint: disable=no-else-return
         # 2.2.1 if: mod2count_reduceshape + mod2count_splitaxis < mod2count_all
         if mod2count_align > mod2count_all:
             return outer, inner, split_axis
@@ -469,7 +469,7 @@ def tiling_from_back_to_front(shape, max_size, align_factor=None,
                                                    inner_update - 1)
                 return outer, inner, split_axis
 
-            # pylint: disable=no-else-return
+            # 'pylint: disable=no-else-return
             # 2.2.3.2 else: not is_divisible
             if inner < factor:
                 return outer, inner, split_axis
@@ -638,7 +638,7 @@ def get_block_factor_conservative(shape, barrier, factor):
     shape.append(DEFAULT_INDEX)
     temp_shape = []
     temp_idxs = []
-    # pylint: disable=consider-using-enumerate
+    # 'pylint: disable=consider-using-enumerate
     for idx in range(len(shape)):
         if idx in barrier:
             calcu_factor_from_series_axes(temp_shape, temp_idxs)
@@ -884,7 +884,7 @@ def get_nearest_factor(dim, split_size):
     return split_size
 
 
-def dfs_tensor_graph(tensor,  # pylint: disable=R0912, R0915, R0913
+def dfs_tensor_graph(tensor,  # 'pylint: disable=R0912, R0915, R0913
                      is_out=True, visited=None, input_tensors=None,
                      mid_tensors=None, tensor_map=None):
     """

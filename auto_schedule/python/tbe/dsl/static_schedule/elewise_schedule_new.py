@@ -17,7 +17,7 @@
 """
 elewise schedule
 """
-# pylint: disable=import-error, unused-import
+# 'pylint: disable=import-error, unused-import
 import math
 import functools
 
@@ -64,7 +64,7 @@ UB_UTILIZATION_RATIO_OPT_THRESHOLD = 0.005
 NON_LAST_BROADCAST_UNIT_THRESHOLD = 20
 
 
-# pylint: disable=too-many-return-statements,too-few-public-methods,too-many-arguments,too-many-statements,no-self-use,too-many-lines,too-many-instance-attributes,too-many-branches,
+# 'pylint: disable=too-many-return-statements,too-few-public-methods,too-many-arguments,too-many-statements,no-self-use,too-many-lines,too-many-instance-attributes,too-many-branches,
 class ElewiseSchedule(VectorSchedule):
     """
     class of cce elewise schedule
@@ -236,7 +236,7 @@ class ElewiseSchedule(VectorSchedule):
             self._origin_op.append(tmp_op)
         return True
 
-    # pylint: disable=unnecessary-pass
+    # 'pylint: disable=unnecessary-pass
     def _is_optimize_network_shape(self, shape):
         """
         Judge if the shape need optimize operation
@@ -443,7 +443,7 @@ class ElewiseSchedule(VectorSchedule):
         -------
         None
         """
-        # pylint: disable=too-many-locals
+        # 'pylint: disable=too-many-locals
         def __is_block_tiling_use_nparts_mode(shape, block_split_axis):
             """check block tiling whether to use nparts mode"""
             if block_split_axis == 0:
@@ -751,7 +751,7 @@ class ElewiseSchedule(VectorSchedule):
         """
         check whether need modify block and ub tiling or not
         """
-        # pylint: disable=too-many-locals
+        # 'pylint: disable=too-many-locals
         last_axis = len(shape) - 1
 
         # judge block dim is 1
@@ -810,7 +810,7 @@ class ElewiseSchedule(VectorSchedule):
 
         return False
 
-    def _calculate_tiling_core(self,  # pylint: disable=too-many-locals
+    def _calculate_tiling_core(self,  # 'pylint: disable=too-many-locals
                                shape, dtype, block_split_axis,
                                block_split_inner_size, max_ub_count):
         """
@@ -960,7 +960,7 @@ class ElewiseSchedule(VectorSchedule):
                         self._broadcast_last_axis_tensors.remove(tensor)
         __normalize_broadcast_opt_proc()
 
-        # pylint: disable=too-many-nested-blocks
+        # 'pylint: disable=too-many-nested-blocks
         if self._is_contain_broadcast_tensor():
             if self._is_only_broadcast_last_axis():
                 __is_special_only_broadcast_scene(dtype, shape)
@@ -1154,7 +1154,7 @@ class ElewiseSchedule(VectorSchedule):
         None
         """
 
-        # pylint: disable=too-many-locals
+        # 'pylint: disable=too-many-locals
         if self._op_type != OpSpecTypes.RELU_GRAD_V2:
             return
 
@@ -1201,7 +1201,7 @@ class ElewiseSchedule(VectorSchedule):
         -------
         None
         """
-        # pylint: disable=too-many-locals
+        # 'pylint: disable=too-many-locals
         if self._need_multi_core:
             res = self._last_output_tensor
             block_tiling_result = self._tiling_result["block_tiling"]
@@ -1222,7 +1222,7 @@ class ElewiseSchedule(VectorSchedule):
             self._multi_core_fused_axis = fused_axis
             self._multi_core_bind_tensor = res
 
-    # pylint: too-many-nested-blocks
+    # 'pylint: too-many-nested-blocks
     def _calculate_compute_at(self):
         """
         Calculate the tensor that needs compute at
@@ -1235,7 +1235,7 @@ class ElewiseSchedule(VectorSchedule):
         -------
         None
         """
-        # pylint: disable=too-many-locals
+        # 'pylint: disable=too-many-locals
         def __get_compute_at_scope(tensor, compute_at_outer):
             if self._op_type != OpSpecTypes.NORMALIZE_SCALE:
                 return compute_at_outer
@@ -1257,7 +1257,7 @@ class ElewiseSchedule(VectorSchedule):
         self._fused_compute_at_axis()
         preload_fused_axis = self._preload_fused_axis
 
-        # pylint: disable=too-many-nested-blocks
+        # 'pylint: disable=too-many-nested-blocks
         for i in self._cache_read_tensors_and_buffer_map:
             if self._is_need_update_compute_at_axis:
                 readers_tensor = self._cache_read_tensors_and_readers_map[i]
@@ -1404,7 +1404,7 @@ class ElewiseSchedule(VectorSchedule):
                 shape, block_split_axis, block_split_inner_size, ub_split_axis,
                 ub_split_inner)
 
-    def _calculate_emit_insn(self):  # pylint: disable=too-many-locals
+    def _calculate_emit_insn(self):  # 'pylint: disable=too-many-locals
         """
         Calculate the instruction map of tensor
 
@@ -1996,7 +1996,7 @@ class ElewiseSchedule(VectorSchedule):
             return False
 
         is_out = False
-        # pylint: disable=too-many-nested-blocks
+        # 'pylint: disable=too-many-nested-blocks
         for broadcast_tensor in self._broadcast_not_last_axis_tensors:
             if list(broadcast_tensor.op.input_tensors):
                 original_tensor = broadcast_tensor.op.input_tensors[0]
@@ -2415,7 +2415,7 @@ class ElewiseSchedule(VectorSchedule):
         threshold_value = self._get_special_broadcast_optimize_value()
         self._normalize_scale_opt()
 
-        # pylint: disable=too-many-nested-blocks
+        # 'pylint: disable=too-many-nested-blocks
         for broadcast_tensor in self._broadcast_not_last_axis_tensors:
             if list(broadcast_tensor.op.input_tensors):
                 original_tensor = broadcast_tensor.op.input_tensors[0]
@@ -2479,7 +2479,7 @@ class ElewiseSchedule(VectorSchedule):
 
         return block_split_factor
 
-    # pylint: undefined-loop-variable
+    # 'pylint: undefined-loop-variable
     def _is_special_tensor_of_broadcast_not_last_axis(self, tensor):
         """
         Judge is special sence of the non-last axis broadcast
@@ -2499,7 +2499,7 @@ class ElewiseSchedule(VectorSchedule):
                 return False
             return True
 
-        # pylint: disable=too-many-locals
+        # 'pylint: disable=too-many-locals
         # (1,1,1,3)->(32,224,224,3)
         if not tensor.op.input_tensors:
             return False
@@ -2531,7 +2531,7 @@ class ElewiseSchedule(VectorSchedule):
         cce_emitinsn_params.cceEmitParamsIns.insert_param(
             "broadcast_axis_multiply_flag", broadcast_axis_multiply_flag)
 
-        # pylint: disable=undefined-loop-variable
+        # 'pylint: disable=undefined-loop-variable
         broadcast_tensor = in_tensor
         block_split_factor = self._get_block_split_factor_by_broadcast_tensor(
             block_split_inner_size, broadcast_tensor, core_num,

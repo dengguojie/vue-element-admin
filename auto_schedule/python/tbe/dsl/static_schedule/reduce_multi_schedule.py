@@ -37,7 +37,7 @@ from .cce_schedule_declarations import OpPatterns
 BLOCK_TILING_PRIME_THRESHOLD = 67
 
 
-# pylint: disable=too-many-return-statements,too-few-public-methods,too-many-arguments,too-many-statements,no-self-use,too-many-lines,too-many-instance-attributes,too-many-branches,
+# 'pylint: disable=too-many-return-statements,too-few-public-methods,too-many-arguments,too-many-statements,no-self-use,too-many-lines,too-many-instance-attributes,too-many-branches,
 class ReduceMultiSchedule(ElewiseSchedule):
     """
     class of cce elewise schedule
@@ -51,7 +51,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
     ElewiseSchedule_instance : instance of ElewiseSchedule
     """
 
-    # pylint: disable=attribute-defined-outside-init, unused-argument, arguments-differ
+    # 'pylint: disable=attribute-defined-outside-init, unused-argument, arguments-differ
     def do_schedule(self, out_tensors, sch, spec_node_list):
         """
         auto_schedule for cce AI-CORE
@@ -106,7 +106,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
         return True, self._schedule
 
     def __pre_complement_tensors_map(self, out_tensors):
-        # pylint: disable=attribute-defined-outside-init
+        # 'pylint: disable=attribute-defined-outside-init
         """
         pre handle syntax tree by replace compute node
         use fake node to make it into one out schedule
@@ -134,7 +134,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
 
         # make mid output tensors copy itself to out
         for out in temp_mid_output_tensors_in_ub:
-            # pylint: disable=unnecessary-lambda
+            # 'pylint: disable=unnecessary-lambda
             with tvm.tag_scope(util.SET_GM_SCOPE_TAG):
                 out_gm = tvm.compute(out.shape, lambda *i: out(*i), name=out.name + "_gm")
             index = out_tensors.index(out)
@@ -187,7 +187,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
             self.set_op_type("layer_norm_x_backprop_v2")
 
     def _calculate_cache_write(self):
-        # pylint: disable=attribute-defined-outside-init
+        # 'pylint: disable=attribute-defined-outside-init
         """
         cache read operations
 
@@ -286,7 +286,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
         return ret_insn
 
     def _calculate_emit_insn(self):
-        # pylint: disable=too-many-locals
+        # 'pylint: disable=too-many-locals
         """
         Calculate the instruction map of tensor
 
@@ -499,7 +499,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
         return True
 
     def __tiling_init(self):
-        # pylint: disable=attribute-defined-outside-init
+        # 'pylint: disable=attribute-defined-outside-init
         # shape info
         self._reduce_include_last_axis = False
         self._last_axis_index = util.DEFAULT_INDEX
@@ -575,7 +575,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
         return False
 
     def __consider_double_buffer(self):
-        # pylint: disable=attribute-defined-outside-init
+        # 'pylint: disable=attribute-defined-outside-init
         double_buffer_size = self._limit_ub_count * 2
         if double_buffer_size > self._max_ub_count:
             self._need_db = False
@@ -584,7 +584,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
             self._limit_ub_count = double_buffer_size
 
     def __caculate_reduce_axes_map(self):
-        # pylint: disable=attribute-defined-outside-init
+        # 'pylint: disable=attribute-defined-outside-init
         self._default_shape = self._shape_to_list(self._last_output_tensor.shape)
         for tensor in self._mid_tensors:
             if util.REDUCE_OP_TAG_LABEL not in tensor.op.tag:
@@ -644,7 +644,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
         return False
 
     def __caculate_basic_info(self):
-        # pylint: disable=attribute-defined-outside-init
+        # 'pylint: disable=attribute-defined-outside-init
         # reduce info
         self._last_axis_index = len(self._default_shape) - 1
         if self._last_axis_index in self._reduce_axes_map.keys():
@@ -700,7 +700,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
         return False
 
     def __calculate_align_in_reduce_last(self):
-        # pylint: disable=attribute-defined-outside-init
+        # 'pylint: disable=attribute-defined-outside-init
         # reduce last, need consider series axes
         # case like 'fp16' (5, 2, 8), align cout is 16
         # if reduce in (1, 2) can not be aligned
@@ -744,7 +744,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
         return False
 
     def __calculate_align_in_reduce_non_last(self):
-        # pylint: disable=attribute-defined-outside-init
+        # 'pylint: disable=attribute-defined-outside-init
         # reduce non last
         # all reduce axes size, if not reduce last, need to add least one block size to be aligned
         # this strategy allow it to fallback 3 times,
@@ -768,7 +768,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
         return False
 
     def __caculate_align_in_ub(self):
-        # pylint: disable=attribute-defined-outside-init
+        # 'pylint: disable=attribute-defined-outside-init
         self._limit_ub_count = util.INIT_SIZE
         for idx in self._reduce_axes_map:
             self._limit_ub_count *= self._default_shape[idx]
@@ -788,8 +788,8 @@ class ReduceMultiSchedule(ElewiseSchedule):
         return False
 
     def __caculate_align_in_gm(self):
-        # pylint: disable=attribute-defined-outside-init
-        # pylint: disable-msg=too-many-locals
+        # 'pylint: disable=attribute-defined-outside-init
+        # 'pylint: disable-msg=too-many-locals
         # unsupport last axis not align
         if self.__is_last_axis_align():
             return True
@@ -880,7 +880,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
         return ub_factor
 
     def __caculate_all_tiling(self):
-        # pylint: disable=attribute-defined-outside-init
+        # 'pylint: disable=attribute-defined-outside-init
         # note: 1.fuse axis can not be splited twice, or compute at will be wrong
         # note: 2.ub tiling can be front at block tiling when use fused axis to block tiling,
         # or compute at will be wrong
@@ -952,7 +952,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
         self._tiling_tensor = self._last_output_tensor
         return False
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def _do_tiling(self):
         sch = self._schedule
         res = self._tiling_tensor
@@ -990,7 +990,7 @@ class ReduceMultiSchedule(ElewiseSchedule):
             res_ub_outer, res_ub_inner = sch[res].split(ub_target_axis, factor=ub_tiling_factor)
         elif self._tiling_strategy == util.TILING_CONSERVATIVE:
             # block tiling
-            # pylint: disable=unsubscriptable-object
+            # 'pylint: disable=unsubscriptable-object
             if len(block_tiling_axes) == 1:
                 res_block_outer, res_block_inner = sch[res].split(res_axes[block_tiling_axes[0]],
                                                                   factor=block_tiling_factor[0])

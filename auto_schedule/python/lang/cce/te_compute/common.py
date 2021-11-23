@@ -76,7 +76,7 @@ def cast_to_round(data, dtype):
     return round_half_up(data)
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def img2col(input_img,
             col_shape,
             filter_h,
@@ -95,7 +95,7 @@ def img2col(input_img,
     return img2col(input_img, col_shape, filter_h, filter_w, pad, stride, tag, padding_value)
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def im2col_6d(input_img,
               col_shape,
               filter_h,
@@ -107,8 +107,7 @@ def im2col_6d(input_img,
     """
     im2col_6d
     """
-
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     warnings.warn("te.lang.cce.te_compute.common.im2col_6d is deprecated, "
                   "please replace it with the func tbe.dsl.compute.common.im2col_6d",
                   DeprecationWarning)
@@ -134,7 +133,7 @@ def im2col_fractal_6d(a_im2col_shape, in_a):
     """
     last_dim = in_a.shape[-1]
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     warnings.warn("te.lang.cce.te_compute.common.im2col_fractal_6d is deprecated, "
                   "please replace it with the func tbe.dsl.compute.common.im2col_fractal_6d",
                   DeprecationWarning)
@@ -170,7 +169,7 @@ def mad(mad_shape, in_a, in_b, res_type, offset_x=0, v200_flag=False):
         attrs={'mode': crmode})
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def tf_get_windowed_output_size(input_size, filter_size, stride, padding_type):
     """
     get output and padding size using tensorflow padding rule
@@ -197,14 +196,14 @@ def tf_get_windowed_output_size(input_size, filter_size, stride, padding_type):
                                        "call tf_get_windowed_output_size_verbose instead."}
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
-    # pylint: disable=invalid-name
+    # 'pylint: disable=invalid-name
     output_size, padding_size, _ = tf_get_windowed_output_size_verbose(
         input_size, filter_size, stride, padding_type)
 
     return output_size, padding_size
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def tf_get_windowed_output_size_verbose(input_size, filter_size, stride,
                                         padding_type):
     """

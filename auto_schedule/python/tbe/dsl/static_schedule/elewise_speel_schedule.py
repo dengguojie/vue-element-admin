@@ -24,8 +24,8 @@ from . import util
 from .elewise_schedule import CceOp
 
 
-# pylint: disable=too-many-branches,too-many-statements,too-many-instance-attributes
-# pylint: no-member
+# 'pylint: disable=too-many-branches,too-many-statements,too-many-instance-attributes
+# 'pylint: no-member
 class CceSpeelOp(CceOp):
     """
     Base class of cce API
@@ -153,7 +153,7 @@ class CceSpeelOp(CceOp):
         """
         return True
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def elewise_tiling(self, shape):
         """
         simple auto tiling module for elewise op
@@ -173,7 +173,7 @@ class CceSpeelOp(CceOp):
         # find the split axis, shape = (shape[0],.,shape[split_axis], shape[-1])
         # so that shape[split_axis]*shape[split_axis+1]*..*shape[-1]<max_ub_count
         # and  shape[split_axis-1]*shape[split_axis]*...*shape[-1]> max_ub_count
-        # pylint: disable=no-member
+        # 'pylint: disable=no-member
         if not self.is_strict_lastAxis():
             for tmp_axis in reversed(shape):
                 if max_ub_count == 1:
@@ -442,7 +442,7 @@ class CceSpeelOp(CceOp):
             self._schedule[cache_buffer_for_res].emit_insn(
                 lop["tensorize_axis_for_res"], 'phony_insn')
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def elewise_muti_core(self):
         """
         elewise muti core

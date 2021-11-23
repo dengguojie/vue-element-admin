@@ -17,7 +17,7 @@
 """
 reduction compute
 """
-# pylint: disable=import-error
+# 'pylint: disable=import-error
 from decorator import decorator
 import warnings
 from te import tvm

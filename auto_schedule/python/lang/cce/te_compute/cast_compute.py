@@ -17,7 +17,7 @@
 """
 cast compute
 """
-# pylint: disable=import-error
+# 'pylint: disable=import-error
 import warnings
 from decorator import decorator
 from te import tvm

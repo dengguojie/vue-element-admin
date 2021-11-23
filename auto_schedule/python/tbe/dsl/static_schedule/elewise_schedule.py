@@ -17,7 +17,7 @@
 """
 elewise schedule
 """
-# pylint: disable=unused-import
+# 'pylint: disable=unused-import
 from functools import reduce as reduceIns
 from math import ceil
 import math
@@ -37,9 +37,9 @@ from tbe.common import platform as cce
 from tbe.common.utils.errormgr import get_error_message
 from . import util
 
-# pylint: disable=too-many-return-statements,too-few-public-methods,too-many-arguments
-# pylint: too-many-statements,no-self-use,too-many-lines,too-many-instance-attributes
-# pylint: too-many-branches, no-member, consider-using-enumerate
+# 'pylint: disable=too-many-return-statements,too-few-public-methods,too-many-arguments
+# 'pylint: too-many-statements,no-self-use,too-many-lines,too-many-instance-attributes
+# 'pylint: too-many-branches, no-member, consider-using-enumerate
 # the bit of dtype/16 map
 DTYPE_WIDTH_MAP = {"float16": 1,
                    "float32": 2,
@@ -75,7 +75,7 @@ BLOCK_DIM_MULTIPLE = 4  # Bytes
 VCMPV_ALIGN_NUM_BIT = 256 # bit
 
 
-# pylint: disable=too-many-instance-attributes, too-many-public-methods
+# 'pylint: disable=too-many-instance-attributes, too-many-public-methods
 class CceOp:
     """
     Base class of cce API
@@ -114,7 +114,7 @@ class CceOp:
     REDUCE_BLOCK = 128
     MAX_BLOCK_DIM = 65535
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def __init__(self, scope, need_tensorize=True, need_pragma=True,
                  need_double_buffer=True, need_enable_muticore=True):
         # judge if need to tensorize in schedule
@@ -270,14 +270,14 @@ class CceOp:
                                "elewise_binary_scalar_axpy": "vector_multiple",
                                "elewise_binary_cmpsel": "vector_cmpsel",
                                }
-        # pylint: disable=no-self-use
+        # 'pylint: disable=no-self-use
         self.init_opt_policy()
 
     def _is_continuous_reduce(self, reduce_axis_index):
         """
         _is_continuous_reduce
         """
-        # pylint: disable=consider-using-enumerate, no-self-use
+        # 'pylint: disable=consider-using-enumerate, no-self-use
         for i in range(0, len(reduce_axis_index)):
             if i > 0:
                 if reduce_axis_index[i] != reduce_axis_index[i-1] + 1:
@@ -288,7 +288,7 @@ class CceOp:
         """
         _shape_mul
         """
-        # pylint: disable=no-self-use
+        # 'pylint: disable=no-self-use
         if not shape:
             return 1
         return reduceIns(lambda x, y: x*y, shape)
@@ -304,7 +304,7 @@ class CceOp:
             has_last_reduce_axis = \
                 ((len(shape_before_reduce) - 1) in reduce_axis_index)
             if has_last_reduce_axis:
-                # pylint: disable=no-self-use
+                # 'pylint: disable=no-self-use
                 is_continuous_reduce = self._is_continuous_reduce(reduce_axis_index)
                 return is_continuous_reduce
             for i in range(reduce_axis_index[-1] + 1, len(shape_before_reduce)):
@@ -513,7 +513,7 @@ class CceOp:
         else:
             self._reduce_schedule_algo = 0
 
-    # pylint: disable=too-many-locals, too-many-branches, too-many-statements
+    # 'pylint: disable=too-many-locals, too-many-branches, too-many-statements
     def core_schedule_reduce(self, res, spec_node_list, sch_list, tensor_map):
         """
         auto_schedule for cce AI-CORE. For now, only N's elewise operation +
@@ -841,7 +841,7 @@ class CceOp:
 
         return max_ub_count
 
-    # pylint: disable=too-many-branches
+    # 'pylint: disable=too-many-branches
     def elewise_tiling(self, shape):
         """
         simple auto tiling module for elewise op
@@ -911,7 +911,7 @@ class CceOp:
                 return rfactor, axis
         return rfactor, axis + 1
 
-    # pylint: disable=too-many-locals, too-many-branches, too-many-statements
+    # 'pylint: disable=too-many-locals, too-many-branches, too-many-statements
     def _block_tiling_reduce_last_axis(self, shape, reduce_axis):
         """
         simple auto block tiling module for reduce op
@@ -970,7 +970,7 @@ class CceOp:
              get_origin_axis_by_res_axis
             '''
             temp = res_axis
-            # pylint: disable=consider-using-enumerate
+            # 'pylint: disable=consider-using-enumerate
             for i in range(len(keep_dims_shape)):
                 if keep_dims_shape[i] == 0:
                     continue
@@ -995,7 +995,7 @@ class CceOp:
         # keep_dims_shape is the last shape after reduce, but keep_dims is true.
         res_tensor_shape = []
         keep_dims_shape = []
-        # pylint: disable=consider-using-enumerate
+        # 'pylint: disable=consider-using-enumerate
         for i in range(len(shape)):
             if i in reduce_axis:
                 if self._is_keepdims:
@@ -1068,7 +1068,7 @@ class CceOp:
         origin_axis = get_origin_axis_by_res_axis(keep_dims_shape, res_axis)
         return rfactor, res_axis, origin_axis
 
-    # pylint: disable=too-many-locals, too-many-branches, too-many-statements
+    # 'pylint: disable=too-many-locals, too-many-branches, too-many-statements
     def _reduce_before_tiling_last_axis(self, shape, reduce_axis,
                                         split_axis, last_num, use_storage_align=False):
         """
@@ -1233,7 +1233,7 @@ class CceOp:
 
         temp_shape = []
         # set block split axis and reduce axis value to 1
-        # pylint: disable=consider-using-enumerate
+        # 'pylint: disable=consider-using-enumerate
         for i in range(0, len(shape)):
             if i in reduce_axis:
                 if self._is_keepdims:
@@ -1277,7 +1277,7 @@ class CceOp:
 
         return True, rfactor, i
 
-    # pylint: disable=too-many-locals, too-many-branches, too-many-statements
+    # 'pylint: disable=too-many-locals, too-many-branches, too-many-statements
     def _reduce_tiling_nlst(self, shape, reduce_axis):
         """
         _reduce_tiling_nlst
@@ -1287,7 +1287,7 @@ class CceOp:
             get_res_shape
             """
             reduce_res_shape = []
-            # pylint: disable=consider-using-enumerate
+            # 'pylint: disable=consider-using-enumerate
             for i in range(len(shape)):
                 if i not in reduce_axis:
                     reduce_res_shape.append(shape[i])
@@ -1327,7 +1327,7 @@ class CceOp:
                     break
             return max_factor
 
-        # pylint: disable=chained-comparison
+        # 'pylint: disable=chained-comparison
         def get_max_factor(num, behand_cnt, align_limit_cnt, ub_limit_cnt):
             """
             get_max_factor
@@ -1714,7 +1714,7 @@ class CceOp:
 
         return True
 
-    # pylint: disable=too-many-locals, too-many-branches
+    # 'pylint: disable=too-many-locals, too-many-branches
     def _check_is_last_axis_broadcast(self):
         """
         checkout the broadcast whether is last axis broadcast;
@@ -1743,7 +1743,7 @@ class CceOp:
                 src_shape = util.shape_to_list(src.shape)
 
                 broadcast_axis = []
-                # pylint: disable=consider-using-enumerate
+                # 'pylint: disable=consider-using-enumerate
                 for i in range(len(src_shape)):
                     if src_shape[i] != dst_shape[i]:
                         broadcast_axis.append(i)
@@ -1912,7 +1912,7 @@ class CceOp:
 
         return True
 
-    # pylint: disable=no-self-use
+    # 'pylint: disable=no-self-use
     def _find_last_none_reduce_axis(self, shape_before_reduce, reduce_axis_index):
         """
         :param shape_before_reduce:
@@ -2044,7 +2044,7 @@ class CceOp:
         else:
             __do_storage_align_for_non_last_reduce()
 
-    # pylint: disable=too-many-locals, too-many-branches, too-many-statements
+    # 'pylint: disable=too-many-locals, too-many-branches, too-many-statements
     def reduce_schedule_muticore(self, read_buffer=None):
         """
         do the reduction pattern schedule with last and nist axis reduce
@@ -2267,7 +2267,7 @@ class CceOp:
                 (len(self._schedule[reduce_sub_buffer].op.axis) - ub_split_axis)
             self._read_dma_axis = dma_axis_before_reduce
 
-    # pylint: disable=too-many-locals, too-many-branches, too-many-statements
+    # 'pylint: disable=too-many-locals, too-many-branches, too-many-statements
     def _find_split_axis(self, shape, begin_axis, end_axis):
         """
         Find the block tiling axis
@@ -2448,7 +2448,7 @@ class CceOp:
 
         return block_split_axis, block_split_inner_size
 
-    # pylint: disable=no-self-use
+    # 'pylint: disable=no-self-use
     def _get_factors_of_positive_integer(self, axis):
         factors = []
         if axis <= 0:
@@ -2484,7 +2484,7 @@ class CceOp:
 
         return ub_split_inner_factor
 
-    # pylint: disable=unused-argument
+    # 'pylint: disable=unused-argument
     def _get_block_tiling(self, shape, dtype, start_axis, end_axis):
         """
         nlast axis and nlast axis reduce block tiling
@@ -2514,7 +2514,7 @@ class CceOp:
 
         return block_split_axis, block_split_inner_size
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def _get_ub_tiling(self, shape, block_tiling_axis, block_tiling_inner_loop,
                        max_ub_count):
         """
@@ -2611,7 +2611,7 @@ class CceOp:
         ub_split_inner = 1
         return ub_split_axis, ub_split_inner
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def _mix_reduce_nlast_and_nlast_tiling(self, shape_before_reduce,
                                            reduce_axis_index):
         # shape_before_reduce: (ak+1,rk,..,r2,a2,r1,a1)
@@ -2655,7 +2655,7 @@ class CceOp:
 
         return block_tiling_axis, block_rfactor, ub_tiling_axis, ub_tiling_rfactor
 
-    # pylint: disable=too-many-locals, too-many-branches, too-many-statements
+    # 'pylint: disable=too-many-locals, too-many-branches, too-many-statements
     def _reduce_nlast_and_fisrt_axis_block_tiling(self, shape, begin_axis, end_axis):
         """
         simple auto block tiling module for reduce op
@@ -2896,8 +2896,8 @@ class CceOp:
 
         return block_tiling_axis, block_rfactor, ub_tiling_axis, ub_tiling_rfactor
 
-    # pylint: disable=too-many-locals, too-many-branches, too-many-statements
-    # pylint: disable=consider-using-enumerate, too-many-nested-blocks
+    # 'pylint: disable=too-many-locals, too-many-branches, too-many-statements
+    # 'pylint: disable=consider-using-enumerate, too-many-nested-blocks
     def mix_reduce_nlast_schedule(self, read_buffer=None):
         """
         mix reduce nlast and nlast schedule
@@ -3169,7 +3169,7 @@ class CceOp:
 
             self._read_dma_axis = ub_split_axis
 
-    # pylint: disable=too-many-locals, too-many-branches, too-many-statements
+    # 'pylint: disable=too-many-locals, too-many-branches, too-many-statements
     def reduce_schedule(self, read_buffer=None):
         """
         do the reduction pattern schedule with last and nist axis reduce
@@ -3369,7 +3369,7 @@ class CceOp:
 
         return read_buffer
 
-    # pylint: disable=too-many-branches
+    # 'pylint: disable=too-many-branches
     def local_tensorize(self):
         """
         tensorize operations
@@ -3469,7 +3469,7 @@ class CceOp:
         for lop in self._op:
             self.tensorize_for_op(lop)
 
-    # pylint: too-many-nested-blocks, too-many-branches, too-many-statements
+    # 'pylint: too-many-nested-blocks, too-many-branches, too-many-statements
     def local_tensorize_reduce_muticore(self):
         """
         tensorize operations
@@ -3680,7 +3680,7 @@ class CceOp:
             self._schedule[self._multi_core_buffer].bind(
                 self._multi_core_bind_axis, block)
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def elewise_muti_core(self):
         """
         elewise muti core
@@ -3879,7 +3879,7 @@ class CceOp:
 
         return True
 
-    # pylint: disable=no-self-use
+    # 'pylint: disable=no-self-use
     def check_valid_reduction_schedule(self):
         """
         check_valid_reduction_schedule
@@ -4000,7 +4000,7 @@ class CceOp:
             self._schedule[lop["cache_buffer"]].emit_insn(
                 lop["tensorize_axis"], "vector_" + lop["op"])
 
-    # pylint: disable=too-many-branches, too-many-statements
+    # 'pylint: disable=too-many-branches, too-many-statements
     def tensorize_for_op(self, lop):
         """
         tensorize for single_op
@@ -4073,7 +4073,7 @@ class CceOp:
                                             "workspace_scope",
                                             str(self._scope))
 
-    # pylint: disable=too-many-branches, too-many-statements
+    # 'pylint: disable=too-many-branches, too-many-statements
     def emit_multiple(self, cache_buffer, lop, op_cmd):
         """
         emit insn for ternary instruction
@@ -4269,7 +4269,7 @@ class CceOp:
         self._read_cache = self._read_cache[::-1]
         self._write_cache = self._write_cache[::-1]
 
-    # pylint: disable=no-self-use
+    # 'pylint: disable=no-self-use
     def _shape_to_list(self, shape):
         """
         translate tvm.shape to list type in python
@@ -4317,7 +4317,7 @@ class CceOp:
                 return True
         return False
 
-    # pylint: disable=no-self-use, consider-using-enumerate
+    # 'pylint: disable=no-self-use, consider-using-enumerate
     def arg_sort(self, sort_list):
         """
         arg_sort
@@ -4332,7 +4332,7 @@ class CceOp:
 
         return index
 
-    # pylint: disable=no-self-use
+    # 'pylint: disable=no-self-use
     def reorder_list(self, list_need_reorder, index):
         """
         reorder_list
@@ -4389,7 +4389,7 @@ class CceOp:
             self._schedule[self._res_tensor].emit_insn(
                 self.xinner[0], "reduce_2_3_axis_reduce_mean_cast_4D_optimal")
 
-    # pylint: disable=too-many-boolean-expressions
+    # 'pylint: disable=too-many-boolean-expressions
     def _check_optimal_condition(self):
         type_len_map = {"float16": 1,
                         "float32": 2}

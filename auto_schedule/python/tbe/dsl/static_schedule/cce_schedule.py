@@ -18,7 +18,7 @@
 auto_schedule template, if user call auto_schedule, this file will choose a
 corresponding schedule template for user's compute
 """
-import collections  # pylint: disable=E0401, W0611, C0412, C0302
+import collections  # 'pylint: disable=E0401, W0611, C0412, C0302
 import copy
 import json
 import os
@@ -38,7 +38,7 @@ from te.platform.fusion_manager import fusion_manager
 from tbe.common.context import get_context
 from tbe.common.rl_bank import bank_manager
 from tbe.common import buildcfg
-from tbe.dsl.compute.conv_compute import ConvParam  # pylint: disable=C0412
+from tbe.dsl.compute.conv_compute import ConvParam  # 'pylint: disable=C0412
 from tbe.common.rl_bank import rl_bank
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.instrinsic import cce_emitinsn_params
@@ -108,7 +108,7 @@ from .strided_write_schedule import strided_write_schedule
 from .ascend_dequant_s16_schedule import ascend_dequant_s16_schedule
 from .ascend_requant_schedule import ascend_requant_schedule
 from .ascend_requant_s16_schedule import ascend_requant_s16_schedule
-from . import util as te_util  # pylint: disable=E0401
+from . import util as te_util  # 'pylint: disable=E0401
 from .cosine_embedding_loss_schedule import \
     cosine_embedding_loss_schedule
 from .dilation_schedule import dilation_schedule
@@ -125,7 +125,7 @@ def set_op_pattern(all_tags, op_info):
     return op_pattern
 
 
-def get_op_info(outs):  # pylint: disable=R0912, R0914, R0915
+def get_op_info(outs):  # 'pylint: disable=R0912, R0914, R0915
     """
     dfs the compute garph to get the op info, the fomrt as follows:
         op_info
@@ -251,11 +251,11 @@ def rl_search_proc(outs, option):
     real_outs = outs
     if "rl_schedule_dict" in option:
         log.info("start to call offline rl_search.")
-        from schedule_search.offline_schedule import offline_schedule  # pylint: disable=E0401
+        from schedule_search.offline_schedule import offline_schedule  # 'pylint: disable=E0401
         schedule = offline_schedule(outs, option["rl_schedule_dict"])
     else:
         log.info("start to call online rl_search.")
-        from schedule_search.online_infer import online_infer  # pylint: disable=E0401
+        from schedule_search.online_infer import online_infer  # 'pylint: disable=E0401
         schedule = online_infer(outs, option)
     return schedule, tensor_list, real_outs
 
@@ -284,7 +284,7 @@ def get_all_tags(res):
     return tensor_tags
 
 
-def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
+def schedule_cce(outs, option=None):  # 'pylint: disable=R0912, R0914, R0915
     """
     schedule cce
     """
@@ -341,7 +341,7 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
     for index, out in enumerate(outs):
         # check whether needs to cast back data type into original type
         # suppose YES, compute tensor should be more than one
-        if ((verify_compute_tensor(compute_tensors))  # pylint: disable=R0916
+        if ((verify_compute_tensor(compute_tensors))  # 'pylint: disable=R0916
                 and input_tensors
                 and out.op.tag not in ["matmul", "matmul_gemv",
                                        "elewise_binary_logic|and",
@@ -365,7 +365,7 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
                     dfs tensor graph
                     """
                     for current_tensor in list(
-                            tensor.op.input_tensors):  # pylint: disable=cell-var-from-loop
+                            tensor.op.input_tensors):  # 'pylint: disable=cell-var-from-loop
                         if current_tensor in op_info["mid_tensors"] or \
                                 current_tensor in op_info["input_tensors"]:
                             # record the tensor map input:[outputs]
@@ -376,7 +376,7 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
                             continue
                         else:
                             # record the tensor
-                            if current_tensor == out:  # pylint: disable=cell-var-from-loop
+                            if current_tensor == out:  # 'pylint: disable=cell-var-from-loop
                                 input_tensors.insert(0, current_tensor)
                             else:
                                 mid_tensors.insert(0, current_tensor)
@@ -405,7 +405,7 @@ def schedule_cce(outs, option=None):  # pylint: disable=R0912, R0914, R0915
                 ret, schedule = rl_bank.query_rl_bank(outs, op_info=op_info)
                 if ret and isinstance(schedule, tvm.schedule.Schedule):
                     return schedule
-        except Exception:  # pylint: disable=broad-except
+        except Exception:  # 'pylint: disable=broad-except
             schedule = None
 
     # if not rl or rl is not supported, use auto_schedule.
@@ -541,14 +541,14 @@ def decl_memory(buffer_scope):
 
     try:
         @tvm.register_func(
-            "tvm.info.mem.%s" % buffer_scope)  # pylint: disable=unused-variable, protected-access
-        def mem_info_ub_buffer():  # pylint: disable=unused-variable,
+            "tvm.info.mem.%s" % buffer_scope)  # 'pylint: disable=unused-variable, protected-access
+        def mem_info_ub_buffer():  # 'pylint: disable=unused-variable,
             return tvm.make.node("MemoryInfo",
                                  unit_bits=32 * 8,
                                  max_simd_bits=32 * 8,
                                  max_num_bits=get_soc_spec("UB_SIZE") * 8, 
                                  head_address=tvm.const(0, 'int32'))
-    except tvm._ffi.base.TVMError:  # pylint: disable=W0212
+    except tvm._ffi.base.TVMError:  # 'pylint: disable=W0212
         dict_args = {"errCode": "E90003", "detailed_cause": "declare memory failed!"}
         raise RuntimeError(dict_args, get_error_message(dict_args))
 
@@ -646,7 +646,7 @@ def comm_pattern_schedule(pattern, op_info, outs):
     return None, [], outs
 
 
-def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
+def global_core_schedule(  # 'pylint: disable=R0911, R0912, R0914, R0915
         outs, templet_name="global", op_info=None):
     """
     global core schedule
@@ -674,7 +674,7 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
                             break
             tensor_map[sub_ten] = list(set(tensor_map[sub_ten]))
 
-    def __find_spec_node(tensor_map):  # pylint: disable=too-many-branches, too-many-statements
+    def __find_spec_node(tensor_map):  # 'pylint: disable=too-many-branches, too-many-statements
         '''
         1. not-elewise node
         2. elewise connet to two diff not-elewise node
@@ -777,7 +777,7 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
             if tensor_i.op.tag.count("broadcast") and len(
                     tensor_map[tensor_i]) < 2:
                 tmp = tensor_map[tensor_i][0]
-                while tmp not in (spec_mid_list + res_list):  # pylint: disable=superfluous-parens
+                while tmp not in (spec_mid_list + res_list):  # 'pylint: disable=superfluous-parens
                     tmp = tensor_map[tmp][0]
                 if tmp.op.tag.count("reduce") or tmp.op.tag.count("elewise"):
                     spec_mid_list.remove(tensor_i)
@@ -882,7 +882,7 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
         try:
             schedule_valid, sch = reduce_multi_sch.do_schedule(temp_outs,
                                                                None, [])
-        except Exception:  # pylint: disable=broad-except
+        except Exception:  # 'pylint: disable=broad-except
             return False, None
         return schedule_valid, sch
 
@@ -1200,7 +1200,7 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
         cce_cube_layer_norm_op = CceLayerNormCubeOp(scope_ubuf)
         cce_cube_layer_norm_op.schedule(outs[0], outs, sch_list)
     elif pattern == OpPatterns.MATMUL_PATTERN:
-        mmad_schedule(outs, sch_list)  # pylint: disable=W0631
+        mmad_schedule(outs, sch_list)  # 'pylint: disable=W0631
     elif pattern == OpPatterns.GEMM_PATTERN:
         gemm_schedule(outs[0], sch_list)
     elif pattern == OpPatterns.POOL2D_PATTERN:
@@ -1260,7 +1260,7 @@ def global_core_schedule(  # pylint: disable=R0911, R0912, R0914, R0915
     return None, spec_mid_list, outs
 
 
-def cce_build_code(  # pylint: disable=R0912, R0914, R0915
+def cce_build_code(  # 'pylint: disable=R0912, R0914, R0915
         sch, config_map=None):
     """
     API of building or printing lower code, just can be used when device is CCE
@@ -1441,7 +1441,7 @@ def cce_build_code(  # pylint: disable=R0912, R0914, R0915
     # update the config_tensor_list:update 1 auto_cast tensor 2 compute
     # group tensor
     config_tensor_list_tmp = []
-    for tensor in config_tensor_list:  # pylint: disable=not-an-iterable
+    for tensor in config_tensor_list:  # 'pylint: disable=not-an-iterable
         if tensor not in orign_out_tensors:
             config_tensor_list_tmp.append(tensor)
         else:
