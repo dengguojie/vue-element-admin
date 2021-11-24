@@ -1,0 +1,461 @@
+[
+    {
+      "op": "BasicLSTMCell",
+      "input_desc": [
+        {
+          "shape": [
+            3,
+            1,
+            16,
+            16
+          ],
+          "ori_shape": [
+            1,
+            48
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "type": "float16",
+          "data_distribute": "uniform",
+          "name": "x"
+        },
+        {
+          "shape": [
+            2,
+            1,
+            16,
+            16
+          ],
+          "ori_shape": [
+            1,
+            32
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "type": "float16",
+          "data_distribute": "uniform",
+          "name": "h"
+        },
+        {
+          "shape": [
+            2,
+            1,
+            16,
+            16
+          ],
+          "ori_shape": [
+            1,
+            32
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "type": "float",
+          "data_distribute": "uniform",
+          "name": "c"
+        },
+        {
+          "shape": [
+            5,
+            8,
+            16,
+            16
+          ],
+          "ori_shape": [
+            80,
+            128
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "type": "float16",
+          "data_distribute": "uniform",
+          "name": "w"
+        },
+        {
+          "shape": [
+            128
+          ],
+          "ori_shape": [
+            128
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "type": "float",
+          "data_distribute": "uniform",
+          "name": "b"
+        },
+        {
+          "shape": [
+            128
+          ],
+          "ori_shape": [
+            128
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "type": "uint8",
+          "data_distribute": "uniform",
+          "name": "mask"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [
+            2,
+            1,
+            16,
+            16
+          ],
+          "ori_shape": [
+            1,
+            32
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "name": "ct",
+          "type": "float"
+        },
+        {
+          "shape": [
+            2,
+            1,
+            16,
+            16
+          ],
+          "ori_shape": [
+            1,
+            32
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "name": "ht",
+          "type": "float16"
+        },
+        {
+          "shape": [
+            2,
+            1,
+            16,
+            16
+          ],
+          "ori_shape": [
+            1,
+            32
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "name": "it",
+          "type": "float"
+        },
+        {
+          "shape": [
+            2,
+            1,
+            16,
+            16
+          ],
+          "ori_shape": [
+            1,
+            32
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "name": "jt",
+          "type": "float"
+        },
+        {
+          "shape": [
+            2,
+            1,
+            16,
+            16
+          ],
+          "ori_shape": [
+            1,
+            32
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "name": "ft",
+          "type": "float"
+        },
+        {
+          "shape": [
+            2,
+            1,
+            16,
+            16
+          ],
+          "ori_shape": [
+            1,
+            32
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "name": "ot",
+          "type": "float"
+        },
+        {
+          "shape": [
+            2,
+            1,
+            16,
+            16
+          ],
+          "ori_shape": [
+            1,
+            32
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "name": "tanhct",
+          "type": "float32"
+        }
+      ],
+      "attr": [
+        {
+          "name": "keep_prob",
+          "type": "float",
+          "value": 1.0
+        },
+        {
+          "name": "forget_bias",
+          "type": "float",
+          "value": 1.0
+        },
+        {
+          "name": "state_is_tuple",
+          "type": "bool",
+          "value": true
+        },
+        {
+            "name": "activation",
+            "type": "string",
+            "value": "tanh"
+        }
+      ],
+      "case_name": "test_BasicLSTMCell_000"
+    },
+    {
+      "op": "BasicLSTMCell",
+      "input_desc": [
+        {
+          "shape": [
+            3,
+            4,
+            16,
+            16
+          ],
+          "ori_shape": [
+            64,
+            48
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "type": "float16",
+          "data_distribute": "uniform",
+          "name": "x"
+        },
+        {
+          "shape": [
+            2,
+            4,
+            16,
+            16
+          ],
+          "ori_shape": [
+            64,
+            32
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "type": "float16",
+          "data_distribute": "uniform",
+          "name": "h"
+        },
+        {
+          "shape": [
+            2,
+            4,
+            16,
+            16
+          ],
+          "ori_shape": [
+            64,
+            32
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "type": "float",
+          "data_distribute": "uniform",
+          "name": "c"
+        },
+        {
+          "shape": [
+            5,
+            8,
+            16,
+            16
+          ],
+          "ori_shape": [
+            80,
+            128
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "type": "float16",
+          "data_distribute": "uniform",
+          "name": "w"
+        },
+        {
+          "shape": [
+            128
+          ],
+          "ori_shape": [
+            128
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "type": "float",
+          "data_distribute": "uniform",
+          "name": "b"
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [
+            2,
+            4,
+            16,
+            16
+          ],
+          "ori_shape": [
+            64,
+            32
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "name": "ct",
+          "type": "float"
+        },
+        {
+          "shape": [
+            2,
+            4,
+            16,
+            16
+          ],
+          "ori_shape": [
+            64,
+            32
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "name": "ht",
+          "type": "float16"
+        },
+        {
+          "shape": [
+            2,
+            4,
+            16,
+            16
+          ],
+          "ori_shape": [
+            64,
+            32
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "name": "it",
+          "type": "float"
+        },
+        {
+          "shape": [
+            2,
+            4,
+            16,
+            16
+          ],
+          "ori_shape": [
+            64,
+            32
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "name": "jt",
+          "type": "float"
+        },
+        {
+          "shape": [
+            2,
+            4,
+            16,
+            16
+          ],
+          "ori_shape": [
+            64,
+            32
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "name": "ft",
+          "type": "float"
+        },
+        {
+          "shape": [
+            2,
+            4,
+            16,
+            16
+          ],
+          "ori_shape": [
+            64,
+            32
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "name": "ot",
+          "type": "float"
+        },
+        {
+          "shape": [
+            2,
+            4,
+            16,
+            16
+          ],
+          "ori_shape": [
+            64,
+            32
+          ],
+          "format": "FRACTAL_NZ",
+          "ori_format": "ND",
+          "name": "tanhct",
+          "type": "float32"
+        }
+      ],
+      "attr": [
+        {
+          "name": "keep_prob",
+          "type": "float",
+          "value": 1.0
+        },
+        {
+          "name": "forget_bias",
+          "type": "float",
+          "value": 1.0
+        },
+        {
+          "name": "state_is_tuple",
+          "type": "bool",
+          "value": true
+        },
+        {
+            "name": "activation",
+            "type": "string",
+            "value": "tanh"
+        }
+      ],
+      "case_name": "test_BasicLSTMCell_001"
+    }
+]

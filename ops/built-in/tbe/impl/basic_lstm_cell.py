@@ -512,6 +512,7 @@ def get_matmul_tensor(x, h, c, w, b, build_list, tensor_list, scope_list, operat
 
 
 def get_activate_tensor(forget_bias, build_list, tensor_list, scope_list, operation_list, product_info):
+    unreused_flag = True
     ft_ub = tensor_list["ft_ub"]
     shape_gate = ft_ub.shape
     const_forget_bias = tvm.const(forget_bias, dtype=ft_ub.dtype)
@@ -556,6 +557,7 @@ def get_activate_tensor(forget_bias, build_list, tensor_list, scope_list, operat
         else:
             activate_tmp_ub_true = activate_tmp_x
             operation_list["tensor_"+t+"_ub_true"] = "phony_insn"
+            unreused_flag = False
         tensor_list["tensor_"+t+"_ub_true"] = activate_tmp_ub_true
         scope_list["tensor_"+t+"_ub_true"] = tbe_platform.cce_params.scope_ubuf
 
@@ -714,6 +716,8 @@ def get_activate_tensor(forget_bias, build_list, tensor_list, scope_list, operat
     tensor_list["ht"] = ht
     build_list["ht"] = ht
 
+    return unreused_flag
+
 
 def basic_lstm_cell_compute(x, h, c, w, b, forget_bias, product_info):
     build_list = {}
@@ -722,8 +726,8 @@ def basic_lstm_cell_compute(x, h, c, w, b, forget_bias, product_info):
     operation_list = {}
 
     get_matmul_tensor(x, h, c, w, b, build_list, tensor_list, scope_list, operation_list, product_info["hisi_es"])
-    get_activate_tensor(forget_bias, build_list, tensor_list, scope_list, operation_list, product_info)
-    return build_list, tensor_list, scope_list, operation_list
+    unreused_flag = get_activate_tensor(forget_bias, build_list, tensor_list, scope_list, operation_list, product_info)
+    return build_list, tensor_list, scope_list, operation_list, unreused_flag
 
 
 def get_tilling(x, h_t, product_info):
@@ -813,7 +817,7 @@ def get_tilling(x, h_t, product_info):
 
 def basic_lstm_cell_schedule(tensor_list, scope_list,
                              operation_list, build_list,
-                             product_info, tilling_info, kernel_name):
+                             product_info, tilling_info, unreused_flag, kernel_name):
     """
     do the schedule for the LSTM compute.
     """
@@ -939,7 +943,10 @@ def basic_lstm_cell_schedule(tensor_list, scope_list,
     for t in ["ot", "it", "ft", "jt"]:
         s[tensor_list[t+"_ub_fake_ub"]].compute_at(s[ht], compute_at_axis)
         s[tensor_list[t+"_ub2gm"]].reused_by(tensor_list[t+"_ub_fake_ub"], tensor_list[t+"_ub_fake_true"])
-        s[tensor_list[t+"_ub2gm"]].unreused_by(tensor_list["tensor_"+t+"_ub_true"])
+
+        if unreused_flag:
+            s[tensor_list[t+"_ub2gm"]].unreused_by(tensor_list["tensor_"+t+"_ub_true"])
+
         s[tensor_list[t+"_ub_fake_ub"]].reused_by(reuse_data=True)
 
 
@@ -1038,9 +1045,11 @@ def basic_lstm_cell(x, h, c, w, b, mask, ct, ht, it, jt, ft, ot, tanhct,
     product_info["hisi_es"] = is_hisi_es
     product_info["mini"] = is_mini
     product_info["cloud"] = is_cloud
-    build_list, tensor_list, scope_list, operation_list = basic_lstm_cell_compute(x, h, c, w, b, forget_bias,
-                                                                                  product_info)
+    build_list, tensor_list, scope_list, operation_list, unreused_flag = basic_lstm_cell_compute(x,
+                                                                                                 h, c, w, b,
+                                                                                                 forget_bias,
+                                                                                                 product_info)
 
     tilling_info = get_tilling(x, h, product_info)
     basic_lstm_cell_schedule(tensor_list, scope_list, operation_list, build_list,
-                             product_info, tilling_info, kernel_name)
+                             product_info, tilling_info, unreused_flag, kernel_name)
