@@ -42,6 +42,9 @@ from impl.util import util_select_op_base
 if "reduce" not in dir(__builtins__):
     from functools import reduce
 
+# available ub size
+UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+
 # the minimum value of block_size
 BLOCK_SIZE_MIN = 2
 
@@ -53,9 +56,6 @@ MAX_BURST_N = 4095
 
 # the maximum value of  stride
 MAX_STRIDE = 65535
-
-# available ub size: 248KB
-UB_SIZE = 248 * 1024
 
 
 # pylint: disable=invalid-name,unused-argument,too-many-locals,too-many-arguments
