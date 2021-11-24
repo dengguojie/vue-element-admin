@@ -131,7 +131,7 @@ bool GetMcInfoNegative201(int64_t& dst_r2nd_lp_cnt, int64_t dst_r2nd_left, int64
 
 bool TilingNegativeTc201(vector<int64_t>& in_shape, vector<int64_t>& out_shape, std::string& src_format,
                          std::string& dst_format, int64_t& core_num, int64_t& block_elem_cnt, DataType& dtype,
-                         const int64_t& ub_size, TransDataTc201Param& params) {
+                         int64_t& ub_size, TransDataTc201Param& params) {
   if (src_format.length() < 2 || dst_format.length() < 2) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "TilingNegativeTc201 Failed.");
     return false;
