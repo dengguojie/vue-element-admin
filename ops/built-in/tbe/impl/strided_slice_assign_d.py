@@ -340,7 +340,7 @@ def _strided_slice_assign_schedule(schedule_list, out, input_value_shape, input_
 
     # emit insn
     sch[input_value_ub].emit_insn(input_value_ub.op.axis[split_axis], tbe_platform.DMA_COPY)
-    sch[out].emit_insn(axis_inner, tbe_platform.DMA_COPY, {"no_overlap": 1})
+    sch[out].emit_insn(axis_inner, tbe_platform.DMA_COPY, {"no_overlap": "default"})
     sch[input_value_ub].double_buffer()
 
     return sch
