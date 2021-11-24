@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -100,7 +100,7 @@ void CpuKernelCache::GetDimsFromShapeAndType(
       break;
     }
     int64_t dim_value = shape_and_type->dims[index];
-    KERNEL_LOG_INFO("Get extend shape[%u] is [%lld]", index, dim_value);
+    KERNEL_LOG_INFO("Get extend shape[%u] is [%ld]", index, dim_value);
     dims.emplace_back(dim_value);
   }
 }
@@ -108,7 +108,7 @@ void CpuKernelCache::GetDimsFromShapeAndType(
 void CpuKernelCache::GetDimsFromArrays(const int64_t *shape, size_t len,
                                        std::vector<int64_t> &dims) {
   for (size_t index = 0; index < len; ++index) {
-    KERNEL_LOG_INFO("Get arrays shape[%zu] is [%lld]", index, shape[index]);
+    KERNEL_LOG_INFO("Get arrays shape[%zu] is [%ld]", index, shape[index]);
     dims.emplace_back(shape[index]);
   }
 }
@@ -116,9 +116,9 @@ void CpuKernelCache::GetDimsFromArrays(const int64_t *shape, size_t len,
 /*
  * update tensor information.
  */
-uint32_t CpuKernelCache::UpdateTensor(const std::vector<uint64_t> &io_addrs,
-                                      ExtInfoMsg &ext_info_msg,
-                                      CpuKernelContext &ctx) {
+uint32_t CpuKernelCache::UpdateTensor(
+    const std::vector<uint64_t> &io_addrs, ExtInfoMsg &ext_info_msg,
+    CpuKernelContext &ctx) {
   KERNEL_LOG_INFO("Update tensor info begin.");
   if (io_addrs.size() != ctx.GetInputsSize() + ctx.GetOutputsSize()) {
     KERNEL_LOG_ERROR(
@@ -184,7 +184,7 @@ uint32_t CpuKernelCache::UpdateTensor(const std::vector<uint64_t> &io_addrs,
                        i, input->NumElements());
     input->SetDataSize(std::max(
         uint64_t(0), static_cast<uint64_t>(input->CalcDataSizeByShape())));
-    KERNEL_LOG_INFO("Set input[%zu] addr[%llu] success.", i,
+    KERNEL_LOG_INFO("Set input[%zu] addr[%lu] success.", i,
                     io_addrs[addr_index]);
   }
 
@@ -224,7 +224,7 @@ uint32_t CpuKernelCache::UpdateTensor(const std::vector<uint64_t> &io_addrs,
                        i, output->NumElements());
     output->SetDataSize(std::max(
         uint64_t(0), static_cast<uint64_t>(output->CalcDataSizeByShape())));
-    KERNEL_LOG_INFO("Set output[%zu] addr[%llu] success.", i,
+    KERNEL_LOG_INFO("Set output[%zu] addr[%lu] success.", i,
                     io_addrs[addr_index]);
   }
   KERNEL_LOG_INFO("Update tensor info success.");
@@ -335,7 +335,7 @@ uint32_t CpuKernelCache::ParseAsyncWait(FWKAdapter::ExtInfo *ext_info,
   FWKAdapter::AsyncWait *async_info = reinterpret_cast<FWKAdapter::AsyncWait *>(ext_info->infoMsg);
   wait_type = async_info->waitType;
   wait_id = async_info->waitId;
-  KERNEL_LOG_INFO("async wait type [%u], notify_id[%l].", wait_type, wait_id);
+  KERNEL_LOG_INFO("async wait type [%u], notify_id[%lu].", wait_type, wait_id);
   return KERNEL_STATUS_OK;
 }
 
@@ -495,7 +495,7 @@ std::shared_ptr<CpuKernelContext> CpuKernelCache::GetCpuKernelContext(
     bool has_sess_info, uint64_t kernel_id, const char *nodedef,
     uint32_t nodedef_len, std::shared_ptr<NodeDef> &nodedef_proto) {
   std::shared_ptr<CpuKernelContext> ctx = nullptr;
-  KERNEL_LOG_INFO("Get cpu kernel context begin, kernel id[%llu].", kernel_id);
+  KERNEL_LOG_INFO("Get cpu kernel context begin, kernel id[%lu].", kernel_id);
   if (has_sess_info) {
     CpuCacheData *cache = GetCache(kernel_id);
     if (cache != nullptr) {
@@ -530,10 +530,10 @@ std::shared_ptr<CpuKernelContext> CpuKernelCache::GetCpuKernelContext(
     std::shared_ptr<CpuCacheData> cache_shared =
         std::shared_ptr<CpuCacheData>(cache_ptr);
     SetCache(kernel_id, cache_shared);
-    KERNEL_LOG_INFO("Cache cpu kernel data success, kernel id[%llu].",
+    KERNEL_LOG_INFO("Cache cpu kernel data success, kernel id[%lu].",
                     kernel_id);
   }
-  KERNEL_LOG_INFO("Get cpu kernel context success, kernel id[%llu].",
+  KERNEL_LOG_INFO("Get cpu kernel context success, kernel id[%lu].",
                   kernel_id);
   return ctx;
 }

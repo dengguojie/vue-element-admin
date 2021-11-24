@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@ const char *kUnregEventCbFunc = "AicpuUnregEventCb";
 }  // namespace
 
 namespace aicpu {
-
 AsyncEventUtil &AsyncEventUtil::GetInstance() {
     static AsyncEventUtil async_event_util;
     return async_event_util;
@@ -110,6 +109,5 @@ void AsyncEventUtil::UnregEventCb(const uint32_t event_id, const uint32_t sub_ev
   }
   KERNEL_LOG_WARN("Function[%s] is null.", kUnregEventCbFunc);
 }
-
 }  // namespace aicpu
 

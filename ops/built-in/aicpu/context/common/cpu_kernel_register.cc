@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,7 +71,7 @@ std::shared_ptr<CpuKernel> CpuKernelRegister::GetCpuKernel(
  */
 std::vector<std::string> CpuKernelRegister::GetAllRegisteredOpTypes() const {
   std::vector<std::string> ret;
-  std::unique_lock<std::mutex> lock(g_mutex);;
+  std::unique_lock<std::mutex> lock(g_mutex);
   for (auto iter = creatorMap_.begin(); iter != creatorMap_.end(); ++iter) {
     ret.push_back(iter->first);
   }
