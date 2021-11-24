@@ -18,6 +18,7 @@
 common function for check ops parameter
 """
 from functools import reduce
+from itertools import chain
 from tbe.common.context import get_context
 from tbe.common.utils import para_check
 from tbe.common.utils.errormgr import get_error_message
@@ -395,6 +396,63 @@ def _transpose_variable_shape(inputs: list):
     return shape_out
 
 
+def _gather_variable_shape(inputs):
+
+    params_info = inputs[0]
+    indices_info = inputs[1]
+
+    gather_mode = operation.get_context().get("_gather_mode")
+
+    if gather_mode == "gather":
+        axis_info = inputs[2]
+        batch_dims_info = inputs[3]
+        rank_info = 1
+    else:
+        axis_info = 0
+        batch_dims_info = inputs[2]
+        rank_info = indices_info["shape"][-1]
+
+    current_compute = operation.get_context().get_current_compute()
+    current_compute.add("_axis", axis_info)
+    current_compute.add("_rank", rank_info)
+    current_compute.add("_params_shape", params_info["shape"])
+    current_compute.add("_indices_shape", indices_info["shape"])
+
+    # zeros shape condition
+    if 0 in chain(params_info["shape"] + indices_info["shape"][:-1]):
+        if gather_mode == "gather":
+            return params_info["shape"], indices_info["shape"], axis_info, batch_dims_info
+        return params_info["shape"], indices_info["shape"], batch_dims_info
+
+    # new params var
+    params_shape = []
+    for index, value in enumerate(params_info["shape"]):
+        _var = None
+        if value == -1:
+            _var = operation.var_inner("_params_dim_{}".format(index), params_info["range"][index])
+            params_shape.append(_var)
+        else:
+            params_shape.append(value)
+
+    # new indices var
+    indices_shape = []
+    # batch dims must same
+    indices_shape.extend(params_shape[:batch_dims_info])
+    for index, value in enumerate(indices_info["shape"][batch_dims_info:]):
+        _var = None
+        if value == -1:
+            _var = operation.var_inner("_indices_dim_{}".format(index + batch_dims_info),
+                                       indices_info["range"][index + batch_dims_info])
+            indices_shape.append(_var)
+        else:
+            indices_shape.append(value)
+
+    if gather_mode == "gather":
+        return params_shape, indices_shape, axis_info, batch_dims_info
+    return params_shape, indices_shape, batch_dims_info
+
+
+
 def variable_shape(inputs: list, op_mode="elewise"):
     """
     :param inputs: all inputs
@@ -408,9 +466,15 @@ def variable_shape(inputs: list, op_mode="elewise"):
     if op_mode in ("reduce", "norm"):
         return _reduce_and_norm_variable_shape(inputs)
 
+    if op_mode == "gather":
+        return _gather_variable_shape(inputs)
+
     if op_mode == "transpose":
         return _transpose_variable_shape(inputs)
 
+    return _elewise_varibale_shape(inputs, op_mode)
+
+def _elewise_varibale_shape(inputs: list, op_mode="elewise"):
     def _get_range_intersection(ranges):
         def _range_intersection(range_a, range_b):
             if range_a is None or range_b is None:

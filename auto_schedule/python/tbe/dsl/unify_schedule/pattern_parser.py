@@ -108,6 +108,11 @@ CONV3D_BP_FILTER_COMPUTE = {
     "conv3d_backprop_filterdw_ddr"
 }
 
+GATHER_COMPUTE = {
+    "gather",
+    "gather_nd",
+}
+
 
 class ComputeType(Enum):
     """
@@ -129,6 +134,7 @@ class ComputeType(Enum):
     CONV3D = auto()
     MAT_MUL = auto()
     CONV3D_BP_FILTER = auto()
+    GATHER = auto()
 
 
 def _get_custom_pattern():
@@ -190,6 +196,8 @@ def _parse_pattern(outs):
         return Pattern.REDUCE
     if _is_norm(outs, compute_type_size_map, compute_type_tensor_map):
         return Pattern.NORM
+    if _is_gather(compute_type_size_map):
+        return Pattern.GATHER
     if _is_transpose(compute_type_size_map):
         return Pattern.TRANSPOSE
     if ComputeType.CONV3D_BP_FILTER in compute_type_size_map:
@@ -305,6 +313,13 @@ def _is_norm(outs, compute_type_size_map, compute_type_tensor_map):
     return True
 
 
+def _is_gather(compute_type_size_map: dict):
+    ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
+    gather_size = compute_type_size_map.get(ComputeType.GATHER, 0)
+    total = compute_type_size_map.get(ComputeType.ANY, 0)
+    return ph_size + gather_size == total
+
+
 def _is_transpose(compute_type_size_map: dict):
     ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
     transpose_size = compute_type_size_map.get(ComputeType.TRANSPOSE, 0)
@@ -359,6 +374,7 @@ def _get_compute_type(tensor: tvm.tensor.Tensor) -> ComputeType:
         (BROADCAST_COMPUTE, ComputeType.BROADCAST),
         (CAST_COMPUTE, ComputeType.CAST),
         (REDUCE_COMPUTE, ComputeType.REDUCE),
+        (GATHER_COMPUTE, ComputeType.GATHER),
         (TRANSPOSE_COMPUTE, ComputeType.TRANSPOSE),
         (SET_VALUE_COMPUTE, ComputeType.SET_VALUE),
         (CONV3D_COMPUTE, ComputeType.CONV3D),

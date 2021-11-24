@@ -35,6 +35,9 @@ extern std::shared_ptr<AutoTilingHandler> CreateElewiseTilingHandler(const std::
 extern std::shared_ptr<AutoTilingHandler> CreateReduceTilingHandler(const std::string& op_type,
                                                                     const std::string& pattern,
                                                                     const nlohmann::json& parsed_compile_info);
+extern std::shared_ptr<AutoTilingHandler> CreateGatherTilingHandler(const std::string& op_type,
+                                                                        const std::string& pattern,
+                                                                        const nlohmann::json& parsed_compile_info);
 
 const std::vector<vector<int32_t>> OpInfo::dummy_variable;
 
@@ -50,7 +53,9 @@ std::shared_ptr<AutoTilingHandler> CreateAutoTilingHandler(const std::string& op
       return CreateElewiseTilingHandler(op_type, pattern, parsed_compile_info);
     } else if (pattern == "Norm") {
       return CreateNormTilingHandler(op_type, pattern, parsed_compile_info);
-    } else if (pattern == "Transpose") {
+    } else if (pattern == "Gather") {
+        return CreateGatherTilingHandler(op_type, pattern, parsed_compile_info);
+    }else if (pattern == "Transpose") {
       return CreateTransposeDslTilingHandler(op_type, pattern, parsed_compile_info);
     } else {
       OP_LOGE(op_type.c_str(), "Pattern %s is not supported by AutoTiling Compile Info Parser", pattern.c_str());

@@ -313,6 +313,13 @@ def get_ub_size():
     return get_soc_spec("UB_SIZE")
 
 
+def get_l1_size():
+    """
+    :return:
+    """
+    return get_soc_spec("L1_SIZE")
+
+
 def get_core_num():
     """
     :return:

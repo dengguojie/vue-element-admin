@@ -42,7 +42,6 @@ from .compute import inplace
 from .compute import pooling2d as pooling2d_compute
 from .compute import pooling3d as pooling3d_compute
 from .compute import pooling3d_max_grad_grad as pooling3d_max_grad_grad_compute
-from .compute import gather as gather_compute
 from .unify_schedule import auto_schedule as tbe_auto_schedule
 from .unify_schedule.build import build as tbe_build
 from .base import shape_classifier
@@ -1527,7 +1526,7 @@ def gather(params, indices, axis=None, batch_dims=0):
     :param batch_dims: An integer. The number of batch dimensions. Must be less than or equal to rank(indices).
     :return:
     """
-    return gather_compute.gather(params, indices, axis, batch_dims)
+    return array.gather(params, indices, axis, batch_dims)
 
 
 def gather_nd(params, indices, batch_dims=0):
@@ -1537,4 +1536,4 @@ def gather_nd(params, indices, batch_dims=0):
     :param batch_dims: An integer. The number of batch dimensions.
     :return:
     """
-    return gather_compute.gather_nd(params, indices, batch_dims)
+    return array.gather_nd(params, indices, batch_dims)

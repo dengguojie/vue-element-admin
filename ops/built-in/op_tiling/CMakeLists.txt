@@ -74,6 +74,7 @@ set(_optiling_files
   gather_nd.cc
   gather_v2.cc
   gather_elements.cc
+  gather_dsl.cc
   ger.cc
   layer_norm_x_backprop.cc
   layer_norm_x_backprop_v2.cc

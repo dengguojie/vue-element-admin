@@ -26,6 +26,8 @@ from tbe.dsl.base.classifier import classify_elewise
 from tbe.dsl.base.classifier import classify_norm
 from tbe.dsl.base.classifier import classify_reduction
 from tbe.dsl.base.classifier import classify_softmax_cross_entropy_with_logits
+from tbe.dsl.base.classifier import classify_gather
+from tbe.dsl.base.classifier import classify_gather_nd
 from tbe.dsl.base.classifier import classify_transpose
 
 
@@ -34,6 +36,8 @@ BROADCAST = "broadcast"
 NORM = "norm"
 REDUCE = "reduce"
 SOFTMAX_CROSS_ENTROPY_WITH_LOGITS_WITH_REDUCE = "softmax_cross_entropy_with_logits_with_reduce"
+GATHER = "gather"
+GATHER_ND = "gather_nd"
 TRANSPOSE = "transpose"
 
 
@@ -83,6 +87,10 @@ def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None
         return classify_softmax_cross_entropy_with_logits(ins, support_reduce=True)
     if mode == NORM:
         return classify_norm(ins, extra_params)
+    if mode == GATHER:
+        return classify_gather(ins)
+    if mode == GATHER_ND:
+        return classify_gather_nd(ins)
     if mode == TRANSPOSE:
         return classify_transpose(ins, extra_params)
 

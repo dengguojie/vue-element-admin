@@ -48,6 +48,7 @@ class Pattern:
     BN_TRAINING_UPDATE_GRAD = "BNTrainingUpdateGrad"
     LAYER_NORM_X_BACKPROP = "Layer_norm_x_backprop"
     LAYER_NORM_X_BACKPROP_V2 = "Layer_norm_x_backprop_v2"
+    GATHER = "Gather"
 
 
 class ElewisePattern:
@@ -94,6 +95,14 @@ class NormPattern:
     # generic
     N_0 = "N_0"
 
+
+class GatherPattern:
+    """
+    Gather sub pattern.
+    Each sub-pattern has a corresponding schedule, for function or performance.
+    """
+    NORMAL_SCHEDULE = "NORMAL_SCHEDULE"
+    ZERO_SCHEDULE = "ZERO_SCHEDULE"
 
 class TransposePattern:
     """
