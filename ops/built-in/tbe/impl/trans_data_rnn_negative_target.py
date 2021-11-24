@@ -320,7 +320,7 @@ def _get_tiling_params_func(args):
 
     (in_shape_new, out_shape_new,
      in_format_new, out_format_new) = _renew_input_output_shape_format(in_shape, out_shape)
-    args_get_tp = in_shape_new, out_shape_new, in_format_new, out_format_new, 
+    args_get_tp = in_shape_new, out_shape_new, in_format_new, out_format_new, \
                   block_elem_cnt, ub_size, in_dtype, hidden_size
     tiling_params = _tiling_params_negative(args_get_tp)
 
