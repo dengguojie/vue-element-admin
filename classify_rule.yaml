@@ -741,6 +741,8 @@ vector_B:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/single_instance_norm_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/single_instance_norm_grad_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/single_instance_norm_grad_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/softmax_grad_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/softmax_grad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/splitd_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/splitd_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/splitvd_fusion_pass.cc
@@ -788,6 +790,8 @@ vector_B:
       - ops/built-in/op_tiling/broadcast_to.cc
       - ops/built-in/op_tiling/concat.cc
       - ops/built-in/op_tiling/concat_offset.cc
+      - ops/built-in/op_tiling/diag.cc
+      - ops/built-in/op_tiling/diag_part.cc
       - ops/built-in/op_tiling/drop_out_do_mask.cc
       - ops/built-in/op_tiling/dynamic_atomic_addr_clean.cc
       - ops/built-in/op_tiling/embedding_dense_grad.cc
@@ -1266,6 +1270,7 @@ vector_B:
       - ops/built-in/tests/ut/graph_fusion/ai_core/single_batch_norm_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/single_instance_norm_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/single_instance_norm_grad_fusion_test.cpp
+      - ops/built-in/tests/ut/graph_fusion/ai_core/softmax_grad_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/splitd_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/splitv_fusion_test.cpp
       - ops/built-in/tests/ut/graph_fusion/ai_core/splitvd_fusion_test.cpp
@@ -1280,6 +1285,8 @@ vector_B:
       - ops/built-in/tests/ut/op_tiling_test/test_batch_to_space_nd_tiling.cpp
       - ops/built-in/tests/ut/op_tiling_test/test_concat_offset_tilling.cpp
       - ops/built-in/tests/ut/op_tiling_test/test_depth_and_space_tiling.cpp
+      - ops/built-in/tests/ut/op_tiling_test/test_diag_part_tiling.cpp
+      - ops/built-in/tests/ut/op_tiling_test/test_diag_tiling.cpp
       - ops/built-in/tests/ut/op_tiling_test/test_drop_do_mask_tiling.cpp
       - ops/built-in/tests/ut/op_tiling_test/test_dynamic_atomic_addr_clean.cpp
       - ops/built-in/tests/ut/op_tiling_test/test_flatten_tiling.cpp

@@ -208,3 +208,26 @@ TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_5) {
     iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
+TEST_F(ArgMaxWithValueTiling, ArgMaxWithValue_tiling_6) {
+  std::string op_name = "ArgMaxWithValue";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  std::string compileInfo = "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32, \"axis\": 1}}";
+
+  std::vector<int64_t> input = {3, 5, 521};
+
+  TensorDesc tensor_input(ge::Shape(input), ge::FORMAT_ND, ge::DT_FLOAT16);
+
+  auto opParas = op::ArgMaxWithValue("ArgMaxWithValue");
+  TENSOR_INPUT(opParas, tensor_input, x);
+
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "9 3 5 521 5 128 9 0 0 0 0 0 128 128 0 0 9 128 119 ");
+  int64_t tiling_test_num = 0;
+  for (int64_t i = 0; i < tiling_test_num; i++) {
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
+  }
+}

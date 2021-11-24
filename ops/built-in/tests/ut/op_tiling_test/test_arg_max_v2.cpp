@@ -250,3 +250,34 @@ TEST_F(ArgMaxV2Tiling, ArgMaxV2_tiling_5) {
   ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "12 35 8000 8000 5 8 3 0 0 0 8000 0 8 0 0 0 3 0 0 ");
 }
+TEST_F(ArgMaxV2Tiling, ArgMaxV2_tiling_6) {
+  std::string op_name = "ArgMaxV2";
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  std::string compileInfo = "{\"vars\": {\"ub_ele\": 126976, \"core_num\": 32}}";
+
+  std::vector<int64_t> input{3, 5, 512};
+  TensorDesc tensor_input(ge::Shape(input), FORMAT_ND, DT_FLOAT16);
+  auto data = op::Data("data");
+  data.update_input_desc_x(tensor_input);
+  data.update_output_desc_y(tensor_input);
+  auto input_axis = ge::Shape({1});
+  TensorDesc tensor_input_axis(input_axis, FORMAT_ND, DT_INT32);
+  Tensor multiples_tensor(tensor_input_axis);
+  uint32_t multiples_tensor_value[2] = {1};
+  multiples_tensor.SetData((uint8_t *)multiples_tensor_value, sizeof(uint32_t));
+  
+  auto argmax_multiples = op::Constant("dimension").set_attr_value(multiples_tensor);
+  auto opParas = op::ArgMaxV2("ArgMaxV2");
+  opParas.set_input_x(data);
+  opParas.set_input_dimension(argmax_multiples);
+  vector<Operator> inputs{data, argmax_multiples};
+  vector<Operator> outputs{opParas};
+  opParas.UpdateInputDesc("dimension", tensor_input_axis);
+
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "9 3 5 512 4 128 128 0 0 0 0 0 128 128 0 0 128 128 0 ");
+}
