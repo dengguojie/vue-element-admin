@@ -17,7 +17,7 @@
 """
 layer_norm_x_backprop_v2 schedule
 """
-
+import math
 from tbe import dsl
 from tbe import tvm
 from tbe.dsl.base.expr_compare import expr_equal
@@ -104,6 +104,7 @@ class LayerNormXBackpropScheduleV2:
         self._do_cache_read()
         self._do_cache_write()
         self._set_scope()
+        self._do_storage_align()
         self._do_storage_bound()
 
         self._do_tiling()
@@ -194,13 +195,63 @@ class LayerNormXBackpropScheduleV2:
             storage_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype])
             sch[tensor_i].set_buffer_size(storage_bound)
 
+    def _do_storage_align(self):
+        pd_x, res_for_gamma = self._out_tensors
+        output_dtype = pd_x.dtype
+        if output_dtype == "float16":
+            align_num = 16
+        else:
+            align_num = 8
+        for tensor_i in self._cache_read_buffer_tensor_map.keys():
+            if tensor_i.op.name in [
+                "data_x.local.UB",
+                "datat_dy.local.UB"
+            ]:
+                self._schedule[tensor_i].storage_align(tensor_i.op.axis[-2], align_num, 0)
+        for tensor_i in self._pure_middle_tensors.union(self._out_tensors):
+            if tensor_i.op.name in [
+                "broadcast_tensor_3",
+                "broadcast_tensor_4",
+                "broadcast_tensor_1",
+                "broadcast_tensor_5",
+                "broadcast_tensor_2",
+                "broadcast_tensor_0",
+                "cast_0",
+                "cast_1",
+                "mul_0",
+                "mul_14",
+                "sub_7",
+                "sub_8",
+                "mul_15",
+                "add_18",
+                "add_19",
+                "cast_6",
+                "mul_8",
+                "mul_16",
+                "add_16",
+            ]:
+                self._schedule[tensor_i].storage_align(tensor_i.op.axis[-2], align_num, 0)
+        for tensor_i in self._cache_write_buffer_tensor_map.keys():
+            if tensor_i.op.name in [
+                "cast_5.local.UB",
+                "mul_11.local.UB",
+                "add_19.local.UB"
+            ]:
+                self._schedule[tensor_i].storage_align(tensor_i.op.axis[-2], align_num, 0)
+
     def _do_tiling(self):
-        funcs = {TilingStrategy.NONE_CUT: self._do_tiling_none_cut}
+        funcs = {TilingStrategy.THREE_DIMEN: self._do_tiling_three_dimen}
         funcs[self._tiling_strategy]()
 
-    def _do_tiling_none_cut(self):
+    def _do_tiling_three_dimen(self):
         res = self._out
-        last_dim = int(res.shape[-1])
+        pd_x, res_for_gamma = self._out_tensors
+        output_dtype = pd_x.dtype
+        if output_dtype == "float16":
+            align_num = 16
+        else:
+            align_num = 8
+        last_dim = math.ceil(int(res.shape[-1])/align_num)*align_num
         core_num = util.get_core_num()
         ub_factor = self._tensor_space // (self._max_dtype_bytes * last_dim)
 

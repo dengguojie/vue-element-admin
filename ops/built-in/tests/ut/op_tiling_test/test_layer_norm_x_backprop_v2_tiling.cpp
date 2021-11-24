@@ -45,10 +45,10 @@ TEST_F(LayerNormXBackpropV2Tiling, LayerNormXBackpropV2_tiling_test_1) {
                         "CORE_NUM":32,
                         "MAX_DTYPE": 4,
                         "COEXISTING_QUANTITY": 7,
-                        "_vars": {"10000": ["dim_0", "dim_1"]},
+                        "_vars": {"10000": ["dim_0", "dim_1", "dim2"]},
                         "_normal_vars": {"10000": []},
                         "_attr_vars": {"10000": []},
-                        "_custom_vars": {"10000": ["dim_0", "dim_1"]}
+                        "_custom_vars": {"10000": ["dim_0", "dim_1", "dim2"]}
                         })";
 
   std::vector<std::vector<int64_t>> inputs{{13, 32, 512}, {13, 32, 512}, {13, 32, 1}, {13, 32, 1}, {512}};
@@ -99,5 +99,5 @@ TEST_F(LayerNormXBackpropV2Tiling, LayerNormXBackpropV2_tiling_test_1) {
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(runInfo.GetTilingKey(), 10000);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "13 32 ");
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "13 32 16384 ");
 }
