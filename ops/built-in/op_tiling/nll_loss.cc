@@ -354,14 +354,24 @@ bool NLLLossTiling(const std::string& op_type, const ge::Operator& op_paras, con
   auto input_x_desc = operator_info->MutableInputDesc(0);
   auto input_target_desc = operator_info->MutableInputDesc(1);
   auto input_weight_desc = operator_info->MutableInputDesc(2);
-  if (input_x_desc == nullptr || input_target_desc == nullptr || input_weight_desc == nullptr) {
+  if (input_x_desc == nullptr || input_target_desc == nullptr) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed.");
     return false;
   }
 
   std::vector<int64_t> x_shape = input_x_desc->MutableShape().GetDims();
   std::vector<int64_t> target_shape = input_target_desc->MutableShape().GetDims();
-  std::vector<int64_t> weight_shape = input_weight_desc->MutableShape().GetDims();
+  std::vector<int64_t> weight_shape;
+  if (input_weight_desc != nullptr) {
+    weight_shape = input_weight_desc->MutableShape().GetDims();
+  }
+
+  if (weight_shape.size() == 0) {
+    int64_t x_dims = x_shape.size();
+    if (x_dims > 0 && x_dims <= 2) {
+      weight_shape.push_back(x_shape.back());
+    }
+  }
 
   if (!GetCompileParams(op_type, op_info, core_num, ub_size, reduction)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: GetCompileParams error.");

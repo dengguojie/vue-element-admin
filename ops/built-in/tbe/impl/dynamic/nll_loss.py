@@ -686,7 +686,7 @@ def nll_loss_compute(tik_inst, tensor_list, reduction):
 
 
 @register_operator("NLLLoss")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR,
                             para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def nll_loss(x, target, weight, y, total_weight, reduction="mean", ignore_index=-100, kernel_name="nll_loss"):

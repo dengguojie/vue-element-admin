@@ -811,3 +811,46 @@ TEST_F(NLLLossTiling, NLLLoss_tiling16) {
       to_string(runInfo.GetAllTilingData()),
       "2 32 220 200000 7 0 7 3 0 3 8 21669 8 ");
 }
+
+TEST_F(NLLLossTiling, NLLLoss_tiling17) {
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("NLLLoss");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  auto opParas = op::NLLLoss("NLLLoss");
+  std::vector<int64_t> input_x_shape = {16, 32};
+  std::vector<int64_t> input_target_shape = {16,};
+  std::vector<int64_t> output_total_weight_shape = {1,};
+  std::vector<int64_t> output_y_shape = {1,};
+  ge::DataType dtype = ge::DT_FLOAT;
+  ge::DataType dtype_target = ge::DT_INT32;
+
+  TensorDesc tensorInputX;
+  tensorInputX.SetShape(ge::Shape(input_x_shape));
+  tensorInputX.SetDataType(dtype);
+
+  TensorDesc tensorInputTarget;
+  tensorInputTarget.SetShape(ge::Shape(input_target_shape));
+  tensorInputTarget.SetDataType(dtype_target);
+
+  TENSOR_INPUT(opParas, tensorInputX, x);
+  TENSOR_INPUT(opParas, tensorInputTarget, target);
+
+  TensorDesc tensorOutputY;
+  tensorOutputY.SetShape(ge::Shape(output_y_shape));
+  tensorOutputY.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputY, y);
+
+  TensorDesc tensorOutputTotalWeight;
+  tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
+  tensorOutputTotalWeight.SetDataType(dtype);
+  TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
+
+  std::string compileInfo =
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
+
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
+  EXPECT_EQ(
+      to_string(runInfo.GetAllTilingData()),
+      "1 16 16 32 1 0 1 1 0 1 59392 1856 32 ");
+}

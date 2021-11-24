@@ -175,8 +175,12 @@ Status NLLLossFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
     }
 
     if (!is_match) {
-      OP_LOGD(FUSED_OP_TYPE.c_str(), "is not dynamic shape or not match static shape.");
-      return NOT_CHANGED;
+      auto weight_desc = nll_loss_node->GetOpDesc()->MutableInputDesc(2);
+      // weight optional
+      if (weight_desc != nullptr) {
+        OP_LOGD(FUSED_OP_TYPE.c_str(), "is not dynamic shape or not match static shape or not optional weight.");
+        return NOT_CHANGED;
+      }
     }
   }
 

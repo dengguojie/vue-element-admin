@@ -807,13 +807,12 @@ IMPLEMT_COMMON_INFERFUNC(NLLLossInferShape) {
 
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
   auto x_desc = op_desc->MutableInputDesc(0);
-  auto weight_desc = op_desc->MutableInputDesc(2);
   auto y_desc = op_desc->MutableOutputDesc(0);
   auto total_weight_desc = op_desc->MutableOutputDesc(1);
   const GeShape& x_shape = x_desc->MutableShape();
 
   y_desc->SetDataType(x_desc->GetDataType());
-  total_weight_desc->SetDataType(weight_desc->GetDataType());
+  total_weight_desc->SetDataType(x_desc->GetDataType());
 
   GeShape& y_shape = y_desc->MutableShape();
   GeShape& total_weight_shape = total_weight_desc->MutableShape();
