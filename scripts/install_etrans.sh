@@ -44,7 +44,7 @@ get_arch_and_filename(){
     echo "Get computer architecture"
     computer_arch=`uname -m`
     if [[ "$computer_arch" =~ "x86" ]];then
-      arch="x86_64"
+      arch="x86"
       filename="ai_cann_x86"
     elif [[ "$computer_arch" =~ "aarch64" ]];then
       arch="aarch64"
@@ -144,10 +144,10 @@ install_Ascend(){
     fi
     if [ $UID -eq 0 ];then
       if [  -d "/usr/local/Ascend" ];then
-        ln -s  /usr/local/Ascend/${arch}-linux/lib64/libruntime.so  /usr/local/Ascend/atc/lib64/libruntime.so
+        ln -s  /usr/local/Ascend/x86_64-linux/lib64/libruntime.so  /usr/local/Ascend/atc/lib64/libruntime.so
       fi
     else
-      ln -s  ~/Ascend/${arch}-linux/lib64/libruntime.so  ~/Ascend/atc/lib64/libruntime.so
+      ln -s  ~/Ascend/x86_64-linux/lib64/libruntime.so  ~/Ascend/atc/lib64/libruntime.so
     fi
 
     
