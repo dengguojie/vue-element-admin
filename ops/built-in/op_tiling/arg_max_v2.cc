@@ -328,7 +328,7 @@ static bool ArgOpsTiling(const string& op_type, const ge::Operator& op_paras, co
   int64_t axis;
   vector<int64_t> axis_vec;
   // input dimension index is 1
-  if(!ops::GetConstIntData(op_paras, 1, axis_vec)) {
+  if (!ops::GetConstIntData(op_paras, 1, axis_vec)) {
     return false;
   }
   axis = axis_vec[0];

@@ -68,7 +68,6 @@ namespace optiling
     {
         int32_t tiling_mode = 0;
         int32_t embedding_dim = grad_shape.GetDim(grad_shape.GetDimNum() - 1);
-
         if (embedding_dim >= 32 && embedding_dim <= 1024)
         {
             tiling_mode = 1;

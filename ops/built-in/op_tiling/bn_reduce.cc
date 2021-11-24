@@ -27,6 +27,11 @@
 namespace optiling {
 using namespace ge;
 
+constexpr int32_t SMALL_SHAPE_THRESHOLD = 1024;
+constexpr int32_t FUSED_NON_REDUCE_AXIS = 0;
+constexpr int32_t FUSED_REDUCE_AXIS = 1;
+constexpr int32_t H_W_THRESHOLD = 100;
+
 bool BNReduce::IsInVector(const std::vector<int32_t>& input, const int32_t value) {
   return std::find(input.begin(), input.end(), value) != input.end();
 }

@@ -70,8 +70,9 @@ bool GetComInfo(const std::string &op_type,
 int32_t GetBlockSize(ge::DataType dtype) {
   int32_t block_size = 0;
   int32_t type_size = GetSizeByDataType(dtype);
-  if(type_size > 0)
-    block_size = ALIGN_BLOCK/type_size;
+  if (type_size > 0) {
+    block_size = ALIGN_BLOCK / type_size;
+  }
 
   return block_size;
 }

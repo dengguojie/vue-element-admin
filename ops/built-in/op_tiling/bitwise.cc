@@ -49,7 +49,7 @@ bool BitwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const 
     }
 
     //make the shape as same as dsl, the shape should add a dim (2,) when dtype from int32 to int16
-    if(shape_dtype == "int32") {
+    if (shape_dtype == "int32") {
         x1_broadcast_shape.push_back(2);
         x2_broadcast_shape.push_back(2);
     }

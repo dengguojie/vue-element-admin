@@ -72,7 +72,7 @@ Status ScopeLayerNormPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>& sc
     const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map_mul = scope->AllNodesMap();
     for (auto& it : nodes_map_mul) {
         auto mode_def = it.second;
-        if(mode_def->GetName().find("discriminator_2/d_ln3/LayerNorm/batchnorm/mul") != std::string::npos) {
+        if (mode_def->GetName().find("discriminator_2/d_ln3/LayerNorm/batchnorm/mul") != std::string::npos) {
             OP_LOGI(kOpType, "discriminator_2/d_ln3/LayerNorm/batchnorm/mul name is found");
             std::vector<std::string> outputs;
             mode_def->GetAttr("_origin_graph_node_outputs", outputs);
