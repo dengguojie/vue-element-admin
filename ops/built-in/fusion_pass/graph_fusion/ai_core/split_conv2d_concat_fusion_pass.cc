@@ -43,6 +43,7 @@ static const char kConcatv2Type[] = "ConcatV2";
 static const char kConcatType[] = "Concat";
 static const char kConv2dType[] = "Conv2D";
 static const char kSplitType[] = "Split";
+static const char kSplitVType[] = "SplitV";
 static const char kConstType[] = "Const";
 static const char kAttrGroups[] = "groups";
 static const char kNameCcatDim[] = "concat_dim";
@@ -50,7 +51,7 @@ static const char kCcatHostOp[] = "Concatv2HostCpuOp";
 static const char kSptOutKey[] = "y";
 static const char kCcatInKey[] = "x";
 static const std::set<string> kNewCcatIn = {"Const", "Constant", "QuantBiasOptimization", "QuantWeightRollBack",
-                                             "QuantBiasRollBack"};
+                                            "QuantBiasRollBack"};
 static const std::set<DataType> kDataTypeIn = {DT_FLOAT, DT_FLOAT16, DT_INT8, DT_INT32};
 
 /*!
@@ -72,7 +73,7 @@ vector<FusionPattern*> SplitConv2dConcatPass::DefinePatterns() {
   FusionPattern* pattern = new (std::nothrow) FusionPattern("SplitConv2dConcatPass");
   FUSION_PASS_CHECK(pattern == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "new a pattern object failed."),
                     return patterns);
-  pattern->AddOpDesc(kPatternSplit, {kSplitType})
+  pattern->AddOpDesc(kPatternSplit, {kSplitType, kSplitVType})
       .AddOpDesc(kPatternConv2D, {kConv2dType})
       .AddOpDesc(kPatternConcatv2, {kConcatv2Type, kConcatType})
       .SetInputs(kPatternConv2D, {kPatternSplit})
@@ -181,7 +182,12 @@ bool SplitConv2dConcatPass::AnalyzeMidLayer(ge::Node::Vistor<NodePtr>& spt_outpu
   */
 bool SplitConv2dConcatPass::VerifySptCcatAxis(OpDescPtr& conv_desc, NodePtr& split_node, NodePtr& ccat_node) {
   auto spt_inputs = split_node->GetInDataNodes();
-  NodePtr spt_const = spt_inputs.at(0);
+  NodePtr spt_const = nullptr;
+  if (split_node->GetType() == kSplitVType) {
+    spt_const = spt_inputs.at(2);
+  } else {
+    spt_const = spt_inputs.at(0);
+  }
   FUSION_PASS_CHECK(spt_const == nullptr,
                     OP_LOGW(fused_op_type_.c_str(), "split input const is null"), return false);
   FUSION_PASS_CHECK(spt_const->GetType() != kConstType,
@@ -244,6 +250,9 @@ bool SplitConv2dConcatPass::UpdateConv2dDesc(OpDescPtr& conv_desc, NodePtr& spli
   FUSION_PASS_CHECK(split_desc == nullptr,
                     OP_LOGW(fused_op_type_.c_str(), "split node's desc is null"), return false);
   GeTensorDesc split_in_tensor = split_desc->GetInputDesc(1);
+  if (split_node->GetType() == kSplitVType) {
+    split_in_tensor = split_desc->GetInputDesc(0);
+  }
   std::vector<int64_t> split_in_shape = split_in_tensor.GetOriginShape().GetDims();
   Format split_format = split_in_tensor.GetOriginFormat();
   OpDescPtr ccat_desc = ccat_node->GetOpDesc();
@@ -275,12 +284,11 @@ bool SplitConv2dConcatPass::UpdateConv2dDesc(OpDescPtr& conv_desc, NodePtr& spli
     FUSION_PASS_CHECK(kDataTypeIn.find(bDtype) == kDataTypeIn.end(),
                       OP_LOGW(fused_op_type_.c_str(),
                               "conv2d %d input data type only support float,"
-                              " float16, int8 or int32",
-                              int(n)),
-                      return false);
+                              " float16, int8 or int32", int(n)), return false);
     std::vector<int64_t> b_in_shape = bTensor.GetOriginShape().GetDims();
     size_t pos = 0;
-    if (b_in_shape.size() == 4) {
+    size_t b_in_shape_size = 4;
+    if (b_in_shape.size() == b_in_shape_size) {
       std::string fmt_str = TypeUtils::FormatToSerialString(bTensor.GetOriginFormat());
       size_t found = fmt_str.find('N');
       pos = found == std::string::npos ? 0 : found;
@@ -316,7 +324,8 @@ bool SplitConv2dConcatPass::UpdateConv2dDesc(OpDescPtr& conv_desc, NodePtr& spli
   * @param const_desc New Concatv2 nodes.
   * @return bool Whether new Concatv2 desc is added successfully.
   */
-bool SplitConv2dConcatPass::AddConcatDesc(NodePtr& split_node, NodePtr& ccat_node, std::vector<OpDescPtr>& const_desc) {
+bool SplitConv2dConcatPass::AddConcatDesc(NodePtr& split_node, NodePtr& ccat_node,
+                                          std::vector<OpDescPtr>& const_desc) {
   OpDescPtr ccat_desc = ccat_node->GetOpDesc();
   auto out_name = ccat_desc->GetAllOutputName();
 
@@ -342,7 +351,8 @@ bool SplitConv2dConcatPass::AddConcatDesc(NodePtr& split_node, NodePtr& ccat_nod
   size_t a_in_cnt = a_input.size();
   for (size_t cout_in = 1; cout_in < a_in_cnt; ++cout_in) {
     OpDescPtr n_desc = AttrUtils::CloneOpDesc(ccat_desc);
-    FUSION_PASS_CHECK(n_desc == nullptr, CommonRuntimeErrLog(fused_op_type_.c_str(), "clone concat desc failed"), return false);
+    FUSION_PASS_CHECK(n_desc == nullptr,
+                      CommonRuntimeErrLog(fused_op_type_.c_str(), "clone concat desc failed"), return false);
     n_desc->SetType(kCcatHostOp);
     n_desc->UpdateInputName(in_name);
     n_desc->UpdateOutputName(out_name);
@@ -354,7 +364,8 @@ bool SplitConv2dConcatPass::AddConcatDesc(NodePtr& split_node, NodePtr& ccat_nod
     Format concat_origin_format = concat_tensor.GetOriginFormat();
     DataType concat_origin_dtype = concat_tensor.GetOriginDataType();
     size_t pos = 0;
-    if (concat_shape.size() == 4) {
+    size_t concat_shape_size = 4;
+    if (concat_shape.size() == concat_shape_size) {
       std::string fmt_str = TypeUtils::FormatToSerialString(concat_tensor.GetOriginFormat());
       size_t found = fmt_str.find('N');
       pos = found == std::string::npos ? 0 : found;
@@ -445,7 +456,12 @@ bool SplitConv2dConcatPass::LinkNewConcat(ge::ComputeGraph& graph, NodePtr& spli
                         CommonRuntimeErrLog(fused_op_type_.c_str(), "add edge from conv2d other input failed"), return false);
     }
   }
-  NodePtr axis_node = split_node->GetInDataNodes().at(0);
+  NodePtr axis_node = nullptr;
+  if (split_node->GetType() == kSplitVType) {
+    axis_node = split_node->GetInDataNodes().at(2);
+  } else {
+    axis_node = split_node->GetInDataNodes().at(0);
+  }
   FUSION_PASS_CHECK(axis_node == nullptr,
                     CommonRuntimeErrLog(fused_op_type_.c_str(), "get axis node failed"), return false);
   OpDescPtr axis_desc = axis_node->GetOpDesc();
@@ -460,7 +476,7 @@ bool SplitConv2dConcatPass::LinkNewConcat(ge::ComputeGraph& graph, NodePtr& spli
     InDataAnchorPtr last_in_anchor = new_ccat->GetInDataAnchor(idx);
     OpDescPtr new_axis_desc = AttrUtils::CloneOpDesc(axis_desc);
     FUSION_PASS_CHECK(new_axis_desc == nullptr,
-                      CommonRuntimeErrLog(fused_op_type_.c_str(), "clone split input split_dim desc failed"), return false);
+      CommonRuntimeErrLog(fused_op_type_.c_str(), "clone split input split_dim desc failed"), return false);
     std::string cout_str = std::to_string(count++);
     new_axis_desc->SetName(axis_desc->GetName() + "/last_" + cout_str);
     NodePtr new_axis_node = graph.AddNode(new_axis_desc);
@@ -470,7 +486,8 @@ bool SplitConv2dConcatPass::LinkNewConcat(ge::ComputeGraph& graph, NodePtr& spli
     GeTensorDesc ccat_tensor = ccat_desc->GetInputDesc(0);
     std::vector<int64_t> ccat_in_shape = ccat_tensor.GetOriginShape().GetDims();
     int32_t pos = 0;
-    if (ccat_in_shape.size() == 4) {
+    size_t ccat_in_shape_size = 4;
+    if (ccat_in_shape.size() == ccat_in_shape_size) {
       std::string fmt_str = TypeUtils::FormatToSerialString(ccat_tensor.GetOriginFormat());
       size_t found = fmt_str.find('N');
       pos = found == std::string::npos ? 0 : found;
@@ -504,12 +521,19 @@ bool SplitConv2dConcatPass::LinkNewConcat(ge::ComputeGraph& graph, NodePtr& spli
 bool SplitConv2dConcatPass::LinkGroupConv2d(NodePtr& group_conv, NodePtr& split_node, NodePtr& ccat_node,
                                             std::vector<NodePtr>& const_ccat) {
   auto in_anchor = split_node->GetInDataAnchor(1);
+  if (split_node->GetType() == kSplitVType) {
+    in_anchor = split_node->GetInDataAnchor(0);
+  }
   FUSION_PASS_CHECK(in_anchor == nullptr,
                     CommonRuntimeErrLog(fused_op_type_.c_str(), "split input data anchor is null"), return false);
   OutDataAnchorPtr pre_anchor = in_anchor->GetPeerOutAnchor();
   FUSION_PASS_CHECK(pre_anchor == nullptr,
                     CommonRuntimeErrLog(fused_op_type_.c_str(), "split input anchor is null"), return false);
-  pre_anchor->Unlink(split_node->GetInDataAnchor(1));
+  if (split_node->GetType() == kSplitVType) {
+    pre_anchor->Unlink(split_node->GetInDataAnchor(0));
+  } else {
+    pre_anchor->Unlink(split_node->GetInDataAnchor(1));
+  }
   InDataAnchorPtr x_anchor = group_conv->GetInDataAnchor(0);
   FUSION_PASS_CHECK(x_anchor == nullptr,
                     CommonRuntimeErrLog(fused_op_type_.c_str(), "group conv2d input anchor is null"), return false);
