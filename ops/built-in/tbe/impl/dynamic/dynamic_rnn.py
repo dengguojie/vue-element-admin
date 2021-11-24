@@ -1499,8 +1499,8 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                 lambda *indices: seq_mask_ub(*indices).astype('float32'),
                 name="seq_mask_ub_fp32_drnn_cast",
                 tag="elewise_single_cast")
-        update_c_tmp = vadd(update_c_diff, s_state_c_ub_temp)
-        update_c = vmul(update_c_tmp, seq_mask_ub_fp32)
+        update_c_tmp = vmul(update_c_diff, seq_mask_ub_fp32)
+        update_c = vadd(update_c_tmp, s_state_c_ub_temp)
 
     # c_gm fp32 case need flag
     if bias_dtype == 'float16':
@@ -1602,16 +1602,16 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     if seq_mask_gm is not None:
         if fp16_input_output:
             update_h_diff = vsub(update_h_gm_as_y_back, s_state_h_ub_for_element)
-            update_h_diff_mask = vadd(update_h_diff, s_state_h_ub_for_element)
-            update_h_gm_as_y_back_mid = vmul(update_h_diff_mask, seq_mask_ub)
+            update_h_diff_mask = vmul(update_h_diff, seq_mask_ub)
+            update_h_gm_as_y_back_mid = vadd(update_h_diff_mask, s_state_h_ub_for_element)
         else:
             s_state_h_ub_for_element_fp32 = tvm.compute(shape_h,
                                         lambda *indices: s_state_h_ub_for_element(*indices).astype('float32'),
                                         name="s_state_h_ub_for_element_cast",
                                         tag="elewise_single_cast")
             update_h_diff = vsub(update_h_gm_as_y_back, s_state_h_ub_for_element_fp32)
-            update_h_diff_mask = vadd(update_h_diff, s_state_h_ub_for_element_fp32)
-            update_h_gm_as_y_back_mid = vmul(update_h_diff_mask, seq_mask_ub_fp32)
+            update_h_diff_mask = vmul(update_h_diff, seq_mask_ub_fp32)
+            update_h_gm_as_y_back_mid = vadd(update_h_diff_mask, s_state_h_ub_for_element_fp32)
 
     if fp16_input_output:
         update_h_gm = tvm.compute(shape_i,

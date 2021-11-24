@@ -272,38 +272,38 @@ def test_rnn_generalization(test_arg):
                     {"shape": (2,4,16), "dtype": "float16", "ori_shape": (2,4,16), "ori_format": "FRACTAL_NZ", "format": "FRACTAL_NZ"})
 
 def test_matrix_to_zz(test_arg):
-    from impl.dynamic.dynamic_rnn import matrix_to_zZ
-    matrix_to_zZ(np.ones((1, 32, 16),dtype=np.float16),(1, 32, 16),"float16")
-    matrix_to_zZ(np.ones((32, 16),dtype=np.float16),(32, 16),"float16")
-    matrix_to_zZ(np.ones((1, 1, 16),dtype=np.float16),(1, 1, 16),"float16")
-    matrix_to_zZ(np.ones((1, 16),dtype=np.float16),(1, 16),"float16")
+    from impl.dynamic.dynamic_rnn import matrix_to_zz
+    matrix_to_zz(np.ones((1, 32, 16),dtype=np.float16),(1, 32, 16),"float16")
+    matrix_to_zz(np.ones((32, 16),dtype=np.float16),(32, 16),"float16")
+    matrix_to_zz(np.ones((1, 1, 16),dtype=np.float16),(1, 1, 16),"float16")
+    matrix_to_zz(np.ones((1, 16),dtype=np.float16),(1, 16),"float16")
 
-def test_matrix_to_nZ(test_arg):
-    from impl.dynamic.dynamic_rnn import matrix_to_nZ
-    matrix_to_nZ(np.ones((1, 32, 16),dtype=np.float16),(1, 32, 16),"float16")
-    matrix_to_nZ(np.ones((32, 16),dtype=np.float16),(32, 16),"float16")
-    matrix_to_nZ(np.ones((1, 32, 1),dtype=np.float16),(1, 32, 1),"float16")
-    matrix_to_nZ(np.ones((32, 1),dtype=np.float16),(32, 1),"float16")
+def test_matrix_to_nz(test_arg):
+    from impl.dynamic.dynamic_rnn import matrix_to_nz
+    matrix_to_nz(np.ones((1, 32, 16),dtype=np.float16),(1, 32, 16),"float16")
+    matrix_to_nz(np.ones((32, 16),dtype=np.float16),(32, 16),"float16")
+    matrix_to_nz(np.ones((1, 32, 1),dtype=np.float16),(1, 32, 1),"float16")
+    matrix_to_nz(np.ones((32, 1),dtype=np.float16),(32, 1),"float16")
 
 def test_matrix_to_zn(test_arg):
-    from impl.dynamic.dynamic_rnn import matrix_to_zN
-    matrix_to_zN(np.ones((1, 32, 16),dtype=np.float16),(1, 32, 16),"float16")
-    matrix_to_zN(np.ones((32, 16),dtype=np.float16),(32, 16),"float16")
-    matrix_to_zN(np.ones((1, 32, 1),dtype=np.float16),(1, 32, 1),"float16")
-    matrix_to_zN(np.ones((32, 1),dtype=np.float16),(32, 1),"float16")
-    matrix_to_zN(np.ones((1, 1, 16),dtype=np.float16),(1, 1, 16),"float16")
-    matrix_to_zN(np.ones((1, 16),dtype=np.float16),(1, 16),"float16")
+    from impl.dynamic.dynamic_rnn import matrix_to_zn
+    matrix_to_zn(np.ones((1, 32, 16),dtype=np.float16),(1, 32, 16),"float16")
+    matrix_to_zn(np.ones((32, 16),dtype=np.float16),(32, 16),"float16")
+    matrix_to_zn(np.ones((1, 32, 1),dtype=np.float16),(1, 32, 1),"float16")
+    matrix_to_zn(np.ones((32, 1),dtype=np.float16),(32, 1),"float16")
+    matrix_to_zn(np.ones((1, 1, 16),dtype=np.float16),(1, 1, 16),"float16")
+    matrix_to_zn(np.ones((1, 16),dtype=np.float16),(1, 16),"float16")
 
 def test_maxtrix_zn_reverse(test_arg):
-    from impl.dynamic.dynamic_rnn import maxtrix_zN_reverse
-    maxtrix_zN_reverse(np.ones((512,),dtype=np.float16),((1, 2, 16, 16)),"float16")
+    from impl.dynamic.dynamic_rnn import maxtrix_zn_reverse
+    maxtrix_zn_reverse(np.ones((512,),dtype=np.float16),((1, 2, 16, 16)),"float16")
 
 def test_maxtrix_nz_reverse(test_arg):
-    from impl.dynamic.dynamic_rnn import maxtrix_nZ_reverse
-    maxtrix_nZ_reverse(np.ones((512,),dtype=np.float16),((1, 1, 2, 16, 16)),"float16")
+    from impl.dynamic.dynamic_rnn import maxtrix_nz_reverse
+    maxtrix_nz_reverse(np.ones((512,),dtype=np.float16),((1, 1, 2, 16, 16)),"float16")
 
 ut_case.add_cust_test_func(test_func=test_matrix_to_zz)
-ut_case.add_cust_test_func(test_func=test_matrix_to_nZ)
+ut_case.add_cust_test_func(test_func=test_matrix_to_nz)
 ut_case.add_cust_test_func(test_func=test_matrix_to_zn)
 ut_case.add_cust_test_func(test_func=test_maxtrix_zn_reverse)
 ut_case.add_cust_test_func(test_func=test_maxtrix_nz_reverse)

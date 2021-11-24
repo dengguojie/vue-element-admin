@@ -743,10 +743,6 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
     shape_bias = (1, block_size, hidden_size, 1, 1, 16)
     shape_hc_init = (1, hidden_size, m_size, 16, 16)
 
-    is_global_init = False
-    if init_h is not None:
-        is_global_init = True
-
     # due to FE/GE not support, now set default value
     is_gate_output = True
 
@@ -776,6 +772,9 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
     else:
         seq_mask_gm = None
 
+    is_global_init = False
+    if init_h is not None:
+        is_global_init = True
     if is_global_init:
         s_init_h_gm = tik_instance.Tensor(shape=shape_hc_init,
                                           dtype=input_dtype,
@@ -828,8 +827,8 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
     fusion_manager.set_tik_tensor(build_input_list, build_output_list)
     bank_manager.init_bank_hit_info(kernel_name)
 
-    last = 1
     cut_t = 1
+    last = 1
     # RL default tiling
     cut_m = m_size
     loop_t = t_size // cut_t
@@ -1005,12 +1004,12 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
     shape_x_input = input_x.shape
     shape_w_input = weight.shape
 
-    t_size = 1
     m_size = shape_x_input[2].value
     k_size = shape_w_input[1].value
     n_size = shape_w_input[2].value * shape_w_input[3].value
 
     block_size = 4
+    t_size = 1
     hidden_size = n_size // block_size
     in_x = k_size - hidden_size
 
@@ -1294,7 +1293,6 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         update_c_diff = vsub(update_c, s_state_c_ub)
         update_c_tmp = vmul(update_c_diff, seq_mask_ub)
         update_c = vadd(update_c_tmp, s_state_c_ub)
-        update_c = vmul(update_c, seq_mask_ub)
 
     # c_gm fp32 case need flag
     if bias_dtype == 'float16':
@@ -1392,7 +1390,6 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         update_h_diff = vsub(update_h_gm_as_y_back, s_state_h_ub_for_element)
         update_h_diff_mask = vmul(update_h_diff, seq_mask_ub)
         update_h_gm_as_y_back_mid = vadd(update_h_diff_mask, s_state_h_ub_for_element)
-        update_h_gm_as_y_back_mid = vmul(update_h_gm_as_y_back_mid, seq_mask_ub)
 
     if fp16_input_output:
         update_h_gm = tvm.compute(shape_i,
