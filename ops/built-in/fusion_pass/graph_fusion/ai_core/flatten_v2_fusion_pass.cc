@@ -79,7 +79,12 @@ Status FlattenV2Pass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector<g
 
   vector<int64_t> inputShape = flattenV2InputDesc.GetShape().GetDims();
   int64_t dimCnt = inputShape.size();
-
+  for (int64_t i = 0; i < dimCnt; i++) {
+    if (PatternFusionUtil::IsUnknownShape(inputShape[i])) {
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "FlattenV2Pass cannot be applied for unknown shape.");
+      return NOT_CHANGED;
+    }
+  }
   int64_t flattenV2Axis = 1;
   int64_t flattenV2EndAxis = -1;
   ge::AttrUtils::GetInt(flattenV2Desc, FLATTEN_V2_ATTR_AXIS, flattenV2Axis);

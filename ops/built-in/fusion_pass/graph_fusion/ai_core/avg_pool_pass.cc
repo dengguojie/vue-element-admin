@@ -240,6 +240,104 @@ Status AvgPoolFusionPass::AddCoffe(ge::ComputeGraph& graph, ge::NodePtr& mulNode
   return SUCCESS;
 }
 
+NodePtr AvgPoolFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoolNode, ge::Format& inputOriginFormat) {
+  ge::OutDataAnchorPtr avgPoolAnchorPtr1 = avgPoolNode->GetOutDataAnchor(0);
+  ge::NodePtr postNode = nullptr;
+  ge::NodePtr mulNode = nullptr;
+  int64_t mulN = 0;
+  int64_t mulH = 0;
+  int64_t mulW = 0;
+  int64_t mulC = 0;
+  int64_t mulC1 = 0;
+
+  // creat a antiquant node
+  std::shared_ptr<ge::OpDesc> mulDesc = nullptr;
+  mulDesc = std::make_shared<ge::OpDesc>(avgPoolNode->GetName() + "_mul_layer", "Mul");
+  FUSION_PASS_CHECK(mulDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulDesc is null, mul failed."), return nullptr);
+
+  // add input
+  ge::GeTensorDesc input_desc = avgPoolNode->GetOpDesc()->GetOutputDesc(0);
+  ge::GeShape mulShape = input_desc.GetShape();
+  vector<int64_t> dimMul = mulShape.GetDims();
+
+  if (dimMul.size() != 0) {
+    if (inputOriginFormat == FORMAT_NHWC) {
+      mulN = dimMul[0];
+      mulH = dimMul[1];
+      mulW = dimMul[2];
+      mulC = dimMul[3];
+    }
+    else if (inputOriginFormat == FORMAT_NCHW) {
+      mulN = dimMul[0];
+      mulH = dimMul[2];
+      mulW = dimMul[3];
+      mulC = dimMul[1];
+    }
+    else {
+      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputOriginFormat only support NHWC and NCHW");
+      return nullptr;
+    }
+  } else {
+    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dimMul is null, please check!");
+    return nullptr;
+  }
+
+  mulC1 = (mulC + COUT - 1) / COUT;
+  vector<int64_t> mulDimInfo = {mulN, mulC1, mulH, mulW, 16};
+
+  ge::GeShape mulInputShape(mulDimInfo);
+  input_desc.SetShape(mulInputShape);
+  input_desc.SetOriginShape(mulShape);
+  input_desc.SetFormat(ge::FORMAT_NC1HWC0);
+  input_desc.SetOriginFormat(inputOriginFormat);
+  input_desc.SetDataType(ge::DT_FLOAT16);
+  FUSION_PASS_CHECK(mulDesc->AddInputDesc(input_desc) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add mulDesc input failed."), return nullptr);
+
+  // add output
+  ge::GeTensorDesc output_desc;
+  ge::GeShape mulOutputShape(mulDimInfo);
+  output_desc.SetShape(mulOutputShape);
+  output_desc.SetOriginShape(mulShape);
+  output_desc.SetFormat(ge::FORMAT_NC1HWC0);
+  output_desc.SetOriginFormat(inputOriginFormat);
+  output_desc.SetDataType(ge::DT_FLOAT16);
+  FUSION_PASS_CHECK(mulDesc->AddOutputDesc(output_desc) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add mulDesc output failed."), return nullptr);
+
+  // add node
+  mulNode = graph.AddNode(mulDesc);
+  FUSION_PASS_CHECK(mulNode == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulNode is null, fusion failed."),
+                    return nullptr);
+
+  for (auto postAnchorPtr0 : avgPoolAnchorPtr1->GetPeerInDataAnchors()) {
+    FUSION_PASS_CHECK(postAnchorPtr0 == nullptr,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "postAnchorPtr0 is null, fusion failed."),
+                      return nullptr);
+
+    postNode = postAnchorPtr0->GetOwnerNode();
+
+    // remove edge between avgpool and next node
+    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(postAnchorPtr0, avgPoolAnchorPtr1) != SUCCESS,
+                      OP_LOGI(FUSED_OP_TYPE.c_str(), "remove edge between pooling and next node failed!"),
+                      return nullptr);
+
+    // add edge between mul and next_node
+    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mulNode->GetOutDataAnchor(0), postAnchorPtr0) != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                              mulNode->GetName().c_str(), postNode->GetName().c_str()),
+                      return nullptr);
+  }
+  // add edge between avgpool and mul
+  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(avgPoolAnchorPtr1, mulNode->GetInDataAnchor(0)) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
+                            avgPoolNode->GetName().c_str(), mulNode->GetName().c_str()),
+                    return nullptr);
+
+  return mulNode;
+}
+
 Status AvgPoolFusionPass::Calc4DWeightAvgPool(const std::vector<int64_t>& filterDims4D, const int64_t& kernelDataCount,
                                               const int8_t* filterInt8Data,
                                               std::unique_ptr<int32_t[]>& weightInt8Temp) {
@@ -432,104 +530,6 @@ Status AvgPoolFusionPass::DoBiasOptimizeAvgpool(ge::ComputeGraph& graph, ge::Nod
                     return FAILED);
 
   return SUCCESS;
-}
-
-NodePtr AvgPoolFusionPass::AddMul(ge::ComputeGraph& graph, ge::NodePtr& avgPoolNode, ge::Format& inputOriginFormat) {
-  ge::OutDataAnchorPtr avgPoolAnchorPtr1 = avgPoolNode->GetOutDataAnchor(0);
-  ge::NodePtr postNode = nullptr;
-  ge::NodePtr mulNode = nullptr;
-  int64_t mulN = 0;
-  int64_t mulH = 0;
-  int64_t mulW = 0;
-  int64_t mulC = 0;
-  int64_t mulC1 = 0;
-
-  // creat a antiquant node
-  std::shared_ptr<ge::OpDesc> mulDesc = nullptr;
-  mulDesc = std::make_shared<ge::OpDesc>(avgPoolNode->GetName() + "_mul_layer", "Mul");
-  FUSION_PASS_CHECK(mulDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulDesc is null, mul failed."), return nullptr);
-
-  // add input
-  ge::GeTensorDesc input_desc = avgPoolNode->GetOpDesc()->GetOutputDesc(0);
-  ge::GeShape mulShape = input_desc.GetShape();
-  vector<int64_t> dimMul = mulShape.GetDims();
-
-  if (dimMul.size() != 0) {
-    if (inputOriginFormat == FORMAT_NHWC) {
-      mulN = dimMul[0];
-      mulH = dimMul[1];
-      mulW = dimMul[2];
-      mulC = dimMul[3];
-    }
-    else if (inputOriginFormat == FORMAT_NCHW) {
-      mulN = dimMul[0];
-      mulH = dimMul[2];
-      mulW = dimMul[3];
-      mulC = dimMul[1];
-    }
-    else {
-      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "inputOriginFormat only support NHWC and NCHW");
-      return nullptr;
-    }
-  } else {
-    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "dimMul is null, please check!");
-    return nullptr;
-  }
-
-  mulC1 = (mulC + COUT - 1) / COUT;
-  vector<int64_t> mulDimInfo = {mulN, mulC1, mulH, mulW, 16};
-
-  ge::GeShape mulInputShape(mulDimInfo);
-  input_desc.SetShape(mulInputShape);
-  input_desc.SetOriginShape(mulShape);
-  input_desc.SetFormat(ge::FORMAT_NC1HWC0);
-  input_desc.SetOriginFormat(inputOriginFormat);
-  input_desc.SetDataType(ge::DT_FLOAT16);
-  FUSION_PASS_CHECK(mulDesc->AddInputDesc(input_desc) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add mulDesc input failed."), return nullptr);
-
-  // add output
-  ge::GeTensorDesc output_desc;
-  ge::GeShape mulOutputShape(mulDimInfo);
-  output_desc.SetShape(mulOutputShape);
-  output_desc.SetOriginShape(mulShape);
-  output_desc.SetFormat(ge::FORMAT_NC1HWC0);
-  output_desc.SetOriginFormat(inputOriginFormat);
-  output_desc.SetDataType(ge::DT_FLOAT16);
-  FUSION_PASS_CHECK(mulDesc->AddOutputDesc(output_desc) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "add mulDesc output failed."), return nullptr);
-
-  // add node
-  mulNode = graph.AddNode(mulDesc);
-  FUSION_PASS_CHECK(mulNode == nullptr,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulNode is null, fusion failed."),
-                    return nullptr);
-
-  for (auto postAnchorPtr0 : avgPoolAnchorPtr1->GetPeerInDataAnchors()) {
-    FUSION_PASS_CHECK(postAnchorPtr0 == nullptr,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "postAnchorPtr0 is null, fusion failed."),
-                      return nullptr);
-
-    postNode = postAnchorPtr0->GetOwnerNode();
-
-    // remove edge between avgpool and next node
-    FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(postAnchorPtr0, avgPoolAnchorPtr1) != SUCCESS,
-                      OP_LOGI(FUSED_OP_TYPE.c_str(), "remove edge between pooling and next node failed!"),
-                      return nullptr);
-
-    // add edge between mul and next_node
-    FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(mulNode->GetOutDataAnchor(0), postAnchorPtr0) != SUCCESS,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
-                              mulNode->GetName().c_str(), postNode->GetName().c_str()),
-                      return nullptr);
-  }
-  // add edge between avgpool and mul
-  FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(avgPoolAnchorPtr1, mulNode->GetInDataAnchor(0)) != SUCCESS,
-                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add edge between node %s. and node %s failed.",
-                            avgPoolNode->GetName().c_str(), mulNode->GetName().c_str()),
-                    return nullptr);
-
-  return mulNode;
 }
 
 Status AvgPoolFusionPass::UpdateDequantConst(ge::ComputeGraph& graph, ge::NodePtr& const_node, float& area_factor) {
