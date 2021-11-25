@@ -18,6 +18,7 @@ strided_slice_for_last_dim_mte
 from functools import reduce as funct_reduce
 from te import tik
 from te import platform as tbe_platform
+from impl.common_util import get_data_size
 
 
 # pylint: disable=too-many-arguments, too-many-locals, too-many-statements
@@ -50,15 +51,8 @@ def strided_slice_last_dim_mte(input_shape, dtype, output_shape,
                                      name="input_data",
                                      scope=tik.scope_gm)
     # element count in a block
-    if dtype.lower() in ("float32", "int32"):
-        block_data_cnt = 8
-        byte_cnt = 4
-    elif dtype.lower() == "float16":
-        block_data_cnt = 16
-        byte_cnt = 2
-    else:
-        block_data_cnt = 32
-        byte_cnt = 1
+    byte_cnt = get_data_size(dtype)
+    block_data_cnt = tbe_platform.BLOCK_REDUCE_INT8 // byte_cnt
 
     output_dim_size_except_last = \
         funct_reduce(lambda x, y: x * y, output_shape[:-1])
@@ -120,10 +114,10 @@ def strided_slice_last_dim_mte(input_shape, dtype, output_shape,
                             input_data_ub[lp_index *
                                           output_last_dim_part_size_1],
                             input_data[(core_index * input_core_dim_num +
-                                       lp_index + in_offset +
-                                       (repeat_loop_index * max_repeat +
-                                       buf_loop_index * allowed_repeat_cnt) *
-                                       block_data_cnt) *
+                                        lp_index + in_offset +
+                                        (repeat_loop_index * max_repeat +
+                                         buf_loop_index * allowed_repeat_cnt) *
+                                        block_data_cnt) *
                                        input_shape[-1] + start_num],
                             0, allow_repeat_cnt,
                             output_last_dim_part_block_1,

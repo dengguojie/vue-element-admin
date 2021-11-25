@@ -14,6 +14,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 SliceD ut case
 """
 # pylint: disable=import-outside-toplevel, invalid-name, unused-argument
+import impl
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
 from impl.slice_d import op_select_format
@@ -177,6 +178,18 @@ case15 = {"params": [
     "expect": "success",
     "support_expect": True}
 
+case16 = {"params": [
+    {"shape": (131072, 1270), "dtype": "int16", "format": "NCHW", "ori_shape": (131072, 1270),
+     "ori_format": "NCHW"},
+    # x
+    {"shape": (131072, 1269), "dtype": "int16", "format": "NCHW", "ori_shape": (131072, 1269),
+     "ori_format": "NCHW"},
+    (0, 0), (131072, 1269),
+],
+    "case_name": "SliceD_16",
+    "expect": "success",
+    "support_expect": True}
+
 ut_case.add_case("Ascend910A", case1)
 ut_case.add_case("Ascend910A", case2)
 ut_case.add_case("Ascend910A", case3)
@@ -192,6 +205,7 @@ ut_case.add_case("Ascend910A", case12)
 ut_case.add_case("Ascend910A", case13)
 ut_case.add_case("Ascend910A", case14)
 ut_case.add_case("Ascend910A", case15)
+ut_case.add_case("Ascend910A", case16)
 
 case_fz = {"params": [
     {"shape": (1 * 16 * 16, 1, 16, 16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (16, 16, 16, 16),
@@ -296,7 +310,17 @@ def test_op_select_format(test_arg):
     check_format(support_all_dtype, {'NDC1HWC0', 'ND', 'FRACTAL_NZ'}, result)
 
 
+def test_import_lib(test_arg):
+    """
+    test_import_lib
+    """
+    import importlib
+    import sys
+    importlib.reload(sys.modules.get("impl.strided_slice_for_last_dim_mte"))
+
 ut_case.add_cust_test_func(test_func=test_op_select_format)
+ut_case.add_cust_test_func(test_func=test_import_lib)
+
 def test_use_strided_slice(test_arg):
     from impl.slice_d import _use_strided_slice
     _use_strided_slice({"shape":(2560,17),"ori_shape":(2560,17),"dtype":"float32"},[0,0],[-1,2],{"shape":(2560,2),"ori_shape":(2560,2),"dtype":"float32"})
