@@ -11,7 +11,7 @@ from tbe.common.register import register_operator
 FP16_MAX = tvm.const(6.5e04, dtype="float16")
 FP32_MAX = tvm.const(3.4e38, dtype="float32")
 
-def norm_compute(input_x, pad, axis):
+def norm_base_compute(input_x, pad, axis):
     shape = shape_util.shape_to_list(input_x.shape)
     dtype = input_x.dtype
     axis = list(axis)
@@ -60,8 +60,8 @@ def norm_compute(input_x, pad, axis):
     return output
 
 
-@register_operator("norm")
-def dsl_dync_norm(x, y, axis, kernel_name="dsl_dync_norm"):
+@register_operator("norm_base")
+def dsl_dync_norm_base(x, y, axis, kernel_name="dsl_dync_norm_base"):
     input_dtype = x.get("dtype")
     extra_params = {"disable_optimization": False}
     format = x.get("format")
@@ -70,12 +70,10 @@ def dsl_dync_norm(x, y, axis, kernel_name="dsl_dync_norm"):
         ori_shape = x.get("ori_shape")
     if format in ["NC1HWC0", "FRACTAL_NZ"]:
         extra_params["disable_optimization"] = True
-    x["rel_pos_to_reduce"] = 'before'
-    input_axis = {"shape": [len(axis), ], "value": axis, "rel_pos_to_reduce": "axis"}
-    ins = tbe.dsl.classify([x, input_axis], "norm", extra_params)
+    ins = tbe.dsl.classify([x, axis], "norm", extra_params)
     schedules, tensors = [], []
 
-    for (x, axis) in ins:
+    for (x, reduce_axis) in ins:
         with tbe.dsl.compute():
             if format == "NC1HWC0":
                 ori_format = ori_format.upper()
@@ -89,9 +87,9 @@ def dsl_dync_norm(x, y, axis, kernel_name="dsl_dync_norm"):
                 pad = [tvm.floormod(m-1, x.get("shape")[-2]) + 1, tvm.floormod(n-1, x.get("shape")[-1]) + 1]
             else:
                 pad = []
-            shape_x = shape_util.variable_shape([x, axis], op_mode="norm")[0]
+            shape_x = shape_util.variable_shape([x], op_mode="norm")[0]
             data1 = tvm.placeholder(shape_x, name='data1', dtype=input_dtype)
-            res = norm_compute(data1, pad, axis.get("value"))
+            res = norm_base_compute(data1, pad, reduce_axis)
             tensors.append([data1, res])
 
         with tvm.target.cce():
@@ -102,7 +100,7 @@ def dsl_dync_norm(x, y, axis, kernel_name="dsl_dync_norm"):
     tbe.dsl.build(schedules, config)
 
 
-ut_case = OpUT("norm", "norm.test_dynamic_norm_impl", "dsl_dync_norm")
+ut_case = OpUT("norm_base", "norm.test_dynamic_norm_base_impl", "dsl_dync_norm_base")
 
 case1 = {
     "params": [{
@@ -115,7 +113,7 @@ case1 = {
         "range": [(1, None), (1, None)]
     }, [1]],
     "case_name":
-        "test_dync_norm_1",
+        "test_dync_norm_base_1",
     "expect":
         "success",
     "support_expect":
@@ -133,7 +131,7 @@ case2 = {
         "range": [(1, None), (1, None)]
     }, [1]],
     "case_name":
-        "test_dync_norm_2",
+        "test_dync_norm_base_2",
     "expect":
         "success",
     "support_expect":
@@ -151,7 +149,7 @@ case3 = {
         "range": [(1, None), (1, None)]
     }, [0]],
     "case_name":
-        "test_dync_norm_3",
+        "test_dync_norm_base_3",
     "expect":
         "success",
     "support_expect":
@@ -169,7 +167,7 @@ case4 = {
         "range": [(1, None), (1, None)]
     }, [0]],
     "case_name":
-        "test_dync_norm_4",
+        "test_dync_norm_base_4",
     "expect":
         "success",
     "support_expect":
@@ -187,7 +185,7 @@ case5 = {
         "range": [(1, None), (1, None)]
     }, [1]],
     "case_name":
-        "test_dync_norm_5",
+        "test_dync_norm_base_5",
     "expect":
         "success",
     "support_expect":
@@ -205,7 +203,7 @@ case6 = {
         "range": [(1, None), (1, None), (1, None)]
     }, [0, 2]],
     "case_name":
-        "test_dync_norm_6",
+        "test_dync_norm_base_6",
     "expect":
         "success",
     "support_expect":
@@ -223,7 +221,7 @@ case7 = {
         "range": [(10, 10), (10, 10)]
     }, [1]],
     "case_name":
-        "test_dync_norm_7",
+        "test_dync_norm_base_7",
     "expect":
         "success",
     "support_expect":
@@ -247,7 +245,7 @@ case8 = {
         "range": [(1, 1), (1, 1), (1, 1), (1, 1), (16, 16)]
     }, [0]],
     "case_name":
-        "test_dync_norm_9",
+        "test_dync_norm_base_8",
     "expect":
         "success",
     "support_expect":
@@ -271,7 +269,7 @@ case9 = {
         "range": [(1, 1), (1, 1), (1000, 1000), (1000, 1000), (16, 16)]
     }, [2, 3]],
     "case_name":
-        "test_dync_norm_9",
+        "test_dync_norm_base_9",
     "expect":
         "success",
     "support_expect":

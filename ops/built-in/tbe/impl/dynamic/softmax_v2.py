@@ -167,17 +167,16 @@ def softmax_v2(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
         list_axis = list(axis)
     else:
         list_axis = [axis]
-    input_axis = {"shape": [len(list_axis), ], "value": list_axis, "rel_pos_to_reduce": "axis"}
 
     schedules = []
     tensors = []
-    ins = classify([input_x, input_axis], "norm")
+    ins = classify([input_x, list_axis], "norm")
 
-    for (x, input_axis) in ins:
+    for (x, reduce_axis) in ins:
         with tbe.compute():
-            shape_var_new, _ = shape_util.variable_shape([x, input_axis], op_mode="norm")
+            shape_var_new = shape_util.variable_shape([x], op_mode="norm")[0]
             input_x = tvm.placeholder(shape_var_new, dtype=dtype, name="input_x")
-            output = softmax_v2_compute(input_x, output_y, input_axis.get("value"), kernel_name)
+            output = softmax_v2_compute(input_x, output_y, reduce_axis, kernel_name)
             tensors.append([input_x, output])
 
         with tvm.target.cce():

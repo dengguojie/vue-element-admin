@@ -94,7 +94,7 @@ TEST_F(TilingDispatch, TilingDispatchNorm) {
   ASSERT_TRUE(op_func_info.IsFunctionV3());
   const OpTilingFuncV3& tiling_func = op_func_info.GetOpTilingFuncV3();
   const OpParseFuncV3& parse_func = op_func_info.GetOpParseFuncV3();
-  ge::AscendString compileInfo(R"({ "_fuse_axis": false, "_ori_axis": [1], "_pattern": "Norm", "_common_info": [32, 8, 1, 21448, 21496, 16216, 128], "_workspace_info": {"_workspace_type": [1], "_workspace_bytes": [4], "_workspace_diff_count": 0}, "_reduce_shape_known": true, "_const_shape_post": false})");
+  ge::AscendString compileInfo(R"({ "_fuse_axis": true, "_input_type": [0], "_ori_reduce_axis": [2], "_pattern": "Norm", "_common_info": [32, 16, 128], "_available_ub_size": {"4000": [15792, 16120, 15792]}, "_exist_workspace_after_reduce": false, "_exist_output_after_reduce": false, "_workspace_info": {"200400000": [32]}, "_norm_vars": {"200400000": [20000, 20001, 30000, 40000]}})");
   void* op_compile_info = parse_func(op, compileInfo);
   ASSERT_TRUE(op_compile_info != nullptr);
   ASSERT_TRUE(tiling_func(op, op_compile_info, runInfo));

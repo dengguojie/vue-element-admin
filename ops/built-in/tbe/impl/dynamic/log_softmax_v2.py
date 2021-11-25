@@ -109,17 +109,16 @@ def log_softmax_v2(input_x, output_y, axis=-1, kernel_name="log_softmax_v2"):
     para_check.check_dtype(dtype, ("float16", "float32"), param_name="x")
     if isinstance(axis, int):
         axis = [axis]
-    input_axis = {"shape": [len(axis), ], "value": axis, "rel_pos_to_reduce": "axis"}
 
     schedules = []
     tensors = []
-    ins = classify([input_x, input_axis], "norm")
+    ins = classify([input_x, axis], "norm")
 
-    for (x, axis_dict) in ins:
+    for (x, reduce_axis) in ins:
         with tbe.compute():
-            shape_var_new, _ = shape_util.variable_shape([x, axis_dict], op_mode="norm")
+            shape_var_new = shape_util.variable_shape([x], op_mode="norm")[0]
             input_x = tvm.placeholder(shape_var_new, dtype=dtype, name="input_x")
-            output = log_softmax_v2_compute(input_x, output_y, axis_dict.get("value"), kernel_name)
+            output = log_softmax_v2_compute(input_x, output_y, reduce_axis, kernel_name)
             tensors.append([input_x, output])
 
         with tvm.target.cce():
