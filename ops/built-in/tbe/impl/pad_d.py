@@ -50,10 +50,8 @@ def get_op_support_info(input_x, output_x, paddings, kernel_name="pad_d"):
         axis_reduce_list = None
 
     elif format_x == "NC1HWC0":
-        axis_split_matrix = [
-            [SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
-            [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]])]
-        ]
+        axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])],
+                             [SplitInput([0, [1], [-1], [-1]]), SplitOutput([0, [1]])]]
         axis_reduce_list = None
 
     else:
@@ -98,6 +96,7 @@ def _get_output_shape(input_shape, paddings):
 
     return output_shape
 
+
 def _get_scalar_dtype():
     """
     get scalar dtype int32 or int64
@@ -136,8 +135,7 @@ def _do_cast(params, input_tensor, gm_cast, shape, dtype_src, dtype_dst):
 
     dtype_size = tbe_platform.get_bit_len(dtype_src) // 8
     dtype_dst_size = tbe_platform.get_bit_len(dtype_dst) // 8
-    ub_len = tbe_platform.get_soc_spec(
-        tbe_platform.UB_SIZE) // (dtype_size + dtype_dst_size)
+    ub_len = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) // (dtype_size + dtype_dst_size)
     block_ele = ub_len // ele_cnt
     ub_block_ele = block_ele * ele_cnt
     shape_len = _prod(shape[:])
@@ -157,40 +155,31 @@ def _do_cast(params, input_tensor, gm_cast, shape, dtype_src, dtype_dst):
     cp_align_len_fp16 = tbe_platform.BLOCK_REDUCE_INT8 // dtype_dst_size
 
     if num_cycle > 1:
-        src_ubuf = _apply_for_new_alloc(params.ib_, dtype_src, ub_block_ele,
-                                        cp_align_len_src, tbe_platform.scope_ubuf)
-        dst_ubuf = _apply_for_new_alloc(params.ib_, dtype_dst, ub_block_ele,
-                                        cp_align_len_fp16, tbe_platform.scope_ubuf)
+        src_ubuf = _apply_for_new_alloc(params.ib_, dtype_src, ub_block_ele, cp_align_len_src, tbe_platform.scope_ubuf)
+        dst_ubuf = _apply_for_new_alloc(params.ib_, dtype_dst, ub_block_ele, cp_align_len_fp16, tbe_platform.scope_ubuf)
     else:
-        src_ubuf = _apply_for_new_alloc(params.ib_, dtype_src,
-                                        num_count * ele_cnt, cp_align_len_src,
+        src_ubuf = _apply_for_new_alloc(params.ib_, dtype_src, num_count * ele_cnt, cp_align_len_src,
                                         tbe_platform.scope_ubuf)
-        dst_ubuf = _apply_for_new_alloc(params.ib_, dtype_dst,
-                                        num_count * ele_cnt, cp_align_len_fp16,
+        dst_ubuf = _apply_for_new_alloc(params.ib_, dtype_dst, num_count * ele_cnt, cp_align_len_fp16,
                                         tbe_platform.scope_ubuf)
 
     with params.ib_.for_range(0, num_cycle, name="i") as i:
         with params.ib_.if_scope(i < num_cycle - 1):
             params.ib_.emit(
-                tvm.call_extern(
-                    dtype_src, "copy_gm_to_ubuf", src_ubuf.access_ptr("w"),
-                    input_tensor.access_ptr('r', offset=i * ub_block_ele),
-                    0, 1,  _ceil_div(ub_block_ele, cp_align_len_src), 0, 0))
+                tvm.call_extern(dtype_src, "copy_gm_to_ubuf", src_ubuf.access_ptr("w"),
+                                input_tensor.access_ptr('r', offset=i * ub_block_ele), 0, 1,
+                                _ceil_div(ub_block_ele, cp_align_len_src), 0, 0))
             ub_vconv_cycle_index = ub_block_ele // vconv_ele
             ub_vconv_cycle = ub_vconv_cycle_index + 1
 
             with params.ib_.for_range(0, ub_vconv_cycle, name="k") as k:
                 with params.ib_.if_scope(k < ub_vconv_cycle - 1):
                     params.ib_.emit(
-                        tvm.call_extern("uint64", "set_vector_mask",
-                                        params.uint64_all_one,
-                                        params.uint64_all_one))
+                        tvm.call_extern("uint64", "set_vector_mask", params.uint64_all_one, params.uint64_all_one))
                     params.ib_.emit(
-                        tvm.call_extern(
-                            dtype_dst, vconv_insn,
-                            dst_ubuf.access_ptr("w", offset=k * vconv_ele),
-                            src_ubuf.access_ptr("r", offset=k * vconv_ele),
-                            vconv_group, 1, 1, dst_stride, src_stride))
+                        tvm.call_extern(dtype_dst, vconv_insn, dst_ubuf.access_ptr("w", offset=k * vconv_ele),
+                                        src_ubuf.access_ptr("r", offset=k * vconv_ele), vconv_group, 1, 1, dst_stride,
+                                        src_stride))
                 with params.ib_.else_scope():
                     ub_vconv_mod = ub_block_ele - \
                                    (ub_vconv_cycle - 1) * vconv_ele
@@ -201,36 +190,24 @@ def _do_cast(params, input_tensor, gm_cast, shape, dtype_src, dtype_dst):
 
                     if ub_vconv_mod_repeat_more > 0:
                         params.ib_.emit(
-                            tvm.call_extern("uint64", "set_vector_mask",
-                                            params.uint64_all_one,
-                                            params.uint64_all_one))
+                            tvm.call_extern("uint64", "set_vector_mask", params.uint64_all_one, params.uint64_all_one))
                         params.ib_.emit(
                             tvm.call_extern(dtype_dst, vconv_insn,
-                                            dst_ubuf.access_ptr(
-                                                "w", offset=(ub_vconv_cycle -
-                                                             1) * vconv_ele),
-                                            src_ubuf.access_ptr(
-                                                "r", offset=(ub_vconv_cycle -
-                                                             1) * vconv_ele),
-                                            ub_vconv_mod_repeat_more,
-                                            ub_stride, ub_stride,
-                                            ub_dst, ub_src))
+                                            dst_ubuf.access_ptr("w", offset=(ub_vconv_cycle - 1) * vconv_ele),
+                                            src_ubuf.access_ptr("r", offset=(ub_vconv_cycle - 1) * vconv_ele),
+                                            ub_vconv_mod_repeat_more, ub_stride, ub_stride, ub_dst, ub_src))
 
             params.ib_.emit(
-                tvm.call_extern(
-                    dtype_dst, "copy_ubuf_to_gm",
-                    gm_cast.access_ptr("w", offset=i * ub_block_ele),
-                    dst_ubuf.access_ptr("r", offset=0), 0, 1,
-                    _ceil_div(ub_block_ele, cp_align_len_fp16), 0, 0))
+                tvm.call_extern(dtype_dst, "copy_ubuf_to_gm", gm_cast.access_ptr("w", offset=i * ub_block_ele),
+                                dst_ubuf.access_ptr("r", offset=0), 0, 1, _ceil_div(ub_block_ele, cp_align_len_fp16), 0,
+                                0))
 
         with params.ib_.else_scope():
             shape_mod = shape_len - (num_cycle - 1) * ub_block_ele
             params.ib_.emit(
-                tvm.call_extern(
-                    dtype_src, "copy_gm_to_ubuf", src_ubuf.access_ptr("w"),
-                    input_tensor.access_ptr(
-                        "r", offset=(num_cycle - 1) * ub_block_ele), 0, 1,
-                    _ceil_div(shape_mod, cp_align_len_src), 0, 0))
+                tvm.call_extern(dtype_src, "copy_gm_to_ubuf", src_ubuf.access_ptr("w"),
+                                input_tensor.access_ptr("r", offset=(num_cycle - 1) * ub_block_ele), 0, 1,
+                                _ceil_div(shape_mod, cp_align_len_src), 0, 0))
             vconv_cycle_index = shape_mod // vconv_ele
             # `255*128=32640`
             vconv_cycle_mod = shape_mod % vconv_ele
@@ -242,15 +219,11 @@ def _do_cast(params, input_tensor, gm_cast, shape, dtype_src, dtype_dst):
             with params.ib_.for_range(0, vconv_cycle, name="j") as j:
                 with params.ib_.if_scope(j < vconv_cycle - 1):
                     params.ib_.emit(
-                        tvm.call_extern("uint64", 'set_vector_mask',
-                                        params.uint64_all_one,
-                                        params.uint64_all_one))
+                        tvm.call_extern("uint64", 'set_vector_mask', params.uint64_all_one, params.uint64_all_one))
                     params.ib_.emit(
-                        tvm.call_extern(
-                            dtype_dst, vconv_insn,
-                            dst_ubuf.access_ptr("w", offset=j * vconv_ele),
-                            src_ubuf.access_ptr("r", offset=j * vconv_ele),
-                            vconv_group, 1, 1, dst_stride, src_stride))
+                        tvm.call_extern(dtype_dst, vconv_insn, dst_ubuf.access_ptr("w", offset=j * vconv_ele),
+                                        src_ubuf.access_ptr("r", offset=j * vconv_ele), vconv_group, 1, 1, dst_stride,
+                                        src_stride))
                 with params.ib_.else_scope():
                     vconv_mod = shape_mod - (vconv_cycle - 1) * vconv_ele
                     vconv_mod_repeat_more = vconv_mod // ele_cnt
@@ -268,82 +241,56 @@ def _do_cast(params, input_tensor, gm_cast, shape, dtype_src, dtype_dst):
                                            (vconv_mod_repeat_more * ele_cnt)
                     if vconv_mod_repeat_more > 0:
                         params.ib_.emit(
-                            tvm.call_extern("uint64", "set_vector_mask",
-                                            params.uint64_all_one,
-                                            params.uint64_all_one))
+                            tvm.call_extern("uint64", "set_vector_mask", params.uint64_all_one, params.uint64_all_one))
                         params.ib_.emit(
-                            tvm.call_extern(
-                                dtype_dst, vconv_insn,
-                                dst_ubuf.access_ptr(
-                                    "w", offset=(vconv_cycle - 1) * vconv_ele),
-                                src_ubuf.access_ptr(
-                                    "r", offset=(vconv_cycle - 1) * vconv_ele),
-                                vconv_mod_repeat_more, stride, stride, dst,
-                                src))
+                            tvm.call_extern(dtype_dst, vconv_insn,
+                                            dst_ubuf.access_ptr("w", offset=(vconv_cycle - 1) * vconv_ele),
+                                            src_ubuf.access_ptr("r", offset=(vconv_cycle - 1) * vconv_ele),
+                                            vconv_mod_repeat_more, stride, stride, dst, src))
                     if vconv_mod_repeat_one > 0:
                         if vconv_mod_repeat_one <= 64:
                             mask = 0
                             for _ in range(vconv_mod_repeat_one):
                                 mask = mask * 2 + 1
-                            params.ib_.emit(
-                                tvm.call_extern("uint64", "set_vector_mask", 0,
-                                                mask))
+                            params.ib_.emit(tvm.call_extern("uint64", "set_vector_mask", 0, mask))
                         else:
                             offset = vconv_mod_repeat_one - 64
                             mask = 0
                             for _ in range(offset):
                                 mask = mask * 2 + 1
-                            params.ib_.emit(
-                                tvm.call_extern("uint64", "set_vector_mask",
-                                                mask, params.uint64_all_one))
+                            params.ib_.emit(tvm.call_extern("uint64", "set_vector_mask", mask, params.uint64_all_one))
 
                         if vconv_mod_repeat_one == 1:
                             stride_one = 0
                         else:
                             stride_one = 1
                         params.ib_.emit(
-                            tvm.call_extern(dtype_dst, vconv_insn,
-                                            dst_ubuf.access_ptr(
-                                                "w",
-                                                offset=(vconv_cycle - 1) *
-                                                vconv_ele +
-                                                vconv_mod_repeat_more *
-                                                ele_cnt),
-                                            src_ubuf.access_ptr(
-                                                "r",
-                                                offset=(vconv_cycle - 1) *
-                                                vconv_ele +
-                                                vconv_mod_repeat_more *
-                                                ele_cnt),
-                                            1, stride_one, stride_one, 0, 0))
+                            tvm.call_extern(
+                                dtype_dst, vconv_insn,
+                                dst_ubuf.access_ptr("w",
+                                                    offset=(vconv_cycle - 1) * vconv_ele +
+                                                    vconv_mod_repeat_more * ele_cnt),
+                                src_ubuf.access_ptr("r",
+                                                    offset=(vconv_cycle - 1) * vconv_ele +
+                                                    vconv_mod_repeat_more * ele_cnt), 1, stride_one, stride_one, 0, 0))
 
                         params.ib_.emit(
-                            tvm.call_extern("uint64", "set_vector_mask",
-                                            params.uint64_all_one,
-                                            params.uint64_all_one))
+                            tvm.call_extern("uint64", "set_vector_mask", params.uint64_all_one, params.uint64_all_one))
 
             params.ib_.emit(
-                tvm.call_extern(
-                    dtype_dst, "copy_ubuf_to_gm",
-                    gm_cast.access_ptr(
-                        "w", offset=(num_cycle - 1) * ub_block_ele),
-                    dst_ubuf.access_ptr('r', offset=0), 0, 1,
-                    _ceil_div(shape_mod, cp_align_len_fp16), 0, 0))
+                tvm.call_extern(dtype_dst, "copy_ubuf_to_gm",
+                                gm_cast.access_ptr("w", offset=(num_cycle - 1) * ub_block_ele),
+                                dst_ubuf.access_ptr('r', offset=0), 0, 1, _ceil_div(shape_mod, cp_align_len_fp16), 0,
+                                0))
 
 
-def _apply_for_new_alloc(ib_, dtype, buf_len, align_size,
-                         scope=tbe_platform.scope_ubuf):
+def _apply_for_new_alloc(ib_, dtype, buf_len, align_size, scope=tbe_platform.scope_ubuf):
     """
     Request caching space for the calculation process.
     """
-    shape = (_ceil_fill(buf_len, align_size),)
+    shape = (_ceil_fill(buf_len, align_size), )
     buf_var = ib_.allocate(dtype, shape, name="tmp_buf", scope=scope)
-    new_buffer = tvm.decl_buffer(
-        shape,
-        buf_var.dtype,
-        name="tmp_buf",
-        scope=tbe_platform.scope_ubuf,
-        data=buf_var)
+    new_buffer = tvm.decl_buffer(shape, buf_var.dtype, name="tmp_buf", scope=tbe_platform.scope_ubuf, data=buf_var)
 
     return new_buffer
 
@@ -352,22 +299,18 @@ def _do_vector_dump(ubuf, ubuf_offset, dup_len, constant_values, params):
     """
     Description vector dump operation.
     """
-
     def _dump(data_len, cycle_offset):
         """
         Emit instruction 'vector_dup'.
         """
         params.ib_.emit(
-            tvm.call_extern(
-                params.dtype, 'vector_dup', ubuf.access_ptr("rw", offset=ubuf_offset + cycle_offset),
-                constant_values, _ceil_div(data_len, params.vec_align_len), 1, 1, 8, 8))
+            tvm.call_extern(params.dtype, 'vector_dup', ubuf.access_ptr("rw", offset=ubuf_offset + cycle_offset),
+                            constant_values, _ceil_div(data_len, params.vec_align_len), 1, 1, 8, 8))
 
     dump_buffer_max_len = params.uint8_max_value * params.vec_align_len
     num_cycle = dup_len // dump_buffer_max_len
 
-    params.ib_.emit(tvm.call_extern("uint64", 'set_vector_mask',
-                                    tvm.const(-1, 'uint64'),
-                                    tvm.const(-1, 'uint64')))
+    params.ib_.emit(tvm.call_extern("uint64", 'set_vector_mask', tvm.const(-1, 'uint64'), tvm.const(-1, 'uint64')))
 
     with params.ib_.for_range(0, num_cycle, for_type="serial", name="i") as i:
         _dump(dump_buffer_max_len, i * dump_buffer_max_len)
@@ -389,11 +332,10 @@ def _do_dump_to_gm(bufs, ubuf_len, padding_len, params, multi_core_top=False):
         """
         with params.ib_.if_scope(data_len >= params.cp_align_len):
             params.ib_.emit(
-                tvm.call_extern(
-                    params.dtype, 'copy_ubuf_to_gm',
-                    gm_.buf.access_ptr("rw", offset=gm_.offset + cycle_offset),
-                    ubuf.buf.access_ptr("r", offset=ubuf.offset), 0, 1,
-                    data_len // params.cp_align_len, 0, 0))
+                tvm.call_extern(params.dtype, 'copy_ubuf_to_gm',
+                                gm_.buf.access_ptr("rw", offset=gm_.offset + cycle_offset),
+                                ubuf.buf.access_ptr("r", offset=ubuf.offset), 0, 1, data_len // params.cp_align_len, 0,
+                                0))
 
     def _ubuf_gm_align_fail(data_len, cycle_offset):
         """
@@ -407,22 +349,17 @@ def _do_dump_to_gm(bufs, ubuf_len, padding_len, params, multi_core_top=False):
                            params.cp_align_len
         with params.ib_.if_scope(data_len - align_ok_len > 0):
             params.ib_.emit(
-                tvm.call_extern(
-                    params.dtype, 'copy_ubuf_to_gm',
-                    gm_.buf.access_ptr("rw", offset=gm_actual_offset),
-                    ubuf.buf.access_ptr("r", offset=ubuf.offset), 0, 1, 1, 0,
-                    0))
+                tvm.call_extern(params.dtype, 'copy_ubuf_to_gm', gm_.buf.access_ptr("rw", offset=gm_actual_offset),
+                                ubuf.buf.access_ptr("r", offset=ubuf.offset), 0, 1, 1, 0, 0))
 
     def _ubuf_gm(data_len, cycle_offset):
         """
         Emit instruction 'copy_ubuf_to_gm'.
         """
         params.ib_.emit(
-            tvm.call_extern(
-                params.dtype, 'copy_ubuf_to_gm',
-                gm_.buf.access_ptr("rw", offset=gm_.offset + cycle_offset),
-                ubuf.buf.access_ptr("r", offset=ubuf.offset), 0, 1,
-                _ceil_div(data_len, params.cp_align_len), 0, 0))
+            tvm.call_extern(params.dtype, 'copy_ubuf_to_gm', gm_.buf.access_ptr("rw", offset=gm_.offset + cycle_offset),
+                            ubuf.buf.access_ptr("r", offset=ubuf.offset), 0, 1,
+                            _ceil_div(data_len, params.cp_align_len), 0, 0))
 
     num_cycle = padding_len // ubuf_len
     with params.ib_.for_range(0, num_cycle, for_type="serial", name="i") as i:
@@ -436,8 +373,7 @@ def _do_dump_to_gm(bufs, ubuf_len, padding_len, params, multi_core_top=False):
             _ubuf_gm(tail_len, num_cycle * ubuf_len)
 
 
-def _do_padding(padding_len, out_ubuf, gm_out_buf, params,
-                multi_core_top=False):
+def _do_padding(padding_len, out_ubuf, gm_out_buf, params, multi_core_top=False):
     """
     Pad a tensor according to the paddings you specify.
     """
@@ -445,15 +381,11 @@ def _do_padding(padding_len, out_ubuf, gm_out_buf, params,
         return gm_out_buf.offset, out_ubuf.offset
 
     if out_ubuf.buf == 0:
-        dump_buf = _apply_for_new_alloc(params.ib_, params.dtype,
-                                        params.unified_buffer_len,
-                                        params.cp_align_len,
+        dump_buf = _apply_for_new_alloc(params.ib_, params.dtype, params.unified_buffer_len, params.cp_align_len,
                                         tbe_platform.scope_ubuf)
-        dump_buf_len = min(params.unified_buffer_len,
-                           _ceil_fill(padding_len, params.cp_align_len))
+        dump_buf_len = min(params.unified_buffer_len, _ceil_fill(padding_len, params.cp_align_len))
 
-        _do_vector_dump(dump_buf, 0, dump_buf_len, params.constant_values,
-                        params)
+        _do_vector_dump(dump_buf, 0, dump_buf_len, params.constant_values, params)
         _do_dump_to_gm((PadBuf(dump_buf, 0), gm_out_buf),
                        dump_buf_len,
                        padding_len,
@@ -463,53 +395,36 @@ def _do_padding(padding_len, out_ubuf, gm_out_buf, params,
 
     align_offset, mask = params.get_align_mask(out_ubuf.offset)
 
-    params.ib_.emit(
-        tvm.call_extern("uint64", 'set_vector_mask', params.uint64_all_one,
-                        mask))
+    params.ib_.emit(tvm.call_extern("uint64", 'set_vector_mask', params.uint64_all_one, mask))
 
     params.ib_.emit(
-        tvm.call_extern(
-            params.dtype, 'vector_dup',
-            out_ubuf.buf.access_ptr(
-                "rw", offset=out_ubuf.offset - align_offset),
-            params.constant_values, 1, 1, 1, 8, 8))
+        tvm.call_extern(params.dtype, 'vector_dup', out_ubuf.buf.access_ptr("rw",
+                                                                            offset=out_ubuf.offset - align_offset),
+                        params.constant_values, 1, 1, 1, 8, 8))
 
-    params.ib_.emit(
-        tvm.call_extern("uint64", 'set_vector_mask', params.uint64_all_one,
-                        params.uint64_all_one))
+    params.ib_.emit(tvm.call_extern("uint64", 'set_vector_mask', params.uint64_all_one, params.uint64_all_one))
 
     # 0 < align_offset < params.cp_align_len, so add params.cp_align_len
     remaining_length = padding_len + params.cp_align_len - \
                        params.vec_align_len
 
     if padding_len - params.vec_align_len > 0:
-        _do_vector_dump(
-            out_ubuf.buf,
-            out_ubuf.offset - align_offset + params.vec_align_len,
-            remaining_length, params.constant_values, params)
+        _do_vector_dump(out_ubuf.buf, out_ubuf.offset - align_offset + params.vec_align_len, remaining_length,
+                        params.constant_values, params)
     elif remaining_length > 0:
-        with params.ib_.if_scope(
-            padding_len + align_offset - params.vec_align_len > 0):
-            _do_vector_dump(
-                out_ubuf.buf,
-                out_ubuf.offset - align_offset + params.vec_align_len,
-                remaining_length, params.constant_values, params)
+        with params.ib_.if_scope(padding_len + align_offset - params.vec_align_len > 0):
+            _do_vector_dump(out_ubuf.buf, out_ubuf.offset - align_offset + params.vec_align_len, remaining_length,
+                            params.constant_values, params)
 
     return gm_out_buf.offset, out_ubuf.offset + padding_len
 
 
-def _mode_large_last_axis(data_len,
-                          gm_out_buf,
-                          gm_in_buf,
-                          params,
-                          multi_core_top=False):
+def _mode_large_last_axis(data_len, gm_out_buf, gm_in_buf, params, multi_core_top=False):
     """
     Repeat the pad operation when the last axis is too big to finish
     pad at one time.
     """
-    tmp_buf = _apply_for_new_alloc(params.ib_, params.dtype,
-                                   params.unified_buffer_len,
-                                   params.cp_align_len,
+    tmp_buf = _apply_for_new_alloc(params.ib_, params.dtype, params.unified_buffer_len, params.cp_align_len,
                                    tbe_platform.scope_ubuf)
 
     def _gm_ubuf_gm_align_ok(copy_len, cycle_offset):
@@ -519,19 +434,14 @@ def _mode_large_last_axis(data_len,
         with params.ib_.if_scope(copy_len >= params.cp_align_len):
             len_burst = copy_len // params.cp_align_len
             params.ib_.emit(
-                tvm.call_extern(
-                    params.dtype, 'copy_gm_to_ubuf',
-                    tmp_buf.access_ptr("rw", offset=0),
-                    gm_in_buf.buf.access_ptr(
-                        "r", offset=gm_in_buf.offset + cycle_offset), 0, 1,
-                    len_burst, 0, 0))
+                tvm.call_extern(params.dtype, 'copy_gm_to_ubuf', tmp_buf.access_ptr("rw", offset=0),
+                                gm_in_buf.buf.access_ptr("r", offset=gm_in_buf.offset + cycle_offset), 0, 1, len_burst,
+                                0, 0))
 
             params.ib_.emit(
-                tvm.call_extern(
-                    params.dtype, 'copy_ubuf_to_gm',
-                    gm_out_buf.buf.access_ptr(
-                        "rw", offset=gm_out_buf.offset + cycle_offset),
-                    tmp_buf.access_ptr("r", offset=0), 0, 1, len_burst, 0, 0))
+                tvm.call_extern(params.dtype, 'copy_ubuf_to_gm',
+                                gm_out_buf.buf.access_ptr("rw", offset=gm_out_buf.offset + cycle_offset),
+                                tmp_buf.access_ptr("r", offset=0), 0, 1, len_burst, 0, 0))
 
     def _gm_ubuf_gm_align_fail(copy_len, cycle_offset):
         """
@@ -544,17 +454,12 @@ def _mode_large_last_axis(data_len,
         with params.ib_.if_scope(copy_len - align_ok_len > 0):
             ex_offset = cycle_offset + copy_len - params.cp_align_len
             params.ib_.emit(
-                tvm.call_extern(
-                    params.dtype, 'copy_gm_to_ubuf',
-                    tmp_buf.access_ptr("rw", offset=0),
-                    gm_in_buf.buf.access_ptr(
-                        "r", offset=gm_in_buf.offset + ex_offset), 0, 1, 1, 0, 0))
+                tvm.call_extern(params.dtype, 'copy_gm_to_ubuf', tmp_buf.access_ptr("rw", offset=0),
+                                gm_in_buf.buf.access_ptr("r", offset=gm_in_buf.offset + ex_offset), 0, 1, 1, 0, 0))
             params.ib_.emit(
-                tvm.call_extern(
-                    params.dtype, 'copy_ubuf_to_gm',
-                    gm_out_buf.buf.access_ptr(
-                        "rw", offset=gm_out_buf.offset + ex_offset),
-                    tmp_buf.access_ptr("r", offset=0), 0, 1, 1, 0, 0))
+                tvm.call_extern(params.dtype, 'copy_ubuf_to_gm',
+                                gm_out_buf.buf.access_ptr("rw", offset=gm_out_buf.offset + ex_offset),
+                                tmp_buf.access_ptr("r", offset=0), 0, 1, 1, 0, 0))
 
     def _gm_ubuf_gm(copy_len, cycle_offset):
         """
@@ -562,30 +467,23 @@ def _mode_large_last_axis(data_len,
         """
         len_burst = _ceil_div(copy_len, params.cp_align_len)
         params.ib_.emit(
-            tvm.call_extern(
-                params.dtype, 'copy_gm_to_ubuf',
-                tmp_buf.access_ptr("rw", offset=0),
-                gm_in_buf.buf.access_ptr(
-                    "r", offset=gm_in_buf.offset + cycle_offset), 0, 1,
-                len_burst, 0, 0))
+            tvm.call_extern(params.dtype, 'copy_gm_to_ubuf', tmp_buf.access_ptr("rw", offset=0),
+                            gm_in_buf.buf.access_ptr("r", offset=gm_in_buf.offset + cycle_offset), 0, 1, len_burst, 0,
+                            0))
 
         params.ib_.emit(
-            tvm.call_extern(
-                params.dtype, 'copy_ubuf_to_gm',
-                gm_out_buf.buf.access_ptr(
-                    "rw", offset=gm_out_buf.offset + cycle_offset),
-                tmp_buf.access_ptr("r", offset=0), 0, 1, len_burst, 0, 0))
+            tvm.call_extern(params.dtype, 'copy_ubuf_to_gm',
+                            gm_out_buf.buf.access_ptr("rw", offset=gm_out_buf.offset + cycle_offset),
+                            tmp_buf.access_ptr("r", offset=0), 0, 1, len_burst, 0, 0))
 
     num_cycle = data_len // params.unified_buffer_len
     with params.ib_.for_range(0, num_cycle, for_type="serial", name="i") as i:
-        _gm_ubuf_gm_align_ok(params.unified_buffer_len,
-                             i * params.unified_buffer_len)
+        _gm_ubuf_gm_align_ok(params.unified_buffer_len, i * params.unified_buffer_len)
 
     tail_len = data_len % params.unified_buffer_len
     with params.ib_.if_scope(tail_len > 0):
         if multi_core_top:
-            _gm_ubuf_gm_align_fail(tail_len,
-                                   num_cycle * params.unified_buffer_len)
+            _gm_ubuf_gm_align_fail(tail_len, num_cycle * params.unified_buffer_len)
         else:
             _gm_ubuf_gm(tail_len, num_cycle * params.unified_buffer_len)
 
@@ -601,50 +499,35 @@ def _mask_copy(out_ubuf, data_buf, data_offset, data_len, params):
         dup_len = 128
     else:
         dup_len = 64
-    dup_buf = _apply_for_new_alloc(params.ib_, params.dtype, dup_len,
-                                   params.cp_align_len,
-                                   tbe_platform.scope_ubuf)
+    dup_buf = _apply_for_new_alloc(params.ib_, params.dtype, dup_len, params.cp_align_len, tbe_platform.scope_ubuf)
+
+    params.ib_.emit(tvm.call_extern(params.dtype, 'vector_dup', dup_buf.access_ptr("rw", offset=0), 0, 1, 1, 1, 8, 8))
+
+    params.ib_.emit(tvm.call_extern("uint64", 'set_vector_mask', params.uint64_all_one, mask))
 
     params.ib_.emit(
-        tvm.call_extern(params.dtype, 'vector_dup',
-                        dup_buf.access_ptr("rw", offset=0), 0, 1, 1, 1, 8, 8))
+        tvm.call_extern(params.dtype, 'vadd', out_ubuf.buf.access_ptr("w", offset=out_ubuf.offset - align_offset),
+                        data_buf.access_ptr("r", offset=data_offset), dup_buf.access_ptr("r", offset=0), 1, 1, 1, 1, 8,
+                        8, 8))
 
-    params.ib_.emit(
-        tvm.call_extern("uint64", 'set_vector_mask', params.uint64_all_one,
-                        mask))
-
-    params.ib_.emit(
-        tvm.call_extern(
-            params.dtype, 'vadd',
-            out_ubuf.buf.access_ptr("w", offset=out_ubuf.offset - align_offset),
-            data_buf.access_ptr("r", offset=data_offset),
-            dup_buf.access_ptr("r", offset=0), 1, 1, 1, 1, 8, 8, 8))
-
-    params.ib_.emit(
-        tvm.call_extern("uint64", 'set_vector_mask', params.uint64_all_one,
-                        params.uint64_all_one))
+    params.ib_.emit(tvm.call_extern("uint64", 'set_vector_mask', params.uint64_all_one, params.uint64_all_one))
 
     def _do_copy(copy_len):
         """
         Emit instruction 'copy_ubuf_to_ubuf'.
         """
         params.ib_.emit(
-            tvm.call_extern(params.dtype, 'copy_ubuf_to_ubuf',
-                            out_ubuf.buf.access_ptr(
-                                "rw", offset=out_ubuf.offset - align_offset +
-                                params.vec_align_len),
-                            data_buf.access_ptr(
-                                "r", offset=data_offset +
-                                params.vec_align_len), 0, 1,
-                            _ceil_div(copy_len + params.cp_align_len -
-                                      params.vec_align_len + align_offset,
-                                      params.cp_align_len), 0, 0))
+            tvm.call_extern(
+                params.dtype, 'copy_ubuf_to_ubuf',
+                out_ubuf.buf.access_ptr("rw", offset=out_ubuf.offset - align_offset + params.vec_align_len),
+                data_buf.access_ptr("r", offset=data_offset + params.vec_align_len), 0, 1,
+                _ceil_div(copy_len + params.cp_align_len - params.vec_align_len + align_offset, params.cp_align_len), 0,
+                0))
 
     if data_len - params.vec_align_len > 0:
         _do_copy(data_len)
     elif data_len + params.cp_align_len - params.vec_align_len > 0:
-        with params.ib_.if_scope(
-            data_len + align_offset - params.vec_align_len > 0):
+        with params.ib_.if_scope(data_len + align_offset - params.vec_align_len > 0):
             _do_copy(data_len)
 
 
@@ -656,32 +539,24 @@ def _mode_align_dst_src_fail(out_ubuf, gm_in_buf, data_len, gm_align, params):
     align_offset, _ = params.get_align_mask(out_ubuf.offset)
     # to make sure there are 8 block ub reserved
     temp_data_len = max(params.cp_align_len * 8, data_len + params.cp_align_len)
-    tmp_buf = _apply_for_new_alloc(params.ib_, params.dtype,
-                                   temp_data_len,
-                                   params.cp_align_len,
+    tmp_buf = _apply_for_new_alloc(params.ib_, params.dtype, temp_data_len, params.cp_align_len,
                                    tbe_platform.scope_ubuf)
 
     # clear warning, 0 < align_offset < params.cp_align_len
     params.ib_.emit(
-        tvm.call_extern(
-            params.dtype, 'copy_gm_to_ubuf',
-            tmp_buf.access_ptr("rw", offset=0),
-            gm_in_buf.buf.access_ptr("r", offset=gm_in_buf.offset), 0, 1,
-            _ceil_div(data_len + params.cp_align_len, params.cp_align_len), 0, 0))
+        tvm.call_extern(params.dtype, 'copy_gm_to_ubuf', tmp_buf.access_ptr("rw", offset=0),
+                        gm_in_buf.buf.access_ptr("r", offset=gm_in_buf.offset), 0, 1,
+                        _ceil_div(data_len + params.cp_align_len, params.cp_align_len), 0, 0))
 
     params.ib_.emit(
-        tvm.call_extern(
-            params.dtype, 'copy_ubuf_to_gm',
-            gm_align.access_ptr("rw", offset=align_offset),
-            tmp_buf.access_ptr("r", offset=0), 0, 1,
-            _ceil_div(data_len + params.cp_align_len, params.cp_align_len), 0, 0))
+        tvm.call_extern(params.dtype, 'copy_ubuf_to_gm', gm_align.access_ptr("rw", offset=align_offset),
+                        tmp_buf.access_ptr("r", offset=0), 0, 1,
+                        _ceil_div(data_len + params.cp_align_len, params.cp_align_len), 0, 0))
 
     params.ib_.emit(
-        tvm.call_extern(
-            params.dtype, 'copy_gm_to_ubuf',
-            tmp_buf.access_ptr("rw", offset=0),
-            gm_align.access_ptr("r", offset=0), 0, 1,
-            _ceil_div(data_len + params.cp_align_len, params.cp_align_len), 0, 0))
+        tvm.call_extern(params.dtype, 'copy_gm_to_ubuf', tmp_buf.access_ptr("rw", offset=0),
+                        gm_align.access_ptr("r", offset=0), 0, 1,
+                        _ceil_div(data_len + params.cp_align_len, params.cp_align_len), 0, 0))
 
     _mask_copy(out_ubuf, tmp_buf, 0, data_len, params)
 
@@ -697,31 +572,21 @@ def _data_copy(axis, bufs, gm_align, params, multi_core_top=False):
     if params.copy_mode == params.enum_copy_mode['large_last_axis']:
         # When the last dimension is large, the data is processed in a
         # sub-section
-        _mode_large_last_axis(
-            data_axis_end_len,
-            gm_out_buf,
-            gm_in_buf,
-            params,
-            multi_core_top=multi_core_top)
+        _mode_large_last_axis(data_axis_end_len, gm_out_buf, gm_in_buf, params, multi_core_top=multi_core_top)
     elif params.copy_mode == params.enum_copy_mode['align_ok']:
         params.ib_.emit(
-            tvm.call_extern(
-                params.dtype, 'copy_ubuf_to_ubuf',
-                out_buf.buf.access_ptr("rw", offset=out_buf.offset),
-                data_buf.buf.access_ptr("r", offset=data_buf.offset), 0, 1,
-                _ceil_div(params.in_shape[axis] * one_block_size,
-                          params.cp_align_len), 0, 0))
+            tvm.call_extern(params.dtype, 'copy_ubuf_to_ubuf', out_buf.buf.access_ptr("rw", offset=out_buf.offset),
+                            data_buf.buf.access_ptr("r", offset=data_buf.offset), 0, 1,
+                            _ceil_div(params.in_shape[axis] * one_block_size, params.cp_align_len), 0, 0))
     elif params.copy_mode == params.enum_copy_mode['align_dst_fail']:
         # When outbuf offset does not meet 32 byte alignment,
         # but after offset the inbuf and outbuf can meet both
         align_offset, _ = params.get_align_mask(out_buf.offset)
-        _mask_copy(out_buf, data_buf.buf, data_buf.offset - align_offset,
-                   data_axis_end_len, params)
+        _mask_copy(out_buf, data_buf.buf, data_buf.offset - align_offset, data_axis_end_len, params)
     elif params.copy_mode == params.enum_copy_mode['align_dst_src_fail']:
         # When outbuf offset does not meet 32 byte alignment,
         # but after offset the inbuf and outbuf can not meet both
-        _mode_align_dst_src_fail(out_buf, gm_in_buf, data_axis_end_len,
-                                 gm_align, params)
+        _mode_align_dst_src_fail(out_buf, gm_in_buf, data_axis_end_len, gm_align, params)
 
 
 # 'pylint: disable=locally-disabled,too-many-instance-attributes
@@ -736,17 +601,11 @@ class PadParams:
     get_copy_mode: Provide access to data moving mode.
     multi_core_get_copy_mode: Data moving mode in multi-cores scenario.
     """
-
     def __init__(self, ib_, key_args, dtype):
         """
         Initialization method
         """
-        self.enum_copy_mode = {
-            'align_ok': 1,
-            'align_dst_fail': 2,
-            'align_dst_src_fail': 3,
-            'large_last_axis': 4
-        }
+        self.enum_copy_mode = {'align_ok': 1, 'align_dst_fail': 2, 'align_dst_src_fail': 3, 'large_last_axis': 4}
 
         self.ib_ = ib_
         self.in_shape, self.paddings, self.constant_values = key_args
@@ -765,8 +624,7 @@ class PadParams:
         self.uint8_max_value = 255
         # Number corresponding to 64-bit masks when they are all 1: 2**64 -1
         self.uint64_all_one = UINT64_ALL_ONE
-        self.mask = ib_.allocate(
-            "uint64", (1,), name="mask", scope=tbe_platform.scope_reg)
+        self.mask = ib_.allocate("uint64", (1, ), name="mask", scope=tbe_platform.scope_reg)
         scalar_dtype = _get_scalar_dtype()
         self.align_offset = \
             ib_.allocate(scalar_dtype, (2,), name="align_offset",
@@ -784,14 +642,13 @@ class PadParams:
         """
         if isinstance(offset, int):
             align_offset = offset % self.cp_align_len
-            mask = self.uint64_all_one - (2 ** align_offset - 1)
+            mask = self.uint64_all_one - (2**align_offset - 1)
             return align_offset, mask
 
         self.align_offset[0] = 1 if tvm.api_config.query_bit_width() == 32 else tvm.const(1, "int64")
         self.align_offset[0] = offset % (self.cp_align_len * self.align_offset[0])
         self.mask[0] = tvm.const(self.uint64_all_one // 2, "uint64") * tvm.const(2, "uint64") + tvm.const(1, "uint64")
-        with self.ib_.for_range(
-            0, self.align_offset[0], for_type="serial", name="i"):
+        with self.ib_.for_range(0, self.align_offset[0], for_type="serial", name="i"):
             self.mask[0] = self.mask[0] * tvm.const(2, "uint64")
 
         return self.align_offset[0], self.mask[0]
@@ -837,8 +694,7 @@ class PadParams:
 
         if create_data_buf:
             out_ubuf = True
-        one_block_size = _prod(_get_output_shape(in_shape,
-                                                 paddings)[axis + 1:])
+        one_block_size = _prod(_get_output_shape(in_shape, paddings)[axis + 1:])
 
         if out_ubuf:
             out_ubuf_offset = \
@@ -846,15 +702,13 @@ class PadParams:
         in_one_block_size = _prod(in_shape[axis + 1:])
 
         if axis + 1 >= len(in_shape):
-            self.get_data_copy(in_shape, paddings, axis,
-                               (out_ubuf, out_ubuf_offset, data_offset))
+            self.get_data_copy(in_shape, paddings, axis, (out_ubuf, out_ubuf_offset, data_offset))
         else:
             for i in range(in_shape[axis]):
                 if out_ubuf:
                     out_ubuf_offset = out_ubuf_offset + i * one_block_size
                     data_offset = data_offset + i * in_one_block_size
-                self.get_copy_mode(in_shape, paddings, axis + 1,
-                                   (out_ubuf, out_ubuf_offset, data_offset))
+                self.get_copy_mode(in_shape, paddings, axis + 1, (out_ubuf, out_ubuf_offset, data_offset))
 
         return self.copy_mode
 
@@ -868,8 +722,7 @@ class PadParams:
         if axis + 1 >= len(in_shape):
             self.copy_mode = self.enum_copy_mode['large_last_axis']
         else:
-            self.get_copy_mode(in_shape, paddings, axis + 1,
-                               (out_ubuf, out_ubuf_offset, data_offset))
+            self.get_copy_mode(in_shape, paddings, axis + 1, (out_ubuf, out_ubuf_offset, data_offset))
 
         return self.copy_mode
 
@@ -883,7 +736,6 @@ class PadBuf:
     get_buf: Provide access to buffer of the operation.
     get_offset: Provide access to offset in the buffer.
     """
-
     def __init__(self, buf, offset):
         """
         Initialization method
@@ -908,7 +760,7 @@ def _pad_wc_axis(axis, bufs, params, n_align, n_padding):
     out_buf, data_buf, gm_out_buf, gm_in_buf = bufs
     data_len = _prod(params.in_shape[axis:])
     out_data_len = _prod(params.out_shape[axis:])
-    c_axis = params.in_shape[axis+1]
+    c_axis = params.in_shape[axis + 1]
     pad_head = n_align + n_padding
     pad_tail = params.paddings[axis][1] * c_axis
     if params.dtype == "float16":
@@ -932,7 +784,7 @@ def _pad_wc_axis(axis, bufs, params, n_align, n_padding):
             circle_mask.extend([0] * tail)
         masks = []
         for i in range(0, len(circle_mask), nums_per_repeat):
-            mask = circle_mask[i:i+nums_per_repeat]
+            mask = circle_mask[i:i + nums_per_repeat]
             mask = ''.join([str(b) for b in mask])[::-1]
             masks.append(mask)
         return masks
@@ -948,9 +800,7 @@ def _pad_wc_axis(axis, bufs, params, n_align, n_padding):
             yield high, low, len(list(group))
 
     def _data_copy_wc():
-        tmp_buf = _apply_for_new_alloc(params.ib_, params.dtype,
-                                       pad_head + out_data_len +
-                                       params.cp_align_len,
+        tmp_buf = _apply_for_new_alloc(params.ib_, params.dtype, pad_head + out_data_len + params.cp_align_len,
                                        params.cp_align_len, tbe_platform.scope_ubuf)
 
         params.ib_.emit(
@@ -966,12 +816,9 @@ def _pad_wc_axis(axis, bufs, params, n_align, n_padding):
                 0,
                 0))
 
-        dup_buf = _apply_for_new_alloc(params.ib_, params.dtype, dup_len,
-                                       params.cp_align_len, tbe_platform.scope_ubuf)
+        dup_buf = _apply_for_new_alloc(params.ib_, params.dtype, dup_len, params.cp_align_len, tbe_platform.scope_ubuf)
         params.ib_.emit(
-            tvm.call_extern(params.dtype, 'vector_dup',
-                            dup_buf.access_ptr("rw",
-                                               offset=0), 0, 1, 1, 1, 8, 8))
+            tvm.call_extern(params.dtype, 'vector_dup', dup_buf.access_ptr("rw", offset=0), 0, 1, 1, 1, 8, 8))
 
         masks = _get_masks(data_len, out_data_len + n_align)
         intrin_param = _get_mask_and_repeat(masks)
@@ -981,9 +828,8 @@ def _pad_wc_axis(axis, bufs, params, n_align, n_padding):
                 n_repeats += repeat
                 continue
             params.ib_.emit(
-                tvm.call_extern("uint64", 'set_vector_mask',
-                                tvm.const(hi_mask, 'uint64'),
-                                tvm.const(lo_mask, 'uint64')))
+                tvm.call_extern("uint64", 'set_vector_mask', tvm.const(hi_mask, 'uint64'), tvm.const(lo_mask,
+                                                                                                     'uint64')))
 
             while repeat > 0:
                 if repeat > 255:
@@ -992,24 +838,17 @@ def _pad_wc_axis(axis, bufs, params, n_align, n_padding):
                     vec_repeat = repeat
                 repeat -= vec_repeat
                 params.ib_.emit(
-                    tvm.call_extern(
-                        params.dtype, 'vadd',
-                        out_buf.buf.access_ptr("w", offset=dup_len *
-                                               n_repeats),
-                        tmp_buf.access_ptr("r", offset=dup_len * n_repeats),
-                        dup_buf.access_ptr('r', offset=0),
-                        vec_repeat, 1, 1, 1, 8, 8, 0))
+                    tvm.call_extern(params.dtype, 'vadd', out_buf.buf.access_ptr("w", offset=dup_len * n_repeats),
+                                    tmp_buf.access_ptr("r", offset=dup_len * n_repeats),
+                                    dup_buf.access_ptr('r', offset=0), vec_repeat, 1, 1, 1, 8, 8, 0))
                 n_repeats += vec_repeat
 
         burst_len = _ceil_div(n_align + n_padding, 32 // params.type_size)
         if burst_len > 0:
             params.ib_.emit(
-                tvm.call_extern(
-                    params.dtype, 'copy_ubuf_to_gm',
-                    gm_out_buf.buf.access_ptr("rw", offset=gm_out_buf.offset),
-                    out_buf.buf.access_ptr("r", offset=0),
-                    0, 1,
-                    burst_len, 0, 0))
+                tvm.call_extern(params.dtype, 'copy_ubuf_to_gm',
+                                gm_out_buf.buf.access_ptr("rw", offset=gm_out_buf.offset),
+                                out_buf.buf.access_ptr("r", offset=0), 0, 1, burst_len, 0, 0))
 
     _data_copy_wc()
 
@@ -1065,12 +904,9 @@ def _pad_recursive_fun(axis, bufs, gm_align, params, multi_core_top=False):
                                          in_data_len, params.cp_align_len,
                                          tbe_platform.scope_ubuf)
                 params.ib_.emit(
-                    tvm.call_extern(
-                        params.dtype, 'copy_gm_to_ubuf',
-                        data_buf.buf.access_ptr("rw", offset=0),
-                        gm_in_buf.buf.access_ptr("r", offset=gm_in_buf.offset),
-                        0, 1,
-                        _ceil_div(in_data_len, params.cp_align_len), 0, 0))
+                    tvm.call_extern(params.dtype, 'copy_gm_to_ubuf', data_buf.buf.access_ptr("rw", offset=0),
+                                    gm_in_buf.buf.access_ptr("r", offset=gm_in_buf.offset), 0, 1,
+                                    _ceil_div(in_data_len, params.cp_align_len), 0, 0))
 
     one_block_size = _prod(params.out_shape[axis + 1:])
     in_one_block_size = _prod(params.in_shape[axis + 1:])
@@ -1082,7 +918,7 @@ def _pad_recursive_fun(axis, bufs, gm_align, params, multi_core_top=False):
             _do_padding(params.paddings[axis][0] * one_block_size,
                         out_buf, gm_out_buf, params)
     else:
-        c_axis = params.in_shape[axis+1]
+        c_axis = params.in_shape[axis + 1]
         n_padding = params.paddings[axis][0] * c_axis
         factor = 32 // params.type_size
         if n_padding % factor != 0:
@@ -1090,43 +926,29 @@ def _pad_recursive_fun(axis, bufs, gm_align, params, multi_core_top=False):
 
     if fuse_wc_axis:
 
-        tvm.call_extern("uint64", 'set_vector_mask',
-                        tvm.const(-1, 'uint64'), tvm.const(-1, 'uint64'))
+        tvm.call_extern("uint64", 'set_vector_mask', tvm.const(-1, 'uint64'), tvm.const(-1, 'uint64'))
 
         dup_len = out_data_len + n_align
-        _do_vector_dump(out_buf.buf, out_buf.offset, dup_len,
-                        params.constant_values, params)
+        _do_vector_dump(out_buf.buf, out_buf.offset, dup_len, params.constant_values, params)
 
-        _pad_wc_axis(
-            axis, (out_buf, data_buf, gm_out_buf, gm_in_buf),
-            params, n_align, n_padding)
+        _pad_wc_axis(axis, (out_buf, data_buf, gm_out_buf, gm_in_buf), params, n_align, n_padding)
 
         gm_out_buf.offset += n_padding
 
     elif axis + 1 >= len(params.in_shape):
-        _data_copy(
-            axis, (out_buf, data_buf, gm_out_buf, gm_in_buf),
-            gm_align,
-            params,
-            multi_core_top=multi_core_top)
+        _data_copy(axis, (out_buf, data_buf, gm_out_buf, gm_in_buf), gm_align, params, multi_core_top=multi_core_top)
     else:
-        with params.ib_.for_range(
-            0, params.in_shape[axis],
-            for_type="serial", name="i") as i:
+        with params.ib_.for_range(0, params.in_shape[axis], for_type="serial", name="i") as i:
             if out_buf.buf != 0:
                 out_ubuf_offset_tmp = out_buf.offset + i * one_block_size
                 data_buf.offset = data_buf.offset + i * in_one_block_size
             else:
                 out_ubuf_offset_tmp = out_buf.offset
 
-            _pad_recursive_fun(
-                axis + 1,
-                (PadBuf(out_buf.buf, out_ubuf_offset_tmp), data_buf,
-                 PadBuf(gm_out_buf.buf, gm_out_buf.offset + i *
-                        one_block_size),
-                 PadBuf(gm_in_buf.buf,
-                        gm_in_buf.offset + i * in_one_block_size)), gm_align,
-                params)
+            _pad_recursive_fun(axis + 1, (PadBuf(out_buf.buf, out_ubuf_offset_tmp), data_buf,
+                                          PadBuf(gm_out_buf.buf, gm_out_buf.offset + i * one_block_size),
+                                          PadBuf(gm_in_buf.buf, gm_in_buf.offset + i * in_one_block_size)), gm_align,
+                               params)
 
     if out_buf.buf != 0:
         out_buf.offset = out_buf.offset + \
@@ -1142,25 +964,20 @@ def _pad_recursive_fun(axis, bufs, gm_align, params, multi_core_top=False):
                         multi_core_top=multi_core_top)
 
     if create_data_buf:
-        _save_out_buf(out_buf.buf, gm_out_buf,
-                      (params.paddings[axis][1] * one_block_size, in_data_len,
-                       out_data_len), params, fuse_wc_axis, n_align, n_padding)
+        _save_out_buf(out_buf.buf, gm_out_buf, (params.paddings[axis][1] * one_block_size, in_data_len, out_data_len),
+                      params, fuse_wc_axis, n_align, n_padding)
 
 
-def _save_out_buf(out_ubuf, gm_out_buf, data_lens, params, fuse_wc_axis=False,
-                  n_align=0, n_padding=0):
+def _save_out_buf(out_ubuf, gm_out_buf, data_lens, params, fuse_wc_axis=False, n_align=0, n_padding=0):
     """
     Moving data from ubuf to external storage(gm)
     """
     tail_pad_len, in_data_len, out_data_len = data_lens
     if fuse_wc_axis:
         params.ib_.emit(
-            tvm.call_extern(
-                params.dtype, 'copy_ubuf_to_gm',
-                gm_out_buf.buf.access_ptr("rw", offset=gm_out_buf.offset),
-                out_ubuf.access_ptr("r", offset=n_align + n_padding), 0, 1,
-                _ceil_div(out_data_len - n_padding, params.cp_align_len),
-                0, 0))
+            tvm.call_extern(params.dtype, 'copy_ubuf_to_gm', gm_out_buf.buf.access_ptr("rw", offset=gm_out_buf.offset),
+                            out_ubuf.access_ptr("r", offset=n_align + n_padding), 0, 1,
+                            _ceil_div(out_data_len - n_padding, params.cp_align_len), 0, 0))
     elif params.in_multi_core_mode:
         align_tail = out_data_len % params.cp_align_len
         if align_tail != 0:
@@ -1170,60 +987,49 @@ def _save_out_buf(out_ubuf, gm_out_buf, data_lens, params, fuse_wc_axis=False,
                                 params.cp_align_len
                 # The rest of the block must be constant_values.
                 params.ib_.emit(
-                    tvm.call_extern(
-                        params.dtype, 'copy_ubuf_to_gm',
-                        gm_out_buf.buf.access_ptr("rw", offset=actual_offset),
-                        out_ubuf.access_ptr("r", offset=out_data_len - align_tail), 0, 1, 1, 0, 0))
+                    tvm.call_extern(params.dtype, 'copy_ubuf_to_gm',
+                                    gm_out_buf.buf.access_ptr("rw", offset=actual_offset),
+                                    out_ubuf.access_ptr("r", offset=out_data_len - align_tail), 0, 1, 1, 0, 0))
             else:
                 actual_offset = gm_out_buf.offset + params.cp_align_len - align_tail
                 params.ib_.emit(
-                    tvm.call_extern(
-                        params.dtype, 'copy_ubuf_to_gm',
-                        gm_out_buf.buf.access_ptr("rw", offset=actual_offset),
-                        out_ubuf.access_ptr("r", offset=out_data_len - align_tail), 0, 1, 1, 0, 0))
+                    tvm.call_extern(params.dtype, 'copy_ubuf_to_gm',
+                                    gm_out_buf.buf.access_ptr("rw", offset=actual_offset),
+                                    out_ubuf.access_ptr("r", offset=out_data_len - align_tail), 0, 1, 1, 0, 0))
 
                 params.ib_.emit(
-                    tvm.call_extern(
-                        params.dtype, 'copy_gm_to_ubuf',
-                        out_ubuf.access_ptr("rw", offset=out_data_len - align_tail),
-                        gm_out_buf.buf.access_ptr("r", offset=gm_out_buf.offset), 0, 1,
-                        _ceil_div(in_data_len, params.cp_align_len), 0, 0))
+                    tvm.call_extern(params.dtype, 'copy_gm_to_ubuf',
+                                    out_ubuf.access_ptr("rw", offset=out_data_len - align_tail),
+                                    gm_out_buf.buf.access_ptr("r", offset=gm_out_buf.offset), 0, 1,
+                                    _ceil_div(in_data_len, params.cp_align_len), 0, 0))
 
                 actual_offset = gm_out_buf.offset + out_data_len - params.cp_align_len
                 # The rest of the block must be constant_values.
                 params.ib_.emit(
-                    tvm.call_extern(
-                        params.dtype, 'copy_ubuf_to_gm',
-                        gm_out_buf.buf.access_ptr("rw", offset=actual_offset),
-                        out_ubuf.access_ptr("r", offset=out_data_len - align_tail), 0, 1, 1, 0, 0))
+                    tvm.call_extern(params.dtype, 'copy_ubuf_to_gm',
+                                    gm_out_buf.buf.access_ptr("rw", offset=actual_offset),
+                                    out_ubuf.access_ptr("r", offset=out_data_len - align_tail), 0, 1, 1, 0, 0))
 
         if out_data_len > params.cp_align_len:
             params.ib_.emit(
-                tvm.call_extern(
-                    params.dtype, 'copy_ubuf_to_gm',
-                    gm_out_buf.buf.access_ptr("rw", offset=gm_out_buf.offset),
-                    out_ubuf.access_ptr("r", offset=0), 0, 1,
-                    out_data_len // params.cp_align_len, 0, 0))
+                tvm.call_extern(params.dtype, 'copy_ubuf_to_gm',
+                                gm_out_buf.buf.access_ptr("rw", offset=gm_out_buf.offset),
+                                out_ubuf.access_ptr("r", offset=0), 0, 1, out_data_len // params.cp_align_len, 0, 0))
     else:
         params.ib_.emit(
-            tvm.call_extern(
-                params.dtype, 'copy_ubuf_to_gm',
-                gm_out_buf.buf.access_ptr("rw", offset=gm_out_buf.offset),
-                out_ubuf.access_ptr("r", offset=0), 0, 1,
-                _ceil_div(out_data_len, params.cp_align_len), 0, 0))
+            tvm.call_extern(params.dtype, 'copy_ubuf_to_gm', gm_out_buf.buf.access_ptr("rw", offset=gm_out_buf.offset),
+                            out_ubuf.access_ptr("r", offset=0), 0, 1, _ceil_div(out_data_len, params.cp_align_len), 0,
+                            0))
 
 
-def _multi_core_do_padding(padding_len, constant_values, gm_out_buf,
-                           gm_out_offset, params):
+def _multi_core_do_padding(padding_len, constant_values, gm_out_buf, gm_out_offset, params):
     """
     Pad a tensor according to the paddings you specify in multi-core scenario.
     """
     if padding_len <= 0:
         return
 
-    dump_buf = _apply_for_new_alloc(params.ib_, params.dtype,
-                                    params.unified_buffer_len,
-                                    params.cp_align_len,
+    dump_buf = _apply_for_new_alloc(params.ib_, params.dtype, params.unified_buffer_len, params.cp_align_len,
                                     tbe_platform.scope_ubuf)
     block_size_1 = _ceil_div(padding_len, params.device_core_num)
     block_size = _ceil_fill(block_size_1, params.cp_align_len)
@@ -1233,29 +1039,18 @@ def _multi_core_do_padding(padding_len, constant_values, gm_out_buf,
 
     if padding_len // block_size == 0:
         with params.ib_.if_scope(params.block.var == 0):
-            _do_dump_to_gm(
-                (PadBuf(dump_buf, 0),
-                 PadBuf(gm_out_buf,
-                        gm_out_offset + params.block.var * block_size)),
-                dump_buf_len, padding_len, params)
+            _do_dump_to_gm((PadBuf(dump_buf, 0), PadBuf(gm_out_buf, gm_out_offset + params.block.var * block_size)),
+                           dump_buf_len, padding_len, params)
     else:
-        with params.ib_.if_scope((params.block.var + 1) * block_size
-                                 <= padding_len):
-            _do_dump_to_gm(
-                (PadBuf(dump_buf, 0),
-                 PadBuf(gm_out_buf,
-                        gm_out_offset + params.block.var * block_size)),
-                dump_buf_len, block_size, params)
+        with params.ib_.if_scope((params.block.var + 1) * block_size <= padding_len):
+            _do_dump_to_gm((PadBuf(dump_buf, 0), PadBuf(gm_out_buf, gm_out_offset + params.block.var * block_size)),
+                           dump_buf_len, block_size, params)
 
         if padding_len % block_size != 0:
             with params.ib_.else_scope():
-                with params.ib_.if_scope(
-                    padding_len - params.block.var * block_size > 0):
+                with params.ib_.if_scope(padding_len - params.block.var * block_size > 0):
                     _do_dump_to_gm(
-                        (PadBuf(dump_buf, 0),
-                         PadBuf(gm_out_buf,
-                                gm_out_offset + params.block.var *
-                                block_size)),
+                        (PadBuf(dump_buf, 0), PadBuf(gm_out_buf, gm_out_offset + params.block.var * block_size)),
                         dump_buf_len,
                         padding_len % block_size,
                         params,
@@ -1271,8 +1066,7 @@ def _pad_multi_core_fun(axis, bufs, gm_align, params):
     one_block_size = _prod(params.out_shape[axis + 1:])
 
     with params.ib_.new_scope():
-        _multi_core_do_padding(params.paddings[axis][0] * one_block_size,
-                               params.constant_values, gm_out_buf.buf,
+        _multi_core_do_padding(params.paddings[axis][0] * one_block_size, params.constant_values, gm_out_buf.buf,
                                gm_out_buf.offset, params)
 
     gm_out_buf.offset = \
@@ -1285,29 +1079,18 @@ def _pad_multi_core_fun(axis, bufs, gm_align, params):
         block_size_1 = _ceil_div(data_axis_end_len, params.device_core_num)
         block_size = _ceil_fill(block_size_1, params.cp_align_len)
 
-        with params.ib_.if_scope((params.block.var + 1) * block_size
-                                 <= data_axis_end_len):
-            _mode_large_last_axis(
-                block_size,
-                PadBuf(gm_out_buf.buf,
-                       gm_out_buf.offset + params.block.var * block_size),
-                PadBuf(gm_in_buf.buf,
-                       gm_in_buf.offset + params.block.var * block_size),
-                params)
+        with params.ib_.if_scope((params.block.var + 1) * block_size <= data_axis_end_len):
+            _mode_large_last_axis(block_size, PadBuf(gm_out_buf.buf, gm_out_buf.offset + params.block.var * block_size),
+                                  PadBuf(gm_in_buf.buf, gm_in_buf.offset + params.block.var * block_size), params)
 
         if data_axis_end_len % block_size != 0:
             with params.ib_.else_scope():
-                with params.ib_.if_scope(
-                    data_axis_end_len - params.block.var * block_size > 0):
-                    _mode_large_last_axis(
-                        data_axis_end_len % block_size,
-                        PadBuf(
-                            gm_out_buf.buf,
-                            gm_out_buf.offset + params.block.var * block_size),
-                        PadBuf(gm_in_buf.buf, gm_in_buf.offset +
-                               params.block.var * block_size),
-                        params,
-                        multi_core_top=True)
+                with params.ib_.if_scope(data_axis_end_len - params.block.var * block_size > 0):
+                    _mode_large_last_axis(data_axis_end_len % block_size,
+                                          PadBuf(gm_out_buf.buf, gm_out_buf.offset + params.block.var * block_size),
+                                          PadBuf(gm_in_buf.buf, gm_in_buf.offset + params.block.var * block_size),
+                                          params,
+                                          multi_core_top=True)
     else:
         repeat = _ceil_div(params.in_shape[axis], params.device_core_num)
 
@@ -1315,27 +1098,21 @@ def _pad_multi_core_fun(axis, bufs, gm_align, params):
             j = params.block.var * repeat + i
 
             with params.ib_.if_scope(j < params.in_shape[axis]):
-                _pad_recursive_fun(
-                    axis + 1,
-                    (out_buf, data_buf,
-                     PadBuf(gm_out_buf.buf,
-                            gm_out_buf.offset + j * one_block_size),
-                     PadBuf(gm_in_buf.buf,
-                            gm_in_buf.offset + j * in_one_block_size)),
-                    gm_align,
-                    params,
-                    multi_core_top=True)
+                _pad_recursive_fun(axis + 1,
+                                   (out_buf, data_buf, PadBuf(gm_out_buf.buf, gm_out_buf.offset + j * one_block_size),
+                                    PadBuf(gm_in_buf.buf, gm_in_buf.offset + j * in_one_block_size)),
+                                   gm_align,
+                                   params,
+                                   multi_core_top=True)
 
     gm_out_buf.offset = gm_out_buf.offset + \
                         params.in_shape[axis] * one_block_size
-    _multi_core_do_padding(params.paddings[axis][1] * one_block_size,
-                           params.constant_values, gm_out_buf.buf,
+    _multi_core_do_padding(params.paddings[axis][1] * one_block_size, params.constant_values, gm_out_buf.buf,
                            gm_out_buf.offset, params)
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments
-def _intrin_factor(input_tensor, output_res, gm_cast, gm_align, output_tensor,
-                   args):
+def _intrin_factor(input_tensor, output_res, gm_cast, gm_align, output_tensor, args):
     """
     Implement split logic and select multi-core or single-core operations
     based on the results of segmentation
@@ -1349,9 +1126,7 @@ def _intrin_factor(input_tensor, output_res, gm_cast, gm_align, output_tensor,
     else:
         dtype_now = dtype_src
 
-    params = PadParams(
-        ib_, (in_shape, paddings, tvm.const(constant_values, dtype_now)),
-        dtype_now)
+    params = PadParams(ib_, (in_shape, paddings, tvm.const(constant_values, dtype_now)), dtype_now)
 
     if dtype_src == "int8" or dtype_src == "uint8":
         _do_cast(params, input_tensor, gm_cast, in_shape, dtype_src, dtype_now)
@@ -1371,8 +1146,8 @@ def _intrin_factor(input_tensor, output_res, gm_cast, gm_align, output_tensor,
 
         params.copy_mode = params.enum_copy_mode['align_ok']
         params.multi_core_get_copy_mode(in_shape, paddings, 0, (False, 0, 0))
-        _pad_multi_core_fun(0, (PadBuf(0, 0), PadBuf(0, 0), PadBuf(
-            output_mid, 0), PadBuf(input_cast, 0)), gm_align, params)
+        _pad_multi_core_fun(0, (PadBuf(0, 0), PadBuf(0, 0), PadBuf(output_mid, 0), PadBuf(input_cast, 0)), gm_align,
+                            params)
 
     elif _prod(in_shape[1:]) >= params.cp_align_len and \
             (paddings[1][1] * _prod(params.out_shape[2:]) >=
@@ -1382,19 +1157,17 @@ def _intrin_factor(input_tensor, output_res, gm_cast, gm_align, output_tensor,
 
         params.copy_mode = params.enum_copy_mode['align_ok']
         params.multi_core_get_copy_mode(in_shape, paddings, 0, (False, 0, 0))
-        _pad_multi_core_fun(0, (PadBuf(0, 0), PadBuf(0, 0), PadBuf(
-            output_mid, 0), PadBuf(input_cast, 0)), gm_align, params)
+        _pad_multi_core_fun(0, (PadBuf(0, 0), PadBuf(0, 0), PadBuf(output_mid, 0), PadBuf(input_cast, 0)), gm_align,
+                            params)
     else:
         params.copy_mode = params.enum_copy_mode['align_ok']
         params.get_copy_mode(in_shape, paddings, 0, (False, 0, 0))
         with params.ib_.if_scope(params.block.var == 0):
-            _pad_recursive_fun(0, (PadBuf(0, 0), PadBuf(
-                0, 0), PadBuf(output_mid, 0), PadBuf(input_cast, 0)), gm_align,
+            _pad_recursive_fun(0, (PadBuf(0, 0), PadBuf(0, 0), PadBuf(output_mid, 0), PadBuf(input_cast, 0)), gm_align,
                                params)
 
     if dtype_src == "int8" or dtype_src == "uint8":
-        _do_cast(params, output_mid, output_res, params.out_shape, dtype_now,
-                 dtype_src)
+        _do_cast(params, output_mid, output_res, params.out_shape, dtype_now, dtype_src)
 
     return ib_.get()
 
@@ -1415,9 +1188,8 @@ def _set_mask_insn(tvm_ir, type_, bits=128):
     set_mask_insn
     """
     mask1, mask2 = _set_mask(bits)
-    tvm_ir.emit(tvm.call_extern(type_, 'set_vector_mask',
-                                tvm.const(mask1, dtype='uint64'),
-                                tvm.const(mask2, dtype='uint64')))
+    tvm_ir.emit(
+        tvm.call_extern(type_, 'set_vector_mask', tvm.const(mask1, dtype='uint64'), tvm.const(mask2, dtype='uint64')))
 
 
 def _zero_ub(tvm_ir, buf_addr, buf_len, dtype):
@@ -1435,30 +1207,20 @@ def _zero_ub(tvm_ir, buf_addr, buf_len, dtype):
         repeat_255 = repeat // 255
         with tvm_ir.for_range(0, repeat_255, name='i0') as i:
             tvm_ir.emit(
-                tvm.call_extern(
-                    dtype, 'vector_dup',
-                    buf_addr.access_ptr('w', offset=i*255*dup_len),
-                    0, 255, 1, 1, 8, 8))
+                tvm.call_extern(dtype, 'vector_dup', buf_addr.access_ptr('w', offset=i * 255 * dup_len), 0, 255, 1, 1,
+                                8, 8))
         if repeat % 255 > 0:
             tvm_ir.emit(
-                tvm.call_extern(
-                    dtype, 'vector_dup',
-                    buf_addr.access_ptr('w',
-                                        offset=repeat_255*255*dup_len),
-                    0, repeat % 255, 1, 1, 8, 8))
+                tvm.call_extern(dtype, 'vector_dup', buf_addr.access_ptr('w', offset=repeat_255 * 255 * dup_len), 0,
+                                repeat % 255, 1, 1, 8, 8))
 
     else:
-        tvm_ir.emit(
-            tvm.call_extern(dtype, 'vector_dup', buf_addr.access_ptr('w'), 0,
-                            repeat, 1, 1, 8, 8))
+        tvm_ir.emit(tvm.call_extern(dtype, 'vector_dup', buf_addr.access_ptr('w'), 0, repeat, 1, 1, 8, 8))
 
     if remain > 0:
         _set_mask_insn(tvm_ir, dtype, remain)
-        tvm_ir.emit(tvm.call_extern(dtype, 'vector_dup',
-                                    buf_addr.access_ptr(
-                                        'w',
-                                        offset=repeat*dup_len),
-                                    0, 1, 1, 1, 8, 8))
+        tvm_ir.emit(
+            tvm.call_extern(dtype, 'vector_dup', buf_addr.access_ptr('w', offset=repeat * dup_len), 0, 1, 1, 1, 8, 8))
         _set_mask_insn(tvm_ir, dtype, 128)
 
 
@@ -1471,32 +1233,25 @@ def _zero_ub_tail(tvm_ir, buf_addr, buf_offset, zero_len, dtype):
         block_len = 8
     mask1 = 0
     mask2 = (2**(block_len) - 1) - (2**(block_len - zero_len) - 1)
-    tvm_ir.emit(tvm.call_extern(dtype, 'set_vector_mask',
-                                tvm.const(mask1, dtype='uint64'),
-                                tvm.const(mask2, dtype='uint64')))
+    tvm_ir.emit(
+        tvm.call_extern(dtype, 'set_vector_mask', tvm.const(mask1, dtype='uint64'), tvm.const(mask2, dtype='uint64')))
 
-    tvm_ir.emit(tvm.call_extern(dtype, 'vector_dup',
-                                buf_addr.access_ptr('w', offset=buf_offset), 0,
-                                1, 1, 1, 8, 8))
+    tvm_ir.emit(tvm.call_extern(dtype, 'vector_dup', buf_addr.access_ptr('w', offset=buf_offset), 0, 1, 1, 1, 8, 8))
     _set_mask_insn(tvm_ir, dtype, 128)
 
 
 # 'pylint: disable=too-many-arguments
-def _emit_copy_ubuf_to_gm(tvm_ir, dtype, dst, src, nburst, burstlen, srcstride,
-                          dststride, dst_offset=0, src_offset=0):
+def _emit_copy_ubuf_to_gm(tvm_ir, dtype, dst, src, nburst, burstlen, srcstride, dststride, dst_offset=0, src_offset=0):
     """
     emit_copy_ubuf_to_gm
     """
-    tvm_ir.emit(tvm.call_extern(dtype, 'copy_ubuf_to_gm',
-                                dst.access_ptr('w', offset=dst_offset),
-                                src.access_ptr('r', offset=src_offset), 0,
-                                nburst, burstlen, srcstride, dststride))
+    tvm_ir.emit(
+        tvm.call_extern(dtype, 'copy_ubuf_to_gm', dst.access_ptr('w', offset=dst_offset),
+                        src.access_ptr('r', offset=src_offset), 0, nburst, burstlen, srcstride, dststride))
 
 
 # 'pylint: disable=too-many-arguments
-def _emit_copy_ubuf_to_gm_safely(tvm_ir, dtype, dst, src, count, tail_ub,
-                                 dst_offset=0,
-                                 src_offset=0):
+def _emit_copy_ubuf_to_gm_safely(tvm_ir, dtype, dst, src, count, tail_ub, dst_offset=0, src_offset=0):
     """
     emit_copy_ubuf_to_gm: count must equal or large than block_len
     """
@@ -1506,38 +1261,30 @@ def _emit_copy_ubuf_to_gm_safely(tvm_ir, dtype, dst, src, count, tail_ub,
     elif dtype in ('int8', 'uint8'):
         block_len = 32
     num_block = count // block_len
-    tvm_ir.emit(tvm.call_extern(dtype, 'copy_ubuf_to_gm',
-                                dst.access_ptr('w', offset=dst_offset),
-                                src.access_ptr('r', offset=src_offset), 0,
-                                1, num_block, 0, 0))
+    tvm_ir.emit(
+        tvm.call_extern(dtype, 'copy_ubuf_to_gm', dst.access_ptr('w', offset=dst_offset),
+                        src.access_ptr('r', offset=src_offset), 0, 1, num_block, 0, 0))
     if count % block_len != 0:
         for i in range(block_len):
             tvm_ir.emit(
-                tvm.call_extern(
-                    dtype, 'reg_mov', tail_ub.access_ptr('w', offset=i),
-                    src.access_ptr('r',
-                                   offset=src_offset + count - block_len + i)))
-        tvm_ir.emit(tvm.call_extern(dtype, 'copy_ubuf_to_gm',
-                                    dst.access_ptr(
-                                        'w',
-                                        offset=dst_offset + count - block_len),
-                                    tail_ub.access_ptr('r'), 0, 1, 1, 0, 0))
+                tvm.call_extern(dtype, 'reg_mov', tail_ub.access_ptr('w', offset=i),
+                                src.access_ptr('r', offset=src_offset + count - block_len + i)))
+        tvm_ir.emit(
+            tvm.call_extern(dtype, 'copy_ubuf_to_gm', dst.access_ptr('w', offset=dst_offset + count - block_len),
+                            tail_ub.access_ptr('r'), 0, 1, 1, 0, 0))
 
 
 # 'pylint: disable=too-many-arguments
-def _emit_copy_gm_to_ubuf(tvm_ir, dtype, dst, src, nburst, burstlen, srcstride,
-                          dststride, dst_offset=0, src_offset=0):
+def _emit_copy_gm_to_ubuf(tvm_ir, dtype, dst, src, nburst, burstlen, srcstride, dststride, dst_offset=0, src_offset=0):
     """
     emit_copy_gm_to_ubuf
     """
-    tvm_ir.emit(tvm.call_extern(dtype, 'copy_gm_to_ubuf',
-                                dst.access_ptr('w', offset=dst_offset),
-                                src.access_ptr('r', offset=src_offset), 0,
-                                nburst, burstlen, srcstride, dststride))
+    tvm_ir.emit(
+        tvm.call_extern(dtype, 'copy_gm_to_ubuf', dst.access_ptr('w', offset=dst_offset),
+                        src.access_ptr('r', offset=src_offset), 0, nburst, burstlen, srcstride, dststride))
 
 
-def _save_padding_bottom(tvm_ir, tail_block_ub, dst, src, input_x, paddings,
-                         block_index, batch_rows):
+def _save_padding_bottom(tvm_ir, tail_block_ub, dst, src, input_x, paddings, block_index, batch_rows):
     """
     copy ubuf to gm, for multi-core process, need tail process
     """
@@ -1551,38 +1298,42 @@ def _save_padding_bottom(tvm_ir, tail_block_ub, dst, src, input_x, paddings,
     cols_padding = int(shape[-1]) + paddings[-1][0] + paddings[-1][1]
     cols_padding_left = int(paddings[-1][0])
     cols_padding_right = int(paddings[-1][1])
-    block_offset = block_index*rows_padding*cols_padding
+    block_offset = block_index * rows_padding * cols_padding
     block_len = 16
     if dtype in ('float32', 'int32'):
         block_len = 8
     elif dtype in ('int8', 'uint8'):
         block_len = 32
-    cols_align = ((cols_padding + block_len - 1) // block_len)*block_len
+    cols_align = ((cols_padding + block_len - 1) // block_len) * block_len
     burstlen = (cols + cols_padding_right + block_len - 1) // block_len
 
     with tvm_ir.for_range(0, rows_padding_bottom - 1, name='i0') as i:
-        bottom_offset = (i + rows_padding_up + rows)*cols_padding
-        _emit_copy_ubuf_to_gm(
-            tvm_ir, dtype, dst, src, 1, burstlen, 0, 0,
-            dst_offset=block_offset + bottom_offset + cols_padding_left,
-            src_offset=(i + batch_rows)*cols_align)
+        bottom_offset = (i + rows_padding_up + rows) * cols_padding
+        _emit_copy_ubuf_to_gm(tvm_ir,
+                              dtype,
+                              dst,
+                              src,
+                              1,
+                              burstlen,
+                              0,
+                              0,
+                              dst_offset=block_offset + bottom_offset + cols_padding_left,
+                              src_offset=(i + batch_rows) * cols_align)
 
     last_nburst = burstlen - 1
     if last_nburst < 1:
         last_nburst = 1
-    _emit_copy_ubuf_to_gm(
-        tvm_ir, dtype, dst, src, 1, last_nburst, 0, 0,
-        block_offset + (rows_padding - 1)*cols_padding + cols_padding_left,
-        (rows_padding_bottom + batch_rows - 1)*cols_align)
+    _emit_copy_ubuf_to_gm(tvm_ir, dtype, dst, src, 1, last_nburst, 0, 0,
+                          block_offset + (rows_padding - 1) * cols_padding + cols_padding_left,
+                          (rows_padding_bottom + batch_rows - 1) * cols_align)
 
     if burstlen > 1:
         for i in range(block_len):
             src_offset = (rows_padding_bottom + batch_rows - 1)*cols_align + \
                          cols + cols_padding_right - block_len + i
             tvm_ir.emit(
-                tvm.call_extern(
-                    dtype, 'reg_mov', tail_block_ub.access_ptr('w', offset=i),
-                    src.access_ptr('r', offset=src_offset)))
+                tvm.call_extern(dtype, 'reg_mov', tail_block_ub.access_ptr('w', offset=i),
+                                src.access_ptr('r', offset=src_offset)))
         gm_offset = block_offset + rows_padding * cols_padding - block_len
         _emit_copy_ubuf_to_gm(tvm_ir, dtype, dst, tail_block_ub, 1, 1, 0, 0, gm_offset)
 
@@ -1593,15 +1344,14 @@ def _get_batch_rows(rows_padding_bottom, cols_align, dtype):
     """
     dtype_size = tbe_platform.get_bit_len(dtype) // 8
     ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-    padding_bytes = rows_padding_bottom*cols_align*dtype_size
-    tempub_bytes = cols_align*dtype_size
+    padding_bytes = rows_padding_bottom * cols_align * dtype_size
+    tempub_bytes = cols_align * dtype_size
     batch_rows = (ub_size_bytes - 32 - padding_bytes - tempub_bytes) // \
                  (cols_align*dtype_size)
     return batch_rows
 
 
-def _load_and_save(tvm_ir, input_x, output_y, ub_addr, block_index, row_start,
-                   num_rows, paddings):
+def _load_and_save(tvm_ir, input_x, output_y, ub_addr, block_index, row_start, num_rows, paddings):
     """
     load data from gm to ubuf and save to gm
     """
@@ -1620,31 +1370,24 @@ def _load_and_save(tvm_ir, input_x, output_y, ub_addr, block_index, row_start,
     rows_padding_up = int(paddings[-2][0])
     cols_padding_left = int(paddings[-1][0])
     cols_padding_right = int(paddings[-1][1])
-    cols_align = ((cols_padding + block_len - 1) // block_len)*block_len
-    block_offset = block_index*rows_padding*cols_padding
+    cols_align = ((cols_padding + block_len - 1) // block_len) * block_len
+    block_offset = block_index * rows_padding * cols_padding
     # load data from gm to ubuf, every row is 32B aligned in ubuf
     zero_len = block_len - cols % block_len
     with tvm_ir.for_range(0, num_rows, name='i0') as i:
         burstlen = (cols + block_len - 1) // block_len
-        _emit_copy_gm_to_ubuf(tvm_ir, dtype, ub_addr, input_x, 1,
-                              burstlen,
-                              0, 0,
-                              i*cols_align,
-                              block_index*rows*cols + (i + row_start)*cols)
+        _emit_copy_gm_to_ubuf(tvm_ir, dtype, ub_addr, input_x, 1, burstlen, 0, 0, i * cols_align,
+                              block_index * rows * cols + (i + row_start) * cols)
 
         # last dim may not 32B aligned, so the data in block tail is not zero
         if cols % block_len != 0:
-            _zero_ub_tail(tvm_ir, ub_addr,
-                          i*cols_align + cols - (cols % block_len),
-                          zero_len, dtype)
+            _zero_ub_tail(tvm_ir, ub_addr, i * cols_align + cols - (cols % block_len), zero_len, dtype)
 
     burstlen = (cols + cols_padding_right + block_len - 1) // block_len
     with tvm_ir.for_range(0, num_rows, name='i0') as i:
-        bottom_offset = (i + row_start + rows_padding_up)*cols_padding
-        _emit_copy_ubuf_to_gm(
-            tvm_ir, dtype, output_y, ub_addr, 1, burstlen, 0, 0,
-            block_offset + bottom_offset + cols_padding_left,
-            i*cols_align)
+        bottom_offset = (i + row_start + rows_padding_up) * cols_padding
+        _emit_copy_ubuf_to_gm(tvm_ir, dtype, output_y, ub_addr, 1, burstlen, 0, 0,
+                              block_offset + bottom_offset + cols_padding_left, i * cols_align)
 
 
 def _pad_for_n_c_hw(ins, outs, paddings):
@@ -1674,17 +1417,14 @@ def _pad_for_n_c_hw(ins, outs, paddings):
     rows_padding_bottom = int(paddings[-2][1])
     cols_padding_left = int(paddings[-1][0])
     cols_padding_right = int(paddings[-1][1])
-    cols_align = ((cols_padding + block_len - 1) // block_len)*block_len
+    cols_align = ((cols_padding + block_len - 1) // block_len) * block_len
 
     batch_row = _get_batch_rows(rows_padding_bottom, cols_align, dtype)
 
-    buflen = (rows_padding_bottom + batch_row)*cols_align
-    out_ub = _apply_for_new_alloc(tvm_ir, dtype, buflen, block_len,
-                                  scope=tbe_platform.scope_ubuf)
-    temp_ub = _apply_for_new_alloc(tvm_ir, dtype, cols_align, block_len,
-                                   scope=tbe_platform.scope_ubuf)
-    tail_block_ub = _apply_for_new_alloc(tvm_ir, dtype, block_len, block_len,
-                                         scope=tbe_platform.scope_ubuf)
+    buflen = (rows_padding_bottom + batch_row) * cols_align
+    out_ub = _apply_for_new_alloc(tvm_ir, dtype, buflen, block_len, scope=tbe_platform.scope_ubuf)
+    temp_ub = _apply_for_new_alloc(tvm_ir, dtype, cols_align, block_len, scope=tbe_platform.scope_ubuf)
+    tail_block_ub = _apply_for_new_alloc(tvm_ir, dtype, block_len, block_len, scope=tbe_platform.scope_ubuf)
     shape_temp_ub = (_ceil_fill(cols_align, block_len))
     _zero_ub(tvm_ir, temp_ub, shape_temp_ub, dtype)
 
@@ -1696,46 +1436,55 @@ def _pad_for_n_c_hw(ins, outs, paddings):
         if cols_padding_left > 0:
             num_block = (cols_padding_left + block_len - 1) // block_len
             with tvm_ir.for_range(0, rows_padding, name='i0') as i:
-                _emit_copy_ubuf_to_gm(tvm_ir, dtype, output, temp_ub, 1,
-                                      num_block, 0, 0,
-                                      dst_offset=block_offset + i*cols_padding)
+                _emit_copy_ubuf_to_gm(tvm_ir,
+                                      dtype,
+                                      output,
+                                      temp_ub,
+                                      1,
+                                      num_block,
+                                      0,
+                                      0,
+                                      dst_offset=block_offset + i * cols_padding)
 
         # set padding up zero
         if rows_padding_up > 0:
             num_block = (cols + cols_padding_right + block_len - 1) //\
                         block_len
             with tvm_ir.for_range(0, rows_padding_up, name='i0') as i:
-                _emit_copy_ubuf_to_gm(
-                    tvm_ir, dtype, output, temp_ub, 1, num_block, 0, 0,
-                    dst_offset=block_offset + i*cols_padding +
-                    cols_padding_left)
+                _emit_copy_ubuf_to_gm(tvm_ir,
+                                      dtype,
+                                      output,
+                                      temp_ub,
+                                      1,
+                                      num_block,
+                                      0,
+                                      0,
+                                      dst_offset=block_offset + i * cols_padding + cols_padding_left)
 
         num_batch = rows // batch_row
         rows_remain = rows % batch_row
 
         with tvm_ir.for_range(0, num_batch, name='i0') as i:
-            _load_and_save(tvm_ir, input_data, output, out_ub, block_index,
-                           i*batch_row, batch_row, paddings)
+            _load_and_save(tvm_ir, input_data, output, out_ub, block_index, i * batch_row, batch_row, paddings)
         if rows_remain > 0:
-            _load_and_save(tvm_ir, input_data, output, out_ub, block_index,
-                           num_batch*batch_row, rows_remain, paddings)
+            _load_and_save(tvm_ir, input_data, output, out_ub, block_index, num_batch * batch_row, rows_remain,
+                           paddings)
 
         # save padding bottom
         if rows_padding_bottom > 0:
-            _save_padding_bottom(tvm_ir, tail_block_ub, output, out_ub,
-                                 input_data, paddings, block_index, batch_row)
+            _save_padding_bottom(tvm_ir, tail_block_ub, output, out_ub, input_data, paddings, block_index, batch_row)
     if cols_padding < block_len or non_pad_nums > 65536 or \
             rows_padding_bottom == 0:
         _zero_ub(tvm_ir, out_ub, buflen, dtype)
         with tvm_ir.for_range(0, non_pad_nums, name='i0') as index:
             _zero_ub(tvm_ir, temp_ub, cols_align, dtype)
-            block_offset = index*rows_padding*cols_padding
+            block_offset = index * rows_padding * cols_padding
             mov_fun(block_offset, index)
     else:
         blocks = non_pad_nums
         block_index = tvm.thread_axis("blockIdx.x")
         tvm_ir.scope_attr(block_index, "thread_extent", blocks)
-        block_offset = block_index*rows_padding*cols_padding
+        block_offset = block_index * rows_padding * cols_padding
 
         _zero_ub(tvm_ir, out_ub, buflen, dtype)
         mov_fun(block_offset, block_index)
@@ -1761,7 +1510,7 @@ def _pad_for_n_hw_c(ins, outs, paddings):
         block_len = 32
     num = 1
     for i in range(len(shape) - 3):
-        num = num*shape[i]
+        num = num * shape[i]
 
     ori_w = int(shape[-2])
     ori_h = int(shape[-3])
@@ -1772,72 +1521,106 @@ def _pad_for_n_hw_c(ins, outs, paddings):
     h_padding_before = int(paddings[-3][0])
     h_padding_after = int(paddings[-3][1])
     out_c = int(out_shape[-1])
-    c_align = ((out_c + block_len - 1) // block_len)*block_len
+    c_align = ((out_c + block_len - 1) // block_len) * block_len
 
-    buflen = (w_padding*c_align)
-    out_ub = _apply_for_new_alloc(tvm_ir, dtype, buflen, block_len,
-                                  scope=tbe_platform.scope_ubuf)
-    tail_block_ub = _apply_for_new_alloc(tvm_ir, dtype, block_len, block_len,
-                                         scope=tbe_platform.scope_ubuf)
+    buflen = (w_padding * c_align)
+    out_ub = _apply_for_new_alloc(tvm_ir, dtype, buflen, block_len, scope=tbe_platform.scope_ubuf)
+    tail_block_ub = _apply_for_new_alloc(tvm_ir, dtype, block_len, block_len, scope=tbe_platform.scope_ubuf)
     blocks = num
     block_index = tvm.thread_axis("blockIdx.x")
     tvm_ir.scope_attr(block_index, "thread_extent", blocks)
-    block_offset_out = block_index*h_padding*w_padding*out_c
-    block_offset_in = block_index*ori_h*ori_w*out_c
+    block_offset_out = block_index * h_padding * w_padding * out_c
+    block_offset_in = block_index * ori_h * ori_w * out_c
 
     # zero a ub buff with after-padding size
     _zero_ub(tvm_ir, out_ub, buflen, dtype)
 
-    num_block = (w_padding*out_c + block_len - 1) // block_len
+    num_block = (w_padding * out_c + block_len - 1) // block_len
     if h_padding_before > 0:
         with tvm_ir.for_range(0, h_padding_before) as i:
-            _emit_copy_ubuf_to_gm(tvm_ir, dtype, output, out_ub, 1, num_block,
-                                  0, 0,
-                                  dst_offset=block_offset_out +
-                                  i*w_padding*out_c)
+            _emit_copy_ubuf_to_gm(tvm_ir,
+                                  dtype,
+                                  output,
+                                  out_ub,
+                                  1,
+                                  num_block,
+                                  0,
+                                  0,
+                                  dst_offset=block_offset_out + i * w_padding * out_c)
 
-    data_burst_len = (ori_w*out_c + block_len - 1) // block_len
+    data_burst_len = (ori_w * out_c + block_len - 1) // block_len
     zero_burst_len_before = (w_padding_before*out_c + block_len - 1) //\
                             block_len
     zero_burst_len_after = (w_padding_after*out_c + block_len - 1) //\
                            block_len
 
     with tvm_ir.for_range(0, ori_h, name='i0') as i:
-        padding_h_offset = (h_padding_before + i)*w_padding*out_c
-        _emit_copy_gm_to_ubuf(tvm_ir, dtype, out_ub, input_data, 1,
-                              data_burst_len, 0, 0,
-                              src_offset=block_offset_in + i*ori_w*out_c)
+        padding_h_offset = (h_padding_before + i) * w_padding * out_c
+        _emit_copy_gm_to_ubuf(tvm_ir,
+                              dtype,
+                              out_ub,
+                              input_data,
+                              1,
+                              data_burst_len,
+                              0,
+                              0,
+                              src_offset=block_offset_in + i * ori_w * out_c)
         if w_padding_before > 0:
-            _emit_copy_ubuf_to_gm(
-                tvm_ir, dtype, output, out_ub, 1, zero_burst_len_before, 0, 0,
-                dst_offset=block_offset_out + padding_h_offset,
-                src_offset=ori_w*c_align)
-        _emit_copy_ubuf_to_gm(
-            tvm_ir, dtype, output, out_ub, 1, data_burst_len, 0, 0,
-            dst_offset=block_offset_out + padding_h_offset +
-            w_padding_before*out_c)
+            _emit_copy_ubuf_to_gm(tvm_ir,
+                                  dtype,
+                                  output,
+                                  out_ub,
+                                  1,
+                                  zero_burst_len_before,
+                                  0,
+                                  0,
+                                  dst_offset=block_offset_out + padding_h_offset,
+                                  src_offset=ori_w * c_align)
+        _emit_copy_ubuf_to_gm(tvm_ir,
+                              dtype,
+                              output,
+                              out_ub,
+                              1,
+                              data_burst_len,
+                              0,
+                              0,
+                              dst_offset=block_offset_out + padding_h_offset + w_padding_before * out_c)
         if w_padding_after > 0:
-            _emit_copy_ubuf_to_gm(
-                tvm_ir, dtype, output, out_ub, 1, zero_burst_len_after, 0, 0,
-                dst_offset=block_offset_out + padding_h_offset +
-                (ori_w + w_padding_before)*out_c,
-                src_offset=ori_w*c_align)
+            _emit_copy_ubuf_to_gm(tvm_ir,
+                                  dtype,
+                                  output,
+                                  out_ub,
+                                  1,
+                                  zero_burst_len_after,
+                                  0,
+                                  0,
+                                  dst_offset=block_offset_out + padding_h_offset + (ori_w + w_padding_before) * out_c,
+                                  src_offset=ori_w * c_align)
 
     _zero_ub(tvm_ir, out_ub, buflen, dtype)
-    h_offset = (h_padding_before + ori_h)*w_padding*out_c
+    h_offset = (h_padding_before + ori_h) * w_padding * out_c
     if h_padding_after > 1:
         with tvm_ir.for_range(0, h_padding_after - 1) as i:
-            _emit_copy_ubuf_to_gm(
-                tvm_ir, dtype, output, out_ub, 1, num_block,
-                0, 0,
-                dst_offset=block_offset_out + h_offset + i*w_padding*out_c)
+            _emit_copy_ubuf_to_gm(tvm_ir,
+                                  dtype,
+                                  output,
+                                  out_ub,
+                                  1,
+                                  num_block,
+                                  0,
+                                  0,
+                                  dst_offset=block_offset_out + h_offset + i * w_padding * out_c)
 
-    count = w_padding*out_c
+    count = w_padding * out_c
     h2_offset = (h_padding_before + ori_h + h_padding_after - 1) *\
                 w_padding * out_c
-    _emit_copy_ubuf_to_gm_safely(
-        tvm_ir, dtype, output, out_ub, count, tail_block_ub,
-        dst_offset=block_offset_out + h2_offset)
+    _emit_copy_ubuf_to_gm_safely(tvm_ir,
+                                 dtype,
+                                 output,
+                                 out_ub,
+                                 count,
+                                 tail_block_ub,
+                                 dst_offset=block_offset_out + h2_offset)
 
     return tvm_ir.get()
 
@@ -1855,7 +1638,7 @@ def _check_align(shape, paddings, dtype, model):
     else:
         num_bit = 4
     while axis >= 0:
-        in_num = in_paddings[axis][model] * _prod(ou_shape[axis+1:])
+        in_num = in_paddings[axis][model] * _prod(ou_shape[axis + 1:])
         if in_num > 0:
             if in_num * num_bit % 32 != 0 or \
                     _prod(in_shape[axis:]) * num_bit % 32 != 0:
@@ -1892,16 +1675,16 @@ def _check_optimization_nhwc(input_x, paddings):
     if paddings[-1][0] != 0 or paddings[-1][1] != 0:
         return False
 
-    if h_padding_after*w_padding*ori_c*dtype_size < 32:
+    if h_padding_after * w_padding * ori_c * dtype_size < 32:
         return False
     if dtype in ('uint8', 'int8'):
         return False
-    if w_padding*c_align*dtype_size + 32 > ub_size_bytes:
+    if w_padding * c_align * dtype_size + 32 > ub_size_bytes:
         return False
     num = 1
     # max core num cannot exceed 65535
     for i in range(len(shape) - 3):
-        num = num*shape[i]
+        num = num * shape[i]
         if num > 65535:
             return False
         if paddings[i][0] != 0:
@@ -1975,12 +1758,12 @@ def _check_optimization_nchw(input_x, paddings):
 
     if dtype in ('uint8', 'int8'):
         return False
-    if (rows_padding_bottom + 1)*cols_padding*dtype_size + 32 > ub_size_bytes:
+    if (rows_padding_bottom + 1) * cols_padding * dtype_size + 32 > ub_size_bytes:
         return False
     num = 1
     # max core num cannot exceed 65535
     for i in range(len(shape) - 2):
-        num = num*shape[i]
+        num = num * shape[i]
         if paddings[i][0] != 0:
             return False
         if paddings[i][1] != 0:
@@ -2053,8 +1836,7 @@ def _pattern_align(shape, paddings, dtype):
     if ou_shape == in_shape:
         return True, in_shape, in_paddings
 
-    if not (_check_align(in_shape, in_paddings, dtype, 0) and
-            _check_align(in_shape, in_paddings, dtype, 1)):
+    if not (_check_align(in_shape, in_paddings, dtype, 0) and _check_align(in_shape, in_paddings, dtype, 1)):
         return False, in_shape, in_paddings
 
     if dtype == "float16":
@@ -2095,8 +1877,7 @@ def _pattern_align(shape, paddings, dtype):
     return True, in_shape, in_paddings
 
 
-def check_support_5hd(input_x,
-                      paddings):
+def check_support_5hd(input_x, paddings):
     """ Check whether 5HD is supported. 
 
     Parameters
@@ -2138,10 +1919,7 @@ def check_support_5hd(input_x,
     return is_support_5hd, dtype_base, dtype_5hd
 
 
-def op_select_format(input_x,
-                     output_x,
-                     paddings,
-                     kernel_name="pad_d"):
+def op_select_format(input_x, output_x, paddings, kernel_name="pad_d"):
     """ calculating pad tensor by paddings parameters
 
     Parameters
@@ -2174,10 +1952,16 @@ def op_select_format(input_x,
     dtype_str = ','.join(dtype_base_out)
     format_str = ','.join(format_base_out)
 
-    input0 = util_select_op_base.gen_param( classify="input0", name="x", datatype=dtype_str, format=format_str,
+    input0 = util_select_op_base.gen_param(classify="input0",
+                                           name="x",
+                                           datatype=dtype_str,
+                                           format=format_str,
+                                           unknownshape_format=format_str)
+    output0 = util_select_op_base.gen_param(classify="output0",
+                                            name="y",
+                                            datatype=dtype_str,
+                                            format=format_str,
                                             unknownshape_format=format_str)
-    output0 = util_select_op_base.gen_param( classify="output0", name="y", datatype=dtype_str, format=format_str,
-                                             unknownshape_format=format_str)
     param_list = [input0, output0]
     param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
 
@@ -2255,7 +2039,8 @@ def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
     if _check_optimization_nchw(input_x, paddings):
         res = tvm.extern([_get_output_shape(shape, paddings)], [data],
                          lambda ins, outs: _pad_for_n_c_hw(ins, outs, paddings),
-                         name="res", dtype=dtype)
+                         name="res",
+                         dtype=dtype)
         sch = tvm.create_schedule(res.op)
         build_list = [data, res]
         with tbe_platform.build_config:
@@ -2264,7 +2049,8 @@ def pad_d(input_x, output_x, paddings, kernel_name="pad_d"):
     elif _check_optimization_nhwc(input_x, paddings):
         res = tvm.extern([_get_output_shape(shape, paddings)], [data],
                          lambda ins, outs: _pad_for_n_hw_c(ins, outs, paddings),
-                         name="res", dtype=dtype)
+                         name="res",
+                         dtype=dtype)
         sch = tvm.create_schedule(res.op)
         build_list = [data, res]
         with tbe_platform.build_config:

@@ -33,21 +33,20 @@ def _is_equal_zero(x):
     data_one = tbe.broadcast(tvm.const(1, dtype), shape, dtype)
     abs_x = tbe.vabs(x)
     if dtype == "float32":
-        data_min = tbe.broadcast(tvm.const(2 ** (-126), dtype=dtype),
-                                 shape, dtype)
+        data_min = tbe.broadcast(tvm.const(2**(-126), dtype=dtype), shape, dtype)
         abs_x_min = tbe.vmin(abs_x, data_min)
-        zero_mul_val = tbe.vmuls(abs_x_min, tvm.const(2 ** 62, dtype=dtype))
-        zero_mul = tbe.vmuls(zero_mul_val, tvm.const(2 ** 62, dtype=dtype))
-        zero_res = tbe.vmuls(zero_mul, tvm.const(2 ** 2, dtype=dtype))
+        zero_mul_val = tbe.vmuls(abs_x_min, tvm.const(2**62, dtype=dtype))
+        zero_mul = tbe.vmuls(zero_mul_val, tvm.const(2**62, dtype=dtype))
+        zero_res = tbe.vmuls(zero_mul, tvm.const(2**2, dtype=dtype))
     else:
-        data_min = tbe.broadcast(tvm.const(2 ** (-24), dtype=dtype),
-                                 shape, dtype)
+        data_min = tbe.broadcast(tvm.const(2**(-24), dtype=dtype), shape, dtype)
         abs_x_min = tbe.vmin(abs_x, data_min)
-        zero_mul_val = tbe.vmuls(abs_x_min, tvm.const(2 ** 12, dtype=dtype))
-        zero_res = tbe.vmuls(zero_mul_val, tvm.const(2 ** 12, dtype=dtype))
+        zero_mul_val = tbe.vmuls(abs_x_min, tvm.const(2**12, dtype=dtype))
+        zero_res = tbe.vmuls(zero_mul_val, tvm.const(2**12, dtype=dtype))
     zero_index = tbe.vsub(data_one, zero_res)
 
     return zero_index
+
 
 def _less_compute(input_x, input_y):
     """
@@ -56,8 +55,7 @@ def _less_compute(input_x, input_y):
     dtype = input_x.dtype
     shape = input_x.shape
 
-    data_min = tbe.broadcast(tvm.const(2 ** (-126), dtype=dtype),
-                                     shape, dtype)
+    data_min = tbe.broadcast(tvm.const(2**(-126), dtype=dtype), shape, dtype)
     data_zero = tbe.broadcast(tvm.const(0, dtype), shape, dtype)
     res_sub = tbe.vsub(input_y, input_x)
     res_min = tbe.vmin(res_sub, data_min)
@@ -65,9 +63,9 @@ def _less_compute(input_x, input_y):
 
     # max num of float32 is 2**126
     # but cce can only support 2**62, so use 62/62/2 to adaptor 126
-    res_mul_val = tbe.vmuls(res_max, tvm.const(2 ** 62, dtype=dtype))
-    res_mul = tbe.vmuls(res_mul_val, tvm.const(2 ** 62, dtype=dtype))
-    res = tbe.vmuls(res_mul, tvm.const(2 ** 2, dtype=dtype))
+    res_mul_val = tbe.vmuls(res_max, tvm.const(2**62, dtype=dtype))
+    res_mul = tbe.vmuls(res_mul_val, tvm.const(2**62, dtype=dtype))
+    res = tbe.vmuls(res_mul, tvm.const(2**2, dtype=dtype))
 
     return res
 
@@ -79,8 +77,7 @@ def _less_compute_fp16(input_x, input_y):
     dtype = input_x.dtype
     shape = input_x.shape
 
-    data_min = tbe.broadcast(tvm.const(2 ** (-24), dtype=dtype),
-                                     shape, dtype)
+    data_min = tbe.broadcast(tvm.const(2**(-24), dtype=dtype), shape, dtype)
     data_zero = tbe.broadcast(tvm.const(0, dtype), shape, dtype)
     res_sub = tbe.vsub(input_y, input_x)
     res_min = tbe.vmin(res_sub, data_min)
@@ -88,8 +85,8 @@ def _less_compute_fp16(input_x, input_y):
 
     # max num of float32 is 2**24
     # but cce can only support 2**24, so use 12/12 to adaptor 24
-    res_mul_val = tbe.vmuls(res_max, tvm.const(2 ** 12, dtype=dtype))
-    res_mul = tbe.vmuls(res_mul_val, tvm.const(2 ** 12, dtype=dtype))
+    res_mul_val = tbe.vmuls(res_max, tvm.const(2**12, dtype=dtype))
+    res_mul = tbe.vmuls(res_mul_val, tvm.const(2**12, dtype=dtype))
     res = tbe.vmuls(res_mul, tvm.const(1, dtype=dtype))
 
     return res
@@ -117,8 +114,7 @@ def _negative_compute(input_x, input_y):
     shape = input_x.shape
     abs_value = tbe.vabs(input_y)
 
-    if not tbe_platform.api_check_support("te.lang.cce.vmod",
-                                                   "float32"):
+    if not tbe_platform.api_check_support("te.lang.cce.vmod", "float32"):
         dtype = "float16"
         abs_value = tbe.cast_to(abs_value, "float16")
 
@@ -168,8 +164,7 @@ def pow_compute(input_x, input_y, output_z, kernel_name="pow"):
     input_dtype = input_x.dtype.lower()
     shape_x = shape_util.shape_to_list(input_x.shape)
     shape_y = shape_util.shape_to_list(input_y.shape)
-    shape_list = shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1="input_x",
-                                             param_name_input2="input_y")
+    shape_list = shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1="input_x", param_name_input2="input_y")
 
     has_improve_precision = False
     data_x_cast = input_x
@@ -205,7 +200,7 @@ def pow_compute(input_x, input_y, output_z, kernel_name="pow"):
     res_negative = tbe.vmul(res_val_negative, data_x_negative)
     # compute result of pow when data_x is equal 0
     both_zero_index = tbe.vmul(zero_index_x, zero_index_y)
-    
+
     res_tmp = tbe.vadd(res_positive, res_negative)
     res = tbe.vadd(res_tmp, both_zero_index)
     if input_dtype == "int32":
@@ -214,6 +209,7 @@ def pow_compute(input_x, input_y, output_z, kernel_name="pow"):
         res = tbe.cast_to(res, input_dtype)
 
     return res
+
 
 # 'pylint: disable=locally-disabled,redefined-builtin
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
@@ -241,13 +237,12 @@ def pow(input_x, input_y, output_z, kernel_name="pow"):
     shape_x = input_x.get("shape")
     shape_y = input_y.get("shape")
     if len(shape_x) == 0:
-        shape_x = (1,)
+        shape_x = (1, )
     if len(shape_y) == 0:
-        shape_y = (1,)
+        shape_y = (1, )
     para_check.check_shape(shape_x, param_name="input_x")
     para_check.check_shape(shape_y, param_name="input_y")
-    shape_list = shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1="input_x",
-                                             param_name_input2="input_y")
+    shape_list = shape_util.broadcast_shapes(shape_x, shape_y, param_name_input1="input_x", param_name_input2="input_y")
 
     input_x_dtype = input_x.get("dtype").lower()
     input_y_dtype = input_y.get("dtype").lower()
@@ -265,7 +260,5 @@ def pow(input_x, input_y, output_z, kernel_name="pow"):
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
-    config = {"name": kernel_name,
-              "tensor_list": [data_x, data_y, res],
-              "bool_storage_as_1bit": False}
+    config = {"name": kernel_name, "tensor_list": [data_x, data_y, res], "bool_storage_as_1bit": False}
     tbe.cce_build_code(sch, config)

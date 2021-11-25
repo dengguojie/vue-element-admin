@@ -30,6 +30,7 @@ TOTAL_SCALAR_SIZE = 6
 TEMP_SUM_TENSOR_BYTES = 32
 CONV_NUM_ONE_REPEAT = 64
 
+
 class Pdist():
     def __init__(self, input_x, output_y, p, kernel_name="pdist"):
         self.shape_x = input_x.get("shape")
@@ -44,7 +45,7 @@ class Pdist():
 
         self.rows = self.shape_x[0]
         self.cols = self.shape_x[1]
-        self.compute_num = int(self.rows * (self.rows-1) / 2)
+        self.compute_num = int(self.rows * (self.rows - 1) / 2)
         self.num_each_core = self.cols
 
         self.tik_instance = tik.Tik()
@@ -81,25 +82,25 @@ class Pdist():
         else:
             each_core_size_bytes = num_each_block * 2 * self.fp32_bytes
 
-        if  each_core_size_bytes  < self.ub_size_bytes:
+        if each_core_size_bytes < self.ub_size_bytes:
             self.num_each_loop = self.num_each_core
             self.ub_tensor_each_loop = num_each_block
         else:
             #compute the number of elements of each row can be stored on UB and keep 32-bit alignment
             if self.dtype_x == "float16":
-                self.num_each_loop = self.ub_size_bytes // (2 * self.fp32_bytes + self.fp16_bytes) // self.num_fp32_each_block * self.num_fp32_each_block
+                self.num_each_loop = self.ub_size_bytes // (
+                    2 * self.fp32_bytes + self.fp16_bytes) // self.num_fp32_each_block * self.num_fp32_each_block
             else:
                 self.num_each_loop = self.ub_size_bytes // 2 // self.fp32_bytes // self.num_fp32_each_block * self.num_fp32_each_block
             self.ub_tensor_each_loop = self.num_each_loop
         # request gm
-        self.input_x_gm = self.tik_instance.Tensor(self.dtype_x, self.shape_x, name="input_x_gm",
-                                                   scope=tik.scope_gm)
-        self.output_y_gm = self.tik_instance.Tensor(self.dtype_y, self.shape_y, name="output_y_gm",
-                                                    scope=tik.scope_gm)
+        self.input_x_gm = self.tik_instance.Tensor(self.dtype_x, self.shape_x, name="input_x_gm", scope=tik.scope_gm)
+        self.output_y_gm = self.tik_instance.Tensor(self.dtype_y, self.shape_y, name="output_y_gm", scope=tik.scope_gm)
+
     @fusion_manager.register("pdist")
     def pdist_compute(self):
         #blocks processed by each core
-        num_block_each_core =self.compute_num // self.ai_core_num // self.data_each_block
+        num_block_each_core = self.compute_num // self.ai_core_num // self.data_each_block
         #last nums processed by each core
         last_nums = self.compute_num % (self.data_each_block * self.ai_core_num)
         # last blocks processed by each_core
@@ -121,17 +122,19 @@ class Pdist():
                         self.scalar_i.set_as(expr_i4)
                         expr_j = out_index - self.rows * self.scalar_i + self.scalar_i * \
                                  (self.scalar_i + 1) / 2 + self.scalar_i + 1
-                        self.pdist_compute_each_core(self.scalar_i * self.num_each_core,
-                                                     expr_j * self.num_each_core, k)
+                        self.pdist_compute_each_core(self.scalar_i * self.num_each_core, expr_j * self.num_each_core, k)
                     if self.p > 0:
                         self.pdist_sum_process(self.data_each_block, 0, 1)
                     output_y_gm_index = core_id * self.data_each_block * num_block_each_core + block_num_id * self.data_each_block
                     #to improve the accuracy, convert fp16 to fp32, convert it back to fp16  after calculation
                     if self.dtype_y == "float16":
-                        self.pdist_convert(self.dst_sum_fp16_tensor, self.dst_sum_tensor, self.data_each_block, "float32")
-                        self.tik_instance.data_move(self.output_y_gm[output_y_gm_index], self.dst_sum_fp16_tensor, 0, 1, 1, 0, 0)
+                        self.pdist_convert(self.dst_sum_fp16_tensor, self.dst_sum_tensor, self.data_each_block,
+                                           "float32")
+                        self.tik_instance.data_move(self.output_y_gm[output_y_gm_index], self.dst_sum_fp16_tensor, 0, 1,
+                                                    1, 0, 0)
                     else:
-                        self.tik_instance.data_move(self.output_y_gm[output_y_gm_index], self.dst_sum_tensor, 0, 1, 1, 0, 0)
+                        self.tik_instance.data_move(self.output_y_gm[output_y_gm_index], self.dst_sum_tensor, 0, 1, 1,
+                                                    0, 0)
 
         if last_nums > 0:
             self.init_ub_tensor_and_scalar()
@@ -139,7 +142,7 @@ class Pdist():
                 with self.tik_instance.for_range(0, self.data_each_block) as k:
                     #We conceptually iterate over tuples of (i, j, k) where i is the first vector from the input,
                     # j is the second, and k is the result index. and infers what i and j are from the value of k.
-                    out_index = self.ai_core_num * num_block_each_core *  self.data_each_block + last_block_id * self.data_each_block + k
+                    out_index = self.ai_core_num * num_block_each_core * self.data_each_block + last_block_id * self.data_each_block + k
                     i2 = self.rows - .5
                     expr_i3 = i2 * i2 - 2 * out_index - 1
                     self.scalar_i3.set_as(expr_i3)
@@ -148,17 +151,17 @@ class Pdist():
                     self.scalar_i.set_as(expr_i4)
                     expr_j = out_index - self.rows * self.scalar_i + self.scalar_i * \
                              (self.scalar_i + 1) / 2 + self.scalar_i + 1
-                    self.pdist_compute_each_core(self.scalar_i * self.num_each_core,
-                                                 expr_j * self.num_each_core, k)
+                    self.pdist_compute_each_core(self.scalar_i * self.num_each_core, expr_j * self.num_each_core, k)
                 if self.p > 0:
                     self.pdist_sum_process(self.data_each_block, 0, 1)
 
-                output_y_gm_index = self.ai_core_num * num_block_each_core *  self.data_each_block + last_block_id * self.data_each_block
+                output_y_gm_index = self.ai_core_num * num_block_each_core * self.data_each_block + last_block_id * self.data_each_block
 
                 #to improve the accuracy, convert fp16 to fp32, convert it back to fp16  after calculation
                 if self.dtype_y == "float16":
                     self.pdist_convert(self.dst_sum_fp16_tensor, self.dst_sum_tensor, self.data_each_block, "float32")
-                    self.tik_instance.data_move(self.output_y_gm[output_y_gm_index], self.dst_sum_fp16_tensor, 0, 1, 1, 0, 0)
+                    self.tik_instance.data_move(self.output_y_gm[output_y_gm_index], self.dst_sum_fp16_tensor, 0, 1, 1,
+                                                0, 0)
                 else:
                     self.tik_instance.data_move(self.output_y_gm[output_y_gm_index], self.dst_sum_tensor, 0, 1, 1, 0, 0)
 
@@ -171,7 +174,7 @@ class Pdist():
         start_double_buffer = True
         if loop_times < 2:
             start_double_buffer = False
-        if (start_double_buffer):
+        if start_double_buffer:
             with self.tik_instance.for_range(0, loop_times, thread_num=2) as loop:
                 move_src_offset1 = src_offset1 + loop * self.num_each_loop
                 move_src_offset2 = src_offset2 + loop * self.num_each_loop
@@ -229,6 +232,7 @@ class Pdist():
             self.pdist_process(compute_mask, src_offset1, src_offset2, 1, count_num, index_id)
 
     #the specific calculation process
+    # pylint: disable = unused-argument,redefined-builtin,too-many-arguments
     def pdist_process(self, mask, src_addr1, src_addr2, repeat_times, count_num, index_id):
         if self.p == 0.0:
             self.tik_instance.vec_sub(mask, self.src1_ub[src_addr1], self.src1_ub[src_addr1], self.src2_ub[src_addr2],
@@ -241,27 +245,29 @@ class Pdist():
             self.tik_instance.vec_reduce_add(mask, self.temp_sum_tensor, self.src1_ub[src_addr1], self.work_tensor,
                                              repeat_times, 8)
         else:
-            self.tik_instance.vec_sub(mask, self.src1_ub[src_addr1], self.src1_ub[src_addr1], self.src2_ub[src_addr2], repeat_times,
-                                      8, 8, 8)
-            self.tik_instance.vec_abs(mask, self.src1_ub[src_addr1], self.src1_ub[src_addr1], repeat_times,
-                                      8, 8)
+            self.tik_instance.vec_sub(mask, self.src1_ub[src_addr1], self.src1_ub[src_addr1], self.src2_ub[src_addr2],
+                                      repeat_times, 8, 8, 8)
+            self.tik_instance.vec_abs(mask, self.src1_ub[src_addr1], self.src1_ub[src_addr1], repeat_times, 8, 8)
             self.tik_instance.vec_ln(mask, self.src1_ub[src_addr1], self.src1_ub[src_addr1], repeat_times, 8, 8)
-            self.tik_instance.vec_muls(mask, self.src1_ub[src_addr1], self.src1_ub[src_addr1], self.scalar_p, repeat_times,
-                                       8, 8)
-            self.tik_instance.vec_exp(mask, self.src1_ub[src_addr1], self.src1_ub[src_addr1],
-                                      repeat_times, 8, 8)
+            self.tik_instance.vec_muls(mask, self.src1_ub[src_addr1], self.src1_ub[src_addr1], self.scalar_p,
+                                       repeat_times, 8, 8)
+            self.tik_instance.vec_exp(mask, self.src1_ub[src_addr1], self.src1_ub[src_addr1], repeat_times, 8, 8)
             self.tik_instance.vec_reduce_add(mask, self.temp_sum_tensor, self.src1_ub[src_addr1], self.work_tensor,
                                              repeat_times, 8)
-        scalar_sum_each_core = self.tik_instance.Scalar(dtype="float32", name="scalar_sum_each_core", init_value=self.dst_sum_tensor[index_id])
-        self.tik_instance.vec_adds(1, self.temp_sum_tensor, self.temp_sum_tensor, scalar_sum_each_core, 1,
-                                   8, 8)
+        scalar_sum_each_core = self.tik_instance.Scalar(dtype="float32",
+                                                        name="scalar_sum_each_core",
+                                                        init_value=self.dst_sum_tensor[index_id])
+        self.tik_instance.vec_adds(1, self.temp_sum_tensor, self.temp_sum_tensor, scalar_sum_each_core, 1, 8, 8)
         self.dst_sum_tensor[index_id].set_as(self.temp_sum_tensor[0])
 
     # while p > 0
     def pdist_sum_process(self, compute_mask, dst_addr, repeat_times):
-        self.tik_instance.vec_ln(compute_mask, self.dst_sum_tensor[dst_addr], self.dst_sum_tensor[dst_addr], repeat_times, 8, 8)
-        self.tik_instance.vec_muls(compute_mask, self.dst_sum_tensor[dst_addr], self.dst_sum_tensor[dst_addr], self.scalar_p_reciprocal, repeat_times, 8, 8)
-        self.tik_instance.vec_exp(compute_mask, self.dst_sum_tensor[dst_addr], self.dst_sum_tensor[dst_addr], repeat_times, 8, 8)
+        self.tik_instance.vec_ln(compute_mask, self.dst_sum_tensor[dst_addr], self.dst_sum_tensor[dst_addr],
+                                 repeat_times, 8, 8)
+        self.tik_instance.vec_muls(compute_mask, self.dst_sum_tensor[dst_addr], self.dst_sum_tensor[dst_addr],
+                                   self.scalar_p_reciprocal, repeat_times, 8, 8)
+        self.tik_instance.vec_exp(compute_mask, self.dst_sum_tensor[dst_addr], self.dst_sum_tensor[dst_addr],
+                                  repeat_times, 8, 8)
 
     # convert Accuracy
     def pdist_convert(self, dst_tensor, src_tensor, num, src_type):
@@ -286,24 +292,31 @@ class Pdist():
         compute_mask = num % CONV_NUM_ONE_REPEAT
         if compute_mask > 0:
             dst_offset = num // CONV_NUM_ONE_REPEAT * CONV_NUM_ONE_REPEAT
-            self.tik_instance.vec_conv(compute_mask, 'none', dst_tensor[dst_offset], src_tensor[dst_offset],
-                                       1, dst_rep_stride, src_rep_stride)
+            self.tik_instance.vec_conv(compute_mask, 'none', dst_tensor[dst_offset], src_tensor[dst_offset], 1,
+                                       dst_rep_stride, src_rep_stride)
 
     def run_tik(self):
         #cal tik_instance according to mode
         self.pdist_compute()
-        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                   inputs=[self.input_x_gm], outputs=[self.output_y_gm])
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name, inputs=[self.input_x_gm], outputs=[self.output_y_gm])
         return self.tik_instance
 
     # init tensor and scalar on ub
     # 'pylint: disable=W0201
     def init_ub_tensor_and_scalar(self):
-        self.src1_ub = self.tik_instance.Tensor("float32", (self.ub_tensor_each_loop, ), name="src1_ub", scope=tik.scope_ubuf)
-        self.src2_ub = self.tik_instance.Tensor("float32", (self.ub_tensor_each_loop, ), name="src2_ub", scope=tik.scope_ubuf)
+        self.src1_ub = self.tik_instance.Tensor("float32", (self.ub_tensor_each_loop, ),
+                                                name="src1_ub",
+                                                scope=tik.scope_ubuf)
+        self.src2_ub = self.tik_instance.Tensor("float32", (self.ub_tensor_each_loop, ),
+                                                name="src2_ub",
+                                                scope=tik.scope_ubuf)
         self.work_tensor = self.tik_instance.Tensor("float32", (256, ), name="work_tensor", scope=tik.scope_ubuf)
-        self.temp_sum_tensor = self.tik_instance.Tensor("float32", (self.num_fp32_each_block, ), name="temp_sum_tensor", scope=tik.scope_ubuf)
-        self.dst_sum_tensor = self.tik_instance.Tensor("float32", (self.data_each_block, ), name="dst_sum_tensor", scope=tik.scope_ubuf)
+        self.temp_sum_tensor = self.tik_instance.Tensor("float32", (self.num_fp32_each_block, ),
+                                                        name="temp_sum_tensor",
+                                                        scope=tik.scope_ubuf)
+        self.dst_sum_tensor = self.tik_instance.Tensor("float32", (self.data_each_block, ),
+                                                       name="dst_sum_tensor",
+                                                       scope=tik.scope_ubuf)
 
         self.scalar_zero_loop = self.tik_instance.Scalar(dtype="float32", name="scalar_zero_loop", init_value=0.0)
         self.scalar_i3 = self.tik_instance.Scalar(dtype="float32", name="scalar_i3")
@@ -313,11 +326,17 @@ class Pdist():
             self.scalar_one_loop = self.tik_instance.Scalar(dtype="float32", name="scalar_one_loop", init_value=1.0)
         else:
             self.scalar_p = self.tik_instance.Scalar("float32", name="scalar_p", init_value=self.p)
-            self.scalar_p_reciprocal = self.tik_instance.Scalar("float32", name="scalar_p_reciprocal", init_value=1.0/self.p)
+            self.scalar_p_reciprocal = self.tik_instance.Scalar("float32",
+                                                                name="scalar_p_reciprocal",
+                                                                init_value=1.0 / self.p)
 
         if self.dtype_y == "float16":
-            self.dst_sum_fp16_tensor = self.tik_instance.Tensor("float16", (self.data_each_block, ), name="dst_sum_fp16_tensor", scope=tik.scope_ubuf)
-            self.src_temp_fp16_tensor = self.tik_instance.Tensor("float16", (self.ub_tensor_each_loop, ), name="src_temp_fp16_tensor", scope=tik.scope_ubuf)
+            self.dst_sum_fp16_tensor = self.tik_instance.Tensor("float16", (self.data_each_block, ),
+                                                                name="dst_sum_fp16_tensor",
+                                                                scope=tik.scope_ubuf)
+            self.src_temp_fp16_tensor = self.tik_instance.Tensor("float16", (self.ub_tensor_each_loop, ),
+                                                                 name="src_temp_fp16_tensor",
+                                                                 scope=tik.scope_ubuf)
 
     # check the param of input
     def check_param(self):
@@ -328,17 +347,15 @@ class Pdist():
         para_check.check_dtype_rule(self.dtype_x, check_tuple)
         shape_x_len = len(self.shape_x)
         if self.shape_x[0] < 2:
-            raise RuntimeError("rows of input tensor should > 1 while the rows is {0}".
-                               format(self.shape_x[0]))
+            raise RuntimeError("rows of input tensor should > 1 while the rows is {0}".format(self.shape_x[0]))
         if shape_x_len != 2:
-            raise RuntimeError("dim of input tensor only support 2D while the dim is {0} D".
-                               format(shape_x_len))
+            raise RuntimeError("dim of input tensor only support 2D while the dim is {0} D".format(shape_x_len))
         if self.p < 0:
             raise RuntimeError("only support p >= 0 while p is {0}".format(self.p))
 
 
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
+                            para_check.KERNEL_NAME)
 def pdist(input_x, output_y, p, kernel_name="pdist"):
     """
     calculating data
@@ -358,4 +375,3 @@ def pdist(input_x, output_y, p, kernel_name="pdist"):
     """
     res = Pdist(input_x, output_y, p, kernel_name)
     return res.run_tik()
-

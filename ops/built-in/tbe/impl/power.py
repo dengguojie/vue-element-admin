@@ -26,7 +26,7 @@ from te.utils import para_check
 from impl.util.platform_adapter import error_manager_vector
 
 
-# 'pylint: diable=unused-argument,too-many-locals
+# 'pylint: disable=unused-argument,too-many-locals
 # 'pylint: disable=unrecognized-inline-option,unused-argument
 def positive_compute(base, power, version, input_dtype):
     """
@@ -141,7 +141,6 @@ def power_scalar(input_x, base, power):
     ones = tbe.vadds(tmp_zero, 1)
     zeros = tmp_zero
 
-
     if base > 0.0:
         res = tbe.vmuls(ones, math.pow(base, power))
         return res
@@ -187,11 +186,11 @@ def zero_diff_scale_compute(input_x, shift, power):
 
     return res
 
+
 # 'pylint: disable=locally-disabled,unused-argument,too-many-arguments
 # 'pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("power")
-def power_compute(input_x, output_y, power=1.0, scale=1.0,
-                  shift=0.0, kernel_name="power"):
+def power_compute(input_x, output_y, power=1.0, scale=1.0, shift=0.0, kernel_name="power"):
     """
     calculate power according to different cases
 
@@ -242,10 +241,8 @@ def power_compute(input_x, output_y, power=1.0, scale=1.0,
                         nan_value, cce_product, input_dtype)
     zero_pow_val = zero_compute(power, nan_value, zeros)
 
-    res = tbe.vcmpsel(shift_scaled_x, zeros,
-                      'gt', positive_pow_val, negative_pow_val)
-    res = tbe.vcmpsel(shift_scaled_x, zeros,
-                      'eq', zero_pow_val, res)
+    res = tbe.vcmpsel(shift_scaled_x, zeros, 'gt', positive_pow_val, negative_pow_val)
+    res = tbe.vcmpsel(shift_scaled_x, zeros, 'eq', zero_pow_val, res)
 
     return res
 
@@ -253,8 +250,7 @@ def power_compute(input_x, output_y, power=1.0, scale=1.0,
 # 'pylint: disable=redefined-outer-name, too-many-arguments, unused-variable
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
-def power(input_x, output_y, power=1.0, scale=1.0,
-          shift=0.0, kernel_name="power"):
+def power(input_x, output_y, power=1.0, scale=1.0, shift=0.0, kernel_name="power"):
     """
     calculate power of input tensor according to
     y = (x * scale + shift) ** power
@@ -282,17 +278,15 @@ def power(input_x, output_y, power=1.0, scale=1.0,
     type_tuple = ("float16", "float32")
     para_check.check_dtype(input_dtype, type_tuple, param_name="x")
 
-
     fuseshape = [1]
-    fuseshape[0] = functools.reduce(lambda x, y: x*y, shape)
+    fuseshape[0] = functools.reduce(lambda x, y: x * y, shape)
 
     data_input = tvm.placeholder(fuseshape, name="data_input", dtype=input_dtype)
 
     cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
     if cur_cce_product in ("Ascend310", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
         if input_dtype == "float32":
-            error_manager_vector.raise_err_input_dtype_not_supported("power", "input_x",
-                                                                     "float16", str(input_dtype))
+            error_manager_vector.raise_err_input_dtype_not_supported("power", "input_x", "float16", str(input_dtype))
 
         res = power_compute(data_input, output_y, power, scale, shift, kernel_name)
     else:
@@ -301,8 +295,6 @@ def power(input_x, output_y, power=1.0, scale=1.0,
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
 
-    config = {"name": kernel_name,
-              "tensor_list": [data_input, res],
-              "print_ir": True}
+    config = {"name": kernel_name, "tensor_list": [data_input, res], "print_ir": True}
 
     tbe.cce_build_code(sch, config)

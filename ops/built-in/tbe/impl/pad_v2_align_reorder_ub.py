@@ -22,7 +22,6 @@ from te import tik
 from te.utils import para_check
 from te import platform as tbe_platform
 
-
 # available number of cores
 MAX_CORE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
 # vector_repeat
@@ -70,21 +69,19 @@ def _cal_core(total_core_loop_num, core_number, device_core_num):
     list_out = []
     for block_index in range(core_number):
         core_loop = total_core_loop_num // core_number
-        sum_core = ((core_loop + 1) * (total_core_loop_num % device_core_num) +
-                    core_loop * (block_index - total_core_loop_num %
-                                 device_core_num))
+        sum_core = ((core_loop + 1) * (total_core_loop_num % device_core_num) + core_loop *
+                    (block_index - total_core_loop_num % device_core_num))
         if block_index < total_core_loop_num % device_core_num:
-            core_loop = ((total_core_loop_num + core_number - 1) //
-                         core_number)
+            core_loop = ((total_core_loop_num + core_number - 1) // core_number)
             sum_core = (core_loop * block_index)
 
         list_in = [core_loop, sum_core]
         list_out.append(list_in)
 
     split_core_index = 0
-    for i in range(len(list_out)-1):
-        if list_out[i][0] != list_out[i+1][0]:
-            return i, list_out[i][0], list_out[i+1][0]
+    for i in range(len(list_out) - 1):
+        if list_out[i][0] != list_out[i + 1][0]:
+            return i, list_out[i][0], list_out[i + 1][0]
         split_core_index += 1
 
     return split_core_index, list_out[0][0], list_out[0][0]
@@ -109,8 +106,8 @@ def _params_model(in_shape, ou_shape, core, ub_maxsize):
                 model.append("ub_reorder")
             else:
                 model.append("ub_move_out")
-            shape0 = shape_in[i+1:]
-            shape1 = shape_ou[i+1:]
+            shape0 = shape_in[i + 1:]
+            shape1 = shape_ou[i + 1:]
         return model
 
     in_tiling_shape0 = in_shape.copy()
@@ -136,7 +133,6 @@ class PadCompute():
     """
     PadCompute
     """
-
     def __init__(self, in_shape, in_paddings, dtype, kernel_name):
         self.dtype = dtype
         self.in_shape = in_shape
@@ -152,12 +148,12 @@ class PadCompute():
             self.ub_maxsize = (tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) // 32 * 16 - 16)
             self.mask = 128
             self.num_bit = 2
-            self.shape_constant_values = (16,)
+            self.shape_constant_values = (16, )
         else:
             self.ub_maxsize = (tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE) // 32 * 8 - 8)
             self.mask = 64
             self.num_bit = 4
-            self.shape_constant_values = (8,)
+            self.shape_constant_values = (8, )
         self.input_x_gm = None
         self.input_constant_values_gm = None
         self.output_y_gm = None
@@ -178,26 +174,29 @@ class PadCompute():
         """
         set input and output tensor
         """
-        self.input_x_gm = tik_instance.Tensor(self.dtype,
-                                              [_prod(self.in_shape), ],
+        self.input_x_gm = tik_instance.Tensor(self.dtype, [
+            _prod(self.in_shape),
+        ],
                                               name="input_x_gm",
                                               scope=tik.scope_gm)
         self.input_constant_values_gm = tik_instance.Tensor(self.dtype,
-                                              self.shape_constant_values,
-                                              name="input_constant_values_gm",
-                                              scope=tik.scope_gm)
-        self.output_y_gm = tik_instance.Tensor(self.dtype,
-                                               [_prod(self.ou_shape), ],
+                                                            self.shape_constant_values,
+                                                            name="input_constant_values_gm",
+                                                            scope=tik.scope_gm)
+        self.output_y_gm = tik_instance.Tensor(self.dtype, [
+            _prod(self.ou_shape),
+        ],
                                                name="output_y_gm",
                                                scope=tik.scope_gm)
-        self.constant_values_ub = tik_instance.Tensor(self.dtype, self.shape_constant_values,
-                                                      name="constant_values", scope=tik.scope_ubuf)
+        self.constant_values_ub = tik_instance.Tensor(self.dtype,
+                                                      self.shape_constant_values,
+                                                      name="constant_values",
+                                                      scope=tik.scope_ubuf)
         tik_instance.data_move(self.constant_values_ub[0], self.input_constant_values_gm, 0, 1, 1, 0, 0)
         self.reg_constant_values = tik_instance.Scalar(dtype=self.dtype)
         self.reg_constant_values.set_as(self.constant_values_ub[0])
 
-    def pad_case0(self, tik_instance, split_core_idx,
-                  core_loop_list, model_list):
+    def pad_case0(self, tik_instance, split_core_idx, core_loop_list, model_list):
         """
         pad_case0
         """
@@ -213,8 +212,7 @@ class PadCompute():
             in_num_bottom = self.in_paddings[0][1] * _prod(self.ou_shape[1:])
             vec_mark = [False, False]
             if max(in_num_top, in_num_bottom) > 0:
-                self.pad_vec_dup_outermost(tik_instance, in_num_top,
-                                           in_num_bottom, blk_idx)
+                self.pad_vec_dup_outermost(tik_instance, in_num_top, in_num_bottom, blk_idx)
                 # vec_dup doesn't care about core
                 # different core must obey the same rule
                 if model_list[0][0] != "ub_reorder":
@@ -225,13 +223,11 @@ class PadCompute():
             with tik_instance.if_scope(blk_idx <= split_core_idx):
                 src_gm = 0
                 dst_gm = in_num_top
-                self._pad_case0_main(tik_instance, core_loop_list[0],
-                                     model_list[0], blk_idx, src_gm,
-                                     dst_gm, vec_mark[0])
+                self._pad_case0_main(tik_instance, core_loop_list[0], model_list[0], blk_idx, src_gm, dst_gm,
+                                     vec_mark[0])
 
             if core_loop_list[0] != core_loop_list[1]:
-                with tik_instance.if_scope(tik.all(blk_idx > split_core_idx,
-                                                   blk_idx < self.core)):
+                with tik_instance.if_scope(tik.all(blk_idx > split_core_idx, blk_idx < self.core)):
                     processed_in_shape = self.in_shape.copy()
                     processed_in_shape[0] = core_loop_list[0]
                     processed_ou_shape = self.ou_shape.copy()
@@ -239,9 +235,8 @@ class PadCompute():
                     src_gm += (split_core_idx + 1) * _prod(processed_in_shape)
                     dst_gm += (split_core_idx + 1) * _prod(processed_ou_shape)
                     blk_idx = blk_idx - split_core_idx - 1
-                    self._pad_case0_main(tik_instance, core_loop_list[1],
-                                         model_list[1], blk_idx, src_gm,
-                                         dst_gm, vec_mark[1])
+                    self._pad_case0_main(tik_instance, core_loop_list[1], model_list[1], blk_idx, src_gm, dst_gm,
+                                         vec_mark[1])
 
     def pad_case1(self, tik_instance):
         """
@@ -260,32 +255,25 @@ class PadCompute():
         ac_num_one = (MINI_UNIT // self.num_bit) * core_loop_before
         ac_num_two = (MINI_UNIT // self.num_bit) * core_loop_after
 
-        with tik_instance.for_range(0, core_num,
-                                    block_num=core_num) as blk_idx:
+        with tik_instance.for_range(0, core_num, block_num=core_num) as blk_idx:
             if split_core_index + 1 == core_num:
-                with tik_instance.if_scope(blk_idx <= core_num-1):
+                with tik_instance.if_scope(blk_idx <= core_num - 1):
                     begin_index = blk_idx * ac_num_one
-                    self._pad_case1_main(tik_instance, ac_num_one,
-                                         begin_index, self.ubuf)
+                    self._pad_case1_main(tik_instance, ac_num_one, begin_index, self.ubuf)
 
             else:
                 with tik_instance.if_scope(blk_idx <= split_core_index):
                     begin_index = blk_idx * ac_num_one
-                    self._pad_case1_main(tik_instance, ac_num_one,
-                                         begin_index, self.ubuf)
+                    self._pad_case1_main(tik_instance, ac_num_one, begin_index, self.ubuf)
 
-                with tik_instance.if_scope(
-                        tik.all(blk_idx > split_core_index,
-                                blk_idx < core_num)):
+                with tik_instance.if_scope(tik.all(blk_idx > split_core_index, blk_idx < core_num)):
                     begin_index = ac_num_one * (split_core_index + 1)
                     block_index = blk_idx - (split_core_index + 1)
                     begin_index += block_index * ac_num_two
-                    self._pad_case1_main(tik_instance, ac_num_two,
-                                         begin_index, self.ubuf)
+                    self._pad_case1_main(tik_instance, ac_num_two, begin_index, self.ubuf)
 
     # 'pylint: disable=too-many-arguments
-    def _pad_case0_main(self, tik_instance, loop, model,
-                        blk_idx, src_gm, dst_gm, vec_mark):
+    def _pad_case0_main(self, tik_instance, loop, model, blk_idx, src_gm, dst_gm, vec_mark):
 
         in_shape = self.in_shape.copy()
         in_shape[0] = loop
@@ -301,8 +289,7 @@ class PadCompute():
         src_ub = 0
         dst_ub = 0
 
-        self._recusive_case0(tik_instance, axis, in_shape, ou_shape, padding,
-                             model, src_gm, dst_gm, src_ub, dst_ub,
+        self._recusive_case0(tik_instance, axis, in_shape, ou_shape, padding, model, src_gm, dst_gm, src_ub, dst_ub,
                              mark_reorder_first, mark_out_first)
 
     def _pad_case1_main(self, tik_instance, in_num, begin_index, ubuf):
@@ -317,21 +304,10 @@ class PadCompute():
             srcstride = 0
             dststride = 0
 
-            tik_instance.data_move(ubuf[0],
-                                   self.input_x_gm[begin],
-                                   0,
-                                   nburst,
-                                   burstlen,
-                                   srcstride,
-                                   dststride)
+            tik_instance.data_move(ubuf[0], self.input_x_gm[begin], 0, nburst, burstlen, srcstride, dststride)
 
-            tik_instance.data_move(self.output_y_gm[begin],
-                                   ubuf[0],
-                                   0,
-                                   nburst,
-                                   burstlen,
-                                   srcstride,
-                                   dststride)
+            tik_instance.data_move(self.output_y_gm[begin], ubuf[0], 0, nburst, burstlen, srcstride, dststride)
+
         if tail != 0:
             with tik_instance.for_range(0, tail) as serial:
                 _main(serial, self.ub_maxsize, begin_index)
@@ -339,8 +315,7 @@ class PadCompute():
         if tail_block != 0:
             _main(tail, tail_block, begin_index)
 
-    def pad_vec_dup_outermost(self, tik_instance, in_num_top,
-                              in_num_bottom, blk_idx):
+    def pad_vec_dup_outermost(self, tik_instance, in_num_top, in_num_bottom, blk_idx):
         """
         pad_vec_dup_outermost
         """
@@ -369,32 +344,18 @@ class PadCompute():
             if split_core_index + 1 == core_num:
                 with tik_instance.if_scope(block_index <= split_core_index):
                     begin_index += block_index * ac_num_one
-                    self.copy_ubuf_2_gm_case01(tik_instance,
-                                               ac_num_one,
-                                               vir_num,
-                                               self.ubuf,
-                                               0, begin_index)
+                    self.copy_ubuf_2_gm_case01(tik_instance, ac_num_one, vir_num, self.ubuf, 0, begin_index)
 
             else:
                 with tik_instance.if_scope(block_index <= split_core_index):
                     begin_index_new = begin_index + block_index * ac_num_one
-                    self.copy_ubuf_2_gm_case01(tik_instance,
-                                               ac_num_one,
-                                               vir_num,
-                                               self.ubuf,
-                                               0, begin_index_new)
+                    self.copy_ubuf_2_gm_case01(tik_instance, ac_num_one, vir_num, self.ubuf, 0, begin_index_new)
 
-                with tik_instance.if_scope(
-                        tik.all(block_index > split_core_index,
-                                block_index < core_num)):
+                with tik_instance.if_scope(tik.all(block_index > split_core_index, block_index < core_num)):
                     begin_index += ac_num_one * (split_core_index + 1)
                     block_index = block_index - (split_core_index + 1)
                     begin_inde_new = begin_index + block_index * ac_num_two
-                    self.copy_ubuf_2_gm_case01(tik_instance,
-                                               ac_num_two,
-                                               vir_num,
-                                               self.ubuf,
-                                               0, begin_inde_new)
+                    self.copy_ubuf_2_gm_case01(tik_instance, ac_num_two, vir_num, self.ubuf, 0, begin_inde_new)
 
         if in_num_top != 0:
             _do_vec_dup(in_num_top, in_num, top_index, blk_idx, vec_mark)
@@ -404,9 +365,7 @@ class PadCompute():
             _do_vec_dup(in_num_bottom, in_num, bottom_index, blk_idx, vec_mark)
 
     # 'pylint: disable=too-many-branches
-    def _recusive_case0(self, tik_instance, axis, in_shape,
-                        ou_shape, padding, model, src_gm,
-                        dst_gm, src_ub, dst_ub,
+    def _recusive_case0(self, tik_instance, axis, in_shape, ou_shape, padding, model, src_gm, dst_gm, src_ub, dst_ub,
                         mark_reorder_first, mark_out_first):
         """
         _recusive_case0
@@ -421,23 +380,19 @@ class PadCompute():
             if not mark_reorder_first:
                 src_ub = _prod(ou_shape[axis:])
                 #  in_num, dst_buf, src_ub, src_gm
-                self.copy_gm_2_ubuf_case0(tik_instance,
-                                          _prod(in_shape[axis:]),
-                                          self.ubuf, src_ub, src_gm)
+                self.copy_gm_2_ubuf_case0(tik_instance, _prod(in_shape[axis:]), self.ubuf, src_ub, src_gm)
 
-            top = padding[axis][0] * _prod(ou_shape[axis+1:])
+            top = padding[axis][0] * _prod(ou_shape[axis + 1:])
 
             # -1 is last_dim
             # -2 is P * last_dim
             if axis < len(self.ou_shape) - 2:
                 with tik_instance.for_range(0, in_shape[axis]) as i:
-                    dst_ub += top + _prod(ou_shape[axis+1:]) * i
-                    src_ub += _prod(in_shape[axis+1:]) * i
+                    dst_ub += top + _prod(ou_shape[axis + 1:]) * i
+                    src_ub += _prod(in_shape[axis + 1:]) * i
                     # in this mark_reorder_first must be True
-                    self._recusive_case0(tik_instance, axis+1, in_shape,
-                                         ou_shape, padding, model,
-                                         src_gm, dst_gm, src_ub, dst_ub,
-                                         True, mark_out_first)
+                    self._recusive_case0(tik_instance, axis + 1, in_shape, ou_shape, padding, model, src_gm, dst_gm,
+                                         src_ub, dst_ub, True, mark_out_first)
             else:
                 # in_num, src_dst_ubuf, src_ub, dst_ub
                 total_num_ub = _prod(in_shape[axis:])
@@ -447,25 +402,21 @@ class PadCompute():
                     nburst = in_shape[axis]
                 burstlen = total_num_ub // nburst * self.num_bit // MINI_UNIT
                 src_stride = 0
-                dst_stride = (_prod(ou_shape[axis+1:]) -
-                              _prod(in_shape[axis+1:])) * self.num_bit // MINI_UNIT
+                dst_stride = (_prod(ou_shape[axis + 1:]) - _prod(in_shape[axis + 1:])) * self.num_bit // MINI_UNIT
                 if axis < len(self.ou_shape) - 1:
-                    top += padding[axis+1][0] * _prod(ou_shape[axis+2:])
+                    top += padding[axis + 1][0] * _prod(ou_shape[axis + 2:])
                 dst_ub += top
                 if nburst != 0 and burstlen != 0:
-                    self.copy_ubuf_2_ubuf_case0(tik_instance, nburst, burstlen,
-                                                src_stride, dst_stride, self.ubuf,
+                    self.copy_ubuf_2_ubuf_case0(tik_instance, nburst, burstlen, src_stride, dst_stride, self.ubuf,
                                                 src_ub, dst_ub)
 
             if not mark_reorder_first:
-                self.copy_ubuf_2_gm_case00(tik_instance,
-                                           _prod(ou_shape[axis:]),
-                                           self.ubuf, 0, dst_gm)
+                self.copy_ubuf_2_gm_case00(tik_instance, _prod(ou_shape[axis:]), self.ubuf, 0, dst_gm)
 
         elif model[axis] == 'ub_move_out':
             # _recusive
-            in_num_top = padding[axis][0] * _prod(ou_shape[axis+1:])
-            in_num_bottom = padding[axis][1] * _prod(ou_shape[axis+1:])
+            in_num_top = padding[axis][0] * _prod(ou_shape[axis + 1:])
+            in_num_bottom = padding[axis][1] * _prod(ou_shape[axis + 1:])
             in_num = max(in_num_top, in_num_bottom)
             if in_num > 0:
                 self.set_vector_dup(tik_instance, in_num, self.ubuf, self.reg_constant_values)
@@ -473,26 +424,22 @@ class PadCompute():
 
                 # top: actual_top_num, malloc_num, ubuf, src_ub, dst_gm
                 if in_num_top > 0:
-                    self.copy_ubuf_2_gm_case01(tik_instance, in_num_top,
-                                               in_num, self.ubuf, 0, dst_gm)
+                    self.copy_ubuf_2_gm_case01(tik_instance, in_num_top, in_num, self.ubuf, 0, dst_gm)
                 # bottom
                 if in_num_bottom > 0:
                     dst_gm_bottom = dst_gm + self.in_shape[axis] * \
                                     _prod(self.ou_shape[axis+1:]) + in_num_top
-                    self.copy_ubuf_2_gm_case01(tik_instance, in_num_bottom,
-                                               in_num, self.ubuf, 0, dst_gm_bottom)
+                    self.copy_ubuf_2_gm_case01(tik_instance, in_num_bottom, in_num, self.ubuf, 0, dst_gm_bottom)
                 # update
                 dst_gm += in_num_top
 
             if axis < len(self.ou_shape) - 1:
                 with tik_instance.for_range(0, in_shape[axis]) as i:
-                    dst_gm += _prod(ou_shape[axis+1:]) * i
-                    src_gm += _prod(in_shape[axis+1:]) * i
+                    dst_gm += _prod(ou_shape[axis + 1:]) * i
+                    src_gm += _prod(in_shape[axis + 1:]) * i
                     # in this mark_reorder_first must be True
-                    self._recusive_case0(tik_instance, axis+1, in_shape, ou_shape,
-                                         padding, model, src_gm, dst_gm,
-                                         src_ub, dst_ub, mark_reorder_first,
-                                         mark_out_first)
+                    self._recusive_case0(tik_instance, axis + 1, in_shape, ou_shape, padding, model, src_gm, dst_gm,
+                                         src_ub, dst_ub, mark_reorder_first, mark_out_first)
 
     def set_vector_dup(self, tik_instance, psm, dst, number):
         """
@@ -508,63 +455,33 @@ class PadCompute():
         dst_rep_stride = 8
 
         with tik_instance.for_range(0, dup_repeat_merchant) as i:
-            tik_instance.vector_dup(self.mask,
-                                    dst[0 + i * dup_psm],
-                                    number,
-                                    MAX_REPEAT,
-                                    dst_blk_stride,
-                                    dst_rep_stride)
+            tik_instance.vector_dup(self.mask, dst[0 + i * dup_psm], number, MAX_REPEAT, dst_blk_stride, dst_rep_stride)
 
         if dup_repeat_remainder != 0:
             repeats = dup_repeat_remainder // self.mask
             dup_remainder = dup_repeat_remainder % self.mask
             if repeats != 0:
-                tik_instance.vector_dup(self.mask,
-                                        dst[dup_repeat_merchant * dup_psm],
-                                        number,
-                                        repeats,
-                                        dst_blk_stride,
+                tik_instance.vector_dup(self.mask, dst[dup_repeat_merchant * dup_psm], number, repeats, dst_blk_stride,
                                         dst_rep_stride)
             if dup_remainder != 0:
-                tik_instance.vector_dup(dup_remainder,
-                                        dst[dup_repeat_merchant * dup_psm +
-                                            repeats * self.mask],
-                                        number,
-                                        1,
-                                        dst_blk_stride,
-                                        dst_rep_stride)
+                tik_instance.vector_dup(dup_remainder, dst[dup_repeat_merchant * dup_psm + repeats * self.mask], number,
+                                        1, dst_blk_stride, dst_rep_stride)
 
     def copy_gm_2_ubuf_case0(self, tik_instance, in_num, ubuf, src_ub, src_gm):
         """
         copy_gm_2_ubuf_case0
         """
         # ub must can be save all_data
-        tik_instance.data_move(ubuf[src_ub],
-                               self.input_x_gm[src_gm],
-                               0,
-                               1,
-                               in_num * self.num_bit // 32,
-                               0,
-                               0
-                               )
+        tik_instance.data_move(ubuf[src_ub], self.input_x_gm[src_gm], 0, 1, in_num * self.num_bit // 32, 0, 0)
 
     def copy_ubuf_2_gm_case00(self, tik_instance, in_num, ubuf, src_ub, dst_gm):
         """
         copy_ubuf_2_gm_case00
         """
         # ub must can be save all_data
-        tik_instance.data_move(self.output_y_gm[dst_gm],
-                               ubuf[src_ub],
-                               0,
-                               1,
-                               in_num * self.num_bit // 32,
-                               0,
-                               0
-                               )
+        tik_instance.data_move(self.output_y_gm[dst_gm], ubuf[src_ub], 0, 1, in_num * self.num_bit // 32, 0, 0)
 
-    def copy_ubuf_2_gm_case01(self, tik_instance,
-                              ac_num, vir_num, ubuf,
-                              src_ub, dst_gm):
+    def copy_ubuf_2_gm_case01(self, tik_instance, ac_num, vir_num, ubuf, src_ub, dst_gm):
         """
         copy_ubuf_2_gm_case01
         """
@@ -581,13 +498,7 @@ class PadCompute():
             srcstride = 0
             dststride = 0
 
-            tik_instance.data_move(self.output_y_gm[dst],
-                                   ubuf[src_ub],
-                                   0,
-                                   nburst,
-                                   burstlen,
-                                   srcstride,
-                                   dststride)
+            tik_instance.data_move(self.output_y_gm[dst], ubuf[src_ub], 0, nburst, burstlen, srcstride, dststride)
 
         if tail != 0:
             with tik_instance.for_range(0, tail) as serial:
@@ -597,27 +508,21 @@ class PadCompute():
             _copy_ub2gm(tik_instance, tail, tail_block, dst_gm)
 
     # 'pylint: disable=no-self-use
-    def copy_ubuf_2_ubuf_case0(self, tik_instance, nburst, burstlen,
-                               src_stride, dst_stride, ubuf, src_ub, dst_ub):
+    def copy_ubuf_2_ubuf_case0(self, tik_instance, nburst, burstlen, src_stride, dst_stride, ubuf, src_ub, dst_ub):
         """
         copy_ubuf_2_ubuf_case0
         """
         # ub must can be save all_data
-        tik_instance.data_move(ubuf[dst_ub],
-                               ubuf[src_ub],
-                               0,
-                               nburst,
-                               burstlen,
-                               src_stride,
-                               dst_stride
-                               )
+        tik_instance.data_move(ubuf[dst_ub], ubuf[src_ub], 0, nburst, burstlen, src_stride, dst_stride)
 
     def pad_compute(self):
         """
         the overall data move process
         """
         tik_instance = self.set_tik_instance()
-        self.ubuf = tik_instance.Tensor(self.dtype, [self.ub_maxsize,], name="in_ubuf", scope=tik.scope_ubuf)
+        self.ubuf = tik_instance.Tensor(self.dtype, [
+            self.ub_maxsize,
+        ], name="in_ubuf", scope=tik.scope_ubuf)
 
         if self.ou_shape != self.in_shape:
             split_core_idx, core_loop_list, model_list = \
@@ -638,6 +543,7 @@ class PadCompute():
                               outputs=[self.output_y_gm])
 
         return tik_instance
+
 
 # 'pylint: disable=invalid-name,unused-argument
 @para_check.check_op_params(para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_LIST_INT,

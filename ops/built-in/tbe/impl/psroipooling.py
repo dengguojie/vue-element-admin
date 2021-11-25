@@ -109,8 +109,8 @@ def ceil_value(value, factor):
     return (value + factor - 1) // factor
 
 
-# pylint: disable=invalid-name, too-many-locals, too-many-arguments
-# pylint: disable=too-many-instance-attributes, too-many-lines
+# 'pylint: disable=invalid-name, too-many-locals, too-many-arguments
+# 'pylint: disable=too-many-instance-attributes, too-many-lines
 class PsroiClass():
     """
     Function: class that execute psroipooling
@@ -1084,7 +1084,7 @@ class PsroiClass():
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name, inputs=(self.x, self.rois), outputs=(self.y, ))
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_FLOAT,
                             para_check.KERNEL_NAME)

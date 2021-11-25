@@ -15,7 +15,7 @@
 """
 prior_box_d
 """
-# pylint: disable=locally-disabled,ungrouped-imports,import-error,unused-import,wrong-import-order
+# 'pylint: disable=locally-disabled,ungrouped-imports,import-error,unused-import,wrong-import-order
 
 import math
 
@@ -36,8 +36,8 @@ INDEX_H = 2
 INDEX_W = 3
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-branches
-# pylint: disable=too-many-lines,pointless-string-statement,unnecessary-lambda
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-branches
+# 'pylint: disable=too-many-lines,pointless-string-statement,unnecessary-lambda
 def _check_parameters(min_size, max_size, img_h, img_w, step_h, step_w, variance):
     if len(min_size) <= 0:
         error_manager_vector.raise_err_input_param_range_invalid("prior_box_d", "min_size", "0", "inf",
@@ -89,8 +89,8 @@ def _check_parameters(min_size, max_size, img_h, img_w, step_h, step_w, variance
     return img_h, img_w, step_h, step_w
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals
-# pylint: disable=no-member,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals
+# 'pylint: disable=no-member,unused-argument
 def _prior_box_check(feature, img, data_h, data_w, min_size, max_size, img_h, img_w, step_h, step_w, variance,
                      kernel_name):
     shape_feature = feature.get("shape")
@@ -167,8 +167,8 @@ def _ins_emit(schedule, op_list, axis_list, ins_list):
         schedule[op_list[i]].emit_insn(axis_list[i], ins_list[i])
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements,invalid-name
-# pylint: disable=unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements,invalid-name
+# 'pylint: disable=unused-argument
 def prior_box_compute(feature, img, data_h, data_w, box_height, box_width, y, \
                       rec_img_h, rec_img_w, step_h, step_w, clip, offset, scale, variance):
     """
@@ -575,7 +575,7 @@ def _get_ins_emit_axis(ops, last_axis):
     return axis_list
 
 
-# pylint: disable=too-many-branches
+# 'pylint: disable=too-many-branches
 def _double_buf(schedule, ops):
     if not ops:
         error_manager_vector.raise_err_specific_reson("prior_box_d", "operation list is empty")
@@ -917,8 +917,8 @@ def _align(schedule, ops, tensor_dic, clip, factor=16, offset=0):
             schedule[ops[i]].storage_align(ops[i].op.axis[shape_len - 1], factor, offset)
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals,invalid-name
-# pylint: disable=dangerous-default-value
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals,invalid-name
+# 'pylint: disable=dangerous-default-value
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_FLOAT,
