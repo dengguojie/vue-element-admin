@@ -30,6 +30,9 @@ def get_op_support_info(x1, y, across_spatial=True, kernel_name="normalize_sum")
     """
     format_x = x1.get("format")
     axis_split_list = []
+    # temp modify, next step will provide a reverse infershape interface
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(None, None, 0, 0)
+    return op_cal_info_in_json
     if across_spatial:
         split_0 = [util_select_op_base.SplitInput([0, [0], [-1], [-1]]), util_select_op_base.SplitOutput([0, [0]])]
         axis_split_list.append(split_0)

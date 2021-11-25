@@ -43,6 +43,14 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case5)
 
+def test_get_op_support_info(test_arg):
+    from impl.normalize_sum import get_op_support_info
+    get_op_support_info({"shape": (15, 80, 38, 38), "dtype": "float16", "format": "NCHW","ori_shape":(15, 80, 2, 32), "ori_format":"NCHW"},
+                        {"shape": (15, 80, 1, 38), "dtype": "float16", "format": "NCHW","ori_shape":(15, 80, 2, 32), "ori_format":"NCHW"},
+                        True)
+
+ut_case.add_cust_test_func(test_func=test_get_op_support_info)
+
 def calc_expect_func(x1, y, across_spatial=True):
     x1_value = x1.get("value")
     data_format = x1["dtype"]

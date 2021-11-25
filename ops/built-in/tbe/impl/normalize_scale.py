@@ -29,9 +29,9 @@ def get_op_support_info(x1, x2, x3, y, across_spatial=True, channel_shared=True,
                         eps=1e-10, kernel_name="normalize_scale"):
     format_x = x1.get("format")
     axis_split_list = []
-    if channel_shared:
-        op_cal_info_in_json = util_select_op_base.get_op_cal_info(None, None, 0, 0)
-        return op_cal_info_in_json
+    # temp modify, next step will provide a reverse infershape interface
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(None, None, 0, 0)
+    return op_cal_info_in_json
 
     if format_x == "NCHW" or format_x == "NHWC":
         split_0 = [util_select_op_base.SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]]),
