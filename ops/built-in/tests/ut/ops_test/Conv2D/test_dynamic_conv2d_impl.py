@@ -5,8 +5,7 @@ import conv2D_ut_testcase as tc
 from te import tvm
 from impl.util.util_conv2d_dynamic import Conv2dParaProcess
 
-ut_case = OpUT("Conv2D", "impl.dynamic.conv2d",
-               "conv2d")
+ut_case = OpUT("Conv2D", "impl.dynamic.conv2d", "conv2d")
 
 def gen_trans_data_case(inputs, weights, bias, offset_w, outputs, strides, pads, dilations, groups, data_format, offset_x, expect):
     return {"params": [inputs, weights, bias, offset_w, outputs, strides, pads, dilations, groups, data_format, offset_x],

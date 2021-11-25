@@ -1195,7 +1195,8 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
         -------
         tensor: im2col result tensor
         """
-        block_size = 16
+        block_size_m = CUBE_MKN[data.dtype]['mac'][0]
+        block_size_k = CUBE_MKN[data.dtype]['mac'][1]
         fmap, kernel_h, kernel_w, padding, stride, dilate, fmap_wo = img2col_para
 
         def __im2col_idx(idx):
@@ -1211,11 +1212,11 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
             """
             group, n_batch, col_h, col_w, block_size_h, block_size_w = idx
 
-            virtual_h = col_h * block_size + block_size_h
-            virtual_w = col_w * block_size + block_size_w
+            virtual_h = col_h * block_size_m + block_size_h
+            virtual_w = col_w * block_size_k + block_size_w
             dilate_h, dilate_w = dilate
 
-            back_c1 = virtual_w // block_size // kernel_w // kernel_h
+            back_c1 = virtual_w // block_size_k // kernel_w // kernel_h
             back_h = (virtual_h // fmap_wo) * stride[0] + (col_w // kernel_w % kernel_h)*dilate_h
             back_w = (virtual_h % fmap_wo) * stride[1] + (col_w % kernel_w)*dilate_w
 
