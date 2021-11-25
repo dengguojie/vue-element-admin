@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,7 +87,6 @@ bool GetCompileParams(const std::vector<int64_t>& compile_info_vec, int64_t& ub_
 bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shape, ge::Format& src_format,
                     ge::Format& dst_format, int64_t c0_len, int64_t group, std::vector<int64_t>& in_shape_new,
                     std::vector<int64_t>& out_shape_new, std::string& real_src_format, std::string& real_dst_format) {
-
   if ((src_format == FORMAT_NCHW || src_format == FORMAT_NHWC) && (dst_format == FORMAT_NC1HWC0)) {
     int64_t hw_idx = GetIdxFromFormat(HW_IDX_MAP, src_format);
     int64_t c_idx = GetIdxFromFormat(C_IDX_MAP, src_format);
@@ -702,7 +701,8 @@ bool TransDataTiling(const std::string& op_type, const ge::Operator& op_paras, c
     PROFILING_TILING_AFTER_CALCU_TILING_REG();
     SetRunningNtc100Params(run_params_100, run_info);
     OP_LOGD(op_type, "start print tiling parameters in ntc 100: %s", run_params_100.to_string().c_str());
-  } else if (real_src_format[real_src_format.length() - 1] == 'C' && real_dst_format[real_dst_format.length() - 1] == 'T') {
+  } else if (real_src_format[real_src_format.length() - 1] == 'C' &&
+             real_dst_format[real_dst_format.length() - 1] == 'T') {
     if (real_src_format[real_src_format.length() - 2] == real_dst_format[real_dst_format.length() - 2]) {
       TransDataMode1010Param run_params_part1;
       flag = TillingPositiveMode1010(in_shape_new, out_shape_new, real_src_format, real_dst_format,

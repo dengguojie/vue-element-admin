@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,6 @@
 #include "error_log.h"
 
 namespace optiling {
-
 int64_t GetCeilFillB(int64_t u_value, int64_t d_value) {
   int64_t res_value = 0;
   if (d_value == 0) {
@@ -279,7 +278,6 @@ bool TillingPositiveMode1010(vector<int64_t>& in_shape, vector<int64_t>& out_sha
     } else {
       ll_dst_cl_left = params.pln_dst_cl_size;
     }
-
   } else {
     params.nc_le_vcol = 0;
     params.pln_dst_cl_size = 1;
@@ -391,5 +389,4 @@ void PrintTilingMode1010Params(const std::string& op_type, const TransDataMode10
   OP_LOGD(op_type, "lc_c_lp_cnt=%d", params.lc_c_lp_cnt);
   OP_LOGD(op_type, "lc_c_left=%d", params.lc_c_left);
 }
-
 }  // namespace optiling

@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,6 @@
 #include "error_log.h"
 
 namespace optiling {
-
 const int32_t NTC_FRAME_LEVEL = 2;
 
 int64_t GetCeilFillA(int64_t u_value, int64_t d_value) {
@@ -44,7 +43,8 @@ int64_t GetCeilFillA(int64_t u_value, int64_t d_value) {
 }
 
 bool GetMcInfoNegative200(int64_t& dst_cr_lp_cnt, int64_t dst_cr_left, int64_t& src_c_lp_cnt, int64_t src_c_left,
-                          int64_t& dst_cl_lp_cnt, int64_t dst_cl_left, int64_t& core_num, TransDataNtc200Param& params) {
+                          int64_t& dst_cl_lp_cnt, int64_t dst_cl_left, int64_t& core_num,
+                          TransDataNtc200Param& params) {
   int64_t tmp_full_loop_cnt_cr;
   if (GetFloorDiv(dst_cr_lp_cnt, core_num) > 0) {
     tmp_full_loop_cnt_cr = core_num;
@@ -288,7 +288,8 @@ bool TilingNegativeNtc200(vector<int64_t>& in_shape, vector<int64_t>& out_shape,
       ((dtype == DT_FLOAT || dtype == DT_INT32 || dtype == DT_UINT32) && vnc_fp32_flag == 1)) &&
       (axis_dst_cr_size >= cr_gate)) {
     params.tiling_mode = 2001;
-    tmp_dst_cl_lp_unit = params.ub_offset / (params.src_c_lp_unit * GetCeilFillA(params.dst_cr_lp_unit, c0_len) * c0_len);
+    tmp_dst_cl_lp_unit = params.ub_offset / (params.src_c_lp_unit * GetCeilFillA(params.dst_cr_lp_unit,
+                                                                                 c0_len) * c0_len);
     params.dst_cl_lp_unit = axis_dst_cl_size > tmp_dst_cl_lp_unit ? tmp_dst_cl_lp_unit : axis_dst_cl_size;
   } else if (dst_c_dst_cr_size < 54 * block_elem_cnt && dst_cr_lp_cnt == 1 && src_c_lp_cnt == 1) {
     params.tiling_mode = 2003;
@@ -349,11 +350,13 @@ bool TilingNegativeNtc200(vector<int64_t>& in_shape, vector<int64_t>& out_shape,
     params.dst_cl_step_in = 0;
   } else {
     char dst_cl_chr = dst_format[0];
-    params.dst_cl_step_in = GetShapeSize(in_shape, std::strchr(src_format.c_str(), dst_cl_chr) - src_format.c_str() + 1);
+    params.dst_cl_step_in = GetShapeSize(in_shape,
+                                         std::strchr(src_format.c_str(), dst_cl_chr) - src_format.c_str() + 1);
   }
   params.dst_cl_lp_step_in = params.dst_cl_lp_unit * params.dst_cl_step_in;
 
-  bool ret = GetMcInfoNegative200(dst_cr_lp_cnt, dst_cr_left, src_c_lp_cnt, src_c_left, dst_cl_lp_cnt, dst_cl_left, core_num, params);
+  bool ret = GetMcInfoNegative200(dst_cr_lp_cnt, dst_cr_left, src_c_lp_cnt, src_c_left, dst_cl_lp_cnt, dst_cl_left,
+                                  core_num, params);
   if (!ret) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetMcInfoNegative200 Failed.");
     return ret;
@@ -483,5 +486,4 @@ void PrintTilingModeNtc200Params(const std::string& op_type, const TransDataNtc2
   OP_LOGD(op_type, "cr_in_idx_1_dst_rsize=%d", params.cr_in_idx_1_dst_rsize);
   OP_LOGD(op_type, "cr_in_idx_1_src_asize=%d", params.cr_in_idx_1_src_asize);
 }
-
 }  // namespace optiling

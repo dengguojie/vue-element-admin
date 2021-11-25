@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,6 @@
 
 namespace optiling
 {
-
   const int32_t FRAME_LEVEL = 2;
 
   bool GetFullLpCnt(const int64_t &core_num, const int64_t &src_lp_cnt, int64_t &full_lp_cnt) {
@@ -303,7 +302,8 @@ namespace optiling
     int64_t axis_src_cr_size = GetShapeSize(in_shape_new, c_idx + 1);
     int64_t tmp_src_cr_lp_unit = params.vnc_line_size / c0_len / block_elem_cnt * block_elem_cnt;
     const std::vector<DataType> dtype_list = {ge::DT_FLOAT, ge::DT_INT32, ge::DT_UINT32};
-    if (axis_src_cr_size < 2 * block_elem_cnt || std::find(dtype_list.begin(), dtype_list.end(), dType) != dtype_list.end()) {
+    if (axis_src_cr_size < 2 * block_elem_cnt || std::find(dtype_list.begin(),
+                                                           dtype_list.end(), dType) != dtype_list.end()) {
       params.tiling_mode = 1000;
       params.src_cr_lp_unit = axis_src_cr_size > tmp_src_cr_lp_unit ? tmp_src_cr_lp_unit : axis_src_cr_size;
     } else {
@@ -421,8 +421,8 @@ namespace optiling
     }
 
     // mulitple core parameters
-    bool ret = GetMcInfoPositiveNtc100(src_cr_lp_cnt, axis_src_cr_size, src_c_lp_cnt, axis_src_c_size, src_cl_lp_cnt, axis_src_cl_size,
-                                       core_num, params);
+    bool ret = GetMcInfoPositiveNtc100(src_cr_lp_cnt, axis_src_cr_size, src_c_lp_cnt, axis_src_c_size, src_cl_lp_cnt,
+                                       axis_src_cl_size, core_num, params);
     if (!ret) {
       VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetMcInfoPositiveNtc100 Failed.");
       return ret;

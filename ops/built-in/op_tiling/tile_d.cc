@@ -28,7 +28,6 @@
 #include "op_tiling_util.h"
 
 namespace optiling {
-
 bool TileDTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
                  utils::OpRunInfo& run_info) {
   V_OP_TILING_CHECK((op_info.find("tiling_info") != op_info.end()),

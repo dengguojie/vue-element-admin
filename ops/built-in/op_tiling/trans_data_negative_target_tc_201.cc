@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,6 @@
 #include "error_log.h"
 
 namespace optiling {
-
 const int32_t TC_FRAME_LEVEL = 2;
 
 bool GetMcInfoNegative201(int64_t& dst_r2nd_lp_cnt, int64_t dst_r2nd_left, int64_t& src_cl_lp_cnt,
@@ -198,7 +197,6 @@ bool TilingNegativeTc201(vector<int64_t>& in_shape, vector<int64_t>& out_shape, 
     } else {
       tmp_src_cl_lp_unit = GetFloorDiv(params.ub_offset, NI_16 * params.c0_len);
     }
-
   } else if (dtype != DT_INT8 && dtype != DT_UINT8) {
     if (axis_dst_c_size * axis_dst_r2nd_size >= vnc_col_size / VNC_LINES) {
       params.tiling_mode = 2011;

@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,6 @@
 #include "error_log.h"
 
 namespace optiling {
-
 int64_t GetCeilFillC(int64_t u_value, int64_t d_value) {
   int64_t res_value = 0;
   if (d_value == 0) {
@@ -155,7 +154,8 @@ bool TillingPositiveMode1011(vector<int64_t>& in_shape, vector<int64_t>& out_sha
   // target axis -2 tiling parameters
   int32_t dst_axis_pos_c = std::strchr(dst_format.c_str(), 'C') - dst_format.c_str();
   int32_t src_axis_pos_c = std::strchr(src_format.c_str(), 'C') - src_format.c_str();
-  int32_t dst_r2nd_in_src_idx = std::strchr(src_format.c_str(), dst_format[dst_format.length() - 2]) - src_format.c_str();
+  int32_t dst_r2nd_in_src_idx = std::strchr(src_format.c_str(),
+                                            dst_format[dst_format.length() - 2]) - src_format.c_str();
   int64_t axis_dst_r2nd_size = in_shape[dst_r2nd_in_src_idx];
   if (axis_dst_r2nd_size < VNC_LINES) {
     params.dst_r2nd_lp_unit = axis_dst_r2nd_size;
@@ -223,8 +223,8 @@ bool TillingPositiveMode1011(vector<int64_t>& in_shape, vector<int64_t>& out_sha
     }
   }
 
-  GetMcInfoPositive1011(axis_dst_r2nd_lp_cnt, axis_dst_r2nd_left, c_lp_cnt, c_left, axis_src_cl_lp_cnt, axis_src_cl_left,
-                        core_num, params);
+  GetMcInfoPositive1011(axis_dst_r2nd_lp_cnt, axis_dst_r2nd_left, c_lp_cnt, c_left, axis_src_cl_lp_cnt,
+                        axis_src_cl_left, core_num, params);
   return true;
 }
 
@@ -309,5 +309,4 @@ void PrintTilingMode1011Params(const std::string& op_type, const TransDataMode10
   OP_LOGD(op_type, "cl_out_1_src_rsize=%d", params.cl_out_1_src_rsize);
   OP_LOGD(op_type, "cl_out_1_dst_asize=%d", params.cl_out_1_dst_asize);
 }
-
 }  // namespace optiling
