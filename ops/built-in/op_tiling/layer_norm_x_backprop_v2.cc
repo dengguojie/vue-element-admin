@@ -68,12 +68,10 @@ bool LayerNormXBackpropV2Tiling(const std::string& op_type, const ge::Operator& 
   std::vector<int64_t> input_shape = input0_desc->MutableShape().GetDims();
   int32_t fmap_x0 = input_shape[0];
   int32_t fmap_x1 = input_shape[1];
-  int32_t fmap_x2 = input_shape[2];
-  int32_t fmap_multi = fmap_x1 * fmap_x2;
   int32_t core_num = 0;
   int32_t ub_size = 0;
   int32_t max_dtype = 0;
-  int32_t THREE_DIMEN_KEY = 10000;
+  int32_t CUT_AXIS_ONE_TILING_KEY = 10000;
 
   bool ret = GetLayerNormXBackpropV2CompileParams(op_type, op_info, core_num, ub_size, max_dtype);
   if (!ret) {
@@ -84,11 +82,8 @@ bool LayerNormXBackpropV2Tiling(const std::string& op_type, const ge::Operator& 
 
   run_info.AddTilingData(fmap_x0);
   run_info.AddTilingData(fmap_x1);
-  run_info.AddTilingData(fmap_multi);
   run_info.SetBlockDim(core_num);
-  if (input_shape.size() == 3) {
-    run_info.SetTilingKey(THREE_DIMEN_KEY);
-    }
+  run_info.SetTilingKey(CUT_AXIS_ONE_TILING_KEY);
   GELOGI("LayerNormXBackpropTilingV2 end.");
   return true;
 }

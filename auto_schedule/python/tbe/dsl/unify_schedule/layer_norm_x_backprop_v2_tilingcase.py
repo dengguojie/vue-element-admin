@@ -34,12 +34,13 @@ SPECIAL = "special"
 SPECIAL_SCALAR = "special_scalar"
 CONST = "const"
 ORIGINAL = "original"
+DB_KEY = 10000
 
 class TilingStrategy(Enum):
     """
     TilingStrategy
     """
-    THREE_DIMEN = auto()
+    NONE_CUT = auto()
 
 
 @register_tiling_case(pattern=Pattern.LAYER_NORM_X_BACKPROP_V2)
@@ -60,11 +61,11 @@ def calc_layer_norm_x_backprop_v2(outs, option=None):
     shape = util.shape_to_list(out.shape)
     cases = []
 
-    three_dimen_key = 10000
+    base_key = 10000
     cases.append({
-        "key": three_dimen_key,
+        "key": base_key,
         "block_tiling_axis": 0,
         "ub_tiling_axis": 1,
-        "tiling_strategy": TilingStrategy.THREE_DIMEN})
+        "tiling_strategy": TilingStrategy.NONE_CUT})
 
     return cases
