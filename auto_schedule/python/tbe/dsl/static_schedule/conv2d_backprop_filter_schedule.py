@@ -29,6 +29,7 @@ from tbe.dsl.compute.conv2d_backprop_filter_compute import DynamicConv2dBpFilter
 from tbe.dsl.compute import cube_util
 from tbe.dsl.static_schedule.util import parse_tbe_compile_para
 from tbe.common import platform as tbe_platform
+from tbe.common.context import op_context
 
 
 # for debug, delete before publish
@@ -37,14 +38,23 @@ DEBUG_MODE = False
 DEBUG_DOUBLE_BUFFER_OFF = False
 
 CUBE_DIM = 16
-FLOAT16_SIZE = 2
-FLOAT32_SIZE = 4
 CUBE_MUL_SHAPE = 256
 OPEN_DOUBLE_BUFFER = 2
 DEFAULT_TILING_CASE = 32
 LOOSE_LINE_CONDITION = 2
 KB_2_B = 1024
 
+# the bytes length of several dtype
+BIT_RATIO_DICT = {
+    "int32": 4,
+    "float32": 4,
+    "float16": 2,
+    "uint8": 1,
+    "int8": 1,
+    "uint4": 0.5,
+    "int4": 0.5,
+    "bfloat16": 2,
+}
 
 def _ceil_div(dividend, divisor):
     """
@@ -70,6 +80,20 @@ def _align(x_1, x_2):
         dict_args['reason'] = "Division by zero"
         error_manager_util.raise_runtime_error(dict_args)
     return (x_1 + x_2 - 1) // x_2*x_2
+
+
+def _get_precision_mode(op_type):
+    """
+    get calculation mode, high_performance or high_precision
+    """
+    context = op_context.get_context()
+    op_infos = context.get_op_info() if context else {}
+    if not op_infos:
+        op_infos = {}
+    for op_info in op_infos:
+        if op_info.op_type == op_type:
+            return op_info.precision_mode
+    return ""
 
 
 class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
@@ -294,7 +318,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             do L1 size limit check
 
             """
-            in_data_size = FLOAT32_SIZE if in_dtype == "float32" else FLOAT16_SIZE
+            in_data_size = BIT_RATIO_DICT.get(in_dtype, 2)
             al1_min_byte = CUBE_DIM * CUBE_DIM * in_data_size
             if not flag_conv1d_case:
                 kl1_min = width_fmap
@@ -771,6 +795,9 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 setfmatrix_dict["conv_dilation_w"] = dilation_width
                 mad_dict["mad_pattern"] = 2
 
+            if self.cube_vector_split and _get_precision_mode("conv2d_backprop_filter") == "high_performance":
+                mad_dict["hf32"] = 1
+
             setfmatrix_dict_0 = dict()
             setfmatrix_dict_0["conv_kernel_h"] = kernel_height
             setfmatrix_dict_0["conv_kernel_w"] = kernel_width
@@ -1077,7 +1104,7 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
                 else:
                     phol1 = 2
                 pbl1hi = (phol1 - 1) * stride_height + (kernel_height - 1) * dilation_height + 1
-                bl1_size = pbl1hi * width_fmap * CUBE_DIM * FLOAT16_SIZE
+                bl1_size = pbl1hi * width_fmap * CUBE_DIM * BIT_RATIO_DICT.get(in_dtype, 2)
                 return bl1_size
 
             nbl0 = _get_nbl0()
@@ -1087,12 +1114,13 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             kbl1 = _get_kbl1()
 
             block_batch = _get_factors(batch_grads, self._corenum)
-            if nbl0 * mal0 * CUBE_DIM * CUBE_DIM * FLOAT32_SIZE * OPEN_DOUBLE_BUFFER < self._loc_size:
+            out_dtype = dw_cc.dtype.lower()
+            if nbl0 * mal0 * CUBE_DIM * CUBE_DIM * BIT_RATIO_DICT.get(out_dtype, 4) * OPEN_DOUBLE_BUFFER < self._loc_size:
                 cl0_pbuffer = 2
             else:
                 cl0_pbuffer = 1
             bl1_size = _cal_bl1size()
-            al1_size_double = mal0 * CUBE_MUL_SHAPE * FLOAT16_SIZE * OPEN_DOUBLE_BUFFER
+            al1_size_double = mal0 * CUBE_MUL_SHAPE * BIT_RATIO_DICT.get(in_dtype, 2) * OPEN_DOUBLE_BUFFER
             if al1_size_double + bl1_size <= self.l1_size:
                 bl1_pbuffer = 2
             else:

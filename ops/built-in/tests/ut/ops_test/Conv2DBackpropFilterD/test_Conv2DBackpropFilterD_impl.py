@@ -52,6 +52,21 @@ def tiling_mock(*args):
     return tiling
 
 
+def tiling_mock2(*args):
+    tiling = {'AL0_matrix': [1, 1, 16, 8, 1, 1], 'AL1_shape': [64, 1, 1, 1],
+                    'AUB_channel_wise_flag': None, 'AUB_shape': [1, 0, 0, 0],
+                    'A_overhead_opt_flag': 0, 'BL0_matrix': [1, 1, 16, 16, 1, 1],
+                    'BL1_shape': [64, 1, 1, 1], 'BUB_channel_wise_flag': None,
+                    'BUB_shape': None, 'B_overhead_opt_flag': 0, 'CL0_matrix': [1, 1, 16, 16, 1, 1],
+                    'CUB_channel_wise_flag': False, 'CUB_matrix': [1, 1, 16, 16, 1, 1],
+                    'batch_bef_group_flag': 0, 'block_dim': [1, 1, 1, 1],
+                    'manual_pingpong_buffer': {'AL0_pbuffer': 1, 'AL1_pbuffer': 1, 'AUB_pbuffer': 1,
+                    'BL0_pbuffer': 1, 'BL1_pbuffer': 1, 'BUB_pbuffer': 1, 'CL0_pbuffer': 1,
+                    'CUB_pbuffer': 1, 'UBG_pbuffer': 1}, 'n_bef_batch_flag': 0, 'n_bef_group_flag': 0,
+                    'tbe_compile_para': 0}
+    return tiling
+
+
 def _gen_kernel_name(dedy_shape, w_shape, dx_shape, strides, data_flow):
     dedy_shape_info = "_".join([str(i) for i in dedy_shape])
     w_shape_info = "_".join([str(i) for i in w_shape])
@@ -242,6 +257,28 @@ def _test_nd2nz_format_fp32(test_arg):
                     sch = tbe.auto_schedule(filter_nhwc)
 
 
+def _test_nd2nz_format_bf16(test_arg):
+    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=get_soc_mock)):
+        with patch("impl.util.platform_adapter.tbe_platform.get_soc_spec", MagicMock(side_effect=get_soc_mock)):
+            fmap_5hd = tvm.placeholder((1, 1, 7, 7, 16), name="fmap_5hd", dtype="bfloat16")
+            out_5hd = tvm.placeholder((1, 1, 7, 7, 16), name="out_5hd", dtype="bfloat16")
+            para_dict = {
+                "strides": (1, 1),
+                "padding": (0, 0, 0, 0),
+                "dilations": (1, 1, 1, 1),
+                "groups": 1,
+                "res_dtype": "float32",
+                "kernel_name": "test_nd2nz_format_02"
+            }
+            filter_fz = tbe.conv2d_backprop_filter(input_x=fmap_5hd,
+                                                   out_backprop=out_5hd,
+                                                   filter_sizes=(16, 16, 1, 1),
+                                                   para_dict=para_dict)
+            with tvm.target.cce():
+                with patch("tbe.common.tiling.tiling_api.get_tiling", MagicMock(side_effect=tiling_mock2)):
+                    sch = tbe.auto_schedule(filter_fz)
+
+
 def _test_nd2nz_format_err1(test_arg):
     try:
         fmap_nhwc = tvm.placeholder((1, 7, 7, 16), name="fmap_nhwc", dtype="float16")
@@ -254,6 +291,8 @@ def _gen_conv2d_bp_filter_nd2nz_format():
     ut_case.add_cust_test_func("Ascend910A", test_func=_test_nd2nz_format)
     ut_case.add_cust_test_func("Ascend910A", test_func=_test_nd2nz_format_fp32)
     ut_case.add_cust_test_func("Ascend910A", test_func=_test_nd2nz_format_err1)
+    ut_case.add_cust_test_func("Ascend910A", test_func=_test_nd2nz_format_bf16)
+
 
 def _test_conv2d_backprop_filter_compute(test_args):
     def __build_dw_compute(test_case):

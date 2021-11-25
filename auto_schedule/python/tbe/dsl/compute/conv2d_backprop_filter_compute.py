@@ -336,11 +336,6 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
 
         """
         # check of data type
-        in_dtype_list = ["float16"]
-        if self.cube_vector_split:
-            in_dtype_list.append("float32")
-        para_check.check_dtype_rule(self.fmap_dtype, in_dtype_list)
-        para_check.check_dtype_rule(self.grads_dtype, in_dtype_list)
         if self.fmap_dtype != self.grads_dtype:
             dict_args = dict()
             dict_args["errCode"] = "E60038"

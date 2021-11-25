@@ -73,6 +73,7 @@ BIT_RATIO_DICT = {
     "int8": 1,
     "uint4": 0.5,
     "int4": 0.5,
+    "bfloat16": 2,
 }
 
 # pads valid mode to be [0, 0, 0, 0]
@@ -1071,12 +1072,6 @@ def _conv2d_backprop_filter_cce(
     x_dtype = x_dtype.lower()
     out_backprop_dtype = out_backprop_dtype.lower()
     res_dtype = res_dtype.lower()
-    in_dtype_list = ["float16"]
-    if tbe_platform.get_soc_spec("CUBE_VECTOR_SPLIT"):
-        in_dtype_list.append("float32")
-    para_check.check_dtype_rule(x_dtype, in_dtype_list)
-    para_check.check_dtype_rule(out_backprop_dtype, in_dtype_list)
-    para_check.check_dtype_rule(res_dtype, ["float32", "float16"])
     if x_dtype != out_backprop_dtype:
         dict_args = {}
         dict_args["errCode"] = "E60038"
