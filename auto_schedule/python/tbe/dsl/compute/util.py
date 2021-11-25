@@ -634,6 +634,21 @@ DSL_CHECK_SUPPORT_MAP = {
         ASCEND_615: ("float16", "float32", "int8", "uint8", "int16",
                      "uint16", "int32", "uint32", "int64", "uint64", "int64"),
     },
+    "transdata": {
+        "AllSoc": ("float16",),
+        ASCEND_310: ("float16", "float32", "int8", "uint8", "int16",
+                     "uint16", "int32", "uint32", ),
+        ASCEND_910: ("float16", "float32", "int8", "uint8", "int16",
+                     "uint16", "int32", "uint32", ),
+        ASCEND_920A: ("float16", "float32", "int8", "uint8", "int16",
+                      "uint16", "int32", "uint32", ),
+        ASCEND_710: ("float16", "float32", "int8", "uint8", "int16",
+                     "uint16", "int32", "uint32", ),
+        ASCEND_610: ("float16", "float32", "int8", "uint8", "int16",
+                     "uint16", "int32", "uint32", ),
+        ASCEND_615: ("float16", "float32", "int8", "uint8", "int16",
+                     "uint16", "int32", "uint32", ),
+    },
 
     # common
     "clip": {

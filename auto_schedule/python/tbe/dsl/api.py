@@ -778,6 +778,27 @@ def transpose(tensor, axes):
     return array.transpose(tensor, axes)
 
 
+def transdata(tensor, dst_shape, axes_map, pad_value=0):
+    """
+    transdata a tensor by axes_map and dst_shape
+
+    Parameters
+    ----------
+    tensor : tvm.tensor
+        Original tensor
+    dst_shape : list[int]
+        Shape of dst_tensor after transdata
+    axes_map : dict
+        Permutes the dimensions according to the axes_map
+    pad_value : int
+        Determine the padding value when padding is required
+    Returns
+    -------
+    tvm.tensor: A transdata tensor that shape is dst_shape
+    """
+    return array.transdata(tensor, dst_shape, axes_map, pad_value)
+
+
 def reduce_sum(raw_tensor, axis, keepdims=False):
     """
     calculate reduce_sum of raw_tensor, only support float16

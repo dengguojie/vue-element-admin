@@ -347,7 +347,8 @@
         "reduce_sum",
         "reduce_max",
         "reduce_min",
-        "reduce_prod"
+        "reduce_prod",
+        "elewise_schedule"
     ],
     "auto_schedule/python/tbe/dsl/static_schedule/reduce_mean_mid_reduce_high_performance_schedule.py":[
         "reduce_mean"
@@ -364,9 +365,6 @@
     "auto_schedule/python/tbe/dsl/static_schedule/cce_schedule.py":[
         "cce_schedule"
     ],
-    "auto_schedule/python/tbe/dsl/static_schedule/elewise_schedule.py":[
-        "elewise_schedule"
-    ],
     "auto_schedule/python/tbe/dsl/static_schedule/elewise_speel_schedule.py":[
         "elewise_speel_schedule"
     ],
@@ -378,5 +376,8 @@
     ],
     "auto_schedule/python/tbe/dsl/unify_schedule/layer_norm_x_backprop_v2_schedule.py":[
         "layer_norm_x_backprop_v2/test_dynamic_layer_norm_x_backprop_v2_impl.py"
+    ],
+    "auto_schedule/python/tbe/dsl/compute/general_transdata.py":[
+        "transdata"
     ]
 }

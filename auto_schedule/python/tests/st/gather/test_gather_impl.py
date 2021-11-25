@@ -11,16 +11,14 @@ from tbe.dsl import classify
 
 @register_operator("gather")
 def dsl_dync_gather(params, indices, output, kernel_name="dsl_dync_vadd"):
-
-
     with tbe.common.context.op_context.OpContext("dynamic"):
-
         ins = classify([params, indices, 0, 0], "gather")
         schedules, tensors = [], []
 
         for params_input, indices_input, axis_input, batch_dims_input in ins:
             with tbe.dsl.compute():
-                params_shape, indices_shape, axis_dim, batch_dims = shape_util.variable_shape([params_input, indices_input, axis_input, batch_dims_input], "gather")
+                params_shape, indices_shape, axis_dim, batch_dims = shape_util.variable_shape(
+                    [params_input, indices_input, axis_input, batch_dims_input], "gather")
                 params_tensor = tvm.placeholder(params_shape, name='params', dtype=params_input["dtype"])
                 indices_tesnor = tvm.placeholder(indices_shape, name='indices', dtype=indices_input["dtype"])
                 res = tbe.dsl.gather(params_tensor, indices_tesnor, axis_dim, batch_dims)
@@ -32,6 +30,7 @@ def dsl_dync_gather(params, indices, output, kernel_name="dsl_dync_vadd"):
 
         config = {"name": kernel_name, "tensor_list": tensors}
         tbe.dsl.build(schedules, config)
+
 
 ut_case = OpUT("gather", "gather.test_gather_impl", "dsl_dync_gather")
 
@@ -61,15 +60,15 @@ case2 = {
     "params": [{
         "shape": (-2,),
         "dtype": "float16",
-        "range": [(1, None),]
+        "range": [(1, None), ]
     }, {
         "shape": (-2,),
         "dtype": "int32",
-        "range": [(1, None),]
+        "range": [(1, None), ]
     }, {
         "shape": (-2,),
         "dtype": "float16",
-        "range": [(1, None),]
+        "range": [(1, None), ]
     }],
     "case_name":
         "test_dync_gather_2",
@@ -79,6 +78,5 @@ case2 = {
         True
 }
 
-ut_case.add_case(["all",], case1)
-ut_case.add_case(["all",], case2)
-
+ut_case.add_case(["Ascend910A", ], case1)
+ut_case.add_case(["Ascend910A", ], case2)

@@ -108,3 +108,5 @@ from .api import matmul
 #gather
 from .api import gather
 from .api import gather_nd
+
+from .api import transdata

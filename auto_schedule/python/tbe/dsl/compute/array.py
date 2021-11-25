@@ -26,6 +26,7 @@ import types
 from tbe import tvm
 from tbe.common.testing.dsl_source_info import source_info_decorator
 from tbe.common.utils.errormgr import get_error_message
+from tbe.dsl.compute.transdata import transdata_compute
 from .util import dtype_check_decorator
 from .util import check_input_tensor_shape
 from .util import shape_to_list
@@ -197,6 +198,7 @@ def _unify_concat(input_tensors, axis):
     concat axis
     :return: tvm.tensor: A concat Tensor
     """
+
     def concat_func(*indices):
         func = None
         concat_axis_size = sum(t.shape[axis] for t in input_tensors)
@@ -432,3 +434,108 @@ def _get_next_name_index():
     """
     NAME_INDEX[0] += 1
     return NAME_INDEX[0]
+
+@source_info_decorator()
+@dtype_check_decorator
+def transdata(tensor, dst_shape, axes_map, pad_value=0):
+    """
+    transdata a tensor by axes_map and dst_shape
+
+    Parameters
+    ----------
+    tensor : tvm.tensor
+        Original tensor
+    dst_shape : list[int]
+        Shape of dst_tensor after transdata
+    axes_map : dict
+        Permutes the dimensions according to the axes_map
+    pad_value : int
+        Determine the padding value when padding is required
+    Returns
+    -------
+    tvm.tensor: A transdata tensor that shape is dst_shape
+    """
+
+    def forward_get_permute(_axes_map):
+        permute = []
+        for _, v in _axes_map.items():
+            if isinstance(v, int):
+                permute.append(v)
+            elif isinstance(v, (tuple, list)):
+                permute.extend(v)
+        return [x for _, x in sorted(zip(permute, range(0, len(permute))))]
+
+    def backward_get_permute(_axes_map):
+        permute = []
+        for k, _ in _axes_map.items():
+            if isinstance(k, int):
+                permute.append(k)
+            elif isinstance(k, (tuple, list)):
+                permute.extend(k)
+        return permute
+
+    def check():
+        input_shape = shape_to_list(tensor.shape)
+        for shape in input_shape:
+            if (isinstance(shape, int) and shape < 0) or not isinstance(shape, (tvm.expr.Expr, int)):
+                dict_args = {"errCode": "E90001",
+                             "detailed_cause": "The input shape value [%s] must be a positive integer or tvm expr"}
+                raise RuntimeError(dict_args, get_error_message(dict_args))
+        if not isinstance(axes_map, dict):
+            dict_args = {"errCode": "E90001", "detailed_cause": "The axes_map must dict"}
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+        is_forward = False
+        is_backward = False
+        for k, v in axes_map.items():
+            if isinstance(k, (list, tuple)) and isinstance(v, int):
+                is_backward = True
+            if isinstance(k, int) and isinstance(v, (list, tuple)):
+                is_forward = True
+
+        if is_forward and is_backward:
+            # Pad and DePad existed together
+            dict_args = {"errCode": "E90001",
+                         "detailed_cause": "Pad and DePad existed together is invalid"}
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+        if not is_forward and not is_backward:
+            # Pad and DePad not existed
+            dict_args = {"errCode": "E90001",
+                         "detailed_cause": "Pad or DePad is required in transdata, "
+                                           "but axes_map not exist Pad or DePad"}
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+        if is_forward:
+            _axes_map = dict(sorted(axes_map.items()))
+            permute = forward_get_permute(_axes_map)
+            # check ele of axes_map
+            for k, v in _axes_map.items():
+                if not isinstance(k, int):
+                    dict_args = {"errCode": "E90001", "detailed_cause": "In forward, key of axes_map must be int"}
+                    raise RuntimeError(dict_args, get_error_message(dict_args))
+                if not isinstance(v, (int, tuple, list)):
+                    dict_args = {"errCode": "E90001", "detailed_cause": "In forward, value of axes_map "
+                                                                        "should in [int, tuple, list]"}
+                    raise RuntimeError(dict_args, get_error_message(dict_args))
+        else:
+            _axes_map = dict(sorted(axes_map.items(), key=lambda x: x[1]))
+            permute = backward_get_permute(_axes_map)
+            # check ele of axes_map
+            for k, v in _axes_map.items():
+                if not isinstance(v, int):
+                    dict_args = {"errCode": "E90001", "detailed_cause": "In backward, value of axes_map must be int"}
+                    raise RuntimeError(dict_args, get_error_message(dict_args))
+                if not isinstance(k, (int, tuple, list)):
+                    dict_args = {"errCode": "E90001", "detailed_cause": "In backward, key of axes_map "
+                                                                        "should in [int, tuple, list]"}
+                    raise RuntimeError(dict_args, get_error_message(dict_args))
+
+        sorted_axes = sorted(permute)
+        base_axes = [i for i, _ in enumerate(permute)]
+        if sorted_axes != base_axes:
+            dict_args = {"errCode": "E90001", "detailed_cause": "The input axes_map error, cannot do transdata"}
+            raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    check()
+    return transdata_compute.transdata(tensor, dst_shape, axes_map, pad_value)
