@@ -791,35 +791,36 @@ def _scalar_performence_kernel_ir(dst, data, indices, jump_step, shape_data, sha
                             'w',
                             offset=block_index * param_ele_aligned_per_core + param_ele_ub_aligned * indice_core_row),
                         output_ub.access_ptr("r"), 0, 1, param_ub_len, 0, 0))
-            ir_build.emit(
-                tvm.call_extern(
-                    indices.dtype, "copy_gm_to_ubuf", three_indices_ub.access_ptr("w"),
-                    indices.access_ptr('r',
-                                       offset=block_index * indice_ele_aligned_per_core +
-                                       indice_ub_aligned_tiling_times * indice_ub_aligned), 0, 1,
-                    indice_ub_aligned_tiling_remain_len, 0, 0))
-
-            with ir_build.for_range(0, param_remain_ele, name='core_row') as core_row:
-                reg_gm[0] = tvm.const(0, dtype=indices.dtype)
-                reg_mul[0] = tvm.const(params_total_size, dtype=indices.dtype)
-                gm_offset = 0
-                for row2 in range(indices_move_length):
-                    ir_build.emit(
-                        tvm.call_extern(indices.dtype, "reg_mov", tvm.call_extern(reg.dtype, "reg", reg[row2]),
-                                        three_indices_ub.access_ptr('r', offset=core_row * jump_step + row2)))
-                    # caculate start position
-                    gm_offset += reg[row2] * shape_list[row2]
-                # caculate the start position to fetch num
+            if indice_ub_aligned_tiling_remain_len != 0:
                 ir_build.emit(
-                    tvm.call_extern(data.dtype, "reg_mov", output_ub.access_ptr("w", offset=core_row),
-                                    three_data_ub.access_ptr('r', offset=gm_offset)))
-            ir_build.emit(
-                tvm.call_extern(
-                    dst.dtype, "copy_ubuf_to_gm",
-                    dst.access_ptr('w',
-                                   offset=block_index * param_ele_aligned_per_core +
-                                   param_ele_ub_aligned * indice_ub_aligned_tiling_times), output_ub.access_ptr("r"), 0,
-                    1, param_remain_ele_len, 0, 0))
+                    tvm.call_extern(
+                        indices.dtype, "copy_gm_to_ubuf", three_indices_ub.access_ptr("w"),
+                        indices.access_ptr('r',
+                                        offset=block_index * indice_ele_aligned_per_core +
+                                        indice_ub_aligned_tiling_times * indice_ub_aligned), 0, 1,
+                        indice_ub_aligned_tiling_remain_len, 0, 0))
+
+                with ir_build.for_range(0, param_remain_ele, name='core_row') as core_row:
+                    reg_gm[0] = tvm.const(0, dtype=indices.dtype)
+                    reg_mul[0] = tvm.const(params_total_size, dtype=indices.dtype)
+                    gm_offset = 0
+                    for row2 in range(indices_move_length):
+                        ir_build.emit(
+                            tvm.call_extern(indices.dtype, "reg_mov", tvm.call_extern(reg.dtype, "reg", reg[row2]),
+                                            three_indices_ub.access_ptr('r', offset=core_row * jump_step + row2)))
+                        # caculate start position
+                        gm_offset += reg[row2] * shape_list[row2]
+                    # caculate the start position to fetch num
+                    ir_build.emit(
+                        tvm.call_extern(data.dtype, "reg_mov", output_ub.access_ptr("w", offset=core_row),
+                                        three_data_ub.access_ptr('r', offset=gm_offset)))
+                ir_build.emit(
+                    tvm.call_extern(
+                        dst.dtype, "copy_ubuf_to_gm",
+                        dst.access_ptr('w',
+                                    offset=block_index * param_ele_aligned_per_core +
+                                    param_ele_ub_aligned * indice_ub_aligned_tiling_times), output_ub.access_ptr("r"), 0,
+                        1, param_remain_ele_len, 0, 0))
         # 1 means the last core number
         with ir_build.else_scope():
             # combine last data with previous core
@@ -853,35 +854,36 @@ def _scalar_performence_kernel_ir(dst, data, indices, jump_step, shape_data, sha
                                        offset=block_index * param_ele_aligned_per_core +
                                        param_ele_ub_aligned * indice_last_core_row), output_ub.access_ptr("r"), 0, 1,
                         param_ub_len, 0, 0))
-            ir_build.emit(
-                tvm.call_extern(
-                    indices.dtype, "copy_gm_to_ubuf", three_indices_ub.access_ptr("w"),
-                    indices.access_ptr('r',
-                                       offset=block_index * indice_ele_aligned_per_core +
-                                       current_last_core_tiling_times * indice_ub_aligned), 0, 1,
-                    current_last_core_last_len, 0, 0))
-
-            with ir_build.for_range(0, param_last_ele_aligned, name='param_last_core_row') as param_last_core_row:
-                reg_gm[0] = tvm.const(0, dtype=indices.dtype)
-                for row2 in range(indices_move_length):
-                    ir_build.emit(
-                        tvm.call_extern(indices.dtype, "reg_mov", tvm.call_extern(reg.dtype, "reg", reg[row2]),
-                                        three_indices_ub.access_ptr('r',
-                                                                    offset=param_last_core_row * jump_step + row2)))
-                    # calculate start position
-                    reg_gm[0] += reg[row2] * shape_list[row2]
-                # calculate the start position to fetch num
-                gm_offset = reg_gm[0]
+            if current_last_core_last_len != 0:
                 ir_build.emit(
-                    tvm.call_extern(data.dtype, "reg_mov", output_ub.access_ptr('w', offset=param_last_core_row),
-                                    three_data_ub.access_ptr('r', offset=gm_offset)))
-            ir_build.emit(
-                tvm.call_extern(
-                    dst.dtype, "copy_ubuf_to_gm",
-                    dst.access_ptr('w',
-                                   offset=block_index * param_ele_aligned_per_core +
-                                   param_ele_ub_aligned * current_last_core_tiling_times), output_ub.access_ptr("r"), 0,
-                    1, param_ub_last_len, 0, 0))
+                    tvm.call_extern(
+                        indices.dtype, "copy_gm_to_ubuf", three_indices_ub.access_ptr("w"),
+                        indices.access_ptr('r',
+                                        offset=block_index * indice_ele_aligned_per_core +
+                                        current_last_core_tiling_times * indice_ub_aligned), 0, 1,
+                        current_last_core_last_len, 0, 0))
+
+                with ir_build.for_range(0, param_last_ele_aligned, name='param_last_core_row') as param_last_core_row:
+                    reg_gm[0] = tvm.const(0, dtype=indices.dtype)
+                    for row2 in range(indices_move_length):
+                        ir_build.emit(
+                            tvm.call_extern(indices.dtype, "reg_mov", tvm.call_extern(reg.dtype, "reg", reg[row2]),
+                                            three_indices_ub.access_ptr('r',
+                                                                        offset=param_last_core_row * jump_step + row2)))
+                        # calculate start position
+                        reg_gm[0] += reg[row2] * shape_list[row2]
+                    # calculate the start position to fetch num
+                    gm_offset = reg_gm[0]
+                    ir_build.emit(
+                        tvm.call_extern(data.dtype, "reg_mov", output_ub.access_ptr('w', offset=param_last_core_row),
+                                        three_data_ub.access_ptr('r', offset=gm_offset)))
+                ir_build.emit(
+                    tvm.call_extern(
+                        dst.dtype, "copy_ubuf_to_gm",
+                        dst.access_ptr('w',
+                                    offset=block_index * param_ele_aligned_per_core +
+                                    param_ele_ub_aligned * current_last_core_tiling_times), output_ub.access_ptr("r"), 0,
+                        1, param_ub_last_len, 0, 0))
 
 
 # 'pylint: disable=unused-argument,too-many-locals,too-many-arguments
