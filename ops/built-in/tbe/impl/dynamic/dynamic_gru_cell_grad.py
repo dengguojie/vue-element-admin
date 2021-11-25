@@ -33,7 +33,6 @@ class Constant:
     INT64 = 'int64'
     INT32 = 'int32'
     INT32_MAX_NUM = 2**32 - 1
-    max_block_ele_num = 7936
 
 
 # 'pylint: disable=too-many-arguments,invalid-name
@@ -77,6 +76,7 @@ def _check_attr(gate_order):
         rule_desc = "gate_order should be zrh or rzh, but current attr is " + gate_order
         errormgr.raise_err_check_params_rules(Constant.OP_NAME, rule_desc, 'gate_order', gate_order)
 
+
 # 'pylint: disable=too-many-statements,too-many-locals,unused-argument,invalid-name,too-many-instance-attributes
 class DynamicGRUCellGrad(TikOpBase):
     """ DynamicGRUCellGrad
@@ -102,8 +102,8 @@ class DynamicGRUCellGrad(TikOpBase):
         t_state_and_tiling_size = (16 * self.input_data_size + 16 * 8) * 2
         align = 256 // self.input_data_size
         ub_max_ele_num = (self.ub_byte_size - t_state_and_tiling_size) // self.input_data_size
-        self.Constant.max_block_ele_num = (ub_max_ele_num // 8 // 2 // align) * align
-        self.max_mem_size = self.input_data_size * self.Constant.max_block_ele_num
+        self.max_block_ele_num = (ub_max_ele_num // 8 // 2 // align) * align
+        self.max_mem_size = self.input_data_size * self.max_block_ele_num
 
         # t offset for dy, update, reset, new, hidden_new
         self.t_offset = self.tik_instance.Scalar(self.tiling_dtype, name="t_offset", init_value=0)
