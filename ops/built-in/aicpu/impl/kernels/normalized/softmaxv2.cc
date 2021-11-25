@@ -17,8 +17,8 @@
 #define EIGEN_USE_SIMPLE_THREAD_POOL
 #include "softmaxv2.h"
 
-#include <string.h>
 #include <complex>
+#include <cstring>
 #include <unsupported/Eigen/CXX11/Tensor>
 #include "cpu_kernel_utils.h"
 #include "cpu_types.h"

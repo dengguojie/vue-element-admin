@@ -15,7 +15,7 @@
  */
 #include "rsqrt.h"
 
-#include <float.h>
+#include <cfloat>
 #include <complex>
 
 #include "cpu_kernel_utils.h"

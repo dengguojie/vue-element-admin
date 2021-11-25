@@ -14,15 +14,17 @@
  * limitations under the License.
  */
 #include "invgrad.h"
-#include <stdint.h>
+
+#include <complex>
+#include <cstdint>
 #include "Eigen/Dense"
+
 #include "cpu_kernel_utils.h"
 #include "cpu_types.h"
 #include "kernel_util.h"
 #include "log.h"
 #include "securec.h"
 #include "status.h"
-#include <complex>
 
 namespace {
 const uint32_t kOutputNum = 1;

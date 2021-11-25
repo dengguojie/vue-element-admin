@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,7 +77,7 @@ constexpr char KERNEL_MODULE[] = "AICPU";
 
 #define KERNEL_CHECK_ASSIGN_64S_MULTI(A, B, result, errorCode)            \
   if ((A) != 0 && (B) != 0 && ((INT64_MAX) / (A)) <= (B)) {               \
-    KERNEL_LOG_ERROR("Integer reversed multiA: %llu * multiB: %llu", (A), \
+    KERNEL_LOG_ERROR("Integer reversed multiA: %ld * multiB: %ld", (A), \
                      (B));                                                \
     return errorCode;                                                     \
   }                                                                       \

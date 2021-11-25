@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,12 +26,16 @@
 namespace aicpu {
 class AICPU_VISIBILITY CpuKernelAllocatorUtils {
  public:
+  static uint32_t ParamCheck(const std::vector<int64_t> &dims, void *data_ptr,
+                             Tensor *&outputResultTensor);
   static uint32_t UpdateOutputDataTensor(const std::vector<int64_t> &dims,
                                          DataType type, void *data_ptr,
                                          int64_t input_data_size,
                                          Tensor *&outputResultTensor);
   static uint32_t CheckOutputDataPtr(const uint64_t data_ptr);
   static uint32_t DeleteOutputDataPtr(const uint64_t data_ptr);
+  static int64_t GetInputDataSize(const std::vector<int64_t> &dims,
+                                  DataType type);
 };
 }  // namespace aicpu
 #endif  // AICPU_UTILS_ALLOCATOR_UTILS_H_
