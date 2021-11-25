@@ -20,6 +20,9 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from impl.util import util_apply_op_schedule
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 
 
 # 'pylint: disable=too-few-public-methods, not-use-list-comprehension
@@ -32,6 +35,33 @@ class Constant:
 
 # 'pylint: disable=locally-disabled,too-many-arguments
 # 'pylint: disable=unused-argument,invalid-name,too-many-locals
+def get_op_support_info(var,
+                        accum,
+                        lr,
+                        grad,
+                        momentum,
+                        var_out,
+                        accum_out,
+                        use_nesterov=False,
+                        kernel_name="apply_momentum_d"):
+    """
+    get_op_support_info
+    """
+    format_var = var.get("format").upper()
+    if format_var in ("NC1HWC0",):
+        # cut N
+        axis_split_matrix = [[
+            SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]], [2, [0], [-1], [-1]], [3, [0], [-1], [-1]],
+                       [4, [0], [-1], [-1]]),
+            SplitOutput([0, [0]], [1, [0]])
+        ]]
+    else:
+        axis_split_matrix = None
+    axis_reduce_list = None
+    op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
+    return op_cal_info_in_json
+
+
 @tbe_platform.fusion_manager.fusion_manager.register("apply_momentum")
 def apply_momentum_compute_d(var,
                              accum,

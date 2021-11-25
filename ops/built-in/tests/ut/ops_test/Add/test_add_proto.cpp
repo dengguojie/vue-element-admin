@@ -371,3 +371,42 @@ TEST_F(add, add_data_slice_infer11) {
   auto ret = op.VerifyAllAttr(true);
   EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
+
+TEST_F(add, add_data_slice_infer12) {
+  ge::op::Add op;
+  std::vector<std::pair<int64_t, int64_t>> shape_range = {{1, 100}, {1, 100}, {1, 100},{1, 100}, {1, 100}};
+  auto tensor_desc = create_desc_shape_range({16, 16, 16, 16, 16},
+                                             ge::DT_FLOAT16,
+                                             ge::FORMAT_NC1HWC0,
+                                             {16, 256, 16, 16},
+                                             ge::FORMAT_NCHW,
+                                             shape_range);
+  std::vector<std::pair<int64_t, int64_t>> shape_range_1 = {{1, 1}};
+  auto tensor_desc_1 = create_desc_shape_range({1},
+                                             ge::DT_FLOAT16,
+                                             ge::FORMAT_ND,
+                                             {1},
+                                             ge::FORMAT_ND,
+                                             shape_range_1);
+  op.UpdateInputDesc("x1", tensor_desc);
+  op.UpdateInputDesc("x2", tensor_desc_1);
+  op.UpdateOutputDesc("y", tensor_desc);
+
+  std::vector<std::vector<int64_t>> y_data_slice = {{0, 4}, {0, 4}, {0, 4}, {0, 4}, {0, 4}};
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  ge::GeTensorDescPtr tensor_desc_y = op_desc->MutableOutputDesc("y");
+  ge::AttrUtils::SetListListInt(tensor_desc_y, ge::ATTR_NAME_DATA_SLICE, y_data_slice);
+  auto status = op_desc->InferDataSlice();
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+
+  auto tensor_desc_x1 = op_desc->MutableInputDesc("x1");
+  auto tensor_desc_x2 = op_desc->MutableInputDesc("x2");
+  std::vector<std::vector<int64_t>> x1_data_slice;
+  std::vector<std::vector<int64_t>> x2_data_slice;
+  ge::AttrUtils::GetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice);
+  ge::AttrUtils::GetListListInt(tensor_desc_x2, ge::ATTR_NAME_DATA_SLICE, x2_data_slice);
+  std::vector<std::vector<int64_t>> excepted_x1_data_slice = {{0, 4}, {0, 4}, {0, 4}, {0, 4}, {0, 4}};
+  std::vector<std::vector<int64_t>> excepted_x2_data_slice = {};
+  EXPECT_EQ(excepted_x1_data_slice, x1_data_slice);
+  EXPECT_EQ(excepted_x2_data_slice, x2_data_slice);
+}

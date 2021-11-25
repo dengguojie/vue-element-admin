@@ -51,10 +51,61 @@ case4 = {"params": [{"shape": (0.77,), "dtype": "float32", "format": "ND", "ori_
          "format_expect": [],
          "support_expect": True}
 
+
+def test_apply_get_op_support_info(test_arg):
+    from impl.apply_momentum_d import get_op_support_info
+    get_op_support_info(
+        {
+            "shape": (8, 16, 5, 5, 16),
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "ori_shape": (8, 5, 5, 256),
+            "ori_format": "NHWC"
+        }, {
+            "shape": (8, 16, 5, 5, 16),
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "ori_shape": (8, 5, 5, 256),
+            "ori_format": "NHWC"
+        }, {
+            "shape": (8, 16, 5, 5, 16),
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "ori_shape": (8, 5, 5, 256),
+            "ori_format": "NHWC"
+        }, {
+            "shape": (8, 16, 5, 5, 16),
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "ori_shape": (8, 5, 5, 256),
+            "ori_format": "NHWC"
+        }, {
+            "shape": (8, 16, 5, 5, 16),
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "ori_shape": (8, 5, 5, 256),
+            "ori_format": "NHWC"
+        }, {
+            "shape": (8, 16, 5, 5, 16),
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "ori_shape": (8, 5, 5, 256),
+            "ori_format": "NHWC"
+        }, {
+            "shape": (8, 16, 5, 5, 16),
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "ori_shape": (8, 5, 5, 256),
+            "ori_format": "NHWC"
+        }, None)
+
+
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case2)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case3)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910"], case4)
+ut_case.add_cust_test_func(test_func=test_apply_get_op_support_info)
+
 
 def calc_expect_func(x1, x2, x3, x4, x5,y1, y2):
     use_nesterov=False

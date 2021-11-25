@@ -18,7 +18,6 @@ def trans_shape(shape, ori_format, need_format):
     return new_shape
 
 
-
 def get_input(input_shape, multiples, dtype, ori_format, input_format):
     input_shape = list(input_shape)
     new_shape = trans_shape(input_shape, ori_format, input_format)
@@ -42,7 +41,26 @@ case1 = {"params": get_input((128, 128, 128, 128), [16, 16, 16, 16], "float16", 
          "support_expect": True}
 
 
+def test_tile_get_op_support_info(test_arg):
+    from impl.tile_d import get_op_support_info
+    get_op_support_info(
+        {
+            "shape": (8, 16, 5, 5, 16),
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "ori_shape": (8, 5, 5, 256),
+            "ori_format": "NHWC"
+        }, {
+            "shape": (8, 16, 5, 5, 16),
+            "dtype": "float16",
+            "format": "NC1HWC0",
+            "ori_shape": (8, 5, 5, 256),
+            "ori_format": "NHWC"
+        }, [1,1,1,1])
+
+
 ut_case.add_case(["Ascend310", "Ascend910"], case1)
+ut_case.add_cust_test_func(test_func=test_tile_get_op_support_info)
 
 if __name__ == '__main__':
     ut_case.run("Ascend910")

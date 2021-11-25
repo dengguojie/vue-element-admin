@@ -49,7 +49,10 @@ def get_op_support_info(input_x, output_x, multiples, kernel_name="tile_d"):
                 split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
                 axis_split_matrix.append(split_0)
         axis_reduce_list = None
-
+    elif format_x in ("NC1HWC0",):
+        # cut N
+        axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
+        axis_reduce_list = None
     elif format_x in ("NCHW", "NHWC") and format_output == "NC1HWC0":
         shape_x = shape_x + [1]
         if format_x == "NCHW":
@@ -66,7 +69,6 @@ def get_op_support_info(input_x, output_x, multiples, kernel_name="tile_d"):
                 split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]])]
                 axis_split_matrix.append(split_0)
         axis_reduce_list = None
-
     else:
         axis_split_matrix = None
         axis_reduce_list = None

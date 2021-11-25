@@ -139,7 +139,7 @@ static void InferElewiseTwoInputdif(vector<vector<int64_t>>& in_data_slice, cons
         in_data_slice.push_back(out_data_slice[i]);
       }
     }
-  } else if (in_dims.size() == 1) {
+  } else if (in_dims.size() == 1 && in_dims[0] != 1) {
     in_data_slice.push_back({out_data_slice[aixs][0] * 16, out_data_slice[aixs][1] * 16});
   }
 }
@@ -185,7 +185,8 @@ IMPLEMT_COMMON_INFER_DATA_SLICE(ElewiseTwoInputInferDataSlice) {
     return GRAPH_FAILED;
   }
 
-  if (x1_format == x2_format) {
+if ((x1_format == FORMAT_NHWC and x2_format == FORMAT_ND) or (x1_format == FORMAT_ND and x2_format == FORMAT_NHWC) or
+    (x1_format == x2_format)) {
     InferElewiseTwoInput(x1_data_slice, y_data_slice, x1_dims, y_dims);
     InferElewiseTwoInput(x2_data_slice, y_data_slice, x2_dims, y_dims);
   } else {
