@@ -93,7 +93,7 @@ Status SplitFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   }
   // build a fusion node op desc
   OpDescPtr fusion_desc = PatternFusionUtil::GetFusionOpDesc(fused_node1, fusionOpType, splitAttrInfo);
-  FUSION_PASS_CHECK(fusion_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fusion op desc is nullptr."),
+  FUSION_PASS_CHECK(fusion_desc == nullptr, OP_LOGI(FUSED_OP_TYPE, "fusion op desc is nullptr."),
                     return NOT_CHANGED);
 
   // check op support
