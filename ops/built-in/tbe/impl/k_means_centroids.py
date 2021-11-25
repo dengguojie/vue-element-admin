@@ -28,6 +28,7 @@ UB_BLOCK_SIZE = 32
 L0C_BLOCK_SIZE = 1024
 SCALAR_MAX_FP32 = (2 ** 30 + 2 ** 29)
 VECTOR_REPEAT_MAX = 255
+FP16_MASK = 128
 FP32_MASK = 64
 INPUT_LENGTH = 2
 VECTOR_LENGTH = 128
@@ -51,6 +52,10 @@ class KMeansCentroids:
         """
         init input, output, platform,
             tik instance, tiling and tensor
+
+        Parameters:
+        ----------
+        para_dict: inputs and outputs parameters, dict
         """
         self.input_x1 = para_dict.get("x")
         self.input_x2 = para_dict.get("y")
@@ -95,10 +100,33 @@ class KMeansCentroids:
         factor_list.append(num)
         return factor_list
 
+    @staticmethod
+    def _check_tiling_key(tiling_dict, keys):
+        """
+        check tiling key
+
+        Parameters
+        ----------
+        tiling_dict : tiling parameters, dict
+        keys : target keys, tuple or list
+
+        Returns
+        -------
+        None
+        """
+        for key in keys:
+            if key not in tiling_dict:
+                reason = "Key error, %s not in tiling." % key
+                error_manager_cube.raise_err_message_cube("k_means_centroids", reason)
+
     def _get_platform_info(self):
+        """ get platform information, such as CORE_NUM
+        """
         self.aic_cnt = tbe_platform.get_soc_spec("CORE_NUM")
 
     def _get_tiling(self):
+        """ native get_tiling api
+        """
         shape_x1 = self.input_x1.get("shape")
         shape_x2 = self.input_x2.get("shape")
         m_dim, k_dim = shape_x1
@@ -114,7 +142,7 @@ class KMeansCentroids:
         }
 
         self.cube_unit = 16
-        is_large_net_case = ((k_dim == K_DIM_NET_1 or k_dim == K_DIM_NET_2) and
+        is_large_net_case = ((k_dim in (K_DIM_NET_1, K_DIM_NET_2)) and
             (m_dim >= M_DIM_NET) and (n_dim >= N_DIM_NET))
         if is_large_net_case:
             tiling_para = self._default_tiling(k_dim, tiling_para)
@@ -123,7 +151,17 @@ class KMeansCentroids:
         self._fillin_tiling(tiling_para)
 
     def _default_tiling(self, k_dim, tiling_para):
-        """ default tiling
+        """
+        default tiling
+
+        Parameters
+        ----------
+        k_dim : axis k of original shape, number
+        tiling_para : tiling parameters, dict
+
+        Returns
+        -------
+        tiling_para : modified tiling parameters, dict
         """
         if not self.vcmin_fp32_supported and not self.high_perf:
             if k_dim == K_DIM_NET_1:
@@ -149,17 +187,30 @@ class KMeansCentroids:
         return tiling_para
 
     def _formula_tiling(self, m_dim, k_dim, n_dim):
+        """
+        tiling parameters calculated by formula
+
+        Parameters
+        ----------
+        m_dim : axis m of original shape, number
+        k_dim : axis k of original shape, number
+        n_dim : axis n of original shape, number
+
+        Returns
+        -------
+        tiling_para : modified tiling parameters, dict
+        """
         m_div_16 = m_dim // self.cube_unit
         k_div_16 = k_dim // self.cube_unit
         n_div_16 = n_dim // self.cube_unit
         block_dim_m = m_div_16 if m_div_16 < self.aic_cnt else self.aic_cnt
         single_core_m = self._ceil(m_div_16, block_dim_m) * self.cube_unit
         mkn_single_core = single_core_m // self.cube_unit, k_div_16, n_div_16
-        l0_m, l0_n = self._get_l0_tiling(mkn_single_core)
-        aub_m, bub_n, cub_n = self._get_mkn_ub(l0_m, l0_n, k_div_16)
+        l0_mn_list = self._get_l0_tiling(mkn_single_core)
+        aub_m, bub_n, cub_n = self._get_mkn_ub(l0_mn_list[0], l0_mn_list[1], k_div_16)
         tiling_para = {
-            "l0_m": l0_m,
-            "l0_n": l0_n,
+            "l0_m": l0_mn_list[0],
+            "l0_n": l0_mn_list[1],
             "aub_m": aub_m,
             "bub_n": bub_n,
             "cub_n": cub_n,
@@ -169,6 +220,17 @@ class KMeansCentroids:
         return tiling_para
 
     def _fillin_tiling(self, tiling_para):
+        """
+        filling tiling parameters in a dict
+
+        Parameters
+        ----------
+        tiling_para : partial tiling parameters, dict
+
+        Returns
+        -------
+        None
+        """
         l0_m = tiling_para.get('l0_m')
         l0_n = tiling_para.get('l0_n')
         aub_m = tiling_para.get('aub_m')
@@ -203,6 +265,17 @@ class KMeansCentroids:
         }
 
     def _get_l0_tiling(self, mkn_single_core):
+        """
+        get l0_buffer tiling
+
+        Parameters
+        ----------
+        mkn_single_core : axis m, k and n in single ai-core, tuple
+
+        Returns
+        -------
+        target_mn : l0_buffer tiling, list
+        """
         l0a_buffer_size = tbe_platform.get_soc_spec("L0A_SIZE")
         l0c_buffer_size = tbe_platform.get_soc_spec("L0C_SIZE")
         l0a_m_max = l0a_buffer_size // FP16_TYPE // mkn_single_core[1] // self.cube_unit // self.cube_unit
@@ -224,6 +297,20 @@ class KMeansCentroids:
         return target_mn
 
     def _calc_cost(self, l0_m, l0_n, m_loop, mkn_single_core):
+        """
+        calculate cost of tiling optimization function
+
+        Parameters
+        ----------
+        l0_m : axis m in l0_buffer, number
+        l0_n : axis n in l0_buffer, number
+        m_loop : loop of axis m in single ai-core, number
+        mkn_single_core : axis m, k and n in single ai-core, tuple
+
+        Returns
+        -------
+        cost, number
+        """
         bandwidth = 22.17
         n_loop = self._ceil(mkn_single_core[2], l0_n)
         n_one_loop_cost = self._calc_n_one_loop_cost(l0_m, l0_n)
@@ -234,6 +321,21 @@ class KMeansCentroids:
         return m_loop * (a_load_time + b_load_time + n_loop * n_one_loop_cost)
 
     def _get_mkn_ub(self, l0_m, l0_n, k_div_16):
+        """
+        get m, k, and n in ub_buffer
+
+        Parameters
+        ----------
+        l0_m : axis m in l0_buffer, number
+        l0_n : axis n in l0_buffer, number
+        k_div_16 : axis k divided by 16 of original shape, number
+
+        Returns
+        -------
+        aub_m : axis m in ub_buffer before CUBE unit, number
+        bub_n : axis n in ub_buffer before CUBE unit, number
+        cub_n : axis n in ub_buffer after CUBE unit, number
+        """
         ub_buffer_size = tbe_platform.get_soc_spec("UB_SIZE")
         global_ub = l0_m * self.cube_unit * 2 * FP32_TYPE
         global_ub += 8 * 2 * FP32_TYPE
@@ -260,6 +362,20 @@ class KMeansCentroids:
         return aub_m, bub_n, cub_n
 
     def _calc_cub_n(self, l0_n_factor_lis, l0_m, global_ub, ub_buffer_size):
+        """
+        calculate axis n in cub_buffer
+
+        Parameters
+        ----------
+        l0_n_factor_lis : axis n's factor list in l0_buffer, list
+        l0_m : axis m in l0_buffer, number
+        global_ub : global ub_buffer occupation, number
+        ub_buffer_size : total ub_buffer size
+
+        Returns
+        -------
+        cub_n : axis n in ub_buffer after CUBE unit, number
+        """
         cub_n = 1
         for cub_n in l0_n_factor_lis:
             matmul_tensor_count = 2
@@ -279,6 +395,18 @@ class KMeansCentroids:
         return cub_n
 
     def _calc_n_one_loop_cost(self, l0_m, l0_n):
+        """
+        calculate cost of axis n's one loop
+
+        Parameters
+        ----------
+        l0_m : axis m in l0_buffer, number
+        l0_n : axis n in l0_buffer, number
+
+        Returns
+        -------
+        sum_cost : cost of axis n's one loop, number
+        """
         fp32_parallelism = 64
         mn_cost = self._ceil(l0_m * l0_n, fp32_parallelism)
         if self.vcmin_fp32_supported or self.high_perf:
@@ -296,6 +424,8 @@ class KMeansCentroids:
         return sum_cost
 
     def _init_tiling_params(self):
+        """ init loop, left and shape in different buffer
+        """
         # matmul
         self.m_each_core = 16
         self.m_last_core = 0
@@ -341,12 +471,6 @@ class KMeansCentroids:
         self._tiling_multi_core()
         self._tiling_one_core_matmul()
         self._tiling_one_core_argmin()
-
-    def _check_tiling_key(self, tiling_dict, keys):
-        for key in keys:
-            if key not in tiling_dict:
-                reason = "Key error, %s not in tiling." % key
-                error_manager_cube.raise_err_message_cube("k_means_centroids", reason)
 
     def _tiling_multi_core(self):
         """ tiling in multi-core level
@@ -397,8 +521,8 @@ class KMeansCentroids:
         n_bub = self.tiling["BUB_shape"][1]
         m_al1 = self.tiling["AL1_shape"][1] * self.tiling["AL0_matrix"][0] * self.tiling["AL0_matrix"][2]
         n_bl1 = self.tiling["BL1_shape"][1] * self.tiling["BL0_matrix"][1] * self.tiling["BL0_matrix"][2]
-        ma, ka, m0, k0 = self.tiling["AL0_matrix"][:4]
-        kb, nb, n0 = self.tiling["BL0_matrix"][:3]
+        ma, ka = self.tiling["AL0_matrix"][:2]
+        kb, nb = self.tiling["BL0_matrix"][:2]
         nc, mc = self.tiling["CL0_matrix"][:2]
         nc_factor, mc_factor = self.tiling["CUB_matrix"][:2]
 
@@ -413,8 +537,8 @@ class KMeansCentroids:
         self.m_tiling_ub_loop = mc // mc_factor
         self.n_tiling_ub_loop = nc // nc_factor
         if self.n_tiling_left > 0:
-            self.n_tiling_cub_loop = self.n_tiling_left // (nc_factor * n0)
-            self.n_tiling_cub_left = self.n_tiling_left % (nc_factor * n0)
+            self.n_tiling_cub_loop = self.n_tiling_left // (nc_factor * 16)
+            self.n_tiling_cub_left = self.n_tiling_left % (nc_factor * 16)
 
         self.shape_x_ub = (m_aub, self.tiling["AUB_shape"][0])
         self.shape_x_ub_trans = (self._ceil(m_aub, 16), self.tiling["AUB_shape"][0], 16)
@@ -423,13 +547,13 @@ class KMeansCentroids:
 
         self.shape_x_l1 = (self._ceil(m_al1, 16), self.tiling["AL1_shape"][0], 16)
         self.shape_y_l1 = (self._ceil(n_bl1, 16), self.tiling["BL1_shape"][0], 16)
-        self.shape_x_l0a = (ma, ka, m0, k0)
-        self.shape_y_l0b = (kb, nb, n0, k0)
-        self.shape_z_l0c = (nc, mc * m0, n0)
+        self.shape_x_l0a = (ma, ka, 16, 16)
+        self.shape_y_l0b = (kb, nb, 16, 16)
+        self.shape_z_l0c = (nc, mc * 16, 16)
 
-        self.shape_z_ub = (nc_factor, mc_factor * m0, n0)
-        self.shape_z_ub_extend = (nc_factor, mc_factor * m0 + 1, n0)
-        self.shape_z_ub_nd = (mc_factor * m0, nc_factor * n0)
+        self.shape_z_ub = (nc_factor, mc_factor * 16, 16)
+        self.shape_z_ub_extend = (nc_factor, mc_factor * 16 + 1, 16)
+        self.shape_z_ub_nd = (mc_factor * 16, nc_factor * 16)
 
     def _tiling_one_core_argmin(self):
         """ argmin and UnsortedSegmentSum tiling in each core
@@ -611,6 +735,17 @@ class KMeansCentroids:
         self.scalar_one = self.tik_instance.Scalar(dtype=self.input_dtype, init_value=1)
 
     def _init_tensor_high_perf(self, n_tiling):
+        """
+        init tensor for high_performance mode
+
+        Parameters
+        ----------
+        n_tiling : valid data length of axis n, number
+
+        Returns
+        -------
+        None
+        """
         high_perf_dtype = "float16"
         m_tiling_real = VNCHWCONV_MIN_SIZE
         self.vcmin_input_fp16 = \
@@ -1162,7 +1297,8 @@ class KMeansCentroids:
         None
         """
         # Use vcmin to get the minimum value of each row in m_tiling rows
-        self._vcmin(self.min_distance_ub, self.data_input_ub_4_broadcast, m_tiling, n_tiling, n_cub_idx)
+        param_dict = {"m_tiling": m_tiling, "n_tiling": n_tiling, "n_cub_idx": n_cub_idx}
+        self._vcmin(self.min_distance_ub, self.data_input_ub_4_broadcast, param_dict)
         # Obtain the minimum and minimum indexes from the results of vcmin, respectively
         vr_loop = (m_tiling * 2) // FP32_MASK
         vr_tail = (m_tiling * 2) % FP32_MASK
@@ -1306,7 +1442,8 @@ class KMeansCentroids:
         """
         self.vconv(self.vcmin_input_fp16, self.data_input_ub_4_broadcast, self.shape_broadcast_ub,
                    src_dtype="float32")
-        self._vcmin(self.vcmin_output_fp16, self.vcmin_input_fp16, m_tiling, n_tiling, n_cub_idx)
+        self._vcmin(self.vcmin_output_fp16, self.vcmin_input_fp16,
+                    {"m_tiling": m_tiling, "n_tiling": n_tiling, "n_cub_idx": n_cub_idx})
         # Obtain the minimum and minimum index from results of vcmin, respectively
         trans_1_dst_list = [self.vcmin_output_trans1[16 * i] for i in range(16)]
         trans_1_src_list = [self.vcmin_output_fp16[32 * i] for i in range(16)]
@@ -1320,9 +1457,8 @@ class KMeansCentroids:
                                     0, 1, self.m_tiling // 16, 0, 0)
         self.vconv(self.local_min_distance_ub, self.local_min_distance_ub_fp16, (self.m_tiling, 1),
                    src_dtype="float16")
-        fp16_mask = 128
-        self.tik_instance.vector_dup(fp16_mask, self.index_double, 0, 4, 1, 8)
-        self.tik_instance.vadds(fp16_mask, self.index_double, self.vcmin_output_trans1[0, 16],
+        self.tik_instance.vector_dup(FP16_MASK, self.index_double, 0, 4, 1, 8)
+        self.tik_instance.vadds(FP16_MASK, self.index_double, self.vcmin_output_trans1[0, 16],
                                 self.scalar_zero_fp16, 2, 2, 2, 16, 16)
 
         index_trans_2_dst_list = [self.index_trans_to_int32[32 * i] for i in range(16)]
@@ -1384,7 +1520,7 @@ class KMeansCentroids:
                                    self.global_min_distance_ub[m_l0c_idx + vmin_loop * FP32_MASK],
                                    1, 1, 1, 1, 8, 8, 8)
 
-    def _vcmin(self, dst_tensor, src_tensor, m_tiling, n_tiling, n_cub_idx):
+    def _vcmin(self, dst_tensor, src_tensor, param_dict):
         """
         Use vcmin to get the minimum value of each row in m_tiling rows
 
@@ -1392,14 +1528,18 @@ class KMeansCentroids:
         -------------
         dst_tensor: min_distance_ub
         src_tensor: data_input_ub_4_broadcast
-        m_tiling: valid data length of axis m, number
-        n_tiling: valid data length of axis n, number
-        n_cub_idx: local index of axis n in src_tensor, expr
+        param_dict: include below
+            m_tiling: valid data length of axis m, number
+            n_tiling: valid data length of axis n, number
+            n_cub_idx: local index of axis n in src_tensor, expr
 
         Returns:
         -------------
         None
         """
+        m_tiling = param_dict.get("m_tiling")
+        n_tiling = param_dict.get("n_tiling")
+        n_cub_idx = param_dict.get("n_cub_idx")
         ub_min_num = 8 if src_tensor.dtype == "float32" else 16
         vcmin_loop = m_tiling // VECTOR_REPEAT_MAX
         vcmin_tail = m_tiling % VECTOR_REPEAT_MAX
@@ -1555,8 +1695,8 @@ class KMeansCentroids:
         """
         cur_m_align = self._ceil(cur_m, self.ub_min_num) * self.ub_min_num
         input_3_dma_burst = cur_m_align // self.ub_min_num
-        self.shape_input_3_ub = (cur_m_align, 1)
-        data_input_ub_3 = self.tik_instance.Tensor(self.input_dtype, self.shape_input_3_ub,
+        shape_input_3_ub = (cur_m_align, 1)
+        data_input_ub_3 = self.tik_instance.Tensor(self.input_dtype, shape_input_3_ub,
                                                    name="data_input_ub_3", scope=tik.scope_ubuf)
         self.tik_instance.data_move(data_input_ub_3, self.data_input_gm_3[m_gm_idx, 0],
                                     0, 1, input_3_dma_burst, 0, 0)
@@ -1854,7 +1994,7 @@ class KMeansCentroids:
                                                       "Illegal binary operator.")
 
         unit = 64  # for fp32
-        func = binary_operator_dict[operator]
+        func = binary_operator_dict.get(operator)
         repeat = (self.shape_z_ub_nd[0] * n) // unit
         left = (self.shape_z_ub_nd[0] * n) % unit
         repeat_loop = repeat // VECTOR_REPEAT_MAX
@@ -1904,7 +2044,7 @@ class KMeansCentroids:
                                                       "Illegal monocular operator.")
 
         unit = 64  # for fp32
-        func = monocular_operator_dict[operator]
+        func = monocular_operator_dict.get(operator)
         repeat = (self.shape_z_ub_nd[0] * n) // unit
         left = (self.shape_z_ub_nd[0] * n) % unit
         repeat_loop = repeat // VECTOR_REPEAT_MAX
