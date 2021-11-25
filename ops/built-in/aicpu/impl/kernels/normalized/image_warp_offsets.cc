@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021.All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -110,7 +110,6 @@ uint32_t ImageWarpOffsetsCpuKernel::DoCompute(CpuKernelContext &ctx) {
   };
 
   auto ret = CpuKernelUtils::ParallelFor(ctx, output_shape[2], 1, work);
-
   if (ret != KERNEL_STATUS_OK) {
     return ret;
   }

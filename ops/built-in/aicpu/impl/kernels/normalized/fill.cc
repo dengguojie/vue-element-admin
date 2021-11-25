@@ -36,18 +36,19 @@ const char *kFill = "Fill";
   case (DTYPE): {                                                             \
     auto value = *(reinterpret_cast<const TYPE *>(value_tensor->GetData()));  \
     if (AddrAlignedCheck(output->GetData())) {                                \
-      FILL_EIGEN_TENSOR_ASSIGN_CASE(TYPE, Eigen::Aligned)                     \
+      FILL_EIGEN_TENSOR_ASSIGN_CASE(TYPE, Eigen::Aligned);                    \
     } else {                                                                  \
-      FILL_EIGEN_TENSOR_ASSIGN_CASE(TYPE, Eigen::Unaligned)                   \
+      FILL_EIGEN_TENSOR_ASSIGN_CASE(TYPE, Eigen::Unaligned);                  \
     }                                                                         \
     break;                                                                    \
   }
 
-#define FILL_EIGEN_TENSOR_ASSIGN_CASE(TYPE, ALIGNMENT_TYPE)                   \
-  Eigen::TensorMap<Eigen::Tensor<TYPE, 1>, ALIGNMENT_TYPE> eigen_output(      \
+#define FILL_EIGEN_TENSOR_ASSIGN_CASE(TYPE, ALIGNMENT_TYPE)  do {             \
+    Eigen::TensorMap<Eigen::Tensor<TYPE, 1>, ALIGNMENT_TYPE> eigen_output(    \
       static_cast<TYPE *>(output->GetData()),                                 \
       output->GetTensorShape()->NumElements());                               \
-  eigen_output.setConstant(value);
+    eigen_output.setConstant(value);                                          \
+  } while(0)
 }
 
 namespace aicpu {

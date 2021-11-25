@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021.All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -172,12 +172,9 @@ uint32_t FloorDivCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
                                     sharder_floor_div),
         "FloorDiv Compute failed.")
     return status;
-  } else {
-    uint32_t status = SpecialCompute<T>(type, 0, data_num, in0, in1, out);
-    return status;
   }
 
-  return KERNEL_STATUS_OK;
+  return SpecialCompute<T>(type, 0, data_num, in0, in1, out);
 }
 
 template <typename T>
