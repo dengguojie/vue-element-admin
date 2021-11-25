@@ -99,7 +99,8 @@ def _get_roi_bin(tik_instance, dtype, sample_num, dtype_num, grid_w_int32, grid_
 
 
 def _get_roi_bin_scale(tik_instance, dtype_num, sample_num, dtype, scale, proposals_ub_x0, proposals_ub_y0,
-                       proposals_ub_x1, proposals_ub_y1, roi_w_fp32, roi_h_fp32, proposal_num_128, pool_h, pool_w):
+                       proposals_ub_x1, proposals_ub_y1, roi_w_fp32, roi_h_fp32, proposal_num_128, pool_h, pool_w,
+                       roi_end_mode):
     _adds_muls(tik_instance, dtype_num, scale, proposals_ub_x0, proposals_ub_y0)
     _adds_muls(tik_instance, dtype_num, scale, proposals_ub_x1, proposals_ub_y1)
 
@@ -115,8 +116,9 @@ def _get_roi_bin_scale(tik_instance, dtype_num, sample_num, dtype, scale, propos
     tik_instance.vec_dup(64 * dtype_num, const_mode, 1, 2 // dtype_num, 8)
 
     # compare roi_width adn roi_height to 1-mode (1 or 0)
-    tik_instance.vec_max(64 * dtype_num, roi_w_1to8, roi_w_1to8, const_mode, 128 * 2 // 128 // dtype_num, 8, 8, 0)
-    tik_instance.vec_max(64 * dtype_num, roi_h_1to8, roi_h_1to8, const_mode, 128 * 2 // 128 // dtype_num, 8, 8, 0)
+    if roi_end_mode != 3:
+        tik_instance.vec_max(64 * dtype_num, roi_w_1to8, roi_w_1to8, const_mode, 128 * 2 // 128 // dtype_num, 8, 8, 0)
+        tik_instance.vec_max(64 * dtype_num, roi_h_1to8, roi_h_1to8, const_mode, 128 * 2 // 128 // dtype_num, 8, 8, 0)
 
     with tik_instance.for_range(0, roi_w_fp32.shape[0]) as i:
         roi_w_fp32[i].set_as(roi_w_1to8[i, 0])
@@ -149,7 +151,7 @@ def _get_roi_bin_scale(tik_instance, dtype_num, sample_num, dtype, scale, propos
 def _get_roi_align_perf_scale_for_zero_v200(tik_instance, roi_fp32_fm_index, proposals_ub_x0,
                                             proposals_ub_y0, proposals_ub_x1,
                                             proposals_ub_y1, scale, pool_h, pool_w,
-                                            sample_num, dtype):
+                                            sample_num, dtype, roi_end_mode):
     """
     get satart point, bin_size and sample number
     """
@@ -174,7 +176,7 @@ def _get_roi_align_perf_scale_for_zero_v200(tik_instance, roi_fp32_fm_index, pro
     grid_h_int32, grid_w_fp32, grid_h_fp32 = _get_roi_bin_scale(tik_instance, dtype_num, sample_num, dtype, scale,
                                                                 proposals_ub_x0, proposals_ub_y0, proposals_ub_x1,
                                                                 proposals_ub_y1, roi_w_fp32, roi_h_fp32,
-                                                                proposal_num_128, pool_h, pool_w)
+                                                                proposal_num_128, pool_h, pool_w, roi_end_mode)
 
     return tik_instance, roi_bin_h_fp32_value, roi_bin_w_fp32_value, proposals_ub_x0, proposals_ub_y0, \
            grid_w_int32, grid_h_int32, grid_w_fp32, grid_h_fp32, roi_int32_fm_index
@@ -185,7 +187,7 @@ def _get_roi_align_perf_scale_for_zero_v200(tik_instance, roi_fp32_fm_index, pro
 def _get_roi_align_perf_scale_for_zero(tik_instance, proposal, proposals_ub_x0,
                                        proposals_ub_y0, proposals_ub_x1,
                                        proposals_ub_y1, scale, pool_h, pool_w,
-                                       sample_num, dtype):
+                                       sample_num, dtype, roi_end_mode):
     """
     get satart point, bin_size and sample number
     """
@@ -216,7 +218,7 @@ def _get_roi_align_perf_scale_for_zero(tik_instance, proposal, proposals_ub_x0,
     grid_h_int32, grid_w_fp32, grid_h_fp32 = _get_roi_bin_scale(tik_instance, dtype_num, sample_num, dtype, scale,
                                                                 proposals_ub_x0, proposals_ub_y0, proposals_ub_x1,
                                                                 proposals_ub_y1, roi_w_fp32, roi_h_fp32,
-                                                                proposal_num_128, pool_h, pool_w)
+                                                                proposal_num_128, pool_h, pool_w, roi_end_mode)
 
     return tik_instance, roi_bin_h_fp32_value, roi_bin_w_fp32_value, proposals_ub_x0, proposals_ub_y0, \
            grid_w_int32, grid_h_int32, grid_w_fp32, grid_h_fp32, roi_int32_fm_index
@@ -1316,9 +1318,10 @@ def _get_grid_weight_per_roi(tik_instance, roi_bin_h_fp32_value,
 
 
 # pylint: disable=unused-argument,invalid-name
-def roi_align_true(feature_map_dict, rois_dict, roisn_dict, output, scale, pool_h, pool_w, sample_ratio, kernel_name):
+def roi_align_true(feature_map_dict, rois_dict, roisn_dict, output, scale, pool_h, pool_w, sample_ratio, roi_end_mode,
+                   kernel_name):
     """
-    roi_align_tik
+    roi_align_true
     :param feature_map_dict:
     :param rois_dict:
     :param roisn_dict:
@@ -1327,6 +1330,7 @@ def roi_align_true(feature_map_dict, rois_dict, roisn_dict, output, scale, pool_
     :param pool_h:
     :param pool_w:
     :param sample_ratio:
+    :param roi_end_mode:
     :param kernel_name:
     :return:
     """
@@ -1402,7 +1406,7 @@ def roi_align_true(feature_map_dict, rois_dict, roisn_dict, output, scale, pool_
                                                                 proposals_ub_y1,
                                                                 scale, pool_h, pool_w,
                                                                 sample_ratio,
-                                                                dtype)
+                                                                dtype, roi_end_mode)
                 else:
                     _extract_roi(tik_instance, rois_shape, dtype, rois, block_i, block_num, roi_128_number, n_bust,
                                  rois_ub, cce_product, proposals_ub_x0, proposals_ub_y0, proposals_ub_x1,
@@ -1417,7 +1421,7 @@ def roi_align_true(feature_map_dict, rois_dict, roisn_dict, output, scale, pool_
                                                            proposals_ub_y1,
                                                            scale, pool_h, pool_w,
                                                            sample_ratio,
-                                                           dtype)
+                                                           dtype, roi_end_mode)
                 w_number = 0
 
                 w_number_ub = 0

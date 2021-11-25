@@ -224,6 +224,24 @@ case12 = {"params": [{"shape": (1, 16, 38, 64, 16), "dtype": "float32", "format"
           "format_expect": [],
           "support_expect": True}
 
+case13 = {"params": [{"shape": (1, 16, 38, 64, 16), "dtype": "float32", "format": "NHWC", "ori_shape": (2, 260, 1, 16),
+                      "ori_format": "NHWC"},
+                     {"shape": (256, 5), "dtype": "float32", "format": "NHWC", "ori_shape": (256, 5),
+                      "ori_format": "NHWC"},
+                     None,
+                     {"shape": (256, 16, 16, 1, 16), "dtype": "float32", "format": "NHWC",
+                      "ori_shape": (256, 16, 1, 256), "ori_format": "NHWC"},
+                     0.25,
+                     16,
+                     1,
+                     2,
+                     3
+                     ],
+          "case_name": "roi_align_13",
+          "expect": "success",
+          "format_expect": [],
+          "support_expect": True}
+
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case1)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case2)
@@ -237,6 +255,7 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case9)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case10)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case11)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case12)
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case13)
 
 
 def roi_align_v200_001(test_arg):

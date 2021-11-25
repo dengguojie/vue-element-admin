@@ -870,10 +870,11 @@ def _roi_align_calc_scale_batch(tik_instance, rois_data_ub, scale, pool_w,
     tik_instance.vector_dup(16, const_one, 1, 1, 0, 0)
 
     # compare roi_width adn roi_height to 1
-    tik_instance.vmax(64, roi_w_fp32, roi_w_fp32, const_one,
-                      BATCH_SIZE * 2 // 128, 1, 1, 0, 8, 8, 0)
-    tik_instance.vmax(64, roi_h_fp32, roi_h_fp32, const_one,
-                      BATCH_SIZE * 2 // 128, 1, 1, 0, 8, 8, 0)
+    if roi_end_mode != 3:
+        tik_instance.vmax(64, roi_w_fp32, roi_w_fp32, const_one,
+                          BATCH_SIZE * 2 // 128, 1, 1, 0, 8, 8, 0)
+        tik_instance.vmax(64, roi_h_fp32, roi_h_fp32, const_one,
+                          BATCH_SIZE * 2 // 128, 1, 1, 0, 8, 8, 0)
 
     # Declare roi_bin_size tik_instance.Tensor
     rois_bin_w = tik_instance.Tensor(
