@@ -45,7 +45,7 @@ std::string ScopeInstanceNormGradPass::PassName() {
   return std::string("ScopeInstanceNormGradPass");
 }
 
-void const ScopeInstanceNormGradPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
+void ScopeInstanceNormGradPass::GenScopePatterns(ScopeFusionPatterns& patterns) const {
   // recognize moments
   std::vector<ScopePattern*> batch1;
   ScopePattern* moments_grad = new (std::nothrow) ScopePattern();
@@ -197,8 +197,8 @@ Status ScopeInstanceNormGradPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGra
   return (!(results.empty())) ? SUCCESS : FAILED;
 }
 
-void const ScopeInstanceNormGradPass::FindInputIndex(const Scope* scope, int& index, const std::string& name,
-                                               const std::string& base_name) {
+void ScopeInstanceNormGradPass::FindInputIndex(const Scope* scope, int& index, const std::string& name,
+                                               const std::string& base_name) const {
   if (scope == nullptr) {
     OP_LOGE(kOpType, "scope is nullptr.");
     return;
@@ -229,7 +229,7 @@ void const ScopeInstanceNormGradPass::FindInputIndex(const Scope* scope, int& in
   }
 }
 
-void const ScopeInstanceNormGradPass::FindInputXIndex(const Scope* scope, int& index) {
+void ScopeInstanceNormGradPass::FindInputXIndex(const Scope* scope, int& index) const {
   if (scope == nullptr) {
     OP_LOGE(kOpType, "scope is nullptr.");
     return;
