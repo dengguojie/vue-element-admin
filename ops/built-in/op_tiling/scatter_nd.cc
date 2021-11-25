@@ -186,9 +186,9 @@ void CalAtomicBranchRunningParams(ScatterNdTilingParams& runParams, int64_t indi
 }
 
 void CalNotAtomicBranchRunningParams(ScatterNdTilingParams& runParams, int64_t varNum, int64_t indicesNum,
-                                     int64_t updatesNum, int64_t updateDataNum, int64_t maxIndice, int64_t ubSize,
+                                     int64_t updatesNum, int64_t updateDataNum, int64_t ubSize,
                                      int64_t coreNum, int64_t updatesSize, int64_t indicesSize,
-                                     int64_t updatesDataEachBlock, int64_t dataNumOneRepeat) {
+                                     int64_t updatesDataEachBlock) {
   int64_t varAllSizeByte = updatesSize * varNum;
   int64_t varSizeByte = updatesSize * runParams.indiceStep * updateDataNum;
   int64_t updateSizeByte = updatesSize * updatesNum;
@@ -512,7 +512,6 @@ bool ScatterNdTiling(const std::string& opType, const TeOpParas& opParas, const 
   runParams.maxIndice = maxIndice;
   runParams.indicesLastDim = indicesShape.back();
   int64_t updatesDataEachBlock = BLOCK_SIZE / updatesSize;
-  int64_t dataNumOneRepeat = 0;
 
   for (int64_t i = 0; i + 1 < indicesShape.back(); i++) {
     runParams.varOffSet[i] =
@@ -531,12 +530,6 @@ bool ScatterNdTiling(const std::string& opType, const TeOpParas& opParas, const 
     runParams.coreNum = ceil(float(maxIndice) / runParams.indiceStep);
   }
 
-  if (input_dtype == "float32" || input_dtype == "int32") {
-    dataNumOneRepeat = 64;
-  } else {
-    dataNumOneRepeat = 128;
-  }
-
   if (supportAtomic == 1 && input_dtype == "float32") {
     if (CheckScatterNdHighPerfShape(outShape, indicesShape)) {
       CalScatterNdHighPerfBranchParams(runParams, indicesNum, coreNum, ubSize, updateDataNum, updatesDataEachBlock,
@@ -546,9 +539,8 @@ bool ScatterNdTiling(const std::string& opType, const TeOpParas& opParas, const 
                                    updatesDataEachBlock);
     }
   } else {
-    CalNotAtomicBranchRunningParams(runParams, varNum, indicesNum, updatesNum, updateDataNum, maxIndice, ubSize,
-                                    runParams.coreNum, updatesSize, indicesSize, updatesDataEachBlock,
-                                    dataNumOneRepeat);
+    CalNotAtomicBranchRunningParams(runParams, varNum, indicesNum, updatesNum, updateDataNum, ubSize,
+                                    runParams.coreNum, updatesSize, indicesSize, updatesDataEachBlock);
   }
 
   SetRuningParams(runParams, runInfo);

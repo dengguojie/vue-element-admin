@@ -209,7 +209,7 @@ namespace optiling
     PrintTilingParams(op_type, params);
     run_info.block_dim = need_core;
     // workspace for tik op
-    std::vector<int64_t> workspace(WORKSPACE_DIM,WORKSPACE_SIZE);
+    std::vector<int64_t> workspace(WORKSPACE_DIM, WORKSPACE_SIZE);
     run_info.workspaces = workspace;
     OP_LOGI("Sort Tiling end.");
     return true;

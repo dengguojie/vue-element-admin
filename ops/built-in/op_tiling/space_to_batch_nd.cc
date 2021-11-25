@@ -173,7 +173,8 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
   }
 }
 
-static void GetConstDataBs(const uint8_t*& const_data, const string& dtype, size_t size, vector<int64_t>& const_vec) {
+static void GetConstDataBs(const uint8_t*& const_data, const string& dtype, const size_t size,
+  vector<int64_t>& const_vec) {
   if (dtype == "int32") {
     for (size_t i = 0; i < size / sizeof(int32_t); ++i) {
       const_vec.push_back(*((int32_t*)const_data + i));

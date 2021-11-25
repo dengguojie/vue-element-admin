@@ -81,7 +81,7 @@ bool SoftmaxCrossEntropyWithLogitsParseFunc(const std::string& op_type, const nl
   OP_LOGI(op_type.c_str(), "GetCompileParams success.");
   return true;
 }
-int64_t GetDtypeSize(ge::DataType& dtype) {
+int64_t GetDtypeSize(const ge::DataType& dtype) {
   // element nums in one block
   int32_t dtype_size = kDtypeSizeMap.at(dtype);
   return dtype_size;
@@ -116,7 +116,7 @@ bool WriteTilingData(const std::string& op_type, const opInfo& op_info, const Co
 }
 
 bool CompletedShapes(std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& input_shapes,
-                     std::array<int64_t, MAX_DIM_LEN>& output_shape, size_t& dim_len, const std::string& op_type,
+                     std::array<int64_t, MAX_DIM_LEN>& output_shape, const size_t& dim_len, const std::string& op_type,
                      const ge::Operator& op_paras) {
   auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
   for (size_t i = 0; i < INPUT_NUM; i++) {
@@ -153,8 +153,7 @@ bool CompletedShapes(std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& in
   return true;
 }
 
-void CalNdKey(TilingInfo& tiling_info, bool is_special_pattern,
-              std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& input_shapes) {
+void CalNdKey(TilingInfo& tiling_info, const std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& input_shapes) {
   int64_t key = 0;
   std::array<int64_t, MAX_DIM_LEN> features_shape = input_shapes[0];
   std::array<int64_t, MAX_DIM_LEN> labels_shape = input_shapes[1];
@@ -184,7 +183,7 @@ void CalNdKey(TilingInfo& tiling_info, bool is_special_pattern,
 
 bool DoNdTiling(const std::string& op_type, const opInfo& op_info, CompileInfo& compile_info, TilingInfo& tiling_info,
                 std::array<std::array<int64_t, MAX_DIM_LEN>, INPUT_NUM>& input_shapes, ge::DataType& out_type,
-                std::array<int64_t, MAX_DIM_LEN>& output_shape) {
+                const std::array<int64_t, MAX_DIM_LEN>& output_shape) {
   GELOGI("op [%s]: DoTiling func running", op_type.c_str());
   int32_t n_h_w = max(input_shapes[0][0], input_shapes[1][0]);
   int32_t c_size = max(input_shapes[0][1], input_shapes[1][1]);
@@ -221,7 +220,7 @@ bool DoNdTiling(const std::string& op_type, const opInfo& op_info, CompileInfo& 
   const std::vector<bool>& flag_info = op_info.flag_info;
   // is_special_pattern index in flag_info is 3
   bool is_special_pattern = flag_info[3];
-  CalNdKey(tiling_info, is_special_pattern, input_shapes);
+  CalNdKey(tiling_info, input_shapes);
 
   return true;
 }

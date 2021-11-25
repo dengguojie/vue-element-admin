@@ -93,24 +93,23 @@ void InitRunningParams(ScatterMulTilingParams& params) {
 }
 
 void CalScatterMulBranchRunningParams(ScatterMulTilingParams& runParams, int64_t varNum, int64_t indicesNum,
-                                      int64_t updatesNum, int64_t updateDataNum, int64_t maxIndice, int64_t ubSize,
-                                      int64_t coreNum, int64_t varSize, int64_t indicesSize, int64_t varDataEachBlock,
-                                      int64_t dataNumOneRepeat) {
+                                      int64_t updatesNum, int64_t updateDataNum, int64_t ubSize,
+                                      int64_t coreNum, int64_t varSize, int64_t indicesSize, int64_t varDataEachBlock) {
   int64_t varAllSizeByte = varSize * varNum;
   int64_t varSizeByte = varSize * runParams.indiceStep * updateDataNum;
   int64_t updateSizeByte = varSize * updatesNum;
   int64_t varUbSize = ubSize / 8 * 3;
   int64_t indicesUbSize = ubSize / 8 * 2;
   OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_mul", "varSize = 0 is not support"),
-                  return); 
+                  return);
   OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_mul", "indicesSize = 0 is not support"),
                   return);
   OP_TILING_CHECK(varUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_mul", "varUbSize = 0 is not support"),
-                  return); 
-  OP_TILING_CHECK(indicesUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_mul", 
+                  return);
+  OP_TILING_CHECK(indicesUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_mul",
 		  "indicesUbSize = 0 is not support"),
                   return);
-  OP_TILING_CHECK(varDataEachBlock == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_mul", 
+  OP_TILING_CHECK(varDataEachBlock == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_mul",
 		  "varDataEachBlock = 0 is not support"),
                   return);
   runParams.varLoopNum = varNum / (varUbSize / varSize);
@@ -317,7 +316,6 @@ bool ScatterMulTiling(const std::string& opType, const TeOpParas& opParas, const
   int64_t maxIndice = varShape[0];
   runParams.maxIndice = maxIndice;
   int64_t varDataEachBlock = BLOCK_SIZE / varSize;
-  int64_t dataNumOneRepeat = 0;
 
   OP_LOGD(opType.c_str(), "op [ScatterMulTiling] : indicesNum=%ld.", indicesNum);
 
@@ -328,14 +326,9 @@ bool ScatterMulTiling(const std::string& opType, const TeOpParas& opParas, const
     runParams.coreNum = ceil(float(maxIndice) / runParams.indiceStep);
   }
 
-  if (input_dtype == "float32" || input_dtype == "int32") {
-    dataNumOneRepeat = 64;
-  } else {
-    dataNumOneRepeat = 128;
-  }
 
-  CalScatterMulBranchRunningParams(runParams, varNum, indicesNum, updatesNum, updateDataNum, maxIndice, ubSize,
-                                   runParams.coreNum, varSize, indicesSize, varDataEachBlock, dataNumOneRepeat);
+  CalScatterMulBranchRunningParams(runParams, varNum, indicesNum, updatesNum, updateDataNum, ubSize,
+                                   runParams.coreNum, varSize, indicesSize, varDataEachBlock);
 
   SetRuningParams(runParams, runInfo);
 
