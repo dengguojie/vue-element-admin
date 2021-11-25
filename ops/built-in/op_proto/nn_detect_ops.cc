@@ -1991,4 +1991,32 @@ IMPLEMT_COMMON_INFERFUNC(GIoUGradInferShape) {
 
 COMMON_INFER_FUNC_REG(GIoUGrad, GIoUGradInferShape);
 // ----------------GIoUGrad Finished-------------------
+
+// ----------------RotatedOverlaps Started-------------------
+IMPLEMT_COMMON_INFERFUNC(RotatedOverlapsInferShape) {
+  OP_LOGI("RotatedOverlaps", "RotatedOverlapsInferShape");
+  TensorDesc boxes_desc = op.GetInputDesc("boxes");
+  TensorDesc query_boxes_desc = op.GetInputDesc("query_boxes");
+  
+  auto shape_boxes = boxes_desc.GetShape().GetDims();
+  auto shape_query_boxes = query_boxes_desc.GetShape().GetDims();
+  
+  if (shape_boxes[0] != shape_query_boxes[0]) {
+    OP_LOGE(op.GetName().c_str(), "shape_boxes[0] shoule equal to shape_query_boxes[0].");
+    return GRAPH_FAILED;
+  }
+
+  std::vector<int64_t> output_shape;
+  output_shape.push_back(shape_boxes[0]);
+  output_shape.push_back(shape_boxes[2]);
+  output_shape.push_back(shape_query_boxes[2]);
+
+  boxes_desc.SetShape(ge::Shape(output_shape));
+  (void)op.UpdateOutputDesc("overlaps", boxes_desc);
+
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(RotatedOverlaps, RotatedOverlapsInferShape);
+// ----------------RotatedOverlaps Finished-------------------
 }  // namespace ge

@@ -1,0 +1,48 @@
+[
+  {
+    "op": "RotatedOverlaps",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          5,
+          65472
+        ],
+        "format": "ND",
+        "name": "boxes",
+        "type": "float"
+      },
+      {
+        "shape": [
+          8,
+          5,
+          60
+        ],
+        "format": "ND",
+        "name": "query_boxes",
+        "type": "float"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          65472,
+          60
+        ],
+        "format": "ND",
+        "name": "overlaps",
+        "type": "float"
+      } 
+    ],
+    "attr": [
+      {
+        "name": "trans",
+        "value": true,
+        "type": "bool"
+        
+      }
+    ],
+    "case_name": "test_RotatedOverlaps_000"
+  }
+]
