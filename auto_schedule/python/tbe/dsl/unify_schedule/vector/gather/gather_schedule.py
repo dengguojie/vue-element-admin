@@ -17,6 +17,8 @@
 """
 gather schedule
 """
+from typing import Any
+
 from tbe import tvm
 from tbe.common.utils import op_tiling
 from tbe.dsl.base import operation

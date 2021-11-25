@@ -18,6 +18,7 @@
 gather schedule zero
 """
 from typing import Optional
+from typing import Any
 
 from tbe import tvm
 from tbe.dsl.base import operation
