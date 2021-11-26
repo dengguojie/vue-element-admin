@@ -744,9 +744,9 @@ bool InferShapeMatMul::InferBias() const {
   if (shape_bias.GetDim(bias_dim - 1) == UNKNOWN_DIM && shape_out.GetDim(1) == UNKNOWN_DIM) {
     // Compatible with old version
     CHECK((range_bias.empty() || range_bias.back() == FULL_RANGE), NULL, return true);
-    auto range_out_upper = range_out.back().second == INFINITE_RANGE ? 
+    auto range_out_upper = range_out.back().second == INFINITE_RANGE ?
       NORMALIZE_INFINITE_RANGE : range_out.back().second;
-    auto range_bias_upper = range_bias.back().second == INFINITE_RANGE ? 
+    auto range_bias_upper = range_bias.back().second == INFINITE_RANGE ?
       NORMALIZE_INFINITE_RANGE : range_bias.back().second;
     auto lower_bound = std::max(range_out.back().first, range_bias.back().first);
     auto upper_bound = std::min(range_out_upper, range_bias_upper);
@@ -763,7 +763,7 @@ bool InferShapeMatMul::InferBias() const {
   if (shape_bias.GetDim(bias_dim - 1) == UNKNOWN_DIM) {
     CHECK(range_bias.empty(), NULL, return true);
     auto range_bias_lower = range_bias.back().first;
-    auto range_bias_upper = range_bias.back().second == INFINITE_RANGE ? 
+    auto range_bias_upper = range_bias.back().second == INFINITE_RANGE ?
       NORMALIZE_INFINITE_RANGE : range_bias.back().second;
     CHECK(range_bias_lower <= shape_out.GetDim(1) && shape_out.GetDim(1) <= range_bias_upper, NULL, return true);
     CUBE_INNER_ERR_REPORT(op_name.GetString(), "[InferShape] dimension n [%ld] must be in range [%ld, %ld]",
@@ -773,7 +773,7 @@ bool InferShapeMatMul::InferBias() const {
 
   if (shape_out.GetDim(1) == UNKNOWN_DIM) {
     auto range_out_lower = range_out.back().first;
-    auto range_out_upper = range_out.back().second == INFINITE_RANGE ? 
+    auto range_out_upper = range_out.back().second == INFINITE_RANGE ?
       NORMALIZE_INFINITE_RANGE : range_out.back().second;
     if (range_out_lower <= shape_bias.GetDim(bias_dim - 1) && shape_bias.GetDim(bias_dim - 1) <= range_out_upper) {
       shape_out.SetDim(1, shape_bias.GetDim(bias_dim - 1));
@@ -808,9 +808,9 @@ bool InferShapeMatMul::InferMKN() const {
     auto lower_bound = std::max(infer_range_a[idx_k_a].first, infer_range_b[idx_k_b].first);
     auto upper_bound = std::min(infer_range_a[idx_k_a].second, infer_range_b[idx_k_b].second);
     if (lower_bound > upper_bound) {
-      CUBE_INNER_ERR_REPORT(op_name.GetString(), 
+      CUBE_INNER_ERR_REPORT(op_name.GetString(),
         "[InferShape] range k_a [%ld, %ld] and k_b [%ld, %ld] must have intersections",
-        infer_range_a[idx_k_a].first, infer_range_a[idx_k_a].second, 
+        infer_range_a[idx_k_a].first, infer_range_a[idx_k_a].second,
         infer_range_b[idx_k_b].first, infer_range_b[idx_k_b].second);
       return false;
     }
@@ -832,7 +832,7 @@ bool InferShapeMatMul::InferMKN() const {
   } else {
     if (k_a != k_b) {
       OpsInputShapeErrReport(op_name.GetString(), "The k-axis of a and b tensors must be the same", "a and b", "");
-      OP_LOGE(op_name.GetString(), 
+      OP_LOGE(op_name.GetString(),
         "[InferShape] The k-axis of x1 [%lld] and x2 [%lld] tensors must be the same", k_a, k_b);
       return false;
     }
@@ -1603,7 +1603,7 @@ bool InferBatchMatmulInputNZ(const Operator &op,
     } else if (i < y_dims - 4){
       // split batch
       x1_data_slice[i] = output[i];
-      CHECK(!AttrUtils::SetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice), 
+      CHECK(!AttrUtils::SetListListInt(tensor_desc_x1, ge::ATTR_NAME_DATA_SLICE, x1_data_slice),
         OP_LOGE("", "SetListListInt failed."), return false);
       if (x2_dims == x1_dims) {
         x2_data_slice[i] = output[i];
@@ -1873,7 +1873,7 @@ IMPLEMT_COMMON_INFERFUNC(MatMulV2InferShape) {
   CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
   OP_LOGD(opName.GetString(), "[MatMulV2 Infershape] Start matmul infershape.");
   OP_LOGD(opName.GetString(), "%s", GetMatMulInfo(op, "transpose").c_str());
-  
+
   ge::OpDescPtr op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
   ge::GeTensorDescPtr tensordesc_output = op_desc->MutableOutputDesc(0);
   ge::GeTensorDescPtr tensordesc_x1 = op_desc->MutableInputDesc(0);
@@ -3663,231 +3663,347 @@ VERIFY_FUNC_REG(Tril, TrilVerify);
 // ----------------Tril END----------------
 // ----------------Einsum-------------------
 // check if there is an ellipsis
-bool is_ellispis(std::string ori_str, std::string target) {
-    std::string::size_type idx = ori_str.find(target);
-    if (idx == std::string::npos){
-        return false;
-    } else {
-        return true;
-    }
+bool IsEllispis(const std::string &ori_str, const std::string &target) {
+  std::string::size_type idx = ori_str.find(target);
+  if (idx == std::string::npos) {
+    return false;
+  } else {
+    return true;
+  }
 }
 
 // remove spaces from the string
-void trim_whitespace(std::string &s)
-{
-    size_t index = 0;
-    if (!s.empty()) {
-        while ((index = s.find(' ', index)) != string::npos) {
-            s.erase(index, 1);
-        }
+void TrimWhitespace(std::string &s) {
+  size_t index = 0;
+  if (!s.empty()) {
+    while ((index = s.find(' ', index)) != string::npos) {
+      s.erase(index, 1);
     }
+  }
 }
 
 //  cut the string in half
-void split_equ(std::string eqn, std::string &in_equ, std::string &out_equ) {
-    size_t pos = 0;
-    if ((pos = eqn.find("->")) != std::string::npos) {
-        in_equ = eqn.substr(0, pos);
-        // add 2 to get start index of out_equ
-        out_equ = eqn.substr(pos + 2);
-    } else {
-        return;
-    }
+void SplitEquation(const std::string &eqn, std::string &in_equ, std::string &out_equ) {
+  size_t pos = 0;
+  if ((pos = eqn.find("->")) != std::string::npos) {
+    in_equ = eqn.substr(0, pos);
+    // add 2 to get start index of out_equ
+    out_equ = eqn.substr(pos + 2);
+  } else {
+    return;
+  }
 }
 // gets an array of input strings
-void get_in_equ_list(std::string in_equ, vector<std::string> &in_equ_list) {
-    std::stringstream equ_stream(in_equ);
-    std::string term;
-    while (! equ_stream.eof()) {
-        std::getline(equ_stream, term, ',');
-        in_equ_list.push_back(term);
-    }
+void GetInSplitEquationList(const std::string &in_equ, vector<std::string> &in_equ_list) {
+  std::stringstream equ_stream(in_equ);
+  std::string term;
+  while (!equ_stream.eof()) {
+    std::getline(equ_stream, term, ',');
+    in_equ_list.push_back(term);
+  }
 }
 
 // Scenes with ellipses
-void map_with_ellipsis(std::string equ_temp, vector<int64_t> equ_tensor_temp,
-                       map<std::string, int64_t> &equ_map,
-                       map<std::string, vector<int64_t>> &ellipsis_map) {
-    int64_t equ_temp_size = equ_temp.size();
-    int64_t equ_tensor_temp_size = equ_tensor_temp.size();
-    int64_t ell_size = equ_tensor_temp_size + kEinsumOffsetLength - equ_temp_size;
-    std::string dot = "...";
-    vector<int64_t> ell_list;
-    std::string equ_key = "A";
+void MapWithEllipsis(const std::string &equ_temp, const vector<int64_t> &equ_tensor_temp,
+                     map<std::string, int64_t> &equ_map, map<std::string, vector<int64_t>> &ellipsis_map) {
+  int64_t equ_temp_size = equ_temp.size();
+  int64_t equ_tensor_temp_size = equ_tensor_temp.size();
+  int64_t ell_size = equ_tensor_temp_size + kEinsumOffsetLength - equ_temp_size;
+  std::string dot = "...";
+  vector<int64_t> ell_list;
+  std::string equ_key = "A";
 
-    if (equ_temp[0] == dot[0]) {
-        for (int64_t i = 0; i < ell_size; i++){
-            ell_list.push_back(equ_tensor_temp[i]);
-            ellipsis_map[dot] = ell_list;
-        }
-        for (int64_t i = 0; i < (equ_tensor_temp_size - ell_size); i++) {
-            equ_key[0] = equ_temp[i + kEinsumOffsetLength];
-            equ_map[equ_key] = equ_tensor_temp[i+ell_size];
-        }
-    } else if (equ_temp[equ_temp_size - 1] == dot[0]){
-        for (int64_t i = (equ_tensor_temp_size - ell_size); i < equ_tensor_temp_size; i++) {
-            ell_list.push_back(equ_tensor_temp[i]);
-            ellipsis_map[dot] = ell_list;
-        }
-        for (int64_t i = 0; i < (equ_tensor_temp_size - ell_size); i++) {
-            equ_key[0] = equ_temp[i];
-            equ_map[equ_key] = equ_tensor_temp[i];
-        }
-    } else {
-        int64_t start_index = equ_temp.find_first_of(".");
-        for (int64_t i = 0; i < start_index; i++) {
-            equ_key[0] = equ_temp[i];
-            equ_map[equ_key] = equ_tensor_temp[i];
-        }
-        for (int64_t j = 0; j < (start_index + ell_size - start_index); j++) {
-            ell_list.push_back(equ_tensor_temp[j + start_index]);
-            ellipsis_map[dot] = ell_list;
-        }
-        for (int64_t k = 0; k < (equ_tensor_temp_size - ell_size - start_index); k++) {
-            equ_key[0] = equ_temp[k+start_index + kEinsumOffsetLength];
-            equ_map[equ_key] = equ_tensor_temp[k+start_index+ell_size];
-        }
+  if (equ_temp[0] == dot[0]) {
+    for (int64_t i = 0; i < ell_size; i++) {
+      ell_list.push_back(equ_tensor_temp[i]);
+      ellipsis_map[dot] = ell_list;
     }
+    for (int64_t i = 0; i < (equ_tensor_temp_size - ell_size); i++) {
+      equ_key[0] = equ_temp[i + kEinsumOffsetLength];
+      equ_map[equ_key] = equ_tensor_temp[i + ell_size];
+    }
+  } else if (equ_temp[equ_temp_size - 1] == dot[0]) {
+    for (int64_t i = (equ_tensor_temp_size - ell_size); i < equ_tensor_temp_size; i++) {
+      ell_list.push_back(equ_tensor_temp[i]);
+      ellipsis_map[dot] = ell_list;
+    }
+    for (int64_t i = 0; i < (equ_tensor_temp_size - ell_size); i++) {
+      equ_key[0] = equ_temp[i];
+      equ_map[equ_key] = equ_tensor_temp[i];
+    }
+  } else {
+    int64_t start_index = equ_temp.find_first_of(".");
+    for (int64_t i = 0; i < start_index; i++) {
+      equ_key[0] = equ_temp[i];
+      equ_map[equ_key] = equ_tensor_temp[i];
+    }
+    for (int64_t j = 0; j < (start_index + ell_size - start_index); j++) {
+      ell_list.push_back(equ_tensor_temp[j + start_index]);
+      ellipsis_map[dot] = ell_list;
+    }
+    for (int64_t k = 0; k < (equ_tensor_temp_size - ell_size - start_index); k++) {
+      equ_key[0] = equ_temp[k + start_index + kEinsumOffsetLength];
+      equ_map[equ_key] = equ_tensor_temp[k + start_index + ell_size];
+    }
+  }
 }
 
 // Scenes without ellipses
-void map_without_ellipsis(std::string equ_temp, vector<int64_t> equ_tensor_temp,
-                          map<std::string, int64_t> &equ_map) {
-    int64_t equ_temp_size = equ_temp.size();
-    int64_t equ_tensor_temp_size = equ_tensor_temp.size();
-    if (equ_temp_size != equ_tensor_temp_size) {
-    }
-    for (int64_t i = 0; i < equ_temp_size; i++) {
-        std::string equ_key = "A";
-        equ_key[0] = equ_temp[i];
-        equ_map[equ_key] = equ_tensor_temp[i];
-    }
+void MapWithoutEllipsis(const std::string &equ_temp, const vector<int64_t> &equ_tensor_temp,
+                        map<std::string, int64_t> &equ_map) {
+  int64_t equ_temp_size = equ_temp.size();
+  int64_t equ_tensor_temp_size = equ_tensor_temp.size();
+  // tf will check equation size with tensor size, so just return here
+  if (equ_temp_size != equ_tensor_temp_size) {
+    return;
+  }
+
+  for (int64_t i = 0; i < equ_temp_size; i++) {
+    std::string equ_key = "A";
+    equ_key[0] = equ_temp[i];
+    equ_map[equ_key] = equ_tensor_temp[i];
+  }
 }
 
 // Output shape with ellipsis
-void output_with_ellipsis(vector<int64_t> &output_shape, std::string out_equ,
-                          map<std::string, int64_t> equ_map,
-                          map<std::string, vector<int64_t>> ellipsis_map) {
-    int64_t out_equ_size = out_equ.size();
-    std::string dot = "...";
-    vector<int64_t> ell_list;
-    ell_list = ellipsis_map[dot];
-    int64_t ell_size = ell_list.size();
-    std::string equ_key = "A";
-    if (out_equ[0] == dot[0]) {
-        for (int64_t i = 0; i < ell_size; i++) {
-            output_shape.push_back(ell_list[i]);
-        }
-        for (int64_t i = kEinsumOffsetLength; i < out_equ_size; i++) {
-            equ_key[0] = out_equ[i];
-            output_shape.push_back(equ_map[equ_key]);
-        }
-    } else if (out_equ[out_equ_size - 1] == dot[0]){
-        for (int64_t i = 0; i < (out_equ_size - kEinsumOffsetLength); i++) {
-            equ_key[0] = out_equ[i];
-            output_shape.push_back(equ_map[equ_key]);
-        }
-        for (int64_t i = 0; i < ell_size; i++) {
-            output_shape.push_back(ell_list[i]);
-        }
-    } else {
-        int64_t start_index = out_equ.find_first_of(".");
-        for (int64_t i = 0; i < start_index; i++) {
-            equ_key[0] = out_equ[i];
-            output_shape.push_back(equ_map[equ_key]);
-        }
-        for (int64_t i = 0; i < ell_size; i++) {
-            output_shape.push_back(ell_list[i]);
-        }
-        for (int64_t i = (start_index + kEinsumOffsetLength); i < out_equ_size; i++) {
-            equ_key[0] = out_equ[i];
-            output_shape.push_back(equ_map[equ_key]);
-        }
+void OutputWithEllipsis(vector<int64_t> &output_shape, const std::string &out_equ, map<std::string, int64_t> &equ_map,
+                        map<std::string, vector<int64_t>> &ellipsis_map) {
+  int64_t out_equ_size = out_equ.size();
+  std::string dot = "...";
+  vector<int64_t> &ell_list = ellipsis_map[dot];
+  int64_t ell_size = ell_list.size();
+  std::string equ_key = "A";
+  if (out_equ[0] == dot[0]) {
+    for (int64_t i = 0; i < ell_size; i++) {
+      output_shape.push_back(ell_list[i]);
     }
+    for (int64_t i = kEinsumOffsetLength; i < out_equ_size; i++) {
+      equ_key[0] = out_equ[i];
+      output_shape.push_back(equ_map[equ_key]);
+    }
+  } else if (out_equ[out_equ_size - 1] == dot[0]) {
+    for (int64_t i = 0; i < (out_equ_size - kEinsumOffsetLength); i++) {
+      equ_key[0] = out_equ[i];
+      output_shape.push_back(equ_map[equ_key]);
+    }
+    for (int64_t i = 0; i < ell_size; i++) {
+      output_shape.push_back(ell_list[i]);
+    }
+  } else {
+    int64_t start_index = out_equ.find_first_of(".");
+    for (int64_t i = 0; i < start_index; i++) {
+      equ_key[0] = out_equ[i];
+      output_shape.push_back(equ_map[equ_key]);
+    }
+    for (int64_t i = 0; i < ell_size; i++) {
+      output_shape.push_back(ell_list[i]);
+    }
+    for (int64_t i = (start_index + kEinsumOffsetLength); i < out_equ_size; i++) {
+      equ_key[0] = out_equ[i];
+      output_shape.push_back(equ_map[equ_key]);
+    }
+  }
 }
 
 // Output shape without ellipsis
-void output_without_ellipsis(vector<int64_t> &output_shape, std::string out_equ,
-                             map<std::string, int64_t> equ_map) {
-    int64_t out_equ_size = out_equ.size();
-    int64_t val;
-    std::string equ_key = "A";
-    for (int64_t i = 0; i < out_equ_size; i++)
-    {   equ_key[0] = out_equ[i];
-        val = equ_map[equ_key];
-        output_shape.push_back(val);
-    }
+void OutputWithoutEllipsis(vector<int64_t> &output_shape, std::string out_equ, map<std::string, int64_t> equ_map) {
+  int64_t out_equ_size = out_equ.size();
+  int64_t val;
+  std::string equ_key = "A";
+  for (int64_t i = 0; i < out_equ_size; i++) {
+    equ_key[0] = out_equ[i];
+    val = equ_map[equ_key];
+    output_shape.push_back(val);
+  }
 }
 
 // einsum infer shape
-void einsum_infer_shape(std::string eqn, vector<vector<int64_t>> tensor_list, vector<int64_t> &output_shape) {
-    trim_whitespace(eqn);
-    int64_t tensor_size = tensor_list.size();
-// define two maps to hold the corresponding characters
-    map<std::string, int64_t> equ_map;
-    map<std::string, vector<int64_t>> ellipsis_map;
-    std::string in_equ;
-    std::string out_equ;
-// Split string
-    split_equ(eqn,in_equ, out_equ);
-// gets a list of input strings
-    vector<std::string> in_equ_list;
-    get_in_equ_list(in_equ, in_equ_list);
+void EinsumInferShape(const std::string &eqn, const vector<vector<int64_t>> &tensor_list,
+                      vector<int64_t> &output_shape) {
+  size_t tensor_size = tensor_list.size();
+  // define two maps to hold the corresponding characters
+  map<std::string, int64_t> equ_map;
+  map<std::string, vector<int64_t>> ellipsis_map;
+  std::string in_equ;
+  std::string out_equ;
+  // Split string
+  SplitEquation(eqn, in_equ, out_equ);
+  // gets a list of input strings
+  vector<std::string> in_equ_list;
+  GetInSplitEquationList(in_equ, in_equ_list);
 
-    int64_t in_equ_size = in_equ_list.size();
-    if (in_equ_size != tensor_size) {
-        return;
-    }
-    std::string equ_temp;
-    vector<int64_t> equ_tensor_temp;
-    std::string targets = "...";
-    for (int64_t i = 0; i < in_equ_size; i++)
-    {
-        equ_temp = in_equ_list[i];
-        equ_tensor_temp = tensor_list[i];
-        if (is_ellispis(equ_temp, targets)) {
-            map_with_ellipsis(equ_temp,equ_tensor_temp, equ_map, ellipsis_map);
-        } else {
-            map_without_ellipsis(equ_temp, equ_tensor_temp, equ_map);
-        }
-    }
-    if (out_equ.size() == 0) {
-        return;
+  size_t in_equ_size = in_equ_list.size();
+  if (in_equ_size != tensor_size) {
+    return;
+  }
+  std::string equ_temp;
+  vector<int64_t> equ_tensor_temp;
+  std::string targets = "...";
+  for (size_t i = 0; i < in_equ_size; i++) {
+    equ_temp = in_equ_list[i];
+    equ_tensor_temp = tensor_list[i];
+    if (IsEllispis(equ_temp, targets)) {
+      MapWithEllipsis(equ_temp, equ_tensor_temp, equ_map, ellipsis_map);
     } else {
-        if (is_ellispis(out_equ, targets)) {
-            output_with_ellipsis(output_shape, out_equ, equ_map, ellipsis_map);
-        } else {
-            output_without_ellipsis(output_shape, out_equ, equ_map);
-        }
+      MapWithoutEllipsis(equ_temp, equ_tensor_temp, equ_map);
     }
+  }
+  if (out_equ.size() == 0) {
+    return;
+  } else {
+    if (IsEllispis(out_equ, targets)) {
+      OutputWithEllipsis(output_shape, out_equ, equ_map, ellipsis_map);
+    } else {
+      OutputWithoutEllipsis(output_shape, out_equ, equ_map);
+    }
+  }
+}
+
+void GetRangeInterSection(const std::pair<int64_t, int64_t> &new_range, std::pair<int64_t, int64_t> &result) {
+  result.first = std::max(new_range.first, result.first);
+  if (result.second == -1 || new_range.second == -1) {
+    result.second = std::max(new_range.second, result.second);
+  } else {
+    result.second = std::min(new_range.second, result.second);
+  }
+}
+
+void GetEquationRangeInterSection(OpDescPtr &op_desc, const AscendString op_name,
+                                  const vector<std::string> &in_equ_list,
+                                  std::map<char, std::pair<int64_t, int64_t>> &ranges) {
+  static std::pair<int64_t, int64_t> default_range = {1, -1};
+  for (size_t i = 0; i < in_equ_list.size(); ++i) {
+    const std::string &equ_temp = in_equ_list[i];
+    vector<std::pair<int64_t, int64_t>> range;
+    op_desc->MutableInputDesc(i)->GetShapeRange(range);
+    if (range.empty()) {
+      auto dims = op_desc->MutableInputDesc(i)->MutableShape().GetDims();
+      for (auto dim : dims) {
+        if (dim == -1) {
+          OP_LOGW(op_name.GetString(), "input%zu tensor has no range but contains -1, use range [1, -1]", i);
+          range.push_back(default_range);
+        } else {
+          range.push_back({dim, dim});
+        }
+      }
+    }
+
+    if (range.size() < equ_temp.size()) {
+      OP_LOGW(op_name.GetString(), "skip range, range size: %zu, equation: %s", range.size(), equ_temp.c_str());
+      continue;
+    }
+
+    for (size_t j = 0; j < equ_temp.size(); ++j) {
+      auto it = ranges.find(equ_temp[j]);
+      if (it == ranges.end()) {
+        ranges.insert({equ_temp[j], range[j]});
+      } else {
+        GetRangeInterSection(range[j], it->second);
+      }
+    }
+  }
+}
+
+void AssembleShapeRange(const std::string &equation, const std::map<char, std::pair<int64_t, int64_t>> &ranges,
+                        vector<std::pair<int64_t, int64_t>> &range) {
+  static std::pair<int64_t, int64_t> default_range = {1, -1};
+  range.reserve(equation.size());
+  for (size_t j = 0; j < equation.size(); ++j) {
+    auto it = ranges.find(equation[j]);
+    if (it == ranges.end()) {
+      range.push_back(default_range);
+    } else {
+      range.push_back(it->second);
+    }
+  }
+}
+
+bool EinsumInferShapeRange(OpDescPtr &op_desc, const AscendString op_name, std::string &eqn,
+                           const vector<vector<int64_t>> &tensor_list,
+                           vector<std::pair<int64_t, int64_t>> &output_range) {
+  std::string targets = "...";
+  if (IsEllispis(eqn, targets)) {
+    OP_LOGE(op_name.GetString(), "not support equation[%s]", eqn.c_str());
+    return false;
+  }
+
+  std::string in_equ;
+  std::string out_equ;
+  // Split string
+  SplitEquation(eqn, in_equ, out_equ);
+  // gets a list of input strings
+  vector<std::string> in_equ_list;
+  GetInSplitEquationList(in_equ, in_equ_list);
+
+  if (in_equ_list.size() != tensor_list.size()) {
+    // if equation size not equal with tensor size, tf will raise exception
+    OP_LOGE(op_name.GetString(), "equation size[%zu] not equal with tensor size[%zu]", in_equ_list.size(),
+            tensor_list.size());
+    return false;
+  }
+
+  std::map<char, std::pair<int64_t, int64_t>> ranges;
+  GetEquationRangeInterSection(op_desc, op_name, in_equ_list, ranges);
+  for (size_t i = 0; i < in_equ_list.size(); ++i) {
+    if (!op_desc->MutableInputDesc(i)->MutableShape().IsUnknownShape()) {
+      continue;
+    }
+
+    vector<std::pair<int64_t, int64_t>> range;
+    AssembleShapeRange(in_equ_list[i], ranges, range);
+    op_desc->MutableInputDesc(i)->SetShapeRange(range);
+  }
+
+  AssembleShapeRange(out_equ, ranges, output_range);
+  return true;
 }
 
 IMPLEMT_COMMON_INFERFUNC(EinsumInferShape) {
-  AscendString opName;
-  CHECK(op.GetName(opName) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
-    auto x0_type = op.GetDynamicInputDesc("x", 0).GetDataType();
-    // get attr equation
-    std::string equation;
-    if (op.GetAttr("equation", equation) != GRAPH_SUCCESS) {
-        OP_LOGE(opName.GetString(), "GetOpAttr equation failed");
-        return GRAPH_FAILED;
+  AscendString op_name;
+  CHECK(op.GetName(op_name) != GRAPH_SUCCESS, OP_LOGE("", "GetName failed."), return GRAPH_FAILED);
+  auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
+  auto x0_type = op_desc->MutableInputDesc(0)->GetDataType();
+  // get attr equation
+  std::string equation;
+  if (op.GetAttr("equation", equation) != GRAPH_SUCCESS) {
+    OP_LOGE(op_name.GetString(), "GetOpAttr equation failed");
+    return GRAPH_FAILED;
+  }
+
+  TrimWhitespace(equation);
+  vector<vector<int64_t>> tensor_list;
+  bool is_unkown_shape = false;
+  for (size_t i = 0; i < op.GetInputsSize(); i++) {
+    is_unkown_shape = is_unkown_shape || op_desc->MutableInputDesc(i)->MutableShape().IsUnknownShape();
+    tensor_list.push_back(std::move(op_desc->MutableInputDesc(i)->MutableShape().GetDims()));
+  }
+
+  vector<int64_t> output_shape;
+  auto output_desc = op_desc->MutableOutputDesc(0);
+  if (!is_unkown_shape) {
+    EinsumInferShape(equation, tensor_list, output_shape);
+  } else {
+    vector<std::pair<int64_t, int64_t>> output_range;
+    if (!EinsumInferShapeRange(op_desc, op_name, equation, tensor_list, output_range)) {
+      return GRAPH_FAILED;
     }
-    vector<vector<int64_t>> tensor_list;
-    for (size_t i = 0; i < op.GetInputsSize(); i++) {
-        auto xi_dims = op.GetDynamicInputDesc("x", i).GetShape().GetDims();
-        tensor_list.push_back(xi_dims);
+
+    output_shape.assign(output_range.size(), -1);
+    for (size_t i = 0; i < output_range.size(); i++) {
+      if (output_range[i].first == output_range[i].second) {
+        output_shape[i] = output_range[i].first;
+      }
     }
-    vector<int64_t> output_shape;
-    einsum_infer_shape(equation, tensor_list, output_shape);
-    // updata output shape and dtype
-    TensorDesc output_desc = op.GetOutputDescByName("y");
-    output_desc.SetShape(ge::Shape(output_shape));
-    output_desc.SetDataType(x0_type);
-    CHECK(op.UpdateOutputDesc("y", output_desc) != GRAPH_SUCCESS,
-         OP_LOGE(opName.GetString(), "UpdateOutputDesc failed."),
-         return GRAPH_FAILED);
-    return GRAPH_SUCCESS;
+
+    output_desc->SetShapeRange(output_range);
+  }
+  // updata output shape and dtype
+
+  output_desc->SetShape(ge::GeShape(output_shape));
+  output_desc->SetDataType(x0_type);
+  return GRAPH_SUCCESS;
 }
+
 IMPLEMT_VERIFIER(Einsum, EinsumVerify) {
     return GRAPH_SUCCESS;
 }

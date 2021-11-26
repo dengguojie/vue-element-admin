@@ -287,6 +287,10 @@ def _check_batch_range(input_x, input_y):
 
     range_x1 = input_x.get("range")
     range_x2 = input_y.get("range")
+
+    range_x1 = [[v, v] for v in shape_a] if not range_x1 and all(v > 0 for v in shape_a) else range_x1
+    range_x2 = [[v, v] for v in shape_b] if not range_x2 and all(v > 0 for v in shape_b) else range_x2
+
     if not range_x1 or len(shape_a) <= ND_LENGTH:
         return False
     if not range_x2 or len(shape_b) < ND_LENGTH:
