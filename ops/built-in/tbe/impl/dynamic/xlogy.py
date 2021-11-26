@@ -26,6 +26,8 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import error_manager_vector
 
+
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant.
@@ -42,7 +44,7 @@ class Constant:
     TAYLOR_SEVENTH_ORDER_PARAM = 1 / 5040.0
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 @register_operator_compute("Xlogy", op_mode="dynamic", support_fusion=True)
 def xlogy_compute(input_x, input_y, output_z, kernel_name="xlogy"):
     """

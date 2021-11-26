@@ -26,6 +26,7 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator_compute
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant.
@@ -34,7 +35,7 @@ class Constant:
     EPS = 0.001
 
 
-# pylint: disable=invalid-name, too-many-locals
+# 'pylint: disable=invalid-name, too-many-locals
 @register_operator_compute('WtsARQ', op_mode='dynamic', support_fusion=False)
 def wts_arq_compute(w, w_min, w_max, num_bits, offset_flag):
     """
@@ -125,7 +126,7 @@ def wts_arq_compute(w, w_min, w_max, num_bits, offset_flag):
     return y
 
 
-# pylint: disable=invalid-name, too-many-locals, too-many-arguments
+# 'pylint: disable=invalid-name, too-many-locals, too-many-arguments, too-many-branches, too-many-statements
 @register_operator('WtsARQ')
 @para_check.check_op_params(
     para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
@@ -175,13 +176,13 @@ def wts_arq(w, w_min, w_max, y, num_bits=8, offset_flag=False, kernel_name='wts_
         error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, 'w_min', 'w_max', error_detail)
 
     for i, j in zip(w_shape, w_min_shape):
-        if i != j and j != 1:
+        if j not in (i, 1):
             error_detail = "The shape value of w_min&w_max must be the same as w or equal to 1!"
             error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, 'w_min', 'w_max', error_detail)
 
     w_size = 1
-    for i in range(len(w_shape)):
-        if w_shape[i] == -1:
+    for i, w_shape_i in enumerate(w_shape):
+        if w_shape_i == -1:
             if w_range[i][1] is None:
                 w_size *= Constant.SHAPE_SIZE_LIMIT
             else:
@@ -194,7 +195,7 @@ def wts_arq(w, w_min, w_max, y, num_bits=8, offset_flag=False, kernel_name='wts_
                     error_manager_vector.raise_err_inputs_shape_not_equal(
                         kernel_name, 'w', 'w_max', w_range, w_max_range, w_range)
         else:
-            w_size *= w_shape[i]
+            w_size *= w_shape_i
 
     if w_size > Constant.SHAPE_SIZE_LIMIT:
         error_detail = "The shape size of w must be smaller than {}!".format(Constant.SHAPE_SIZE_LIMIT)

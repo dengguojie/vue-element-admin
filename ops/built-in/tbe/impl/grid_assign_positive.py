@@ -206,7 +206,7 @@ class GridAssignPositive:
                 self._mode_0_assigned_gt_inds_pos_iou_each_loop(n_index_start_loop, last_loop_n_num)
 
     def _mode_0_assigned_gt_inds_pos_iou_each_loop(self, n_index_start, n_num):
-        assigned_gt_inds_ub, flag_ub = self._assigned_gt_inds_pos_iou_each_loop(n_index_start, n_num)
+        assigned_gt_inds_ub, _ = self._assigned_gt_inds_pos_iou_each_loop(n_index_start, n_num)
         data_block_num = ceil_div(n_num, self.data_block_data_num)
         self.tik_inst.data_move(self.assigned_gt_inds_pos[n_index_start], assigned_gt_inds_ub, 0, 1, data_block_num, 0,
                                 0)

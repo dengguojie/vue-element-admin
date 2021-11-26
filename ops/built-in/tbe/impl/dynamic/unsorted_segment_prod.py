@@ -13,9 +13,9 @@
 # limitations under the License.
 # ============================================================================
 """
-unsorted_segment_sum
+unsorted_segment_prod
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator

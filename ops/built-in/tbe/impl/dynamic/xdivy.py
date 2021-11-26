@@ -26,6 +26,8 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
+
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant.
@@ -38,7 +40,7 @@ class Constant:
     MAX_CONST_HALF = 2 ** 12
 
 
-# pylint: disable=locally-disabled,too-many-locals,unused-argument
+# 'pylint: disable=locally-disabled,too-many-locals,unused-argument
 @register_operator_compute("Xdivy", op_mode="dynamic", support_fusion=True)
 def xdivy_compute(input_x, input_y, output_z, kernel_name="xdivy"):
     """

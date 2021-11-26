@@ -196,7 +196,7 @@ class EmbeddingDenseGrad:
         self.grad = self.tik_instance.Tensor(self.dtype_grad, self.grad_shape, name="grad", scope=tik.scope_gm)
         # Create a new space to initialize grad_weight
         self.ele_not_last_core = (self.numel_indices - 1) // self.aicore_num + 1
-        self.used_core = (self.numel_indices - 1) //self.ele_not_last_core + 1
+        self.used_core = (self.numel_indices - 1) // self.ele_not_last_core + 1
         self.ele_last_core = self.numel_indices - (self.used_core - 1) * self.ele_not_last_core
         with self.tik_instance.for_range(0, self.aicore_num, block_num=self.aicore_num) as core_index:
             with self.tik_instance.if_scope(core_index < self.used_core):

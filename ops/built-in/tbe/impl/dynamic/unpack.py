@@ -15,8 +15,8 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 dynamic unpack
 """
-# pylint: disable=too-many-locals,too-few-public-methods,too-many-branches,unused-argument
-# pylint: disable=too-many-arguments,too-many-instance-attributes
+# 'pylint: disable=too-many-locals,too-few-public-methods,too-many-branches,unused-argument
+# 'pylint: disable=too-many-arguments,too-many-instance-attributes
 from enum import Enum
 from enum import unique
 import copy
@@ -30,6 +30,7 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import buildcfg
 from tbe.tvm.cce_build_module import build_fatbin
 from tbe.tvm.build_module import build_config
+
 
 
 class Constant:
@@ -82,13 +83,13 @@ class CompileVar:
         return self.bound
 
 
-# pylint: disable=too-many-instance-attributes,too-few-public-methods
+# 'pylint: disable=too-many-instance-attributes,too-few-public-methods
 class Unpack:
     """
     Base Class for Unpack Op, includes Unpack op info.
     """
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def __init__(self, input_x, output_y, num, axis, kernel_name):
         self.input_x = input_x
         self.output_num = num
@@ -234,7 +235,7 @@ class Unpack:
             output_index += (input_index[idx],)
         return output_index
 
-    # pylint: disable=unnecessary-lambda
+    # 'pylint: disable=unnecessary-lambda
     def _multi_output_common_compute(self):
         """
         Multi output compute function for common cases
@@ -259,7 +260,7 @@ class Unpack:
 
         self.virtual_node = tvm.compute(self.output_shape, lambda *index: _add_compute(*index), name="virtual_node")
 
-    # pylint: disable=unnecessary-lambda
+    # 'pylint: disable=unnecessary-lambda
     def _multi_output_special_compute(self):
         """
         Multi output compute function for special cases
@@ -290,7 +291,7 @@ class Unpack:
 
         self.virtual_node = tvm.compute(self.output_shape, lambda *index: _add_compute(*index), name="virtual_node")
 
-    # pylint: disable=unnecessary-lambda
+    # 'pylint: disable=unnecessary-lambda
     def _single_output_compute(self):
         """
         Single output compute function
@@ -316,7 +317,7 @@ class Unpack:
             else:
                 self._multi_output_common_compute()
 
-    # pylint: disable=too-many-locals,too-many-branches
+    # 'pylint: disable=too-many-locals,too-many-branches
     def _multi_output_schedule(self, left_dim_out, right_dim_in, ub_tiling_axis, split_factor):
         """
         unpack schedule function for multi_output
@@ -489,6 +490,7 @@ class Unpack:
             tiling_cases.append({"key": key, "ub_tiling_axis": ub_tiling_axis, "ub_factor_bound": ub_factor_bound})
         return tiling_cases
 
+   # 'pylint: disable=no-use-copy
     def _build_unpack_cce(self):
         """
         Build cce

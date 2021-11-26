@@ -26,7 +26,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 
-# pylint: disable=locally-disabled,invalid-name,unused-argument
+# 'pylint: disable=locally-disabled,invalid-name,unused-argument
 def zeros_like_compute(x, y, kernel_name="zeros_like"):
     """
     Enter a tensor, output a tensor of all zero,

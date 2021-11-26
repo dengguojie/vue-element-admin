@@ -13,11 +13,17 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 gru v2 hidden
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 import operator
 import math
 
-from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import error_manager_vector
+from te.domain.rl_bank import rl_bank
+from te.domain.rl_bank import bank_manager
 from te.lang.cce import broadcast
 from te.lang.cce import cast_to
 from te.lang.cce import vabs
@@ -29,14 +35,7 @@ from te.lang.cce import vmul
 from te.lang.cce import vmuls
 from te.lang.cce import vrec
 from te.lang.cce import vsub
-from impl.util.platform_adapter import tbe_platform
-from impl.util.platform_adapter import tik
-from impl.util.platform_adapter import tvm
-from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import error_manager_vector
 from te.platform.cce_conf import api_check_support
-from te.domain.rl_bank import rl_bank
-from te.domain.rl_bank import bank_manager
 
 from impl.dynamic_gru_v2 import check_gru_v2_attr
 from impl.dynamic_gru_v2 import ReuseType
@@ -172,7 +171,7 @@ def _get_tiling(hidden_size):
     return 1, n_cut, k, 1, n_cut, k
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
 def _check_dtype(x_weight_input, weight_hidden, bias_hidden, init_h,
                  y, output_h, update, reset, new, hidden_new):
     """
@@ -204,7 +203,7 @@ def _check_dtype(x_weight_input, weight_hidden, bias_hidden, init_h,
         _check_equal_bias_dtype(hidden_new, "hidden_new")
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
 def _check_param(x_weight_input, weight_hidden, bias_hidden, seq_length,
                  y, output_h, update, reset, new, hidden_new):
     """
@@ -282,8 +281,8 @@ def _check_param(x_weight_input, weight_hidden, bias_hidden, seq_length,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_STR,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-# pylint: disable=too-many-arguments,too-many-locals,invalid-name
-# pylint: disable=too-many-function-args,too-many-statements,unused-argument
+# 'pylint: disable=too-many-arguments,too-many-locals,invalid-name
+# 'pylint: disable=too-many-function-args,too-many-statements,unused-argument
 def dynamic_gru_v2_hidden(x_weight_input, weight_hidden, bias_hidden, seq_length, init_h,
                           y, output_h, update, reset, new, hidden_new,
                           direction="UNIDIRECTIONAL", cell_depth=1, keep_prob=1.0,
@@ -325,7 +324,7 @@ def dynamic_gru_v2_hidden(x_weight_input, weight_hidden, bias_hidden, seq_length
             _solution(bias_hidden, seq_length, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type)
 
 
-# pylint: disable=invalid-name,too-many-statements
+# 'pylint: disable=invalid-name,too-many-statements
 def _solution(bias_hidden, seq_length, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type):
     """
     solutions of op
@@ -456,7 +455,7 @@ def _solution(bias_hidden, seq_length, init_h, y, update, gate_order, kernel_nam
                           build_output_list)
 
 
-# pylint: disable=too-many-statements,unused-variable,unnecessary-lambda
+# 'pylint: disable=too-many-statements,unused-variable,unnecessary-lambda
 def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
     """
     inner part of tik loop
@@ -1040,7 +1039,7 @@ def _dynamic_gru_v2_hidden_inner(input_list, custom_list):
         else:
             sch[s_state_h_fp16].emit_insn(s_state_h_fp16.op.axis[0], "broadcast")
         if seq_mask_gm is not None:
-                sch[s_state_h_ub_for_element].emit_insn(s_state_h_ub_for_element.op.axis[0], 'broadcast')
+            sch[s_state_h_ub_for_element].emit_insn(s_state_h_ub_for_element.op.axis[0], 'broadcast')
     else:
         if fp16_input_output:
             sch[s_state_h_fp16].emit_insn(s_state_h_fp16.op.axis[0], "dma_copy")

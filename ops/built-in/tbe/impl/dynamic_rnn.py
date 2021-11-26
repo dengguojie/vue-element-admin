@@ -13,7 +13,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 dynamic_rnn
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 import operator
 
 import numpy as np
@@ -47,7 +47,7 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def sigmoid(x):
     """
     sigmoid
@@ -57,7 +57,7 @@ def sigmoid(x):
     return s
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,too-many-nested-blocks,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals,too-many-nested-blocks,invalid-name
 def matrix_to_zz(matrix, shape, dtype):
     """
     ND(m, k) to zZ
@@ -96,8 +96,8 @@ def matrix_to_zz(matrix, shape, dtype):
     return tmp
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
-def matrix_to_nZ(matrix, shape, dtype):
+# 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
+def matrix_to_nz(matrix, shape, dtype):
     """
     ND(k, n) to nZ
     """
@@ -136,7 +136,7 @@ def matrix_to_nZ(matrix, shape, dtype):
     return tmp
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
 def matrix_to_zn(matrix, shape, dtype):
     """
     ND(m, n) to zN
@@ -184,7 +184,7 @@ def matrix_to_zn(matrix, shape, dtype):
     return tmp
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,too-many-nested-blocks,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals,too-many-nested-blocks,invalid-name
 def maxtrix_zn_reverse(matrix, shape, dtype):
     """
     maxtrix zn reverse
@@ -217,7 +217,7 @@ def maxtrix_zn_reverse(matrix, shape, dtype):
     return tmp
 
 
-# pylint: disable=too-many-nested-blocks,invalid-name
+# 'pylint: disable=too-many-nested-blocks,invalid-name
 def maxtrix_nz_reverse(matrix, shape, dtype):
     """
     maxtrix nz reverse
@@ -250,8 +250,8 @@ def maxtrix_nz_reverse(matrix, shape, dtype):
     return tmp
 
 
-# pylint: disable=too-many-arguments,too-many-locals,unbalanced-tuple-unpacking
-# pylint: disable=too-many-function-args,too-many-statements,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-locals,unbalanced-tuple-unpacking
+# 'pylint: disable=too-many-function-args,too-many-statements,unused-argument,invalid-name
 def dynamic_rnn_np(input_data_list,
                    input_x,
                    weight,
@@ -510,7 +510,7 @@ def get_lstm_tiling():
     return (1, 1, 12, 1, 1, 12)
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name,invalid-name
 def check_prama_dtype(input_x, weight, bias, init_h, init_c, y, output_h,
                       output_c, i, j, f, o, tanhc):
     """
@@ -557,7 +557,7 @@ def check_prama_dtype(input_x, weight, bias, init_h, init_c, y, output_h,
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "tanhc dtype is not the same as bias dtype !")
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name,invalid-name
 def check_prama_shape(input_x, weight, bias, seq_length, init_h, init_c,
                       wci, wcf, wco, mask, y, output_h, output_c, i, j, f, o,
                       tanhc):
@@ -578,7 +578,7 @@ def check_prama_shape(input_x, weight, bias, seq_length, init_h, init_c,
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "w, b shape is wrong, please check!")
 
     # seq_length
-    if seq_length is not None: 
+    if seq_length is not None:
         if seq_length.get("dtype").lower() == "int32":
             if (seq_length["shape"][0] + 15) // 16 != output_h["shape"][2]:
                 error_manager_vector.raise_err_check_params_rules("DynamicRNN",
@@ -651,7 +651,7 @@ def check_prama_shape(input_x, weight, bias, seq_length, init_h, init_c,
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "mask only support None, please check!")
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals
+# 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals
 def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
                cell_clip, num_proj, time_major, activation, gate_order):
     """
@@ -700,9 +700,9 @@ def check_attr(cell_type, direction, cell_depth, use_peephole, keep_prob,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_BOOL,
                             para_check.KERNEL_NAME)
-# pylint: disable=too-many-arguments,too-many-locals,invalid-name
-# pylint: disable=too-many-function-args,too-many-statements
-# pylint: disable=unused-argument
+# 'pylint: disable=too-many-arguments,too-many-locals,invalid-name
+# 'pylint: disable=too-many-function-args,too-many-statements
+# 'pylint: disable=unused-argument
 def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                 wco, mask, y, output_h, output_c, i, j, f, o, tanhc,
                 cell_type="LSTM", direction="UNIDIRECTIONAL", cell_depth=1,
@@ -757,7 +757,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                                  scope=scope_gm, name='weight')
     bias = tik_instance.Tensor(shape=shape_bias, scope=scope_gm,
                                dtype=bias_dtype, name='bias')
-    
+
     is_using_seq_mask = False
     is_valid_mask = False
     if seq_length is not None:
@@ -912,7 +912,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                 o_t_sigmoid_gm_var = None
                 j_t_tanh_gm_var = None
                 c_t_tanh_gm_var = None
-                
+
             if is_valid_mask:
                 seq_mask_gm_var = seq_mask_gm[valid_loop_i * cut_t: valid_loop_i * cut_t + cut_t,
                                               :,
@@ -920,7 +920,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                                               :, :]
             else:
                 seq_mask_gm_var = None
-                
+
             input_list = [input_x_var, weight, bias, s_init_h_gm_var,
                           s_init_c_gm_var, state_h_last,
                           state_c_last, sync, seq_mask_gm_var]
@@ -990,8 +990,8 @@ def dynamic_rnn_tik(input_list, custom_list):
                             forget_bias, gate_order, cell_clip)
 
 
-# pylint: disable=too-many-arguments,too-many-locals,invalid-name
-# pylint: disable=too-many-statements,unnecessary-lambda
+# 'pylint: disable=too-many-arguments,too-many-locals,invalid-name
+# 'pylint: disable=too-many-statements,unnecessary-lambda
 def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                      s_state_h_gm_last, s_state_c_gm_last, sync0, seq_mask_gm,
                      is_gate_output, is_first_round, is_global_init,
@@ -1358,7 +1358,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
             c_t_tanh_ub = c_t_tanh_back_fp32
 
     update_h = vmul(c_t_tanh_ub, o_t_sigmoid_ub)
-    
+
     if seq_mask_gm is not None:
         update_h = vmul(update_h, seq_mask_ub)
 
@@ -1502,7 +1502,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         s[update_h_fp16_cast].set_scope(scope_ubuf)
 
     s[update_h_gm_as_y_back].set_scope(scope_ubuf)
-    
+
     if seq_mask_gm is not None:
         s[seq_mask_ub].set_scope(scope_ubuf)
     # compute inline

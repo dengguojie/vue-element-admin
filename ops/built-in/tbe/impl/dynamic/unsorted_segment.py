@@ -16,11 +16,12 @@
 unsorted_segment
 
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import error_manager_vector
+
 
 class Constant:
     """
@@ -31,101 +32,115 @@ class Constant:
     SMALL_E = 3
     BIG_E = 4
 
-# SMALL_IID
-SELECT_KEY_DIV_OID_BLOCK_E_SMALL_IID_SMALL_OID = \
-    [{"select_key": 10, "ub_div_id": 0, "block_align": False, "e_level": Constant.ONE_BLOCK_E, "big_iid": False,
-      "div_oid": True}]
-SELECT_KEY_DIV_OID_ONE_E_SMALL_IID_SMALL_OID = \
-    [{"select_key": 20, "ub_div_id": 0, "block_align": False, "e_level": Constant.ONE_DIV_E, "big_iid": False, "div_oid": True}]
+    # SMALL_IID
+    SELECT_KEY_DIV_OID_BLOCK_E_SMALL_IID_SMALL_OID = \
+        [{"select_key": 10, "ub_div_id": 0, "block_align": False, "e_level": ONE_BLOCK_E, "big_iid": False,
+          "div_oid": True}]
 
-SELECT_KEY_DIV_E_OID_SMALL_E_SMALL_IID_SMALL_OID_ALIGN = \
-    [{"select_key": 30, "ub_div_id": 0, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": True},
-     {"select_key": 31, "ub_div_id": 1, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": True},
-     {"select_key": 32, "ub_div_id": 2, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": True}]
+    SELECT_KEY_DIV_OID_ONE_E_SMALL_IID_SMALL_OID = \
+        [{"select_key": 20, "ub_div_id": 0, "block_align": False, "e_level": ONE_DIV_E, "big_iid": False,
+          "div_oid": True}]
 
-SELECT_KEY_DIV_E_OID_SMALL_E_SMALL_IID_SMALL_OID = \
-    [{"select_key": 40, "ub_div_id": 0, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": True},
-     {"select_key": 41, "ub_div_id": 1, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": True},
-     {"select_key": 42, "ub_div_id": 2, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": True}]
+    SELECT_KEY_DIV_E_OID_SMALL_E_SMALL_IID_SMALL_OID_ALIGN = \
+        [{"select_key": 30, "ub_div_id": 0, "block_align": True, "e_level": SMALL_E, "big_iid": False, "div_oid": True},
+        {"select_key": 31, "ub_div_id": 1, "block_align": True, "e_level": SMALL_E, "big_iid": False, "div_oid": True},
+        {"select_key": 32, "ub_div_id": 2, "block_align": True, "e_level": SMALL_E, "big_iid": False, "div_oid": True}]
 
-SELECT_KEY_DIV_E_SMALL_E_SMALL_IID_SMALL_OID_ALIGN = \
-    [{"select_key": 50, "ub_div_id": 0, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": False},
-     {"select_key": 51, "ub_div_id": 1, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": False},
-     {"select_key": 52, "ub_div_id": 2, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": False}]
+    SELECT_KEY_DIV_E_OID_SMALL_E_SMALL_IID_SMALL_OID = \
+        [{"select_key": 40, "ub_div_id": 0, "block_align": False, "e_level": SMALL_E, "big_iid": False,
+          "div_oid": True},
+        {"select_key": 41, "ub_div_id": 1, "block_align": False, "e_level": SMALL_E, "big_iid": False, "div_oid": True},
+        {"select_key": 42, "ub_div_id": 2, "block_align": False, "e_level": SMALL_E, "big_iid": False, "div_oid": True}]
 
-SELECT_KEY_DIV_E_SMALL_E_SMALL_IID_SMALL_OID = \
-    [{"select_key": 60, "ub_div_id": 0, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": False},
-     {"select_key": 61, "ub_div_id": 1, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": False},
-     {"select_key": 62, "ub_div_id": 2, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": False, "div_oid": False}]
+    SELECT_KEY_DIV_E_SMALL_E_SMALL_IID_SMALL_OID_ALIGN = \
+        [{"select_key": 50, "ub_div_id": 0, "block_align": True, "e_level": SMALL_E, "big_iid": False,
+          "div_oid": False},
+        {"select_key": 51, "ub_div_id": 1, "block_align": True, "e_level": SMALL_E, "big_iid": False, "div_oid": False},
+        {"select_key": 52, "ub_div_id": 2, "block_align": True, "e_level": SMALL_E, "big_iid": False, "div_oid": False}]
 
-SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID_ALIGN = \
-    [{"select_key": 70, "ub_div_id": 0, "block_align": True, "e_level": Constant.BIG_E, "big_iid": False, "div_oid": False},
-     {"select_key": 71, "ub_div_id": 1, "block_align": True, "e_level": Constant.BIG_E, "big_iid": False, "div_oid": False},
-     {"select_key": 72, "ub_div_id": 2, "block_align": True, "e_level": Constant.BIG_E, "big_iid": False, "div_oid": False}]
+    SELECT_KEY_DIV_E_SMALL_E_SMALL_IID_SMALL_OID = \
+        [{"select_key": 60, "ub_div_id": 0, "block_align": False, "e_level": SMALL_E, "big_iid": False,
+          "div_oid": False},
+        {"select_key": 61, "ub_div_id": 1, "block_align": False, "e_level": SMALL_E, "big_iid": False,
+          "div_oid": False},
+        {"select_key": 62, "ub_div_id": 2, "block_align": False, "e_level": SMALL_E, "big_iid": False,
+          "div_oid": False}]
 
-SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID = \
-    [{"select_key": 80, "ub_div_id": 0, "block_align": False, "e_level": Constant.BIG_E, "big_iid": False, "div_oid": False},
-     {"select_key": 81, "ub_div_id": 1, "block_align": False, "e_level": Constant.BIG_E, "big_iid": False, "div_oid": False},
-     {"select_key": 82, "ub_div_id": 2, "block_align": False, "e_level": Constant.BIG_E, "big_iid": False, "div_oid": False}]
+    SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID_ALIGN = \
+        [{"select_key": 70, "ub_div_id": 0, "block_align": True, "e_level": BIG_E, "big_iid": False, "div_oid": False},
+        {"select_key": 71, "ub_div_id": 1, "block_align": True, "e_level": BIG_E, "big_iid": False, "div_oid": False},
+        {"select_key": 72, "ub_div_id": 2, "block_align": True, "e_level": BIG_E, "big_iid": False, "div_oid": False}]
 
-# BIG_IID
-SELECT_KEY_DIV_OID_BLOCK_E_BIG_IID_SMALL_OID = \
-    [{"select_key": 90, "ub_div_id": 0, "block_align": False, "e_level": Constant.ONE_BLOCK_E, "big_iid": True, "div_oid": True}]
-SELECT_KEY_DIV_OID_ONE_E_BIG_IID_SMALL_OID = \
-    [{"select_key": 100, "ub_div_id": 0, "block_align": False, "e_level": Constant.ONE_DIV_E, "big_iid": True, "div_oid": True}]
+    SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID = \
+        [{"select_key": 80, "ub_div_id": 0, "block_align": False, "e_level": BIG_E, "big_iid": False, "div_oid": False},
+        {"select_key": 81, "ub_div_id": 1, "block_align": False, "e_level": BIG_E, "big_iid": False, "div_oid": False},
+        {"select_key": 82, "ub_div_id": 2, "block_align": False, "e_level": BIG_E, "big_iid": False, "div_oid": False}]
 
-SELECT_KEY_DIV_E_OID_SMALL_E_BIG_IID_SMALL_OID_ALIGN = \
-    [{"select_key": 110, "ub_div_id": 0, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": True},
-     {"select_key": 111, "ub_div_id": 1, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": True},
-     {"select_key": 112, "ub_div_id": 2, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": True}]
+    # BIG_IID
+    SELECT_KEY_DIV_OID_BLOCK_E_BIG_IID_SMALL_OID = \
+        [{"select_key": 90, "ub_div_id": 0, "block_align": False, "e_level": ONE_BLOCK_E, "big_iid": True,
+          "div_oid": True}]
+    SELECT_KEY_DIV_OID_ONE_E_BIG_IID_SMALL_OID = \
+        [{"select_key": 100, "ub_div_id": 0, "block_align": False, "e_level": ONE_DIV_E, "big_iid": True,
+          "div_oid": True}]
 
-SELECT_KEY_DIV_E_OID_SMALL_E_BIG_IID_SMALL_OID = \
-    [{"select_key": 120, "ub_div_id": 0, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": True},
-     {"select_key": 121, "ub_div_id": 1, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": True},
-     {"select_key": 122, "ub_div_id": 2, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": True}]
+    SELECT_KEY_DIV_E_OID_SMALL_E_BIG_IID_SMALL_OID_ALIGN = \
+        [{"select_key": 110, "ub_div_id": 0, "block_align": True, "e_level": SMALL_E, "big_iid": True, "div_oid": True},
+        {"select_key": 111, "ub_div_id": 1, "block_align": True, "e_level": SMALL_E, "big_iid": True, "div_oid": True},
+        {"select_key": 112, "ub_div_id": 2, "block_align": True, "e_level": SMALL_E, "big_iid": True, "div_oid": True}]
 
-SELECT_KEY_DIV_E_SMALL_E_BIG_IID_SMALL_OID_ALIGN = \
-    [{"select_key": 130, "ub_div_id": 0, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": False},
-     {"select_key": 131, "ub_div_id": 1, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": False},
-     {"select_key": 132, "ub_div_id": 2, "block_align": True, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": False}]
+    SELECT_KEY_DIV_E_OID_SMALL_E_BIG_IID_SMALL_OID = \
+        [{"select_key": 120, "ub_div_id": 0, "block_align": False, "e_level": SMALL_E, "big_iid": True,
+          "div_oid": True},
+        {"select_key": 121, "ub_div_id": 1, "block_align": False, "e_level": SMALL_E, "big_iid": True, "div_oid": True},
+        {"select_key": 122, "ub_div_id": 2, "block_align": False, "e_level": SMALL_E, "big_iid": True, "div_oid": True}]
 
-SELECT_KEY_DIV_E_SMALL_E_BIG_IID_SMALL_OID = \
-    [{"select_key": 140, "ub_div_id": 0, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": False},
-     {"select_key": 141, "ub_div_id": 1, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": False},
-     {"select_key": 142, "ub_div_id": 2, "block_align": False, "e_level": Constant.SMALL_E, "big_iid": True, "div_oid": False}]
+    SELECT_KEY_DIV_E_SMALL_E_BIG_IID_SMALL_OID_ALIGN = \
+        [{"select_key": 130, "ub_div_id": 0, "block_align": True, "e_level": SMALL_E, "big_iid": True,
+          "div_oid": False},
+        {"select_key": 131, "ub_div_id": 1, "block_align": True, "e_level": SMALL_E, "big_iid": True, "div_oid": False},
+        {"select_key": 132, "ub_div_id": 2, "block_align": True, "e_level": SMALL_E, "big_iid": True, "div_oid": False}]
 
-SELECT_KEY_DIV_E_BIG_E_BIG_IID_SMALL_OID_ALIGN = \
-    [{"select_key": 150, "ub_div_id": 0, "block_align": True, "e_level": Constant.BIG_E, "big_iid": True, "div_oid": False},
-     {"select_key": 151, "ub_div_id": 1, "block_align": True, "e_level": Constant.BIG_E, "big_iid": True, "div_oid": False},
-     {"select_key": 152, "ub_div_id": 2, "block_align": True, "e_level": Constant.BIG_E, "big_iid": True, "div_oid": False}]
+    SELECT_KEY_DIV_E_SMALL_E_BIG_IID_SMALL_OID = \
+        [{"select_key": 140, "ub_div_id": 0, "block_align": False, "e_level": SMALL_E, "big_iid": True,
+          "div_oid": False},
+        {"select_key": 141, "ub_div_id": 1, "block_align": False, "e_level": SMALL_E, "big_iid": True,
+          "div_oid": False},
+        {"select_key": 142, "ub_div_id": 2, "block_align": False, "e_level": SMALL_E, "big_iid": True,
+          "div_oid": False}]
 
-SELECT_KEY_DIV_E_BIG_E_BIG_IID_SMALL_OID = \
-    [{"select_key": 160, "ub_div_id": 0, "block_align": False, "e_level": Constant.BIG_E, "big_iid": True, "div_oid": False},
-     {"select_key": 161, "ub_div_id": 1, "block_align": False, "e_level": Constant.BIG_E, "big_iid": True, "div_oid": False},
-     {"select_key": 162, "ub_div_id": 2, "block_align": False, "e_level": Constant.BIG_E, "big_iid": True, "div_oid": False}]
+    SELECT_KEY_DIV_E_BIG_E_BIG_IID_SMALL_OID_ALIGN = \
+        [{"select_key": 150, "ub_div_id": 0, "block_align": True, "e_level": BIG_E, "big_iid": True, "div_oid": False},
+        {"select_key": 151, "ub_div_id": 1, "block_align": True, "e_level": BIG_E, "big_iid": True, "div_oid": False},
+        {"select_key": 152, "ub_div_id": 2, "block_align": True, "e_level": BIG_E, "big_iid": True, "div_oid": False}]
 
-TILING_PARAM_DTYPE = "int32"
+    SELECT_KEY_DIV_E_BIG_E_BIG_IID_SMALL_OID = \
+        [{"select_key": 160, "ub_div_id": 0, "block_align": False, "e_level": BIG_E, "big_iid": True, "div_oid": False},
+        {"select_key": 161, "ub_div_id": 1, "block_align": False, "e_level": BIG_E, "big_iid": True, "div_oid": False},
+        {"select_key": 162, "ub_div_id": 2, "block_align": False, "e_level": BIG_E, "big_iid": True, "div_oid": False}]
 
-# max_int32
-MAX_INT32 = 2 ** 31 - 1
+    TILING_PARAM_DTYPE = "int32"
 
-# int32 byte
-BYTE_INT32 = 4
+    # max_int32
+    MAX_INT32 = 2 ** 31 - 1
 
-# byte of one block
-BYTE_BLOCK = 32
+    # int32 byte
+    BYTE_INT32 = 4
 
-# min_tensor_ele_num
-MIN_TENSOR_ELE_NUM = 32
+    # byte of one block
+    BYTE_BLOCK = 32
 
-# tiling params num
-TILING_PARAMS_NUM = 64
+    # min_tensor_ele_num
+    MIN_TENSOR_ELE_NUM = 32
 
-BYTE_FULL_MASK = 256
+    # tiling params num
+    TILING_PARAMS_NUM = 64
+
+    BYTE_FULL_MASK = 256
 
 
-# pylint: disable=invalid-name,too-many-instance-attributes,too-many-arguments,too-many-statements
-# pylint: disable=too-many-locals,too-few-public-methods,unused-argument
+# 'pylint: disable=invalid-name,too-many-instance-attributes,too-many-arguments,too-many-statements
+# 'pylint: disable=too-many-locals,too-few-public-methods,unused-argument
 
 def _get_dtype_byte(dtype):
     return tbe_platform.get_bit_len(dtype) // 8
@@ -222,7 +237,7 @@ def _prod(val_list):
     return val
 
 
-class FrontLast(object):
+class FrontLast:
     """
     Function: loop partition. include front, last, times.
     """
@@ -233,9 +248,9 @@ class FrontLast(object):
             self.last = 0
             self.times = 0
         elif obj is None:
-            self.times = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name=name + "_times")
-            self.front = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name=name + "_front")
-            self.last = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name=name + "_last")
+            self.times = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name=name + "_times")
+            self.front = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name=name + "_front")
+            self.last = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name=name + "_last")
         else:
             self.front = obj.front
             self.last = obj.last
@@ -275,7 +290,7 @@ class FrontLast(object):
         self.last = total - (self.times - 1) * self.front
 
 
-class CommonScalar(object):
+class CommonScalar:
     """
     Function: use to store concat base parameters
     """
@@ -314,17 +329,17 @@ class CommonScalar(object):
             self.ids_num = "ids_num"
             self.id_val_scalar = tik_instance.Scalar(dtype=ids_dtype, name="id_val_scalar")
             self.num_segments = tik_instance.Scalar(dtype=num_segments_dtype, name="num_segments")
-            self.select_key = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="select_key")
-            self.ids_last_burst_len = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="ids_last_burst_len")
-            self.e_num = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="e_num")
-            self.repeat_time_front_part = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+            self.select_key = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="select_key")
+            self.ids_last_burst_len = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="ids_last_burst_len")
+            self.e_num = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="e_num")
+            self.repeat_time_front_part = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                               name="repeat_time_front_part")
-            self.repeat_time_last_part = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+            self.repeat_time_last_part = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                              name="repeat_time_last_part")
-            self.align_scalar = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="align_scalar")
-            self.e_lenBurst_front = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="e_lenBurst_front")
-            self.e_lenBurst_last = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="e_lenBurst_last")
-            self.e_num_part_ub_num = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="e_num_part_ub_num")
+            self.align_scalar = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="align_scalar")
+            self.e_lenBurst_front = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="e_lenBurst_front")
+            self.e_lenBurst_last = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="e_lenBurst_last")
+            self.e_num_part_ub_num = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="e_num_part_ub_num")
         else:
             self.ids_num = obj_scalar.ids_num
             self.id_val_scalar = obj_scalar.id_val_scalar
@@ -353,7 +368,7 @@ class CommonScalar(object):
             self.ids_num = segment_ids[0]
 
 
-class UnsortedSegmentTiling(object):
+class UnsortedSegmentTiling:
     """
     Function: do UnsortedSegmentTiling
     """
@@ -362,10 +377,10 @@ class UnsortedSegmentTiling(object):
         # ===================basic param===============================
         self.core_num = op_info.core_num
         input_byte = _get_dtype_byte(op_info.input_dtype)
-        self.mask = BYTE_FULL_MASK // input_byte
-        self.ids_per_block = BYTE_BLOCK // _get_dtype_byte(op_info.ids_dtype)
+        self.mask = Constant.BYTE_FULL_MASK // input_byte
+        self.ids_per_block = Constant.BYTE_BLOCK // _get_dtype_byte(op_info.ids_dtype)
 
-        self.ele_num_per_block = BYTE_BLOCK // input_byte
+        self.ele_num_per_block = Constant.BYTE_BLOCK // input_byte
         self.e_max_by_stride = 65535 * self.ele_num_per_block
 
         max_param_val = 2 ** 32
@@ -405,8 +420,8 @@ class UnsortedSegmentTiling(object):
 
         self.is_double_buffer = False
         self.ub_size = _tik_get_ub_size(self.is_double_buffer)
-        self.ids_once_num = ((self.ub_size // 5 // BYTE_BLOCK) * BYTE_BLOCK) // BYTE_INT32
-        res_ub_size = self.ub_size - self.ids_once_num * BYTE_INT32
+        self.ids_once_num = ((self.ub_size // 5 // Constant.BYTE_BLOCK) * Constant.BYTE_BLOCK) // Constant.BYTE_INT32
+        res_ub_size = self.ub_size - self.ids_once_num * Constant.BYTE_INT32
 
         # ===================scalar param==============================
         ub_div_rates = [[1, 1], [1, 2], [2, 1]]
@@ -493,22 +508,22 @@ class UnsortedSegmentTiling(object):
         return scalar
 
     def _get_select_keys_for_compile(self, input_byte, obj_scalar):
-        select_keys = SELECT_KEY_DIV_OID_BLOCK_E_SMALL_IID_SMALL_OID + \
-                      SELECT_KEY_DIV_OID_ONE_E_SMALL_IID_SMALL_OID + \
-                      SELECT_KEY_DIV_E_OID_SMALL_E_SMALL_IID_SMALL_OID_ALIGN + \
-                      SELECT_KEY_DIV_E_OID_SMALL_E_SMALL_IID_SMALL_OID + \
-                      SELECT_KEY_DIV_E_SMALL_E_SMALL_IID_SMALL_OID_ALIGN + \
-                      SELECT_KEY_DIV_E_SMALL_E_SMALL_IID_SMALL_OID + \
-                      SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID_ALIGN + \
-                      SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID + \
-                      SELECT_KEY_DIV_OID_BLOCK_E_BIG_IID_SMALL_OID + \
-                      SELECT_KEY_DIV_OID_ONE_E_BIG_IID_SMALL_OID + \
-                      SELECT_KEY_DIV_E_OID_SMALL_E_BIG_IID_SMALL_OID_ALIGN + \
-                      SELECT_KEY_DIV_E_OID_SMALL_E_BIG_IID_SMALL_OID + \
-                      SELECT_KEY_DIV_E_SMALL_E_BIG_IID_SMALL_OID_ALIGN + \
-                      SELECT_KEY_DIV_E_SMALL_E_BIG_IID_SMALL_OID + \
-                      SELECT_KEY_DIV_E_BIG_E_BIG_IID_SMALL_OID_ALIGN + \
-                      SELECT_KEY_DIV_E_BIG_E_BIG_IID_SMALL_OID
+        select_keys = Constant.SELECT_KEY_DIV_OID_BLOCK_E_SMALL_IID_SMALL_OID + \
+                      Constant.SELECT_KEY_DIV_OID_ONE_E_SMALL_IID_SMALL_OID + \
+                      Constant.SELECT_KEY_DIV_E_OID_SMALL_E_SMALL_IID_SMALL_OID_ALIGN + \
+                      Constant.SELECT_KEY_DIV_E_OID_SMALL_E_SMALL_IID_SMALL_OID + \
+                      Constant.SELECT_KEY_DIV_E_SMALL_E_SMALL_IID_SMALL_OID_ALIGN + \
+                      Constant.SELECT_KEY_DIV_E_SMALL_E_SMALL_IID_SMALL_OID + \
+                      Constant.SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID_ALIGN + \
+                      Constant.SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID + \
+                      Constant.SELECT_KEY_DIV_OID_BLOCK_E_BIG_IID_SMALL_OID + \
+                      Constant.SELECT_KEY_DIV_OID_ONE_E_BIG_IID_SMALL_OID + \
+                      Constant.SELECT_KEY_DIV_E_OID_SMALL_E_BIG_IID_SMALL_OID_ALIGN + \
+                      Constant.SELECT_KEY_DIV_E_OID_SMALL_E_BIG_IID_SMALL_OID + \
+                      Constant.SELECT_KEY_DIV_E_SMALL_E_BIG_IID_SMALL_OID_ALIGN + \
+                      Constant.SELECT_KEY_DIV_E_SMALL_E_BIG_IID_SMALL_OID + \
+                      Constant.SELECT_KEY_DIV_E_BIG_E_BIG_IID_SMALL_OID_ALIGN + \
+                      Constant.SELECT_KEY_DIV_E_BIG_E_BIG_IID_SMALL_OID
 
         select_keys_mark = [1 for _ in select_keys]
 
@@ -585,54 +600,54 @@ class UnsortedSegmentTiling(object):
         if e_vector_num == 1 and scalar.e_num % self.ele_num_per_block != 0:
             if scalar.e_num >= self.ele_num_per_block:
                 if scalar.ids_num <= self.ids_once_num:
-                    select_mode = SELECT_KEY_DIV_OID_ONE_E_SMALL_IID_SMALL_OID
+                    select_mode = Constant.SELECT_KEY_DIV_OID_ONE_E_SMALL_IID_SMALL_OID
                 else:
-                    select_mode = SELECT_KEY_DIV_OID_ONE_E_BIG_IID_SMALL_OID
+                    select_mode = Constant.SELECT_KEY_DIV_OID_ONE_E_BIG_IID_SMALL_OID
             else:
                 if scalar.ids_num <= self.ids_once_num:
-                    select_mode = SELECT_KEY_DIV_OID_BLOCK_E_SMALL_IID_SMALL_OID
+                    select_mode = Constant.SELECT_KEY_DIV_OID_BLOCK_E_SMALL_IID_SMALL_OID
                 else:
-                    select_mode = SELECT_KEY_DIV_OID_BLOCK_E_BIG_IID_SMALL_OID
+                    select_mode = Constant.SELECT_KEY_DIV_OID_BLOCK_E_BIG_IID_SMALL_OID
 
         elif scalar.e_num % self.ele_num_per_block == 0:
             if scalar.ids_num <= self.ids_once_num:
                 if scalar.e_num <= self.e_max_by_stride:
                     if scalar.num_segments_core_num > 1:
-                        select_mode = SELECT_KEY_DIV_E_OID_SMALL_E_SMALL_IID_SMALL_OID_ALIGN
+                        select_mode = Constant.SELECT_KEY_DIV_E_OID_SMALL_E_SMALL_IID_SMALL_OID_ALIGN
                     else:
-                        select_mode = SELECT_KEY_DIV_E_SMALL_E_SMALL_IID_SMALL_OID_ALIGN
+                        select_mode = Constant.SELECT_KEY_DIV_E_SMALL_E_SMALL_IID_SMALL_OID_ALIGN
                 else:
-                    select_mode = SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID_ALIGN
+                    select_mode = Constant.SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID_ALIGN
             else:
                 if scalar.e_num <= self.e_max_by_stride:
                     if scalar.num_segments_core_num > 1:
-                        select_mode = SELECT_KEY_DIV_E_OID_SMALL_E_BIG_IID_SMALL_OID_ALIGN
+                        select_mode = Constant.SELECT_KEY_DIV_E_OID_SMALL_E_BIG_IID_SMALL_OID_ALIGN
                     else:
-                        select_mode = SELECT_KEY_DIV_E_SMALL_E_BIG_IID_SMALL_OID_ALIGN
+                        select_mode = Constant.SELECT_KEY_DIV_E_SMALL_E_BIG_IID_SMALL_OID_ALIGN
                 else:
-                    select_mode = SELECT_KEY_DIV_E_BIG_E_BIG_IID_SMALL_OID_ALIGN
+                    select_mode = Constant.SELECT_KEY_DIV_E_BIG_E_BIG_IID_SMALL_OID_ALIGN
         else:
             if scalar.ids_num <= self.ids_once_num:
                 if scalar.e_num <= self.e_max_by_stride:
                     if scalar.num_segments_core_num > 1:
-                        select_mode = SELECT_KEY_DIV_E_OID_SMALL_E_SMALL_IID_SMALL_OID
+                        select_mode = Constant.SELECT_KEY_DIV_E_OID_SMALL_E_SMALL_IID_SMALL_OID
                     else:
-                        select_mode = SELECT_KEY_DIV_E_SMALL_E_SMALL_IID_SMALL_OID
+                        select_mode = Constant.SELECT_KEY_DIV_E_SMALL_E_SMALL_IID_SMALL_OID
                 else:
-                    select_mode = SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID
+                    select_mode = Constant.SELECT_KEY_DIV_E_BIG_E_SMALL_IID_SMALL_OID
             else:
                 if scalar.e_num <= self.e_max_by_stride:
                     if scalar.num_segments_core_num > 1:
-                        select_mode = SELECT_KEY_DIV_E_OID_SMALL_E_BIG_IID_SMALL_OID
+                        select_mode = Constant.SELECT_KEY_DIV_E_OID_SMALL_E_BIG_IID_SMALL_OID
                     else:
-                        select_mode = SELECT_KEY_DIV_E_SMALL_E_BIG_IID_SMALL_OID
+                        select_mode = Constant.SELECT_KEY_DIV_E_SMALL_E_BIG_IID_SMALL_OID
                 else:
-                    select_mode = SELECT_KEY_DIV_E_BIG_E_BIG_IID_SMALL_OID
+                    select_mode = Constant.SELECT_KEY_DIV_E_BIG_E_BIG_IID_SMALL_OID
 
         return select_mode
 
 
-class TikTemplate(object):
+class TikTemplate:
     """
     Function: basic function template
     """
@@ -640,7 +655,7 @@ class TikTemplate(object):
     def __init__(self, block_index, tik_inst, dtype, obj_gm_tensor, obj_ub_tensor, obj_tiling, instruction):
         self.block_index = block_index
         self.dtype = dtype
-        self.ele_num_per_block = BYTE_BLOCK // _get_dtype_byte(self.dtype)
+        self.ele_num_per_block = Constant.BYTE_BLOCK // _get_dtype_byte(self.dtype)
         self.tik_inst = tik_inst
         self.obj_gm_tensor = obj_gm_tensor
         self.obj_ub_tensor = obj_ub_tensor
@@ -671,7 +686,7 @@ class TikTemplate(object):
                     input_offset_gm = (ids_indexa * self.obj_scalar.ids_param.front + ids_indexb) * \
                                       self.obj_scalar.e_num + \
                                       e_mov_index_gm2ub * self.obj_scalar.e_out_param.front
-                    if not block_align and last_e and (e_level == Constant.BIG_E or e_level == Constant.SMALL_E):
+                    if not block_align and last_e and e_level in (Constant.BIG_E, Constant.SMALL_E):
                         input_offset_gm = input_offset_gm - self.obj_scalar.align_scalar
                     input_offset_ub = ids_indexb * self.obj_scalar.e_num_part_ub_num
                     _tik_mov_input_gm2ub_continue(self.tik_inst, self.obj_gm_tensor.input_gm,
@@ -895,7 +910,7 @@ class TikTemplate(object):
         None
         """
         self.obj_scalar = obj_scalar
-        if e_level == Constant.ONE_DIV_E or e_level == Constant.ONE_BLOCK_E:
+        if e_level in (Constant.ONE_DIV_E, Constant.ONE_BLOCK_E):
             num_segments_block_index = self.block_index
             if not big_iid:
                 _tik_mov_ids_gm2ub(self.tik_inst, self.obj_gm_tensor.ids_gm, self.obj_ub_tensor.ids_ub, 0,
@@ -942,7 +957,7 @@ class TikTemplate(object):
                                           block_align=block_align, e_level=e_level, big_iid=big_iid, div_oid=div_oid)
 
 
-class UnsortedSegment(object):
+class UnsortedSegment:
     """
         Function: use to store concat base parameters
     """
@@ -986,7 +1001,7 @@ class UnsortedSegment(object):
 
         self.obj_tiling = UnsortedSegmentTiling(self, x_dict, segment_ids_dict, y_dict)
 
-        class GmTensor(object):
+        class GmTensor:
             """
             Function: use to store concat base parameters
             Modify : 2020-12-9
@@ -1008,18 +1023,20 @@ class UnsortedSegment(object):
                 -------
                 None
                 """
-                self.input_gm = tik_instance.Tensor(input_dtype, (MAX_INT32,), name="input_gm", scope=tik.scope_gm)
-                self.ids_gm = tik_instance.Tensor(ids_dtype, (MAX_INT32,), name="ids_gm", scope=tik.scope_gm)
+                self.input_gm = tik_instance.Tensor(input_dtype, (Constant.MAX_INT32,), name="input_gm",
+                                                    scope=tik.scope_gm)
+                self.ids_gm = tik_instance.Tensor(ids_dtype, (Constant.MAX_INT32,), name="ids_gm", scope=tik.scope_gm)
 
-                self.num_segments_gm = tik_instance.Tensor(num_segments_dtype, (MIN_TENSOR_ELE_NUM,),
+                self.num_segments_gm = tik_instance.Tensor(num_segments_dtype, (Constant.MIN_TENSOR_ELE_NUM,),
                                                            name="num_segments_gm", scope=tik.scope_gm)
 
-                self.output_gm = tik_instance.Tensor(input_dtype, (MAX_INT32,), name="output_gm", scope=tik.scope_gm)
-
-                self.tiling_gm = tik_instance.Tensor(TILING_PARAM_DTYPE, (TILING_PARAMS_NUM,), name="tiling_gm",
+                self.output_gm = tik_instance.Tensor(input_dtype, (Constant.MAX_INT32,), name="output_gm",
                                                      scope=tik.scope_gm)
 
-        class UbTensor(object):
+                self.tiling_gm = tik_instance.Tensor(Constant.TILING_PARAM_DTYPE, (Constant.TILING_PARAMS_NUM,),
+                                                     name="tiling_gm", scope=tik.scope_gm)
+
+        class UbTensor:
             """
             Function: use to store concat base parameters
             Modify : 2020-12-9
@@ -1037,7 +1054,8 @@ class UnsortedSegment(object):
                 -------
                 None
                 """
-                self.num_segments_ub = param.tik_instance.Tensor(param.num_segments_dtype, (MIN_TENSOR_ELE_NUM,),
+                self.num_segments_ub = param.tik_instance.Tensor(param.num_segments_dtype,
+                                                                 (Constant.MIN_TENSOR_ELE_NUM,),
                                                                  name="num_segments_ub", scope=tik.scope_ubuf)
                 self.input_ub = None
                 self.ids_ub = None
@@ -1108,22 +1126,22 @@ class UnsortedSegment(object):
 
             scalar_in_list = False
             for ele in scalar_list:
-                if not (isinstance(ele, int) or isinstance(ele, dict)):
+                if not (isinstance(ele, (int, dict))):
                     scalar_in_list = True
 
             if scalar_in_list:
                 self.obj_ub_tensor.tiling_ub = self.tik_instance.Tensor(
-                    TILING_PARAM_DTYPE, (TILING_PARAMS_NUM,), name="tiling_ub",
+                    Constant.TILING_PARAM_DTYPE, (Constant.TILING_PARAMS_NUM,), name="tiling_ub",
                     scope=tik.scope_ubuf)
                 # mov tiling params from gm to ub
                 self.tik_instance.data_move(self.obj_ub_tensor.tiling_ub,
                                             self.obj_gm_tensor.tiling_gm, 0, 1,
-                                            TILING_PARAMS_NUM * BYTE_INT32 // \
-                                            BYTE_BLOCK, 0, 0)
+                                            Constant.TILING_PARAMS_NUM * Constant.BYTE_INT32 // \
+                                            Constant.BYTE_BLOCK, 0, 0)
 
             index = 0
             for ele in scalar_list:
-                if not (isinstance(ele, int) or isinstance(ele, dict)):
+                if not (isinstance(ele, (int, dict))):
                     ele.set_as(self.obj_ub_tensor.tiling_ub[index])
                 index = index + 1
 

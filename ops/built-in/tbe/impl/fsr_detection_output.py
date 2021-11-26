@@ -65,7 +65,7 @@ def get_op_support_info(rois_dic, bbox_delta_dic, score_dic, im_info_dic,
     """
     get split info
     rois: [batch, 5, max_rois_num], 5 means (batchId, x1, y1, x2, y2)
-    bbox_delta: [total_rois, num_class*4], total_rois = batch * max_rois_num
+    bbox_delta: `[total_rois, num_class*4], total_rois = batch * max_rois_num`
     score: [total_rois, num_class]
     img_info
     actual_rois_num: [batch_rois, 8]

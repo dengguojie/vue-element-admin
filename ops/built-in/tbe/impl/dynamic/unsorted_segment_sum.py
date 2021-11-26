@@ -16,7 +16,7 @@
 unsorted_segment_sum
 
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.platform_adapter import tik
@@ -26,6 +26,7 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from . import unsorted_segment_sum_no_atomic
+
 
 # 'pylint: disable=too-few-public-methods
 class Constant:
@@ -42,60 +43,60 @@ class Constant:
     SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ONE_MULTI = 8
     SELECT_KEY_MODE_FP32_INPUT_NUM_SEGMENT_ONE = 17
 
-DTYPE_FP32 = "float32"
-DTYPE_INT32 = "int32"
-TILING_PARAM_DTYPE = DTYPE_INT32
+    DTYPE_FP32 = "float32"
+    DTYPE_INT32 = "int32"
+    TILING_PARAM_DTYPE = DTYPE_INT32
 
-# max_int32
-MAX_INT32 = 2**31 - 1
+    # max_int32
+    MAX_INT32 = 2**31 - 1
 
-# fp32 byte
-BYTE_FP32 = 4
+    # fp32 byte
+    BYTE_FP32 = 4
 
-# int32 byte
-BYTE_INT32 = 4
+    # int32 byte
+    BYTE_INT32 = 4
 
-# full mask for fp32
-MASK_FP32 = 64
+    # full mask for fp32
+    MASK_FP32 = 64
 
-# full mask for int32
-MASK_INT32 = 64
+    # full mask for int32
+    MASK_INT32 = 64
 
-# byte of one block
-BYTE_BLOCK = 32
+    # byte of one block
+    BYTE_BLOCK = 32
 
-# byte of one repeat block
-BYTE_REPEAT_BLOCK = 256
+    # byte of one repeat block
+    BYTE_REPEAT_BLOCK = 256
 
-# max repeat time of vector instruction
-MAX_REPEAT_TIME = 255
+    # max repeat time of vector instruction
+    MAX_REPEAT_TIME = 255
 
-# min ids nums in data move
-MIN_IDS_NUMS = BYTE_BLOCK // BYTE_FP32
+    # min ids nums in data move
+    MIN_IDS_NUMS = BYTE_BLOCK // BYTE_FP32
 
-# cloud block num
-CLOUD_CORE_NUM = 32
+    # cloud block num
+    CLOUD_CORE_NUM = 32
 
-# min_tensor_ele_num
-MIN_TENSOR_ELE_NUM = 32
+    # min_tensor_ele_num
+    MIN_TENSOR_ELE_NUM = 32
 
-# tiling params num
-TILING_PARAMS_NUM = 128
+    # tiling params num
+    TILING_PARAMS_NUM = 128
 
-# fp32 ele num one ub block
-ELE_NUM_ONE_BLOCK_FP32 = BYTE_BLOCK // BYTE_FP32
+    # fp32 ele num one ub block
+    ELE_NUM_ONE_BLOCK_FP32 = BYTE_BLOCK // BYTE_FP32
 
-# modify last axis one, multi times
-MULTI = 4
+    # modify last axis one, multi times
+    MULTI = 4
 
-# num fp32
-ONE = 1.0
-NEG_ONE = -1.0
-ZERO = 0.0
+    # num fp32
+    ONE = 1.0
+    NEG_ONE = -1.0
+    ZERO = 0.0
 
 
-# pylint: disable=invalid-name,too-many-instance-attributes,too-many-arguments,too-many-statements
-# pylint: disable=too-many-locals,too-few-public-methods,unused-argument
+# 'pylint: disable=invalid-name,too-many-instance-attributes,too-many-arguments,too-many-statements
+# 'pylint: disable=too-many-locals,too-few-public-methods,unused-argument
 def _ceil_div(val, block):
     """
     compute ceil div
@@ -219,6 +220,7 @@ def op_select_format(x, segment_ids, num_segments, y,
     return param_dynamic_in_json
 
 
+# 'pylint: disable=too-many-return-statements,too-many-branches
 def check_supported(x, segment_ids, num_segments, y,
                                 kernel_name="unsorted_segment_sum"):
     """
@@ -246,35 +248,35 @@ def check_supported(x, segment_ids, num_segments, y,
         reason = "the x_dtype in (\"int8\", \"uint8\"), x_dtype=%s" % x_dtype
         return False, reason
 
-    for i in range(len(shapex)):
-        if shapex[i] == -2:
+    for i, shape_i in enumerate(shapex):
+        if shape_i == -2:
             reason = "dynamic shape is not supported by aicore, shapex[%s] == -2" % i
             return False, reason
-        if shapex[i] == -1:
+        if shape_i == -1:
             reason = "dynamic shape is not supported by aicore, shapex[%s] == -1" % i
             dynamic_x = False, reason
             break
-    for i in range(len(shapeid)):
-        if shapeid[i] == -2:
+    for i, shapeid_i in enumerate(shapeid):
+        if shapeid_i == -2:
             reason = "dynamic shape is not supported by aicore, shapeid[%s] == -2" % i
             return False, reason
-        if shapeid[i] == -1:
+        if shapeid_i == -1:
             reason = "dynamic shape is not supported by aicore, shapeid[%s] == -1" % i
             dynamic_id = False, reason
             break
-    for i in range(len(shape_seg)):
-        if shape_seg[i] == -2:
+    for i, shape_seg_i in enumerate(shape_seg):
+        if shape_seg_i == -2:
             reason = "dynamic shape is not supported by aicore, shape_seg[%s] == -2" % i
             return False, reason
-        if shape_seg[i] == -1:
+        if shape_seg_i == -1:
             reason = "dynamic shape is not supported by aicore, shape_seg[%s] == -1" % i
             dynamic_seg = False, reason
             break
-    for i in range(len(shapey)):
-        if shapey[i] == -2:
+    for i, shapey_i in enumerate(shapey):
+        if shapey_i == -2:
             reason = "dynamic shape is not supported by aicore, shapey[%s] == -2" % i
             return False, reason
-        if shapey[i] == -1:
+        if shapey_i == -1:
             dynamic_y = False
             break
 
@@ -326,13 +328,13 @@ class UnsortedSegmentSum():
         self.num_segments_dtype = num_segments_dict.get("dtype", None)
         self.num_segments_dtype = self.num_segments_dtype.lower()
         self.output_dtype = self.input_dtype
-        self.fp32_ele_num_one_block = ELE_NUM_ONE_BLOCK_FP32
+        self.fp32_ele_num_one_block = Constant.ELE_NUM_ONE_BLOCK_FP32
         self.is_double_buffer = False
         self.kernel_name = kernel_name
         self.tik_instance = tik.Tik()
         self.ub_size = _tik_get_ub_size(self.is_double_buffer)
         self.core_num = _tik_get_core_num()
-        if self.input_dtype == DTYPE_FP32:
+        if self.input_dtype == Constant.DTYPE_FP32:
             self.ub_tensor_num = 3
 
         class GmTensor():
@@ -356,21 +358,23 @@ class UnsortedSegmentSum():
                 -------
                 None
                 """
-                self.input_gm = tik_instance.Tensor(input_dtype, (MAX_INT32,), name="input_gm", scope=tik.scope_gm)
-                self.ids_gm = tik_instance.Tensor(ids_dtype, (MAX_INT32,), name="ids_gm", scope=tik.scope_gm)
-                self.num_segments_gm = tik_instance.Tensor(num_segments_dtype, (MIN_TENSOR_ELE_NUM,),
+                self.input_gm = tik_instance.Tensor(input_dtype, (Constant.MAX_INT32,), name="input_gm",
+                                                    scope=tik.scope_gm)
+                self.ids_gm = tik_instance.Tensor(ids_dtype, (Constant.MAX_INT32,), name="ids_gm", scope=tik.scope_gm)
+                self.num_segments_gm = tik_instance.Tensor(num_segments_dtype, (Constant.MIN_TENSOR_ELE_NUM,),
                                                            name="num_segments",
                                                            scope=tik.scope_gm)
-                if input_dtype == DTYPE_FP32:
-                    self.output_gm = tik_instance.Tensor(input_dtype, (MAX_INT32,),
+                if input_dtype == Constant.DTYPE_FP32:
+                    self.output_gm = tik_instance.Tensor(input_dtype, (Constant.MAX_INT32,),
                                                          name="output_gm",
                                                          scope=tik.scope_gm,
                                                          is_atomic_add=True)
                 else:
-                    self.output_gm = tik_instance.Tensor(input_dtype, (MAX_INT32,),
+                    self.output_gm = tik_instance.Tensor(input_dtype, (Constant.MAX_INT32,),
                                                          name="output_gm",
                                                          scope=tik.scope_gm)
-                self.tiling_gm = tik_instance.Tensor(TILING_PARAM_DTYPE, (TILING_PARAMS_NUM,),
+                self.tiling_gm = tik_instance.Tensor(Constant.TILING_PARAM_DTYPE,
+                                                     (Constant.TILING_PARAMS_NUM,),
                                                      name="tiling_gm",
                                                      scope=tik.scope_gm)
 
@@ -420,11 +424,12 @@ class UnsortedSegmentSum():
                 """
                 self.num_segments_scalar = tik_instance.Scalar(dtype=num_segments_dtype, name="num_segments_scalar")
                 self.id_val_scalar = tik_instance.Scalar(dtype=ids_dtype, name="id_val_scalar")
-                self.select_key = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="select_key")
-                self.need_core_num = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="need_core_num")
-                self.num_segments_front_core = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.select_key = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="select_key")
+                self.need_core_num = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                         name="need_core_num")
+                self.num_segments_front_core = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                    name="num_segments_front_core")
-                self.num_segments_last_core = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.num_segments_last_core = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                   name="num_segments_last_core")
 
         class Fp32InputDataInputScalar():
@@ -447,129 +452,129 @@ class UnsortedSegmentSum():
                 # front core
                 self.ele_num_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="ele_num_front_core")
                 # front part front core
                 self.mov_times_gm2ub_front_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="mov_times_gm2ub_front_part_front_core")
                 self.front_burst_len_front_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="front_burst_len_front_part_front_core")
                 self.last_burst_len_front_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_burst_len_front_part_front_core")
                 self.front_ele_num_ub_front_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="front_ele_num_ub_front_part_front_core")
                 self.last_ele_num_ub_front_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_ele_num_ub_front_part_front_core")
                 self.front_rows_front_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="front_rows_front_part_front_core")
                 self.last_rows_front_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_rows_front_part_front_core")
                 # last part front core
                 self.mov_times_gm2ub_last_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="mov_times_gm2ub_last_part_front_core")
                 self.front_burst_len_last_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="front_burst_len_last_part_front_core")
                 self.last_burst_len_last_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_burst_len_last_part_front_core")
                 self.front_ele_num_ub_last_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="front_ele_num_ub_last_part_front_core")
                 self.last_ele_num_ub_last_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_ele_num_ub_last_part_front_core")
                 self.front_rows_last_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="front_rows_last_part_front_core")
                 self.last_rows_last_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_rows_last_part_front_core")
 
                 # last core
                 self.ele_num_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="ele_num_last_core")
                 # front part last core
                 self.mov_times_gm2ub_front_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="mov_times_gm2ub_front_part_last_core")
                 self.front_burst_len_front_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="front_burst_len_front_part_last_core")
                 self.last_burst_len_front_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_burst_len_front_part_last_core")
                 self.front_ele_num_ub_front_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="front_ele_num_ub_front_part_last_core")
                 self.last_ele_num_ub_front_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_ele_num_ub_front_part_last_core")
                 self.front_rows_front_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="front_rows_front_part_last_core")
                 self.last_rows_front_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_rows_front_part_last_core")
                 # last part last core
                 self.mov_times_gm2ub_last_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="mov_times_gm2ub_last_part_last_core")
                 self.front_burst_len_last_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="front_burst_len_last_part_last_core")
                 self.last_burst_len_last_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_burst_len_last_part_last_core")
                 self.front_ele_num_ub_last_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="front_ele_num_ub_last_part_last_core")
                 self.last_ele_num_ub_last_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_ele_num_ub_last_part_last_core")
                 self.front_rows_last_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="front_rows_last_part_last_core")
                 self.last_rows_last_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_rows_last_part_last_core")
 
         class Fp32ENumInputScalar():
@@ -589,16 +594,17 @@ class UnsortedSegmentSum():
                 -------
                 None
                 """
-                self.e_num = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="e_num")
-                self.e_mov_times_gm2ub = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="e_mov_times_gm2ub")
-                self.e_ub2gm_front_burst_len = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.e_num = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="e_num")
+                self.e_mov_times_gm2ub = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                             name="e_mov_times_gm2ub")
+                self.e_ub2gm_front_burst_len = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                    name="e_ub2gm_front_burst_len")
-                self.e_num_front_part = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="e_num_front_part")
-                self.e_ub2gm_last_burst_len = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.e_num_front_part = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="e_num_front_part")
+                self.e_ub2gm_last_burst_len = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                   name="e_ub2gm_last_burst_len")
-                self.e_gm2ub_last_burst_len = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE,
+                self.e_gm2ub_last_burst_len = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
                                                                   name="e_gm2ub_last_burst_len")
-                self.e_num_last_part = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="e_num_last_part")
+                self.e_num_last_part = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="e_num_last_part")
 
         class Fp32IdsInputScalar():
             """
@@ -617,51 +623,52 @@ class UnsortedSegmentSum():
                 -------
                 None
                 """
-                self.size = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="size")
-                self.ele_num_front_core = tik_instance.Scalar(dtype=TILING_PARAM_DTYPE, name="ele_num_front_core")
+                self.size = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE, name="size")
+                self.ele_num_front_core = tik_instance.Scalar(dtype=Constant.TILING_PARAM_DTYPE,
+                                                              name="ele_num_front_core")
                 self.mov_times_gm2ub_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="mov_times_gm2ub_front_core")
                 self.front_burst_len_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="front_burst_len_front_core")
                 self.last_burst_len_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_burst_len_front_core")
                 self.ele_num_ub_front_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="ele_num_ub_front_part_front_core")
                 self.ele_num_ub_last_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="ele_num_ub_last_part_front_core")
                 self.ele_num_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="ele_num_last_core")
                 self.mov_times_gm2ub_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="mov_times_gm2ub_last_core")
                 self.front_burst_len_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="front_burst_len_last_core")
                 self.last_burst_len_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_burst_len_last_core")
                 self.ele_num_ub_front_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="ele_num_ub_front_part_last_core")
                 self.ele_num_ub_last_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="ele_num_ub_last_part_last_core")
 
         class Fp32OutputInitInputScalar():
@@ -684,82 +691,82 @@ class UnsortedSegmentSum():
                 self. \
                     last_repeat_time_front_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_repeat_time_front_part_front_core")
                 self.init_times_front_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="init_times_front_part_front_core")
                 self. \
                     last_repeat_time_last_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_repeat_time_last_part_front_core")
                 self.init_times_last_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="init_times_last_part_front_core")
                 self. \
                     last_repeat_time_front_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_repeat_time_front_part_last_core")
                 self.init_times_front_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="init_times_front_part_last_core")
                 self. \
                     last_repeat_time_last_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_repeat_time_last_part_last_core")
                 self.init_times_last_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="init_times_last_part_last_core")
                 self.last_axis_align_front_part = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_axis_align_front_part")
                 self.last_axis_align_floor = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_axis_align_floor")
                 self.last_part_vadd_mask = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_part_vadd_mask")
                 self.last_repeat_time_last_row_front_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_repeat_time_last_row_front_part_front_core")
                 self.init_times_last_row_front_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="init_times_last_row_front_part_front_core")
                 self.last_repeat_time_last_row_last_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_repeat_time_last_row_last_part_front_core")
                 self.init_times_last_row_last_part_front_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="init_times_last_row_last_part_front_core")
                 self.last_repeat_time_last_row_front_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_repeat_time_last_row_front_part_last_core")
                 self.init_times_last_row_front_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="init_times_last_row_front_part_last_core")
                 self.last_repeat_time_last_row_last_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="last_repeat_time_last_row_last_part_last_core")
                 self.init_times_last_row_last_part_last_core = \
                     tik_instance.Scalar(
-                        dtype=TILING_PARAM_DTYPE,
+                        dtype=Constant.TILING_PARAM_DTYPE,
                         name="init_times_last_row_last_part_last_core")
 
         self.obj_gm_tensor = GmTensor(self.tik_instance, self.input_dtype, self.ids_dtype, self.num_segments_dtype)
@@ -773,7 +780,7 @@ class UnsortedSegmentSum():
         with self.tik_instance.new_stmt_scope():
             # num_segments
             self.obj_ub_tensor.num_segments_ub = self.tik_instance.Tensor(self.num_segments_dtype,
-                                                                          (MIN_TENSOR_ELE_NUM,),
+                                                                          (Constant.MIN_TENSOR_ELE_NUM,),
                                                                           name="num_segments_ub",
                                                                           scope=tik.scope_ubuf)
             self.tik_instance.data_move(self.obj_ub_tensor.num_segments_ub, self.obj_gm_tensor.num_segments_gm, 0, 1, 1,
@@ -781,14 +788,15 @@ class UnsortedSegmentSum():
             self.obj_common_scalar.num_segments_scalar.set_as(self.obj_ub_tensor.num_segments_ub[1])
 
         with self.tik_instance.new_stmt_scope():
-            self.obj_ub_tensor.tiling_ub = self.tik_instance.Tensor(TILING_PARAM_DTYPE, (TILING_PARAMS_NUM,),
+            self.obj_ub_tensor.tiling_ub = self.tik_instance.Tensor(Constant.TILING_PARAM_DTYPE,
+                                                                    (Constant.TILING_PARAMS_NUM,),
                                                                     name="tiling_ub",
                                                                     scope=tik.scope_ubuf)
             # mov tiling params from gm to ub
             self.tik_instance.data_move(self.obj_ub_tensor.tiling_ub,
                                         self.obj_gm_tensor.tiling_gm, 0, 1,
-                                        TILING_PARAMS_NUM * BYTE_INT32 // \
-                                        BYTE_BLOCK,
+                                        Constant.TILING_PARAMS_NUM * Constant.BYTE_INT32 // \
+                                        Constant.BYTE_BLOCK,
                                         0, 0)
             # input scalar in flowtable
             input_scalar_index = 0
@@ -1102,16 +1110,17 @@ class UnsortedSegmentSum():
                             self.output_dtype, (64,),
                             name="output_ub",
                             scope=tik.scope_ubuf)
-                        self.tik_instance.vector_dup(MASK_FP32, self.obj_ub_tensor.output_ub[0], 0,
+                        self.tik_instance.vector_dup(Constant.MASK_FP32, self.obj_ub_tensor.output_ub[0], 0,
                                 1, 1, 8)
-                        self.tik_instance.data_move(self.obj_gm_tensor.output_gm[0], self.obj_ub_tensor.output_ub[0], 0, 1, 1, 0, 0)
+                        self.tik_instance.data_move(self.obj_gm_tensor.output_gm[0],
+                                                    self.obj_ub_tensor.output_ub[0], 0, 1, 1, 0, 0)
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
                             self.obj_common_scalar.select_key == \
                             Constant.SELECT_KEY_MODE_FP32_INPUT_NUM_SEGMENT_ONE):
                         # fp32 last axis 32B align
                         self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype,
-                                                                               (self.ub_size // BYTE_FP32,),
+                                                                               (self.ub_size // Constant.BYTE_FP32,),
                                                                                name="input_ub",
                                                                                scope=tik.scope_ubuf)
                         _tik_atomic_add_num_segment_one(block_index, self.tik_instance, self.obj_gm_tensor,
@@ -1124,11 +1133,13 @@ class UnsortedSegmentSum():
                             self.obj_common_scalar.select_key == Constant.SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ALIGN):
                         # fp32 last axis 32B align
                         self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype,
-                                                                               (self.ub_size // 2 // BYTE_FP32,),
+                                                                               (self.ub_size // 2 // \
+                                                                                   Constant.BYTE_FP32,),
                                                                                name="input_ub",
                                                                                scope=tik.scope_ubuf)
                         self.obj_ub_tensor.ids_ub = self.tik_instance.Tensor(self.ids_dtype,
-                                                                             (self.ub_size // 2 // BYTE_INT32,),
+                                                                             (self.ub_size // 2 // \
+                                                                                 Constant.BYTE_INT32,),
                                                                              name="ids_ub",
                                                                              scope=tik.scope_ubuf)
                         _tik_atomic_add_last_axis_align_small_e(block_index, self.tik_instance, self.obj_gm_tensor,
@@ -1141,8 +1152,8 @@ class UnsortedSegmentSum():
                             self.obj_common_scalar.select_key == Constant.SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ONE):
                         # fp32 last axis is 1
                         def _compute_input_ub_row():
-                            one_row_size = BYTE_FP32 + BYTE_INT32 + \
-                                           BYTE_FP32 * \
+                            one_row_size = Constant.BYTE_FP32 + Constant.BYTE_INT32 + \
+                                           Constant.BYTE_FP32 * \
                                            self.fp32_ele_num_one_block
                             return _floor(self.ub_size // one_row_size, self.fp32_ele_num_one_block)
 
@@ -1165,11 +1176,12 @@ class UnsortedSegmentSum():
                                                       self.fp32_ele_num_one_block)
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
-                            self.obj_common_scalar.select_key == Constant.SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ONE_MODIFY):
+                            self.obj_common_scalar.select_key == \
+                                Constant.SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ONE_MODIFY):
                         # fp32 last axis is 1 modify
                         def _compute_input_ub_row1():
-                            one_row_size = BYTE_FP32 + BYTE_INT32
-                            return _floor(self.ub_size // one_row_size, MASK_FP32)
+                            one_row_size = Constant.BYTE_FP32 + Constant.BYTE_INT32
+                            return _floor(self.ub_size // one_row_size, Constant.MASK_FP32)
 
                         self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype,
                                                                                (_compute_input_ub_row1(),),
@@ -1186,11 +1198,12 @@ class UnsortedSegmentSum():
                                                              self.obj_fp32_output_init_input_scalar)
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
-                            self.obj_common_scalar.select_key == Constant.SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ONE_MULTI):
+                            self.obj_common_scalar.select_key == \
+                                Constant.SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ONE_MULTI):
                         # fp32 last axis is 1 multi 64
                         def _compute_input_ub_row2():
-                            one_row_size = BYTE_FP32 + BYTE_INT32
-                            return _floor(self.ub_size // one_row_size, 16 * MASK_FP32)
+                            one_row_size = Constant.BYTE_FP32 + Constant.BYTE_INT32
+                            return _floor(self.ub_size // one_row_size, 16 * Constant.MASK_FP32)
 
                         self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype,
                                                                                (_compute_input_ub_row2(),),
@@ -1207,18 +1220,22 @@ class UnsortedSegmentSum():
                                                             self.obj_fp32_output_init_input_scalar)
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
-                            self.obj_common_scalar.select_key == Constant.SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_NOT_ALIGN):
+                            self.obj_common_scalar.select_key == \
+                                Constant.SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_NOT_ALIGN):
                         # fp32 last axis 32B not align
                         self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype,
-                                                                               (self.ub_size // 3 // BYTE_FP32,),
+                                                                               (self.ub_size // 3 // \
+                                                                                   Constant.BYTE_FP32,),
                                                                                name="input_ub",
                                                                                scope=tik.scope_ubuf)
                         self.obj_ub_tensor.ids_ub = self.tik_instance.Tensor(self.ids_dtype,
-                                                                             (self.ub_size // 3 // BYTE_INT32,),
+                                                                             (self.ub_size // 3 // \
+                                                                                 Constant.BYTE_INT32,),
                                                                              name="ids_ub",
                                                                              scope=tik.scope_ubuf)
                         self.obj_ub_tensor.output_ub = self.tik_instance.Tensor(self.output_dtype,
-                                                                                (self.ub_size // 3 // BYTE_FP32,),
+                                                                                (self.ub_size // 3 // \
+                                                                                    Constant.BYTE_FP32,),
                                                                                 name="output_ub",
                                                                                 scope=tik.scope_ubuf)
                         _tik_atomic_add_last_axis_not_align_small_e(
@@ -1228,14 +1245,17 @@ class UnsortedSegmentSum():
                             self.obj_fp32_output_init_input_scalar, self.fp32_ele_num_one_block)
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
-                            self.obj_common_scalar.select_key == Constant.SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ALIGN_BIG_E):
+                            self.obj_common_scalar.select_key == \
+                                Constant.SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_ALIGN_BIG_E):
                         # fp32 last axis 32B align and big e
                         self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype,
-                                                                               (self.ub_size // 2 // BYTE_FP32,),
+                                                                               (self.ub_size // 2 // \
+                                                                                   Constant.BYTE_FP32,),
                                                                                name="input_ub",
                                                                                scope=tik.scope_ubuf)
                         self.obj_ub_tensor.ids_ub = self.tik_instance.Tensor(self.ids_dtype,
-                                                                             (self.ub_size // 2 // BYTE_INT32,),
+                                                                             (self.ub_size // 2 // \
+                                                                                 Constant.BYTE_INT32,),
                                                                              name="ids_ub",
                                                                              scope=tik.scope_ubuf)
                         _tik_atomic_add_last_axis_align_big_e(block_index, self.tik_instance, self.obj_gm_tensor,
@@ -1245,18 +1265,22 @@ class UnsortedSegmentSum():
                                                               self.obj_fp32_ids_input_scalar)
                 with self.tik_instance.new_stmt_scope():
                     with self.tik_instance.if_scope(
-                            self.obj_common_scalar.select_key == Constant.SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_NOT_ALIGN_BIG_E):
+                            self.obj_common_scalar.select_key == \
+                                Constant.SELECT_KEY_MODE_FP32_INPUT_LAST_AXIS_NOT_ALIGN_BIG_E):
                         # fp32 last axis 32B not align and big e
                         self.obj_ub_tensor.input_ub = self.tik_instance.Tensor(self.input_dtype,
-                                                                               (self.ub_size // 3 // BYTE_FP32,),
+                                                                               (self.ub_size // 3 // \
+                                                                                   Constant.BYTE_FP32,),
                                                                                name="input_ub",
                                                                                scope=tik.scope_ubuf)
                         self.obj_ub_tensor.ids_ub = self.tik_instance.Tensor(self.ids_dtype,
-                                                                             (self.ub_size // 3 // BYTE_INT32,),
+                                                                             (self.ub_size // 3 // \
+                                                                                 Constant.BYTE_INT32,),
                                                                              name="ids_ub",
                                                                              scope=tik.scope_ubuf)
                         self.obj_ub_tensor.output_ub = self.tik_instance.Tensor(self.output_dtype,
-                                                                                (self.ub_size // 3 // BYTE_FP32,),
+                                                                                (self.ub_size // 3 // \
+                                                                                    Constant.BYTE_FP32,),
                                                                                 name="output_ub",
                                                                                 scope=tik.scope_ubuf)
                         _tik_atomic_add_last_axis_not_align_big_e(block_index, self.tik_instance, self.obj_gm_tensor,
@@ -1368,10 +1392,12 @@ def _tik_init_ub_tensor(tik_inst, ub_tensor, init_last_repeat_time, init_times):
     """
     with tik_inst.for_range(0, init_times) as init_index:
         with tik_inst.if_scope(init_index == init_times - 1):
-            tik_inst.vector_dup(MASK_FP32, ub_tensor[init_index * MASK_FP32 * MAX_REPEAT_TIME], 0,
+            tik_inst.vector_dup(Constant.MASK_FP32, ub_tensor[init_index * Constant.MASK_FP32 * \
+                                                              Constant.MAX_REPEAT_TIME], 0,
                                 init_last_repeat_time, 1, 8)
         with tik_inst.else_scope():
-            tik_inst.vector_dup(MASK_FP32, ub_tensor[init_index * MASK_FP32 * MAX_REPEAT_TIME], 0, MAX_REPEAT_TIME, 1,
+            tik_inst.vector_dup(Constant.MASK_FP32, ub_tensor[init_index * Constant.MASK_FP32 * \
+                                                              Constant.MAX_REPEAT_TIME], 0, Constant.MAX_REPEAT_TIME, 1,
                                 8)
 
 
@@ -1554,33 +1580,33 @@ def _tik_atomic_add_ub2gm_by_id_last_axis_one_modify(tik_inst, input_ub, ids_ub,
     -------
     None
     """
-    id_val_fp32 = tik_inst.Scalar(DTYPE_FP32, "id_val_fp32")
-    input_val = tik_inst.Scalar(DTYPE_FP32, "input_val")
-    neg_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "neg_ub")
-    tik_inst.vector_dup(MASK_FP32, neg_ub[0], NEG_ONE, 1, 1, 8)
+    id_val_fp32 = tik_inst.Scalar(Constant.DTYPE_FP32, "id_val_fp32")
+    input_val = tik_inst.Scalar(Constant.DTYPE_FP32, "input_val")
+    neg_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "neg_ub")
+    tik_inst.vector_dup(Constant.MASK_FP32, neg_ub[0], Constant.NEG_ONE, 1, 1, 8)
     with tik_inst.for_range(0, times_by_mask) as index:
         # times divided by mask
-        conv_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "conv_ub")
-        tik_inst.vconv(MASK_FP32, "", conv_ub[0], ids_ub[index * MASK_FP32], 1, 1, 1, 8, 8)
-        with tik_inst.for_range(0, MASK_FP32) as ids_index:
+        conv_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "conv_ub")
+        tik_inst.vconv(Constant.MASK_FP32, "", conv_ub[0], ids_ub[index * Constant.MASK_FP32], 1, 1, 1, 8, 8)
+        with tik_inst.for_range(0, Constant.MASK_FP32) as ids_index:
             # traversal ids
             id_val_fp32.set_as(conv_ub[ids_index])
-            with tik_inst.if_scope(id_val_fp32 >= ZERO):
+            with tik_inst.if_scope(id_val_fp32 >= Constant.ZERO):
                 # new id
-                zero_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "zero_ub")
-                tik_inst.vector_dup(MASK_FP32, zero_ub[0], ZERO, 1, 1, 8)
-                dup_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "dup_ub")
-                tik_inst.vector_dup(MASK_FP32, dup_ub[0], id_val_fp32, 1, 1, 8)
-                cmpmask = tik_inst.vcmp_eq(MASK_FP32, dup_ub[0], conv_ub[0], 1, 1)
-                tik_inst.vsel(MASK_FP32, 0, conv_ub[0], cmpmask, neg_ub[0], conv_ub[0], 1, 1, 1, 1, 8, 8, 8)
-                sel_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "sel_ub")
-                tik_inst.vsel(MASK_FP32, 0, sel_ub[0], cmpmask, input_ub[index * MASK_FP32], zero_ub[0], 1, 1, 1, 1, 8,
-                              8, 8)
-                cadd_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "cadd_ub")
-                tik_inst.vcadd(MASK_FP32, cadd_ub[0], sel_ub[0], 1, 1, 1, 8)
+                zero_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "zero_ub")
+                tik_inst.vector_dup(Constant.MASK_FP32, zero_ub[0], Constant.ZERO, 1, 1, 8)
+                dup_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "dup_ub")
+                tik_inst.vector_dup(Constant.MASK_FP32, dup_ub[0], id_val_fp32, 1, 1, 8)
+                cmpmask = tik_inst.vcmp_eq(Constant.MASK_FP32, dup_ub[0], conv_ub[0], 1, 1)
+                tik_inst.vsel(Constant.MASK_FP32, 0, conv_ub[0], cmpmask, neg_ub[0], conv_ub[0], 1, 1, 1, 1, 8, 8, 8)
+                sel_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "sel_ub")
+                tik_inst.vsel(Constant.MASK_FP32, 0, sel_ub[0], cmpmask, input_ub[index * Constant.MASK_FP32],
+                              zero_ub[0], 1, 1, 1, 1, 8, 8, 8)
+                cadd_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "cadd_ub")
+                tik_inst.vcadd(Constant.MASK_FP32, cadd_ub[0], sel_ub[0], 1, 1, 1, 8)
                 input_val.set_as(cadd_ub[0])
                 zero_ub[0].set_as(input_val)
-                id_val_scalar.set_as(ids_ub[index * MASK_FP32 + ids_index])
+                id_val_scalar.set_as(ids_ub[index * Constant.MASK_FP32 + ids_index])
                 tik_inst.data_move(output_gm[id_val_scalar], zero_ub[0], 0, 1, 1, 0, 0)
 
 
@@ -1603,28 +1629,29 @@ def _tik_atomic_add_ub2gm_by_id_last_axis_one_modify_last_part(tik_inst, input_u
     -------
     None
     """
-    id_val_fp32 = tik_inst.Scalar(DTYPE_FP32, "id_val_fp32")
-    input_val = tik_inst.Scalar(DTYPE_FP32, "input_val")
-    neg_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "neg_ub")
-    tik_inst.vector_dup(MASK_FP32, neg_ub[0], NEG_ONE, 1, 1, 8)
-    conv_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "conv_ub")
-    tik_inst.vector_dup(MASK_FP32, conv_ub[0], NEG_ONE, 1, 1, 8)
+    id_val_fp32 = tik_inst.Scalar(Constant.DTYPE_FP32, "id_val_fp32")
+    input_val = tik_inst.Scalar(Constant.DTYPE_FP32, "input_val")
+    neg_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "neg_ub")
+    tik_inst.vector_dup(Constant.MASK_FP32, neg_ub[0], Constant.NEG_ONE, 1, 1, 8)
+    conv_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "conv_ub")
+    tik_inst.vector_dup(Constant.MASK_FP32, conv_ub[0], Constant.NEG_ONE, 1, 1, 8)
     tik_inst.vconv(last_mask, "", conv_ub[0], ids_ub[offset_last_part], 1, 1, 1, 8, 8)
     with tik_inst.for_range(0, last_mask) as ids_index:
         # traversal ids
         id_val_fp32.set_as(conv_ub[ids_index])
-        with tik_inst.if_scope(id_val_fp32 >= ZERO):
+        with tik_inst.if_scope(id_val_fp32 >= Constant.ZERO):
             # new id
-            zero_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "zero_ub")
-            tik_inst.vector_dup(MASK_FP32, zero_ub[0], ZERO, 1, 1, 8)
-            dup_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "dup_ub")
-            tik_inst.vector_dup(MASK_FP32, dup_ub[0], id_val_fp32, 1, 1, 8)
-            cmpmask = tik_inst.vcmp_eq(MASK_FP32, dup_ub[0], conv_ub[0], 1, 1)
-            tik_inst.vsel(MASK_FP32, 0, conv_ub[0], cmpmask, neg_ub[0], conv_ub[0], 1, 1, 1, 1, 8, 8, 8)
-            sel_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "sel_ub")
-            tik_inst.vsel(MASK_FP32, 0, sel_ub[0], cmpmask, input_ub[offset_last_part], zero_ub[0], 1, 1, 1, 1, 8, 8, 8)
-            cadd_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "cadd_ub")
-            tik_inst.vcadd(MASK_FP32, cadd_ub[0], sel_ub[0], 1, 1, 1, 8)
+            zero_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "zero_ub")
+            tik_inst.vector_dup(Constant.MASK_FP32, zero_ub[0], Constant.ZERO, 1, 1, 8)
+            dup_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "dup_ub")
+            tik_inst.vector_dup(Constant.MASK_FP32, dup_ub[0], id_val_fp32, 1, 1, 8)
+            cmpmask = tik_inst.vcmp_eq(Constant.MASK_FP32, dup_ub[0], conv_ub[0], 1, 1)
+            tik_inst.vsel(Constant.MASK_FP32, 0, conv_ub[0], cmpmask, neg_ub[0], conv_ub[0], 1, 1, 1, 1, 8, 8, 8)
+            sel_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "sel_ub")
+            tik_inst.vsel(Constant.MASK_FP32, 0, sel_ub[0], cmpmask, input_ub[offset_last_part],
+                          zero_ub[0], 1, 1, 1, 1, 8, 8, 8)
+            cadd_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "cadd_ub")
+            tik_inst.vcadd(Constant.MASK_FP32, cadd_ub[0], sel_ub[0], 1, 1, 1, 8)
             input_val.set_as(cadd_ub[0])
             zero_ub[0].set_as(input_val)
             id_val_scalar.set_as(ids_ub[offset_last_part + ids_index])
@@ -1635,39 +1662,44 @@ def last_axis_one_modify_multi(tik_inst, input_ub, ids_ub, times_by_multi, outpu
     """
     last_axis_one_modify_multi
     """
-    id_val_fp32 = tik_inst.Scalar(DTYPE_FP32, "id_val_fp32")
-    neg_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "neg_ub")
-    tik_inst.vector_dup(MASK_FP32, neg_ub[0], NEG_ONE, 1, 1, 8)
+    id_val_fp32 = tik_inst.Scalar(Constant.DTYPE_FP32, "id_val_fp32")
+    neg_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "neg_ub")
+    tik_inst.vector_dup(Constant.MASK_FP32, neg_ub[0], Constant.NEG_ONE, 1, 1, 8)
     multi = 4
     with tik_inst.for_range(0, times_by_multi) as index:
         # times divided by mask
-        conv_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32 * multi,), tik.scope_ubuf, "conv_ub")
-        tik_inst.vconv(MASK_FP32, "", conv_ub[0], ids_ub[index * multi * MASK_FP32], multi, 1, 1, 8, 8)
+        conv_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32 * multi,), tik.scope_ubuf, "conv_ub")
+        tik_inst.vconv(Constant.MASK_FP32, "", conv_ub[0], ids_ub[index * multi * Constant.MASK_FP32],
+                       multi, 1, 1, 8, 8)
         with tik_inst.for_range(0, multi) as multi_index:
-            with tik_inst.for_range(0, MASK_FP32) as ids_index:
+            with tik_inst.for_range(0, Constant.MASK_FP32) as ids_index:
                 # traversal ids
-                id_val_fp32.set_as(conv_ub[multi_index * MASK_FP32 + ids_index])
-                with tik_inst.if_scope(id_val_fp32 >= ZERO):
-                    output_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "output_ub")
-                    tik_inst.vector_dup(MASK_FP32, output_ub[0], ZERO, 1, 1, 8)
+                id_val_fp32.set_as(conv_ub[multi_index * Constant.MASK_FP32 + ids_index])
+                with tik_inst.if_scope(id_val_fp32 >= Constant.ZERO):
+                    output_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "output_ub")
+                    tik_inst.vector_dup(Constant.MASK_FP32, output_ub[0], Constant.ZERO, 1, 1, 8)
                     # new id
-                    zero_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "zero_ub")
-                    tik_inst.vector_dup(MASK_FP32, zero_ub[0], ZERO, 1, 1, 8)
-                    dup_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "dup_ub")
-                    tik_inst.vector_dup(MASK_FP32, dup_ub[0], id_val_fp32, 1, 1, 8)
+                    zero_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "zero_ub")
+                    tik_inst.vector_dup(Constant.MASK_FP32, zero_ub[0], Constant.ZERO, 1, 1, 8)
+                    dup_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "dup_ub")
+                    tik_inst.vector_dup(Constant.MASK_FP32, dup_ub[0], id_val_fp32, 1, 1, 8)
                     with tik_inst.for_range(multi_index, multi) as cmp_index:
-                        cmpmask = tik_inst.vcmp_eq(MASK_FP32, dup_ub[0], conv_ub[cmp_index * MASK_FP32], 1, 1)
-                        tik_inst.vsel(MASK_FP32, 0, conv_ub[cmp_index * MASK_FP32], cmpmask, neg_ub[0],
-                                      conv_ub[cmp_index * MASK_FP32], 1, 1, 1, 1, 8, 8, 8)
-                        sel_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "sel_ub")
-                        tik_inst.vsel(MASK_FP32, 0, sel_ub[0], cmpmask,
-                                      input_ub[index * multi * MASK_FP32 + cmp_index * MASK_FP32], zero_ub[0], 1, 1, 1,
+                        cmpmask = tik_inst.vcmp_eq(Constant.MASK_FP32, dup_ub[0],
+                                                   conv_ub[cmp_index * Constant.MASK_FP32], 1, 1)
+                        tik_inst.vsel(Constant.MASK_FP32, 0, conv_ub[cmp_index * Constant.MASK_FP32],
+                                      cmpmask, neg_ub[0],
+                                      conv_ub[cmp_index * Constant.MASK_FP32], 1, 1, 1, 1, 8, 8, 8)
+                        sel_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "sel_ub")
+                        tik_inst.vsel(Constant.MASK_FP32, 0, sel_ub[0], cmpmask,
+                                      input_ub[index * multi * Constant.MASK_FP32 + cmp_index * Constant.MASK_FP32],
+                                      zero_ub[0], 1, 1, 1,
                                       1, 8, 8, 8)
-                        cadd_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "cadd_ub")
-                        tik_inst.vector_dup(MASK_FP32, cadd_ub[0], ZERO, 1, 1, 8)
-                        tik_inst.vcadd(MASK_FP32, cadd_ub[0], sel_ub[0], 1, 1, 1, 8)
-                        tik_inst.vadd(MASK_FP32, output_ub[0], output_ub[0], cadd_ub[0], 1, 1, 1, 1, 8, 8, 8)
-                    id_val_scalar.set_as(ids_ub[index * multi * MASK_FP32 + multi_index * MASK_FP32 + ids_index])
+                        cadd_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "cadd_ub")
+                        tik_inst.vector_dup(Constant.MASK_FP32, cadd_ub[0], Constant.ZERO, 1, 1, 8)
+                        tik_inst.vcadd(Constant.MASK_FP32, cadd_ub[0], sel_ub[0], 1, 1, 1, 8)
+                        tik_inst.vadd(Constant.MASK_FP32, output_ub[0], output_ub[0], cadd_ub[0], 1, 1, 1, 1, 8, 8, 8)
+                    id_val_scalar.set_as(ids_ub[index * multi * Constant.MASK_FP32 + \
+                                                multi_index * Constant.MASK_FP32 + ids_index])
                     tik_inst.data_move(output_gm[id_val_scalar], output_ub[0], 0, 1, 1, 0, 0)
 
 
@@ -1675,33 +1707,33 @@ def last_axis_one_modify_single(tik_inst, input_ub, ids_ub, times_by_mask, outpu
     """
     last_axis_one_modify_single
     """
-    id_val_fp32 = tik_inst.Scalar(DTYPE_FP32, "id_val_fp32")
-    input_val = tik_inst.Scalar(DTYPE_FP32, "input_val")
-    neg_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "neg_ub")
-    tik_inst.vector_dup(MASK_FP32, neg_ub[0], NEG_ONE, 1, 1, 8)
+    id_val_fp32 = tik_inst.Scalar(Constant.DTYPE_FP32, "id_val_fp32")
+    input_val = tik_inst.Scalar(Constant.DTYPE_FP32, "input_val")
+    neg_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "neg_ub")
+    tik_inst.vector_dup(Constant.MASK_FP32, neg_ub[0], Constant.NEG_ONE, 1, 1, 8)
     with tik_inst.for_range(0, times_by_mask) as index:
         # times divided by mask
-        conv_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "conv_ub")
-        tik_inst.vconv(MASK_FP32, "", conv_ub[0], ids_ub[offset + index * MASK_FP32], 1, 1, 1, 8, 8)
-        with tik_inst.for_range(0, MASK_FP32) as ids_index:
+        conv_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "conv_ub")
+        tik_inst.vconv(Constant.MASK_FP32, "", conv_ub[0], ids_ub[offset + index * Constant.MASK_FP32], 1, 1, 1, 8, 8)
+        with tik_inst.for_range(0, Constant.MASK_FP32) as ids_index:
             # traversal ids
             id_val_fp32.set_as(conv_ub[ids_index])
-            with tik_inst.if_scope(id_val_fp32 >= ZERO):
+            with tik_inst.if_scope(id_val_fp32 >= Constant.ZERO):
                 # new id
-                zero_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "zero_ub")
-                tik_inst.vector_dup(MASK_FP32, zero_ub[0], ZERO, 1, 1, 8)
-                dup_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "dup_ub")
-                tik_inst.vector_dup(MASK_FP32, dup_ub[0], id_val_fp32, 1, 1, 8)
-                cmpmask = tik_inst.vcmp_eq(MASK_FP32, dup_ub[0], conv_ub[0], 1, 1)
-                tik_inst.vsel(MASK_FP32, 0, conv_ub[0], cmpmask, neg_ub[0], conv_ub[0], 1, 1, 1, 1, 8, 8, 8)
-                sel_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "sel_ub")
-                tik_inst.vsel(MASK_FP32, 0, sel_ub[0], cmpmask, input_ub[offset + index * MASK_FP32], zero_ub[0], 1, 1,
-                              1, 1, 8, 8, 8)
-                cadd_ub = tik_inst.Tensor(DTYPE_FP32, (MASK_FP32,), tik.scope_ubuf, "cadd_ub")
-                tik_inst.vcadd(MASK_FP32, cadd_ub[0], sel_ub[0], 1, 1, 1, 8)
+                zero_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "zero_ub")
+                tik_inst.vector_dup(Constant.MASK_FP32, zero_ub[0], Constant.ZERO, 1, 1, 8)
+                dup_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "dup_ub")
+                tik_inst.vector_dup(Constant.MASK_FP32, dup_ub[0], id_val_fp32, 1, 1, 8)
+                cmpmask = tik_inst.vcmp_eq(Constant.MASK_FP32, dup_ub[0], conv_ub[0], 1, 1)
+                tik_inst.vsel(Constant.MASK_FP32, 0, conv_ub[0], cmpmask, neg_ub[0], conv_ub[0], 1, 1, 1, 1, 8, 8, 8)
+                sel_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "sel_ub")
+                tik_inst.vsel(Constant.MASK_FP32, 0, sel_ub[0], cmpmask, input_ub[offset + index * Constant.MASK_FP32],
+                              zero_ub[0], 1, 1, 1, 1, 8, 8, 8)
+                cadd_ub = tik_inst.Tensor(Constant.DTYPE_FP32, (Constant.MASK_FP32,), tik.scope_ubuf, "cadd_ub")
+                tik_inst.vcadd(Constant.MASK_FP32, cadd_ub[0], sel_ub[0], 1, 1, 1, 8)
                 input_val.set_as(cadd_ub[0])
                 zero_ub[0].set_as(input_val)
-                id_val_scalar.set_as(ids_ub[offset + index * MASK_FP32 + ids_index])
+                id_val_scalar.set_as(ids_ub[offset + index * Constant.MASK_FP32 + ids_index])
                 tik_inst.data_move(output_gm[id_val_scalar], zero_ub[0], 0, 1, 1, 0, 0)
 
 
@@ -2452,7 +2484,7 @@ def _tik_atomic_add_last_axis_one_modify(block_index, tik_inst, obj_gm_tensor, o
                 # last part
                 offset_last_part = (obj_output_init_scalar.
                                     init_times_last_part_last_core - 1) * \
-                                   MASK_FP32
+                                   Constant.MASK_FP32
                 _tik_atomic_add_ub2gm_by_id_last_axis_one_modify_last_part(tik_inst, obj_ub_tensor.input_ub,
                                                                            obj_ub_tensor.ids_ub,
                                                                            obj_output_init_scalar.last_part_vadd_mask,
@@ -2510,7 +2542,8 @@ def _tik_atomic_add_last_axis_one_multi(block_index, tik_inst, obj_gm_tensor, ob
                                                obj_output_init_scalar.init_times_front_part_front_core,
                                                obj_gm_tensor.output_gm, id_val_scalar)
                 # single 64 part
-                offset_multi = obj_output_init_scalar.init_times_front_part_front_core * MULTI * MASK_FP32
+                offset_multi = obj_output_init_scalar.init_times_front_part_front_core * \
+                               Constant.MULTI * Constant.MASK_FP32
                 times_by_mask = obj_output_init_scalar.last_repeat_time_front_part_front_core
                 with tik_inst.if_scope(times_by_mask > 0):
                     last_axis_one_modify_single(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.ids_ub, times_by_mask,
@@ -2543,7 +2576,7 @@ def _tik_atomic_add_last_axis_one_multi(block_index, tik_inst, obj_gm_tensor, ob
                                                obj_gm_tensor.output_gm, id_val_scalar)
                 # single 64 part
                 offset_multi = obj_output_init_scalar.init_times_last_part_front_core * \
-                               MULTI * MASK_FP32
+                               Constant.MULTI * Constant.MASK_FP32
                 times_by_mask = obj_output_init_scalar.last_repeat_time_last_part_front_core
                 with tik_inst.if_scope(times_by_mask > 0):
                     last_axis_one_modify_single(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.ids_ub, times_by_mask,
@@ -2581,7 +2614,7 @@ def _tik_atomic_add_last_axis_one_multi(block_index, tik_inst, obj_gm_tensor, ob
                                                obj_gm_tensor.output_gm, id_val_scalar)
                 # single 64 part
                 offset_multi = obj_output_init_scalar.init_times_front_part_last_core * \
-                               MULTI * MASK_FP32
+                               Constant.MULTI * Constant.MASK_FP32
                 times_by_mask = obj_output_init_scalar.last_repeat_time_front_part_last_core
                 with tik_inst.if_scope(times_by_mask > 0):
                     last_axis_one_modify_single(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.ids_ub, times_by_mask,
@@ -2616,14 +2649,15 @@ def _tik_atomic_add_last_axis_one_multi(block_index, tik_inst, obj_gm_tensor, ob
                                                obj_output_init_scalar.init_times_last_part_last_core,
                                                obj_gm_tensor.output_gm, id_val_scalar)
                 # single 64 part
-                offset_multi = obj_output_init_scalar.init_times_last_part_last_core * MULTI * MASK_FP32
+                offset_multi = obj_output_init_scalar.init_times_last_part_last_core * \
+                               Constant.MULTI * Constant.MASK_FP32
                 times_by_mask = obj_output_init_scalar.last_repeat_time_last_part_last_core
                 with tik_inst.if_scope(times_by_mask > 0):
                     last_axis_one_modify_single(tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.ids_ub, times_by_mask,
                                                 obj_gm_tensor.output_gm, id_val_scalar, offset_multi)
                 # last mask part
                 with tik_inst.if_scope(obj_output_init_scalar.last_part_vadd_mask > 0):
-                    offset_last_part = offset_multi + times_by_mask * MASK_FP32
+                    offset_last_part = offset_multi + times_by_mask * Constant.MASK_FP32
                     _tik_atomic_add_ub2gm_by_id_last_axis_one_modify_last_part(
                         tik_inst, obj_ub_tensor.input_ub, obj_ub_tensor.ids_ub,
                         obj_output_init_scalar.last_part_vadd_mask, obj_gm_tensor.output_gm, id_val_scalar,
@@ -4065,4 +4099,3 @@ def unsorted_segment_sum(x_dict, segment_ids_dict, num_segments_dict, y_dict, ke
     else:
         obj = UnsortedSegmentSum(x_dict, segment_ids_dict, num_segments_dict, y_dict, kernel_name)
         obj.unsorted_segment_sum()
-

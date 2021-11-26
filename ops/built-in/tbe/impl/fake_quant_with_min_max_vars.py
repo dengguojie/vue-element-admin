@@ -25,6 +25,7 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     The class for constant

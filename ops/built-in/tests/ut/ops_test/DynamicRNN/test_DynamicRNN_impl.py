@@ -224,11 +224,11 @@ def test_matrix_to_zz(test_arg):
     matrix_to_zz(np.ones((1, 16),dtype=np.float16),(1, 16),"float16")
 
 def test_matrix_to_nZ(test_arg):
-    from impl.dynamic_rnn import matrix_to_nZ
-    matrix_to_nZ(np.ones((1, 32, 16),dtype=np.float16),(1, 32, 16),"float16")
-    matrix_to_nZ(np.ones((32, 16),dtype=np.float16),(32, 16),"float16")
-    matrix_to_nZ(np.ones((1, 32, 1),dtype=np.float16),(1, 32, 1),"float16")
-    matrix_to_nZ(np.ones((32, 1),dtype=np.float16),(32, 1),"float16")
+    from impl.dynamic_rnn import matrix_to_nz
+    matrix_to_nz(np.ones((1, 32, 16),dtype=np.float16),(1, 32, 16),"float16")
+    matrix_to_nz(np.ones((32, 16),dtype=np.float16),(32, 16),"float16")
+    matrix_to_nz(np.ones((1, 32, 1),dtype=np.float16),(1, 32, 1),"float16")
+    matrix_to_nz(np.ones((32, 1),dtype=np.float16),(32, 1),"float16")
 
 def test_matrix_to_zn(test_arg):
     from impl.dynamic_rnn import matrix_to_zn

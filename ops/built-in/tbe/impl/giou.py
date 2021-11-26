@@ -1221,7 +1221,7 @@ def giou_compute(bboxes, gtboxes, overlap, trans, is_cross, mode, kernel_name):
     return giou_res.run_tik(kernel_name)
 
 
-# 'pylint: disable=stoo-many-arguments
+# 'pylint: disable=too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_STR,

@@ -13,11 +13,18 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 gru v2
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 import operator
 import math
 import enum
 
+from impl.util.platform_adapter import tbe_platform
+from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import tvm
+from impl.util.platform_adapter import para_check
+from impl.util.platform_adapter import error_manager_vector
+from te.domain.rl_bank import rl_bank
+from te.domain.rl_bank import bank_manager
 from te.lang.cce import broadcast
 from te.lang.cce import cast_to
 from te.lang.cce import vabs
@@ -29,14 +36,8 @@ from te.lang.cce import vmul
 from te.lang.cce import vmuls
 from te.lang.cce import vrec
 from te.lang.cce import vsub
-from impl.util.platform_adapter import tbe_platform
-from impl.util.platform_adapter import tik
-from impl.util.platform_adapter import tvm
-from impl.util.platform_adapter import para_check
-from impl.util.platform_adapter import error_manager_vector
 from te.platform.cce_conf import api_check_support
-from te.domain.rl_bank import rl_bank
-from te.domain.rl_bank import bank_manager
+
 
 
 def _sigmoid_compute(input_x):
@@ -170,7 +171,7 @@ def _get_tiling(in_x, hidden_size):
     return 1, n_cut, k_cut, k_cut, 1, n_cut, k_cut, k_cut
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
 def _check_dtype(x, weight_input, weight_hidden, bias_input, bias_hidden,
                  init_h, y, output_h, update, reset, new, hidden_new):
     """
@@ -205,7 +206,7 @@ def _check_dtype(x, weight_input, weight_hidden, bias_input, bias_hidden,
         _check_equal_bias_dtype(hidden_new, "hidden_new")
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
 def _check_param(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_length,
                  y, output_h, update, reset, new, hidden_new):
     """
@@ -286,7 +287,7 @@ def _check_param(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_le
                                                           "hidden_new.shape", str(hidden_new["shape"]))
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals
+# 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals
 def check_gru_v2_attr(op_name, direction, cell_depth, keep_prob,
                       cell_clip, num_proj, time_major, activation, gate_order, reset_after):
     """
@@ -349,8 +350,8 @@ class ReuseType(enum.Enum):
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_STR,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-# pylint: disable=too-many-arguments,too-many-locals,invalid-name
-# pylint: disable=too-many-function-args,too-many-statements,unused-argument
+# 'pylint: disable=too-many-arguments,too-many-locals,invalid-name
+# 'pylint: disable=too-many-function-args,too-many-statements,unused-argument
 def dynamic_gru_v2(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_length, init_h,
                    y, output_h, update, reset, new, hidden_new,
                    direction="UNIDIRECTIONAL", cell_depth=1, keep_prob=1.0,
@@ -399,7 +400,7 @@ def dynamic_gru_v2(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_
                       kernel_name, is_sync, reuse_type)
 
 
-# pylint: disable=invalid-name,too-many-statements
+# 'pylint: disable=invalid-name,too-many-statements
 def _solution(x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type):
     """
     solutions of op
@@ -541,7 +542,7 @@ def _solution(x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_or
                           build_output_list)
 
 
-# pylint: disable=too-many-statements,unused-variable,unnecessary-lambda
+# 'pylint: disable=too-many-statements,unused-variable,unnecessary-lambda
 def _dynamic_gru_v2_inner(input_list, custom_list):
     """
     inner part of tik loop
@@ -1176,7 +1177,7 @@ def _dynamic_gru_v2_inner(input_list, custom_list):
         sch[s_state_h].emit_insn(s_state_h.op.axis[0], "broadcast")
         sch[s_state_h_fp16].emit_insn(s_state_h_fp16.op.axis[0], "vector_conv")
         if seq_mask_gm is not None:
-                sch[s_state_h_ub_for_element].emit_insn(s_state_h_ub_for_element.op.axis[0], 'broadcast')
+            sch[s_state_h_ub_for_element].emit_insn(s_state_h_ub_for_element.op.axis[0], 'broadcast')
     else:
         if fp16_input_output:
             sch[s_state_h_fp16].emit_insn(s_state_h_fp16.op.axis[0], "dma_copy")

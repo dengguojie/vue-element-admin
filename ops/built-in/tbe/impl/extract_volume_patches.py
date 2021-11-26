@@ -218,6 +218,7 @@ def _ceil_to(value, ceil_value):
     return ((value + ceil_value - 1) // ceil_value) * ceil_value
 
 
+# 'pylint: disable=too-many-return-statements
 def _cal_multi_core_factor_3_axis(m, n, l):
     """
     Return the proper cut factors for 3 multicore axis.

@@ -144,9 +144,9 @@ def _result_grad_compute(placeholders):
     """
     placeholders: data_x, data_gelu
     return: res_grad
-    res_grad = res/x +
-       x*0.5*(1 - tanh(math_four)*tanh(math_four))*
-       np.sqrt(2 / np.pi)*(1 + 3*0.044715*x2)
+    res_grad = `res/x +`
+       `x*0.5*(1 - tanh(math_four)*tanh(math_four))*`
+       `np.sqrt(2 / np.pi)*(1 + 3*0.044715*x2)`
     """
     data_x = placeholders[0]
 
@@ -154,13 +154,14 @@ def _result_grad_compute(placeholders):
     result3, tanh_math_four_result = _result3_compute(data_x)
     mul_result2_3 = tbe.vmul(result2, result3)
 
-    # compute res1 = res/x = f1 = x*(0.5*(1+tanh_math_four_result))
+    # `compute res1 = res/x = f1 = x*(0.5*(1+tanh_math_four_result))`
     mul_compute_1 = tbe.vadds(tanh_math_four_result, 1)
     mul_compute_2 = tbe.vmuls(mul_compute_1, 0.5)
 
     res_grad = tbe.vadd(mul_compute_2, mul_result2_3)
 
     return res_grad
+
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,no-member
 @tbe_platform.fusion_manager.fusion_manager.register("gelu_grad")
@@ -169,10 +170,10 @@ def gelu_grad_compute(input_dy, input_x, input_y,
     """
     algorithm: gelu_grad
     calculating: dy*res'
-    res' = res/x +
-           x*0.5*(1 - tanh(math_four)*tanh(math_four))*
-           np.sqrt(2 / np.pi)*(1 + 3*0.044715*x2)
-    math_four = (np.sqrt(2 / np.pi)*(x + 0.044715*tf.pow(x, 3)))
+    res' = `res/x +`
+           `x*0.5*(1 - tanh(math_four)*tanh(math_four))*`
+           `np.sqrt(2 / np.pi)*(1 + 3*0.044715*x2)`
+    math_four = `(np.sqrt(2 / np.pi)*(x + 0.044715*tf.pow(x, 3)))`
 
     Parameters
     ----------
@@ -222,10 +223,10 @@ def gelu_grad(input_dy, input_x, input_y, output_z, kernel_name="gelu_grad"):
     """
     algorithm: gelu_grad
     calculating: dy*res'
-    res' = res/x +
-           x*0.5*(1 - tanh(math_four)*tanh(math_four))*
-           np.sqrt(2 / np.pi)*(1 + 3*0.044715*x2)
-    math_four = (np.sqrt(2 / np.pi)*(x + 0.044715*tf.pow(x, 3)))
+    res' = `res/x +`
+           `x*0.5*(1 - tanh(math_four)*tanh(math_four))*`
+           `np.sqrt(2 / np.pi)*(1 + 3*0.044715*x2)`
+    math_four = `(np.sqrt(2 / np.pi)*(x + 0.044715*tf.pow(x, 3)))`
 
     Parameters
     ----------

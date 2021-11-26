@@ -472,7 +472,7 @@ class GIoUGrad:
         # func: `inter = max(min(b1x2. b2x2) - max(b1x1, b2x1), 0) * max(min(b1y2. b2y2) - max(b1y1, b2y1), 0)`
         self.tik_instance.vec_mul(Constant.BLOCK, self.inter, self.xlen_min, self.ylen_min, Constant.REP_TIME, 1, 1, 1)
 
-        # func: for union, union = b1_area * b2_area - inter
+        # func: `for union, union = b1_area * b2_area - inter`
         self.tik_instance.vec_mul(Constant.BLOCK, b1_area, self.b1w, self.b1h, Constant.REP_TIME, 1, 1, 1)
         self.tik_instance.vec_mul(Constant.BLOCK, b2_area, self.b2w, self.b2h, Constant.REP_TIME, 1, 1, 1)
 
@@ -494,7 +494,7 @@ class GIoUGrad:
 
     def update_dpart(self):
         """update_dpart"""
-        # for dunion, dunion = (1 / enclose - inter / (union ** 2)) * dy
+        # `for dunion, dunion = (1 / enclose - inter / (union ** 2)) * dy`
         self.tik_instance.vdiv(Constant.BLOCK, self.tmp_a, self.dy_ub, self.enclose,
                                Constant.REP_TIME, 1, 1, 1, 1, 1, 1)
         self.tik_instance.vdiv(Constant.BLOCK, self.tmp_b, self.inter, self.union, Constant.REP_TIME,
@@ -504,11 +504,11 @@ class GIoUGrad:
         self.tik_instance.vec_mul(Constant.BLOCK, self.tmp_b, self.dy_ub, self.tmp_c, Constant.REP_TIME, 1, 1, 1)
         self.tik_instance.vec_sub(Constant.BLOCK, self.dunion, self.tmp_a, self.tmp_b, Constant.REP_TIME, 1, 1, 1)
 
-        # for dinter, dinter = 1 / union * dy - dunion
+        # `for dinter, dinter = 1 / union * dy - dunion`
         self.tik_instance.vdiv(Constant.BLOCK, self.dinter, self.dy_ub, self.union, Constant.REP_TIME, 1, 1, 1, 1, 1, 1)
         self.tik_instance.vec_sub(Constant.BLOCK, self.dinter, self.dinter, self.dunion, Constant.REP_TIME, 1, 1, 1)
 
-        # for denclose, denclose = -(union / (enclose ** 2)) * dy
+        # `for denclose, denclose = -(union / (enclose ** 2)) * dy`
         self.tik_instance.vdiv(Constant.BLOCK, self.tmp_a, self.union, self.enclose,
                                Constant.REP_TIME, 1, 1, 1, 1, 1, 1)
         self.tik_instance.vdiv(Constant.BLOCK, self.tmp_b, self.tmp_a, self.enclose,
@@ -534,7 +534,7 @@ class GIoUGrad:
             # func for max(inter1, 0) > 0
             self.tik_instance.vec_cmpv_gt(tmp_mask, self.xlen_min[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
                                           Constant.REP_STRIDE, Constant.REP_STRIDE)
-            # func: mask_b1x2: b1x2 < b2x2, mask_b2x2 = ~mask_b1x2
+            # `func: mask_b1x2: b1x2 < b2x2, mask_b2x2 = ~mask_b1x2`
             self.tik_instance.vec_cmpv_lt(self.mask, self.b1x2[Constant.MASK_BLOCK * idx],
                                           self.b2x2[Constant.MASK_BLOCK * idx], 1,
                                           Constant.REP_STRIDE, Constant.REP_STRIDE)
@@ -563,7 +563,7 @@ class GIoUGrad:
                                       self.tmp_d[Constant.MASK_BLOCK * idx],
                                       self.db2x2[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
-            # func: mask_b1x1: b1x1 > b2x1, mask_b2x1 = ~mask_b1x1
+            # `func: mask_b1x1: b1x1 > b2x1, mask_b2x1 = ~mask_b1x1`
             self.tik_instance.vec_cmpv_gt(self.mask, self.b1x1[Constant.MASK_BLOCK * idx],
                                           self.b2x1[Constant.MASK_BLOCK * idx], 1,
                                           Constant.REP_STRIDE, Constant.REP_STRIDE)
@@ -600,7 +600,7 @@ class GIoUGrad:
             # func for max(inter2, 0) > 0
             self.tik_instance.vec_cmpv_gt(tmp_mask, self.ylen_min[Constant.MASK_BLOCK * idx], self.tmp_zero, 1,
                                           Constant.REP_STRIDE, Constant.REP_STRIDE)
-            # func: mask_b1y2: b1y2 < b2y2, mask_b2y2 = ~mask_b1y2
+            # `func: mask_b1y2: b1y2 < b2y2, mask_b2y2 = ~mask_b1y2`
             self.tik_instance.vec_cmpv_lt(self.mask, self.b1y2[Constant.MASK_BLOCK * idx],
                                           self.b2y2[Constant.MASK_BLOCK * idx], 1,
                                           Constant.REP_STRIDE, Constant.REP_STRIDE)
@@ -630,7 +630,7 @@ class GIoUGrad:
                                       self.db2y2[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE,
                                       Constant.REP_STRIDE)
-            # func: mask_b1y1: b1y1 > b2y1, mask_b2y1 = ~mask_b1y1
+            # `func: mask_b1y1: b1y1 > b2y1, mask_b2y1 = ~mask_b1y1`
             self.tik_instance.vec_cmpv_gt(self.mask, self.b1y1[Constant.MASK_BLOCK * idx],
                                           self.b2y1[Constant.MASK_BLOCK * idx], 1,
                                           Constant.REP_STRIDE, Constant.REP_STRIDE)
@@ -671,11 +671,11 @@ class GIoUGrad:
         self.tik_instance.vec_mul(Constant.BLOCK, self.tmp_a, self.tmp_a, self.dunion, Constant.REP_TIME, 1, 1, 1)
         self.tik_instance.vec_mul(Constant.BLOCK, self.tmp_b, self.tmp_b, self.dunion, Constant.REP_TIME, 1, 1, 1)
 
-        # for union part : b1x2-b1x1
+        # `for union part : b1x2-b1x1`
         self.tik_instance.vec_add(Constant.BLOCK, self.db1x2, self.db1x2, self.tmp_b, Constant.REP_TIME, 1, 1, 1)
         self.tik_instance.vec_sub(Constant.BLOCK, self.db1x1, self.db1x1, self.tmp_b, Constant.REP_TIME, 1, 1, 1)
 
-        # for union part : b1y2-b1y1
+        # `for union part : b1y2-b1y1`
         self.tik_instance.vec_add(Constant.BLOCK, self.db1y2, self.db1y2, self.tmp_a, Constant.REP_TIME, 1, 1, 1)
         self.tik_instance.vec_sub(Constant.BLOCK, self.db1y1, self.db1y1, self.tmp_a, Constant.REP_TIME, 1, 1, 1)
 
@@ -685,11 +685,11 @@ class GIoUGrad:
         self.tik_instance.vec_mul(Constant.BLOCK, self.tmp_c, self.tmp_c, self.dunion, Constant.REP_TIME, 1, 1, 1)
         self.tik_instance.vec_mul(Constant.BLOCK, self.tmp_d, self.tmp_d, self.dunion, Constant.REP_TIME, 1, 1, 1)
 
-        # for union part : b2x2-b2x1
+        # `for union part : b2x2-b2x1`
         self.tik_instance.vec_add(Constant.BLOCK, self.db2x2, self.db2x2, self.tmp_d, Constant.REP_TIME, 1, 1, 1)
         self.tik_instance.vec_sub(Constant.BLOCK, self.db2x1, self.db2x1, self.tmp_d, Constant.REP_TIME, 1, 1, 1)
 
-        # for union part : b2y2-b2y1
+        # `for union part : b2y2-b2y1`
         self.tik_instance.vec_add(Constant.BLOCK, self.db2y2, self.db2y2, self.tmp_c, Constant.REP_TIME, 1, 1, 1)
         self.tik_instance.vec_sub(Constant.BLOCK, self.db2y1, self.db2y1, self.tmp_c, Constant.REP_TIME, 1, 1, 1)
 
@@ -707,7 +707,7 @@ class GIoUGrad:
                                   Constant.REP_TIME, 1, 1, 1)  # min_y
 
         with self.tik_instance.for_range(0, Constant.MINI_BATCH // Constant.MASK_BLOCK) as idx:
-            # for enclose part : max(b1_x2, b2_x2)
+            # `for enclose part : max(b1_x2, b2_x2)`
             self.tik_instance.vec_cmpv_gt(self.mask, self.b1x2[Constant.MASK_BLOCK * idx],
                                           self.b2x2[Constant.MASK_BLOCK * idx], 1,
                                           Constant.REP_STRIDE, Constant.REP_STRIDE)
@@ -751,7 +751,7 @@ class GIoUGrad:
                                       self.db2x1[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
 
-            # for enclose part : max(b1_y2, b2_y2)
+            # `for enclose part : max(b1_y2, b2_y2)`
             self.tik_instance.vec_cmpv_gt(self.mask, self.b1y2[Constant.MASK_BLOCK * idx],
                                           self.b2y2[Constant.MASK_BLOCK * idx], 1,
                                           Constant.REP_STRIDE, Constant.REP_STRIDE)
@@ -772,7 +772,7 @@ class GIoUGrad:
                                       self.db2y2[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
 
-            # for enclose part : min(b1_y1, b2_y1)
+            # `for enclose part : min(b1_y1, b2_y1)`
             self.tik_instance.vec_cmpv_lt(self.mask, self.b1y1[Constant.MASK_BLOCK * idx],
                                           self.b2y1[Constant.MASK_BLOCK * idx],
                                           1, Constant.REP_STRIDE, Constant.REP_STRIDE)

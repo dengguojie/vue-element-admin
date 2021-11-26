@@ -50,7 +50,7 @@ def hard_shrink_grad_compute(gradients, features, backprops, lambd=0.5, kernel_n
     one_tensor = tbe.broadcast(tvm.const(1, dtype), shape)
     zero_tensor = tbe.broadcast(tvm.const(0, dtype), shape)
     lambd_tensor = tbe.broadcast(tvm.const(lambd, dtype), shape)
-    ratio = tbe.vcmpsel(tbe.vabs(features), lambd_tensor, 'le', zero_tensor, one_tensor) 
+    ratio = tbe.vcmpsel(tbe.vabs(features), lambd_tensor, 'le', zero_tensor, one_tensor)
     result = tbe.vmul(gradients, ratio)
     return result
 

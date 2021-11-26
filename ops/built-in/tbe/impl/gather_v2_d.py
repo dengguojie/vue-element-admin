@@ -1010,7 +1010,7 @@ def _kernel_ir(output, tensor_params, tensor_indices, axis):
         # Processing previous batches(loop_num) of data
         with tvm_ib.if_scope(loop_num > 0):
             # Apply for UB space to put into indices
-            indices_shape_each_core = [row_num_once,]
+            indices_shape_each_core = [row_num_once, ]
             op_parameters['burst_row_len'] = _get_burst_len(
                 row_num_once, tensor_indices.dtype)
             op_parameters['indices_ub'] = _new_alloc(tvm_ib,
@@ -1043,7 +1043,7 @@ def _kernel_ir(output, tensor_params, tensor_indices, axis):
                     last_loop_row_num) < 32 and int(target_core_num) > 1:
                 last_loop_row_num += 32
                 align_offset = 32
-            indices_shape_each_core = [last_loop_row_num,]
+            indices_shape_each_core = [last_loop_row_num, ]
             op_parameters['burst_row_len'] = _get_burst_len(
                 last_loop_row_num, tensor_indices.dtype)
             op_parameters['indices_ub'] = _new_alloc(tvm_ib,
@@ -1075,7 +1075,7 @@ def _kernel_ir(output, tensor_params, tensor_indices, axis):
                         remaining_row) < 32 and int(target_core_num) > 1:
                     remaining_row += 32
                     align_offset = 32
-                indices_shape_each_core = [remaining_row,]
+                indices_shape_each_core = [remaining_row, ]
                 op_parameters['burst_row_len'] = _get_burst_len(
                     remaining_row, tensor_indices.dtype)
                 op_parameters['indices_ub'] = _new_alloc(
@@ -1314,9 +1314,9 @@ def gather_v2_d(x, indices, y, axis=0, kernel_name="gather_v2_d"):
     pre_axis_shape = params_shape[:axis]
     after_axis_shape = params_shape[axis + 1:]
     if not pre_axis_shape:
-        pre_axis_shape = [1,]
+        pre_axis_shape = [1, ]
     if not after_axis_shape:
-        after_axis_shape = [1,]
+        after_axis_shape = [1, ]
     params_reshape = [
         int(functools.reduce(lambda i, j: i * j, pre_axis_shape)),
         params_shape[axis],

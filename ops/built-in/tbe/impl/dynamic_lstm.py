@@ -16,18 +16,18 @@
 dynamic_lstm
 """
 import os
-import json
 import stat
 from functools import reduce as functools_reduce
 import re
 
 import te.lang.cce
 from impl.util.platform_adapter import para_check
+from impl.util.util_common import write_code
 from te import tvm
 from te import platform as cce
 from te.platform.cce_build import build_config
 from te.utils.error_manager import error_manager_vector
-from impl.util.util_common import write_code
+
 
 
 def sigmoid_compute(input_x):
@@ -190,7 +190,7 @@ def check(shape_x_input, shape_w_input, shape_b_input, shape_output):
         error_manager_vector.raise_err_specific_reson("DynamicLSTM", "w, b shape is wrong, please check!")
 
 
-# pylint: disable=too-many-arguments,too-many-locals,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-locals,invalid-name,unnecessary-lambda
 @para_check.check_input_type(dict, dict, dict, dict, str)
 def dynamic_lstm(input_x, weight, bias,
                  output_h, kernel_name="dynamic_lstm"):

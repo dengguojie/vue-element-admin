@@ -13,7 +13,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 dynamic_rnn
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 
 from te.lang.cce import broadcast
 from te.lang.cce import cast_to
@@ -169,7 +169,7 @@ def get_lstm_tiling():
     return (1, 1, 12, 1, 1, 12)
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name,invalid-name
 def check_prama_dtype(input_x, weight, bias, init_h, init_c, y, output_h,
                       output_c, i, j, f, o, tanhc):
     """
@@ -217,7 +217,7 @@ def check_prama_dtype(input_x, weight, bias, init_h, init_c, y, output_h,
         error_manager_vector.raise_err_specific_reson("DynamicRNN", "tanhc dtype is not the same as bias dtype !")
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name,invalid-name
 def check_prama_shape(weight, bias, seq_length, init_h, init_c, output_h):
     """
     check parameters
@@ -239,7 +239,7 @@ def check_prama_shape(weight, bias, seq_length, init_h, init_c, output_h):
                                                       "init_h, init_c should appear together, please check!")
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals
+# 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals
 def check_attr(cell_type, direction, cell_depth, activation):
     """
     check parameters
@@ -271,9 +271,9 @@ def check_attr(cell_type, direction, cell_depth, activation):
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-# pylint: disable=too-many-arguments,too-many-locals,invalid-name
-# pylint: disable=too-many-function-args,too-many-statements
-# pylint: disable=unused-argument
+# 'pylint: disable=too-many-arguments,too-many-locals,invalid-name
+# 'pylint: disable=too-many-function-args,too-many-statements
+# 'pylint: disable=unused-argument
 def dynamic_rnn_v3(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                    wco, mask, real_mask, project, y, output_h, output_c, i, j, f, o, tanhc,
                    cell_type="LSTM", direction="UNIDIRECTIONAL", cell_depth=1,
@@ -632,8 +632,8 @@ def dynamic_rnn_tik(input_list, custom_list):
                             forget_bias)
 
 
-# pylint: disable=too-many-arguments,too-many-locals,invalid-name
-# pylint: disable=too-many-statements,unnecessary-lambda
+# 'pylint: disable=too-many-arguments,too-many-locals,invalid-name
+# 'pylint: disable=too-many-statements,unnecessary-lambda
 def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
                      s_state_h_gm_last, s_state_c_gm_last, sync0,
                      wci_gm, wco_gm, wcf_gm, mask_gm, project_gm,

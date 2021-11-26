@@ -13,7 +13,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 gru
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 import operator
 
 import te.lang.cce as tbe
@@ -156,7 +156,7 @@ def _get_tiling(k_size, hidden_size):
     return (1, n_cut, k_cut, 1, n_cut, k_cut)
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
 def _check_dtype(input_x, weight, bias, cw, cb, init_h, y, output_h, rg, ig, ng):
     """
     check parameters dtype
@@ -187,7 +187,7 @@ def _check_dtype(input_x, weight, bias, cw, cb, init_h, y, output_h, rg, ig, ng)
         _check_equal_bias_dtype(ng, "n")
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals,invalid-name
 def _check_param(input_x, weight, bias, cw, cb, seq_length, y, output_h, rg, ig, ng):
     """
     check parameters
@@ -248,7 +248,7 @@ def _check_param(input_x, weight, bias, cw, cb, seq_length, y, output_h, rg, ig,
                                                           "seq_length", str(seq_length))
 
 
-# pylint: disable=too-many-arguments,too-many-branches,too-many-locals
+# 'pylint: disable=too-many-arguments,too-many-branches,too-many-locals
 def _check_attr(direction, cell_depth, keep_prob, cell_clip, num_proj, time_major,
                 activation):
     """
@@ -293,8 +293,8 @@ def _check_attr(direction, cell_depth, keep_prob, cell_clip, num_proj, time_majo
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
-# pylint: disable=too-many-arguments,too-many-locals,invalid-name
-# pylint: disable=too-many-function-args,too-many-statements,unused-argument
+# 'pylint: disable=too-many-arguments,too-many-locals,invalid-name
+# 'pylint: disable=too-many-function-args,too-many-statements,unused-argument
 def dynamic_gru(input_x, weight, bias, cw, cb,
                 seq_length, init_h,
                 y, output_h,
@@ -417,7 +417,7 @@ def dynamic_gru(input_x, weight, bias, cw, cb,
                           build_output_list)
 
 
-# pylint: disable=unnecessary-lambda,too-many-statements
+# 'pylint: disable=unnecessary-lambda,too-many-statements
 def _dynamic_gru_inner(input_list, custom_list):
     """
     inside part of tik loop
