@@ -190,6 +190,42 @@ case16 = {"params": [
     "expect": "success",
     "support_expect": True}
 
+case17 = {"params": [
+    {"shape": (8732, 4), "dtype": "float32", "format": "NCHW", "ori_shape": (8732, 4),
+     "ori_format": "NCHW"},
+    # x
+    {"shape": (8732, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (8732, 2),
+     "ori_format": "NCHW"},
+    (0, 1), (8732, 2),
+],
+    "case_name": "SliceD_17",
+    "expect": "success",
+    "support_expect": True}
+
+case18 = {"params": [
+    {"shape": (4, 8733, 4), "dtype": "float32", "format": "NCHW", "ori_shape": (4, 8733, 4),
+     "ori_format": "NCHW"},
+    # x
+    {"shape": (2, 8732, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (2, 8732, 2),
+     "ori_format": "NCHW"},
+    (1, 1, 1), (2, 8732, 2),
+],
+    "case_name": "SliceD_18",
+    "expect": "success",
+    "support_expect": True}
+
+case19 = {"params": [
+    {"shape": (279424, 4), "dtype": "float32", "format": "NCHW", "ori_shape": (279424, 4),
+     "ori_format": "NCHW"},
+    # x
+    {"shape": (8732, 2), "dtype": "float32", "format": "NCHW", "ori_shape": (8732, 2),
+     "ori_format": "NCHW"},
+    (270001, 1), (8732, 2),
+],
+    "case_name": "SliceD_19",
+    "expect": "success",
+    "support_expect": True}
+
 ut_case.add_case("Ascend910A", case1)
 ut_case.add_case("Ascend910A", case2)
 ut_case.add_case("Ascend910A", case3)
@@ -206,6 +242,9 @@ ut_case.add_case("Ascend910A", case13)
 ut_case.add_case("Ascend910A", case14)
 ut_case.add_case("Ascend910A", case15)
 ut_case.add_case("Ascend910A", case16)
+ut_case.add_case("Ascend910A", case17)
+ut_case.add_case("Ascend910A", case18)
+ut_case.add_case("Ascend910A", case19)
 
 case_fz = {"params": [
     {"shape": (1 * 16 * 16, 1, 16, 16), "dtype": "float16", "format": "FRACTAL_Z", "ori_shape": (16, 16, 16, 16),

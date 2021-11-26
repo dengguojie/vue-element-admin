@@ -67,15 +67,19 @@ class SliceLastDimCompute():
     """
     def __init__(self, shape, begin, size, dtype, kernel_name):
         self.dim_product = 1
+        self.input_product = 1
         self.input_dim_last = 1
         self.output_dim_last = 1
         self.begin_last = 1
         self.dtype = dtype
         self.kernel_name = kernel_name
+        self.begin = begin
+        self.shape = shape
         #The number of bytes of the corresponding data type divided by 8
         self.ele_size = cce.cce_intrin.get_bit_len(self.dtype) // 8
         # align size for product dim, to make sure out data is 32B align
         self.product_dim_align_size = BLOCK_SIZE // self.ele_size
+        self.slice_two_dim = False
 
         # check only last dim to be sliced
         for i, (shape_i, begin_i, size_i) in enumerate(zip(reversed(shape),
@@ -83,10 +87,13 @@ class SliceLastDimCompute():
                                                            reversed(size))):
             if i != 0:
                 if shape_i != size_i:
-                    self.check_result = False
-                    return
-                else:
-                    self.dim_product *= shape_i
+                    if len(shape) == 2:
+                        self.slice_two_dim = True
+                    else:
+                        self.check_result = False
+                        return
+                self.dim_product *= size_i
+                self.input_product *= shape_i
             else:
                 self.input_dim_last = shape_i
                 self.begin_last = begin_i
@@ -164,9 +171,10 @@ class SliceLastDimCompute():
         self.tik_instance = tik_instance
         aicore_num = AICORE_NUM
         ub_size = UB_SIZE_B
+        begin_offset = self.begin[0]
 
         x = tik_instance.Tensor(self.dtype,
-                                (self.dim_product, self.input_dim_last),
+                                (self.input_product, self.input_dim_last),
                                 name="x", scope=tik.scope_gm)
         y = tik_instance.Tensor(self.dtype,
                                 (self.dim_product, self.output_dim_last),
@@ -201,8 +209,7 @@ class SliceLastDimCompute():
                                      * self.input_dim_last * self.ele_size
                 burst_length = input_size_in_loop // BLOCK_SIZE
                 tik_instance.data_move(x_ub,
-                                       x[(dim_product_begin
-                                          + dim_product_begin_in_loop)
+                                       x[(dim_product_begin + dim_product_begin_in_loop + begin_offset)
                                          * self.input_dim_last],
                                        0, 1, burst_length, 0, 0)
 
@@ -241,8 +248,7 @@ class SliceLastDimCompute():
             with tik_instance.if_scope(input_size_in_loop % BLOCK_SIZE != 0):
                 burst_length.set_as(burst_length + 1)
             tik_instance.data_move(x_ub,
-                                   x[(dim_product_begin
-                                      + dim_product_begin_in_loop)
+                                   x[(dim_product_begin + dim_product_begin_in_loop + begin_offset)
                                      * self.input_dim_last],
                                    0, 1, burst_length, 0, 0)
 
@@ -7435,6 +7441,12 @@ def _use_strided_slice(ori_x, ori_y):
     return True
 
 
+def _call_strided_slice(ori_x, ori_y, ori_begin, ori_size, kernel_name):
+    strides = [1] * len(ori_begin)
+    end_new = _get_end(ori_x.get("ori_shape"), ori_begin, ori_size)
+    strided_slice_d(ori_x, ori_y, ori_begin, end_new, strides, 0, 0, 0, 0, 0, kernel_name)
+
+
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def slice_d(x, y, begin, size, kernel_name="slice_d"):
@@ -7649,7 +7661,11 @@ def slice_d(x, y, begin, size, kernel_name="slice_d"):
                                                       kernel_name)
 
         if last_dim_compute.check() and _check_not_one_block(shape_new):
-            last_dim_compute.slice()
+            if ori_x.get("format")  in ("NDC1HWC0", "NHWC", "NCHW", "ND", "NCDHW", "NDHWC") and \
+                not last_dim_compute.slice_two_dim:
+                _call_strided_slice(ori_x, ori_y, ori_begin, ori_size, kernel_name)
+            else:
+                last_dim_compute.slice()
         elif diff_first_last_dim.check() and _check_not_one_block(shape_new):
             diff_first_last_dim.slice()
         elif _check_last_two_diff_fp16(shape_new, size_new, dtype):
@@ -7926,9 +7942,7 @@ def slice_d(x, y, begin, size, kernel_name="slice_d"):
             with build_config:
                 tvm.build(sch, tensor_list, "cce", name=kernel_name)
         elif _use_strided_slice(ori_x, ori_y):
-            strides = [1] * len(ori_begin)
-            end_new = _get_end(ori_x.get("ori_shape"), ori_begin, ori_size)
-            strided_slice_d(ori_x, ori_y, ori_begin, end_new, strides, 0, 0, 0, 0, 0, kernel_name)
+            _call_strided_slice(ori_x, ori_y, ori_begin, ori_size, kernel_name)
         else:
             strides = [1] * len(begin_new)
             end_new = list(map(lambda x, y: x + y, begin_new, size_new))
