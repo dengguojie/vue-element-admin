@@ -828,7 +828,8 @@ class GIoU():
             self.tik_instance.data_move(self.giou_gm[dst_gm_offset],
                                         self.out_ub, 0, 1, dst_nbust, 0, 0)
         else:
-            scalar_addr = [self.tik_instance.Scalar(dtype=self.dtype)] * 4
+            scalar_addr = \
+                [self.tik_instance.Scalar(dtype=self.dtype) for _ in range(4)]
             scalar_area = self.tik_instance.Scalar(dtype=self.dtype)
             with self.tik_instance.for_range(
                     0, self.gtboxes_num) as gt_global_index:
@@ -1039,7 +1040,9 @@ class GIoU():
         None
         """
         for_range = _get_ceil_int(run_point, 2)
-        self.index_reg = [self.tik_instance.Scalar(dtype=self.dtype)] * 8
+        self.index_reg = [
+            self.tik_instance.Scalar(dtype=self.dtype) for _ in range(8)
+        ]
         with self.tik_instance.for_range(0, for_range) as conv_index:
             for i in range(8):
                 self.index_reg[i].set_as(point_ub[conv_index * 8 + i])
