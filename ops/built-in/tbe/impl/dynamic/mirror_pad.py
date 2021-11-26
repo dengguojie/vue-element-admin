@@ -30,7 +30,7 @@ class Constant:
     """
     # tiling param nums
     TILING_NUMS = 20
-    # '1 byte = 8 bit'
+    # `1 byte = 8 bit`
     EIGHT_BIT = 8
     # vnchw the minest block
     TRANS_MIN_BLKS = 16

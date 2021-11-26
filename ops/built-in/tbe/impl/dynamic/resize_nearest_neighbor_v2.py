@@ -274,13 +274,13 @@ class ResizeNearestNeighbor(OpBase):
                                                                name="calcu_out_in_idx_tmp_ub", scope=tik.scope_ubuf)
             vector_repeat_num = (idx_num + 63) // 64
             if self.half_pixel_centers:
-                # 'calcu: (idx + 0.5) * scale'
+                # `calcu: (idx + 0.5) * scale`
                 self.tik_instance.vadds(64, calcu_out_in_idx_tmp_ub, src_idx_fp_ub, 0.5,
                                         vector_repeat_num, 1, 1, 8, 8)
                 self.tik_instance.vmuls(64, calcu_out_in_idx_tmp_ub, calcu_out_in_idx_tmp_ub, scale,
                                         vector_repeat_num, 1, 1, 8, 8)
             else:
-                # 'calcu: idx * scale'
+                # `calcu: idx * scale`
                 self.tik_instance.vmuls(64, calcu_out_in_idx_tmp_ub, src_idx_fp_ub, scale,
                                         vector_repeat_num, 1, 1, 8, 8)
             if self.align_corners:

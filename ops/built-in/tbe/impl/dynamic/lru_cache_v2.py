@@ -44,7 +44,7 @@ class Constant:
     ONE_BLK_INT32_NUMS = 8
     # int64 in 32B
     ONE_BLK_INT64_NUMS = 4
-    # '8 bit = 1 Byte'
+    # `1 byte = 8 bit`
     BYTE_BITS = 8
     TILING_NUMS = 8
     MODE0 = 0

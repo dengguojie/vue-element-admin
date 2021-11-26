@@ -20,22 +20,23 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
-from impl.util.util_select_op_base import SplitInput
-from impl.util.util_select_op_base import SplitOutput
-from impl.util.util_select_op_base import get_op_cal_info
-from impl.util.platform_adapter import error_manager_vector
 
 
-# max int64
-MAX_INT64 = 2 ** 63 - 1
-# bytes of one block
-BLOCK_BYTES = 32
-# proposal num
-PROPOSAL_NUM = 8
-# ting param num
-TILING_ARG_NUM = 3
-# reserved ub size
-RESERVED_UB_SIZE = 8 * 1024
+# 'pylint:disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    The class for constant
+    """
+    # max int64
+    MAX_INT64 = 2 ** 63 - 1
+    # bytes of one block
+    BLOCK_BYTES = 32
+    # proposal num
+    PROPOSAL_NUM = 8
+    # ting param num
+    TILING_ARG_NUM = 3
+    # reserved ub size
+    RESERVED_UB_SIZE = 8 * 1024
 
 
 def _apply_mem(tik_instance, dtype, shape, name, scope):
@@ -86,15 +87,15 @@ class TensorMove:
             self.dst_dtype = "int8"
         # get dtype size, float16 size = 2 byte or float32 size = 4 byte
         self.dtype_size = \
-            tbe_platform.get_bit_len(self.src_dtype) // PROPOSAL_NUM
+            tbe_platform.get_bit_len(self.src_dtype) // Constant.PROPOSAL_NUM
         # get one block data size, block align len
         # the len in one block = 16 fp16 and = 8 fp32
-        self.data_len_one_block = BLOCK_BYTES // self.dtype_size
-        self.data_len_one_vector = self.data_len_one_block * PROPOSAL_NUM
+        self.data_len_one_block = Constant.BLOCK_BYTES // self.dtype_size
+        self.data_len_one_vector = self.data_len_one_block * Constant.PROPOSAL_NUM
 
         self.ub_availble = \
             tbe_platform.get_soc_spec(
-                tbe_platform.UB_SIZE) - RESERVED_UB_SIZE
+                tbe_platform.UB_SIZE) - Constant.RESERVED_UB_SIZE
         self.ub_max_data = self.ub_availble // self.dtype_size
 
         self.tik_instance = tik.Tik()
@@ -103,17 +104,17 @@ class TensorMove:
 
         self.src_gm = self.tik_instance.Tensor(
             self.src_dtype,
-            [MAX_INT64],
+            [Constant.MAX_INT64],
             name="src_gm",
             scope=tik.scope_gm)
         self.dst_gm = self.tik_instance.Tensor(
             self.dst_dtype,
-            [MAX_INT64],
+            [Constant.MAX_INT64],
             name="dst_gm",
             scope=tik.scope_gm)
         self.tiling_gm = self.tik_instance.Tensor(
             "int64",
-            (TILING_ARG_NUM,),
+            (Constant.TILING_ARG_NUM,),
             name="tiling_gm",
             scope=tik.scope_gm)
         self.data_ub = None
@@ -122,7 +123,7 @@ class TensorMove:
         self.data_size = None
         self.core_used_temp = None
         self._result = self.tik_instance.Scalar("int64", name="_result")
-    
+
     def _get_ceil_int(self, int1, int2):
         """
         Function: Round up
@@ -146,7 +147,7 @@ class TensorMove:
         -------
         None
         """
-        self.tiling_ub = self.tik_instance.Tensor("int64", (TILING_ARG_NUM,),
+        self.tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,),
                                                       name="tiling_ub", scope=tik.scope_ubuf)
         self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 1, 0, 0)
 
@@ -241,7 +242,7 @@ class TensorMove:
         nbust.set_as(self._result)
         data_shape = self.tik_instance.Scalar("int64", name="data_shape")
         data_shape.set_as(nbust * self.data_len_one_block)
-        self.data_ub = self.tik_instance.Tensor(self.dst_dtype, [data_shape,],
+        self.data_ub = self.tik_instance.Tensor(self.dst_dtype, [data_shape],
                                                       name="data_ub", scope=tik.scope_ubuf)
         self.tik_instance.data_move(self.data_ub[0],
                                     self.src_gm[copy_in_offset],

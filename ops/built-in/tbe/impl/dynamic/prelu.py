@@ -170,7 +170,7 @@ def broadcast_inputs_shape(x, weight):
             shape_x, weight_shape_new = shape_list[0], shape_list[1]
         else:
             weight_shape_new = [1]
-    # 'input_x:DIM = 2,3,4,5,6,7...'
+    # `input_x:DIM = 2,3,4,5,6,7...`
     else:
         if (shape_w[0] != shape_x[1] and shape_w[0] != 1) or (w_dim not in (1, x_dim - 1)):
             shape_list = shape_util.broadcast_shapes(shape_x, shape_w, param_name_input1="x",

@@ -37,13 +37,13 @@ class Constant:
     """
     # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
     SCALAR_MIN_FP32 = 2**(-126)
-    # define a scalar, value = 2**(50)
+    # define a scalar, `value = 2**(50)`
     SCALAR_MUL_FP32 = 2**(50)
-    # define a scalar, value = 2**(26)
+    # define a scalar, `value = 2**(26)`
     SCALAR_MUL2_FP32 = 2**(26)
     # define a scalar, value = 2**(-24), minimun num of float16 2**(-24)
     SCALAR_MIN_FP16 = 2**(-24)
-    # define a scalar, value = 2**(12)
+    # define a scalar, `value = 2**(12)`
     SCALAR_MUL_FP16 = 2**(12)
 
 

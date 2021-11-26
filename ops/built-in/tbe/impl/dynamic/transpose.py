@@ -86,7 +86,7 @@ def _fuzzy_match(shape_t):
                                [-1, 768, 197], [768, -1, 197], [128, 197, 12, -1], [128, 12, 197, -1],
                                [-1, 3, 300, 18, 2], [-1, 2, 18, 3, 300], [-1, 3, 64, 300, 18], [-1, 3, 128, 300, 18],
                                [-1, 3, 128, 150, 18], [-1, 3, 256, 75, 18], [-1, 3, 256, 150, 18], [-1, 1, 1, 256],
-                               [-1, 167, 1], [92,-1, 1], [75, -1, 1]
+                               [-1, 167, 1], [92, -1, 1], [75, -1, 1]
                               ]
     for shape_w in white_list_shape_fuzzy:
         if len(shape_t) != len(shape_w):
@@ -133,7 +133,7 @@ def _by_dynamic_static_union_version(shape, core_num):
                          [3, 256, 16, 64], [48, 256, 64], [48, 256, 256], [768, 768], [3072, 768], [768, 197, 197],
                          [768, 3072], [512, 512, 3, 3], [8, 8732, 81], [8, 81, 8732], [2, 1, 1, 256],
                          [640, 320, 3, 3], [1280, 640, 3, 3], [640, 640, 3, 3], [256, 256, 3, 3], [128, 128, 3, 3],
-                         [256, 256, 2, 2], [160, 160, 3, 3,], [320, 320, 3, 3], [320, 160, 3, 3],
+                         [256, 256, 2, 2], [160, 160, 3, 3], [320, 320, 3, 3], [320, 160, 3, 3],
                          [1, 224, 224, 160, 4], [4, 224, 224, 160, 4], [1, 448, 448, 2, 2], [1, 224, 224, 2, 2],
                          [1, 64, 2, 2, 1020, 1020], [1, 64, 2, 2, 256, 256], [32, 256, 2, 2, 16, 12],
                          [32, 128, 2, 2, 32, 64], [32, 128, 2, 2, 16, 12], [256, 256, 2, 2],
@@ -189,7 +189,7 @@ def _by_dynamic_static_union_version(shape, core_num):
     return False
 
 
-# 'pylint: disable=unused-argument,consider-using-f-string
+# 'pylint: disable=unused-argument
 def check_supported(input_x, perm, output_y, kernel_name="dynamic_transpose"):
     """
     dynamic transpose is selected when any condition is true: \n
@@ -1017,11 +1017,6 @@ class Transpose:
             self.rt_src_tuple = []
             self.rt_dst_tuple = []
             self.rt_dst_tuple_backup = []
-
-            #self.rt_n_tuple = tph.rt_n_tuple
-            #self.rt_src_tuple = tph.rt_src_tuple
-            #self.rt_dst_tuple = tph.rt_dst_tuple
-            #self.rt_dst_tuple_backup = tph.rt_dst_tuple_backup
 
             reg_base = S7_FIXED_PART_SCALA_MAX_NUM + S7_PERCORE_PART_SCALA_MAX_NUM
             cycle = 4
@@ -2655,8 +2650,6 @@ class Transpose:
 
     def _init_all_tuple_s4(self, tp):
         self._init_logic_tuple_s4(tp)
-
-    ##tik_inst.data_move(self.data_out[0], ub_input[tp.offset_a], 0, 1, 4000, 0, 0)
 
     def _move_data_no_dup_s4(self, tp, ub_input, is_src_tail_in, is_dst_tail_in):
         tik_inst = self.tik_inst
@@ -5081,7 +5074,7 @@ class Transpose:
     def _reorder_s10_last_two_axis_b32(self, tp, ub_input, idx):
 
         col_reorder = tp.last_axis_len
-        # 'repeat_cnt = tp.last_axis_len * tp.second_to_last_axis_len' // EPB8
+        # `repeat_cnt = tp.last_axis_len * tp.second_to_last_axis_len // EPB8`
         repeat_cnt = 80
 
         # do hwc to chw transfer

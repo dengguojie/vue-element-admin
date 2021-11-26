@@ -14,8 +14,8 @@
 # ============================================================================
 """
 dynamic swish_grad
-'y = sigmoid(scale*x) + x*sigmoid'(scale*x)'
-'sigmoid = sigmoid*(1 - sigmoid)
+`y = sigmoid(scale*x) + x*sigmoid'(scale*x)`
+`sigmoid = sigmoid*(1 - sigmoid)`
 let:
 A = fwd_input = x                   # input of swish forward
 B = fwd_output = x*sigmoid(scale*x) # output of swish forward

@@ -84,10 +84,10 @@ def check_supported(x, block_shape, paddings, y, kernel_name="space_to_batch_nd"
     reason = "when ori_format is [%s], shape of input is not supported, ori_shape is [%s], " \
              "block_s is [%s], pad_s is [%s]" % (ori_format, str(ori_shape), str(block_s), str(pad_s))
     if ori_format in ("NHWC",):
-        if (len(ori_shape) != 4 or block_s[0] != 2 or
-                pad_s[0] != 2) and (len(ori_shape) != 4 or block_s[0] != 1 or
-                                   pad_s[0] != 1) and (len(ori_shape) != 3 or block_s[0] != 1 or pad_s[0] != 1):
-            return False, reason
+        if len(ori_shape) != 4 or block_s[0] != 2 or pad_s[0] != 2:
+            if len(ori_shape) != 4 or block_s[0] != 1 or pad_s[0] != 1:
+                if len(ori_shape) != 3 or block_s[0] != 1 or pad_s[0] != 1:
+                    return False, reason
     elif ori_format in ("NCHW",):
         if len(ori_shape) != 4 or block_s[0] != 3 or pad_s[0] != 3:
             return False, reason

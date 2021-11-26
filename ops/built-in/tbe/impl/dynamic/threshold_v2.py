@@ -26,6 +26,8 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_platform
 
+
+# 'pylint: disable=unused-argument,invalid-name
 @register_operator_compute("ThresholdV2", op_mode="dynamic", support_fusion=True)
 def threshold_v2_compute(x, threshold, value, kernel_name="threshold_v2"):
     """
@@ -52,19 +54,18 @@ def threshold_v2_compute(x, threshold, value, kernel_name="threshold_v2"):
     inp_dtype = x.dtype
     compatible_dtype = x.dtype
     shape = x.shape
-    kernel_name_var = kernel_name
 
     if inp_dtype in ("int8", "uint8", "int32"):
         if tbe_platform.api_check_support("tbe.dsl.vcmpsel", "float32"):
             compatible_dtype = "float32"
         else:
             compatible_dtype = "float16"
-    
+
         x = tbe.cast_to(x, compatible_dtype)
         threshold = tbe.cast_to(threshold, compatible_dtype)
         if value is not None:
             value = tbe.cast_to(value, compatible_dtype)
-            
+
     threshold = tbe.broadcast(threshold, shape)
     if value is None:
         value = tbe.broadcast(tvm.const(0, compatible_dtype), shape)
@@ -78,11 +79,11 @@ def threshold_v2_compute(x, threshold, value, kernel_name="threshold_v2"):
     return data_res
 
 
+# 'pylint: disable=unused-argument,too-many-locals,invalid-name
 @register_operator("ThresholdV2")
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, 
-                            para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, 
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
-# 'pylint: disable=unused-argument
 def threshold_v2(x, threshold, value, y, kernel_name="threshold_v2"):
     """
     Thresholds each element of the input Tensor
@@ -115,7 +116,7 @@ def threshold_v2(x, threshold, value, y, kernel_name="threshold_v2"):
     if value is not None:
         para_check.check_shape(value.get("shape"), max_dim=1, max_rank=1, param_name="value")
         data_value = tvm.placeholder(threshold.get("shape"), dtype=dtype_x, name="data_value")
-    
+
     ins = classify([x], OpPatternMode.ELEWISE)
     schedules, tensors = [], []
     for(_x,) in ins:
@@ -135,5 +136,3 @@ def threshold_v2(x, threshold, value, y, kernel_name="threshold_v2"):
     config = {"name": kernel_name, "tensor_list": tensors}
 
     tbe.build(schedules, config)
-
-

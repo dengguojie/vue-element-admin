@@ -104,7 +104,7 @@ def _dynamic_static_union(shape, reduction):
         return False
 
     x_shape = list(shape)
-    if x_shape in white_list_dict[reduction]:
+    if x_shape in white_list_dict.get(reduction):
         return True
 
     return False

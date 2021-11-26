@@ -31,7 +31,7 @@ class Constant:
     MAX_INT64 = 2**64 - 1
     # tiling param nums
     TILING_NUMS = 16
-    # '1 byte = 8 bit'
+    # `1 byte = 8 bit`
     EIGHT_BIT = 8
     # reserved ub size
     RESERVED_UB = 1024
