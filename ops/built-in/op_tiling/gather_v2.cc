@@ -41,10 +41,6 @@ const int64_t BLOCK_SIZE = 32;
 const int64_t PARAMS_CACHED_UB = 100 * 1024;
 const int64_t RESERVED_UB_SIZE = 6 * 1024;
 
-// define the compile info num
-// {"core_num", "ub_size", "l1_size", "params_dsize", "indices_dsize"}
-static const size_t COMPILE_INFO_NUM = 5;
-
 // A. block tiling: indices tiling
 // 1. one params row size is smaller than 32B
 // params is not cache
@@ -121,14 +117,6 @@ const int64_t TILING_MODE_39 = 39;
 // 6. small params and indices row size
 const int64_t TILING_MODE_40 = 40;
 const int64_t TILING_MODE_41 = 41;
-
-// define batch_dims of gather_v2 attr idx and name
-static const std::pair<int64_t, std::string> GATHER_V2_BATCH_DIMS_INFO{0, "batch_dims"};
-
-// define batch_dims of gather attr idx and name
-static const std::pair<int64_t, std::string> GATHER_BATCH_DIMS_INFO{1, "batch_dims"};
-
-static const int64_t BATCH_DIMS_DEFAULT_VALUE = 0;
 
 struct GatherCompileParams {
   int64_t ub_size;
@@ -410,23 +398,18 @@ bool CheckTensorShape(const std::string& op_type, const GatherShapeInfo& shape_i
 }
 
 bool GetV2GatherCompileParams(const std::string& op_type, const std::vector<int64_t>& compile_info_vec,
-                              const ge::Operator& op_paras, GatherCompileParams& params) {
-  OP_TILING_CHECK(compile_info_vec.size() != COMPILE_INFO_NUM,
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the compile info num is not %zu, is %zu", COMPILE_INFO_NUM,
-                                                  compile_info_vec.size()),
-                  return false);
-
-  if (op_type == "GatherV2") {
-    ops::GetAttrValue(op_paras, GATHER_V2_BATCH_DIMS_INFO, params.batch_dims, BATCH_DIMS_DEFAULT_VALUE);
-  } else {
-    ops::GetAttrValue(op_paras, GATHER_BATCH_DIMS_INFO, params.batch_dims, BATCH_DIMS_DEFAULT_VALUE);
-  }
+                              GatherCompileParams& params) {
+  OP_TILING_CHECK(
+      compile_info_vec.size() != 6,
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the compile info num is not 6, is %zu", compile_info_vec.size()),
+      return false);
 
   params.core_num = compile_info_vec[0];
   params.ub_size = compile_info_vec[1];
   params.l1_size = compile_info_vec[2];
   params.params_d_size = compile_info_vec[3];
   params.indices_d_size = compile_info_vec[4];
+  params.batch_dims = compile_info_vec[5];
   return true;
 }
 
@@ -1166,7 +1149,7 @@ bool GatherV2Tiling(const std::string& op_type, const ge::Operator& op_paras, co
   // get compile info
   GatherCompileParams compile_params;
   InitGatherCompileParams(compile_params);
-  if (!GetV2GatherCompileParams(op_type, op_info, op_paras, compile_params)) {
+  if (!GetV2GatherCompileParams(op_type, op_info, compile_params)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op GatherV2Tiling: [GetV2GatherCompileParams] failed.");
     return false;
   }
@@ -1211,10 +1194,11 @@ bool GatherV2Tiling(const std::string& op_type, const ge::Operator& op_paras, co
   return true;
 }
 
-static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num", "ub_size", "l1_size", "params_dsize",
-                                                          "indices_dsize"};
+static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num",     "ub_size",       "l1_size",
+                                                          "params_dsize", "indices_dsize", "batch_dims"};
+static const std::map<std::string, std::int64_t> OPTIONAL_VALUE = {{"batch_dims", 0}};
 // register tiling interface of the GatherV2 op.
-REGISTER_OP_TILING_V3_WITH_VECTOR(GatherV2, GatherV2Tiling, COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
+REGISTER_OP_TILING_V3_WITH_VECTOR(GatherV2, GatherV2Tiling, COMPILE_INFO_KEY, OPTIONAL_VALUE);
 // register tiling interface of the Gather op.
-REGISTER_OP_TILING_V3_WITH_VECTOR(Gather, GatherV2Tiling, COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
+REGISTER_OP_TILING_V3_WITH_VECTOR(Gather, GatherV2Tiling, COMPILE_INFO_KEY, OPTIONAL_VALUE);
 }  // namespace optiling
