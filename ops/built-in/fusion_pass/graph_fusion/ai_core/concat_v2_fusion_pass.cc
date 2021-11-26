@@ -84,7 +84,7 @@ Status ConcatExt2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
 
   ClearOpInferDepends(fused_node1);
 
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "Concatv2 fusion SUCCESSS!!!!!");
+  OP_LOGI(fused_node->GetName(), "Concatv2 fusion SUCCESSS!!!!!");
 
   ge::OpDescPtr fusedDesc = fused_node->GetOpDesc();
   FUSION_PASS_CHECK(fusedDesc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "fused_node's OpDesc is null, fusion failed."),
@@ -124,7 +124,7 @@ Status ConcatExt2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
   ge::AttrUtils::SetInt(fusedDesc, "N", num_N_new);
   // A maximum of 63 tensors are supported in mini mode.
   int64_t inputs_num = fusedDesc->GetInputsSize();
-  OP_LOGI(FUSED_OP_TYPE.c_str(), "All of concat_v2 nums is:%d", inputs_num);
+  OP_LOGI(fused_node->GetName(), "All of concat_v2 nums is:%d", inputs_num);
   int64_t NeedTangent = 63;
   if (HasUnKnowShape(fused_node1)) {
     // Maximum of 48 tensors are supported in mini mode for dynamic shape of concatv2
@@ -172,7 +172,7 @@ Status ConcatExt2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
       FUSION_PASS_CHECK(SUCCESS != ge::GraphUtils::AddEdge(concatext2_base_node->GetOutDataAnchor(0), inAnchorPtr),
                         VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Add out data edge failed."), return FAILED);
     }
-    OP_LOGI(FUSED_OP_TYPE.c_str(), "Split nodes_num is:%d", nodes_num);
+    OP_LOGI(fused_node->GetName(), "Split nodes_num is:%d", nodes_num);
     for (int64_t i = 0; i < nodes_num; i++) {
       if (i < nodes_num - 1) {
         int64_t inputs_num = fusedDesc->GetInputsSize();
@@ -270,7 +270,7 @@ Status ConcatExt2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
               return FAILED);
         }
       } else {
-        OP_LOGI(FUSED_OP_TYPE.c_str(), "Begin split last concat node");
+        OP_LOGI(fused_node->GetName(), "Begin split last concat node");
         int64_t inputs_num = fusedDesc->GetInputsSize();
         ge::OpDescPtr LastConcatExt2Desc = AttrUtils::CopyOpDesc(fusedDesc);
         LastConcatExt2Desc->SetName(LastConcatExt2Desc->GetName() + "/ConcatV2D" + to_string(nodes_num - 1));

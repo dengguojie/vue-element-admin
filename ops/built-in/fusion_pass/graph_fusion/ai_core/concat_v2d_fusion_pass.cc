@@ -34,6 +34,7 @@
 #include "error_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
 #include "pattern_fusion_util.h"
+#include "tbe_ops_pass_util.h"
 
 using namespace ge;
 namespace fe {
@@ -95,6 +96,16 @@ bool Concatv2dFusionPass::CheckConcatValid(ge::NodePtr node, ge::Format format, 
   return true;
 }
 
+bool Concatv2dFusionPass::HasUnKnowInputShape(const std::vector<ge::NodePtr> &input_nodes) {
+  for (const auto& node : input_nodes) {
+    if (HasUnKnowShape(node)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 Status Concatv2dFusionPass::PatternParse(ge::NodePtr concatv2dNode, vector<ge::NodePtr>& fusedInputNodes,
                                          vector<ge::NodePtr>& concatNodes) {
   int32_t directOutNodeNum;
@@ -148,9 +159,15 @@ Status Concatv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
     concatNodes.clear();
     return NOT_CHANGED;
   }
-  
-  if (fusedInputNodes.size() > 63) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "cocnat input tensors number %d more than 63", fusedInputNodes.size());
+  size_t max_count = 63;
+  if (HasUnKnowInputShape(fusedInputNodes)) {
+    // Maximum of 48 tensors are supported in mini mode for dynamic shape of concat_v2
+    max_count = 48;
+  }
+
+  OP_LOGI(concatv2dNode->GetName(), "concat input number %zu, max number %zu", fusedInputNodes.size(), max_count);
+  if (fusedInputNodes.size() > max_count) {
+    OP_LOGD(concatv2dNode->GetName(), "concat input number %zu more than %zu", fusedInputNodes.size(), max_count);
     fusedInputNodes.clear();
     concatNodes.clear();
     return NOT_CHANGED;
@@ -185,7 +202,7 @@ Status Concatv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
   }
 
   int64_t num_N_new = fusedInputNodes.size();
-  OP_LOGD(FUSED_OP_TYPE.c_str(),"Node:%s's has %ld inputs.", fusedConcatv2dOpDesc->GetName().c_str(),
+  OP_LOGD(concatv2dNode->GetName(),"Node:%s's has %ld inputs.", fusedConcatv2dOpDesc->GetName().c_str(),
           num_N_new);
   ge::AttrUtils::SetInt(fusedConcatv2dOpDesc, "N", num_N_new);
 
@@ -227,7 +244,8 @@ Status Concatv2dFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, ve
 
   for (auto concatNode : concatNodes) {
     FUSION_PASS_CHECK(graph.RemoveNode(concatNode) == ge::GRAPH_FAILED,
-                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove node %s failed.", concatNode->GetName().c_str()),
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove node %s failed.",
+                                                     concatNode->GetName().c_str()),
                       return FAILED);
   }
   return SUCCESS;
