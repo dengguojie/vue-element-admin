@@ -118,14 +118,6 @@ uint32_t CropAndResizeMsCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
     Tensor *tensor = ctx.Output(i);
     KERNEL_CHECK_NULLPTR(tensor, KERNEL_STATUS_PARAM_INVALID,
                          "Get output tensor[%d] failed", i)
-
-    if (tensor->NumElements() < 1) {
-      KERNEL_LOG_ERROR(
-          "Illegal output tensor[%d], "
-          "the number of elements in it should be >= [1]",
-          i);
-      return KERNEL_STATUS_PARAM_INVALID;
-    }
     outputs_.push_back(tensor);
   }
   return KERNEL_STATUS_OK;
