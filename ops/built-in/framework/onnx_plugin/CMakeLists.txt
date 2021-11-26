@@ -140,6 +140,7 @@ set(_onnx_plugins
   trilu_plugin.cc
   maxunpool_plugin.cc
   custom/col2im_plugin.cc
+  custom/psroi_poolingV2_plugin.cc
 )
 
 set(_ops_all_onnx_plugin_include
