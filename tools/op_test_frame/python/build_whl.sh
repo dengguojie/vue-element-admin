@@ -1,4 +1,5 @@
 #!/bin/bash
+# Copyright (c) Huawei Technologies Co., Ltd. 2010-2018. All rights reserved.
 python_cmd=$1
 whl_path=$2
 
