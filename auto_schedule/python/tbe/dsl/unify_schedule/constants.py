@@ -29,6 +29,7 @@ class Pattern:
     REDUCE = "CommReduce"
     NORM = "Norm"
     TRANSPOSE = "Transpose"
+    CONCAT = "Concat"
     OPAQUE = "Opaque"
     SOFTMAX = "Softmax"
     ASCEND_QUANT = "quant"
@@ -111,6 +112,15 @@ class TransposePattern:
     """
     # generic
     T_0 = "T_0"
+
+
+class ConcatPattern:
+    """
+    Concat sub pattern.
+    Each sub-pattern has a corresponding schedule, for function or performance.
+    """
+    # generic
+    C_0 = "C_0"
 
 
 class CompileInfo:

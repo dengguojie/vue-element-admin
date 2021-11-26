@@ -45,6 +45,7 @@ set(_optiling_files
   bn_training_update_v3.cc
   bn_training_update.cc
   concat.cc
+  concat_dsl.cc
   concat_offset.cc
   conv2d_backprop_filter.cc
   conv2d_backprop_input.cc

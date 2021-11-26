@@ -271,6 +271,12 @@ def get_bound(expr):
         _bound = _a * _b
         return None if _bound > VAR_BOUND_LIMIT else _bound
 
+    def _add(_a, _b):
+        if _a is None or _b is None:
+            return None
+        _bound = _a + _b
+        return None if _bound > VAR_BOUND_LIMIT else _bound
+
     def _max(_a, _b):
         if _a is None or _b is None:
             return None
@@ -291,6 +297,10 @@ def get_bound(expr):
             left_lower, left_upper = _parse(_expr.a)
             right_lower, right_upper = _parse(_expr.b)
             _lower, _upper = _mul(left_lower, right_lower), _mul(left_upper, right_upper)
+        elif isinstance(_expr, tvm.expr.Add):
+            left_lower, left_upper = _parse(_expr.a)
+            right_lower, right_upper = _parse(_expr.b)
+            _lower, _upper = _add(left_lower, right_lower), _add(left_upper, right_upper)
         elif isinstance(_expr, tvm.expr.Max):
             left_lower, left_upper = _parse(_expr.a)
             right_lower, right_upper = _parse(_expr.b)
@@ -298,7 +308,7 @@ def get_bound(expr):
         else:
             dict_args = {}
             dict_args["errCode"] = "E90001"
-            dict_args["detailed_cause"] = "Only accept (ConstExpr, Var, Mul, Max), but now " \
+            dict_args["detailed_cause"] = "Only accept (ConstExpr, Var, Mul, Max, Add), but now " \
                                           "is [%s]" % type(_expr)
             raise RuntimeError(dict_args, get_error_message(dict_args))
         return _lower, _upper

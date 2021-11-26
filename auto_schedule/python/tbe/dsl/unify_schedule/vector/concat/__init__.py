@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
-# Copyright 2019-2020 Huawei Technologies Co., Ltd
+# Copyright 2021-2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,13 +13,7 @@
 # limitations under the License.
 # ============================================================================
 """
-shape classifier
+concat
 """
-from .elewise_classifier import classify as classify_elewise
-from .reduce_classifier import classify as classify_reduction
-from .norm_classifier import classify as classify_norm
-from .softmax_cross_entropy_with_logits_classifier import classify as classify_softmax_cross_entropy_with_logits
-from .gather_classifier import classify_gather
-from .gather_classifier import classify_gather_nd
-from .transpose_classifier import classify as classify_transpose
-from .concat_classifier import classify as classify_concat
+from . import concat_tilingcase
+from . import concat_schedule

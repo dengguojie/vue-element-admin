@@ -29,6 +29,7 @@ from tbe.dsl.base.classifier import classify_softmax_cross_entropy_with_logits
 from tbe.dsl.base.classifier import classify_gather
 from tbe.dsl.base.classifier import classify_gather_nd
 from tbe.dsl.base.classifier import classify_transpose
+from tbe.dsl.base.classifier import classify_concat
 
 
 ELEWISE = "elewise"
@@ -39,6 +40,7 @@ SOFTMAX_CROSS_ENTROPY_WITH_LOGITS_WITH_REDUCE = "softmax_cross_entropy_with_logi
 GATHER = "gather"
 GATHER_ND = "gather_nd"
 TRANSPOSE = "transpose"
+CONCAT = "concat"
 
 
 CLASSIFY_SAME_PATTERN_MAP = {
@@ -93,5 +95,7 @@ def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None
         return classify_gather_nd(ins)
     if mode == TRANSPOSE:
         return classify_transpose(ins, extra_params)
+    if mode == CONCAT:
+        return classify_concat(ins, extra_params)
 
     return [ins]

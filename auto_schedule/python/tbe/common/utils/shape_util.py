@@ -452,12 +452,48 @@ def _gather_variable_shape(inputs):
     return params_shape, indices_shape, batch_dims_info
 
 
+def _concat_variable_shape(inputs: list):
+    def add_zero_axis_var(_is_first_in, _first_var):
+        if shape_x[0] == -1:
+            if _is_first_in:
+                _first_var = operation.var_inner(f"_dim_{index}_0", range_x[0])
+                _is_first_in = False
+            cur_shape.append(_first_var)
+        else:
+            cur_shape.append(shape_x[0])
+        return _is_first_in, _first_var
+
+    def add_one_axis_var():
+        if shape_x[1] == -1:
+            _var = operation.var_inner(f"_dim_{index}_1", range_x[1])
+            cur_shape.append(_var)
+        else:
+            cur_shape.append(shape_x[1])
+
+    if len(inputs) != 1:
+        dict_args = {"errCode": "E90001", "detailed_cause": "concat input numbers error"}
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+    is_first_in = True
+    shape_out = []
+    first_var = -1
+    for index, x in enumerate(inputs[0]):
+        shape_x = x.get("shape")
+        range_x = x.get("range")
+        cur_shape = []
+        is_first_in, first_var = add_zero_axis_var(is_first_in, first_var)
+        if len(shape_x) > 1:
+            add_one_axis_var()
+        shape_out.append(cur_shape)
+    current_compute = operation.get_context().get_current_compute()
+    mode = inputs[0][0].get("mode")
+    current_compute.add("_mode", mode)
+    return shape_out
+
 
 def variable_shape(inputs: list, op_mode="elewise"):
     """
     :param inputs: all inputs
-    :param op_mode: elewise or reduce
-    :param support_broadcast: whether to support broadcast
+    :param op_mode: operator mode, default is elewise
     :return:
     """
     if op_mode == "cube":
@@ -475,7 +511,11 @@ def variable_shape(inputs: list, op_mode="elewise"):
     if op_mode == "transpose":
         return _transpose_variable_shape(inputs)
 
+    if op_mode == "concat":
+        return _concat_variable_shape(inputs)
+
     return _elewise_varibale_shape(inputs, op_mode)
+
 
 def _elewise_varibale_shape(inputs: list, op_mode="elewise"):
     def _get_range_intersection(ranges):

@@ -89,7 +89,7 @@ def classify(ins: list, extra_params: dict):
     if extra_params is None or "axes" not in extra_params:
         dict_args = dict()
         dict_args["errCode"] = "E90001"
-        dict_args["detailed_cause"] = "inputs of classify must include the dict extra_params with the key perm " \
+        dict_args["detailed_cause"] = "inputs of classify must include the dict extra_params with the key axes " \
                                       "when mode is transpose"
         raise RuntimeError(dict_args, get_error_message(dict_args))
     if len(ins) != 1:

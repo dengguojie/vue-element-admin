@@ -179,6 +179,10 @@ auto_schedule:
       - ops/built-in/op_tiling/eletwise_v2.h
       - ops/built-in/op_tiling/reduce_tiling_v2.cc
       - ops/built-in/op_tiling/reduce_tiling_v2.h
+      - ops/built-in/op_tiling/transpose_dsl.cc
+      - ops/built-in/op_tiling/transpose_dsl.h
+      - ops/built-in/op_tiling/concat_dsl.cc
+      - ops/built-in/op_tiling/concat_dsl.h
       - auto_schedule/python/tbe/dsl/unify_schedule/vector/      
     unrelease:
     llt:

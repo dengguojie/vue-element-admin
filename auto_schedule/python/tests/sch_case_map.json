@@ -114,6 +114,7 @@
     "auto_schedule/python/tbe/dsl/compute/array.py":[
         "concat",
         "gather",
+        "transpose",
         "dsl_cpu/test_array_cpu_impl.py"
     ],
     "auto_schedule/python/lang/cce/te_compute/segment_compute.py":[
@@ -294,6 +295,15 @@
     ],
     "auto_schedule/python/tbe/dsl/base/classifier/transpose_classifier.py": [
         "transpose"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/concat/concat_tilingcase.py":[
+        "concat"
+    ],
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/concat/concat_schedule.py":[
+        "concat"
+    ],
+    "auto_schedule/python/tbe/dsl/base/classifier/concat_classifier.py": [
+        "concat"
     ],
     "auto_schedule/python/tbe/dsl/unify_schedule/unify_auto_schedule.py":[
         "unify_auto_schedule",

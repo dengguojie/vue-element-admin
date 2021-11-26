@@ -27,6 +27,7 @@ from tbe import tvm
 from tbe.common.testing.dsl_source_info import source_info_decorator
 from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.compute.transdata import transdata_compute
+from tbe.dsl.base.expr_compare import expr_equal
 from .util import dtype_check_decorator
 from .util import check_input_tensor_shape
 from .util import shape_to_list
@@ -252,10 +253,16 @@ def _concat_para_check(raw_tensors, axis):
         check_input_tensor_shape(raw_tensors[i])
         if raw_tensors[i].dtype != raw_tensors[0].dtype:
             raise RuntimeError("dtype must be the same to each other")
-        for j in range(len(raw_tensors[0].shape)):
-            if (j != axis) and (raw_tensors[i].shape[j].value != raw_tensors[0].shape[j].value):
-                raise RuntimeError(
-                    "concat input shape len must be the same to each other except concat axis")
+        if in_dynamic_and_static_unify():
+            for j in range(len(raw_tensors[0].shape)):
+                if (j != axis) and not expr_equal(raw_tensors[i].shape[j], raw_tensors[0].shape[j]):
+                    raise RuntimeError(
+                        "concat input shape value must be the same to each other except concat axis")
+        else:
+            for j in range(len(raw_tensors[0].shape)):
+                if (j != axis) and (raw_tensors[i].shape[j].value != raw_tensors[0].shape[j].value):
+                    raise RuntimeError(
+                        "concat input shape len must be the same to each other except concat axis")
 
 
 @source_info_decorator()

@@ -74,6 +74,10 @@ SET_VALUE_COMPUTE = {
     "set_value"
 }
 
+CONCAT_COMPUTE = {
+    "concat"
+}
+
 CONV2D_COMPUTE = {
     "conv_vector_remove_pad",
     "convolution_C",
@@ -126,6 +130,7 @@ class ComputeType(Enum):
     REDUCE = auto()
     TRANSPOSE = auto()
     SET_VALUE = auto()
+    CONCAT = auto()
     CAST = auto()
     CONV2D = auto()
     CONV2D_BP_INPUT = auto()
@@ -200,6 +205,8 @@ def _parse_pattern(outs):
         return Pattern.GATHER
     if _is_transpose(compute_type_size_map):
         return Pattern.TRANSPOSE
+    if _is_concat(compute_type_size_map):
+        return Pattern.CONCAT
     if ComputeType.CONV3D_BP_FILTER in compute_type_size_map:
         return Pattern.CONV3D_BACKPROP_FILTER
 
@@ -320,6 +327,13 @@ def _is_transpose(compute_type_size_map: dict):
     return ph_size + transpose_size == total
 
 
+def _is_concat(compute_type_size_map: dict):
+    ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
+    concat_size = compute_type_size_map.get(ComputeType.CONCAT, 0)
+    total = compute_type_size_map.get(ComputeType.ANY, 0)
+    return ph_size + concat_size == total
+
+
 def _dfs_compute(outs) -> Tuple[dict, dict]:
     outs = list(outs) if isinstance(outs, (tuple, list)) else [outs]
     visited = set()
@@ -370,6 +384,7 @@ def _get_compute_type(tensor: tvm.tensor.Tensor) -> ComputeType:
         (GATHER_COMPUTE, ComputeType.GATHER),
         (TRANSPOSE_COMPUTE, ComputeType.TRANSPOSE),
         (SET_VALUE_COMPUTE, ComputeType.SET_VALUE),
+        (CONCAT_COMPUTE, ComputeType.CONCAT),
         (CONV3D_COMPUTE, ComputeType.CONV3D),
         (CONV2D_COMPUTE, ComputeType.CONV2D),
         (CONV2D_BP_INPUT_COMPUTE, ComputeType.CONV2D_BP_INPUT),
