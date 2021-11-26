@@ -4974,7 +4974,8 @@ class ComputeTiling(object):
         tiled_shape = tiling_shape.split('_')
         m_l1_shape, k_l1_shape, n_l1_shape, m_l0_shape, k_l0_shape, n_l0_shape = [int(i) for i in tiled_shape[:6]]
 
-        m_l0_shape, k_l0_shape, n_l0_shape = self._get_special_l0_factor(self.mkn_shape, m_l0_shape, k_l0_shape, n_l0_shape)
+        after_multicore_shape = [core_inner_m, self.mkn_shape[1], core_inner_n]
+        m_l0_shape, k_l0_shape, n_l0_shape = self._get_special_l0_factor(after_multicore_shape, m_l0_shape, k_l0_shape, n_l0_shape)
         m_l1_shape, k_l1_shape, n_l1_shape = m_l0_shape, k_l0_shape, n_l0_shape
 
         # compute L1 to L0 tiling params
