@@ -1,0 +1,89 @@
+[
+  {
+    "case_name": "ArgMaxV2_dynamic_shape_argmax_case_ascend910a",
+    "op": "ArgMaxV2",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          -1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "dimension"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          -1
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
+      }
+    ],
+    "attr": [
+      {
+        "name": "dtype",
+        "type": "data_type",
+        "value": "float16"
+      }
+    ]
+  }
+]
