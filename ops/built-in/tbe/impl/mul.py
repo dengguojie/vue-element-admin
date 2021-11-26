@@ -862,7 +862,7 @@ def _mul_compute_ex(input_x, input_y, shape_x, shape_y, shape_max):
         else:
             return None
 
-    if small_shape < 10000:
+    if small_shape < 10880:
         return None
 
     if int(small_input.shape[-1]) != 1:
