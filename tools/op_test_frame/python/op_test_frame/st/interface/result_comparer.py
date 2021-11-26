@@ -71,53 +71,60 @@ def _get_np_dtype(type_str):
     return type_dict.get(type_str)
 
 
+def _display_data_by_index(index, start, expect_data, real_data, diff_thd):
+    index = index + start
+    data_index = '%08d' % (index + 1)
+    expect_out = '%.7f' % expect_data[index]
+    real_out = '%.7f' % real_data[index]
+    fp_diff = '%.7f' % abs(np.float64(expect_data[index]) - np.float64(real_data[index]))
+    rate_diff = '%.7f' % _cal_relative_diff(expect_data[index], real_data[index], diff_thd)
+    utils.print_info_log('{:<15} {:<15} {:<15} {:<15} {:<15}'.format(data_index, expect_out, real_out,
+                                                                     fp_diff, rate_diff))
+
+
 def _display_output(real_data, expect_data, start, end, diff_thd):
     utils.print_info_log(
         '---------------------------------------------------------------------------------------')
-    utils.print_info_log('Loop \t ExpectOut \t RealOut \t FpDiff \t RateDiff')
+    utils.print_info_log('{:<15} {:<15} {:<15} {:<15} {:<15}'.format('Index', 'ExpectOut', 'RealOut',
+                                                                     'FpDiff', 'RateDiff'))
     utils.print_info_log(
         '---------------------------------------------------------------------------------------')
     split_count = int(end - start)
     if split_count <= 20:
         for i in range(split_count + 1):
-            j = i + start
-            utils.print_info_log('%08d \t %.7f \t %.7f \t %.7f \t %.7f' % (
-                start + i + 1, expect_data[j], real_data[j],
-                abs(np.float64(expect_data[j]) - np.float64(real_data[j])),
-                _cal_relative_diff(expect_data[j], real_data[j], diff_thd)))
+            _display_data_by_index(i, start, expect_data, real_data, diff_thd)
     else:
         for i in range(10):
-            j = i + start
-            utils.print_info_log('%08d \t %.7f \t %.7f \t %.7f \t %.7f' % (
-                start + i + 1, expect_data[j], real_data[j],
-                abs(np.float64(expect_data[j]) - np.float64(real_data[j])),
-                _cal_relative_diff(expect_data[j], real_data[j], diff_thd)))
-        utils.print_info_log('...   \t   ...   \t   ...   \t   ...    \t   ...')
+            _display_data_by_index(i, start, expect_data, real_data, diff_thd)
+        dot_3 = '...'
+        utils.print_info_log('{:<15} {:<15} {:<15} {:<15} {:<15}'.format(dot_3, dot_3, dot_3,
+                                                                         dot_3, dot_3))
         for i in range(split_count - 10 + 1, split_count + 1):
-            j = i + start
-            utils.print_info_log('%08d \t %.7f \t %.7f \t %.7f \t %.7f' % (
-                start + i + 1, expect_data[j], real_data[j],
-                abs(np.float64(expect_data[j]) - np.float64(real_data[j])),
-                _cal_relative_diff(expect_data[j], real_data[j], diff_thd)))
+            _display_data_by_index(i, start, expect_data, real_data, diff_thd)
 
 
 def _display_error_output(real_data, expect_data, err_idx, relative_diff):
     utils.print_info_log('Error '
                          'Line-----------------------------------------------------------------------------')
-    utils.print_info_log('Loop \t ExpectOut \t RealOut \t FpDiff \t RateDiff')
+    utils.print_info_log('{:<15} {:<15} {:<15} {:<15} {:<15}'.format('Index', 'ExpectOut', 'RealOut',
+                                                                     'FpDiff', 'RateDiff'))
     utils.print_info_log('---------------------------------------------------------------------------------------')
     count = 0
     len_err = len(err_idx)
     for i in err_idx:
         count += 1
         if len_err <= 20 or count < 10 or count > len_err - 10:
-            utils.print_info_log('%08d \t %.7f \t %.7f \t %.7f \t %.7f' % (
-                i + 1, expect_data[i], real_data[i], abs(np.float64(expect_data[i]) - np.float64(real_data[i])),
-                relative_diff[count - 1]))
+            data_index = '%08d' % (i + 1)
+            expect_out = '%.7f' % expect_data[i]
+            real_out = '%.7f' % real_data[i]
+            fp_diff = '%.7f' % abs(np.float64(expect_data[i]) - np.float64(real_data[i]))
+            rate_diff = '%.7f' % float(relative_diff[count - 1])
+            utils.print_info_log('{:<15} {:<15} {:<15} {:<15} {:<15}'.format(data_index, expect_out, real_out,
+                                                                             fp_diff, rate_diff))
         elif count == 10:
             dot_3 = '...'
-            utils.print_info_log(
-                '%08s \t %07s \t %07s \t %07s \t %07s  \t %07s ' % (dot_3, dot_3, dot_3, dot_3, dot_3, dot_3))
+            utils.print_info_log('{:<15} {:<15} {:<15} {:<15} {:<15}'.format(dot_3, dot_3, dot_3,
+                                                                             dot_3, dot_3))
     utils.print_info_log('---------------------------------------------------------------------------------------')
 
 
@@ -132,8 +139,8 @@ def _get_error_percent(diff_list, real_data, data_compe, split_count,
     err_idx = diff_idx_list[np.where(rdiff > diff_list[1])]
 
     fulfill_num = split_count - err_diff.size
-    fulfill_percent = float(fulfill_num) / float(split_count) * 100.0
-    pct_thd = (1 - pct_thd) * 100.0
+    fulfill_percent = float(fulfill_num) / float(split_count)
+    pct_thd = 1 - pct_thd
     result = "Pass" if (fulfill_percent >= pct_thd) else "Failed"
     if len(err_diff) > 0:
         max_error = max(err_diff)
@@ -141,16 +148,16 @@ def _get_error_percent(diff_list, real_data, data_compe, split_count,
             result = "Failed"
     utils.print_info_log(
         '---------------------------------------------------------------------------------------')
-    utils.print_info_log('DiffThd  \t PctThd   \t PctRlt   \t Result')
+    utils.print_info_log('{:<15} {:<15} {:<15} {:<15}'.format('DiffThd', 'PctThd', 'PctRlt', 'Result'))
     utils.print_info_log(
         '---------------------------------------------------------------------------------------')
-    utils.print_info_log('%.4f     \t %.2f%%   \t %.6f%%   \t %s' % (
-        diff_list[1], pct_thd, fulfill_percent, result))
+    utils.print_info_log('{:<15.4f} {:<15.2%} {:<15.6%} {:<15}'.format(diff_list[1], float(pct_thd),
+                                                                       fulfill_percent, result))
     if len(err_diff) > 0:
         utils.print_info_log(
             'Maximum error is: %s. Tolerance threshold is: %s.' % (
                 max_error, diff_list[2]))
-    return result, [err_idx, err_diff], fulfill_percent
+    return result, [err_idx, err_diff], fulfill_percent * 100
 
 
 def _check_overflows_count(data_compe):
@@ -234,7 +241,7 @@ def compare2(result_dir, expect_dir):
         npu_output = np.fromfile(result_file, np_type)
         cpu_output = np.fromfile(expect_file, np_type)
         result, error_percent, max_error = _data_compare(npu_output,
-                                                         cpu_output)
+                                                         cpu_output, [0.01, 0.05])
         result_list.append([result, error_percent, max_error])
 
     utils.print_info_log('End to compare result. Duration:%0.2f second.'
