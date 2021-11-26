@@ -47,9 +47,20 @@ case3 = {"params": [{"shape": (64, 61, 92, 1), "dtype": "float16", "format": "NC
          "format_expect": [],
          "support_expect": True
         }
+case4 = {"params": [
+            {"shape": (1, 16, 1, 2), "dtype": "float16", "format": "NCHW", "ori_shape": (1, 16, 1, 2), "ori_format": "NCHW"},
+            {"shape": (1, 16, 1, 2), "dtype": "float16", "format": "NCHW", "ori_shape": (1, 16, 1, 2), "ori_format": "NCHW"},
+            9.999999717180685e-10,
+            [1, 2, ]
+            ],
+         "case_name": "test_dsl_reduce_multi_mvn_v2_4",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True
+        }
 
 compile_case_list = [
-    case1, case2, case3
+    case1, case2, case3, case4
 ]
 
 for item in compile_case_list:
