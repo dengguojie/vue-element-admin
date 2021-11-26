@@ -291,8 +291,7 @@ graphStatus InferShapesFromAicpuResource(Operator& op, std::vector<AscendString>
 
   auto res_context = GetAicpuResourceContext(op, marks);
   if (res_context == nullptr) {
-    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), name);
-    Shape unknown_shape(ge::UNKNOWN_SHAPE);
+    Shape unknown_shape(ge::UNKNOWN_RANK);
     return InferShapesFillUnknownShape(op, name, dynCompName, unknown_shape);
   }
 

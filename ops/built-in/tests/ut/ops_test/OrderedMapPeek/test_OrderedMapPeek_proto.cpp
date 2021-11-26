@@ -50,6 +50,6 @@ TEST_F(ordered_map_peek, ordered_map_peek_infershape_success) {
   auto output_desc = op.GetDynamicOutputDesc("values", 0);
   EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
 
-  std::vector<int64_t> expected_output_shape = {-1};
+  std::vector<int64_t> expected_output_shape = {-2};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
