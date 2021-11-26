@@ -40,7 +40,7 @@ template <>
 inline Eigen::half ScalarAsin(Eigen::half x) {
   const Eigen::half val{
       static_cast<Eigen::half>(std::asin(static_cast<std::float_t>(x)))};
-  return Eigen::half_impl::isnan(val) ? Eigen::half{0.0f} : val;
+  return val;
 }
 }  // namespace internal
 

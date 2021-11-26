@@ -43,7 +43,7 @@ template <>
 inline Eigen::half ScalarAcosh(Eigen::half x) {
   const Eigen::half val{
       static_cast<Eigen::half>(std::acosh(static_cast<std::float_t>(x)))};
-  return Eigen::half_impl::isnan(val) ? Eigen::half{0.0f} : val;
+  return val;
 }
 
 inline std::uint32_t ParallelForAcosh(

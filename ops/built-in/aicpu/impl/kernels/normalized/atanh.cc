@@ -43,7 +43,7 @@ template <>
 inline Eigen::half ScalarAtanh(Eigen::half x) {
   const Eigen::half val{
       static_cast<Eigen::half>(std::atanh(static_cast<std::float_t>(x)))};
-  return Eigen::half_impl::isnan(val) ? Eigen::half{0.0f} : val;
+  return val;
 }
 
 inline std::uint32_t ParallelForAtanh(
