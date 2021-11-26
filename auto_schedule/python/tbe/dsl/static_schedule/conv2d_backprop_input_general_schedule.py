@@ -22,7 +22,7 @@ from functools import reduce
 from tbe import tvm
 from tbe.common import platform as tbe_platform
 from tbe.common.platform import platform_info as tbe_platform_info
-from tbe.common.tiling.get_tiling import get_tiling
+from tbe.common.tiling import tiling_api
 from tbe.common.utils.errormgr import error_manager_util
 from tbe.dsl.compute.conv2d_backprop_input_general_compute import DeConvPattern
 from tbe.dsl.compute import cube_util
@@ -1119,7 +1119,7 @@ def general_schedule(
             "fusion_type": fusion_type,
             "general_flag": True,
         }
-        tiling = get_tiling(info_dict)
+        tiling = tiling_api.get_tiling(info_dict)
     else:
         tiling = tiling_case
 
@@ -2500,6 +2500,10 @@ def general_schedule(
             if not attach_dict.get(sch[a_l1]):
                 attach_dict[sch[a_l1]] = sch[c_ddr]
                 compute_path[sch[a_l1]] = ax_core
+            # process CL0 full load
+            if not attach_dict.get(sch[c_col]):
+                attach_dict[sch[c_col]] = sch[c_ddr]
+                compute_path[sch[c_col]] = ax_core
             # get run_once axes
             run_once_list = []
             if attach_dict.get(sch[a_col]) == attach_dict.get(sch[a_l1]):
@@ -2543,6 +2547,10 @@ def general_schedule(
             if not attach_dict.get(sch[b_l1]):
                 attach_dict[sch[b_l1]] = sch[c_ddr]
                 compute_path[sch[b_l1]] = ax_core
+            # process CL0 full load
+            if not attach_dict.get(sch[c_col]):
+                attach_dict[sch[c_col]] = sch[c_ddr]
+                compute_path[sch[c_col]] = ax_core
             # get run_once axes
             run_once_list = []
             bl0_compute_at_tensor = attach_dict.get(sch[b_col])

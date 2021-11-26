@@ -19,6 +19,8 @@ from tbe.dsl import auto_schedule
 from te.lang.cce import cce_build_code
 from impl.trans_data import trans_data_compute
 from impl.conv2d_backprop_input_d import conv2d_backprop_input_d_compute
+from tbe.common.context import op_context
+from impl.util import platform_adapter
 
 ut_case = OpUT(
     "Conv2DBackpropInputD", "impl.conv2d_backprop_input_d", "conv2d_backprop_input_d"
@@ -37,6 +39,37 @@ DEBUG_MODE = False
 
 def side_effects(*args):
     return vals[args]
+
+
+def tiling_mock1(*args):
+    tiling = {'AL0_matrix': [1, 4, 16, 16, 1, 1], 'AL1_shape': [256, 1, 1, 1],
+                    'AUB_channel_wise_flag': None, 'AUB_shape': [256, 2, None, 1],
+                    'A_overhead_opt_flag': True, 'BL0_matrix': [4, 6, 16, 16, 1, 1],
+                    'BL1_shape': [], 'BUB_channel_wise_flag': None,
+                    'BUB_shape': None, 'B_overhead_opt_flag': False, 'CL0_matrix': [6, 1, 16, 16, 1, 1],
+                    'CUB_channel_wise_flag': False, 'CUB_matrix': [6, 1, 16, 16, 1, 1],
+                    'batch_bef_group_flag': 0, 'block_dim': [3, 1, 1, 1],
+                    'manual_pingpong_buffer': {'AL0_pbuffer': 2, 'AL1_pbuffer': 2, 'AUB_pbuffer': 1,
+                    'BL0_pbuffer': 2, 'BL1_pbuffer': 2, 'BUB_pbuffer': 1, 'CL0_pbuffer': 2,
+                    'CUB_pbuffer': 2, 'UBG_pbuffer': 2}, 'n_bef_batch_flag': 0, 'n_bef_group_flag': 0,
+                    'tbe_compile_para': 0}
+    return tiling
+
+
+def tiling_mock2(*args):
+    tiling = {'AL0_matrix': [1, 4, 16, 16, 1, 1], 'AL1_shape': [256, 1, 1, 1],
+                    'AUB_channel_wise_flag': None, 'AUB_shape': [256, 2, None, 1],
+                    'A_overhead_opt_flag': False, 'BL0_matrix': [4, 6, 16, 16, 1, 1],
+                    'BL1_shape': [], 'BUB_channel_wise_flag': None,
+                    'BUB_shape': None, 'B_overhead_opt_flag': True, 'CL0_matrix': [6, 1, 16, 16, 1, 1],
+                    'CUB_channel_wise_flag': False, 'CUB_matrix': [6, 1, 16, 16, 1, 1],
+                    'batch_bef_group_flag': 0, 'block_dim': [3, 1, 1, 1],
+                    'manual_pingpong_buffer': {'AL0_pbuffer': 2, 'AL1_pbuffer': 2, 'AUB_pbuffer': 1,
+                    'BL0_pbuffer': 2, 'BL1_pbuffer': 2, 'BUB_pbuffer': 1, 'CL0_pbuffer': 2,
+                    'CUB_pbuffer': 2, 'UBG_pbuffer': 2}, 'n_bef_batch_flag': 0, 'n_bef_group_flag': 0,
+                    'tbe_compile_para': 0}
+    return tiling
+
 
 def _gen_kernel_name(dedy_shape, w_shape, dx_shape, strides, data_flow):
     dedy_shape_info = "_".join([str(i) for i in dedy_shape])
@@ -329,7 +362,6 @@ def _test_conv2d_bp_input_fp32_case_2(test_arg):
                 out = trans_data_compute(dx, trans_out, "NC1HWC0", "NHWC")
                 sch = auto_schedule(out)
 
-
 def _test_conv2d_bp_input_hf32_case_1(test_arg):
     with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=side_effects)):
         with patch("impl.util.platform_adapter.tbe_platform.get_soc_spec", MagicMock(side_effect=side_effects)):
@@ -374,6 +406,42 @@ def _test_conv2d_bp_input_hf32_case_2(test_arg):
                 out = trans_data_compute(dx, trans_out, "NC1HWC0", "NHWC")
                 sch = auto_schedule(out)
 
+def _test_conv2d_bp_input_allocate_at1(test_arg):
+    with patch("tbe.common.tiling.tiling_api.get_tiling", MagicMock(side_effect=tiling_mock1)):
+        with cce():
+            x_5hd = tvm.placeholder((1, 1, 1, 2, 16), name="x", dtype="float16",
+                                    attrs={"ori_shape": (1, 1, 2, 16),
+                                           "format": "NC1HWC0",
+                                           "ori_format": "NHWC"})
+            weight = tvm.placeholder((16*6, 1, 16, 16), name="filter", dtype="float16",
+                                     attrs={"ori_shape": (4, 4, 96, 16),
+                                            "format": "FRACTAL_Z",
+                                            "ori_format": "HWCN"})
+            y = {"shape": (1, 6, 2, 4, 16), "ori_shape": (1, 2, 4, 96), "format": "NC1HWC0", "ori_format": "NHWC", "dtype": "float16"}
+            dx = conv2d_backprop_input_d_compute(weight, x_5hd, y, (1, 2, 4, 96), (2, 2), "SAME", (1, 1, 1, 1))
+            with op_context.OpContext():
+                sch = auto_schedule(dx)
+            config = {"name": "dx", "tensor_list":[weight, x_5hd, dx]}
+            platform_adapter.tbe.build(sch, config)
+
+def _test_conv2d_bp_input_allocate_at2(test_arg):
+    with patch("tbe.common.tiling.tiling_api.get_tiling", MagicMock(side_effect=tiling_mock2)):
+        with cce():
+            x_5hd = tvm.placeholder((1, 1, 1, 2, 16), name="x", dtype="float16",
+                                    attrs={"ori_shape": (1, 1, 2, 16),
+                                           "format": "NC1HWC0",
+                                           "ori_format": "NHWC"})
+            weight = tvm.placeholder((16*6, 1, 16, 16), name="filter", dtype="float16",
+                                     attrs={"ori_shape": (4, 4, 96, 16),
+                                            "format": "FRACTAL_Z",
+                                            "ori_format": "HWCN"})
+            y = {"shape": (1, 6, 2, 4, 16), "ori_shape": (1, 2, 4, 96), "format": "NC1HWC0", "ori_format": "NHWC", "dtype": "float16"}
+            dx = conv2d_backprop_input_d_compute(weight, x_5hd, y, (1, 2, 4, 96), (2, 2), "SAME", (1, 1, 1, 1))
+            with op_context.OpContext():
+                sch = auto_schedule(dx)
+            config = {"name": "dx", "tensor_list":[weight, x_5hd, dx]}
+            platform_adapter.tbe.build(sch, config)
+
 
 _gen_conv2d_bp_input_op_case()
 _gen_conv2d_bp_input_check_support_case()
@@ -384,6 +452,8 @@ ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_fp32_case_1)
 ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_fp32_case_2)
 ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_hf32_case_1)
 ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_hf32_case_2)
+ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_allocate_at1)
+ut_case.add_cust_test_func(test_func=_test_conv2d_bp_input_allocate_at2)
 
 if __name__ == "__main__":
     ut_case.run("Ascend910A")
