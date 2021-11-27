@@ -45,7 +45,7 @@ std::string ScopeLayerNormGradPass::PassName() {
   return std::string("ScopeLayerNormGradPass");
 }
 
-void ScopeLayerNormGradPass::GenScopePatterns(ScopeFusionPatterns& patterns) const {
+void ScopeLayerNormGradPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
   OP_LOGD(kOpType, "Enter ScopeLayerNormGradPass GenScopePatterns");
   // recognize moments
   std::vector<ScopePattern*> batch1;
@@ -242,7 +242,7 @@ Status ScopeLayerNormGradPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>
 }
 
 void ScopeLayerNormGradPass::FindInputIndex(const Scope* scope, int& index, const std::string& name,
-                                            const std::string& base_name) const {
+                                            const std::string& base_name) {
   if (scope == nullptr) {
     OP_LOGE(kOpType, "scope is nullptr.");
     return;
@@ -273,7 +273,7 @@ void ScopeLayerNormGradPass::FindInputIndex(const Scope* scope, int& index, cons
   }
 }
 
-void ScopeLayerNormGradPass::IsConnectReshape(const Scope* scope, const std::string& name, bool& is_connected_reshape) const {
+void ScopeLayerNormGradPass::IsConnectReshape(const Scope* scope, const std::string& name, bool& is_connected_reshape) {
   if (scope == nullptr) {
     OP_LOGE(kOpType, "scope is nullptr.");
     return;
@@ -316,7 +316,7 @@ void ScopeLayerNormGradPass::OutputGammaBetaProcess(const std::vector<Scope*>& s
   }
 }
 
-void ScopeLayerNormGradPass::FindInputXIndex(const Scope* scope, int& index) const {
+void ScopeLayerNormGradPass::FindInputXIndex(const Scope* scope, int& index) {
   if (scope == nullptr) {
     OP_LOGE(kOpType, "scope is nullptr.");
     return;

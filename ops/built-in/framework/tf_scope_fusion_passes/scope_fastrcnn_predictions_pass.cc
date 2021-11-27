@@ -73,7 +73,7 @@ Status ScopeFastrcnnPredictionsPass::LastMatchScopesAndOPs(std::shared_ptr<Scope
   return (!(results.empty())) ? SUCCESS : FAILED;
 }
 
-void ScopeFastrcnnPredictionsPass::GenScopePatterns(ScopeFusionPatterns& patterns) const {
+void ScopeFastrcnnPredictionsPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
   // match batchnorm
   std::vector<ScopePattern*> batch;
   ScopePattern* fastPredictionPattern = new (std::nothrow) ScopePattern();
