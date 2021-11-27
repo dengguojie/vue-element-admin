@@ -26,7 +26,7 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-# pylint: disable = unused-argument,redefined-builtin,too-many-arguments
+# 'pylint: disable = unused-argument,redefined-builtin,too-many-arguments
 def get_op_support_info(input_x,
                         assist_matrix,
                         out_dict,
@@ -52,7 +52,7 @@ def get_op_support_info(input_x,
     return op_cal_info_in_json
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def _parameter_check(shape, div_shape, shape_out, dtype, ksize, pads):
     para_check.check_shape(shape, param_name="x")
     para_check.check_shape(div_shape, param_name="div")
@@ -65,7 +65,7 @@ def _parameter_check(shape, div_shape, shape_out, dtype, ksize, pads):
             pads)
 
 
-# pylint: disable=too-many-arguments,too-many-locals,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-locals,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("avg_pool_1d")
 def avg_pool_1d_compute(x,
                         div,
@@ -177,7 +177,7 @@ def avg_pool_1d_compute(x,
     return res, reduce_tensor_list, tensor_list
 
 
-# pylint: disable=too-many-statements,invalid-name
+# 'pylint: disable=too-many-statements,invalid-name
 def _avg_pool_1d_schedule(res, reduce_tensor_list, tensor_list):
     """
     avg_pool_1d schedule
@@ -280,7 +280,7 @@ def _avg_pool_1d_schedule(res, reduce_tensor_list, tensor_list):
     return sch
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
