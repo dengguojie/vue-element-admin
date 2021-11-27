@@ -104,14 +104,14 @@ TEST_F(NLLLossTiling, NLLLoss_tiling1) {
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),
-      "1 16 16 32 1 0 1 1 0 1 59392 1856 32 ");
+      "1 16 16 32 1 0 1 1 0 1 59392 1856 32 -1 ");
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling2) {
@@ -153,14 +153,14 @@ TEST_F(NLLLossTiling, NLLLoss_tiling2) {
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"none\"}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"none\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),
-      "1 2 16 32 8 0 8 8 0 8 59392 1856 32 ");
+      "1 2 16 32 8 0 8 8 0 8 59392 1856 32 -1 ");
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling3) {
@@ -201,14 +201,14 @@ TEST_F(NLLLossTiling, NLLLoss_tiling3) {
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),
-      "1 1 1 3991 0 0 0 1 0 1 59872 16 3992 ");
+      "1 1 1 3991 0 0 0 1 0 1 59872 16 3992 -1 ");
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling4) {
@@ -249,14 +249,14 @@ TEST_F(NLLLossTiling, NLLLoss_tiling4) {
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"none\"}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"none\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),
-      "1 28 220 3991 8 1 0 4 0 4 59872 16 3992 ");
+      "1 28 220 3991 8 1 0 4 0 4 59872 16 3992 -1 ");
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling5) {
@@ -297,14 +297,14 @@ TEST_F(NLLLossTiling, NLLLoss_tiling5) {
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),
-      "1 32 220 3991 7 0 7 3 0 3 59872 16 3992 ");
+      "1 32 220 3991 7 0 7 3 0 3 59872 16 3992 -1 ");
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling6) {
@@ -345,14 +345,14 @@ TEST_F(NLLLossTiling, NLLLoss_tiling6) {
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"none\"}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"none\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),
-      "1 1 7 39 0 0 0 7 0 7 60296 1552 40 ");
+      "1 1 7 39 0 0 0 7 0 7 60296 1552 40 -1 ");
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling7) {
@@ -393,14 +393,14 @@ TEST_F(NLLLossTiling, NLLLoss_tiling7) {
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),
-      "1 32 2000 3991 63 4 3 47 3 2 59872 16 3992 ");
+      "1 32 2000 3991 63 4 3 47 3 2 59872 16 3992 -1 ");
   int64_t tiling_test_num = 10;
   for (int64_t i = 0; i < tiling_test_num; i++) {
     RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
@@ -445,14 +445,14 @@ TEST_F(NLLLossTiling, NLLLoss_tiling8) {
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),
-      "1 32 2000 15003 63 21 0 47 15 2 45016 8 15008 ");
+      "1 32 2000 15003 63 21 0 47 15 2 45016 8 15008 -1 ");
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling9) {
@@ -493,7 +493,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling9) {
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"REDUCTION\": \"sum\"}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"REDUCTION\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
@@ -537,7 +537,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling10) {
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"CORE\": 32, \"reduction\": \"sum\"}}";
+      "{\"vars\": {\"ub_size\": 65024, \"CORE\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
@@ -581,7 +581,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling11) {
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
   std::string compileInfo =
-      "{\"vars\": {\"UB\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
+      "{\"vars\": {\"UB\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
@@ -625,7 +625,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling12) {
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
   std::string compileInfo =
-      "{\"vars\": {\"UB\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
+      "{\"vars\": {\"UB\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
@@ -669,7 +669,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling13) {
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
@@ -713,7 +713,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling14) {
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
@@ -757,7 +757,7 @@ TEST_F(NLLLossTiling, NLLLoss_tiling15) {
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3_FALSE(opParas, iter->second, compileInfo, runInfo);
@@ -795,21 +795,21 @@ TEST_F(NLLLossTiling, NLLLoss_tiling16) {
   tensorOutputY.SetShape(ge::Shape(output_y_shape));
   tensorOutputY.SetDataType(dtype);
   TENSOR_OUTPUT(opParas, tensorOutputY, y);
-
+ 
   TensorDesc tensorOutputTotalWeight;
   tensorOutputTotalWeight.SetShape(ge::Shape(output_total_weight_shape));
   tensorOutputTotalWeight.SetDataType(dtype);
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
-
+ 
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   std::cout << "new case NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),
-      "2 32 220 200000 7 0 7 3 0 3 8 21669 8 ");
+      "2 32 220 200000 7 0 7 3 0 3 8 21669 8 -1 ");
 }
 
 TEST_F(NLLLossTiling, NLLLoss_tiling17) {
@@ -845,12 +845,12 @@ TEST_F(NLLLossTiling, NLLLoss_tiling17) {
   TENSOR_OUTPUT(opParas, tensorOutputTotalWeight, total_weight);
 
   std::string compileInfo =
-      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\"}}";
+      "{\"vars\": {\"ub_size\": 65024, \"core_num\": 32, \"reduction\": \"sum\", \"ignore_index\": -1}}";
 
   optiling::utils::OpRunInfo runInfo;
   RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   std::cout << "NLLLossTilingData: " << to_string(runInfo.GetAllTilingData()) << std::endl;
   EXPECT_EQ(
       to_string(runInfo.GetAllTilingData()),
-      "1 16 16 32 1 0 1 1 0 1 59392 1856 32 ");
+      "1 16 16 32 1 0 1 1 0 1 59392 1856 32 -1 ");
 }

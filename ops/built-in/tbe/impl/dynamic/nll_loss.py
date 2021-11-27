@@ -80,6 +80,9 @@ def check_supported(x, target, weight, y, total_weight, reduction="mean", ignore
     if tbe_platform.api_check_support("tik.vgatherb"):
         return True, ""
 
+    if weight is None:
+        return True, ""
+
     if util_common.is_unknown([x, target, weight]):
         return True, ""
 
@@ -273,6 +276,8 @@ def _init_tiling_params(tik_inst, tiling_reg_list):
     tiling_reg_list[11] = tik_inst.Scalar(Constant.TILING_CTRL_PARAM[0], "target_size")
     # weight size
     tiling_reg_list[12] = tik_inst.Scalar(Constant.TILING_CTRL_PARAM[0], "weight_size")
+    # ignore index
+    tiling_reg_list[13] = tik_inst.Scalar(Constant.TILING_CTRL_PARAM[0], "ignore_index")
 
     return tiling_reg_list
 
@@ -308,6 +313,8 @@ def _get_tiling_params(tik_inst, ub_tiling, tiling_reg_list):
     tiling_reg_list[11].set_as(ub_tiling[11])
     # get weight size
     tiling_reg_list[12].set_as(ub_tiling[12])
+    # get ignore index
+    tiling_reg_list[13].set_as(ub_tiling[13])
 
 
 # 'pylint: disable=unused-argument, invalid-name, too-many-arguments, too-many-locals
@@ -316,7 +323,7 @@ def _init_scalar_params(block_idx, scalar_params_list, tiling_data_list):
     init scalar params
     """
     _, c_size, per_core_size, core_loop_cnt, core_x_loop_size, core_target_loop_size, core_left_size, core_x_offset, \
-        core_target_offset, core_x_left_offset, core_target_left_offset, _, _, _, _ = scalar_params_list
+        core_target_offset, core_x_left_offset, core_target_left_offset, _, _, _, _, _ = scalar_params_list
 
     size, loop_cnt, left_size = tiling_data_list
     target_loop_size = (size - left_size) // loop_cnt
@@ -372,6 +379,7 @@ def _get_scalar_params(tik_inst, block_idx, tiling_reg_list, target_dtype):
     x_size = tiling_reg_list[10]
     target_size = tiling_reg_list[11]
     weight_size = tiling_reg_list[12]
+    ignore_index = tiling_reg_list[13]
 
     core_loop_cnt = tik_inst.Scalar("int64", "core_loop_cnt")
     core_x_loop_size = tik_inst.Scalar("int64", "core_x_loop_size")
@@ -386,7 +394,7 @@ def _get_scalar_params(tik_inst, block_idx, tiling_reg_list, target_dtype):
     scalar_params = [
         need_core_num, c_size, per_core_size, core_loop_cnt, core_x_loop_size, core_target_loop_size, core_left_size,
         core_x_offset, core_target_offset, core_x_left_offset, core_target_left_offset, target_index, x_size,
-        target_size, weight_size
+        target_size, weight_size, ignore_index
     ]
 
     # last core
@@ -415,7 +423,7 @@ def _process_valid_data(tik_inst, data_x, data_weight, ub_x, ub_weight, ub_valid
     # get sum of valid_weight
     if reduction == "sum":
         reduce_sum_compute(tik_inst, ub_x, ub_valid_x, ub_work_space, target_loop_size, data_x.dtype)
-        reduce_sum_compute(tik_inst, ub_weight, ub_valid_weight, ub_work_space, target_loop_size, data_weight.dtype)
+        reduce_sum_compute(tik_inst, ub_weight, ub_valid_weight, ub_work_space, target_loop_size, ub_weight.dtype)
 
 
 def _data_move_in_x(tik_inst, data_x, ub_x, x_offset, x_loop_size):
@@ -430,8 +438,11 @@ def _data_move_in_weight(tik_inst, data_weight, ub_weight, weight_loop_size):
     """
     do move weight from out to ub
     """
-    weight_data_one_block = _get_element_cnt_one_block(data_weight.dtype)
-    tik_inst.data_move(ub_weight, data_weight, 0, 1, _ceil_div(weight_loop_size, weight_data_one_block), 0, 0)
+    weight_data_one_block = _get_element_cnt_one_block(ub_weight.dtype)
+    if data_weight is None:
+        tik_inst.vector_dup(weight_data_one_block, ub_weight, 1, 1, 1, 8)
+    else:
+        tik_inst.data_move(ub_weight, data_weight, 0, 1, _ceil_div(weight_loop_size, weight_data_one_block), 0, 0)
 
 
 def _data_move_in_target(tik_inst, data_target, ub_target, target_offset, target_loop_size):
@@ -469,7 +480,7 @@ def _normal_weight_nll_loss(tik_inst, block_idx, scalar_params, trans_params):
     """
     need_core_num, c_size, _, core_loop_cnt, core_x_loop_size, core_target_loop_size, core_left_size, core_x_offset, \
         core_target_offset, core_x_left_offset, core_target_left_offset, target_index, x_size, target_size, \
-        weight_size = scalar_params
+        weight_size, ignore_index = scalar_params
 
     data_x, data_target, data_weight, data_y, data_total_weight, reduction = trans_params
 
@@ -489,7 +500,7 @@ def _normal_weight_nll_loss(tik_inst, block_idx, scalar_params, trans_params):
                 process data in normal weight
                 """
                 x_data_one_block = _get_element_cnt_one_block(data_x.dtype)
-                weight_data_one_block = _get_element_cnt_one_block(data_weight.dtype)
+                weight_data_one_block = _get_element_cnt_one_block(ub_weight.dtype)
                 tik_inst.vector_dup(x_data_one_block, ub_zero_x, 0, 1, 1, 8)
                 tik_inst.vector_dup(weight_data_one_block, ub_zero_weight, 0, 1, 1, 8)
 
@@ -512,13 +523,22 @@ def _normal_weight_nll_loss(tik_inst, block_idx, scalar_params, trans_params):
                     with tik_inst.for_range(0, target_loop_size) as n_lp_cnt:
                         target_index.set_as(ub_target[n_lp_cnt])
 
-                        # process ignore index target
-                        with tik_inst.if_scope(tik.any(target_index < 0, target_index >= c_size)):
-                            target_index.set_as(-1)
+                        if data_weight is None:
+                            with tik_inst.if_scope(target_index == ignore_index):
+                                target_index.set_as(-1)
+                            ub_valid_x[n_lp_cnt] = ub_x[n_lp_cnt * c_size + target_index]
 
-                        # set valid x and weight
-                        ub_valid_x[n_lp_cnt] = ub_x[n_lp_cnt * c_size + target_index]
-                        ub_valid_weight[n_lp_cnt] = ub_weight[target_index]
+                            with tik_inst.if_scope(target_index != -1):
+                                target_index.set_as(0)
+                            ub_valid_weight[n_lp_cnt] = ub_weight[target_index]
+                        else:
+                            # process ignore index target
+                            with tik_inst.if_scope(tik.any(target_index < 0, target_index >= c_size)):
+                                target_index.set_as(-1)
+
+                            # set valid x and weight
+                            ub_valid_x[n_lp_cnt] = ub_x[n_lp_cnt * c_size + target_index]
+                            ub_valid_weight[n_lp_cnt] = ub_weight[target_index]
 
                     # process valid data
                     _process_valid_data(tik_inst, data_x, data_weight, ub_x, ub_weight, ub_valid_x, ub_valid_weight,
@@ -551,7 +571,7 @@ def _large_weight_nll_loss(tik_inst, block_idx, scalar_params, trans_params):
 
     need_core_num, c_size, _, core_loop_cnt, core_x_loop_size, core_target_loop_size, core_left_size, core_x_offset, \
         core_target_offset, core_x_left_offset, core_target_left_offset, target_index, x_size, target_size, \
-        weight_size = scalar_params
+        weight_size, ignore_index = scalar_params
 
     ub_x, ub_target, ub_weight, ub_valid_x, ub_valid_weight, ub_work_space = \
         _init_large_weight_ub(tik_inst, data_x, data_target, data_weight, x_size, target_size,
@@ -569,7 +589,7 @@ def _large_weight_nll_loss(tik_inst, block_idx, scalar_params, trans_params):
                 process data in large weight
                 """
                 x_data_one_block = _get_element_cnt_one_block(data_x.dtype)
-                weight_data_one_block = _get_element_cnt_one_block(data_weight.dtype)
+                weight_data_one_block = _get_element_cnt_one_block(ub_weight.dtype)
 
                 # every loop n is multiples of 32byte, if not process in one core
                 with tik_inst.for_range(0, loop_cnt) as lp_cnt:
@@ -579,14 +599,23 @@ def _large_weight_nll_loss(tik_inst, block_idx, scalar_params, trans_params):
                     with tik_inst.for_range(0, target_loop_size) as n_lp_cnt:
                         target_index.set_as(ub_target[n_lp_cnt])
 
-                        # process ignore index target
-                        with tik_inst.if_scope(tik.any(target_index < 0, target_index >= c_size)):
-                            tik_inst.vector_dup(x_data_one_block, ub_x, 0, 1, 1, 8)
-                            tik_inst.vector_dup(weight_data_one_block, ub_weight, 0, 1, 1, 8)
-                        with tik_inst.else_scope():
-                            x_offset = x_offset + lp_cnt * x_loop_size + n_lp_cnt * c_size + target_index
-                            tik_inst.data_move(ub_x, data_x[x_offset], 0, 1, 1, 0, 0)
-                            tik_inst.data_move(ub_weight, data_weight[target_index], 0, 1, 1, 0, 0)
+                        if data_weight is None:
+                            with tik_inst.if_scope(target_index == ignore_index):
+                                tik_inst.vector_dup(x_data_one_block, ub_x, 0, 1, 1, 8)
+                                tik_inst.vector_dup(weight_data_one_block, ub_weight, 0, 1, 1, 8)
+                            with tik_inst.else_scope():
+                                x_offset = x_offset + lp_cnt * x_loop_size + n_lp_cnt * c_size + target_index
+                                tik_inst.data_move(ub_x, data_x[x_offset], 0, 1, 1, 0, 0)
+                                tik_inst.vector_dup(weight_data_one_block, ub_weight, 1, 1, 1, 8)
+                        else:
+                            # process ignore index target
+                            with tik_inst.if_scope(tik.any(target_index < 0, target_index >= c_size)):
+                                tik_inst.vector_dup(x_data_one_block, ub_x, 0, 1, 1, 8)
+                                tik_inst.vector_dup(weight_data_one_block, ub_weight, 0, 1, 1, 8)
+                            with tik_inst.else_scope():
+                                x_offset = x_offset + lp_cnt * x_loop_size + n_lp_cnt * c_size + target_index
+                                tik_inst.data_move(ub_x, data_x[x_offset], 0, 1, 1, 0, 0)
+                                tik_inst.data_move(ub_weight, data_weight[target_index], 0, 1, 1, 0, 0)
 
                         ub_valid_x[n_lp_cnt] = ub_x[0]
                         ub_valid_weight[n_lp_cnt] = ub_weight[0]
@@ -628,15 +657,20 @@ def _init_normal_weight_ub(tik_inst, data_x, data_target, data_weight, x_size, t
     """
     init normal weight ub
     """
+    if data_weight is None:
+        weight_dtype = data_x.dtype
+    else:
+        weight_dtype = data_weight.dtype
+
     ub_all_x = tik_inst.Tensor(data_x.dtype, (x_size + 8,), tik.scope_ubuf, "ub_all_x")
     ub_zero_x = ub_all_x[0:8]
     ub_x = ub_all_x[8:]
     ub_target = tik_inst.Tensor(data_target.dtype, (target_size,), tik.scope_ubuf, "ub_target")
-    ub_all_weight = tik_inst.Tensor(data_weight.dtype, (weight_size + 8,), tik.scope_ubuf, "ub_all_weight")
+    ub_all_weight = tik_inst.Tensor(weight_dtype, (weight_size + 8,), tik.scope_ubuf, "ub_all_weight")
     ub_zero_weight = ub_all_weight[0:8]
     ub_weight = ub_all_weight[8:]
     ub_valid_x = tik_inst.Tensor(data_x.dtype, (target_size,), tik.scope_ubuf, "ub_valid_x")
-    ub_valid_weight = tik_inst.Tensor(data_weight.dtype, (target_size,), tik.scope_ubuf, "ub_valid_weight")
+    ub_valid_weight = tik_inst.Tensor(weight_dtype, (target_size,), tik.scope_ubuf, "ub_valid_weight")
     ub_work_space = None
     if reduction == "sum":
         ub_work_space = _get_reduce_sum_ub_work_space(tik_inst, data_x.dtype, target_size)
@@ -648,11 +682,16 @@ def _init_large_weight_ub(tik_inst, data_x, data_target, data_weight, x_size, ta
     """
     init large weight ub
     """
+    if data_weight is None:
+        weight_dtype = data_x.dtype
+    else:
+        weight_dtype = data_weight.dtype
+
     ub_x = tik_inst.Tensor(data_x.dtype, (x_size,), tik.scope_ubuf, "ub_x")
     ub_target = tik_inst.Tensor(data_target.dtype, (target_size,), tik.scope_ubuf, "ub_target")
-    ub_weight = tik_inst.Tensor(data_weight.dtype, (weight_size,), tik.scope_ubuf, "ub_weight")
+    ub_weight = tik_inst.Tensor(weight_dtype, (weight_size,), tik.scope_ubuf, "ub_weight")
     ub_valid_x = tik_inst.Tensor(data_x.dtype, (target_size,), tik.scope_ubuf, "ub_valid_x")
-    ub_valid_weight = tik_inst.Tensor(data_weight.dtype, (target_size,), tik.scope_ubuf, "ub_valid_weight")
+    ub_valid_weight = tik_inst.Tensor(weight_dtype, (target_size,), tik.scope_ubuf, "ub_valid_weight")
     ub_work_space = None
     if reduction == "sum":
         ub_work_space = _get_reduce_sum_ub_work_space(tik_inst, data_x.dtype, target_size)
@@ -721,7 +760,12 @@ def nll_loss(x, target, weight, y, total_weight, reduction="mean", ignore_index=
     """
     x_dtype = x.get("dtype").lower()
     target_dtype = target.get("dtype").lower()
-    weight_dtype = weight.get("dtype").lower()
+
+    if weight is None:
+        weight_dtype = x_dtype
+    else:
+        weight_dtype = weight.get("dtype").lower()
+
     y_dtype = y.get("dtype").lower()
     total_weight_dtype = total_weight.get("dtype").lower()
     _check_input_params(x_dtype, target_dtype, weight_dtype, y_dtype, total_weight_dtype, reduction)
@@ -729,7 +773,11 @@ def nll_loss(x, target, weight, y, total_weight, reduction="mean", ignore_index=
     tik_inst = tik.Tik()
     data_x = tik_inst.Tensor(x_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "data_x")
     data_target = tik_inst.Tensor(target_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "data_target")
-    data_weight = tik_inst.Tensor(weight_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "data_weight")
+
+    data_weight = None
+    if weight is not None:
+        data_weight = tik_inst.Tensor(weight_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "data_weight")
+
     data_tiling = tik_inst.Tensor(Constant.TILING_CTRL_PARAM[0], (Constant.TILING_CTRL_PARAM[1],), tik.scope_gm,
                                   "data_tiling")
     if reduction == "none":
@@ -755,9 +803,14 @@ def nll_loss(x, target, weight, y, total_weight, reduction="mean", ignore_index=
         "ignore_index": ignore_index
     })
 
+    if data_weight is None:
+        inputs = [data_x, data_target]
+    else:
+        inputs = [data_x, data_target, data_weight]
+
     opt_config = {"enable_const_fold": True}
     tik_inst.BuildCCE(kernel_name=kernel_name,
-                      inputs=[data_x, data_target, data_weight],
+                      inputs=inputs,
                       outputs=[data_y, data_total_weight],
                       flowtable=[data_tiling],
                       config=opt_config)

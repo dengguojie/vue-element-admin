@@ -31,7 +31,7 @@
 namespace {
   constexpr int32_t TILING_FACTOR_2 = 2;
   constexpr int32_t TILING_DIVIDE_3 = 3;
-  constexpr int32_t RESIZE_VALUE_3 = 3;
+  constexpr int32_t RESIZE_VALUE_4 = 4;
 }
 
 namespace optiling {
@@ -69,17 +69,18 @@ static int64_t GetMod(const int64_t l_value, const int64_t r_value) {
 }
 
 bool GetCompileParams(const std::string& op_type, const std::vector<int64_t>& op_compile_info, int64_t& core_num,
-                      int64_t& ub_size, int64_t& reduction) {
+                      int64_t& ub_size, int64_t& reduction, int64_t& ignore_index) {
   OP_TILING_CHECK(
-      op_compile_info.size() != 3,
-      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the compile info num is not equal expect compile_info(3), is %zu",
+      op_compile_info.size() != 4,
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "the compile info num is not equal expect compile_info(4), is %zu",
                                       op_compile_info.size()),
       return false);
   core_num = op_compile_info[0];
   ub_size = op_compile_info[1];
   reduction = op_compile_info[2];
-  OP_LOGD(op_type.c_str(), "NLLLossTiling: GetCompileParams, core_num[%lld], ub_size[%lld], reduction[%lld].",
-          core_num, ub_size, reduction);
+  ignore_index = op_compile_info[3];
+  OP_LOGD(op_type.c_str(), "NLLLossTiling: GetCompileParams, core_num[%lld], ub_size[%lld], reduction[%lld], "
+          "ignore_index[%lld].", core_num, ub_size, reduction, ignore_index);
 
   return true;
 }
@@ -283,7 +284,7 @@ bool NLLLossParseFunc(const std::string& op_type,
   }
   const nlohmann::json& all_vars = compile_info["vars"];
 
-  compile_value.resize(RESIZE_VALUE_3);
+  compile_value.resize(RESIZE_VALUE_4);
 
   // get core_num value
   OP_TILING_CHECK(!GetCompileValue(all_vars, "core_num", compile_value[0]),
@@ -305,6 +306,12 @@ bool NLLLossParseFunc(const std::string& op_type,
                                                   reduction_str.c_str()),
                   return false);
   compile_value[2] = mode_it->second;
+
+  // get ignore_index value
+  OP_TILING_CHECK(!GetCompileValue(all_vars, "ignore_index", compile_value[3]),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossParseFunc, get ignore_index error"),
+                  return false);
+
   OP_LOGI(op_type.c_str(), "GetCompileParams success.");
   return true;
 }
@@ -348,6 +355,7 @@ bool NLLLossTiling(const std::string& op_type, const ge::Operator& op_paras, con
   int64_t ub_max_line = 0;
 
   int64_t reduction;
+  int64_t ignore_index;
   int64_t min_aligned = 1;
   bool is_left_data = true;
 
@@ -373,7 +381,7 @@ bool NLLLossTiling(const std::string& op_type, const ge::Operator& op_paras, con
     }
   }
 
-  if (!GetCompileParams(op_type, op_info, core_num, ub_size, reduction)) {
+  if (!GetCompileParams(op_type, op_info, core_num, ub_size, reduction, ignore_index)) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "NLLLossTiling: GetCompileParams error.");
     return false;
   }
@@ -422,6 +430,7 @@ bool NLLLossTiling(const std::string& op_type, const ge::Operator& op_paras, con
           last_core_size, last_core_loop_cnt, last_core_left_size);
   OP_LOGD(op_type.c_str(), "NLLLossTiling: x_size=%lld, target_size=%lld, weight_size=%lld", x_size, target_size,
           weight_size);
+  OP_LOGD(op_type.c_str(), "NLLLossTiling: ignore_index=%lld", ignore_index);
 
   PROFILING_TILING_AFTER_CALCU_TILING_REG();
   // set tiling data
@@ -438,6 +447,7 @@ bool NLLLossTiling(const std::string& op_type, const ge::Operator& op_paras, con
   run_info.AddTilingData(x_size);
   run_info.AddTilingData(target_size);
   run_info.AddTilingData(weight_size);
+  run_info.AddTilingData(ignore_index);
 
   // block_dim, core num used in tik op
   // workspace, null for tik op

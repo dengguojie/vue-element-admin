@@ -28,11 +28,17 @@ def test_op_check_supported(test_arg):
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
                     {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
                     "none", -100)
-    assert result1[0], ""
-
-    assert not result2[0], ""
-
-    assert result3[0], ""
+    result4 = check_supported(
+                    {"shape": (2, 16), "dtype": "float32", "format": "ND", "ori_shape": (2, 16), "ori_format": "ND"},
+                    {"shape": (2,), "dtype": "int32", "format": "ND", "ori_shape": (2,), "ori_format": "ND"},
+                    None,
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
+                    {"shape": (1,), "dtype": "float32", "format": "ND", "ori_shape": (1,), "ori_format": "ND"},
+                    "sum", -100)
+    assert result1[0]
+    assert not result2[0]
+    assert result3[0]
+    assert result4[0]
 
 
 def gen_nllloss_case(dynamic_input_shape_list, ori_input_shape_list,
@@ -68,6 +74,19 @@ def gen_nllloss_case(dynamic_input_shape_list, ori_input_shape_list,
             "case_name": case_name_val,
             "expect": expect,
             "support_expect": True}
+
+
+def gen_nllloss_weight_option_case(dynamic_input_shape_list, ori_input_shape_list,
+                                   dtype, dtype_target, src_format, reduction,
+                                   ignore_idx, case_name_val, expect):
+    """
+    generate ut case
+    """
+    case_info = gen_nllloss_case(dynamic_input_shape_list, ori_input_shape_list,
+                                 dtype, dtype_target, src_format, reduction,
+                                 ignore_idx, case_name_val, expect)
+    case_info.get("params")[2] = None
+    return case_info
 
 
 ut_case.add_case(["Ascend910A"],
@@ -159,6 +178,12 @@ ut_case.add_case(["Ascend910A"],
                                   [(200, 15003), (200,), (15003,)],
                                   "float32", "int32", "ND",
                                   "other", -100, "case_15", RuntimeError))
+
+ut_case.add_case(["Ascend910A"],
+                 gen_nllloss_weight_option_case([(-1, -1), (-1,), (-1,)],
+                                                [(200, 15003), (200,), (15003,)],
+                                                "float32", "int32", "ND",
+                                                "mean", -100, "case_16", "success"))
 
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 if __name__ == '__main__':
