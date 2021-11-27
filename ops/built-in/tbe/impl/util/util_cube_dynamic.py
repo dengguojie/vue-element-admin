@@ -54,6 +54,7 @@ _K_MIN_RANGE = 1
 _K_MAX_RANGE = 4096
 _K_DIM_SIZE = 5
 MAX_N_FUZZ_BUILD = 2**31 - 1
+MAX_HW_FUZZ_BUILD = 4096
 GRADE_N = (0, 1, 3, 7, 15, 31, MAX_N_FUZZ_BUILD)
 GRADE_H = (0, 3, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4096)
 GRADE_W = (0, 3, 15, 31, 63, 127, 191, 255, 511, 767, 1023, 4096)
@@ -130,7 +131,42 @@ def set_default_para():
     return default_para
 
 
-def modify_w_range_max(fmap, infilter, dedy, strides, data_format, op_type):
+def check_para_fuzz_compile(x, y, dilations, is_gragh_mode, op_type):
+    # unknow_rank inputs ori_shape is [-2], others' shape length is 4
+    unknow_rank = len(x["ori_shape"]) == 1 and x["ori_shape"][0] == -2
+    if unknow_rank:
+        warnings.warn("{} not support unknow_rank".format(op_type))
+        return [{"result": "UNSUPPORTED", "reason": {"param_index": [2], "type": ["lower_limit"]}}]
+    have_range = {"inputs": x, "outputs": y}
+    support_format = ["NCHW", "NHWC"]
+    for name, tensor in have_range.items():
+        if tensor.get("ori_format") not in support_format:
+            warnings.warn("{} invalid {} ori_format {}, only support {}".format(op_type,
+                            name, str(tensor.get("ori_format")), str(support_format)))
+            return [{"result": "UNSUPPORTED", "reason": {"param_index": [2], "type": ["lower_limit"]}}]
+        # only change shape NHW dim to -1, range is already set at infershape
+        valid = isinstance(tensor.get("ori_shape"), (list, tuple)) and len(tensor["ori_shape"]) == FORMAT_NCHW_DIM
+        if not valid:
+            warnings.warn("{}, invalid {} ori_shape {}, only support {}d".format(op_type,
+                            name, str(tensor.get("ori_shape")), str(FORMAT_NCHW_DIM)))
+            return [{"result": "UNSUPPORTED", "reason": {"param_index": [2], "type": ["lower_limit"]}}]
+        tensor_format = tensor.get("ori_format")
+        n_pos, h_pos, w_pos = tensor_format.find("N"), tensor_format.find("H"), tensor_format.find("W")
+        if (dilations[h_pos] != 1 or dilations[w_pos] != 1):
+            return [{"result": "UNSUPPORTED", "reason": {"param_index": [2], "type": ["lower_limit"]}}]
+        ori_range = tensor.get("ori_range")
+        if is_gragh_mode and (any([not dim_range[1] for dim_range in ori_range]) or \
+            any([dim_range[1] > MAX_HW_FUZZ_BUILD for dim_range in [ori_range[h_pos], ori_range[w_pos]]]) \
+            or ori_range[n_pos][1] > MAX_N_FUZZ_BUILD):
+            return [{"result": "UNSUPPORTED", "reason": {"param_index": [2], "type": ["upper_limit"]}}]
+        if is_gragh_mode and (any([dim_range[0] < 1 for dim_range in ori_range]) or \
+            any([dim_range[0] > MAX_HW_FUZZ_BUILD for dim_range in [ori_range[h_pos], ori_range[w_pos]]]) \
+            or ori_range[n_pos][0] > MAX_N_FUZZ_BUILD):
+            return [{"result": "UNSUPPORTED", "reason": {"param_index": [2], "type": ["lower_limit"]}}]
+    return []
+
+
+def modify_w_range_max(fmap, infilter, dedy, strides, data_format, op_type, is_gragh_mode=False):
     """
     modify w range max value
     """
@@ -146,6 +182,10 @@ def modify_w_range_max(fmap, infilter, dedy, strides, data_format, op_type):
     stride_w = strides[data_format.find("W")]
     out_backprop_dtype = dedy.get("dtype").lower()
     filter_dtype = infilter.get("dtype").lower()
+    if is_gragh_mode:
+        fmap_w = fmap.get("ori_range")[fmap.get("ori_format").find("W")][1]
+        dedy_h = dedy.get("ori_range")[dedy.get("ori_format").find("H")][1]
+        dedy_w = dedy.get("ori_range")[dedy.get("ori_format").find("W")][1]
 
     c0_size = cce_params.C0_SIZE
     c0_size_k = cce_params.CUBE_MKN[filter_dtype]['mac'][1]
@@ -161,8 +201,13 @@ def modify_w_range_max(fmap, infilter, dedy, strides, data_format, op_type):
 
         is_single_point = False
         if w_max >= dedy_w:
-            return dedy_h_max, w_max, is_single_point
+            return {"dedy_h_max": dedy_h_max, "w_max": w_max,
+                    "is_single_point": is_single_point}
 
+        graph_mode_invalid = is_gragh_mode and dedy.get("ori_range")[dedy.get("ori_format").find("W")][1] != \
+                                               dedy.get("ori_range")[dedy.get("ori_format").find("W")][0]
+        if graph_mode_invalid:
+            break
         if fmap_w % c0_size == 0:
             is_single_point = True
             h_value_max = min(filter_h, dedy_h_max * stride_h)
@@ -170,25 +215,28 @@ def modify_w_range_max(fmap, infilter, dedy, strides, data_format, op_type):
             w_max = w_value // stride_w
             if w_max >= dedy_w:
                 w_max = dedy_w
-                return dedy_h_max, w_max, is_single_point
+                return {"dedy_h_max": dedy_h_max, "w_max": w_max,
+                        "is_single_point": is_single_point}
             dedy_h_max = dedy_h_max - 1
             continue
         dedy_h_max = dedy_h_max - 1
+    warnings.warn("{}, Input shape is too large, the minimum tiling may exceed L1_Buffer")
+    return {"is_exceed_l1": True}
 
-    err_man.raise_err_specific_user(op_type,
-                                    "Input shape is too large, the minimum tiling may exceed L1_Buffer")
 
-
-def modify_dy_w_range_max_opti(dedy : dict, infilter : dict, strides : list, data_format : str, op_type : str) -> dict:
+def modify_dy_w_range_max_opti(dedy : dict, infilter : dict, strides : list, data_format : str, op_type : str, is_gragh_mode=False):
     """
     modify dy_w range max opti
     """
 
+    is_pass_check = True
+    param_index_dict = {"conv2d_backprop_input": 2, "depthwise_conv2d_backprop_input": 2,
+                        "conv2d_transpose": 1, "deconvolution": 0}
     filter_shape = infilter.get("ori_shape")
     filter_format = infilter.get("ori_format")
     _, _, pos_filter_h, pos_filter_w = pos_from_format(filter_format)
     if filter_shape[pos_filter_h] != 1 or filter_shape[pos_filter_w] != 1:
-        return dedy
+        return is_pass_check, dedy
     dedy_format = dedy.get("ori_format")
     dedy_shape = dedy.get("ori_shape")
     dedy_range = dedy.get("ori_range")
@@ -196,15 +244,24 @@ def modify_dy_w_range_max_opti(dedy : dict, infilter : dict, strides : list, dat
     _, _, pos_attr_h, pos_attr_w = pos_from_format(data_format)
     w_max = _K_MAX_RANGE // (strides[pos_attr_h] * strides[pos_attr_w])
     if dedy_shape[pos_w] > DYNAMIC_FLAG and w_max < dedy_shape[pos_w]:
-        err_man.raise_err_specific_user(op_type,
-                                        "w of dedy is too large for opti scheme ,w can't larger than {}"
-                                        "actually is {}".format(str(w_max), str(dedy_shape[pos_w])))
+        warnings.warn("{}, w of dedy is too large for opti scheme ,w can't larger than {}"
+                      "actually is {}".format(op_type, str(w_max), str(dedy_shape[pos_w])))
+        is_pass_check = False
+        return is_pass_check, [{"result": "UNSUPPORTED", "reason": {"param_index": [param_index_dict.get(op_type)],
+                                "type": ["lower_limit"]}}]
     if w_max < dedy_range[pos_w][1]:
+        if is_gragh_mode:
+            warnings.warn("w_range_max of dedy is too large for opti scheme"
+                        "w_range_max should not larger than {}, actually is {}"
+                        .format(str(w_max), str(dedy_range[pos_w][1])))
+            is_pass_check = False
+            return is_pass_check, [{"result": "UNSUPPORTED", "reason": {"param_index": [param_index_dict.get(op_type)],
+                                    "type": ["upper_limit"]}}]
         warnings.warn("w_range_max of dedy is too large for opti scheme"
                       "w_range_max will be modified to {}, actually is {}"
-                      .format(str(dedy_range[pos_w][1]), str(w_max)))
+                      .format(str(w_max), str(dedy_range[pos_w][1])))
         dedy_range[pos_w][1] = w_max
-    return dedy
+    return is_pass_check, dedy
 
 
 def correct_conv2d_backprop_range_start(input_d : dict, infilter : dict, dilations : list, \
@@ -212,8 +269,7 @@ def correct_conv2d_backprop_range_start(input_d : dict, infilter : dict, dilatio
     """
     correct conv2d backprop range start
     """
-
-    input_range = input_d.get("ori_range")
+    input_range = list(map(list, input_d.get("ori_range")))
     input_format = input_d.get("ori_format")
     filter_shape = infilter.get("ori_shape")
     filter_format = infilter.get("ori_format")
@@ -226,6 +282,7 @@ def correct_conv2d_backprop_range_start(input_d : dict, infilter : dict, dilatio
     low_w = kw_dilation - pads[2] - pads[3]
     input_range[pos_h][0] = input_range[pos_h][0] if input_range[pos_h][0] > low_h else low_h
     input_range[pos_w][0] = input_range[pos_w][0] if input_range[pos_w][0] > low_w else low_w
+    input_d["ori_range"] = input_range
     return input_d
 
 
@@ -253,11 +310,13 @@ def get_single_range(grade : list, shape_value : int, op_type : str) -> list:
     return [low, high]
 
 
-def gen_conv_shape_range(input_d : dict, op_type : str) -> dict:
+def gen_conv_shape_range(input_d : dict, op_type : str, is_graph_mode=False) -> dict:
     """
     gen conv shape range
     """
 
+    if is_graph_mode:
+        return input_d
     input_shape = input_d.get("ori_shape")
     input_format = input_d.get("ori_format")
     pos_n, _, pos_h, pos_w = pos_from_format(input_format)
@@ -271,6 +330,14 @@ def gen_conv_shape_range(input_d : dict, op_type : str) -> dict:
             input_range[key] = new_range
     input_d["ori_range"] = input_range
     return input_d
+
+
+def check_graph_mode(tensor):
+    # check graph mode or single mode in fuzzy compile
+    if (list(tensor.get("ori_shape")) == [-2] or DYNAMIC_FLAG in tensor.get("ori_shape") and
+        "ori_range" in tensor.keys()):
+        return True
+    return False
 
 
 class CubeParaProcess:

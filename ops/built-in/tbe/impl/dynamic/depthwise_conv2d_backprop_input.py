@@ -31,6 +31,7 @@ SHAPE_LEN = 5
 OP_TYPE = "depthwise_conv2d_backprop_input"
 DATA_FORMAT_WHITE_LIST = ["NCHW", "NHWC"]
 TAR_FORMAT = "NCHW"
+LOWER_STR = [{"result": "UNSUPPORTED", "reason": {"param_index": [2], "type": ["lower_limit"]}}]
 
 
 @tbe_register.register_param_generalization("DepthwiseConv2DBackpropInput")
@@ -60,10 +61,6 @@ def depthwise_conv2d_backprop_input_generalization(input_size,  # pylint: disabl
     list of params list:
         single item under "keep_rank" mode and multiple under "all_shape"
     """
-    support_mode = ["keep_rank"]
-    if generalize_config["mode"] not in support_mode:
-        err_man.raise_err_specific_user(OP_TYPE, "invalid generalize mode {}, only support {}".format(
-                                            str(generalize_config["mode"]), str(support_mode)))
     result = []
     if generalize_config["mode"] == "keep_rank":  # fuzz build situation
         # unknow_rank inputs ori_shape is [-2], others' shape length is 4
@@ -85,15 +82,22 @@ def depthwise_conv2d_backprop_input_generalization(input_size,  # pylint: disabl
         if "const_value" not in input_size:
             err_man.raise_err_specific_user(OP_TYPE, "invalid input_size tensor, need keyword:const_value.")
         out_backprop = gen_conv_shape_range(out_backprop, OP_TYPE)
-        out_backprop = modify_dy_w_range_max_opti(out_backprop, filter, strides, data_format, OP_TYPE)
+        is_pass_check, dedy_modify = modify_dy_w_range_max_opti(out_backprop, filter, strides, data_format, OP_TYPE)
+        if not is_pass_check:
+            return dedy_modify
+        out_backprop = dedy_modify
         # if over l1 size then modify w range
-        dy_h_range_max, dy_w_range_max, is_single_point = modify_w_range_max(
-            input_grad,
-            filter,
-            out_backprop,
-            strides,
-            data_format,
-            "depthwise_conv2d_backprop_input")
+        upper_range_result = modify_w_range_max(input_grad,
+                                                filter,
+                                                out_backprop,
+                                                strides,
+                                                data_format,
+                                                "depthwise_conv2d_backprop_input")
+        dy_h_range_max = upper_range_result.get("dedy_h_max")
+        dy_w_range_max = upper_range_result.get("w_max")
+        is_single_point = upper_range_result.get("is_single_point")
+        if upper_range_result.get("is_exceed_l1"):
+            return LOWER_STR
 
         # get dx_range depends on dy_range
         dy_range = out_backprop.get("ori_range")
@@ -110,10 +114,9 @@ def depthwise_conv2d_backprop_input_generalization(input_size,  # pylint: disabl
         filter_shape_nchw = conv2d_tranpose.get_input_nchw(filter.get("ori_shape"), filter.get("ori_format"))
         _, dy_range_nchw = conv2d_tranpose.get_input_nchw(dy_shape_nchw, ori_data_format, dy_range)
         dy_range_nchw[2] = [dy_range_nchw[2][0], min(dy_h_range_max, dy_range_nchw[2][1])]
+        dy_range_nchw[3] = [dy_range_nchw[3][0], min(dy_w_range_max, dy_range_nchw[3][1])]
         if is_single_point:
             dy_range_nchw[3] = [dy_w_range_max, dy_w_range_max]
-        else:
-            dy_range_nchw[3] = [dy_range_nchw[3][0], min(dy_w_range_max, dy_range_nchw[3][1])]
         if out_backprop["ori_shape"][out_backprop.get("ori_format").find("W")] > dy_range_nchw[3][1]:
             err_man.raise_err_specific_user("depthwise_conv2d_backprop_input",
                                             "invalid out_backprop ori_shape {}, w should not larger than {}".format(
@@ -134,7 +137,8 @@ def depthwise_conv2d_backprop_input_generalization(input_size,  # pylint: disabl
                 if tensor.get("ori_format") == TAR_FORMAT else [-1, -1, -1, tensor["ori_shape"][3]]
         result.append([input_size, filter, out_backprop, input_grad, strides, dilations, pads,
                        data_format, kernel_name])
-    return result
+        return result
+    return
 
 
 def _collect_ori_tensors(ori_paras):

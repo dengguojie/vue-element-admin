@@ -39,6 +39,7 @@ BATCH_ND_LENGTH = 3
 ND_LENGTH = 2
 L1FUSION_INPUT_CTR = 2
 SUPPORT_FORMAT = ["FRACTAL_NZ", "ND"]
+FUZZY_SUCC_LEN = 8
 
 
 def base_op_select_format(src_fp16_flag):
@@ -134,10 +135,14 @@ def batch_matmul_fuse_compute(input_x1, input_x2, bias, output_z,
 @tbe_register.register_param_generalization("BatchMatMul")
 def batch_matmul_generalization(input_x1, input_x2, bias=None, output_z=None,
                                 trans_a=False, trans_b=False, kernel_name="batchmatmul",
-                                generalize_config={"mode": "keep_rank"}):
+                                generalize_config=None):
     result = batch_matmul_v2_generalization(input_x1, input_x2, bias=bias, output_z=output_z,
                                             trans_a=trans_a, trans_b=trans_b, kernel_name=kernel_name,
                                             generalize_config=generalize_config)
+    # If pass fuzzy compile check, delete redundancy info, e.g offset_w, offset_x
+    if isinstance(result, list) and len(result) == FUZZY_SUCC_LEN:
+        input_x1, input_x2, bias, _, output_z, trans_a, trans_b, _ = result
+        result = [input_x1, input_x2, bias, output_z, trans_a, trans_b]
     return result
 
 

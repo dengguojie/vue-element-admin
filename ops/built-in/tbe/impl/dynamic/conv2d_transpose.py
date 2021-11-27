@@ -28,6 +28,7 @@ ORI_SHAPE_LEN = 4
 SHAPE_LEN = 5
 L1FUSION_INPUT_CTR = 2
 OP_TYPE = "conv2d_transpose"
+LOWER_STR = [{"result": "UNSUPPORTED", "reason": {"param_index": [1], "type": ["lower_limit"]}}]
 
 
 def get_op_support_info(input_size, x, filter, bias, offset_w, y, strides,
@@ -152,14 +153,22 @@ def conv2d_transpose_generalization(input_size,  # pylint: disable=W0622,C0103,R
                                                 "invalid {} ori_shape {}, only support {}d".format(
                                                     name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
         x = gen_conv_shape_range(x, OP_TYPE)
-        x = modify_dy_w_range_max_opti(x, filter, strides, data_format, OP_TYPE)
+        is_pass_check, dedy_modify = modify_dy_w_range_max_opti(x, filter, strides, data_format, OP_TYPE)
+        if not is_pass_check:
+            return dedy_modify
+        x = dedy_modify
         # if over l1 size then modify w range
-        dy_h_range_max, dy_w_range_max, is_single_point = modify_w_range_max(y,
-                                                             filter,
-                                                             x,
-                                                             strides,
-                                                             data_format,
-                                                             OP_TYPE)
+        upper_range_result = modify_w_range_max(y,
+                                                filter,
+                                                x,
+                                                strides,
+                                                data_format,
+                                                OP_TYPE)
+        dy_h_range_max = upper_range_result.get("dedy_h_max")
+        dy_w_range_max = upper_range_result.get("w_max")
+        is_single_point = upper_range_result.get("is_single_point")
+        if upper_range_result.get("is_exceed_l1"):
+            return LOWER_STR
 
         # modify dy_range
         dy_range = x.get("ori_range")

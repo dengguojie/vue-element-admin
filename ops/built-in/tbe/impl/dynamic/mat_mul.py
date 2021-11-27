@@ -31,6 +31,7 @@ from impl.util.util_common import cal_mini_l1_size_matmul
 from impl.dynamic.batch_matmul_v2 import batch_matmul_compute
 from impl.dynamic.batch_matmul_v2 import batch_matmul_v2_fuse_compute
 from impl.dynamic.batch_matmul_v2 import gen_op_select_format_params
+from impl.dynamic.batch_matmul_v2 import batch_matmul_v2_generalization
 
 
 # General limitation of the size for input shape: 2**32 - 1
@@ -192,29 +193,10 @@ def mat_mul_fuse_compute(input_x1, input_x2, bias, offset_w, output_y,
 @tbe_register.register_param_generalization("MatMulV2")
 def  matmul_generalization(input_x1, input_x2, bias, offset_w=None, output_y=None,
                            trans_a=False, trans_b=False, offset_x=0, kernel_name="matmul",
-                           generalize_config={"mode": "keep_rank"}):
-    result = []
-    if generalize_config["mode"] == "keep_rank": #fuzzy compile
-        # get range generalization
-        ori_range_x1 = util_gemm.cal_gemm_shape_range(input_x1["ori_shape"], input_x1["ori_format"])
-        ori_range_x2 = util_gemm.cal_gemm_shape_range(input_x2["ori_shape"], input_x2["ori_format"])
-        util_gemm.generalize_input_keep_rank_gemm(input_x1)
-        util_gemm.generalize_input_keep_rank_gemm(input_x2)
-        input_x1["ori_range"], input_x2["ori_range"] = ori_range_x1, ori_range_x2
-        if bias:
-            ori_range_bias = util_gemm.cal_gemm_shape_range(bias["ori_shape"], bias["ori_format"])
-            util_gemm.generalize_input_keep_rank_gemm(bias)
-            bias["ori_range"] = ori_range_bias
-        util_gemm.generalize_input_keep_rank_gemm(output_y)
-        result.append([input_x1, input_x2, bias, offset_w, output_y,
-                       {"trans_a": trans_a}, {"trans_b": trans_b}, {"offset_x": offset_x}])
-    else:
-        error_manager_cube.raise_err_one_para(
-            "E62306",
-            "MatMul",
-            "Invalid generalize mode, currently only support keep_rank"
-        )
-
+                           generalize_config=None):
+    result = batch_matmul_v2_generalization(input_x1, input_x2, bias=bias, offset_w=offset_w, output_z=output_y,
+                                            trans_a=trans_a, trans_b=trans_b, offset_x=offset_x,
+                                            kernel_name=kernel_name, generalize_config=generalize_config)
     return result
 
 

@@ -18,6 +18,7 @@ dynamic conv2d_backprop_filter
 from __future__ import absolute_import
 
 import warnings
+
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import operation
@@ -29,6 +30,7 @@ from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import tbe_register
 from impl.util.util_cube_dynamic import correct_conv2d_backprop_range_start
 from impl.util.util_cube_dynamic import gen_conv_shape_range
+from impl.util.util_cube_dynamic import check_graph_mode
 
 
 # the dim of shape in conv_backprop must be 4
@@ -71,6 +73,8 @@ DEFAULT_MAX_SHAPE_DIM = 1
 
 # the max size is 2**63-1
 DATA_SIZE_MAX = 9223372036854775807
+# in fuzzy compile, n dim max is 2**31-1
+FUZZY_NDIM_MAX = 2147483647
 
 # the bytes length of several dtype
 BIT_RATIO_DICT = {"int32": 4, "float32": 4, "float16": 2,
@@ -97,7 +101,8 @@ SHAPE_LEN = 5
 
 L1FUSION_INPUT_CTR = 2
 OP_TYPE = "conv2d_backprop_filter"
-
+LOWER_STR = [{"result": "UNSUPPORTED", "reason": {"param_index": [0, 2], "type": ["lower_limit", "lower_limit"]}}]
+UPPER_STR = [{"result": "UNSUPPORTED", "reason": {"param_index": [0, 2], "type": ["upper_limit", "upper_limit"]}}]
 
 def get_op_support_info(x, filter_size, out_backprop, y, strides, pads,
                         dilations, groups=1, data_format='NHWC',
@@ -479,11 +484,6 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
         dedw_nchw, pads, strides, dilations, dedy_shape)
 
     lower_bound, upper_bound = zip(*fmap_range)
-    # dtype check
-    para_check.check_dtype_rule(fmap_dtype, ["float16"])
-    para_check.check_dtype_rule(dedy_dtype, ["float16"])
-    para_check.check_dtype_rule(dedw_dtype, ["float16", "float32"])
-
     # Second : Furture Check, Mainly required by SRS
     # ===========================================================
     # the relation limits between shape
@@ -632,7 +632,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
 
 def _check_and_config_para(x, out_backprop, y,
                            strides, pads, dilations,
-                           groups, data_format, kernel_name):
+                           groups, data_format, kernel_name, graph_flag=False):
     x_ori_shape = list(x.get("ori_shape"))
     dedy_ori_shape = list(out_backprop.get("ori_shape"))
     dedw_ori_shape = list(y.get("ori_shape"))
@@ -677,6 +677,12 @@ def _check_and_config_para(x, out_backprop, y,
 
     fmap_shape, dedy_shape = \
         _get_input_shape(x_nchw, dedy_nchw, dedw_nchw)
+
+    if not graph_flag:
+        # dtype check
+        para_check.check_dtype_rule(x_dtype, ["float16"])
+        para_check.check_dtype_rule(dedy_dtype, ["float16"])
+        para_check.check_dtype_rule(dedw_dtype, ["float16", "float32"])
 
     strides, pads, dilations = _get_attrs(strides, pads, dilations, data_format)
     results = _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides, pads, dilations,
@@ -769,7 +775,7 @@ def _conv2d_backprop_filter_compute(x, filter_size, out_backprop, y,
     return {'op_placeholder': [fmap, filter_size, dedy], 'op_res': [dedw]}
 
 
-def _calc_max_fmap_w(x, out_backprop, y, strides, dilations, pads, groups, data_format):
+def _calc_max_fmap_w(x, out_backprop, y, strides, dilations, pads, groups, data_format, graph_flag):
     """
     modify max grade point, when exceed L1 size
 
@@ -794,33 +800,63 @@ def _calc_max_fmap_w(x, out_backprop, y, strides, dilations, pads, groups, data_
     w_index = x.get("ori_format").find("W")
     x_w_range = x.get("ori_range")[w_index]
     h_index = x.get("ori_format").find("H")
-    x_h_range = x.get("ori_range")[h_index] 
-    al1_min_byte = C0_SIZE * C0_SIZE * 2
+    x_h_range = x.get("ori_range")[h_index]
+    dy_w_range = out_backprop.get("ori_range")
     upper_fmap_h_padding = x_h_range[1] + pad_up + pad_down
     lower_fmap_h_padding = x_h_range[0] + pad_up + pad_down
     is_conv1d_situation = upper_fmap_h_padding == 1 and lower_fmap_h_padding == 1 and \
                           filter_h_dilation == 1 and stride_h == 1
     l1_size = tbe_platform.get_soc_spec("L1_SIZE")  # L1 size
-    bl1_min_byte = l1_size - al1_min_byte
+    # C0_SIZE * C0_SIZE * 2 is al1_min_byte
+    bl1_min_byte = l1_size - C0_SIZE * C0_SIZE * 2
+    kl1_min = bl1_min_byte // ((filter_h_dilation + stride_h) * C0_SIZE * 2)
+    kl1_min_devided_sixteen = bl1_min_byte // (filter_h_dilation * C0_SIZE * 2)
+    max_dedy_devided_sixteen = (kl1_min_devided_sixteen + pad_left + \
+                                pad_right - filter_w_dilation) // stride_w + 1
+    dedx_w = x_w_range[1] if graph_flag else x_nchw[W_DIM]
+    test_single_mode = (not graph_flag or (dy_w_range[w_index][0] == dy_w_range[w_index][1]))
+    upper_limit_flag = True if x_w_range[1] > kl1_min else False
+    lower_limit_flag = True if x_w_range[0] > kl1_min else False
     if not is_conv1d_situation:
-        kl1_min = bl1_min_byte // ((filter_h_dilation + stride_h) * C0_SIZE * 2)
-        kl1_min_devided_sixteen = bl1_min_byte // (filter_h_dilation * C0_SIZE * 2)
-        max_dedy_devided_sixteen = (kl1_min_devided_sixteen + pad_left + \
-                                    pad_right - filter_w_dilation) // stride_w + 1
         if kl1_min >= x_w_range[1]:
             x_w_range = x.get("ori_range")[w_index]
-        elif x_nchw[W_DIM] <= kl1_min:
+        elif dedx_w <= kl1_min:
             x_w_range = (x_w_range[0], kl1_min)
-        elif dedy_nchw[W_DIM] % C0_SIZE == 0 and dedy_nchw[W_DIM] <= max_dedy_devided_sixteen:
-            x_w_range_low, x_w_range_high = _get_input(dedy_nchw[W_DIM], 
-                                                       filter_w_dilation, pads[2:], stride_w)            
-            x_w_range_low = max(x_w_range_low, x_w_range[0])
-            x_w_range_high = min(x_w_range_high, x_w_range[1])
-            x_w_range = (x_w_range_low, x_w_range_high)                 
+        elif test_single_mode:
+            real_dedy = dy_w_range[w_index][0] if graph_flag else dedy_nchw[W_DIM]
+            if (real_dedy % C0_SIZE == 0 and real_dedy <= max_dedy_devided_sixteen):
+                x_w_range_low, x_w_range_high = _get_input(real_dedy, filter_w_dilation, pads[2:], stride_w)
+                x_w_range_low = max(x_w_range_low, x_w_range[0])
+                x_w_range_high = min(x_w_range_high, x_w_range[1])
+                x_w_range = (x_w_range_low, x_w_range_high)
         else:
-            error_manager_cube.raise_err_specific_user("conv2d_backprop_filter",
-                                                        "Input is too large, the minimum tiling may exceed L1_Buffer")
-    return x_w_range
+            upper_res_flag = graph_flag and upper_limit_flag and not lower_limit_flag
+            if upper_res_flag:
+                return False, UPPER_STR
+            return False, LOWER_STR
+    return True, x_w_range
+
+
+def precheck_graph_range(x, out_backprop):
+    n_dim = x.get("ori_format").find("N")
+    h_dim = x.get("ori_format").find("H")
+    w_dim = x.get("ori_format").find("W")
+    x_ori_range, dy_ori_range = x.get("ori_range"), out_backprop.get("ori_range")
+    for ori_range in [x_ori_range, dy_ori_range]:
+        lower_limit_flag = (len(ori_range) != ORI_SHAPE_LEN or ori_range[n_dim][0] > FUZZY_NDIM_MAX or
+                            ori_range[h_dim][0] > FMAP_HW_MAX or ori_range[w_dim][0] > FMAP_HW_MAX)
+        if lower_limit_flag:
+            warnings.warn("{}, if lower range exceeds 4096(H/W dim) or {}(N dim) or len(ori_range) != {}, "
+                          "it's lower limit".format(OP_TYPE, FUZZY_NDIM_MAX, ORI_SHAPE_LEN))
+            return LOWER_STR
+        range_none_flag = True if None in list(zip(*ori_range))[1] else False
+        upper_limit_flag = (range_none_flag or ori_range[n_dim][1] > FUZZY_NDIM_MAX or
+                            ori_range[h_dim][1] > FMAP_HW_MAX or ori_range[w_dim][1] > FMAP_HW_MAX)
+        if upper_limit_flag:
+            warnings.warn("{}, if upper range exceeds 4096(H/W dim) or {}(N dim) or is None, "
+                          "it's upper limit".format(OP_TYPE, FUZZY_NDIM_MAX))
+            return UPPER_STR
+    return []
 
 
 @tbe_register.register_param_generalization("Conv2DBackpropFilter")
@@ -848,49 +884,56 @@ def conv2d_bp_filter_generalization(x, filter_size, out_backprop, y, strides, pa
     list of params list:
         single item under "keep_rank" mode and multiple under "all_shape"
     """
-    if generalize_config is None:
-        generalize_config = {"mode": "keep_rank"}
-    support_mode = ["keep_rank"]
-    if generalize_config["mode"] not in support_mode:
-        error_manager_cube.raise_err_specific_user(OP_TYPE,
-                                                   "invalid generalize mode {}, only support {}".format(
-                                                       str(generalize_config["mode"]), str(support_mode)))
-    result = []
-    if generalize_config["mode"] == "keep_rank":  # fuzz build situation
-        # unknow_rank x ori_shape is [-2], others' shape length is 4
-        unknow_rank = len(x["ori_shape"]) == 1 and x["ori_shape"][0] == -2
-        if unknow_rank:
-            error_manager_cube.raise_err_specific_user(OP_TYPE,
-                                                       "not support unknow_rank under mode {}".format(
-                                                           generalize_config["mode"]))
+    if generalize_config.get("mode") == "keep_rank":  # fuzz build situation
+        result = []
+        graph_flag = check_graph_mode(x)
         have_range = {"x": x, "out_backprop": out_backprop}
         support_format = ["NCHW", "NHWC"]
+
         for name, tensor in have_range.items():
+            # unknow_rank x ori_shape is [-2], others' shape length is 4
+            valid = (isinstance(tensor.get("ori_shape"), (list, tuple)) and len(tensor["ori_shape"]) == ORI_SHAPE_LEN
+                     and list(tensor["ori_shape"]) != DYNAMIC_RANK_FLAG and tensor.get("ori_format") in support_format)
+            warnings.warn("In conv2d_backprop_filter, please check ori_shape and ori_format in x and out_backprop")
             # modify tesnors have range
-            if tensor.get("ori_format") not in support_format:
-                error_manager_cube.raise_err_specific_user(OP_TYPE,
-                                                           "invalid {} ori_format {}, only support {}".format(
-                                                               name, str(tensor.get("ori_format")),
-                                                               str(support_format)))
-            # only change shape NHW dim to -1, range is already set at infershape
-            valid = isinstance(tensor.get("ori_shape"), (list, tuple)) and len(tensor["ori_shape"]) == ORI_SHAPE_LEN
             if not valid:
-                error_manager_cube.raise_err_specific_user(OP_TYPE,
-                                                           "invalid {} ori_shape {}, only support {}d".format(
-                                                               name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
-            tensor = gen_conv_shape_range(tensor, OP_TYPE)
+                return LOWER_STR
+            try:
+                tensor = gen_conv_shape_range(tensor, OP_TYPE, graph_flag)
+            except RuntimeError as exc:
+                return LOWER_STR
+            finally:
+                pass
+            if graph_flag:
+                err_msg = precheck_graph_range(x, out_backprop)
+                # if err_msg is not [], return err_msg
+                if err_msg:
+                    return err_msg
             if name == "x":
                 tensor = correct_conv2d_backprop_range_start(tensor, y, dilations, pads, data_format)
-                x_w_range = _calc_max_fmap_w(x, out_backprop, y, strides, dilations, pads, groups, data_format)
-                if x_w_range[0] < FMAP_HW_MAX:
-                    tensor["ori_range"] = (tensor["ori_range"][0], tensor["ori_range"][1], tensor["ori_range"][2], 
-                                        x_w_range) if tensor.get("ori_format") == "NCHW" else (tensor["ori_range"][0],
-                                        tensor["ori_range"][1], x_w_range, tensor["ori_range"][3])
+                status, res = _calc_max_fmap_w(x, out_backprop, y, strides, dilations, pads, groups,
+                                               data_format, graph_flag)
+                if not status:
+                    return res
+                if res[0] < FMAP_HW_MAX:
+                    tensor["ori_range"] = (tensor["ori_range"][0], tensor["ori_range"][1], tensor["ori_range"][2],
+                                           res) if tensor.get("ori_format") == "NCHW" else (tensor["ori_range"][0],
+                                           tensor["ori_range"][1], res, tensor["ori_range"][-1])
             tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
-                if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]
-        result.append([x, filter_size, out_backprop, y, strides, pads, dilations,
-                       groups, data_format, kernel_name])
-    return result
+                if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][-1]]
+        try:
+            _check_and_config_para(
+                x, out_backprop, y, strides, pads, dilations, groups, data_format, kernel_name, True)
+        except RuntimeError as exc:
+            return LOWER_STR
+        finally:
+            pass
+
+        result.append(
+            [x, filter_size, out_backprop, y, {"strides": strides}, {"pads": pads}, {"dilations": dilations},
+                {"groups": groups}, {"data_format": data_format}])
+        return result
+    return
 
 
 @register_operator('Conv2DBackpropFilter')

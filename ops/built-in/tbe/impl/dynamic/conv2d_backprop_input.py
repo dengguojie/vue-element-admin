@@ -7,7 +7,7 @@ conv2d_backprop_input
 """
 
 from __future__ import absolute_import
-
+import warnings
 from impl.util import fusion_util
 from impl.util import util_deconv_comm
 from impl.util import util_select_op_base
@@ -25,6 +25,8 @@ from impl.util.util_cube_dynamic import gen_conv_shape_range
 from impl.util.util_cube_dynamic import modify_w_range_max
 from impl.util.util_cube_dynamic import modify_dy_w_range_max_opti
 from impl.util.platform_adapter import register_operator_compute
+from impl.util.util_cube_dynamic import check_graph_mode
+from impl.util.util_cube_dynamic import check_para_fuzz_compile
 from impl.util.util_cube_dynamic import set_default_para
 
 NONETYPE = type(None)
@@ -36,7 +38,10 @@ L1FUSION_INPUT_CTR = 2
 OP_TYPE = "conv2d_backprop_input"
 DATA_FORMAT_WHITE_LIST = ["NCHW", "NHWC"]
 TAR_FORMAT = "NCHW"
-
+MAX_N_FUZZ_BUILD = 2**31 - 1
+MAX_HW_FUZZ_BUILD = 4096
+LOWER_STR = [{"result": "UNSUPPORTED", "reason": {"param_index": [2], "type": ["lower_limit"]}}]
+UPPER_STR = [{"result": "UNSUPPORTED", "reason": {"param_index": [2], "type": ["upper_limit"]}}]
 
 def get_op_support_info(input_size, filter, out_backprop, y, strides,
                         pads, dilations=(1, 1, 1, 1), groups=1,
@@ -101,7 +106,7 @@ def conv2d_backprop_input_generalization(input_size,  # pylint: disable=W0622,C0
                                          pads, dilations=(1, 1, 1, 1),
                                          groups=1, data_format="NHWC",
                                          kernel_name="conv2d_backprop_input",
-                                         generalize_config={"mode": "keep_rank"}):
+                                         generalize_config=None):
     """
     conv2d backprop input generalization
 
@@ -125,38 +130,36 @@ def conv2d_backprop_input_generalization(input_size,  # pylint: disable=W0622,C0
     """
     support_mode = ["keep_rank"]
     if generalize_config["mode"] not in support_mode:
-        err_man.raise_err_specific_user(OP_TYPE, "invalid generalize mode {}, only support {}".format(
-            str(generalize_config["mode"]), str(support_mode)))
+        return
     result = []
-    if generalize_config["mode"] == "keep_rank":  # fuzz build situation
-        # unknow_rank inputs ori_shape is [-2], others' shape length is 4
-        unknow_rank = len(out_backprop["ori_shape"]) == 1 and out_backprop["ori_shape"][0] == -2
-        if unknow_rank:
-            err_man.raise_err_specific_user(OP_TYPE, "not support unknow_rank under mode {}".format(
-                generalize_config["mode"]))
-        have_range = {"inputs": out_backprop, "outputs": y}
-        support_format = ["NCHW", "NHWC"]
-        for name, tensor in have_range.items():
-            if tensor.get("ori_format") not in support_format:
-                err_man.raise_err_specific_user(OP_TYPE,
-                                                "invalid {} ori_format {}, only support {}".format(
-                                                    name, str(tensor.get("ori_format")), str(support_format)))
-            # only change shape NHW dim to -1, range is already set at infershape
-            valid = isinstance(tensor.get("ori_shape"), (list, tuple)) and len(tensor["ori_shape"]) == ORI_SHAPE_LEN
-            if not valid:
-                err_man.raise_err_specific_user(OP_TYPE,
-                                                "invalid {} ori_shape {}, only support {}d".format(
-                                                    name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
-        out_backprop = gen_conv_shape_range(out_backprop, OP_TYPE)
-        out_backprop = modify_dy_w_range_max_opti(out_backprop, filter, strides, data_format, OP_TYPE)
-        # if over l1 size then modify w range
-        dy_h_range_max, dy_w_range_max, is_single_point = modify_w_range_max(y,
-                                                             filter,
-                                                             out_backprop,
-                                                             strides,
-                                                             data_format,
-                                                             OP_TYPE)
-
+    is_graph_mode = check_graph_mode(out_backprop)
+    check_result = check_para_fuzz_compile(out_backprop, y, dilations, is_graph_mode, OP_TYPE)
+    if check_result:
+        return check_result
+    out_backprop = gen_conv_shape_range(out_backprop, OP_TYPE, is_graph_mode)
+    is_pass_check, dedy_modify = modify_dy_w_range_max_opti(out_backprop, filter, strides, data_format,
+                                                            OP_TYPE, is_graph_mode)
+    if not is_pass_check:
+        return dedy_modify
+    out_backprop = dedy_modify
+    # if over l1 size then modify w range
+    upper_range_result = modify_w_range_max(y,
+                                            filter,
+                                            out_backprop,
+                                            strides,
+                                            data_format,
+                                            OP_TYPE,
+                                            is_graph_mode)
+    dy_h_range_max = upper_range_result.get("dedy_h_max")
+    dy_w_range_max = upper_range_result.get("w_max")
+    is_single_point = upper_range_result.get("is_single_point")
+    graph_l1_invalid = is_graph_mode and upper_range_result.get("is_exceed_l1")
+    single_l1_invalid = not is_graph_mode and upper_range_result.get("is_exceed_l1")
+    if graph_l1_invalid:
+        return UPPER_STR
+    elif single_l1_invalid:
+        return LOWER_STR
+    if not is_graph_mode:
         # get dx_range depends on dy_range
         dy_range = out_backprop.get("ori_range")
         ori_data_format = out_backprop.get("ori_format")
@@ -170,8 +173,9 @@ def conv2d_backprop_input_generalization(input_size,  # pylint: disable=W0622,C0
         out_backprop_shape_h = out_backprop_shape[ori_data_format.find("H")]
         out_backprop_shape_w = out_backprop_shape[ori_data_format.find("W")]
         pads_new = pads
-        if out_backprop_shape_h == ceil_div(y_shape_h, stride_h) and \
-           out_backprop_shape_w == ceil_div(y_shape_w, stride_w):
+        set_pads = out_backprop_shape_h == ceil_div(y_shape_h, stride_h) and \
+                out_backprop_shape_w == ceil_div(y_shape_w, stride_w)
+        if set_pads:
             pads_new = [-1, -1, -1, -1]
         ori_paras = {
             "input_size": input_size, "x": out_backprop, "filters": filter, "bias": None, "offset_w": None, "y": y,
@@ -184,19 +188,19 @@ def conv2d_backprop_input_generalization(input_size,  # pylint: disable=W0622,C0
         filter_shape_nchw = conv2d_tranpose.get_input_nchw(filter.get("ori_shape"), filter.get("ori_format"))
         _, dy_range_nchw = conv2d_tranpose.get_input_nchw(dy_shape_nchw, ori_data_format, dy_range)
         dy_range_nchw[2] = [dy_range_nchw[2][0], min(dy_h_range_max, dy_range_nchw[2][1])]
+        dy_range_nchw[3] = [dy_range_nchw[3][0], min(dy_w_range_max, dy_range_nchw[3][1])]
         if is_single_point:
             dy_range_nchw[3] = [dy_w_range_max, dy_w_range_max]
-        else:
-            dy_range_nchw[3] = [dy_range_nchw[3][0], min(dy_w_range_max, dy_range_nchw[3][1])]
         if out_backprop["ori_shape"][out_backprop.get("ori_format").find("W")] > dy_range_nchw[3][1]:
-            err_man.raise_err_specific_user(OP_TYPE,
-                                            "invalid out_backprop ori_shape {}, w should not larger than {}".format(
-                                                str(out_backprop.get("shape")), dy_range_nchw[3][1]))
+            warnings.warn(OP_TYPE, "{}, invalid out_backprop ori_shape {}, w should not larger than {}".format(
+                                    OP_TYPE, str(out_backprop.get("shape")), dy_range_nchw[3][1]))
+            return LOWER_STR
         dx_range_nchw, _, new_dy_range = conv2d_tranpose.get_input_range(filter_shape_nchw, dy_range_nchw)
         dx_range_nchw[1] = [filter_shape_nchw[1] * groups, filter_shape_nchw[1] * groups]
         out_backprop["ori_range"] = list(out_backprop["ori_range"])
         out_backprop["ori_range"][out_backprop.get("ori_format").find("H")] = new_dy_range[2]
         out_backprop["ori_range"][out_backprop.get("ori_format").find("W")] = new_dy_range[3]
+        have_range = {"inputs": out_backprop, "outputs": y}
         for name, tensor in have_range.items():
             # modify tesnors have range
             tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
@@ -205,8 +209,8 @@ def conv2d_backprop_input_generalization(input_size,  # pylint: disable=W0622,C0
         input_size["const_value"] = None
         input_size["const_value_range"] = transform_shape_with_format(TAR_FORMAT, data_format,
                                                                       dx_range_nchw, DATA_FORMAT_WHITE_LIST)
-        result.append([input_size, filter, out_backprop, y, strides, pads, dilations,
-                       groups, data_format, kernel_name])
+    result.append([input_size, filter, out_backprop, y, {"strides": strides}, {"pads": pads },
+                   {"dilations": dilations}, {"groups": groups}, {"data_format": data_format}])
     return result
 
 

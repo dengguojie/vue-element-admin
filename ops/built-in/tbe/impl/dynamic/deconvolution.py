@@ -29,6 +29,7 @@ SHAPE_LEN = 5
 ORI_SHAPE_LEN = 4
 L1FUSION_INPUT_CTR = 2
 OP_TYPE = "deconvolution"
+LOWER_STR = [{"result": "UNSUPPORTED", "reason": {"param_index": [0], "type": ["lower_limit"]}}]
 
 
 def get_op_support_info(x, filter, bias, offset_w, y, strides,
@@ -151,13 +152,21 @@ def deconvolution_generalization(x, filter, bias, offset_w, y, strides, pads, di
         # if over l1 size then modify w range
         strides_4d = [1, 1, strides[0], strides[1]]
         x = gen_conv_shape_range(x, OP_TYPE)
-        x = modify_dy_w_range_max_opti(x, filter, strides_4d, data_format, OP_TYPE)
-        dy_h_range_max, dy_w_range_max, is_single_point = modify_w_range_max(y,
-                                                             filter,
-                                                             x,
-                                                             strides_4d,
-                                                             data_format,
-                                                             OP_TYPE)
+        is_pass_check, dedy_modify = modify_dy_w_range_max_opti(x, filter, strides_4d, data_format, OP_TYPE)
+        if not is_pass_check:
+            return dedy_modify
+        x = dedy_modify
+        upper_range_result = modify_w_range_max(y,
+                                                filter,
+                                                x,
+                                                strides_4d,
+                                                data_format,
+                                                OP_TYPE)
+        dy_h_range_max = upper_range_result.get("dedy_h_max")
+        dy_w_range_max = upper_range_result.get("w_max")
+        is_single_point = upper_range_result.get("is_single_point")
+        if upper_range_result.get("is_exceed_l1"):
+            return LOWER_STR
 
         # modify dy_range
         dy_range = x.get("ori_range")

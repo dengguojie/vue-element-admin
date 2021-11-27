@@ -17,6 +17,7 @@ dynamic batch_matmul_v2
 """
 import math
 from enum import Enum
+
 from impl.util import util_gemm
 from impl.util import fusion_util
 from impl.util import util_select_op_base
@@ -44,6 +45,7 @@ BATCH_ND_LENGTH = 3
 ND_LENGTH = 2
 L1FUSION_INPUT_CTR = 2
 MKN_MIN = 1
+LOWER_LIMIT_STR = "LOWER_LIMIT"
 
 
 class Format(str, Enum):
@@ -387,7 +389,7 @@ def _get_dynamic_shape_and_range(input_x1, input_x2, bias, op_type):
     return [shape_x1, shape_x2], [range_x1, range_x2, bias_range]
 
 
-def _get_range_intersection(range1, range2, param_name):
+def _get_range_intersection(range1, range2, param_name, is_graph_mode=False):
     """
     get range intersection of two range
     """
@@ -398,8 +400,12 @@ def _get_range_intersection(range1, range2, param_name):
 
     range_ins = [max(range1[0], range2[0]), min(range1[1], range2[1])]
     if range_ins[0] > range_ins[1]:
-        reason = f"the range of {param_name} is invalid because it has no intersection, and the actual values are {range1}, {range2}"
-        error_manager_vector.raise_err_specific_reson("mat_mul", reason)
+        if not is_graph_mode:
+            reason = (f"the range of {param_name} is invalid because it has no intersection, "
+                      "and the actual values are {range1}, {range2}")
+            error_manager_vector.raise_err_specific_reson("mat_mul", reason)
+        else:
+            return LOWER_LIMIT_STR
     return range_ins
 
 
@@ -447,7 +453,6 @@ def _get_input_x1_range(range_x1, format_x1, trans_a, op_type):
         error_manager_vector.raise_err_specific_reson(op_type, "Lenth of x1_range illegal")
     m_range = list(range_x1[m_index])
     k_range_x1 = list(range_x1[k_x1_index])
-    operation.get_op_context().add_addition("batch_range_x1", batch_range_x1)
     if trans_a:
         m_range, k_range_x1 = k_range_x1, m_range
     return [m_range, k_range_x1, batch_range_x1]
@@ -469,36 +474,46 @@ def _get_input_x2_range(range_x2, format_x2, trans_b, op_type):
         error_manager_vector.raise_err_specific_reson(op_type, "Lenth of x1_range illegal")
     k_range_x2 = list(range_x2[k_x2_index])
     n_range = list(range_x2[n_index])
-    operation.get_op_context().add_addition("batch_range_x2", batch_range_x2)
     if trans_b:
         k_range_x2, n_range = n_range, k_range_x2
     return [k_range_x2, n_range, batch_range_x2]
 
-def _get_input_range(range_x1, format_x1, dtype_x1, range_x2, format_x2, dtype_x2, range_bias, trans_a, trans_b, op_type):
+def _get_input_range(range_x1, format_x1, range_x2, format_x2,
+                     range_bias, trans_a, trans_b, op_type, is_graph_mode=False):
     """
-    get range in batch, m, k, n
+    get range in batch, m, k, n and check range
     """
     if range_x1:
         m_range, k_range_x1, batch_range_x1 = _get_input_x1_range(range_x1, format_x1, trans_a, op_type)
     else:
-        m_range = [1, -1]
-        k_range_x1 = [1, -1]
+        m_range = [1, None]
+        k_range_x1 = [1, None]
 
     if range_x2:
         k_range_x2, n_range, batch_range_x2 = _get_input_x2_range(range_x2, format_x2, trans_b, op_type)
     else:
-        k_range_x2 = [1, -1]
-        n_range = [1, -1]
+        k_range_x2 = [1, None]
+        n_range = [1, None]
 
-    k_range = _get_range_intersection(k_range_x1, k_range_x2, "k_range")
+    k_range = _get_range_intersection(k_range_x1, k_range_x2, "k_range", is_graph_mode)
     if range_bias:
         range_bias_n = list(range_bias[0])
         if range_bias[0][1] is not None:
             if format_x2 == 'FRACTAL_NZ':
                 range_bias_n = [math.ceil(i / BLOCK_CUBE) for i in range_bias[0]]
-        n_range = _get_range_intersection(n_range, range_bias_n, "n_range")
+        n_range = _get_range_intersection(n_range, range_bias_n, "n_range", is_graph_mode)
 
-    batch_range = _get_batch_range(batch_range_x1, batch_range_x2)
+    # in fuzzy compile, if n/k's range has no intersection return LOWER_LIMIT
+    wrong_range_flag = (n_range == LOWER_LIMIT_STR or k_range == LOWER_LIMIT_STR)
+    if wrong_range_flag:
+        return LOWER_LIMIT_STR
+
+    # in generalization func of fuzzy compile, only need check. Not add_addition
+    batch_range = None
+    if not is_graph_mode:
+        operation.get_op_context().add_addition("batch_range_x1", batch_range_x1)
+        operation.get_op_context().add_addition("batch_range_x2", batch_range_x2)
+        batch_range = _get_batch_range(batch_range_x1, batch_range_x2)
 
     return [batch_range, m_range, k_range, n_range]
 
@@ -542,8 +557,8 @@ def check_and_config_para(input_x1, input_x2, bias, output_z,
     if dtype_a != dtype_b:
         reason = f"dtype of x1 and x2 must be same, actual is {dtype_a}, {dtype_b}"
         error_manager_vector.raise_err_specific_reson(op_type, reason)
-    input_range = _get_input_range(range_x1, format_a, dtype_a,
-                                   range_x2, format_b, dtype_b,
+    input_range = _get_input_range(range_x1, format_a,
+                                   range_x2, format_b,
                                    range_bias, trans_a, trans_b, op_type)
 
     # check bias if bias in not None
@@ -552,6 +567,36 @@ def check_and_config_para(input_x1, input_x2, bias, output_z,
         para_check.check_dtype_rule(dtype_bias, ("float16", "float32"), "bias")
 
     return dtype_a, dtype_out, input_range
+
+
+def fuzzy_range_check(input_x1, input_x2, bias, trans_a, trans_b):
+    """
+    check range for fuzzy compile
+    """
+    # check format and dtype
+    range_x1 = input_x1.get("range")
+    range_x2 = input_x2.get("range")
+    format_a = input_x1.get("format")
+    format_b = input_x2.get("format")
+    valid = (format_a == format_b and input_x1.get("dtype").lower() == input_x2.get("dtype").lower())
+    if not valid:
+        return False
+
+    range_bias = None
+    if bias is not None:
+        bais_dtype = bias.get("dtype").lower()
+        range_bias = bias.get("range")
+        if bais_dtype not in ("float16", "float32"):
+            return False
+    op_type = "MatMul" if len(input_x1.get("ori_shape")) == 2 else "BatchMatMul"
+    # check range in m,k,n
+    err_msg = _get_input_range(range_x1, format_a, range_x2, format_b,
+                                 range_bias, trans_a, trans_b, op_type, True)
+
+    if err_msg == LOWER_LIMIT_STR:
+        return False
+    return True
+
 
 def _get_var_name(format_a, format_b):
     """
@@ -766,30 +811,49 @@ def batch_matmul_compute(input_x1, input_x2, bias, offset_w, output_z, trans_a, 
 @tbe_register.register_param_generalization("BatchMatMulV2")
 def batch_matmul_v2_generalization(input_x1, input_x2, bias=None, offset_w=None, output_z=None,
                                    trans_a=False, trans_b=False, offset_x=0, kernel_name="batch_matmul",
-                                   generalize_config={"mode": "keep_rank"}):
-    result = []
-    if generalize_config["mode"] == "keep_rank": # fuzzy compile
-        # get range generalization
-        ori_range_x1 = util_gemm.cal_gemm_shape_range(input_x1["ori_shape"], input_x1["ori_format"])
-        ori_range_x2 = util_gemm.cal_gemm_shape_range(input_x2["ori_shape"], input_x2["ori_format"])
-        util_gemm.generalize_input_keep_rank_gemm(input_x1)
-        util_gemm.generalize_input_keep_rank_gemm(input_x2)
-        input_x1["ori_range"], input_x2["ori_range"] = ori_range_x1, ori_range_x2
-        if bias:
-            ori_range_bias = util_gemm.cal_gemm_shape_range(bias["ori_shape"], bias["ori_format"])
-            util_gemm.generalize_input_keep_rank_gemm(bias)
-            bias["ori_range"] = ori_range_bias
-        util_gemm.generalize_input_keep_rank_gemm(output_z)
-        result.append([input_x1, input_x2, bias, offset_w, output_z, {"trans_a": trans_a}, {"trans_b": trans_b},
-                       {"offset_x": offset_x}])
-    else:
-        error_manager_cube.raise_err_one_para(
-            "E62306",
-            "BatchMatMulV2/BatchMatMul",
-            "Invalid generalize mode, currently only support keep_rank"
-        )
+                                   generalize_config=None):
+    # fuzzy compile
+    if generalize_config.get("mode") == "keep_rank":
+        result = []
+        is_graph_mode = (util_gemm.is_graph_mode(input_x1) or util_gemm.is_graph_mode(input_x2))
+        # single op mode or head node in graph
+        input_len = 2 if bias is None else 3
+        if not is_graph_mode:
+            # get range generalization
+            ori_range_x1 = util_gemm.cal_gemm_shape_range(input_x1["ori_shape"], input_x1["ori_format"])
+            ori_range_x2 = util_gemm.cal_gemm_shape_range(input_x2["ori_shape"], input_x2["ori_format"])
+            if ori_range_x1 == "LOWER_LIMIT" or ori_range_x2 == "LOWER_LIMIT":
+                res = [{"result": "UNSUPPORTED", "reason": {"param_index": list(range(input_len)),
+                                                            "type": ["lower_limit"] * input_len}}]
+                return res
 
-    return result
+            util_gemm.generalize_input_keep_rank_gemm(input_x1)
+            util_gemm.generalize_input_keep_rank_gemm(input_x2)
+            input_x1["ori_range"], input_x2["ori_range"] = ori_range_x1, ori_range_x2
+            if bias:
+                ori_range_bias = util_gemm.cal_gemm_shape_range(bias["ori_shape"], bias["ori_format"])
+                util_gemm.generalize_input_keep_rank_gemm(bias)
+                bias["ori_range"] = ori_range_bias
+            util_gemm.generalize_input_keep_rank_gemm(output_z)
+            result.append([input_x1, input_x2, bias, offset_w, output_z,
+                           {"trans_a": trans_a}, {"trans_b": trans_b}, {"offset_x": offset_x}])
+        # graph mode
+        else:
+            status, err_msg = util_gemm.matmul_range_check(input_x1, input_x2, bias)
+            # check result fail, return UNSUPPORTED json
+            if not status:
+                return err_msg
+            status = fuzzy_range_check(input_x1, input_x2, bias, trans_a, trans_b)
+            if not status:
+                err_msg = [{"result": "UNSUPPORTED", "reason": {"param_index": list(range(input_len)),
+                                                                "type": ["lower_limit"] * input_len}}]
+                return err_msg
+            # range check pass
+            result.append([input_x1, input_x2, bias, offset_w, output_z,
+                           {"trans_a": trans_a}, {"trans_b": trans_b}, {"offset_x": offset_x}])
+        return result
+    else:
+        return
 
 
 @register_operator("BatchMatMulV2")

@@ -180,6 +180,28 @@ def test_batch_matmul_generalization(test_arg):
                                 trans_a=False, trans_b=False, kernel_name="batchmatmul_generalization",
                                 generalize_config={"mode": "keep_rank"})
 
+def test_batch_matmul_generalization_range_check(test_arg):
+    from impl.dynamic.batch_matmul import batch_matmul_generalization
+    input_x1_dynamic = {'ori_shape': [-1, -1, -1, -1], 'shape': (-1, -1, -1, -1), 'range': ((4, 7), (1, 3), (1, 3), (1, 3)), 'dtype': 'float16', 'format': 'ND', 'ori_format': 'ND', 'ori_range': ((4, 7), (1, 3), (1, 3), (1, 3))}
+    input_x2_dynamic = {"ori_shape": [-1, -1], "shape":  [-1, -1], "range": ((1,3), (1,3)), "dtype": 'float16', "format": "ND", "ori_format" : "ND", "ori_range": ((1,3), (1,3))}
+    output_dynamic = {"ori_shape": (-1, -1, -1, -1), "shape": (-1, -1, -1, -1), "ori_range": ((4,7), (1,3), (1,3), (1, 3)), "dtype": 'float16', "format": "ND", "ori_format" : "ND"}
+    bias_dynamic = {"ori_shape": (5, ), "dtype": 'float16', "shape": (5,), "format": "ND", "ori_format": "ND", "range": ((1, 48),)}
+    batch_matmul_generalization(input_x1_dynamic, input_x2_dynamic, bias_dynamic, output_z=output_dynamic,
+                                trans_a=False, trans_b=False, kernel_name="batchmatmul_generalization",
+                                generalize_config={"mode": "keep_rank"})
+
+def test_batch_matmul_generalization_not_valid(test_arg):
+    from impl.dynamic.batch_matmul import batch_matmul_generalization
+    input_x1_dynamic = {'ori_shape': [-1, -1, -1, -1], 'shape': (-1, -1, -1, -1), 'range': ((4, 7), (1, 3), (1, 3), (1, 3)), 'dtype': 'float16', 'format': 'ND', 'ori_format': 'ND', 'ori_range': ((4, 7), (1, 3), (1, 3), (1, 3))}
+    input_x2_dynamic = {"ori_shape": [-1, -1], "shape":  [-1, -1], "range": ((1,3), (1,3)), "dtype": 'float32', "format": "ND", "ori_format" : "ND", "ori_range": ((1,3), (1,3))}
+    output_dynamic = {"ori_shape": (-1, -1, -1, -1), "shape": (-1, -1, -1, -1), "ori_range": ((4,7), (1,3), (1,3), (1, 3)), "dtype": 'float16', "format": "ND", "ori_format" : "ND"}
+    bias_dynamic = {"ori_shape": (5, ), "dtype": 'float16', "shape": (5,), "format": "ND", "ori_format": "ND", "range": ((1, 48),)}
+    batch_matmul_generalization(input_x1_dynamic, input_x2_dynamic, bias_dynamic, output_z=output_dynamic,
+                                trans_a=False, trans_b=False, kernel_name="batchmatmul_generalization",
+                                generalize_config={"mode": "keep_rank"})
+    
+
+
 
 # [shape_x1, range_x1, trans_a], [shape_x2, range_x2, trans_b], [shape_bias, range_bias] [shape_out, range_out]
 common_cases = [
@@ -329,6 +351,8 @@ for case in common_cases:
 ut_case.add_cust_test_func(test_func=test_op_select_format)
 ut_case.add_cust_test_func(test_func=test_op_check_supported)
 ut_case.add_cust_test_func(test_func=test_batch_matmul_generalization)
+ut_case.add_cust_test_func(test_func=test_batch_matmul_generalization_range_check)
+ut_case.add_cust_test_func(test_func=test_batch_matmul_generalization_not_valid)
 
 def test_get_op_support_info_dynamic_batchmatmul(test_arg):
     x1 = {"format": "FRACTAL_NZ","ori_format": "ND", "dtype": "float16", "shape": (-1, -1, -1, 16, 16), "ori_shape": (-1, -1, -1),
@@ -337,6 +361,5 @@ def test_get_op_support_info_dynamic_batchmatmul(test_arg):
          "range": ((16, 48), (16, 48), (16, 16), (16, 16))}
     get_op_support_info(x1, x2, trans_a=True)
 ut_case.add_cust_test_func(test_func=test_get_op_support_info_dynamic_batchmatmul)
-
 if __name__ == "__main__":
     ut_case.run(["Ascend310", "Ascend910A"])
