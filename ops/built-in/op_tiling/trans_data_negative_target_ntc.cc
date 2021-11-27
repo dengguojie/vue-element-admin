@@ -151,6 +151,9 @@ bool TilingNegativeNtc200(vector<int64_t>& in_shape, vector<int64_t>& out_shape,
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "TilingNegativeNtc200 Failed.");
     return false;
   }
+  OP_TILING_CHECK(block_elem_cnt == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "block_elem_cnt shoule not be 0"),
+                  return false);
 
   int64_t c0_len = in_shape[in_shape.size() - 1];
   params.c0_len = c0_len;
@@ -283,21 +286,21 @@ bool TilingNegativeNtc200(vector<int64_t>& in_shape, vector<int64_t>& out_shape,
   }
   int64_t src_c_dst_cr_size = axis_src_c_size * axis_dst_cr_size;
   int64_t dst_c_dst_cr_size = axis_dst_c_size * axis_dst_cr_size;
-  int64_t tmp_dst_cl_lp_unit = 1;
+  int64_t tmp_dst_cl_lp_unit;
   if ((dtype == DT_FLOAT16 || dtype == DT_INT8 || dtype == DT_UINT8 ||
       ((dtype == DT_FLOAT || dtype == DT_INT32 || dtype == DT_UINT32) && vnc_fp32_flag == 1)) &&
       (axis_dst_cr_size >= cr_gate)) {
-    params.tiling_mode = 2001;
+    params.tiling_mode = TILING_MODE_200_1;
     tmp_dst_cl_lp_unit = params.ub_offset / (params.src_c_lp_unit * GetCeilFillA(params.dst_cr_lp_unit,
                                                                                  c0_len) * c0_len);
     params.dst_cl_lp_unit = axis_dst_cl_size > tmp_dst_cl_lp_unit ? tmp_dst_cl_lp_unit : axis_dst_cl_size;
   } else if (dst_c_dst_cr_size < 54 * block_elem_cnt && dst_cr_lp_cnt == 1 && src_c_lp_cnt == 1) {
-    params.tiling_mode = 2003;
+    params.tiling_mode = TILING_MODE_200_3;
     int64_t supposed_lp_unit = 4 * block_elem_cnt;
-    int64_t tmp_dst_cl_lp_unit = tmp_dst_cr_lp_unit / (params.src_c_lp_unit * params.dst_cr_lp_unit);
+    tmp_dst_cl_lp_unit = tmp_dst_cr_lp_unit / (params.src_c_lp_unit * params.dst_cr_lp_unit);
     params.dst_cl_lp_unit = tmp_dst_cl_lp_unit > supposed_lp_unit ? supposed_lp_unit : tmp_dst_cl_lp_unit;
   } else {
-    params.tiling_mode = 2002;
+    params.tiling_mode = TILING_MODE_200_2;
     params.dst_cl_lp_unit = axis_dst_cl_size > VNC_LINES ? VNC_LINES : axis_dst_cl_size;
   }
   int64_t dst_cl_lp_cnt = GetCeilDiv(axis_dst_cl_size, params.dst_cl_lp_unit);

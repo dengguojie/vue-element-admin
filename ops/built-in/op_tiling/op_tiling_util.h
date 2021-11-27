@@ -179,7 +179,7 @@ bool GetCompileValue(const nlohmann::json& all_vars, const std::string& name, T1
  */
 void* ParseCompileToInt64Vec(const ge::Operator& op, const ge::AscendString compile_info,
                              const std::vector<std::string>& compile_info_key,
-                             const std::map<std::string, int64_t> optional_key);
+                             const std::map<std::string, int64_t>& optional_key);
 
 }  // namespace optiling
 #endif  // CANN_OPS_BUILT_IN_OP_TILING_OP_TILING_UTIL_H_

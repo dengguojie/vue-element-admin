@@ -121,6 +121,11 @@ void GetMcInfoPositive1011(int64_t& axis_dst_r2nd_lp_cnt, int64_t axis_dst_r2nd_
 }
 void GetCommonParam(int64_t ub_size, int64_t block_elem_cnt, int64_t c0_len, int64_t axis_c_size,
                     TransDataMode1011Param& params) {
+  if (block_elem_cnt == 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "block_elem_cnt shoule not be 0");
+    return;
+  }
+
   int64_t half_ub_size;
   if (c0_len == C0_16) {
     half_ub_size = ub_size / 2;
@@ -149,7 +154,7 @@ bool TillingPositiveMode1011(vector<int64_t>& in_shape, vector<int64_t>& out_sha
   int64_t c0_len = out_shape[out_shape.size() - 1];
   GetCommonParam(ub_size, block_elem_cnt, c0_len, axis_c_size, params);
 
-  params.tiling_mode = 1011;
+  params.tiling_mode = TILING_MODE_1011;
 
   // target axis -2 tiling parameters
   int32_t dst_axis_pos_c = std::strchr(dst_format.c_str(), 'C') - dst_format.c_str();

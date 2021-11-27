@@ -93,7 +93,7 @@ int64_t GetDataBlockElems(const ge::DataType& dtype) {
 
 static bool TransJsonToVector(const ge::Operator& op, const nlohmann::json& compile_info_json,
                               const std::vector<std::string>& compile_info_key,
-                              const std::map<std::string, int64_t> optional_key,
+                              const std::map<std::string, int64_t>& optional_key,
                               std::vector<int64_t>& compile_info_vec) {
   using namespace nlohmann;
   const nlohmann::json& all_vars = compile_info_json["vars"];
@@ -119,7 +119,7 @@ static bool TransJsonToVector(const ge::Operator& op, const nlohmann::json& comp
 
 void* ParseCompileToInt64Vec(const ge::Operator& op, const ge::AscendString compile_info,
                              const std::vector<std::string>& compile_info_key,
-                             const std::map<std::string, int64_t> optional_key) {
+                             const std::map<std::string, int64_t>& optional_key) {
   std::shared_ptr<nlohmann::json> json_object(new nlohmann::json(nlohmann::json::parse(compile_info.GetString())));
   std::vector<int64_t>* parsed_vector_ptr = new std::vector<int64_t>(compile_info_key.size(), 0);
   TransJsonToVector(op, *json_object, compile_info_key, optional_key, *parsed_vector_ptr);

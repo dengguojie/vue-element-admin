@@ -163,7 +163,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
   }
 
   if (src_format == FORMAT_NC1HWC0 && dst_format == FORMAT_NCHW) {
-    if (in_shape.size() < 5) {
+    if (in_shape.size() < SHAPE_LEN_5D) {
       VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, in_shape size < 5");
       return false;
     }
@@ -184,7 +184,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
     real_src_format = "NCDH";
     real_dst_format = "NDCHT";
 
-    if (in_shape.size() != 5) {
+    if (in_shape.size() != SHAPE_LEN_5D) {
       VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
       return false;
     }
@@ -206,7 +206,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
     real_src_format = "HCN";
     real_dst_format = "CHNT";
 
-    if (in_shape.size() != 4) {
+    if (in_shape.size() != SHAPE_LEN_4D) {
       VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
       return false;
     }
@@ -230,7 +230,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
   }
 
   if (src_format == FORMAT_DHWCN && dst_format == FORMAT_FRACTAL_Z_3D) {
-    if (in_shape.size() != 5) {
+    if (in_shape.size() != SHAPE_LEN_5D) {
       VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
       return false;
     }
@@ -253,7 +253,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
   }
 
   if (src_format == FORMAT_NDHWC && dst_format == FORMAT_FRACTAL_Z_3D) {
-    if (in_shape.size() != 5) {
+    if (in_shape.size() != SHAPE_LEN_5D) {
       VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
       return false;
     }
@@ -276,7 +276,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
   }
 
   if (src_format == FORMAT_NC1HWC0 && dst_format == FORMAT_FRACTAL_Z) {
-    if (in_shape.size() != 5) {
+    if (in_shape.size() != SHAPE_LEN_5D) {
       VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
       return false;
     }
@@ -296,7 +296,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
   }
 
   if (src_format == FORMAT_NDHWC && dst_format == FORMAT_NDC1HWC0) {
-    if (in_shape.size() != 5) {
+    if (in_shape.size() != SHAPE_LEN_5D) {
       VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
       return false;
     }
@@ -317,7 +317,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
   }
 
   if (src_format == FORMAT_NDC1HWC0 && dst_format == FORMAT_NCDHW) {
-    if (in_shape.size() != 6 || out_shape.size() != 5) {
+    if (in_shape.size() != SHAPE_LEN_6D || out_shape.size() != SHAPE_LEN_5D) {
       VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect");
       return false;
     }
@@ -355,7 +355,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
   }
 
   if (src_format == FORMAT_NC1HWC0 && dst_format == FORMAT_NHWC) {
-    if (in_shape.size() != 5 || out_shape.size() != 4) {
+    if (in_shape.size() != SHAPE_LEN_5D || out_shape.size() != SHAPE_LEN_4D) {
       VECTOR_INNER_ERR_REPORT_TILIING("trans_data",
                                       "The input shape dimension size should be 5 and output's should be 4!");
       return false;
@@ -374,7 +374,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
   }
 
   if (src_format == FORMAT_NDC1HWC0 && dst_format == FORMAT_NDHWC) {
-    if (in_shape.size() != 6 || out_shape.size() != 5) {
+    if (in_shape.size() != SHAPE_LEN_6D || out_shape.size() != SHAPE_LEN_5D) {
       VECTOR_INNER_ERR_REPORT_TILIING("trans_data",
                                       "The input shape dimension size should be 6 and output's should be 5!");
       return false;
@@ -429,7 +429,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
   }
 
   if (src_format == FORMAT_FRACTAL_Z_3D && dst_format == FORMAT_NDHWC) {
-    if (in_shape.size() != 4 || out_shape.size() != 5) {
+    if (in_shape.size() != SHAPE_LEN_4D || out_shape.size() != SHAPE_LEN_5D) {
       VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect");
       return false;
     }
@@ -451,7 +451,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
   }
 
   if (src_format == FORMAT_FRACTAL_NZ && dst_format == FORMAT_NC1HWC0) {
-    if (out_shape.size() != 5 || in_shape.size() != 4) {
+    if (out_shape.size() != SHAPE_LEN_5D || in_shape.size() != SHAPE_LEN_4D) {
       VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect");
       return false;
     }
@@ -476,7 +476,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
     real_src_format = "CHNT";
     real_dst_format = "HCN";
 
-    if (out_shape.size() != 4 || in_shape.size() != 4) {
+    if (out_shape.size() != SHAPE_LEN_4D || in_shape.size() != SHAPE_LEN_4D) {
       VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect!");
       return false;
     }
@@ -495,7 +495,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
   }
 
   if (src_format == FORMAT_FRACTAL_Z_3D && dst_format == FORMAT_DHWCN) {
-    if (in_shape.size() != 4 || out_shape.size() != 5) {
+    if (in_shape.size() != SHAPE_LEN_4D || out_shape.size() != SHAPE_LEN_5D) {
       VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect");
       return false;
     }
@@ -518,7 +518,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
     real_src_format = "CHNT";
     real_dst_format = "NCH";
 
-    if (out_shape.size() != 4 || in_shape.size() != 4) {
+    if (out_shape.size() != SHAPE_LEN_4D || in_shape.size() != SHAPE_LEN_4D) {
       VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect!");
       return false;
     }
@@ -540,7 +540,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
     real_src_format = "HCNT";
     real_dst_format = "HCN";
 
-    if (in_shape.size() != 4) {
+    if (in_shape.size() != SHAPE_LEN_4D) {
       VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect!");
       return false;
     }
@@ -574,16 +574,6 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
   }
 
   return true;
-}
-
-bool IsDoWithTransposeFormats(const ge::Format& src_format, const ge::Format& dst_format) {
-  const std::vector<ge::Format> format_list = {FORMAT_NCHW, FORMAT_NHWC, FORMAT_HWCN, FORMAT_CHWN};
-  if (std::find(format_list.begin(), format_list.end(), src_format) != format_list.end() &&
-      std::find(format_list.begin(), format_list.end(), dst_format) != format_list.end() && dst_format != src_format) {
-    return true;
-  } else {
-    return false;
-  }
 }
 
 bool IsDoWithPositiveSourceNtc100(const ge::Format& src_format, const ge::Format& dst_format) {

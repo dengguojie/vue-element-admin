@@ -132,6 +132,11 @@ void GetMcInfoPositive1010(int64_t& dst_cl_lp_cnt, int64_t& vnc_row_cl_left, int
 
 void GetCommonParam(int64_t ub_size, int64_t block_elem_cnt, int64_t c0_len, int64_t axis_c_size,
                     TransDataMode1010Param& params) {
+  if (block_elem_cnt == 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "block_elem_cnt shoule not be 0");
+    return;
+  }
+
   int64_t half_ub_size;
   if (c0_len == C0_16) {
     half_ub_size = ub_size / 2;
@@ -160,7 +165,7 @@ bool TillingPositiveMode1010(vector<int64_t>& in_shape, vector<int64_t>& out_sha
   int64_t c0_len = out_shape[out_shape.size() - 1];
   GetCommonParam(ub_size, block_elem_cnt, c0_len, axis_c_size, params);
 
-  params.tiling_mode = 1010;
+  params.tiling_mode = TILING_MODE_1010;
   params.vnc_line_size = params.vnc_line_size / c0_len * c0_len;
 
   // source axis c tiling parameters

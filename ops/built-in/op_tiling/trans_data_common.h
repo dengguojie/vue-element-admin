@@ -49,6 +49,22 @@ const std::map<ge::Format, int64_t> C_IDX_MAP = {{FORMAT_NCHW, 1}, {FORMAT_NHWC,
 const std::map<ge::Format, int64_t> N_IDX_MAP = {{FORMAT_NCHW, 0}, {FORMAT_NHWC, 0}, {FORMAT_NCDHW, 0},
                                                  {FORMAT_HWCN, 3}, {FORMAT_DHWCN, 4}, {FORMAT_NDHWC, 0}};
 
+constexpr int64_t TILING_MODE_200_1 = 2001;
+constexpr int64_t TILING_MODE_200_2 = 2002;
+constexpr int64_t TILING_MODE_200_3 = 2003;
+constexpr int64_t TILING_MODE_201_0 = 2010;
+constexpr int64_t TILING_MODE_201_1 = 2011;
+constexpr int64_t TILING_MODE_201_2 = 2012;
+constexpr int64_t TILING_MODE_100_0 = 1000;
+constexpr int64_t TILING_MODE_100_1 = 1001;
+constexpr int64_t TILING_MODE_1010 = 1010;
+constexpr int64_t TILING_MODE_1011 = 1011;
+
+constexpr size_t SHAPE_LEN_4D = 4;
+constexpr size_t SHAPE_LEN_5D = 5;
+constexpr size_t SHAPE_LEN_6D = 6;
+
+
 struct HeadTilingParam {
   int64_t shape_loop_cnt;
 };
@@ -417,7 +433,7 @@ static int64_t GetCeilDiv(int64_t u_value, int64_t d_value) {
   return res_value;
 }
 
-static int64_t GetIdxFromFormat(const std::map<ge::Format, int64_t> format_map, const ge::Format data_format) {
+static int64_t GetIdxFromFormat(const std::map<ge::Format, int64_t>& format_map, const ge::Format data_format) {
   auto find_format_it = format_map.find(data_format);
   if (find_format_it != format_map.end()) {
     return find_format_it->second;

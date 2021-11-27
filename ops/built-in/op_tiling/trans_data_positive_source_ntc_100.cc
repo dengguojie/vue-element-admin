@@ -150,7 +150,7 @@ namespace optiling
       out_shape_new.push_back(in_shape[3] * in_shape[4]);
       out_shape_new.push_back(c0_len);
     } else if (src_format == FORMAT_NCHW && dst_format == FORMAT_NC1HWC0) {
-      if (in_shape.size() != 4) {
+      if (in_shape.size() != SHAPE_LEN_4D) {
         VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
         return false;
       }
@@ -166,7 +166,7 @@ namespace optiling
       out_shape_new.push_back(in_shape[2] * in_shape[3]);
       out_shape_new.push_back(c0_len);
     } else if (src_format == FORMAT_HWCN && dst_format == FORMAT_FRACTAL_Z) {
-      if (in_shape.size() != 4) {
+      if (in_shape.size() != SHAPE_LEN_4D) {
         VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
         return false;
       }
@@ -184,7 +184,7 @@ namespace optiling
       out_shape_new.push_back(NI_16 * axis_no);
       out_shape_new.push_back(c0_len);
     } else if (src_format == FORMAT_DHWCN && dst_format == FORMAT_FRACTAL_Z_3D) {
-      if (in_shape.size() != 5) {
+      if (in_shape.size() != SHAPE_LEN_5D) {
         VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
         return false;
       }
@@ -234,7 +234,7 @@ namespace optiling
       out_shape_new.push_back(axis_no * NI_16);
       out_shape_new.push_back(c0_len);
     } else if (src_format == FORMAT_NCHW && dst_format == FORMAT_FRACTAL_Z) {
-      if (in_shape.size() != 4) {
+      if (in_shape.size() != SHAPE_LEN_4D) {
         VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
         return false;
       }
@@ -252,7 +252,7 @@ namespace optiling
       out_shape_new.push_back(NI_16 * axis_no);
       out_shape_new.push_back(c0_len);
     } else if (src_format == FORMAT_NCDHW && dst_format == FORMAT_FRACTAL_Z_3D) {
-      if (in_shape.size() != 5) {
+      if (in_shape.size() != SHAPE_LEN_5D) {
         VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
         return false;
       }
@@ -279,6 +279,10 @@ namespace optiling
                                   const ge::Format &src_format, const ge::Format &dst_format,
                                   const int64_t &core_num, const int64_t &block_elem_cnt, const int64_t &ub_size,
                                   const int64_t &c0_len, const DataType &dType, TransDataNtc100Param &params) {
+    OP_TILING_CHECK(block_elem_cnt == 0,
+                    VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "block_elem_cnt shoule not be 0"),
+                    return false);
+
     std::string src_format_new;
     std::string dst_format_new;
     std::vector<int64_t> in_shape_new;
@@ -304,10 +308,10 @@ namespace optiling
     const std::vector<DataType> dtype_list = {ge::DT_FLOAT, ge::DT_INT32, ge::DT_UINT32};
     if (axis_src_cr_size < 2 * block_elem_cnt || std::find(dtype_list.begin(),
                                                            dtype_list.end(), dType) != dtype_list.end()) {
-      params.tiling_mode = 1000;
+      params.tiling_mode = TILING_MODE_100_0;
       params.src_cr_lp_unit = axis_src_cr_size > tmp_src_cr_lp_unit ? tmp_src_cr_lp_unit : axis_src_cr_size;
     } else {
-      params.tiling_mode = 1001;
+      params.tiling_mode = TILING_MODE_100_1;
       params.src_cr_lp_unit = axis_src_cr_size > params.vnc_line_size ? params.vnc_line_size : axis_src_cr_size;
     }
 
@@ -369,9 +373,10 @@ namespace optiling
     params.cl_dims = FRAME_LEVEL;
     int64_t axis_src_cl_size = GetShapeSize(in_shape_new, 0) / GetShapeSize(in_shape_new, c_idx);
     int64_t tmp_src_cl_lp_unit = 1;
-    if (params.tiling_mode == 1000) {
+    if (params.tiling_mode == TILING_MODE_100_0) {
       tmp_src_cl_lp_unit = NI_16;
-    } else if (params.r1st_src_r2nd_dst_same == 0 && params.tiling_mode == 1001 && axis_src_cl_size > core_num) {
+    } else if (params.r1st_src_r2nd_dst_same == 0 && params.tiling_mode == TILING_MODE_100_1 &&
+               axis_src_cl_size > core_num) {
       tmp_src_cl_lp_unit = GetFloorDiv(params.vnc_line_size, GetCeilDiv(params.src_cr_lp_unit, c0_len) * c0_len);
     } else {
       tmp_src_cl_lp_unit = 1;

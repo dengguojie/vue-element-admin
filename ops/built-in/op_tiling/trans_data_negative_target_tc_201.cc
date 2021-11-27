@@ -133,6 +133,9 @@ bool TilingNegativeTc201(vector<int64_t>& in_shape, vector<int64_t>& out_shape, 
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "TilingNegativeTc201 Failed.");
     return false;
   }
+  OP_TILING_CHECK(block_elem_cnt == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "block_elem_cnt shoule not be 0"),
+                  return false);
 
   int64_t c0_len = in_shape[in_shape.size() - 1];
   params.c0_len = c0_len;
@@ -191,7 +194,7 @@ bool TilingNegativeTc201(vector<int64_t>& in_shape, vector<int64_t>& out_shape, 
   }
 
   if (axis_src_c1_size * c0_len >= c_gate || axis_dst_c_size == c0_len) {
-    params.tiling_mode = 2010;
+    params.tiling_mode = TILING_MODE_201_0;
     if (axis_dst_r2nd_size < NI_16) {
       tmp_src_cl_lp_unit = GetFloorDiv(params.ub_offset, axis_dst_r2nd_size * params.c0_len);
     } else {
@@ -199,16 +202,16 @@ bool TilingNegativeTc201(vector<int64_t>& in_shape, vector<int64_t>& out_shape, 
     }
   } else if (dtype != DT_INT8 && dtype != DT_UINT8) {
     if (axis_dst_c_size * axis_dst_r2nd_size >= vnc_col_size / VNC_LINES) {
-      params.tiling_mode = 2011;
+      params.tiling_mode = TILING_MODE_201_1;
     } else {
-      params.tiling_mode = 2012;
+      params.tiling_mode = TILING_MODE_201_2;
     }
     tmp_src_cl_lp_unit = vnc_col_size / c0_len / block_elem_cnt * block_elem_cnt;
   } else {
     if (axis_dst_c_size * axis_dst_r2nd_size >= vnc_col_size / 2 / VNC_LINES) {
-      params.tiling_mode = 2011;
+      params.tiling_mode = TILING_MODE_201_1;
     } else {
-      params.tiling_mode = 2012;
+      params.tiling_mode = TILING_MODE_201_2;
     }
     tmp_src_cl_lp_unit = vnc_col_size / 2 / c0_len / block_elem_cnt * block_elem_cnt;
   }
@@ -233,7 +236,7 @@ bool TilingNegativeTc201(vector<int64_t>& in_shape, vector<int64_t>& out_shape, 
   int64_t max_r2nd_lp_size = 63;
   int64_t dtype_factor = 1;
   // to make sure the rep_stride of vor is less than limit
-  if (params.tiling_mode == 2010) {
+  if (params.tiling_mode == TILING_MODE_201_0) {
     if (dtype == DT_FLOAT || dtype == DT_INT32 || dtype == DT_UINT32) {
       if (axis_dst_c_size == params.c0_len && axis_src_left_size <= C0_16) {
         // for vor in copy data in
@@ -257,12 +260,12 @@ bool TilingNegativeTc201(vector<int64_t>& in_shape, vector<int64_t>& out_shape, 
   }
   params.dst_r2nd_lp_unit = axis_dst_r2nd_size > tmp_dst_r2nd_lp_unit ? tmp_dst_r2nd_lp_unit : axis_dst_r2nd_size;
   int64_t r2nd_c_mod_block = params.dst_r2nd_lp_unit * axis_dst_c_size % block_elem_cnt;
-  if (params.tiling_mode == 2011 && r2nd_c_mod_block > 0 &&
+  if (params.tiling_mode == TILING_MODE_201_1 && r2nd_c_mod_block > 0 &&
       axis_dst_r2nd_size > params.dst_r2nd_lp_unit && params.dst_r2nd_lp_unit > block_elem_cnt) {
     params.dst_r2nd_lp_unit = GetFloorDiv(params.dst_r2nd_lp_unit, block_elem_cnt) * block_elem_cnt;
   }
   // to avoid bank conflict
-  if (params.tiling_mode == 2010 && params.dst_r2nd_lp_unit*dtype_factor % NI_16 == 0 &&
+  if (params.tiling_mode == TILING_MODE_201_0 && params.dst_r2nd_lp_unit*dtype_factor % NI_16 == 0 &&
       (params.dst_r2nd_lp_unit < params.src_cl_lp_unit || params.src_cl_lp_unit*dtype_factor % NI_16 == 0)) {
     params.dst_r2nd_lp_unit -= 1;
   }
@@ -314,7 +317,7 @@ bool TilingNegativeTc201(vector<int64_t>& in_shape, vector<int64_t>& out_shape, 
   params.dst_r2nd_lp_step_out = params.dst_r2nd_lp_unit * params.dst_r2nd_step_out;
 
   int64_t tmp_src_left_lp_unit;
-  if (params.tiling_mode == 2010) {
+  if (params.tiling_mode == TILING_MODE_201_0) {
     tmp_src_left_lp_unit = params.ub_offset / (params.src_cl_lp_unit * params.dst_r2nd_lp_unit * c0_len);
     if (tmp_src_left_lp_unit > axis_src_left_size / core_num && axis_src_left_size >= core_num) {
       tmp_src_left_lp_unit = axis_src_left_size / core_num;
@@ -324,12 +327,12 @@ bool TilingNegativeTc201(vector<int64_t>& in_shape, vector<int64_t>& out_shape, 
   } else {
     tmp_src_left_lp_unit = vnc_col_size / 2 / (params.src_cl_lp_unit * params.dst_r2nd_lp_unit * c0_len);
   }
-  if (params.tiling_mode == 2011) {
+  if (params.tiling_mode == TILING_MODE_201_1) {
     tmp_src_left_lp_unit = NI_16;
   }
   params.src_left_lp_unit = axis_src_left_size > tmp_src_left_lp_unit ? tmp_src_left_lp_unit : axis_src_left_size;
   int64_t left_r2nd_c_mod_block = params.src_left_lp_unit * params.dst_r2nd_lp_unit * axis_dst_c_size % block_elem_cnt;
-  if (params.tiling_mode == 2012 && left_r2nd_c_mod_block > 0 &&
+  if (params.tiling_mode == TILING_MODE_201_2 && left_r2nd_c_mod_block > 0 &&
       axis_src_left_size > params.src_left_lp_unit && params.src_left_lp_unit > block_elem_cnt) {
     params.src_left_lp_unit = GetFloorDiv(params.src_left_lp_unit, block_elem_cnt) * block_elem_cnt;
   }
