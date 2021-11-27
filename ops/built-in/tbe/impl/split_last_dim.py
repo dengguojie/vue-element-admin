@@ -65,9 +65,9 @@ def _get_ceil_int(int1, int2):
     return _result + 1
 
 
-# pylint: disable=locally-disabled,too-many-instance-attributes
-# pylint: disable=too-many-arguments,unused-argument,too-many-locals
-# pylint: disable=too-many-statements
+# 'pylint: disable=locally-disabled,too-many-instance-attributes
+# 'pylint: disable=too-many-arguments,unused-argument,too-many-locals
+# 'pylint: disable=too-many-statements
 class SplitLastDim():
     """Function: use to finish SplitLastDim main functions
     """
@@ -87,7 +87,7 @@ class SplitLastDim():
             self.src_shape[self.split_dim] // self.num_split
         self.output_size = \
             self.split_output_dim_size * self.data_size_first_dim
-        # get dtype size, float16 size = 2 byte   / float32 size = 4 byte
+        # get dtype size, float16 `size = 2 byte   / float32 size = 4 byte`
         self.dtype_size = \
             tbe_platform.cce_intrin.get_bit_len(self.src_dtype) // 8
         # get one block data size, block align len
@@ -228,7 +228,7 @@ class SplitLastDim():
             # process tail data
             _run_one_segment(segment_tail_len, segment_loop)
 
-    # pylint: disable=locally-disabled,too-many-locals
+    # 'pylint: disable=locally-disabled,too-many-locals
     def adds_4_to_ub(self, segment_len, data_ub_list, out_offset):
         """used adds 0 to move data from input ub to output ub
         """
@@ -535,7 +535,7 @@ def check_use_last_dim_branch(shape,
     return is_shape_support and is_dtype_support and is_split and is_last_dim
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-arguments
+# 'pylint: disable=locally-disabled,unused-argument,too-many-arguments
 def split_last_dim(shape, dtype, split_dim, num_split, size_splits,
                    kernel_name):
     """Split a tensor into len(size_splits) tensors along last dimension.
@@ -592,7 +592,7 @@ class SplitWith5HD:
         self.data_size_first_dim = self.src_size // self.split_dim_size
         self.output_size = \
             self.split_output_dim_size * self.data_size_first_dim
-        # get dtype size, float16 size = 2 byte   / float32 size = 4 byte
+        # get dtype size, float16 `size = 2 byte   / float32 size = 4 byte`
         self.dtype_size = \
             tbe_platform.cce_intrin.get_bit_len(self.data_dtype) // 8
         # get one block data size, block align len

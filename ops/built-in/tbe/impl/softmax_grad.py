@@ -96,17 +96,18 @@ def update_5hd_axis(origin_format, axis, input_format):
     offset_6hd = 1 if input_format == "NDC1HWC0" else 0
 
     dict_format_axis = {
-        "N": [0,],
+        "N": [0, ],
         "C": [-4, -1],
-        "H": [2 + offset_6hd,],
-        "W": [3 + offset_6hd,],
-        "D": [1,]
+        "H": [2 + offset_6hd, ],
+        "W": [3 + offset_6hd, ],
+        "D": [1, ]
     }
 
-    return dict_format_axis[axis_str]
+    return dict_format_axis.get(axis_str)
 
 
 # 'pylint: disable=variable_type_changed
+# 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT),
                             para_check.KERNEL_NAME)

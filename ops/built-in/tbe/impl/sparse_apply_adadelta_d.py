@@ -21,13 +21,13 @@ from te.utils.error_manager import error_manager_vector
 from impl.sparse_apply_common import SparseApply
 
 
-# pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-locals,
+# 'pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-locals,
 class SparseApplyAdadelta(SparseApply):
     """
         Function: use to store sparse_apply_adadelta base parameters
     """
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def __init__(self, var, accum, accum_update, learning_rate, rho, grad, indices, epsilon, kernel_name):
         """
         Init sparse_apply_adadelta base parameters
@@ -180,7 +180,7 @@ class SparseApplyAdadelta(SparseApply):
         self.tik_instance.vadd(mask, accum_update_ub, accum_update_ub, tmp2_ub, repeat_times, 1, 1, 1, 8, 8, 8)
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,

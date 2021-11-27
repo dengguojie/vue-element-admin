@@ -27,7 +27,7 @@ from te.utils.error_manager import error_manager_vector
 # shape size limit for aicore is 2**31
 SHAPE_SIZE_LIMIT = 2147483648
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("square")

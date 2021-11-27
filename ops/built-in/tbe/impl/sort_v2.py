@@ -27,7 +27,7 @@ VAL_INDEX = 4
 MIN_VAL = -65504
 
 
-# pylint: disable=invalid-name,too-many-arguments,too-many-locals,unused-argument
+# 'pylint: disable=invalid-name,too-many-arguments,too-many-locals,unused-argument
 def check(x, y, axis, kernel_name):
     """
     Function: Check parameters (eg: shape dtype etc).

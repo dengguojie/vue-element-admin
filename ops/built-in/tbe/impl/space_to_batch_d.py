@@ -23,7 +23,7 @@ from impl.space_to_batch_nd_d import SpaceToBatchNdFive
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-# pylint: disable=invalid-name,unused-argument
+# 'pylint: disable=invalid-name,unused-argument
 def _check_param(x, y, paddings, block_size, kernel_name):
     """check the parameters including shape, dtype, block_shape, paddings and kernel_name.
     """

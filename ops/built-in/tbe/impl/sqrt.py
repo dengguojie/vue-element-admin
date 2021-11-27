@@ -26,7 +26,7 @@ from te import tvm
 SHAPE_SIZE_LIMIT = 2147483648
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("sqrt")
 def sqrt_compute(input_data, output_data, kernel_name="sqrt", impl_mode="high_performance"):
     """

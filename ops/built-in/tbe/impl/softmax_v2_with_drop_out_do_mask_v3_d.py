@@ -25,7 +25,8 @@ from te.utils import para_check
 SHAPE_SIZE_LIMIT = 1 << 30
 
 
-# pylint: disable = unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments
+# 'pylint: disable=too-many-locals,too-many-statements
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_FLOAT,

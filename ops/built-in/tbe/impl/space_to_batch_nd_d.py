@@ -32,7 +32,7 @@ from impl.util.util_select_op_base import get_dynamic_param_in_json
 REPEAT_LIMIT = 255
 
 
-# pylint: disable=too-many-arguments,too-many-locals
+# 'pylint: disable=too-many-arguments,too-many-locals
 def _vector_dup_continuous(tik_inst, src, size):
     """vector_dup continuous function, set ubuf to 0
     """
@@ -96,8 +96,8 @@ def _vector_dup_discrete(tik_inst, src, repeat, size, block_ele, dst_blk=1, dst_
             _inner(src[size_offset], size_left)
 
 
-# pylint: disable=unused-argument,useless-object-inheritance,too-many-branches,too-many-lines,invalid-name
-# pylint: disable=too-many-instance-attributes,too-many-statements,too-many-boolean-expressions
+# 'pylint: disable=unused-argument,useless-object-inheritance,too-many-branches,too-many-lines,invalid-name
+# 'pylint: disable=too-many-instance-attributes,too-many-statements,too-many-boolean-expressions
 class SpaceToBatchNdFive(object):
     """Function: use to finish SpaceToBatchNd main functions to reset data.
     """

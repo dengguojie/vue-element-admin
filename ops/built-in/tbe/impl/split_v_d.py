@@ -44,7 +44,7 @@ from impl.util.util_select_op_base import get_op_cal_info
 TRANSPOSE_SIZE = 256
 
 
-# pylint: disable = unused-argument,too-many-arguments,too-many-locals
+# 'pylint: disable = unused-argument,too-many-arguments,too-many-locals
 def get_op_support_info(input_value, output_data, size_splits, split_dim, num_split, kernel_name="split_v_d"):
     """
     get_op_support_info
@@ -87,8 +87,8 @@ def ceil(int_x, int_y):
     return res + 1
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-arguments,too-many-locals,too-many-return-statements
-# pylint: disable=too-many-statements,too-many-branches,too-many-instance-attributes,too-many-boolean-expressions
+# 'pylint: disable=locally-disabled,unused-argument,too-many-arguments,too-many-locals,too-many-return-statements
+# 'pylint: disable=too-many-statements,too-many-branches,too-many-instance-attributes,too-many-boolean-expressions
 class SplitNotEqual():
     """Function: use to finish SplitNotEqual main functions to reset data
     """

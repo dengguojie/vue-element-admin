@@ -34,7 +34,7 @@ VALUE_ONE = 1
 SHAPE_SIZE_LIMIT = 200000000
 
 
-# pylint: disable = unused-argument
+# 'pylint: disable = unused-argument
 def get_op_support_info(input_x, output1, attr1, attr2=True, kernel_name="square_sum_v1"):
     """
     get_op_support_info
@@ -105,8 +105,8 @@ def op_select_format(input_x, output1, attr1, attr2, kernel_name="square_sum_v1"
     return param_dynamic_in_json
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
-# pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
 def reduce_sum_d_compute(x, y, axis=None, keepdims=None, kernel_name="reduce_sum_d"):
     """redusce_sum_d compute
 

@@ -31,7 +31,7 @@ from impl.util.util_select_op_base import get_op_cal_info
 MINIMUM_DATA_NUM_EACH_CORE = 1024
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def get_op_support_info(input_x, input_y, output_x, output_y, kernel_name="square_sum"):
     """
     get unpack slice info
@@ -57,13 +57,13 @@ def get_op_support_info(input_x, input_y, output_x, output_y, kernel_name="squar
     return op_cal_info_in_json
 
 
-# pylint: disable=too-many-instance-attributes,too-few-public-methods
+# 'pylint: disable=too-many-instance-attributes,too-few-public-methods
 class SquareSumAll():
     """
     Function: use to store square_sum_all base parameters
     """
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def __init__(self, input_x, input_y, kernel_name):
         """
         Init square_sum_all base  parameters
@@ -171,7 +171,7 @@ class SquareSumAll():
             error_manager_vector.raise_err_input_dtype_not_supported(self.kernel_name, "input_x", [],
                                                                      self.input_x_dtype)
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def _vector_add(self, mask, des_offset, src1_offset, src2_offset, repeat_times):
         """
         Execute the vector add calculation
@@ -294,7 +294,7 @@ class SquareSumAll():
         if self.core_tail_num > 0:
             self._calc_op(self.core_tail_num, data_offset)
 
-    # pylint: disable=too-many-arguments,
+    # 'pylint: disable=too-many-arguments,
     def _vector_mul(self, mask, des_offset, src1_offset, src2_offset, repeat_times, calc_target):
         """
         Execute the vector mul calculation
@@ -409,7 +409,7 @@ class SquareSumAll():
         return self.tik_instance
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def square_sum_all(input_x, input_y, output_x, output_y, kernel_name="square_sum"):

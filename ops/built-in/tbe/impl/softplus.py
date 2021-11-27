@@ -23,6 +23,8 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 
+
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     The class for constant.
@@ -32,8 +34,8 @@ class Constant:
     NEG_ONE = -1
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
-# pylint: disable=invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("softplus")
 def softplus_compute(input_x, y, kernel_name="softplus"):
     """

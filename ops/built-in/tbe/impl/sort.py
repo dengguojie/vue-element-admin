@@ -18,7 +18,7 @@
 sort
 """
 
-# pylint: disable=invalid-name,too-many-locals,too-many-arguments,unused-argument
+# 'pylint: disable=invalid-name,too-many-locals,too-many-arguments,unused-argument
 from functools import reduce as functools_reduce
 from te.platform.fusion_manager import fusion_manager
 from te import tik

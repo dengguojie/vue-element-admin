@@ -551,7 +551,7 @@ void TilingCommonSplitUB(const int32_t ub_block_inner, const int32_t block_axis,
     tilingparams.ub_tiling_axis_reduce = 0;
     // judge ub_fuse_factor*a1*a2 ... < max_ub_size
     int32_t fuse_num = 1;
-    for (size_t i = 0; i < input_x.size(); i++) {
+    for (int32_t i = 0; i < static_cast<int32_t>(input_x.size()); i++) {
       if (i == block_axis) {
         fuse_num *= block_inner;
       } else {
@@ -608,7 +608,7 @@ void TilingCommonGenerate(const int32_t block_axis, std::vector<int64_t> input_x
     CalcUbFuseFactor(block_axis, input_x, tilingparams, core_num, max_ub_size, block, block_inner);
     // judge ub_fuse_factor*a1*a2 ... < max_ub_size
     int32_t fuse_num = 1;
-    for (size_t i = 0; i < input_x.size(); i++) {
+    for (int32_t i = 0; i < static_cast<int32_t>(input_x.size()); i++) {
       if (i == block_axis) {
         fuse_num *= block_inner;
       } else {

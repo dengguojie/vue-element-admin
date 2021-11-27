@@ -32,8 +32,8 @@ VALUE_ONE = 1
 SHAPE_SIZE_LIMIT = 200000000
 
 
-# pylint: disable = unused-argument
-# pylint: disable=too-many-arguments,too-many-locals
+# 'pylint: disable=unused-argument
+# 'pylint: disable=too-many-arguments,too-many-locals
 def get_op_support_info(input_x,
                         output1,
                         output2,
@@ -66,8 +66,8 @@ def get_op_support_info(input_x,
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
-# pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
 def reduce_sum_d_compute(x,
                          y,
                          axis=None,

@@ -15,17 +15,19 @@
 """
 softmax_v2
 """
-# pylint: ungrouped-imports
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=invalid-name,unused-variable,too-many-locals
-# pylint: disable=too-many-statements,unnecessary-lambda
-# pylint: disable=unidiomatic-typecheck,ungrouped-imports
-# pylint: disable=too-many-lines,too-many-branches
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=invalid-name,unused-variable,too-many-locals
+# 'pylint: disable=too-many-statements,unnecessary-lambda
+# 'pylint: disable=unidiomatic-typecheck,ungrouped-imports
+# 'pylint: disable=too-many-lines,too-many-branches
 from __future__ import absolute_import
 
 import math
+
+from impl.util.platform_adapter import shape_util
+from impl.util import util_frac_z as fz
+from impl.util import util_select_op_base
 import te.lang.cce
-import topi
 import te.platform.cce_params as cce
 from te import tvm
 from te import platform as tbe_platform
@@ -33,9 +35,7 @@ from te.platform.cce_build import build_config
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-from impl.util.platform_adapter import shape_util
-from impl.util import util_frac_z as fz
-from impl.util import util_select_op_base
+import topi
 
 
 # General limitation of the size for input shape: 2**31
@@ -376,14 +376,14 @@ def _is_special_cases(input_shape, compare_type):
                     if shape_t[i].value == shape_w[i]:
                         count += 1
                         continue
-                    else:
-                        break
+                    break
                 if count == shape_t_size:
                     return True
 
     return False
 
 
+# 'pylint: disable=variable_type_changed
 @fusion_manager.register("softmax_v2")
 def softmax_v2_compute(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     """
@@ -1292,7 +1292,8 @@ def compute_nopad(tensor_in, shape):
     instruction_list += ['vector_muls']
 
     res_sub = tvm.compute(shape,
-                          lambda n, c1, h, w, c0: tensor_in_ub[n, c1, h, w, c0] + res_minus[n, 0, h, w, 0], name="res_sub")
+                          lambda n, c1, h, w, c0:
+                          tensor_in_ub[n, c1, h, w, c0] + res_minus[n, 0, h, w, 0], name="res_sub")
     op_list += [res_sub]
     instruction_list += ['vector_adds']
 
@@ -2651,6 +2652,7 @@ def update_5hd_axis(origin_format, axis, input_format):
     return [dict_format_axis[axis_str]]
 
 
+# 'pylint: disable=variable_type_changed
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_LIST_INT), para_check.KERNEL_NAME,
                             para_check.OPTION_ATTR_STR)

@@ -24,8 +24,8 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=too-many-arguments,too-many-locals,invalid-name
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-arguments,too-many-locals,invalid-name
+# 'pylint: disable=too-many-instance-attributes
 class SparseApply():
     """
     Base Class for sparse apply op
@@ -33,7 +33,7 @@ class SparseApply():
     this class and implement calc function on their own.
     """
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def __init__(self, var, grad, indices, kernel_name):
         """
         Init sparse_apply  base parameters
@@ -327,7 +327,7 @@ class SparseApply():
         self.block_num = core_num
         if self.num_indices < core_num and self.each_row_data_num > self.cache_threshold_col:
             self.block_num = self.num_indices
-            # 1024 = 32*32
+            # `1024 = 32*32`
             if self.block_num * 2 <= core_num and self.each_row_data_num >= 1024:
                 self.partial_factor = core_num // self.block_num
                 self.block_num = self.block_num * self.partial_factor

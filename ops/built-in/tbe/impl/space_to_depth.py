@@ -15,9 +15,9 @@
 """
 space_to_depth
 """
-# pylint: disable=W0613
-# pylint: disable=too-many-lines,wildcard-import,undefined-variable,not-callable
-# pylint: disable=inconsistent-return-statements,unused-variable,unused-wildcard-import
+# 'pylint: disable=W0613
+# 'pylint: disable=too-many-lines,wildcard-import,undefined-variable,not-callable
+# 'pylint: disable=inconsistent-return-statements,unused-variable,unused-wildcard-import
 from te import tik
 from te import platform as tbe_platform
 from te.utils.error_manager import error_manager_vector
@@ -38,7 +38,7 @@ from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util import util_select_op_base
 
-# pylint: disable=redefined-builtin
+# 'pylint: disable=redefined-builtin
 if "reduce" not in dir(__builtins__):
     from functools import reduce
 
@@ -58,7 +58,7 @@ MAX_BURST_N = 4095
 MAX_STRIDE = 65535
 
 
-# pylint: disable=invalid-name,unused-argument,too-many-locals,too-many-arguments
+# 'pylint: disable=invalid-name,unused-argument,too-many-locals,too-many-arguments
 @check_op_params(REQUIRED_INPUT, OPTION_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_INT, OPTION_ATTR_STR, KERNEL_NAME)
 def space_to_depth(x, filter,
                    y,

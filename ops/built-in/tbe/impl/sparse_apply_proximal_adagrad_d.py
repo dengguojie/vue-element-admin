@@ -21,13 +21,13 @@ from te.utils.error_manager import error_manager_vector
 from impl.sparse_apply_common import SparseApply
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class SparseApplyProximalAdagrad(SparseApply):
     """
     Function: use to store sparse_apply_proximal_adagrad base parameters
     """
 
-    # pylint: disable=invalid-name,too-many-arguments
+    # 'pylint: disable=invalid-name,too-many-arguments
     def __init__(self, var, accum, lr, l1, l2, grad, indices, kernel_name):
         """
         Init sparse_apply_proximal_adagrad base parameters
@@ -80,7 +80,7 @@ class SparseApplyProximalAdagrad(SparseApply):
             error_manager_vector.raise_err_inputs_shape_not_equal("sparse_apply_proximal_adagrad_d", "accum", "var",
                                                                   self.accum_shape, self.var_shape, self.var_shape)
 
-    # pylint: disable=too-many-locals,too-many-statements
+    # 'pylint: disable=too-many-locals,too-many-statements
     def _calculate(self, repeat_times, mask, offset):
         """
         The logical
@@ -165,8 +165,8 @@ class SparseApplyProximalAdagrad(SparseApply):
             # Step4: `var = maximum(var, tmp)`
             self.tik_instance.vmax(mask, var_ub, var_ub, tmp_ub, repeat_times, 1, 1, 1, 8, 8, 8)
             # Step5: `tmp = sign(prox_var)`
-            #            = `abs(prox_var) / (prox_var + 1.18e-38)`
-            #            = `grad_as_temp / (prox_var + 1.18e-38)`
+            #            `= abs(prox_var) / (prox_var + 1.18e-38)`
+            #            `= grad_as_temp / (prox_var + 1.18e-38)`
             # Step5-1: `tmp = prox_var + 1.18e-38`
             self.tik_instance.vadds(mask, tmp_ub, prox_var_ub, 1.18e-38, repeat_times, 1, 1, 8, 8)
             # Step5-2: `tmp = grad_as_temp / tmp`
@@ -186,7 +186,7 @@ class SparseApplyProximalAdagrad(SparseApply):
             # End Procedure6
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,

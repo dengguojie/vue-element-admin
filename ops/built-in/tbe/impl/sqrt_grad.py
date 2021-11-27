@@ -25,7 +25,7 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("sqrt_grad")
 def sqrt_grad_compute(x, dx, out, kernel_name="sqrt_grad"):
     """

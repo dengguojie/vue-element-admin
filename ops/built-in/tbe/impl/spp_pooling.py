@@ -31,7 +31,7 @@ UB_RESERVED = 2048
 DBL_BUF_SW = True
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def check_param(x_dic, y_dic, param_dic, kernel_name):
     """
     check ops param interface
@@ -578,8 +578,8 @@ def pooling_compute(x_param, pooling_attr):
         if (out['w'] - 1) * stride[1] >= shape_in[3] + pad[2]:
             error_manager_vector.raise_err_specific_reson("spp_pooling", "the last pooling(width direction) must \
                                                           start strictly inside the image. Image width is {}, \
-                                                          stride_w is {}, pad_w is {}.".format(str(shape_in[3]),
-                                                                                               str(stride[1]), str(pad[2])))
+                                                          stride_w is {}, pad_w is {}.".format(
+                                                          str(shape_in[3]),str(stride[1]), str(pad[2])))
 
     if pooling_attr['global_pooling'] is True:
         out = {'h': 1, 'w': 1}
@@ -600,7 +600,7 @@ def pooling_compute(x_param, pooling_attr):
     return tik_inst, src_gm, dst_gm
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_BOOL, para_check.REQUIRED_ATTR_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,

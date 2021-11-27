@@ -38,7 +38,7 @@ from impl.split_equal import SplitEqual
 TRANSPOSE_SIZE = 256
 
 
-# pylint: disable = unused-argument,too-many-locals
+# 'pylint: disable = unused-argument,too-many-locals
 def get_op_support_info(input_value, output_data, split_dim, num_split, kernel_name="split_d"):
     """
     get_op_support_info
@@ -68,7 +68,7 @@ def get_op_support_info(input_value, output_data, split_dim, num_split, kernel_n
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,too-many-locals,too-many-statements,too-many-instance-attributes,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-locals,too-many-statements,too-many-instance-attributes,too-many-arguments
 class SplitMov:
     """Function: use to finish SplitMov main functions
     """

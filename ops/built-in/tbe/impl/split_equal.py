@@ -16,22 +16,9 @@
 split_v_d
 """
 
-import functools
 from te import tik
 from te import tvm
 from te import platform as tbe_platform
-from te.platform.cce_build import build_config
-from te.utils import para_check
-from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
-from tbe.dsl.compute.array import split_compute_com
-from tbe.dsl.static_schedule.split_schedule import split_schedule_com
-from impl.util import util_common
-from impl.util.util_select_op_base import gen_param
-from impl.util.util_select_op_base import get_dynamic_param_in_json
-from impl.util.util_select_op_base import SplitInput
-from impl.util.util_select_op_base import SplitOutput
-from impl.util.util_select_op_base import get_op_cal_info
 
 # vtranspose can deal 16*16
 TRANSPOSE_SIZE = 256
@@ -52,8 +39,8 @@ def ceil(int_x, int_y):
     return res + 1
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-arguments,too-many-locals,too-many-return-statements
-# pylint: disable=too-many-statements,too-many-branches,too-many-instance-attributes,too-many-boolean-expressions
+# 'pylint: disable=locally-disabled,unused-argument,too-many-arguments,too-many-locals,too-many-return-statements
+# 'pylint: disable=too-many-statements,too-many-branches,too-many-instance-attributes,too-many-boolean-expressions
 class SplitEqual():
     """Function: use to finish SplitEqual main functions to reset data
     """
