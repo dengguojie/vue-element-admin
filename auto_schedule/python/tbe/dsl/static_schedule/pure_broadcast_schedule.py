@@ -372,10 +372,10 @@ class PureBroadcastSchedule:  # 'pylint: disable=R0902
         src_size = 1
         for axis_size in calculattion_src_target_shape:
             src_size *= axis_size
-        
+
         if (src_size > 1) and (tile_block_data_size > 0 and tile_block_data_size < self.block_byte_size):
             return True
-        
+
         return False
 
     def calculate_block_tiling(self):
@@ -387,7 +387,7 @@ class PureBroadcastSchedule:  # 'pylint: disable=R0902
         if self.is_multi_core_trample():
             self.block_tiling_axis = 0
             self.block_tiling_nparts = 1
-            return        
+            return
         core_num = 1
         block_split_nparts = None
         block_split_axis = None

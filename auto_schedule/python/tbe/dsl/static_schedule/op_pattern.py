@@ -1621,7 +1621,7 @@ softmax_dfs_tag_list = [  # 'pylint: disable=invalid-name
         "placeholder",
         "broadcast_for_tensor",
         "reduce_sum",
-        "elewise_binary_mul",   
+        "elewise_binary_mul",
         "placeholder",
     ],
 

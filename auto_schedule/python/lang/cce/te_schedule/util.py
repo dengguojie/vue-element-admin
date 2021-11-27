@@ -90,7 +90,7 @@ TILING_RADICAL = 0
 TILING_CONSERVATIVE = 1
 
 
-class L1CommonParam(object):
+class L1CommonParam:
     """"L1 common parameter"""
     l1_fusion_tensors_map = None
 

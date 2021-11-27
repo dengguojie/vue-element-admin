@@ -59,7 +59,6 @@ class OperatorContext:
         """
         :return:
         """
-        # TODO how to support custom pattern
         return self._pattern
 
     @staticmethod

@@ -2177,8 +2177,8 @@ def _normal_global_pooling_schedule(pooling_params, fp32_ability, fusion_params,
         if pooling_mode == "GMP":
             sch[pooling2d_res].compute_inline()
             swrite_stride = res.op.attrs["stride"].value
-            _, _, swrite_hw, swrite_C0 = list(i.value for i in res.shape)
-            sch[res].bind_buffer(res.op.axis[0], swrite_stride * swrite_hw * swrite_C0, 0)
+            _, _, swrite_hw, swrite_c0 = list(i.value for i in res.shape)
+            sch[res].bind_buffer(res.op.axis[0], swrite_stride * swrite_hw * swrite_c0, 0)
             sch[res].emit_insn(ci_inner, 'dma_copy')
         else:
             dict_args = {"errCode": "E90003", "detailed_cause": "stride_write is not support in GAP mode"}

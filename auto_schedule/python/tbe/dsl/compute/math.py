@@ -2423,7 +2423,7 @@ def vsel(condition, lhs, rhs):
         dict_args["detailed_cause"] = "condition only support bool and " \
                                       "uint8, but condition dtype is [%s]" % condition.dtype
         raise RuntimeError(dict_args, get_error_message(dict_args))
- 
+
     res_dtype = tmp.dtype
     if src_dtype != res_dtype:
         tmp = _cast(tmp, src_dtype, is_auto_cast=False)

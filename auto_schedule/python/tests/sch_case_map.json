@@ -379,7 +379,8 @@
         "elewise_speel_schedule"
     ],
     "auto_schedule/python/tbe/dsl/static_schedule/pooling2d_schedule.py":[
-        "pooling2d_schedule"
+        "pooling2d_schedule",
+        "pooling2d"
     ],
     "auto_schedule/python/tbe/dsl/static_schedule/vector_schedule.py":[
         "vector_schedule"

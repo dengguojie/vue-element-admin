@@ -89,10 +89,10 @@ def last_axis_broadcast(*args):  # 'pylint: disable=too-many-locals, too-many-st
     if int(broadcast_factor * dtype_byte_size % align_factor) == 0 or broadcast_src == 1:
         algorithm_score_dict["LFA"][0] = True
     # Rule 2: For unaligned broadcast_src >= 1 block, enable MG broadcast algorithm
-    algorithm_score_dict["MG"][0] = is_mg_supported(broadcast_src, 
-                                                    broadcast_factor, 
-                                                    dtype_byte_size, 
-                                                    align_factor, 
+    algorithm_score_dict["MG"][0] = is_mg_supported(broadcast_src,
+                                                    broadcast_factor,
+                                                    dtype_byte_size,
+                                                    align_factor,
                                                     algorithm_score_dict["LFA"][0])
     # Rule 3: Enable LAT for binary16 unaligned broadcast
     if dtype_byte_size == 2 and \

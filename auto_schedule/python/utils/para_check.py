@@ -442,7 +442,7 @@ def is_scalar(shape):
     """
     warnings.warn("te.utils.para_check is expired, please replace it with tbe.common.utils.para_check",
                   DeprecationWarning, stacklevel=STACKLEVEL_FOR_PARA_CHECK)
-    from tbe.common.utils import is_scalar 
+    from tbe.common.utils import is_scalar
     return is_scalar(shape)
 
 
