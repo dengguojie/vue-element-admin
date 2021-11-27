@@ -25,8 +25,8 @@ from te.utils.error_manager import error_manager_vector
 SHAPE_SIZE_LIMIT = 2147483648
 
 
-# pylint: disable=locally-disabled,too-many-locals,unused-argument
-# pylint: disable=invalid-name,unused-variable
+# 'pylint: disable=locally-disabled,too-many-locals,unused-argument
+# 'pylint: disable=invalid-name,unused-variable
 @tbe_platform.fusion_manager.fusion_manager.register("squared_difference")
 def squared_difference_compute(data_x, data_y, y, kernel_name="squared_difference"):
     """
@@ -63,7 +63,7 @@ def squared_difference_compute(data_x, data_y, y, kernel_name="squared_differenc
     return res
 
 
-# pylint: disable=locally-disabled,too-many-locals,invalid-name
+# 'pylint: disable=locally-disabled,too-many-locals,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def squared_difference(x1, x2, y, kernel_name="squared_difference"):

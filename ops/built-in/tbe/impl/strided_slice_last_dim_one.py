@@ -20,10 +20,10 @@ from te import platform as tbe_platform
 from impl.util.util_tik_comm_func import ceil_div
 
 
-# pylint: disable=invalid-name, too-many-locals, unused-argument
-# pylint: disable=too-many-arguments, unused-variable, too-many-return-statements
-# pylint: disable=too-many-branches, too-many-statements
-# pylint: disable=chained-comparison
+# 'pylint: disable=invalid-name, too-many-locals, unused-argument
+# 'pylint: disable=too-many-arguments, unused-variable, too-many-return-statements
+# 'pylint: disable=too-many-branches, too-many-statements
+# 'pylint: disable=chained-comparison
 def strided_slice_last_dim_one(input_shape, dtype, output_shape, begin, kernel_name):
     """
     strided_slice_last_dim_one

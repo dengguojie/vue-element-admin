@@ -26,7 +26,7 @@ PAD_IDX_LIST = (0, 1)
 FRAME_LEVEL = 2
 
 
-# pylint: disable=too-many-locals, inconsistent-return-statements, too-many-return-statements, too-many-statements
+# 'pylint: disable=too-many-locals, inconsistent-return-statements, too-many-return-statements, too-many-statements
 def _renew_input_output_shape_format(in_shape, out_shape, in_format, out_format):
     """
     renew shape and format to adapt tiling process
@@ -138,7 +138,7 @@ def _renew_input_output_shape_format(in_shape, out_shape, in_format, out_format)
     return [in_shape, out_shape] + [in_format, out_format]
 
 
-# pylint: disable=too-many-locals, too-many-statements
+# 'pylint: disable=too-many-locals, too-many-statements
 def _get_mc_info_positive(cr_args, c_args, cl_args):
     """
     get multiple core axis position for positive transform
@@ -227,7 +227,7 @@ def _get_mc_info_positive(cr_args, c_args, cl_args):
     return tiling_params
 
 
-# pylint: disable=redefined-builtin, too-many-statements, too-many-branches, unbalanced-tuple-unpacking
+# 'pylint: disable=redefined-builtin, too-many-statements, too-many-branches, unbalanced-tuple-unpacking
 def _tiling_params_positive(args):
     """
     calculate real tiling params for positive transform and last axis of source format is not c
@@ -384,7 +384,7 @@ def _get_tiling_params_func(args):
     return tiling_params
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _twice_vnchwconv_invert(args):
     """
     do ncdh to ndhc transform by twice vnchwconv
@@ -508,7 +508,7 @@ def _twice_vnchwconv_invert(args):
                 tik_inst.vnchwconv(True, False, dst_addr_list, src_addr_list, repeat_cnt, dst_stride, src_stride)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _once_vnchwconv_invert(args):
     """
     do cdh to dhc transform by once vnchwconv
@@ -716,7 +716,7 @@ def _inner_move_data_out_target_two_cl(args):
         _move_data_out(cur_cl_1_cr_2_args)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _copy_data_out_1st_src_r2nd_dst_not_same(out_offset_args, copy_out_args):
     """
     copy data from ub to gm for source 1st and target r2nd is not same
@@ -783,7 +783,7 @@ def _split_dims(args):
     cur_cr_size.set_as(plp_cr_size - last_cr_size - mid_lp_cnt * cr_out_idx_0_size)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _copy_data_out_1st_src_r2nd_dst_same(out_offset_args, copy_out_args):
     """
     copy data from ub to gm for source 1st and target r2nd is same

@@ -560,6 +560,7 @@ def _copy_ubuf_to_gm(tik_instance,
                               src_offset=cols_padding * (num_rows - 1))
 
 # 'pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-locals
 def _add(tik_instance, dst, src1, src2, rows, cols_padding):
     # process 256B data per repeat for vsub
     vadd_len = 64
@@ -655,7 +656,7 @@ def _copy_region(tik_instance, dst, src, num, dst_offset=0):
     tik_instance.data_move(dst[dst_offset], src, 0, 1, burstlen, 0, 0)
 
 # 'pylint: disable=too-many-arguments
-# 'pylint: disable=too-many-local-variables
+# 'pylint: disable=too-many-locals
 # 'pylint: disable=too-many-statements
 def _merge_recur(tik_instance, src_ub, dst_ub, last_dim, total_region_list, level, region_offset=0):
     """
@@ -866,7 +867,7 @@ def _copy_gm_to_ubuf(tik_instance, dst, src, num_rows, cols, col_start, gm_offse
                               src_offset=cols * i + col_start + gm_offset)
 
 # 'pylint: disable=too-many-arguments
-# 'pylint: disable=too-local-variables
+# 'pylint: disable=too-many-locals
 # 'pylint: disable=too-many-statements
 def _topk_a_row_by_part(tik_instance, row_start_in_core, cols, k, core_rows_start, multi_core, largest, soc_version):
     """
@@ -1087,7 +1088,7 @@ def _topk_a_row_by_part(tik_instance, row_start_in_core, cols, k, core_rows_star
                          multi_core=multi_core)
 
 # 'pylint: disable=too-many-arguments
-# 'pylint: disable=too-many-local-variables
+# 'pylint: disable=too-many-locals
 def _topk_rows(tik_instance, row_start_in_core, rows, cols, k, core_rows_start, multi_core, largest):
     """
     _topk_rows do topk action muilti rows
@@ -1245,8 +1246,9 @@ def _tiling(rows, cols, cols_limit):
 
     return ret, turning, batch
 
-# 'pylint: disable=too-many-local-variables
+# 'pylint: disable=too-many-locals
 # 'pylint: disable=too-many-statements
+# 'pylint: disable=too-many-branches
 def _kernel_ir(tik_instance, ins, outs, k, largest, soc_version):
     """
     Funtion for common process in top_k op

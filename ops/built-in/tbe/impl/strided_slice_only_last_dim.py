@@ -15,7 +15,7 @@
 """
 strided_slice_only_last_dim
 """
-# pylint: disable=too-many-locals,too-many-statements,unused-variable,
+# 'pylint: disable=too-many-locals,too-many-statements,unused-variable,
 from te import tik
 from te import platform as tbe_platform
 

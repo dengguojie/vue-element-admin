@@ -26,7 +26,7 @@ PAD_IDX_LIST = (0, 1)
 FRAME_LEVEL = 2
 
 
-# pylint: disable=too-many-locals, inconsistent-return-statements, too-many-return-statements, too-many-statements
+# 'pylint: disable=too-many-locals, inconsistent-return-statements, too-many-return-statements, too-many-statements
 def _renew_input_output_shape_format(in_shape, out_shape, hidden_size):
     """
     renew shape and format to adapt tiling process
@@ -47,7 +47,7 @@ def _renew_input_output_shape_format(in_shape, out_shape, hidden_size):
     return new_params_zn
 
 
-# pylint: disable=too-many-locals, too-many-statements
+# 'pylint: disable=too-many-locals, too-many-statements
 def _get_mc_info_positive(cr_args, c_args, cl_args):
     """
     get multiple core axis position for positive transform
@@ -136,7 +136,7 @@ def _get_mc_info_positive(cr_args, c_args, cl_args):
     return tiling_params
 
 
-# pylint: disable=redefined-builtin, too-many-statements, too-many-branches, unbalanced-tuple-unpacking
+# 'pylint: disable=redefined-builtin, too-many-statements, too-many-branches, unbalanced-tuple-unpacking
 def _tiling_params_positive(args):
     """
     calculate real tiling params for positive transform and last axis of source format is not c
@@ -290,7 +290,7 @@ def _get_tiling_params_func(args):
     return tiling_params
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _twice_vnchwconv_invert(args):
     """
     do ncdh to ndhc transform by twice vnchwconv
@@ -354,7 +354,7 @@ def _twice_vnchwconv_invert(args):
         hidden_output.set_as(vnc_row_size)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _once_vnchwconv_invert(args):
     """
     do cdh to dhc transform by once vnchwconv
@@ -499,7 +499,7 @@ def calc_cr_offset(step_in, in_idx, hidden_size, c0_size, cr_offset):
     cr_offset_cnt = (step_in * in_idx) // hidden_size
     cr_offset.set_as(cr_offset_cnt * (hidden_ceil - hidden_size) * c0_size)
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _copy_data_out(out_offset_args, copy_out_args):
     """
     copy data from ub to gm
@@ -527,7 +527,8 @@ def _func_transform_100(tensor_args, tp_args):
 
     tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, ele_per_block, hidden_size, in_dtype = tensor_args
     (tiling_mode, ub_offset, mc_pos, used_core_cnt, core_step_in, core_step_out, vnc_col_size, c_mod_c0, c0_size,
-     cl_dims, cr_dims, r1st_src_r2nd_dst_same, hidden_cnt, cl_step_in, cl_step_out, cl_lp_unit, cl_lp_step_in, cl_lp_step_out,
+     cl_dims, cr_dims, r1st_src_r2nd_dst_same, hidden_cnt, cl_step_in, 
+     cl_step_out, cl_lp_unit, cl_lp_step_in, cl_lp_step_out,
      c_step_in, c_lp_unit, c_lp_step_in, c_lp_step_out, cr_step_in, cr_step_out, cr_lp_unit, cr_lp_step_in,
      cr_lp_step_out, nlc_cl_lp_cnt, nlc_cl_left, nlc_c_lp_cnt, nlc_c_left, nlc_cr_lp_cnt, nlc_cr_left, lc_cl_lp_cnt,
      lc_cl_left, lc_c_lp_cnt, lc_c_left, lc_cr_lp_cnt, lc_cr_left,

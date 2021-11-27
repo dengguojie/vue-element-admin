@@ -145,46 +145,6 @@
   },
   {
     "op": "TransData",
-    "case_name" : "test_transdata_006",
-    "calc_expect_func_file": "transdata_golden.py:calc_expect_func_nd_2_nz",
-    "input_desc": [
-      {
-        "format": "ND",
-        "shape": [-1, -1, -1],
-        "shape_range": [[0,-1], [0, -1], [0, -1]],
-        "typical_shape": [4, 3, 3],
-        "type": "float16",
-        "value_range": [[0, 1]],
-        "data_distribute" : "uniform",
-        "name": "src"
-      }
-    ],
-    "output_desc": [
-      {
-        "format": "FRACTAL_NZ",
-        "shape": [-1, -1, -1, -1, -1],
-        "shape_range": [[0, -1], [0, -1], [0, -1], [0, -1], [0, -1]],
-        "typical_shape": [4, 1, 1, 16, 16],
-        "type": "float16",
-        "name": "dst"
-      }
-    ],
-    "attr": [
-              {
-                  "name": "src_format",
-                  "value": "ND",
-                  "type": "string"
-              },
-              {
-                  "name": "dst_format",
-                  "value": "FRACTAL_NZ",
-                  "type": "string"
-              }
-          ]
-
-  },
-  {
-    "op": "TransData",
     "case_name" : "test_transdata_008",
     "calc_expect_func_file": "transdata_golden.py:calc_expect_func_nz_2_nd",
     "input_desc": [

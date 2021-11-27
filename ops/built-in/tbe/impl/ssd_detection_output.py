@@ -15,7 +15,7 @@
 """
 ssd_detection_output
 """
-# pylint: disable=too-many-lines,too-many-branches
+# 'pylint: disable=too-many-lines,too-many-branches
 import math
 
 import te.platform as tbe_platform
@@ -29,8 +29,8 @@ from impl import nms
 from impl.util import util_select_op_base
 
 
-# pylint: disable=super-with-arguments
-# pylint: disable=too-many-locals,too-many-statements,too-many-arguments,unused-argument,too-many-lines
+# 'pylint: disable=super-with-arguments
+# 'pylint: disable=too-many-locals,too-many-statements,too-many-arguments,unused-argument,too-many-lines
 def get_op_support_info(bbox_delta, score, anchors,
                         out_boxnum, output_y,
                         num_classes,
@@ -247,7 +247,7 @@ def _check_input_data_logical_relationship(input_dict):
                                                               "the second dimension of mbox_prior", priorbox_shape[1])
 
 
-# pylint: disable=invalid-name, too-many-arguments, too-many-locals
+# 'pylint: disable=invalid-name, too-many-arguments, too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
@@ -363,7 +363,7 @@ def ssd_detection_output(bbox_delta, score, anchors,
     return tik_instance
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class SSDDetectionOutput(ssd_decode_bbox.SSDDectionParamInit):
     """
     define SSDDetectionOutput class

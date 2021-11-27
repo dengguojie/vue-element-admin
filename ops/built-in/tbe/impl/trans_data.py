@@ -216,7 +216,7 @@ def trans_data(src, dst, src_format, dst_format, groups=1,
     else:
         error_manager_vector.raise_err_specific_reson("trans_data", "not support the format transfer!")
 
-# 'pylint: disable=too-many-local-variables
+# 'pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.register("trans_data")
 def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='transdata'):
     """
@@ -269,10 +269,12 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
         dst_shape = (dst_n, dst_h*dst_w, dst_c)
 
         if dst_n != src_n:
-            error_manager_vector.raise_err_specific_reson("trans_data", "batch should not be changed when trans NC1HWC0 to NHWC!")
+            error_manager_vector.raise_err_specific_reson("trans_data",
+                                                          "batch should not be changed when trans NC1HWC0 to NHWC!")
 
         if dst_h*dst_w != src_hw:
-            error_manager_vector.raise_err_specific_reson("trans_data", "Ho*Wo should not be changed when trans NC1HWC0 to NHWC!")
+            error_manager_vector.raise_err_specific_reson("trans_data",
+                                                          "Ho*Wo should not be changed when trans NC1HWC0 to NHWC!")
 
         dst_tensor = tvm.compute(
             dst_shape,

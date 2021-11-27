@@ -41,6 +41,7 @@ TRANS_MIN_BLKS = 16
 
 # 'pylint: disable=unused-argument
 # 'pylint: disable=consider-using-in,unnecessary-pass
+# 'pylint: disable=too-many-locals
 def check_supported(dy, output, shape, begin, end, strides, begin_mask=0,
                     end_mask=0, ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,
                     kernel_name="strided_slice_grad_d"):

@@ -21,7 +21,7 @@ from te import platform as tbe_platform
 from impl.common_util import get_data_size
 
 
-# pylint: disable=too-many-arguments, too-many-locals, too-many-statements
+# 'pylint: disable=too-many-arguments, too-many-locals, too-many-statements
 def strided_slice_last_dim_mte(input_shape, dtype, output_shape,
                                begin, kernel_name):
     """

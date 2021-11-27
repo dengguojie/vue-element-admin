@@ -32,8 +32,8 @@ NEED_CAST_DTYPES = ("float32", "int32", "uint32")
 VNC_SUPPORT_DTYPES = ("int8", "uint8", "float16")
 
 
-# pylint: disable=too-many-locals, inconsistent-return-statements, too-many-lines, too-many-return-statements,
-# pylint: disable=too-many-statements
+# 'pylint: disable=too-many-locals, inconsistent-return-statements, too-many-lines, too-many-return-statements,
+# 'pylint: disable=too-many-statements
 def _renew_input_output_shape_format(in_shape, out_shape, in_format, out_format):
     """
     renew shape and format to adapt tiling process
@@ -146,7 +146,7 @@ def _renew_input_output_shape_format(in_shape, out_shape, in_format, out_format)
     return [in_shape, out_shape] + [in_format, out_format]
 
 
-# pylint: disable=too-many-statements, unused-variable
+# 'pylint: disable=too-many-statements, unused-variable
 def _get_mc_info_negative(cr_args, c_args, cl_args):
     """
     get multiple core axis position for negative transform
@@ -244,7 +244,7 @@ def _get_mc_info_negative(cr_args, c_args, cl_args):
     return tiling_params
 
 
-# pylint: disable=redefined-builtin, unbalanced-tuple-unpacking, too-many-branches
+# 'pylint: disable=redefined-builtin, unbalanced-tuple-unpacking, too-many-branches
 def _tiling_params_negative(args):
     """
     calculate real tiling params for negative transform and last axis of target format is not c
@@ -901,7 +901,7 @@ def _move_cr_in_for_two_cr_dims(args):
                                    right_dims_size * c0_len // ele_per_block, right_c_cr_gap, right_cr_gap)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _move_cl_in_for_two_cr_dims(args):
     """
     move c-left in first in process when c-right has two dimensions
@@ -969,7 +969,7 @@ def _move_cl_in_for_two_cr_dims(args):
                                sub_c_cr_size, c0_len // ele_per_block, (cl_plp_size - 1) * c0_len // ele_per_block, 0)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _copy_data_in_0(in_offset_args, tik_args):
     """
     copy data from gm to ub for transform such as nc1hwc0 -> nchw
@@ -1060,7 +1060,7 @@ def _copy_data_in_0(in_offset_args, tik_args):
                     _move_cr_in_for_two_cr_dims(data_in_args)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _copy_data_in_1(in_offset_args, tik_args):
     """
     copy data from gm to ub for transform such as fractal_z -> nchw
@@ -1123,7 +1123,7 @@ def _copy_data_in_1(in_offset_args, tik_args):
                 _move_cl_in_for_two_cr_dims(data_in_args)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _copy_data_out(copy_out_args):
     """
     copy data from ub to gm

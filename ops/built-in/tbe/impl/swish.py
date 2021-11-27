@@ -24,7 +24,7 @@ from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import para_check
 
 
-# pylint: disable=unused-argument,too-many-locals,invalid-name
+# 'pylint: disable=unused-argument,too-many-locals,invalid-name
 @fusion_manager.register("swish")
 def swish_compute(data_input, data_output, scale, kernel_name="swish"):
     """

@@ -29,7 +29,7 @@ NEED_CAST_DTYPES = ("float32", "int32", "uint32")
 VNC_SUPPORT_DTYPES = ("int8", "uint8", "float16")
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def _renew_input_output_shape_format(in_shape, out_shape, in_format, out_format):
     """
     renew shape and format to adapt tiling process
@@ -98,7 +98,7 @@ def _renew_input_output_shape_format(in_shape, out_shape, in_format, out_format)
     return [in_shape, out_shape] + [in_format, out_format]
 
 
-# pylint: disable=too-many-statements
+# 'pylint: disable=too-many-statements
 def _get_mc_info_negative(r2nd_args, c1_args, left_args):
     """
     get multiple core axis position for negative transform
@@ -186,7 +186,7 @@ def _get_mc_info_negative(r2nd_args, c1_args, left_args):
             tp_201_lc_r2nd_left, tp_201_lc_c1_left, tp_201_lc_left_left]
 
 
-# pylint: disable=redefined-builtin, unbalanced-tuple-unpacking, too-many-branches
+# 'pylint: disable=redefined-builtin, unbalanced-tuple-unpacking, too-many-branches
 def _tiling_params_negative(args):
     """
     calculate real tiling params for negative transform and last axis of target format is c
@@ -963,7 +963,7 @@ def _copy_data_in_1(args):
                     _vor_data_move(cl_args)
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 def _copy_data_out(copy_out_args):
     """
     copy data from ub to gm
