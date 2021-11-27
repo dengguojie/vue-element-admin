@@ -47,6 +47,13 @@ const int64_t MAX_SHAPE_LEN = 8;
 const int64_t COMPILE_INFO_SIZE_4 = 4;
 
 const int64_t COMPILE_INFO_SIZE_9 = 9;
+
+// define the TILING_MODE_0 sigment when the shape len = 2
+const int64_t TILING_0_SIGMENT_1 = 128;
+
+// define the TILING_MODE_0 sigment when the shape len = 1; 16 mean fp16 num in one block
+const int64_t TILING_0_SIGMENT_2 = 16;
+
 // define a map format with N(D)CHW dim idx vector
 const map<Format, vector<int32_t>>& FORMAT_FOR_NCHW_IDX = {
     {FORMAT_NCHW, {0, 1, 2, 3}},     {FORMAT_NHWC, {0, 3, 1, 2}},     {FORMAT_HWCN, {3, 2, 0, 1}},
@@ -433,7 +440,8 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape, const std::v
       tiling_params.tiling_input_dim_5 = split_dim;
     }
   }
-  if ((shape_len == 2 && last_dim_output > 128 * compile_params.core_num) || shape_len == 1) {
+  if ((shape_len == 2 && tiling_params.tiling_input_dim_7 > TILING_0_SIGMENT_1 * compile_params.core_num) ||
+      (shape_len == 1 && tiling_params.tiling_input_dim_7 >= TILING_0_SIGMENT_2 * compile_params.core_num)) {
     tiling_params.tiling_key = TILING_MODE_0;
     tiling_params.tiling_input_dim_cut_axis = 0;
   }
