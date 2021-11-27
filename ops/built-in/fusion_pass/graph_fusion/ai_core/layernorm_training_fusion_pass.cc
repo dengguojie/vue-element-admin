@@ -24,7 +24,6 @@
 #include "op_log.h"
 #include "error_util.h"
 #include "fp16_t.hpp"
-#include "cce/dnn_base.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/attr_utils.h"
 #include "graph/utils/graph_utils.h"

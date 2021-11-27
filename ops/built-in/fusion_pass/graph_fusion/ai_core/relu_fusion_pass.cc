@@ -21,7 +21,6 @@
 #include "relu_fusion_pass.h"
 #include <iostream>
 #include <map>
-#include "cce/dnn_base_def.hpp"
 #include "framework/common/types.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/graph_utils.h"
@@ -43,6 +42,7 @@ static const char ELTWISE[] = "Eltwise";
 static const char ADD[] = "Add";
 static const char ACTIVATION[] = "Activation";
 static const char STREAMSWITCH[] = "StreamSwitch";
+static constexpr int ELTWISE_SUM = 1;
 
 static const std::set<string> add_relu_fusion_input_op = {"Convolution", "Activation", "FusionBatchNorm",
                                                           "BatchNorm",   "Pooling",    "Eltwise"};
@@ -159,7 +159,7 @@ Status ReluFusionPass::DoFusion(ge::NodePtr src_node, ge::NodePtr relu_node) {
       }
     }
     src_op->SetType(ELTWISE);
-    FUSION_PASS_CHECK(!ge::AttrUtils::SetInt(src_op, ge::ELTWISE_ATTR_MODE, cce::CC_ELTWISE_SUM),
+    FUSION_PASS_CHECK(!ge::AttrUtils::SetInt(src_op, ge::ELTWISE_ATTR_MODE, ELTWISE_SUM),
                       OP_LOGD(FUSED_OP_TYPE.c_str(), "set ELTWISE_ATTR_MODE fail."), return NOT_CHANGED);
     FUSION_PASS_CHECK(!ge::AttrUtils::SetBool(src_op, ge::ELTWISE_ATTR_RELU_FLAG, true),
                       OP_LOGD(FUSED_OP_TYPE.c_str(), "set ELTWISE_ATTR_RELU_FLAG fail."), return NOT_CHANGED);

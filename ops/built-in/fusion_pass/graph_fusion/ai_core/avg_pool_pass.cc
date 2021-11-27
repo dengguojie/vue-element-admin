@@ -72,26 +72,6 @@ Status GenerateFilterFP16(const int64_t& size, const float& areaFactor, uint16_t
   return SUCCESS;
 }
 
-Status GenerateFilterFP16Dynamic(const vector<int64_t> shape, const float areaFactor, uint16_t& output1) {
-  uint16_t* output = &output1;
-  fp16_t area_factor;
-  area_factor.val = 0;
-  area_factor = static_cast<float>(areaFactor);
-  for (int64_t i = 0; i < shape[0]; i++) {
-    for (int64_t j = 0; j < shape[1]; j++) {
-      for (int64_t k = 0; k < shape[2]; k++) {
-        for (int64_t l = 0; l < shape[3]; l++) {
-          if (k == l) {
-            output[i * (shape[1] * shape[2] * shape[3]) + j * (shape[2] * shape[3]) + k * shape[3] + l] =
-                                                                                                      area_factor.val;
-          }
-        }
-      }
-    }
-  }
-  return SUCCESS;
-}
-
 Status GenerateCoffeFP16(const vector<int64_t> shape, vector<int64_t> window, vector<int64_t> stride,
                          vector<int64_t> pad, const int64_t dimH, const int64_t dimW, uint16_t& output1) {
   uint16_t* output = &output1;
@@ -119,6 +99,26 @@ Status GenerateCoffeFP16(const vector<int64_t> shape, vector<int64_t> window, ve
             out_val = (float)area;
             output[m * (shape[1] * shape[2] * shape[3] * shape[4]) + n * (shape[2] * shape[3] * shape[4]) +
                    i * (shape[3] * shape[4]) + j * shape[4] + k] = out_val.val;
+          }
+        }
+      }
+    }
+  }
+  return SUCCESS;
+}
+
+Status GenerateFilterFP16Dynamic(const vector<int64_t> shape, const float areaFactor, uint16_t& output1) {
+  uint16_t* output = &output1;
+  fp16_t area_factor;
+  area_factor.val = 0;
+  area_factor = static_cast<float>(areaFactor);
+  for (int64_t i = 0; i < shape[0]; i++) {
+    for (int64_t j = 0; j < shape[1]; j++) {
+      for (int64_t k = 0; k < shape[2]; k++) {
+        for (int64_t l = 0; l < shape[3]; l++) {
+          if (k == l) {
+            output[i * (shape[1] * shape[2] * shape[3]) + j * (shape[2] * shape[3]) + k * shape[3] + l] =
+                                                                                                      area_factor.val;
           }
         }
       }

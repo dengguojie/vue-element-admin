@@ -20,8 +20,6 @@
 #include <unordered_map>
 #include <utility>
 #include "./graph_insert_trans_op.h"
-#include "cce/cce.h"
-#include "cce/dnn.h"
 #include "common/debug/log.h"
 #include "common/math/math_util.h"
 #include "common/op/ge_op_utils.h"
