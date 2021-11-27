@@ -2787,11 +2787,53 @@ IMPLEMT_INFERFUNC(AdpGetNext, AdpGetNextInfer) {
       return GRAPH_FAILED;
     }
   }
-
   return GRAPH_SUCCESS;
 }
 
 INFER_FUNC_REG(AdpGetNext, AdpGetNextInfer);
 // ----------------------------AdpGetNext END-----------------------------------
 
+// ----------------------------GetNextV2---------------------------------------
+IMPLEMT_INFERFUNC(GetNextV2, GetNextV2Infer) {
+  std::vector<ge::DataType> output_types;
+  if (op.GetAttr("output_types", output_types) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[output_types] failed"));
+    return GRAPH_FAILED;
+  }
+
+  std::vector<std::vector<int64_t>> output_shapes;
+  if (op.GetAttr("output_shapes", output_shapes) != GRAPH_SUCCESS) {
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), string("get attr[output_shapes] failed"));
+    return GRAPH_FAILED;
+  }
+
+  if (output_types.size() != output_shapes.size()) {
+    std::string err_msg =
+      "attr[output_types] and attr[output_shapes] should be the same length";
+    AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+    return GRAPH_FAILED;
+  }
+
+  for (size_t i = 0; i < output_shapes.size(); i++) {
+    TensorDesc output_desc = op.GetDynamicOutputDesc("y", i);
+    Shape shape(output_shapes[i]);
+    output_desc.SetShape(shape);
+    output_desc.SetDataType(output_types[i]);
+    graphStatus output_status = op.UpdateDynamicOutputDesc("y", i, output_desc);
+    if (output_status != GRAPH_SUCCESS) {
+      std::ostringstream ss;
+      ss << "update output[y] index[";
+      ss << i;
+      ss << "] desc failed";
+      std::string err_msg = ss.str();
+      AICPU_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+      return GRAPH_FAILED;
+    }
+  }
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(GetNextV2, GetNextV2Infer);
+// ----------------------------GetNextV2 END-----------------------------------
 }  // namespace ge

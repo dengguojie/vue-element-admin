@@ -46,6 +46,7 @@ set(_tf_plugins
   adjust_saturation_plugin.cc
   adp_get_next.cc
   aicpu_parser.cc
+  get_next_v2.cc
   apply_adadelta_plugin.cc
   apply_adagrad_da_plugin.cc
   apply_adagrad_plugin.cc

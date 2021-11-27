@@ -167,21 +167,21 @@ uint32_t AddCpuKernel::AddCalculate(const CpuKernelContext &ctx, BCalcInfo &calc
     return KERNEL_STATUS_OK;
   }
 
-  Eigen::DSizes<Eigen::DenseIndex, RANK> reshape_0;
-  Eigen::DSizes<Eigen::DenseIndex, RANK> reshape_1;
+  Eigen::DSizes<Eigen::DenseIndex, RANK> reshape0;
+  Eigen::DSizes<Eigen::DenseIndex, RANK> reshape1;
   Eigen::DSizes<Eigen::DenseIndex, RANK> shape_out;
-  Eigen::array<Eigen::DenseIndex, RANK> bcast_0;
-  Eigen::array<Eigen::DenseIndex, RANK> bcast_1;
+  Eigen::array<Eigen::DenseIndex, RANK> bcast0;
+  Eigen::array<Eigen::DenseIndex, RANK> bcast1;
 
   for (int32_t i = 0; i < RANK; i++) {
-    reshape_0[RANK - i - 1] = calcInfo.reshape_0[i];
-    reshape_1[RANK - i - 1] = calcInfo.reshape_1[i];
+    reshape0[RANK - i - 1] = calcInfo.reshape_0[i];
+    reshape1[RANK - i - 1] = calcInfo.reshape_1[i];
     shape_out[RANK - i - 1] = calcInfo.shape_out[i];
-    bcast_0[RANK - i - 1] = calcInfo.bcast_0[i];
-    bcast_1[RANK - i - 1] = calcInfo.bcast_1[i];
+    bcast0[RANK - i - 1] = calcInfo.bcast_0[i];
+    bcast1[RANK - i - 1] = calcInfo.bcast_1[i];
   }
   output.reshape(shape_out) =
-      input0.reshape(reshape_0).broadcast(bcast_0) + input1.reshape(reshape_1).broadcast(bcast_1);
+      input0.reshape(reshape0).broadcast(bcast0) + input1.reshape(reshape1).broadcast(bcast1);
   return KERNEL_STATUS_OK;
 }
 
