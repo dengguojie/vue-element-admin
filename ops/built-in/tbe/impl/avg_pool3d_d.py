@@ -28,7 +28,7 @@ from impl.util.util_select_op_base import get_op_cal_info
 
 MAX_BLOCK_NUM = 65535
 
-# pylint: disable = unused-argument,redefined-builtin
+# 'pylint: disable = unused-argument,redefined-builtin,too-many-arguments,too-many-boolean-expressions,too-many-locals
 def get_op_support_info(x,
                         filter,
                         multiplier,
@@ -116,6 +116,7 @@ def _check_window_rule(ksize, strides, pads):
         error_manager_vector.raise_err_input_param_range_invalid('avg_pool3d', 'pads', 6, 6, len(pads))
 
 
+# 'pylint: disable = too-many-boolean-expressions
 def _check_global_rule(input_shape, ksize, pads):
     ksize_h = ksize[2]
     ksize_w = ksize[3]
@@ -129,7 +130,7 @@ def _check_global_rule(input_shape, ksize, pads):
         error_manager_vector.raise_err_pad_mode_invalid('avg_pool3d', 'valid', 'other')
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 def _avg_pool3d_check_rule(input_shape, input_dtype, ksize, strides, pads, kernel_name):
     """
     _avg_pool3d_check_rule
@@ -154,7 +155,7 @@ def _avg_pool3d_check_rule(input_shape, input_dtype, ksize, strides, pads, kerne
     _check_window_rule(ksize, strides, pads)
 
 
-# pylint: disable=too-many-locals,too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-locals,too-many-arguments,unused-argument,invalid-name
 def avg_pool3d_compute(x,
                        filter,
                        multiplier,
@@ -330,8 +331,11 @@ def _avg_pool3d_schedule(res, sch, ksize, strides):
 
 
 def check_vector_impl(input_shape, ksize, pads):
-    for i in range(len(pads)):
-        if pads[i] != 0:
+    """
+    check vector impl shape ksize pads
+    """
+    for pad in pads:
+        if pad != 0:
             return False
     input_h = input_shape[3]
     input_w = input_shape[4]
@@ -401,7 +405,8 @@ def _transform_shape_with_format(ori_format, shape):
         shape_all = shape
     return tuple(shape_all), shape_dhw
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
@@ -423,7 +428,7 @@ def avg_pool3d_d(x,
     Parameters
     ----------
     x : dict, shape and dtype of input_data,
-        only support float16, shape is 5 dims, format is NDC1HWC0
+    only support float16, shape is 5 dims, format is NDC1HWC0
 
     filter : dict, fractal_z_3d layout, float16 dtype
 
@@ -432,21 +437,21 @@ def avg_pool3d_d(x,
     y : dict, shape and dtype of output_data, only support float16
 
     ksize : list or tuple, the window of avg_pool3d,
-            only support avg_pool3d in D or H or W
+    only support avg_pool3d in D or H or W
 
     strides : list or tuple, the stride of avg_pool3d window,
-              only support avg_pool3d in D or H or W
+    only support avg_pool3d in D or H or W
 
     pads : list or tuple, count of padding zero or d,h,w axis
 
     ceil_mode: when True, will use ceil instead of floor in the formula to
-               compute the output shape
+    compute the output shape
 
     count_include_pad: when True, will include the zero-padding in the
-                       averaging calculation.
+    averaging calculation.
 
     divisor_override: if specified, it will be used as divisor, otherwise size
-                      of the pooling region will be used.
+    of the pooling region will be used.
 
     data_format : str, default = "NDHWC"
 

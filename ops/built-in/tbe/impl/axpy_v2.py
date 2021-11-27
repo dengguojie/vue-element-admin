@@ -31,10 +31,8 @@ import te.platform as tbe_platform
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util import util_common
-
-# General limitation of the reduce size for input shape: 2**31
-SHAPE_SIZE_LIMIT = 2147483648
-SIZE_SIXTEEN = 16
+from impl.constant_util import SIZE_SIXTEEN
+from impl.constant_util import SHAPE_SIZE_LIMIT
 
 
 def generate_param(dtypes, formats):
@@ -77,6 +75,7 @@ def get_format_same(dtype_list, format_list, dtype_total, alpha_dtypes, alpha_fo
     return dtypes, formats
 
 
+# 'pylint: disable=too-many-arguments
 def get_format_mix(dtype_list, format_list, dtype_total, alpha_dtypes, alpha_formats, len_format_list, format_nz,
                    format_nd):
     """
@@ -103,8 +102,6 @@ def get_format_mix(dtype_list, format_list, dtype_total, alpha_dtypes, alpha_for
     return dtypes, formats0, formats1, formats2
 
 
-# op select format
-# pylint: disable=unused-argument
 def _can_broad(x, y):
     if x[2]:
         x[0] *= 16
@@ -117,6 +114,9 @@ def _can_broad(x, y):
                0] == 16 or y[0] == y[1] == 16
 
 
+# op select format
+# 'pylint: disable=unused-argument,too-many-locals,too-many-boolean-expressions,too-many-nested-blocks
+# 'pylint: disable=too-many-branches,too-many-statements
 def op_select_format(input_x, input_y, alpha, output_z, kernel_name="axpy_v2"):
     """
     select format dynamically
@@ -345,15 +345,15 @@ def axpy_v2_compute(x1, x2, alpha, y, kernel_name="axpy_v2"):
     Parameters
     ----------
     x1 : TVM tensor
-        the placeholder of input_x
+    the placeholder of input_x
     x2 : TVM tensor
-        the placeholder of x2
+    the placeholder of x2
     y : dict
-        dict of y, include keys(shape and dtype)
+    dict of y, include keys(shape and dtype)
     alpha : TVM tensor
-        scalar of mul-factor
+    scalar of mul-factor
     kernel_name : str
-        kernel name, default value is "axpy_v2"
+    kernel name, default value is "axpy_v2"
 
     Returns
     -------
@@ -379,7 +379,7 @@ def axpy_v2_compute(x1, x2, alpha, y, kernel_name="axpy_v2"):
 
     if shape_x1 != shape_x2:
         # if shape not equal, then apply broadcast.
-        shape_x, shape_y, shape_max = shape_util.produce_shapes(shape_x1, shape_x2)
+        _, _, shape_max = shape_util.produce_shapes(shape_x1, shape_x2)
         x1 = tbe.broadcast(x1, shape_max)
         x2 = tbe.broadcast(x2, shape_max)
         alpha = tbe.broadcast(alpha, shape_max)
@@ -392,7 +392,7 @@ def axpy_v2_compute(x1, x2, alpha, y, kernel_name="axpy_v2"):
     return res
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-locals
 @check_op_params(REQUIRED_INPUT, REQUIRED_INPUT, REQUIRED_INPUT, OPTION_OUTPUT, KERNEL_NAME)
 def axpy_v2(x1, x2, alpha, y, kernel_name="axpy_v2"):
     """
@@ -401,17 +401,17 @@ def axpy_v2(x1, x2, alpha, y, kernel_name="axpy_v2"):
     Parameters
     ----------
     x1 : dict
-        shape and dtype of input_x
+    shape and dtype of input_x
     x2 : dict
-        shape and dtype of input_y
+    shape and dtype of input_y
     alpha : dict
-        shape and dtype of alpha
-        scalar apply to input_y:input_y*alpha
+    shape and dtype of alpha
+    scalar apply to input_y:input_y*alpha
     y : dict
-        shape and dtype of output, should be same shape and type as input
+    shape and dtype of output, should be same shape and type as input
 
     kernel_name : str
-        kernel name, default value is "axpy"
+    kernel name, default value is "axpy"
 
     Returns
     -------
@@ -448,7 +448,7 @@ def axpy_v2(x1, x2, alpha, y, kernel_name="axpy_v2"):
     shape_util.compare_tensor_dict_key(x1, x2, "dtype")
 
     # check alpha is 0D or 1D tensor
-    if len(alpha_shape) and not para_check.is_scalar(alpha_shape):
+    if len(alpha_shape) != 0 and not para_check.is_scalar(alpha_shape):
         raise RuntimeError("alpha should be 0D or 1D tensor")
 
     # produce shapes

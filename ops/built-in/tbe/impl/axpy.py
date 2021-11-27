@@ -25,9 +25,7 @@ from impl.util import util_common
 from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 from impl.util.platform_adapter import error_manager_vector
-
-# constant, value is 16
-SIZE_SIXTEEN = 16
+from impl.constant_util import SIZE_SIXTEEN
 
 
 def _is_last_two_axis_16_multiple(shape):
@@ -57,20 +55,20 @@ def _is_support_nd_nz_nz(shape_1, shape_2):
     _is_support_nd_nz_nz
 
     check the two shape like this:
-        shapex  len >= 2
-        shapey  len =1 and the size is 16 align and = shapex[-1]
+    shapex  len >= 2
+    shapey  len =1 and the size is 16 align and = shapex[-1]
 
     ex:
-        shapex = [10, 10, 256, 256]
-        shapey = [256]
+    shapex = [10, 10, 256, 256]
+    shapey = [256]
     """
     return len(shape_1) >= 2 and len(shape_2) == 1 and shape_2[0] % SIZE_SIXTEEN == 0 and \
                shape_2[-1] == shape_1[-1]
 
 
-# pylint: disable=unused-argument, too-many-nested-blocks
-# pylint: disable=invalid-name,too-many-locals,too-many-branches
-# pylint: disable=too-many-statements,too-many-boolean-expressions
+# 'pylint: disable=unused-argument, too-many-nested-blocks
+# 'pylint: disable=invalid-name,too-many-locals,too-many-branches
+# 'pylint: disable=too-many-statements,too-many-boolean-expressions
 # op select format
 def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
     """
@@ -79,20 +77,20 @@ def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
     Parameters
     ----------
     input_x: dict
-        dict of input_x, include keys(shape and dtype).
+    dict of input_x, include keys(shape and dtype).
     input_y: dict
-        dict of input_y, include keys(shape and dtype).
+    dict of input_y, include keys(shape and dtype).
     output_z: dict
-        dict of output_z, include keys(shape and dtype).
+    dict of output_z, include keys(shape and dtype).
     alpha: float
-        alpha value
+    alpha value
     kernel_name: str
-        kernel name, default value is axpy
+    kernel name, default value is axpy
 
     Returns:
     -------
     param_dynamic_in_json: dict
-        dict of param_dynamic.
+    dict of param_dynamic.
     """
     shape_x = input_x.get("ori_shape")
     shape_y = input_y.get("ori_shape")
@@ -411,15 +409,15 @@ def axpy_compute(x1, x2, y, alpha, kernel_name="axpy"):
     Parameters
     ----------
     x1 : TVM tensor
-        the placeholder of input_x
+    the placeholder of input_x
     x2 : TVM tensor
-        the placeholder of x2
+    the placeholder of x2
     y : dict
-        dict of y, include keys(shape and dtype)
+    dict of y, include keys(shape and dtype)
     alpha : float
-        scalar of mul-factor
+    scalar of mul-factor
     kernel_name : str
-        kernel name, default value is "axpy"
+    kernel name, default value is "axpy"
 
     Returns
     -------
@@ -509,15 +507,15 @@ def axpy(x1, x2, y, alpha, kernel_name="axpy"):
     Parameters
     ----------
     x1 : dict
-        shape and dtype of input_x
+    shape and dtype of input_x
     x2 : dict
-        shape and dtype of input_y
+    shape and dtype of input_y
     y : dict
-        shape and dtype of output, should be same shape and type as input
+    shape and dtype of output, should be same shape and type as input
     alpha : float
-        scalar apply to input_y:input_y*alpha
+    scalar apply to input_y:input_y*alpha
     kernel_name : str
-        kernel name, default value is "axpy"
+    kernel name, default value is "axpy"
 
     Returns
     -------
