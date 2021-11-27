@@ -9,7 +9,7 @@
         ],
         "format": "NHWC",
         "ori_shape": [
-          2,
+          -1,
           10
         ],
         "ori_format": "NHWC",
@@ -33,7 +33,7 @@
         ],
         "format": "NHWC",
         "ori_shape": [
-          2,
+          -1,
           10
         ],
         "ori_format": "NHWC",
@@ -59,7 +59,7 @@
         ],
         "format": "NHWC",
         "ori_shape": [
-          2,
+          -1,
           10
         ],
         "ori_format": "NHWC",
