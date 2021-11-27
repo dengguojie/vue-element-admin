@@ -166,6 +166,9 @@ class ScatterAxis():
         self.slice_loop_count = None
 
     def init_gm_tensor(self):
+        """
+        init gm tensor of input and output
+        """
         self.var_gm = self.tik_instance.Tensor(self.var_dtype, self.var_shape, name="var_gm", scope=tik.scope_gm)
         self.indices_gm = self.tik_instance.Tensor(self.indices_dtype, self.indices_shape, name='indices_gm',
                                                    scope=tik.scope_gm)
@@ -174,6 +177,9 @@ class ScatterAxis():
         self.out_gm = self.tik_instance.Tensor(self.var_dtype, self.var_shape, name="out_gm", scope=tik.scope_gm)
 
     def init_scalar_val(self):
+        """
+        init scalar value
+        """
         self.var_vconv_ub = None
         self.updates_vconv_ub = None
         self.var_tile_vconv_ub = None

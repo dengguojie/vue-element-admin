@@ -24,7 +24,7 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
-# pylint: disable=invalid-name,unused-argument,too-many-arguments,too-many-locals
+# 'pylint: disable=invalid-name,unused-argument,too-many-arguments,too-many-locals
 def l1_loss_compute(predict, label, reduction):
     """
     :param predict: TVM tensor

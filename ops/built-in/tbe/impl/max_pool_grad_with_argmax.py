@@ -51,7 +51,7 @@ MASK_MAX = 8
 SCALAR_255 = 255
 
 
-# 'pylint: disable=unused-argument,unused-variable
+# 'pylint: disable=unused-argument,unused-variable,too-many-arguments,too-many-locals
 def check_supported(x, grad, argmax, y, ksize, strides,
                                 padding, kernel_name="max_pool_with_argmax"):
     """

@@ -25,24 +25,27 @@ from te.utils import para_check
 import impl.constant_util as constant
 from impl import common_util
 
-DEPTH_RADIUS_SIZE_LIMIT = 48
-MAX_CORE_NUMBER = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-if MAX_CORE_NUMBER == 1:
-    MAX_CORE_NUMBER = 32
-MAX_REPEAT_NUM = 255
-PAR_COUNT_FP16 = 128
-PAR_COUNT_FP32 = 64
-MAX_HW_NUM = 65536
-CUT_C_HW_SIZE = 128
-C0_SIZE = 16
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for Constant
+    """
+    MAX_CORE_NUMBER = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+    if MAX_CORE_NUMBER == 1:
+        MAX_CORE_NUMBER = 32
+    MAX_REPEAT_NUM = 255
+    MAX_HW_NUM = 65536
+    C0_SIZE = 16
 
 
-# pylint: disable=unused-argument
-# pylint: disable=too-many-lines,inconsistent-return-statements,super-with-arguments
+# 'pylint: disable=unused-argument
+# 'pylint: disable=too-many-lines,inconsistent-return-statements,super-with-arguments
 def _lrn_parameter_check(input_data, depth_radius, norm_region, kernel_name):
     """
     _lrn_parameter_check
     """
+    DEPTH_RADIUS_SIZE_LIMIT = 48
     shape_input = input_data.get("shape")
     dtype_input = input_data.get("dtype").lower()
     para_check.check_shape(shape_input, param_name="x")
@@ -76,7 +79,7 @@ def _lrn_parameter_check(input_data, depth_radius, norm_region, kernel_name):
                             error_info['expect_value'], error_info['real_value']))
 
 
-# pylint: disable=locally-disabled,too-many-locals,too-many-arguments,unused-argument, invalid-name
+# 'pylint: disable=locally-disabled,too-many-locals,too-many-arguments,unused-argument, invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME, para_check.OPTION_ATTR_STR)
@@ -136,20 +139,22 @@ def lrn(x, y, depth_radius=5, bias=1, alpha=1, beta=0.5,
         return lrn_d_obj.tik_instance_function()
 
 
-# pylint: disable=too-few-public-methods
+# 'pylint: disable=too-few-public-methods
 class LRNBase():
     """
     LRNBase
     """
-    # pylint: disable=no-self-use
+    # 'pylint: disable=no-self-use
     def __init__(self, tik_instance):
         self.tik_instance = tik_instance
 
-    def _get_shape_size(self, data_shape):
+    @staticmethod
+    def _get_shape_size(data_shape):
         data_size = int(functools.reduce(lambda i, j: i * j, data_shape))
         return data_size
 
-    def _get_mask_and_repeat(self, data_shape, data_type):
+    @staticmethod
+    def _get_mask_and_repeat(data_shape, data_type):
         data_size = int(functools.reduce(lambda i, j: i * j, data_shape))
         data_byte_num = common_util.get_data_size(data_type)
         one_block_num = constant.BLOCK_SIZE // data_byte_num
@@ -183,7 +188,7 @@ class LRNBase():
                       constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT,
                       constant.REPEAT_STRIDE_EIGHT,
                       constant.REPEAT_STRIDE_EIGHT)
-        elif repeat_times <= MAX_REPEAT_NUM:
+        elif repeat_times <= Constant.MAX_REPEAT_NUM:
             if front_mask == last_mask:
                 func_name(front_mask, dest[dest_offset],
                           src0[src0_offset], src1[src1_offset],
@@ -213,18 +218,18 @@ class LRNBase():
         else:
             rest_repeat_num = repeat_times
             count = 0
-            while rest_repeat_num > MAX_REPEAT_NUM:
-                vector_offset = count*MAX_REPEAT_NUM*front_mask
+            while rest_repeat_num > Constant.MAX_REPEAT_NUM:
+                vector_offset = count*Constant.MAX_REPEAT_NUM*front_mask
                 func_name(front_mask, dest[vector_offset], src0[vector_offset],
-                          src1[vector_offset], MAX_REPEAT_NUM, constant.STRIDE_ONE,
+                          src1[vector_offset], Constant.MAX_REPEAT_NUM, constant.STRIDE_ONE,
                           constant.STRIDE_ONE, constant.STRIDE_ONE,
                           constant.REPEAT_STRIDE_EIGHT,
                           constant.REPEAT_STRIDE_EIGHT,
                           constant.REPEAT_STRIDE_EIGHT)
                 count = count + 1
-                rest_repeat_num = rest_repeat_num - MAX_REPEAT_NUM
+                rest_repeat_num = rest_repeat_num - Constant.MAX_REPEAT_NUM
             if rest_repeat_num != 1:
-                vector_offset = count*MAX_REPEAT_NUM*front_mask
+                vector_offset = count*Constant.MAX_REPEAT_NUM*front_mask
                 func_name(front_mask, dest[vector_offset], src0[vector_offset],
                           src1[vector_offset], rest_repeat_num - 1,
                           constant.STRIDE_ONE, constant.STRIDE_ONE,
@@ -248,7 +253,7 @@ class LRNBase():
                       constant.REPEAT_TIME_ONCE, constant.STRIDE_ONE,
                       constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT,
                       constant.REPEAT_STRIDE_EIGHT)
-        elif repeat_times <= MAX_REPEAT_NUM:
+        elif repeat_times <= Constant.MAX_REPEAT_NUM:
             func_name(front_mask, dest, src0, scalar_val, repeat_times - 1,
                       constant.STRIDE_ONE, constant.STRIDE_ONE,
                       constant.REPEAT_STRIDE_EIGHT,
@@ -262,16 +267,16 @@ class LRNBase():
         else:
             rest_repeat_num = repeat_times
             count = 0
-            while rest_repeat_num > MAX_REPEAT_NUM:
-                vector_offset = count*MAX_REPEAT_NUM*front_mask
+            while rest_repeat_num > Constant.MAX_REPEAT_NUM:
+                vector_offset = count*Constant.MAX_REPEAT_NUM*front_mask
                 func_name(front_mask, dest[vector_offset], src0[vector_offset],
-                          scalar_val, MAX_REPEAT_NUM, constant.STRIDE_ONE,
+                          scalar_val, Constant.MAX_REPEAT_NUM, constant.STRIDE_ONE,
                           constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT,
                           constant.REPEAT_STRIDE_EIGHT)
                 count = count + 1
-                rest_repeat_num = rest_repeat_num - MAX_REPEAT_NUM
+                rest_repeat_num = rest_repeat_num - Constant.MAX_REPEAT_NUM
             if rest_repeat_num != 1:
-                vector_offset = count*MAX_REPEAT_NUM*front_mask
+                vector_offset = count*Constant.MAX_REPEAT_NUM*front_mask
                 func_name(front_mask, dest[vector_offset], src0[vector_offset],
                           scalar_val, rest_repeat_num - 1, constant.STRIDE_ONE,
                           constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT,
@@ -290,7 +295,7 @@ class LRNBase():
         if repeat_times == 1:
             func_name(front_mask, dest, scalar_val, constant.REPEAT_TIME_ONCE,
                       constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT)
-        elif repeat_times <= MAX_REPEAT_NUM:
+        elif repeat_times <= Constant.MAX_REPEAT_NUM:
             func_name(front_mask, dest, scalar_val, repeat_times - 1,
                       constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT)
             vector_offset = (repeat_times - 1)*front_mask
@@ -300,15 +305,15 @@ class LRNBase():
         else:
             rest_repeat_num = repeat_times
             count = 0
-            while rest_repeat_num > MAX_REPEAT_NUM:
-                vector_offset = count*MAX_REPEAT_NUM*front_mask
+            while rest_repeat_num > Constant.MAX_REPEAT_NUM:
+                vector_offset = count*Constant.MAX_REPEAT_NUM*front_mask
                 func_name(front_mask, dest[vector_offset], scalar_val,
-                          MAX_REPEAT_NUM, constant.STRIDE_ONE,
+                          Constant.MAX_REPEAT_NUM, constant.STRIDE_ONE,
                           constant.REPEAT_STRIDE_EIGHT)
                 count = count + 1
-                rest_repeat_num = rest_repeat_num - MAX_REPEAT_NUM
+                rest_repeat_num = rest_repeat_num - Constant.MAX_REPEAT_NUM
             if rest_repeat_num != 1:
-                vector_offset = count*MAX_REPEAT_NUM*front_mask
+                vector_offset = count*Constant.MAX_REPEAT_NUM*front_mask
                 func_name(front_mask, dest[vector_offset], scalar_val,
                           rest_repeat_num - 1,
                           constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT)
@@ -325,7 +330,7 @@ class LRNBase():
                       constant.STRIDE_ONE, constant.STRIDE_ONE,
                       constant.REPEAT_STRIDE_EIGHT,
                       constant.REPEAT_STRIDE_EIGHT)
-        elif repeat_times <= MAX_REPEAT_NUM:
+        elif repeat_times <= Constant.MAX_REPEAT_NUM:
             func_name(front_mask, dest, src, repeat_times - 1,
                       constant.STRIDE_ONE, constant.STRIDE_ONE,
                       constant.REPEAT_STRIDE_EIGHT,
@@ -338,16 +343,16 @@ class LRNBase():
         else:
             rest_repeat_num = repeat_times
             count = 0
-            while rest_repeat_num > MAX_REPEAT_NUM:
-                vector_offset = count*MAX_REPEAT_NUM*front_mask
+            while rest_repeat_num > Constant.MAX_REPEAT_NUM:
+                vector_offset = count*Constant.MAX_REPEAT_NUM*front_mask
                 func_name(front_mask, dest[vector_offset], src[vector_offset],
-                          MAX_REPEAT_NUM, constant.STRIDE_ONE,
+                          Constant.MAX_REPEAT_NUM, constant.STRIDE_ONE,
                           constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT,
                           constant.REPEAT_STRIDE_EIGHT)
                 count = count + 1
-                rest_repeat_num = rest_repeat_num - MAX_REPEAT_NUM
+                rest_repeat_num = rest_repeat_num - Constant.MAX_REPEAT_NUM
             if rest_repeat_num != 1:
-                vector_offset = count*MAX_REPEAT_NUM*front_mask
+                vector_offset = count*Constant.MAX_REPEAT_NUM*front_mask
                 func_name(front_mask, dest[vector_offset], src[vector_offset],
                           rest_repeat_num - 1, constant.STRIDE_ONE,
                           constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT,
@@ -377,7 +382,7 @@ class LRNBase():
                                     constant.STRIDE_ONE,
                                     constant.STRIDE_ONE, dst_rep_stride,
                                     src_rep_stride)
-        elif repeat_times <= MAX_REPEAT_NUM:
+        elif repeat_times <= Constant.MAX_REPEAT_NUM:
             self.tik_instance.vconv(front_mask, "", dest, src, repeat_times - 1,
                                     constant.STRIDE_ONE, constant.STRIDE_ONE,
                                     dst_rep_stride, src_rep_stride)
@@ -391,17 +396,17 @@ class LRNBase():
         else:
             rest_repeat_num = repeat_times
             count = 0
-            while rest_repeat_num > MAX_REPEAT_NUM:
-                vector_offset = count*MAX_REPEAT_NUM*front_mask
+            while rest_repeat_num > Constant.MAX_REPEAT_NUM:
+                vector_offset = count*Constant.MAX_REPEAT_NUM*front_mask
                 self.tik_instance.vconv(front_mask, "", dest[vector_offset],
-                                        src[vector_offset], MAX_REPEAT_NUM,
+                                        src[vector_offset], Constant.MAX_REPEAT_NUM,
                                         constant.STRIDE_ONE,
                                         constant.STRIDE_ONE,
                                         dst_rep_stride, src_rep_stride)
                 count = count + 1
-                rest_repeat_num = rest_repeat_num - MAX_REPEAT_NUM
+                rest_repeat_num = rest_repeat_num - Constant.MAX_REPEAT_NUM
             if rest_repeat_num != 1:
-                vector_offset = count*MAX_REPEAT_NUM*front_mask
+                vector_offset = count*Constant.MAX_REPEAT_NUM*front_mask
                 self.tik_instance.vconv(front_mask, "", dest[vector_offset],
                                         src[vector_offset], rest_repeat_num - 1,
                                         constant.STRIDE_ONE,
@@ -448,13 +453,13 @@ class LRNBase():
                                  compute_shape)
 
 
-# pylint: disable=locally-disabled,too-many-lines,too-many-instance-attributes
-# pylint: disable=locally-disabled,simplifiable-if-statement,no-self-use
+# 'pylint: disable=locally-disabled,too-many-lines,too-many-instance-attributes
+# 'pylint: disable=locally-disabled,simplifiable-if-statement,no-self-use
 class LRNBase5HD(LRNBase):
     """
     Function: use to store LRN compute parameters
     """
-    # pylint: disable=no-member,unused-variable
+    # 'pylint: disable=no-member,unused-variable
     def __init__(self, x, depth_radius, bias, alpha, beta, kernel_name,
                  impl_mode):
         self.tik_instance = tik.Tik()
@@ -524,6 +529,7 @@ class LRNBase5HD(LRNBase):
         dict
             tiling info
         """
+        CUT_C_HW_SIZE = 128
         tiling = {}
         tiling["batch_once"] = self.n_size // self.device_aicore_num \
             if self.n_size > self.device_aicore_num else 1
@@ -624,7 +630,7 @@ class LRNBase5HD(LRNBase):
                                  self.input_gm,
                                  tiling["hw_once"], self.c_size,
                                  in_gm_offset)
-        in_gm_offset += tiling["hw_once"] * C0_SIZE
+        in_gm_offset += tiling["hw_once"] * Constant.C0_SIZE
         for hw_idx in range(tiling["hw_loop"]):
             if hw_idx < tiling["hw_loop"] - 1:
                 hw_inner = tiling["hw_once"] \
@@ -635,7 +641,7 @@ class LRNBase5HD(LRNBase):
                     self.input_gm,
                     hw_inner, self.c_size,
                     in_gm_offset)
-                in_gm_offset += hw_inner * C0_SIZE
+                in_gm_offset += hw_inner * Constant.C0_SIZE
             hw_inner = tiling["hw_once"] \
                 if hw_idx < tiling["hw_loop"] - 1 \
                 else tiling["hw_tail"]
@@ -645,7 +651,7 @@ class LRNBase5HD(LRNBase):
                                        hw_inner, self.c_size)
             self.move_data_stride_out(self.output_gm, out_ub, hw_inner,
                                       self.c_size, out_gm_offset)
-            out_gm_offset += hw_inner * C0_SIZE
+            out_gm_offset += hw_inner * Constant.C0_SIZE
             buffer_idx += 1
 
     def do_cut_c(self, tiling, batch_gm_offset):
@@ -694,7 +700,7 @@ class LRNBase5HD(LRNBase):
                 out_gm_offset += c_real * self.hw_size
                 buffer_idx += 1
                 c_top = self.depth_radius_align
-            hw_gm_offset += tiling["hw_once"] * C0_SIZE
+            hw_gm_offset += tiling["hw_once"] * Constant.C0_SIZE
         return buffer_idx
 
     def move_data_stride_in(self, dest, src, hw_size, c_size, in_gm_offset):
@@ -704,16 +710,16 @@ class LRNBase5HD(LRNBase):
         nburst = int(c_size // 16)
         burst = int(hw_size)
         src_stride = int(self.hw_size - hw_size)
-        if src_stride < MAX_HW_NUM:
+        if src_stride < Constant.MAX_HW_NUM:
             self.tik_instance.data_move(dest, src[in_gm_offset], constant.SID,
                                         nburst, burst,
                                         src_stride, constant.STRIDE_ZERO)
         else:
             with self.tik_instance.for_range(0, nburst) as idx:
                 self.tik_instance.data_move(
-                    dest[idx * burst * C0_SIZE],
+                    dest[idx * burst * Constant.C0_SIZE],
                     src[in_gm_offset +
-                        idx * self.hw_size * C0_SIZE],
+                        idx * self.hw_size * Constant.C0_SIZE],
                     constant.SID, constant.DEFAULT_NBURST, burst,
                     constant.STRIDE_ZERO, constant.STRIDE_ZERO)
 
@@ -724,7 +730,7 @@ class LRNBase5HD(LRNBase):
         nburst = int(c_size // 16)
         burst = int(hw_size)
         dst_stride = int(self.hw_size - hw_size)
-        if dst_stride < MAX_HW_NUM:
+        if dst_stride < Constant.MAX_HW_NUM:
             self.tik_instance.data_move(dest[out_gm_offset], src, constant.SID,
                                         nburst, burst,
                                         constant.STRIDE_ZERO, dst_stride)
@@ -732,8 +738,8 @@ class LRNBase5HD(LRNBase):
             with self.tik_instance.for_range(0, nburst) as idx:
                 self.tik_instance.data_move(
                     dest[out_gm_offset +
-                         idx * self.hw_size * C0_SIZE],
-                    src[idx * burst * C0_SIZE],
+                         idx * self.hw_size * Constant.C0_SIZE],
+                    src[idx * burst * Constant.C0_SIZE],
                     constant.SID, constant.DEFAULT_NBURST, burst,
                     constant.STRIDE_ZERO, constant.STRIDE_ZERO)
 
@@ -932,9 +938,9 @@ class LRNBase5HD(LRNBase):
         repeat = math.ceil(hw_size / 16)
         hw_align_size = int(math.ceil(hw_size / 16) * 16)
         # repeat_times 1
-        #     real_src[0]/dst[0] address = src/dst_list + src/dst_rep_strie
+        #     `real_src[0]/dst[0] address = src/dst_list + src/dst_rep_strie`
         # repeat_times > 1
-        #     real_src[0]/dst[0] address = src/dst_list
+        #     `real_src[0]/dst[0] address = src/dst_list`
         src_stride = 16 if repeat > 1 else 0
         dst_stride = 1 if repeat > 1 else 0
 
@@ -1004,13 +1010,13 @@ class LRNBase5HD(LRNBase):
         return self.tik_instance
 
 
-# pylint: disable=locally-disabled,too-many-lines,too-many-instance-attributes
-# pylint: disable=locally-disabled,simplifiable-if-statement,no-self-use
+# 'pylint: disable=locally-disabled,too-many-lines,too-many-instance-attributes
+# 'pylint: disable=locally-disabled,simplifiable-if-statement,no-self-use
 class LRNBase4HD(LRNBase):
     """
     Function: use to store LRN compute parameters
     """
-    # pylint: disable=no-member
+    # 'pylint: disable=no-member
     def __init__(self, x, depth_radius, bias, alpha, beta, kernel_name,
                  impl_mode):
         self.tik_instance = tik.Tik()
@@ -1106,19 +1112,19 @@ class LRNBase4HD(LRNBase):
         return alpha_sqrt_flag
 
     def _get_target_core_num(self):
-        if self.N < MAX_CORE_NUMBER:
+        if self.N < Constant.MAX_CORE_NUMBER:
             return self.N
 
-        return MAX_CORE_NUMBER
+        return Constant.MAX_CORE_NUMBER
 
     def _get_multi_cores_param(self):
-        if self.core_num < MAX_CORE_NUMBER:
+        if self.core_num < Constant.MAX_CORE_NUMBER:
             batch_num_each_core = 1
             threshold_multi_core = 0
             batch_num_front_core = 1
         else:
-            batch_num_each_core = self.N // MAX_CORE_NUMBER
-            threshold_multi_core = self.N % MAX_CORE_NUMBER
+            batch_num_each_core = self.N // Constant.MAX_CORE_NUMBER
+            threshold_multi_core = self.N % Constant.MAX_CORE_NUMBER
             batch_num_front_core = batch_num_each_core + 1
 
         return batch_num_each_core, threshold_multi_core, batch_num_front_core
@@ -1418,9 +1424,9 @@ class LRNBase4HD(LRNBase):
         block_num = mte2_num // one_block_ele_num
         hw_size = self.H * self.W
 
-        if self.C > MAX_REPEAT_NUM or \
+        if self.C > Constant.MAX_REPEAT_NUM or \
                 hw_size % self.alignment_standards or \
-                hw_size > MAX_HW_NUM:
+                hw_size > Constant.MAX_HW_NUM:
             with self.tik_instance.for_range(0, self.C) as c_idx:
                 self.tik_instance.data_move(
                     dest[c_idx*mte2_num],
@@ -1445,9 +1451,9 @@ class LRNBase4HD(LRNBase):
         block_num = mte2_num // one_block_ele_num
         hw_size = self.H * self.W
 
-        if self.C > MAX_REPEAT_NUM or \
+        if self.C > Constant.MAX_REPEAT_NUM or \
                 hw_size % self.alignment_standards or \
-                hw_size > MAX_HW_NUM:
+                hw_size > Constant.MAX_HW_NUM:
             with self.tik_instance.for_range(0, self.C) as c_idx:
                 self.tik_instance.data_move(
                     self.output_gm[offset_gm + c_idx*self.H*self.W],
@@ -1639,8 +1645,10 @@ class LRNBase4HD(LRNBase):
                                     self.data_output_ub,
                                     self.input_dtype, self.input_shape)
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def _do_operation_each_loop_cut_h_w(self, offset_gm):
+        PAR_COUNT_FP16 = 128
+        PAR_COUNT_FP32 = 64
         mte2_num = self._get_align_size(self.input_shape[2]*self.input_shape[3])
         if self.dtype_real_in_out != self.input_dtype:
             # copy gm to cast_ub
@@ -1681,7 +1689,7 @@ class LRNBase4HD(LRNBase):
         is_not_align_with_16 = \
             (one_column_size_cut_h_w % self.alignment_standards) or \
             col_lp_cnt > (self.depth_radius * 2 + 1) or \
-            one_column_size_cut_h_w > MAX_HW_NUM or \
+            one_column_size_cut_h_w > Constant.MAX_HW_NUM or \
             self.C < 2 * self.depth_radius
 
         scalar_zero_int = \
@@ -1765,9 +1773,9 @@ class LRNBase4HD(LRNBase):
             repeat_stride = one_column_size_cut_h_w // block_data_cnt
             dest_ub_offset = self.depth_radius * one_column_size_cut_h_w
             repeat_loop = \
-                (self.C - 2 * self.depth_radius) // MAX_REPEAT_NUM
+                (self.C - 2 * self.depth_radius) // Constant.MAX_REPEAT_NUM
             left_repeat = \
-                (self.C - 2 * self.depth_radius) % MAX_REPEAT_NUM
+                (self.C - 2 * self.depth_radius) % Constant.MAX_REPEAT_NUM
             with self.tik_instance.for_range(0, win_size) as win_idx:
                 src_ub_offset = win_idx * one_column_size_cut_h_w
 
@@ -1780,17 +1788,17 @@ class LRNBase4HD(LRNBase):
                                 self.data_output_ub[
                                     dest_ub_offset +
                                     lp_idx * par_count +
-                                    rp_index * MAX_REPEAT_NUM *
+                                    rp_index * Constant.MAX_REPEAT_NUM *
                                     one_column_size_cut_h_w],
                                 self.data_square_ub[
                                     src_ub_offset +
                                     lp_idx * par_count +
-                                    rp_index * MAX_REPEAT_NUM *
+                                    rp_index * Constant.MAX_REPEAT_NUM *
                                     one_column_size_cut_h_w],
                                 self.data_output_ub[
                                     dest_ub_offset +
                                     lp_idx * par_count +
-                                    rp_index * MAX_REPEAT_NUM *
+                                    rp_index * Constant.MAX_REPEAT_NUM *
                                     one_column_size_cut_h_w],
                                 repeat_num,
                                 1, 1, 1,
@@ -1801,15 +1809,15 @@ class LRNBase4HD(LRNBase):
                             col_left_size,
                             self.data_output_ub[
                                 dest_ub_offset + offset_cnt +
-                                rp_index * MAX_REPEAT_NUM *
+                                rp_index * Constant.MAX_REPEAT_NUM *
                                 one_column_size_cut_h_w],
                             self.data_square_ub[
                                 src_ub_offset + offset_cnt +
-                                rp_index * MAX_REPEAT_NUM *
+                                rp_index * Constant.MAX_REPEAT_NUM *
                                 one_column_size_cut_h_w],
                             self.data_output_ub[
                                 dest_ub_offset + offset_cnt +
-                                rp_index * MAX_REPEAT_NUM *
+                                rp_index * Constant.MAX_REPEAT_NUM *
                                 one_column_size_cut_h_w],
                             repeat_num,
                             1, 1, 1,
@@ -1817,7 +1825,7 @@ class LRNBase4HD(LRNBase):
 
                 if repeat_loop:
                     with self.tik_instance.for_range(0, repeat_loop) as rp_idx:
-                        _inner_vadd_align_c(rp_idx, MAX_REPEAT_NUM)
+                        _inner_vadd_align_c(rp_idx, Constant.MAX_REPEAT_NUM)
                 if left_repeat:
                     _inner_vadd_align_c(repeat_loop, left_repeat)
 
@@ -2798,7 +2806,7 @@ class LRNBase4HD(LRNBase):
         elif hw_c_all_cut_flag is True:
             self._do_operation_each_core_hw_c_all_cut_branch(offset_gm)
 
-    # pylint: disable=unused-variable
+    # 'pylint: disable=unused-variable
     def _check_c_axis_too_large(self):
         n_cut_flag, c_cut_flag, hw_cut_flag, hw_c_all_cut_flag = self._do_tiling()
         if c_cut_flag or hw_c_all_cut_flag:
@@ -2861,7 +2869,7 @@ class LRNBase4HD(LRNBase):
                         offset_gm = hw_num_first_core + (block_idx - 1)*hw_num_each_core
                         self._do_operation_each_core_h_w_cut_branch(offset_gm)
 
-        elif (self.core_num > 1) and (self.core_num < MAX_CORE_NUMBER):
+        elif (self.core_num > 1) and (self.core_num < Constant.MAX_CORE_NUMBER):
             # each core handle only one batch
             with self.tik_instance.for_range(0, self.core_num,
                                              block_num=self.core_num) as\
@@ -2972,7 +2980,7 @@ class LRNBase4HD(LRNBase):
                         self.N = self.input_shape[0]
                         offset_gm = hw_num_first_core + (block_idx - 1)*hw_num_each_core
                         self._do_operation_each_core_h_w_cut_branch(offset_gm)
-        elif (self.core_num > 1) and (self.core_num < MAX_CORE_NUMBER):
+        elif (self.core_num > 1) and (self.core_num < Constant.MAX_CORE_NUMBER):
             # each core handle only one batch
             with self.tik_instance.for_range(0, self.core_num,
                                              block_num=self.core_num) as\

@@ -23,7 +23,7 @@ from te import platform as tbe_platform
 from te.utils import para_check
 
 
-# pylint: disable=locally-disabled,invalid-name,unused-argument
+# 'pylint: disable=locally-disabled,invalid-name,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("logical_not")
 def logical_not_compute(x, y, kernel_name="logical_not"):
     """

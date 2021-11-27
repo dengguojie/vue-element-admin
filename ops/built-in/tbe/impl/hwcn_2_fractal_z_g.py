@@ -170,7 +170,7 @@ class Hwcn2Fractalzg(object):
                 self._dispatch_loop_c_gt_16()
                 self.pcp.composite_c_gt_16(self.pf_kernel_base, self.pf_kernel_repeat,
                                            self.pf_groups_base, self.pf_groups_repeat)
-        
+
         @staticmethod
         def _ceil(m, n):
             return (m + n - 1) // n

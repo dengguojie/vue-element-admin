@@ -53,6 +53,7 @@ def _ceil_with_value(value, align_num):
     return (value + align_num - 1) // align_num
 
 
+# 'pylint: disable=too-few-public-methods
 class MaskedFillRange():
     """
     use to store MaskedFillRange basic parameters
@@ -559,6 +560,7 @@ class MaskedFillRange():
                                                     each_core_one_cycle_len, start_address,
                                                     each_core_one_cycle_len, 0, 0, self.input_x_dtype, self.input_dim)
 
+    # 'pylint: disable=too-many-locals
     def _each_core_process_2_d_tiling_n_d(self, block_id, len_n, len_d, data_type):
         core_num = self.tiling_param_list["core_num"]
         each_core_len = self.tiling_param_list["each_core_len"]
@@ -606,6 +608,7 @@ class MaskedFillRange():
                         input_x_ub, self.input_x_gm[start_address + loop_d * self.each_core_max_ub_size],
                         each_loop_len, dim_address, each_loop_len, batch_id, channel_id, data_type, self.input_dim)
 
+    # 'pylint: disable=too-many-locals
     def _each_core_process_2_d_tiling_n(self, block_id, len_d, data_type):
         core_num = self.tiling_param_list["core_num"]
         batch_cycle = self.tiling_param_list["batch_cycle"]
@@ -670,6 +673,7 @@ class MaskedFillRange():
             self._each_core_process_2_d_tiling_n_d(block_id, self.input_x_ori_shape[0],
                                                    self.input_x_ori_shape[1], self.input_x_dtype)
 
+    # 'pylint: disable=too-many-locals
     def _each_core_process_3_d_tiling_n(self, block_id, len_c, len_d, data_type):
         core_num = self.tiling_param_list["core_num"]
         batch_cycle = self.tiling_param_list["batch_cycle"]
@@ -725,6 +729,7 @@ class MaskedFillRange():
                         loop_d_res, res_address, loop_d_res, block_id * batch_cycle + cycle_id, loop_c, data_type,
                         self.input_dim)
 
+    # 'pylint: disable=too-many-locals
     def _each_core_process_3_d_tiling_n_c(self, block_id, len_c, len_d, data_type):
         core_num = self.tiling_param_list["core_num"]
         batch_cycle = self.tiling_param_list["batch_cycle"]

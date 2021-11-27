@@ -42,8 +42,8 @@ class Constant:
     MAX_UBSIZE_USE_RATE = 0.9
 
 
-# 'pylint: disable=too-few-public-methods
-class Scatter():
+# 'pylint: disable=too-many-public-methods
+class Scatter:
     """
     Function: use to store scatter base parameters
     Modify : 2019-10-28
@@ -466,7 +466,7 @@ class Scatter():
         if not self.nd_flag:
             self.var_read_index.set_as(self.indices_ub[indices_ub_index])
         else:
-            self.get_var_read_index_of_nd_flag()
+            self.get_var_read_index_of_nd_flag(indices_ub_index)
 
     def get_var_read_index_of_nd_flag(self, indices_ub_index):
         """

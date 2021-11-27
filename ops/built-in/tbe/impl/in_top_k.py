@@ -1065,7 +1065,7 @@ def _in_top_k_mul_core(predictions, targets, k, kernel_name):
                                             scope=tik.scope_gm)
     target_tensor = tik_instance.Tensor(target_dtype, target_shape, name="target_tensor", scope=tik.scope_gm)
     tensor_output = tik_instance.Tensor("uint8", (row, ), name="tensor_output", scope=tik.scope_gm)
-    
+
     loop_num = 1
     actual_core_nums = core_nums
     if actual_core_nums > Constant.MAX_BLOCK_NUM:

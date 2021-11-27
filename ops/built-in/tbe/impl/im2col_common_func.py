@@ -74,7 +74,7 @@ def _ub_split_c1(ub_split_c1_shape, tensor, ksize):
 
 
 def _ub_transpose(ub_transpose_shape, tensor):
-    # 'pylint': disable=invalid-name
+    # 'pylint: disable=invalid-name
     def _ub_transpose_indices(indices, tensor):
         n, howo, howo0, khw, co1, co0 = indices
         n_index = n
@@ -578,7 +578,7 @@ def im2col_schedule(res, sch_list):
     cut_h_col = (Constant.BLOCK_SIZE // math.gcd(out_w, Constant.BLOCK_SIZE) - 1) * stride_h + 1 + dilated_kernel_h // 2
     if cut_h_col > fmap_h:
         cut_h_col = fmap_h
-    # cut_h_col while cut_hw = Constant.BLOCK_SIZE
+    # `cut_h_col while cut_hw = Constant.BLOCK_SIZE`
     cut_w_row_s = (Constant.BLOCK_SIZE - 1) * stride_w + 1
     cut_h_row_s = max(stride_h, (((cut_w_row_s - 1) // fmap_w + 1) - 1) * stride_h + 1)
     cut_w_row = cut_w_row_s + dilated_kernel_w - 1
@@ -764,7 +764,7 @@ def im2col_schedule(res, sch_list):
             used_core_num = min(device_core_num, _ceil_div(out_shape[0], tiling_factor[0]))
             multi_core_factor[0] = max(_ceil_div(out_shape[0], used_core_num), tiling_factor[0])
             return multi_core_factor
-        
+
         if Constant.SIZE_L1 >= fmap_h * fmap_w * fmap_c0 * fmap_c1 * type_size * Constant.DOUBLE_BUFFER:
             howo_align = Constant.BLOCK_SIZE
         elif Constant.SIZE_L1 >= cut_h_col * fmap_w * fmap_c0 * fmap_c1 * type_size * Constant.DOUBLE_BUFFER:

@@ -51,9 +51,9 @@ UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
 L1_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.L1_SIZE)
 
 
-# 'pylint: disable=unused-argument,unused-variable
+# 'pylint: disable=unused-argument,unused-variable,too-many-arguments,too-many-locals
 def check_supported(input_x, out_y, output_argmax, ksize, strides,
-                                padding, kernel_name="max_pool_with_argmax"):
+                    padding, kernel_name="max_pool_with_argmax"):
     """
     check whether ai_core is supported
     """

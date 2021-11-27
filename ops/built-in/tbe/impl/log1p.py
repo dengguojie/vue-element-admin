@@ -23,26 +23,15 @@ from te import platform as tbe_platform
 from te.utils import para_check
 
 
-# define a scalar, value = -1
-SCALAR_NEG_ONE = -1.0
-# define a scalar, value = 1
-SCALAR_ONE = 1.0
-# define taylor negative threshold , value = -1.7
-TAYLOR_NEGATIVE_THRESHOLD = -1.7
-# define taylor positive threshold , value = 0.7
-TAYLOR_POSITIVE_THRESHOLD = 0.7
-# define second order parameter , value = 1 / 2.0
-TAYLOR_SECOND_ORDER_PARAM = 1 / 2.0
-# define third order parameter , value = 1 / 6.0
-TAYLOR_THIRD_ORDER_PARAM = 1 / 6.0
-# define fourth order parameter , value = 1 / 24.0
-TAYLOR_FOURTH_ORDER_PARAM = 1 / 24.0
-# define fifth order parameter , value = 1 / 120.0
-TAYLOR_FIFTH_ORDER_PARAM = 1 / 120.0
-# define sixth order parameter , value = 1 / 720.0
-TAYLOR_SIXTH_ORDER_PARAM = 1 / 720.0
-# define seventh order parameter , value = 1 / 5040.0
-TAYLOR_SEVENTH_ORDER_PARAM = 1 / 5040.0
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    This class for Constant.
+    """
+    # `define a scalar, value = -1`
+    SCALAR_NEG_ONE = -1.0
+    # `define a scalar, value = 1`
+    SCALAR_ONE = 1.0
 
 
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals
@@ -83,7 +72,7 @@ def log1p_compute(input_x, output_y, kernel_name="log1p"):
     if dtype == "float16" and cloud_check:
         input_x = tbe.cast_to(input_x, "float32")
 
-    data_add = tbe.vadds(input_x, tvm.const(SCALAR_ONE, "float32"))
+    data_add = tbe.vadds(input_x, tvm.const(Constant.SCALAR_ONE, "float32"))
     res = tbe.vlog(data_add)
 
     if (not cloud_check) and mini_check:
@@ -111,6 +100,10 @@ def _log1p_mini_compute(mini_res, input_x, shape):
     Returns : A Tensor. Has the same type as mini_res.
     -------
     """
+    # define taylor negative threshold , value = -1.7
+    TAYLOR_NEGATIVE_THRESHOLD = -1.7
+    # define taylor positive threshold , value = 0.7
+    TAYLOR_POSITIVE_THRESHOLD = 0.7
     input_y = tbe.cast_to(mini_res, "float32")
     input_x = tbe.cast_to(input_x, "float32")
     newton_taylor_res = _newton_taylor_log1p(input_x, input_y)
@@ -148,6 +141,18 @@ def _exp_taylor_compute(input_x):
     Returns : A Tensor. Has the same type as input_x.
     -------
     """
+    # define second order parameter , value = 1 / 2.0
+    TAYLOR_SECOND_ORDER_PARAM = 1 / 2.0
+    # define third order parameter , value = 1 / 6.0
+    TAYLOR_THIRD_ORDER_PARAM = 1 / 6.0
+    # define fourth order parameter , value = 1 / 24.0
+    TAYLOR_FOURTH_ORDER_PARAM = 1 / 24.0
+    # define fifth order parameter , value = 1 / 120.0
+    TAYLOR_FIFTH_ORDER_PARAM = 1 / 120.0
+    # define sixth order parameter , value = 1 / 720.0
+    TAYLOR_SIXTH_ORDER_PARAM = 1 / 720.0
+    # define seventh order parameter , value = 1 / 5040.0
+    TAYLOR_SEVENTH_ORDER_PARAM = 1 / 5040.0
     # calculate second order tayloy section : x^2 / 2!
     taylor_second_order_param = tvm.const(TAYLOR_SECOND_ORDER_PARAM, "float32")
     data_power_2 = tbe.vmul(input_x, input_x)
@@ -187,7 +192,7 @@ def _exp_taylor_compute(input_x):
 
     # calculate first order tayloy plus one section : 1 + x
     res_first_taylor = tbe.vadds(input_x,
-                                 tvm.const(SCALAR_ONE, "float32"))
+                                 tvm.const(Constant.SCALAR_ONE, "float32"))
     res_second_taylor = tbe.vadd(res_first_taylor, data_power_2_div_2)
     res_third_taylor = tbe.vadd(res_second_taylor, data_power_3_div_6)
     res_fourth_taylor = tbe.vadd(res_third_taylor, data_power_4_div_24)
@@ -211,10 +216,10 @@ def _newton_exp_iter(input_x, input_y):
     Returns : A Tensor. Has the same type as input_y.
     -------
     """
-    #Newton begin:y(n+1) = y(n) - 1 + e^-y(n) + x(n)*e^-y(n)
-    newton_exp = tbe.vadds(input_y, tvm.const(SCALAR_NEG_ONE,
+    # `Newton begin:y(n+1) = y(n) - 1 + e^-y(n) + x(n)*e^-y(n)`
+    newton_exp = tbe.vadds(input_y, tvm.const(Constant.SCALAR_NEG_ONE,
                                               "float32"))
-    input_y_mul = tbe.vmuls(input_y, tvm.const(SCALAR_NEG_ONE,
+    input_y_mul = tbe.vmuls(input_y, tvm.const(Constant.SCALAR_NEG_ONE,
                                                "float32"))
     input_y_exp = tbe.vexp(input_y_mul)
     newton_exp = tbe.vadd(newton_exp, input_y_exp)
@@ -237,10 +242,10 @@ def _newton_taylor_iter(input_x, input_y):
     Returns: A Tensor. Has the same type as input_y.
     -------
     """
-    #Newton begin:y(n+1) = y(n) - 1 + e^-y(n) + x(n)*e^-y(n)
-    newton_taylor = tbe.vadds(input_y, tvm.const(SCALAR_NEG_ONE,
+    # `Newton begin:y(n+1) = y(n) - 1 + e^-y(n) + x(n)*e^-y(n)`
+    newton_taylor = tbe.vadds(input_y, tvm.const(Constant.SCALAR_NEG_ONE,
                                                  "float32"))
-    input_y_mul = tbe.vmuls(input_y, tvm.const(SCALAR_NEG_ONE,
+    input_y_mul = tbe.vmuls(input_y, tvm.const(Constant.SCALAR_NEG_ONE,
                                                "float32"))
     input_y_taylor = _exp_taylor_compute(input_y_mul)
     newton_taylor = tbe.vadd(newton_taylor, input_y_taylor)

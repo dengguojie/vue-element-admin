@@ -25,9 +25,14 @@ from te.lang import cce as tbe
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
-SHAPE_DIM_SIZE = 5
-BLOCK_SIZE = 16
-VSEL_MAX_SUPPORT_REPEAT = 255
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant.
+    """
+    SHAPE_DIM_SIZE = 5
+    BLOCK_SIZE = 16
 
 
 def _check_dict_key(input_dict, input_key, input_name):
@@ -62,24 +67,24 @@ def _check_shape(orig_x_dict, orig_y_dict, grads_dict, output_dict):
     grads_shape = list(grads_dict.get('shape'))
     output_shape = list(output_dict.get('shape'))
 
-    if len(orig_input_shape) != SHAPE_DIM_SIZE:
-        error_manager_vector.raise_err_input_param_range_invalid('max_pool_grad_grad', 'orig_x', SHAPE_DIM_SIZE,
-                                                                 SHAPE_DIM_SIZE, len(orig_input_shape))
-    if orig_input_shape[-1] != BLOCK_SIZE:
-        error_manager_vector.raise_err_check_params_rules('max_pool_grad_grad',
-                                                          'the last dimension must be equal to %d' % BLOCK_SIZE,
-                                                          'orig_x', orig_input_shape)
+    if len(orig_input_shape) != Constant.SHAPE_DIM_SIZE:
+        error_manager_vector.raise_err_input_param_range_invalid(
+            'max_pool_grad_grad', 'orig_x', Constant.SHAPE_DIM_SIZE, Constant.SHAPE_DIM_SIZE, len(orig_input_shape))
+    if orig_input_shape[-1] != Constant.BLOCK_SIZE:
+        error_manager_vector.raise_err_check_params_rules(
+            'max_pool_grad_grad', 'the last dimension must be equal to %d' % Constant.BLOCK_SIZE,
+            'orig_x', orig_input_shape)
     if orig_input_shape != grads_shape:
         error_manager_vector.raise_err_inputs_shape_not_equal('max_pool_grad_grad', 'orig_x', 'grads', orig_input_shape,
                                                               grads_shape, orig_input_shape)
 
-    if len(orig_output_shape) != SHAPE_DIM_SIZE:
-        error_manager_vector.raise_err_input_param_range_invalid('max_pool_grad_grad', 'orig_y', SHAPE_DIM_SIZE,
-                                                                 SHAPE_DIM_SIZE, len(orig_output_shape))
-    if orig_output_shape[-1] != BLOCK_SIZE:
-        error_manager_vector.raise_err_check_params_rules('max_pool_grad_grad',
-                                                          'the last dimension must be equal to %d' % BLOCK_SIZE,
-                                                          'orig_y', orig_output_shape)
+    if len(orig_output_shape) != Constant.SHAPE_DIM_SIZE:
+        error_manager_vector.raise_err_input_param_range_invalid(
+            'max_pool_grad_grad', 'orig_y', Constant.SHAPE_DIM_SIZE, Constant.SHAPE_DIM_SIZE, len(orig_output_shape))
+    if orig_output_shape[-1] != Constant.BLOCK_SIZE:
+        error_manager_vector.raise_err_check_params_rules(
+            'max_pool_grad_grad', 'the last dimension must be equal to %d' % Constant.BLOCK_SIZE,
+            'orig_y', orig_output_shape)
     if orig_output_shape != output_shape:
         error_manager_vector.raise_err_inputs_shape_not_equal('max_pool_grad_grad', 'orig_y', 'output',
                                                               orig_output_shape, output_shape, orig_output_shape)
@@ -254,21 +259,21 @@ def _get_load3d_tiling(fmap_shape,
         max_l1_valid_num = max_l1_valid_size // data_size
         max_hiwi_l1 = max_l1_valid_num // BLOCK_SIZE_C0
         # The memory space of l1 is not enough.
-        if max_hiwi_l1 < _get_input_length(BLOCK_SIZE, kernel_w, stride_w, output_w, fmap_w):
+        if max_hiwi_l1 < _get_input_length(Constant.BLOCK_SIZE, kernel_w, stride_w, output_w, fmap_w):
             tiling["result"] = False
             tiling["type"] = L1TilingType.NO_ENOUGH_MEMORY
             return tiling
         # Not supported
-        if max_hiwi_l1 < kernel_h * _get_input_length(BLOCK_SIZE, kernel_w, stride_w, output_w, fmap_w):
+        if max_hiwi_l1 < kernel_h * _get_input_length(Constant.BLOCK_SIZE, kernel_w, stride_w, output_w, fmap_w):
             tiling["result"] = False
             tiling["type"] = L1TilingType.NOT_SUPPORTED
             return tiling
 
         max_hi_l1 = max_hiwi_l1 // fmap_w
         max_ho_l1 = (max_hi_l1 + stride_h - kernel_h) // stride_h
-        # align for BLOCK_SIZE with multiply output_w
-        wo_gcd_block = math.gcd(output_w, BLOCK_SIZE)
-        ho_gcd_block = BLOCK_SIZE // wo_gcd_block
+        # align for Constant.BLOCK_SIZE with multiply output_w
+        wo_gcd_block = math.gcd(output_w, Constant.BLOCK_SIZE)
+        ho_gcd_block = Constant.BLOCK_SIZE // wo_gcd_block
         if max_ho_l1 >= DOUBLE_BUFFER * ho_gcd_block:
             tiling["buffer"] = DOUBLE_BUFFER
             max_ho_l1 = max_ho_l1 // DOUBLE_BUFFER
@@ -284,15 +289,15 @@ def _get_load3d_tiling(fmap_shape,
         # cut w
         l1_wi = max_hiwi_l1 // kernel_h
         l1_wo = (l1_wi + stride_w - kernel_w) // stride_w
-        if l1_wo >= DOUBLE_BUFFER * BLOCK_SIZE:
+        if l1_wo >= DOUBLE_BUFFER * Constant.BLOCK_SIZE:
             l1_wo = l1_wo // DOUBLE_BUFFER
             if l1_wo >= output_w:
                 l1_wo = output_w
             else:
-                l1_wo = (l1_wo // BLOCK_SIZE) * BLOCK_SIZE
+                l1_wo = (l1_wo // Constant.BLOCK_SIZE) * Constant.BLOCK_SIZE
             tiling["buffer"] = DOUBLE_BUFFER
         else:
-            l1_wo = (l1_wo // BLOCK_SIZE) * BLOCK_SIZE
+            l1_wo = (l1_wo // Constant.BLOCK_SIZE) * Constant.BLOCK_SIZE
             tiling["buffer"] = 1
         tiling["shape"]["wo"] = l1_wo
         tiling["shape"]["wi"] = _get_input_length(tiling["shape"]["wo"], kernel_w, stride_w, output_w, fmap_w)
@@ -315,7 +320,7 @@ def _get_load3d_tiling(fmap_shape,
         tiling["shape"]["c0"] = fmap_c0
 
         max_next_valid_num = max_next_valid_size // data_size
-        max_howokhkw_l0ub = max_next_valid_num // BLOCK_SIZE_C0 // BLOCK_SIZE
+        max_howokhkw_l0ub = max_next_valid_num // BLOCK_SIZE_C0 // Constant.BLOCK_SIZE
         # The memory space of l0/ub is not enough.
         if max_howokhkw_l0ub < 1:
             tiling["result"] = False
@@ -347,7 +352,7 @@ def _get_load3d_tiling(fmap_shape,
             tiling["shape"]["howo"] = min(tiling["shape"]["howo"], LOAD3D_MAX_REPEAT)
             tiling["shape"]["khkw"] = kernel_h * kernel_w
             tiling["type"] = L0ubTilingType.CUT_HOWO
-        tiling["shape"]["howo"] *= BLOCK_SIZE
+        tiling["shape"]["howo"] *= Constant.BLOCK_SIZE
         tiling["result"] = True
         return tiling
 
@@ -357,7 +362,8 @@ def _get_load3d_tiling(fmap_shape,
 
     # get min howo in l1 and l0/ub
     l0ub_tiling["shape"]["howo"] = min(l0ub_tiling["shape"]["howo"],
-                                       _ceil_to(l1_tiling["shape"]["ho"] * l1_tiling["shape"]["wo"], BLOCK_SIZE))
+                                       _ceil_to(l1_tiling["shape"]["ho"] * l1_tiling["shape"]["wo"],
+                                                Constant.BLOCK_SIZE))
     tiling["result"] = True
     tiling["block_tiling"] = block_tiling
     tiling["l1_tiling"] = l1_tiling
@@ -760,7 +766,7 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
             cnt = (kernel_w * kernel_h + LOAD3D_MAX_REPEAT - 1) // LOAD3D_MAX_REPEAT
             with tvm_ir.for_range(0, cnt - 1, name="l_i", dtype=SCALAR_DTYPE) as l_i:
                 cur_khkw = l_i * LOAD3D_MAX_REPEAT
-                offset = cur_khkw * BLOCK_SIZE * BLOCK_SIZE
+                offset = cur_khkw * Constant.BLOCK_SIZE * Constant.BLOCK_SIZE
                 first_kh = cur_khkw // kernel_w
                 first_kw = cur_khkw - first_kh * kernel_w
                 if check_load3d_support:
@@ -772,7 +778,7 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
                     _img2col(l1_buffer, ub_buffer, 0, offset, fmatrix_h[0], fmatrix_w[0], first_kw, first_kh,
                              first_w, first_h, 0, LOAD3D_MAX_REPEAT)
             cur_khkw = (cnt - 1) * LOAD3D_MAX_REPEAT
-            offset = cur_khkw * BLOCK_SIZE * BLOCK_SIZE
+            offset = cur_khkw * Constant.BLOCK_SIZE * Constant.BLOCK_SIZE
             first_kh = cur_khkw // kernel_w
             first_kw = cur_khkw - first_kh * kernel_w
             last_repeat = kernel_w * kernel_h - cur_khkw
@@ -798,7 +804,7 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
                                     ub_buffer.access_ptr("w", offset=ub_offset + i * VECTOR_INST_BLOCK_SIZE),
                                     conv_format.access_ptr("r", offset=i * VECTOR_INST_BLOCK_SIZE),
                                     tvm.const(0.0, ub_buffer.dtype), kernel_h * kernel_w, 1, 1,
-                                    BLOCK_SIZE * actual_tiling_ub_howo_i, BLOCK_SIZE))
+                                    Constant.BLOCK_SIZE * actual_tiling_ub_howo_i, Constant.BLOCK_SIZE))
 
     def _img_to_col_vertical(l1_buffer,
                              ub_buffer,
@@ -861,6 +867,7 @@ def _max_pool_grad_grad_ir_builder(ins, outs, ksize, strides, padding="SAME", ke
         return grads_ub
 
     def _sel_grad_col(mask_ub, grads_ub):
+        VSEL_MAX_SUPPORT_REPEAT = 255
         img_shape = (tiling_ub_howo_i, fmap_c0, fmap_c0)
         grads_sel_ub = _new_alloc(tvm_ir, grads_ub.dtype, img_shape, "grads_sel_ub", tbe_platform.scope_ubuf,
                                   ub_tiling["buffer"])
@@ -1180,10 +1187,12 @@ def max_pool_grad_grad(orig_x_dict,
                                                           strides)
 
     shape_in = orig_x_dict.get('shape')
-    para_check.check_shape(shape_in, min_rank=SHAPE_DIM_SIZE, max_rank=SHAPE_DIM_SIZE, param_name="orig_x_dict")
+    para_check.check_shape(
+        shape_in, min_rank=Constant.SHAPE_DIM_SIZE, max_rank=Constant.SHAPE_DIM_SIZE, param_name="orig_x_dict")
 
     shape_out = output_dict.get('shape')
-    para_check.check_shape(shape_out, min_rank=SHAPE_DIM_SIZE, max_rank=SHAPE_DIM_SIZE, param_name="output_dict")
+    para_check.check_shape(
+        shape_out, min_rank=Constant.SHAPE_DIM_SIZE, max_rank=Constant.SHAPE_DIM_SIZE, param_name="output_dict")
 
     if strides[h_pos] > 63 or strides[h_pos] < 1 or strides[w_pos] > 63 or strides[w_pos] < 1:
         error_manager_vector.raise_err_input_param_not_in_range('max_pool_grad_grad', "strides", 1, 63, strides)

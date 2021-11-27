@@ -24,7 +24,7 @@ from te.lang import cce as tbe
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
-# 16, 32B = 16 * sizeof(float16)
+# `16, 32B = 16 * sizeof(float16)`
 BLOCK_SIZE = tbe_platform.BLOCK_REDUCE
 MAX_BLOCK_NUM = 65535
 
@@ -39,10 +39,11 @@ def _ceil_to(value, ceil_value):
     return ((value + ceil_value - 1) // ceil_value) * ceil_value
 
 
+# 'pylint: disable=too-many-arguments
 def _get_output_length(l1_hi, l1_wi, stride, kernel_size, output_h, output_w, input_h, input_w):
-    '''
+    """
     Return the corresponding input hi and wi szie according to the size of the output ho and wo size.
-    '''
+    """
     if input_h == l1_hi:
         tile_l1_ho = output_h
     else:
