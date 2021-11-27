@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@
 #include "error_log.h"
 
 namespace optiling {
-
 const std::string UNSORTED_SEGMENT_SUM_OP_TYPE = "UnsortedSegmentSum";
 const int32_t BYTE_BLOCK = 32;
 const int32_t MIN_ELE_SIZE_USING_ALL_CORE = 1024;
@@ -519,7 +518,6 @@ void NumSegmentOne(
     e_ub2gm_front_burst_len_input_scalar = UssCeilDiv(e_num_front_part_input_scalar * ele_byte, BYTE_BLOCK);
     repeat_times = UssCeilDiv(e_num_front_part_input_scalar, mask * 255);
     if (repeat_times > 1) {
-
       repeat_time_front_part_input_scalar = UssCeilDiv(e_num_front_part_input_scalar -
                                             (repeat_times - 1) * mask * 255, mask);
     } else {
@@ -867,13 +865,13 @@ void ComputeENumParams(
     e_mov_times_gm2ub_input_scalar = UssCeilDiv(num_segments_front_core_input_scalar, max_ele_num_one_ub_tensor);
     e_mov_times_gm2ub_input_scalar_lastcore = UssCeilDiv(num_segments_last_core_input_scalar,
         max_ele_num_one_ub_tensor);
-    //front core
+    // front core
     NumSegmentOne(e_mov_times_gm2ub_input_scalar, max_ele_num_one_ub_tensor, e_num_front_part_input_scalar,
                   e_ub2gm_front_burst_len_input_scalar, repeat_times,
                   repeat_time_front_part_input_scalar, e_num_last_part_input_scalar,
                   e_ub2gm_last_burst_len_input_scalar, repeat_times_last_part, mask, ele_byte,
                   num_segments_front_core_input_scalar, repeat_time_last_part_input_scalar);
-    //last core
+    // last core
     NumSegmentOne(e_mov_times_gm2ub_input_scalar_lastcore, max_ele_num_one_ub_tensor, e_num_front_part_input_scalar,
                   e_ub2gm_front_burst_len_input_scalar_lastcore,
                   repeat_times, repeat_time_front_part_input_scalar, e_num_last_part_input_scalar,
@@ -1013,7 +1011,6 @@ void InitTilingParams(TilingParamsInt32& params) {
   params.repeat_times_last_part_lastcore = 0;
   params.e_mov_times_gm2ub_input_scalar_lastcore = 0;
   params.repeat_time_front_part_input_scalar_lastcore = 0;
-
 }
 
 void WriteTilingParams(const TilingParamsFp32& params, OpRunInfo& run_info) {
@@ -1106,7 +1103,6 @@ void WriteTilingParams(const TilingParamsFp32& params, OpRunInfo& run_info) {
   ByteBufferPut(run_info.tiling_data,
                 params.output_ub_init_last_row_last_repeat_time_last_part_last_core_input_scalar);
   ByteBufferPut(run_info.tiling_data, params.output_ub_init_last_row_times_last_part_last_core_input_scalar);
-
 }
 
 void WriteTilingParams(const TilingParamsInt32& params, OpRunInfo& run_info) {
@@ -1356,7 +1352,6 @@ void PrintTilingParams(const std::string& op_type, const TilingParamsInt32& para
          params.e_mov_times_gm2ub_input_scalar_lastcore);
   GELOGD("op [%s] : params.repeat_time_front_part_input_scalar_lastcore=%d", op_type.c_str(),
          params.repeat_time_front_part_input_scalar_lastcore);
-
 }
 
 // tiling function

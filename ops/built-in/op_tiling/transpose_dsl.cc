@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,11 @@
 #include "error_log.h"
 
 namespace optiling {
+const std::int32_t TILING_KEY_3000000 = 3000000;
+const std::int32_t TILING_KEY_2020000 = 2020000;
+const std::int32_t TILING_KEY_2030000 = 2030000;
+const std::int32_t TILING_KEY_2000000 = 2000000;
+
 namespace utils {
 namespace transpose {
 const std::int32_t ELEMENT_IN_BLOCK_DEFAULT = 16;
@@ -679,13 +684,13 @@ void Transpose::CalcInUbSize(transpose::AdjustTilingParams& adjustTilingParams) 
 void Transpose::CalcKey() {
   int64_t last_index = c_info.permute.size() - 1;
   if (is_pure_copy) {
-    tiling_key = 3000000;
+    tiling_key = TILING_KEY_3000000;
   } else if (is_nlast_no_conv && high_ub_axis != last_index) {
-    tiling_key = 2020000;
+    tiling_key = TILING_KEY_2020000;
   } else if (is_nlast_align) {
-    tiling_key = 2030000;
+    tiling_key = TILING_KEY_2030000;
   } else {
-    tiling_key = 2000000;
+    tiling_key = TILING_KEY_2000000;
   }
   if (block_axis == -1) {
     tiling_key = 0;
@@ -793,7 +798,6 @@ bool Transpose::WriteTilingData(OpRunInfo& run_info) const {
   }
   return true;
 }
-
 }  // namespace utils
 
 bool TransposeDsl(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& compile_info,
@@ -833,5 +837,4 @@ std::shared_ptr<AutoTilingHandler> CreateTransposeDslTilingHandler(const std::st
                                                                        const nlohmann::json& parsed_compile_info) {
   return std::make_shared<TransposeDslTilingHandler>(op_type, pattern, parsed_compile_info);
 }
-
 }  // namespace optiling

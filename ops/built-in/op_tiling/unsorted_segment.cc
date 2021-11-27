@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,6 @@
 #include "op_tiling_util.h"
 
 namespace optiling {
-
 const std::string UNSORTED_SEGMENT_OP_TYPE = "UnsortedSegment";
 const int32_t BYTE_BLOCK = 32;
 const int32_t BYTE_INT32 = 4;
@@ -309,7 +308,7 @@ struct opInfo {
 int32_t _ceil_div(int32_t val, int32_t block) { return (val + block - 1) / block; }
 
 class FrontLast {
- public:
+public:
   int32_t front{0};
   int32_t last{0};
   int32_t times{0};
@@ -330,7 +329,6 @@ class FrontLast {
     times = _ceil_div(total, part);
     front = _ceil_div(total, times);
     front = _ceil_div(front, front_block) * front_block;
-
     if (front > part) {
       front = max(front / front_block * front_block, front_block);
     }
@@ -350,7 +348,7 @@ class FrontLast {
 };
 
 class CommonScalar {
- public:
+public:
   FrontLast num_segments_param;
   FrontLast num_segments_loop_param;
   FrontLast e_out_param;
@@ -373,7 +371,7 @@ class CommonScalar {
 };
 
 class UnsortedSegmentTilingCal {
- public:
+public:
   UnsortedSegmentTilingCal(int32_t _core_num, int32_t _num_segments, int32_t input_byte, int32_t _ids_num,
                            int32_t _e_num, int32_t _ub_size) {
     core_num = _core_num;
@@ -450,7 +448,6 @@ class UnsortedSegmentTilingCal {
 
   vector<map<string, int>> _get_tiling_mode(int32_t num_segments_core_num) {
     int32_t e_vector_num = _ceil_div(e_num, mask);
-
     if (e_vector_num == 1 and e_num % ele_num_per_block != 0) {
       if (e_num >= ele_num_per_block) {
         if (ids_num <= ids_once_num) {
@@ -648,10 +645,9 @@ bool UnsortedSegmentTiling(const std::string &op_type, const ge::Operator &op_pa
   const ge::DataType &input_dtype = op_paras.GetInputDesc(0).GetDataType();
   const ge::DataType &ids_dtype = op_paras.GetInputDesc(1).GetDataType();
 
-  bool flag = False;
   // get input dtype
   EleByte input_ele_byte;
-  flag = unsorted_segment_get_ele_dtype(input_dtype, input_ele_byte);
+  bool flag = unsorted_segment_get_ele_dtype(input_dtype, input_ele_byte);
   if (!flag) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_ele_byte failed.");
     return false;
@@ -689,7 +685,7 @@ bool UnsortedSegmentTiling(const std::string &op_type, const ge::Operator &op_pa
   }
   int32_t num_segments = static_cast<int32_t>(values[0]);
   GELOGD("op [%s] : num_segments=%d", op_type.c_str(), num_segments);
-  //==============================================
+  // ==============================================
   // tiling params
   UnsortedSegmentTilingCal params(core_num, num_segments, int32_t(input_ele_byte), ids_size, e_size, ub_size);
 
@@ -730,5 +726,5 @@ bool UnsortedSegmentTiling(const std::string &op_type, const ge::Operator &op_pa
 REGISTER_OP_TILING_V3_CUSTOM(UnsortedSegmentMin, UnsortedSegmentTiling, UnsortedSegmentParseFunc, opInfo);
 REGISTER_OP_TILING_V3_CUSTOM(UnsortedSegmentMax, UnsortedSegmentTiling, UnsortedSegmentParseFunc, opInfo);
 REGISTER_OP_TILING_V3_CUSTOM(UnsortedSegmentProd, UnsortedSegmentTiling, UnsortedSegmentParseFunc, opInfo);
-}  // namespace optiling
+}
 // namespace optiling

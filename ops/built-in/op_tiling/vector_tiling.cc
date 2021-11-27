@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@
 #include "vector_tiling.h"
 
 namespace optiling {
-
 extern std::shared_ptr<AutoTilingHandler> CreateNormTilingHandler(const std::string& op_type,
                                                                   const std::string& pattern,
                                                                   const nlohmann::json& parsed_compile_info);
@@ -71,5 +70,4 @@ std::shared_ptr<AutoTilingHandler> CreateAutoTilingHandler(const std::string& op
     return std::shared_ptr<AutoTilingHandler>(nullptr);
   }
 }
-
 }  // namespace optiling
