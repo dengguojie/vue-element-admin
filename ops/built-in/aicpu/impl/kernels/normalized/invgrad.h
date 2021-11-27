@@ -31,14 +31,11 @@ class InvGradCpuKernel : public CpuKernel {
   uint32_t InvGradParamCheck(CpuKernelContext &ctx);
 
   template <typename T>
-  void SpecialCompute(BcastShapeType type, int64_t start, int64_t end,
+  void SpecialCompute(int64_t start, int64_t end,
                      T *input1, T *input2, T *output);
 
   template <typename T>
   uint32_t NoBcastCompute(CpuKernelContext &ctx);
-
-  template <typename T>
-  uint32_t BcastCompute(CpuKernelContext &ctx, Bcast &bcast);
 
   template <typename T>
   uint32_t InvGradCompute(CpuKernelContext &ctx);

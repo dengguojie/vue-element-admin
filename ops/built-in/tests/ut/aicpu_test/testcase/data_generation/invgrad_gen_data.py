@@ -96,9 +96,9 @@ def gen_random_data_float_1d():
     write_file_txt(data_files[2], data, fmt="%s")
 
 def gen_random_data_float16_1d():
-    data_files=["invgrad/data/invgrad_data_input1_6.txt",
-                "invgrad/data/invgrad_data_input2_6.txt",
-                "invgrad/data/invgrad_data_output1_6.txt"]
+    data_files=["invgrad/data/invgrad_data_input1_2.txt",
+                "invgrad/data/invgrad_data_input2_2.txt",
+                "invgrad/data/invgrad_data_output1_2.txt"]
     np.random.seed(23457)
     shape_x1 = [16,12]
     shape_x2 = [16,12]
@@ -113,9 +113,9 @@ def gen_random_data_float16_1d():
     write_file_txt(data_files[2], data, fmt="%s")
 
 def gen_random_data_double():
-    data_files=["invgrad/data/invgrad_data_input1_9.txt",
-                "invgrad/data/invgrad_data_input2_9.txt",
-                "invgrad/data/invgrad_data_output1_9.txt"]
+    data_files=["invgrad/data/invgrad_data_input1_3.txt",
+                "invgrad/data/invgrad_data_input2_3.txt",
+                "invgrad/data/invgrad_data_output1_3.txt"]
     np.random.seed(23457)
     shape_x1 = [1, 128]
     shape_x2 = [1, 128]
@@ -130,9 +130,9 @@ def gen_random_data_double():
     write_file_txt(data_files[2], data, fmt="%s")
     
 def gen_random_data_complex64():
-    data_files=["invgrad/data/invgrad_data_input1_10.txt",
-                "invgrad/data/invgrad_data_input2_10.txt",
-                "invgrad/data/invgrad_data_output1_10.txt"]
+    data_files=["invgrad/data/invgrad_data_input1_4.txt",
+                "invgrad/data/invgrad_data_input2_4.txt",
+                "invgrad/data/invgrad_data_output1_4.txt"]
     np.random.seed(3457)
     shape_x1 = [10, 5, 5]
     shape_x2 = [10, 5, 5]
@@ -147,9 +147,9 @@ def gen_random_data_complex64():
     write_file_txt(data_files[2], data, fmt="%s")
   
 def gen_random_data_complex128():
-    data_files=["invgrad/data/invgrad_data_input1_11.txt",
-                "invgrad/data/invgrad_data_input2_11.txt",
-                "invgrad/data/invgrad_data_output1_11.txt"]
+    data_files=["invgrad/data/invgrad_data_input1_5.txt",
+                "invgrad/data/invgrad_data_input2_5.txt",
+                "invgrad/data/invgrad_data_output1_5.txt"]
     np.random.seed(677)
     shape_x1 = [6, 6, 6]
     shape_x2 = [6, 6, 6]
@@ -165,9 +165,9 @@ def gen_random_data_complex128():
 
 
 def gen_random_data_float16_add1():
-    data_files=["invgrad/data/invgrad_data_input1_12.txt",
-                "invgrad/data/invgrad_data_input2_12.txt",
-                "invgrad/data/invgrad_data_output1_12.txt"]
+    data_files=["invgrad/data/invgrad_data_input1_6.txt",
+                "invgrad/data/invgrad_data_input2_6.txt",
+                "invgrad/data/invgrad_data_output1_6.txt"]
     np.random.seed(23457)
     shape_x1 = [2,1024]
     shape_x2 = [2,1024]
@@ -182,12 +182,12 @@ def gen_random_data_float16_add1():
     write_file_txt(data_files[2], data, fmt="%s")
 
 def gen_random_data_float16_add2():
-    data_files=["invgrad/data/invgrad_data_input1_13.txt",
-                "invgrad/data/invgrad_data_input2_13.txt",
-                "invgrad/data/invgrad_data_output1_13.txt"]
+    data_files=["invgrad/data/invgrad_data_input1_7.txt",
+                "invgrad/data/invgrad_data_input2_7.txt",
+                "invgrad/data/invgrad_data_output1_7.txt"]
     np.random.seed(23457)
     shape_x1 = [1,1024]
-    shape_x2 = [1024]
+    shape_x2 = [1,1024]
     a = gen_data_file(data_files[0], shape_x1, np.float16, "uniform", -10, 10)
     b = gen_data_file(data_files[1], shape_x2, np.float16, "uniform", -10, 10)
 
@@ -200,12 +200,12 @@ def gen_random_data_float16_add2():
 
 
 def gen_random_data_float16_add3():
-    data_files=["invgrad/data/invgrad_data_input1_14.txt",
-                "invgrad/data/invgrad_data_input2_14.txt",
-                "invgrad/data/invgrad_data_output1_14.txt"]
+    data_files=["invgrad/data/invgrad_data_input1_8.txt",
+                "invgrad/data/invgrad_data_input2_8.txt",
+                "invgrad/data/invgrad_data_output1_8.txt"]
     np.random.seed(23457)
     shape_x1 = [8192,1]
-    shape_x2 = [8192]
+    shape_x2 = [8192,1]
     a = gen_data_file(data_files[0], shape_x1, np.float16, "uniform", -10, 10)
     b = gen_data_file(data_files[1], shape_x2, np.float16, "uniform", -10, 10)
 

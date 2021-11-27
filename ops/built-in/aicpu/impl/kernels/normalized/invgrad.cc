@@ -95,29 +95,14 @@ uint32_t InvGradCpuKernel::InvGradParamCheck(CpuKernelContext &ctx) {
 // 3. input2 is a 1D tensor with only one element or input2 is scalar
 // 4. the shapes of input1 and input2 are different
 template <typename T>
-void InvGradCpuKernel::SpecialCompute(BcastShapeType type, int64_t start,
+void InvGradCpuKernel::SpecialCompute(int64_t start,
                                    int64_t end, T *input1,
                                    T *input2, T *output) {
-  switch(type) {
-    case BcastShapeType::SAME_SHAPE:
-      for (int64_t i = start; i < end; ++i) {
-        *(output + i) = *(input1 + i) * *(input1 + i) * *(input2 + i) * static_cast<T>(-1);
-      }
-      break;
-    case BcastShapeType::X_ONE_ELEMENT:
-      for (int64_t i = start; i < end; ++i) {
-        *(output + i) = *(input1) * (*(input1)) * (*(input2 + i)) * static_cast<T>(-1.0);
-      }
-      break;
-    case BcastShapeType::Y_ONE_ELEMENT:
-      for (int64_t i = start; i < end; ++i) {
-        *(output + i) = *(input1 + i) * (*(input1 + i)) * (*(input2)) * static_cast<T>(-1.0);
-      }
-      break;
-    default:
-      KERNEL_LOG_WARN("Invalid type [%d]", static_cast<int32_t>(type));
-      break;
-  }
+
+    for (int64_t i = start; i < end; ++i) {
+      *(output + i) = *(input1 + i) * *(input1 + i) * *(input2 + i) * static_cast<T>(-1);
+    }
+
 }
 
 template <typename T>
@@ -126,12 +111,7 @@ uint32_t InvGradCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
   auto in1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
   auto out = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   int64_t in0_elements_nums = ctx.Input(0)->NumElements();
-  int64_t in1_elements_nums = ctx.Input(1)->NumElements();
-  int64_t data_num = ctx.Output(0)->NumElements();
-  BcastShapeType type = in0_elements_nums == in1_elements_nums ?
-      BcastShapeType::SAME_SHAPE :
-      (in0_elements_nums == 1 ?
-      BcastShapeType::X_ONE_ELEMENT : BcastShapeType::Y_ONE_ELEMENT);
+  int64_t data_num = in0_elements_nums;
       
   if (data_num >= kParallelDataNumSameShape) {
     uint32_t min_core_num = 1;
@@ -147,7 +127,7 @@ uint32_t InvGradCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
     }
     
     auto sharder_invgrad = [&](size_t start, size_t end) {
-      SpecialCompute<T>(type, start, end, in0, in1, out);
+      SpecialCompute<T>(start, end, in0, in1, out);
     };
     
     KERNEL_HANDLE_ERROR(
@@ -155,54 +135,9 @@ uint32_t InvGradCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
                                     sharder_invgrad),
         "InvGrad Compute failed.")
   } else {
-    SpecialCompute<T>(type, 0, data_num, in0, in1, out);
+    SpecialCompute<T>(0, data_num, in0, in1, out);
   }
   
-  return KERNEL_STATUS_OK;
-}
-
-template <typename T>
-uint32_t InvGradCpuKernel::BcastCompute(CpuKernelContext &ctx, Bcast &bcast) {
-  auto in0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
-  auto in1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
-  auto out = reinterpret_cast<T *>(ctx.Output(0)->GetData());
-  int64_t data_num = ctx.Output(0)->NumElements();
-  if (data_num >= kParallelDataNum) {
-    uint32_t min_core_num = 1;
-    uint32_t max_core_num = std::max(
-      min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
-        
-    if (data_num <= kParallelDataNumMid) {
-      max_core_num = std::min(max_core_num, 4U);   // up to 4 cpu cores
-    }
-    
-    if (max_core_num > data_num) {
-      max_core_num = data_num;
-    }
-    
-    auto sharder_invgrad = [&](int64_t start, int64_t end) {
-      for (int64_t i = start; i < end; i++) {
-        auto y =
-            in0 + bcast.GetBroadcastXIndex(i);  // i-th value of input0
-        auto dy =
-            in1 + bcast.GetBroadcastYIndex(i);  // i-th value of input1
-        *(out + i) = (*dy) * (*y) * (*y) * static_cast<T>(-1);
-      }
-    };
-    
-    KERNEL_HANDLE_ERROR(
-        CpuKernelUtils::ParallelFor(ctx, data_num, data_num / max_core_num,
-                                    sharder_invgrad),
-        "InvGrad Compute failed.")
-  } else {
-    for (int64_t i = 0; i < data_num; i++) {
-        auto y =
-            in0 + bcast.GetBroadcastXIndex(i);  // i-th value of input0
-        auto dy =
-            in1 + bcast.GetBroadcastYIndex(i);  // i-th value of input1
-        *(out + i) = (*dy) * (*y) * (*y) * static_cast<T>(-1);
-      }
-  }
   return KERNEL_STATUS_OK;
 }
 
@@ -216,19 +151,14 @@ uint32_t InvGradCpuKernel::InvGradCompute(CpuKernelContext &ctx) {
   auto input1_shape = input1_tensor->GetTensorShape()->GetDimSizes();
   int64_t input1_elements_nums = input1_tensor->NumElements();
 
-  bool isNeedBcast = (input0_shape == input1_shape) ||
-                     (input0_elements_nums == 1) ||
-                     (input1_elements_nums == 1);
-  if (isNeedBcast) {
-    return NoBcastCompute<T>(ctx);
+  // elements numbers check
+  if (input0_elements_nums != input1_elements_nums) {
+    KERNEL_LOG_WARN("Invalid element numbers, got[%d] and [%d]",
+                    static_cast<int32_t>(input0_elements_nums),
+                    static_cast<int32_t>(input1_elements_nums));
+    return KERNEL_STATUS_PARAM_INVALID;
   } else {
-    Bcast bcast(input0_shape, input1_shape);
-    if (!bcast.IsValid()) {
-      KERNEL_LOG_ERROR("[%s] broadcast failed.", ctx.GetOpType().c_str());
-      return KERNEL_STATUS_PARAM_INVALID;
-    }
- 
-    return BcastCompute<T>(ctx, bcast);
+    return NoBcastCompute<T>(ctx);
   }
 
   return KERNEL_STATUS_OK;
