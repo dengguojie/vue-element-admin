@@ -34,6 +34,9 @@ extern std::shared_ptr<AutoTilingHandler> CreateConcatDslTilingHandler(const std
 extern std::shared_ptr<AutoTilingHandler> CreateElewiseTilingHandler(const std::string& op_type,
                                                                      const std::string& pattern,
                                                                      const nlohmann::json& parsed_compile_info);
+extern std::shared_ptr<AutoTilingHandler> CreateBroadcastTilingHandler(const std::string& op_type,
+                                                                       const std::string& pattern,
+                                                                       const nlohmann::json& parsed_compile_info);
 extern std::shared_ptr<AutoTilingHandler> CreateReduceTilingHandler(const std::string& op_type,
                                                                     const std::string& pattern,
                                                                     const nlohmann::json& parsed_compile_info);
@@ -52,7 +55,7 @@ std::shared_ptr<AutoTilingHandler> CreateAutoTilingHandler(const std::string& op
     } else if (pattern == "ElemWise") {
       return CreateElewiseTilingHandler(op_type, pattern, parsed_compile_info);
     } else if (pattern == "Broadcast") {
-      return CreateElewiseTilingHandler(op_type, pattern, parsed_compile_info);
+      return CreateBroadcastTilingHandler(op_type, pattern, parsed_compile_info);
     } else if (pattern == "Norm") {
       return CreateNormTilingHandler(op_type, pattern, parsed_compile_info);
     } else if (pattern == "Gather") {
