@@ -22,8 +22,8 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("range_d")
 def range_d_compute(x, y, start, limit, delta, kernel_name="range_d"):
     """

@@ -26,8 +26,8 @@ from te import tvm
 from impl.util import util_select_op_base
 
 
-# pylint: disable=redefined-outer-name, too-many-arguments, E1101
-# pylint: disable=unused-argument,too-many-locals
+# 'pylint: disable=redefined-outer-name, too-many-arguments, E1101
+# 'pylint: disable=unused-argument,too-many-locals
 def op_select_format(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_name="reduction"):
     """
     1. when input x's ori_shape in ["NHWC", "NCHW"] and attr axis
@@ -129,7 +129,7 @@ def reduction_compute(data_info, product_verion, operation, axis, coeff):
     return res
 
 
-# pylint: disable=redefined-outer-name, too-many-arguments, E1101
+# 'pylint: disable=redefined-outer-name, too-many-arguments, E1101
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
 def reduction(input_x, output_y, operation=1, axis=0, coeff=1.0, kernel_name="reduction"):

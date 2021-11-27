@@ -25,8 +25,8 @@ from te import tvm
 NONETYPE = type(None)
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
-# pylint: disable=too-many-arguments
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments
 @tbe_platform.fusion_manager.fusion_manager.register("reduce_sum_d")
 def reduce_sum_d_compute(x, y, axis, keepdims, kernel_name="reduce_sum_d", is_5hdc=False, is_nz_nd=False):
     """redusce_sum_d compute
@@ -70,7 +70,7 @@ def reduce_sum_d_compute(x, y, axis, keepdims, kernel_name="reduce_sum_d", is_5h
     return res
 
 
-# pylint: disable=locally-disabled,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def reduce_sum_d(x, y, axis, keepdims=None, kernel_name="reduce_sum_d"):

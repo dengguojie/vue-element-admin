@@ -26,7 +26,7 @@ from impl import reduce_min_d_tik
 NONETYPE = type(None)
 
 
-# pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=locally-disabled,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("reduce_min_d")
 def reduce_min_d_compute(input_min, output_min, axis, keep_dims, kernel_name="reduce_min_d"):
     """
