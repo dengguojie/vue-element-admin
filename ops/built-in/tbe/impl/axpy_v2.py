@@ -182,18 +182,18 @@ def op_select_format(input_x, input_y, alpha, output_z, kernel_name="axpy_v2"):
               "Scalar": len(shape_y) == 1 and shape_y[0] == 1}
     common_flag = {"half_16_div_flg": (_can_division_sixteen(shape_x) and not _can_division_sixteen(shape_y)) or (
             not _can_division_sixteen(shape_x) and _can_division_sixteen(shape_y))}
-    if x_flag["5d"] or x_flag["4d"]:
+    if x_flag.get("5d") or x_flag.get("4d"):
         x_cdim = shape_x[format_x.index("C")]
         x_ndim = shape_x[format_x.index("N")]
-    if y_flag["5d"] or y_flag["4d"]:
+    if y_flag.get("5d") or y_flag.get("4d"):
         y_cdim = shape_y[format_y.index("C")]
         y_ndim = shape_y[format_y.index("N")]
 
-    format_flag = {"NDC1HWC0": x_flag["5d"] and y_flag["5d"] and x_cdim == y_cdim,
-                   "FRACTAL_Z_3D": x_flag["5d"] and y_flag["5d"] and x_cdim == y_cdim and x_ndim == y_ndim,
+    format_flag = {"NDC1HWC0": x_flag.get("5d") and y_flag.get("5d") and x_cdim == y_cdim,
+                   "FRACTAL_Z_3D": x_flag.get("5d") and y_flag.get("5d") and x_cdim == y_cdim and x_ndim == y_ndim,
                    "FRACTAL_NZ": len(shape_x) >= 2 and len(shape_y) >= 2 and shape_x[-2:] == shape_y[-2:],
-                   "NC1HWC0": x_flag["4d"] and
-                              y_flag["4d"] and
+                   "NC1HWC0": x_flag.get("4d") and
+                              y_flag.get("4d") and
                               ((format_y == format_x and
                                 ((x_cdim % 16 == 0 and y_cdim % 16 == 0) or x_cdim == y_cdim) and _can_broad(
                                [shape_x[format_x.index(format_x[0])], shape_x[format_x.index(format_x[1])],
@@ -201,26 +201,29 @@ def op_select_format(input_x, input_y, alpha, output_z, kernel_name="axpy_v2"):
                                [shape_y[format_y.index(format_y[0])], shape_y[format_y.index(format_y[1])],
                                 format_y[0] != "C", format_y[1] != "C"])) or (
                                 list(shape_x) == list(shape_y) and -1 not in shape_x) or (
-                                common_flag["half_16_div_flg"] and (x_cdim == y_cdim or x_cdim == 16 or y_cdim == 16))),
-                   "FRACTAL_Z": x_flag["4d"] and y_flag["4d"] and format_x == format_y and (
+                                common_flag.get("half_16_div_flg") and
+                                (x_cdim == y_cdim or x_cdim == 16 or y_cdim == 16))),
+                   "FRACTAL_Z": x_flag.get("4d") and y_flag.get("4d") and format_x == format_y and (
                            (all(i % 16 == 0 for i in [x_cdim, y_cdim, x_ndim, y_ndim])
                             and util_common.is_support_fractal_z_inputs(list_input)
                             and ((list(shape_x) == list(shape_y) and format_x.upper() in ("NCHW", "NHWC")) or
                                  (format_x.upper() == "HWCN" and shape_x[0]*shape_x[1] == shape_y[0]*shape_y[1])))
-                           or (list(shape_x) == list(shape_y) and util_common.is_support_fractal_z_inputs(list_input))),
+                           or (list(shape_x) == list(shape_y) and
+                               util_common.is_support_fractal_z_inputs(list_input))),
                    "ND": True
                    }
 
-    format_flag["NC1HWC0"] = format_flag["NC1HWC0"] or (x_flag["4d"] and y_flag["Scalar"] and x_cdim % 16 == 0) or (
-            x_flag["Scalar"] and y_flag["4d"] and y_cdim % 16 == 0) or (
+    format_flag["NC1HWC0"] = format_flag.get("NC1HWC0") or (
+            x_flag.get("4d") and y_flag.get("Scalar") and x_cdim % 16 == 0) or (
+            x_flag.get("Scalar") and y_flag.get("4d") and y_cdim % 16 == 0) or (
             len(shape_x) == 1 and len(shape_y) == 1 and shape_x[0] % 16 == 0 and shape_y[0] % 16 == 0)
-    format_flag["FRACTAL_Z"] = format_flag["FRACTAL_Z"] or \
+    format_flag["FRACTAL_Z"] = format_flag.get("FRACTAL_Z") or \
                                (util_common.is_support_fractal_z_inputs(list_input) and
-                               (x_flag["4d"] and y_flag["Scalar"] and x_cdim % 16 == 0 and x_ndim % 16 == 0) or
-                               (x_flag["Scalar"] and y_flag["4d"] and y_cdim % 16 == 0 and y_ndim % 16 == 0))
+                               (x_flag.get("4d") and y_flag.get("Scalar") and x_cdim % 16 == 0 and x_ndim % 16 == 0) or
+                               (x_flag.get("Scalar") and y_flag.get("4d") and y_cdim % 16 == 0 and y_ndim % 16 == 0))
 
 
-    format_list = [i for i in format_flag if format_flag[i]]
+    format_list = [i for i in format_flag if format_flag.get(i)]
     # ND+ND NZ+NZ 5HD+5HD FZ+FZ
     if len(shape_x) >= 2 and len(shape_y) >= 2 and shape_x[-2:] == shape_y[-2:]:
 

@@ -18,6 +18,7 @@ limitations under the License.
 avg_pool_v2_grad
 """
 import collections
+import math
 import te.lang.cce
 import te.platform.cce_params as cce_params
 from te import platform as tbe_platform
@@ -26,7 +27,6 @@ from te.lang.cce.te_compute import common
 from te.platform import insn_cmd
 from te.utils.error_manager import error_manager_vector
 from te.utils import para_check
-import math
 from te.utils import error_manager
 
 
@@ -586,11 +586,11 @@ def avg_pool_grad_schedule(res, l1_load_kernel):
                         mad_ubuf_mcut_i, mad_ubuf_axis_co0)
     s[mad_cc].compute_at(s[mad_ubuf], mad_ubuf_mcut_o)
 
-    conv_Ncut_o, conv_Ncut_i = s[res].split(res.op.axis[0], factor=1)
+    conv_ncut_o, conv_ncut_i = s[res].split(res.op.axis[0], factor=1)
     conv_hcut_o, conv_hcut_i = s[res].split(res.op.axis[3], factor=(res_l1))
     conv_mcut_o, conv_mcut_i = s[res].split(conv_hcut_i, factor=tile_m)
-    s[res].reorder(conv_Ncut_o, res.op.axis[1], conv_hcut_o, conv_mcut_o,
-                   conv_Ncut_i, res.op.axis[2], conv_mcut_i, res.op.axis[4])
+    s[res].reorder(conv_ncut_o, res.op.axis[1], conv_hcut_o, conv_mcut_o,
+                   conv_ncut_i, res.op.axis[2], conv_mcut_i, res.op.axis[4])
     s[mad_ubuf].buffer_align((1, 1), (1, 1), (1, 1), (1, block_size),
                              (1, block_size))
     s[mad_ubuf].compute_at(s[res], conv_mcut_o)
@@ -663,7 +663,7 @@ def avg_pool_grad_schedule(res, l1_load_kernel):
         "k_outer": mad_cc_kcut_o
     }
     s[mad_cc].emit_insn(mad_cc_n_cut_i, insn_cmd.MAD, mad_dict)
-    s[res].emit_insn(conv_Ncut_i, insn_cmd.DMA_COPY)
+    s[res].emit_insn(conv_ncut_i, insn_cmd.DMA_COPY)
 
     s[dout_ca].double_buffer()
     s[weight_cb].double_buffer()
@@ -671,7 +671,7 @@ def avg_pool_grad_schedule(res, l1_load_kernel):
     # for multi cores
     if res_block_n < 16:
         res_n_factor, res_cgroup_factor = _cal_multi_core_factor(res_block_n, res_block_cgroup)
-        res_nncut_o, res_nncut_i = s[res].split(conv_Ncut_o,
+        res_nncut_o, res_nncut_i = s[res].split(conv_ncut_o,
                                                 nparts=res_n_factor)
         res_cccut_o, res_cccut_i = s[res].split(res.op.axis[1],
                                                 nparts=res_cgroup_factor)
@@ -684,7 +684,7 @@ def avg_pool_grad_schedule(res, l1_load_kernel):
         s[res].bind(bind_out, blockidx)
     else:
         block = tvm.thread_axis("blockIdx.x")
-        s[res].bind(conv_Ncut_o, block)
+        s[res].bind(conv_ncut_o, block)
 
     return s
 

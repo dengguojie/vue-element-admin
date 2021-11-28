@@ -26,7 +26,14 @@ from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
-MAX_BLOCK_NUM = 65535
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class of Constant
+    """
+    MAX_BLOCK_NUM = 65535
+
 
 # 'pylint: disable = unused-argument,redefined-builtin,too-many-arguments,too-many-boolean-expressions,too-many-locals
 def get_op_support_info(x,
@@ -260,6 +267,7 @@ def _tiling_param(shape, ksize, strides, core_num):
     return factor_c1, factor_dout, factor_rd, factor_rhw
 
 
+# 'pylint: disable=too-many-statements
 def _avg_pool3d_schedule(res, sch, ksize, strides):
     res_cast = res.op.input_tensors[0]
     tensor_a = res_cast.op.input_tensors[0]
@@ -309,8 +317,8 @@ def _avg_pool3d_schedule(res, sch, ksize, strides):
 
     ax_fused_o = ax_fused
     output_shape = [int(i) for i in res.shape]
-    if (output_shape[0] * ((output_shape[2] + factor_c1 - 1) // factor_c1)) > MAX_BLOCK_NUM:
-        ax_fused_o, ax_fused_i = sch[res].split(ax_fused, nparts=core_num)
+    if (output_shape[0] * ((output_shape[2] + factor_c1 - 1) // factor_c1)) > Constant.MAX_BLOCK_NUM:
+        ax_fused_o, _ = sch[res].split(ax_fused, nparts=core_num)
 
     block = tvm.thread_axis("blockIdx.x")
     sch[res].bind(ax_fused_o, block)

@@ -130,7 +130,7 @@ def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
     x_info = {"dim_n": 1, "dim_c": 1, "dim_h": 1, "dim_w": 1}
     y_info = {"dim_n": 1, "dim_c": 1, "dim_h": 1, "dim_w": 1}
 
-    if (x_is_which_format["is_4d"] and y_is_which_format["is_4d"]):
+    if (x_is_which_format.get("is_4d") and y_is_which_format.get("is_4d")):
         x_info["dim_c"] = shape_x[format_x.index("C")]
         x_info["dim_n"] = shape_x[format_x.index("N")]
         x_info["dim_h"] = shape_x[format_x.index("H")]
@@ -139,10 +139,10 @@ def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
         y_info["dim_n"] = shape_y[format_y.index("N")]
         y_info["dim_h"] = shape_y[format_y.index("H")]
         y_info["dim_w"] = shape_y[format_y.index("W")]
-    if y_is_which_format["is_scalar"] and x_is_which_format["is_4d"]:
+    if y_is_which_format.get("is_scalar") and x_is_which_format.get("is_4d"):
         x_info["dim_c"] = shape_x[format_x.index("C")]
         x_info["dim_n"] = shape_x[format_x.index("N")]
-    if x_is_which_format["is_scalar"] and y_is_which_format["is_4d"]:
+    if x_is_which_format.get("is_scalar") and y_is_which_format.get("is_4d"):
         y_info["dim_c"] = shape_y[format_y.index("C")]
         y_info["dim_n"] = shape_y[format_y.index("N")]
 
@@ -157,8 +157,8 @@ def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
     # ND+ND NZ+NZ 5HD+5HD FZ+FZ
     if len(shape_x) >= 2 and len(shape_y) >= 2 and shape_x[-2:] == shape_y[-2:]:
         format_support_flag[("FRACTAL_NZ", "FRACTAL_NZ", "FRACTAL_NZ")] = 1
-        if x_is_which_format["is_4d"] and y_is_which_format["is_4d"]:
-            if x_info["dim_c"] % 16 == 0 and y_info["dim_c"] % 16 == 0:
+        if x_is_which_format.get("is_4d") and y_is_which_format.get("is_4d"):
+            if x_info.get("dim_c") % 16 == 0 and y_info.get("dim_c") % 16 == 0:
                 if format_x == format_y == "NCHW":
                     if (shape_x[1] == shape_y[1] or shape_x[1] == 16 or shape_y[1] == 16) \
                             or (shape_x[0] == shape_y[0] or shape_x[0] == 1 or shape_y[0] == 1):
@@ -174,8 +174,8 @@ def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
                         format_support_flag[("NC1HWC0", "NC1HWC0", "NC1HWC0")] = 1
                     if (shape_x[0] == shape_y[1] == 1) or (shape_x[1] == shape_y[0] == 1):
                         format_support_flag[("NC1HWC0", "NC1HWC0", "NC1HWC0")] = 1
-            if x_info["dim_c"] % 16 == 0 and y_info["dim_c"] % 16 == 0\
-                    and y_info["dim_n"] % 16 == 0 and x_info["dim_n"] % 16 == 0 and \
+            if x_info.get("dim_c") % 16 == 0 and y_info.get("dim_c") % 16 == 0\
+                    and y_info.get("dim_n") % 16 == 0 and x_info.get("dim_n") % 16 == 0 and \
                     util_common.is_support_fractal_z_inputs(list_input):
                 if format_x == format_y == "HWCN" and shape_x[0] * shape_x[1] == shape_y[0] * shape_y[1]:
                     format_support_flag[("FRACTAL_Z", "FRACTAL_Z", "FRACTAL_Z")] = 1
@@ -186,21 +186,23 @@ def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
                  or (not _is_last_two_axis_16_multiple(shape_x) and _is_last_two_axis_16_multiple(shape_y))):
         if (_is_last_two_axis_16_multiple(shape_x) and not _is_last_two_axis_16_multiple(shape_y)) or\
                 (not _is_last_two_axis_16_multiple(shape_x) and _is_last_two_axis_16_multiple(shape_y)):
-            if x_is_which_format["is_4d"] and y_is_which_format["is_4d"]:
-                if x_info["dim_c"] % 16 == 0 and y_info["dim_c"] % 16 == 0:
-                    if x_info["dim_c"] == y_info["dim_c"] or x_info["dim_c"] == 16 or y_info["dim_c"] == 16:
+            if x_is_which_format.get("is_4d") and y_is_which_format.get("is_4d"):
+                if x_info.get("dim_c") % 16 == 0 and y_info.get("dim_c") % 16 == 0:
+                    if x_info.get("dim_c") == y_info.get("dim_c") or x_info.get("dim_c") == 16 or \
+                       y_info.get("dim_c") == 16:
                         format_support_flag[("NC1HWC0", "NC1HWC0", "NC1HWC0")] = 1
-                if x_info["dim_c"] % 16 == 0 and x_info["dim_n"] % 16 == 0\
-                        and y_info["dim_c"] % 16 == 0 and y_info["dim_n"] % 16 == 0\
+                if x_info.get("dim_c") % 16 == 0 and x_info.get("dim_n") % 16 == 0\
+                        and y_info.get("dim_c") % 16 == 0 and y_info.get("dim_n") % 16 == 0\
                         and util_common.is_support_fractal_z_inputs(list_input):
                     if format_x == format_y == "NCHW"\
-                            and x_info["dim_h"] * x_info["dim_w"] == y_info["dim_h"] * y_info["dim_w"]\
-                            and x_info["dim_c"] == y_info["dim_c"]:
-                        if x_info["dim_n"] == y_info["dim_n"] or x_info["dim_n"] == 16 or y_info["dim_n"] == 16:
+                            and x_info.get("dim_h") * x_info.get("dim_w") == y_info.get("dim_h") * y_info.get("dim_w")\
+                            and x_info.get("dim_c") == y_info.get("dim_c"):
+                        if x_info.get("dim_n") == y_info.get("dim_n") or x_info.get("dim_n") == 16 or \
+                           y_info.get("dim_n") == 16:
                             format_support_flag[("FRACTAL_Z", "FRACTAL_Z", "FRACTAL_Z")] = 1
                     if format_x == format_y == "NHWC"\
-                            and x_info["dim_h"] * x_info["dim_w"] == y_info["dim_h"] * y_info["dim_w"]:
-                        if x_info["dim_n"] == y_info["dim_n"] and x_info["dim_c"] == y_info["dim_c"]:
+                            and x_info.get("dim_h") * x_info.get("dim_w") == y_info.get("dim_h") * y_info.get("dim_w"):
+                        if x_info.get("dim_n") == y_info.get("dim_n") and x_info.get("dim_c") == y_info.get("dim_c"):
                             format_support_flag[("FRACTAL_Z", "FRACTAL_Z", "FRACTAL_Z")] = 1
         if _is_last_two_axis_16_multiple(shape_x) and not _is_last_two_axis_16_multiple(shape_y):
             format_support_flag[("FRACTAL_NZ", "ND", "FRACTAL_NZ")] = 1
@@ -208,25 +210,26 @@ def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
             format_support_flag[("ND", "FRACTAL_NZ", "ND")] = 1
 
     # 5HD+scalar,ND+ND,FZ+scalar
-    elif len(shape_x) >= 2 and y_is_which_format["is_scalar"]:
-        if x_is_which_format["is_4d"]:
-            if x_info["dim_c"] % 16 == 0:
+    elif len(shape_x) >= 2 and y_is_which_format.get("is_scalar"):
+        if x_is_which_format.get("is_4d"):
+            if x_info.get("dim_c") % 16 == 0:
                 format_support_flag[("NC1HWC0", "ND", "NC1HWC0")] = 1
-            if x_info["dim_c"] % 16 == 0 and x_info["dim_n"] % 16 == 0\
+            if x_info.get("dim_c") % 16 == 0 and x_info.get("dim_n") % 16 == 0\
                     and util_common.is_support_fractal_z_inputs(list_input):
                 format_support_flag[("FRACTAL_Z", "ND", "FRACTAL_Z")] = 1
 
     # ND+ND,scalar+5HD,scalar+FZ
-    elif len(shape_y) >= 2 and x_is_which_format["is_scalar"]:
-        if y_is_which_format["is_4d"]:
-            if y_info["dim_c"] % 16 == 0:
+    elif len(shape_y) >= 2 and x_is_which_format.get("is_scalar"):
+        if y_is_which_format.get("is_4d"):
+            if y_info.get("dim_c") % 16 == 0:
                 format_support_flag[("ND", "NC1HWC0", "NC1HWC0")] = 1
-            if y_info["dim_c"] % 16 == 0 and y_info["dim_n"] % 16 == 0 \
+            if y_info.get("dim_c") % 16 == 0 and y_info.get("dim_n") % 16 == 0 \
                     and util_common.is_support_fractal_z_inputs(list_input):
                 format_support_flag[("ND", "FRACTAL_Z", "FRACTAL_Z")] = 1
 
     # ND+ND,5HD+5HD
     else:
+        # 'pylint: disable=too-many-arguments
         def _is_support_5d_5d_5d(x_dim1, x_dim2, x_dim3, y_dim1, y_dim2, y_dim3):
             if x_dim1 == y_dim1:
                 if x_dim2 == y_dim2 and (x_dim3 == 1 or y_dim3 == 1):
@@ -242,15 +245,16 @@ def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
 
         if len(shape_x) == len(shape_y) == 1 and shape_x[0] % 16 == 0 and shape_y[0] % 16 == 0:
             format_support_flag[("NC1HWC0", "NC1HWC0", "NC1HWC0")] = 1
-        if x_is_which_format["is_4d"] and y_is_which_format["is_4d"] and format_x == format_y:
-            if x_info["dim_c"] % 16 == 0 and y_info["dim_c"] % 16 == 0:
-                if (x_info["dim_c"] == 16 or y_info["dim_c"] == 16) or x_info["dim_c"] == y_info["dim_c"]:
-                    _is_support_5d_5d_5d(x_info["dim_n"], x_info["dim_h"], x_info["dim_w"],
-                                         y_info["dim_n"], y_info["dim_h"], y_info["dim_w"])
-                    _is_support_5d_5d_5d(x_info["dim_h"], x_info["dim_n"], x_info["dim_w"],
-                                         y_info["dim_h"], y_info["dim_n"], y_info["dim_w"])
-                    _is_support_5d_5d_5d(x_info["dim_w"], x_info["dim_n"], x_info["dim_h"],
-                                         y_info["dim_w"], y_info["dim_n"], y_info["dim_h"])
+        if x_is_which_format.get("is_4d") and y_is_which_format.get("is_4d") and format_x == format_y:
+            if x_info.get("dim_c") % 16 == 0 and y_info.get("dim_c") % 16 == 0:
+                if (x_info.get("dim_c") == 16 or y_info.get("dim_c") == 16) or \
+                   x_info.get("dim_c") == y_info.get("dim_c"):
+                    _is_support_5d_5d_5d(x_info.get("dim_n"), x_info.get("dim_h"), x_info.get("dim_w"),
+                                         y_info.get("dim_n"), y_info.get("dim_h"), y_info.get("dim_w"))
+                    _is_support_5d_5d_5d(x_info.get("dim_h"), x_info.get("dim_n"), x_info.get("dim_w"),
+                                         y_info.get("dim_h"), y_info.get("dim_n"), y_info.get("dim_w"))
+                    _is_support_5d_5d_5d(x_info.get("dim_w"), x_info.get("dim_n"), x_info.get("dim_h"),
+                                         y_info.get("dim_w"), y_info.get("dim_n"), y_info.get("dim_h"))
 
         # add case nz + nd or nd + nz (ex: [16, 16, 256] + [256])
         if _is_support_nd_nz_nz(shape_x, shape_y) or _is_support_nd_nz_nz(shape_y, shape_x):
@@ -261,11 +265,11 @@ def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
 
     # gen format and dtype
     format_list_input0 = [format_tuple[0] for format_tuple in format_support_flag if
-                          format_support_flag[format_tuple]]
+                          format_support_flag.get(format_tuple)]
     format_list_input1 = [format_tuple[1] for format_tuple in format_support_flag if
-                          format_support_flag[format_tuple]]
+                          format_support_flag.get(format_tuple)]
     format_list_output = [format_tuple[2] for format_tuple in format_support_flag if
-                          format_support_flag[format_tuple]]
+                          format_support_flag.get(format_tuple)]
     dtype_total = []
     for dtype in dtype_list:
         dtype_total = dtype_total + [dtype] * len(format_list_output)

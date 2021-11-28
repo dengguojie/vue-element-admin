@@ -510,6 +510,9 @@ def get_matmul_tensor(x, h, c, w, b, build_list, tensor_list, scope_list, operat
 
 # 'pylint: disable=too-many-locals,too-many-statements,unnecessary-lambda,cell-var-from-loop
 def get_activate_tensor(forget_bias, build_list, tensor_list, scope_list, operation_list, product_info):
+    """
+    get activate tensor
+    """
     unreused_flag = True
     ft_ub = tensor_list["ft_ub"]
     shape_gate = ft_ub.shape
