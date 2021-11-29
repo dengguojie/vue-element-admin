@@ -199,6 +199,11 @@ Status BiasaddConvFusionPass::CheckParam(const ge::NodePtr &conv, const ge::Node
     OP_LOGI(FUSED_OP_TYPE.c_str(), "inEdges size is invalid.");
     return NOT_CHANGED;
   }
+
+  if (conv->GetInDataAnchor(2)->GetPeerOutAnchor() != nullptr) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "Biasadd_conv_fusion can not support conv op which has already bias");
+    return NOT_CHANGED;
+  }
   return SUCCESS;
 }
 
