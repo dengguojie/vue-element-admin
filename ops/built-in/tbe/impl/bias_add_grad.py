@@ -27,8 +27,8 @@ from impl.util.util_select_op_base import get_op_cal_info
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=unused-argument
-# pylint: disable=invalid-name,unnecessary-comprehension
+# 'pylint: disable=unused-argument
+# 'pylint: disable=invalid-name,unnecessary-comprehension
 def get_op_support_info(x, y, data_format, kernel_name="bias_add_grad"):
     """
     get_op_support_info
@@ -44,7 +44,7 @@ def get_op_support_info(x, y, data_format, kernel_name="bias_add_grad"):
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-branches
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-branches
 def bias_add_grad_compute_nz(x, y, data_format, kernel_name="bias_add_grad"):
     """
     Reduce a tensor on last dimension in axis based on sum.
@@ -142,7 +142,7 @@ def bias_add_grad_compute_special_format(x, y, data_format, kernel_name="bias_ad
     return result
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("bias_add_grad")
 def bias_add_grad_compute(x, y, data_format, kernel_name="bias_add_grad"):
     """

@@ -24,8 +24,8 @@ import te.platform as tbe_platform
 from impl.util import util_select_op_base
 
 
-# pylint: disable=too-many-locals,redefined-builtin,unused-argument
-# pylint: disable=too-many-statements,too-many-branches,invalid-name
+# 'pylint: disable=too-many-locals,redefined-builtin,unused-argument
+# 'pylint: disable=too-many-statements,too-many-branches,invalid-name
 def op_select_format(x, bias, y, data_format="NHWC", kernel_name="bias_add"):
     """
     1.when the length of x's ori_shape is less than or equal

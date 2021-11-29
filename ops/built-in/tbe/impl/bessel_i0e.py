@@ -45,7 +45,7 @@ LEN_AFTER = 9
 CONST_LIMIT = 15.0 / 4
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals,
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name,too-many-locals,
 @tbe_platform.fusion_manager.fusion_manager.register("bessel_i0e")
 def bessel_i0e_compute(x, y, kernel_name="bessel_i0e"):
     """

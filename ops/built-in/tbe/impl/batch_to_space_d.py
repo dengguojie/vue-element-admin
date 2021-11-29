@@ -28,7 +28,7 @@ DIM_CNT = 5
 CROPS_LEN = 2
 
 
-# pylint: disable = unused-argument,too-many-locals,invalid-name
+# 'pylint: disable = unused-argument,too-many-locals,invalid-name
 def get_op_support_info(x, y, block_size, crops, kernel_name="batch_to_space_d"):
     """get op support info
     """

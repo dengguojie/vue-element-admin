@@ -123,7 +123,7 @@ def _check_dims_equal(shape_x, shape, data_format):
                                                                    error_detail)
 
 
-# pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-arguments
 def _shape_check(shape_x, shape_scale, shape_offset, mean, variance, is_training, data_format):
     """
     Function to check if the shape is in line with norms.
@@ -213,7 +213,7 @@ def _dtype_check(input_x, input_scale, input_offset, input_mean, input_variance,
     para_check.check_dtype(dtype_scale.lower(), ("float32", "float16"), param_name="input_scale")
 
 
-# pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-arguments
 def _output_data_y_compute(input_x, input_mean, input_variance,
                            input_scale, input_offset, epsilon):
     """
@@ -251,7 +251,7 @@ def _output_data_y_compute(input_x, input_mean, input_variance,
     return res
 
 
-# pylint: disable=locally-disabled,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-locals
 def _fused_batch_norm_inf_compute(input_x, input_scale, input_offset, input_mean, input_variance, epsilon,
                                   format_data):
     """
@@ -313,7 +313,7 @@ def _fused_batch_norm_inf_compute(input_x, input_scale, input_offset, input_mean
     return res
 
 
-# pylint: disable=locally-disabled,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-locals
 def _fused_batch_norm_train_compute(input_x, input_scale, input_offset,
                                     epsilon, format_data):
     """
@@ -395,8 +395,8 @@ def _fused_batch_norm_train_compute(input_x, input_scale, input_offset,
     return res
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=locally-disabled,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("batch_norm_ext2")
 def batch_norm_ext2_compute(input_x, input_scale, input_offset, input_mean,
                             input_variance, output_y, output_batch_mean,
@@ -465,7 +465,7 @@ def batch_norm_ext2_compute(input_x, input_scale, input_offset, input_mean,
     return res
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,

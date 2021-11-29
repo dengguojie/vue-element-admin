@@ -23,14 +23,14 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class LstmCellGradInput():
     """
     Class: use to store LstmCellGradInput input parameters
     Modify : 2019-12-28
     """
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def __init__(self, cell_state, dht_out, dht, dct, inpute_gate, forget_gate,
                  update_gate, output_gate, tanh_ct, kernel_name):
         """
@@ -202,7 +202,7 @@ class LstmCellGrad(LstmCellGradInput):
     Modify : 2019-12-28
     """
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def __init__(self, cell_state, dht_out, dht, dct, inpute_gate, forget_gate,
                  update_gate, output_gate, tanh_ct, kernel_name):
         """
@@ -715,7 +715,7 @@ class LstmCellGrad(LstmCellGradInput):
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
-# pylint: disable=unused-argument,too-many-arguments,invalid-name
+# 'pylint: disable=unused-argument,too-many-arguments,invalid-name
 def basic_lstm_cell_c_state_grad(c,
                                  dht,
                                  dct,

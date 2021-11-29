@@ -23,7 +23,7 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("bitwise_and")
 def bitwise_and_compute(x1, x2, y, kernel_name="bitwise_and"):
     """

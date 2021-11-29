@@ -24,7 +24,7 @@ from te.utils.error_manager import error_manager_vector
 tbe_platform.cce_policy.disableL2()
 
 
-# pylint: disable=locally-disabled,too-many-locals,unused-argument
+# 'pylint: disable=locally-disabled,too-many-locals,unused-argument
 def _check_shape(shape_x, shape_scale, data_format):
     """
     Function to check if the shape is in line with norms.
@@ -86,8 +86,8 @@ def _check_dtype(dtype_x, dtype_scale, dtype_offset,
     para_check.check_dtype(dtype_variance.lower(), ("float32", "float16"), param_name="variance")
 
 
-# pylint: disable=locally-disabled,invalid-name,too-many-arguments
-# pylint: disable=locally-disabled,too-many-locals,unused-argument
+# 'pylint: disable=locally-disabled,invalid-name,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-locals,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("bn_infer")
 def bn_infer_compute(x, scale, offset, mean, variance,
                      y, epsilon, kernel_name="bn_inf"):

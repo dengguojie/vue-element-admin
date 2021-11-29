@@ -28,8 +28,8 @@ SCALAR_ZERO = 0.0
 SCALAR_ONE = 1.0
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
-# pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments
 @tbe_platform.fusion_manager.fusion_manager.register("batch_norm_grad_ext2")
 def batch_norm_grad_ext2_compute(y_backprop, x, scale, reserve_space_1,
                                  reserve_space_2, x_backprop, scale_backprop,
@@ -376,7 +376,7 @@ def _change_shape(shape_scale, shape_reserve_space_1, shape_reserve_space_2,
     return params_shape
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_OUTPUT,

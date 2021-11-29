@@ -15,7 +15,7 @@
 """
 basic_lstm_cell_v2
 """
-# pylint: disable=locally-disabled,import-error,unused-import,ungrouped-imports
+# 'pylint: disable=locally-disabled,import-error,unused-import,ungrouped-imports
 import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
@@ -27,8 +27,8 @@ NONETYPE = type(None)
 C0 = 16
 
 
-# pylint: disable=locally-disabled,unnecessary-lambda,too-many-locals,no-else-return,too-many-lines
-# pylint: disable=too-many-arguments,cell-var-from-loop,too-many-arguments,cell-var-from-loop
+# 'pylint: disable=locally-disabled,unnecessary-lambda,too-many-locals,no-else-return,too-many-lines
+# 'pylint: disable=too-many-arguments,cell-var-from-loop,too-many-arguments,cell-var-from-loop
 def handle_static(w_xc_x_static, gate_shape, build_list, product_info,
                   tensor_list, scope_list, operation_list):
     """
@@ -87,7 +87,7 @@ def handle_static(w_xc_x_static, gate_shape, build_list, product_info,
         operation_list[index_name + "_ub_true"] = "vector_add"
 
 
-# pylint: disable=locally-disabled,too-many-statements,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-statements,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
 @tbe_platform.fusion_manager.fusion_manager.register("basic_lstm_cell_v2")
 def basic_lstm_cell_v2_compute(x, cont, w_xc_x_static, w_xh, bias, h_t, c_t,
                                expose_hidden, product_info, impl_mode="high_performance"):
@@ -309,8 +309,8 @@ def basic_lstm_cell_v2_compute(x, cont, w_xc_x_static, w_xh, bias, h_t, c_t,
     return tensor_list, scope_list, operation_list, build_list
 
 
-# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
-# pylint: disable=too-many-locals,invalid-name,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
+# 'pylint: disable=too-many-locals,invalid-name,too-many-arguments
 def get_matmul_tensor(x, cont, h_t, w_xh, bias,
                       expose_hidden, build_list, is_hisi_es,
                       tensor_list, scope_list, operation_list):
@@ -514,8 +514,8 @@ def get_matmul_tensor(x, cont, h_t, w_xh, bias,
         operation_list["tensor_matmul_result_l0c_" + t] = "phony_insn"
 
 
-# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
-# pylint: disable=too-many-locals,invalid-name,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
+# 'pylint: disable=too-many-locals,invalid-name,too-many-arguments
 def newton_iteration(shape, tensor_x_rec,
                      tensor_x, symbol, tensor_list, scope_list, operation_list):
     """
@@ -557,8 +557,8 @@ def newton_iteration(shape, tensor_x_rec,
     return tensor_newton_mul2
 
 
-# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
-# pylint: disable=too-many-locals,invalid-name,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda
+# 'pylint: disable=too-many-locals,invalid-name,too-many-arguments
 def sigmoid(shape, tensor_allgate_ub, tensor_one,
             product_info, symbol, tensor_list, scope_list, operation_list):
     """
@@ -639,8 +639,8 @@ def sigmoid(shape, tensor_allgate_ub, tensor_one,
         operation_list["tensor_gate_sigmoid_" + symbol] = "vector_mul"
 
 
-# pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals
-# pylint: disable=invalid-name,too-many-arguments,consider-using-in,superfluous-parens
+# 'pylint: disable=locally-disabled,too-many-statements,cell-var-from-loop,unnecessary-lambda,too-many-locals
+# 'pylint: disable=invalid-name,too-many-arguments,consider-using-in,superfluous-parens
 def basiclstm_cell_v2_check(x, w_xc_x_static, h, c, w_xh, h_t, c_t,
                             expose_hidden, num_output, product_info):
     """
@@ -706,8 +706,8 @@ def basiclstm_cell_v2_check(x, w_xc_x_static, h, c, w_xh, h_t, c_t,
                                                                "w_xc_x_static", error_detail)
 
 
-# pylint: disable=locally-disabled,too-many-statements,too-many-branches,unnecessary-lambda,too-many-locals
-# pylint: disable=invalid-name,too-many-arguments,unused-argument,superfluous-parens
+# 'pylint: disable=locally-disabled,too-many-statements,too-many-branches,unnecessary-lambda,too-many-locals
+# 'pylint: disable=invalid-name,too-many-arguments,unused-argument,superfluous-parens
 def basic_lstm_cell_v2_schedule(tensor_list, scope_list,
                                 operation_list, build_list,
                                 product_info, tilling_info, kernel_name):
@@ -1032,8 +1032,8 @@ def get_tilling(x, h_t, product_info, mini_core):
     return tilling_info
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-branches,unnecessary-lambda,too-many-locals
-# pylint: disable=invalid-name,too-many-arguments,superfluous-parens
+# 'pylint: disable=locally-disabled,unused-argument,too-many-branches,unnecessary-lambda,too-many-locals
+# 'pylint: disable=invalid-name,too-many-arguments,superfluous-parens
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
                             para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,

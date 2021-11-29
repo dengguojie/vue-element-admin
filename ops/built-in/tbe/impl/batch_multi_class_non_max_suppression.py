@@ -27,9 +27,9 @@ from impl.batch_multi_class_nms_topk import sort_within_ub
 from impl.batch_multi_class_nms_topk import sort_with_ub
 
 
-# pylint: disable=too-many-lines,too-many-instance-attributes,too-many-statements
-# pylint: disable=too-many-arguments,unused-argument,too-many-locals,too-many-branches
-# pylint: disable=invalid-name
+# 'pylint: disable=too-many-lines,too-many-instance-attributes,too-many-statements
+# 'pylint: disable=too-many-arguments,unused-argument,too-many-locals,too-many-branches
+# 'pylint: disable=invalid-name
 # scaling factor
 DOWN_FACTOR = 0.10
 # process 128 proposals at a time

@@ -26,9 +26,9 @@ from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 
-# pylint: disable=too-few-public-methods
-# pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
-# pylint: disable=too-many-boolean-expressions,too-many-locals,unused-variable
+# 'pylint: disable=too-few-public-methods
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
+# 'pylint: disable=too-many-boolean-expressions,too-many-locals,unused-variable
 def op_select_format(x, bias, y, axis=1, num_axes=1, bias_from_blob=True,
                      kernel_name="bias"):
     """
@@ -151,7 +151,7 @@ def _get_param_bias_shape(shape_x, shape_bias):
     return shape
 
 
-# pylint: disable=too-many-branches
+# 'pylint: disable=too-many-branches
 def _check_shape_axis(shape_x, shape_bias, axis, num_axes, bias_from_blob):
     """
     Function to check if the shape is in line with norms.
@@ -321,7 +321,7 @@ def _check_dtype(dtype_x, dtype_bias):
     para_check.check_dtype(dtype_bias, check_tuple, param_name="bias")
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
 @fusion_manager.register("bias")
 def bias_compute(x, bias, y, axis, num_axes, bias_from_blob, kernel_name="bias"):
     """
@@ -371,7 +371,7 @@ def bias_compute(x, bias, y, axis, num_axes, bias_from_blob, kernel_name="bias")
     return res
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL,
                             para_check.KERNEL_NAME)

@@ -23,8 +23,8 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
-# pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments
 @tbe_platform.fusion_manager.fusion_manager.register("bn_infer_grad")
 def bn_infer_grad_compute(grads, scale, batch_variance, x_backprop, epsilon, kernel_name="bn_infer_grad"):
     """

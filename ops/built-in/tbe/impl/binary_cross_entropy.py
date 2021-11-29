@@ -32,8 +32,8 @@ SCALAR_EPS = 1e-12
 NoneType = type(None)
 
 
-# pylint: disable=invalid-name,too-many-arguments
-# pylint: disable=unused-argument,too-many-locals
+# 'pylint: disable=invalid-name,too-many-arguments
+# 'pylint: disable=unused-argument,too-many-locals
 def op_select_format(x, y, weight, output,
                      reduction="mean",
                      kernel_name="binary_cross_entropy"):

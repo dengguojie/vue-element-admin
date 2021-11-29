@@ -21,7 +21,7 @@ from impl import common_util
 from impl.util.util_tik_comm_func import ub2ub
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def _vconcat(instance: tik.Tik, dst, src, mode, cnt, dst_offset=0,
              src_offset=0):
     """
@@ -43,7 +43,7 @@ def _vconcat(instance: tik.Tik, dst, src, mode, cnt, dst_offset=0,
             mode)
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def _vrpsort16(instance: tik.Tik, dst, src, cnt, dst_offset=0, src_offset=0):
     """
     _vrpsort16
@@ -61,7 +61,7 @@ def _vrpsort16(instance: tik.Tik, dst, src, cnt, dst_offset=0, src_offset=0):
                            repeat_remain)
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 def _merge_region(instance: tik.Tik, out_ub, dst, src, rows, cols):
     """
     merge_region
@@ -78,7 +78,7 @@ def _merge_region(instance: tik.Tik, out_ub, dst, src, rows, cols):
     return result_ub
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements
 def _merge_recur(instance: tik.Tik,
                  out_ub,
                  dst_ub,

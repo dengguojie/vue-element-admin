@@ -39,38 +39,5 @@ def calc_expect_func(x, y):
         output = sess.run(res)
     return output
 
-ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (1, 1), "dtype": "float32",
-                                                      "format": "ND", "ori_shape": (1, 1),
-                                                      "ori_format": "ND", "param_type": "input"},
-                                                     {"shape": (1, 1), "dtype": "float32",
-                                                      "format": "ND", "ori_shape": (1, 1),
-                                                      "ori_format": "ND", "param_type": "output"},
-                                                    ],
-                                          "calc_expect_func": calc_expect_func,
-                                          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-                                         }
-                          )
-
-ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (3, 16, 32), "dtype": "float32",
-                                                      "format": "ND", "ori_shape": (3, 16, 32),
-                                                      "ori_format": "ND", "param_type": "input"},
-                                                     {"shape": (3, 16, 32), "dtype": "float32",
-                                                      "format": "ND", "ori_shape": (3, 16, 32),
-                                                      "ori_format": "ND", "param_type": "output"},
-                                                    ],
-                                          "calc_expect_func": calc_expect_func,
-                                          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-                                         }
-                          )
-
-ut_case.add_precision_case("Ascend910A", {"params": [{"shape": (1, 3, 100, 16), "dtype": "float32",
-                                                      "format": "ND", "ori_shape": (1, 3, 100, 16),
-                                                      "ori_format": "ND", "param_type": "input"},
-                                                     {"shape": (1, 3, 100, 16), "dtype": "float32",
-                                                      "format": "ND", "ori_shape": (1, 3, 100, 16),
-                                                      "ori_format": "ND", "param_type": "output"},
-                                                    ],
-                                          "calc_expect_func": calc_expect_func,
-                                          "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
-                                         }
-                          )
+ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32"], (3, 16, 32))
+ut_case.add_elewise_case_simple(["Ascend910"], ["float16", "float32"], (1, 3, 100, 16))

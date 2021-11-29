@@ -29,8 +29,8 @@ from impl.util.platform_adapter import tbe_context
 import impl.dynamic as dimpl
 
 
-# pylint: disable = unused-argument,invalid-name
-# pylint: disable = too-many-arguments,too-many-locals,redefined-builtin
+# 'pylint: disable = unused-argument,invalid-name
+# 'pylint: disable = too-many-arguments,too-many-locals,redefined-builtin
 def get_op_support_info(x,
                         sum,
                         square_sum,
@@ -63,8 +63,8 @@ def get_op_support_info(x,
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,too-many-arguments,redefined-builtin
-# pylint: disable=locally-disabled,invalid-name,too-many-locals,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,redefined-builtin
+# 'pylint: disable=locally-disabled,invalid-name,too-many-locals,unused-argument
 def _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale, shape_offset, shape_mean, shape_variance, format):
     """
     Function to check if the shape is in line with norms.

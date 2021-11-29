@@ -30,8 +30,8 @@ from impl.util.util_select_op_base import get_op_cal_info
 from impl.bn_training_reduce import bn_training_reduce
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
-# pylint: disable=locally-disabled,redefined-builtin, too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,redefined-builtin, too-many-locals
 def _reduce_compute_5hd(x):
     """
     algorithm: part of fused_batch_norm_v2

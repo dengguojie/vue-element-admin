@@ -23,14 +23,14 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class LstmCellGradInput():
     """
     Class: use to store LstmCellGradInput input parameters
     Modify : 2019-12-28
     """
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def __init__(self, input_x, hidden_state, dgate, weight_gradient,
                  bias_gradient, kernel_name):
         """
@@ -134,7 +134,7 @@ class LstmCellGrad(LstmCellGradInput):
     Modify : 2019-12-28
     """
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def __init__(self, input_x, hidden_state, dgate, weight_gradient,
                  bias_gradient, kernel_name):
         """
@@ -228,7 +228,7 @@ class LstmCellGrad(LstmCellGradInput):
         """
         return self.tik_instance
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def matmul_compute_each_core(self, row_num, column_num, m_loop, n_loop):
         """
         compute the matrix matmul result
@@ -386,7 +386,7 @@ class LstmCellGrad(LstmCellGradInput):
 
         return l0c_dw, l0c_db
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def matmul_compute_each_k_loop(self, l0a_x, l0b_y, l1_left, l1_right,
                                    is_trans_l, is_trans_r, ele_num, is_bias,
                                    l0c_dw, l0c_db, k_offset):
@@ -524,7 +524,7 @@ class LstmCellGrad(LstmCellGradInput):
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
-# pylint: disable=unused-argument,too-many-arguments,invalid-name
+# 'pylint: disable=unused-argument,too-many-arguments,invalid-name
 def basic_lstm_cell_weight_grad(x,
                                 h,
                                 dgate,

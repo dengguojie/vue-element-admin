@@ -29,8 +29,8 @@ from impl.util.util_select_op_base import get_op_cal_info
 SCALAR_ONE = 1
 
 
-# pylint: disable = unused-argument
-# pylint: disable=invalid-name,too-many-arguments,consider-using-in
+# 'pylint: disable = unused-argument
+# 'pylint: disable=invalid-name,too-many-arguments,consider-using-in
 def get_op_support_info(grads, x, batch_mean, batch_variance,
                             diff_scale, diff_offset, epsilon=0.0001,
                             kernel_name="bn_training_update_grad"):
@@ -50,8 +50,8 @@ def get_op_support_info(grads, x, batch_mean, batch_variance,
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals
 def op_select_format(grads, x, batch_mean, batch_variance,
                      diff_scale, diff_offset, epsilon,
                      kernel_name="bn_training_update_grad"):

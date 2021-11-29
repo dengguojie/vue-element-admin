@@ -22,8 +22,8 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=invalid-name,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("bitwise_xor")
 def bitwise_xor_compute(x1, x2, y, kernel_name="bitwise_xor"):
     """

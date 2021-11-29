@@ -29,8 +29,8 @@ import functools
 NONETYPE = type(None)
 
 
-# pylint: disable=unused-argument,invalid-name
-# pylint: disable=too-many-arguments,too-many-locals,too-many-branches
+# 'pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-locals,too-many-branches
 def get_op_support_info(x, scale, offset, mean, variance, y, batch_mean,
                         batch_variance, reserve_space_1, reserve_space_2,
                         epsilon=0.0001, data_format="NHWC",
@@ -203,7 +203,7 @@ def _check_shape_dims(shape, data_format, is_x=False):
             error_manager_vector.raise_err_input_shape_invalid("batch_norm", "len(shape)", error_detail)
 
 
-# pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-arguments
 def _shape_check(shape_x, shape_scale, shape_offset,
                  mean, variance, is_training, data_format):
     """
@@ -251,7 +251,7 @@ def _shape_check(shape_x, shape_scale, shape_offset,
         error_detail = "Estimated_mean or estimated_variance must be empty for training"
         error_manager_vector.raise_err_specific_reson("batch_norm", error_detail)
 
-# pylint: disable=locally-disabled,too-many-arguments,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,invalid-name
 def _output_data_y_compute(x, mean, variance, scale, offset, epsilon):
     """
     Function to calculate the y, which is a public function
@@ -288,7 +288,7 @@ def _output_data_y_compute(x, mean, variance, scale, offset, epsilon):
     return res
 
 
-# pylint: disable=locally-disabled,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-locals
 def _fused_batch_norm_inf_compute(x, scale, offset, mean, variance,
                                   epsilon, is_py, format_data):
     """
@@ -431,7 +431,7 @@ def _fused_batch_norm_train_compute(x, scale, offset, epsilon,
     return res
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-statements
+# 'pylint: disable=locally-disabled,unused-argument,too-many-statements
 @tbe_platform.fusion_manager.fusion_manager.register("batch_norm")
 def batch_norm_compute(x, scale, offset, mean, variance, y,
                        batch_mean, batch_variance, reserve_space_1,

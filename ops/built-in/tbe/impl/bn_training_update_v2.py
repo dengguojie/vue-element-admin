@@ -24,8 +24,8 @@ from te.utils.error_manager import error_manager_vector
 from impl.util import util_select_op_base
 
 
-# pylint: disable=locally-disabled,too-many-locals,unused-argument,invalid-name
-# pylint: disable=locally-disabled,redefined-builtin,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-locals,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,redefined-builtin,too-many-arguments
 def op_select_format(x, sum, square_sum, scale, offset,
                      y, batch_mean, batch_variance, epsilon,
                      kernel_name="bn_training_update_v2"):
@@ -133,7 +133,7 @@ def _check_format(data_format, origin_foramt):
             error_manager_vector.raise_err_specific_reson("bn_training_update_v2", error_reson)
 
 
-# pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-arguments
 def _check_shape(shape_x, shape_sum, shape_square_sum,
                  shape_scale, shape_offset, data_format):
     """
@@ -195,7 +195,7 @@ def _check_shape(shape_x, shape_sum, shape_square_sum,
                                                       "Dimension C of x and offset must be equal")
 
 
-# pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-arguments
 def _check_dtype(dtype_x, dtype_sum, dtype_square_sum,
                  dtype_scale, dtype_offset):
     """
@@ -225,8 +225,8 @@ def _check_dtype(dtype_x, dtype_sum, dtype_square_sum,
     para_check.check_dtype(dtype_offset.lower(), ("float32",), param_name="offset")
 
 
-# pylint: disable=locally-disabled,too-many-locals,unused-argument,invalid-name
-# pylint: disable=locally-disabled,redefined-builtin
+# 'pylint: disable=locally-disabled,too-many-locals,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,redefined-builtin
 @tbe_platform.fusion_manager.fusion_manager.register("bn_training_update_v2")
 def bn_training_update_v2_compute(x, sum, square_sum, scale, offset,
                                   y, batch_mean, batch_variance, epsilon,
@@ -317,7 +317,7 @@ def bn_training_update_v2_compute(x, sum, square_sum, scale, offset,
     return res
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,

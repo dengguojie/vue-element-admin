@@ -24,8 +24,8 @@ from .transpose_d import _do_storage_align
 from .transpose_d import _tilling_axis_not_last
 
 
-# pylint: disable=locally-disabled,unnecessary-lambda,too-many-locals
-# pylint: disable=too-many-statements,too-many-lines,too-many-branches
+# 'pylint: disable=locally-disabled,unnecessary-lambda,too-many-locals
+# 'pylint: disable=too-many-statements,too-many-lines,too-many-branches
 def _schedule_large_km_kn(shape, list_computes, src_type):
     """
     Matrix multiplication matmul_vector for KN x KN, schedule for the km_kn when the shape is large
@@ -192,7 +192,7 @@ def _get_restriction_km_kn(m_axis_inner, n_axis_inner):
     return the_result
 
 
-# pylint: disable=locally-disabled,too-many-arguments,line-too-long
+# 'pylint: disable=locally-disabled,too-many-arguments,line-too-long
 def _compute_for_km_kn(tensor_a_ub, tensor_b_ub, shape_a, shape_b, tensor_bais_ub, src_type, output_shape):
     """
     Matrix multiplication matmul_vector for KN x KN, The compute for MK x NK
@@ -1100,7 +1100,7 @@ def _tranpose_notchange_last(data, shape_res, perm, dtype):
         get the flag for permutation according to perm
 
         """
-        flag = [i for i in perm]# pylint: disable=unnecessary-comprehension
+        flag = [i for i in perm]# 'pylint: disable=unnecessary-comprehension
         for i, item in enumerate(perm):
             flag[item] = i
 
@@ -1216,7 +1216,7 @@ def _matmul_new_km_nk_cce(tensor_a_pre, tensor_b_pre, tensor_bais, src_type, sha
     return schedule, the_result, tensor_a, tensor_b
 
 
-# pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-arguments
 def matmul_vector_cce(shape_a, shape_b, src_type, trans_a, trans_b,
                       shape_bias, kernel_name="matmul_vector"):
     """
@@ -1308,7 +1308,7 @@ def matmul_vector_cce(shape_a, shape_b, src_type, trans_a, trans_b,
         else:
             build_list = [tensor_a, tensor_b, the_result, tensor_a_gm, tensor_b_gm]
 
-    from te.platform.cce_build import build_config# pylint: disable=import-outside-toplevel
+    from te.platform.cce_build import build_config# 'pylint: disable=import-outside-toplevel
     with build_config:
         tvm.lower(schedule, build_list, simple_mode=True)
     with build_config:

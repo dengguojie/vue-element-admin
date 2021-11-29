@@ -27,8 +27,8 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-# pylint: disable = unused-argument
-# pylint: disable=invalid-name,too-many-arguments,consider-using-in
+# 'pylint: disable = unused-argument
+# 'pylint: disable=invalid-name,too-many-arguments,consider-using-in
 def get_op_support_info(grads, x, diff_scale, diff_offset, scale,
                         batch_mean, batch_variance, y, epsilon=0.0001,
                         kernel_name="bn_training_reduce_grad"):
@@ -48,9 +48,9 @@ def get_op_support_info(grads, x, diff_scale, diff_offset, scale,
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,invalid-name,too-many-arguments
-# pylint: disable=locally-disabled,too-many-statements,unused-argument
-# pylint: disable=locally-disabled,too-many-locals
+# 'pylint: disable=locally-disabled,invalid-name,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-statements,unused-argument
+# 'pylint: disable=locally-disabled,too-many-locals
 def op_select_format(grads, x, diff_scale, diff_offset, scale,
                      batch_mean, batch_variance, y, epsilon,
                      kernel_name="bn_training_reduce_grad"):

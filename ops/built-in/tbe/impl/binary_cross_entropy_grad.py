@@ -32,8 +32,8 @@ SCALAR_EPS = 1e-12
 NoneType = type(None)
 
 
-# pylint: disable=locally-disabled,unused-argument
-# pylint: disable=too-many-arguments,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=too-many-arguments,invalid-name,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("binary_cross_entropy_grad")
 def binary_cross_entropy_grad_compute(
         x,
@@ -117,7 +117,7 @@ def binary_cross_entropy_grad_compute(
     return result
 
 
-# pylint: disable=invalid-name,too-many-locals,too-many-statements
+# 'pylint: disable=invalid-name,too-many-locals,too-many-statements
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)

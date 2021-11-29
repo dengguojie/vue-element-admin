@@ -15,7 +15,7 @@
 """
 basic_rnn_cell
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 import math
 
 import te.platform as tbe_platform
@@ -30,14 +30,14 @@ MIN_FP32 = 2**(-126)
 NONETYPE = type(None)
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class BasicRNNCell:
     """
         Function: use to store BasicRNNCell base parameters
         Modify : 2020-4-15
     """
 
-    # pylint: disable=too-many-arguments,too-many-locals
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def __init__(self,
                  x,
                  cont,
@@ -317,7 +317,7 @@ class BasicRNNCell:
 
         return ot_tensors
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def basic_rnn_cell_schedule(self, schedule_list):
         """
         Compute at operate for ot
@@ -480,7 +480,7 @@ class BasicRNNCell:
 
         return sch
 
-    # pylint: disable=unnecessary-lambda
+    # 'pylint: disable=unnecessary-lambda
     def compute_h_0_whh(self, wht_xt_bias_h):
         """
         calculating h_0_whh
@@ -611,7 +611,7 @@ class BasicRNNCell:
 
         return ub_ht_tmp1
 
-    # pylint: disable=unnecessary-lambda,too-many-branches
+    # 'pylint: disable=unnecessary-lambda,too-many-branches
     def basic_rnn_cell_compute(self):
         """
         calculating data
@@ -976,7 +976,7 @@ class BasicRNNCell:
             sch[tensor_list[key]].set_scope(scope_list[key])
 
 
-# pylint: disable=too-many-locals,too-many-branches
+# 'pylint: disable=too-many-locals,too-many-branches
 def get_tilling(m_dim, k_dim, n_dim):
     """
     get tilling parameters
@@ -1146,7 +1146,7 @@ def check_shapes(input_shape, check_shape):
             raise RuntimeError("the dim(%d) is error" % (index))
 
 
-# pylint: disable=too-many-arguments, invalid-name
+# 'pylint: disable=too-many-arguments, invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
                  para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
                  para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,

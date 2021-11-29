@@ -114,7 +114,7 @@ def _after_res_compute(abs_data, const_limit):
     return after_res
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("bessel_i1e")
 def bessel_i1e_compute(x, y, kernel_name="bessel_i1e"):
     """

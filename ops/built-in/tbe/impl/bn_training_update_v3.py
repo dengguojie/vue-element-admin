@@ -23,8 +23,8 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=locally-disabled,too-many-locals,unused-argument,invalid-name
-# pylint: disable=locally-disabled,too-many-arguments,redefined-builtin
+# 'pylint: disable=locally-disabled,too-many-locals,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,redefined-builtin
 def _check_shape(shape_x, shape_sum, shape_square_sum,
                  shape_scale, shape_offset, format):
     """
@@ -96,7 +96,7 @@ def _check_shape(shape_x, shape_sum, shape_square_sum,
                                                       "Dimension C of x and offset must be equal")
 
 
-# pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-arguments
 def _check_dtype(dtype_x, dtype_sum, dtype_square_sum,
                  dtype_scale, dtype_offset):
     """
@@ -218,7 +218,7 @@ def bn_training_update_v3_compute(x, sum, square_sum, scale, offset,
     return res
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals
 @para_check.check_input_type(dict, dict, dict, dict, dict, dict,
                              dict, dict, dict, dict, float, str)
 def bn_training_update_v3(x, sum, square_sum, scale, offset,
