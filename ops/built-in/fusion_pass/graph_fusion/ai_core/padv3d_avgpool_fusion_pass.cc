@@ -37,6 +37,7 @@
 using namespace ge;
 namespace fe {
 static const char *PADV3D = "PadV3D";
+static const char *PADV3 = "PadV3";
 static const char *POOLING = "AvgPoolV2";
 static const char *POOLING3D = "AvgPool3DD";
 static const std::string PATTERN_PADV3D = "PadV3D";
@@ -49,7 +50,7 @@ vector<FusionPattern*> Padv3dAvgpoolFusionPass::DefinePatterns() {
   FUSION_PASS_CHECK(pattern == nullptr, OP_LOGE(FUSED_OP_TYPE.c_str(), 
                     "new a pattern object failed."), return patterns);
 
-  pattern->AddOpDesc(PATTERN_PADV3D, {PADV3D})
+  pattern->AddOpDesc(PATTERN_PADV3D, {PADV3D, PADV3})
       .AddOpDesc(PATTERN_POOLING, {POOLING, POOLING3D})
       .SetInputs(PATTERN_POOLING, {PATTERN_PADV3D})
       .SetOutput(PATTERN_POOLING);
@@ -95,8 +96,34 @@ Status Padv3dAvgpoolFusionPass::Fusion(ge::ComputeGraph& graph,
   // attr:paddings
   std::vector<std::vector<int64_t>> paddings;
   if (ge::GRAPH_SUCCESS != op_pad.GetAttr("paddings", paddings)) {
-    OP_LOGE(FUSED_OP_TYPE.c_str(), "get attr padddings failed.");
-    return GRAPH_FAILED;
+    Tensor data;
+    if (GRAPH_SUCCESS != op_pad.GetInputConstData("paddings", data)) {
+      OP_LOGW(FUSED_OP_TYPE.c_str(), "not get paddings value");
+      return NOT_CHANGED;
+    }
+    auto dtype = pad_desc->GetInputDesc("paddings").GetDataType();
+    if (dtype == ge::DT_INT32) {
+      int32_t* const_data_ptr = (int32_t*)data.GetData();
+      size_t const_data_size = data.GetSize() / sizeof(int32_t);
+      for (size_t i = 0; i < const_data_size; i += 2) {
+        std::vector<int64_t> val;
+        val.push_back((int32_t)((*(const_data_ptr + i))));
+        val.push_back((int32_t)((*(const_data_ptr + i + 1))));
+        paddings.emplace_back(val);
+      }
+    } else if (dtype == ge::DT_INT64) {
+      int64_t* const_data_ptr = (int64_t*)data.GetData();
+      size_t const_data_size = data.GetSize() / sizeof(int64_t);
+      for (size_t i = 0; i < const_data_size; i += 2) {
+        std::vector<int64_t> val;
+        val.push_back((int64_t)((*(const_data_ptr + i))));
+        val.push_back((int64_t)((*(const_data_ptr + i + 1))));
+        paddings.emplace_back(val);
+      }
+    } else {
+      OP_LOGE(FUSED_OP_TYPE.c_str(), "paddings dtype should be int32 or int64");
+      return GRAPH_FAILED;
+    }
   }
 
   bool paddings_contiguous = false;

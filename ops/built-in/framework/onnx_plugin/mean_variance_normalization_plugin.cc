@@ -31,7 +31,7 @@ struct MeanVarianceNormalizationAttr {
 
 Status UpdateAttrFromOnnx(const ge::onnx::NodeProto* node, MeanVarianceNormalizationAttr& node_attr) {
   for (const auto& attr : node->attribute()) {
-    if (attr.name() == "kernel_shape" && attr.type() == ge::onnx::AttributeProto::INTS) {
+    if (attr.name() == "axes" && attr.type() == ge::onnx::AttributeProto::INTS) {
       node_attr.set_axes_flag = true;
       for (int i = 0; i < attr.ints_size(); i++) {
         node_attr.v_axes.push_back(attr.ints(i));    
