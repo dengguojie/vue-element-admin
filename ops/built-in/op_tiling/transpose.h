@@ -230,6 +230,7 @@ public:
     priority = 0;
     isf2t = false;
     ist2f = false;
+    ncr.Reset();
   }
 
   SplitParam sp;
