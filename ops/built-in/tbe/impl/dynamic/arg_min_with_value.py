@@ -146,13 +146,13 @@ class Argmin():
         nbust_len = _get_ceil_int(segment, self.data_each_block)
         self.tik_instance.data_move(ub_a, self.data_gm[gm_in_offset], 0, 1, nbust_len, 0, 0)
         # vector_dup zeros: ub_c
-        int64_num = _get_ceil_int(segment, OUT_MASK)
-        self.tik_instance.vector_dup(OUT_MASK, ub_c, 0, int64_num, 1, 8)
+        int64_num = _get_ceil_int(segment, Constant.OUT_MASK)
+        self.tik_instance.vector_dup(Constant.OUT_MASK, ub_c, 0, int64_num, 1, 8)
 
         repeat = _get_ceil_int(segment, self.data_each_vector)
         with self.tik_instance.for_range(1, self.axis_size, thread_num=2) as axis_i:
             ub_b = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN,), name="ub_b", scope=tik.scope_ubuf)
-            ub_mask = self.tik_instance.Tensor("uint64", (Constant.MAX_SEGMENT_LEN // OUT_MASK,),
+            ub_mask = self.tik_instance.Tensor("uint64", (Constant.MAX_SEGMENT_LEN // Constant.OUT_MASK,),
                                                name="ub_mask",
                                                scope=tik.scope_ubuf)
             # move in: ub_b
@@ -166,7 +166,7 @@ class Argmin():
                 mask_l = self.tik_instance.Scalar("uint64")
                 mask_l.set_as(ub_mask[i])
                 with self.tik_instance.if_scope(mask_l != 0):
-                    self.tik_instance.vector_dup([mask_l, mask_l], ub_c[i * OUT_MASK], axis_i, 1, 1, 8)
+                    self.tik_instance.vector_dup([mask_l, mask_l], ub_c[i * Constant.OUT_MASK], axis_i, 1, 1, 8)
             # `vmin: ub_a and ub_b`
             self.tik_instance.vmin(self.data_each_vector, ub_a, ub_a, ub_b, repeat, 1, 1, 1, 8, 8, 8)
         # move out: ub_c
@@ -197,12 +197,12 @@ class Argmin():
         repeat = _get_ceil_int(segment, self.data_each_vector)
         self.tik_instance.vector_dup(self.data_each_vector, ub_out_fp16, 0, repeat, 1, 8)
         # vector dup zeros: ub_c
-        int64_num = _get_ceil_int(segment, OUT_MASK)
-        self.tik_instance.vector_dup(OUT_MASK, ub_c, 0, int64_num, 1, 8)
+        int64_num = _get_ceil_int(segment, Constant.OUT_MASK)
+        self.tik_instance.vector_dup(Constant.OUT_MASK, ub_c, 0, int64_num, 1, 8)
 
         with self.tik_instance.for_range(1, self.axis_size, thread_num=2) as axis_i:
             ub_b = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN,), name="ub_b", scope=tik.scope_ubuf)
-            ub_mask = self.tik_instance.Tensor("uint64", (Constant.MAX_SEGMENT_LEN // OUT_MASK,),
+            ub_mask = self.tik_instance.Tensor("uint64", (Constant.MAX_SEGMENT_LEN // Constant.OUT_MASK,),
                                                name="ub_mask",
                                                scope=tik.scope_ubuf)
             # move in: ub_b
@@ -248,8 +248,8 @@ class Argmin():
         # vector dup zeros: ub_out_fp16
         self.tik_instance.vector_dup(self.data_each_vector, ub_out_fp16, 0, repeat, 1, 8)
         # vector dup zeros: ub_c
-        int64_num = _get_ceil_int(segment, OUT_MASK)
-        self.tik_instance.vector_dup(OUT_MASK, ub_c, 0, int64_num, 1, 8)
+        int64_num = _get_ceil_int(segment, Constant.OUT_MASK)
+        self.tik_instance.vector_dup(Constant.OUT_MASK, ub_c, 0, int64_num, 1, 8)
 
         # tiling at axis dim
         last_align = _get_ceil_int(segment, self.data_each_vector) * self.data_each_vector
@@ -262,7 +262,7 @@ class Argmin():
 
         def _run_one_sigment(axis_idx, axis_len):
             ub_b = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_SEGMENT_LEN,), name="ub_b", scope=tik.scope_ubuf)
-            ub_mask = self.tik_instance.Tensor("uint64", (Constant.MAX_SEGMENT_LEN // OUT_MASK,),
+            ub_mask = self.tik_instance.Tensor("uint64", (Constant.MAX_SEGMENT_LEN // Constant.OUT_MASK,),
                                                name="ub_mask",
                                                scope=tik.scope_ubuf)
             # move in: ub_b
@@ -472,7 +472,7 @@ class Argmin():
                 """
                 mask = self.tik_instance.Scalar("int64", name="mask")
                 mask.set_as(1)
-                with self.tik_instance.if_scope(tail_len <= OUT_MASK):
+                with self.tik_instance.if_scope(tail_len <= Constant.OUT_MASK):
                     with self.tik_instance.for_range(0, tail_len):
                         mask.set_as(2 * mask)
                     mask.set_as(mask - 1)
@@ -480,7 +480,7 @@ class Argmin():
                     _mask_l.set_as(Constant.MAX_MASK_INT64 - mask)
                 with self.tik_instance.else_scope():
                     _mask_l.set_as(0)
-                    with self.tik_instance.for_range(0, tail_len - OUT_MASK):
+                    with self.tik_instance.for_range(0, tail_len - Constant.OUT_MASK):
                         mask.set_as(2 * mask)
                     mask.set_as(mask - 1)
                     _mask_h.set_as(Constant.MAX_MASK_INT64 - mask)
@@ -596,7 +596,7 @@ class Argmin():
                 """
                 mask = self.tik_instance.Scalar("int64", name="mask")
                 mask.set_as(1)
-                with self.tik_instance.if_scope(tail_len <= OUT_MASK):
+                with self.tik_instance.if_scope(tail_len <= Constant.OUT_MASK):
                     with self.tik_instance.for_range(0, tail_len):
                         mask.set_as(2 * mask)
                     mask.set_as(mask - 1)
@@ -604,7 +604,7 @@ class Argmin():
                     _mask_l.set_as(Constant.MAX_MASK_INT64 - mask)
                 with self.tik_instance.else_scope():
                     _mask_l.set_as(0)
-                    with self.tik_instance.for_range(0, tail_len - OUT_MASK):
+                    with self.tik_instance.for_range(0, tail_len - Constant.OUT_MASK):
                         mask.set_as(2 * mask)
                     mask.set_as(mask - 1)
                     _mask_h.set_as(Constant.MAX_MASK_INT64 - mask)
@@ -723,7 +723,7 @@ class Argmin():
                 """
                 mask = self.tik_instance.Scalar("int64", name="mask")
                 mask.set_as(1)
-                with self.tik_instance.if_scope(tail_len <= OUT_MASK):
+                with self.tik_instance.if_scope(tail_len <= Constant.OUT_MASK):
                     with self.tik_instance.for_range(0, tail_len):
                         mask.set_as(2 * mask)
                     mask.set_as(mask - 1)
@@ -731,7 +731,7 @@ class Argmin():
                     _mask_l.set_as(Constant.MAX_MASK_INT64 - mask)
                 with self.tik_instance.else_scope():
                     _mask_l.set_as(0)
-                    with self.tik_instance.for_range(0, tail_len - OUT_MASK):
+                    with self.tik_instance.for_range(0, tail_len - Constant.OUT_MASK):
                         mask.set_as(2 * mask)
                     mask.set_as(mask - 1)
                     _mask_h.set_as(Constant.MAX_MASK_INT64 - mask)
@@ -850,7 +850,7 @@ class Argmin():
             ub_idx_64 = self.tik_instance.Tensor("int32", (self.data_each_vector,),
                                                  name="ub_idx_64",
                                                  scope=tik.scope_ubuf)
-            ub_mask = self.tik_instance.Tensor("uint64", (self.segment // OUT_MASK,),
+            ub_mask = self.tik_instance.Tensor("uint64", (self.segment // Constant.OUT_MASK,),
                                                name="ub_mask",
                                                scope=tik.scope_ubuf)
 
