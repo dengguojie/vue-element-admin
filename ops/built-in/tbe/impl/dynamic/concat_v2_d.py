@@ -12,9 +12,9 @@ Apache License for more details at
 http://www.apache.org/licenses/LICENSE-2.0
 
 concat_v2_d: Concatenates tensors along one dimension.
-            The number of dimensions of input tensors must match,
-            and all dimensions except 'axis' must be equal.
-            tf ConcactV2 op
+The number of dimensions of input tensors must match,
+and all dimensions except 'axis' must be equal.
+tf ConcactV2 op
 
 """
 # 'pylint: disable=too-many-lines
@@ -34,6 +34,7 @@ from impl import constant_util as constant
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util import util_common
+
 
 # 'pylint: disable=too-few-public-methods
 class Constant:
@@ -127,10 +128,10 @@ def _vadd(instance: tik.Tik, mask, dst: tik.Tensor, src0: tik.Tensor, src1: tik.
     """
     _vadd
     """
-    MAX_REPEAT_STRIDE = 255
+    max_repeat_stride = 255
     dtype_size = common_util.get_data_size(dst.dtype)
     block_element = constant.BLOCK_SIZE // dtype_size
-    with instance.if_scope(dst_rep_stride <= MAX_REPEAT_STRIDE):
+    with instance.if_scope(dst_rep_stride <= max_repeat_stride):
         loop_times = repeat_times // Constant.MAX_REPEAT_TIMES
         tail_times = repeat_times % Constant.MAX_REPEAT_TIMES
         with instance.for_range(0, loop_times) as loop_index:
@@ -208,16 +209,17 @@ def _concat_ub_vadd(instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, dst_ind
                 _vadd(instance, tail_count, dst[new_dst_index], src[new_src_index], zero_ub, row_count, 1, 1, 0,
                       dst_row_stride, src_row_stride, 0)
 
+
 # 'pylint: disable=invalid-name
 def _data_move_all_align(tik_instance: tik.Tik, dst: tik.Tensor, src: tik.Tensor, nburst, burst, dst_stride):
     """
     _data_move_all_align
     """
-    DATA_MOVE_MAX_STRIDE = 65535
+    data_move_max_stride = 65535
     inst = tik_instance
     type_size = common_util.get_data_size(dst.dtype)
     block_element = constant.BLOCK_SIZE // type_size
-    with inst.if_scope(dst_stride <= DATA_MOVE_MAX_STRIDE):
+    with inst.if_scope(dst_stride <= data_move_max_stride):
         data_move_loops = ceil_div(nburst, Constant.DATA_MOVE_MAX_REPEAT)
         with inst.for_range(0, data_move_loops) as idx:
             out_addr = Constant.DATA_MOVE_MAX_REPEAT * (burst + dst_stride) * idx * block_element
@@ -447,7 +449,7 @@ class ConcatV2:
         """
         input_tensors = []
         for _, index in enumerate(range(input_count)):
-            tensor_name = "gm_input_" + str(index)
+            tensor_name = "_".join(["gm_input", str(index)])
             gm_tensor = self.tik_instance.Tensor(dtype, input_shape, name=tensor_name, scope=tik.scope_gm)
             input_tensors.append(gm_tensor)
 

@@ -65,8 +65,8 @@ def elu_grad_compute(grads, activations, y, kernel_name="elu_grad"):
     -------
     """
 
-    NUM_ZERO = 0.0
-    NUM_ONE = 1.0
+    num_zero = 0.0
+    num_one = 1.0
     dtype = grads.dtype.lower()
     dtype_present = grads.dtype.lower()
     shape = grads.shape
@@ -77,12 +77,12 @@ def elu_grad_compute(grads, activations, y, kernel_name="elu_grad"):
         activations = tbe.cast_to(activations, dtype_present)
 
     if tbe_platform.api_check_support("tbe.dsl.vmins", "float32"):
-        min_res = tbe.vmins(activations, NUM_ZERO)
-        add_res = tbe.vadds(min_res, NUM_ONE)
+        min_res = tbe.vmins(activations, num_zero)
+        add_res = tbe.vadds(min_res, num_one)
         res = tbe.vmul(add_res, grads)
     else:
-        input_border = tvm.const(NUM_ZERO, grads.dtype)
-        scalar_param_one = tvm.const(NUM_ONE, grads.dtype)
+        input_border = tvm.const(num_zero, grads.dtype)
+        scalar_param_one = tvm.const(num_one, grads.dtype)
         tensor_input_border = tbe.broadcast(input_border, shape)
         tensor_scalar_param_one = tbe.broadcast(scalar_param_one, shape)
 

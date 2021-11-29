@@ -54,6 +54,7 @@ def _vrpsort16(instance, dst, src, cnt, dst_offset=0, src_offset=0):
         instance.vrpsort16(dst[dst_offset + 255 * 16 * 8 * repeat_255],
                            src[src_offset + 255 * 16 * 8 * repeat_255], repeat_remain)
 
+
 def _vrpsort16_scalar(
         instance,
         dst,
@@ -75,6 +76,7 @@ def _vrpsort16_scalar(
     with instance.if_scope(repeat_remain > 0):
         instance.vrpsort16(dst[dst_offset + 255 * 16 * 8 * repeat_255], src[src_offset + 255 *
                             16 * 8 * repeat_255], repeat_remain)
+
 
 # 'pylint: disable=too-many-arguments
 def _merge_region(instance, out_ub, dst, src, rows, cols):
@@ -259,6 +261,7 @@ def _merge_recur(instance,
     return _merge_recur(instance, out_ub, src_ub, dst_ub,
                         last_dim, next_total_region_list, level + 1,
                         region_offset)
+
 
 # 'pylint:disable=locally-disabled,too-many-arguments,too-many-locals
 def _merge_recur_scalar(tik_instance,

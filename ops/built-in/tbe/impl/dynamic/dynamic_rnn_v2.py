@@ -19,6 +19,7 @@ from collections import namedtuple
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from tbe.common.buildcfg.default_buildcfg import dynamic_build_config_dict
+from tbe.common.rl_bank import rl_bank
 from te.lang.cce import broadcast
 from te.lang.cce import cast_to
 from te.lang.cce import vabs
@@ -32,7 +33,6 @@ from te.lang.cce import vrec
 from te.lang.cce import vsub
 from te.lang.cce import vmins
 from te.lang.cce import vmaxs
-from tbe.common.rl_bank import rl_bank
 from te.domain.rl_bank import bank_manager
 from te.platform import scope_ca
 from te.platform import scope_cb
@@ -560,11 +560,11 @@ def dynamic_rnn_v2(input_x, weight_input, weight_hidden, bias, seq_length, init_
     None
     """
     # one block size takes up 32b
-    BLOCK_SIZE = 32
+    block_size_1 = 32
     # data type of int32
-    INT32 = "int32"
-    TILING_ARG_NUM = 3
-    TYPE_LEN_DICT = {"float16": 2,
+    int32 = "int32"
+    tiling_arg_num = 3
+    type_len_dict = {"float16": 2,
                     "float32": 4,
                     "int8": 1,
                     "uint8": 1,
@@ -604,14 +604,14 @@ def dynamic_rnn_v2(input_x, weight_input, weight_hidden, bias, seq_length, init_
 
     if is_dynamic:
         # dynamic shape get seq_length
-        tiling_shape = (TILING_ARG_NUM,)
-        tiling_dtype = INT32
+        tiling_shape = (tiling_arg_num,)
+        tiling_dtype = int32
         tiling_gm = tik_instance.Tensor(tiling_dtype, tiling_shape,
                                         name="ddr_arg", scope=scope_gm)
         tiling_ub = tik_instance.Tensor(tiling_dtype, tiling_shape,
                                         name="tiling_ub", scope=scope_ubuf)
         tik_instance.data_move(tiling_ub, tiling_gm, 0,
-                               1, ceil_value(TILING_ARG_NUM * TYPE_LEN_DICT.get(tiling_dtype), BLOCK_SIZE),
+                               1, ceil_value(tiling_arg_num * type_len_dict.get(tiling_dtype), block_size_1),
                                0, 0)
 
         # get run tiling mode
@@ -1371,7 +1371,7 @@ def dynamic_rnn_core(input_x, weight_i, weight_h, bias, s_init_h_gm, s_init_c_gm
                 index_list.append(tune_shape_list[index][2])
 
             if sch_list is not None and len(sch_list) > 0:
-                for index,sch_list_value in enumerate(sch_list):
+                for index, sch_list_value in enumerate(sch_list):
                     sch_list_value.set_constraint(
                         expr.And(input_x.shape[2] <= tune_shape_list[index][1], input_x.shape[2] > 0))
                 tbe_context.get_context().add_compile_info("vars", {"tune_shape_list": tune_shape_list})

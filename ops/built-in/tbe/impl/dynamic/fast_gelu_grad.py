@@ -52,7 +52,7 @@ def fast_gelu_grad_compute(input_dy, input_x, output_z, kernel_name="fast_gelu_g
     -------
     A TVM tensor same as input placeholders.
     """
-    CONST_1 = 1
+    const_1_value = 1
     attr = 1.702
     dtype = input_x.dtype
     attr_opp = 0 - attr
@@ -65,7 +65,7 @@ def fast_gelu_grad_compute(input_dy, input_x, output_z, kernel_name="fast_gelu_g
         input_dy = tbe.cast_to(input_dy, dtype)
     const_1 = tvm.const(attr_opp, dtype)
     const_2 = tvm.const(attr, dtype)
-    const_3 = tvm.const(CONST_1, dtype)
+    const_3 = tvm.const(const_1_value, dtype)
 
     # e^(-1.702x)
     abs_x = tbe.vabs(input_x)

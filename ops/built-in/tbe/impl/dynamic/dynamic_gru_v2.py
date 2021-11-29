@@ -36,7 +36,7 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
-from impl.util.platform_adapter import tbe_platform
+from tbe.common.buildcfg.default_buildcfg import dynamic_build_config_dict
 
 
 def _sigmoid_compute(input_x):
@@ -190,6 +190,7 @@ def ceil_value(value, factor):
     """
     return (value + factor - 1) // factor
 
+
 # 'pylint: disable=too-many-branches,unused-variable,too-many-statements,too-many-locals,invalid-name
 # 'pylint: disable=too-many-arguments,unused-argument
 def _check_dtype(x, weight_input, weight_hidden, bias_input, bias_hidden,
@@ -224,6 +225,7 @@ def _check_dtype(x, weight_input, weight_hidden, bias_input, bias_hidden,
         _check_equal_bias_dtype(new, "new")
     if hidden_new is not None:
         _check_equal_bias_dtype(hidden_new, "hidden_new")
+
 
 # 'pylint: disable=too-many-branches,unused-variable,too-many-statements,too-many-locals,invalid-name
 # 'pylint: disable=too-many-arguments,unused-argument
@@ -359,12 +361,12 @@ def dynamic_gru_v2(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_
     """
 
     # one block size takes up 32b
-    BLOCK_SIZE = 32
+    block_size = 32
     # data type of int32
-    INT32 = "int32"
-    TILING_ARG_NUM = 3
+    int32 = "int32"
+    tiling_arg_num = 3
     is_dynamic = True
-    TYPE_LEN_DICT = {"float16": 2, "float32": 4, "int8": 1, "uint8": 1,
+    type_len_dict = {"float16": 2, "float32": 4, "int8": 1, "uint8": 1,
                  "int32": 4, "int64": 8, }
     """
     from tbe.common.context import get_context
@@ -395,8 +397,8 @@ def dynamic_gru_v2(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_
 
     if is_dynamic:
         # dynamic shape get seq_length
-        tiling_shape = (TILING_ARG_NUM,)
-        tiling_dtype = INT32
+        tiling_shape = (tiling_arg_num,)
+        tiling_dtype = int32
 
         tiling_gm = tik_instance.Tensor(tiling_dtype, tiling_shape,
                                                     name="ddr_arg", scope=tik.scope_gm)
@@ -405,7 +407,7 @@ def dynamic_gru_v2(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_
                                                     name="tiling_ub", scope=tik.scope_ubuf)
 
         tik_instance.data_move(tiling_ub, tiling_gm, 0,
-                            1, ceil_value(TILING_ARG_NUM * TYPE_LEN_DICT.get(tiling_dtype), BLOCK_SIZE),
+                            1, ceil_value(tiling_arg_num * type_len_dict.get(tiling_dtype), block_size),
                             0, 0)
 
         # get run tiling mode
@@ -455,8 +457,8 @@ def dynamic_gru_v2(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_
 
 
 # 'pylint: disable=too-many-branches,unused-variable,too-many-statements,too-many-locals,invalid-name,too-many-arguments
-def _solution(tik_instance, tiling_gm, x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_order, kernel_name, is_sync, reuse_type,
-              is_dynamic, t_size, m_size, in_x, hidden_size, tiling_index):
+def _solution(tik_instance, tiling_gm, x, bias_input, bias_hidden, seq_length, init_h, y, update, gate_order,
+kernel_name, is_sync, reuse_type, is_dynamic, t_size, m_size, in_x, hidden_size, tiling_index):
     """
     solutions of op
     :return:
@@ -616,8 +618,6 @@ def _solution(tik_instance, tiling_gm, x, bias_input, bias_hidden, seq_length, i
                      reuse_type, is_dynamic])
 
     if is_dynamic:
-        from tbe.common.buildcfg.default_buildcfg import dynamic_build_config_dict
-
         dynamic_config_a = dynamic_build_config_dict
         dynamic_config_a["dump_cce_code"] = False
         dynamic_config_a["sync_mode"] = 2
@@ -638,6 +638,7 @@ def _solution(tik_instance, tiling_gm, x, bias_input, bias_hidden, seq_length, i
         tik_instance.BuildCCE(kernel_name,
                               build_input_list,
                               build_output_list)
+
 
 # 'pylint: disable=unnecessary-lambda,unused-variable
 def _dynamic_gru_v2_inner(input_list, custom_list):
@@ -681,7 +682,6 @@ def _dynamic_gru_v2_inner(input_list, custom_list):
     shape_c_2 = (1, 3, hidden_size, m_size, 16, 16)
     shape_bias = (1, 3, hidden_size, 1, 1, 16)
     shape_i = (1, hidden_size, m_size, 16, 16)
-    shape_i_t = (t_size, hidden_size, m_size, 16, 16)
     k0_size = 16
 
     # compute
@@ -1119,15 +1119,15 @@ def _dynamic_gru_v2_inner(input_list, custom_list):
         _get_tiling(in_x, hidden_size)
 
     # for setting bound
-    SHAPE_A_Z_BIGZ_1 = 1 * 1 * factor_l1_k_1 * 16 * 16
-    SHAPE_A_Z_BIGZ_2 = 1 * 1 * factor_l1_k_2 * 16 * 16
-    SHAPE_B_1 = 1 * factor_l1_k_1 * 1 * factor_l1_n * 16 * 16
-    SHAPE_B_2 = 1 * factor_l1_k_2 * 1 * factor_l1_n * 16 * 16
+    shape_a_z_bigz_3 = 1 * 1 * factor_l1_k_1 * 16 * 16
+    shape_a_z_bigz_4 = 1 * 1 * factor_l1_k_2 * 16 * 16
+    shape_b_3 = 1 * factor_l1_k_1 * 1 * factor_l1_n * 16 * 16
+    shape_b_4 = 1 * factor_l1_k_2 * 1 * factor_l1_n * 16 * 16
     SHAPE_C_1 = 1 * 3 * factor_l1_n * 1 * 16 * 16
     SHAPE_C_2 = 1 * 3 * factor_l1_n * 1 * 16 * 16
-    SHAPE_BIAS = 1 * 3 * factor_l1_n * 1 * 1 * 16
-    SHAPE_I = 1 * factor_l1_n * 1 * 16 * 16
-    SHAPE_OUT = 1 * hidden_size * 1 * 16 * 16
+    shape_bias_1 = 1 * 3 * factor_l1_n * 1 * 1 * 16
+    shape_i_1 = 1 * factor_l1_n * 1 * 16 * 16
+    shape_out_1 = 1 * hidden_size * 1 * 16 * 16
 
     l1_n_outer_1, l1_n_inner_1 = sch[c_l0c_1].split(c_l0c_1.op.axis[2], factor=factor_l1_n)
     l1_m_outer_1, l1_m_inner_1 = sch[c_l0c_1].split(c_l0c_1.op.axis[3], factor=factor_l1_m)
@@ -1245,7 +1245,7 @@ def _dynamic_gru_v2_inner(input_list, custom_list):
         sch[tensor].compute_at(sch[update_h_gm], update_h_gm_outer)
         insn = _get_emit_insn_map(tensor)
         sch[tensor].emit_insn(tensor.op.axis[0], insn)
-        sch[tensor].set_buffer_size(SHAPE_I)
+        sch[tensor].set_buffer_size(shape_i_1)
 
     sch[n_t_2].compute_at(sch[update_h_gm], update_h_gm_outer)
     sch[s_state_h].compute_at(sch[update_h_gm], update_h_gm_m_inner)
@@ -1259,51 +1259,51 @@ def _dynamic_gru_v2_inner(input_list, custom_list):
             sch[s_state_h_ub_for_element_fp16].compute_at(sch[update_h_gm], update_h_gm_m_inner)
 
     # set bound
-    sch[s_state_h_fp16].set_buffer_size(SHAPE_OUT)
-    sch[s_state_h].set_buffer_size(SHAPE_OUT)
-    sch[a_l1_1].set_buffer_size(SHAPE_A_Z_BIGZ_1)
-    sch[b_l1_1].set_buffer_size(SHAPE_B_1)
-    sch[a_l0a_1].set_buffer_size(SHAPE_A_Z_BIGZ_1)
-    sch[b_l0b_1].set_buffer_size(SHAPE_B_1)
+    sch[s_state_h_fp16].set_buffer_size(shape_out_1)
+    sch[s_state_h].set_buffer_size(shape_out_1)
+    sch[a_l1_1].set_buffer_size(shape_a_z_bigz_3)
+    sch[b_l1_1].set_buffer_size(shape_b_3)
+    sch[a_l0a_1].set_buffer_size(shape_a_z_bigz_3)
+    sch[b_l0b_1].set_buffer_size(shape_b_3)
     sch[c_l0c_1].set_buffer_size(SHAPE_C_1)
     sch[c_ub_1].set_buffer_size(SHAPE_C_1)
 
     if bias1 is not None:
-        sch[bias_ub_1].set_buffer_size(SHAPE_BIAS)
+        sch[bias_ub_1].set_buffer_size(shape_bias_1)
         if fp16_input_output:
-            sch[bias_ub_1_fp32].set_buffer_size(SHAPE_BIAS)
+            sch[bias_ub_1_fp32].set_buffer_size(shape_bias_1)
         sch[bias_bc_ub_1].set_buffer_size(SHAPE_C_1)
 
-    sch[a_l1_2].set_buffer_size(SHAPE_A_Z_BIGZ_2)
-    sch[b_l1_2].set_buffer_size(SHAPE_B_2)
-    sch[a_l0a_2].set_buffer_size(SHAPE_A_Z_BIGZ_2)
-    sch[b_l0b_2].set_buffer_size(SHAPE_B_2)
+    sch[a_l1_2].set_buffer_size(shape_a_z_bigz_4)
+    sch[b_l1_2].set_buffer_size(shape_b_4)
+    sch[a_l0a_2].set_buffer_size(shape_a_z_bigz_4)
+    sch[b_l0b_2].set_buffer_size(shape_b_4)
     sch[c_l0c_2].set_buffer_size(SHAPE_C_2)
     sch[c_ub_2].set_buffer_size(SHAPE_C_2)
     if bias2 is not None:
-        sch[bias_ub_2].set_buffer_size(SHAPE_BIAS)
+        sch[bias_ub_2].set_buffer_size(shape_bias_1)
         if fp16_input_output:
-            sch[bias_ub_2_fp32].set_buffer_size(SHAPE_BIAS)
+            sch[bias_ub_2_fp32].set_buffer_size(shape_bias_1)
         sch[bias_bc_ub_2].set_buffer_size(SHAPE_C_2)
 
-    sch[r_t_1].set_buffer_size(SHAPE_I)
-    sch[i_t_1].set_buffer_size(SHAPE_I)
-    sch[n_t_1].set_buffer_size(SHAPE_I)
-    sch[r_t_2].set_buffer_size(SHAPE_I)
-    sch[i_t_2].set_buffer_size(SHAPE_I)
-    sch[n_t_2].set_buffer_size(SHAPE_I)
+    sch[r_t_1].set_buffer_size(shape_i_1)
+    sch[i_t_1].set_buffer_size(shape_i_1)
+    sch[n_t_1].set_buffer_size(shape_i_1)
+    sch[r_t_2].set_buffer_size(shape_i_1)
+    sch[i_t_2].set_buffer_size(shape_i_1)
+    sch[n_t_2].set_buffer_size(shape_i_1)
 
     if is_gate_output:
         if fp16_input_output:
-            sch[n_t_2_fp16].set_buffer_size(SHAPE_I)
-            sch[r_t_sigmoid_fp16].set_buffer_size(SHAPE_I)
-            sch[i_t_sigmoid_fp16].set_buffer_size(SHAPE_I)
-            sch[n_t_tanh_fp16].set_buffer_size(SHAPE_I)
+            sch[n_t_2_fp16].set_buffer_size(shape_i_1)
+            sch[r_t_sigmoid_fp16].set_buffer_size(shape_i_1)
+            sch[i_t_sigmoid_fp16].set_buffer_size(shape_i_1)
+            sch[n_t_tanh_fp16].set_buffer_size(shape_i_1)
     if seq_mask_gm is not None:
-        sch[seq_mask_ub].set_buffer_size(SHAPE_I)
+        sch[seq_mask_ub].set_buffer_size(shape_i_1)
     if fp16_input_output:
-        sch[update_h_fp16].set_buffer_size(SHAPE_OUT)
-    sch[update_y_gm_back].set_buffer_size(SHAPE_OUT)
+        sch[update_h_fp16].set_buffer_size(shape_out_1)
+    sch[update_y_gm_back].set_buffer_size(shape_out_1)
 
     if reuse_type in [ReuseType.NO_REUSE, ReuseType.REUSE_ALL]:
         sch[update_h_gm].bind(update_h_gm_m_outer, tvm.thread_axis("blockIdx.x"))

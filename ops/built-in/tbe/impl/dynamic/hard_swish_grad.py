@@ -49,17 +49,17 @@ def hard_swish_grad_compute(input_grad, input_x, output_y, kernel_name="hardswis
     input_x_grad = x / 3 + 0.5   if -3 <= x <= 3,
     input_x_grad = 1             if x > 3
     """
-    CONST_HALF = 0.5
-    CONST_ONE_IN_THREE = 0.33333334
-    CONST_THREE = 3.0
+    const_half = 0.5
+    const_one_in_three = 0.33333334
+    const_three = 3.0
     input_dtype = input_x.dtype
     if input_dtype == "float16":
         input_x = tbe.cast_to(input_x, "float32")
         input_grad = tbe.cast_to(input_grad, "float32")
-    output_x = tbe.vmuls(input_x, tvm.const(CONST_ONE_IN_THREE, "float32"))
-    output_x = tbe.vadds(output_x, tvm.const(CONST_HALF, "float32"))
-    output_x = tbe.vcmpsel(input_x, -CONST_THREE, 'lt', 0, output_x)
-    output_x = tbe.vcmpsel(input_x, CONST_THREE, 'gt', 1, output_x)
+    output_x = tbe.vmuls(input_x, tvm.const(const_one_in_three, "float32"))
+    output_x = tbe.vadds(output_x, tvm.const(const_half, "float32"))
+    output_x = tbe.vcmpsel(input_x, -const_three, 'lt', 0, output_x)
+    output_x = tbe.vcmpsel(input_x, const_three, 'gt', 1, output_x)
     if input_dtype == "float16":
         res = tbe.vmul(input_grad, output_x)
         return tbe.cast_to(res, input_dtype)

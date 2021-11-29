@@ -44,6 +44,7 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -68,6 +69,7 @@ class Constant:
     CONST_DOT_SIX = 0.6
     FLOAT_16_MAX = 32768
 
+
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-locals,invalid-name
 @register_operator_compute("Asinh", op_mode="dynamic", support_fusion=True)
 def asinh_compute_mini(input_x, output_y, kernel_name="asinh"):
@@ -88,7 +90,7 @@ def asinh_compute_mini(input_x, output_y, kernel_name="asinh"):
 
     """
 
-    MIN_FP16 = 2 ** (-24)
+    min_fp16 = 2 ** (-24)
     inp_dtype = input_x.dtype.lower()
     shape = input_x.shape
     has_improve_precision = False
@@ -99,7 +101,7 @@ def asinh_compute_mini(input_x, output_y, kernel_name="asinh"):
 
     input_x1 = tbe.vabs(input_x)
     # to fix bug for input data is 0.0
-    input_x1 = tbe.vadds(input_x1, MIN_FP16)
+    input_x1 = tbe.vadds(input_x1, min_fp16)
     data_1_x = tbe.vrec(input_x1)
     data_1_x_square = tbe.vmul(data_1_x, data_1_x)
     data_1_x_square = tbe.vadds(data_1_x_square, tvm.const(Constant.CONST_ONE, "float32"))
@@ -196,11 +198,11 @@ def _newton_iter(data, data_x0, dtype):
 
     """
     # Newton begin:
-    CONST_NEWTON_FACTOR = 0.5
+    const_newton_factor = 0.5
     data_newton = tbe.vrec(data)
     data_newton = tbe.vmul(data_x0, data_newton)
     data_newton = tbe.vadd(data_newton, data)
-    data_newton = tbe.vmuls(data_newton, tvm.const(CONST_NEWTON_FACTOR, dtype))
+    data_newton = tbe.vmuls(data_newton, tvm.const(const_newton_factor, dtype))
     # Newton end
     return data_newton
 
@@ -335,21 +337,21 @@ def _taylor_compute(data):
     None
 
     """
-    CONST_NEWTON_FACTOR_NEG = -0.5
-    CONST_ONE_THREE = 0.3333333333333333
-    CONST_ONE_FIVE = 0.2
-    CONST_ONE_FOUR_NEG = -0.25
+    const_newton_factor_neg = -0.5
+    const_one_three = 0.3333333333333333
+    const_one_five = 0.2
+    const_one_four_neg = -0.25
     # 0.2x - 0.25
-    taylor_five = tbe.vmuls(data, tvm.const(CONST_ONE_FIVE, "float32"))
-    taylor_four_1 = tbe.vadds(taylor_five, tvm.const(CONST_ONE_FOUR_NEG, "float32"))
+    taylor_five = tbe.vmuls(data, tvm.const(const_one_five, "float32"))
+    taylor_four_1 = tbe.vadds(taylor_five, tvm.const(const_one_four_neg, "float32"))
     # (0.2x - 0.25)x + 0.33333
     taylor_four_2 = tbe.vmul(taylor_four_1, data)
-    taylor_three_1 = tbe.vadds(taylor_four_2, tvm.const(CONST_ONE_THREE, "float32"))
+    taylor_three_1 = tbe.vadds(taylor_four_2, tvm.const(const_one_three, "float32"))
     # ((0.2x - 0.25)x + 0.33333)x - 0.5
     taylor_three_2 = tbe.vmul(taylor_three_1, data)
     taylor_two_1 = tbe.vadds(
         taylor_three_2,
-        tvm.const(CONST_NEWTON_FACTOR_NEG, "float32"))
+        tvm.const(const_newton_factor_neg, "float32"))
     # (((0.2x - 0.25)x + 0.33333)x - 0.5)x+1
     taylor_two_2 = tbe.vmul(taylor_two_1, data)
     taylor_one = tbe.vadds(taylor_two_2, tvm.const(Constant.CONST_ONE, "float32"))
@@ -373,8 +375,8 @@ def _log_compute(data_x, res, shape):
     res : return of log
 
     """
-    LOG_FIVE_TWO = 0.916290731874155
-    CONST_FIVE_TWO = 0.4
+    log_five_two = 0.916290731874155
+    const_five_two = 0.4
     # if data > 2, use vlog
     if data_x.dtype == res.dtype and tbe_platform.api_check_support("tbe.dsl.vcmpsel", data_x.dtype):
         res = tbe.vcmpsel(
@@ -389,9 +391,9 @@ def _log_compute(data_x, res, shape):
         res = tbe.vsel(index_3, tbe.vlog(data_x), res)
 
     # if data > 32768, use log(x/2.5)+log(2.5)
-    overflow_value = tbe.vmuls(data_x, CONST_FIVE_TWO)
+    overflow_value = tbe.vmuls(data_x, const_five_two)
     res_overflow = tbe.vadds(
-        tbe.vlog(overflow_value), LOG_FIVE_TWO)
+        tbe.vlog(overflow_value), log_five_two)
     if data_x.dtype == res.dtype and tbe_platform.api_check_support("tbe.dsl.vcmpsel", data_x.dtype):
         res = tbe.vcmpsel(
             data_x,

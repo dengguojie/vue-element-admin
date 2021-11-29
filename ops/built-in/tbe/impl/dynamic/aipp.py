@@ -404,9 +404,9 @@ class Aipp():
         head_offset_csc_input_bias_r2 = 45
         # move data of head params to ub, uint8
         self.params_ub = self.tik_instance.Tensor(self.param_dtype, (Constant.PARAM_HEAD_STRUCT_SIZE,), \
-        name="params_ub",scope=tik.scope_ubuf)
+        name="params_ub", scope=tik.scope_ubuf)
         self.tik_instance.data_move(self.params_ub, self.dync_param_gm, 0, 1, Constant.PARAM_HEAD_STRUCT_SIZE // \
-        Constant.BLOCK_BYTES,0, 0)
+        Constant.BLOCK_BYTES, 0, 0)
 
         self.input_format = self.tik_instance.Scalar(dtype="uint8", name="input_format")
         self.input_format.set_as(self.params_ub[Constant.HEAD_OFFSET_INPUT_FORMAT])
@@ -449,8 +449,8 @@ class Aipp():
         """
         head_offset_dtc_reci_chn3_end = 80
         with self.tik_instance.new_stmt_scope():
-            batch_dtc_mean_ub = self.batch_params_ub[
-                                Constant.HEAD_OFFSET_DTC_MEAN_CHN0:Constant.HEAD_OFFSET_DTC_MIN_CHN0].reinterpret_cast_to("int16")
+            batch_dtc_mean_ub = self.batch_params_ub[Constant.HEAD_OFFSET_DTC_MEAN_CHN0:\
+            Constant.HEAD_OFFSET_DTC_MIN_CHN0].reinterpret_cast_to("int16")
             batch_dtc_min_reci_ub = self.batch_params_ub[Constant.HEAD_OFFSET_DTC_MIN_CHN0:\
             head_offset_dtc_reci_chn3_end].reinterpret_cast_to("float16")
 
@@ -526,7 +526,7 @@ class Aipp():
         # move batch params
         self.tik_instance.data_move(self.batch_params_ub,
                                     self.dync_param_gm[Constant.PARAM_HEAD_STRUCT_SIZE + \
-                                    Constant.PARAM_BATCH_STRUCT_SIZE * batch_id],0, 1, \
+                                    Constant.PARAM_BATCH_STRUCT_SIZE * batch_id], 0, 1, \
                                     Constant.PARAM_BATCH_STRUCT_SIZE // Constant.BLOCK_BYTES, 0, 0)
 
         self.get_batch_switch()

@@ -69,10 +69,10 @@ def _data_format_dim_map_mod(data):
     data mod by 4
     """
     # quarter
-    QUARTER = 0.25
+    quarter = 0.25
     data = tbe.cast_to(data, 'float16')
     data = tbe.vadds(data, Constant.MOD_RHS)
-    data_div_4 = tbe.vmuls(data, QUARTER)
+    data_div_4 = tbe.vmuls(data, quarter)
     data_floor = tbe.floor(data_div_4)
     data_floor = tbe.cast_to(data_floor, 'float16')
     data_mul_4 = tbe.vmuls(data_floor, Constant.MOD_RHS)

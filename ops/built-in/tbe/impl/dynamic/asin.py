@@ -42,6 +42,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import error_manager_vector
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """

@@ -21,6 +21,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.util_select_op_base import get_op_cal_info
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -86,7 +87,8 @@ class ConcatOffsetCompute(object):
         self.tik_instance = tik.Tik()
         self.concat_dim_gm = self.tik_instance.Tensor(self.concat_dim_dtype, (1,),
                                                       name="concat_dim_gm", scope=tik.scope_gm)
-        self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="ting_gm", scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="ting_gm", \
+        scope=tik.scope_gm)
         self.gm_input_list = []
         self.gm_output_list = []
         self.init_gm_mem(x)
@@ -127,12 +129,12 @@ class ConcatOffsetCompute(object):
         with self.tik_instance.for_range(0, axis_num):
             vcetor_mask.set_as(vcetor_mask * 2)
 
-        data_row1_ub = \
-            self.tik_instance.Tensor(self.input_dtype, [Constant.MAX_INPUT_RANK], name="data_row1_ub", scope=tik.scope_ubuf)
-        data_row2_ping = \
-            self.tik_instance.Tensor(self.input_dtype, [Constant.MAX_INPUT_RANK], name="data_row2_ping", scope=tik.scope_ubuf)
-        data_row2_pang = \
-            self.tik_instance.Tensor(self.input_dtype, [Constant.MAX_INPUT_RANK], name="data_row2_pang", scope=tik.scope_ubuf)
+        data_row1_ub = self.tik_instance.Tensor(self.input_dtype, [Constant.MAX_INPUT_RANK], \
+        name="data_row1_ub", scope=tik.scope_ubuf)
+        data_row2_ping = self.tik_instance.Tensor(self.input_dtype, [Constant.MAX_INPUT_RANK], \
+        name="data_row2_ping", scope=tik.scope_ubuf)
+        data_row2_pang = self.tik_instance.Tensor(self.input_dtype, [Constant.MAX_INPUT_RANK], \
+        name="data_row2_pang", scope=tik.scope_ubuf)
 
         self.tik_instance.vector_dup(Constant.MAX_INPUT_RANK, data_row1_ub, 0, 1, 1, 1)
 

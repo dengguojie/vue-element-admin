@@ -22,6 +22,7 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -32,6 +33,7 @@ class Constant:
     # tiling param num
     TILING_ARG_NUM = 16
 
+
 # 'pylint: disable=too-many-instance-attributes,invalid-name
 class Assign:
     """
@@ -40,7 +42,7 @@ class Assign:
 
     def __init__(self, ref, value, output, kernel_name):
         # reserved ub size
-        RESERVED_UB_SIZE = 8 * 1024
+        reserved_ub_size = 8 * 1024
         self.tik_instance = tik.Tik(tik.Dprofile)
         self.ref_dtype = ref.get("dtype").lower()
         self.value_dtype = value.get("dtype").lower()
@@ -59,7 +61,7 @@ class Assign:
         self.kernel_name = kernel_name
 
         self.ai_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.ub_size_bytes = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE)
+        self.ub_size_bytes = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - reserved_ub_size)
         self.max_burst_len = self.ub_size_bytes // (2 * 32)  # 2 means double buffer, 32 means one burst of UB is 32B
 
         if self.ref_dtype in ("int8", "uint8"):

@@ -21,6 +21,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -240,8 +241,8 @@ class EmbeddingDenseGrad():
         # Create a new space to initialize grad_weightm
         with self.tik_instance.new_stmt_scope():
             # Initialize fill_tensor with 0, which is used to initialize grad_weight later
-            fill_tensor = self.tik_instance.Tensor(self.dtype_grad, (Constant.GRAD_TENSOR_PART * 2, ), name="fill_tensor",
-                                                   scope=tik.scope_ubuf)
+            fill_tensor = self.tik_instance.Tensor(self.dtype_grad, (Constant.GRAD_TENSOR_PART * 2, ),
+            name="fill_tensor", scope=tik.scope_ubuf)
             # Define scalar_float0 to fill grad_weight
             scalar_float0 = self.tik_instance.Scalar(init_value=0, dtype=self.dtype_grad)
             with self.tik_instance.if_scope(self.embedding_dim // self.vector_mask_max_grad > 0):

@@ -33,6 +33,7 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import tuple_sum
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -44,29 +45,29 @@ class Constant:
     BLOCK_SIZE_BYTE = 32
 
 # <dsl insn, pass insn> mapping
-INSN_MAPPING = {
-    "elewise_binary_mul": "vector_mul",
-    "elewise_single_cast": "vector_conv",
-    "elewise_empty_intrin": "phony_insn",
-    "tuple_reduce_sum": "vector_reduce_sum",
-    "reduce_sum": "vector_reduce_sum",
-    "dma_copy": "dma_copy"
-}
+    INSN_MAPPING = {
+        "elewise_binary_mul": "vector_mul",
+        "elewise_single_cast": "vector_conv",
+        "elewise_empty_intrin": "phony_insn",
+        "tuple_reduce_sum": "vector_reduce_sum",
+        "reduce_sum": "vector_reduce_sum",
+        "dma_copy": "dma_copy"
+    }
 
-DTYPE_BYTE_MAPPING = {
-    "uint1": 0.125,
-    "bool": 1,
-    "int8": 1,
-    "uint8": 1,
-    "float16": 2,
-    "int16": 2,
-    "uint16": 2,
-    "float32": 4,
-    "int32": 4,
-    "uint32": 4,
-    "int64": 8,
-    "uint64": 8,
-}
+    DTYPE_BYTE_MAPPING = {
+        "uint1": 0.125,
+        "bool": 1,
+        "int8": 1,
+        "uint8": 1,
+        "float16": 2,
+        "int16": 2,
+        "uint16": 2,
+        "float32": 4,
+        "int32": 4,
+        "uint32": 4,
+        "int64": 8,
+        "uint64": 8,
+    }
 
 
 @operation.register_schedule(pattern=Constant.BN_REDUCE)
@@ -121,7 +122,7 @@ def calc_tiling_case(outs, options=None):
     if not compute_graph_info.reduce_tensor_set:
         error_detail = "Couldn't find reduce node for ReduceSchedule"
         error_manager_vector.raise_err_specific_reson("bn_training_reduce", error_detail)
- 
+
     tiling_instance = GenBnReduceTilingCase()
     tiling_case_list = []
     if single_reduce_info.reduce_axis_indices == [0, 2, 3]:
@@ -143,8 +144,8 @@ def calc_tiling_case(outs, options=None):
     return tiling_case_list
 
 
-# pylint: disable=unused-argument,invalid-name
-# pylint: disable=redefined-builtin
+# 'pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=redefined-builtin
 def bn_training_reduce_compute(x, sum, square_sum, axis, kernel_name="bn_training_reduce"):
     """
     algorithm: part of fused_batch_norm_v2
@@ -179,7 +180,7 @@ def bn_training_reduce_compute(x, sum, square_sum, axis, kernel_name="bn_trainin
     return res
 
 
-# pylint: disable=too-many-locals, too-many-statements
+# 'pylint: disable=too-many-locals, too-many-statements
 @register_operator("BNTrainingReduce", pattern=Constant.BN_REDUCE)
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
@@ -255,7 +256,7 @@ def bn_training_reduce(x, sum, square_sum, kernel_name="bn_training_reduce"):
 
         range_out = [_get_range(i) for i in range(len(range_local[0]))]
 
-        for index in range(len(shape_out)):
+        for index, _ in enumerate(shape_out):
             if range_out[index][0] == range_out[index][1]:
                 shape_out[index] = range_out[index][0]
 
@@ -303,12 +304,12 @@ def bn_training_reduce(x, sum, square_sum, kernel_name="bn_training_reduce"):
     dup_x['shape'] = normalised_x['shape']
     dup_x['range'] = normalised_x['range']
     is_const = all(x > 0 for x in dup_x['shape'])
-    ORIGINAL = "original"
+    original = "original"
     if is_const:
         dup_x['mode'] = Constant.CONST
         tbe_context.get_context().add_compile_info("ori_const_shape", dup_x['shape'])
     else:
-        dup_x['mode'] = ORIGINAL
+        dup_x['mode'] = original
         dup_x['shape'][0] = -1
         dup_x['range'][0] = (1, None)
 
@@ -2277,7 +2278,7 @@ class BnReduceAtomicSchedule:
             for i in self._cache_read_tensors_and_buffer_map:
                 if i in tensor_list:
                     read_buffer = self._cache_read_tensors_and_buffer_map[i]
-                    align_factor = Constant.BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[read_buffer.dtype]
+                    align_factor = Constant.BLOCK_SIZE_BYTE // Constant.DTYPE_BYTE_MAPPING[read_buffer.dtype]
                     para = {
                         "align_axis_var": read_buffer.op.axis[align_axis],
                         "align_factor": align_factor,
@@ -2287,7 +2288,7 @@ class BnReduceAtomicSchedule:
             for i in self._cache_write_tensors_and_buffer_map:
                 if i in tensor_list:
                     write_buffer = self._cache_write_tensors_and_buffer_map[i]
-                    align_factor = Constant.BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[write_buffer.dtype]
+                    align_factor = Constant.BLOCK_SIZE_BYTE // Constant.DTYPE_BYTE_MAPPING[write_buffer.dtype]
                     para = {
                         "align_axis_var": write_buffer.op.axis[align_axis],
                         "align_factor": align_factor,
@@ -2296,7 +2297,7 @@ class BnReduceAtomicSchedule:
                     self._storage_align_para[write_buffer] = para
             for tensor in self._mid_output_tensors:
                 if tensor in tensor_list:
-                    align_factor = Constant.BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[tensor.dtype]
+                    align_factor = Constant.BLOCK_SIZE_BYTE // Constant.DTYPE_BYTE_MAPPING[tensor.dtype]
                     para = {
                         "align_axis_var": tensor.op.axis[mid_out_align_axis],
                         "align_factor": align_factor,
@@ -2321,7 +2322,7 @@ class BnReduceAtomicSchedule:
                 return
             res_align_axis = res_a1_start_index - 1
 
-            align_factor = Constant.BLOCK_SIZE_BYTE // DTYPE_BYTE_MAPPING[self._final_out_tensor_ub_rf.dtype]
+            align_factor = Constant.BLOCK_SIZE_BYTE // Constant.DTYPE_BYTE_MAPPING[self._final_out_tensor_ub_rf.dtype]
             para = {
                 "align_axis_var": self._final_out_tensor_ub_rf.op.axis[res_align_axis + self._axis_offset],
                 "align_factor": align_factor,
@@ -3250,7 +3251,7 @@ class BnReduceAtomicSchedule:
                 insn = tag.split("|")[0]
             else:
                 insn = tag
-            return INSN_MAPPING.get(insn, insn)
+            return Constant.INSN_MAPPING.get(insn, insn)
 
         ub_split_axis = ub_tiling_result["axis"]
         for i in self._cache_read_tensors_and_buffer_map:

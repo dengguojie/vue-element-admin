@@ -34,13 +34,15 @@ class TikOpBase:
     def __init__(self, tik_instance):
         self.tik_instance = tik_instance
 
-    def get_data_size(self, data_type):
+    @staticmethod
+    def get_data_size(data_type):
         """
         get_data_size
         """
         return common_util.get_data_size(data_type)
 
-    def get_shape_size(self, data_shape):
+    @staticmethod
+    def get_shape_size(data_shape):
         """
         get_shape_size
         """
@@ -93,9 +95,9 @@ class TikOpBase:
                 loop_count = repeat_times // Constant.MAX_REPEAT_NUM
                 with self.tik_instance.for_range(0, loop_count) as i:
                     vector_offset = i * Constant.MAX_REPEAT_NUM * front_mask
-                    func_name(front_mask, dest[vector_offset], src0[vector_offset], src1[vector_offset], Constant.MAX_REPEAT_NUM,
-                              constant.STRIDE_ONE, constant.STRIDE_ONE, constant.STRIDE_ONE,
-                              constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT)
+                    func_name(front_mask, dest[vector_offset], src0[vector_offset], src1[vector_offset], 
+                    Constant.MAX_REPEAT_NUM, constant.STRIDE_ONE, constant.STRIDE_ONE, constant.STRIDE_ONE, 
+                    constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT)
                     rest_repeat_num = rest_repeat_num - Constant.MAX_REPEAT_NUM
                 with self.tik_instance.if_scope(rest_repeat_num != 1):
                     vector_offset = loop_count * Constant.MAX_REPEAT_NUM * front_mask
@@ -209,8 +211,8 @@ class TikOpBase:
             count = 0
             while rest_repeat_num > Constant.MAX_REPEAT_NUM:
                 vector_offset = count * Constant.MAX_REPEAT_NUM * front_mask
-                func_name(front_mask, dest[vector_offset], src[vector_offset], Constant.MAX_REPEAT_NUM, constant.STRIDE_ONE,
-                          constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT)
+                func_name(front_mask, dest[vector_offset], src[vector_offset], Constant.MAX_REPEAT_NUM, 
+                constant.STRIDE_ONE, constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT)
                 count = count + 1
                 rest_repeat_num = rest_repeat_num - Constant.MAX_REPEAT_NUM
             if rest_repeat_num != 1:

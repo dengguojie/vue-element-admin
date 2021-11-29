@@ -27,10 +27,6 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-
-
-
-
 # 'pylint: disable=locally-disabled,too-many-locals,invalid-name
 def _expm1_taylor_compute(input_x):
     """
@@ -48,49 +44,49 @@ def _expm1_taylor_compute(input_x):
     -------
     """
     # define second order parameter , value = 1 / 2.0
-    TAYLOR_SECOND_ORDER_PARAM = 1 / 2.0
+    taylor_second_order_param_value = 1 / 2.0
     # define third order parameter , value = 1 / 6.0
-    TAYLOR_THIRD_ORDER_PARAM = 1 / 6.0
+    taylor_third_order_param_value = 1 / 6.0
     # define fourth order parameter , value = 1 / 24.0
-    TAYLOR_FOURTH_ORDER_PARAM = 1 / 24.0
+    taylor_fourth_order_param_value = 1 / 24.0
     # define fifth order parameter , value = 1 / 120.0
-    TAYLOR_FIFTH_ORDER_PARAM = 1 / 120.0
+    taylor_fifth_order_param_value = 1 / 120.0
     # define sixth order parameter , value = 1 / 720.0
-    TAYLOR_SIXTH_ORDER_PARAM = 1 / 720.0
+    taylor_sixth_order_param_value = 1 / 720.0
     # define seventh order parameter , value = 1 / 5040.0
-    TAYLOR_SEVENTH_ORDER_PARAM = 1 / 5040.0
+    taylor_seventh_order_param_value = 1 / 5040.0
     # calculate second order tayloy section : x^2 / 2!
-    taylor_second_order_param = tvm.const(TAYLOR_SECOND_ORDER_PARAM, "float32")
+    taylor_second_order_param = tvm.const(taylor_second_order_param_value, "float32")
     data_power_2 = tbe.vmul(input_x, input_x)
     data_power_2_div_2 = tbe.vmuls(data_power_2,
                                    taylor_second_order_param)
 
     # calculate third order tayloy section : x^3 / 3!
-    taylor_third_order_param = tvm.const(TAYLOR_THIRD_ORDER_PARAM, "float32")
+    taylor_third_order_param = tvm.const(taylor_third_order_param_value, "float32")
     data_power_3 = tbe.vmul(data_power_2, input_x)
     data_power_3_div_6 = tbe.vmuls(data_power_3,
                                    taylor_third_order_param)
 
     # calculate fourth order tayloy section : x^4 / 4!
-    taylor_fourth_order_param = tvm.const(TAYLOR_FOURTH_ORDER_PARAM, "float32")
+    taylor_fourth_order_param = tvm.const(taylor_fourth_order_param_value, "float32")
     data_power_4 = tbe.vmul(data_power_3, input_x)
     data_power_4_div_24 = tbe.vmuls(data_power_4,
                                     taylor_fourth_order_param)
 
     # calculate fifth order tayloy section : x^5 / 5!
-    taylor_fifth_order_param = tvm.const(TAYLOR_FIFTH_ORDER_PARAM, "float32")
+    taylor_fifth_order_param = tvm.const(taylor_fifth_order_param_value, "float32")
     data_power_5 = tbe.vmul(data_power_4, input_x)
     data_power_5_div_120 = tbe.vmuls(data_power_5,
                                      taylor_fifth_order_param)
 
     # xcalculate sixth order tayloy section : ^6 / 6!
-    taylor_sixth_order_param = tvm.const(TAYLOR_SIXTH_ORDER_PARAM, "float32")
+    taylor_sixth_order_param = tvm.const(taylor_sixth_order_param_value, "float32")
     data_power_6 = tbe.vmul(data_power_5, input_x)
     data_power_6_div_720 = tbe.vmuls(data_power_6,
                                      taylor_sixth_order_param)
 
     # calculate seventh order tayloy section : x^7 / 7!
-    taylor_seventh_order_param = tvm.const(TAYLOR_SEVENTH_ORDER_PARAM,
+    taylor_seventh_order_param = tvm.const(taylor_seventh_order_param_value,
                                            "float32")
     data_power_7 = tbe.vmul(data_power_6, input_x)
     data_power_7_div_5040 = tbe.vmuls(data_power_7,
@@ -127,15 +123,15 @@ def _expm1_mini_compute(mini_res, input_x, shape):
     -------
     """
     # define taylor negative threshold , value = -0.7
-    TAYLOR_NEGATIVE_THRESHOLD = -0.7
+    taylor_negative_threshold = -0.7
     # define taylor positive threshold , value = 1.7
-    TAYLOR_POSITIVE_THRESHOLD = 1.7
+    taylor_positive_threshold = 1.7
     taylor_res = _expm1_taylor_compute(input_x)
 
-    input_right_border = tvm.const(TAYLOR_POSITIVE_THRESHOLD, "float32")
+    input_right_border = tvm.const(taylor_positive_threshold, "float32")
     tensor_input_right_border = tbe.broadcast(input_right_border, shape)
 
-    input_left_border = tvm.const(TAYLOR_NEGATIVE_THRESHOLD, "float32")
+    input_left_border = tvm.const(taylor_negative_threshold, "float32")
     tensor_input_left_border = tbe.broadcast(input_left_border, shape)
 
     b_gt_left_border = tbe.vcmp(input_x, tensor_input_left_border, 'gt')
@@ -173,7 +169,7 @@ def expm1_compute(input_x, output_y, kernel_name="expm1"):
     res : the result of compute
     """
     # `define a scalar , value = -1`
-    SCALAR_NEGATIVE_ONE = -1.0
+    scalar_negative_one_value = -1.0
     dtype = input_x.dtype
     shape = input_x.shape
     flag_cloud = tbe_platform.api_check_support("tbe.dsl.vexp", "float32")
@@ -181,7 +177,7 @@ def expm1_compute(input_x, output_y, kernel_name="expm1"):
     if dtype.lower() == "float16" and flag_cloud:
         input_x = tbe.cast_to(input_x, "float32")
 
-    scalar_negative_one = tvm.const(SCALAR_NEGATIVE_ONE, "float32")
+    scalar_negative_one = tvm.const(scalar_negative_one_value, "float32")
     exp_res = tbe.vexp(input_x)
     res = tbe.vadds(exp_res, scalar_negative_one)
 

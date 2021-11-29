@@ -32,9 +32,6 @@ from te.lang.cce import vmuls
 from te.lang.cce import vrec
 from te.lang.cce import vsub
 from te.lang.cce import vmins
-from tbe.common.buildcfg.default_buildcfg import dynamic_build_config_dict
-from tbe.common.register import register_param_generalization
-from tbe.common.rl_bank import rl_bank
 from te.domain.rl_bank import bank_manager
 from te.platform import scope_ca
 from te.platform import scope_cb
@@ -51,6 +48,9 @@ from te.tvm import expr
 from te.tvm.schedule import create_schedule
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
+from tbe.common.buildcfg.default_buildcfg import dynamic_build_config_dict
+from tbe.common.register import register_param_generalization
+from tbe.common.rl_bank import rl_bank
 
 
 # 'pylint: disable=invalid-name
@@ -803,11 +803,11 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
     dynamic_rnn
     """
     # one block size takes up 32b
-    BLOCK_SIZE = 32
+    block_size_1 = 32
     # data type of int32
-    INT32 = "int32"
-    TILING_ARG_NUM = 3
-    TYPE_LEN_DICT = {"float16": 2, "float32": 4, "int8": 1, "uint8": 1,
+    int32 = "int32"
+    tiling_arg_num = 3
+    type_len_dict = {"float16": 2, "float32": 4, "int8": 1, "uint8": 1,
                  "int32": 4, "int64": 8, }
     is_dynamic = True
 
@@ -830,8 +830,8 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
 
     if is_dynamic:
         # dynamic shape get seq_length
-        tiling_shape = (TILING_ARG_NUM,)
-        tiling_dtype = INT32
+        tiling_shape = (tiling_arg_num,)
+        tiling_dtype = int32
 
         tiling_gm = tik_instance.Tensor(tiling_dtype, tiling_shape,
                                                     name="ddr_arg", scope=scope_gm)
@@ -840,7 +840,7 @@ def dynamic_rnn(input_x, weight, bias, seq_length, init_h, init_c, wci, wcf,
                                                     name="tiling_ub", scope=scope_ubuf)
 
         tik_instance.data_move(tiling_ub, tiling_gm, 0,
-                            1, ceil_value(TILING_ARG_NUM * TYPE_LEN_DICT.get(tiling_dtype), BLOCK_SIZE),
+                            1, ceil_value(tiling_arg_num * type_len_dict.get(tiling_dtype), block_size_1),
                             0, 0)
 
         # get run tiling mode
@@ -1645,7 +1645,7 @@ def dynamic_rnn_core(input_x, weight, bias, s_init_h_gm, s_init_c_gm,
         index_list.append(tune_shape_list[index][2])
     if sch_list is not None and len(sch_list) > 0:
         if is_dynamic:
-            for index,sch_list_value in enumerate(sch_list):
+            for index, sch_list_value in enumerate(sch_list):
                 sch_list_value.set_constraint(expr.And(input_x.shape[2] <= tune_shape_list[index][1], \
                 input_x.shape[2] > 0))
         tbe_context.get_context().add_compile_info("vars", {"tune_shape_list": tune_shape_list})

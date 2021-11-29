@@ -13,7 +13,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 cast_cce
 """
-# 'pylint: disable=too-many-locals,consider-using-f-string,invalid-name
+# 'pylint: disable=too-many-locals,invalid-name
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tvm

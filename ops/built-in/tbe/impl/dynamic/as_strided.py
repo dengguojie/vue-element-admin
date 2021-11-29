@@ -19,6 +19,7 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -28,14 +29,16 @@ class Constant:
     CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
     MAX_INT64_VALUE = 2 ** 64 - 1
 
+
 # 'pylint: disable=invalid-name
 def get_ub_size_by_b8():
     """
     get_ub_size_by_b8
 
     """
-    RESERVED_UB = 4  # 4KB
-    return Constant.UB_SIZE - RESERVED_UB * 1024
+    reserved_ub = 4  # 4KB
+    return Constant.UB_SIZE - reserved_ub * 1024
+
 
 class AsStrided():
     """
@@ -51,7 +54,6 @@ class AsStrided():
         self.ub_pattern = self.tik_inst.Tensor("uint32", (128,), tik.scope_ubuf, "ub_pattern")
         self.ub_input_b8 = self.tik_inst.Tensor("int8", (self.ub_size_b8,), tik.scope_ubuf, "ub_input_b8")
         self.ub_input = self.ub_input_b8.reinterpret_cast_to(x_dtype)
-
 
     # 'pylint: disable=unused-variable
     def compute_1(self):
@@ -97,13 +99,13 @@ class AsStrided():
         #    `with self.tik_inst.for_range(0, 100) as i:`
         #        `self.tik_inst.data_move_pad(self.ub_input, self.data_in[i * 240], 24, 4, 0, 4 * 9)`
         #        `self.tik_inst.vreducev2(None,                       # mask`
-        #                                self.ub_input[1024 * 10],   # dst
-        #                                self.ub_input,              # src0
-        #                                self.ub_pattern,            # src1_pattern
-        #                                3,                          # repeat_time
-        #                                1,                          # src0_blk_stride
-        #                                8,                          # src0_rep_stride
-        #                                0)                          # src1_rep_stride
+        #                                `self.ub_input[1024 * 10],   # dst`
+        #                                `self.ub_input,              # src0`
+        #                                `self.ub_pattern,            # src1_pattern`
+        #                                `3,                          # repeat_time`
+        #                                `1,                          # src0_blk_stride`
+        #                                `8,                          # src0_rep_stride`
+        #                                `0)                          # src1_rep_stride`
         #        `self.tik_inst.data_move(self.data_out[i * 24], self.ub_input[1024 * 10], 0, 1, 3, 0, 0)`
 
     def compute_2(self):
@@ -136,6 +138,7 @@ class AsStrided():
                                             "counter")
                     self.tik_inst.data_move(self.data_out[i * 120], self.ub_input[1024 * 10], 0, 1, 15, 0, 0)
 
+
 # 'pylint: disable=too-many-locals,too-many-arguments,invalid-name
 @register_operator("AsStrided")
 def as_strided(x, size, stride, storage_offset, y, kernel_name="as_strided"):
@@ -158,7 +161,7 @@ def as_strided(x, size, stride, storage_offset, y, kernel_name="as_strided"):
     size_dtype = size.get("dtype").lower()
     stride_dtype = stride.get("dtype").lower()
     y_shape = y.get("ori_shape")
-    TILING_MAX_SIZE_GM = 2048  # 16KB
+    tiling_max_size_gm = 2048  # 16KB
     #`storage_offset_dtype = storage_offset.get("dtype").lower()`
 
     data_in  = tik_inst.Tensor(x_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "x")
@@ -166,7 +169,7 @@ def as_strided(x, size, stride, storage_offset, y, kernel_name="as_strided"):
     stride = tik_inst.Tensor(stride_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "stride")
     storage_offset = tik_inst.Tensor(stride_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "storage_offset")
     data_out = tik_inst.Tensor(x_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "y")
-    data_tiling = tik_inst.Tensor("int64", (TILING_MAX_SIZE_GM,), tik.scope_gm, "data_tiling")
+    data_tiling = tik_inst.Tensor("int64", (tiling_max_size_gm,), tik.scope_gm, "data_tiling")
     input_list = [data_in, size, stride, storage_offset]
     tensor_list = [data_in, size, stride, storage_offset, data_out, data_tiling]
     as_strided_instance = AsStrided(tik_inst, x_dtype, tensor_list)

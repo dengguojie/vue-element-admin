@@ -84,7 +84,7 @@ def hardtanh_grad_compute(input_result, input_grad, output_y, min_val=-1.0, max_
         sub_min = tmp_max
     mul_max_min = tbe.vmul(sub_max, sub_min)
 
-    add_inf = tbe.vadds(mul_max_min, tvm.const(inf_fp32_val , dtype="float32"))
+    add_inf = tbe.vadds(mul_max_min, tvm.const(inf_fp32_val, dtype="float32"))
     div_res = tbe.vdiv(mul_max_min, add_inf)
 
     if in_data_type == "float16":

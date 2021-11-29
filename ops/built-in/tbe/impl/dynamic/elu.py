@@ -55,8 +55,8 @@ def _elu_computer_performance(data, scalar_one_neg):
 
 # 'pylint: disable=invalid-name
 def _elu_computer_precision(data, dtype):
-    NUM_ZERO = 0.0
-    scalar_zero = tvm.const(NUM_ZERO, dtype)
+    num_zero = 0.0
+    scalar_zero = tvm.const(num_zero, dtype)
     negative_data = tbe.vmins(data, scalar_zero)
     positive_data = tbe.vmaxs(data, scalar_zero)
     return negative_data, positive_data
@@ -84,7 +84,7 @@ def elu_compute(x, y, alpha, kernel_name="elu"):
     Returns : A Tensor. Has the same type as data_input.
     -------
     """
-    NUM_ONE_NEG = -1.0
+    num_one_neg = -1.0
     data = x
     dtype = data.dtype
     has_improve_precision = False
@@ -96,7 +96,7 @@ def elu_compute(x, y, alpha, kernel_name="elu"):
     else:
         cvt_dtype = dtype
 
-    scalar_one_neg = tvm.const(NUM_ONE_NEG, cvt_dtype)
+    scalar_one_neg = tvm.const(num_one_neg, cvt_dtype)
 
     if not has_improve_precision and cvt_dtype == "float16":
         _negative_data, _positive_data = _elu_computer_performance(data, scalar_one_neg)

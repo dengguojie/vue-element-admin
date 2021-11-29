@@ -19,9 +19,10 @@ IFMR
 # 'pylint: disable=import-error
 from math import ceil
 from tbe import tik
-from impl.util.platform_adapter import para_check
 from tbe.common.platform.platform_info import get_bit_len
+from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
+
 
 # 'pylint: disable=locally-disabled,too-many-arguments
 # 'pylint: disable=too-many-branches, too-many-statements, too-many-locals, attribute-defined-outside-init
@@ -50,8 +51,8 @@ class Reconstruction():
         # variable. The name with suffix "size" represent the memory
         # space of variable. The name with suffix "repeat" represent
         # the number of repeat time when processing this variable.
-        SHAPE_SIZE_LIMIT = 2 ** 31 - 1
-        MAX_BINS = 8192
+        shape_size_limit = 2 ** 31 - 1
+        max_bins = 8192
         self.tik_instance = tik.Tik(tik.Dprofile())
         self.aicore_num = 30
         self.unified_buffer_size = tik.Dprofile().get_unified_buffer_size()
@@ -65,13 +66,13 @@ class Reconstruction():
         if len(cumsum_shape) != 1:
             raise ValueError('The shape of "input_cumsum" must be "(x,)"!')
         self.cumsum_num = cumsum_shape[0]
-        if cumsum_shape[0] > MAX_BINS:
+        if cumsum_shape[0] > max_bins:
             raise ValueError('Excessive amount of "input_cumsum"(more than 8192)!')
 
         # input&output global memory
         self.data_dtype = input_data.get('dtype')
         self.data_num = self.tik_instance.Tensor('int32', (1,), tik.scope_gm, 'data_num')
-        self.input_data = self.tik_instance.Tensor(self.data_dtype, (SHAPE_SIZE_LIMIT,), tik.scope_gm, 'input_data')
+        self.input_data = self.tik_instance.Tensor(self.data_dtype, (shape_size_limit,), tik.scope_gm, 'input_data')
         self.input_max = self.tik_instance.Tensor(self.data_dtype, (1,), tik.scope_gm, 'input_max')
         self.input_min = self.tik_instance.Tensor(self.data_dtype, (1,), tik.scope_gm, 'input_min')
         self.input_cumsum = self.tik_instance.Tensor('int32', cumsum_shape, tik.scope_gm, 'input_cumsum')
@@ -528,8 +529,8 @@ class Reconstruction():
 
     # 'pylint: disable=invalid-name
     def _reduce_and_output(self):
-        SCALAR_MAX_FP16 = (2 ** 16 - 1)
-        ESP = 1.192092896e-07
+        scalar_max_fp16 = (2 ** 16 - 1)
+        esp = 1.192092896e-07
         # sum of all loss
         total_loss = self.tik_instance.Tensor('float32', (self.loss_each_core,), tik.scope_ubuf, 'total_loss')
 
@@ -561,7 +562,7 @@ class Reconstruction():
 
         fp16_repeat_time = fp16_loss_each_core // fp16_8_block
         if fp16_repeat_time > 0:
-            self.tik_instance.vec_dup(fp16_8_block, total_loss_fp16, SCALAR_MAX_FP16, fp16_repeat_time, 8)
+            self.tik_instance.vec_dup(fp16_8_block, total_loss_fp16, scalar_max_fp16, fp16_repeat_time, 8)
 
         # conv fp32 to fp16
         # dynamic shape
@@ -623,7 +624,7 @@ class Reconstruction():
         self.tik_instance.vec_dup(1, scale_tensor, optimal_scale, 1, 8)
         # set scale to one if too small
         eps_scalar = self.tik_instance.Scalar('float32')
-        eps_scalar.set_as(ESP)
+        eps_scalar.set_as(esp)
         eps_tensor = self.tik_instance.Tensor('float32', (8,), tik.scope_ubuf, 'esp_scale')
         self.tik_instance.vec_dup(1, eps_tensor, eps_scalar, 1, 8)
         cmpmask = self.tik_instance.vcmp_le(8, scale_tensor, eps_tensor, 1, 1)

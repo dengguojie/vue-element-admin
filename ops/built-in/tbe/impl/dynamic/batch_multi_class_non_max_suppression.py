@@ -204,8 +204,8 @@ class BatchMultiClassNonMaxSuppression():
         init tik gm mem
         """
         # init gm input
-        MAX_BOXES_NUM = 10000
-        HALF_L1_UB_SIZE = 512 * 1024
+        max_boxes_num = 10000
+        half_l1_ub_size = 512 * 1024
         boxes_gm = self.tik_instance.Tensor(
             "float16", (Constant.MAX_INT32,), name="boxes_gm", scope=tik.scope_gm)
         scores_gm = self.tik_instance.Tensor(
@@ -279,10 +279,10 @@ class BatchMultiClassNonMaxSuppression():
                                                               is_workspace=True)
         # workspace for second nms
         if self.is_second_nms:
-            self.workspace_second_nms_gm = self.tik_instance.Tensor("float16", [self.aicore_num, MAX_BOXES_NUM + 128],
+            self.workspace_second_nms_gm = self.tik_instance.Tensor("float16", [self.aicore_num, max_boxes_num + 128],
                 name="workspace_second_nms_gm", scope=tik.scope_gm, is_workspace=True)
         if self.need_valid_num:
-            self.l1_score_valid = self.tik_instance.Tensor("float16", (HALF_L1_UB_SIZE,),
+            self.l1_score_valid = self.tik_instance.Tensor("float16", (half_l1_ub_size,),
                                                            name="l1_score_valid", scope=tik.scope_cbuf)
 
     def init_tik_ub_mem_for_nms(self):
@@ -300,7 +300,8 @@ class BatchMultiClassNonMaxSuppression():
         # else x2/y2 will do vadds -1 before nms and do vadds 1 after nms
         tiling_ub = self.tik_instance.Tensor(self.tiling_dtype, (Constant.TILING_ARG_NUM,),
                                              name='tiling_ub', scope=tik.scope_ubuf)
-        self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, Constant.SCALAR_TENSOR_SIZE // self.tiling_each_block, 0, 0)
+        self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, Constant.SCALAR_TENSOR_SIZE // \
+        self.tiling_each_block, 0, 0)
 
         self.boxes_num = self.tik_instance.Scalar(dtype='int32')
         self.boxes_num.set_as(tiling_ub[6])
@@ -346,7 +347,8 @@ class BatchMultiClassNonMaxSuppression():
         """
         tiling_ub = self.tik_instance.Tensor(
             self.tiling_dtype, (Constant.TILING_ARG_NUM,), name='tiling_ub', scope=tik.scope_ubuf)
-        self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, Constant.SCALAR_TENSOR_SIZE // self.tiling_each_block, 0, 0)
+        self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, Constant.SCALAR_TENSOR_SIZE // \
+        self.tiling_each_block, 0, 0)
         self.cal_mode = self.tik_instance.Scalar(dtype='int32')
         self.core_used = self.tik_instance.Scalar(dtype='int32')
         self.batch_per_core = self.tik_instance.Scalar(dtype='int32')
@@ -850,6 +852,7 @@ def tik_func_vcomple(tik_instance, function, out_dst, src0, src1, copy_num,
         tik_fun(repeat_tail, out_dst[ori_offset_dst], src0[ori_offset_src0], src1[ori_offset_src1],
                 1, dst_blk, src0_blk, src1_blk, dst_rep, src0_rep, src1_rep)
 
+
 # 'pylint: disable=unused-variable
 def tik_func_vcomple_scalar(
         tik_instance,
@@ -950,10 +953,10 @@ def do_nms_compute(tik_instance, nms_var_dict, thresh):
     temp_proposals_ub = tik_instance.Tensor(
         "float16", [Constant.BURST_PROPOSAL_NUM, 8], name="temp_proposals_ub", scope=tik.scope_ubuf)
     tik_instance.vector_dup(128, temp_proposals_ub[0], 0, 8, 1, 8)
-    temp_area_ub = tik_instance.Tensor("float16", [Constant.BURST_PROPOSAL_NUM], name="temp_area_ub", scope=tik.scope_ubuf)
-    temp_iou_ub = tik_instance.Tensor("float16", [ceil_div(total_output_proposal_num,
-                                                           Constant.RPN_PROPOSAL_NUM) * Constant.RPN_PROPOSAL_NUM + 128, 16],
-                                      name="temp_iou_ub", scope=tik.scope_ubuf)
+    temp_area_ub = tik_instance.Tensor("float16", [Constant.BURST_PROPOSAL_NUM], name="temp_area_ub", \
+    scope=tik.scope_ubuf)
+    temp_iou_ub = tik_instance.Tensor("float16", [ceil_div(total_output_proposal_num, Constant.RPN_PROPOSAL_NUM) * \
+    Constant.RPN_PROPOSAL_NUM + 128, 16], name="temp_iou_ub", scope=tik.scope_ubuf)
     temp_join_ub = tik_instance.Tensor("float16", [ceil_div(total_output_proposal_num, Constant.RPN_PROPOSAL_NUM)
                                                    * Constant.RPN_PROPOSAL_NUM + 128, 16],
                                        name="temp_join_ub", scope=tik.scope_ubuf)
@@ -976,7 +979,8 @@ def do_nms_compute(tik_instance, nms_var_dict, thresh):
         selected_ceil = tik_instance.Scalar(dtype="uint16")
         selected_ceil.set_as(ceil_div(selected_proposals_cnt, 16))
         # clear temp_sup_vec_ub
-        tik_instance.vector_dup(128, temp_sup_vec_ub[0], 1, temp_sup_vec_ub.shape[0] // Constant.BURST_PROPOSAL_NUM, 1, 8)
+        tik_instance.vector_dup(128, temp_sup_vec_ub[0], 1, temp_sup_vec_ub.shape[0] // \
+        Constant.BURST_PROPOSAL_NUM, 1, 8)
         temp_proposals_ub = ub_max_topk[burst_index * Constant.BURST_PROPOSAL_NUM * 8:]
         # calculate the area of reduced-proposal
         tik_instance.vrpac(temp_area_ub[0], temp_proposals_ub[0], handling_ceil)
@@ -1070,6 +1074,7 @@ def tik_func_vadds(tik_instance, dst_ub, src_ub, value, do_len):
         offset = offset + 128 * repeat
     if repeat_tail > 0:
         tik_instance.vadds(repeat_tail, dst_ub[offset], src_ub[offset], value, 1, 1, 1, 8, 8)
+
 
 # 'pylint: disable=unused-variable
 def tik_func_vadds_scalar(tik_instance, dst_ub, src_ub, value, do_len):
@@ -2092,7 +2097,7 @@ def batch_multi_class_non_max_suppression(
     -------
     tik_instance
     """
-    TILING_MODE_1 = 1
+    tiling_mode_1 = 1
     nms = BatchMultiClassNonMaxSuppression(boxes, scores, num_valid_boxes, clip_window, score_threshold, iou_threshold,
                                            max_size_per_class, max_total_size, change_coordinate_frame, impl_mode)
     # init ub
@@ -2137,7 +2142,7 @@ def batch_multi_class_non_max_suppression(
         with tik_instance.else_scope():
             cook.set_as(nms.batch_per_core)
         with tik_instance.if_scope(_core_idx < nms.core_used):
-            with tik_instance.if_scope(nms.cal_mode == TILING_MODE_1):
+            with tik_instance.if_scope(nms.cal_mode == tiling_mode_1):
                 with tik_instance.for_range(0, cook) as _batch_idx:
                     real_batch_idx.set_as(_core_idx * nms.batch_per_core + _batch_idx)
                     _run_one_core(real_batch_idx, _core_idx)

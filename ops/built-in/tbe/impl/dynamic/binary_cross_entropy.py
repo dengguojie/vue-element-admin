@@ -27,6 +27,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import tbe_context
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -131,6 +132,7 @@ def binary_cross_entropy_compute(x, y, weight, output, axis,
     result = tbe.cast_to(result, ori_dtype)
 
     return result
+
 
 # 'pylint: disable=too-many-statements
 @register_operator("BinaryCrossEntropy")

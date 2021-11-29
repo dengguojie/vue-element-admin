@@ -85,10 +85,12 @@ class DiagPart():
                                self.data_each_block)
 
         # make gm tensor
-        self.input_x_gm = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_INT64,), name="input_x_gm", scope=tik.scope_gm)
+        self.input_x_gm = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_INT64,), name="input_x_gm", \
+        scope=tik.scope_gm)
         self.output_gm = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_INT64,),
                                                   name="output_gm", scope=tik.scope_gm)
-        self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_gm", \
+        scope=tik.scope_gm)
 
     def _diag_part_compute_tiling(self):
         """
@@ -98,7 +100,8 @@ class DiagPart():
             tiling_each_core_line_num: line number of one each aicore need to compute except last aicore
             tiling_last_core_line_num: line number of one last aicore need to compute
         """
-        self.tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_ub", scope=tik.scope_ubuf)
+        self.tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_ub", \
+        scope=tik.scope_ubuf)
         self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 4, 0, 0)
         self.tiling_line_num.set_as(self.tiling_ub[0])
         self.tiling_act_core_num.set_as(self.tiling_ub[1])
@@ -207,9 +210,9 @@ class DiagPart():
         small_shape_scedule
         """
         # MAX BURST LEN
-        MAX_BURST_LEN = 65535
+        max_burst_len = 65535
         burst_len = util_tik_comm_func.ceil_div(self.tiling_line_num * self.tiling_line_num, self.data_each_block)
-        nburst = util_tik_comm_func.ceil_div(burst_len, MAX_BURST_LEN)
+        nburst = util_tik_comm_func.ceil_div(burst_len, max_burst_len)
         burst_len = util_tik_comm_func.ceil_div(burst_len, nburst)
         self.tik_instance.data_move(self.input_x_ub,
                                     self.input_x_gm,

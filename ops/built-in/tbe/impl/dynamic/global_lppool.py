@@ -25,9 +25,10 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import OpPatternMode
-from tbe.common.utils.errormgr import raise_err_input_dtype_not_supported
 from impl.dynamic.power import power_compute
 from impl.dynamic.reduce_sum_d import reduce_sum_d_compute
+from tbe.common.utils.errormgr import raise_err_input_dtype_not_supported
+
 
 # 'pylint: disable=too-many-locals,invalid-name
 @register_operator_compute("GlobalLpPool", op_mode="dynamic", support_fusion=True)

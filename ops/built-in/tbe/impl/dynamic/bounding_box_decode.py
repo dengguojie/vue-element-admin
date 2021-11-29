@@ -23,6 +23,7 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import error_manager_vector
 from impl import constant_util as constant
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -79,11 +80,11 @@ class BoundingBoxDecode(object):
         -------
         None
         """
-        MAX_UB_ELEMENT_NUMBER_FP16 = 8704
-        MAX_UB_ELEMENT_NUMBER_FP32 = 4608
-        BYTE_SIZE = 8
-        BLOCK_NUMBER_FP16 = 32
-        BLOCK_NUMBER_FP32 = 64
+        max_ub_element_number_fp16 = 8704
+        max_ub_element_number_fp32 = 4608
+        byte_size = 8
+        block_number_fp16 = 32
+        block_number_fp32 = 64
         self.tik_instance = tik.Tik()
 
         self.wh_ratio_clip = wh_ratio_clip
@@ -94,14 +95,14 @@ class BoundingBoxDecode(object):
         self.deltas_dtype = deltas.get("dtype").lower()
         self.kernel_name = kernel_name
 
-        self.rois_dtype_bytes_size = tbe_platform.get_bit_len(self.rois_dtype) // BYTE_SIZE
+        self.rois_dtype_bytes_size = tbe_platform.get_bit_len(self.rois_dtype) // byte_size
         self.rois_data_each_block = constant.BLOCK_SIZE // self.rois_dtype_bytes_size
         self.core_num = 32
-        self.each_repeat_block_number = BLOCK_NUMBER_FP16
-        self.ub_max_size = MAX_UB_ELEMENT_NUMBER_FP16
+        self.each_repeat_block_number = block_number_fp16
+        self.ub_max_size = max_ub_element_number_fp16
         if self.rois_dtype == "float32":
-            self.each_repeat_block_number = BLOCK_NUMBER_FP32
-            self.ub_max_size = MAX_UB_ELEMENT_NUMBER_FP32
+            self.each_repeat_block_number = block_number_fp32
+            self.ub_max_size = max_ub_element_number_fp32
 
         # init gm data
         self.rois_gm = self.tik_instance.Tensor(self.rois_dtype, [Constant.MAX_INT64],
@@ -778,7 +779,6 @@ class BoundingBoxDecode(object):
 
         return denorm_rois_dst_ub
 
-
     # 'pylint: disable=invalid-name
     def calculation_process(self, block_id):
         """
@@ -793,7 +793,7 @@ class BoundingBoxDecode(object):
         -------
         None
         """
-        THREAD_NUM = 2
+        thread_num = 2
         scalar_list = self.set_meanstds_scalar(self.means, self.stds)
         with self.tik_instance.if_scope(self.loop_cycle == 1):
             loop_input = block_id * self.each_core_start_address
@@ -809,7 +809,7 @@ class BoundingBoxDecode(object):
                                          denorm_rois_dst_ub)
         with self.tik_instance.else_scope():
             loop_input = block_id * self.each_core_start_address
-            with self.tik_instance.for_range(0, self.loop_cycle, thread_num=THREAD_NUM) as cycle:
+            with self.tik_instance.for_range(0, self.loop_cycle, thread_num=thread_num) as cycle:
                 loop_input = loop_input + cycle * self.start_block_addrss * self.rois_data_each_block
                 rois_src_ub, deltas_src_ub = self.data_move_mte2_function(
                     loop_input, self.block_number)

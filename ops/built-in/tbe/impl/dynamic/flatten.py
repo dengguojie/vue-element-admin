@@ -64,7 +64,7 @@ class Flatten:
         """Init flatten parameters
         """
         # reserved ub size
-        RESERVED_UB_SIZE = 8 * 1024
+        reserved_ub_size = 8 * 1024
         self.tik_instance = tik.Tik()
         self.src_dtype = src.get("dtype").lower()
         self.dst_dtype = dst.get("dtype").lower()
@@ -86,13 +86,14 @@ class Flatten:
 
         self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         self.data_len_one_block = 32 // self.dtype_size
-        self.ub_availble = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE
+        self.ub_availble = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - reserved_ub_size
         self.ub_max_data = self.ub_availble // self.dtype_size
         self.copy_segment = self.ub_max_data // 2
         self.copy_segment = (_get_ceil_int(self.copy_segment, self.data_len_one_block) - 1) * self.data_len_one_block
 
         # input and output tensor in gm
-        self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_gm",
+        scope=tik.scope_gm)
         self.src_gm = self.tik_instance.Tensor(self.src_dtype, (Constant.MAX_INT32,), name="src_gm", scope=tik.scope_gm)
         self.dst_gm = self.tik_instance.Tensor(self.dst_dtype, (Constant.MAX_INT32,), name="dst_gm", scope=tik.scope_gm)
         self.tiling_ub = None
@@ -136,7 +137,8 @@ class Flatten:
     def flatten_compute(self):
         """Flatten compute
         """
-        self.tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_ub", scope=tik.scope_ubuf)
+        self.tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_ub",
+        scope=tik.scope_ubuf)
         self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 2, 0, 0)
         self._tiling_args()
         # core process

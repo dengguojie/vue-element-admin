@@ -44,6 +44,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import error_manager_vector
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -52,6 +53,7 @@ class Constant:
     # scalar in asinh_grad
     NUM_TWO = 2
     NUM_ONE = 1
+
 
 def _cosh_taylor_compute(data):
     """
@@ -66,19 +68,19 @@ def _cosh_taylor_compute(data):
     A Tensor represents cosh(data). Has the same type as data.
     """
 
-    TAYLOR_SECOND = 0.5
-    TAYLOR_FOURTH = 1 / 24.0
-    TAYLOR_SIXTH = 1 / 720.0
+    taylor_second = 0.5
+    taylor_fourth = 1 / 24.0
+    taylor_sixth = 1 / 720.0
     # x^2 / 6!
     pow_2 = tbe.vmul(data, data)
-    pow_2_div = tbe.vmuls(pow_2, tvm.const(TAYLOR_SIXTH, data.dtype))
+    pow_2_div = tbe.vmuls(pow_2, tvm.const(taylor_sixth, data.dtype))
 
     # 1/4! + x^2 / 6!
-    pow_2_plus = tbe.vadds(pow_2_div, tvm.const(TAYLOR_FOURTH, data.dtype))
+    pow_2_plus = tbe.vadds(pow_2_div, tvm.const(taylor_fourth, data.dtype))
 
     # 1/2! + x^2( 1/4! + x^2/6!)
     pow_4 = tbe.vmul(pow_2_plus, pow_2)
-    pow_4_plus = tbe.vadds(pow_4, tvm.const(TAYLOR_SECOND, data.dtype))
+    pow_4_plus = tbe.vadds(pow_4, tvm.const(taylor_second, data.dtype))
 
     # 1 + x^2( 1/2! + x^2( 1/4! + x^2/6!))
     pow_6 = tbe.vmul(pow_4_plus, pow_2)
@@ -100,10 +102,10 @@ def _cosh_repeat(data):
     A Tensor represents f(2x). Has the same type as data.
     """
 
-    NUM_MINUS_ONE = -1
+    num_minus_one = -1
     data_square = tbe.vmul(data, data)
     data_mul = tbe.vmuls(data_square, tvm.const(Constant.NUM_TWO, data.dtype))
-    res = tbe.vadds(data_mul, tvm.const(NUM_MINUS_ONE, data.dtype))
+    res = tbe.vadds(data_mul, tvm.const(num_minus_one, data.dtype))
 
     return res
 
@@ -129,7 +131,7 @@ def asinh_grad_compute(y, dy, output_res, kernel_name="cce_asinh_grad"):
     dy * (1/cosh(y))
     """
 
-    NUM_REPEAT = 0.125
+    num_repeat = 0.125
     dtype = y.dtype
     if dtype == "float16" and \
             tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):
@@ -148,7 +150,7 @@ def asinh_grad_compute(y, dy, output_res, kernel_name="cce_asinh_grad"):
         res = tbe.vdiv(data_dy1, res)
     else:
         # use taylor's method for high accuracy result
-        y = tbe.vmuls(y, tvm.const(NUM_REPEAT, y.dtype))
+        y = tbe.vmuls(y, tvm.const(num_repeat, y.dtype))
         cosh_value_0 = _cosh_taylor_compute(y)
         # repeat 3 times
         cosh_value_1 = _cosh_repeat(cosh_value_0)

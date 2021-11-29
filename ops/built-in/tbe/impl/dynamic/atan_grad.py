@@ -43,8 +43,6 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
 
-
-
 # 'pylint: disable=unused-argument,invalid-name,too-many-locals
 def atan_grad_compute(y, dy, z, kernel_name="atan_grad"):
     """
@@ -66,8 +64,8 @@ def atan_grad_compute(y, dy, z, kernel_name="atan_grad"):
     result res
     """
 
-    CONST_ONE = 1
-    scalar_one = tvm.const(CONST_ONE, "float32")
+    const_one = 1
+    scalar_one = tvm.const(const_one, "float32")
     dtype = y.dtype
 
     if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.vadd", "float32"):

@@ -27,6 +27,7 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -36,6 +37,7 @@ class Constant:
     MAX_INT32 = 2**31 - 1
     # tiling param num
     TILING_ARG_NUM = 32
+
 
 # 'pylint: disable=unused-argument,invalid-name
 def get_op_support_info(x, block_shape, crops, y, kernel_name="batch_to_space_nd"):
@@ -52,6 +54,7 @@ def get_op_support_info(x, block_shape, crops, y, kernel_name="batch_to_space_nd
 
 
 # 'pylint: disable=invalid-name,unused-argument,too-many-locals,unnecessary-pass,too-many-return-statements
+# 'pylint: disable=too-many-boolean-expressions
 def check_supported(x, block_shape, crops, y, kernel_name="batch_to_space_nd"):
     """
     check supported dynamiclly. \n
@@ -103,7 +106,7 @@ def op_select_format(x, block_shape, crops, y, kernel_name="batch_to_space_nd"):
 
         `for example:`
             ori:
-                x              shape = [16,16,16,16]           format = 'NHWC'
+                `x              shape = [16,16,16,16]           format = 'NHWC'`
                 block_shape    shape = [2,]                    format = 'ND'
                 crops          shape = [2,2]                   format = 'ND'
                 y              shape = [None,None,None,16]     format = 'NHWC'
@@ -181,19 +184,19 @@ class BatchToSpaceND:
     def __init__(self, dtype, block_size, kernel_name):
         """Init batch_to_space_nd parameters
         """
-        RESERVED_UB_SIZE = 8 * 1024
-        EIGHT_BIT = 8
-        BLOCK_BYTES = 32
+        reserved_ub_size = 8 * 1024
+        eight_bit = 8
+        block_bytes = 32
         self.dtype = dtype
         # zero means batch_to_space_nd; not zeros means batch_to_space
         self.block_size = block_size
         self.kernel_name = kernel_name
         self.tik_instance = tik.Tik()
         self.core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.dtype_size = tbe_platform.get_bit_len(self.dtype) // EIGHT_BIT
-        self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE
+        self.dtype_size = tbe_platform.get_bit_len(self.dtype) // eight_bit
+        self.ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - reserved_ub_size
         self.ub_ele = self.ub_size // self.dtype_size
-        self.blk_ele = BLOCK_BYTES // self.dtype_size
+        self.blk_ele = block_bytes // self.dtype_size
         self.init_gm_tensor()
 
     def tiling_args(self):
@@ -254,7 +257,8 @@ class BatchToSpaceND:
         self.input_gm = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,), name="input_gm", scope=tik.scope_gm)
         self.block_gm = self.tik_instance.Tensor("int32", (Constant.MAX_INT32,), name="block_shape", scope=tik.scope_gm)
         self.crops_gm = self.tik_instance.Tensor("int32", (Constant.MAX_INT32,), name="crops", scope=tik.scope_gm)
-        self.output_gm = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,), name="output_gm", scope=tik.scope_gm)
+        self.output_gm = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,), name="output_gm", \
+        scope=tik.scope_gm)
 
     # function for 5hd
     def run_block_h_5hd(self, ub_a, ub_b, core_idx, ele_idx, idx_bh):
@@ -391,7 +395,7 @@ class BatchToSpaceND:
                     offset_gm_in = (idx_bh * self.block_w + idx_bw) * self.output_b * self.channel_one * \
                                    self.input_h * self.input_w * self.channel_zero + \
                                    (idx_ob * self.channel_one + idx_c1) * self.input_h * self.input_w * \
-                                   self.channel_zero +(core_idx * self.one_core_ele + ele_idx) * self.input_w * \
+                                   self.channel_zero + (core_idx * self.one_core_ele + ele_idx) * self.input_w * \
                                    self.channel_zero
                     offset_ub_in = idx_bw * self.input_w * self.channel_zero
                     self.tik_instance.data_move(ub_a[offset_ub_in], self.input_gm[offset_gm_in], 0, 1,

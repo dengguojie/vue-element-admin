@@ -25,6 +25,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
+
 # 'pylint: disable=unused-variable,unused-argument,invalid-name
 @register_operator_compute("AxpyV2", op_mode="dynamic", support_fusion=True)
 def axpy_v2_compute(x1, x2, alpha, y, kernel_name="axpy_v2"):
@@ -81,6 +82,7 @@ def axpy_v2_compute(x1, x2, alpha, y, kernel_name="axpy_v2"):
     if dtype == "int32":
         res = tbe.cast_to(res, dtype)
     return res
+
 
 # 'pylint: disable=too-many-locals,invalid-name
 @register_operator("AxpyV2")

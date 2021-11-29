@@ -26,7 +26,6 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-
 #'pylint: disable=unused-argument,too-many-locals,too-many-statements,too-many-arguments,invalid-name
 @register_operator_compute("IndexFillD", op_mode="dynamic", support_fusion=True)
 def index_fill_d_compute(x, assist1, assist2):

@@ -85,10 +85,12 @@ class Diag():
                                self.data_each_block)
 
         #make gm tensor
-        self.input_x_gm = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_INT64,), name="input_x_gm", scope=tik.scope_gm)
+        self.input_x_gm = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_INT64,), name="input_x_gm", \
+        scope=tik.scope_gm)
         self.output_gm = self.tik_instance.Tensor(self.dtype_x, (Constant.MAX_INT64,),
                                                   name="output_gm", scope=tik.scope_gm, is_atomic_add=True)
-        self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_gm", scope=tik.scope_gm)
+        self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_gm", \
+        scope=tik.scope_gm)
 
     def diag_compute_tiling(self):
         """
@@ -98,7 +100,8 @@ class Diag():
             tiling_each_core_num: number of one each aicore need to compute except last aicore
             tiling_last_core_num: number of one last aicore need to compute
         """
-        self.tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_ub", scope=tik.scope_ubuf)
+        self.tiling_ub = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="tiling_ub", \
+        scope=tik.scope_ubuf)
         self.tik_instance.data_move(self.tiling_ub, self.tiling_gm, 0, 1, 4, 0, 0)
         self.tiling_input_num.set_as(self.tiling_ub[0])
         self.tiling_act_core_num.set_as(self.tiling_ub[1])
@@ -114,12 +117,12 @@ class Diag():
             assist_data[i][i] = 1
         self.assist_gm = self.tik_instance.Tensor(self.dtype_x, (Constant.NUM_64, Constant.NUM_64), name="assist_gm",
                                                   scope=tik.scope_gm, init_value=assist_data)
-    
-    def ceil(self, data_A, data_B):
+
+    def ceil(self, data_a, data_b):
         """
         func ceil
         """
-        res = (data_A + data_B - 1) // data_B
+        res = (data_a + data_b - 1) // data_b
         return res
 
     def core_scedule_args(self, core_idx):

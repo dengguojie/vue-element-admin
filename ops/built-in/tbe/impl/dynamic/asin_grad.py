@@ -43,8 +43,6 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import error_manager_vector
 
 
-
-
 # 'pylint: disable=unused-argument,invalid-name,too-many-locals
 def asin_grad_compute(y, dy, z, kernel_name="asin_grad"):
     """
@@ -65,8 +63,8 @@ def asin_grad_compute(y, dy, z, kernel_name="asin_grad"):
     """
 
     # scalar in asin_grad and Newton's equation
-    NUM_MINUS_ONE = -1
-    NUM_ONE = 1
+    num_minus_one = -1
+    num_one = 1
     dtype = y.dtype
     if dtype == "float16" and tbe_platform.api_check_support("tbe.dsl.vadd", "float32"):
         y = tbe.cast_to(y, "float32")
@@ -74,8 +72,8 @@ def asin_grad_compute(y, dy, z, kernel_name="asin_grad"):
 
     # `step 1: calculate num_to_vrsqrt = 1 - y^2`
     data = tbe.vmul(y, y)
-    data = tbe.vmuls(data, tvm.const(NUM_MINUS_ONE, y.dtype))
-    num_to_vrsqrt = tbe.vadds(data, tvm.const(NUM_ONE, y.dtype))
+    data = tbe.vmuls(data, tvm.const(num_minus_one, y.dtype))
+    num_to_vrsqrt = tbe.vadds(data, tvm.const(num_one, y.dtype))
 
     # step 2: calculate dy * (1 / sqrt(1 - y^2))
     vsqrt_res = tbe.vsqrt(num_to_vrsqrt, 1)

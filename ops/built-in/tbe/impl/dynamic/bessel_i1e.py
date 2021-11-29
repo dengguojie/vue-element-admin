@@ -41,6 +41,7 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util import util_compute
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -56,6 +57,7 @@ class Constant:
     LEN_BEFORE = 7
     LEN_AFTER = 9
     CONST_LIMIT = 15.0 / 4
+
 
 def _before_res_compute(abs_data, const_limit):
     """

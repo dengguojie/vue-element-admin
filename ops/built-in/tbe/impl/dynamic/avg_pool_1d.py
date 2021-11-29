@@ -27,6 +27,7 @@ from impl.util.platform_adapter import buildcfg
 from tbe.tvm.cce_build_module import build_fatbin
 from tbe.tvm.build_module import build_config
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """

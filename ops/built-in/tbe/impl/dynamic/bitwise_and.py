@@ -111,6 +111,7 @@ def _pre_broadcast(x1, x2, y, kernel_name):
 
     return x1, x2, dtype_x
 
+
 # 'pylint: disable=too-many-locals
 @register_operator("BitwiseAnd")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,

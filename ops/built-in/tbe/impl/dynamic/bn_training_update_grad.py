@@ -18,19 +18,15 @@ bn_training_update_grad
 
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
-from tbe.common.utils import shape_util
-from tbe.common.utils.errormgr import error_manager_vector
-from tbe.dsl.base.operation import get_context
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import operation
 from impl.util.platform_adapter import tuple_sum
 from impl.util.platform_adapter import para_check
+from tbe.common.utils import shape_util
+from tbe.common.utils.errormgr import error_manager_vector
+from tbe.dsl.base.operation import get_context
 from tbe.dsl.base.operation import add_compile_info
-
-
-SCALAR_ONE = 1
-DYNAMIC_DIM = -1
 
 
 def _check_format_nd(data_format, origin_foramt):
@@ -98,6 +94,7 @@ def bn_training_update_grad_compute(grads, x, batch_mean, batch_variance,
     res_list: list
        [diff_scale, diff_offset].
    """
+    scalar_one = 1
     shape_x = shape_util.shape_to_list(x.shape)
     axis = [0, 2, 3]
 
@@ -114,7 +111,7 @@ def bn_training_update_grad_compute(grads, x, batch_mean, batch_variance,
     data_adds = tbe.vadds(batch_variance, epsilon)
     data_rsqrt = tbe.vsqrt(data_adds)
     shape_var = shape_util.shape_to_list(batch_variance.shape)
-    data_cast = tbe.broadcast(tvm.const(SCALAR_ONE, "float32"), shape_var)
+    data_cast = tbe.broadcast(tvm.const(scalar_one, "float32"), shape_var)
     data_rsqrts = tbe.vdiv(data_cast, data_rsqrt)
     rsqrts_broadcast = tbe.broadcast(data_rsqrts, shape_x)
     x_norm = tbe.vmul(x_sub, rsqrts_broadcast)
@@ -160,6 +157,7 @@ def bn_training_update_grad(grads, x, batch_mean, batch_variance,
     None
     """
 
+    dynamic_dim = -1
     shape_grads = grads.get("shape")
     shape_x = x.get("shape")
     shape_batch_mean = batch_mean.get("shape")
@@ -201,10 +199,10 @@ def bn_training_update_grad(grads, x, batch_mean, batch_variance,
             {'shape': shape_batch_variance, 'range': range_batch_variance, 'const_shape': shape_batch_variance}
             ]]
 
-    for (grads, x, batch_mean, batch_variance) in ins:
+    for (_, _, _, _) in ins:
         with tbe.compute():
 
-            if DYNAMIC_DIM in shape_x:
+            if dynamic_dim in shape_x:
                 mode = para_check.ORIGINAL
                 dim_0_0 = operation.var("dim_0_0", range_grads[0])
                 dim_0_1 = operation.var("dim_0_1", range_grads[1])

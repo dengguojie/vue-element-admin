@@ -15,20 +15,20 @@
 """
 atanh
 
-  Op_description :
-    Computes inverse hyperbolic tangent of x element-wise
+Op_description :
+Computes inverse hyperbolic tangent of x element-wise
 
-    # atanh(
-    #   x,
-    #   y,
-    #   kernel_name="atanh_cce")
+# atanh(
+#   x,
+#   y,
+#   kernel_name="atanh_cce")
 
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
+Supportive_dtype_format :
+['float16', 'float32']
+['ALL']
 
-  Constraint :
-    [1] All : shape size limit is 2147483648.
+Constraint :
+[1] All : shape size limit is 2147483648.
 """
 import functools
 from impl.util.platform_adapter import tbe
@@ -92,15 +92,15 @@ def _compute(data_input, shape):
     """
 
     # const value
-    CONST_HALF = 0.5
-    CONST_ONE = 1
-    CONST_NEG_ONE = -1
-    data_1_sum_x = tbe.vadds(data_input, tvm.const(CONST_ONE, data_input.dtype))
-    data_sub_x = tbe.vmuls(data_input, tvm.const(CONST_NEG_ONE, data_input.dtype))
-    data_1_sub_x = tbe.vadds(data_sub_x, tvm.const(CONST_ONE, data_input.dtype))
+    const_half = 0.5
+    const_one = 1
+    const_neg_one = -1
+    data_1_sum_x = tbe.vadds(data_input, tvm.const(const_one, data_input.dtype))
+    data_sub_x = tbe.vmuls(data_input, tvm.const(const_neg_one, data_input.dtype))
+    data_1_sub_x = tbe.vadds(data_sub_x, tvm.const(const_one, data_input.dtype))
     data_x_mul = tbe.vdiv(data_1_sum_x, data_1_sub_x)
     data_x_log = tbe.vlog(data_x_mul, 1)
-    data_res = tbe.vmuls(data_x_log, tvm.const(CONST_HALF, data_input.dtype))
+    data_res = tbe.vmuls(data_x_log, tvm.const(const_half, data_input.dtype))
 
     return data_res
 

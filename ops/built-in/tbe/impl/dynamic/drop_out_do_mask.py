@@ -23,6 +23,7 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -43,9 +44,9 @@ class DropOutDoMask:
 
     def __init__(self, var, mask, keep_prob, var_out, kernel_name):
         # reserved ub size
-        RESERVED_UB_SIZE = 8 * 1024
+        reserved_ub_size = 8 * 1024
         # MAX REPEAT NUM
-        MAX_REPEAT_NUM = 254
+        max_repeat_num = 254
         self.tik_instance = tik.Tik(tik.Dprofile)
         self.var_dtype = var.get("dtype").lower()
         self.mask_dtype = mask.get("dtype").lower()
@@ -60,14 +61,14 @@ class DropOutDoMask:
                                                                   self.keep_prob_dtype, self.var_dtype)
         self.kernel_name = kernel_name
         self.ai_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        self.ub_size_bytes = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - RESERVED_UB_SIZE)
+        self.ub_size_bytes = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - reserved_ub_size)
         self.elememts_vector_fp16 = tbe_platform.ELEMENTS_VECTOR_OP_FP16
 
         self.mask_pre_core = 16 if self.var_dtype == "float16" else 8
         self.mask_value = 128 if self.var_dtype == "float16" else 64
         self.block_num = 16 if self.var_dtype == "float16" else 8
         self.vcetor_num = self.block_num * 8
-        self.max_process_num = MAX_REPEAT_NUM * self.vcetor_num
+        self.max_process_num = max_repeat_num * self.vcetor_num
         self.tiling_gm = self.tik_instance.Tensor("int64", (Constant.TILING_ARG_NUM,), name="ting_gm", \
         scope=tik.scope_gm)
         self.var_gm = self.tik_instance.Tensor(self.var_dtype, (Constant.MAX_INT32,), name="var_gm", scope=tik.scope_gm)

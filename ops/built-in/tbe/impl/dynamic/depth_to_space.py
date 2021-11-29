@@ -81,10 +81,10 @@ def depth_to_space(x, y, block_size, mode='DCR', data_format='NHWC', kernel_name
     -------
     tik_instance: tik_instance
     """
-    CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-    UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-    BLOCK_SIZE = 32
-    TILING_MAX_SIZE_GM = 2048  # 16KB
+    core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+    ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+    block_size_1 = 32
+    tiling_max_size_gm = 2048  # 16KB
     input_shape = x.get("shape")
     input_dtype = x.get("dtype").lower()
     para_check.check_shape(input_shape, param_name="x")
@@ -99,14 +99,14 @@ def depth_to_space(x, y, block_size, mode='DCR', data_format='NHWC', kernel_name
     data_in = tik_inst.Tensor(input_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "data_in")
     data_out = tik_inst.Tensor(input_dtype, (Constant.MAX_INT64_VALUE,), tik.scope_gm, "data_out")
     data_workspace = tik_inst.Tensor(input_dtype, (1024,), tik.scope_gm, "data_workspace", is_workspace=True)
-    data_tiling = tik_inst.Tensor("int64", (TILING_MAX_SIZE_GM,), tik.scope_gm, "data_tiling")
+    data_tiling = tik_inst.Tensor("int64", (tiling_max_size_gm,), tik.scope_gm, "data_tiling")
     tensor_list = [data_in, None, data_out, data_workspace, data_tiling]
     obj = Transpose(tik_inst, input_dtype, tensor_list, kernel_name)
     obj.compute_tiling()
 
     tbe_context.get_context().add_compile_info("vars", {
-        "ub_size": UB_SIZE // BLOCK_SIZE,
-        "core_num": CORE_NUM,
+        "ub_size": ub_size // block_size_1,
+        "core_num": core_num,
         "dtype": input_dtype,
         "block_size": block_size,
         "mode": mode,

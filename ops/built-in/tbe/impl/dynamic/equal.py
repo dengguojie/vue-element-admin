@@ -48,18 +48,18 @@ def equal_compute(input_x, input_y, output_z, kernel_name="equal"):
     res: TVM tensor
         the result of compute
     """
-    # define a scalar, value = 2**(-126), minimun num of float32 2**(-126)
-    SCALAR_MIN_FP32 = 2 ** (-126)
-    # 'define a scalar, value = 2**(50)'
-    SCALAR_MUL_FP32 = 2 ** 50
-    # 'define a scalar, value = 2**(26)'
-    SCALAR_MUL2_FP32 = 2 ** 26
-    # define a scalar, value = 2**(-24), minimun num of float16 2**(-24)
-    SCALAR_MIN_FP16 = 2 ** (-24)
-    # 'define a scalar, value = 2**(12)'
-    SCALAR_MUL_FP16 = 2 ** 12
-    # 'define a scalar, value = 1'
-    SCALAR_ONE = 1
+    # `define a scalar, value = 2**(-126), minimun num of float32 2**(-126)`
+    scalar_min_fp32 = 2 ** (-126)
+    # `define a scalar, value = 2**(50)`
+    scalar_mul_fp32 = 2 ** 50
+    # `define a scalar, value = 2**(26)`
+    scalar_mul2_fp32 = 2 ** 26
+    # `define a scalar, value = 2**(-24), minimun num of float16 2**(-24)`
+    scalar_min_fp16 = 2 ** (-24)
+    # `define a scalar, value = 2**(12)`
+    scalar_mul_fp16 = 2 ** 12
+    # `define a scalar, value = 1`
+    scalar_one_value = 1
 
     dtype_x = input_x.dtype
     shape_x = shape_util.shape_to_list(input_x.shape)
@@ -69,14 +69,14 @@ def equal_compute(input_x, input_y, output_z, kernel_name="equal"):
                                                                 param_name_input2="input_y")
 
     if dtype_x == "float32":
-        scalar_min = tvm.const(SCALAR_MIN_FP32, dtype="float32")
-        scalar_mul = tvm.const(SCALAR_MUL_FP32, dtype="float32")
-        scalar_mul1 = tvm.const(SCALAR_MUL2_FP32, dtype="float32")
-        scalar_one = tvm.const(-1 * SCALAR_ONE, dtype="float32")
+        scalar_min = tvm.const(scalar_min_fp32, dtype="float32")
+        scalar_mul = tvm.const(scalar_mul_fp32, dtype="float32")
+        scalar_mul1 = tvm.const(scalar_mul2_fp32, dtype="float32")
+        scalar_one = tvm.const(-1 * scalar_one_value, dtype="float32")
     else:
-        scalar_min = tvm.const(SCALAR_MIN_FP16, dtype="float16")
-        scalar_mul = tvm.const(SCALAR_MUL_FP16, dtype="float16")
-        scalar_one = tvm.const(-1 * SCALAR_ONE, dtype="float16")
+        scalar_min = tvm.const(scalar_min_fp16, dtype="float16")
+        scalar_mul = tvm.const(scalar_mul_fp16, dtype="float16")
+        scalar_one = tvm.const(-1 * scalar_one_value, dtype="float16")
 
     if dtype_x in ("int8", "uint8"):
         input_x = tbe.cast_to(input_x, "float16")

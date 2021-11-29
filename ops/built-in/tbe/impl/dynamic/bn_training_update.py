@@ -16,18 +16,18 @@
 dynamic bn_training_update
 """
 from impl.util.platform_adapter import tbe
+from impl.util.platform_adapter import register_operator_compute
+from impl.util.platform_adapter import classify
+from impl.util.platform_adapter import OpPatternMode
+from impl.util.util_select_op_base import SplitInput
+from impl.util.util_select_op_base import SplitOutput
+from impl.util.util_select_op_base import get_op_cal_info
 from tbe import tvm
 from tbe.common.utils import para_check
 from tbe.common.utils import shape_util
 from tbe.common.utils.errormgr import error_manager_vector
-from impl.util.util_select_op_base import SplitInput
-from impl.util.util_select_op_base import SplitOutput
-from impl.util.util_select_op_base import get_op_cal_info
 from tbe.dsl.base.operation import add_compile_info
-from impl.util.platform_adapter import register_operator_compute
 from tbe.dsl.base.operation import var
-from impl.util.platform_adapter import classify
-from impl.util.platform_adapter import OpPatternMode
 
 
 # 'pylint: disable=too-many-branches,too-many-arguments,too-many-locals,invalid-name,unused-argument
@@ -289,13 +289,14 @@ def bn_training_update_compute(x,
     return res
 
 
+# 'pylint: disable=too-many-nested-blocks
 def _refine_ins_list(ins_list):
-    for i in range(len(ins_list)):
+    for index, ins_list_value in enumerate(ins_list):
         shape_range = []
-        for dim, dim_val in enumerate(ins_list[i]["shape"]):
+        for dim, dim_val in enumerate(ins_list[index]["shape"]):
             if dim_val == -1:
-                if "range" in ins_list[i]:
-                    range_bottom, range_top = ins_list[i]["range"][dim]
+                if "range" in ins_list_value:
+                    range_bottom, range_top = ins_list[index]["range"][dim]
                     if range_bottom <= 1:
                         if range_top is not None and range_top <= 1:
                             range_top = 2
@@ -306,8 +307,9 @@ def _refine_ins_list(ins_list):
                     shape_range.append((2, None))
             else:
                 shape_range.append((dim_val, dim_val))
-        ins_list[i]["range"] = tuple(shape_range)
+        ins_list[index]["range"] = tuple(shape_range)
     return ins_list
+
 
 # 'pylint: disable=too-many-statements,too-many-arguments,too-many-locals,invalid-name,unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
@@ -396,7 +398,7 @@ def bn_training_update(x,
 
     _check_dtype(dtype_x, dtype_sum, dtype_square_sum, dtype_scale, dtype_offset, dtype_mean, dtype_variance)
     _check_shape(shape_x, shape_sum, shape_square_sum, shape_scale, shape_offset, shape_mean, shape_variance, format_x)
-
+    
     if format_x == "NDC1HWC0":
         shape_x = [shape_x[0] * shape_x[1], shape_x[2], shape_x[3], shape_x[4], shape_x[5]]
         shape_sum = [shape_sum[0] * shape_sum[1], shape_sum[2], shape_sum[3], shape_sum[4], shape_sum[5]]

@@ -43,6 +43,7 @@ from impl.util.platform_adapter import classify
 from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -76,12 +77,12 @@ def _do_taylor(input_data):
 
     """
 
-    CONST_PI_BY_EIGHT = 0.39269908169872415480783042290994
-    TAN_PI_BY_EIGHT = 0.4142135623730950
-    TAN_PI_BY_EIGHT_NA = -0.4142135623730950
-    denominator_data = tbe.vmuls(input_data, TAN_PI_BY_EIGHT)
+    const_pi_by_eight = 0.39269908169872415480783042290994
+    tan_pi_by_eight = 0.4142135623730950
+    tan_pi_by_eight_na = -0.4142135623730950
+    denominator_data = tbe.vmuls(input_data, tan_pi_by_eight)
     denominator_data = tbe.vadds(denominator_data, Constant.CONST_POS_ONE)
-    molecule = tbe.vadds(input_data, TAN_PI_BY_EIGHT_NA)
+    molecule = tbe.vadds(input_data, tan_pi_by_eight_na)
     data = tbe.vdiv(molecule, denominator_data)
     data = tbe.vabs(data)
 
@@ -92,7 +93,7 @@ def _do_taylor(input_data):
         res = tbe.vmul(res, square_data)
         res = tbe.vadds(res, Constant.TAYLOR[i])
     res = tbe.vmul(res, data)
-    res = tbe.vadds(res, CONST_PI_BY_EIGHT)
+    res = tbe.vadds(res, const_pi_by_eight)
 
     square_data = tbe.vmul(input_data, input_data)
     res2 = tbe.vmuls(square_data, Constant.TAYLOR[Constant.CONST_ITERTOR2])
@@ -123,7 +124,7 @@ def _atan_compute(input_x):
 
     """
 
-    CONST_PI_BY_FOUR = 0.78539816339744830961566084581988
+    const_pi_by_four = 0.78539816339744830961566084581988
     shape = input_x.shape
     dtype = input_x.dtype
     if dtype == "float16" and \
@@ -142,7 +143,7 @@ def _atan_compute(input_x):
     res = _do_taylor(abs_data)
     # calucate data more than one
     res_mt_one = _do_taylor(abs_data2)
-    res_mt_one = tbe.vadds(res_mt_one, CONST_PI_BY_FOUR)
+    res_mt_one = tbe.vadds(res_mt_one, const_pi_by_four)
 
     res = tbe.vmin(res, res_mt_one)
 
@@ -171,13 +172,13 @@ def _init_atan2_mask(data_y, data_x):
 
     """
 
-    CONST_NA_ONE = -1.0
+    const_na_one = -1.0
     shape_input = data_y.shape
     dtype_input = data_y.dtype
 
     tensor_one = tbe.broadcast(tvm.const(Constant.CONST_POS_ONE, dtype_input), shape_input)
     tensor_zero = tbe.broadcast(tvm.const(Constant.CONST_ZERO, dtype_input), shape_input)
-    tensor_na_one = tbe.vmuls(tensor_one, tvm.const(CONST_NA_ONE, dtype_input))
+    tensor_na_one = tbe.vmuls(tensor_one, tvm.const(const_na_one, dtype_input))
 
     y_me_zero = tbe.vcmpsel(data_y, tensor_zero, 'ge', tensor_one, tensor_na_one)
     x_lt_zero_y_mask = tbe.vcmpsel(data_x, tensor_zero, 'lt', y_me_zero, tensor_zero)
@@ -188,7 +189,7 @@ def _init_atan2_mask(data_y, data_x):
     return mask
 
 
-# 'pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
 def atan2_compute(y, x, output_dict, kernel_name="atan2"):
     """
     Algorithm: atan2
@@ -207,9 +208,9 @@ def atan2_compute(y, x, output_dict, kernel_name="atan2"):
 
     """
 
-    CONST_PI = 3.1415926535897932384626433832795
-    CONST_PI_BY_TWO = 1.5707963267948966192313216916398
-    CONST_ONE = 1
+    const_pi = 3.1415926535897932384626433832795
+    const_pi_by_two = 1.5707963267948966192313216916398
+    const_one = 1
     shape_y = y.shape
     dtype_y = y.dtype
     shape_x = x.shape
@@ -234,8 +235,8 @@ def atan2_compute(y, x, output_dict, kernel_name="atan2"):
     res = tbe.vdiv(y, x)
     res = _atan_compute(res)
 
-    y_cmp_zero = tbe.vmuls(mask[CONST_ONE], tvm.const(CONST_PI_BY_TWO, y.dtype))
-    res_x_lt_zero = tbe.vmuls(mask[Constant.CONST_ZERO], tvm.const(CONST_PI, y.dtype))
+    y_cmp_zero = tbe.vmuls(mask[const_one], tvm.const(const_pi_by_two, y.dtype))
+    res_x_lt_zero = tbe.vmuls(mask[Constant.CONST_ZERO], tvm.const(const_pi, y.dtype))
 
     if x.dtype == res.dtype and \
             tbe_platform.api_check_support("te.lang.cce.vcmpsel", x.dtype):
@@ -252,6 +253,7 @@ def atan2_compute(y, x, output_dict, kernel_name="atan2"):
     return res
 
 
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
 @register_operator("Atan2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,

@@ -34,7 +34,7 @@ class Constant:
     """
     The class for constant
     """
-    MAX_INT64_VALUE = 2 ** 64 -1
+    MAX_INT64_VALUE = 2 ** 64 - 1
     TILING_ARG_NUM = 8
     RESERVED_UB_SIZE = 8 * 1024
     EIGHT_BIT = 8
@@ -95,8 +95,8 @@ def get_op_support_info(var, indices, updates, var_out, axis, kernel_name="index
     return op_cal_info_in_json
 
 
-# 'pylint: disable=too-many-arguments,too-many-instance-attributes,too-many-methods,too-many-public-methods
-# 'pylint: disable=invalid-name,bad-continuation,attribute-defined-outside-init,unused-argument
+# 'pylint: disable=too-many-arguments,too-many-instance-attributes,too-many-public-methods
+# 'pylint: disable=invalid-name,attribute-defined-outside-init,unused-argument
 class InplaceIndexAdd():
     """
        Function: use to store scatter base parameters
@@ -157,7 +157,7 @@ class InplaceIndexAdd():
                                                    name="var_out_gm", scope=tik.scope_gm)
 
         # decide the mask of computation
-        self.max_num_one_repeat = Constant.ONE_VECTOR_CALC_SIZE // Constant.TYPE_BYTES_MAP[self.var_dtype]
+        self.max_num_one_repeat = Constant.ONE_VECTOR_CALC_SIZE // Constant.TYPE_BYTES_MAP.get(self.var_dtype)
 
         # init some variable
         self.init_variable()

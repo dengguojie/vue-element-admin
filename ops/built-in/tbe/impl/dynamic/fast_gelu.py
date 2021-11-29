@@ -47,7 +47,7 @@ def fast_gelu_compute(input_x, output_y, kernel_name="fast_gelu", impl_mode=OpIm
      A TVM tensor same as input placeholders.
     """
     # const value
-    CONST_1 = 1
+    const_1_value = 1
     attr = 1.702
     dtype = input_x.dtype.lower()
     attr_opp = 0 - attr
@@ -60,7 +60,7 @@ def fast_gelu_compute(input_x, output_y, kernel_name="fast_gelu", impl_mode=OpIm
         input_x = tbe.cast_to(input_x, dtype)
 
     const_0 = tvm.const(attr_opp, dtype)
-    const_1 = tvm.const(CONST_1, dtype)
+    const_1 = tvm.const(const_1_value, dtype)
     abs_x = tbe.vabs(input_x)
     mul_abs_x = tbe.vmuls(abs_x, const_0)
     exp_abs_x = tbe.vexp(mul_abs_x)

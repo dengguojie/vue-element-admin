@@ -26,7 +26,6 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import tbe_platform
 
 
-
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 # 'pylint: disable=locally-disabled,redefined-builtin,too-many-locals,unused-variable
 @register_operator_compute("ClipByNormNoDivSum", op_mode="dynamic", support_fusion=True)

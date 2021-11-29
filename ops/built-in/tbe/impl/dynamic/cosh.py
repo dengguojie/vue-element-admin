@@ -26,6 +26,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -57,9 +58,10 @@ def cosh_compute(input_x, output_cosh, kernel_name="cosh"):
         the result of compute
     """
     # `define a scaler , value = 0.5`
-    SCALER_ZERO_POINT_FIVE = 0.5
+    scaler_zero_point_five = 0.5
     # `define a scaler , value = 2`
-    SCALAR_TWO = 2
+    scalar_two = 2
+    scalar_two
     dtype = input_x.dtype
     dtype_ = input_x.dtype
     shape = input_x.shape
@@ -76,9 +78,9 @@ def cosh_compute(input_x, output_cosh, kernel_name="cosh"):
 
     data_mul = tbe.vmuls(input_x, tvm.const(Constant.SCALER_NEGATIVE_ONE, dtype))
     data_exp = tbe.vexp(data_mul)
-    data_exp_x = tbe.vmuls(data_exp, tvm.const(SCALER_ZERO_POINT_FIVE, dtype))
+    data_exp_x = tbe.vmuls(data_exp, tvm.const(scaler_zero_point_five, dtype))
 
-    tensor_two = tbe.broadcast(tvm.const(SCALAR_TWO, dtype), shape)
+    tensor_two = tbe.broadcast(tvm.const(scalar_two, dtype), shape)
     data_ln2 = tbe.vlog(tensor_two)
     data_neg_ln2 = tbe.vmuls(data_ln2, tvm.const(Constant.SCALER_NEGATIVE_ONE, dtype))
     data_x = tbe.vadd(input_x, data_neg_ln2)

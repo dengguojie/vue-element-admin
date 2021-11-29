@@ -192,7 +192,7 @@ def _vector_dequant_v100(x, x_shape, align_shape, deq_scale, relu_flag, sqrt_mod
         if relu_flag:
             res_f16 = tvm.compute(align_shape,
                                   lambda i, j, k, l: tvm.relu(x(i, j, k, l).astype("float16") * deq_scale(0, j, 0, \
-                                  0, l)),name="dequant1", tag="dequant1_vector", attrs={"relu_flag": 1})
+                                  0, l)), name="dequant1", tag="dequant1_vector", attrs={"relu_flag": 1})
         else:
             res_f16 = tvm.compute(align_shape,
                                   lambda i, j, k, l: x(i, j, k, l).astype("float16") * deq_scale(0, j, 0, 0, l),

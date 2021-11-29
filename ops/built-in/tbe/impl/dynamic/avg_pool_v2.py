@@ -28,6 +28,7 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import register_operator
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
@@ -49,6 +50,7 @@ class Constant:
     STRIDE_MIN = 1
     STRIDE_MAX = 63
 
+
 # 'pylint: disable=unused-variable,too-many-arguments,too-many-locals,too-many-arguments,invalid-name
 def get_attr_nchw_format(input_shape, ksize, strides, data_format):
     """
@@ -67,6 +69,7 @@ def get_attr_nchw_format(input_shape, ksize, strides, data_format):
         strides = [stride_n, stride_c, stride_h, stride_w]
 
     return input_shape, ksize, strides
+
 
 # 'pylint: disable=unused-variable,too-many-arguments,too-many-locals,too-many-arguments,invalid-name
 def check_avgpoolv2_params(input_shape, input_type, output_shape, output_type, ksize, strides,
@@ -109,6 +112,7 @@ def check_avgpoolv2_params(input_shape, input_type, output_shape, output_type, k
     if strides[Constant.N_DIM] != 1 or strides[Constant.C_DIM] != 1:
         error_manager_vector.raise_err_specific_reson("AvgPoolV2", "The strides of the N and C dimensions are 1")
 
+
 def check_cube_params(input_shape, ksize, strides, pads):
     """
     check params valid
@@ -118,15 +122,19 @@ def check_cube_params(input_shape, ksize, strides, pads):
 
     range_value = "".join([str(Constant.KSIZE_HW_MIN), ",", str(Constant.KSIZE_HW_MAX)])
     if ksize[Constant.H_DIM] < Constant.KSIZE_HW_MIN or ksize[Constant.H_DIM] > Constant.KSIZE_HW_MAX:
-        error_manager_vector.raise_err_attr_range_invalid("AvgPoolV2", range_value, "kernel_h", str(ksize[Constant.H_DIM]))
+        error_manager_vector.raise_err_attr_range_invalid("AvgPoolV2", range_value, "kernel_h", \
+        str(ksize[Constant.H_DIM]))
     if ksize[Constant.W_DIM] < Constant.KSIZE_HW_MIN or ksize[Constant.W_DIM] > Constant.KSIZE_HW_MAX:
-        error_manager_vector.raise_err_attr_range_invalid("AvgPoolV2", range_value, "kernel_h", str(ksize[Constant.W_DIM]))
+        error_manager_vector.raise_err_attr_range_invalid("AvgPoolV2", range_value, "kernel_h", \
+        str(ksize[Constant.W_DIM]))
 
     range_value = "".join([str(Constant.STRIDE_MIN), ",", str(Constant.STRIDE_MAX)])
     if strides[Constant.H_DIM] < Constant.STRIDE_MIN or strides[Constant.H_DIM] > Constant.STRIDE_MAX:
-        error_manager_vector.raise_err_attr_range_invalid("AvgPoolV2", range_value, "stride_h", str(strides[Constant.H_DIM]))
+        error_manager_vector.raise_err_attr_range_invalid("AvgPoolV2", range_value, "stride_h", \
+        str(strides[Constant.H_DIM]))
     if strides[Constant.W_DIM] < Constant.STRIDE_MIN or strides[Constant.W_DIM] > Constant.STRIDE_MAX:
-        error_manager_vector.raise_err_attr_range_invalid("AvgPoolV2", range_value, "stride_w", str(strides[Constant.W_DIM]))
+        error_manager_vector.raise_err_attr_range_invalid("AvgPoolV2", range_value, "stride_w", \
+        str(strides[Constant.W_DIM]))
 
     range_value = "".join([str(Constant.PAD_MIN), ",", str(Constant.PAD_MAX)])
     if Constant.DYNAMIC_FLAG in pads:
@@ -134,6 +142,7 @@ def check_cube_params(input_shape, ksize, strides, pads):
     for pad_value in pads:
         if pad_value < Constant.PAD_MIN or pad_value > Constant.PAD_MAX:
             error_manager_vector.raise_err_attr_range_invalid("AvgPoolV2", range_value, "pads", str(pad_value))
+
 
 def get_correct_pad(in_pad):
     """
@@ -145,6 +154,7 @@ def get_correct_pad(in_pad):
         out_pad = in_pad
 
     return out_pad
+
 
 # 'pylint: disable=unused-variable,too-many-arguments,too-many-locals,too-many-arguments,invalid-name
 def calculate_pads(input_shape, ksize, strides, padding, pads, ceil_mode, hw_dynamic_flag):
@@ -200,6 +210,7 @@ def calculate_pads(input_shape, ksize, strides, padding, pads, ceil_mode, hw_dyn
 
     return correct_pads
 
+
 # 'pylint: disable=unused-variable,too-many-arguments,too-many-locals,too-many-arguments,invalid-name
 def calculate_pads_expr(in_shape_nc1hwc0, ksize, strides, padding, cor_pads, ceil_mode, hw_dynamic_flag):
     """
@@ -216,11 +227,11 @@ def calculate_pads_expr(in_shape_nc1hwc0, ksize, strides, padding, cor_pads, cei
             output_w = (input_w + stride_w - 1)//stride_w
             pad_row = (output_h - 1)*stride_h + k_h - input_h
             pad_col = (output_w - 1)*stride_w + k_w - input_w
-            # pad_row with tvm expr
+            # `pad_row with tvm expr`
             pad_row = tvm.max(pad_row, 0)
             pad_top = pad_row//2
             pad_bottom = pad_row - pad_top
-             # pad_col with tvm expr
+            # `pad_col with tvm expr`
             pad_col = tvm.max(pad_col, 0)
             pad_left = pad_col//2
             pad_right = pad_col - pad_left
@@ -250,6 +261,7 @@ def calculate_pads_expr(in_shape_nc1hwc0, ksize, strides, padding, cor_pads, cei
         cor_pads = list(map(lambda x: int(x) if (isinstance(x, tvm.expr.IntImm)) else x, cor_pads))
     return cor_pads
 
+
 def set_default_para():
     """
     set default parameter value
@@ -263,6 +275,7 @@ def set_default_para():
     default_para["ori_shape"] = [0, 0, 0, 0]
     return default_para
 
+
 def check_hw_is_dynamic(input_shape):
     """
     input_shape format NCHW
@@ -271,6 +284,7 @@ def check_hw_is_dynamic(input_shape):
         return True
 
     return False
+
 
 # 'pylint: disable=unused-variable,too-many-arguments,too-many-locals
 # 'pylint: disable=too-many-arguments,invalid-name,too-many-statements
@@ -413,7 +427,7 @@ def avg_pool_v2(x, weight, y, ksize, strides, padding="CALCULATED", pads=(0, 0, 
                 mean_matrix_avgv2 = tvm.compute(mean_matrix_shape, lambda m, c0:
                                                 tvm.max(
                                                     (tvm.min((m // out_w)*stride_h-pad_t+k_h, input_h) -
-                                                     tvm.max((m // out_w)*stride_h-pad_t, 0))* \
+                                                     tvm.max((m // out_w)*stride_h-pad_t, 0)) * \
                                                     (tvm.min((m % out_w)*stride_w-pad_l+k_w, input_w) -
                                                      tvm.max((m % out_w)*stride_w-pad_l, 0)), 1),
                                                 name="mean_matrix_avgv2")

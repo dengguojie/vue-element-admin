@@ -27,8 +27,6 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-
-
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals,too-many-statements,invalid-name
 @register_operator_compute("Erfc", op_mode="dynamic", support_fusion=True)
 def erfc_compute(input_x, output_y, kernel_name="erfc"):
@@ -50,35 +48,35 @@ def erfc_compute(input_x, output_y, kernel_name="erfc"):
         the =result of compute
     """
     # `define a scaler, value = 1`
-    SCALER_ONE = 1
+    scaler_one = 1
     # `define a scaler, value = -1`
-    SCALER_NEGATIVE_ONE = -1
+    scaler_negative_one = -1
     # define a scaler, value = -0.47047, only used in compute of erfc and erf
-    SCALER_P = 0.47047
+    scaler_p = 0.47047
     # define a scaler, value = 0.3480242, only used in compute of erfc and erf
-    SCALER_A = 0.3480242
+    scaler_a = 0.3480242
     # define a scaler, value = -0.0958798, only used in compute of erfc and erf
-    SCALER_B = -0.0958798
+    scaler_b = -0.0958798
     # define a scaler, value = 0.7478556, only used in compute of erfc and erf
-    SCALER_C = 0.7478556
+    scaler_c = 0.7478556
     # `define a scaler, value = 32768`
-    SCALER_FP16_MAX = 32768
+    scaler_fp16_max = 32768
     # `define a scaler, value = 2**(-15)`
-    SCALER_FP16_MIN = 2 ** (-15)
+    scalar_fp16_min = 2 ** (-15)
     dtype = input_x.dtype
     dtype_ = input_x.dtype
     shape = shape_util.shape_to_list(input_x.shape)
     if dtype == "float16":
         dtype = "float32"
         input_x = tbe.cast_to(input_x, "float32")
-    const_one = tvm.const(SCALER_ONE, dtype=dtype)
-    const_negative_one = tvm.const(SCALER_NEGATIVE_ONE, dtype=dtype)
-    const_p = tvm.const(SCALER_P, dtype=dtype)
-    const_a = tvm.const(SCALER_A, dtype=dtype)
-    const_b = tvm.const(SCALER_B, dtype=dtype)
-    const_c = tvm.const(SCALER_C, dtype=dtype)
-    fp16_max = tvm.const(SCALER_FP16_MAX, dtype=dtype)
-    fp16_min = tvm.const(SCALER_FP16_MIN, dtype=dtype)
+    const_one = tvm.const(scaler_one, dtype=dtype)
+    const_negative_one = tvm.const(scaler_negative_one, dtype=dtype)
+    const_p = tvm.const(scaler_p, dtype=dtype)
+    const_a = tvm.const(scaler_a, dtype=dtype)
+    const_b = tvm.const(scaler_b, dtype=dtype)
+    const_c = tvm.const(scaler_c, dtype=dtype)
+    fp16_max = tvm.const(scaler_fp16_max, dtype=dtype)
+    fp16_min = tvm.const(scalar_fp16_min, dtype=dtype)
     data_sign_vmuls = tbe.vmuls(input_x, fp16_max)
     data_sign_abs = tbe.vabs(data_sign_vmuls)
     data_vadds = tbe.vadds(data_sign_abs, fp16_min)

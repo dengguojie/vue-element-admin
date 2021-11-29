@@ -27,7 +27,6 @@ from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 
 
-
 # 'pylint: disable=locally-disabled,unused-argument,too-many-locals,too-many-statements,invalid-name
 @register_operator_compute("Erf", op_mode="dynamic", support_fusion=True)
 def erf_compute(input_x, output_y, kernel_name="erf"):
@@ -48,36 +47,36 @@ def erf_compute(input_x, output_y, kernel_name="erf"):
     erf_result: TVM tensor
         the =result of compute
     """
-    # 'define a scaler, value = 1'
-    SCALER_ONE = 1
-    # 'define a scaler, value = -1'
-    SCALER_NEGATIVE_ONE = -1
-    # define a scaler, value = -0.47047, only used in compute of erf and erfc
-    SCALER_P = 0.47047
-    # define a scaler, value = 0.3480242, only used in compute of erf and erfc
-    SCALER_A = 0.3480242
-    # define a scaler, value = -0.0958798, only used in compute of erf and erfc
-    SCALER_B = -0.0958798
-    # 'define a scaler, value = 0.7478556, only used in compute of erf and erfc'
-    SCALER_C = 0.7478556
-    # 'define a scaler, value = 32768'
-    SCALER_FP16_MAX = 32768
-    # 'define a scaler, value = 2**(-15)'
-    SCALER_FP16_MIN = 2 ** (-15)
+    # `define a scaler, value = 1`
+    scalar_one = 1
+    # `define a scaler, value = -1`
+    scalar_negative_one = -1
+    # `define a scaler, value = -0.47047, only used in compute of erf and erfc`
+    scalar_p = 0.47047
+    # `define a scaler, value = 0.3480242, only used in compute of erf and erfc`
+    scalar_a = 0.3480242
+    # `define a scaler, value = -0.0958798, only used in compute of erf and erfc`
+    scalar_b = -0.0958798
+    # `define a scaler, value = 0.7478556, only used in compute of erf and erfc`
+    scalar_c = 0.7478556
+    # `define a scaler, value = 32768`
+    scalar_fp16_max = 32768
+    # `define a scaler, value = 2**(-15)`
+    scalar_fp16_min = 2 ** (-15)
     dtype = input_x.dtype
     dtype_ = input_x.dtype
     if dtype == "float16":
         dtype = "float32"
         input_x = tbe.cast_to(input_x, "float32")
     shape = shape_util.shape_to_list(input_x.shape)
-    const_one = tvm.const(SCALER_ONE, dtype=dtype)
-    const_negative_one = tvm.const(SCALER_NEGATIVE_ONE, dtype=dtype)
-    const_p = tvm.const(SCALER_P, dtype=dtype)
-    const_a = tvm.const(SCALER_A, dtype=dtype)
-    const_b = tvm.const(SCALER_B, dtype=dtype)
-    const_c = tvm.const(SCALER_C, dtype=dtype)
-    fp16_max = tvm.const(SCALER_FP16_MAX, dtype=dtype)
-    fp16_min = tvm.const(SCALER_FP16_MIN, dtype=dtype)
+    const_one = tvm.const(scalar_one, dtype=dtype)
+    const_negative_one = tvm.const(scalar_negative_one, dtype=dtype)
+    const_p = tvm.const(scalar_p, dtype=dtype)
+    const_a = tvm.const(scalar_a, dtype=dtype)
+    const_b = tvm.const(scalar_b, dtype=dtype)
+    const_c = tvm.const(scalar_c, dtype=dtype)
+    fp16_max = tvm.const(scalar_fp16_max, dtype=dtype)
+    fp16_min = tvm.const(scalar_fp16_min, dtype=dtype)
     data_vmuls = tbe.vmuls(input_x, fp16_max)
     data_abs = tbe.vabs(data_vmuls)
     data_vadds = tbe.vadds(data_abs, fp16_min)
