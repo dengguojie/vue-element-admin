@@ -45,6 +45,8 @@ std::vector<std::pair<int64_t,int64_t>> shape_range = {{2, 100}};
   float tolerance = 1e-5;
   op.SetAttr("tolerance", tolerance);
   
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_desc = op.GetOutputDesc("y");
@@ -59,4 +61,27 @@ std::vector<std::pair<int64_t,int64_t>> shape_range = {{2, 100}};
       {2, 100},
   };
   EXPECT_EQ(output_shape_range, expected_shape_range);
+}
+
+TEST_F(ApproximateEqual, ApproximateEqual_infershape_test_1) {
+  ge::op::ApproximateEqual op;
+  std::vector<std::pair<int64_t, int64_t>> shape_range = {{2, 100}};
+  auto tensor_desc = create_desc_shape_range({-1}, ge::DT_FLOAT16, ge::FORMAT_ND, {64}, ge::FORMAT_ND, shape_range);
+  op.UpdateInputDesc("x1", tensor_desc);
+  op.UpdateInputDesc("x2", tensor_desc);
+  float tolerance = -2.0;
+  op.SetAttr("tolerance", tolerance);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(ApproximateEqual, ApproximateEqual_infershape_test_2) {
+  ge::op::ApproximateEqual op;
+  std::vector<std::pair<int64_t, int64_t>> shape_range = {{2, 100}};
+  op.UpdateInputDesc("x1", create_desc_shape_range({-1}, ge::DT_FLOAT, ge::FORMAT_ND, {64}, ge::FORMAT_ND, shape_range));
+  op.UpdateInputDesc("x2", create_desc_shape_range({-1}, ge::DT_FLOAT16, ge::FORMAT_ND, {64}, ge::FORMAT_ND, shape_range));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
 }

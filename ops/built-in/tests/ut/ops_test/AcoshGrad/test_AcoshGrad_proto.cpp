@@ -54,6 +54,8 @@ TEST_F(acoshgrad, acoshgrad_infer_same_test) {
   op.UpdateInputDesc("y", create_desc({1, 3, 4}, ge::DT_FLOAT16));
   op.UpdateInputDesc("dy", create_desc({1, 3, 4}, ge::DT_FLOAT16));
   
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_desc = op.GetOutputDesc("z");

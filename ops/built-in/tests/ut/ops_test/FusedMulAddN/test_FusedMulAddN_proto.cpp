@@ -40,6 +40,9 @@ TEST_F(fused_mul_add_n, fused_mul_add_n_case) {
   op.UpdateInputDesc("x1", tensor_desc);
   op.UpdateInputDesc("x2", tensor_desc);
   op.UpdateInputDesc("x3", create_desc({1, }, ge::DT_FLOAT16));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 

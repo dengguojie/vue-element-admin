@@ -68,6 +68,9 @@ TEST_F(clip_by_value, clip_by_value_infershape_diff_test_2) {
   op.UpdateInputDesc("clip_value_min", tensor_clip_value_min);
   op.UpdateInputDesc("clip_value_max", tensor_clip_value_max);
 
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
@@ -82,4 +85,36 @@ TEST_F(clip_by_value, clip_by_value_infershape_diff_test_2) {
 
   std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{1,3}};
   EXPECT_EQ(output_shape_range, expected_shape_range);//output shape range
+}
+
+TEST_F(clip_by_value, clip_by_value_infershape_diff_test_3) {
+  ge::op::ClipByValue op;
+  op.UpdateInputDesc("x",
+                     create_desc_shape_range({1}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 1}}));
+  op.UpdateInputDesc("clip_value_min",
+                     create_desc_shape_range({-1}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+  op.UpdateInputDesc("clip_value_max",
+                     create_desc_shape_range({-1}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+  ge::TensorDesc tensor_x = op.GetInputDesc("x");
+  ge::TensorDesc tensor_clip_value_min = op.GetInputDesc("clip_value_min");
+  ge::TensorDesc tensor_clip_value_max = op.GetInputDesc("clip_value_max");
+  op.UpdateInputDesc("x", tensor_x);
+  op.UpdateInputDesc("clip_value_min", tensor_clip_value_min);
+  op.UpdateInputDesc("clip_value_max", tensor_clip_value_max);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(clip_by_value, clip_by_value_infershape_diff_test_4) {
+  ge::op::ClipByValue op;
+  op.UpdateInputDesc("x",
+                     create_desc_shape_range({-2}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 1}}));
+  op.UpdateInputDesc("clip_value_min",
+                     create_desc_shape_range({-1}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+  op.UpdateInputDesc("clip_value_max",
+                     create_desc_shape_range({-1}, ge::DT_FLOAT, ge::FORMAT_NHWC, {1}, ge::FORMAT_NHWC, {{1, 3}}));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }

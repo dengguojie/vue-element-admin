@@ -51,7 +51,9 @@ TEST_F(atan2, atan2_infershape_same_test) {
     ge::op::Atan2 op;
     op.UpdateInputDesc("x1", create_desc({1, 3, 4}, ge::DT_FLOAT16));
     op.UpdateInputDesc("x2", create_desc({1, 3, 4}, ge::DT_FLOAT16));
-
+    
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
     auto output_desc = op.GetOutputDesc("y");

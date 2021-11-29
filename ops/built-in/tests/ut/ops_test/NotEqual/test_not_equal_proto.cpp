@@ -115,6 +115,9 @@ TEST_F(not_equal, not_equal_infershape_diff_test_10) {
   ge::op::NotEqual op;
   op.UpdateInputDesc("x1", create_desc_shape_range({-1}, ge::DT_INT32, ge::FORMAT_ND, {-1}, ge::FORMAT_ND, {{1,55}}));
   op.UpdateInputDesc("x2", create_desc_shape_range({17, 2, 5, 1}, ge::DT_INT32, ge::FORMAT_ND, {17, 2, 5, 1}, ge::FORMAT_ND, {}));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_desc = op.GetOutputDesc("y");
@@ -125,4 +128,13 @@ TEST_F(not_equal, not_equal_infershape_diff_test_10) {
   std::vector<std::pair<int64_t, int64_t>> output_shape_range;
   output_desc.GetShapeRange(output_shape_range);
   EXPECT_EQ(output_shape_range, expected_output_shape_range);
+}
+
+TEST_F(not_equal, not_equal_infershape_diff_test_11) {
+  ge::op::NotEqual op;
+  op.UpdateInputDesc("x1", create_desc_shape_range({-1}, ge::DT_FLOAT, ge::FORMAT_ND, {-1}, ge::FORMAT_ND, {{1,55}}));
+  op.UpdateInputDesc("x2", create_desc_shape_range({17, 2, 5, 1}, ge::DT_INT32, ge::FORMAT_ND, {17, 2, 5, 1}, ge::FORMAT_ND, {}));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
 }

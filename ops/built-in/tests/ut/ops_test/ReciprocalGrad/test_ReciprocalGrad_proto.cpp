@@ -38,10 +38,21 @@ TEST_F(reciprocalgrad, reciprocalgrad_infershape_diff_test) {
     op.UpdateInputDesc("y", create_desc({-1, 3, 4}, ge::DT_FLOAT16));
     op.UpdateInputDesc("dy", create_desc({-1, 3, 4}, ge::DT_FLOAT16));
 
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
     auto output_desc = op.GetOutputDesc("z");
     EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
     std::vector<int64_t> expected_output_shape = {-1, 3, 4};
     EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
+
+TEST_F(reciprocalgrad, reciprocalgrad_infershape_diff_test_failed) {
+  ge::op::ReciprocalGrad op;
+  op.UpdateInputDesc("y", create_desc({-1, 3, 4}, ge::DT_FLOAT));
+  op.UpdateInputDesc("dy", create_desc({-1, 3, 4}, ge::DT_FLOAT16));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
 }

@@ -21,6 +21,8 @@ TEST_F(fused_mul_add_n_l2_loss, fused_mul_add_n_l2_loss_case) {
     op.UpdateInputDesc("x2", create_desc({2, 4, 4}, ge::DT_FLOAT));
     op.UpdateInputDesc("x3", create_desc({1,}, ge::DT_FLOAT));
 
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 
