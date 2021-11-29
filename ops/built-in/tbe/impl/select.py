@@ -254,7 +254,7 @@ def select(condition, x1, x2, y, kernel_name="select"):
     x_len = len(shape_x1)
     con_shape = list(con_shape)
     if len(con_shape) == 1 and x_len != 1:
-        if con_shape[0] != shape_x1[0]:
+        if 1 != con_shape[0] != shape_x1[0]:
             error_detail = "Shape of tensor condition and x1 dim[0] must be equal!"
             error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "condition", \
                                                                    "x1", error_detail)

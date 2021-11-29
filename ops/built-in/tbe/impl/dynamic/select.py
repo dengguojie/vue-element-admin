@@ -133,7 +133,7 @@ def select(condition, x1, x2, y, kernel_name="select"):
     con_shape = list(con_shape)
     fill_shape = []
     if len(con_shape) == 1 and x_len != 1:
-        if -1 != con_shape[0] != shape_x1[0] != -1:
+        if -1 != con_shape[0] != shape_x1[0] != -1 and con_shape[0] != 1:
             error_detail = "Shape of tensor condition and x1 dim[0] must be equal!"
             error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "condition", "x1", error_detail)
         fill_lens = x_len - len(con_shape)
