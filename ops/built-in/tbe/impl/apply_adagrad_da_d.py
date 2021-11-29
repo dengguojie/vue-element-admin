@@ -31,9 +31,9 @@ NUM_ZERO = 0.0
 NUM_M_ONE = -1.0
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=invalid-name,too-many-locals
-# pylint: disable=too-many-statements,wrong-import-order,ungrouped-imports
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=invalid-name,too-many-locals
+# 'pylint: disable=too-many-statements,wrong-import-order,ungrouped-imports
 @tbe_platform.fusion_manager.fusion_manager.register("apply_adagrad_da_d")
 def apply_adagrad_da_d_compute(var, gradient_accumulator,
                                gradient_squared_accumulator, grad,
@@ -173,8 +173,8 @@ def apply_adagrad_da_d_compute(var, gradient_accumulator,
     return tvm.compute(var.shape, _compute, name="outputs")
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-arguments
-# pylint: disable=too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-arguments
+# 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
@@ -241,12 +241,11 @@ def apply_adagrad_da_d(var, gradient_accumulator,
         normalized_dtype_list[i] = dtype.lower()
     if any(elem != normalized_dtype_list[0] for elem in normalized_dtype_list):
         rule_desc = "All input data types must be the same"
-        param_value = "%s,%s,%s,%s,%s,%s,%s"%(var.get('dtype'), gradient_accumulator.get('dtype'),
+        param_value = "%s,%s,%s,%s,%s,%s,%s" % (var.get('dtype'), gradient_accumulator.get('dtype'),
                                               gradient_squared_accumulator.get('dtype'), grad.get('dtype'),
                                               lr.get('dtype'), l1.get('dtype'), l2.get('dtype'))
         error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc,
-                                                          "var,gradient_accumulator,gradient_squared_accumulator,grad,lr,l1,l2",
-                                                          param_value)
+            "var,gradient_accumulator,gradient_squared_accumulator,grad,lr,l1,l2", param_value)
 
     # check global_step dtype
     dtype = global_step.get("dtype").lower()

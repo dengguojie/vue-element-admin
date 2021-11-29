@@ -15,8 +15,8 @@
 """
 aipp_stc_dyn
 """
-# pylint: disable=invalid-name,too-many-locals,too-many-branches,too-many-statements
-# pylint: disable=too-many-arguments,too-many-boolean-expressions,import-error,too-many-lines
+# 'pylint: disable=invalid-name,too-many-locals,too-many-branches,too-many-statements
+# 'pylint: disable=too-many-arguments,too-many-boolean-expressions,import-error,too-many-lines
 import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
@@ -546,24 +546,24 @@ def _dynamic_aipp_compute(input_tensor, param_tensor, output_data, cur_cce_produ
                 aipp_comm.get_dync_padding_size(ib, param_buf, tmp, padding_info, param_offset)
 
                 support_vertical_padding = cur_cce_product in aipp_comm.V300_SOC_VERSION_LIST
-                actual_col_size_reg = ib.allocate("uint64", [1], name="actual_col_size_reg", scope=tbe_platform.scope_reg)
-                aipp_comm.get_dync_actual_col_size(out_h, out_w, padding_info, actual_col_size_reg, support_vertical_padding)
+                actual_col_size_reg = ib.allocate("uint64", [1], name="actual_col_size_reg",
+                    scope=tbe_platform.scope_reg)
+                aipp_comm.get_dync_actual_col_size(out_h, out_w, padding_info, actual_col_size_reg,
+                    support_vertical_padding)
 
                 with ib.if_scope(l1_image_buf_max >= actual_col_size_reg[0]):
-                    """
-                        +----+---------+---------------------------------+
-                        | Xt | [57:45] | right padding size              |
-                        | Xt | [44:32] | left padding size               |
-                        | Xt | [29:24] | bottom padding size             |
-                        | Xt | [21:16] | top padding size                |
-                        | Xt | [15:0]  | horizontal size of source image |
-                        +----+---------+---------------------------------+
-                        | Xm | [60:48] | start positon h of matted image |
-                        | Xm | [44:32] | start positon w of matted image |
-                        | Xm | [28:16] | height of matted image          |
-                        | Xm | [12:0]  | width of matted image           |
-                        +----+---------+---------------------------------+
-                    """
+                    # +----+---------+---------------------------------+
+                    # | Xt | [57:45] | right padding size              |
+                    # | Xt | [44:32] | left padding size               |
+                    # | Xt | [29:24] | bottom padding size             |
+                    # | Xt | [21:16] | top padding size                |
+                    # | Xt | [15:0]  | horizontal size of source image |
+                    # +----+---------+---------------------------------+
+                    # | Xm | [60:48] | start positon h of matted image |
+                    # | Xm | [44:32] | start positon w of matted image |
+                    # | Xm | [28:16] | height of matted image          |
+                    # | Xm | [12:0]  | width of matted image           |
+                    # +----+---------+---------------------------------+
                     if support_vertical_padding:
                         aipp_xt = tbe_platform.get_const(
                             (src_image_size[1] - 1) |
@@ -904,20 +904,18 @@ def _static_aipp_compute(data, input_shape, input_format, output_data, aipp_conf
                 ) = aipp_comm.get_padding_size(aipp_config)
 
                 if l1_image_buf_max >= actual_col_size:
-                    """
-                        +----+---------+---------------------------------+
-                        | Xt | [57:45] | right padding size              |
-                        | Xt | [44:32] | left padding size               |
-                        | Xt | [29:24] | bottom padding size             |
-                        | Xt | [21:16] | top padding size                |
-                        | Xt | [15:0]  | horizontal size of source image |
-                        +----+---------+---------------------------------+
-                        | Xm | [60:48] | start positon h of matted image |
-                        | Xm | [44:32] | start positon w of matted image |
-                        | Xm | [28:16] | height of matted image          |
-                        | Xm | [12:0]  | width of matted image           |
-                        +----+---------+---------------------------------+
-                    """
+                    # +----+---------+---------------------------------+
+                    # | Xt | [57:45] | right padding size              |
+                    # | Xt | [44:32] | left padding size               |
+                    # | Xt | [29:24] | bottom padding size             |
+                    # | Xt | [21:16] | top padding size                |
+                    # | Xt | [15:0]  | horizontal size of source image |
+                    # +----+---------+---------------------------------+
+                    # | Xm | [60:48] | start positon h of matted image |
+                    # | Xm | [44:32] | start positon w of matted image |
+                    # | Xm | [28:16] | height of matted image          |
+                    # | Xm | [12:0]  | width of matted image           |
+                    # +----+---------+---------------------------------+
                     if support_vertical_padding:
                         aipp_xt = tvm.const(
                             (src_image_size_w - 1) |

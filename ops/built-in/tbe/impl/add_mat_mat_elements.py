@@ -23,7 +23,8 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("add_mat_mat_elements")
 def add_mat_mat_elements_compute(c, a, b, beta, alpha, c_out, kernel_name="add_mat_mat_elements"):
     """
@@ -69,6 +70,7 @@ def add_mat_mat_elements_compute(c, a, b, beta, alpha, c_out, kernel_name="add_m
     return res
 
 
+# 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT,

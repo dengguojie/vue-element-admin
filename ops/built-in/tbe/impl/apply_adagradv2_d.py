@@ -25,7 +25,7 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=unused-argument,invalid-name,too-many-arguments,too-many-locals
+# 'pylint: disable=unused-argument,invalid-name,too-many-arguments,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("apply_adagradv2_d")
 def apply_adagradv2_d_compute(var,
                               accum,
@@ -115,7 +115,7 @@ def _get_placeholder(dict_list, name_list):
     return list_placeholder
 
 
-# pylint: disable=unbalanced-tuple-unpacking,invalid-name,too-many-arguments
+# 'pylint: disable=unbalanced-tuple-unpacking,invalid-name,too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)

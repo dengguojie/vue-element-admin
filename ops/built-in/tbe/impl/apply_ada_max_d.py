@@ -46,8 +46,8 @@ from te.utils import para_check
 from impl.util import util_apply_op_schedule
 
 
-# pylint: disable=locally-disabled, too-many-arguments
-# pylint: disable=unused-argument, invalid-name, too-many-locals
+# 'pylint: disable=locally-disabled, too-many-arguments
+# 'pylint: disable=unused-argument, invalid-name, too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("apply_ada_max_d")
 def apply_ada_max_d_compute(var,
                             m,

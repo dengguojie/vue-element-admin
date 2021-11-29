@@ -24,6 +24,7 @@ class AnchorResponseFlags():
     """
     class of AnchorResponseFlags op
     """
+    # pylint: disable=too-many-arguments
     def __init__(self, gt_bboxes, flags, featmap_size, strides, num_base_anchors,
                  kernel_name="anchor_response_flags"):
         self.input_shape = gt_bboxes.get("shape")
@@ -56,6 +57,7 @@ class AnchorResponseFlags():
         dtype_dict = {"float32": 4, "uint8": 1, "int32": 4, "float16": 2}
         return dtype_dict.get(dtype)
 
+    # pylint: disable=too-many-arguments
     def data_move(self, dst, src, offsets, num, src_stride=0, dst_stride=0):
         """
         move data
@@ -93,6 +95,7 @@ class AnchorResponseFlags():
         if last_num > 0:
             self.tik_instance.vec_dup(last_num, dst[offset], dup_value, 1, stride)
 
+    # pylint: disable=too-many-locals, too-many-arguments
     def bboxes_add(self, dst, src0, src1, offsets, num, dst_stride=8, src0_stride=8, src1_stride=8):
         """
         add ub tensor
@@ -125,6 +128,7 @@ class AnchorResponseFlags():
             self.tik_instance.vec_add(tail_num, dst[dst_offset], src0[src0_offset], src1[src1_offset], 1,
                                       dst_stride, src0_stride, src1_stride)
 
+    # pylint: disable=too-many-locals, too-many-arguments
     def bboxes_muls(self, dst, src, scalar, offsets, num, dst_stride=8, src_stride=8):
         """
         mul ub tensor and scalar
@@ -189,6 +193,7 @@ class AnchorResponseFlags():
             self.tik_instance.vec_mul(tail_num, dst[dst_offset], src0[src0_offset], src1[src1_offset], 1,
                                       dst_stride, src0_stride, src1_stride)
 
+    # pylint: disable=too-many-locals, too-many-arguments
     def bboxes_conv(self, dst, src, round_mode, offsets, num, dst_stride=8, src_stride=8):
         """
         conv data type
@@ -318,6 +323,7 @@ def check_params(gt_bboxes, flags, featmap_size, num_base_anchors):
         raise RuntimeError("output_size must be smaller than 60000")
 
 
+# pylint: disable=too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)

@@ -15,8 +15,8 @@
 """
 aipp_dynmaic
 """
-# pylint: disable=import-error,too-many-lines,invalid-name,too-many-locals,unused-argument
-# pylint: disable=too-many-branches,too-many-statements,too-many-arguments
+# 'pylint: disable=import-error,too-many-lines,invalid-name,too-many-locals,unused-argument
+# 'pylint: disable=too-many-branches,too-many-statements,too-many-arguments
 import te.platform as tbe_platform
 from te import tvm
 
@@ -51,7 +51,7 @@ def move_data_from_l1_to_gm(ib, totol_num, dtype, output_cb_buf, output_buf, gm_
                 (totol_num*size,), dtype, "output_ub_buf",
                 scope=tbe_platform.scope_ubuf, data=output_ub)
 
-            lenBurst, nBurst = \
+            len_burst, n_burst = \
                 aipp_comm.get_lenburst_and_nburst(
                     totol_num*size//32, 1)
 
@@ -63,7 +63,7 @@ def move_data_from_l1_to_gm(ib, totol_num, dtype, output_cb_buf, output_buf, gm_
                 output_cb_buf.access_ptr("rw",
                                          ptr_type=dtype,
                                          offset=0),
-                0, nBurst, lenBurst, 0, 0))
+                0, n_burst, len_burst, 0, 0))
 
             ib.emit(tvm.call_extern(
                 dtype, 'copy_ubuf_to_gm',
@@ -72,7 +72,7 @@ def move_data_from_l1_to_gm(ib, totol_num, dtype, output_cb_buf, output_buf, gm_
                     offset=gm_output_offset),
                 output_ub_buf.access_ptr("rw", ptr_type=dtype,
                                          offset=0),
-                0, nBurst, lenBurst, 0, 0))
+                0, n_burst, len_burst, 0, 0))
     else:
         move_num = totol_num // ((ub_size // 2) // size)
         move_tail = totol_num - move_num*((ub_size // 2) // size)
@@ -87,7 +87,7 @@ def move_data_from_l1_to_gm(ib, totol_num, dtype, output_cb_buf, output_buf, gm_
                     (ub_size // 2,), dtype, "output_ub_buf",
                     scope=tbe_platform.scope_ubuf, data=output_ub)
 
-                lenBurst, nBurst = \
+                len_burst, n_burst = \
                     aipp_comm.get_lenburst_and_nburst((ub_size // 2) // 32, 1)
 
                 ib.emit(tvm.call_extern(
@@ -95,7 +95,7 @@ def move_data_from_l1_to_gm(ib, totol_num, dtype, output_cb_buf, output_buf, gm_
                     output_ub_buf.access_ptr("w", ptr_type=dtype, offset=0),
                     output_cb_buf.access_ptr("rw", ptr_type=dtype,
                                              offset=move_index*((ub_size // 2) // size)),
-                    0, nBurst, lenBurst, 0, 0))
+                    0, n_burst, len_burst, 0, 0))
 
                 ib.emit(tvm.call_extern(
                     dtype, 'copy_ubuf_to_gm',
@@ -103,7 +103,7 @@ def move_data_from_l1_to_gm(ib, totol_num, dtype, output_cb_buf, output_buf, gm_
                                           offset=gm_output_offset +
                                           move_index*((ub_size // 2) // size)),
                     output_ub_buf.access_ptr("rw", ptr_type=dtype, offset=0),
-                    0, nBurst, lenBurst, 0, 0))
+                    0, n_burst, len_burst, 0, 0))
         if move_tail != 0:
             with ib.new_scope():
                 output_ub = ib.allocate(dtype, (ub_size // 2,), "output_ub",
@@ -112,7 +112,7 @@ def move_data_from_l1_to_gm(ib, totol_num, dtype, output_cb_buf, output_buf, gm_
                     (ub_size // 2,), dtype, "output_ub_buf",
                     scope=tbe_platform.scope_ubuf, data=output_ub)
 
-                lenBurst, nBurst = \
+                len_burst, n_burst = \
                     aipp_comm.get_lenburst_and_nburst(move_tail*size // 32, 1)
 
                 ib.emit(tvm.call_extern(
@@ -120,7 +120,7 @@ def move_data_from_l1_to_gm(ib, totol_num, dtype, output_cb_buf, output_buf, gm_
                     output_ub_buf.access_ptr("w", ptr_type=dtype, offset=0),
                     output_cb_buf.access_ptr("rw", ptr_type=dtype,
                                              offset=move_num*((ub_size // 2) // size)),
-                    0, nBurst, lenBurst, 0, 0))
+                    0, n_burst, len_burst, 0, 0))
 
                 ib.emit(tvm.call_extern(
                     dtype, 'copy_ubuf_to_gm',
@@ -128,7 +128,7 @@ def move_data_from_l1_to_gm(ib, totol_num, dtype, output_cb_buf, output_buf, gm_
                                           offset=gm_output_offset +
                                           move_num*((ub_size // 2) // size)),
                     output_ub_buf.access_ptr("rw", ptr_type=dtype, offset=0),
-                    0, nBurst, lenBurst, 0, 0))
+                    0, n_burst, len_burst, 0, 0))
 
 
 def reg_move_data_from_l1_to_gm(ib, tmp_reg, totol_num, dtype, output_cb_buf, output_buf, gm_output_offset):
@@ -188,7 +188,7 @@ def reg_move_data_from_l1_to_gm(ib, tmp_reg, totol_num, dtype, output_cb_buf, ou
                     (ub_size // 2,), dtype, "output_ub_buf",
                     scope=tbe_platform.scope_ubuf, data=output_ub)
 
-                lenBurst, nBurst = \
+                len_burst, n_burst = \
                     aipp_comm.get_lenburst_and_nburst((ub_size // 2) // 32, 1)
 
                 ib.emit(tvm.call_extern(
@@ -196,7 +196,7 @@ def reg_move_data_from_l1_to_gm(ib, tmp_reg, totol_num, dtype, output_cb_buf, ou
                     output_ub_buf.access_ptr("w", ptr_type=dtype, offset=0),
                     output_cb_buf.access_ptr("rw", ptr_type=dtype,
                                              offset=move_index*((ub_size // 2) // size)),
-                    0, nBurst, lenBurst, 0, 0))
+                    0, n_burst, len_burst, 0, 0))
 
                 ib.emit(tvm.call_extern(
                     dtype, 'copy_ubuf_to_gm',
@@ -204,7 +204,7 @@ def reg_move_data_from_l1_to_gm(ib, tmp_reg, totol_num, dtype, output_cb_buf, ou
                                           offset=gm_output_offset +
                                           move_index*((ub_size // 2) // size)),
                     output_ub_buf.access_ptr("rw", ptr_type=dtype, offset=0),
-                    0, nBurst, lenBurst, 0, 0))
+                    0, n_burst, len_burst, 0, 0))
         with ib.if_scope(tmp_reg[2] != 0):
             with ib.new_scope():
                 output_ub = ib.allocate(dtype, (ub_size // 2,), "output_ub",
@@ -238,49 +238,49 @@ def process_padding(ib, input_data, output_buf):
     """
 
     dtype = input_data[0]
-    W = input_data[1]
-    C0 = input_data[2]
+    w = input_data[1]
+    c0 = input_data[2]
     size = input_data[3]
     padding_size = input_data[4]
     offset = input_data[5]
 
     ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     ub_size -= (aipp_comm.DYNC_PARAM_SIZE + 1024 - 1) // 1024*1024
-    buffer_upper_limit = ub_size // 2 // 2 // C0
+    buffer_upper_limit = ub_size // 2 // 2 // c0
 
-    with ib.if_scope(buffer_upper_limit >= padding_size*W):
+    with ib.if_scope(buffer_upper_limit >= padding_size*w):
         with ib.new_scope():
-            padding_ub = ib.allocate(dtype, (buffer_upper_limit*C0,), "padding_ub",
+            padding_ub = ib.allocate(dtype, (buffer_upper_limit*c0,), "padding_ub",
                                      scope=tbe_platform.scope_ubuf)
-            padding_ub_buf = tvm.decl_buffer((buffer_upper_limit*C0,), dtype,
+            padding_ub_buf = tvm.decl_buffer((buffer_upper_limit*c0,), dtype,
                                              "padding_ub", scope=tbe_platform.scope_ubuf,
                                              data=padding_ub)
             if dtype == "float16":
-                aipp_comm.vector_dup(ib, "float16", padding_ub_buf, padding_size*W*C0)
+                aipp_comm.vector_dup(ib, "float16", padding_ub_buf, padding_size*w*c0)
             else:
                 with ib.new_scope():
                     tmp_padding_ub = ib.allocate("float16",
-                                                 (buffer_upper_limit*C0,),
+                                                 (buffer_upper_limit*c0,),
                                                  "tmp_padding_ub",
                                                  scope=tbe_platform.scope_ubuf)
-                    tmp_padding_ub_buf = tvm.decl_buffer((buffer_upper_limit*C0,),
+                    tmp_padding_ub_buf = tvm.decl_buffer((buffer_upper_limit*c0,),
                                                          "float16",
                                                          "tmp_padding_ub_buf",
                                                          scope=tbe_platform.scope_ubuf,
                                                          data=tmp_padding_ub)
 
                     aipp_comm.vector_dup(ib, "float16", tmp_padding_ub_buf,
-                                         padding_size*W*C0)
+                                         padding_size*w*c0)
                     aipp_comm.conv(ib, dtype, "float16", padding_ub_buf,
-                                   tmp_padding_ub_buf, padding_size*W*C0)
+                                   tmp_padding_ub_buf, padding_size*w*c0)
 
             ib.emit(tvm.call_extern(
                 dtype, 'copy_ubuf_to_gm',
                 output_buf.access_ptr("w", ptr_type=dtype, offset=offset),
                 padding_ub_buf.access_ptr("rw", ptr_type=dtype, offset=0),
-                0, 1, padding_size*W*C0*size//32, 0, 0))
+                0, 1, padding_size*w*c0*size//32, 0, 0))
     with ib.else_scope():
-        tiling_w, w_loop = aipp_comm.get_tiling_w(W, buffer_upper_limit, 1)
+        tiling_w, w_loop = aipp_comm.get_tiling_w(w, buffer_upper_limit, 1)
         tiling_h = buffer_upper_limit // tiling_w
 
         h_loop = padding_size // tiling_h
@@ -288,146 +288,146 @@ def process_padding(ib, input_data, output_buf):
         h_loop_const = tbe_platform.get_const(h_loop)
         w_loop_const = tvm.const(w_loop, dtype="uint64")
 
-        tail_w = W % tiling_w
+        tail_w = w % tiling_w
         tail_h = padding_size % tiling_h
 
         with ib.for_range(zero_const, h_loop_const, name="h1", dtype="uint64") as h1:
             with ib.for_range(zero_const, w_loop_const, name="w1", dtype="uint64") as w1:
                 with ib.new_scope():
-                    padding_ub = ib.allocate(dtype, (tiling_h*tiling_w*C0,), "padding_ub",
+                    padding_ub = ib.allocate(dtype, (tiling_h*tiling_w*c0,), "padding_ub",
                                              scope=tbe_platform.scope_ubuf)
-                    padding_ub_buf = tvm.decl_buffer((tiling_h*tiling_w*C0,), dtype, "padding_ub",
+                    padding_ub_buf = tvm.decl_buffer((tiling_h*tiling_w*c0,), dtype, "padding_ub",
                                                      scope=tbe_platform.scope_ubuf, data=padding_ub)
 
                     if dtype == "float16":
-                        aipp_comm.vector_dup(ib, "float16", padding_ub_buf, tiling_h*tiling_w*C0)
+                        aipp_comm.vector_dup(ib, "float16", padding_ub_buf, tiling_h*tiling_w*c0)
                     else:
                         with ib.new_scope():
                             tmp_padding_ub = ib.allocate("float16",
-                                                         (tiling_h*tiling_w*C0,),
+                                                         (tiling_h*tiling_w*c0,),
                                                          "tmp_padding_ub",
                                                          scope=tbe_platform.scope_ubuf)
-                            tmp_padding_ub_buf = tvm.decl_buffer((tiling_h*tiling_w*C0,),
+                            tmp_padding_ub_buf = tvm.decl_buffer((tiling_h*tiling_w*c0,),
                                                                  "float16",
                                                                  "tmp_padding_ub_buf",
                                                                  scope=tbe_platform.scope_ubuf,
                                                                  data=tmp_padding_ub)
 
                             aipp_comm.vector_dup(ib, "float16", tmp_padding_ub_buf,
-                                                 tiling_h*tiling_w*C0)
+                                                 tiling_h*tiling_w*c0)
                             aipp_comm.conv(ib, dtype, "float16", padding_ub_buf,
-                                           tmp_padding_ub_buf, tiling_h*tiling_w*C0)
+                                           tmp_padding_ub_buf, tiling_h*tiling_w*c0)
 
                     ib.emit(tvm.call_extern(
                         dtype, 'copy_ubuf_to_gm',
                         output_buf.access_ptr("w", ptr_type=dtype,
-                                              offset=offset+h1*tiling_h*W*C0+w1*tiling_w*tiling_h*C0),
+                                              offset=offset+h1*tiling_h*w*c0+w1*tiling_w*tiling_h*c0),
                         padding_ub_buf.access_ptr("rw", ptr_type=dtype, offset=0),
-                        0, 1, tiling_h*tiling_w*C0*size // 32, 0, 0))
+                        0, 1, tiling_h*tiling_w*c0*size // 32, 0, 0))
             if tail_w != 0:
                 with ib.new_scope():
-                    padding_ub = ib.allocate(dtype, (tiling_h*tail_w*C0,), "padding_ub",
+                    padding_ub = ib.allocate(dtype, (tiling_h*tail_w*c0,), "padding_ub",
                                              scope=tbe_platform.scope_ubuf)
-                    padding_ub_buf = tvm.decl_buffer((tiling_h*tail_w*C0,), dtype,
+                    padding_ub_buf = tvm.decl_buffer((tiling_h*tail_w*c0,), dtype,
                                                      "padding_ub",
                                                      scope=tbe_platform.scope_ubuf,
                                                      data=padding_ub)
 
                     if dtype == "float16":
                         aipp_comm.vector_dup(ib, "float16", padding_ub_buf,
-                                             tiling_h*tail_w*C0)
+                                             tiling_h*tail_w*c0)
                     else:
                         with ib.new_scope():
                             tmp_padding_ub = ib.allocate("float16",
-                                                         (tiling_h*tail_w*C0,),
+                                                         (tiling_h*tail_w*c0,),
                                                          "tmp_padding_ub",
                                                          scope=tbe_platform.scope_ubuf)
-                            tmp_padding_ub_buf = tvm.decl_buffer((tiling_h*tail_w*C0,),
+                            tmp_padding_ub_buf = tvm.decl_buffer((tiling_h*tail_w*c0,),
                                                                  "float16",
                                                                  "tmp_padding_ub_buf",
                                                                  scope=tbe_platform.scope_ubuf,
                                                                  data=tmp_padding_ub)
 
                             aipp_comm.vector_dup(ib, "float16", tmp_padding_ub_buf,
-                                                 tiling_h*tail_w*C0)
+                                                 tiling_h*tail_w*c0)
                             aipp_comm.conv(ib, dtype, "float16", padding_ub_buf,
-                                           tmp_padding_ub_buf, tiling_h*tail_w*C0)
+                                           tmp_padding_ub_buf, tiling_h*tail_w*c0)
 
                     ib.emit(tvm.call_extern(
                         dtype, 'copy_ubuf_to_gm',
                         output_buf.access_ptr("w", ptr_type=dtype,
-                                              offset=offset+h1*tiling_h*tiling_w*C0+w_loop*tiling_w*tiling_h*C0),
+                                              offset=offset+h1*tiling_h*tiling_w*c0+w_loop*tiling_w*tiling_h*c0),
                         padding_ub_buf.access_ptr("rw", ptr_type=dtype, offset=0),
-                        0, 1, tiling_h*tail_w*C0*size//32, 0, 0))
+                        0, 1, tiling_h*tail_w*c0*size//32, 0, 0))
 
         with ib.if_scope(tail_h != 0):
             with ib.for_range(zero_const, w_loop_const, name="w1", dtype="uint64") as w1:
                 with ib.new_scope():
-                    padding_ub = ib.allocate(dtype, (tiling_h*tiling_w*C0,),
+                    padding_ub = ib.allocate(dtype, (tiling_h*tiling_w*c0,),
                                              "padding_ub", scope=tbe_platform.scope_ubuf)
-                    padding_ub_buf = tvm.decl_buffer((tiling_h*tiling_w*C0,), dtype, "padding_ub",
+                    padding_ub_buf = tvm.decl_buffer((tiling_h*tiling_w*c0,), dtype, "padding_ub",
                                                      scope=tbe_platform.scope_ubuf, data=padding_ub)
 
                     if dtype == "float16":
-                        aipp_comm.vector_dup(ib, "float16", padding_ub_buf, tail_h*tiling_w*C0)
+                        aipp_comm.vector_dup(ib, "float16", padding_ub_buf, tail_h*tiling_w*c0)
                     else:
                         with ib.new_scope():
-                            tmp_padding_ub = ib.allocate("float16", (tiling_h*tiling_w*C0,),
+                            tmp_padding_ub = ib.allocate("float16", (tiling_h*tiling_w*c0,),
                                                          "tmp_padding_ub",
                                                          scope=tbe_platform.scope_ubuf)
-                            tmp_padding_ub_buf = tvm.decl_buffer((tiling_h*tiling_w*C0,),
+                            tmp_padding_ub_buf = tvm.decl_buffer((tiling_h*tiling_w*c0,),
                                                                  "float16",
                                                                  "tmp_padding_ub_buf",
                                                                  scope=tbe_platform.scope_ubuf,
                                                                  data=tmp_padding_ub)
 
                             aipp_comm.vector_dup(ib, "float16", tmp_padding_ub_buf,
-                                                 tail_h*tiling_w*C0)
+                                                 tail_h*tiling_w*c0)
                             aipp_comm.conv(ib, dtype, "float16", padding_ub_buf,
-                                           tmp_padding_ub_buf, tail_h*tiling_w*C0)
+                                           tmp_padding_ub_buf, tail_h*tiling_w*c0)
 
                     ib.emit(tvm.call_extern(
                         dtype, 'copy_ubuf_to_gm',
                         output_buf.access_ptr("w", ptr_type=dtype,
-                                              offset=offset+h_loop*tiling_h*W*C0+w1*tiling_w*tail_h*C0),
+                                              offset=offset+h_loop*tiling_h*w*c0+w1*tiling_w*tail_h*c0),
                         padding_ub_buf.access_ptr("rw", ptr_type=dtype, offset=0),
-                        0, 1, tail_h*tiling_w*C0*size//32, 0, 0))
+                        0, 1, tail_h*tiling_w*c0*size//32, 0, 0))
 
             if tail_w != 0:
                 with ib.new_scope():
-                    padding_ub = ib.allocate(dtype, (tiling_h*tail_w*C0,), "padding_ub",
+                    padding_ub = ib.allocate(dtype, (tiling_h*tail_w*c0,), "padding_ub",
                                              scope=tbe_platform.scope_ubuf)
-                    padding_ub_buf = tvm.decl_buffer((tiling_h*tail_w*C0,), dtype,
+                    padding_ub_buf = tvm.decl_buffer((tiling_h*tail_w*c0,), dtype,
                                                      "padding_ub",
                                                      scope=tbe_platform.scope_ubuf,
                                                      data=padding_ub)
 
                     if dtype == "float16":
                         aipp_comm.vector_dup(ib, "float16", padding_ub_buf,
-                                             tail_h*tail_w*C0)
+                                             tail_h*tail_w*c0)
                     else:
                         with ib.new_scope():
                             tmp_padding_ub = ib.allocate("float16",
-                                                         (tiling_h*tail_w*C0,),
+                                                         (tiling_h*tail_w*c0,),
                                                          "tmp_padding_ub",
                                                          scope=tbe_platform.scope_ubuf)
-                            tmp_padding_ub_buf = tvm.decl_buffer((tiling_h*tail_w*C0,),
+                            tmp_padding_ub_buf = tvm.decl_buffer((tiling_h*tail_w*c0,),
                                                                  "float16",
                                                                  "tmp_padding_ub_buf",
                                                                  scope=tbe_platform.scope_ubuf,
                                                                  data=tmp_padding_ub)
 
                             aipp_comm.vector_dup(ib, "float16", tmp_padding_ub_buf,
-                                                 tail_h*tail_w*C0)
+                                                 tail_h*tail_w*c0)
                             aipp_comm.conv(ib, dtype, "float16", padding_ub_buf,
-                                           tmp_padding_ub_buf, tail_h*tail_w*C0)
+                                           tmp_padding_ub_buf, tail_h*tail_w*c0)
 
                     ib.emit(tvm.call_extern(
                         dtype, 'copy_ubuf_to_gm',
                         output_buf.access_ptr("w", ptr_type=dtype,
-                                              offset=offset+h_loop*tiling_h*W*C0+w_loop*tiling_w*tail_h*C0),
+                                              offset=offset+h_loop*tiling_h*w*c0+w_loop*tiling_w*tail_h*c0),
                         padding_ub_buf.access_ptr("rw", ptr_type=dtype, offset=0),
-                        0, 1, tail_h*tail_w*C0*size//32, 0, 0))
+                        0, 1, tail_h*tail_w*c0*size//32, 0, 0))
 
 
 def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_data):
@@ -441,32 +441,32 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
     """
 
     output_shape = output_data.get('shape')
-    N, C1, H, W, C0 = output_shape
+    n, c1, h, w, c0 = output_shape
 
     dtype = output_data.get('dtype')
     if dtype == "float16":
         size = 2
-        C0 = 16
+        c0 = 16
     else:
         size = 1
-        C0 = 32
+        c0 = 32
 
-    if C1 != 1:
+    if c1 != 1:
         output_ori_shape = output_data.get('ori_shape')
         output_ori_format = output_data.get('ori_format')
         if output_ori_format == "NCHW":
-            output_ori_C = output_ori_shape[1]
+            output_ori_c = output_ori_shape[1]
         elif output_ori_format == "NHWC":
-            output_ori_C = output_ori_shape[3]
+            output_ori_c = output_ori_shape[3]
         else:
             cause_desc = "network input format[%s] is not supported" % output_ori_format
             aipp_comm.raise_runtime_error(cause_desc)
 
         cause_desc = "network input C[%d] should be less than or equal to %d" % \
-                     (output_ori_C, C0)
+                     (output_ori_c, c0)
         aipp_comm.raise_runtime_error(cause_desc)
 
-    actual_col_size = H * W
+    actual_col_size = h * w
 
     l1_image_buf_max = aipp_comm.get_l1_image_buf_max(actual_col_size, dtype, True)
 
@@ -475,7 +475,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
         cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
 
         device_core_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-        batch_num = N
+        batch_num = n
         batch_factor = 1
 
         if batch_num % device_core_num == 0:
@@ -484,7 +484,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
         block_index = tvm.thread_axis("blockIdx.x")
         ib.scope_attr(block_index, "thread_extent", batch_num // batch_factor)
 
-        offset = batch_factor * C1 * H * W * C0
+        offset = batch_factor * c1 * h * w * c0
 
         zero_const = tvm.const(0, dtype="uint64")
 
@@ -493,8 +493,8 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
             p_ub_buf, spr, tmp = aipp_comm.set_spr_dync(ib, param_buf, dtype, cur_cce_product)
 
             src_image_size = ib.allocate("uint64", [2], name="src_image_size", scope=tbe_platform.scope_reg)
-            src_image_size[0] = tvm.const(H, dtype="uint64")
-            src_image_size[1] = tvm.const(W, dtype="uint64")
+            src_image_size[0] = tvm.const(h, dtype="uint64")
+            src_image_size[1] = tvm.const(w, dtype="uint64")
             aipp_comm.get_dync_src_image_size(ib, p_ub_buf, tmp, src_image_size)
 
             actual_col_size_reg = ib.allocate("uint64", [1], name="actual_col_size_reg", scope=tbe_platform.scope_reg)
@@ -516,8 +516,8 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
             h_loop = ib.allocate("uint64", [1], name="h_loop", scope=tbe_platform.scope_reg)
             h_loop[0] = tvm.const(1, dtype="uint64")
 
-            Xs = ib.allocate("uint64", [1], name="Xs", scope=tbe_platform.scope_reg)
-            Xs[0] = tvm.const(0, dtype="uint64")
+            x_s = ib.allocate("uint64", [1], name="Xs", scope=tbe_platform.scope_reg)
+            x_s[0] = tvm.const(0, dtype="uint64")
 
             load_h = ib.allocate("uint64", [1], name="load_h", scope=tbe_platform.scope_reg)
             load_h[0] = tvm.const(0, dtype="uint64")
@@ -535,8 +535,8 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
 
             resize = ib.allocate("uint64", [1], name="resize", scope=tbe_platform.scope_reg)
 
-            scfIncVscl = ib.allocate("uint64", [1], name="scfIncVscl", scope=tbe_platform.scope_reg)
-            scfIncHscl = ib.allocate("uint64", [1], name="scfIncHscl", scope=tbe_platform.scope_reg)
+            scf_inc_vscl = ib.allocate("uint64", [1], name="scfIncVscl", scope=tbe_platform.scope_reg)
+            scf_inc_hscl = ib.allocate("uint64", [1], name="scfIncHscl", scope=tbe_platform.scope_reg)
             resize_input_h = ib.allocate("uint64", [1], name="resize_input_h", scope=tbe_platform.scope_reg)
             resize_input_w = ib.allocate("uint64", [1], name="resize_input_w", scope=tbe_platform.scope_reg)
             resize_output_h = ib.allocate("uint64", [1], name="resize_output_h", scope=tbe_platform.scope_reg)
@@ -589,7 +589,6 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                     aipp_comm.get_dync_crop_info(ib, p_ub_buf, tmp, load_image_info)
 
                     actual_col_size_reg[0] = load_image_info[2] * load_image_info[3]
-
 
                 aipp_xt = (src_image_size[1] - 1)
 
@@ -760,8 +759,8 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
 
                 resize[0] = tvm.const(0, dtype="uint64")
                 if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
-                    scfIncVscl[0] = tvm.const(0, dtype="uint64")
-                    scfIncHscl[0] = tvm.const(0, dtype="uint64")
+                    scf_inc_vscl[0] = tvm.const(0, dtype="uint64")
+                    scf_inc_hscl[0] = tvm.const(0, dtype="uint64")
 
                     spr[13] = tvm.const(0, dtype="uint64")
                     spr[16] = tvm.const(0, dtype="uint64")
@@ -797,12 +796,12 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                         with ib.if_scope(resize_input_h[0] != resize_output_h[0]):
                             spr[13] = spr[13] | tvm.const(1, dtype="uint64")
 
-                            scfIncVscl[0] = \
+                            scf_inc_vscl[0] = \
                                 ((resize_input_h[0] - tvm.const(1, dtype="uint64")) *
                                  tvm.const(262144, dtype="uint64") /
                                  (resize_output_h[0] - tvm.const(1, dtype="uint64"))) & \
                                 0xFFFFFC
-                            spr[16] = spr[16] | scfIncVscl[0]
+                            spr[16] = spr[16] | scf_inc_vscl[0]
 
                         ib.emit(tvm.call_extern("int32",
                                                 "reg_mov",
@@ -828,12 +827,12 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                         with ib.if_scope(resize_input_w[0] != resize_output_w[0]):
                             spr[13] = spr[13] | tvm.const(1, dtype="uint64") << 2
 
-                            scfIncHscl[0] = \
+                            scf_inc_hscl[0] = \
                                 ((resize_input_w[0] - tvm.const(1, dtype="uint64")) *
                                  tvm.const(262144, dtype="uint64") /
                                  (resize_output_w[0] - tvm.const(1, dtype="uint64"))) & \
                                 0xFFFFFC
-                            spr[16] = spr[16] | scfIncHscl[0] << 32
+                            spr[16] = spr[16] | scf_inc_hscl[0] << 32
 
                         with ib.if_scope(resize_output_w[0] > resize_input_w[0]):
                             spr[13] = spr[13] | tvm.const(1, dtype="uint64") << 7
@@ -857,28 +856,28 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                 padding[0] = tmp[0]
                 # padding enable
                 with ib.if_scope(tmp[0] > 0):
-                    output_h = H - padding_info[0] - padding_info[1]
-                    output_w = W
+                    output_h = h - padding_info[0] - padding_info[1]
+                    output_w = w
                     actual_col_size_reg[0] = tbe_platform.get_const(output_h)*tvm.const(output_w, dtype="uint64")
 
                     # top_padding_size
                     with ib.if_scope(padding_info[0] > 0):
                         with ib.new_scope():
-                            top_offset = block_index*offset + n1*C1*H*W*C0
+                            top_offset = block_index*offset + n1*c1*h*w*c0
                             process_padding(
                                 ib,
-                                (dtype, W, C0, size,
+                                (dtype, w, c0, size,
                                  padding_info[0], top_offset),
                                 output_buf)
                     # bottom_padding_size
                     with ib.if_scope(padding_info[1] > 0):
                         with ib.new_scope():
                             bottom_offset = block_index*offset + \
-                                            n1*C1*H*W*C0 + \
-                                            (H-padding_info[1])*W*C0
+                                            n1*c1*h*w*c0 + \
+                                            (h-padding_info[1])*w*c0
                             process_padding(
                                 ib,
-                                (dtype, W, C0, size,
+                                (dtype, w, c0, size,
                                  padding_info[1], bottom_offset),
                                 output_buf)
 
@@ -886,7 +885,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                     with ib.new_scope():
                         output_cb_buf, output_ub_buf = \
                             aipp_comm.new_alloc(ib, dtype,
-                                                l1_image_buf_max * C0)
+                                                l1_image_buf_max * c0)
 
                         if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                             spr[15] = tvm.const(0, dtype="uint64")
@@ -903,7 +902,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                         aipp_xt = aipp_xt | (padding_info[2] & 0xff) << 32 | \
                                  (padding_info[3] & 0xff) << 45
 
-                        aippXs = tbe_platform.get_const(
+                        aipp_xs = tbe_platform.get_const(
                             (load_image_info[3] - 1) |
                             (load_image_info[2] - 1) << 16 |
                             (load_image_info[1]) << 32 |
@@ -913,10 +912,10 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                                     "rw",
                                                     ptr_type=dtype,
                                                     offset=0),
-                                                aippXs,
+                                                aipp_xs,
                                                 tbe_platform.get_const(aipp_xt)))
 
-                        output_offset = n1*C1*H*W*C0
+                        output_offset = n1*c1*h*w*c0
 
                         ib.emit(tvm.call_extern(
                             dtype, 'copy_cbuf_to_ubuf',
@@ -927,7 +926,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                                      ptr_type=dtype,
                                                      offset=0),
                             0, 1,
-                            C1*(H-padding_info[0]-padding_info[1])*W*C0*size//32,
+                            c1*(h-padding_info[0]-padding_info[1])*w*c0*size//32,
                             0, 0))
 
                         ib.emit(tvm.call_extern(
@@ -935,21 +934,21 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                             output_buf.access_ptr("w",
                                                   ptr_type=dtype,
                                                   offset=block_index*offset +
-                                                  padding_info[0]*W*C0 +
+                                                  padding_info[0]*w*c0 +
                                                   output_offset),
                             output_ub_buf.access_ptr("rw",
                                                      ptr_type=dtype, offset=0),
                             0, 1,
-                            C1*(H-padding_info[0]-padding_info[1])*W*C0*size//32,
+                            c1*(h-padding_info[0]-padding_info[1])*w*c0*size//32,
                             0, 0))
                 with ib.else_scope():
                     buffer_upper_limit = l1_image_buf_max
                     l1_size = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
 
-                    if 2*W > l1_image_buf_max:
-                        buffer_upper_limit = l1_size // size // C0
+                    if 2*w > l1_image_buf_max:
+                        buffer_upper_limit = l1_size // size // c0
 
-                    tiling_h = buffer_upper_limit//W
+                    tiling_h = buffer_upper_limit//w
 
                     # tiling_h must be even
                     if tiling_h % 2 != 0:
@@ -974,16 +973,16 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                         with ib.new_scope():
                             output_cb_buf, output_ub_buf = \
                                 aipp_comm.new_alloc(ib, dtype,
-                                                    C1*l1_image_buf_max*C0)
+                                                    c1*l1_image_buf_max*c0)
 
                             aipp_xt = aipp_xt | \
                                      (padding_info[2] & 0xff) << 32 | \
                                      (padding_info[3] & 0xff) << 45
 
-                            output_w = W
+                            output_w = w
                             output_h = tiling_h
-                            output_offset = n1*C1*H*W*C0 + \
-                                            C1*(h1*tiling_h)*output_w*C0
+                            output_offset = n1*c1*h*w*c0 + \
+                                            c1*(h1*tiling_h)*output_w*c0
 
                             if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                                 with ib.if_scope(resize[0] == 1):
@@ -1004,9 +1003,9 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                             ((h1 + 1)*tiling_h - 1)
 
                                         resize_input_h_stat_pos[0] = \
-                                            (scfIncVscl[0]*tbe_platform.get_const(resize_output_h_start_pos)) >> 18
+                                            (scf_inc_vscl[0]*tbe_platform.get_const(resize_output_h_start_pos)) >> 18
                                         resize_input_h_end_pos[0] = \
-                                            ((scfIncVscl[0]*tbe_platform.get_const(resize_output_h_end_pos)) +
+                                            ((scf_inc_vscl[0]*tbe_platform.get_const(resize_output_h_end_pos)) +
                                              tvm.const((1 << 18) - 1, dtype="uint64")) >> 18
 
                                         with ib.if_scope(input_format[0] == 1):
@@ -1019,7 +1018,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                                 0x1
 
                                         acc_vscl = \
-                                            (scfIncVscl[0]*tbe_platform.get_const(resize_output_h_start_pos)) - \
+                                            (scf_inc_vscl[0]*tbe_platform.get_const(resize_output_h_start_pos)) - \
                                             (resize_input_h_stat_pos[0] << 18)
                                         spr15 = acc_vscl
 
@@ -1037,17 +1036,17 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
 
                             with ib.if_scope(resize[0] == 1):
                                 with ib.if_scope(resize_input_h[0] != resize_output_h[0]):
-                                    Xs[0] = tbe_platform.get_const(
+                                    x_s[0] = tbe_platform.get_const(
                                         load_w | load_h[0] << load_h_pos |
                                         (tbe_platform.get_const(load_image_info[1])) << w_start_pos |
                                         (load_image_info[0] + resize_input_h_stat_pos[0]) << h_start_pos)
                                 with ib.else_scope():
-                                    Xs[0] = tbe_platform.get_const(
+                                    x_s[0] = tbe_platform.get_const(
                                         load_w | load_h[0] << load_h_pos |
                                         (tbe_platform.get_const(load_image_info[1])) << w_start_pos |
                                         (load_image_info[0] + h1*tiling_h_const) << h_start_pos)
                             with ib.else_scope():
-                                Xs[0] = tbe_platform.get_const(
+                                x_s[0] = tbe_platform.get_const(
                                     load_w | load_h[0] << load_h_pos |
                                     (tbe_platform.get_const(load_image_info[1])) << w_start_pos |
                                     (load_image_info[0] + h1*tiling_h_const) << h_start_pos)
@@ -1056,12 +1055,12 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                                     output_cb_buf.access_ptr(
                                                         "rw", ptr_type=dtype,
                                                         offset=0),
-                                                    Xs[0],
+                                                    x_s[0],
                                                     tbe_platform.get_const(aipp_xt)))
 
-                            move_data_from_l1_to_gm(ib, C1*output_h*W*C0, dtype,
+                            move_data_from_l1_to_gm(ib, c1*output_h*w*c0, dtype,
                                                     output_cb_buf, output_buf,
-                                                    block_index*offset+padding_info[0]*W*C0+output_offset)
+                                                    block_index*offset+padding_info[0]*w*c0+output_offset)
 
                     tail_h[0] = tvm.const(0, dtype="uint64")
                     with ib.if_scope(resize[0] == 1):
@@ -1074,21 +1073,21 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
 
                         with ib.new_scope():
                             output_cb = ib.allocate(dtype,
-                                                    (C1*buffer_upper_limit*C0,),
+                                                    (c1*buffer_upper_limit*c0,),
                                                     "output_cb",
                                                     scope=tbe_platform.scope_cbuf)
                             output_cb_buf = tvm.decl_buffer(
-                                (C1*buffer_upper_limit*C0,), dtype,
+                                (c1*buffer_upper_limit*c0,), dtype,
                                 "output_cb_buf", scope=tbe_platform.scope_cbuf,
                                 data=output_cb)
 
-                            output_w = W
+                            output_w = w
                             aipp_xt = aipp_xt | \
                                      (padding_info[2] & 0xff) << 32 | \
                                      (padding_info[3] & 0xff) << 45
                             output_h = tail_h[0]
                             output_offset = \
-                                n1 * C1 * H * W * C0 + C1 * (h_loop[0] * tiling_h) * output_w * C0
+                                n1 * c1 * h * w * c0 + c1 * (h_loop[0] * tiling_h) * output_w * c0
 
                             if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                                 with ib.if_scope(resize[0] == 1):
@@ -1108,9 +1107,9 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                         resize_output_h_end_pos = resize_output_h[0] - tvm.const(1, dtype="uint64")
 
                                         resize_input_h_stat_pos[0] = \
-                                            (scfIncVscl[0]*tbe_platform.get_const(resize_output_h_start_pos)) >> 18
+                                            (scf_inc_vscl[0]*tbe_platform.get_const(resize_output_h_start_pos)) >> 18
                                         resize_input_h_end_pos[0] = \
-                                            ((scfIncVscl[0]*tbe_platform.get_const(resize_output_h_end_pos)) +
+                                            ((scf_inc_vscl[0]*tbe_platform.get_const(resize_output_h_end_pos)) +
                                              tvm.const((1 << 18) - 1, dtype="uint64")) >> 18
 
                                         with ib.if_scope(input_format[0] == 1):
@@ -1123,7 +1122,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                                 0x1
 
                                         acc_vscl = \
-                                            (scfIncVscl[0]*tbe_platform.get_const(resize_output_h_start_pos)) - \
+                                            (scf_inc_vscl[0]*tbe_platform.get_const(resize_output_h_start_pos)) - \
                                             (resize_input_h_stat_pos[0] << 18)
                                         spr15 = acc_vscl
 
@@ -1140,7 +1139,7 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                     ib.emit(
                                         tvm.call_extern(dtype, "set_aipp_spr_15", tvm.const(0, dtype="uint64")))
 
-                            aippXs = load_w | load_tail_h[0] << load_h_pos | \
+                            aipp_xs = load_w | load_tail_h[0] << load_h_pos | \
                                      tail_h_postion[0] << h_start_pos | \
                                      (load_image_info[1]) << w_start_pos
 
@@ -1148,15 +1147,15 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                                     output_cb_buf.access_ptr(
                                                         "rw", ptr_type=dtype,
                                                         offset=0),
-                                                    tbe_platform.get_const(aippXs),
+                                                    tbe_platform.get_const(aipp_xs),
                                                     tbe_platform.get_const(aipp_xt)))
 
-                            reg_move_data_from_l1_to_gm(ib, tmp_reg, C1*output_h*W*C0, dtype,
+                            reg_move_data_from_l1_to_gm(ib, tmp_reg, c1*output_h*w*c0, dtype,
                                                         output_cb_buf, output_buf,
-                                                        block_index*offset+padding_info[0]*W*C0+output_offset)
+                                                        block_index*offset+padding_info[0]*w*c0+output_offset)
 
         _aipp_intrin()
         return ib.get()
 
-    return tvm.extern([(N, C1, H, W, C0)], [input_tensor, param_tensor],
+    return tvm.extern([(n, c1, h, w, c0)], [input_tensor, param_tensor],
                       lambda ins, outs: aipp_ir(ins[0], ins[1], outs[0]), dtype=[dtype], name="aipp")

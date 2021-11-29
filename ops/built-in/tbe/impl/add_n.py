@@ -27,8 +27,8 @@ from impl.util import util_compute
 from tbe.dsl import broadcast
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("add_n")
 def add_n_compute_for_fusion(datas, output, tensor_num, kernel_name="add_n"):
     """
@@ -78,13 +78,13 @@ def add_n_compute_for_fusion(datas, output, tensor_num, kernel_name="add_n"):
                 continue
             res = tbe.vadd(res, data_n)
         return res
-    else:
-        for i, nz_add in enumerate(nz_addn):
-            batchmatmul_node = tbe.vadd(batchmatmul_node, nz_add)
-        return batchmatmul_node
+
+    for i, nz_add in enumerate(nz_addn):
+        batchmatmul_node = tbe.vadd(batchmatmul_node, nz_add)
+    return batchmatmul_node
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 def add_n_compute(datas, output, tensor_num, kernel_name="add_n"):
     """
     calculating data's adds, z = a + b + c...

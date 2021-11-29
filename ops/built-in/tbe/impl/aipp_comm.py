@@ -15,8 +15,8 @@
 """
 aipp_comm
 """
-# pylint: disable=too-many-lines,invalid-name,too-many-statements,too-many-arguments,no-else-return
-# pylint: disable=too-many-locals,too-many-branches,ungrouped-imports,too-many-boolean-expressions
+# 'pylint: disable=too-many-lines,invalid-name,too-many-statements,too-many-arguments,no-else-return
+# 'pylint: disable=too-many-locals,too-many-branches,ungrouped-imports,too-many-boolean-expressions
 import numpy
 
 import te.platform as tbe_platform
@@ -160,6 +160,7 @@ def get_bin_value_from_fp32(value):
 
     return 0
 
+
 def convert_fp16_to_fp32(value):
     """
     Description:
@@ -179,6 +180,7 @@ def convert_fp16_to_fp32(value):
     fraction = value & fraction_mask
 
     return tvm.const(0, dtype="uint64") | (sign << 16) | (exponent << 23) | (fraction << 13)
+
 
 def get_l1_image_buf_max(actual_col_size, dtype, is_dynamic, output_format="NC1HWC0"):
     """
@@ -1002,6 +1004,7 @@ def set_spr_dync_in_batch(ib, dtype, param_buf, spr, tmp,
     spr[7] = spr[7] | (tmp[0] & 0xffff) << 48
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_7", spr[7]))
 
+
 def set_spr_dync_in_batch_v300(ib, dtype, param_buf, spr, tmp, offset=DYNC_PARAM_HEAD_STRUCT_SIZE):
     """
     set_spr_dync_in_batch_new
@@ -1079,7 +1082,14 @@ def set_spr_dync_in_batch_v300(ib, dtype, param_buf, spr, tmp, offset=DYNC_PARAM
         spr[21] = spr[21] | convert_fp16_to_fp32(tmp[0]) << chn_offset
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_21", spr[21]))
 
+
 def get_spr9(aipp_config, dtype, output_format="NC1HWC0"):
+    """
+    :param aipp_config:
+    :param dtype:
+    :param output_format:
+    :return:
+    """
     spr9 = 0
     if 'cpadding_value' in aipp_config:
         spr9 = spr9 | (aipp_config.get('cpadding_value') & 0xff)
@@ -2146,7 +2156,7 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
                                  (aipp_config.get('input_format'),
                                   aipp_config.get("load_start_pos_w"))
                     raise_runtime_error(cause_desc)
-                
+
                 if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403") and \
                        aipp_config.get("crop_size_w") % 2 != 0:
                     cause_desc = "when input_format is %s, crop_size_w[%d] must be even" % \
@@ -2387,51 +2397,51 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
 
 
     if cur_cce_product in ["Ascend310"]:
-        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP["Ascend310"]:
-            cause_desc = "Ascend310 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP["Ascend310"]) + \
+        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP.get('Ascend310'):
+            cause_desc = "Ascend310 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP.get('Ascend310')) + \
                          ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
     if cur_cce_product in ["Ascend320"]:
-        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP["Ascend320"]:
-            cause_desc = "Ascend320 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP["Ascend320"]) + \
+        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP.get('Ascend320'):
+            cause_desc = "Ascend320 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP.get('Ascend320')) + \
                          ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
     if cur_cce_product in ["Ascend910"]:
-        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP["Ascend910"]:
-            cause_desc = "Ascend910 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP["Ascend910"]) + \
+        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP.get('Ascend910'):
+            cause_desc = "Ascend910 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP.get('Ascend910')) + \
                          ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
     if cur_cce_product in ["Ascend920"]:
-        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP["Ascend920"]:
-            cause_desc = "Ascend920 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP["Ascend920"]) + \
+        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP.get('Ascend920'):
+            cause_desc = "Ascend920 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP.get('Ascend920')) + \
                          ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
     if cur_cce_product in ["Ascend610"]:
-        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP["Ascend610"]:
-            cause_desc = "Ascend610 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP["Ascend610"]) + \
+        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP.get('Ascend610'):
+            cause_desc = "Ascend610 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP.get('Ascend610')) + \
                          ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
     if cur_cce_product in ["Ascend710"]:
-        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP["Ascend710"]:
-            cause_desc = "Ascend710 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP["Ascend710"]) + \
+        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP.get('Ascend710'):
+            cause_desc = "Ascend710 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP.get('Ascend710')) + \
                          ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
     if cur_cce_product in ["Ascend615"]:
-        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP["Ascend615"]:
-            cause_desc = "Ascend615 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP["Ascend615"]) + \
+        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP.get('Ascend615'):
+            cause_desc = "Ascend615 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP.get('Ascend615')) + \
                          ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
     if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
-        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP["Hi3796CV300ES-Hi3796CV300CS-SD3403"]:
+        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP.get('Hi3796CV300ES-Hi3796CV300CS-SD3403'):
             cause_desc = "Hi3796CV300ES, Hi3796CV300CS and SD3403 only support " + \
-                         ", ".join(SUPPORT_IMAGE_FORMAT_MAP["Hi3796CV300ES-Hi3796CV300CS-SD3403"]) + \
+                         ", ".join(SUPPORT_IMAGE_FORMAT_MAP.get('Hi3796CV300ES-Hi3796CV300CS-SD3403')) + \
                          ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 

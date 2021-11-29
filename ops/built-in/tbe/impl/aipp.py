@@ -15,8 +15,8 @@
 """
 aipp
 """
-# pylint: disable=too-many-branches
-# pylint: disable=ungrouped-imports,E0401
+# 'pylint: disable=too-many-branches
+# 'pylint: disable=ungrouped-imports,E0401
 import json
 
 import te.platform as tbe_platform
@@ -30,8 +30,8 @@ from impl import aipp_dynamic
 from impl.util import util_select_op_base
 from impl.aipp_stc_dyn import new_aipp_compute
 
-# pylint: disable=invalid-name,unused-argument,too-many-statements
-# pylint: disable=too-many-arguments,too-many-locals,too-many-lines
+# 'pylint: disable=invalid-name,unused-argument,too-many-statements
+# 'pylint: disable=too-many-arguments,too-many-locals,too-many-lines
 
 
 def get_op_support_info(input_data, input_dync_param, output_data, aipp_config_json, kernel_name="aipp"):

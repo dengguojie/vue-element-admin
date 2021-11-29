@@ -22,10 +22,11 @@ from te import platform as tbe_platform
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
+
 # get available ub size
 UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
 L1_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.L1_SIZE)
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def _check_param(x, src, indices, kernel_name):
     """
     check parameters, if one is invalid, then raise error
@@ -73,7 +74,7 @@ def _check_param(x, src, indices, kernel_name):
                                                               src_shape[1], x_shape[1], "equal")
 
 
-# pylint: disable=too-few-public-methods,too-many-instance-attributes
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class AddRowRanges(object):
     """AddRowRanges main functions
     """
@@ -138,7 +139,7 @@ class AddRowRanges(object):
 
         return branch_flag
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def _fun_no_cut(self):
         """
         funtion with no need cut src and n <= 2040
@@ -172,7 +173,7 @@ class AddRowRanges(object):
                                         indices_ub, indices_burst_len_tail, start_index, end_index, src_ub,
                                         mask_scaler, block_stride, self.x_shape[0] - block_index * m_size)
 
-    # pylint: disable=too-many-locals,too-many-arguments
+    # 'pylint: disable=too-many-locals,too-many-arguments
     def _calc_no_cut_align(self, x_ub, block_index, m_size, x_burst_len, indices_ub, indices_burst_len,
                            start_index, end_index, src_ub, mask_scaler, block_stride, m_size_tail):
         """
@@ -205,7 +206,7 @@ class AddRowRanges(object):
         self.tik_instance.data_move(self.x_out_gm[block_index * m_size * self.x_shape[1]], x_ub, 0, 1,
                                     x_burst_len, 0, 0)
 
-    # pylint: disable=too-many-locals,too-many-statements
+    # 'pylint: disable=too-many-locals,too-many-statements
     def _fun_cut_n(self):
         """
         src is align and need cut n only
@@ -315,7 +316,7 @@ class AddRowRanges(object):
                                                      n_size, indices_ub, m_index_inner * 4, src_ub, start_index,
                                                      end_index, mask_scaler, n_tail)
 
-    # pylint: disable=too-many-locals,too-many-arguments
+    # 'pylint: disable=too-many-locals,too-many-arguments
     def _calc_cut_n(self, x_ub, x_index, block_index, n_size, indices_ub, indices_index, src_ub, start_index,
                     end_index, mask_scaler, n_tail):
         """
@@ -361,7 +362,7 @@ class AddRowRanges(object):
 
         return n_loop_num, n_size, n_tail
 
-    # pylint: disable=too-many-locals,too-many-statements
+    # 'pylint: disable=too-many-locals,too-many-statements
     def _fun_cut_n_and_m(self):
         """
         funtion with src need cut m and n
@@ -438,7 +439,7 @@ class AddRowRanges(object):
                             self._calc_cut_n_and_m(x_ub_ping, x_ub_bak, m_index_inner * 2, block_index, n_loop_num,
                                                    src_ub, start_index, end_index, n_size, n_tail, n_tail_offset)
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def _calc_cut_n_and_m(self, x_ub, x_ub_bak, x_index, block_index, n_loop_num, src_ub, start_index, end_index,
                           n_size, n_tail, n_tail_offset):
         """
@@ -551,7 +552,7 @@ class AddRowRanges(object):
                                                 x_ub[m_index * 8], 0, 1, 1, 0, 0)
 
 
-# pylint: disable=invalid-name,unused-argument
+# 'pylint: disable=invalid-name,unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def add_row_ranges(x, src, indices, x_out, kernel_name="add_row_ranges"):

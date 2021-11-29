@@ -26,8 +26,8 @@ NUM_ONE = 1.0
 NUM_ZERO = 0.0
 
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=unused-argument,invalid-name,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("apply_adadelta_d")
 def apply_adadelta_d_compute(var,
                              accum,
