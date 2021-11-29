@@ -24,6 +24,7 @@ const uint32_t kCumsumInputNum = 2;
 const uint32_t kCumsumOutputNum = 1;
 const int64_t paralled_data_size = 512 * 1024;
 const char *kCumsum = "Cumsum";
+constexpr int64_t kFirstInputIndex = 0;
 #define CUMSUM_COMPUTE_CASE(DTYPE, TYPE, CTX)            \
   case (DTYPE): {                                        \
     uint32_t result = CumsumCompute<TYPE>(CTX);          \
@@ -33,14 +34,14 @@ const char *kCumsum = "Cumsum";
     }                                                    \
     break;                                               \
   }
-#define CUMSUM_COMPUTE_CASE_COMPLEX(DTYPE, TYPE, IN_TYPE,CTX)    \
-  case (DTYPE): {                                                \
-    uint32_t result = CumsumCompute2<TYPE, IN_TYPE>(CTX);        \
-    if (result != KERNEL_STATUS_OK) {                            \
-      KERNEL_LOG_ERROR("Cumsum kernel compute failed.");         \
-      return result;                                             \
-    }                                                            \
-    break;                                                       \
+#define CUMSUM_COMPUTE_CASE_COMPLEX(DTYPE, TYPE, IN_TYPE, CTX) \
+  case (DTYPE): {                                              \
+    uint32_t result = CumsumCompute2<TYPE, IN_TYPE>(CTX);      \
+    if (result != KERNEL_STATUS_OK) {                          \
+      KERNEL_LOG_ERROR("Cumsum kernel compute failed.");       \
+      return result;                                           \
+    }                                                          \
+    break;                                                     \
   }
 }  // namespace
 
@@ -51,8 +52,8 @@ uint32_t CumsumCpuKernel::Compute(CpuKernelContext &ctx) {
                       "[%s] check input and output failed.", kCumsum);
   // parse params
   KERNEL_HANDLE_ERROR(CumsumCheck(ctx), "[%s] check params failed.", kCumsum);
-  auto data_type = ctx.Input(0)->GetDataType();
-  switch (data_type) {
+  auto input_data_type = ctx.Input(kFirstInputIndex)->GetDataType();
+  switch (input_data_type) {
     CUMSUM_COMPUTE_CASE(DT_FLOAT16, Eigen::half, ctx)
     CUMSUM_COMPUTE_CASE(DT_FLOAT, float, ctx)
     CUMSUM_COMPUTE_CASE(DT_DOUBLE, double, ctx)
@@ -68,19 +69,19 @@ uint32_t CumsumCpuKernel::Compute(CpuKernelContext &ctx) {
     CUMSUM_COMPUTE_CASE_COMPLEX(DT_COMPLEX128, std::complex<double>, double, ctx)
     default:
       KERNEL_LOG_ERROR("Cumsum kernel data type [%s] not support.",
-                       DTypeStr(data_type).c_str());
+                       DTypeStr(input_data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
   return KERNEL_STATUS_OK;
 }
 uint32_t CumsumCpuKernel::CumsumCheck(CpuKernelContext &ctx) {
-  KERNEL_CHECK_NULLPTR(ctx.Input(0)->GetData(), KERNEL_STATUS_PARAM_INVALID,
-                       "get input failed.");
-  KERNEL_CHECK_NULLPTR(ctx.Input(0)->GetTensorShape(),
+  KERNEL_CHECK_NULLPTR(ctx.Input(kFirstInputIndex)->GetData(),
+                       KERNEL_STATUS_PARAM_INVALID, "get input failed.");
+  KERNEL_CHECK_NULLPTR(ctx.Input(kFirstInputIndex)->GetTensorShape(),
                        KERNEL_STATUS_PARAM_INVALID,
                        "Get input tensor shape failed.")
-  KERNEL_CHECK_NULLPTR(ctx.Output(0)->GetData(), KERNEL_STATUS_PARAM_INVALID,
-                       "get output failed.");
+  KERNEL_CHECK_NULLPTR(ctx.Output(kFirstInputIndex)->GetData(),
+                       KERNEL_STATUS_PARAM_INVALID, "get output failed.");
   KERNEL_CHECK_NULLPTR(ctx.GetAttr("exclusive"), KERNEL_STATUS_PARAM_INVALID,
                        "get exclusive failed.");
   KERNEL_CHECK_NULLPTR(ctx.GetAttr("reverse"), KERNEL_STATUS_PARAM_INVALID,
@@ -126,7 +127,7 @@ uint32_t CumsumCpuKernel::CumsumCompute(CpuKernelContext &ctx) {
   bool exclusive = ctx.GetAttr("exclusive")->GetBool();
   bool reverse = ctx.GetAttr("reverse")->GetBool();
   auto output_data = reinterpret_cast<T *>(ctx.Output(0)->GetData());
-  auto shape = ctx.Input(0)->GetTensorShape();
+  auto shape = ctx.Input(kFirstInputIndex)->GetTensorShape();
   const int64_t rank = shape->GetDims();
   if (axis < 0) {
     axis += shape->GetDims();
@@ -143,29 +144,29 @@ uint32_t CumsumCpuKernel::CumsumCompute(CpuKernelContext &ctx) {
       depth = shape->GetDimSize(i);
     }
   }
-  int64_t data_num = ctx.Input(0)->NumElements();
+  int64_t data_num = ctx.Input(kFirstInputIndex)->NumElements();
   int64_t data_size = data_num * sizeof(T);
   if (data_size <= paralled_data_size) {
     for (size_t outer_index = 0; outer_index < outer; ++outer_index) {
       size_t outer_index_adj;
-      if (reverse){
+      if (reverse) {
         outer_index_adj = (outer - 1) - outer_index;
-      }else{
+      } else {
         outer_index_adj = outer_index;
       }
       for (size_t inner_index = 0; inner_index < inner; inner_index++) {
         auto accumulator = static_cast<T>(0);
         size_t inner_index_adj;
-        if (reverse){
+        if (reverse) {
           inner_index_adj = (inner - 1) - inner_index;
-        }else{
+        } else {
           inner_index_adj = inner_index;
         }
         for (size_t depth_index = 0; depth_index < depth; depth_index++) {
           size_t depth_index_adj;
-          if (reverse){
+          if (reverse) {
             depth_index_adj = (depth - 1) - depth_index;
-          }else{
+          } else {
             depth_index_adj = depth_index;
           }
           size_t index = outer_index_adj;
@@ -185,24 +186,24 @@ uint32_t CumsumCpuKernel::CumsumCompute(CpuKernelContext &ctx) {
     auto shard_cumsum = [&](size_t start, size_t end) {
       for (size_t outer_index = start; outer_index < end; ++outer_index) {
         size_t outer_index_adj;
-        if (reverse){
+        if (reverse) {
           outer_index_adj = (outer - 1) - outer_index;
-        }else{
+        } else {
           outer_index_adj = outer_index;
         }
         for (size_t inner_index = 0; inner_index < inner; inner_index++) {
           auto accumulator = static_cast<T>(0);
           size_t inner_index_adj;
-          if (reverse){
+          if (reverse) {
             inner_index_adj = (inner - 1) - inner_index;
-          }else{
+          } else {
             inner_index_adj = inner_index;
           }
           for (size_t depth_index = 0; depth_index < depth; depth_index++) {
             size_t depth_index_adj;
-            if (reverse){
+            if (reverse) {
               depth_index_adj = (depth - 1) - depth_index;
-            }else{
+            } else {
               depth_index_adj = depth_index;
             }
             size_t index = outer_index_adj;
@@ -221,7 +222,7 @@ uint32_t CumsumCpuKernel::CumsumCompute(CpuKernelContext &ctx) {
     };
     uint32_t min_core_num = 1;
     size_t max_core_num = std::max(
-      min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
+        min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
     if (max_core_num > outer) {
       max_core_num = outer;
     }
@@ -251,18 +252,18 @@ uint32_t CumsumCpuKernel::CumsumCompute2(CpuKernelContext &ctx) {
   size_t outer = 1;
   size_t depth = 1;
   for (int32_t i = 0; i < rank; ++i) {
-    if (i < axis){
+    if (i < axis) {
       inner *= shape->GetDimSize(i);
-    }else if (i > axis){
+    } else if (i > axis) {
       outer *= shape->GetDimSize(i);
-    }else{
+    } else {
       depth = shape->GetDimSize(i);
     }
   }
   int64_t data_num = ctx.Input(0)->NumElements();
   std::vector<T2> input_data_real(data_num);
   std::vector<T2> input_data_imag(data_num);
-  for (int64_t i = 0; i < data_num; ++i){
+  for (int64_t i = 0; i < data_num; ++i) {
     input_data_real[i] = input_data[i].real();
     input_data_imag[i] = input_data[i].imag();
   }
@@ -270,38 +271,40 @@ uint32_t CumsumCpuKernel::CumsumCompute2(CpuKernelContext &ctx) {
   if (data_size <= paralled_data_size) {
     for (size_t outer_index = 0; outer_index < outer; ++outer_index) {
       size_t outer_index_adj;
-      if (reverse){
+      if (reverse) {
         outer_index_adj = (outer - 1) - outer_index;
-      }else{
+      } else {
         outer_index_adj = outer_index;
       }
       for (size_t inner_index = 0; inner_index < inner; inner_index++) {
         auto accumulator_real = static_cast<T2>(0);
         auto accumulator_imag = static_cast<T2>(0);
         size_t inner_index_adj;
-        if (reverse){
+        if (reverse) {
           inner_index_adj = (inner - 1) - inner_index;
-        }else{
+        } else {
           inner_index_adj = inner_index;
         }
         for (size_t depth_index = 0; depth_index < depth; depth_index++) {
           size_t depth_index_adj;
-          if (reverse){
+          if (reverse) {
             depth_index_adj = (depth - 1) - depth_index;
-          }else{
+          } else {
             depth_index_adj = depth_index;
           }
           size_t index = outer_index_adj;
           index += inner_index_adj * depth * outer;
           index += depth_index_adj * outer;
           if (exclusive) {
-            output_data[index] = std::complex<T2>(accumulator_real,accumulator_imag);
+            output_data[index] =
+                std::complex<T2>(accumulator_real, accumulator_imag);
             accumulator_real += input_data_real[index];
             accumulator_imag += input_data_imag[index];
           } else {
             accumulator_real += input_data_real[index];
             accumulator_imag += input_data_imag[index];
-            output_data[index] = std::complex<T2>(accumulator_real,accumulator_imag);
+            output_data[index] =
+                std::complex<T2>(accumulator_real, accumulator_imag);
           }
         }
       }
@@ -310,38 +313,40 @@ uint32_t CumsumCpuKernel::CumsumCompute2(CpuKernelContext &ctx) {
     auto shard_cumsum = [&](size_t start, size_t end) {
       for (size_t outer_index = start; outer_index < end; ++outer_index) {
         size_t outer_index_adj;
-        if (reverse){
+        if (reverse) {
           outer_index_adj = (outer - 1) - outer_index;
-        }else{
+        } else {
           outer_index_adj = outer_index;
         }
         for (size_t inner_index = 0; inner_index < inner; inner_index++) {
           auto accumulator_real = static_cast<T2>(0);
           auto accumulator_imag = static_cast<T2>(0);
           size_t inner_index_adj;
-          if (reverse){
+          if (reverse) {
             inner_index_adj = (inner - 1) - inner_index;
-          }else{
+          } else {
             inner_index_adj = inner_index;
           }
           for (size_t depth_index = 0; depth_index < depth; depth_index++) {
             size_t depth_index_adj;
-            if (reverse){
+            if (reverse) {
               depth_index_adj = (depth - 1) - depth_index;
-            }else{
+            } else {
               depth_index_adj = depth_index;
             }
             size_t index = outer_index_adj;
             index += inner_index_adj * depth * outer;
             index += depth_index_adj * outer;
             if (exclusive) {
-              output_data[index] = std::complex<T2>(accumulator_real,accumulator_imag);
+              output_data[index] =
+                  std::complex<T2>(accumulator_real, accumulator_imag);
               accumulator_real += input_data_real[index];
               accumulator_imag += input_data_imag[index];
             } else {
               accumulator_real += input_data_real[index];
               accumulator_imag += input_data_imag[index];
-              output_data[index] = std::complex<T2>(accumulator_real,accumulator_imag);
+              output_data[index] =
+                  std::complex<T2>(accumulator_real, accumulator_imag);
             }
           }
         }
@@ -349,12 +354,12 @@ uint32_t CumsumCpuKernel::CumsumCompute2(CpuKernelContext &ctx) {
     };
     uint32_t min_core_num = 1;
     size_t max_core_num = std::max(
-      min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
+        min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
     if (max_core_num > outer) {
       max_core_num = outer;
     }
     KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(
-                            ctx, outer, outer / max_core_num, shard_cumsum),
+                        ctx, outer, outer / max_core_num, shard_cumsum),
                         "CumSum Compute failed.")
   }
   return KERNEL_STATUS_OK;
