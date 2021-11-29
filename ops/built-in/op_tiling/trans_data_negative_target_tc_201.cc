@@ -268,7 +268,7 @@ bool TilingNegativeTc201(vector<int64_t>& in_shape, vector<int64_t>& out_shape, 
     params.dst_r2nd_lp_unit = GetFloorDiv(params.dst_r2nd_lp_unit, block_elem_cnt) * block_elem_cnt;
   }
   // to avoid bank conflict
-  if (params.tiling_mode == TILING_MODE_201_0 && params.dst_r2nd_lp_unit * dtype_factor % NI_16 == 0 &&
+  if (params.tiling_mode == TILING_MODE_2010 && params.dst_r2nd_lp_unit * dtype_factor % NI_16 == 0 &&
       (params.dst_r2nd_lp_unit < params.src_cl_lp_unit || params.src_cl_lp_unit * dtype_factor % NI_16 == 0)) {
     params.dst_r2nd_lp_unit -= 1;
   }
