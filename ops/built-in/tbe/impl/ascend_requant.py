@@ -27,7 +27,7 @@ from te.utils.error_manager import error_manager_vector
 from impl import ascend_quant_util as util
 
 
-# pylint: disable=invalid-name,unused-argument,unnecessary-lambda,too-many-arguments,too-many-locals
+# 'pylint: disable=invalid-name,unused-argument,unnecessary-lambda,too-many-arguments,too-many-locals
 def is_support_a100():
     """
     Check if a100 version.
@@ -37,12 +37,12 @@ def is_support_a100():
     True: a100 version.
     False: other version.
     """
-    soc_version = get_soc_spec("SOC_VERSION")
     if tbe_platform.api_check_support("tik.vgatherb"):
         return True
     return False
 
 
+# 'pylint: disable=too-many-branches,too-many-statements
 @fusion_manager.register("ascend_requant")
 def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend_requant"):
     """
@@ -64,7 +64,7 @@ def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend
     x_shape_list = shape_util.shape_to_list(x_shape)
 
     conv_flag = 0
-    if len(x.op.input_tensors) and ('mad1' in x.op.input_tensors[0].name or \
+    if (len(x.op.input_tensors) > 0) and ('mad1' in x.op.input_tensors[0].name or \
             'convolution_c_col_bias' in x.op.input_tensors[0].name):
         conv_flag = 1
 
@@ -77,7 +77,7 @@ def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend
         c1_index = 1
 
     else:
-        align_shape = x_shape_list.copy()
+        align_shape = x_shape_list[:]
         c1_index = 1
 
     # the tensor is a constant or vector based on the original shape
@@ -160,8 +160,8 @@ def ascend_requant_compute(x, req_scale, y, relu_flag=False, kernel_name="ascend
             res_ub_reform = tvm.compute(res_shape,
                                         lambda batch, cout1, howo, cout0:
                                             res_ub_reform(batch, cout1, howo*2, cout0),
-                                        name = 'requant_remove_padded_column',
-                                        tag = 'requant_remove_padded_column')
+                                        name='requant_remove_padded_column',
+                                        tag='requant_remove_padded_column')
         res = tvm.compute(res_shape,
                           lambda batch, cout1, howo, cout0:
                               res_ub_reform(batch, cout1, howo, cout0),

@@ -14,23 +14,6 @@
 # ============================================================================
 """
 asin_grad
-
-  Op_description :
-    Computes gradients for Asin operation
-
-    # asin_grad(
-    #   y,
-    #   dy,
-    #   z,
-    #   kernel_name="cce_asin_grad")
-
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
-
-  Constraint :
-    [1] All : 'y' and 'dy' must have the same type and shape.
-    [2] All : shape size limit is 2147483648.
 """
 import operator
 
@@ -41,12 +24,17 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
-# scalar in asin_grad and Newton's equation
-NUM_MINUS_ONE = -1
-NUM_ONE = 1
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant.
+    """
+    NUM_MINUS_ONE = -1
+    NUM_ONE = 1
 
 
-# pylint: disable=unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=unused-argument,invalid-name,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("asin_grad")
 def asin_grad_compute(y, dy, z, kernel_name="asin_grad"):
     """
@@ -71,12 +59,10 @@ def asin_grad_compute(y, dy, z, kernel_name="asin_grad"):
         y = tbe.cast_to(y, "float32")
         dy = tbe.cast_to(dy, "float32")
 
-    # step 1: calculate num_to_vrsqrt = 1 - y^2
     data = tbe.vmul(y, y)
-    data = tbe.vmuls(data, tvm.const(NUM_MINUS_ONE, y.dtype))
-    num_to_vrsqrt = tbe.vadds(data, tvm.const(NUM_ONE, y.dtype))
+    data = tbe.vmuls(data, tvm.const(Constant.NUM_MINUS_ONE, y.dtype))
+    num_to_vrsqrt = tbe.vadds(data, tvm.const(Constant.NUM_ONE, y.dtype))
 
-    # step 2: calculate dy * (1 / sqrt(1 - y^2))
     vsqrt_res = tbe.vsqrt(num_to_vrsqrt, 1)
     res = tbe.vdiv(dy, vsqrt_res)
 

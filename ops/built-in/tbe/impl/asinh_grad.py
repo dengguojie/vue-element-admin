@@ -14,24 +14,6 @@
 # ============================================================================
 """
 asinh_grad
-
-  Op_description :
-    Computes gradients for Asinh operation
-
-    # asinh_grad(
-    #   y,
-    #   dy,
-    #   z,
-    #   kernel_name="cce_asinh_grad")
-
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
-
-  Constraint :
-    [1] All : 'y' and 'dy' must have the same type and shape.
-    [2] All : shape size limit is 2147483648.
-
 """
 import operator
 
@@ -42,19 +24,22 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
-# scalar in asinh_grad
-NUM_MINUS_ONE = -1
-NUM_TWO = 2
-NUM_ONE = 1
-NUM_REPEAT = 0.125
 
-# scalar 1/2! , 1/4! and 1/6! used in taylor
-TAYLOR_SECOND = 0.5
-TAYLOR_FOURTH = 1 / 24.0
-TAYLOR_SIXTH = 1 / 720.0
+# 'pylint: disable=too=few-public-methods
+class Constant:
+    """
+    the class for constant.
+    """
+    NUM_MINUS_ONE = -1
+    NUM_TWO = 2
+    NUM_ONE = 1
+    NUM_REPEAT = 0.125
+    TAYLOR_SECOND = 0.5
+    TAYLOR_FOURTH = 1 / 24.0
+    TAYLOR_SIXTH = 1 / 720.0
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def _cosh_taylor_compute(data):
     """
     Calculate cosh  = 1 + x^2( 1/2! + x^2( 1/4! + x^2/6!))
@@ -70,18 +55,18 @@ def _cosh_taylor_compute(data):
 
     # x^2 / 6!
     pow_2 = tbe.vmul(data, data)
-    pow_2_div = tbe.vmuls(pow_2, tvm.const(TAYLOR_SIXTH, data.dtype))
+    pow_2_div = tbe.vmuls(pow_2, tvm.const(Constant.TAYLOR_SIXTH, data.dtype))
 
     # 1/4! + x^2 / 6!
-    pow_2_plus = tbe.vadds(pow_2_div, tvm.const(TAYLOR_FOURTH, data.dtype))
+    pow_2_plus = tbe.vadds(pow_2_div, tvm.const(Constant.TAYLOR_FOURTH, data.dtype))
 
     # 1/2! + x^2( 1/4! + x^2/6!)
     pow_4 = tbe.vmul(pow_2_plus, pow_2)
-    pow_4_plus = tbe.vadds(pow_4, tvm.const(TAYLOR_SECOND, data.dtype))
+    pow_4_plus = tbe.vadds(pow_4, tvm.const(Constant.TAYLOR_SECOND, data.dtype))
 
     # 1 + x^2( 1/2! + x^2( 1/4! + x^2/6!))
     pow_6 = tbe.vmul(pow_4_plus, pow_2)
-    res = tbe.vadds(pow_6, tvm.const(NUM_ONE, data.dtype))
+    res = tbe.vadds(pow_6, tvm.const(Constant.NUM_ONE, data.dtype))
 
     return res
 
@@ -100,13 +85,13 @@ def _cosh_repeat(data):
     """
 
     data_square = tbe.vmul(data, data)
-    data_mul = tbe.vmuls(data_square, tvm.const(NUM_TWO, data.dtype))
-    res = tbe.vadds(data_mul, tvm.const(NUM_MINUS_ONE, data.dtype))
+    data_mul = tbe.vmuls(data_square, tvm.const(Constant.NUM_TWO, data.dtype))
+    res = tbe.vadds(data_mul, tvm.const(Constant.NUM_MINUS_ONE, data.dtype))
 
     return res
 
 
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("asinh_grad")
 def asinh_grad_compute(y, dy, output_res, kernel_name="cce_asinh_grad"):
     """
@@ -126,25 +111,21 @@ def asinh_grad_compute(y, dy, output_res, kernel_name="cce_asinh_grad"):
     -------
     dy * (1/cosh(y))
     """
-
     dtype = y.dtype
     if dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
         y = tbe.cast_to(y, "float32")
         dy = tbe.cast_to(dy, "float32")
 
     if tbe_platform.cce_conf.api_check_support('te.lang.cce.vexp', 'float32'):
-        # use vexp,vdiv api for high efficiency computation
-        # cosh(y) = (e^y + e^-y) / 2
-        #           (e^2y + 1) / 2e^y
         exp_pos = tbe.vexp(y)
         res = tbe.vmul(exp_pos, exp_pos)
-        res = tbe.vadds(res, tvm.const(NUM_ONE, y.dtype))
-        data_dy1 = tbe.vmuls(dy, tvm.const(NUM_TWO, y.dtype))
+        res = tbe.vadds(res, tvm.const(Constant.NUM_ONE, y.dtype))
+        data_dy1 = tbe.vmuls(dy, tvm.const(Constant.NUM_TWO, y.dtype))
         data_dy1 = tbe.vmul(data_dy1, exp_pos)
         res = tbe.vdiv(data_dy1, res)
     else:
         # use taylor's method for high accuracy result
-        y = tbe.vmuls(y, tvm.const(NUM_REPEAT, y.dtype))
+        y = tbe.vmuls(y, tvm.const(Constant.NUM_REPEAT, y.dtype))
         cosh_value_0 = _cosh_taylor_compute(y)
         # repeat 3 times
         cosh_value_1 = _cosh_repeat(cosh_value_0)

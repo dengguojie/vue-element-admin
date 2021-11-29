@@ -25,9 +25,9 @@ from te.utils import shape_util
 from impl import ascend_quant_util
 
 
-# pylint: disable=locally-disabled,too-many-arguments, unused-argument
-# pylint: disable=invalid-name,too-many-locals,unnecessary-lambda
-# pylint: disable=len-as-condition,too-many-branches,too-many-statements
+# 'pylint: disable=locally-disabled,too-many-arguments, unused-argument
+# 'pylint: disable=invalid-name,too-many-locals,unnecessary-lambda
+# 'pylint: disable=len-as-condition,too-many-branches,too-many-statements
 def _check_params(x, deq_scale, sqrt_mode, kernel_name):
     """
     check the parameters including shape, dtype, kernel_name, attr
@@ -338,8 +338,8 @@ def _vector_dequant_v200(x, x_shape, align_shape, deq_scale, relu_flag, conv_fla
             res_f16 = tvm.compute(remove_padded_column_shape,
                                   lambda batch, cout1, howo, cout0:
                                       res_f16(batch, cout1, howo*2, cout0),
-                                  name = 'dequant_remove_padded_column',
-                                  tag = 'dequant_remove_padded_column')
+                                  name='dequant_remove_padded_column',
+                                  tag='dequant_remove_padded_column')
 
         if invalid_data_rm_flag:
             res = tvm.compute(res_f16.shape,
@@ -509,8 +509,8 @@ def _scalar_dequant_v200(x, x_shape, align_shape, deq_scale, conv_flag):
             res_f16 = tvm.compute(remove_padded_column_shape,
                                   lambda batch, cout1, howo, cout0:
                                       res_f16(batch, cout1, howo*2, cout0),
-                                  name = 'dequant_remove_padded_column',
-                                  tag = 'dequant_remove_padded_column')
+                                  name='dequant_remove_padded_column',
+                                  tag='dequant_remove_padded_column')
 
         if invalid_data_rm_flag:
             res = tvm.compute(res_f16.shape,
@@ -591,7 +591,7 @@ def ascend_dequant_compute(x, deq_scale, y, sqrt_mode=False, relu_flag=False, ke
                        x_input_shape[3],
                        x_input_shape[4]]
     else:
-        align_shape = x_shape_list.copy()
+        align_shape = list(x_shape_list)
 
     if x.op.tag != "depthwise_conv2d":
         align_shape[2] = (align_shape[2] + 15) // 16 * 16

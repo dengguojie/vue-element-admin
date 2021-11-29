@@ -23,7 +23,7 @@ from ._internal_lib import ObjWithConst
 from ._internal_lib import VecBufInfo
 from . import _check as G_CHECK
 
-
+# 'pylint: disable=too-many-arguments, too-many-instance-attributes, too-few-public-methods
 class _BaseVecCmdRunner(ObjWithConst):
     def __init__(self, cmd_name, mask, repeat,
                  dst_info, src0_info, src1_info):
@@ -101,6 +101,7 @@ class _RunnerFactory(ObjWithConst):
                    VGCT.SCA_DBL_TRI: _ScalarMultiRunner,
                    VGCT.CONV: _ConvRunner,
                    VGCT.INIT: _InitRunner}
+
     @classmethod
     def get_runner(cls, cmd_name, mask, repeat, dst_info,
                    src0_info, src1_info):

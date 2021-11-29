@@ -29,13 +29,19 @@ from impl.conv2d import conv2d
 from impl.conv2d import conv2d_compute
 from impl.util.platform_adapter import error_manager_vector
 
-AVG_KERNEL_SIZE_H_MUL_W = 255 #kernel_h * kernel_w
-AVG_KERNEL_SIZE = 20 # maximum ksieze
-AVG_STRIDE_SIZE = 63 # maximum strides
+
+# 'pylint: disable=too=few-public-methods
+class Constant:
+    """
+    the class for constant.
+    """
+    AVG_KERNEL_SIZE_H_MUL_W = 255 #kernel_h * kernel_w
+    AVG_KERNEL_SIZE = 20 # maximum ksieze
+    AVG_STRIDE_SIZE = 63 # maximum strides
 
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=invalid-name,redefined-builtin,too-many-locals,unused-argument,unused-variable,unnecessary-lambda
+# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=invalid-name,redefined-builtin,too-many-locals,unused-argument,unused-variable,unnecessary-lambda
 def check_supported(x, filter, bias, y, ksize, strides,
                     padding="VALID", data_format="NHWC", offset_x=0,
                     kernel_name="avg_pool"):
@@ -73,14 +79,14 @@ def check_supported(x, filter, bias, y, ksize, strides,
         outputw = ori_shape[3]
         input_h = input_shape[2]
         input_w = input_shape[3]
-    is_support_kernel = (ksize_h * ksize_w <= AVG_KERNEL_SIZE_H_MUL_W) or \
-                        (ksize_h <= AVG_KERNEL_SIZE and ksize_w <= AVG_KERNEL_SIZE)
+    is_support_kernel = (ksize_h * ksize_w <= Constant.AVG_KERNEL_SIZE_H_MUL_W) or \
+                        (ksize_h <= Constant.AVG_KERNEL_SIZE and ksize_w <= Constant.AVG_KERNEL_SIZE)
     is_global = (outputh == 1) and (outputw == 1)
-    if (not is_global) and (stride_h > AVG_STRIDE_SIZE or stride_w > AVG_STRIDE_SIZE):
+    if (not is_global) and (stride_h > Constant.AVG_STRIDE_SIZE or stride_w > Constant.AVG_STRIDE_SIZE):
         reason = "input_shape is not supported by schedule when stride > 63."
         return False, reason
     if not is_support_kernel and outputh != 1 and outputw == 1:
-        reason = "the shape is not supported by schedule, ksize:%s ori_shape:%s" %(str(ksize),str(ori_shape))
+        reason = "the shape is not supported by schedule, ksize:%s ori_shape:%s" % (str(ksize), str(ori_shape))
         return False, reason
     if input_h == 1 and input_w > 100000:
         reason = "input_shape is not supported by schedule when input_h=1 and input_w>100000"
@@ -216,7 +222,7 @@ def _avgpool_conv2d_fusion_para(inputs, outputs):
     return fusion_para
 
 
-# pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-arguments
 def _pad_compute(padding, input_h, input_w, stride, window, dilations):
     """
     Calculate the pad value.
@@ -250,8 +256,8 @@ def _pad_compute(padding, input_h, input_w, stride, window, dilations):
     return pad
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-statements
-# pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-statements
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
 def _check_window_rule(ksize, strides, data_format):
     """
     check ksize and strides of window in pooling
@@ -383,8 +389,8 @@ def _avg_pool_global_compute(x, y, ksize, strides,
     return res
 
 
-# pylint: disable=unnecessary-lambda,redefined-builtin,too-many-locals
-# pylint: disable=unnecessary-lambda,too-many-statements
+# 'pylint: disable=unnecessary-lambda,redefined-builtin,too-many-locals
+# 'pylint: disable=unnecessary-lambda,too-many-statements
 @tbe_platform.fusion_manager.fusion_manager.register("avg_pool")
 def avg_pool_compute(x, filter, bias, y, ksize, strides, padding="VALID",
                      data_format="NHWC", offset_x=0, kernel_name="avg_pool"):

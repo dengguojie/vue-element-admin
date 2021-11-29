@@ -14,22 +14,6 @@
 # ============================================================================
 """
 atan
-
-  Op_description :
-    Computes the trignometric inverse tangent of x element-wise
-
-    # atan(
-    #   x,
-    #   y,
-    #   kernel_name="cce_atan")
-
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
-
-  Constraint :
-    [1] All : shape size limit is 2147483648.
-
 """
 from impl.util import util_compute
 import te.lang.cce as tbe
@@ -38,14 +22,20 @@ from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 
-CONST_POS_ONE = 1.0
-CONST_PI_BY_FOUR = 0.78539816339744830961566084581988
-CONST_PI_BY_EIGHT = 0.39269908169872415480783042290994
-CONST_ITERTOR = 6
-CONST_ITERTOR2 = 4
-TAN_PI_BY_EIGHT = 0.4142135623730950
 
-TAYLOR = (1.0, -1.0 / 3, 1.0 / 5, -1.0 / 7, 1.0 / 9, -1.0 / 11, 1.0 / 13)
+# 'pylint: disable=too=few-public-methods
+class Constant:
+    """
+    the class for constant.
+    """
+    CONST_POS_ONE = 1.0
+    CONST_PI_BY_FOUR = 0.78539816339744830961566084581988
+    CONST_PI_BY_EIGHT = 0.39269908169872415480783042290994
+    CONST_ITERTOR = 6
+    CONST_ITERTOR2 = 4
+    TAN_PI_BY_EIGHT = 0.4142135623730950
+
+    TAYLOR = (1.0, -1.0 / 3, 1.0 / 5, -1.0 / 7, 1.0 / 9, -1.0 / 11, 1.0 / 13)
 
 
 def _do_taylor(input_data):
@@ -71,26 +61,26 @@ def _do_taylor(input_data):
     shape_input = input_data.shape
     dtype_input = input_data.dtype
 
-    tensor_offset = tbe.broadcast(tvm.const(TAN_PI_BY_EIGHT, dtype_input), shape_input)
-    denominator_data = tbe.vmuls(input_data, TAN_PI_BY_EIGHT)
-    denominator_data = tbe.vadds(denominator_data, CONST_POS_ONE)
+    tensor_offset = tbe.broadcast(tvm.const(Constant.TAN_PI_BY_EIGHT, dtype_input), shape_input)
+    denominator_data = tbe.vmuls(input_data, Constant.TAN_PI_BY_EIGHT)
+    denominator_data = tbe.vadds(denominator_data, Constant.CONST_POS_ONE)
     molecule = tbe.vsub(input_data, tensor_offset)
     data = tbe.vdiv(molecule, denominator_data)
     data = tbe.vabs(data)
 
     square_data = tbe.vmul(data, data)
-    res = tbe.broadcast(tvm.const(TAYLOR[CONST_ITERTOR], dtype_input), shape_input)
-    for i in reversed(range(CONST_ITERTOR)):
+    res = tbe.broadcast(tvm.const(Constant.TAYLOR[Constant.CONST_ITERTOR], dtype_input), shape_input)
+    for i in reversed(range(Constant.CONST_ITERTOR)):
         res = tbe.vmul(res, square_data)
-        res = tbe.vadds(res, TAYLOR[i])
+        res = tbe.vadds(res, Constant.TAYLOR[i])
     res = tbe.vmul(res, data)
-    res = tbe.vadds(res, CONST_PI_BY_EIGHT)
+    res = tbe.vadds(res, Constant.CONST_PI_BY_EIGHT)
 
     square_data = tbe.vmul(input_data, input_data)
-    res2 = tbe.broadcast(tvm.const(TAYLOR[CONST_ITERTOR2], dtype_input), shape_input)
-    for i in reversed(range(CONST_ITERTOR2)):
+    res2 = tbe.broadcast(tvm.const(Constant.TAYLOR[Constant.CONST_ITERTOR2], dtype_input), shape_input)
+    for i in reversed(range(Constant.CONST_ITERTOR2)):
         res2 = tbe.vmul(res2, square_data)
-        res2 = tbe.vadds(res2, TAYLOR[i])
+        res2 = tbe.vadds(res2, Constant.TAYLOR[i])
     res2 = tbe.vmul(res2, input_data)
 
     res = tbe.vmin(res, res2)
@@ -98,7 +88,7 @@ def _do_taylor(input_data):
     return res
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("atan")
 def atan_compute(x, y, kernel_name="atan"):
     """
@@ -127,7 +117,7 @@ def atan_compute(x, y, kernel_name="atan"):
         x = tbe.cast_to(x, "float32")
     abs_data = tbe.vabs(x)
 
-    tensor_one = tbe.broadcast(tvm.const(CONST_POS_ONE, x.dtype), shape)
+    tensor_one = tbe.broadcast(tvm.const(Constant.CONST_POS_ONE, x.dtype), shape)
 
     abs_data_sub_one = tbe.vsub(abs_data, tensor_one)
     abs_data_add_one = tbe.vadd(abs_data, tensor_one)
@@ -138,7 +128,7 @@ def atan_compute(x, y, kernel_name="atan"):
     res = _do_taylor(abs_data)
     # calucate data more than one
     res_mt_one = _do_taylor(abs_data2)
-    res_mt_one = tbe.vadds(res_mt_one, CONST_PI_BY_FOUR)
+    res_mt_one = tbe.vadds(res_mt_one, Constant.CONST_PI_BY_FOUR)
 
     res = tbe.vmin(res, res_mt_one)
 

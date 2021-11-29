@@ -61,8 +61,8 @@ def _check_param(shape_var, shape_value, dtype_var, dtype_value, kernel_name):
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "var", "value", error_detail)
 
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=unused-argument,unnecessary-lambda
+# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=unused-argument,unnecessary-lambda
 @tbe_platform.fusion_manager.fusion_manager.register("assign_sub")
 def _assign_sub_compute(tensor_var, tensor_value, out, kernel_name="assign_sub"):
     """

@@ -23,9 +23,9 @@ from te.utils import para_check
 from impl import ascend_quant_util as util
 
 
-# pylint: disable=too-many-arguments,invalid-name,unused-argument
-# pylint: disable=unnecessary-lambda
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-arguments,invalid-name,unused-argument
+# 'pylint: disable=unnecessary-lambda
+# 'pylint: disable=too-many-locals
 def _check_params(x, y, scale, offset, sqrt_mode, kernel_name):
     """
     check the parameters including shape, dtype, kernel_name, attr.
@@ -140,8 +140,8 @@ def ascend_anti_quant_compute(x, y, scale, offset, sqrt_mode=False, kernel_name=
     if 0 < ori_c % 32 <= 16:
         tmp_res = tvm.compute(out_shape, lambda *indice: scale_ub(*indice), name="tmp_res")
 
-        align_shape = [ori_shape[0], (ori_shape[1] + util.FP16_BLOCK_VALUE - 1) // util.FP16_BLOCK_VALUE,
-                       ori_shape[2], ori_shape[3], util.FP16_BLOCK_VALUE]
+        align_shape = [ori_shape[0], (ori_shape[1] + util.Constant.FP16_BLOCK_VALUE - 1) // util.Constant.FP16_BLOCK_VALUE,
+                       ori_shape[2], ori_shape[3], util.Constant.FP16_BLOCK_VALUE]
 
         res = tvm.compute(align_shape, lambda *indice: tmp_res(*indice), name="res", tag="anti_quant",
                           attrs={"scale": scale,
@@ -163,7 +163,7 @@ def get_op_support_info(x, y, scale, offset, sqrt_mode=False, kernel_name="ascen
     return util.get_quant_support_info(x)
 
 
-# pylint: disable=too-many-arguments,invalid-name,unused-argument
+# 'pylint: disable=too-many-arguments,invalid-name,unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
                             para_check.REQUIRED_ATTR_FLOAT, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def ascend_anti_quant(x, y, scale, offset, sqrt_mode=False, kernel_name="ascend_anti_quant"):

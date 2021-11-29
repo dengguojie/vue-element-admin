@@ -20,20 +20,19 @@ from te import tik
 from te.utils import para_check
 from te.utils import shape_util
 
-# define a scalar, value = -2**(63)
-SCALAR_MAX_FP16 = 2 ** 16 - 1
-# define a scalar, value = 2**30 + 2**29
-SCALAR_MAX_FP32 = 2 ** 30 + 2 ** 29
-# max set_mask_int64 value
-MAX_MASK_INT64 = 2 ** 64 - 1
-# max segment len
-MAX_SEGMENT_LEN = 2048 * 5
-# int32 num in 8*block
-OUT_MASK = 64
-# max int32 output num
-OUT_MAX_NUM = 2048 * 4
-# 0101 mask value
-MASK_0_1 = 6148914691236517205
+
+# 'pylint: disable=too=few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    SCALAR_MAX_FP16 = 2 ** 16 - 1
+    SCALAR_MAX_FP32 = 2 ** 30 + 2 ** 29
+    MAX_MASK_INT64 = 2 ** 64 - 1
+    MAX_SEGMENT_LEN = 2048 * 5
+    OUT_MASK = 64
+    OUT_MAX_NUM = 2048 * 4
+    MASK_0_1 = 6148914691236517205
 
 
 def _get_ceil_int(int1, int2):
@@ -59,7 +58,7 @@ def _get_ceil_int(int1, int2):
     return ceil_int
 
 
-# pylint: disable=unused-argument,invalid-name,useless-object-inheritance
+# 'pylint: disable=unused-argument,invalid-name,useless-object-inheritance
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def arg_min_with_value(x, index, value, dimension,
@@ -121,7 +120,7 @@ def _param_check(shape_x, dtype_x, axis, kernel_name):
     axis = shape_util.axis_check(len(shape_x), axis)
 
 
-# pylint: disable=super-with-arguments
+# 'pylint: disable=super-with-arguments
 class ArgminBase(object):
     """Function: use to store argminwithvalue base parameters
     """
@@ -185,7 +184,7 @@ class ArgminBase(object):
         self.tik_instance = tik.Tik()
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class Argmin(ArgminBase):
     """Function: use to store argmin schedule parameters
     """
@@ -231,8 +230,8 @@ class Argmin(ArgminBase):
         self.gm_result_size = 0
         self.full_mask = self.data_each_vector
 
-        self.segment = MAX_SEGMENT_LEN
-        self.out_mask = OUT_MASK
+        self.segment = Constant.MAX_SEGMENT_LEN
+        self.out_mask = Constant.OUT_MASK
 
         self.c_align_ubsize = shape_x[-1]
         if axis < len(self.shape_x) - 1:
@@ -325,7 +324,7 @@ class Argmin(ArgminBase):
 
         return core_used, core_seg
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def argmin_not_last_axis(self):
         """
         scedule for argmin_not_last_axis
@@ -443,7 +442,7 @@ class Argmin(ArgminBase):
             gm_out_offset = out_offset + self.segment * segment_loop - offset
             self.do_not_last(segment_tail_data, gm_in_offset, gm_out_offset)
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def compute_argmin_not_last_axis_cut_by_first_dim(
             self, first_i, segment_loop, offset,
             segment_tail, segment_tail_data):
@@ -506,7 +505,7 @@ class Argmin(ArgminBase):
                             segment_loop * self.segment
             self.do_not_last(segment_tail_data, gm_in_offset, gm_out_offset)
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def do_not_last(self, segment, gm_in_offset, gm_out_offset):
         """
         process for a segment when arg not last dim
@@ -534,8 +533,8 @@ class Argmin(ArgminBase):
                                     nbust_len, 0, 0)
         # Init out
         repeat = _get_ceil_int(data_segment, self.data_each_block * 8)
-        self.tik_instance.vector_dup(OUT_MASK, ub_c, 0,
-                                     _get_ceil_int(data_segment, OUT_MASK), 1,
+        self.tik_instance.vector_dup(Constant.OUT_MASK, ub_c, 0,
+                                     _get_ceil_int(data_segment, Constant.OUT_MASK), 1,
                                      8)
         thread_num = 2 if self.axis_size > 2 else 1
         with self.tik_instance.for_range(1,
@@ -548,17 +547,17 @@ class Argmin(ArgminBase):
                 ub_b, self.data_gm[gm_in_offset + axis_i * self.last_dim_size],
                 0, 1, nbust_len, 0, 0)
             ub_mask = self.tik_instance.Tensor(
-                "uint64", (self.segment // OUT_MASK,),
+                "uint64", (self.segment // Constant.OUT_MASK,),
                 name="ub_mask",
                 scope=tik.scope_ubuf)
             self.tik_instance.vcmpv_gt(ub_mask, ub_a, ub_b, repeat, 1, 1, 8, 8)
-            int64_num = _get_ceil_int(data_segment, OUT_MASK)
+            int64_num = _get_ceil_int(data_segment, Constant.OUT_MASK)
             with self.tik_instance.for_range(0, int64_num) as i:
                 mask_l = self.tik_instance.Scalar("uint64")
                 mask_l.set_as(ub_mask[i])
                 with self.tik_instance.if_scope(mask_l != 0):
                     self.tik_instance.vector_dup([mask_l, mask_l],
-                                                 ub_c[i * OUT_MASK],
+                                                 ub_c[i * Constant.OUT_MASK],
                                                  axis_i, 1, 1, 8)
 
             self.tik_instance.vmin(self.full_mask, ub_a, ub_a, ub_b, repeat, 1,
@@ -584,7 +583,7 @@ class Argmin(ArgminBase):
             buf_size, loop_times, over_size, align_flag
         """
         if self.dtype_x == "float16":
-            self.segment = MAX_SEGMENT_LEN * 2
+            self.segment = Constant.MAX_SEGMENT_LEN * 2
         segment_size = self.segment
         align_flag = ((self.c_align_ubsize % segment_size) != 0)
         if segment_size <= self.c_align_ubsize:
@@ -654,11 +653,11 @@ class Argmin(ArgminBase):
         """
         ub_buf_size, loop_times, over_size, align_flag = self.get_tiling_info()
         self.ub_result_int32 = self.tik_instance.Tensor(
-            "int32", (MAX_SEGMENT_LEN,),
+            "int32", (Constant.MAX_SEGMENT_LEN,),
             name="ub_result_int32",
             scope=tik.scope_ubuf)
         self.ub_result_value = self.tik_instance.Tensor(
-            self.dtype_x, (MAX_SEGMENT_LEN,),
+            self.dtype_x, (Constant.MAX_SEGMENT_LEN,),
             name="ub_result_value",
             scope=tik.scope_ubuf)
         thread_num = 2 if core_segment > 1 else 1
@@ -666,19 +665,19 @@ class Argmin(ArgminBase):
         def _run(segment_len, segment_index):
             with self.tik_instance.for_range(
                     0, segment_len, thread_num=thread_num) as core_i:
-                index = core_i + MAX_SEGMENT_LEN * segment_index
+                index = core_i + Constant.MAX_SEGMENT_LEN * segment_index
                 offset = n_i * segment_core + index
                 self.result_int32 = self.tik_instance.Scalar("int32")
                 self.result_int32.set_as(0)
                 self.result_float32 = self.tik_instance.Scalar("float32")
-                self.result_float32.set_as(SCALAR_MAX_FP32)
+                self.result_float32.set_as(Constant.SCALAR_MAX_FP32)
                 self.result_out_scalar = self.tik_instance.Scalar(self.dtype_x)
                 if self.dtype_x == "float16":
                     argmax_func = self.do_argmin_last_axis
-                    self.result_out_scalar.set_as(SCALAR_MAX_FP16)
+                    self.result_out_scalar.set_as(Constant.SCALAR_MAX_FP16)
                 else:
                     argmax_func = self.do_argmin_last_axis_fp32
-                    self.result_out_scalar.set_as(SCALAR_MAX_FP32)
+                    self.result_out_scalar.set_as(Constant.SCALAR_MAX_FP32)
                 if loop_times != 0:
                     with self.tik_instance.for_range(0, loop_times) as loop:
                         argmax_func(ub_buf_size, loop, offset)
@@ -687,7 +686,7 @@ class Argmin(ArgminBase):
                 self.ub_result_int32[core_i] = self.result_int32
                 self.ub_result_value[core_i] = self.result_out_scalar
             gm_out_offset = n_i * segment_core + \
-                            MAX_SEGMENT_LEN * segment_index
+                            Constant.MAX_SEGMENT_LEN * segment_index
             out_nbust = _get_ceil_int(segment_len, 8)
             self.tik_instance.data_move(self.result_gm[gm_out_offset],
                                         self.ub_result_int32, 0, 1,
@@ -697,15 +696,15 @@ class Argmin(ArgminBase):
                                         self.ub_result_value, 0, 1,
                                         out_nbust, 0, 0)
 
-        _loop_segment = core_segment // MAX_SEGMENT_LEN
-        _loop_segment_tail = core_segment % MAX_SEGMENT_LEN
+        _loop_segment = core_segment // Constant.MAX_SEGMENT_LEN
+        _loop_segment_tail = core_segment % Constant.MAX_SEGMENT_LEN
         with self.tik_instance.for_range(
                 0, _loop_segment) as _loop:
-            _run(MAX_SEGMENT_LEN, _loop)
+            _run(Constant.MAX_SEGMENT_LEN, _loop)
         if _loop_segment_tail != 0:
             _run(_loop_segment_tail, _loop_segment)
 
-    # pylint: disable=too-many-locals,too-many-statements
+    # 'pylint: disable=too-many-locals,too-many-statements
     def do_argmin_last_axis(self, ub_buf_size, loop, n_i):
         """
         do arg in one segment fo float16
@@ -743,7 +742,7 @@ class Argmin(ArgminBase):
         def _calu_mask_by_one_zero(_len):
             _mask_h, _mask_l = 0, 0
             if _len > 32:
-                _mask_l = MASK_0_1
+                _mask_l = Constant.MASK_0_1
                 for i in range(_len - 32):
                     _mask_h = _mask_h + 2 ** (2 * i)
             else:
@@ -753,14 +752,14 @@ class Argmin(ArgminBase):
             return _mask_h, _mask_l
 
         def _get_tail_mask(tail_len):
-            if tail_len <= OUT_MASK:
+            if tail_len <= Constant.OUT_MASK:
                 mask = 2 ** tail_len - 1
-                mask_h = MAX_MASK_INT64
-                mask_l = MAX_MASK_INT64 - mask
+                mask_h = Constant.MAX_MASK_INT64
+                mask_l = Constant.MAX_MASK_INT64 - mask
             else:
                 mask_l = 0
-                mask = 2 ** (tail_len - OUT_MASK) - 1
-                mask_h = MAX_MASK_INT64 - mask
+                mask = 2 ** (tail_len - Constant.OUT_MASK) - 1
+                mask_h = Constant.MAX_MASK_INT64 - mask
             return mask_h, mask_l
 
         tail = ub_buf_size % self.data_each_vector
@@ -769,7 +768,7 @@ class Argmin(ArgminBase):
             _offset = ub_buf_size // (self.data_each_vector)
             self.tik_instance.vector_dup(
                 [mask_h, mask_l], ub_data[_offset * self.data_each_vector],
-                SCALAR_MAX_FP16, 1, 1, 8)
+                Constant.SCALAR_MAX_FP16, 1, 1, 8)
 
         repeat_times = _get_ceil_int(ub_buf_size, self.data_each_vector)
         self.tik_instance.vcmin(self.data_each_vector, ub_result, ub_data,
@@ -784,7 +783,7 @@ class Argmin(ArgminBase):
                 self.tik_instance.vector_dup(
                     [mask_h, mask_l],
                     ub_result[_offset * self.data_each_vector],
-                    SCALAR_MAX_FP16, 1, 1, 8)
+                    Constant.SCALAR_MAX_FP16, 1, 1, 8)
             repeat_times = _get_ceil_int(repeat_times, 64)
             ub_second_result = self.tik_instance.Tensor(
                 self.dtype_x,
@@ -792,8 +791,8 @@ class Argmin(ArgminBase):
                  self.data_each_vector,),
                 name="ub_second_result",
                 scope=tik.scope_ubuf)
-            self.tik_instance.vcmin([MASK_0_1,
-                                     MASK_0_1],
+            self.tik_instance.vcmin([Constant.MASK_0_1,
+                                     Constant.MASK_0_1],
                                     ub_second_result, ub_result,
                                     _repeat_times, 1, 1, 8)
 
@@ -824,7 +823,7 @@ class Argmin(ArgminBase):
             _repeat_tail = repeat_times % 64
             _mask = _calu_mask_by_one_zero(_repeat_tail)
             if _repeat_tail == 0:
-                _mask = [MASK_0_1, MASK_0_1]
+                _mask = [Constant.MASK_0_1, Constant.MASK_0_1]
             ub_second_result = self.tik_instance.Tensor(
                 self.dtype_x,
                 (_get_ceil_int(repeat_times, self.data_each_vector) *
@@ -900,7 +899,7 @@ class Argmin(ArgminBase):
             name="cmp_mask_ub",
             scope=tik.scope_ubuf)
         self.tik_instance.vector_dup(self.data_each_vector, ub_max_64,
-                                     SCALAR_MAX_FP32, 1, 1, 8)
+                                     Constant.SCALAR_MAX_FP32, 1, 1, 8)
         nbust = _get_ceil_int(segment, self.data_each_block)
         offset = loop * self.segment + n_i * self.axis_size
         repeat = _get_ceil_int(segment, self.data_each_vector)
@@ -910,11 +909,11 @@ class Argmin(ArgminBase):
         if tail != 0:
             mask_h = 0
             mask = 2 ** tail - 1
-            mask_l = MAX_MASK_INT64 - mask
+            mask_l = Constant.MAX_MASK_INT64 - mask
             _offset = ub_buf_size // self.data_each_vector
             self.tik_instance.vector_dup(
                 [mask_h, mask_l], ub_data[_offset * self.data_each_vector],
-                SCALAR_MAX_FP32, 1, 1, 8)
+                Constant.SCALAR_MAX_FP32, 1, 1, 8)
         self.tik_instance.vmin(self.data_each_vector, ub_max_64, ub_data,
                                ub_max_64, repeat, 1, 1, 1, 0, 8, 0)
         self.tik_instance.vcmpv_eq(cmp_mask_ub, ub_max_64, ub_data, repeat, 1,

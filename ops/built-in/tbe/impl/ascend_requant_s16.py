@@ -25,7 +25,7 @@ from te.utils.error_manager import error_manager_vector
 from impl import ascend_quant_util as util
 
 
-# pylint: disable=invalid-name,unused-argument,unnecessary-lambda,too-many-arguments,too-many-locals
+# 'pylint: disable=invalid-name,unused-argument,unnecessary-lambda,too-many-arguments,too-many-locals
 @fusion_manager.register("ascend_requant_s16")
 def ascend_requant_s16_compute(x0, req_scale, x1, y0, y1, dual_output, relu_flag, kernel_name='ascend_requant_s16'):
     """
@@ -48,7 +48,7 @@ def ascend_requant_s16_compute(x0, req_scale, x1, y0, y1, dual_output, relu_flag
     """
     x_shape = x0.shape
     x_shape_list = shape_util.shape_to_list(x_shape)
-    align_shape = x_shape_list.copy()
+    align_shape = x_shape_list[:]
 
     ori_shape_req = req_scale.op.attrs["ori_shape"]
     ori_shape_req_list = shape_util.shape_to_list(ori_shape_req)

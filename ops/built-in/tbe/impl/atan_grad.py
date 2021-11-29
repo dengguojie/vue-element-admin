@@ -14,23 +14,6 @@
 # ============================================================================
 """
 atan_grad
-
-  Op_description :
-    Computes gradients for Atan operation
-
-    # atan_grad(
-    #   y,
-    #   dy,
-    #   z,
-    #   kernel_name="cce_atan_grad")
-
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
-
-  Constraint :
-    [1] All : 'y' and 'dy' must have the same type and shape.
-    [2] All : shape size limit is 2147483648.
 """
 import operator
 
@@ -41,10 +24,16 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
-CONST_ONE = 1
+
+# 'pylint: disable=too=few-public-methods
+class Constant:
+    """
+    the class for constant.
+    """
+    CONST_ONE = 1
 
 
-# pylint: disable=unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=unused-argument,invalid-name,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("atan_grad")
 def atan_grad_compute(y, dy, z, kernel_name="atan_grad"):
     """
@@ -66,7 +55,7 @@ def atan_grad_compute(y, dy, z, kernel_name="atan_grad"):
     result res
     """
 
-    scalar_one = tvm.const(CONST_ONE, "float32")
+    scalar_one = tvm.const(Constant.CONST_ONE, "float32")
     dtype = y.dtype
 
     if dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):

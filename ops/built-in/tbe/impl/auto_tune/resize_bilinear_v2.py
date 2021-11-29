@@ -23,7 +23,7 @@ from impl.util import util_tik_auto_tune
 from impl.util.platform_adapter import tbe_platform as tbe_platform_adapter
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
 def tune_space_resize_bilinear_v2(images, size, y, ori_image_size, split_size, src_start_w, dst_start_w, align_corners,
                                   half_pixel_centers, kernel_name):
     """
@@ -80,7 +80,7 @@ def tune_space_resize_bilinear_v2(images, size, y, ori_image_size, split_size, s
     return json.dumps(tune_param)
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def tune_param_check_supported_resize_bilinear_v2(images, size, y, ori_image_size, split_size, src_start_w, dst_start_w,
                                                   align_corners, half_pixel_centers, kernel_name, tune_param):
     """

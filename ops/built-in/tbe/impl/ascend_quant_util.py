@@ -18,8 +18,10 @@ ascend_quant_util
 from te import tvm
 from impl.util import util_select_op_base
 
-# 32B to the number of fp16
-FP16_BLOCK_VALUE = 16
+
+class Constant:
+    # 32B to the number of fp16
+    FP16_BLOCK_VALUE = 16
 
 
 def is_matmul_fuse(tensor):
@@ -65,7 +67,7 @@ def is_nz_format(tensor, is_quant=False):
     return False
 
 
-# pylint: disable = unused-argument
+# 'pylint: disable = unused-argument
 def get_quant_support_info(x, x1=None, dual_output=False, l1_fusion_enable=0):
     """
     obtains the split information of the quantization operator
@@ -78,7 +80,7 @@ def get_quant_support_info(x, x1=None, dual_output=False, l1_fusion_enable=0):
     if format_x == "FRACTAL_NZ":
         not_cut_dim = [dim_x - 4, dim_x - 1]
 
-    if format_x == "NC1HWC0" or format_x == "FRACTAL_NZ":
+    if format_x in ["NC1HWC0", "FRACTAL_NZ"]:
         axis_split_list = []
         for i in range(dim_x):
             if i not in not_cut_dim:

@@ -18,7 +18,8 @@ _internal_lib.py
 """
 
 
-class ObjWithConst(object):
+# 'pylint: disable=too=few-public-methods
+class ObjWithConst:
     """
     set const object
     """
@@ -29,8 +30,8 @@ class ObjWithConst(object):
             raise RuntimeError("{} not allow to change".format(name))
         super(ObjWithConst, self).__setattr__(name, value)
 
-
-class VecBufInfo(object):
+# 'pylint: disable=too=few-public-methods
+class VecBufInfo:
     """
     init vector info
     """
@@ -39,8 +40,8 @@ class VecBufInfo(object):
         self.blk_stride = blk_stride
         self.rpt_stride = rpt_stride
 
-
-class VecLoopInfo(object):
+# 'pylint: disable=too=few-public-methods,too-many-arguments
+class VecLoopInfo:
     """
     define vector loop info
     """

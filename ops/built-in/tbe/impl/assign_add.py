@@ -25,7 +25,7 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=too-many-locals,invalid-name,unused-argument,unused-variable
+# 'pylint: disable=too-many-locals,invalid-name,unused-argument,unused-variable
 def _assign_add_int64_schedule(res, tensor_ref, tensor_val, res_add):
     """
     assignadd int64 schedule
@@ -97,8 +97,8 @@ def _assign_add_int64_schedule(res, tensor_ref, tensor_val, res_add):
     return sch
 
 
-# pylint: disable=locally-disabled,too-many-locals,unnecessary-lambda
-# pylint: disable=locally-disabled,too-many-statements
+# 'pylint: disable=locally-disabled,too-many-locals,unnecessary-lambda
+# 'pylint: disable=locally-disabled,too-many-statements
 @tbe_platform.fusion_manager.fusion_manager.register("assign_add")
 def _compute_assign_add(tensor_x, tensor_y, output, kernel_name='assign_add'):
     """
@@ -153,7 +153,7 @@ def _check_param(shape_ref, shape_val, dtype_ref, dtype_value, kernel_name):
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "ref", "value", error_detail)
 
 
-# pylint: disable=locally-disabled,too-many-arguments, unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments, unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def assign_add(ref, value, output, kernel_name="assign_add"):

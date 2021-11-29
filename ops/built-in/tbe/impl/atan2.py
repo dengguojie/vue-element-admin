@@ -14,24 +14,6 @@
 # ============================================================================
 """
 atan2
-
-  Op_description :
-    Computes arctangent of y/x element-wise, respecting signs of the arguments
-
-    # atan2(
-    #   x1,
-    #   x2,
-    #   y,
-    #   kernel_name="atan2")
-
-  Supportive_dtype_format :
-    ['float16', 'float32']
-    ['ALL']
-
-  Constraint :
-    [1] All : 'y' and 'x' must have the same type and shape.
-    [2] All : shape size limit is 2147483648.
-
 """
 import te.lang.cce as tbe
 import te.platform as tbe_platform
@@ -41,24 +23,30 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 from impl.util import util_compute
 
-CONST_POS_ONE = 1.0
-CONST_NA_ONE = -1.0
-CONST_PI = 3.1415926535897932384626433832795
-CONST_PI_BY_TWO = 1.5707963267948966192313216916398
-CONST_PI_BY_FOUR = 0.78539816339744830961566084581988
-CONST_PI_BY_EIGHT = 0.39269908169872415480783042290994
-CONST_ITERTOR = 6
-CONST_ITERTOR2 = 4
-TAN_PI_BY_EIGHT = 0.4142135623730950
-TAN_PI_BY_EIGHT_NA = -0.4142135623730950
 
-CONST_ZERO = 0
-CONST_ONE = 1
+# 'pylint: disable=too=few-public-methods
+class Constant:
+    """
+    the class for constant.
+    """
+    CONST_POS_ONE = 1.0
+    CONST_NA_ONE = -1.0
+    CONST_PI = 3.1415926535897932384626433832795
+    CONST_PI_BY_TWO = 1.5707963267948966192313216916398
+    CONST_PI_BY_FOUR = 0.78539816339744830961566084581988
+    CONST_PI_BY_EIGHT = 0.39269908169872415480783042290994
+    CONST_ITERTOR = 6
+    CONST_ITERTOR2 = 4
+    TAN_PI_BY_EIGHT = 0.4142135623730950
+    TAN_PI_BY_EIGHT_NA = -0.4142135623730950
 
-TAYLOR = (1.0, -1.0 / 3, 1.0 / 5, -1.0 / 7, 1.0 / 9, -1.0 / 11, 1.0 / 13)
+    CONST_ZERO = 0
+    CONST_ONE = 1
+
+    TAYLOR = (1.0, -1.0 / 3, 1.0 / 5, -1.0 / 7, 1.0 / 9, -1.0 / 11, 1.0 / 13)
 
 
-# pylint: disable=too-many-locals,unused-variable
+# 'pylint: disable=too-many-locals,unused-variable
 def _do_taylor(input_data):
     """
     Algorithm:
@@ -79,27 +67,27 @@ def _do_taylor(input_data):
 
     """
 
-    denominator_data = tbe.vmuls(input_data, TAN_PI_BY_EIGHT)
-    denominator_data = tbe.vadds(denominator_data, CONST_POS_ONE)
-    molecule = tbe.vadds(input_data, TAN_PI_BY_EIGHT_NA)
+    denominator_data = tbe.vmuls(input_data, Constant.TAN_PI_BY_EIGHT)
+    denominator_data = tbe.vadds(denominator_data, Constant.CONST_POS_ONE)
+    molecule = tbe.vadds(input_data, Constant.TAN_PI_BY_EIGHT_NA)
     data = tbe.vdiv(molecule, denominator_data)
     data = tbe.vabs(data)
 
     square_data = tbe.vmul(data, data)
-    res = tbe.vmuls(square_data, TAYLOR[CONST_ITERTOR])
-    res = tbe.vadds(res, TAYLOR[CONST_ITERTOR - 1])
-    for i in reversed(range(CONST_ITERTOR - 1)):
+    res = tbe.vmuls(square_data, Constant.TAYLOR[Constant.CONST_ITERTOR])
+    res = tbe.vadds(res, Constant.TAYLOR[Constant.CONST_ITERTOR - 1])
+    for i in reversed(range(Constant.CONST_ITERTOR - 1)):
         res = tbe.vmul(res, square_data)
-        res = tbe.vadds(res, TAYLOR[i])
+        res = tbe.vadds(res, Constant.TAYLOR[i])
     res = tbe.vmul(res, data)
-    res = tbe.vadds(res, CONST_PI_BY_EIGHT)
+    res = tbe.vadds(res, Constant.CONST_PI_BY_EIGHT)
 
     square_data = tbe.vmul(input_data, input_data)
-    res2 = tbe.vmuls(square_data, TAYLOR[CONST_ITERTOR2])
-    res2 = tbe.vadds(res2, TAYLOR[CONST_ITERTOR2 - 1])
-    for i in reversed(range(CONST_ITERTOR2 - 1)):
+    res2 = tbe.vmuls(square_data, Constant.TAYLOR[Constant.CONST_ITERTOR2])
+    res2 = tbe.vadds(res2, Constant.TAYLOR[Constant.CONST_ITERTOR2 - 1])
+    for i in reversed(range(Constant.CONST_ITERTOR2 - 1)):
         res2 = tbe.vmul(res2, square_data)
-        res2 = tbe.vadds(res2, TAYLOR[i])
+        res2 = tbe.vadds(res2, Constant.TAYLOR[i])
     res2 = tbe.vmul(res2, input_data)
 
     res = tbe.vmin(res, res2)
@@ -129,7 +117,7 @@ def _atan_compute(input_x):
         input_x = tbe.cast_to(input_x, "float32")
     abs_data = tbe.vabs(input_x)
 
-    tensor_one = tbe.broadcast(tvm.const(CONST_POS_ONE, input_x.dtype), shape)
+    tensor_one = tbe.broadcast(tvm.const(Constant.CONST_POS_ONE, input_x.dtype), shape)
 
     abs_data_sub_one = tbe.vsub(abs_data, tensor_one)
     abs_data_add_one = tbe.vadd(abs_data, tensor_one)
@@ -140,7 +128,7 @@ def _atan_compute(input_x):
     res = _do_taylor(abs_data)
     # calucate data more than one
     res_mt_one = _do_taylor(abs_data2)
-    res_mt_one = tbe.vadds(res_mt_one, CONST_PI_BY_FOUR)
+    res_mt_one = tbe.vadds(res_mt_one, Constant.CONST_PI_BY_FOUR)
 
     res = tbe.vmin(res, res_mt_one)
 
@@ -172,9 +160,9 @@ def _init_atan2_mask(data_y, data_x):
     shape_input = data_y.shape
     dtype_input = data_y.dtype
 
-    tensor_one = tbe.broadcast(tvm.const(CONST_POS_ONE, dtype_input), shape_input)
-    tensor_zero = tbe.broadcast(tvm.const(CONST_ZERO, dtype_input), shape_input)
-    tensor_na_one = tbe.vmuls(tensor_one, tvm.const(CONST_NA_ONE, dtype_input))
+    tensor_one = tbe.broadcast(tvm.const(Constant.CONST_POS_ONE, dtype_input), shape_input)
+    tensor_zero = tbe.broadcast(tvm.const(Constant.CONST_ZERO, dtype_input), shape_input)
+    tensor_na_one = tbe.vmuls(tensor_one, tvm.const(Constant.CONST_NA_ONE, dtype_input))
 
     y_me_zero = tbe.vsel(tbe.vcmp(data_y, tensor_zero, 'ge'), tensor_one, tensor_na_one)
     x_lt_zero_y_mask = tbe.vsel(
@@ -186,7 +174,7 @@ def _init_atan2_mask(data_y, data_x):
     return mask
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("atan2")
 def atan2_compute(y, x, output_dict, kernel_name="atan2"):
     """
@@ -226,13 +214,13 @@ def atan2_compute(y, x, output_dict, kernel_name="atan2"):
     res = tbe.vdiv(y, x)
     res = _atan_compute(res)
 
-    y_cmp_zero = tbe.vmuls(mask[CONST_ONE], tvm.const(CONST_PI_BY_TWO, y.dtype))
-    res_x_lt_zero = tbe.vmuls(mask[CONST_ZERO], tvm.const(CONST_PI, y.dtype))
+    y_cmp_zero = tbe.vmuls(mask[Constant.CONST_ONE], tvm.const(Constant.CONST_PI_BY_TWO, y.dtype))
+    res_x_lt_zero = tbe.vmuls(mask[Constant.CONST_ZERO], tvm.const(Constant.CONST_PI, y.dtype))
 
     if x.dtype == res.dtype and tbe_platform.cce_conf.api_check_support("te.lang.cce.vcmpsel", x.dtype):
-        res = tbe.vcmpsel(x, tvm.const(CONST_ZERO, x.dtype), 'eq', y_cmp_zero, res)
+        res = tbe.vcmpsel(x, tvm.const(Constant.CONST_ZERO, x.dtype), 'eq', y_cmp_zero, res)
     else:
-        tensor_zero = tbe.broadcast(tvm.const(CONST_ZERO, x.dtype), shape_broadcast)
+        tensor_zero = tbe.broadcast(tvm.const(Constant.CONST_ZERO, x.dtype), shape_broadcast)
         x_equal_zero = tbe.vcmp(x, tensor_zero, 'eq')
         res = tbe.vsel(x_equal_zero, y_cmp_zero, res)
 

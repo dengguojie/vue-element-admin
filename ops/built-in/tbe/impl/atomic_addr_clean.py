@@ -20,19 +20,23 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
-MEMORY_CLEAR_BLOCK_SIZE = 32
-MEMORY_CLEAR_VECTOR_SIZE = 256
-MEMORY_CLEAR_KB_NUM = 48
-MEMORY_CLEAR_ONE_KB = 1024
-MEMORY_CLEAR_UB_ZERO_BUFF = MEMORY_CLEAR_KB_NUM * MEMORY_CLEAR_ONE_KB
+
+# 'pylint: disable=too=few-public-methods
+class Constant:
+    """
+    the class for constant.
+    """
+    MEMORY_CLEAR_BLOCK_SIZE = 32
+    MEMORY_CLEAR_VECTOR_SIZE = 256
+    MEMORY_CLEAR_KB_NUM = 48
+    MEMORY_CLEAR_ONE_KB = 1024
+    MEMORY_CLEAR_UB_ZERO_BUFF = MEMORY_CLEAR_KB_NUM * MEMORY_CLEAR_ONE_KB
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals,too-many-arguments
-# pylint: disable=useless-object-inheritance
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals,too-many-arguments
+# 'pylint: disable=useless-object-inheritance
 def _ceil_align(ori_num, divider):
     """
-    dst_num = (ori_num + divider -1) / divider * divider
-
     Parameters
     ----------
     ori_num: original number
@@ -46,7 +50,6 @@ def _ceil_align(ori_num, divider):
 
 def _ceil_divide(ori_num, divider):
     """
-    dst_num = (ori_num + divider -1) / divider
     Parameters
     ----------
     ori_num
@@ -92,8 +95,8 @@ class AtomicCleaner(object):
         if str_dtype == "float32":
             div = 4
 
-        repeat_times = _ceil_divide(ub_size, MEMORY_CLEAR_VECTOR_SIZE)
-        common_mask = MEMORY_CLEAR_VECTOR_SIZE // div
+        repeat_times = _ceil_divide(ub_size, Constant.MEMORY_CLEAR_VECTOR_SIZE)
+        common_mask = Constant.MEMORY_CLEAR_VECTOR_SIZE // div
         zero_ub = self.tik_instance.Tensor(str_dtype, (ub_size // div,), tik.scope_ubuf, "zero_ub")
         self.tik_instance.vector_dup(common_mask, zero_ub, 0, repeat_times, 1, 8)
         return zero_ub
@@ -115,12 +118,12 @@ class AtomicCleaner(object):
         if self.data_type == "float32":
             div = 4
 
-        loop_num = _ceil_divide(data_size, MEMORY_CLEAR_UB_ZERO_BUFF)
-        loop_offset = MEMORY_CLEAR_UB_ZERO_BUFF // div
-        remain_load_size = data_size % MEMORY_CLEAR_UB_ZERO_BUFF
-        burst_len = _ceil_divide(MEMORY_CLEAR_UB_ZERO_BUFF, MEMORY_CLEAR_BLOCK_SIZE)
+        loop_num = _ceil_divide(data_size, Constant.MEMORY_CLEAR_UB_ZERO_BUFF)
+        loop_offset = Constant.MEMORY_CLEAR_UB_ZERO_BUFF // div
+        remain_load_size = data_size % Constant.MEMORY_CLEAR_UB_ZERO_BUFF
+        burst_len = _ceil_divide(Constant.MEMORY_CLEAR_UB_ZERO_BUFF, Constant.MEMORY_CLEAR_BLOCK_SIZE)
         if remain_load_size > 0:
-            burst_len_last = _ceil_divide(remain_load_size, MEMORY_CLEAR_BLOCK_SIZE)
+            burst_len_last = _ceil_divide(remain_load_size, Constant.MEMORY_CLEAR_BLOCK_SIZE)
             with self.tik_instance.for_range(0, loop_num) as idx:
                 with self.tik_instance.if_scope(idx + 1 == loop_num):
                     with self.tik_instance.if_scope(idx == 0):
@@ -155,10 +158,10 @@ class AtomicCleaner(object):
         for ds in data_size_list:
             total_size = total_size + ds
 
-        total_blockes = total_size // MEMORY_CLEAR_BLOCK_SIZE
+        total_blockes = total_size // Constant.MEMORY_CLEAR_BLOCK_SIZE
         aver_blocks = _ceil_divide(total_blockes, self.core_num)
-        aver_size = aver_blocks * MEMORY_CLEAR_BLOCK_SIZE
-        aver_size_aligned = _ceil_align(aver_size, MEMORY_CLEAR_UB_ZERO_BUFF)
+        aver_size = aver_blocks * Constant.MEMORY_CLEAR_BLOCK_SIZE
+        aver_size_aligned = _ceil_align(aver_size, Constant.MEMORY_CLEAR_UB_ZERO_BUFF)
 
         # list of workspace segment, cell format of which is [data_addr_index, offset, seg_len]
         workspace_seg_list = []
@@ -231,7 +234,7 @@ class AtomicCleaner(object):
         core_used = len(core_segs)
 
         with self.tik_instance.for_range(0, core_used, block_num=core_used) as block_idx:
-            zero_ub = self.gen_zero_ub(MEMORY_CLEAR_UB_ZERO_BUFF, self.data_type)
+            zero_ub = self.gen_zero_ub(Constant.MEMORY_CLEAR_UB_ZERO_BUFF, self.data_type)
             for core_index in range(core_used):
                 with self.tik_instance.if_scope(core_index == block_idx):
                     current_segs = core_segs[core_index]

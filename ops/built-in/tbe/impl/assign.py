@@ -24,7 +24,7 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=unused-argument,invalid-name,consider-using-enumerate
+# 'pylint: disable=unused-argument,invalid-name,consider-using-enumerate
 def _check_params(ref_shape, value_shape, dtype, kernel_name):
     """
     check the parameters including ref_shape, value_shape, dtype and kernel_name
@@ -115,9 +115,9 @@ def _assign_schedule(res, tensor_val):
     return sch
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unnecessary-lambda
-# pylint: disable=locally-disabled,too-many-branches,too-many-locals
-# pylint: disable=locally-disabled,unused-argument,too-many-statements
+# 'pylint: disable=locally-disabled,too-many-arguments,unnecessary-lambda
+# 'pylint: disable=locally-disabled,too-many-branches,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-statements
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def assign(ref, value, output, kernel_name="assign"):

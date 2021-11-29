@@ -36,7 +36,7 @@ def _is_lhisi_version():
     return False
 
 
-# pylint: disable=too-many-arguments,invalid-name,unused-argument,unnecessary-lambda,too-many-locals
+# 'pylint: disable=too-many-arguments,invalid-name,unused-argument,unnecessary-lambda,too-many-locals
 def is_support_a100():
     """
     Check if a100 version.
@@ -46,7 +46,6 @@ def is_support_a100():
     True: a100 version.
     False: other version.
     """
-    soc_version = get_soc_spec("SOC_VERSION")
     if tbe_platform.api_check_support("tik.vgatherb"):
         return True
     return False
@@ -103,7 +102,7 @@ def _check_l1_fusion(x, y):
     attr = {"addr_type": x_addr_type,
             "L1_fusion_type": x_l1_fusion_type}
 
-    return x_l1_fusion_type, y_l1_fusion_type, attr
+    return x_l1_fusion_type, attr
 
 
 def _reform_compute_generate(tensor, in_shape, out_shape, val_info, nz_format_flag):
@@ -494,7 +493,7 @@ def ascend_quant(x, y, scale, offset, sqrt_mode=False, round_mode="Round", dst_t
     input_dtype = x.get("dtype").lower()
     input_format = x.get("format")
 
-    x_l1_fusion_type, y_l1_fusion_type, attr = _check_l1_fusion(x, y)
+    x_l1_fusion_type, attr = _check_l1_fusion(x, y)
 
     if input_format == "NC1HWC0":
         if x_l1_fusion_type != -1:

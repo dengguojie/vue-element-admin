@@ -22,7 +22,7 @@ from . import ascend_container as a_container
 from . import ascend_tensor_operator_param as a_param
 from . import ascend_vec_cmd as a_cmd
 
-
+# 'pylint: disable=too-many-arguments, too-many-instance-attributes, too-few-public-methods
 class VecExecutor(a_lib.ObjWithConst):
     """
     executor

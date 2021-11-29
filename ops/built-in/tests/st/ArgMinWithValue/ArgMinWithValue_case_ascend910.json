@@ -1,63 +1,45 @@
 [
   {
-    "case_name": "ArgMinWithValue_dynamic_shape_argmax_case__2_ascend910a",
     "op": "ArgMinWithValue",
     "input_desc": [
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float16"
-        ],
-        "shape": [
-          -2
-        ],
-        "data_distribute": [
-          "uniform"
-        ],
-        "value_range": [
-          [
-            0.1,
-            1.0
-          ]
-        ],
+        "format": "ND",
+        "shape": [-1],
+        "typical_shape": [13],
+        "shape_range": [[1, 16]],
+        "type": "float16",
+        "value_range": [[1, 10]],
+        "data_distribute": "uniform",
         "name": "x"
       }
     ],
     "output_desc": [
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float16"
-        ],
-        "shape": [
-          -2
-        ],
-        "name": "indice"
+        "shape": [1],
+        "format": "ND",
+        "name": "indice",
+        "type": "int32"
       },
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float16"
-        ],
-        "shape": [
-          -2
-        ],
-        "name": "values"
+        "shape": [1],
+        "format": "ND",
+        "name": "values",
+        "type": "float16"
       }
     ],
     "attr": [
       {
         "name": "dimension",
         "type": "int",
-        "value": 1
+        "value": 0
+      },
+      {
+        "name": "keep_dims",
+        "type": "bool",
+        "value": true
       }
-    ]
+    ],
+    "case_name": "test_arg_min_with_value_dynamic_000"
   },
   {
     "case_name": "ArgMinWithValue_dynamic_shape_argmax_case__1_ascend910a",
@@ -215,6 +197,11 @@
         "name": "dimension",
         "type": "int",
         "value": 1
+      },
+      {
+        "name": "keep_dims",
+        "type": "bool",
+        "value": false
       }
     ]
   },
@@ -374,6 +361,11 @@
         "name": "dimension",
         "type": "int",
         "value": 1
+      },
+      {
+        "name": "keep_dims",
+        "type": "bool",
+        "value": false
       }
     ]
   }

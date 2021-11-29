@@ -26,7 +26,7 @@ from te.utils.error_manager import error_manager_vector
 from te.utils import shape_util
 
 
-# pylint: disable=invalid-name,unused-argument,unnecessary-lambda,too-many-arguments,too-many-locals
+# 'pylint: disable=invalid-name,unused-argument,unnecessary-lambda,too-many-arguments,too-many-locals
 @fusion_manager.register("ascend_dequant_s16")
 def ascend_dequant_s16_compute(x0, deq_scale, x1, y, relu_flag=False, kernel_name="ascend_dequant_s16"):
     """
@@ -48,7 +48,7 @@ def ascend_dequant_s16_compute(x0, deq_scale, x1, y, relu_flag=False, kernel_nam
     x0_shape = x0.shape
 
     conv_flag = 0
-    if len(x0.op.input_tensors) and ('mad1' in x0.op.input_tensors[0].name or \
+    if (len(x0.op.input_tensors) > 0) and ('mad1' in x0.op.input_tensors[0].name or \
             'convolution_c_col_bias' in x0.op.input_tensors[0].name):
         conv_flag = 1
 
@@ -60,7 +60,7 @@ def ascend_dequant_s16_compute(x0, deq_scale, x1, y, relu_flag=False, kernel_nam
                        x0_input_shape[4]]
     else:
         x0_shape_list = shape_util.shape_to_list(x0_shape)
-        align_shape = x0_shape_list.copy()
+        align_shape = list(x0_shape_list)
 
     c1_index = 1
 
@@ -93,8 +93,8 @@ def ascend_dequant_s16_compute(x0, deq_scale, x1, y, relu_flag=False, kernel_nam
             res_ub = tvm.compute(res_shape,
                                  lambda batch, cout1, howo, cout0:
                                      res_ub(batch, cout1, howo*2, cout0),
-                                 name = 'dequants16_remove_padded_column',
-                                 tag = 'dequants16_remove_padded_column')
+                                 name='dequants16_remove_padded_column',
+                                 tag='dequants16_remove_padded_column')
 
         res = tvm.compute(res_shape_nchw_after_removepad,
                           lambda batch, cout1, howo, cout0:
