@@ -180,7 +180,7 @@ def _infer_negative_two_and_pre_process(ins, reduce_axis, broadcast_axis_list, i
     return ins_list, normalize_reduce_axis
 
 
-def _add_remove_last_one(ins, input_type_list, reduce_axis, broadcast_axis, is_fuse_axis):
+def _add_remove_last_one(ins, input_type_list, reduce_axis, broadcast_axis, is_fuse_axis, disable_fuse_axes):
     """
     add remove last several 1 case
     """
@@ -209,8 +209,10 @@ def _add_remove_last_one(ins, input_type_list, reduce_axis, broadcast_axis, is_f
 
     is_no_after_broadcast_input = 0 not in input_type_list
     is_no_fuse_axis = not is_fuse_axis
+    is_disable_fuse_axes = len(disable_fuse_axes) > 0
     is_unify_broadcast_axis_unknown = broadcast_axis is None and input_type_list != [0] * len(input_type_list)
-    is_cannot_remove_one = is_no_after_broadcast_input or is_no_fuse_axis or is_unify_broadcast_axis_unknown
+    is_cannot_remove_one = is_no_after_broadcast_input or is_no_fuse_axis \
+                           or is_unify_broadcast_axis_unknown or is_disable_fuse_axes
     if is_cannot_remove_one:
         return False, False
 
@@ -329,6 +331,21 @@ def _process_extra_params(input_num, extra_params):
     return input_type_list, broadcast_axis_list
 
 
+def _judge_is_const_and_dynamic_mixed(norm_classify_out):
+   # const process can not be performed when dynamic and const are mixed in norm classify output
+    is_const_set = set()
+    for single_classify_out in norm_classify_out:
+        is_const = True
+        for single_input in single_classify_out:
+            if isinstance(single_input, dict):
+                is_const = is_const and _is_const(single_input.get("shape"))
+        is_const_set.add(is_const)
+    is_const_and_dynamic_mixed = len(is_const_set) == 2
+
+    return is_const_and_dynamic_mixed
+ 
+
+
 def classify(ins: list, extra_params: dict):
     """
     classify
@@ -341,10 +358,14 @@ def classify(ins: list, extra_params: dict):
                                   Example: [[1, 2]] means input 1 and input 2 are equal.
                                   But intersection is not supported, such as [[1, 2], [2, 3]] is illegal.
                                   Default is all inputs are same.
-        "compile_broadcast_axes": dict, ksy is input index, value is compile broadcast axis(list).
+        "compile_broadcast_axes": dict, key is input index, value is compile broadcast axis(list).
                                   Defalut is common axis.
-        "runtime_broadcast_axes": dict, ksy is input index, value is runtime broadcast axis(list).
+        "runtime_broadcast_axes": dict, key is input index, value is runtime broadcast axis(list).
                                   Defalut is common axis.
+        "disable_fuse_axes": [input: list, output: list[list]].
+                             The input list consists of the indices of the non-fusible axes.
+                             Each list in the output list is the new index of the non-fusible axes
+                             after the fused axes in the corresponding scene.
     :return:
     """
     _is_true(extra_params is not None and not isinstance(extra_params, dict),
@@ -355,10 +376,17 @@ def classify(ins: list, extra_params: dict):
               "detailed_cause": "last element of inputs in norm classify must be a list and represent reduce axis"})
     get_context().set_pattern(NORM)
     ins = copy.deepcopy(ins)
+    # disable fuse axes
+    disable_fuse_axes = []
+    disable_fuse_axes_new_idx = []
     # fuse axis flag
     is_fuse_axis = True
-    if extra_params is not None and "disable_optimization" in extra_params:
-        is_fuse_axis = not extra_params.get("disable_optimization")
+    if extra_params is not None:
+        if "disable_fuse_axes" in extra_params:
+            disable_fuse_axes = extra_params.get("disable_fuse_axes")
+            add_compile_info_inner("_disable_fuse_axes", disable_fuse_axes)
+        if "disable_optimization" in extra_params:
+            is_fuse_axis = not extra_params.get("disable_optimization")
     add_compile_info_inner("_fuse_axis", is_fuse_axis)
     # ins last element is reduce axis
     reduce_axis = list(set(ins[-1]))
@@ -372,8 +400,8 @@ def classify(ins: list, extra_params: dict):
     norm_classify_out = []
     norm_pattern_non_duplicate_list = []
     for single_ins in ins_list:
-        norm_classifier = NormClassifier(single_ins, ins_reduce_axis, is_fuse_axis,
-                                         input_type_list, broadcast_axis_list)
+        norm_classifier = NormClassifier(single_ins, ins_reduce_axis, is_fuse_axis, input_type_list,
+                                         broadcast_axis_list, disable_fuse_axes)
         # When all inputs have the same determinable broadcast axis, the broadcast axis is unify_broadcast_axis;
         # In other cases, unify_broadcast_axis is None
         unify_broadcast_axis = norm_classifier.get_unify_broadcast_axis()
@@ -381,36 +409,35 @@ def classify(ins: list, extra_params: dict):
         if unify_broadcast_axis is not None:
             unify_broadcast_axis = list(unify_broadcast_axis)
             add_compile_info_inner("_ori_broadcast_axis", unify_broadcast_axis[:])
-        is_append_remove_one, is_desert_origin = \
-            _add_remove_last_one(single_ins, input_type_list, ins_reduce_axis, unify_broadcast_axis, is_fuse_axis)
+        is_append_remove_one, is_desert_origin = _add_remove_last_one(single_ins, input_type_list, ins_reduce_axis,
+                                                                      unify_broadcast_axis, is_fuse_axis,
+                                                                      disable_fuse_axes)
         # before remove last 1
         if not is_desert_origin:
-            for single_classify_out in norm_classifier.classify():
+            classify_out = norm_classifier.classify()
+            disable_fuse_axes_l = norm_classifier.get_disable_fuse_axes_l()
+            for idx, single_classify_out in enumerate(classify_out):
                 # if the same pattern exists in norm classify output, this single output should be deserted
                 norm_pattern = single_classify_out[0].get("norm_pattern")
                 if norm_pattern not in norm_pattern_non_duplicate_list:
                     norm_classify_out.append(single_classify_out)
                     norm_pattern_non_duplicate_list.append(norm_pattern)
+                    if disable_fuse_axes:
+                        disable_fuse_axes_new_idx.append(disable_fuse_axes_l[idx])
         # after remove last 1
         if is_append_remove_one:
-            for single_classify_out in NormClassifier(single_ins, ins_reduce_axis, is_fuse_axis,
-                                                      input_type_list, broadcast_axis_list).classify():
+            for single_classify_out in NormClassifier(single_ins, ins_reduce_axis, is_fuse_axis, input_type_list,
+                                                      broadcast_axis_list, disable_fuse_axes).classify():
                 # if the same pattern exists in norm classify output, this single output should be deserted
                 norm_pattern = single_classify_out[0].get("norm_pattern")
                 if norm_pattern not in norm_pattern_non_duplicate_list:
                     norm_classify_out.append(single_classify_out)
                     norm_pattern_non_duplicate_list.append(norm_pattern)
 
-    # const process can not be performed when dynamic and const are mixed in norm classify output
-    is_const_set = set()
-    for single_classify_out in norm_classify_out:
-        is_const = True
-        for single_input in single_classify_out:
-            if isinstance(single_input, dict):
-                is_const = is_const and _is_const(single_input.get("shape"))
-        is_const_set.add(is_const)
-    is_const_and_dynamic_mixed = len(is_const_set) == 2
+    is_const_and_dynamic_mixed =  _judge_is_const_and_dynamic_mixed(norm_classify_out)
     get_context().add("_const_and_dynamic_mixed", is_const_and_dynamic_mixed)
+    if disable_fuse_axes:
+        extra_params.update({"disable_fuse_axes": disable_fuse_axes_new_idx})
 
     return norm_classify_out
 
@@ -420,12 +447,13 @@ class NormClassifier:
     norm classifier
     """
     def __init__(self, ins: list, reduce_axis: list, is_fuse_axis: bool, input_type_list: list,
-                 broadcast_axis_list: list):
+                 broadcast_axis_list: list, disable_fuse_axes: list):
         """
         norm classifier init
         """
         self.ins = ins
 
+        self.NAME_INDEX = 0
         self.max_shape_len = max(len(x["shape"]) for x in ins)
         self.reduce_axis = reduce_axis
         self.unreduce_axis = sorted(set(range(self.max_shape_len)) - set(self.reduce_axis))
@@ -433,6 +461,9 @@ class NormClassifier:
         self.is_fuse_axis = is_fuse_axis
         self.input_type_list = input_type_list
         self.broadcast_axis_list = broadcast_axis_list
+        self.disable_fuse_axes = [idx if idx >= 0 else idx + self.max_shape_len for idx in disable_fuse_axes]
+        self.new_disable_fuse_axes = []
+        self.disable_fuse_axes_l = []
 
         self.inputs_after_bro, self.inputs_before_bro, self.inputs_bro_axis = self._inputs_classify()
         self.shape_before_fuse, self.range_before_fuse, self.inputs_before_bro_info = self._infer_and_extract_info()
@@ -618,6 +649,9 @@ class NormClassifier:
         fuse continuous reduce axis or broadcast aixs or common axis or reduce and broadcast axis.
         """
         def __obtain_state():
+            if is_pad_axis:
+                self.NAME_INDEX += 1
+                return "pad_"+str(self.NAME_INDEX)
             if is_reduce_axis and not is_broadcast_axis:
                 return "reduce"
             if is_broadcast_axis and not is_reduce_axis:
@@ -630,9 +664,10 @@ class NormClassifier:
         if not self.is_fuse_axis:
             return self.shape_before_fuse, self.range_before_fuse, self.reduce_axis, self.unify_broadcast_axis
 
-        f_shape, f_ranges, f_reduce_axis, f_broadcast_axis = [], [], [], []
+        f_shape, f_ranges, f_reduce_axis, f_broadcast_axis, f_pad_axis = [], [], [], [], []
         state = "init"
         for i, (d, r) in enumerate(zip(self.shape_before_fuse, self.range_before_fuse)):
+            is_pad_axis = i in self.disable_fuse_axes
             is_reduce_axis = i in self.reduce_axis
             is_broadcast_axis = i in self.unify_broadcast_axis if self.unify_broadcast_axis is not None else False
             state_i = __obtain_state()
@@ -654,7 +689,12 @@ class NormClassifier:
                 if not f_broadcast_axis or f_broadcast_axis[-1] != broadcast_axis:
                     f_broadcast_axis.append(broadcast_axis)
 
+            if is_pad_axis:
+                f_pad_axis.append(len(f_shape) - 1)
+
             state = state_i
+
+        self.new_disable_fuse_axes.append(f_pad_axis)
 
         return f_shape, f_ranges, f_reduce_axis, f_broadcast_axis
 
@@ -934,6 +974,7 @@ class NormClassifier:
         classify_out = self._gen_classify_out()
         # add norm pattern
         for single_out in classify_out:
+            self.disable_fuse_axes_l.extend(self.new_disable_fuse_axes)
             mode_non_duplicate_list = []
             input_type_non_duplicate_list = []
             reduce_axis = None
@@ -957,3 +998,9 @@ class NormClassifier:
                     single_input["norm_pattern"] = norm_pattern
 
         return classify_out
+
+    def get_disable_fuse_axes_l(self):
+        """
+        get disable_fuse_axes_l
+        """
+        return self.disable_fuse_axes_l

@@ -11,7 +11,7 @@ from tbe.common.register import register_operator
 FP16_MAX = tvm.const(6.5e04, dtype="float16")
 FP32_MAX = tvm.const(3.4e38, dtype="float32")
 
-def norm_base_compute(input_x, pad, axis):
+def norm_base_compute(input_x, axis):
     shape = shape_util.shape_to_list(input_x.shape)
     dtype = input_x.dtype
     axis = list(axis)
@@ -24,12 +24,20 @@ def norm_base_compute(input_x, pad, axis):
     has_improve_precision = False
 
     MAX = FP32_MAX if dtype == "float32" else FP16_MAX
-    if len(pad) == 2:
-        pad_m, pad_n = pad
-        input_x = tbe.dsl.set_value(input_x, lambda *i: tvm.any(tvm.all(i[-4] > shape[-4] - 2, i[-1] > pad_n - 1),
-                                                                tvm.all(i[-3] > shape[-3] - 2, i[-2] > pad_m - 1)), -MAX)
-    elif len(pad) == 1:
-        pad_c = pad[0]
+    attributes = input_x.op.attrs
+    disable_fuse_axes = attributes["disable_fuse_axes"]
+    ori_shape = shape_util.shape_to_list(attributes["ori_shape"])
+    ori_format = attributes["ori_format"].value
+    format = attributes["format"].value
+
+    if format == "NC1HWC0":
+        idx_c1, idx_c0 = shape_util.shape_to_list(disable_fuse_axes)
+        ori_format = ori_format.upper()
+        c = ori_shape[ori_format.find('C')]
+        c = tbe.dsl.var('c') if c == -1 else c
+        pad_c = tvm.floormod(c - 1, shape[idx_c0]) + 1
+
+    if format == "NC1HWC0":
         input_x = tbe.dsl.set_value(input_x, lambda *i: tvm.all(i[1] > shape[1] - 2, i[-1] > pad_c - 1), -MAX)
 
     if dtype == "float16":
@@ -43,12 +51,7 @@ def norm_base_compute(input_x, pad, axis):
     data_subtrac = tbe.dsl.vsub(input_x, data_max)
     data_exp = tbe.dsl.vexp(data_subtrac)
 
-    if len(pad) == 2:
-        pad_m, pad_n = pad
-        data_exp = tbe.dsl.set_value(data_exp, lambda *i: tvm.any(tvm.all(i[-4] > shape[-4] - 2, i[-1] > pad_n - 1),
-                                                                  tvm.all(i[-3] > shape[-3] - 2, i[-2] > pad_m - 1)), 0)
-    elif len(pad) == 1:
-        pad_c = pad[0]
+    if format == "NC1HWC0":
         data_exp = tbe.dsl.set_value(data_exp, lambda *i: tvm.all(i[1] > shape[1] - 2, i[-1] > pad_c - 1), 0)
 
     data_expsum = tbe.dsl.reduce_sum(data_exp, axis, keepdims=True)
@@ -63,33 +66,31 @@ def norm_base_compute(input_x, pad, axis):
 @register_operator("norm_base")
 def dsl_dync_norm_base(x, y, axis, kernel_name="dsl_dync_norm_base"):
     input_dtype = x.get("dtype")
-    extra_params = {"disable_optimization": False}
-    format = x.get("format")
-    ori_format = x.get("ori_format")
+    extra_params = {}
+    format = "ND"
+    if "format" in x:
+        format = x.get("format")
+    ori_format = "ND"
+    if "ori_format" in x:
+        ori_format = x.get("ori_format")
+    ori_shape = x.get("shape")
     if "ori_shape" in x:
         ori_shape = x.get("ori_shape")
-    if format in ["NC1HWC0", "FRACTAL_NZ"]:
-        extra_params["disable_optimization"] = True
+    if format == "NC1HWC0":
+        extra_params.update({"disable_fuse_axes": [1, 4]})
     ins = tbe.dsl.classify([x, axis], "norm", extra_params)
     schedules, tensors = [], []
 
-    for (x, reduce_axis) in ins:
+    for idx, (x, reduce_axis) in enumerate(ins):
         with tbe.dsl.compute():
-            if format == "NC1HWC0":
-                ori_format = ori_format.upper()
-                c = ori_shape[ori_format.find('C')]
-                c = tbe.dsl.var('c') if c == -1 else c
-                pad = [tvm.floormod(c-1, x.get("shape")[-1]) + 1]
-            elif format == "FRACTAL_NZ":
-                m, n = ori_shape[-2:]
-                m = tbe.dsl.var('m') if m == -1 else m
-                n = tbe.dsl.var('n') if n == -1 else n
-                pad = [tvm.floormod(m-1, x.get("shape")[-2]) + 1, tvm.floormod(n-1, x.get("shape")[-1]) + 1]
-            else:
-                pad = []
+            disable_fuse_axes = []
+            if "disable_fuse_axes" in extra_params:
+                disable_fuse_axes = extra_params.get("disable_fuse_axes")[idx]
             shape_x = shape_util.variable_shape([x], op_mode="norm")[0]
-            data1 = tvm.placeholder(shape_x, name='data1', dtype=input_dtype)
-            res = norm_base_compute(data1, pad, reduce_axis)
+            data1 = tvm.placeholder(shape_x, name='data1', dtype=input_dtype,
+                                    attrs={"ori_shape": ori_shape, "ori_format": ori_format, "format": format,
+                                           "disable_fuse_axes": disable_fuse_axes})
+            res = norm_base_compute(data1, reduce_axis)
             tensors.append([data1, res])
 
         with tvm.target.cce():

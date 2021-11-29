@@ -711,3 +711,41 @@ TEST_F(NormTilingTest, TilingTest13) {
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "62976 512 1968 41 ");
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
 }
+
+TEST_F(NormTilingTest, TilingTest14) {
+  std::vector<std::vector<int64_t>> inputs {
+    {95, 10, 1, 87, 16}
+  };
+  std::vector<std::vector<int64_t>> outputs {
+    {95, 10, 1, 87, 16}
+  };
+  ge::DataType dtype = ge::DT_FLOAT16;
+  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
+  for (std::size_t i = 0; i < inputs.size(); i++) {
+    contruct_tensor(op_desc, inputs[i], dtype);
+  }
+  for (std::size_t i = 0; i < outputs.size(); i++) {
+    contruct_tensor(op_desc, outputs[i], dtype, false);
+  }
+  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
+  optiling::utils::OpRunInfo runInfo;
+
+  NormCompileInfo op_compile_info;
+  op_compile_info.input_type = {0};
+  op_compile_info.ori_reduce_axis = {1, 3, 4};
+  op_compile_info.ori_disable_fuse_axes = {1, 4};
+  op_compile_info.core_num = 32;
+  op_compile_info.min_block_size = 16;
+  op_compile_info.pad_max_entire_size = 128;
+  op_compile_info.exist_output_after_reduce = false;
+  op_compile_info.exist_workspace_after_reduce = true;
+  op_compile_info.available_ub_size = {{"42000", {15920, 12840, 15920}}};
+  op_compile_info.workspace_info = {{"4200000", {32}}};
+  op_compile_info.norm_vars = {{"4200000", {20000, 20003, 30000, 40000}}};
+  op_compile_info.is_fuse_axis = true;
+
+  optiling::Norm norm("norm", op_paras, op_compile_info, runInfo);
+  ASSERT_TRUE(norm.DoTiling());
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "95 87 3 1 ");
+}

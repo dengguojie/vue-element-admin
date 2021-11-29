@@ -461,6 +461,18 @@ def _gen_const_tiling_case(norm_info, graph_info):
             get_op_context().add_build_json_result("workspace", workspace_dict_in_json)
         return
 
+    def __save_temp_disable_fuse_axes_info():
+        disable_fuse_axes = []
+        if "_disable_fuse_axes" in get_compile_info():
+            disable_fuse_axes = get_compile_info()["_disable_fuse_axes"]
+            get_compile_info()["_disable_fuse_axes"] = []
+
+        return disable_fuse_axes
+
+    def __rollback_disable_fuse_axes(disable_fuse_axes):
+        if "_disable_fuse_axes" in get_compile_info():
+            get_compile_info()["_disable_fuse_axes"] = disable_fuse_axes
+
     current_compute = get_context().get_current_compute()
     # flag of const
     add_compile_info_inner("_is_const", True)
@@ -496,7 +508,10 @@ def _gen_const_tiling_case(norm_info, graph_info):
     __construct_inputs_and_outputs()
 
     # invoke op_tiling interface and decode
+    disable_fuse_axes = __save_temp_disable_fuse_axes_info()
     run_info = do_op_tiling("AutoTiling", get_compile_info(), inputs, outputs)
+    __rollback_disable_fuse_axes(disable_fuse_axes)
+    
     tiling_format = __select_tiling_format()
     tiling_data = decode(run_info["tiling_data"], tiling_format)
 

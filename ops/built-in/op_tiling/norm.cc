@@ -206,6 +206,23 @@ bool Norm::Init() {
     broadcast_axis_ori.clear();
   }
 
+  // init disable fuse axes
+  std::size_t ori_disable_fuse_axes_len = compileInfo.ori_disable_fuse_axes.size();
+  for(std::size_t i = 0; i < ori_disable_fuse_axes_len; ++i) {
+    int32_t single_disable_fuse_axes = compileInfo.ori_disable_fuse_axes[i];
+    // convert axis index from negative to positive
+    if (single_disable_fuse_axes < 0) {
+      single_disable_fuse_axes = max_dim_len + single_disable_fuse_axes;
+    }
+    // check disable fuse axes value
+    V_OP_TILING_CHECK((single_disable_fuse_axes < (int32_t)max_dim_len),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "value of disable fuse axes %d is illegal",
+                                                      single_disable_fuse_axes),
+                      return false);
+    disable_fuse_axes_ori[i] = single_disable_fuse_axes;
+  }
+  disable_fuse_axes_ori.resize(ori_disable_fuse_axes_len);
+
   std::sort(reduce_axis_ori.begin(), reduce_axis_ori.end());
   std::sort(broadcast_axis_ori.begin(), broadcast_axis_ori.end());
 
@@ -290,8 +307,11 @@ bool Norm::EliminateOne() {
   bool is_no_after_broadcast_axis = before_broadcast_input_num == compileInfo.input_type.size();
   // have before broadcast input but unify broadcast axis is unknown
   bool is_unify_broadcast_axis_unknown = before_broadcast_input_num > 0 && !compileInfo.is_broadcast_axis_known;
+  // disable fuse axes
+  bool is_disable_fuse_axes = !disable_fuse_axes_ori.empty();
 
-  bool is_cannot_eliminate_one = is_no_fuse_axis || is_no_after_broadcast_axis || is_unify_broadcast_axis_unknown;
+  bool is_cannot_eliminate_one = is_no_fuse_axis || is_no_after_broadcast_axis || is_unify_broadcast_axis_unknown
+                                                                               || is_disable_fuse_axes;
   if (is_cannot_eliminate_one) {
     return true;
   }
@@ -350,6 +370,8 @@ bool Norm::FusedAxis() {
   int32_t reduce_flag = 1;
   int32_t broadcast_flag = 2;
   int32_t reduce_broadcast_flag = 3;
+  int32_t modulo = 10;
+  int32_t cnt = 1;
 
   std::array<int32_t, NORM_MAX_DIM_LEN> flags = {common_flag};
   for (const auto& idx : reduce_axis_ori) {
@@ -362,6 +384,10 @@ bool Norm::FusedAxis() {
     } else {
       flags[idx] = broadcast_flag;
     }
+  }
+
+  for (const auto& idx: disable_fuse_axes_ori) {
+    flags[idx] += modulo * (cnt++);
   }
 
   std::size_t first = 0;
@@ -381,19 +407,26 @@ bool Norm::FusedAxis() {
       input_shape[capacity_shape] = std::accumulate(input_shape_ori.begin() + first, input_shape_ori.begin() + second,
                                                     1, std::multiplies<int64_t>());
 
-      bool is_reduce_axis = (second <= length - 1 && flags[first] == reduce_flag && flags[second] != reduce_flag) ||
-                            (second == length && flags[second - 1] == reduce_flag);
-      bool is_broadcast_axis = (second <= length - 1 && flags[first] == broadcast_flag &&
-                                flags[second] != broadcast_flag) ||
-                               (second == length && flags[second - 1] == broadcast_flag);
-      bool is_reduce_broadcast_axis = (second <= length - 1 && flags[first] == reduce_broadcast_flag &&
-                                       flags[second] != reduce_broadcast_flag) ||
-                                      (second == length && flags[second - 1] == reduce_broadcast_flag);
-      if (is_reduce_axis || is_reduce_broadcast_axis) {
+      bool is_reduce_axis = (second <= length - 1 && flags[first] == reduce_flag)
+                            || (second == length && flags[second - 1] == reduce_flag);
+      bool is_pad_reduce_axis = (second <= length - 1 && flags[first] % modulo == reduce_flag)
+                                || (second == length && flags[second - 1] % modulo == reduce_flag);
+      bool is_broadcast_axis = (second <= length - 1 && flags[first] == broadcast_flag)
+                               || (second == length && flags[second - 1] == broadcast_flag);
+      bool is_pad_broadcast_axis = (second <= length - 1 && flags[first] % modulo == broadcast_flag)
+                                   || (second == length && flags[second - 1] % modulo == broadcast_flag);
+      bool is_reduce_broadcast_axis = (second <= length - 1 && flags[first] == reduce_broadcast_flag)
+                                      || (second == length && flags[second - 1] == reduce_broadcast_flag);
+      bool is_pad_reduce_broadcast_axis = (second <= length - 1 && flags[first] % modulo == reduce_broadcast_flag)
+                                          || (second == length && flags[second - 1] % modulo == reduce_broadcast_flag);
+      
+      bool reduce_include = is_reduce_axis || is_reduce_broadcast_axis || is_pad_reduce_axis || is_pad_reduce_broadcast_axis;
+      bool broadcast_include = is_broadcast_axis || is_reduce_broadcast_axis || is_pad_broadcast_axis || is_pad_reduce_broadcast_axis;
+      if (reduce_include) {
         reduce_axis[capacity_reduce_axis] = capacity_shape;
         capacity_reduce_axis++;
       }
-      if (is_broadcast_axis || is_reduce_broadcast_axis) {
+      if (broadcast_include) {
         broadcast_axis[capacity_broadcast_axis] = capacity_shape;
         capacity_broadcast_axis++;
       }
@@ -1478,6 +1511,9 @@ NormCompileInfo::NormCompileInfo(const std::string& op_type, const nlohmann::jso
   if (parsed_json_obj.contains("_ori_broadcast_axis")) {
     ori_broadcast_axis = parsed_json_obj.at("_ori_broadcast_axis").get<std::vector<int32_t>>();
     is_broadcast_axis_known = true;
+  }
+  if (parsed_json_obj.contains("_disable_fuse_axes")){
+    ori_disable_fuse_axes = parsed_json_obj.at("_disable_fuse_axes").get<std::vector<int32_t>>();
   }
   // graph info
   input_type = parsed_json_obj.at("_input_type").get<std::vector<int32_t>>();

@@ -53,6 +53,8 @@ struct NormCompileInfo {
   std::vector<int32_t> ori_reduce_axis;
   std::vector<int32_t> ori_broadcast_axis;
   bool is_broadcast_axis_known{false};
+  // disable fuse axes
+  std::vector<int32_t> ori_disable_fuse_axes;
   // graph info
   std::vector<int32_t> input_type;
   bool exist_output_after_reduce{false};
@@ -155,6 +157,7 @@ class Norm {
     std::vector<int64_t> input_shape_ori{std::vector<int64_t>(NORM_MAX_DIM_LEN, 0)};
     std::vector<int32_t> reduce_axis_ori{std::vector<int32_t>(NORM_MAX_DIM_LEN, 0)};
     std::vector<int32_t> broadcast_axis_ori{std::vector<int32_t>(NORM_MAX_DIM_LEN, 0)};
+    std::vector<int32_t> disable_fuse_axes_ori{std::vector<int32_t>(NORM_MAX_DIM_LEN, 0)};
     std::vector<int64_t> input_shape{std::vector<int64_t>(NORM_MAX_DIM_LEN, 0)};
     std::vector<int32_t> reduce_axis{std::vector<int32_t>(NORM_MAX_DIM_LEN, 0)};
     std::vector<int32_t> broadcast_axis{std::vector<int32_t>(NORM_MAX_DIM_LEN, 0)};
