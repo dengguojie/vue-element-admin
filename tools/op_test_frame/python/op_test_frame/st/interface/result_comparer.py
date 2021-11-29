@@ -191,7 +191,7 @@ def _data_compare(npu_output, cpu_output, err_thd):
     _check_overflows_count(data_compe)
     split_count = int(end - start + 1) if end != start else 1
     utils.print_info_log(
-        'split_count:%s; max_diff_hd:%s;' % (float(split_count), max_diff_hd))
+        'total_count:%s; max_diff_thd:%s;' % (split_count, max_diff_hd))
     try:
         diff_abs = np.abs(np.subtract(real_data.astype(np.float32),
                                       data_compe.astype(np.float32)))
