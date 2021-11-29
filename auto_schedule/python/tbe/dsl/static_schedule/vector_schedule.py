@@ -606,7 +606,7 @@ class VectorSchedule(object):
 
     def _get_block_tiling(self, shape, dtype,
                           multi_core_threshold=ENABLE_MULTI_CORE_THRESHOLD):
-        data_size = DTYPE_WIDTH_MAP[dtype] * 2
+        data_size = DTYPE_WIDTH_MAP.get(dtype) * 2
 
         for i in range(0, len(shape), 1):
             data_size = data_size * shape[i]
@@ -811,7 +811,7 @@ class VectorSchedule(object):
                 return False
 
         if ub_split_axis == last_axis:
-            size = DTYPE_WIDTH_MAP[dtype] * 2 * ub_split_inner
+            size = DTYPE_WIDTH_MAP.get(dtype) * 2 * ub_split_inner
             if size < 32:
                 return True
             if int(size) % max_ub_count != 0:
@@ -822,7 +822,7 @@ class VectorSchedule(object):
                 tail_count = block_split_inner_size % ub_split_inner
             else:
                 tail_count = shape[ub_split_axis] % ub_split_inner
-            tail_size = DTYPE_WIDTH_MAP[dtype] * 2 * tail_count
+            tail_size = DTYPE_WIDTH_MAP.get(dtype) * 2 * tail_count
             if tail_count != 0:
                 if tail_size < 32:
                     return True
@@ -845,7 +845,7 @@ class VectorSchedule(object):
                 tail_count = block_split_inner_size % ub_split_inner
             else:
                 tail_count = shape[ub_split_axis] % ub_split_inner
-            tail_size = DTYPE_WIDTH_MAP[dtype] * 2 * tail_count * data_size
+            tail_size = DTYPE_WIDTH_MAP.get(dtype) * 2 * tail_count * data_size
             if tail_count != 0:
                 if tail_size < 32:
                     return True

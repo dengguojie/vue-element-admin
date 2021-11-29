@@ -758,7 +758,7 @@ class ReduceAtomicSchedule(VectorSchedule):
         # last_axis_size include continuous last axis
         float16_size = 2
         block_size = 32
-        data_size = DTYPE_WIDTH_MAP[dtype] * float16_size * last_axis_size
+        data_size = DTYPE_WIDTH_MAP.get(dtype) * float16_size * last_axis_size
         if not (data_size >= block_size and data_size % block_size == 0):
             return False
 
@@ -770,7 +770,7 @@ class ReduceAtomicSchedule(VectorSchedule):
         :param dtype:
         :return:
         """
-        data_size_align_to_fp16 = DTYPE_WIDTH_MAP[dtype] * last_axis_size
+        data_size_align_to_fp16 = DTYPE_WIDTH_MAP.get(dtype) * last_axis_size
         # max_ub_count align to fp16
         max_ub_count = self._get_max_ub_count()
         return data_size_align_to_fp16 > max_ub_count

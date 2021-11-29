@@ -28,6 +28,9 @@ from tbe.common import buildcfg
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.register import get_op_compute
 from tbe.common.utils.errormgr import get_error_message
+from tbe.common.utils import log
+from tbe.common.rl_bank import bank_manager
+from tbe.common.rl_bank import rl_bank
 from tbe.dsl.base import operation
 from tbe.dsl.base.var import AttrVarDesc
 from tbe.dsl.base.var import Category
@@ -61,6 +64,9 @@ def schedule_cce(outs, option=None):
     :param option:
     :return:
     """
+    # rl set op res
+    bank_manager.set_op_res(outs)
+
     from tbe.common.buildcfg import get_current_build_config
     original_outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
     original_outs = reget_tensor_list(original_outs)
@@ -84,6 +90,19 @@ def schedule_cce(outs, option=None):
         # if CUBE_VECTOR_SPLIT is not empty, the prebuild process goes to the pass side
         if not get_soc_spec("CUBE_VECTOR_SPLIT"):
             return None
+    else:
+        # try to use rl bank
+        try:
+            context = operation.get_context()
+            if context is not None and context.get_mode() in ("static",):
+                ret, rl_sch = rl_bank.query_rl_bank(outs, op_info=None)
+                if ret and isinstance(rl_sch, tvm.schedule.Schedule):
+                    with operation.schedule() as sch_context:
+                        rl_sch.tiling_key = rl_bank.RL_STATIC_TILING_KEY
+                        util.add_sch_additional_entry(rl_sch, "context", sch_context)
+                    return [rl_sch]
+        except Exception as e:
+            log.warn("rl bank switch exception: %s, pass!", e)
 
     tiling_case_func = operation.get_tiling_case(pattern)
     tiling_case_ret = tiling_case_func(original_outs, option)

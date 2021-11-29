@@ -1388,12 +1388,12 @@ def pooling2d_schedule(res, sch_list):
     device_core_num = _get_l1fusion_device_core_num(is_l1fusion)
 
     # get pooling mode, out size
-    pooling_mode = pooling_params["pooling_mode"]
-    padding_mode = pooling_params["padding_mode"]
-    out_size_h = pooling_params["out_size_h"]
-    out_size_w = pooling_params["out_size_w"]
-    batch_size = pooling_params["batch_size"]
-    c1_value = pooling_params["c1_value"]
+    pooling_mode = pooling_params.get("pooling_mode")
+    padding_mode = pooling_params.get("padding_mode")
+    out_size_h = pooling_params.get("out_size_h")
+    out_size_w = pooling_params.get("out_size_w")
+    batch_size = pooling_params.get("batch_size")
+    c1_value = pooling_params.get("c1_value")
 
     # avg or max pooling
     if pooling_mode in ["AVG", "MAX"]:

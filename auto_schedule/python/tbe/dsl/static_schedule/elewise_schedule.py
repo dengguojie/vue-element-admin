@@ -373,11 +373,11 @@ class CceOp:
         reduce_op = [self._op[self._reduce_index]]
         dtype = reduce_op[0]['src_buffer'][-1].dtype
 
-        reduce_node_last_axis_size = DTYPE_WIDTH_MAP[dtype] * 2 * self._shape_mul(
+        reduce_node_last_axis_size = DTYPE_WIDTH_MAP.get(dtype) * 2 * self._shape_mul(
             self._shape_before_reduce[self._reduce_axis_num[-1] + 1:])
 
-        out_node_last_axis_size = DTYPE_WIDTH_MAP[
-            self._res_tensor.dtype] * 2 * self._shape_mul(
+        out_node_last_axis_size = DTYPE_WIDTH_MAP.get(
+            self._res_tensor.dtype) * 2 * self._shape_mul(
                 self._shape_before_reduce[self._reduce_axis_num[-1] + 1:])
 
         if not (reduce_node_last_axis_size >= 32 and reduce_node_last_axis_size % 32 == 0):
@@ -794,7 +794,7 @@ class CceOp:
                 elif tag.find("cmpsel") != -1:
                     tmp_width = 3 * DTYPE_WIDTH_MAP[num_type.lower()]
 
-            return DTYPE_WIDTH_MAP[num_type.lower()] + tmp_width
+            return DTYPE_WIDTH_MAP.get(num_type.lower()) + tmp_width
 
         op_graph = {}
         for tensor_op in self._origin_op:

@@ -567,7 +567,7 @@ class ElewiseSchedule(VectorSchedule):
                 for tensor in self._mid_output_tensors:
                     size = 1
                     minimum_size = int(
-                        ALIGN_FACTOR // (DTYPE_WIDTH_MAP[tensor.dtype] * 2))
+                        ALIGN_FACTOR // (DTYPE_WIDTH_MAP.get(tensor.dtype) * 2))
                     size *= ub_tiling_para["factor"]
                     for axis in range(ub_tiling_para["axis"] + 1,
                                       len(tensor.shape)):
@@ -603,7 +603,7 @@ class ElewiseSchedule(VectorSchedule):
         multi_core_threshold = self._multi_core_threshold
         core_num = get_soc_spec("CORE_NUM")
         if core_num == shape[0] and len(shape) > 1:
-            data_size = DTYPE_WIDTH_MAP[dtype] * 2
+            data_size = DTYPE_WIDTH_MAP.get(dtype) * 2
             for i in range(1, len(shape)):
                 data_size = data_size * shape[i]
             if data_size >= 512:
@@ -766,7 +766,7 @@ class ElewiseSchedule(VectorSchedule):
                 return False
 
         if ub_split_axis == last_axis:
-            size = DTYPE_WIDTH_MAP[dtype] * 2 * ub_split_inner
+            size = DTYPE_WIDTH_MAP.get(dtype) * 2 * ub_split_inner
             if size < 32:
                 return True
             if int(size) % max_ub_count != 0:
@@ -777,7 +777,7 @@ class ElewiseSchedule(VectorSchedule):
                 tail_count = block_split_inner_size % ub_split_inner
             else:
                 tail_count = shape[ub_split_axis] % ub_split_inner
-            tail_size = DTYPE_WIDTH_MAP[dtype] * 2 * tail_count
+            tail_size = DTYPE_WIDTH_MAP.get(dtype) * 2 * tail_count
             if tail_count != 0:
                 if tail_size < 32:
                     return True
@@ -800,7 +800,7 @@ class ElewiseSchedule(VectorSchedule):
                 tail_count = block_split_inner_size % ub_split_inner
             else:
                 tail_count = shape[ub_split_axis] % ub_split_inner
-            tail_size = DTYPE_WIDTH_MAP[dtype] * 2 * tail_count * data_size
+            tail_size = DTYPE_WIDTH_MAP.get(dtype) * 2 * tail_count * data_size
             if tail_count != 0:
                 if tail_size < 32:
                     return True
@@ -2016,13 +2016,13 @@ class ElewiseSchedule(VectorSchedule):
                     continue
                 # data per core must be larger than MULTI_CORE_THRESHOLD
                 if original_shape[-3] * original_shape[-1] * \
-                        DTYPE_WIDTH_MAP[original_tensor.dtype] < \
+                        DTYPE_WIDTH_MAP.get(original_tensor.dtype) < \
                         BROADCAST_LAST_AXIS_THRESHOLD:
                     continue
                 # data per core must be smaller than max_repeat
                 if original_shape[-3] \
                         * original_shape[-1] \
-                        * DTYPE_WIDTH_MAP[original_tensor.dtype] > 255 * 16:
+                        * DTYPE_WIDTH_MAP.get(original_tensor.dtype) > 255 * 16:
                     continue
                 if broadcast_tensor not in self._mid_tensor_dst_tensor_map.keys():
                     is_out = True
@@ -2075,7 +2075,7 @@ class ElewiseSchedule(VectorSchedule):
                 return False
             dype = self._broadcast_not_last_axis_tensors[0].dtype
             out_size = \
-                broadcast_shape[-1] * broadcast_shape[-2] * DTYPE_WIDTH_MAP[dype] * 2
+                broadcast_shape[-1] * broadcast_shape[-2] * DTYPE_WIDTH_MAP.get(dype) * 2
             if out_size < 16:
                 return False
             if not __is_correct_shape(original_shape1, original_shape2, broadcast_shape):
@@ -2613,7 +2613,7 @@ class ElewiseSchedule(VectorSchedule):
         def __is_shape_len_6_case(original_shape, broadcast_shape):
             dype = self._broadcast_not_last_axis_tensors[0].dtype
             out_size = broadcast_shape[-1] * broadcast_shape[-2] * \
-                DTYPE_WIDTH_MAP[dype] * 2
+                DTYPE_WIDTH_MAP.get(dype) * 2
             if out_size < 16:
                 return False
             if len(original_shape) != 6:
@@ -2857,7 +2857,7 @@ class ElewiseSchedule(VectorSchedule):
         else:
             count = shape[-1]
 
-        size = DTYPE_WIDTH_MAP[dtype] * 2 * count
+        size = DTYPE_WIDTH_MAP.get(dtype) * 2 * count
         return size % 32 == 0
 
     def _find_max_non_broadcast_axis_of_broadcast_last_tensors(self):
@@ -3139,7 +3139,7 @@ class ElewiseSchedule(VectorSchedule):
         if self._broadcast_not_last_axis_tensors:
             max_broadcast_axis = self. \
                 _find_max_broadcast_axis_of_broadcast_not_last_axis_tensors()
-            size = DTYPE_WIDTH_MAP[dtype] * 2
+            size = DTYPE_WIDTH_MAP.get(dtype) * 2
             for i in range(max_broadcast_axis + 1, len(shape), 1):
                 size = size * shape[i]
             return size % 32 == 0
@@ -3160,7 +3160,7 @@ class ElewiseSchedule(VectorSchedule):
         Bool: True or False
         """
         if self._broadcast_last_axis_tensors:
-            size = DTYPE_WIDTH_MAP[dtype] * 2 * shape[-1]
+            size = DTYPE_WIDTH_MAP.get(dtype) * 2 * shape[-1]
             return size % 32 == 0
 
         return False
@@ -3297,7 +3297,7 @@ class ElewiseSchedule(VectorSchedule):
                     tmp_width = 3 * DTYPE_WIDTH_MAP["float16"]
                 # vsel use 3 fp16 temp buffer
                 elif tag.find("sel") != -1:
-                    tmp_width = 3 * DTYPE_WIDTH_MAP["float16"]
+                    tmp_width = 3 * DTYPE_WIDTH_MAP.get("float16")
                 # vcompare use 2 temp buffer
                 elif tag.find("compare") != -1:
                     tmp_width = 2 * DTYPE_WIDTH_MAP[num_type.lower()]
