@@ -308,10 +308,10 @@ namespace optiling
     const std::vector<DataType> dtype_list = {ge::DT_FLOAT, ge::DT_INT32, ge::DT_UINT32};
     if (axis_src_cr_size < 2 * block_elem_cnt || std::find(dtype_list.begin(),
                                                            dtype_list.end(), dType) != dtype_list.end()) {
-      params.tiling_mode = TILING_MODE_100_0;
+      params.tiling_mode = TILING_MODE_1000;
       params.src_cr_lp_unit = axis_src_cr_size > tmp_src_cr_lp_unit ? tmp_src_cr_lp_unit : axis_src_cr_size;
     } else {
-      params.tiling_mode = TILING_MODE_100_1;
+      params.tiling_mode = TILING_MODE_1001;
       params.src_cr_lp_unit = axis_src_cr_size > params.vnc_line_size ? params.vnc_line_size : axis_src_cr_size;
     }
 
@@ -373,9 +373,9 @@ namespace optiling
     params.cl_dims = FRAME_LEVEL;
     int64_t axis_src_cl_size = GetShapeSize(in_shape_new, 0) / GetShapeSize(in_shape_new, c_idx);
     int64_t tmp_src_cl_lp_unit = 1;
-    if (params.tiling_mode == TILING_MODE_100_0) {
+    if (params.tiling_mode == TILING_MODE_1000) {
       tmp_src_cl_lp_unit = NI_16;
-    } else if (params.r1st_src_r2nd_dst_same == 0 && params.tiling_mode == TILING_MODE_100_1 &&
+    } else if (params.r1st_src_r2nd_dst_same == 0 && params.tiling_mode == TILING_MODE_1001 &&
                axis_src_cl_size > core_num) {
       tmp_src_cl_lp_unit = GetFloorDiv(params.vnc_line_size, GetCeilDiv(params.src_cr_lp_unit, c0_len) * c0_len);
     } else {

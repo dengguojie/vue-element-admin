@@ -210,7 +210,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
       VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The input shape dimension size is not correct!");
       return false;
     }
-    if (out_shape.size() < 2) {
+    if (out_shape.size() < SHAPE_LEN_2D) {
       VECTOR_INNER_ERR_REPORT_TILIING("trans_data", "The output shape dimension size is not correct!");
       return false;
     }
@@ -335,7 +335,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
   }
 
   if (src_format == FORMAT_FRACTAL_Z_3D && dst_format == FORMAT_NCDHW) {
-    if (in_shape.size() < 2 || out_shape.size() != 5) {
+    if (in_shape.size() < SHAPE_LEN_2D || out_shape.size() != SHAPE_LEN_5D) {
       VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "GetRenew2Shape error, shape size incorrect");
       return false;
     }
@@ -408,7 +408,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
       axis_h = 1;
       axis_n = 1;
       axis_c = out_shape[0];
-    } else if (out_shape.size() == 2) {
+    } else if (out_shape.size() == SHAPE_LEN_2D) {
       axis_h = 1;
       axis_n = out_shape[0];
       axis_c = out_shape[1];
@@ -551,7 +551,7 @@ bool GetRenew2Shape(std::vector<int64_t> in_shape, std::vector<int64_t> out_shap
       axis_h = 1;
       axis_c = 1;
       axis_n = out_shape[0];
-    } else if (out_shape.size() == 2) {
+    } else if (out_shape.size() == SHAPE_LEN_2D) {
       axis_h = 1;
       axis_c = out_shape[0];
       axis_n = out_shape[1];
@@ -651,8 +651,8 @@ bool TransDataTiling(const std::string& op_type, const ge::Operator& op_paras, c
   int64_t block_dim = 0;
   std::vector<int64_t> in_shape_new;
   std::vector<int64_t> out_shape_new;
-  in_shape_new.reserve(8);
-  out_shape_new.reserve(8);
+  in_shape_new.reserve(SHAPE_LEN_CAPACITY_SIZE);
+  out_shape_new.reserve(SHAPE_LEN_CAPACITY_SIZE);
   int64_t group = 1;
   int64_t vnc_fp32_flag = 0;
 
@@ -718,7 +718,6 @@ bool TransDataTiling(const std::string& op_type, const ge::Operator& op_paras, c
       OP_LOGD(op_type, "start print runParams");
       PrintTilingMode1011Params(op_type, run_params_part1);
     }
-
   } else if (IsDoWithNegativeTargetTc201(src_format, dst_format)) {
     TransDataTc201Param run_params_201;
     flag = TilingNegativeTc201(in_shape_new, out_shape_new, real_src_format, real_dst_format, block_dim,
@@ -758,5 +757,4 @@ static const std::vector<std::string> COMPILE_INFO_KEY = {"ub_size", "block_dim"
 static const std::map<std::string, std::int64_t> OPTIONAL_VALUE = {{"vnc_fp32_flag", 0}};
 // register tiling interface of the TransData op
 REGISTER_OP_TILING_V3_WITH_VECTOR(TransData, TransDataTiling, COMPILE_INFO_KEY, OPTIONAL_VALUE);
-
 }  // namespace optiling

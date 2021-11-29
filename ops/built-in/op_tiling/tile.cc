@@ -29,6 +29,8 @@
 #include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
+constexpr uint64_t LAST_SIZE_FACTOR = 2;
+
 bool TileTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
                 utils::OpRunInfo& run_info) {
   OP_TILING_CHECK((op_info.count("compile_shape") <= 0),
@@ -66,8 +68,8 @@ bool TileTiling(const std::string& op_type, const ge::Operator& op_paras, const 
     compile_shape.insert(compile_shape.begin(), len_diff, 1);
   }
 
-  std::vector<int64_t> broadcast_input(last_size * 2, 1);
-  std::vector<int64_t> broadcast_multiples(last_size * 2, 1);
+  std::vector<int64_t> broadcast_input(last_size * LAST_SIZE_FACTOR, 1);
+  std::vector<int64_t> broadcast_multiples(last_size * LAST_SIZE_FACTOR, 1);
   int pos = 0;
   for (uint64_t i = 0; i < last_size; i++) {
     if (compile_shape[i] != 1) {

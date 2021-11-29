@@ -49,21 +49,25 @@ const std::map<ge::Format, int64_t> C_IDX_MAP = {{FORMAT_NCHW, 1}, {FORMAT_NHWC,
 const std::map<ge::Format, int64_t> N_IDX_MAP = {{FORMAT_NCHW, 0}, {FORMAT_NHWC, 0}, {FORMAT_NCDHW, 0},
                                                  {FORMAT_HWCN, 3}, {FORMAT_DHWCN, 4}, {FORMAT_NDHWC, 0}};
 
-constexpr int64_t TILING_MODE_200_1 = 2001;
-constexpr int64_t TILING_MODE_200_2 = 2002;
-constexpr int64_t TILING_MODE_200_3 = 2003;
-constexpr int64_t TILING_MODE_201_0 = 2010;
-constexpr int64_t TILING_MODE_201_1 = 2011;
-constexpr int64_t TILING_MODE_201_2 = 2012;
-constexpr int64_t TILING_MODE_100_0 = 1000;
-constexpr int64_t TILING_MODE_100_1 = 1001;
+constexpr int64_t TILING_MODE_2001 = 2001;
+constexpr int64_t TILING_MODE_2002 = 2002;
+constexpr int64_t TILING_MODE_2003 = 2003;
+constexpr int64_t TILING_MODE_2010 = 2010;
+constexpr int64_t TILING_MODE_2011 = 2011;
+constexpr int64_t TILING_MODE_2012 = 2012;
+constexpr int64_t TILING_MODE_1000 = 1000;
+constexpr int64_t TILING_MODE_1001 = 1001;
 constexpr int64_t TILING_MODE_1010 = 1010;
 constexpr int64_t TILING_MODE_1011 = 1011;
 
+constexpr size_t SHAPE_LEN_2D = 2;
 constexpr size_t SHAPE_LEN_4D = 4;
 constexpr size_t SHAPE_LEN_5D = 5;
 constexpr size_t SHAPE_LEN_6D = 6;
 
+constexpr size_t SHAPE_LEN_CAPACITY_SIZE = 8;
+
+constexpr size_t FORMAT_LEN_2D = 2;
 
 struct HeadTilingParam {
   int64_t shape_loop_cnt;
