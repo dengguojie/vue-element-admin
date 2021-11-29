@@ -102,7 +102,7 @@ def _check_dilations(dilations, dim_n, dim_c, dim_h, dim_w):
         pass
 
 
-# pylint: disable=locally-disabled, too-many-locals, too-many-arguments,
+# 'pylint: disable=locally-disabled, too-many-locals, too-many-arguments,
 def _check_stride(strides, dilations, dim_n, dim_c, dim_h, dim_w):
     """
     check stride type and dim
@@ -116,7 +116,7 @@ def _check_stride(strides, dilations, dim_n, dim_c, dim_h, dim_w):
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
-# pylint: disable=invalid-name,
+# 'pylint: disable=invalid-name,
 @para_check.check_op_params(
     para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
     para_check.REQUIRED_OUTPUT,

@@ -43,7 +43,7 @@ MAX_STRIDE = 65535
 UINT16_BIT_SIZE = 8
 
 
-# pylint: disable=invalid-name,too-many-arguments,unused-argument,too-many-instance-attributes
+# 'pylint: disable=invalid-name,too-many-arguments,unused-argument,too-many-instance-attributes,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
@@ -147,6 +147,7 @@ def deformable_offsets_grad(grad, x, offsets, helper, grad_x, grad_offsets, stri
     return grad.instance
 
 
+# 'pylint: disable=too-many-locals,too-many-return-statements
 def check_supported(grad, x, offsets, helper, grad_x, grad_offsets, strides, pads, ksize,
                     dilations=(1, 1, 1, 1), data_format="NHWC", deformable_groups=1, modulated=True,
                     kernel_name="deformable_offsets_grad"):
@@ -177,7 +178,7 @@ def check_supported(grad, x, offsets, helper, grad_x, grad_offsets, strides, pad
 
     group_c = x_shape[3] // deformable_groups
     if group_c % BLOCK_FP32_SIZE != 0:
-        reason = "group_c[%s] is not multiple of BLOCK_FP32_SIZE[%s]" %(str(group_c), str(BLOCK_FP32_SIZE))
+        reason = "group_c[%s] is not multiple of BLOCK_FP32_SIZE[%s]" % (str(group_c), str(BLOCK_FP32_SIZE))
         return False, reason
 
     dsize = common_util.get_data_size(x_dtype)
@@ -231,6 +232,7 @@ def _is_immediate(val):
     return True
 
 
+# 'pylint: disable=too-many-locals
 def _get_ub_need_size(grad_size, offsets_size, group_c):
     """
     get the size of the UB corresponding to the shape
@@ -248,6 +250,7 @@ def _get_ub_need_size(grad_size, offsets_size, group_c):
     return all_size
 
 
+# 'pylint: disable=too-many-public-methods
 class DeformableOffsetsGrad:
     """
     use to store DeformableOffset base parameters
@@ -267,7 +270,7 @@ class DeformableOffsetsGrad:
         self.offsets_shape = input_params.get("offsets_shape")
         self.grad_x_shape = input_params.get("grad_x_shape")
         self.grad_offsets_shape = input_params.get("grad_offsets_shape")
-        self.helper_shape = self.offsets_shape.copy()
+        self.helper_shape = self.offsets_shape[:]
         self.helper_shape[0] = 1
 
         self.k_h = input_params.get("k_h")
@@ -305,6 +308,7 @@ class DeformableOffsetsGrad:
         self.repeat_max = self.instance.Scalar("uint32", name="repeat_max")
         self.repeat_max.set_as(255)
 
+    # 'pylint: disable=too-many-locals
     def init_ub_tensor(self):
         """
         init ub tensors
@@ -352,6 +356,7 @@ class DeformableOffsetsGrad:
                     x_ub_lt, x_ub_lb, x_ub_rt, x_ub_rb]
         return buf_list
 
+    # 'pylint: disable=too-many-locals
     def tiling(self, ub_size):
         """
         get tiling information
@@ -416,6 +421,7 @@ class DeformableOffsetsGrad:
                     break
         return flag
 
+    # 'pylint: disable=too-many-locals,too-many-statements
     def offsets_grad(self):
         """
         offsets grad compute func
@@ -533,6 +539,7 @@ class DeformableOffsetsGrad:
                                      ub_tail * grad_size,
                                      ub_tail * offset_size)
 
+    # 'pylint: disable=too-many-locals
     def compute(self, grad_index, offset_index, grad_size, offset_size):
         """
         calculation process
@@ -609,6 +616,7 @@ class DeformableOffsetsGrad:
 
             self.compute_grad_offset(grad_size, offset_index, buf_list)
 
+    # 'pylint: disable=too-many-locals
     def broadcast_offset(self, size, start_list, ub_list):
         """
         [...,kh,kw] -> [...,kh,kw,group_c]
@@ -651,6 +659,7 @@ class DeformableOffsetsGrad:
                         groups * self.group_c
             self.vector_adds(self.group_c, ub_list, 0, dst_index, src_index)
 
+    # 'pylint: disable=too-many-locals
     def compute_index_weight(self, size, buf_list):
         """
         compute offset index and weight
@@ -668,42 +677,42 @@ class DeformableOffsetsGrad:
         h_max_ub = buf_list[10]
         w_max_ub = buf_list[11]
 
-        # fp32 -> int32
+        # 'fp32 -> int32
         self.vector_conv(size * 2, [int32_ceil_index, sub_floor], "ceil")
         self.vector_conv(size * 2, [int32_floor_index, sub_floor], "floor")
 
-        # int32 -> fp32
+        # 'int32 -> fp32
         self.vector_conv(size * 2, [fp32_ceil_index, int32_ceil_index], "")
         self.vector_conv(size * 2, [fp32_floor_index, int32_floor_index], "")
 
-        # ceil_sub = 1 + offset_broadcast - fp32_ceil_index
+        # 'ceil_sub = 1 + offset_broadcast - fp32_ceil_index
         self.vector_binary_op(size * 2, [ceil_sub, sub_floor, fp32_ceil_index], "sub")
         self.vector_adds(size * 2, [ceil_sub, ceil_sub], 1)
 
-        # sub_floor = 1 + fp32_floor_index - offset_broadcast
+        # 'sub_floor = 1 + fp32_floor_index - offset_broadcast
         self.vector_binary_op(size * 2, [sub_floor, fp32_floor_index, sub_floor], "sub")
         self.vector_adds(size * 2, [sub_floor, sub_floor], 1)
 
-        # grad_scale_ub = grad * scale
+        # 'grad_scale_ub = grad * scale
         self.vector_binary_op(size, [grad_scale_ub, grad_ub, grad_scale_ub], "mul")
 
-        # grad_scale_weight_ub[0] = grad * scale * sub_floor[0]
+        # 'grad_scale_weight_ub[0] = grad * scale * sub_floor[0]
         self.vector_binary_op(size, [grad_scale_weight_ub, grad_scale_ub, sub_floor], "mul", [0, 0, 0])
 
-        # grad_scale_weight_ub[3] = grad * scale * ceil_sub[0]
+        # 'grad_scale_weight_ub[3] = grad * scale * ceil_sub[0]
         self.vector_binary_op(size, [grad_scale_weight_ub, grad_scale_ub, ceil_sub], "mul", [size * 3, 0, 0])
 
-        # grad_scale_lb = grad * scale * l_b_w * l_b_h -> grad * scale * sub_floor[0] * ceil_sub[1]
+        # 'grad_scale_lb = grad * scale * l_b_w * l_b_h -> grad * scale * sub_floor[0] * ceil_sub[1]
         self.vector_binary_op(size, [grad_scale_weight_ub, grad_scale_weight_ub, ceil_sub], "mul", [size, 0, size])
 
-        # grad_scale_lt = grad * scale * l_t_w * l_t_h -> grad * scale * sub_floor[0] * sub_floor[1]
+        # 'grad_scale_lt = grad * scale * l_t_w * l_t_h -> grad * scale * sub_floor[0] * sub_floor[1]
         self.vector_binary_op(size, [grad_scale_weight_ub, grad_scale_weight_ub, sub_floor], "mul", [0, 0, size])
 
-        # grad_scale_rt = grad * scale * r_t_w * r_t_h -> grad * scale  * ceil_sub[0] * sub_floor[1]
+        # 'grad_scale_rt = grad * scale * r_t_w * r_t_h -> grad * scale  * ceil_sub[0] * sub_floor[1]
         self.vector_binary_op(size, [grad_scale_weight_ub, grad_scale_weight_ub, sub_floor], "mul",
                               [size * 2, size * 3, size])
 
-        # grad_scale_rb = grad * scale * r_b_w * r_b_h -> grad * scale * ceil_sub[0] * ceil_sub[1]
+        # 'grad_scale_rb = grad * scale * r_b_w * r_b_h -> grad * scale * ceil_sub[0] * ceil_sub[1]
         self.vector_binary_op(size, [grad_scale_weight_ub, grad_scale_weight_ub, ceil_sub], "mul",
                               [size * 3, size * 3, size])
 
@@ -714,7 +723,7 @@ class DeformableOffsetsGrad:
         self.vector_dup(0, int32_h_max_ub, VECTOR_FP32_SIZE, self.h_in - 1)
         self.vector_dup(0, int32_w_max_ub, VECTOR_FP32_SIZE, self.w_in - 1)
 
-        # make index value in [[0,h_in) ,[0, w_in)]
+        # 'make index value in [[0,h_in) ,[0, w_in)]
         self.vector_binary_op(size, [int32_floor_index, int32_floor_index, int32_w_max_ub], "min",
                               rep_stride_list=[8, 8, 0])
         self.vector_binary_op(size, [int32_ceil_index, int32_ceil_index, int32_w_max_ub], "min",
@@ -728,6 +737,7 @@ class DeformableOffsetsGrad:
         self.vector_binary_op(size * 2, [int32_ceil_index, int32_ceil_index, int32_zero_ub], "max",
                               rep_stride_list=[8, 8, 0])
 
+    # 'pylint: disable=too-many-locals
     def compute_grad_x(self, size, start_list, buf_list, cycle_size):
         """
         compute grad_x func
@@ -800,6 +810,7 @@ class DeformableOffsetsGrad:
             self.instance.data_move(self.grad_x_gm[dx_rb_index], x_ub_rb, 0, 1, group_c_burst, 0, 0)
             self.instance.set_atomic_add(0)
 
+    # 'pylint: disable=too-many-locals
     def compute_grad_offset(self, size, out_index, buf_list):
         """
         compute grad_offset func
@@ -872,6 +883,7 @@ class DeformableOffsetsGrad:
 
         self.reduce_sum(out_index, size * 3, grad_scale_weight_ub)
 
+    # 'pylint: disable=too-many-locals
     def move_grad_and_offset_to_ub_mode_1(self, size_list, start_list, ub_list):
         """
         move grad and offsets to ub when ub_index in [0, 1]
@@ -896,6 +908,7 @@ class DeformableOffsetsGrad:
         else:
             self.vector_binary_op(offset_size, [offset_ub, offset_ub, helper_ub], "add")
 
+    # 'pylint: disable=too-many-locals
     def move_grad_and_offset_to_ub_mode_2(self, size_list, start_list, ub_list):
         """
         move grad and offsets to ub when ub_index in [2,]
@@ -967,6 +980,7 @@ class DeformableOffsetsGrad:
                                       ub_buf[start_index + repeat * one_cnt],
                                       val, 1, 8)
 
+    # 'pylint: disable=too-many-locals
     def vector_conv(self, size, ub_list, round_mode, dst_start=0, src_start=0):
         """
         vconv func
@@ -1022,6 +1036,7 @@ class DeformableOffsetsGrad:
                                     1,
                                     1, 1, 8, 8)
 
+    # 'pylint: disable=too-many-locals
     def vector_adds(self, size, ub_list, val, dst_start=0, src_start=0):
         """
         vadds func
@@ -1083,6 +1098,7 @@ class DeformableOffsetsGrad:
                                     1,
                                     1, 1, 8, 8)
 
+    # 'pylint: disable=too-many-locals
     def vector_binary_op(self, size, ub_list, op_name="add", start_list=None, blk_stride_list=None,
                          rep_stride_list=None):
         """
@@ -1169,6 +1185,7 @@ class DeformableOffsetsGrad:
                                   dst_blk_stride, src0_blk_stride, src1_blk_stride,
                                   dst_rep_stride, src0_rep_stride, src1_rep_stride)
 
+    # 'pylint: disable=too-many-locals
     def vector_sel(self, mask, size, buf_list, start_list):
         """
         vsel func
@@ -1193,7 +1210,7 @@ class DeformableOffsetsGrad:
         mask_bit = 16
         and_mask = (mask + mask_bit - 1) // mask_bit
 
-        # 0 <= h <= H_IN - 1
+        # '0 <= h <= H_IN - 1
         self.instance.vec_cmpv_ge(mask_ub1, fp32_floor_index[size + index_start], zero_ub, 1, 8, 0)
         self.instance.vec_cmpv_le(mask_ub2, fp32_floor_index[size + index_start], h_max_ub, 1, 8, 0)
         self.instance.vand(and_mask, mask_ub3, mask_ub1, mask_ub2, 1, 1, 1, 1, 8, 8, 8)
@@ -1202,7 +1219,7 @@ class DeformableOffsetsGrad:
         self.instance.vec_cmpv_le(mask_ub2, fp32_ceil_index[size + index_start], h_max_ub, 1, 8, 0)
         self.instance.vand(and_mask, mask_ub5, mask_ub1, mask_ub2, 1, 1, 1, 1, 8, 8, 8)
 
-        # 0 <= w <= W_IN - 1
+        # '0 <= w <= W_IN - 1
         self.instance.vec_cmpv_ge(mask_ub1, fp32_floor_index[index_start], zero_ub, 1, 8, 0)
         self.instance.vec_cmpv_le(mask_ub2, fp32_floor_index[index_start], w_max_ub, 1, 8, 0)
         self.instance.vand(and_mask, mask_ub4, mask_ub1, mask_ub2, 1, 1, 1, 1, 8, 8, 8)
@@ -1211,7 +1228,7 @@ class DeformableOffsetsGrad:
         self.instance.vec_cmpv_le(mask_ub2, fp32_ceil_index[index_start], w_max_ub, 1, 8, 0)
         self.instance.vand(and_mask, mask_ub2, mask_ub1, mask_ub2, 1, 1, 1, 1, 8, 8, 8)
 
-        # dx_lt -> fp32_floor_index[1] and fp32_floor_index[0]
+        # 'dx_lt -> fp32_floor_index[1] and fp32_floor_index[0]
         self.instance.vand(and_mask, mask_ub1, mask_ub3, mask_ub4, 1, 1, 1, 1, 8, 8, 8)
         cmp_mask1 = self.instance.mov_tensor_to_cmpmask(mask_ub1)
         self.instance.vsel(mask, 0, fp32_floor_index[index_start], cmp_mask1, x_ub_lt[group_c_start], zero_ub,
@@ -1219,7 +1236,7 @@ class DeformableOffsetsGrad:
         self.instance.vsel(mask, 0, x_ub_lt[group_c_start], cmp_mask1, grad_scale_weight_ub[index_start],
                            zero_ub, 1, 1, 1, 1, 8, 8, 8)
 
-        # dx_l_b -> fp32_ceil_index[1] and fp32_floor_index[0]
+        # 'dx_l_b -> fp32_ceil_index[1] and fp32_floor_index[0]
         self.instance.vand(and_mask, mask_ub4, mask_ub5, mask_ub4, 1, 1, 1, 1, 8, 8, 8)
         cmp_mask2 = self.instance.mov_tensor_to_cmpmask(mask_ub4)
         self.instance.vsel(mask, 0, fp32_ceil_index[index_start], cmp_mask2, x_ub_lb[group_c_start], zero_ub,
@@ -1227,7 +1244,7 @@ class DeformableOffsetsGrad:
         self.instance.vsel(mask, 0, x_ub_lb[group_c_start], cmp_mask2, grad_scale_weight_ub[size + index_start],
                            zero_ub, 1, 1, 1, 1, 8, 8, 8)
 
-        # dx_r_t -> fp32_floor_index[1] and fp32_ceil_index[0]
+        # 'dx_r_t -> fp32_floor_index[1] and fp32_ceil_index[0]
         self.instance.vand(and_mask, mask_ub3, mask_ub3, mask_ub2, 1, 1, 1, 1, 8, 8, 8)
         cmp_mask3 = self.instance.mov_tensor_to_cmpmask(mask_ub3)
         self.instance.vsel(mask, 0, fp32_floor_index[size + index_start], cmp_mask3, x_ub_rt[group_c_start], zero_ub,
@@ -1235,7 +1252,7 @@ class DeformableOffsetsGrad:
         self.instance.vsel(mask, 0, x_ub_rt[group_c_start], cmp_mask3, grad_scale_weight_ub[size * 2 + index_start],
                            zero_ub, 1, 1, 1, 1, 8, 8, 8)
 
-        # dx_r_b -> fp32_ceil_index[1] and fp32_ceil_index[0]
+        # 'dx_r_b -> fp32_ceil_index[1] and fp32_ceil_index[0]
         self.instance.vand(and_mask, mask_ub2, mask_ub5, mask_ub2, 1, 1, 1, 1, 8, 8, 8)
         cmp_mask4 = self.instance.mov_tensor_to_cmpmask(mask_ub2)
         self.instance.vsel(mask, 0, fp32_ceil_index[size + index_start], cmp_mask4, x_ub_rb[group_c_start], zero_ub,

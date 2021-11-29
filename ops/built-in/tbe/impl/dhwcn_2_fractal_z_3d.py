@@ -15,7 +15,7 @@
 """
 dhwcn_2_fractal_z_3d
 """
-# pylint: disable=W0613,W0401
+# 'pylint: disable=W0613,W0401
 from functools import reduce as functools_reduce
 
 from te import tik
@@ -36,7 +36,7 @@ REPEAT_LIMIT = 255
 MASK_128 = 128
 
 
-# pylint: disable=locally-disabled,too-many-lines
+# 'pylint: disable=locally-disabled,too-many-lines
 def _ceil_div(value_x, value_y):
     """
     do ceil division
@@ -52,7 +52,7 @@ def _ceil_fill(value, block):
     return _ceil_div(value, block)*block
 
 
-# pylint: disable=unnecessary-comprehension,undefined-variable,inconsistent-return-statements
+# 'pylint: disable=unnecessary-comprehension,undefined-variable,inconsistent-return-statements
 def _get_vnchwconv_ub_size(col_size, dtype):
     """
     get the ubuf size for vnchwconv branch
@@ -119,7 +119,7 @@ def _clean_ubuf(tik_inst, src, src_offset, dup_len):
                                 dup_value, 1, 1, 8)
 
 
-# pylint: disable=too-many-locals,too-many-statements
+# 'pylint: disable=too-many-locals,too-many-statements
 def _multi_core_on_c(tik_inst, data_in, data_out, shape_in):
     """
     process of multiple core on axis c
@@ -356,7 +356,7 @@ def _multi_core_on_dhw(tik_inst, data_in, data_out, shape_in):
                     dhw_size // CORE_NUM * ni_c0_size * CORE_NUM)
 
 
-# pylint: disable=too-many-statements, too-many-branches
+# 'pylint: disable=too-many-statements, too-many-branches
 def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in):
     """
     process of multiple core on axis h, w
@@ -914,7 +914,7 @@ def _set_loop(tik_instance, num_core, max_core, total_dim):
     return core_loop
 
 
-# pylint: disable=locally-disabled,too-many-instance-attributes
+# 'pylint: disable=locally-disabled,too-many-instance-attributes
 class Dhwcn2Fz3dFp32Compute:
     """
     Rearranges data from DHWCN format to FRACTAL_Z_3D format fp32 scene

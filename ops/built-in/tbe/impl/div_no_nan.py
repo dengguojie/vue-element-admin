@@ -21,7 +21,8 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
+
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("div_no_nan")
 def div_no_nan_compute(input_x, input_y, output_z, kernel_name="div_no_nan"):
     """

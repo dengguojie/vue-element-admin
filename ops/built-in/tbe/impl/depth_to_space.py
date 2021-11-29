@@ -15,7 +15,7 @@
 """
 depth_to_space
 """
-# pylint: disable=too-many-lines,import-error,too-many-public-methods,invalid-name
+# 'pylint: disable=too-many-lines,import-error,too-many-public-methods,invalid-name
 import math
 import functools
 
@@ -45,7 +45,7 @@ DATA_MOVE_MIN_UNIT = 32
 MAX_N_BURST = 4095
 
 
-# pylint: disable = unused-argument
+# 'pylint: disable = unused-argument
 def get_op_support_info(x, y, block_size, data_format='NHWC', kernel_name="depth_to_space"):
     """
     get_op_support_info
@@ -80,9 +80,9 @@ def _cal_core(tik_instance, total_core_loop_num, num_core, core_number):
     return core_loop, sum_core
 
 
-# pylint: disable=too-many-instance-attributes,too-many-arguments
-# pylint: disable=too-many-locals,too-many-statements
-# pylint: disable=attribute-defined-outside-init
+# 'pylint: disable=too-many-instance-attributes,too-many-arguments
+# 'pylint: disable=too-many-locals,too-many-statements
+# 'pylint: disable=attribute-defined-outside-init
 class DepthToSpaceNHWCCompute:
     """
     Rearranges data from depth into blocks of spatial data
@@ -956,7 +956,7 @@ class DepthToSpaceNHWCCompute:
                 self.dtype, (rearrange_loops * self.input_width * self.block_size * self.align_min_size,),
                 name="input_ub",
                 scope=tik.scope_ubuf)
-            self.ub_rearrange_min_size_more_32B(tik_instance, rearrange_loops, input_ub, loop_offset)
+            self.ub_rearrange_min_size_more_32b(tik_instance, rearrange_loops, input_ub, loop_offset)
         else:
             cal_blocks = math.ceil(cal_nums / self.num_data)
             input_ub = tik_instance.Tensor(self.dtype, (cal_blocks * self.num_data,),
@@ -967,13 +967,13 @@ class DepthToSpaceNHWCCompute:
                                                scope=tik.scope_ubuf)
             tik_instance.data_move(input_ub, self.input_x_gm[loop_offset], 0, 1, cal_blocks, 0, 0)
             if self.is_align:
-                self.ub_rearrange_min_size_equal_32B(tik_instance, rearrange_loops, input_ub, rearrange_ub, cal_blocks,
+                self.ub_rearrange_min_size_equal_32b(tik_instance, rearrange_loops, input_ub, rearrange_ub, cal_blocks,
                                                      loop_offset)
             else:
-                self.ub_rearrange_min_size_less_32B(tik_instance, rearrange_loops, input_ub, rearrange_ub, cal_blocks,
+                self.ub_rearrange_min_size_less_32b(tik_instance, rearrange_loops, input_ub, rearrange_ub, cal_blocks,
                                                     cal_nums, loop_offset, address_rollback)
 
-    def ub_rearrange_min_size_less_32B(self, tik_instance, rearrange_loops, input_ub, rearrange_ub, cal_blocks,
+    def ub_rearrange_min_size_less_32b(self, tik_instance, rearrange_loops, input_ub, rearrange_ub, cal_blocks,
                                        cal_nums, loop_offset, address_rollback):
         """
         UB rearrange (num_data_one_move)
@@ -997,7 +997,7 @@ class DepthToSpaceNHWCCompute:
         else:
             tik_instance.data_move(self.output_y_gm[loop_offset], rearrange_ub, 0, 1, cal_blocks, 0, 0)
 
-    def ub_rearrange_min_size_equal_32B(self, tik_instance, rearrange_loops, input_ub, rearrange_ub, cal_blocks,
+    def ub_rearrange_min_size_equal_32b(self, tik_instance, rearrange_loops, input_ub, rearrange_ub, cal_blocks,
                                         loop_offset):
         """
         UB rearrange (num_data_one_move)
@@ -1012,7 +1012,7 @@ class DepthToSpaceNHWCCompute:
                                        min_blocks, (self.block_size - 1) * min_blocks, 0)
         tik_instance.data_move(self.output_y_gm[loop_offset], rearrange_ub, 0, 1, cal_blocks, 0, 0)
 
-    def ub_rearrange_min_size_more_32B(self, tik_instance, rearrange_loops, input_ub, loop_offset):
+    def ub_rearrange_min_size_more_32b(self, tik_instance, rearrange_loops, input_ub, loop_offset):
         """
         multi_times in multi_times out
         Enable the maximum number of cores.
@@ -1084,7 +1084,7 @@ class DepthToSpaceNHWCCompute:
         return tik_instance
 
 
-# pylint: disable=invalid-name,unused-argument
+# 'pylint: disable=invalid-name,unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
                             para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
 def depth_to_space(x, y, block_size, data_format='NHWC', kernel_name="depth_to_space"):
@@ -1131,7 +1131,8 @@ def depth_to_space(x, y, block_size, data_format='NHWC', kernel_name="depth_to_s
 
     depth_size = input_shape[3]
     if depth_size % (block_size * block_size) != 0:
-        error_detail = "depth size of x should be divisible by the square of block_size, depth_size:%s, block_size:%s" % (depth_size, block_size)
+        error_detail = "depth size of x should be divisible by the square of block_size, \
+                        depth_size:%s, block_size:%s" % (depth_size, block_size)
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
 
     depth_to_space_template = DepthToSpaceNHWCCompute(input_shape, input_dtype, block_size, data_format, kernel_name)

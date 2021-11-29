@@ -42,7 +42,7 @@ STRIDES_DIM = 4
 DILATIONS_DIM = 4
 
 
-# pylint: disable=redefined-builtin
+# 'pylint: disable=redefined-builtin
 def _check_params(shape, dtype, format):
     """
     check the parameters including shape, dtype, format
@@ -123,7 +123,7 @@ def _check_stride(strides, dim_s_h, dim_s_w, dim_s_n, dim_s_c):
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
-# pylint: disable=locally-disabled, too-many-arguments
+# 'pylint: disable=locally-disabled, too-many-arguments
 def _check_input_filter_shape(input_shape, output_shape, filter_shape, dim_n, dim_c, dim_w_c, dim_w_k):
     """
     check input and filter shape is valid
@@ -203,8 +203,8 @@ def _check_pad(pads):
         raise RuntimeError(dict_args, error_manager_util.get_error_message(dict_args))
 
 
-# pylint: disable=too-many-statements, redefined-builtin
-# pylint: disable=locally-disabled, too-many-locals, too-many-arguments, invalid-name
+# 'pylint: disable=too-many-statements, redefined-builtin
+# 'pylint: disable=locally-disabled, too-many-locals, too-many-arguments, invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,

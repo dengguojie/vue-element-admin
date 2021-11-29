@@ -21,12 +21,13 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 
-# define a scalar, value = -(2**32 - 1)
+# 'define a scalar, value = -(2**32 - 1)
 MIN_VAL = -3402823424.0
 
 
-# pylint: disable=invalid-name,unused-argument,too-many-arguments,too-many-locals,unused-variable
-# pylint: disable=redefined-builtin,too-many-lines,too-many-instance-attributes,too-many-statements,too-many-public-methods
+# 'pylint: disable=invalid-name,unused-argument,too-many-arguments,too-many-locals,unused-variable
+# 'pylint: disable=redefined-builtin,too-many-lines,too-many-instance-attributes
+# 'pylint: disable=too-many-statements,too-many-public-methods
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.OPTION_ATTR_STR,
@@ -569,7 +570,7 @@ class Dilation2DBase:
 
     def vector_add(self, start_list, ub_list, size, rep_stride_list, blk_stride_list, mask_all):
         """
-        vector_add function, C = A+B
+        vector_add function
         """
         num = mask_all // self.c0
         mask = num * 8
@@ -663,7 +664,7 @@ class Dilation2D(Dilation2DBase):
         self.filter_offset_list = _get_product_of_each_dim(self.filter_shape, len(self.filter_shape))
         self.tiling_params = {}
         self.pad_w = self.pad_left + self.pad_right + self.w_in
-        # pylint: disable=simplifiable-if-expression
+        # 'pylint': disable=simplifiable-if-expression
         self.need_vconv = True if self.x_dtype == "float16" and self.y_dtype == "float32" else False
 
     def do_tiling(self, tiling_shape, ub_size):
@@ -2869,7 +2870,7 @@ class Dilation2D(Dilation2DBase):
                     gm_n_offset = n_offset * self.c1 * self.w_in * self.h_in * self.c0
                     gm_c1_offset = c1_offset * self.w_in * self.h_in * self.c0
                     gm_update_idx = (h_pos - self.pad_top + fh_i * self.rate_h) * self.w_in + \
-                                    (right_center_begin_step * self.stride_w - self.pad_left) +fw_j * self.rate_w + \
+                                    (right_center_begin_step * self.stride_w - self.pad_left) + fw_j * self.rate_w + \
                                     w_step_i * self.stride_w
                     ub_update_idx = ((h_elem_start_offset + fh_i) * self.filter_w + w_elem_start_offset + fw_j) * \
                                     cut_size + (right_center_begin_step + h_step_i * line_steps + w_step_i) * self.c0

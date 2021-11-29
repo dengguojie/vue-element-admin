@@ -95,7 +95,7 @@ def reshape_input_mask(input_tensor, input_mask, kernel_name):
             )
         else:
             error_detail = ("Only support to adjust batch shape [2, 3, 4], " +
-                "but the recent batch shape is [%d]."%(len(batch_shape)))
+                "but the recent batch shape is [%d]." % (len(batch_shape)))
             error_manager_vector.raise_err_input_shape_invalid(
                 kernel_name, "input_mask", error_detail
             )
@@ -117,6 +117,9 @@ def drop_out_do_mask_v3_d_compute(input_tensor: tvm.tensor.Tensor,
                                   output,
                                   input_keep_prob: float,
                                   kernel_name="drop_out_do_mask_v3_d"):
+    """
+    dropoutdomaskv3d compute
+    """
     input_mask, batch_shape = reshape_input_mask(input_tensor, input_mask, kernel_name)
     input_dtype = input_tensor.dtype
     input_mask = te.lang.cce.cast_to(input_mask, input_dtype)
@@ -186,8 +189,11 @@ def drop_out_do_mask_v3_d(input_tensor, input_mask, output, input_keep_prob,
     para_check.check_shape_size(input_tensor.get('shape'), SHAPE_SIZE_LIMIT)
     para_check.check_shape_size(input_mask.get('shape'), SHAPE_SIZE_LIMIT)
     input_name_list = ['input_tensor', 'input_mask']
-    input_tensor, input_mask = _get_placeholder([input_tensor, input_mask],
-                                                input_name_list)
+    list_placeholder = _get_placeholder([input_tensor, input_mask],
+                                         input_name_list)
+    input_tensor = list_placeholder[0]
+    input_mask = list_placeholder[1]
+
     output = drop_out_do_mask_v3_d_compute(input_tensor, input_mask,
                                            output, input_keep_prob)
 

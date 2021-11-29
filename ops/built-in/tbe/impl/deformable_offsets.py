@@ -80,7 +80,8 @@ def get_params(dtype):
     return size, mask, ratio
 
 
-# pylint: disable=unused-argument,unused-variable
+# 'pylint: disable=unused-argument,unused-variable  
+# 'pylint: disable=too-many-arguments,too-many-locals,too-many-return-statements
 def check_supported(x,
                     offsets,
                     helper,
@@ -107,7 +108,7 @@ def check_supported(x,
         reason = "dtype is x is not supported, x_dtype is %s,supported list is %s" % (x_dtype, check_list)
         return False, reason
     if len(x_shape) != 4:
-        reason = "len of x_shape is not 4, x_shape is %s" %(str(x_shape),)
+        reason = "len of x_shape is not 4, x_shape is %s" % (str(x_shape),)
         return False, reason
     if x_format != "NHWC" or data_format != "NHWC":
         reason = "x_format is not NHWC or data_format is not NHWC"
@@ -118,12 +119,12 @@ def check_supported(x,
         return False, reason
     group_c = x_shape[3] // deformable_groups
     if group_c % 8 != 0 or deformable_groups != 1:
-        reason = "group_c[%s] is not multiple of 8, or deformable_groups is not 1" %(str(group_c),)
+        reason = "group_c[%s] is not multiple of 8, or deformable_groups is not 1" % (str(group_c),)
         return False, reason
     return True, ""
 
 
-# pylint: disable=too-many-instance-attributes,too-many-arguments
+# 'pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-statements
 class DeformableOffsets:
     """
     initialize some properties
@@ -171,11 +172,11 @@ class DeformableOffsets:
         self.y_len = self.offsets_len * self.dim_group_c // 3
         self.thread_num = 2
         self.x_gm = self.tik_instance.Tensor(
-            self.x_dtype, [self.x_len,], name="x_gm", scope=tbe_platform.scope_gm)
+            self.x_dtype, [self.x_len, ], name="x_gm", scope=tbe_platform.scope_gm)
         self.offsets_gm = self.tik_instance.Tensor(
-            self.offsets_dtype, [self.offsets_len,], name="offsets_gm", scope=tbe_platform.scope_gm)
+            self.offsets_dtype, [self.offsets_len, ], name="offsets_gm", scope=tbe_platform.scope_gm)
         self.helper_gm = self.tik_instance.Tensor(
-            self.helper_dtype, [self.helper_len,], name="helper_gm", scope=tbe_platform.scope_gm)
+            self.helper_dtype, [self.helper_len, ], name="helper_gm", scope=tbe_platform.scope_gm)
         self.y_gm = self.tik_instance.Tensor(
             self.y_dtype, [self.y_len], name="y_gm", scope=tbe_platform.scope_gm)
         self.scalar_const_pos1 = self.tik_instance.Scalar(
@@ -493,6 +494,7 @@ class DeformableOffsets:
                                    self.ub_limit_w,
                                    1, 1, 1, 1, 8, 8, 0)
 
+    # 'pylint: disable=too-many-locals
     def get_x(self, ub_x, offset_list, process_num, sel_mask):
         """
         Get input x values by given index.
@@ -709,6 +711,7 @@ class DeformableOffsets:
                                         constant.STRIDE_ZERO,
                                         constant.STRIDE_ZERO)
 
+    # 'pylint: disable=too-many-locals,too-many-statements
     def compute_one_filter(self, n_idx, f_start, hlp_start, kh_idx, out_c_num, ub_out):
         """
         Compute each w unit.

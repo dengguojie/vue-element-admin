@@ -31,7 +31,7 @@ from impl.util import util_select_op_base
 SIZE_SIXTEEN = 16
 
 
-# pylint: disable=too-many-branches,unused-argument
+# 'pylint: disable=too-many-branches,unused-argument
 def _division_sixteen(shape):
     """
     judge whether the last two dimensions are divided by 16
@@ -49,7 +49,7 @@ def _division_sixteen(shape):
     if shape[-1] == 0 or shape[-2] == 0:
         error_detail = "value of shape is illegal, shape[-1]:%s, shape[-2]:%s" % (shape[-1], shape[-2])
         error_manager_vector.raise_err_specific_reson("dropout_do_mask", error_detail)
-        
+
     return shape[-1] % SIZE_SIXTEEN == 0 and shape[-2] % SIZE_SIXTEEN == 0
 
 
@@ -170,9 +170,9 @@ def _get_ub_max_elements(dtype):
     """
     ub_size_bytes = tbe_platform.cce_conf.get_soc_spec(
         tbe_platform.cce_conf.UB_SIZE)
-    # 8 bit = 1byte, lots of '8' below for this reason
+    # '8 bit = 1byte, lots of '8' below for this reason
     dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(dtype) // 8
-    # 2.125 means tensor_data + tensor_zero + tensor_mask = 1+1+0.125=2.125
+    # '2.125 means tensor_data + tensor_zero + tensor_mask = 1+1+0.125=2.125
     total_ele = (ub_size_bytes // dtype_bytes_size -
                  tbe_platform.ELEMENTS_VECTOR_OP_FP16) // 2.125
     total_ele = \
@@ -216,7 +216,7 @@ def _sel_data(ir_builder, src_data, alloc_mem, offset_length):
                 alloc_mem[3].access_ptr("r"), 2, 1, 1, 1, 8, 8, 8))
 
 
-# pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements,unused-argument
+# 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals,too-many-statements,unused-argument
 def _do_operation(ir_builder, place_holders, plantform_paras, loops_remains, const_1, block_offset,
                   shape_each_core, num_remain_by_128, is_not_align):
     """
@@ -226,7 +226,7 @@ def _do_operation(ir_builder, place_holders, plantform_paras, loops_remains, con
     4:total_ub_data_offset 5:total_ub_mask_offset]
     repeates[0:repeate_ub_data 1:repeate_ub_mask 2:repeate_ub_vector
     3:repeate_d 4:repeate_m 5:repeate_v]
-    6 = the list size
+    6:the list size
     """
     reg = ir_builder.allocate(place_holders[0].dtype, (1, ),
                               name="reg",
@@ -514,10 +514,10 @@ def _do_operation(ir_builder, place_holders, plantform_paras, loops_remains, con
                       tbe_platform.ELEMENTS_VECTOR_OP_FP16*index2)
         if place_holders[0].dtype == 'float32':
             offsets[4], offsets[5] = plantform_paras[1] * loops_remains[1], \
-                                     plantform_paras[2] *loops_remains[1]
+                                     plantform_paras[2] * loops_remains[1]
         else:
             offsets[4], offsets[5] = plantform_paras[1] * loops_remains[1], \
-                                     plantform_paras[2] *loops_remains[1]
+                                     plantform_paras[2] * loops_remains[1]
 
         if loops_remains[3]:
             tbe_platform.reset_mask_insn(ir_builder,
@@ -714,7 +714,7 @@ def drop_out_do_mask(input_tensor, input_mask, input_keep_prob, output,
                    // tbe_platform.ELEMENTS_VECTOR_OP_FP16 * tbe_platform.ELEMENTS_VECTOR_OP_FP16 // 8
 
     if product_mask != shape_mask[0]:
-        error_detail = "The mask[0] should=%d, but now=%d"%(product_mask, shape_mask[0])
+        error_detail = "The mask[0] should=%d, but now=%d" % (product_mask, shape_mask[0])
         error_manager_vector.raise_err_input_shape_invalid("dropout_do_mask", "input_mask", error_detail)
     data_tensor = tvm.placeholder(
         (functools.reduce(lambda x, y: x*y, shape_tensor), ),

@@ -498,8 +498,8 @@
         ],
         "format": "ND",
         "ori_shape": [
-          11,
-          33
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "name": "x",
@@ -525,7 +525,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1
+          -1
         ],
         "ori_format": "ND",
         "name": "min_range",
@@ -546,7 +546,7 @@
         ],
         "format": "ND",
         "ori_shape": [
-          1
+          -1
         ],
         "ori_format": "ND",
         "name": "max_range",
@@ -570,8 +570,8 @@
         ],
         "format": "ND",
         "ori_shape": [
-          11,
-          33
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "name": "y",

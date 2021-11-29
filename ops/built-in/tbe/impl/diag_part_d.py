@@ -23,11 +23,11 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 
-# define a VALUE, value = 2
+# 'define a VALUE, value = 2
 VALUE_TWO = 2
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name,no-member
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name,no-member
 @tbe_platform.fusion_manager.fusion_manager.register("diag_part_d")
 def diag_part_d_compute(x, assist, y, kernel_name="diag_part_d"):
     """
@@ -69,7 +69,8 @@ def diag_part_d_compute(x, assist, y, kernel_name="diag_part_d"):
         res = tbe.cast_to_round(res, "int32")
     return res
 
-# pylint: disable=too-many-locals
+
+# 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def diag_part_d(x, assist, y, kernel_name="diag_part_d"):

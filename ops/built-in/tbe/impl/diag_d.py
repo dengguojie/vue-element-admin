@@ -24,7 +24,7 @@ from te.utils import shape_util
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable = locally-disabled,invalid-name,unused-argument,no-member
+# 'pylint: disable = locally-disabled,invalid-name,unused-argument,no-member
 @tbe_platform.fusion_manager.fusion_manager.register("diag_d")
 def diag_d_compute(x, assit, y, kernel_name="diag_d"):
     """
@@ -61,7 +61,8 @@ def diag_d_compute(x, assit, y, kernel_name="diag_d"):
 
     return res
 
-# pylint: disable =too-many-locals
+
+# 'pylint: disable =too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                            para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def diag_d(x, assist, y, kernel_name="diag_d"):
@@ -96,7 +97,7 @@ def diag_d(x, assist, y, kernel_name="diag_d"):
     dtype = x.get("dtype")
 
     if len(shape_x) > 4:
-        error_detail = "length of x'shape should be less than 5 but got: %d" %len(shape_x)
+        error_detail = "length of x'shape should be less than 5 but got: %d" % len(shape_x)
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
 
     shape_help = assist.get("shape")

@@ -17,16 +17,16 @@ dilation2d
 """
 import te.platform as tbe_platform
 from te.utils import para_check
-from tbe import tik
 from te.utils.error_manager import error_manager_vector
+from tbe import tik
 from impl.add import add
 from impl import common_util
 
 MIN_VAL = -65534.0
 
 
-# pylint: disable=invalid-name,unused-argument,too-many-arguments,too-many-locals,too-many-branches
-# pylint: disable=redefined-builtin,too-many-lines,too-many-instance-attributes,too-many-statements
+# 'pylint: disable=invalid-name,unused-argument,too-many-arguments,too-many-locals,too-many-branches
+# 'pylint: disable=redefined-builtin,too-many-lines,too-many-instance-attributes,too-many-statements
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_LIST_INT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_BOOL,
@@ -469,7 +469,7 @@ class Dilation2DBase:
 
     def vector_add(self, start_list, ub_list, repeat, rep_stride_list, blk_stride_list, mask_all):
         """
-        vector_add function, C = A+B
+        vector_add function
         """
         dst_start, src0_start, src1_start = start_list
         dst_rep_stride, src0_rep_stride, src1_rep_stride = rep_stride_list
@@ -552,7 +552,7 @@ class Dilation2DBase:
 
     def vector_max(self, size, mask_num, ub_list, start_list, rep_stride_list, blk_stride_list):
         """
-        vector_max function, C= MAX(A,B)
+        vector_max function
         """
         one_cnt = mask_num * self.c0
         repeat = size // one_cnt

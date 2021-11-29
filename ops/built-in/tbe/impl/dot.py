@@ -22,7 +22,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @fusion_manager.register("dot")
 def dot_compute(input_x1, input_x2, output, kernel_name="dot"):
     """
@@ -44,7 +44,7 @@ def dot_compute(input_x1, input_x2, output, kernel_name="dot"):
     return red_res
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def dot(input_x1, input_x2, output, kernel_name="dot"):

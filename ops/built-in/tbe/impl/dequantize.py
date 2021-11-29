@@ -197,7 +197,7 @@ def _scaled_mode_compute(input_tensor, broadcast_max_range):
     return res
 
 
-# pylint: disable=too-many-arguments,unused-argument,unnecessary-lambda,invalid-name
+# 'pylint: disable=too-many-arguments,unused-argument,unnecessary-lambda,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("dequantize")
 def dequantize_compute(x, min_range, max_range, y, mode="MIN_COMBINED", kernel_name="dequantize"):
     """
@@ -251,7 +251,7 @@ def dequantize_compute(x, min_range, max_range, y, mode="MIN_COMBINED", kernel_n
     return res
 
 
-# pylint: disable=too-many-locals
+# 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
 def dequantize(x, min_range, max_range, y, mode="MIN_COMBINED", kernel_name="dequantize"):

@@ -16,10 +16,11 @@
 dropout_v2
 """
 import functools
+import math
 from te.platform.fusion_manager import fusion_manager
 from te import tik
 from te import platform as cce
-import math
+
 
 A = 509.0 # Prime number for LCG calculation
 MAX = 1023.0 # Maximum period of LCG
@@ -30,9 +31,9 @@ def _ceil_div(value, factor):
     return (value + factor - 1) // factor
 
 
-# pylint: disable=invalid-name,useless-object-inheritance,too-few-public-methods
-# pylint: too-many-instance-attributes,too-many-arguments,unused-argument,self-assigning-variable
-# pylint: attribute-defined-outside-init
+# 'pylint: disable=invalid-name,useless-object-inheritance,too-few-public-methods
+# 'pylint: disable=too-many-instance-attributes,too-many-arguments,unused-argument,self-assigning-variable
+# 'pylint: disable=attribute-defined-outside-init
 def _check_param_dtype(x, seed, y, mask, new_seed):
     if x.get("dtype") != y.get("dtype"):
         raise RuntimeError('dtype of input and output should be same')
@@ -61,6 +62,7 @@ class DropoutV2(object):
     """
     Define dropout calculation process
     """
+    # 'pylint: too-many-arguments
     def __init__(self, x, seed, y, mask, new_seed, p, kernel_name="dropout_v2"):
         """
         Use the lcg algorithm to generate random numbers and implement dropout calculations
@@ -108,6 +110,14 @@ class DropoutV2(object):
         self.y_gm = self.tik_instance.Tensor(self.y_dtype, self.y_shape, tik.scope_gm, "y_gm")
         self.mask_gm = self.tik_instance.Tensor(self.seed_dtype, self.y_shape, tik.scope_gm, "mask_gm")
         self.new_seed_gm = self.tik_instance.Tensor(self.seed_dtype, self.seed_shape, tik.scope_gm, "new_seed_gm")
+        self.seed_ub = None
+        self.seed_mask_ub = None
+        self.seed_drop_ub = None
+        self.seed_tmp_int = None
+        self.seed_drop_ub_fp16 = None
+        self.x_ub = None
+        self.seed_tmp_uint = None
+        self.tmp_one_ub = None
 
     def core_use_select(self, data_len):
         """
@@ -180,7 +190,6 @@ class DropoutV2(object):
         """
         process_len_align = process_len - process_len % (self.block_num_x)
         if process_len_align > 0:
-            process_len_align = process_len_align
             self.seed_mask_ub = self.tik_instance.Tensor(self.seed_dtype, (self.x_ub_size,), name="seed_mask_ub",
                                                          scope=tik.scope_ubuf)
             self.seed_drop_ub = self.tik_instance.Tensor(self.seed_dtype, (self.x_ub_size,), name="seed_drop_ub",
@@ -318,7 +327,7 @@ class DropoutV2(object):
             self.tik_instance.vec_muls(mask, self.seed_drop_ub[offset], self.seed_drop_ub[offset],
                                        1 / (1 - self.prob), repeat_time, 8, 8)
 
-
+# 'pylint: disable=too-many-arguments
 @fusion_manager.register("dropout_v2")
 def dropout_v2(x, seed, y, mask, new_seed, p, kernel_name='dropout_v2'):
     """
