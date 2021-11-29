@@ -770,8 +770,8 @@
           -1
         ],
         "ori_shape": [
-          2,
-          5
+          -1,
+          -1
         ],
         "format": "NHWC",
         "ori_format": "NHWC",
@@ -800,8 +800,8 @@
           -1
         ],
         "ori_shape": [
-          2,
-          5
+          -1,
+          -1
         ],
         "format": "NHWC",
         "ori_format": "NHWC",

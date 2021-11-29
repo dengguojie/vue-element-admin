@@ -2,6 +2,7 @@
     {
       "op": "ReduceMeanD",
       "cast_name": "test_reducemean_d_001",
+      "case_name": "test_reducemean_d_001",
       "input_desc": [
         {
           "format": "NHWC",
