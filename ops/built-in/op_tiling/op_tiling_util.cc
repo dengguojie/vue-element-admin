@@ -22,8 +22,8 @@
 #include <functional>
 #include <ge_error_codes.h>
 #include <graph/utils/type_utils.h>
-#include "op_tiling_util.h"
 #include "graph/utils/op_desc_utils.h"
+#include "op_tiling_util.h"
 
 namespace {
   constexpr int32_t DATA_BLOCK_4 = 4;
@@ -53,12 +53,12 @@ std::string to_string(const ge::Format& format) {
   return ge::TypeUtils::FormatToSerialString(format);
 }
 
-int64_t GetByteLenByString(const std::string& data_type) {
-  auto find_it = STR_TO_DATATYPE.find(data_type);
+int64_t GetByteLenByString(const std::string& op_type) {
+  auto find_it = STR_TO_DATATYPE.find(op_type);
   if (find_it != STR_TO_DATATYPE.end()) {
     return GetSizeByDataType(find_it->second);
   }
-  OP_LOGW("GetByteLen", "con not get the dtype[%s] in ge::DataType list. will return 0", data_type.c_str());
+  OP_LOGW("GetByteLen", "con not get the dtype[%s] in ge::DataType list. will return 0", op_type.c_str());
   return 0;
 }
 

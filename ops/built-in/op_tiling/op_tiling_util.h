@@ -54,7 +54,7 @@
     if (json_object == nullptr) {                                                                                     \
       return nullptr;                                                                                                 \
     }                                                                                                                 \
-    struct_name* parsed_void_ptr = new struct_name();                                                                 \
+    struct_name* parsed_void_ptr = new (struct_name)();                                                                 \
     bool parse_ret = parse_func(#optype, *json_object, *parsed_void_ptr);                                             \
     if (parse_ret) {                                                                                                  \
       return static_cast<void*>(parsed_void_ptr);                                                                     \

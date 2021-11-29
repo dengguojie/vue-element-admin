@@ -93,24 +93,23 @@ void InitRunningParams(ScatterMaxTilingParams& params) {
 }
 
 void CalScatterMaxBranchRunningParams(ScatterMaxTilingParams& runParams, int64_t varNum, int64_t indicesNum,
-                                      int64_t updatesNum, int64_t updateDataNum, int64_t maxIndice, int64_t ubSize,
-                                      int64_t coreNum, int64_t varSize, int64_t indicesSize, int64_t varDataEachBlock,
-                                      int64_t dataNumOneRepeat) {
+                                      int64_t updatesNum, int64_t updateDataNum, int64_t ubSize, int64_t coreNum,
+                                      int64_t varSize, int64_t indicesSize, int64_t varDataEachBlock) {
   int64_t varAllSizeByte = varSize * varNum;
   int64_t varSizeByte = varSize * runParams.indiceStep * updateDataNum;
   int64_t updateSizeByte = varSize * updatesNum;
   int64_t varUbSize = ubSize / 8 * 3;
   int64_t indicesUbSize = ubSize / 8 * 2;
   OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_max", "varSize = 0 is not support"),
-                  return); 
+                  return);
   OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_max", "indicesSize = 0 is not support"),
                   return);
   OP_TILING_CHECK(varUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_max", "varUbSize = 0 is not support"),
-                  return); 
-  OP_TILING_CHECK(indicesUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_max", 
+                  return);
+  OP_TILING_CHECK(indicesUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_max",
 	          "indicesUbSize = 0 is not support"),
                   return);
-  OP_TILING_CHECK(varDataEachBlock == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_max", 
+  OP_TILING_CHECK(varDataEachBlock == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_max",
 	          "varDataEachBlock = 0 is not support"),
                   return);
   runParams.varLoopNum = varNum / (varUbSize / varSize);
@@ -334,8 +333,8 @@ bool ScatterMaxTiling(const std::string& opType, const TeOpParas& opParas, const
     dataNumOneRepeat = 128;
   }
 
-  CalScatterMaxBranchRunningParams(runParams, varNum, indicesNum, updatesNum, updateDataNum, maxIndice, ubSize,
-                                   runParams.coreNum, varSize, indicesSize, varDataEachBlock, dataNumOneRepeat);
+  CalScatterMaxBranchRunningParams(runParams, varNum, indicesNum, updatesNum, updateDataNum, ubSize,
+                                   runParams.coreNum, varSize, indicesSize, varDataEachBlock);
 
   SetRuningParams(runParams, runInfo);
 

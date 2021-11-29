@@ -123,7 +123,7 @@ namespace optiling{
 
     int32_t UpDiv(int32_t first_value, int32_t second_value)
     {
-        OP_TILING_CHECK(second_value == 0, VECTOR_INNER_ERR_REPORT_TILIING("one_hot", 
+        OP_TILING_CHECK(second_value == 0, VECTOR_INNER_ERR_REPORT_TILIING("one_hot",
             "second_value = 0 is not support"), return -1);
         int32_t result = 1;
         result = (first_value + second_value - 1) / second_value;
@@ -138,7 +138,7 @@ namespace optiling{
 
     int32_t get_core_num(int32_t numel, std::vector<int64_t> x_shape, int32_t depth, int32_t axis, int32_t core_num)
     {
-        OP_TILING_CHECK(core_num == 0, VECTOR_INNER_ERR_REPORT_TILIING("one_hot", 
+        OP_TILING_CHECK(core_num == 0, VECTOR_INNER_ERR_REPORT_TILIING("one_hot",
             "core_num = 0 is not support"), return -1);
         auto ele_per_core = (numel - 1) / core_num + 1;
         auto core_used = (numel - 1) / ele_per_core + 1;

@@ -46,7 +46,7 @@ namespace optiling{
     params.batch_tail = 0;
   }
 
-  bool GetCompileInfoV2(const std::string &op_type, const nlohmann::json &op_compile_info,
+  bool GetCompileInfoV2(const nlohmann::json &op_compile_info,
                         int32_t &aicore_num, int32_t &block)
   {
     OP_LOGD("GetCompileInfoV2 is running");
@@ -78,9 +78,9 @@ namespace optiling{
     }
     return tiling_mode;
   }
-    
-  static void CalCoreInfo(RnnGenMaskV2TilingParams &tiling_params, int32_t core_num, 
-		          const std::vector<int64_t> & x_shape){
+
+  static void CalCoreInfo(RnnGenMaskV2TilingParams &tiling_params, int32_t core_num,
+		                      const std::vector<int64_t> & x_shape){
     OP_LOGD("CalCoreInfo is running");
     int32_t batch = x_shape[1];
     int32_t num_step = x_shape[0];
@@ -154,7 +154,7 @@ namespace optiling{
     OP_LOGD("RnnGenMaskV2Tiling is running");
     int32_t core_num;
     int32_t block;
-    bool get_compile_info = GetCompileInfoV2(op_type, op_compile_info, core_num, block);
+    bool get_compile_info = GetCompileInfoV2(op_compile_info, core_num, block);
     if (!get_compile_info)
     {
       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "RnnGenMaskV2Tiling: GetCompileInfoV2 error.");

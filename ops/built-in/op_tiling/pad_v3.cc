@@ -286,9 +286,8 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   tiling_params.tiling_pading_50 = merge_paddings_values[10] * compile_params.dtype_rate;
   tiling_params.tiling_pading_51 = merge_paddings_values[11] * compile_params.dtype_rate;
 
-  auto last_dim_output = tiling_params.tiling_input_dim_5
-                         + tiling_params.tiling_pading_50 + tiling_params.tiling_pading_51;
-  
+  auto last_dim_output = tiling_params.tiling_input_dim_5 + tiling_params.tiling_pading_50 + tiling_params.tiling_pading_51;
+
   bool all_zero = true;
   all_zero = std::all_of(merge_paddings_values.begin(), merge_paddings_values.end(), [](int64_t &item) {return item == 0;});
 
@@ -333,7 +332,7 @@ bool PadV3Tiling(const std::string& op_type, const TeOpParas& op_paras, const nl
     string format = op_paras.inputs[0].tensor[0].format;
     if (format == "NC1HWC0") {
       PadV35HDTiling(op_type, op_paras, op_compile_info, run_info);
-    } 
+    }
     else {
       using namespace ge;
       OP_LOGD("begin to run tiling.");
@@ -367,7 +366,7 @@ bool PadV3Tiling(const std::string& op_type, const TeOpParas& op_paras, const nl
               paddings_const_values.push_back(paddings_const_values_origin[i]);
               paddings_const_values.push_back(paddings_const_values_origin[i + rank]);
           }
-      } 
+      }
       else {
           paddings_const_values = paddings_const_values_origin;
       }

@@ -83,7 +83,7 @@ class padCommon {
 
   int64_t _accumulate(int64_t index, const std::vector<int64_t>* shape_ptr, int64_t init);
 
-  int64_t _align(int64_t value, int64_t align_vol);
+  int64_t _align(int64_t value, int64_t align_vol) const;
 
   void InitTilingParams(PadDTilingParams& params, int num);
 

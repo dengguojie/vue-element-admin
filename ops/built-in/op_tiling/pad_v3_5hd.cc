@@ -19,7 +19,7 @@
  * \brief
  */
 #include <string>
-#include <math.h>
+#include <cmath>
 
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
@@ -127,7 +127,7 @@ static bool GetPaddingsConstValue(const TeOpParas& paras, const string& name,
 }
 
 static bool GetPadV35HDCompileParams(const nlohmann::json& compile_info,
-                                PadV35HDCompileParams& compile_params) {
+                                     PadV35HDCompileParams& compile_params) {
   using namespace nlohmann;
   OP_LOGD("begin to GetPadV35HDCompileParams.");
   auto allVars = compile_info["vars"];
@@ -193,9 +193,8 @@ static void PrintTilingParams(const PadV35HDTilingParams& params, const std::str
   OP_LOGD(op_type, "last_core_num=%ld.", params.last_core_num);
 }
 
-static void _printTensorValue(const PadV35HDCompileParams& compile_params,
-                       const std::vector<int64_t>& in,
-                       const std::string& name) {
+static void _printTensorValue(const PadV35HDCompileParams& compile_params, const std::vector<int64_t>& in,
+                              const std::string& name) {
   using namespace std;
   OP_LOGD("begin to _printTensorValue.");
   string vec_str;
@@ -245,19 +244,19 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
       all_below_three = false;
       break;
     }
-  }  
+  }
 
   if (all_zero) {
     tiling_key =  TILING_MODE_3;
   }
   else if (numel <= (SPLIT_FIRST * compile_params.size)) {
     tiling_key = TILING_MODE_0;
-  } 
+  }
   else if ((numel > (SPLIT_FIRST * compile_params.size)) &&
     ((output_fifth * output_fourth) <= (SPLIT_SECOND * compile_params.size)) && (all_below_three)) {
     tiling_key = TILING_MODE_1;
   }
-  else if ((input_shape[2] <= (SPLIT_THREE * compile_params.size)) && ((output_fifth * output_fourth) > (SPLIT_SECOND * compile_params.size)) && 
+  else if ((input_shape[2] <= (SPLIT_THREE * compile_params.size)) && ((output_fifth * output_fourth) > (SPLIT_SECOND * compile_params.size)) &&
     (paddings_const_values[6] <= PADDINGS_MAX_VALUE) && (paddings_const_values[7] <= PADDINGS_MAX_VALUE)) {
     tiling_key = TILING_MODE_2;
   }
@@ -287,7 +286,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   }
 
 bool PadV35HDTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_compile_info,
-               OpRunInfo& run_info) {
+                    OpRunInfo& run_info) {
   using namespace ge;
 
   OP_LOGD("begin to run tiling.");
@@ -322,7 +321,7 @@ bool PadV35HDTiling(const std::string& op_type, const TeOpParas& op_paras, const
       paddings_const_values.push_back(paddings_const_values_origin[i]);
       paddings_const_values.push_back(paddings_const_values_origin[i + rank]);
     }
-  } 
+  }
   else {
     paddings_const_values = paddings_const_values_origin;
   }

@@ -29,7 +29,7 @@ bool MseLossGradTiling(const std::string& op_type, const TeOpParas& op_paras, co
     float reduce_mean_cof = 1.0;
     if (reduce_mean_cof_dtype == "float32") {
       for (uint32_t i = 0; i < input_shape.size(); i++) {
-        if(input_shape[i] == 0){
+        if (input_shape[i] == 0) {
           VECTOR_INNER_ERR_REPORT_TILIING("mes_loss_grad", "inputshape = 0 is not support");
           return false;
         }

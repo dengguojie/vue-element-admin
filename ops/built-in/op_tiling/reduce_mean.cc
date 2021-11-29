@@ -60,7 +60,7 @@ bool GetReduceAxis(const std::string& op_type, const ge::Operator& op_paras, con
                    const std::vector<int64_t>& input_shape_ori, std::vector<int32_t>& reduce_axis_ori) {
   // Get ori reduce aixs
   std::vector<int64_t> values;
-  if(op_type == "ReduceMean") {
+  if (op_type == "ReduceMean") {
     // input axes index is 1
     int axes_idx = 1;
     if (op_info.count("axes_idx") > 0) {
@@ -142,9 +142,9 @@ bool ReduceMeanTiling(const std::string& op_type, const ge::Operator& op_paras, 
         if (input_shape[i] == 0) {
           OP_LOGD(op_type.c_str(), "reduce mean shape is 0, dtype is fp16");
           return ret;
-        } 
+        }
         if (IsInVector(reduce_axis, i)) {
-        if(input_shape[i] == 0){
+        if (input_shape[i] == 0) {
           VECTOR_INNER_ERR_REPORT_TILIING("reduce_mean", "inputshape = 0 is not support");
           return false;
         }

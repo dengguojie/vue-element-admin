@@ -233,7 +233,7 @@ void RecursiveTiling(int64_t& ub_max_line, int64_t& need_core_num, int64_t& n_si
                       last_core_loop_cnt, last_core_left_size);
 }
 
-void NLLLossCommonTiling(int64_t& bytes, int64_t core_num, int64_t& ub_size, int64_t& need_core_num, int64_t& n_size,
+void NLLLossCommonTiling(int64_t core_num, int64_t& need_core_num, int64_t& n_size,
                          int64_t& c_size, int64_t& per_core_size, int64_t& per_core_loop_cnt,
                          int64_t& per_core_left_size, int64_t& last_core_size, int64_t& last_core_loop_cnt,
                          int64_t& last_core_left_size, int64_t& ub_max_line, int64_t& min_aligned, bool is_left_data) {
@@ -263,7 +263,7 @@ int64_t CalculUbSizeNormWeight(int64_t& x_size, int64_t& target_size, int64_t& w
 }
 
 int64_t CalculUbSizeLargeWeight(int64_t& x_size, int64_t& target_size, int64_t& weight_size, const int64_t& ub_size,
-                                const int64_t& c_size, const int64_t& data_one_block) {
+                                const int64_t& data_one_block) {
   int64_t ub_max_line;
   x_size = data_one_block;
   weight_size = data_one_block;
@@ -411,14 +411,14 @@ bool NLLLossTiling(const std::string& op_type, const ge::Operator& op_paras, con
     tiling_mode = 1;
   } else {
     tiling_mode = 2;
-    ub_max_line = CalculUbSizeLargeWeight(x_size, target_size, weight_size, ub_size, c_size, data_one_block);
+    ub_max_line = CalculUbSizeLargeWeight(x_size, target_size, weight_size, ub_size, data_one_block);
   }
 
   if (reduction == MODE_NONE) {
     min_aligned = GetFloorDiv(BLOCK_SIZE, bytes);
   }
 
-  NLLLossCommonTiling(bytes, core_num, ub_size, need_core_num, n_size, c_size, per_core_size, per_core_loop_cnt,
+  NLLLossCommonTiling(core_num, need_core_num, n_size, c_size, per_core_size, per_core_loop_cnt,
                       per_core_left_size, last_core_size, last_core_loop_cnt, last_core_left_size, ub_max_line,
                       min_aligned, is_left_data);
 

@@ -109,7 +109,7 @@ int32_t GetAreaX0Size(int32_t area_ub_size, int32_t gt_area_ub_size) {
   return area_ub_size > gt_area_ub_size ? area_ub_size : gt_area_ub_size;
 }
 
-int32_t GetGtBoxUbSegment(string& dtype) {
+int32_t GetGtBoxUbSegment(const string& dtype) {
   if (dtype == "float16") {
     return GTBOX_SEGMENT;
   } else {
@@ -117,7 +117,7 @@ int32_t GetGtBoxUbSegment(string& dtype) {
   }
 }
 
-int32_t GetBBoxUbSegment(string& dtype, bool product) {
+int32_t GetBBoxUbSegment(const string& dtype, bool product) {
   int32_t bbox_ub_segment = BBOX_SEGMENT;
   if (dtype == "float32") {
     bbox_ub_segment /= 2;
@@ -128,7 +128,7 @@ int32_t GetBBoxUbSegment(string& dtype, bool product) {
   return bbox_ub_segment;
 }
 
-int32_t GetMaxEliments(string& dtype) {
+int32_t GetMaxEliments(const string& dtype) {
   if (dtype == "float16") {
     return 16 * 8;
   } else {
@@ -160,7 +160,7 @@ int32_t GetBBTailOffset(int32_t bb_loop, int32_t& bb_tail, int32_t bbox_ub_segme
   }
 }
 
-int32_t GetElimentsPerBlock(string& dtype) {
+int32_t GetElimentsPerBlock(const string& dtype) {
   if (dtype == "float16") {
     return 16;
   } else {
@@ -220,7 +220,7 @@ int32_t GetTilingMode(int32_t gtboxes_num) {
   }
 }
 
-int32_t GetMinPointPerCore(string& dtype) {
+int32_t GetMinPointPerCore(const string& dtype) {
   if (dtype == "float16") {
     return 16;
   } else {
@@ -275,8 +275,7 @@ void CalRunningInfo(IouTilingParams& tiling_params, int32_t full_core_num, const
   tiling_params.bb_tail_offset = bb_tail_offset;
 }
 
-bool CalCompileInfo(const string& op_type, const nlohmann::json& op_info,
-                    int32_t& full_core_num, bool& product) {
+bool CalCompileInfo(const string& op_type, const nlohmann::json& op_info, int32_t& full_core_num, bool& product) {
   using namespace nlohmann;
   auto all_vars = op_info["vars"];
   if (all_vars.count("full_core_num") == 0) {
@@ -292,7 +291,7 @@ bool CalCompileInfo(const string& op_type, const nlohmann::json& op_info,
   return true;
 }
 
-bool IouTiling(const string& op_type, const TeOpParas& op_paras, 
+bool IouTiling(const string& op_type, const TeOpParas& op_paras,
     const nlohmann::json& op_info, OpRunInfo& run_info) {
   OP_LOGD(op_type.c_str(), "IouTiling running.");
 

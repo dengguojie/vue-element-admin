@@ -93,9 +93,8 @@ void InitRunningParams(ScatterDivTilingParams& params) {
 }
 
 void CalScatterDivBranchRunningParams(ScatterDivTilingParams& runParams, int64_t varNum, int64_t indicesNum,
-                                      int64_t updatesNum, int64_t updateDataNum, int64_t maxIndice, int64_t ubSize,
-                                      int64_t coreNum, int64_t varSize, int64_t indicesSize, int64_t varDataEachBlock,
-                                      int64_t dataNumOneRepeat, int64_t supportDiv) {
+                                      int64_t updatesNum, int64_t updateDataNum, int64_t ubSize, int64_t coreNum,
+                                      int64_t varSize, int64_t indicesSize, int64_t varDataEachBlock, int64_t supportDiv) {
   int64_t varAllSizeByte = varSize * varNum;
   int64_t varSizeByte = varSize * runParams.indiceStep * updateDataNum;
   int64_t updateSizeByte = varSize * updatesNum;
@@ -106,15 +105,15 @@ void CalScatterDivBranchRunningParams(ScatterDivTilingParams& runParams, int64_t
     indicesUbSize = ubSize / 16;
   }
   OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_div", "varSize = 0 is not support"),
-                  return); 
+                  return);
   OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_div", "indicesSize = 0 is not support"),
                   return);
   OP_TILING_CHECK(varUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_div", "varUbSize = 0 is not support"),
-                  return); 
-  OP_TILING_CHECK(indicesUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_div", 
+                  return);
+  OP_TILING_CHECK(indicesUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_div",
 		  "indicesUbSize = 0 is not support"),
                   return);
-  OP_TILING_CHECK(varDataEachBlock == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_div", 
+  OP_TILING_CHECK(varDataEachBlock == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_div",
 		  "varDataEachBlock = 0 is not support"),
                   return);
   runParams.varLoopNum = varNum / (varUbSize / varSize);
@@ -346,8 +345,8 @@ bool ScatterDivTiling(const std::string& opType, const TeOpParas& opParas, const
     dataNumOneRepeat = 128;
   }
 
-  CalScatterDivBranchRunningParams(runParams, varNum, indicesNum, updatesNum, updateDataNum, maxIndice, ubSize,
-                                   runParams.coreNum, varSize, indicesSize, varDataEachBlock, dataNumOneRepeat,
+  CalScatterDivBranchRunningParams(runParams, varNum, indicesNum, updatesNum, updateDataNum, ubSize,
+                                   runParams.coreNum, varSize, indicesSize, varDataEachBlock,
                                    supportDiv);
 
   SetRuningParams(runParams, runInfo);

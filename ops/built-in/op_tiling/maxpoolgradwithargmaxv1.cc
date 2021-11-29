@@ -198,7 +198,7 @@ namespace optiling {
             }
             return 2;
         }
-        
+
         if (col2img_w * col2img_h * channel * dtype_size > ub_limit) {
             if (col2img_w * col2img_one_h * channel * dtype_size < ub_limit) {
                 return 3;

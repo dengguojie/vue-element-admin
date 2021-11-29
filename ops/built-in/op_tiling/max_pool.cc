@@ -30,7 +30,6 @@ namespace {
   constexpr int32_t PADDING_VALUE = 2;
   constexpr int32_t TILING_MODE_6 = 6;
   constexpr int32_t TILING_MODE_7 = 7;
-  
 }
 
 namespace optiling {
@@ -117,7 +116,7 @@ static void SetTilingParam(const TilingParam& param, OpRunInfo& run_info) {
 
 static void CalCoreNum(TilingParam& param, int32_t total_ele, int32_t core_num) {
   OP_TILING_CHECK(core_num == 0, VECTOR_INNER_ERR_REPORT_TILIING("max_pool", "core_num = 0 is not support"),
-                  return);   
+                  return);
   param.one_core_ele = (total_ele + core_num - 1) / core_num;
   param.act_core_num = total_ele / param.one_core_ele;
   if (total_ele % param.one_core_ele != 0) {
@@ -141,9 +140,9 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
   int32_t pad_left = compile_info_param.pad_left;
   int32_t pad_right = compile_info_param.pad_right;
   OP_TILING_CHECK(strides_h == 0, VECTOR_INNER_ERR_REPORT_TILIING("max_pool", "strides_h = 0 is not support"),
-                  return); 
+                  return);
   OP_TILING_CHECK(strides_w == 0, VECTOR_INNER_ERR_REPORT_TILIING("max_pool", "strides_w = 0 is not support"),
-                  return); 
+                  return);
   // calc output height and width, pad infos
   if (padding == 0) {
     param.output_h = (param.input_h + strides_h - 1) / strides_h;

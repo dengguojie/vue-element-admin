@@ -51,7 +51,7 @@ bool LayerNormXBackpropV2ParseFunc(const std::string& op_type, const nlohmann::j
   return true;
 }
 
-bool GetLayerNormXBackpropV2CompileParams(const std::string& op_type, const opInfo& op_info, int32_t& core_num,
+bool GetLayerNormXBackpropV2CompileParams(const opInfo& op_info, int32_t& core_num,
                                           int32_t& ub_size, int32_t& max_dtype) {
   core_num = op_info.CORE_NUM;
   ub_size = op_info.UB_SIZE;
@@ -73,7 +73,7 @@ bool LayerNormXBackpropV2Tiling(const std::string& op_type, const ge::Operator& 
   int32_t max_dtype = 0;
   int32_t CUT_AXIS_ONE_TILING_KEY = 10000;
 
-  bool ret = GetLayerNormXBackpropV2CompileParams(op_type, op_info, core_num, ub_size, max_dtype);
+  bool ret = GetLayerNormXBackpropV2CompileParams(op_info, core_num, ub_size, max_dtype);
   if (!ret) {
     OP_LOGE("op[%s] GetLayerNormXBackpropV2CompileParams failed.", op_type.c_str());
     return false;

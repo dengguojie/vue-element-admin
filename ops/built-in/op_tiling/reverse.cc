@@ -416,8 +416,8 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
       last_align_size = count;
       continue;
     }
-    if ((mid_inner_loop + vnhwc_block_num - 1) / vnhwc_block_num * vnhwc_block_num * last_align_size > max_len
-        && tiling_params.tiling_key == 4) {
+    if ((mid_inner_loop + vnhwc_block_num - 1) / vnhwc_block_num * vnhwc_block_num * last_align_size > max_len &&
+         tiling_params.tiling_key == 4) {
       inner_first_dim = i + 1;
       break;
     }

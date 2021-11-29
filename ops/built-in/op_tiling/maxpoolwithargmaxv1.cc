@@ -210,7 +210,7 @@ namespace optiling {
         int32_t kernel_h = compile_info.kernel_h;
         int32_t kernel_w = compile_info.kernel_w;
         int32_t ub_size_used = output_wh * kernel_h * kernel_w * 16 * 4;
-        int32_t ub_size_cut = output_w * kernel_h * kernel_w * 16 *4;
+        int32_t ub_size_cut = output_w * kernel_h * kernel_w * 16 * 4;
 
         if (ub_size_used > ub_size) {
             need_cut_h = 1;

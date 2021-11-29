@@ -19,7 +19,7 @@
  * \brief
  */
 #include <string>
-#include <math.h>
+#include <cmath>
 
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
@@ -48,7 +48,7 @@ struct MirrorPadCompileParams {
   std::string op_type;
 };
 
-struct MirrorPadTilingParams { 
+struct MirrorPadTilingParams {
   int64_t tiling_key;
   // input dim num
   int64_t tiling_input_dim_0;

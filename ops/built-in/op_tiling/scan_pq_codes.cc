@@ -94,7 +94,7 @@ bool ScanPQCodesTiling(const std::string& opType, const TeOpParas& op_paras, con
   int64_t coreUsedNum = 0;
   int64_t bucketStartBase = 0;
   if (splitCount > 1) {
-    bucketNumTotal = (splitIndex < splitCount - 1) ? (bucketShape[0] / splitCount) : 
+    bucketNumTotal = (splitIndex < splitCount - 1) ? (bucketShape[0] / splitCount) :
 	              (bucketShape[0] - (bucketShape[0] / splitCount));
   } else {
     bucketNumTotal = bucketShape[0];

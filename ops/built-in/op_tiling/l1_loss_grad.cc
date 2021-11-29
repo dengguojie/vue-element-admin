@@ -27,7 +27,7 @@ bool L1LossGradTiling(const std::string& op_type, const TeOpParas& op_paras, con
     float reduce_mean_cof = 1.0;
     if (reduce_mean_cof_dtype == "float32") {
       for (uint32_t i = 0; i < input_shape.size(); i++) {
-        if(input_shape[i] == 0){
+        if (input_shape[i] == 0) {
           VECTOR_INNER_ERR_REPORT_TILIING("l1_loss_grad", "inputshape = 0 is not support");
           return false;
         }
@@ -37,7 +37,7 @@ bool L1LossGradTiling(const std::string& op_type, const TeOpParas& op_paras, con
       OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);
     } else if (reduce_mean_cof_dtype == "float16") {
       for (uint32_t i = 0; i < input_shape.size(); i++) {
-        if(input_shape[i] == 0){
+        if (input_shape[i] == 0) {
           VECTOR_INNER_ERR_REPORT_TILIING("l1_loss_grad", "inputshape = 0 is not support");
           return false;
         }

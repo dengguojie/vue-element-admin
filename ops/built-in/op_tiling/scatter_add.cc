@@ -129,9 +129,9 @@ void CalAtomicBranchRunningParams(ScatterAddTilingParams& runParams, int64_t ind
   int64_t updateSizeByte = varSize * updatesNum;
   int64_t halfUbSize = ubSize / 2;
   OP_TILING_CHECK(halfUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "halfUbSize = 0 is not support"),
-                  return); 
+                  return);
   OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "varSize = 0 is not support"),
-                  return); 
+                  return);
   OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "indicesSize = 0 is not support"),
                   return);
   runParams.updatesLoopNum = updateDataNum / (halfUbSize / varSize);
@@ -163,24 +163,23 @@ void CalAtomicBranchRunningParams(ScatterAddTilingParams& runParams, int64_t ind
 }
 
 void CalNotAtomicBranchRunningParams(ScatterAddTilingParams& runParams, int64_t varNum, int64_t indicesNum,
-                                     int64_t updatesNum, int64_t updateDataNum, int64_t maxIndice, int64_t ubSize,
-                                     int64_t coreNum, int64_t varSize, int64_t indicesSize, int64_t varDataEachBlock,
-                                     int64_t dataNumOneRepeat) {
+                                     int64_t updatesNum, int64_t updateDataNum, int64_t ubSize,
+                                     int64_t coreNum, int64_t varSize, int64_t indicesSize, int64_t varDataEachBlock) {
   int64_t varAllSizeByte = varSize * varNum;
   int64_t varSizeByte = varSize * runParams.indiceStep * updateDataNum;
   int64_t updateSizeByte = varSize * updatesNum;
   int64_t varUbSize = ubSize / 8 * 3;
   int64_t indicesUbSize = ubSize / 8 * 2;
   OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "varSize = 0 is not support"),
-                  return); 
+                  return);
   OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "indicesSize = 0 is not support"),
                   return);
   OP_TILING_CHECK(varUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "varUbSize = 0 is not support"),
-                  return); 
-  OP_TILING_CHECK(indicesUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", 
+                  return);
+  OP_TILING_CHECK(indicesUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add",
 	          "indicesUbSize = 0 is not support"),
                   return);
-  OP_TILING_CHECK(varDataEachBlock == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", 
+  OP_TILING_CHECK(varDataEachBlock == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add",
 		  "varDataEachBlock = 0 is not support"),
                   return);
   runParams.varLoopNum = varNum / (varUbSize / varSize);
@@ -239,12 +238,12 @@ void CalScatterAddHighPerfBranchParams(ScatterAddTilingParams& runParams, int64_
                                        int64_t indicesSize) {
   int64_t halfUbSize = ubSize / 2;
   OP_TILING_CHECK(halfUbSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "halfUbSize = 0 is not support"),
-                  return); 
+                  return);
   OP_TILING_CHECK(coreNum == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "coreNum = 0 is not support"),
-                  return); 
+                  return);
   OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", "indicesSize = 0 is not support"),
                   return);
-  OP_TILING_CHECK(varDataEachBlock == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add", 
+  OP_TILING_CHECK(varDataEachBlock == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_add",
 	          "varDataEachBlock = 0 is not support"),
                   return);
   runParams.tilingMode = TILING_MODE_16;
@@ -482,8 +481,8 @@ bool ScatterAddTiling(const std::string& opType, const TeOpParas& opParas, const
                                    varDataEachBlock);
     }
   } else {
-    CalNotAtomicBranchRunningParams(runParams, varNum, indicesNum, updatesNum, updateDataNum, maxIndice, ubSize,
-                                    runParams.coreNum, varSize, indicesSize, varDataEachBlock, dataNumOneRepeat);
+    CalNotAtomicBranchRunningParams(runParams, varNum, indicesNum, updatesNum, updateDataNum, ubSize,
+                                    runParams.coreNum, varSize, indicesSize, varDataEachBlock);
   }
 
   SetRuningParams(runParams, runInfo);

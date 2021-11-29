@@ -21,8 +21,8 @@
 
 #include <algorithm>
 #include "error_log.h"
-#include "reduce_tiling_v3.h"
 #include "graph/utils/op_desc_utils.h"
+#include "reduce_tiling_v3.h"
 
 namespace optiling {
 namespace {
@@ -53,7 +53,7 @@ ReduceCompileInfo::ReduceCompileInfo(const std::string& op_type, const nlohmann:
 }
 
 void ReduceCompileInfo::ParseReduceCompileInfo(ReduceCompileInfo* parsed_compile_info_ptr, const
-                                              std::string& op_type, const nlohmann::json& parsed_json_obj) {
+                                               std::string& op_type, const nlohmann::json& parsed_json_obj) {
   bool ret = GetCompileInfoForCalculate(op_type, *parsed_compile_info_ptr, parsed_json_obj);
   ret = ret && GetCompileInfoForProcessControl(*parsed_compile_info_ptr, parsed_json_obj);
   ret = ret && GetCompileInfoForConst(*parsed_compile_info_ptr, parsed_json_obj);
@@ -61,7 +61,7 @@ void ReduceCompileInfo::ParseReduceCompileInfo(ReduceCompileInfo* parsed_compile
 }
 
 bool ReduceCompileInfo::GetCompileInfoForProcessControl(ReduceCompileInfo& parsed_compile_info,
-                                                                const nlohmann::json& json_info) {
+                                                        const nlohmann::json& json_info) {
   // Optional info from SCH that control the process of tiling
   parsed_compile_info.idx_before_reduce =
           json_info.count("_idx_before_reduce") > 0 ? json_info.at("_idx_before_reduce").get<uint32_t>() : 0;
@@ -90,19 +90,19 @@ bool ReduceCompileInfo::GetCompileInfoForProcessControl(ReduceCompileInfo& parse
 }
 
 bool ReduceCompileInfo::GetCompileInfoForConst(ReduceCompileInfo& parsed_compile_info,
-                                                        const nlohmann::json& json_info) {
-  if(json_info.count("_block_dims") > 0) {
-    parsed_compile_info.block_dim_map = json_info.at("_block_dims").get<std::unordered_map<std::string,uint32_t>>();
+                                               const nlohmann::json& json_info) {
+  if (json_info.count("_block_dims") > 0) {
+    parsed_compile_info.block_dim_map = json_info.at("_block_dims").get<std::unordered_map<std::string, uint32_t>>();
   }
-  if(json_info.count("_atomic_flags") > 0) {
-    parsed_compile_info.atomic_flags_map = json_info.at("_atomic_flags").get<std::unordered_map<std::string,bool>>();
+  if (json_info.count("_atomic_flags") > 0) {
+    parsed_compile_info.atomic_flags_map = json_info.at("_atomic_flags").get<std::unordered_map<std::string, bool>>();
   }
 
   return true;
 }
 
 bool ReduceCompileInfo::GetCompileInfoForCalculate(const std::string op_type, ReduceCompileInfo& parsed_compile_info,
-                                                                    const nlohmann::json& json_info) {
+                                                   const nlohmann::json& json_info) {
   // Required info from SCH that do for calculating
   if (json_info.count("_common_info") > 0) {
     std::vector<int32_t> common_info = json_info.at("_common_info").get<std::vector<int32_t>>();
@@ -415,7 +415,7 @@ void Reduce::ChooseAtomic() {
                                              (int32_t)1) != reduce_axis.end() &&
                                              input_shape[0] == (int32_t)1 &&
                                              std::find(reduce_axis.begin(), reduce_axis.end(),
-                                             (int32_t)(output_shape.size() - 1)) == reduce_axis.end();
+                                                 (int32_t)(output_shape.size() - 1)) == reduce_axis.end();
   // Check if output_shape is smaller than Single Tensor Size Limitation so that r, a ub_split_a schedule won't be used
   bool output_shape_limitation = total_output_count <= ubSizeB;
   // Check if outermost reduce axis is larger than or equal to core_num
@@ -692,7 +692,7 @@ bool Reduce::getBlockTilingInfoX(int64_t cur_block_factor, int64_t i, int64_t ri
 }
 
 bool Reduce::getBlockTilingInfoY(int32_t left_block_dim, int64_t i,
-                                        int64_t max_block_tilling_factor, int64_t right_total_num) {
+                                 int64_t max_block_tilling_factor, int64_t right_total_num) {
   int32_t core_num = compileInfo.core_num;
   for (int32_t tilling_core_num = core_num; tilling_core_num <= left_block_dim * output_shape[i];
            tilling_core_num += core_num) {
@@ -1043,7 +1043,7 @@ bool Reduce::GetGeInfo() {
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "idx is invalid index for inputs"),
                     return false);
   input_shape_ori = ge::OpDescUtils::GetOpDescFromOperator(
-               op_paras)->MutableInputDesc(compileInfo.idx_before_reduce)->GetShape().GetDims();
+      op_paras)->MutableInputDesc(compileInfo.idx_before_reduce)->GetShape().GetDims();
 
   // Get ReduceAxisTensor
   if (not compileInfo.ori_axis.first) {
@@ -1072,7 +1072,7 @@ bool Reduce::SetInit() {
   if (compileInfo.ori_axis.first) {
     reduce_axis_ori = compileInfo.ori_axis.second;
   } else {
-    if(!GetConstValue(geInfo.axis_tensor, geInfo.axes_type, reduce_axis_ori)) {
+    if (!GetConstValue(geInfo.axis_tensor, geInfo.axes_type, reduce_axis_ori)) {
       return false;
     }
   }
@@ -1310,7 +1310,7 @@ bool ReduceTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRunInf
 }
 
 bool ReduceTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info,
-                                 const OpInfo& op_info) const {
+                                   const OpInfo& op_info) const {
   OP_LOGD(op_type.c_str(), "user-defined shape tiling running");
   v3::Reduce reduce(op_type, op_paras, compileInfo, run_info);
   return reduce.DoTiling(op_info);

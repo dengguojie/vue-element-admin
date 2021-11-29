@@ -75,7 +75,7 @@ namespace optiling {
     }
 
     static bool GetCompileParams(const std::string& op_type, const nlohmann::json& op_compile_info_json, int64_t& core_num,
-                     int64_t& ub_size, int64_t& input_data_byte) {
+                                 int64_t& ub_size, int64_t& input_data_byte) {
         using namespace nlohmann;
 
         auto all_vars = op_compile_info_json["vars"];
@@ -121,8 +121,8 @@ namespace optiling {
         core_parm_vector.push_back(last_core_left_size);
     }
 
-    static void SetIsFiniteTiling(int64_t& core_num, int64_t& ub_max_size, int64_t& need_core_num, int64_t& total_element_size,
-                      std::vector<int64_t>& core_parm_vector) {
+    static void SetIsFiniteTiling(const int64_t& core_num, int64_t& ub_max_size, int64_t& need_core_num,
+                                  const int64_t& total_element_size, std::vector<int64_t>& core_parm_vector) {
         int64_t unit_out = GetFloorDiv(BLOCK_SIZE, OUTPUT_BYTE);
         int64_t per_core_size = GetFloorDiv(total_element_size, core_num);
         if (GetMod(total_element_size, core_num) > 0) {
@@ -147,8 +147,8 @@ namespace optiling {
         core_parm_vector.push_back(last_core_left_size);
     }
 
-    static void ComputeIsFiniteTiling(int64_t& core_num, int64_t& ub_x_size, int64_t& need_core_num, int64_t& total_element_size,
-                          std::vector<int64_t>& core_parm_vector) {
+    static void ComputeIsFiniteTiling(const int64_t& core_num, int64_t& ub_x_size, int64_t& need_core_num,
+                                      const int64_t& total_element_size, std::vector<int64_t>& core_parm_vector) {
         // dma move 32byte unit
         int64_t ub_max_size = ub_x_size - GetMod(ub_x_size, BLOCK_SIZE / OUTPUT_BYTE);
 
@@ -219,8 +219,7 @@ namespace optiling {
         OP_LOGD(op_type.c_str(), "IsFiniteTiling: need_core_num=%lld", need_core_num);
         OP_LOGD(op_type.c_str(), "IsFiniteTiling: per_core_size=%lld, per_core_loop_cnt=%lld, per_core_left_size=%lld",
                 per_core_size, per_core_loop_cnt, per_core_left_size);
-        OP_LOGD(op_type.c_str(), "IsFiniteTiling: last_core_size=%lld, last_core_loop_cnt=%lld,
-		last_core_left_size=%lld",
+        OP_LOGD(op_type.c_str(), "IsFiniteTiling: last_core_size=%lld, last_core_loop_cnt=%lld, last_core_left_size=%lld",
                 last_core_size, last_core_loop_cnt, last_core_left_size);
 
         // set tiling data

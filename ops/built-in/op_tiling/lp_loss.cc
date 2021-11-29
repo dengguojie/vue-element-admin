@@ -30,7 +30,6 @@ bool IsInAxis_(std::vector<int32_t>& input, int32_t value) {
 }
 bool LpLossTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
                   OpRunInfo& run_info) {
-  
   if (op_info.count("reduction") > 0){
     const std::string reduction = op_info.at("reduction").get<std::string>();
     if (reduction == "none"){
@@ -63,7 +62,7 @@ bool LpLossTiling(const std::string& op_type, const TeOpParas& op_paras, const n
           reduce_mean_cof = reduce_mean_cof / input_shape[i];
         }
       }
- 
+
       fe::fp16_t reduce_mean_cof_fp16 = reduce_mean_cof;
       ByteBufferPut(run_info.tiling_data, (fe::fp16_t)reduce_mean_cof_fp16);
       ByteBufferPut(run_info.tiling_data, (uint16_t)0);

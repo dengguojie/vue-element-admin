@@ -46,8 +46,8 @@ int64_t padCommon::_accumulate(int64_t index, const std::vector<int64_t>* shape_
   return init;
 }
 
-int64_t padCommon::_align(int64_t value, int64_t align_vol) {
-  if(align_vol == 0){
+int64_t padCommon::_align(int64_t value, int64_t align_vol) const {
+  if (align_vol == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING("pad_common", "align_vol = 0 is not support");
       return -1;
   }
@@ -219,7 +219,7 @@ void padCommon::GetDepth(const std::vector<int64_t>& inShape, const std::vector<
    * "Depth": to decide: recursion layer will used which axises for cores.
    * */
   using namespace std;
-  if(numBit == 0){
+  if (numBit == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING("pad_common", "numbit = 0 is not support");
       return;
   }
@@ -278,7 +278,7 @@ void padCommon::_calc_core_circulation(int branch, int index, const std::string&
    * core_gap_0 == core_gap_1: Because prod is always less than MaxCore in the func.
    * */
   int64_t virCore = 0;
-  if(numBit == 0){
+  if (numBit == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING("pad_common", "numbit = 0 is not support");
       return;
   }
@@ -440,7 +440,7 @@ void padCommon::GetRecurCore(PadDTilingParams& params, const std::vector<int64_t
    */
   using namespace std;
   int64_t depth = params.depth;
-  if(numBit == 0){
+  if (numBit == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING("pad_common", "numbit = 0 is not support");
       return;
   }
@@ -547,7 +547,7 @@ void padCommon::GetRecurCorePro(PadDTilingParams& params, const std::vector<int6
    */
   using namespace std;
   int64_t depth = params.depth;
-  if(numBit == 0){
+  if (numBit == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING("pad_common", "num_bit = 0 is not support");
     return;
   }

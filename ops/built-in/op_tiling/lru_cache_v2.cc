@@ -19,7 +19,7 @@
  * \brief
  */
 #include <string>
-#include <math.h>
+#include <cmath>
 
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
@@ -98,15 +98,14 @@ void _printTensorValue(const LRUCacheV2CompileParams& compile_params, const std:
   OP_LOGD(compile_params.op_type, "Func[_printTensorValue] [%s]: [%s].", name.c_str(), vec_str.c_str());
 }
 
-static bool GetTilingParam(const std::vector<int64_t>& input_shape,
-                           const LRUCacheV2CompileParams& compile_params, LRUCacheV2TilingParams& tiling_params) {
+static bool GetTilingParam(const std::vector<int64_t>& input_shape, LRUCacheV2TilingParams& tiling_params) {
   tiling_params.tiling_key = TILING_MODE_0;
   tiling_params.tiling_index_list_len = input_shape[0];
   return true;
 }
 
 bool LRUCacheV2Tiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_compile_info,
-                     utils::OpRunInfo& run_info) {
+                      utils::OpRunInfo& run_info) {
   using namespace ge;
   OP_LOGI(op_type, "begin to run tiling.");
   PROFILING_TILING_INIT(op_type.c_str());
@@ -150,12 +149,12 @@ bool LRUCacheV2Tiling(const std::string& op_type, const ge::Operator& op_paras, 
   // end to get compile data
   LRUCacheV2TilingParams run_params;
   InitRunningParams(run_params);
-  GetTilingParam(input_shape, compile_params, run_params);
+  GetTilingParam(input_shape, run_params);
   SetRuningParams(run_params, run_info);
   PrintTilingParams(run_params, op_type);
   run_info.SetBlockDim(BLOCKDIM);
   //add miss_index workspace size
-  auto miss_index_wsp_size = run_params.tiling_index_list_len*compile_params.set_num*compile_params.miss_index_bytes;
+  auto miss_index_wsp_size = run_params.tiling_index_list_len * compile_params.set_num * compile_params.miss_index_bytes;
   run_info.AddWorkspace(miss_index_wsp_size);
   //add time_stamp workspace size
   run_info.AddWorkspace(compile_params.time_stamp_wsp_size);

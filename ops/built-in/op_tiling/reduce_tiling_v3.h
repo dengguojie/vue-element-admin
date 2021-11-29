@@ -27,7 +27,7 @@
 
 namespace optiling {
 namespace v3 {
-static constexpr int32_t DEFAULT_VECTOR_CAPACITY_10 = 10;
+constexpr int32_t DEFAULT_VECTOR_CAPACITY_10 = 10;
 
 struct ReduceReorderInfo {
   std::vector<int64_t> reorder_input_shape{std::vector<int64_t>(DEFAULT_VECTOR_CAPACITY_10, 0)};
@@ -65,8 +65,8 @@ struct ReduceCompileInfo {
     bool GetCompileInfoForConst(ReduceCompileInfo& parsed_compile_info, const nlohmann::json& json_info);
     bool GetCompileInfoForCalculate(std::string op_type, ReduceCompileInfo& parsed_compile_info,
                                                                    const nlohmann::json& json_info);
-    void ParseReduceCompileInfo(ReduceCompileInfo* parsed_compile_info_ptr, const
-                            std::string& op_type, const nlohmann::json& parsed_json_obj);
+    void ParseReduceCompileInfo(ReduceCompileInfo* parsed_compile_info_ptr, const std::string& op_type,
+                                const nlohmann::json& parsed_json_obj);
 };
 
 struct ReduceGeInfo {
@@ -187,12 +187,11 @@ class ReduceTilingHandler: public AutoTilingHandler {
                          : AutoTilingHandler(op_info, pattern), compileInfo(op_info, json_info) {}
   bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const override;
   bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const override;
-  bool ParsedSuccess() {
+  bool ParsedSuccess() const{
     return compileInfo.parsed_success;
   }
 
-  ~ReduceTilingHandler() {
-  }
+  ~ReduceTilingHandler() override = default;
 
   private:
   const v3::ReduceCompileInfo compileInfo;

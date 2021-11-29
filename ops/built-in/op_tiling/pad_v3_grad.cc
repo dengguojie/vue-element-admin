@@ -19,7 +19,7 @@
  * \brief
  */
 #include <string>
-#include <math.h>
+#include <cmath>
 
 #include <nlohmann/json.hpp>
 #include "op_tiling.h"
@@ -159,9 +159,8 @@ static void PrintTilingParams(const PadV3GradTilingParams& params, const std::st
   OP_LOGD(op_type, "last_core_num=%ld.", params.last_core_num);
 }
 
-static void _printTensorValue(const PadV3GradCompileParams& compile_params,
-                       const std::vector<int64_t>& in,
-                       const std::string& name) {
+static void _printTensorValue(const PadV3GradCompileParams& compile_params, const std::vector<int64_t>& in,
+                              const std::string& name) {
   using namespace std;
   OP_LOGD("begin to _printTensorValue.");
   string vec_str;
@@ -173,7 +172,7 @@ static void _printTensorValue(const PadV3GradCompileParams& compile_params,
 }
 
 static int64_t get_core_num(std::vector<int64_t> x_shape, int64_t core_num, int64_t wh_out_total) {
-  if(core_num == 0){
+  if (core_num == 0) {
      VECTOR_INNER_ERR_REPORT_TILIING("pad_v3_grad", "core_num = 0 is not support");
      return -1;
   }
@@ -182,7 +181,7 @@ static int64_t get_core_num(std::vector<int64_t> x_shape, int64_t core_num, int6
   auto threshold = block * block;
   auto ele_per_core = (nc_total - 1) / core_num + 1;
   auto core_used = (nc_total - 1) / ele_per_core + 1;
-  if(core_used == 0){
+  if (core_used == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING("pad_v3_grad", "core_used = 0 is not support");
       return -1;
   }
@@ -202,9 +201,9 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
                            PadV3GradTilingParams& tiling_params) {
   OP_LOGD("begin to GetTilingParam.");
   auto tiling_key = 0;
-  auto output_third = input_shape[2] - paddings_const_values[PADDINGS_DIM_INDEX_2] 
+  auto output_third = input_shape[2] - paddings_const_values[PADDINGS_DIM_INDEX_2]
                       - paddings_const_values[PADDINGS_DIM_INDEX_2 + 1];
-  auto output_fourth = input_shape[3] - paddings_const_values[PADDINGS_DIM_INDEX_3] 
+  auto output_fourth = input_shape[3] - paddings_const_values[PADDINGS_DIM_INDEX_3]
                        - paddings_const_values[PADDINGS_DIM_INDEX_3 + 1];
   int64_t core_used = 1;
   int64_t not_last_core_numel = 0;
@@ -215,7 +214,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   auto nc_total = input_shape[0] * input_shape[1];
   auto wh_output_total = output_third * output_fourth;
   core_used = get_core_num(input_shape, compile_params.core_num, wh_output_total);
-  if(core_used == 0){
+  if (core_used == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING("pad_v3_grad", "core_used = 0 is not support");
       return false;
   }
@@ -253,7 +252,7 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
 }
 
 bool PadV3GradTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_compile_info,
-               OpRunInfo& run_info) {
+                     OpRunInfo& run_info) {
   using namespace ge;
 
   auto allVars = op_compile_info["vars"];
@@ -284,7 +283,7 @@ bool PadV3GradTiling(const std::string& op_type, const TeOpParas& op_paras, cons
   std::vector<int64_t> paddings_const_values;
   std::vector<int64_t> paddings_const_values_origin;
   GetPaddingsConstValue(op_paras, "paddings", op_paras.inputs[1].tensor[0].dtype, paddings_const_values_origin);
-  
+
   // change paddings format for onnx 9 version
   if (!padding_contiguous) {
       auto rank = input_shape_const.size();
@@ -292,11 +291,11 @@ bool PadV3GradTiling(const std::string& op_type, const TeOpParas& op_paras, cons
           paddings_const_values.push_back(paddings_const_values_origin[i]);
           paddings_const_values.push_back(paddings_const_values_origin[i + rank]);
       }
-  } 
+  }
   else {
       paddings_const_values = paddings_const_values_origin;
   }
-  
+
   _printTensorValue(compile_params, input_shape, "input_shape");
   _printTensorValue(compile_params, paddings_const_values, "paddings");
 
@@ -321,4 +320,3 @@ bool PadV3GradTiling(const std::string& op_type, const TeOpParas& op_paras, cons
 
 REGISTER_OP_TILING_FUNC_BUFFERED(PadV3Grad, PadV3GradTiling);
 }  // namespace optiling
-  
