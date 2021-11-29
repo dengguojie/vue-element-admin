@@ -236,6 +236,8 @@ cube:
       - ops/built-in/fusion_pass/graph_fusion/ai_core/avg_pool3d_grad_fusion_pass.h
       - ops/built-in/fusion_pass/graph_fusion/ai_core/gemm_transpose_fusion_pass.cc
       - ops/built-in/fusion_pass/graph_fusion/ai_core/gemm_transpose_fusion_pass.h
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_matmul_v2_non_aligned_fusion_pass.cc
+      - ops/built-in/fusion_pass/graph_fusion/ai_core/batch_matmul_v2_non_aligned_fusion_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/conv2d_bp_input_dequant_elemwise_quant_pass.cc
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/conv2d_bp_input_dequant_elemwise_quant_pass.h
       - ops/built-in/fusion_pass/buffer_fusion/ub_fusion/ai_core/conv2d_backprop_input/conv2d_bp_input_elemwise_pass.cc
