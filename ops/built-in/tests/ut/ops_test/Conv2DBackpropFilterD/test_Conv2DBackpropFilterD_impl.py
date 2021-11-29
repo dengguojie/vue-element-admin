@@ -278,6 +278,29 @@ def _test_nd2nz_format_bf16(test_arg):
                 with patch("tbe.common.tiling.tiling_api.get_tiling", MagicMock(side_effect=tiling_mock2)):
                     sch = tbe.auto_schedule(filter_fz)
 
+def _test_nd2nz_format_fp32_c_split(test_arg):
+    with patch("tbe.common.platform.platform_info.get_soc_spec", MagicMock(side_effect=get_soc_mock)):
+        with patch("impl.util.platform_adapter.tbe_platform.get_soc_spec", MagicMock(side_effect=get_soc_mock)):
+            fmap_nhwc = tvm.placeholder((1, 7, 7, 16), name="fmap_nhwc", dtype="float32")
+            out_nhwc = tvm.placeholder((1, 7, 7, 16), name="out_nhwc", dtype="float32")
+            fmap_5hd = trans_data_compute(fmap_nhwc, None, "NHWC", "NC1HWC0")
+            out_5hd = trans_data_compute(out_nhwc, None, "NHWC", "NC1HWC0")
+            para_dict = {
+                "strides": (1, 1),
+                "padding": (0, 0, 0, 0),
+                "dilations": (1, 1, 1, 1),
+                "groups": 1,
+                "res_dtype": "float32",
+                "kernel_name": "test_nd2nz_format_01"
+            }
+            filter_fz = tbe.conv2d_backprop_filter(input_x=fmap_5hd,
+                                                   out_backprop=out_5hd,
+                                                   filter_sizes=(16, 16, 1, 1),
+                                                   para_dict=para_dict)
+            with tvm.target.cce():
+                with patch("tbe.common.tiling.tiling_api.get_tiling", MagicMock(side_effect=tiling_mock)):
+                    sch = tbe.auto_schedule(filter_fz)
+
 
 def _test_nd2nz_format_err1(test_arg):
     try:
@@ -292,6 +315,7 @@ def _gen_conv2d_bp_filter_nd2nz_format():
     ut_case.add_cust_test_func("Ascend910A", test_func=_test_nd2nz_format_fp32)
     ut_case.add_cust_test_func("Ascend910A", test_func=_test_nd2nz_format_err1)
     ut_case.add_cust_test_func("Ascend910A", test_func=_test_nd2nz_format_bf16)
+    ut_case.add_cust_test_func("Ascend910A", test_func=_test_nd2nz_format_fp32_c_split)
 
 
 def _test_conv2d_backprop_filter_compute(test_args):

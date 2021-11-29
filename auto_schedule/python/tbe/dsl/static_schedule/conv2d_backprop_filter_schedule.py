@@ -988,6 +988,10 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             if in_dtype == "float32":
                 tiling["AL0_matrix"][1] = 2
                 tiling["BL0_matrix"][0] = 2
+                # limitation by load3d instruction, n dim must be 1 in fp32
+                # otherwise we cannot combine 2 C0=8 in k dim
+                tiling["BL0_matrix"][1] = 1
+                tiling["CL0_matrix"][0] = 1
             return tiling
 
 
@@ -1017,9 +1021,9 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         self.var_map = DynamicConv2dBpFilterParams.var_map
 
         # ####################### get computing graph #######################
-        dw_ddr = res  # pylint: disable=too-many-statements
-
-        dw_res_trans = None
+        # support NZ2ND transdata
+        # dw_ddr -> dw_res_trans
+        dw_res_trans = None # pylint: disable=too-many-statements
         dw_trans_flag = False
         fmap_trans_flag = False
         grads_trans_flag = False
@@ -1027,8 +1031,18 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
             dw_trans_flag = True
             dw_res_trans = res
             dw_ddr = res.op.input_tensors[0]
+        else:
+            dw_ddr = res
 
-        dw_cc = dw_ddr
+        # support channel split
+        # dw_cc -> dw_ddr
+        c_split_flag = False
+        if dw_ddr.op.tag == "conv2d_backprop_filter_c_split":
+            c_split_flag = True
+            dw_cc = dw_ddr.op.input_tensors[0]
+        else:
+            dw_cc = dw_ddr
+
         grads_fractal = dw_cc.op.input_tensors[0]
         fmap_fractal = dw_cc.op.input_tensors[1]
         grads_matrix = grads_fractal.op.input_tensors[0]
@@ -1339,7 +1353,11 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         grads_l1_tiling_factor_k, fmap_l1_tiling_factor_k = \
                                                     _compute_tiling_factors()
 
-        dw_cc, dw_ub, dw_ddr = _atomic_add(sch, dw_cc)
+        dw_cc, dw_ub, dw_rfactor = _atomic_add(sch, dw_cc)
+        if not c_split_flag:
+            # c_split: dw_cc -> dw_rfactor -> dw_ddr
+            # not c_split: dw_cc -> dw_ddr(dw_rfactor)
+            dw_ddr = dw_rfactor
         # #######################tiling parameters analyze####################
         batch_num_sc = batch_num//block_dim_batch
         if DEBUG_MODE:
@@ -1375,7 +1393,40 @@ class CceConv2dBackpropFilterOp:  # pylint: disable=too-few-public-methods
         factor_kw, factor_kh = _get_n_factor()
 
         # #############################split axis N##########################
-        if not dw_trans_flag:
+        if c_split_flag:
+            sch[dw_rfactor].compute_inline(instant=True)
+        if c_split_flag and not dw_trans_flag:
+            # dw_shape is (real_g, fmap_channel_1, kernel_height*kernel_width,
+            #              grads_channel, C0_fmap)
+            g_multicore, g_axis = sch[dw_ddr].split(sch[dw_ddr].op.axis[0],
+                                                    nparts=block_dim_group)
+            c_fmap_multicore, c_fmap_mad \
+                = sch[dw_ddr].split(sch[dw_ddr].op.axis[1], nparts=block_dim_cin)
+            # split c_fmap_mad with factor=2 according to EmitInsn Channel_split
+            c_fmap_mad_c1, c_fmap_mad_insn = sch[dw_ddr].split(c_fmap_mad, factor=2)
+            c_fmap_mad_at = sch[dw_ddr].op.axis[2]
+            c_fmap_l1_ori, c_fmap_mad_at \
+                = sch[dw_ddr].split(c_fmap_mad_at, nparts=fmap_l1_tiling_nparts[1])
+            # split n dim
+            c_fmap_l1_out, c_fmap_l1_at = sch[dw_ddr].split(c_fmap_l1_ori, factor_kw)
+            c_fmap_l1_c1, c_fmap_l1_kh = sch[dw_ddr].split(c_fmap_l1_out, factor_kh)
+            # split axis M, M axis located at 4th axis
+            c_grads_mad_at, c_grads_mad_insn \
+                = sch[dw_ddr].split(sch[dw_ddr].op.axis[3], dw_tiling_factor[1]*CUBE_DIM)
+            c_grads_multicore, c_grads_mad_at \
+                = sch[dw_ddr].split(c_grads_mad_at, nparts=block_dim_cout)
+            c_grads_l1_at, c_grads_mad_at = \
+                sch[dw_ddr].split(c_grads_mad_at, nparts=grads_l1_tiling_nparts[1])
+            # reorder according to requirments of mmad EmitInsn
+            sch[dw_ddr].reorder(sch[dw_ddr].op.reduce_axis[0],
+                                g_multicore,
+                                c_grads_multicore, c_fmap_multicore, g_axis,
+                                c_fmap_l1_c1, c_fmap_l1_kh, c_fmap_l1_at,
+                                c_grads_l1_at,
+                                c_fmap_mad_at, c_grads_mad_at,
+                                c_fmap_mad_c1, c_fmap_mad_insn, c_grads_mad_insn,
+                                sch[dw_ddr].op.axis[4])
+        elif not dw_trans_flag:
             # dw_shape is (real_g, fmap_channel_1*kernel_height*kernel_width,
             #              grads_channel_1, C0_grads, C0_fmap)
             g_multicore, g_axis = sch[dw_ddr].split(sch[dw_ddr].op.axis[0],

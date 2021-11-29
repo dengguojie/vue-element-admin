@@ -779,9 +779,7 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
             fmap_fractal = self._fmap_2_fractal_load2d(fmap_shape_fractal,
                                                        fmap_matrix)
 
-        # shape of result dw [n1,m,n0]
-        dw_shape = (real_g, fmap_c1_g*kernel_height*kernel_width,
-                    grads_channel_g, fmap_c0)
+        # shape of result dw [group,n1,m,n0]
         if self.fmap_dtype == "float32" and self.grads_dtype == "float32":
             dw_shape = (
                 real_g,
@@ -789,13 +787,28 @@ class Conv2dBackpropFilter:  # pylint: disable=R0902
                 grads_channel_g,
                 fmap_c0 * 2
             )
-        self.shapelist['dw'] = dw_shape
-
-        # do mmad
-        dw_cc = self._mad(dw_shape, grads_fractal, fmap_fractal)
-
-        # move to ddr
-        self.dw_ddr = dw_cc
+            dw_cc = self._mad(dw_shape, grads_fractal, fmap_fractal)
+            # do channel split
+            dw_c_split_shape = (real_g, fmap_c1_g, kernel_height*kernel_width,
+                                grads_channel_g, fmap_c0)
+            khkw = kernel_height * kernel_width
+            dw_c_split = tvm.compute(dw_c_split_shape,
+                                     lambda g_idx, c1_idx, kk_idx, grads_c_idx, c0_idx:
+                                     dw_cc(
+                                         g_idx,
+                                         c1_idx // 2 * khkw + kk_idx,
+                                         grads_c_idx,
+                                         c1_idx % 2 * self.c0_size + c0_idx
+                                     ).astype(self.res_dtype),
+                                     name='dw_c_split', tag=self.optag + "_c_split",
+                                     attrs={'kernel_name': self.kernel_name})
+            self.dw_ddr = dw_c_split
+        else:
+            dw_shape = (real_g, fmap_c1_g*kernel_height*kernel_width,
+                        grads_channel_g, fmap_c0)
+            self.shapelist['dw'] = dw_shape
+            dw_cc = self._mad(dw_shape, grads_fractal, fmap_fractal)
+            self.dw_ddr = dw_cc
 
         return 1
 

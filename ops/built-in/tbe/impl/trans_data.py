@@ -351,21 +351,40 @@ def trans_data_compute(src, dst, src_format, dst_format, groups=1, kernel_name='
                 attrs={"ori_format": "FRACTAL_NZ",
                        "ori_shape": src.shape})
     elif src_format == "FRACTAL_Z" and dst_format == "NHWC":
-        group, src_fkk, src_n, src_c0 = tuple(i.value for i in src.shape)
-        dst_shape = dst.get("shape")
-        _, hw_length, _ = dst_shape
+        if src.shape[-1].value == 8:
+            # c0 is means float32 situation
+            group, src_c1, kk, src_n, src_c0 = tuple(i.value for i in src.shape)
+            dst_shape = dst.get("shape")
+            _, hw_length, _ = dst_shape
 
-        dst_tensor = tvm.compute(
-            dst_shape,
-            lambda n_idx, hw_idx, c_idx:
-                # block_dim_reduce, group, fww, n, c0
-                src(n_idx // src_n,
-                    c_idx // src_c0 * hw_length + hw_idx,
-                    n_idx,
-                    c_idx % src_c0),
-            name="res_nhwc",
-            tag="FZ_trans_NHWC"
-        )
+            dst_tensor = tvm.compute(
+                dst_shape,
+                lambda n_idx, hw_idx, c_idx:
+                    # block_dim_reduce, group, c1, khkw, n, c0
+                    src(n_idx // src_n,
+                        c_idx // src_c0,
+                        hw_idx,
+                        n_idx,
+                        c_idx % src_c0),
+                name="res_nhwc",
+                tag="FZ_trans_NHWC"
+            )
+        else:
+            group, src_fkk, src_n, src_c0 = tuple(i.value for i in src.shape)
+            dst_shape = dst.get("shape")
+            _, hw_length, _ = dst_shape
+
+            dst_tensor = tvm.compute(
+                dst_shape,
+                lambda n_idx, hw_idx, c_idx:
+                    # block_dim_reduce, group, fww, n, c0
+                    src(n_idx // src_n,
+                        c_idx // src_c0 * hw_length + hw_idx,
+                        n_idx,
+                        c_idx % src_c0),
+                name="res_nhwc",
+                tag="FZ_trans_NHWC"
+            )
     else:
         error_manager_vector.raise_err_specific_reson("trans_data", "not support this kind of format transfer !")
 
