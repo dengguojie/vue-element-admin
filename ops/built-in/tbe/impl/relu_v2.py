@@ -43,6 +43,18 @@ from te.utils.error_manager import error_manager_vector
 CONST_ZERO = 0
 
 
+def conv2d_relu_v2_check(x):
+    """
+    check conv2d relu_v2 fusion
+    """
+    tensor = x
+    while tensor.op.input_tensors:
+        if tensor.op.tag == "convolution_C":
+            return True
+        tensor = tensor.op.input_tensors[0]
+    return False
+
+
 # pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("relu_v2")
 def relu_v2_compute(x, y, mask, kernel_name="relu_v2_cce"):
@@ -80,7 +92,15 @@ def relu_v2_compute(x, y, mask, kernel_name="relu_v2_cce"):
         data_res = tbe.vmax(x, tensor_zero)
 
     data_res = tbe.cast_to(data_res, inp_dtype)
-    mask = tbe.vcmp(x, CONST_ZERO, "gt", "bit")
+
+    conv_relu_v2_flag = conv2d_relu_v2_check(x)
+    if conv_relu_v2_flag:
+        scalar = tvm.const(CONST_ZERO, dtype=x.dtype)
+        mask = tvm.compute(x.shape, lambda *indice: (x(*indice) > scalar).astype("uint1"),
+                           name='output',
+                           tag="emit_insn_elewise_binary_cmp|gt|bit")
+    else:
+        mask = tbe.vcmp(x, CONST_ZERO, "gt", "bit")
 
     return data_res, mask
 

@@ -102,6 +102,10 @@ AIPP_FUSION_TYPE_FLAG = 3
 DYNAMIC_FMAP_MAX_HEIGHT = 4096
 DYNAMIC_FMAP_MAX_WIDTH = 4096
 
+DMA_COPY_BLOCK = 32
+UINT1_BIT_ALIGN = 8
+
+
 def get_srctensor(tensor):
     """
     fetch input_tensor tensor if it exists
@@ -413,7 +417,7 @@ def reget_tensor_list(outs):
             virtual_res = tvm.compute(res_reluv2_fp16.shape,
                                       lambda i, j, k, l:
                                       res_reluv2_fp16(i, j, k, l) +
-                                      res_mask_u8(i, j, k, l//8),
+                                      res_mask_u8(i, j, k, l),
                                       name="conv_virtual_res",
                                       tag="conv_virtual_res")
         ConvParam.tensor_map["res_reluv2_fp16"] = res_reluv2_fp16
@@ -769,7 +773,7 @@ class CceConvOp:
                                "elewise_binary_subrelu": "vector_subrelu",
                                "elewise_multiple_sel": "vector_select_bool",
                                "elewise_single_rec": "vector_rec",
-                               "emit_insn_elewise_binary_cmp": "elewise_binary_cmp",
+                               "emit_insn_elewise_binary_cmp": "vector_gt",
                                "elewise_single_VS_mul": "vector_auto",
                                "elewise_single_VS_add": "vector_auto",
                                "elewise_single_cast": "vector_auto",
@@ -4316,7 +4320,8 @@ class CceConvOp:
                     and "bit" in sch[res_mask_u8.op.input_tensors[0]].op.tag
             if valid:
                 mask_tensor = res_mask_u8.op.input_tensors[0]
-                sch[mask_tensor].storage_align(sch[mask_tensor].op.axis[1], 32, 0)
+                sch[mask_tensor].storage_align(sch[mask_tensor].op.axis[1],
+                                               DMA_COPY_BLOCK * UINT1_BIT_ALIGN, 0)
         
         def _handle_var_range():
             """
@@ -5651,6 +5656,7 @@ class CceConvOp:
         _pragma_for_convbn()
         _handle_bias_align_init_compute_at()
         _handle_bias_compute_at()
+        _handle_reluv2_buffer_align()
 
         self._flag_dict["addrelu_flag"] = False
         if set_biasrelu_optim_flag():

@@ -92,7 +92,8 @@ def test_conv2d_reluv2_fusion(test_arg):
                 sch = auto_schedule(res)
             te.lang.cce.cce_build_code(sch, config)
     testcases = [
-        {"fmap_shape": [1, 16, 100, 100], "filters_shape": [32, 16, 3, 3], "dtype": "float16", "bias_flag": None, "pads": [1, 1, 1, 1], "strides": [1, 1, 1, 1], "dilations": [1, 1, 1, 1]}
+        {"fmap_shape": [1, 16, 100, 100], "filters_shape": [32, 16, 3, 3], "dtype": "float16", "bias_flag": None, "pads": [1, 1, 1, 1], "strides": [1, 1, 1, 1], "dilations": [1, 1, 1, 1]},
+        {"fmap_shape": [1, 64, 300, 450], "filters_shape": [128, 64, 3, 3], "dtype": "float16", "bias_flag": None, "pads": [1, 1, 1, 1], "strides": [1, 1, 1, 1], "dilations": [1, 1, 1, 1]},
     ]
     fusion_conv2d_reluv2_compute(testcases)
 
