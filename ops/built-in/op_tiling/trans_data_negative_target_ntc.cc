@@ -30,6 +30,7 @@
 
 namespace optiling {
 const int32_t NTC_FRAME_LEVEL = 2;
+constexpr int64_t VNC_LINES = 16;
 
 int64_t GetCeilFillA(int64_t u_value, int64_t d_value) {
   int64_t res_value = 0;
@@ -145,8 +146,8 @@ bool GetMcInfoNegative200(int64_t& dst_cr_lp_cnt, int64_t dst_cr_left, int64_t& 
 }
 
 bool TilingNegativeNtc200(vector<int64_t>& in_shape, vector<int64_t>& out_shape, std::string& src_format,
-                            std::string& dst_format, int64_t& core_num, int64_t& block_elem_cnt, DataType& dtype,
-                            int64_t ub_size, int64_t& vnc_fp32_flag, TransDataNtc200Param& params) {
+                          std::string& dst_format, int64_t& core_num, int64_t& block_elem_cnt, DataType& dtype,
+                          int64_t ub_size, int64_t& vnc_fp32_flag, TransDataNtc200Param& params) {
   if (src_format.length() < FORMAT_LEN_2D || dst_format.length() < 1) {
     VECTOR_INNER_ERR_REPORT_TILIING("TransDataTiling", "TilingNegativeNtc200 Failed.");
     return false;

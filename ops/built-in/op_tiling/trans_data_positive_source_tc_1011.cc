@@ -29,6 +29,10 @@
 #include "error_log.h"
 
 namespace optiling {
+
+constexpr int64_t C0_16 = 16;
+constexpr int64_t VNC_LINES = 16;
+
 int64_t GetCeilFillC(int64_t u_value, int64_t d_value) {
   int64_t res_value = 0;
   if (d_value == 0) {
@@ -44,7 +48,6 @@ void GetMcInfoPositive1011(int64_t& axis_dst_r2nd_lp_cnt, int64_t axis_dst_r2nd_
                            int64_t& axis_src_cl_lp_cnt, int64_t axis_src_cl_left, int64_t& core_num,
                            TransDataMode1011Param& params) {
   int64_t tmp_full_loop_cnt_r2nd = GetFloorDiv(axis_dst_r2nd_lp_cnt, core_num) > 0 ? core_num : 0;
-  
   int64_t reminder_loop_cnt_r2nd = axis_dst_r2nd_lp_cnt % core_num;
   if (reminder_loop_cnt_r2nd == 0) {
     tmp_full_loop_cnt_r2nd += core_num;
