@@ -274,7 +274,7 @@ IMPLEMT_INFERFUNC(TruncatedNormal, TruncatedNormalInfer) {
 
 INFER_FUNC_REG(TruncatedNormal, TruncatedNormalInfer);
 
-int64_t InferShapeGetShapeSizeBytes(int16_t shape_size) {
+int64_t InferShapeGetShapeSizeBytes(int64_t shape_size) {
   if (shape_size < 0) {
     return UNKNOWN_DIM;
   }
@@ -299,8 +299,8 @@ graphStatus GetDropOutGenMaskShapeAndRange(Operator &op, ShapeAndRange &out) {
   out = {Shape(UNKNOWN_SHAPE), {}};
   ShapeAndRange shape_and_range{Shape(UNKNOWN_SHAPE), {}};
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  auto input_shpae_desc = op_desc->MutableInputDesc("shape");
-  (void)input_shpae_desc->GetValueRange(value_range);
+  auto input_shape_desc = op_desc->MutableInputDesc("shape");
+  (void)input_shape_desc->GetValueRange(value_range);
   OP_LOGI(op.GetName().c_str(), "DropOutGenMask::value_range.size() = %d", value_range.size());
   if (value_range.size() == 0) {
     OP_LOGW(op.GetName().c_str(), "value_range.size() == 0");
@@ -345,7 +345,7 @@ graphStatus GetDropOutGenMaskShapeAndRange(Operator &op, ShapeAndRange &out) {
   out.shape_range_ = shape_and_range.shape_range_;
 
   OP_LOGI(op.GetName().c_str(), "low = %lld, up = %lld, first = %lld, second = %lld \n",
-          low, up, value_range[0].first, value_range[0].second);
+          low, up, shape_range[0].first, shape_range[0].second);
 
   return GRAPH_SUCCESS;
 }
