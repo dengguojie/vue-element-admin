@@ -20,7 +20,7 @@
 #include "utils/eigen_tensor.h"
 #include "utils/kernel_util.h"
 #include "Eigen/Dense"
-
+#include "securec.h"
 namespace {
 const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 1;
@@ -69,15 +69,15 @@ uint32_t ZerosLikeCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 uint32_t ZerosLikeCpuKernel::ZerosLikeCheck(CpuKernelContext &ctx) {
-  auto input_0 = ctx.Input(0);
-  auto output_0 = ctx.Output(0);
-  KERNEL_CHECK_NULLPTR(input_0->GetData(), KERNEL_STATUS_PARAM_INVALID,
+  auto input = ctx.Input(0);
+  auto output = ctx.Output(0);
+  KERNEL_CHECK_NULLPTR(input->GetData(), KERNEL_STATUS_PARAM_INVALID,
                        "Get input data failed.")
-  KERNEL_CHECK_NULLPTR(output_0->GetData(), KERNEL_STATUS_PARAM_INVALID,
+  KERNEL_CHECK_NULLPTR(output->GetData(), KERNEL_STATUS_PARAM_INVALID,
                        "Get output data failed")
-  KERNEL_CHECK_NULLPTR(input_0->GetTensorShape(), KERNEL_STATUS_PARAM_INVALID,
+  KERNEL_CHECK_NULLPTR(input->GetTensorShape(), KERNEL_STATUS_PARAM_INVALID,
                        "Get input tensor shape failed.")
-  std::vector<int64_t> shape_x = input_0->GetTensorShape()->GetDimSizes();
+  std::vector<int64_t> shape_x = input->GetTensorShape()->GetDimSizes();
   size_t shape_size = shape_x.size();
   KERNEL_CHECK_FALSE((shape_size > 0), KERNEL_STATUS_PARAM_INVALID,
                      "Input must be at least rank 1, got [%zu].",
@@ -90,7 +90,10 @@ uint32_t ZerosLikeCpuKernel::ZerosLikePartCompute(CpuKernelContext &ctx) {
   size_t data_num = ctx.Input(0)->NumElements();
   Tensor *y = ctx.Output(0);
   auto y_addr = y->GetData();
-  memset(y_addr, 0 , data_num*sizeof(T));
+  auto ret = memset_s(y_addr, data_num*sizeof(T), 0 , data_num*sizeof(T));
+  if (ret != EOK) {
+    KERNEL_LOG_ERROR("memset_s error, ret=%d", ret);
+  }
   return KERNEL_STATUS_OK;
 }
 

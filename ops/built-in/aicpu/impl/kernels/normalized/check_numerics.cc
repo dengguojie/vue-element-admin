@@ -24,6 +24,7 @@
 #include "log.h"
 #include "status.h"
 #include "utils/kernel_util.h"
+#include <securec.h>
 
 namespace {
 const std::uint32_t kCheckNumericsInputNum{1};
@@ -56,15 +57,19 @@ inline std::uint32_t ComputeCheckNumericsKernel(const CpuKernelContext &ctx) {
   T *input0{static_cast<T *>(ctx.Input(0)->GetData())};
   T *output{static_cast<T *>(ctx.Output(0)->GetData())};
   std::int64_t total{ctx.Input(0)->NumElements()};
-  std::uint32_t cores{aicpu::CpuKernelUtils::GetCPUNum(ctx)};
-  std::int64_t per_unit_size{total / std::min(std::max(1L, cores - 2L), total)};
-  bool flag{false};
+  std::uint32_t core_num{aicpu::CpuKernelUtils::GetCPUNum(ctx)};
+  std::int64_t per_unit_size{total / std::min(std::max(1L, core_num - 2L), total)};
+  bool flag = false;
   std::uint32_t ret = ParallelForCheckNumerics(
       ctx, total, per_unit_size, [&](std::int64_t begin, std::int64_t end) {
         flag = flag || std::any_of(input0 + begin, input0 + end,
                                    ScalarCheckNumerics<T>);
         if (!flag) {
-          ::memcpy(output + begin, input0 + begin, (end - begin) * sizeof(T));
+          auto ret = memcpy_s(output + begin, (end - begin) * sizeof(T),
+                              input0 + begin, (end - begin) * sizeof(T));
+          if (ret != EOK) {
+            KERNEL_LOG_ERROR("memcpy_s error");
+          }
         }
       });
   return flag ? KERNEL_STATUS_PARAM_INVALID : ret;
