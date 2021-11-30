@@ -23,6 +23,7 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import error_manager_vector
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     The class for constant.
@@ -373,6 +374,7 @@ class UnsortedSegmentTiling:
     Function: do UnsortedSegmentTiling
     """
 
+    # 'pylint: disable=too-many-branches
     def __init__(self, op_info, x_dict, segment_ids_dict, y_dict):
         # ===================basic param===============================
         self.core_num = op_info.core_num
@@ -507,6 +509,7 @@ class UnsortedSegmentTiling:
 
         return scalar
 
+    # 'pylint: disable=too-many-branches
     def _get_select_keys_for_compile(self, input_byte, obj_scalar):
         select_keys = Constant.SELECT_KEY_DIV_OID_BLOCK_E_SMALL_IID_SMALL_OID + \
                       Constant.SELECT_KEY_DIV_OID_ONE_E_SMALL_IID_SMALL_OID + \
@@ -589,6 +592,7 @@ class UnsortedSegmentTiling:
 
         return select_keys_for_compile
 
+    # 'pylint: disable=too-many-branches
     def _get_tiling_mode(self, scalar):
 
         if not (isinstance(scalar.e_num, int) and isinstance(scalar.num_segments, int) and
@@ -1126,7 +1130,7 @@ class UnsortedSegment:
 
             scalar_in_list = False
             for ele in scalar_list:
-                if not (isinstance(ele, (int, dict))):
+                if not isinstance(ele, (int, dict)):
                     scalar_in_list = True
 
             if scalar_in_list:
@@ -1141,7 +1145,7 @@ class UnsortedSegment:
 
             index = 0
             for ele in scalar_list:
-                if not (isinstance(ele, (int, dict))):
+                if not isinstance(ele, (int, dict)):
                     ele.set_as(self.obj_ub_tensor.tiling_ub[index])
                 index = index + 1
 

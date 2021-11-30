@@ -45,7 +45,7 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-#pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def sigmoid_compute(input_x):
     """
     calculating sigmoid
@@ -205,7 +205,7 @@ def get_emit_insn_map(tensor):
                             para_check.OPTION_OUTPUT, para_check.OPTION_OUTPUT,
                             para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL,
                             para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
-# 'pylint: disable=too-many-arguments,too-many-locals,invalid-name
+# 'pylint: disable=too-many-arguments,too-many-locals,invalid-name,too-many-branches
 # 'pylint: disable=too-many-function-args,too-many-statements,unused-argument
 def dynamic_lstm_v2(input_x, weight, bias, cont, w_xc_x_static, h0, c0, wci, wcf,
                 wco, mask, y, output_h, output_c, last_output_h, last_output_c,
@@ -465,7 +465,7 @@ def dynamic_rnn_tik_high_precision(input_list, custom_list):
 
 
 # 'pylint: disable=too-many-arguments,too-many-locals,invalid-name
-# 'pylint: disable=too-many-statements,unnecessary-lambda
+# 'pylint: disable=too-many-statements,unnecessary-lambda,too-many-branches
 def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, static, s_init_h_gm, s_init_c_gm,
                      s_state_h_gm_last, s_state_c_gm_last, sync0, is_first_round, is_global_init,
                      has_static, need_output_last):
@@ -999,7 +999,7 @@ def dynamic_rnn_core_high_preformance(input_x, weight, bias, seq_length, static,
 
 
 # 'pylint: disable=too-many-arguments,too-many-locals,invalid-name
-# 'pylint: disable=too-many-statements,unnecessary-lambda
+# 'pylint: disable=too-many-statements,unnecessary-lambda,too-many-branches
 def dynamic_rnn_core_high_precision(input_x, weight, bias, seq_length, static, s_init_h_gm, s_init_c_gm,
                      s_state_h_gm_last, s_state_c_gm_last, sync0, is_first_round, is_global_init,
                      has_static, need_output_last):

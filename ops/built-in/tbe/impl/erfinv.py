@@ -197,13 +197,13 @@ def cal_yg(input_x):
     data_round = tbe.round(data_div)
     tensor_sign = tbe.cast_to(data_round, dtype)
 
-    # yg = copysign(numg, input_x) / demg
+    # `yg = copysign(numg, input_x) / demg`
     numg_sign = tbe.vmul(numg, tensor_sign)
     yg = tbe.vdiv(numg_sign, demg)
     return yg
 
 
-# 'pylint': disable=too-many-locals
+# 'pylint: disable=too-many-locals
 def erf(input_x):
     """
     calculating data

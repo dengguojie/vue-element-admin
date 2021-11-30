@@ -24,6 +24,7 @@ from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import para_check
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constants:
     # constants used in the equation
     CONST_THREE = 3

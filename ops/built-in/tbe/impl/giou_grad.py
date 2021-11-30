@@ -729,7 +729,7 @@ class GIoUGrad:
                                       self.db2x2[Constant.MASK_BLOCK * idx], 1, Constant.REP_STRIDE,
                                       Constant.REP_STRIDE, Constant.REP_STRIDE)
 
-            # for enclose part : min(b1_x1, b2_x1)
+            # `for enclose part : min(b1_x1, b2_x1)`
             self.tik_instance.vec_cmpv_lt(self.mask, self.b1x1[Constant.MASK_BLOCK * idx],
                                           self.b2x1[Constant.MASK_BLOCK * idx], 1,
                                           Constant.REP_STRIDE, Constant.REP_STRIDE)

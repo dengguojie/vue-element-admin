@@ -15,19 +15,19 @@
 """
 fill
 
-  Op_description :
-    This operation creates a tensor of shape `dims` and fills it with `value`.
+Op_description :
+This operation creates a tensor of shape `dims` and fills it with `value`.
 
-    # fill(
-    #   x,
-    #   y,
-    #   value,
-    #   kernel_name='fill'
-    # )
+# fill(
+#   x,
+#   y,
+#   value,
+#   kernel_name='fill'
+# )
 
-  Supportive_dtype_format :
-    ['int32', 'float32', 'float16']
-    all format
+Supportive_dtype_format :
+['int32', 'float32', 'float16']
+all format
 """
 from functools import reduce as reduceIns
 

@@ -17,6 +17,8 @@ gru v2 hidden
 import operator
 import math
 
+from impl.dynamic_gru_v2 import check_gru_v2_attr
+from impl.dynamic_gru_v2 import ReuseType
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tvm
@@ -36,9 +38,6 @@ from te.lang.cce import vmuls
 from te.lang.cce import vrec
 from te.lang.cce import vsub
 from te.platform.cce_conf import api_check_support
-
-from impl.dynamic_gru_v2 import check_gru_v2_attr
-from impl.dynamic_gru_v2 import ReuseType
 
 
 def _sigmoid_compute(input_x):

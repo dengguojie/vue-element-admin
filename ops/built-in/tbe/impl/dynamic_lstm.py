@@ -29,6 +29,13 @@ from te.platform.cce_build import build_config
 from te.utils.error_manager import error_manager_vector
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class Constants:
+    lstm_tiling_map = {
+        "32_512_256": (2, 8, 8, 2, 8, 8),
+        "16_1536_2048": (1, 32, 12, 1, 32, 12),
+    }
+
 
 def sigmoid_compute(input_x):
     """
@@ -147,12 +154,6 @@ def get_emit_insn_map(tensor):
     return insn
 
 
-lstm_tiling_map = {
-    "32_512_256": (2, 8, 8, 2, 8, 8),
-    "16_1536_2048": (1, 32, 12, 1, 32, 12),
-}
-
-
 def _get_lstm_tiling(m_size, k_size, n_size):
     """
     get lstm tiling
@@ -160,9 +161,9 @@ def _get_lstm_tiling(m_size, k_size, n_size):
     """
     key = "_".join(str(i) for i in (m_size*16, k_size*16, n_size*16))
 
-    if key not in lstm_tiling_map:
+    if key not in Constants.lstm_tiling_map:
         error_manager_vector.raise_err_specific_reson("DynamicLSTM", "Unsupported lstm shape tiling!")
-    return lstm_tiling_map[key]
+    return Constants.lstm_tiling_map[key]
 
 
 def check_dtype(input_x, weight, output_h):
@@ -190,7 +191,7 @@ def check(shape_x_input, shape_w_input, shape_b_input, shape_output):
         error_manager_vector.raise_err_specific_reson("DynamicLSTM", "w, b shape is wrong, please check!")
 
 
-# 'pylint: disable=too-many-arguments,too-many-locals,invalid-name,unnecessary-lambda
+# 'pylint: disable=too-many-arguments,too-many-locals,invalid-name,unnecessary-lambda,too-many-statements
 @para_check.check_input_type(dict, dict, dict, dict, str)
 def dynamic_lstm(input_x, weight, bias,
                  output_h, kernel_name="dynamic_lstm"):
