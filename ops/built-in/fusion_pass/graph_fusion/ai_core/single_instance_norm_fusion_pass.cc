@@ -34,6 +34,7 @@
 #include "error_util.h"
 #include "pattern_fusion_util.h"
 #include "graph_optimizer/graph_fusion/fusion_pass_manager/fusion_pass_registry.h"
+#include "common/util/platform_info.h"
 
 namespace fe {
 
@@ -90,8 +91,22 @@ Status SingleInstanceNormFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& ma
   FUSION_PASS_CHECK(x_tensor_desc.GetFormat() == FORMAT_ND,
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "input format not support ND."), return NOT_CHANGED);
 
+  ge::Format inputOriginFormat = x_tensor_desc.GetOriginFormat();
   size_t dimCnt = x_tensor_desc.GetShape().GetDimNum();
   auto sumShape = x_tensor_desc.GetShape();
+
+  PlatformInfo platform_info;
+  OptionalInfo optional_info;
+  FUSION_PASS_CHECK(PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info,
+                                                                                     optional_info) != fe::SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Get platform_info failed."), return false);
+
+  // verify input format for mini
+  FUSION_PASS_CHECK(optional_info.soc_version == "Ascend310" &&
+                    (inputOriginFormat == ge::FORMAT_NCHW || inputOriginFormat == ge::FORMAT_NHWC),
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "input not support NCHW and NHWC on mini platform."),
+                    return NOT_CHANGED);
+
   if (x_tensor_desc.GetFormat() == FORMAT_NCHW || x_tensor_desc.GetFormat() == FORMAT_NCDHW) {
     for (int64_t i = 0; i < static_cast<int64_t>(dimCnt); i++) {
       if (i != 0 && i != 1) {
