@@ -64,6 +64,7 @@ class OpPatternMode:
     ELEWISE = "elewise"
     ELEWISE_WITH_BROADCAST = "broadcast"
     REDUCE = "reduce"
+    TRANSDATA = "transdata"
 
 
 class OpImplMode:

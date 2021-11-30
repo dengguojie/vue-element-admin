@@ -70,6 +70,10 @@ TRANSPOSE_COMPUTE = {
     "transpose"
 }
 
+TRANSDATA_COMPUTE = {
+    "transdata"
+}
+
 SET_VALUE_COMPUTE = {
     "set_value"
 }
@@ -129,6 +133,7 @@ class ComputeType(Enum):
     BROADCAST = auto()
     REDUCE = auto()
     TRANSPOSE = auto()
+    TRANSDATA = auto()
     SET_VALUE = auto()
     CONCAT = auto()
     CAST = auto()
@@ -205,6 +210,8 @@ def _parse_pattern(outs):
         return Pattern.GATHER
     if _is_transpose(compute_type_size_map):
         return Pattern.TRANSPOSE
+    if _is_transdata(compute_type_size_map):
+        return Pattern.TRANSDATA
     if _is_concat(compute_type_size_map):
         return Pattern.CONCAT
     if ComputeType.CONV3D_BP_FILTER in compute_type_size_map:
@@ -326,6 +333,11 @@ def _is_transpose(compute_type_size_map: dict):
     total = compute_type_size_map.get(ComputeType.ANY, 0)
     return ph_size + transpose_size == total
 
+def _is_transdata(compute_type_size_map: dict):
+    ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
+    transdata_size = compute_type_size_map.get(ComputeType.TRANSDATA, 0)
+    total = compute_type_size_map.get(ComputeType.ANY, 0)
+    return ph_size + transdata_size == total
 
 def _is_concat(compute_type_size_map: dict):
     ph_size = compute_type_size_map.get(ComputeType.PLACEHOLDER, 0)
@@ -383,6 +395,7 @@ def _get_compute_type(tensor: tvm.tensor.Tensor) -> ComputeType:
         (REDUCE_COMPUTE, ComputeType.REDUCE),
         (GATHER_COMPUTE, ComputeType.GATHER),
         (TRANSPOSE_COMPUTE, ComputeType.TRANSPOSE),
+        (TRANSDATA_COMPUTE, ComputeType.TRANSDATA),
         (SET_VALUE_COMPUTE, ComputeType.SET_VALUE),
         (CONCAT_COMPUTE, ComputeType.CONCAT),
         (CONV3D_COMPUTE, ComputeType.CONV3D),

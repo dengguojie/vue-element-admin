@@ -525,6 +525,11 @@ def transdata(tensor, dst_shape, axes_map, pad_value=0):
                     dict_args = {"errCode": "E90001", "detailed_cause": "In forward, value of axes_map "
                                                                         "should in [int, tuple, list]"}
                     raise RuntimeError(dict_args, get_error_message(dict_args))
+                if isinstance(v, (list, tuple)) and len(v) > 2:
+                    dict_args = {"errCode": "E90001", "detailed_cause":
+                        "In forward, only support split DimX to [DimX0, DimX1],"
+                        f"but value of axes_map is {v}"}
+                    raise RuntimeError(dict_args, get_error_message(dict_args))
         else:
             _axes_map = dict(sorted(axes_map.items(), key=lambda x: x[1]))
             permute = backward_get_permute(_axes_map)
@@ -536,6 +541,11 @@ def transdata(tensor, dst_shape, axes_map, pad_value=0):
                 if not isinstance(k, (int, tuple, list)):
                     dict_args = {"errCode": "E90001", "detailed_cause": "In backward, key of axes_map "
                                                                         "should in [int, tuple, list]"}
+                    raise RuntimeError(dict_args, get_error_message(dict_args))
+                if isinstance(k, (list, tuple)) and len(k) > 2:
+                    dict_args = {"errCode": "E90001", "detailed_cause":
+                        "In forward, only support fuse [DimX0, DimX1] to DimX,"
+                        f"but key of axes_map is {k}"}
                     raise RuntimeError(dict_args, get_error_message(dict_args))
 
         sorted_axes = sorted(permute)

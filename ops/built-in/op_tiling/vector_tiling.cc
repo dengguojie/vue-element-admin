@@ -24,6 +24,9 @@ namespace optiling {
 extern std::shared_ptr<AutoTilingHandler> CreateNormTilingHandler(const std::string& op_type,
                                                                   const std::string& pattern,
                                                                   const nlohmann::json& parsed_compile_info);
+extern std::shared_ptr<AutoTilingHandler> CreateTransdataTilingHandler(const std::string& op_type,
+                                                                       const std::string& pattern,
+                                                                       const nlohmann::json& parsed_compile_info);
 extern std::shared_ptr<AutoTilingHandler> CreateTransposeDslTilingHandler(
   const std::string& op_type,
   const std::string& pattern,
@@ -62,6 +65,8 @@ std::shared_ptr<AutoTilingHandler> CreateAutoTilingHandler(const std::string& op
         return CreateGatherTilingHandler(op_type, pattern, parsed_compile_info);
     }else if (pattern == "Transpose") {
       return CreateTransposeDslTilingHandler(op_type, pattern, parsed_compile_info);
+    } else if (pattern == "Transdata") {
+      return CreateTransdataTilingHandler(op_type, pattern, parsed_compile_info);
     } else if (pattern == "Concat") {
       return CreateConcatDslTilingHandler(op_type, pattern, parsed_compile_info);
     } else {

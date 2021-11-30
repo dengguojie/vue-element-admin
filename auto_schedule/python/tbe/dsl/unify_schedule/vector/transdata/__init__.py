@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-# Copyright 2019-2021 Huawei Technologies Co., Ltd
+# Copyright 2021-2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,13 +15,8 @@
 # limitations under the License.
 # ============================================================================
 """
-vector
+transdata
 """
-from . import broadcast
-from . import elewise
-from . import norm
-from . import reduce
-from . import gather
-from . import transpose
-from . import concat
-from . import transdata
+from . import transdata_tilingcase
+from . import transdata_backward_schedule
+from . import transdata_forward_schedule

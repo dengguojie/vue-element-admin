@@ -452,6 +452,93 @@ def _gather_variable_shape(inputs):
     return params_shape, indices_shape, batch_dims_info
 
 
+def _transdata_variable_shape(inputs: list):
+    """
+    Eg:
+    src is [30, 1024]
+    dst is [64, 32, 16]
+    map is {0: [1, ],
+            1: [0, 2]}
+    In map has three model: int:int, tuple:int, int:tuple
+    int:int is do nothing
+    tuple:int is do de-pad
+    int:tuple is do pad
+    Return src_shape, dst_shape
+    """
+    if len(inputs) != 3:
+        dict_args = {"errCode": "E90001", "detailed_cause": "inputs' size error"}
+        raise RuntimeError(dict_args, get_error_message(dict_args))
+
+    def is_const_model(_input):
+        return -1 not in _input
+
+    def reversed_map(_map):
+        result = {}
+        for key, value in _map.items():
+            value = tuple(value) if isinstance(value, list) else value
+            key = list(key) if isinstance(key, tuple) else key
+            result[value] = key
+        return result
+
+    def init_shape(_input, _range):
+        result, unknown_dims = [], []
+        for key, value in enumerate(_input):
+            if is_const:
+                _var = value
+            else:
+                _var = operation.var_inner(f"_dim_{key}", [1, None])
+                unknown_dims.append(key)
+            result.append(_var)
+        current_compute.add("_unknown_dims", unknown_dims)
+        return result
+
+    def src_infer_dst(in_shape, out_shape, _map):
+        for key, value in enumerate(in_shape):
+            map_value = _map.get(key)
+            if isinstance(map_value, int):
+                out_shape[map_value] = value
+            elif isinstance(map_value, (list, tuple)):
+                if len(map_value) == 1:
+                    out_shape[map_value[0]] = tvm.floordiv(value + pad_factor - 1, pad_factor) * pad_factor
+                else:
+                    out_shape[map_value[0]] = tvm.floordiv(value + pad_factor - 1, pad_factor)
+                    out_shape[map_value[1]] = pad_factor
+
+        return out_shape
+
+    def infer_shape_main(_input, _range, _output, _map):
+        _input = init_shape(_input, _range)
+        _output = src_infer_dst(_input, _output, _map)
+        return _input, _output
+
+    axes_map = inputs[2]
+    is_forward = inputs[0].get("is_forward")
+    src_shape = inputs[0].get("shape")
+    src_range = inputs[0].get("range")
+    dst_shape = inputs[1]
+    dst_range = [[1, None] if x == -1 else [x, x] for x in dst_shape]
+
+    if not is_forward:
+        src_shape, dst_shape = dst_shape, src_shape
+        src_range, dst_range = dst_range, src_range
+        axes_map = reversed_map(axes_map)
+
+    current_compute = operation.get_context().get_current_compute()
+    # get pad factor
+    pad_factor = operation.get_compile_info().get("_pad_factor")
+    current_compute.add("_pad_factor", pad_factor)
+    # transdata_category that help to choose different computation
+    current_compute.add("_transdata_category", inputs[0].get("transdata_category"))
+    is_const = is_const_model(src_shape)
+    current_compute.add("_const_model", is_const)
+
+    src_shape, dst_shape = infer_shape_main(src_shape, src_range, dst_shape, axes_map)
+    if not is_forward:
+        src_shape, dst_shape = dst_shape, src_shape
+
+    return src_shape, dst_shape
+
+
 def _concat_variable_shape(inputs: list):
     def add_zero_axis_var(_is_first_in, _first_var):
         if shape_x[0] == -1:
@@ -510,6 +597,9 @@ def variable_shape(inputs: list, op_mode="elewise"):
 
     if op_mode == "transpose":
         return _transpose_variable_shape(inputs)
+
+    if op_mode == "transdata":
+        return _transdata_variable_shape(inputs)
 
     if op_mode == "concat":
         return _concat_variable_shape(inputs)

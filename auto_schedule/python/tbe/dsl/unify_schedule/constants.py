@@ -50,6 +50,7 @@ class Pattern:
     LAYER_NORM_X_BACKPROP = "Layer_norm_x_backprop"
     LAYER_NORM_X_BACKPROP_V2 = "Layer_norm_x_backprop_v2"
     GATHER = "Gather"
+    TRANSDATA = "Transdata"
 
 
 class ElewisePattern:
@@ -113,6 +114,12 @@ class TransposePattern:
     # generic
     T_0 = "T_0"
 
+class TransdataCategory:
+    """
+    Category of Transdata
+    """
+    GENERAL_FORWARD = "general.forward"
+    GENERAL_BACKWARD = "general.backward"
 
 class ConcatPattern:
     """

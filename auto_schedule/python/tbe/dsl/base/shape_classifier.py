@@ -30,6 +30,7 @@ from tbe.dsl.base.classifier import classify_gather
 from tbe.dsl.base.classifier import classify_gather_nd
 from tbe.dsl.base.classifier import classify_transpose
 from tbe.dsl.base.classifier import classify_concat
+from tbe.dsl.base.classifier import classify_transdata
 
 
 ELEWISE = "elewise"
@@ -41,6 +42,7 @@ GATHER = "gather"
 GATHER_ND = "gather_nd"
 TRANSPOSE = "transpose"
 CONCAT = "concat"
+TRANSDATA = "transdata"
 
 
 CLASSIFY_SAME_PATTERN_MAP = {
@@ -97,5 +99,7 @@ def classify(ins: list, mode: str, extra_params: Optional[Dict[str, Any]] = None
         return classify_transpose(ins, extra_params)
     if mode == CONCAT:
         return classify_concat(ins, extra_params)
+    if mode == TRANSDATA:
+        return classify_transdata(ins)
 
     return [ins]

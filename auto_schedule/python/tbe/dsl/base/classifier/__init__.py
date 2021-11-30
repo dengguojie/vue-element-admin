@@ -25,3 +25,4 @@ from .gather_classifier import classify_gather
 from .gather_classifier import classify_gather_nd
 from .transpose_classifier import classify as classify_transpose
 from .concat_classifier import classify as classify_concat
+from .transdata_classifier import classify as classify_transdata
