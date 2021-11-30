@@ -52,7 +52,7 @@ void ScopeLayerNormGradPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
   std::vector<ScopePattern*> batch1;
   ScopePattern* moments_grad = new (std::nothrow) ScopePattern();
   if (moments_grad == nullptr) {
-    OP_LOGE(kOpType, "Alloc an object failed.");
+    OP_LOGE(kOpType, "In ScopeLayerNormGradPass, Alloc an object failed.");
     return;
   }
   moments_grad->SetSubType("moments_grad");
@@ -64,7 +64,7 @@ void ScopeLayerNormGradPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
   if (batchnorm_grad == nullptr) {
     delete moments_grad;
     moments_grad = nullptr;
-    OP_LOGE(kOpType, "Alloc an object failed.");
+    OP_LOGE(kOpType, "In ScopeLayerNormGradPass, Alloc an object failed.");
     return;
   }
   batchnorm_grad->SetSubType("batchnorm_grad");
@@ -82,7 +82,7 @@ void ScopeLayerNormGradPass::GenScopePatterns(ScopeFusionPatterns& patterns) {
     moments_grad = nullptr;
     delete batchnorm_grad;
     batchnorm_grad = nullptr;
-    OP_LOGE(kOpType, "Alloc an object failed.");
+    OP_LOGE(kOpType, "In ScopeLayerNormGradPass, Alloc an object failed.");
     return;
   }
   layernorm_grad->SetSubType(kScopeType);
@@ -184,7 +184,7 @@ Status ScopeLayerNormGradPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>
                                                      std::vector<ScopesResult>& results) {
   OP_LOGD(kOpType, "Enter ScopeLayerNormGradPass LastMatchScopesAndOPs");
   if (scope_graph == nullptr) {
-    OP_LOGE(kOpType, "Input params is nullptr.");
+    OP_LOGE(kOpType, "In ScopeLayerNormGradPass, Input params is nullptr.");
     return domi::PARAM_INVALID;
   }
   const ScopeTree* scope_tree = scope_graph->GetScopeTree();
@@ -192,7 +192,7 @@ Status ScopeLayerNormGradPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>
 
   for (auto& scope : scopes) {
     if (scope == nullptr) {
-      OP_LOGE(kOpType, "Scope is nullptr.");
+      OP_LOGE(kOpType, "In ScopeLayerNormGradPass, Scope is nullptr.");
       return domi::PARAM_INVALID;
     }
     const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map_mul = scope->AllNodesMap();
@@ -245,7 +245,7 @@ Status ScopeLayerNormGradPass::LastMatchScopesAndOPs(std::shared_ptr<ScopeGraph>
 void ScopeLayerNormGradPass::FindInputIndex(const Scope* scope, int& index, const std::string& name,
                                             const std::string& base_name) {
   if (scope == nullptr) {
-    OP_LOGE(kOpType, "scope is nullptr.");
+    OP_LOGE(kOpType, "In ScopeLayerNormGradPass, scope is nullptr.");
     return;
   }
   const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map = scope->AllNodesMap();
@@ -276,7 +276,7 @@ void ScopeLayerNormGradPass::FindInputIndex(const Scope* scope, int& index, cons
 
 void ScopeLayerNormGradPass::IsConnectReshape(const Scope* scope, const std::string& name, bool& is_connected_reshape) {
   if (scope == nullptr) {
-    OP_LOGE(kOpType, "scope is nullptr.");
+    OP_LOGE(kOpType, "In ScopeLayerNormGradPass, scope is nullptr.");
     return;
   }
   const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map = scope->AllNodesMap();
@@ -319,7 +319,7 @@ void ScopeLayerNormGradPass::OutputGammaBetaProcess(const std::vector<Scope*>& s
 
 void ScopeLayerNormGradPass::FindInputXIndex(const Scope* scope, int& index) {
   if (scope == nullptr) {
-    OP_LOGE(kOpType, "scope is nullptr.");
+    OP_LOGE(kOpType, "In ScopeLayerNormGradPass, scope is nullptr.");
     return;
   }
   const std::unordered_map<std::string, ge::OperatorPtr>& nodes_map = scope->AllNodesMap();
@@ -418,7 +418,7 @@ void ScopeLayerNormGradPass::ProcessInputDy(const std::vector<Scope*>& scopes, F
   } else if (dy_index == 1) {
     fusion_rlt->InsertInputs("batchnorm/mul_1_grad/Mul", {kFusionDisableIndex, 0});  // input dy
   } else {
-    OP_LOGE(kOpType, "Only support input dy_index(%d) is 0 or 1", dy_index);
+    OP_LOGE(kOpType, "In ScopeLayerNormGradPass, Only support input dy_index(%d) is 0 or 1", dy_index);
     return;
   }
 }
@@ -448,7 +448,7 @@ void ScopeLayerNormGradPass::ProcessInputGamma(const std::vector<Scope*>& scopes
   } else if (gamma_index == 1) {
     fusion_rlt->InsertInputs("batchnorm/mul_grad/Mul", {kFusionDisableIndex, 4});  // input gamma
   } else {
-    OP_LOGE(kOpType, "Only support input gamma_index(%d) is 0 or 1", gamma_index);
+    OP_LOGE(kOpType, "In ScopeLayerNormGradPass, Only support input gamma_index(%d) is 0 or 1", gamma_index);
     return;
   }
 }
@@ -456,7 +456,7 @@ void ScopeLayerNormGradPass::ProcessInputGamma(const std::vector<Scope*>& scopes
 void ScopeLayerNormGradPass::GenerateFusionResult(const std::vector<Scope*>& scopes, FusionScopesResult* fusion_rlt) {
   OP_LOGI(kOpType, "Enter ScopeLayerNormGradPass GenerateFusionResult");
   if (fusion_rlt == nullptr) {
-    OP_LOGE(kOpType, "Input fusion_rlt is nullptr.");
+    OP_LOGE(kOpType, "In ScopeLayerNormGradPass, Input fusion_rlt is nullptr.");
     return;
   }
   ProcessInputDy(scopes, fusion_rlt);
@@ -471,7 +471,7 @@ void ScopeLayerNormGradPass::GenerateFusionResult(const std::vector<Scope*>& sco
   int add_index = -1;
   FindOutputdXNode(fusion_rlt->Nodes(), output_dx, add_index);
   if (output_dx == "") {
-    OP_LOGE(kOpType, "Not find output dX node name");
+    OP_LOGE(kOpType, "In ScopeLayerNormGradPass, Not find output dX node name.");
     return;
   }
   else {
