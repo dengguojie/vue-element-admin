@@ -1,0 +1,762 @@
+[
+  {
+    "case_name": "GatherNd_dynamic_shape_dynamic_gather_nd_03_ascend310",
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          22551,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            22551,
+            22551
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "typical_shape": [
+          22551,
+          1
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int64"
+        ],
+        "shape": [
+          22550,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "indices",
+        "shape_range": [
+          [
+            22550,
+            22550
+          ]
+        ],
+        "typical_shape": [
+          22550,
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          22550,
+          1
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            22550,
+            22550
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "typical_shape": [
+          22550,
+          1
+        ]
+      }
+    ]
+  },
+  {
+    "case_name": "GatherNd_static_shape_gather_nd_05_ascend310",
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          16,
+          3,
+          3
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          33,
+          3
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "indices"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          33,
+          3
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "GatherNd_static_shape_gather_nd_06_ascend310",
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          127,
+          4,
+          2,
+          2,
+          2,
+          2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          190000,
+          6
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "indices"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          190000,
+          1
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "GatherNd_dynamic_shape_dynamic_gather_nd_04_ascend310",
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          22551,
+          8
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x",
+        "shape_range": [
+          [
+            22551,
+            22551
+          ],
+          [
+            8,
+            8
+          ]
+        ],
+        "typical_shape": [
+          22551,
+          8
+        ]
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int64"
+        ],
+        "shape": [
+          22550,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "indices",
+        "shape_range": [
+          [
+            22550,
+            22550
+          ]
+        ],
+        "typical_shape": [
+          22550,
+          1
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          22550,
+          8
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            22550,
+            22550
+          ],
+          [
+            8,
+            8
+          ]
+        ],
+        "typical_shape": [
+          22550,
+          8
+        ]
+      }
+    ]
+  },
+  {
+    "case_name": "GatherNd_static_shape_gather_nd_09_ascend310",
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1,
+          7,
+          4564,
+          9973
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "indices"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          1,
+          7,
+          4564,
+          9973
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "GatherNd_static_shape_gather_nd_10_ascend310",
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          13,
+          5,
+          97304
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int64"
+        ],
+        "shape": [
+          17,
+          30,
+          16,
+          2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "indices"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          17,
+          30,
+          16,
+          97304
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "GatherNd_static_shape_gather_nd_11_ascend310",
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          8,
+          95,
+          32
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int64"
+        ],
+        "shape": [
+          2,
+          3,
+          3,
+          13,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "indices"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          2,
+          3,
+          3,
+          13,
+          95,
+          32
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "GatherNd_static_shape_test_GatherNd_auto_case_name_1_ascend310",
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          16,
+          3,
+          3
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          33,
+          2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "indices"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          33,
+          3
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "GatherNd_static_shape_test_GatherNd_auto_case_name_2_ascend310",
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          9,
+          7,
+          6,
+          5,
+          4,
+          2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          3,
+          2,
+          3
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "indices"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          3,
+          2,
+          5,
+          4,
+          2
+        ],
+        "name": "y"
+      }
+    ]
+  },
+  {
+    "case_name": "GatherNd_static_shape_test_GatherNd_auto_case_name_4_ascend310",
+    "op": "GatherNd",
+    "input_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          9,
+          7,
+          6,
+          5
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "x"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          3,
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "indices"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "float16"
+        ],
+        "shape": [
+          3,
+          7,
+          6,
+          5
+        ],
+        "name": "y"
+      }
+    ]
+  }
+]

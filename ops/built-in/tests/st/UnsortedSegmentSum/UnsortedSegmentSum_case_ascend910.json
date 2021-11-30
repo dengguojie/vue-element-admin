@@ -53,11 +53,11 @@
           ]
         ],
         "name": "segment_ids",
-	"shape_range": [
-        [
-          1,
-          65535
-        ]
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
         ],
         "typical_shape": [
           1
@@ -106,16 +106,15 @@
           -1
         ],
         "name": "y",
-	"shape_range": [
-        [
-          1,
-          65535
-        ]
+        "shape_range": [
+          [
+            1,
+            65535
+          ]
         ],
         "typical_shape": [
           1
         ]
-
       }
     ]
   }
