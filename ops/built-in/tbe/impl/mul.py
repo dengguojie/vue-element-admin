@@ -623,8 +623,10 @@ def op_select_format(x, y, output, kernel_name="mul"):
     format_flag["FRACTAL_Z"] = format_flag["FRACTAL_Z"] or (x_flag["4d"] and y_flag["Scalar"]) or (
             x_flag["Scalar"] and y_flag["4d"])
     format_flag["FRACTAL_NZ"] = format_flag["FRACTAL_NZ"] or (
-            len(shape_x) >= 2 and format_x in format_4d_list and y_flag["Scalar"]) or (
-            len(shape_y) >= 2 and format_y in format_4d_list and x_flag["Scalar"])
+            len(shape_x) >= 2 and y_flag["Scalar"] and (
+                format_x in format_4d_list or (shape_x[-1] % 16 == 0 and shape_x[-2] % 16 == 0))) or (
+            len(shape_y) >= 2 and x_flag["Scalar"] and (
+                format_y in format_4d_list or (shape_y[-1] % 16 == 0 and shape_y[-2] % 16 == 0)))
 
     format_flag["NC1HWC0"] = format_flag["NC1HWC0"] or \
                              (len(shape_x) == len(shape_y) == 1 and shape_x[0] % 16 == shape_y[0] % 16 == 0) or \
