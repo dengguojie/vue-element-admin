@@ -105,10 +105,6 @@ bool CheckTensorShape(const std::string& opType, std::vector<int64_t> paramsShap
     outputShape.push_back(paramsShape[i]);
   }
 
-  if (indicesDims == 1 && (paramsDims == 1 || indicesLastDim == paramsDims)){
-    outputShape.push_back(1);
-  }
-
   calcOutputDims = outputShape.size();
   if (yDims != calcOutputDims) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherNdTiling] : CheckTensorShape, y Shape dim is invalid");

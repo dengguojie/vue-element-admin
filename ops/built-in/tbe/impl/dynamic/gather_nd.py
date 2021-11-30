@@ -64,7 +64,8 @@ class Constant:
     TILING_MODE_8 = 8
     # one paramsRow of data can not store in half UB and indices.shape = [1]
     TILING_MODE_9 = 9
-
+    # cycle num set as 8, to match tik requirements
+    CYCLE_NUM = 8
 
     TYPE_LEN_DICT = {"float16": 2, "float32": 4, "int8": 1, "uint8": 1,
                      "int32": 4, "int64": 8, }
@@ -102,12 +103,34 @@ def align_value(value, factor):
     return (value + factor - 1) // factor * factor
 
 
+def check_supported(x_dict, indices_dict, y_dict, kernel_name="GatherNd"):
+    """
+    Parameters
+    ----------
+    x_dict: input params shape, dtype and range
+    indices_dict: indices params shape, dtype and range
+    y_dict: output params shape, dtype and range
+    """
+    shape_x = x_dict.get("ori_shape")
+    shape_indices = indices_dict.get("ori_shape")
+
+    shape_x_list = []
+    shape_indices_list = []
+
+    if shape_x in shape_x_list and shape_indices in shape_indices_list:
+        reason = "shape in bad-performance list."
+        return False, reason
+
+    return True, ""
+
+
 # 'pylint: disable=invalid-name, too-many-locals, too-many-arguments, too-many-public-methods
 # 'pylint: disable=too-many-instance-attributes, too-many-lines
 class GatherNd():
     """
     Function: class that execute gather_nd
     """
+
     def __init__(self, params_dict, indices_dict, y_dict, kernel_name):
         """
         constructor of GatherNd
@@ -184,6 +207,31 @@ class GatherNd():
         self.one_row_loop = None
         self.one_row_tail = None
         self.suffix_list_index = None
+
+    def get_gm_offset(self, indices_ub, inner_indices_offset, row_i):
+        """
+        compute gm offset of x
+
+        Parameters
+        ----------
+        indices_ub: cache indices data in UB
+        inner_indices_offset: indices num offset
+        row_i: set as 8, to match tik requirements
+
+        Returns
+        -------
+        Gm offset
+        """
+        tik_instance = self.tik_instance
+        gm_offset = tik_instance.Scalar(dtype=self.tiling_dtype, name="gm_offset_i", init_value=0)
+        index_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="index_value")
+        suffix_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="suffix_value")
+        for i in range(Constant.CYCLE_NUM):
+            index_value.set_as(indices_ub[(inner_indices_offset + row_i) * self.indices_last_dim + i])
+            suffix_value.set_as(self.tiling_ub[self.suffix_list_index + i])
+            gm_offset.set_as(gm_offset + index_value * suffix_value)
+
+        return gm_offset
 
     def get_tiling_args(self, tiling_ub):
         """
@@ -265,13 +313,7 @@ class GatherNd():
                                                name="block_ub", scope=tik.scope_ubuf)
 
                 # compute gm offset of x
-                gm_offset_i = tik_instance.Scalar(dtype=self.tiling_dtype, name="gm_offset_i", init_value=0)
-                index_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="index_value")
-                suffix_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="suffix_value")
-                with tik_instance.for_range(0, self.indices_last_dim) as index_i:
-                    index_value.set_as(indices_ub[(inner_indices_offset + row_i) * self.indices_last_dim + index_i])
-                    suffix_value.set_as(self.tiling_ub[self.suffix_list_index + index_i])
-                    gm_offset_i.set_as(gm_offset_i + index_value * suffix_value)
+                gm_offset_i = self.get_gm_offset(indices_ub, inner_indices_offset, row_i)
                 # copy params row to block_ub from gm
                 tik_instance.data_move(block_ub, self.x[gm_offset_i], 0,
                                        1, 1, 0, 0)
@@ -308,13 +350,7 @@ class GatherNd():
             block_ub = tik_instance.Tensor(self.params_dtype, (self.block_elem,),
                                            name="block_ub", scope=tik.scope_ubuf)
 
-            gm_offset_i = tik_instance.Scalar(dtype=self.tiling_dtype, name="gm_offset_i", init_value=0)
-            index_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="index_value")
-            suffix_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="suffix_value")
-            with tik_instance.for_range(0, self.indices_last_dim) as index_i:
-                index_value.set_as(indices_ub[(inner_indices_offset + row_i) * self.indices_last_dim + index_i])
-                suffix_value.set_as(self.tiling_ub[self.suffix_list_index + index_i])
-                gm_offset_i.set_as(gm_offset_i + index_value * suffix_value)
+            gm_offset_i = self.get_gm_offset(indices_ub, inner_indices_offset, row_i)
             # move params row data to block_ub from gm
             tik_instance.data_move(block_ub, self.x[gm_offset_i], 0,
                                    1, 1, 0, 0)
@@ -364,13 +400,7 @@ class GatherNd():
 
             with tik_instance.for_range(0, self.row_num_once_ub, thread_num=2) as row_i:
                 # compute gm offset of x
-                gm_offset_i = tik_instance.Scalar(dtype=self.tiling_dtype, name="gm_offset_i", init_value=0)
-                index_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="index_value")
-                suffix_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="suffix_value")
-                with tik_instance.for_range(0, self.indices_last_dim) as index_i:
-                    index_value.set_as(indices_ub[(inner_indices_offset + row_i) * self.indices_last_dim + index_i])
-                    suffix_value.set_as(self.tiling_ub[self.suffix_list_index + index_i])
-                    gm_offset_i.set_as(gm_offset_i + index_value * suffix_value)
+                gm_offset_i = self.get_gm_offset(indices_ub, inner_indices_offset, row_i)
 
                 # set result to res_ub
                 res_ub_offset = row_i * self.params_row
@@ -403,13 +433,7 @@ class GatherNd():
         output_offset = (indices_num_offset + inner_indices_offset) * self.params_row
 
         with tik_instance.for_range(0, row_num_last, thread_num=2) as row_i:
-            gm_offset_i = tik_instance.Scalar(dtype=self.tiling_dtype, name="gm_offset_i", init_value=0)
-            index_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="index_value")
-            suffix_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="suffix_value")
-            with tik_instance.for_range(0, self.indices_last_dim) as index_i:
-                index_value.set_as(indices_ub[(inner_indices_offset + row_i) * self.indices_last_dim + index_i])
-                suffix_value.set_as(self.tiling_ub[self.suffix_list_index + index_i])
-                gm_offset_i.set_as(gm_offset_i + index_value * suffix_value)
+            gm_offset_i = self.get_gm_offset(indices_ub, inner_indices_offset, row_i)
 
             # set result to res_ub
             res_ub_offset = row_i * self.params_row
@@ -458,13 +482,7 @@ class GatherNd():
         output_offset = indices_num_offset * self.params_row
 
         with tik_instance.for_range(0, self.indices_num_remaining, thread_num=1) as row_i:
-            gm_offset_i = tik_instance.Scalar(dtype=self.tiling_dtype, name="gm_offset_i", init_value=0)
-            index_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="index_value")
-            suffix_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="suffix_value")
-            with tik_instance.for_range(0, self.indices_last_dim) as index_i:
-                index_value.set_as(indices_ub[row_i * self.indices_last_dim + index_i])
-                suffix_value.set_as(self.tiling_ub[self.suffix_list_index + index_i])
-                gm_offset_i.set_as(gm_offset_i + index_value * suffix_value)
+            gm_offset_i = self.get_gm_offset(indices_ub, 0, row_i)
 
             res_ub_offset = row_i * self.params_row
             with tik_instance.for_range(0, self.params_row) as i:
@@ -619,13 +637,7 @@ class GatherNd():
             block_ub = tik_instance.Tensor(self.params_dtype, (self.block_elem,), name="block_ub",
                                            scope=tik.scope_ubuf)
 
-            gm_offset_i = tik_instance.Scalar(dtype=self.tiling_dtype, name="gm_offset_i", init_value=0)
-            index_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="index_value")
-            suffix_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="suffix_value")
-            with tik_instance.for_range(0, self.indices_last_dim) as index_i:
-                index_value.set_as(indices_ub[row_i * self.indices_last_dim + index_i])
-                suffix_value.set_as(self.tiling_ub[self.suffix_list_index + index_i])
-                gm_offset_i.set_as(gm_offset_i + index_value * suffix_value)
+            gm_offset_i = self.get_gm_offset(indices_ub, 0, row_i)
             # copy params row to block_ub from gm
             tik_instance.data_move(block_ub, self.x[gm_offset_i], 0, 1, 1, 0, 0)
 
@@ -688,15 +700,15 @@ class GatherNd():
         # params total: inner_loop_num*params_elem_per_loop + row_num_last_tail_ub
         with tik_instance.for_range(0, self.inner_loop_num) as inner_loop_i:
             # move params_elem_per_loop data to res_ub from gm
-            tik_instance.data_move(res_ub, self.x[inner_loop_i*params_elem_per_loop], 0,
+            tik_instance.data_move(res_ub, self.x[inner_loop_i * params_elem_per_loop], 0,
                                    1, burst_len, 0, 0)
             # move result data to gm from ub
-            tik_instance.data_move(self.y[output_offset_base + inner_loop_i*params_elem_per_loop], res_ub, 0,
+            tik_instance.data_move(self.y[output_offset_base + inner_loop_i * params_elem_per_loop], res_ub, 0,
                                    1, burst_len, 0, 0)
 
         with tik_instance.if_scope(self.row_num_last_tail_ub > 0):
             # move row_num_last_tail_ub data to res_ub from gm
-            tik_instance.data_move(res_ub, self.x[self.inner_loop_num*params_elem_per_loop], 0,
+            tik_instance.data_move(res_ub, self.x[self.inner_loop_num * params_elem_per_loop], 0,
                                    1, burst_len_last, 0, 0)
 
             # move result data to gm from ub
@@ -893,18 +905,12 @@ class GatherNd():
         burst_len_sub_row_last = ceil_value(self.one_row_tail, self.block_elem)
         output_offset = indices_num_offset * self.params_row
 
-        gm_offset_i = tik_instance.Scalar(dtype=self.tiling_dtype, name="gm_offset_i", init_value=0)
-        index_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="index_value")
-        suffix_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="suffix_value")
-        with tik_instance.for_range(0, self.indices_last_dim) as index_i:
-            index_value.set_as(indices_ub[index_i])
-            suffix_value.set_as(self.tiling_ub[self.suffix_list_index + index_i])
-            gm_offset_i.set_as(gm_offset_i + index_value * suffix_value)
+        gm_offset_i = self.get_gm_offset(indices_ub, 0, 0)
 
         # process the front part of one params_row: one_row_loop * half_ub_params_elem
         with tik_instance.for_range(0, self.one_row_loop) as row_inner_i:
             # move half_ub_params_elem data of one row to res_ub from gm
-            tik_instance.data_move(res_ub, self.x[gm_offset_i + row_inner_i*half_ub_params_elem], 0,
+            tik_instance.data_move(res_ub, self.x[gm_offset_i + row_inner_i * half_ub_params_elem], 0,
                                    1, burst_len_sub_row, 0, 0)
             # copy result data to gm from ub
             tik_instance.data_move(self.y[output_offset + row_inner_i * half_ub_params_elem], res_ub,
@@ -956,18 +962,12 @@ class GatherNd():
             output_offset = (indices_num_offset + row_i) * self.params_row
 
             # compute gm offset in x tensor
-            gm_offset_i = tik_instance.Scalar(dtype=self.tiling_dtype, name="gm_offset_i", init_value=0)
-            index_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="index_value")
-            suffix_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="suffix_value")
-            with tik_instance.for_range(0, self.indices_last_dim) as index_i:
-                index_value.set_as(indices_ub[row_i * self.indices_last_dim + index_i])
-                suffix_value.set_as(self.tiling_ub[self.suffix_list_index + index_i])
-                gm_offset_i.set_as(gm_offset_i + index_value * suffix_value)
+            gm_offset_i = self.get_gm_offset(indices_ub, 0, row_i)
 
             # process the front part of one params_row
             with tik_instance.for_range(0, self.one_row_loop) as row_inner_i:
                 # move half_ub_params_elem data of one row to res_ub from gm
-                tik_instance.data_move(res_ub, self.x[gm_offset_i + row_inner_i*half_ub_params_elem], 0,
+                tik_instance.data_move(res_ub, self.x[gm_offset_i + row_inner_i * half_ub_params_elem], 0,
                                        1, burst_len_sub_row, 0, 0)
                 # copy result data to gm from ub
                 tik_instance.data_move(self.y[output_offset + row_inner_i * half_ub_params_elem], res_ub,
@@ -1062,13 +1062,7 @@ class GatherNd():
         burst_len_row = ceil_value(self.params_row * self.params_dsize, constant.BLOCK_SIZE)
         output_offset = indices_num_offset * self.params_row
 
-        gm_offset_i = tik_instance.Scalar(dtype=self.tiling_dtype, name="gm_offset_i", init_value=0)
-        index_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="index_value")
-        suffix_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="suffix_value")
-        with tik_instance.for_range(0, self.indices_last_dim) as index_i:
-            index_value.set_as(indices_ub[index_i])
-            suffix_value.set_as(self.tiling_ub[self.suffix_list_index + index_i])
-            gm_offset_i.set_as(gm_offset_i + index_value * suffix_value)
+        gm_offset_i = self.get_gm_offset(indices_ub, 0, 0)
 
         # copy one params_row to res_ub from gm
         tik_instance.data_move(res_ub, self.x[gm_offset_i], 0,
@@ -1103,13 +1097,7 @@ class GatherNd():
         output_offset = (indices_num_offset + (loop_num - 1)) * self.params_row
 
         # compute gm offset in x tensor
-        gm_offset_i = tik_instance.Scalar(dtype=self.tiling_dtype, name="gm_offset_i", init_value=0)
-        index_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="index_value")
-        suffix_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="suffix_value")
-        with tik_instance.for_range(0, self.indices_last_dim) as index_i:
-            index_value.set_as(indices_ub[(loop_num - 1) * self.indices_last_dim + index_i])
-            suffix_value.set_as(self.tiling_ub[self.suffix_list_index + index_i])
-            gm_offset_i.set_as(gm_offset_i + index_value * suffix_value)
+        gm_offset_i = self.get_gm_offset(indices_ub, 0, 0)
 
         # move params_row to res_ub from gm
         tik_instance.data_move(res_ub, self.x[gm_offset_i], 0,
@@ -1147,13 +1135,7 @@ class GatherNd():
             output_offset = (indices_num_offset + row_i) * self.params_row
 
             # compute gm offset in x tensor
-            gm_offset_i = tik_instance.Scalar(dtype=self.tiling_dtype, name="gm_offset_i", init_value=0)
-            index_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="index_value")
-            suffix_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="suffix_value")
-            with tik_instance.for_range(0, self.indices_last_dim) as index_i:
-                index_value.set_as(indices_ub[row_i * self.indices_last_dim + index_i])
-                suffix_value.set_as(self.tiling_ub[self.suffix_list_index + index_i])
-                gm_offset_i.set_as(gm_offset_i + index_value * suffix_value)
+            gm_offset_i = self.get_gm_offset(indices_ub, 0, row_i)
 
             # move params_row to res_ub from gm
             tik_instance.data_move(res_ub, self.x[gm_offset_i], 0,
@@ -1304,13 +1286,7 @@ class GatherNd():
         burst_len_row = ceil_value(self.params_row * self.params_dsize, constant.BLOCK_SIZE)
         output_offset = indices_num_offset * self.params_row
 
-        gm_offset_i = tik_instance.Scalar(dtype=self.tiling_dtype, name="gm_offset_i", init_value=0)
-        index_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="index_value")
-        suffix_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="suffix_value")
-        with tik_instance.for_range(0, self.indices_last_dim) as index_i:
-            index_value.set_as(indices_ub[index_i])
-            suffix_value.set_as(self.tiling_ub[self.suffix_list_index + index_i])
-            gm_offset_i.set_as(gm_offset_i + index_value * suffix_value)
+        gm_offset_i = self.get_gm_offset(indices_ub, 0, 0)
 
         # copy one params_row to res_ub from gm or UB or L1
         tik_instance.data_move(res_ub, x_src[gm_offset_i], 0,
@@ -1345,13 +1321,7 @@ class GatherNd():
 
         with tik_instance.for_range(0, row_num_last, thread_num=2) as row_i:
             # compute gm offset in x tensor
-            gm_offset_i = tik_instance.Scalar(dtype=self.tiling_dtype, name="gm_offset_i", init_value=0)
-            index_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="index_value")
-            suffix_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="suffix_value")
-            with tik_instance.for_range(0, self.indices_last_dim) as index_i:
-                index_value.set_as(indices_ub[(inner_indices_offset + row_i) * self.indices_last_dim + index_i])
-                suffix_value.set_as(self.tiling_ub[self.suffix_list_index + index_i])
-                gm_offset_i.set_as(gm_offset_i + index_value * suffix_value)
+            gm_offset_i = self.get_gm_offset(indices_ub, inner_indices_offset, row_i)
 
             # move params_row data to res_ub from gm or UB or L1
             tik_instance.data_move(res_ub[row_i * self.params_row], x_src[gm_offset_i], 0,
@@ -1387,13 +1357,7 @@ class GatherNd():
 
             with tik_instance.for_range(0, self.row_num_once_ub, thread_num=2) as row_i:
                 # compute gm offset in x tensor
-                gm_offset_i = tik_instance.Scalar(dtype=self.tiling_dtype, name="gm_offset_i", init_value=0)
-                index_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="index_value")
-                suffix_value = tik_instance.Scalar(dtype=self.tiling_dtype, name="suffix_value")
-                with tik_instance.for_range(0, self.indices_last_dim) as index_i:
-                    index_value.set_as(indices_ub[(inner_indices_offset + row_i) * self.indices_last_dim + index_i])
-                    suffix_value.set_as(self.tiling_ub[self.suffix_list_index + index_i])
-                    gm_offset_i.set_as(gm_offset_i + index_value * suffix_value)
+                gm_offset_i = self.get_gm_offset(indices_ub, inner_indices_offset, row_i)
 
                 # move params_row to res_ub from gm or UB or L1
                 tik_instance.data_move(res_ub[row_i * self.params_row], x_src[gm_offset_i], 0,
@@ -1480,7 +1444,6 @@ class GatherNd():
                                         # TILING_MODE_8, complete params data needs to be moved for one indice
                                         self.compute_mode_8(block_id)
 
-
     def gather_nd_compute(self):
         """
         compute of gather_nd
@@ -1504,18 +1467,22 @@ class GatherNd():
 
         self.gather_nd_compute_tiling()
 
-        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
-                                   inputs=(self.x, self.indices),
-                                   outputs=(self.y,),
-                                   flowtable=(self.tiling_gm,), enable_l2=True)
-
         # add compile info
         tbe_context.get_context().add_compile_info("vars", {"core_num": self.core_num,
                                                             "ub_size": self.ub_size,
                                                             "l1_size": self.l1_size,
                                                             "params_dsize": self.params_dsize,
                                                             "indices_dsize": self.indices_dsize
-                                                           })
+                                                            })
+
+        opt_config = {
+            "enable_const_fold": True
+        }
+
+        self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
+                                   inputs=(self.x, self.indices),
+                                   outputs=(self.y,),
+                                   flowtable=(self.tiling_gm,), enable_l2=True, config=opt_config)
 
 
 @register_operator("GatherNd")
