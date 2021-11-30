@@ -26,15 +26,8 @@ import te.utils.shape_util as tsu
 
 
 @fusion_manager.register("poisson_nll_loss")
-#pylint: disable=unused-argument,too-many-locals,invalid-name
-def poisson_nll_loss_compute(input_x,
-                             target,
-                             loss,
-                             log_input=True,
-                             full=False,
-                             eps=1e-8,
-                             reduction="mean",
-                             number=0.0):
+#pylint: disable=unused-argument,too-many-locals,invalid-name,too-many-arguments
+def poisson_nll_loss_compute(input_x, target, loss, log_input=True, full=False, eps=1e-8, reduction="mean", number=0.0):
     """
     possion_nll_loss
 
@@ -66,7 +59,9 @@ def poisson_nll_loss_compute(input_x,
     scalar_param_doublepi = tvm.const(2 * math.pi, dtype=input_x.dtype)
     scalar_param_half = tvm.const(0.5, dtype=input_x.dtype)
 
-    tensor_scalar_number = tbe.broadcast(tvm.const(number, dtype=input_x.dtype), [1, ])
+    tensor_scalar_number = tbe.broadcast(tvm.const(number, dtype=input_x.dtype), [
+        1,
+    ])
     tensor_scalar_one = tbe.broadcast(tvm.const(1.0, dtype=input_x.dtype), shape)
     tensor_scalar_zero = tbe.broadcast(tvm.const(0, dtype=input_x.dtype), shape)
 
@@ -97,10 +92,10 @@ def poisson_nll_loss_compute(input_x,
 
     return output
 
-#pylint: disable=invalid-name
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL,
-                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT,
+
+# pylint: disable = unused-argument,redefined-builtin,too-many-arguments,invalid-name,too-many-locals
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_FLOAT,
                             para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
 def poisson_nll_loss(input_x,
                      target,
@@ -152,17 +147,14 @@ def poisson_nll_loss(input_x,
     dtype = dtype_input.lower()
     data_input = tvm.placeholder(shape_input, name="data_input", dtype=dtype)
     data_target = tvm.placeholder(shape_target, name="data_target", dtype=dtype)
-    
-    output = poisson_nll_loss_compute(data_input, data_target, loss, 
-                                      log_input, full, eps, reduction, 
+
+    output = poisson_nll_loss_compute(data_input, data_target, loss, log_input, full, eps, reduction,
                                       tvm.all(shape_input)[0])
 
     # auto schedule
     with tvm.target.cce():
         schedule = tbe.auto_schedule(output)
 
-    config = {"name": kernel_name,
-              "print_ir":False,
-              "tensor_list": [data_input, data_target, output]}
+    config = {"name": kernel_name, "print_ir": False, "tensor_list": [data_input, data_target, output]}
 
     tbe.cce_build_code(schedule, config)

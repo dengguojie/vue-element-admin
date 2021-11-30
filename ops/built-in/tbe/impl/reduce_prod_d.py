@@ -39,7 +39,7 @@ def check_supported(x, y, axes, keep_dims=None, kernel_name="reduce_prod_d"):
     return True, ""
 
 
-# pylint: disable=locally-disabled, unused-argument
+# 'pylint: disable=locally-disabled, unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("reduce_prod_d")
 def reduce_prod_d_compute(data_input, output_y, axes, keepdims, kernel_name="reduce_prod_d"):
     """
@@ -78,7 +78,7 @@ def reduce_prod_d_compute(data_input, output_y, axes, keepdims, kernel_name="red
     return res
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_LIST_INT),
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)

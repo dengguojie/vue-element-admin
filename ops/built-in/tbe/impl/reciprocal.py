@@ -28,8 +28,8 @@ from impl.util import util_common
 SHAPE_SIZE_LIMIT = 2147483648  # shape limit
 
 
-# pylint: disable=redefined-builtin,unused-argument
-# pylint: disable=too-many-locals
+# 'pylint: disable=redefined-builtin,unused-argument
+# 'pylint: disable=too-many-locals,too-many-branches
 def op_select_format(input_x, output_y, kernel_name="reciprocal"):
     """
     Get support format according to input_x

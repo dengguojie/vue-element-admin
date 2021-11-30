@@ -22,7 +22,9 @@ from te.utils import para_check
 from te import tik
 
 
-class Quantize(object):
+# 'pylint: disable=invalid-name, too-many-branches, too-many-arguments
+# 'pylint: disable=too-many-instance-attributes, too-many-lines
+class Quantize():
     """
     impl of quantize
     """
@@ -174,8 +176,6 @@ class Quantize(object):
         Compute each loop.
         move_num <= ub_tensor_size
         """
-        self.tik_instance.tikdb.debug_print("move_offset")
-        self.tik_instance.tikdb.debug_print("move_num")
         self.init_ub_tensor_and_scalar()
         burse_len_x = math.ceil(move_num / self.data_each_block_x)
         burse_len_y = math.ceil(move_num / self.data_each_block_y)
@@ -743,7 +743,7 @@ class Quantize(object):
                                                              scope=tik.scope_ubuf)
 
 
-#pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_STR, para_check.OPTION_ATTR_INT,
                             para_check.KERNEL_NAME)

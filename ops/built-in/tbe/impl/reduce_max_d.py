@@ -25,8 +25,8 @@ from impl import reduce_max_d_tik
 NoneType = type(None)
 
 
-# pylint: disable=unused-argument,invalid-name,unexpected-keyword-arg
-# pylint: disable=too-many-locals
+# 'pylint: disable=unused-argument,invalid-name,unexpected-keyword-arg
+# 'pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("reduce_max_d")
 def reduce_max_d_compute(x, y, axis, keepdims, kernel_name="reduce_max_d"):
     """
@@ -64,7 +64,7 @@ def reduce_max_d_compute(x, y, axis, keepdims, kernel_name="reduce_max_d"):
     return res
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             (para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_LIST_INT),
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)

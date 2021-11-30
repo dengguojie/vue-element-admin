@@ -43,8 +43,8 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=invalid-name
 # none type
 NONE_TYPE = type(None)
 

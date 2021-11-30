@@ -33,7 +33,7 @@ class Constant:
     OUT_MASK = 64
 
 
-# pylint: disable=super-with-arguments,no-self-use
+# 'pylint: disable=super-with-arguments,no-self-use
 def _get_ceil_int(int1, int2):
     """Get Ceil Int
 
@@ -57,7 +57,7 @@ def _get_ceil_int(int1, int2):
     return ceil_int
 
 
-# pylint: disable=unused-argument,invalid-name,useless-object-inheritance
+# 'pylint: disable=unused-argument,invalid-name,useless-object-inheritance
 @para_check.check_input_type(dict, dict, int, str)
 def reduce_max_d_tik(x, index, axis, kernel_name="reduce_max_d_tik"):
     """
@@ -176,7 +176,7 @@ class ArgmaxBase(object):
             tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class Argmax(ArgmaxBase):
     """
        Function: use to store argmax schedule parameters
@@ -407,7 +407,7 @@ class Argmax(ArgmaxBase):
             tik_instance.vmax(64, vmax_ub, vmax_ub, vmax_ub[ub2_offset * 2], 1, 1, 1, 1, 8, 8, 8)
         return output_num
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def do_max_last_axis_fp32(self, ub_buf_size, loop, n_i):
         """
         do arg in one segment fo float32

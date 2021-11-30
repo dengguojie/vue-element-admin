@@ -40,7 +40,7 @@ def _check_para_list_len(total_shape, valid_shape, slice_offset, stride_list):
         error_manager_vector.raise_err_specific_reson("read_select", "the len of stride list should be 5")
 
 
-# pylint: disable=locally-disabled,too-many-locals,unused-argument,dangerous-default-value
+# 'pylint: disable=locally-disabled,too-many-locals,unused-argument,dangerous-default-value
 @tbe_platform.fusion_manager.fusion_manager.register("read_select")
 def read_select_compute(input_tensor,
                         output_x,
@@ -108,7 +108,7 @@ def read_select_compute(input_tensor,
     return output_ub_4d
 
 
-# pylint: disable=locally-disabled,unexpected-keyword-arg,unnecessary-lambda
+# 'pylint: disable=locally-disabled,unexpected-keyword-arg,unnecessary-lambda
 @para_check.check_input_type(dict, dict, (tuple, list), int, str)
 def read_select(input_x, output_x, stride_list=[1, 1, 1, 1, 1], output_tensor_dim=4, kernel_name="read_select"):
     """

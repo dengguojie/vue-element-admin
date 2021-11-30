@@ -15,7 +15,7 @@
 """
 reduce_mean_d
 """
-# pylint: disable=too-many-arguments,too-many-locals,global-statement
+# 'pylint: disable=too-many-arguments,too-many-locals,global-statement
 import collections
 
 import te.lang.cce as tbe
@@ -31,7 +31,7 @@ ori_shape = [[0], [0]]
 ori_format = ["NCHW", "NCHW"]
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("reduce_mean_d")
 def reduce_mean_d_compute(x,
                           y,

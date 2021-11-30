@@ -26,8 +26,8 @@ from impl.util import util_select_op_base
 SIZE_SIXTEEN = 16
 
 
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=unused-argument,invalid-name
 def _is_last_two_axis_16_multiple(shape):
     """
     check whether divided by 16.
@@ -52,6 +52,7 @@ def _is_last_two_axis_16_multiple(shape):
     return False
 
 
+# 'pylint: disable=too-many-locals,too-many-statements,too-many-boolean-expressions
 def op_select_format(input_x, input_y, output_z, kernel_name="real_div"):
     """
     select format dynamically\n
@@ -264,6 +265,7 @@ def _is_support_diff_formats(x_info, y_info, x_is_which_format, y_is_which_forma
             format_support_flag[("ND", "FRACTAL_Z", "FRACTAL_Z")] = 1
 
 
+# 'pylint: disable=too-many-locals,too-many-branches,too-many-boolean-expressions
 def _is_support_5d_5d_5d(x_info, y_info, x_is_which_format, y_is_which_format, format_support_flag):
     format_x, shape_x, x_cdim = x_info["format"], x_info["shape"], x_info["dim_c"]
     format_y, shape_y, y_cdim = y_info["format"], y_info["shape"], y_info["dim_c"]
@@ -316,6 +318,7 @@ def _is_support_fz_fz_fz(x_info, y_info, x_is_which_format, y_is_which_format, f
     format_support_flag[("FRACTAL_Z", "FRACTAL_Z", "FRACTAL_Z")] = any(all_append_format_fractal_z_cond_list)
 
 
+# 'pylint: disable=too-many-locals,too-many-statements,too-many-boolean-expressions
 def _is_any_fractal_nz(shape_0, shape_1, is_x_y):
     """
     Check whether is any FRACTAL_NZ format, and return the format tuple
@@ -498,6 +501,7 @@ def real_div_compute(x1, x2, y, kernel_name="real_div"):
     return res
 
 
+# 'pylint: disable=too-many-locals,too-many-statements,too-many-boolean-expressions
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def real_div(x1, x2, y, kernel_name="real_div"):

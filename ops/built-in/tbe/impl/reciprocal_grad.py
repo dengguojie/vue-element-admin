@@ -22,8 +22,8 @@ from te.utils import shape_util
 from te import tvm
 
 
-# pylint: disable=locally-disabled,unused-argument
-# pylint: disable=too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=too-many-locals,too-many-branches
 @tbe_platform.fusion_manager.fusion_manager.register("reciprocal_grad")
 def reciprocal_grad_compute(input_y, input_dy, output_data, kernel_name="reciprocal_grad"):
     """

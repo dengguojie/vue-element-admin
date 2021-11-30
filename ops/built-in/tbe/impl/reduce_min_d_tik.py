@@ -30,7 +30,7 @@ class Constant:
     OUT_MASK = 64
 
 
-# pylint: disable=super-with-arguments
+# 'pylint: disable=super-with-arguments
 def _get_ceil_int(int1, int2):
     """Get Ceil Int
 
@@ -54,7 +54,7 @@ def _get_ceil_int(int1, int2):
     return ceil_int
 
 
-# pylint: disable=unused-argument,invalid-name,useless-object-inheritance
+# 'pylint: disable=unused-argument,invalid-name,useless-object-inheritance
 @para_check.check_input_type(dict, dict, int, str)
 def reduce_min_d_tik(x, index, axis, kernel_name="reduce_min_d_tik"):
     """
@@ -173,7 +173,7 @@ class ArgminBase(object):
         self.tik_instance = tik.Tik()
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class Argmin(ArgminBase):
     """
        Function: use to store argmin schedule parameters
@@ -388,7 +388,7 @@ class Argmin(ArgminBase):
         if _loop_segment_tail != 0:
             _run(_loop_segment_tail, _loop_segment)
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def do_min_last_axis_fp32(self, ub_buf_size, loop, n_i):
         """
         do arg in one segment fo float32
