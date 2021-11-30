@@ -190,12 +190,15 @@ install_Ascend(){
           exit -1
         fi
       done
+    if [[ $arch =~ "x86" ]];then
+      arch="x86_64"
+    fi
     if [ $UID -eq 0 ];then
       if [  -d "/usr/local/Ascend" ];then
-        ln -s  /usr/local/Ascend/x86_64-linux/lib64/libruntime.so  /usr/local/Ascend/atc/lib64/libruntime.so
+        ln -s  /usr/local/Ascend/${arch}-linux/lib64/libruntime.so  /usr/local/Ascend/atc/lib64/libruntime.so
       fi
     else
-      ln -s  ~/Ascend/x86_64-linux/lib64/libruntime.so  ~/Ascend/atc/lib64/libruntime.so
+      ln -s  ~/Ascend/${arch}-linux/lib64/libruntime.so  ~/Ascend/atc/lib64/libruntime.so
     fi
 }
 if [[ "$install_local" =~ "FALSE" ]];then
@@ -221,5 +224,6 @@ if [ $UID -eq 0 ];then
 else
   echo "The Ascend install path is ~/Ascend, the ori is ~/Ascend_$bak_time"
 fi
+
 
 

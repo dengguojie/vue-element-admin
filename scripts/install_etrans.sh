@@ -80,9 +80,9 @@ download_run(){
     day=`grep 202[0-9][0,1] index.html |tail -n 1| awk '{print $4}' | awk -F ">" '{print $2}' | awk -F "/" '{print $1}' | grep 20`
     rm -rf index.html
     
-    eval net=$(echo ${net_addr}${day}/${filename}.zip)
+    eval net=$(echo ${net_addr}${day}/${filename}.tar.gz)
     echo $dotted_line
-    echo "Starting download ${filename}.zip"
+    echo "Starting download ${filename}.tar.gz"
     mkdir ascend_download
     wget -P ascend_download --http-user=$username --http-passwd=$pwsswd $net
     res_net=`echo $?`
@@ -113,11 +113,13 @@ extract_pack(){
     echo "start installation Ascend." 
     cd ascend_download
     dir=`pwd`
-    #chmod 744 $dir/${filename}.zip
+    #chmod 744 $dir/${filename}.tar.gz
     pwd
-    unzip -d ./out ./${filename}.zip
+    rm -rf out
+    mkdir out
+    tar -zxvf  ./${filename}.tar.gz -C ./out
     chmod -R 744 out/
-    cd out/version/${filename}
+    cd out/${filename}
 }
 
 install_Ascend(){
@@ -142,12 +144,15 @@ install_Ascend(){
       echo "The $opp package does not exist, please check "
       exit -1
     fi
+    if [[ $arch =~ "x86" ]];then
+      arch="x86_64"
+    fi
     if [ $UID -eq 0 ];then
       if [  -d "/usr/local/Ascend" ];then
-        ln -s  /usr/local/Ascend/x86_64-linux/lib64/libruntime.so  /usr/local/Ascend/atc/lib64/libruntime.so
+        ln -s  /usr/local/Ascend/${arch}-linux/lib64/libruntime.so  /usr/local/Ascend/atc/lib64/libruntime.so
       fi
     else
-      ln -s  ~/Ascend/x86_64-linux/lib64/libruntime.so  ~/Ascend/atc/lib64/libruntime.so
+      ln -s  ~/Ascend/${arch}-linux/lib64/libruntime.so  ~/Ascend/atc/lib64/libruntime.so
     fi
 
     
@@ -182,3 +187,4 @@ if [ $UID -eq 0 ];then
 else
   echo "The Ascend install path is ~/Ascend, the ori is ~/Ascend_$bak_time"
 fi
+

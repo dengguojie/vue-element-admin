@@ -197,7 +197,7 @@ down_third_libs(){
         link=obs_${mylib}
         eval link=$(echo \$$link)
         rm -rf ./build/cann/download/$mylib/* 
-        wget -P ./build/cann/download/$mylib/  $link
+        wget -P  ./build/cann/download/$mylib/  --no-check-certificate $link
       fi
     done    
     
@@ -206,7 +206,7 @@ down_third_libs(){
       if [ ! -f ./build/cann/download/$mylib/* ];then
         link=${mylib}_link
         eval link=$(echo \$$link)
-        wget -P ./build/cann/download/$mylib/  $link
+        wget -P  ./build/cann/download/$mylib/  --no-check-certificate $link
       fi
     done
     
@@ -462,10 +462,10 @@ checkopts() {
                             ./scripts/install_etrans.sh $username $pwsswd $day
                             exit 0;;
            install_local) rm -rf ./ascend_download/out
-                          if [[ -f "./ascend_download/ai_cann_x86.zip" ]];then
+                          if [[ -f "./ascend_download/ai_cann_x86.tar.gz" ]];then
                             chmod 744 ./scripts/install_etrans.sh
                             ./scripts/install_etrans.sh "install_local"
-                          elif [[ -f "./ascend_download/ai_cann_arm.zip" ]];then
+                          elif [[ -f "./ascend_download/ai_cann_arm.tar.gz" ]];then
                             chmod 744 ./scripts/install_etrans.sh
                             ./scripts/install_etrans.sh "install_local"
                           else
@@ -752,3 +752,4 @@ if [[ "$@" == "-h" ]];then
 else
   main "$@"|gawk '{print strftime("[%Y-%m-%d %H:%M:%S]"), $0}'
 fi
+
