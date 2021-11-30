@@ -2474,12 +2474,12 @@ def conv(data, weight, para_dict, optim_dict=None, dsl_flag=True):
     offset_x = para_dict["offset_x"]
     kernel_name = para_dict["kernel_name"]
     mad_dtype = para_dict["mad_dtype"]
-    res_dtype = "float16"
+    res_dtype = para_dict.get("res_dtype", "float16")
     if (in_dtype, w_dtype) == ("int8", "int8"):
         res_dtype = "int32"
-    if (in_dtype, w_dtype) == ("float32", "float32"):
+    elif (in_dtype, w_dtype) == ("float32", "float32"):
         res_dtype = "float32"
-    if (in_dtype, w_dtype) == ("int4", "int4"):
+    elif (in_dtype, w_dtype) == ("int4", "int4"):
         res_dtype = "int32"
     #====================fetch L1fusion information from pass interface=============
     l1_fusion_enable_flag = get_current_build_config("enable_L1_fusion")

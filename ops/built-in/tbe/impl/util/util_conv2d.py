@@ -851,3 +851,12 @@ def v220_gen_param(inputs: dict, weights: dict, shape_fm: list, c0_optim_flag: b
                                                 format=format_dict["output0"])
 
     return [input0, input1, input2, input3, output0]
+
+def is_force_fp32(input_type, weight_type, output_type):
+    """
+    check supports fp16 inputs and fp32 outputs ,only in the case of 
+    static single conv2d op and not including mini and SD3403
+    """
+    if input_type == "float16" and weight_type == "float16" and output_type == "float32":
+        return True
+    return False

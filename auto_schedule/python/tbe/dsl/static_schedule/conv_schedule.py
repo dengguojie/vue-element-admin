@@ -1156,8 +1156,12 @@ class CceConvOp:
                     c_dtype = res_dtype
 
                 fused_coefficient = [self._fused_ahead_operand_num, 0, self._fused_double_operand_num]
+
+                ub_multiples = 1
+                fused_coefficient[-1] = fp32_cub_coefficient(fused_coefficient[-1], ub_multiples, res_dtype)
+                
                 if self._v200_width_out_1_flag:
-                    fused_coefficient[-1] = 1 + fused_coefficient[-1]/2
+                    fused_coefficient[-1] = 1 * ub_multiples + fused_coefficient[-1]/2
                     nonlocal fused_ub_cl0
                     fused_ub_cl0 = fused_ub_cl0/2
 
@@ -1202,6 +1206,20 @@ class CceConvOp:
 
                 tiling_new = get_tiling(info_dict)
                 return tiling_new
+            
+            def fp32_cub_coefficient(cub_coefficient, ub_multiples=1, res_dtype="float16"):
+                """
+                when set fp32 output, compute cub_coefficient
+                """
+                if res_dtype == "float32":
+                    # if res_dtype is float32, ub_multiples shouble be 
+                    # float32 bytes multiples with float16 bytes
+                    # so the ub_multiples is 2 
+                    # by the way ,one multiples of float16 already apply in tiling 
+                    # so the ub_multiples in schedule need to be reduce one
+                    ub_multiples = coeff(res_dtype, "float16")
+                    cub_coefficient += ub_multiples - 1
+                return cub_coefficient
 
             def get_default_tiling():
                 """

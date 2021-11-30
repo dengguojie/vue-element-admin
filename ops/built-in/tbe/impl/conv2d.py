@@ -100,7 +100,13 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
     | Data Type | float16  | float16    | float16 | float16 |
     | Format    | NC1HWC0  | FRACTAL_Z  |  ND     | NC1HWC0 |
 
-    Note: C0 = 32 / sizeof(data type), C1 = ceil(in_channels / C0), for float16 type, C0 = 16
+    Note: 
+    a. C0 = 32 / sizeof(data type), C1 = ceil(in_channels / C0), for float16 type, C0 = 16
+    b. if enable force_fp32, and x type is float16 with single op Conv2d, op select supports:
+    | Tensor    | x        | filter     | bias    | y       |
+    | :-------: | :------: | :--------: | :-----: | :-----: |
+    | Data Type | float16  | float16    | float32 | float32 |
+    | Format    | NC1HWC0  | FRACTAL_Z  |  ND     | NC1HWC0 |
 
     2.When input x type is int8, op select supports the following specification:
 
@@ -155,6 +161,54 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
         `limit_in_height = (limit_out_height - 1) * stride_h + dilated_filter_h - pad_left - pad_right`
         `minimum_size = limit_in_height * in_width * 8 ("8": comes from 2btype*C0=4)`
     """
+    def _select_format_with_in2_in3_out0(c0_optim_flg):
+        # Ascend310, Hi3796CV300CS and SD3403 cannot  support fp32 out
+        flg_soc_310_cs = get_soc_spec("SOC_VERSION") \
+                in ("Ascend310", "Hi3796CV300CS", "SD3403")
+        if c0_optim_flg:
+            if flg_soc_310_cs:
+                input2 = util_select_op_base.gen_param(classify="input2", name="bias",
+                                                   datatype="float16,float16,int32,int32,float16,float16",
+                                                   format="ND,ND,ND,ND,ND,ND")
+                input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
+                                                   datatype="int8,int8,int8,int8,int8,int8",
+                                                   format="ND,ND,ND,ND,ND,ND")
+                output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                    datatype="float16,float16,int32,int32,float16,float16",
+                                                    format="NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0")
+            else:
+                input2 = util_select_op_base.gen_param(classify="input2", name="bias",
+                                                   datatype="float16,float16,int32,int32,float32,float32",
+                                                   format="ND,ND,ND,ND,ND,ND")
+                input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
+                                                   datatype="int8,int8,int8,int8,int8,int8",
+                                                   format="ND,ND,ND,ND,ND,ND")
+                output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                    datatype="float16,float16,int32,int32,float32,float32",
+                                                    format="NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0")
+        else:
+            if flg_soc_310_cs:
+                input2 = util_select_op_base.gen_param(classify="input2", name="bias",
+                                                       datatype="float16,int32,int32,float16",
+                                                       format="ND,ND,ND,ND")
+                input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
+                                                       datatype="int8,int8,int8,int8",
+                                                       format="ND,ND,ND,ND")
+                output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                        datatype="float16,int32,int32,float16",
+                                                        format="NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0")
+            else:
+                input2 = util_select_op_base.gen_param(classify="input2", name="bias",
+                                                       datatype="float16,int32,int32,float32",
+                                                       format="ND,ND,ND,ND")
+                input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
+                                                       datatype="int8,int8,int8,int8",
+                                                       format="ND,ND,ND,ND")
+                output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                                        datatype="float16,int32,int32,float32",
+                                                        format="NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0")
+        return input2, input3, output0
+
     def _select_format(params):
         inputs = params[0]
         weights = params[1]
@@ -206,27 +260,19 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
                 use_v200_c04_flag = util_conv2d.use_v200_c04_check(shape_fm, shape_filter, params)
             if use_v200_c04_flag:
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,float16,int8,int8",
+                                                       datatype="float16,float16,int8,int8,float16,float16",
                                                        format="NC1HWC0_C04,NC1HWC0,"
-                                                              "NC1HWC0_C04,NC1HWC0")
+                                                              "NC1HWC0_C04,NC1HWC0,NC1HWC0_C04,NC1HWC0")
             else:
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,float16,int8,int8",
+                                                       datatype="float16,float16,int8,int8,float16,float16",
                                                        format="NC1HWC0,NC1HWC0,"
-                                                              "NC1HWC0,NC1HWC0")
+                                                              "NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0")
             input1 = util_select_op_base.gen_param(classify="input1", name="filter",
-                                                   datatype="float16,float16,int8,int8",
+                                                   datatype="float16,float16,int8,int8,float16,float16",
                                                    format="FRACTAL_Z_C04,FRACTAL_Z,"
-                                                          "FRACTAL_Z_C04,FRACTAL_Z")
-            input2 = util_select_op_base.gen_param(classify="input2", name="bias",
-                                                   datatype="float16,float16,int32,int32",
-                                                   format="ND,ND,ND,ND")
-            input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
-                                                   datatype="int8,int8,int8,int8",
-                                                   format="ND,ND,ND,ND")
-            output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                    datatype="float16,float16,int32,int32",
-                                                    format="NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0")
+                                                          "FRACTAL_Z_C04,FRACTAL_Z,FRACTAL_Z_C04,FRACTAL_Z")
+            input2, input3, output0 =  _select_format_with_in2_in3_out0(c0_optim_flg)
         else:
             # only dynamic_hw or dynamic_batch is supported by dynamic conv2d
             if (shape_fm == (-2,)) or (DYNAMIC_VALUE in shape_fm):
@@ -250,20 +296,13 @@ def op_select_format(inputs, weights, bias, offset_w, outputs, strides,
                                                         unknownshape_format="NC1HWC0,NC1HWC0")
             else:
                 input0 = util_select_op_base.gen_param(classify="input0", name="x",
-                                                       datatype="float16,int8,int4",
-                                                       format="NC1HWC0,NC1HWC0,NC1HWC0")
+                                                       datatype="float16,int8,int4,float16",
+                                                       format="NC1HWC0,NC1HWC0,NC1HWC0,NC1HWC0")
                 input1 = util_select_op_base.gen_param(classify="input1", name="filter",
-                                                       datatype="float16,int8,int4",
-                                                       format="FRACTAL_Z,FRACTAL_Z,FRACTAL_Z")
-                input2 = util_select_op_base.gen_param(classify="input2", name="bias",
-                                                       datatype="float16,int32,int32",
-                                                       format="ND,ND,ND")
-                input3 = util_select_op_base.gen_param(classify="input3", name="offset_w",
-                                                       datatype="int8,int8,int8",
-                                                       format="ND,ND,ND")
-                output0 = util_select_op_base.gen_param(classify="output0", name="y",
-                                                        datatype="float16,int32,int32",
-                                                        format="NC1HWC0,NC1HWC0,NC1HWC0")
+                                                       datatype="float16,int8,int4,float16",
+                                                       format="FRACTAL_Z,FRACTAL_Z,FRACTAL_Z,FRACTAL_Z")
+                input2, input3, output0 =  _select_format_with_in2_in3_out0(c0_optim_flg)
+
         return [input0, input1, input2, input3, output0]
 
     params = [inputs, weights, bias, offset_w, outputs, strides,
@@ -313,6 +352,9 @@ def conv2d_compute(inputs, weights, bias, offset_w, outputs, strides, pads,
     -------
     tvm compute res
     """
+    output_type = "" if outputs is None else outputs.get("dtype")
+    if util_conv2d.is_force_fp32(inputs.dtype, weights.dtype, output_type):
+        err_man.raise_err_check_type("conv2d", "output", "float32", "float16")
     para_dict, optim_dict = util_conv2d.calc_para_from_tensor(
         inputs, weights, bias, offset_w, strides, \
         pads, dilations, offset_x, groups, kernel_name, data_format, options)
