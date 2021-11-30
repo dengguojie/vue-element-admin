@@ -639,12 +639,12 @@ class MaxPoolWithargmax():
                     self.scalar_source_w.set_as(source_w)
 
                     if self.check_load3d_support:
-                        self.tik_instance.load3dv1(fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w],
-                                                   input_fmap_l1[0], (self.pad[0], self.pad[1], pad_top, pad_bottom),
-                                                   cut_h_size - pad_top - pad_bottom, self.in_size_w, 0, 0, 0,
-                                                   self.scalar_source_w, self.scalar_source_h, self.stride_w,
-                                                   self.stride_h, self.window_w, self.window_h, 1,
-                                                   1, 1, 0, self.fmap_img2col_w, 0, self.pad_value)
+                        self.tik_instance.load3dv1(
+                            fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w], input_fmap_l1[0],
+                            (self.pad[0], self.pad[1], pad_top, pad_bottom), cut_h_size - pad_top - pad_bottom,
+                            self.in_size_w, 0, 0, 0, self.scalar_source_w, self.scalar_source_h, self.stride_w,
+                            self.stride_h, self.window_w, self.window_h, 1, 1, 1, 0, self.fmap_img2col_w, 0,
+                            self.pad_value)
                     else:
                         img2col(self.tik_instance, input_fmap_l1, fmap_img2col_ub, 0,
                                 h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w,
@@ -707,12 +707,11 @@ class MaxPoolWithargmax():
                     self.scalar_source_w.set_as(source_w)
 
                     if self.check_load3d_support:
-                        self.tik_instance.load3dv1(fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w],
-                                                   input_fmap_l1[0], (self.pad[0], self.pad[1], 0, self.pad[3]),
-                                                   cut_h_tail, self.in_size_w, 0, 0, 0, self.scalar_source_w,
-                                                   self.scalar_source_h, self.stride_w,
-                                                   self.stride_h, self.window_w, self.window_h, 1,
-                                                   1, 1, 0, self.fmap_img2col_w, 0, self.pad_value)
+                        self.tik_instance.load3dv1(
+                            fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w], input_fmap_l1[0],
+                            (self.pad[0], self.pad[1], 0, self.pad[3]), cut_h_tail, self.in_size_w, 0, 0, 0,
+                            self.scalar_source_w, self.scalar_source_h, self.stride_w, self.stride_h, self.window_w,
+                            self.window_h, 1, 1, 1, 0, self.fmap_img2col_w, 0, self.pad_value)
                     else:
                         img2col(self.tik_instance, input_fmap_l1, fmap_img2col_ub, 0,
                                 h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w,
@@ -781,11 +780,11 @@ class MaxPoolWithargmax():
                 self.scalar_source_w.set_as(source_w)
 
                 if self.check_load3d_support:
-                    self.tik_instance.load3dv1(fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w],
-                                               input_fmap_l1[0], (self.pad[0], self.pad[1], self.pad[2], 0),
-                                               (cut_h_size - self.pad[2]), self.in_size_w, 0, 0, 0, self.scalar_source_w,
-                                               self.scalar_source_h, self.stride_w, self.stride_h, self.window_w,
-                                               self.window_h, 1, 1, 1, 0, self.fmap_img2col_w, 0, self.pad_value)
+                    self.tik_instance.load3dv1(
+                        fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w], input_fmap_l1[0],
+                        (self.pad[0], self.pad[1], self.pad[2], 0), (cut_h_size - self.pad[2]), self.in_size_w,
+                        0, 0, 0, self.scalar_source_w, self.scalar_source_h, self.stride_w, self.stride_h,
+                        self.window_w, self.window_h, 1, 1, 1, 0, self.fmap_img2col_w, 0, self.pad_value)
                 else:
                     img2col(self.tik_instance, input_fmap_l1, fmap_img2col_ub, 0,
                             h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w, 0, 0,
@@ -1073,15 +1072,12 @@ class MaxPoolWithargmax():
                             self.scalar_source_w.set_as(source_w)
 
                             if self.check_load3d_support:
-                                self.tik_instance.load3dv1(fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 *
-                                                                           self.fmap_img2col_w],
-                                                           input_fmap_l1[0],
-                                                           (self.pad[0], self.pad[1], pad_top, pad_bottom),
-                                                           cut_h_size - pad_top - pad_bottom, self.in_size_w,
-                                                           0, 0, 0, self.scalar_source_w,
-                                                           self.scalar_source_h, self.stride_w, self.stride_h,
-                                                           self.window_w, self.window_h, 1, 1, 1, 0, self.fmap_img2col_w,
-                                                           0, self.pad_value)
+                                self.tik_instance.load3dv1(
+                                    fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w],
+                                    input_fmap_l1[0], (self.pad[0], self.pad[1], pad_top, pad_bottom),
+                                    cut_h_size - pad_top - pad_bottom, self.in_size_w, 0, 0, 0,
+                                    self.scalar_source_w, self.scalar_source_h, self.stride_w, self.stride_h,
+                                    self.window_w, self.window_h, 1, 1, 1, 0, self.fmap_img2col_w, 0, self.pad_value)
                             else:
                                 img2col(self.tik_instance, input_fmap_l1, fmap_img2col_ub, 0,
                                         h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w,
@@ -1347,13 +1343,12 @@ class MaxPoolWithargmax():
                             self.scalar_source_w.set_as(source_w)
 
                             if self.check_load3d_support:
-                                self.tik_instance.load3dv1(fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 *
-                                                                           self.fmap_img2col_w],
-                                                           input_fmap_l1[0], (self.pad[0], self.pad[1], self.pad[2], 0),
-                                                           (cut_h_size - self.pad[2]), self.in_size_w, 0, 0, 0,
-                                                           self.scalar_source_w, self.scalar_source_h,
-                                                           self.stride_w, self.stride_h, self.window_w, self.window_h, 1,
-                                                           1, 1, 0, self.fmap_img2col_w, 0, self.pad_value)
+                                self.tik_instance.load3dv1(
+                                    fmap_img2col_ub[h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w],
+                                    input_fmap_l1[0], (self.pad[0], self.pad[1], self.pad[2], 0),
+                                    (cut_h_size - self.pad[2]), self.in_size_w, 0, 0, 0,
+                                    self.scalar_source_w, self.scalar_source_h, self.stride_w, self.stride_h,
+                                    self.window_w, self.window_h, 1, 1, 1, 0, self.fmap_img2col_w, 0, self.pad_value)
                             else:
                                 img2col(self.tik_instance, input_fmap_l1, fmap_img2col_ub, 0,
                                         h_index * SCALAR_C0 * SCALAR_C0 * self.fmap_img2col_w,

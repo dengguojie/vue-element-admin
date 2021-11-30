@@ -18,9 +18,12 @@ load3d_common_func
 from te import tik
 
 
-# 'pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments,too-many-locals,too-many-statements
 def img2col(tik_instance, ori_input_l1, ori_input_col_ub, l1_start_offset, ub_start_offset, index_kh, index_kw,
             left_top_h, left_top_w, l1_h, l1_w, kernel_h, kernel_w, stride_h, stride_w, repeat_times, repeat_mode, pad):
+    """
+    load3dv1
+    """
     C0 = 16
     SCALAR_TYPE = "int64"
     # load3d process num per repeat
