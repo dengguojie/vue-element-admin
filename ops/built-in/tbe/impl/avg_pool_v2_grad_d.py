@@ -158,11 +158,11 @@ def parameter_check(shape_in, shape_k, shape_out, dtype, strides,
             raise RuntimeError("In op[avg_pool_v2_grad], L1's memory space is not enough to support "
                         "dilated_h tiling with 16!")
     # limiting eque get_tiling, but tile_m get max(1024)
-    # '3*max_h_in_ub * out_w  + (max_h_in_ub*stride - (stride - 1)) * dila_w'
-    # '< (ub_size/2 - tile_m * Constant.BLOCK_SIZE)/Constant.BLOCK_SIZE'
-    # 'max_h_in_ub * out_w + (max_h_in_ub*stride - (stride - 1)) * dila_w  < X'
-    # 'max_h_in_ub  < (X + (stride - 1) * dila_w )/ (out_w   + stride*dila_w )'
-    # '3*max_h_in_ub * out_w which is out matrix + meanmatrix + mulmatrix size'
+    # `3*max_h_in_ub * out_w  + (max_h_in_ub*stride - (stride - 1)) * dila_w`
+    # `< (ub_size/2 - tile_m * Constant.BLOCK_SIZE)/Constant.BLOCK_SIZE`
+    # `max_h_in_ub * out_w + (max_h_in_ub*stride - (stride - 1)) * dila_w  < X`
+    # `max_h_in_ub  < (X + (stride - 1) * dila_w )/ (out_w   + stride*dila_w )`
+    # `3*max_h_in_ub * out_w which is out matrix + meanmatrix + mulmatrix size`
     max_dh_in_ub = ((ub_size - l0a_size // 2) // (data_size * Constant.BLOCK_SIZE)
                     + (strides[dim_s_h] - 1) * dilated_w) // \
                    (3 * wo + strides[dim_s_h] * dilated_w)
@@ -402,20 +402,20 @@ def avg_pool_grad_tiling(input_w, input_h, kernel_shape, out_shape, res,
     # out MATRIX: out_n, out_cgroup, out_c1, out_h, out_w, dout_c0
     # max_h_in_ub * out_w * BLOCK_SIZE * 2
     # dilate : input_shape[0], input_shape[1], input_shape[2],
-    # dilated_h, dilated_w, input_shape[5]
-    # max_h_in_ub * out_w * BLOCK_SIZE * 2
-    # (max_h_in_ub*stride - (stride - 1)) * dila_w * BLOCK_SIZE * 2
+    # `dilated_h, dilated_w, input_shape[5]`
+    # `max_h_in_ub * out_w * BLOCK_SIZE * 2`
+    # `(max_h_in_ub*stride - (stride - 1)) * dila_w * BLOCK_SIZE * 2`
     # cast : out_n, out_cgroup, out_c1, input_h*input_w, out_c0
-    # tile_m * BLOCK_SIZE * 2
-    # 3*max_h_in_ub * out_w  + (max_h_in_ub*stride - (stride - 1)) * dila_w
-    # < (ub_size/2 - tile_m * BLOCK_SIZE)/BLOCK_SIZE
-    # max_h_in_ub * out_w + (max_h_in_ub*stride - (stride - 1)) * dila_w  < X
-    # max_h_in_ub  < (X + (stride - 1) * dila_w )/ (out_w   + stride*dila_w )
+    # `tile_m * BLOCK_SIZE * 2`
+    # `3*max_h_in_ub * out_w  + (max_h_in_ub*stride - (stride - 1)) * dila_w`
+    # `< (ub_size/2 - tile_m * BLOCK_SIZE)/BLOCK_SIZE`
+    # `max_h_in_ub * out_w + (max_h_in_ub*stride - (stride - 1)) * dila_w  < X`
+    # `max_h_in_ub  < (X + (stride - 1) * dila_w )/ (out_w   + stride*dila_w )`
     # becasue tile_m depend on LoC of tiling m, so m set max value max_l0a_m
 
     # tiling in L1
-    # 'max_h_in_l1 = (l1_size - hk_wk*BLOCK_SIZE*BLOCK_SIZE*data_size) // ('
-    # 'data_size*dila_w*BLOCK_SIZE)'
+    # `max_h_in_l1 = (l1_size - hk_wk*BLOCK_SIZE*BLOCK_SIZE*data_size) // (`
+    # `data_size*dila_w*BLOCK_SIZE)`
     # It is certain that max_h_in_l1 is grater
     # than max_h_in_ub, so max_h_in_ub one time
     # into L1. 'L1 SIZE = 1M, UB SIZE = 256K';
