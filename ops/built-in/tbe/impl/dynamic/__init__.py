@@ -343,6 +343,7 @@ from .ger import ger
 from .smooth_l1_loss_v2 import smooth_l1_loss_v2
 from .index_fill_d import index_fill_d
 from .max_pool_grad_with_argmaxv1 import max_pool_grad_with_argmax_v1
+from .max_pool_grad_with_argmaxv2 import max_pool_grad_with_argmax_v2
 from .nll_loss import nll_loss
 from .nll_loss_grad import nll_loss_grad
 from .shrink import shrink

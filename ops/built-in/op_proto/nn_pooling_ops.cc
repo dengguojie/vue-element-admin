@@ -7032,23 +7032,29 @@ VERIFY_FUNC_REG(AvgPool1DD, AvgPool1DDVerify);
 // ----------------AvgPool1DD END-------------------
 
 // ----------------------MaxPoolGradWithArgmaxV2-----------------------
+
 IMPLEMT_VERIFIER(MaxPoolGradWithArgmaxV2, MaxPoolGradWithArgmaxV2Verify) {
   return GRAPH_SUCCESS;
 }
+
 IMPLEMT_COMMON_INFERFUNC(MaxPoolGradWithArgmaxV2InferShape) {
-  TensorDesc output_y = op.GetOutputDesc("y");
+  auto op_desc_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc_x = op_desc_info->MutableInputDesc("x");
+  auto output_desc_y = op_desc_info->MutableOutputDesc("y");
+  vector<int64_t> x_shape = input_desc_x->MutableShape().GetDims();
+  DataType input_dtype = input_desc_x->GetDataType();
+  std::vector<std::pair<int64_t, int64_t>> x_range;
+  input_desc_x->GetShapeRange(x_range);
 
-  auto tensorDesc = op.GetInputDesc("x");
-  auto shape = tensorDesc.GetShape();
-  output_y.SetShape(shape);
-
-  DataType inputDtype = tensorDesc.GetDataType();
-  output_y.SetDataType(inputDtype);
-
-  (void)op.UpdateOutputDesc("y", output_y);
+  MakeUpShapeRange(x_shape, x_range);
+  output_desc_y->SetShape(GeShape(x_shape));
+  output_desc_y->SetShapeRange(x_range);
+  output_desc_y->SetDataType(input_dtype);
   return GRAPH_SUCCESS;
 }
+// Registered inferfunction
 COMMON_INFER_FUNC_REG(MaxPoolGradWithArgmaxV2, MaxPoolGradWithArgmaxV2InferShape);
+// Registered verify function
 VERIFY_FUNC_REG(MaxPoolGradWithArgmaxV2, MaxPoolGradWithArgmaxV2Verify);
 // ----------------------MaxPoolGradWithArgmaxV2-----------------------
 
