@@ -70,6 +70,8 @@ TEST_F(asingrad, asingrad_infer_shape_1) {
   op.UpdateInputDesc("y", tensor_desc);
   op.UpdateInputDesc("dy", tensor_desc);
 
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_desc = op.GetOutputDesc("z");

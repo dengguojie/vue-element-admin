@@ -33,6 +33,8 @@ TEST_F(mod, mod_infershape_same_test){
   op.UpdateInputDesc("x1", create_desc({1, 3, 4}, ge::DT_INT8));  
   op.UpdateInputDesc("x2", create_desc({1, 3, 4}, ge::DT_INT8));
 
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 

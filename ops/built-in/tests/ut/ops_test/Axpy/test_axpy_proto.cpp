@@ -61,6 +61,8 @@ TEST_F(AxpyProtoTest, axpy_infershape_dynamic_test){
   float alpha = 1.0;
   op.SetAttr("alpha", alpha);
 
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 

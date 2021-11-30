@@ -43,7 +43,9 @@ TEST_F(AsinhGrad, asinh_grad_infer_shape_fp16) {
                                              ge::FORMAT_ND, shape_range);
   op.UpdateInputDesc("y", tensor_desc);
   op.UpdateInputDesc("dy", tensor_desc);
-  
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_desc = op.GetOutputDesc("z");

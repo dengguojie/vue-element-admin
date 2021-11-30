@@ -58,7 +58,8 @@ TEST_F(AxpyV2ProtoTest, axpy_infershape_dynamic_test){
   op.UpdateInputDesc("x2", tensor_desc);
   op.UpdateInputDesc("alpha", tensor_desc);
 
-
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 

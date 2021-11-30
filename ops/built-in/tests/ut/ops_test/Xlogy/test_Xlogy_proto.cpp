@@ -24,6 +24,9 @@ TEST_F(xlogy,xlogy_infershape_diff_test){
                                                 ge::FORMAT_ND,shape_range);
     op.UpdateInputDesc("x1",tensor_desc);
     op.UpdateInputDesc("x2",tensor_desc);
+
+    auto status = op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret,ge::GRAPH_SUCCESS);
     auto output_y1_desc = op.GetOutputDesc("y");

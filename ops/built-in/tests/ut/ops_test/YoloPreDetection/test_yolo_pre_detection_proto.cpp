@@ -41,3 +41,30 @@ TEST_F(YoloPreDetectionTest, yolo_pre_detection_test_case_1){
   expected_output_shape = {1, 80, 19216};
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
+
+TEST_F(YoloPreDetectionTest, InferShapeYoloPreDetection_001) {
+  ge::op::YoloPreDetection op;
+  op.UpdateInputDesc("x", create_desc({1, 255, 80, 80}, ge::DT_FLOAT));
+  op.SetAttr("boxes", 0);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(YoloPreDetectionTest, InferShapeYoloPreDetection_002) {
+  ge::op::YoloPreDetection op;
+  op.UpdateInputDesc("x", create_desc({1, 255, 80, 80}, ge::DT_FLOAT));
+  op.SetAttr("coords", 3);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(YoloPreDetectionTest, InferShapeYoloPreDetection_003) {
+  ge::op::YoloPreDetection op;
+  op.UpdateInputDesc("x", create_desc({1, 255, 80, 80}, ge::DT_FLOAT));
+  op.SetAttr("classes", 1025);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

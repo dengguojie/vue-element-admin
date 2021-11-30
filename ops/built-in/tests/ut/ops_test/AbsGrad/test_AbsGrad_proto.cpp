@@ -131,6 +131,8 @@ TEST_F(abs_grad, absgrad_infer_shape_3) {
                                              ge::FORMAT_ND, shape_range_x2);
   op.UpdateInputDesc("dy", tensor_desc_x2);
 
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_desc = op.GetOutputDesc("z");

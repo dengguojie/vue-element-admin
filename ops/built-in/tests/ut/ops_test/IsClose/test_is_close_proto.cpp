@@ -57,6 +57,8 @@ TEST_F(IsCloseTest, is_close_test_case_2) {
     is_close_op.UpdateInputDesc("x1", XtensorDesc);
     is_close_op.UpdateInputDesc("x2", YtensorDesc);
 
+    auto status = is_close_op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     // call InferShapeAndType function here
     auto ret = is_close_op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_SUCCESS);

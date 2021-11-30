@@ -52,6 +52,8 @@ TEST_F(mulnonan, mulnonan_infer_same_test) {
   op.UpdateInputDesc("x1", create_desc({1, 3, 4}, ge::DT_INT8));
   op.UpdateInputDesc("x2", create_desc({1, 3, 4}, ge::DT_INT8));
   
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
   auto output_desc = op.GetOutputDesc("y");
@@ -60,6 +62,11 @@ TEST_F(mulnonan, mulnonan_infer_same_test) {
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
 }
 
+TEST_F(mulnonan, InfershapeMulNoNan_test_001) {
+  ge::op::MulNoNan op;
+  op.UpdateInputDesc("x1", create_desc({1, 3, 4}, ge::DT_INT16));
+  op.UpdateInputDesc("x2", create_desc({1, 3, 4}, ge::DT_INT8));
 
-
-
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

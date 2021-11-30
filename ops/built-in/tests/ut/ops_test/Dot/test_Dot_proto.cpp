@@ -76,6 +76,8 @@ TEST_F(DotTest, dot_test_case_2) {
     tensorDesc2.SetShape(shape2);
     dot_op.UpdateInputDesc("input_y", tensorDesc2);
 
+    auto status = dot_op.VerifyAllAttr(true);
+    EXPECT_EQ(status, ge::GRAPH_SUCCESS);
     auto ret = dot_op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
