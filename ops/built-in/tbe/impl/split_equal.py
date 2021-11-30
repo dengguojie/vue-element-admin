@@ -17,7 +17,6 @@ split_v_d
 """
 
 from te import tik
-from te import tvm
 from te import platform as tbe_platform
 
 # vtranspose can deal 16*16
@@ -120,6 +119,7 @@ class SplitEqual():
                                         self.split_last_dim * self.x_unit // self.block_ele, 0, 0)
 
     def process_each_core(self, core_ele, core_offset):
+        """process_each_core"""
         loop_num = core_ele // self.x_unit
         self.ub_a = self.tik_instance.Tensor(self.dtype, (self.half_ub_ele,), name="ub_a", scope=tik.scope_ubuf)
         self.ub_b = self.tik_instance.Tensor(self.dtype, (self.half_ub_ele,), name="ub_b", scope=tik.scope_ubuf)
@@ -128,6 +128,7 @@ class SplitEqual():
             self.mov_input_to_output(loop_offset, self.ub_a, self.ub_b)
 
     def get_min_unit(self):
+        """get_min_unit"""
         list_sixteen = {1, 2, 4, 8, 16}
         for i in list_sixteen:
             if self.split_last_dim * i % 16 == 0:

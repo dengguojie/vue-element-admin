@@ -441,7 +441,7 @@ def strided_slice_assign_d(ref_dict,
     if input_dtype == "float16":
         if len(slice_shape) > 1 and slice_shape[-1] < 16:
             error_manager_vector.raise_err_specific_reson(
-                "strided_slice_assign_d", 
+                "strided_slice_assign_d",
                 "Under fp16, except dim num is 1, \
                 last dimension of input shape must bigger and equal than 16.")
 

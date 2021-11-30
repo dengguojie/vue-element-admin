@@ -51,9 +51,9 @@ def get_op_support_info(input_x,
     axis_split = [i for i in axis_d if i not in attr1]
     if format_x == "ND":
         if attr2:
-            axis_split_matrix=[]
+            axis_split_matrix = []
             for i in axis_split:
-                split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]],[1, [i]])]
+                split_0 = [SplitInput([0, [i], [-1], [-1]]), SplitOutput([0, [i]], [1, [i]])]
                 axis_split_matrix.append(split_0)
             axis_reduce_list = None
         else:
