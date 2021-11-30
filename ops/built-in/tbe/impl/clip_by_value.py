@@ -22,7 +22,7 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("clip_by_value")
 def clip_by_value_compute(input_t, clip_value_min, clip_value_max, output_t,
                           kernel_name="clip_by_value"):
@@ -119,7 +119,7 @@ def clip_by_value(input_t, clip_value_min, clip_value_max,
     shape_x, shape_max, shape_broadcast = \
         shape_util.broadcast_shapes(shape_x, shape_max, param_name_input1="input_t",
                                     param_name_input2="clip_value_max")
-    shape_min, shape_broadcast, shape_broadcast2 = \
+    shape_min, shape_broadcast, _ = \
         shape_util.broadcast_shapes(shape_min, shape_broadcast, param_name_input1="clip_value_min",
                                     param_name_input2="input_t_broadcast")
 

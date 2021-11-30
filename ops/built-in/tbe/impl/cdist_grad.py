@@ -21,17 +21,17 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils import shape_util
 
-# General limitation of the reduce size for input shape: 2**31
-SHAPE_SIZE_LIMIT = 2147483648
-
 
 #Power calculation
 def tensor_pow(data, p):
+    """
+    tensor_pow
+    """
     log_value = tbe.vlog(data, priority_flag=0)
     return tbe.vexp(tbe.vmuls(log_value, p))
 
 
-#pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
 @fusion_manager.register("cdist_grad")
 def cdist_grad_compute(input_grad, input_x1, input_x2, input_cdist, p,
                        kernel_name="cdist_grad"):
@@ -125,7 +125,7 @@ def cdist_grad_compute(input_grad, input_x1, input_x2, input_cdist, p,
     return ret
 
 
-#pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,

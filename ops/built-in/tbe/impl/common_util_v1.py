@@ -90,7 +90,7 @@ def get_data_size(datatype):
                     }
     data_size = datatype_map.get(datatype)
     if data_size is None:
-        raise RuntimeError("datatype %s is not support!", datatype)
+        raise RuntimeError("datatype %s is not support!" % (datatype))
 
     return data_size
 

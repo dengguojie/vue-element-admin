@@ -17,18 +17,13 @@ bn_3d_training_update
 """
 import te.lang.cce as tbe
 import te.platform as tbe_platform
-from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
-from impl.util.util_select_op_base import SplitInput
-from impl.util.util_select_op_base import SplitOutput
-from impl.util.util_select_op_base import get_op_cal_info
 from impl.bn_training_update import bn_training_update
 
 
-# pylint: disable = unused-argument
-# pylint: disable=invalid-name,redefined-builtin,too-many-statements
+# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
+# 'pylint: disable=invalid-name,redefined-builtin,too-many-statements
 @tbe_platform.fusion_manager.fusion_manager.register("bn3d_training_update")
 def bn3d_training_update_compute(x,
                                  sum,
@@ -141,7 +136,7 @@ def bn3d_training_update_compute(x,
 
     return res
 
-
+# 'pylint: disable=too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,

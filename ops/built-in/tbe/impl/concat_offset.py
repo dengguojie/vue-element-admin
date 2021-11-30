@@ -19,7 +19,7 @@ from te.utils import para_check
 from impl.util import util_common
 
 
-# pylint: disable=unused-argument,invalid-name,unnecessary-pass
+# 'pylint: disable=unused-argument,invalid-name,unnecessary-pass
 def check_supported(concat_dim, x, y, kernel_name="concat_offset"):
     """
     if the inputs is dynamic case, and the all num of x is <= 95, will support the aicore Op

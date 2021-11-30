@@ -22,24 +22,9 @@ from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
-# the number of bits per byte
-THREAD_NUM = 2
-# the number of data contained in each coordinate box
-DEFAULT_NBURST = 1
-# The Maximum number of float16 data can store in UB with pingpong (256 * 15)
-MAX_UB_ELEMENT_NUMBER_FP16 = 5120
-# The Maximum number of float32 data can store in UB with pingpong(128 * 15)
-MAX_UB_ELEMENT_NUMBER_FP32 = 2560
-# the number of blocks included in each repeat with float16
-BLOCK_NUMBER_FP16 = 32
-# the number of blocks included in each repeat with float32
-BLOCK_NUMBER_FP32 = 64
-# one block size takes up 32b
-BLOCK_SIZE = 32
 
-
-# pylint: disable = unused-argument
-# pylint: disable=too-many-arguments,singleton-comparison
+# 'pylint: disable = unused-argument
+# 'pylint: disable=too-many-arguments,singleton-comparison
 def get_op_support_info(anchorbox_in_dict,
                         ground_truth_in_dict,
                         delta_out_dict,
@@ -49,18 +34,18 @@ def get_op_support_info(anchorbox_in_dict,
     """
     get_op_support_info
     """
-    axis_split_matrix=[[SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
+    axis_split_matrix = [[SplitInput([0, [0], [-1], [-1]], [1, [0], [-1], [-1]]), SplitOutput([0, [0]])]]
     axis_reduce_list = None
     op_cal_info_in_json = get_op_cal_info(axis_split_matrix, axis_reduce_list, 0, 0)
     return op_cal_info_in_json
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class BoundingBoxEncode():
     """
     Funtion: use to store BoundingBoxEncode base parameters
     """
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def __init__(self, anchorbox, ground_truth_box, delta, means, stds,
                  kernel_name):
         self.init_tik_instance()
@@ -76,20 +61,23 @@ class BoundingBoxEncode():
         self.core_num = 32
         self.data_dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(
             self.anchor_box_dtype) // 8
-        self.data_num_in_each_block = BLOCK_SIZE // self.data_dtype_bytes_size
+        block_size = 32
+        self.data_num_in_each_block = block_size // self.data_dtype_bytes_size
         self.each_core_start_addr, self.each_core_calcul_num = \
             self.get_core_param()
-        self.ub_max_size = MAX_UB_ELEMENT_NUMBER_FP16
+        max_ub_element_number_fp16 = 5120
+        self.ub_max_size = max_ub_element_number_fp16
         self.init_gm_tensor()
-
+        max_ub_element_number_fp32 = 2560
         if self.anchor_box_dtype == "float32":
-            self.ub_max_size = MAX_UB_ELEMENT_NUMBER_FP32
+            self.ub_max_size = max_ub_element_number_fp32
         self.loop_cycle = self.get_loop_cycle()
         self.start_block_addr, self.block_number = self.get_loop_param()
         self.repeat_times = self.get_repeat_cycle()
 
     def init_tik_instance(self):
-        """init_tik_instance
+        """
+        init_tik_instance
 
         Parameters
         ----------
@@ -104,7 +92,8 @@ class BoundingBoxEncode():
             "tik.vdiv", "float32")
 
     def data_move_mte2_function(self, loop_input, block_number):
-        """data_move_mte2_function
+        """
+        data_move_mte2_function
 
         Parameters
         ----------
@@ -118,24 +107,26 @@ class BoundingBoxEncode():
         result : list
             [anchor_box_ub, ground_truth_in_ub]
         """
+        default_nburst = 1
         anchor_box_ub = self.tik_instance.Tensor(
             self.anchor_box_dtype, (self.ub_max_size // 4, 4),
             name="anchor_box_ub",
             scope=tik.scope_ubuf)
         self.tik_instance.data_move(anchor_box_ub,
                                     self.anchorbox_in[loop_input], 0,
-                                    DEFAULT_NBURST, block_number, 1, 1, 1)
+                                    default_nburst, block_number, 1, 1, 1)
         ground_truth_in_ub = self.tik_instance.Tensor(
             self.ground_truth_dtype, (self.ub_max_size // 4, 4),
             name="ground_truth_in_ub",
             scope=tik.scope_ubuf)
         self.tik_instance.data_move(ground_truth_in_ub,
                                     self.ground_truth_in[loop_input], 0,
-                                    DEFAULT_NBURST, block_number, 1, 1, 1)
+                                    default_nburst, block_number, 1, 1, 1)
         return anchor_box_ub, ground_truth_in_ub
 
     def data_move_mte3_function(self, loop_input, block_num, delta_dst_ub):
-        """data_move_mte3_function
+        """
+        data_move_mte3_function
 
         Parameters
         ----------
@@ -150,11 +141,13 @@ class BoundingBoxEncode():
         -------
         None
         """
+        default_nburst = 1
         self.tik_instance.data_move(self.delta_out[loop_input], delta_dst_ub,
-                                    0, DEFAULT_NBURST, block_num, 0, 0)
+                                    0, default_nburst, block_num, 0, 0)
 
     def get_repeat_cycle(self):
-        """data_move_mte2_function
+        """
+        data_move_mte2_function
 
         Parameters
         ----------
@@ -165,9 +158,11 @@ class BoundingBoxEncode():
         result : int
             repeat_times
         """
-        each_repeat_block_number = BLOCK_NUMBER_FP16
+        block_number_fp16 = 32
+        block_number_fp32 = 64
+        each_repeat_block_number = block_number_fp16
         if self.anchor_box_dtype == "float32":
-            each_repeat_block_number = BLOCK_NUMBER_FP32
+            each_repeat_block_number = block_number_fp32
         if self.block_number < each_repeat_block_number:
             repeat_times = 1
         elif self.block_number % each_repeat_block_number == 0:
@@ -177,7 +172,8 @@ class BoundingBoxEncode():
         return repeat_times
 
     def get_core_param(self):
-        """calculate data in number, each core start address
+        """
+        calculate data in number, each core start address
         """
         data_in_number = self.anchor_box_shape[0] * self.anchor_box_shape[1]
         each_core_start_addr = (data_in_number // (self.core_num * 4)) * 4
@@ -201,7 +197,8 @@ class BoundingBoxEncode():
         return each_core_start_addr, each_core_calcul_num
 
     def set_means_stds_scalar(self, means, stds):
-        """set_means_stds_scalar"""
+        """
+        set_means_stds_scalar"""
         dtype = "float16"
         # set means value [0, 0, 0, 0]
         means_0_scalar = self.tik_instance.Scalar(dtype, name="means_0_scalar")
@@ -227,7 +224,8 @@ class BoundingBoxEncode():
                 stds_0_scalar, stds_1_scalar, stds_2_scalar, stds_3_scalar)
 
     def tik_instance_function(self):
-        """tik_instance_function
+        """
+        tik_instance_function
 
         Parameters
         ----------
@@ -245,7 +243,8 @@ class BoundingBoxEncode():
             outputs=[self.delta_out])
 
     def init_gm_tensor(self):
-        """init_gm_tensor
+        """
+        init_gm_tensor
 
         Parameters
         ----------
@@ -271,7 +270,8 @@ class BoundingBoxEncode():
             scope=tik.scope_gm)
 
     def get_loop_cycle(self):
-        """get_loop_cycle
+        """
+        get_loop_cycle
 
         Parameters
         ----------
@@ -290,7 +290,8 @@ class BoundingBoxEncode():
         return loop_cycle
 
     def get_loop_param(self):
-        """get_loop_param
+        """
+        get_loop_param
 
         Parameters
         ----------
@@ -305,13 +306,13 @@ class BoundingBoxEncode():
         if block_number == 0:
             block_number = 1
         start_block_addr = block_number // self.loop_cycle
-
+        max_ub_element_number_fp16 = 5120
         if self.loop_cycle > 1:
             if block_number % self.loop_cycle != 0:
                 block_number_loop = block_number - start_block_addr * (
                     self.loop_cycle - 1)
                 while block_number * self.loop_cycle < block_number_loop or \
-                      block_number_loop * 16 > MAX_UB_ELEMENT_NUMBER_FP16:
+                      block_number_loop * 16 > max_ub_element_number_fp16:
                     self.loop_cycle += 1
                     start_block_addr = block_number // self.loop_cycle
                     block_number_loop = block_number - start_block_addr * (
@@ -322,7 +323,8 @@ class BoundingBoxEncode():
         return start_block_addr, block_number
 
     def calculation_process(self, block_id):
-        """get_loop_param
+        """
+        get_loop_param
 
         Parameters
         ----------
@@ -345,7 +347,8 @@ class BoundingBoxEncode():
                                          delta_dst_ub)
         else:
             loop_input = block_id * self.each_core_start_addr
-            with self.tik_instance.for_range(0, self.loop_cycle, thread_num=THREAD_NUM) as cycle:
+            thread_num_value = 2
+            with self.tik_instance.for_range(0, self.loop_cycle, thread_num=thread_num_value) as cycle:
                 loop_input = loop_input + cycle * self.start_block_addr * self.data_num_in_each_block
                 anchorbox_src_ub, groundtruthbox_src_ub = \
                     self.data_move_mte2_function(loop_input, self.block_number)
@@ -358,7 +361,8 @@ class BoundingBoxEncode():
     # pylint: disable=too-many-locals,too-many-statements,too-many-branches
     def bounding_box_encode_compute(self, scalar_list, repeat_times,
                                     anchorbox_src_ub, groundtruthbox_src_ub):
-        """use tik instruction to calculate result bounding_box_encode_compute
+        """
+        use tik instruction to calculate result bounding_box_encode_compute
 
         Parameters
         ----------
@@ -608,7 +612,7 @@ class BoundingBoxEncode():
         self.tik_instance.vmuls(128, delta_tmp_ub, delta_tmp_ub,
                                 scalar_list[4], repeat_times, 4, 4, 32, 32)
 
-        # dy = ( (gy - py)/ph + (-means[1]) * (1/stds[1])
+        # 'dy = ( (gy - py)/ph + (-means[1]) * (1/stds[1])
         delta_tmp_ub16 = delta_tmp_ub[16]
         self.tik_instance.vsub(
             128, delta_tmp_ub16, groundtruthbox_ptmp_ub16,
@@ -628,7 +632,7 @@ class BoundingBoxEncode():
         self.tik_instance.vmuls(128, delta_tmp_ub16, delta_tmp_ub16,
                                 scalar_list[5], repeat_times, 4, 4, 32, 32)
 
-        # dw = ( log(gw/pw) + (-means[2]) * (1/stds[2])
+        # 'dw = ( log(gw/pw) + (-means[2]) * (1/stds[2])
         delta_tmp_ub32 = delta_tmp_ub[32]
         if self.support_div == True:
             self.tik_instance.vdiv(
@@ -646,7 +650,7 @@ class BoundingBoxEncode():
         self.tik_instance.vmuls(128, delta_tmp_ub32, delta_tmp_ub32,
                                 scalar_list[6], repeat_times, 4, 4, 32, 32)
 
-        # dy = ( log(gh/ph) + (-means[3]) * (1/stds[3])
+        # 'dy = ( log(gh/ph) + (-means[3]) * (1/stds[3])
         delta_tmp_ub48 = delta_tmp_ub[48]
         if self.support_div == True:
             self.tik_instance.vdiv(
@@ -687,7 +691,7 @@ class BoundingBoxEncode():
         return delta_out_ub
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_LIST_FLOAT, para_check.OPTION_ATTR_LIST_FLOAT,
                             para_check.KERNEL_NAME)

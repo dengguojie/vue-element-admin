@@ -23,11 +23,7 @@ from impl.util import util_common
 from impl.util import util_select_op_base
 
 
-# C0 value
-SHAPE_C0_VALUE = 16
-
-
-# pylint: disable=unused-argument,invalid-name,too-many-locals,too-many-statements
+# 'pylint: disable=unused-argument,invalid-name,too-many-locals,too-many-statements
 def op_select_format(x, y, axes, kernel_name="centralization"):
     """
     algorithm: op_select_format charge the dtype and format for centralization
@@ -52,7 +48,7 @@ def op_select_format(x, y, axes, kernel_name="centralization"):
     is_support_nz = centralization_object.check_tik_nz_supported()
 
     base_data_type = ["float", "float16"]
-    dtype_base_out = base_data_type.copy()
+    dtype_base_out = base_data_type[:]
     format_base_out = ["ND"] * len(base_data_type)
 
     if is_support_fz:
@@ -128,7 +124,6 @@ def reduce_vector_to_c0(tik_instance, vector_ub, reduce_result, vector_num):
     shape_c0 = 16
     loop_num = vector_num // shape_c0
     for i in range(loop_num):
-        # calcu: reduce_result = reduce_result + vector_ub[i*shape_c0]
         tik_instance.vadd(shape_c0, reduce_result, reduce_result, vector_ub[i * shape_c0],
                           1, 1, 1, 1, 8, 8, 8)
 
@@ -168,7 +163,7 @@ def redifine_reduce_case(input_shape, input_axis):
     return new_shape, new_axis
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class Centralization:
     """
     Class for Dynamic shape operator Assign
@@ -219,7 +214,9 @@ class Centralization:
         hd_support_format = util_common.get_fused_format_str(["N", "H", "W", "C"])
         # fz case supported
         if self.input_ori_foramt in hd_support_format and len(self.x_ori_shape) == 4:
-            reduce_format = [self.input_ori_foramt[axis] for axis in self.axes]
+            reduce_format = []
+            for axis in self.axes:
+                reduce_format.append(self.input_ori_foramt[axis])
             reduce_format = list(set(reduce_format))
             reduce_format.sort()
             if reduce_format == ['C', 'H', 'W']:
@@ -345,11 +342,12 @@ class Centralization:
         """
         _do_mask_for_fz
         """
+        shape_c0_value = 16
         if pad_first_dim_num != 0:
             pad_c0_num = self.input_ori_h * self.input_ori_w
-            pad_mask_c0 = "1" * (SHAPE_C0_VALUE - pad_first_dim_num) + "0" * pad_first_dim_num
-            pad_mask_vector = pad_mask_c0 * (self.vector_num // SHAPE_C0_VALUE)
-            pad_block_num = pad_c0_num * (SHAPE_C0_VALUE // self.block_num)
+            pad_mask_c0 = "1" * (shape_c0_value - pad_first_dim_num) + "0" * pad_first_dim_num
+            pad_mask_vector = pad_mask_c0 * (self.vector_num // shape_c0_value)
+            pad_block_num = pad_c0_num * (shape_c0_value // self.block_num)
             if pad_block_num // 8 > 0:
                 pad_mask_dec_0 = int(pad_mask_vector, 2)
                 pad_mask_dec_1 = int(pad_mask_vector, 2)
@@ -359,7 +357,7 @@ class Centralization:
                                              0.0, pad_block_num // 8, 1, 8)
             if pad_block_num % 8 > 0:
                 mask_ub_offset = mask_ub_offset + (pad_block_num // 8) * self.vector_num
-                tail_pad_c0_num = (pad_block_num % 8) // (SHAPE_C0_VALUE // self.block_num)
+                tail_pad_c0_num = (pad_block_num % 8) // (shape_c0_value // self.block_num)
                 pad_mask_vector = pad_mask_c0 * tail_pad_c0_num
                 pad_mask_0 = "0"
                 pad_mask_1 = pad_mask_vector
@@ -385,6 +383,7 @@ class Centralization:
         copy_burst_offset_block = copy_burst_offset // self.block_num
 
         def _run_idx(run_dim_idx):
+            shape_c0_value = 16
             copy_new_offset = (copy_offset + run_dim_idx) * last_dim
             ub_size = \
                 ((copy_burst_len * copy_burst_num + self.vector_num - 1) // self.vector_num) * self.vector_num
@@ -399,8 +398,8 @@ class Centralization:
             self.tik_instance.data_move(ping_ub_1, self.x_gm[copy_new_offset],
                                         0, copy_burst_num, copy_burst_len_block, copy_burst_offset_block, 0)
             # do pad
-            mask_offset = (first_dim - self.input_ori_h * self.input_ori_w) * SHAPE_C0_VALUE
-            self._do_mask_for_fz(ping_ub_1, mask_offset, ori_c_dim % SHAPE_C0_VALUE)
+            mask_offset = (first_dim - self.input_ori_h * self.input_ori_w) * shape_c0_value
+            self._do_mask_for_fz(ping_ub_1, mask_offset, ori_c_dim % shape_c0_value)
             # add to one vector
             if vector_repeat > 1:
                 reduce_to_64(self.tik_instance, ping_ub_1, vector_repeat, self.vector_num, ping_ub)
@@ -438,7 +437,7 @@ class Centralization:
             scalar_sum.set_as(ping_ub[0])
 
             self.tik_instance.vadds(self.vector_num, ping_ub_1, ping_ub_1, scalar_sum, vector_repeat, 1, 1, 8, 8)
-            self._do_mask_for_fz(ping_ub_1, mask_offset, ori_c_dim % SHAPE_C0_VALUE)
+            self._do_mask_for_fz(ping_ub_1, mask_offset, ori_c_dim % shape_c0_value)
             self.tik_instance.data_move(self.y_gm[copy_new_offset], ping_ub_1,
                                         0, copy_burst_num, copy_burst_len_block, 0, copy_burst_offset_block)
 

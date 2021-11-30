@@ -119,5 +119,3 @@ def bn3d_training_reduce(x, sum, square_sum,
     None
     """
     bn_training_reduce(x, sum, square_sum, kernel_name=kernel_name)
-
-

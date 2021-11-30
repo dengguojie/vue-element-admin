@@ -39,11 +39,9 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
-NUM_ONE = 1
 
-
-# pylint: disable=locally-disabled,too-many-arguments
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("broadcast_to_d")
 def broadcast_to_compute(x, y, shape, kernel_name='broadcast_to_d'):
     """
@@ -65,7 +63,7 @@ def broadcast_to_compute(x, y, shape, kernel_name='broadcast_to_d'):
     """
     dtype = x.dtype
     shape_in = x.shape
-
+    num_one = 1
     # tbe.broadcast supports float16, float32, int32.
     # so convert int8, uint8 to float16
     if dtype in ('int8', 'uint8'):
@@ -77,11 +75,11 @@ def broadcast_to_compute(x, y, shape, kernel_name='broadcast_to_d'):
             # tbe.vmuls supports float16, float32. int8, uint8, int32 will
             # be converted to float16. This will cause the data to be truncated.
             # so use tbe.vmul.
-            value_one = tvm.const(NUM_ONE, dtype=dtype)
+            value_one = tvm.const(num_one, dtype=dtype)
             value_one_tensor = tbe.broadcast(value_one, shape)
             output_tensor = tbe.vmul(x, value_one_tensor)
         else:
-            output_tensor = tbe.vmuls(x, NUM_ONE)
+            output_tensor = tbe.vmuls(x, num_one)
     else:
         output_tensor = tbe.broadcast(x, shape, dtype)
 

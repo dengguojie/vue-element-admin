@@ -36,10 +36,34 @@ case3 = {"params": [{"shape": (4,2,2,7,8,16), "dtype": "float16", "format": "NDC
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case4 = {"params": [{"shape": (1,16), "dtype": "float32", "format": "ND", "ori_shape": (1,16),"ori_format": "ND"},
+                    {"shape": (16,), "dtype": "float32", "format": "ND", "ori_shape": (16,),"ori_format": "ND"},
+                    {"shape": (16,), "dtype": "float32", "format": "ND", "ori_shape": (16,),"ori_format": "ND"},
+                    {"shape": (16,), "dtype": "float32", "format": "ND", "ori_shape": (16,),"ori_format": "ND"},
+                    None,
+                    {"shape": (1,16), "dtype": "float32", "format": "ND", "ori_shape": (1,16),"ori_format": "ND"},
+                    0.999, 0.001, False, 1],
+         "case_name": "bn_inference_d_4",
+         "expect": RuntimeError,
+         "format_expect": [],
+         "support_expect": True}
+case5 = {"params": [{"shape": (1,16), "dtype": "float32", "format": "ND", "ori_shape": (1,16),"ori_format": "ND"},
+                    {"shape": (16,), "dtype": "float32", "format": "ND", "ori_shape": (16,),"ori_format": "ND"},
+                    {"shape": (16,), "dtype": "float32", "format": "ND", "ori_shape": (16,),"ori_format": "ND"},
+                    None,
+                    None,
+                    {"shape": (1,16), "dtype": "float32", "format": "ND", "ori_shape": (1,16),"ori_format": "ND"},
+                    0.999, 0.001, False, 1],
+         "case_name": "bn_inference_d_5",
+         "expect": RuntimeError,
+         "format_expect": [],
+         "support_expect": True}
 
 ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 #ut_case.add_case(["Ascend910A"], case3)
+ut_case.add_case(["Ascend910A"], case4)
+ut_case.add_case(["Ascend910A"], case5)
 
 
 if __name__ == '__main__':

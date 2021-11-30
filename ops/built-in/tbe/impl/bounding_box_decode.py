@@ -16,43 +16,11 @@
 bounding_box_decode
 """
 import functools
-
 import te.platform as tbe_platform
 from te import tik
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from impl import constant_util as constant
-
-
-# The maximum number of float16 data that can be
-# stored in Unified Buffer with pingpang
-MAX_UB_ELEMENT_NUMBER_FP16 = 8704
-# The maximum number of float32 data that can be
-# stored in Unified Buffer with pingpang
-MAX_UB_ELEMENT_NUMBER_FP32 = 4608
-# thread num of pingpang
-THREAD_NUM = 2
-# Considering the efficiency of data parallel processing,
-# set the number of multicores to 32
-CORE_NUM = 32
-# the number of bits per byte
-BYTE_SIZE = 8
-# the number of data contained in each coordinate box
-NUMBER_FOUR = 4
-# the number of blocks included in each repeat with float16
-BLOCK_NUMBER_FP16 = 32
-# the number of blocks included in each repeat with float32
-BLOCK_NUMBER_FP32 = 64
-# the number of blocks skipped per repeat
-STRIDE_EIGHT = 8
-# the number of blocks skipped per repeat
-STRIDE_FOUR = 4
-# the number of blocks skipped per repeat
-STRIDE_ONE = 1
-# the number of blocks per transposition
-LIST_NUMBER = 16
-# the number of transposes per repeat
-NUMBER_TWO = 2
 
 
 def _check_param(rois, deltas, kernel_name):
@@ -92,8 +60,8 @@ def _check_param(rois, deltas, kernel_name):
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "rois", error_detail)
 
 
-# pylint: disable=too-many-arguments, too-many-instance-attributes
-# pylint: disable=unused-argument, too-many-locals, too-many-lines
+# 'pylint: disable=too-many-arguments, too-many-instance-attributes
+# 'pylint: disable=unused-argument, too-many-locals, too-many-lines
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_LIST_FLOAT, para_check.OPTION_ATTR_LIST_FLOAT,
                             para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
@@ -138,11 +106,23 @@ def bounding_box_decode(rois,
     bboxes_instance.tik_instance_function()
 
 
-# pylint: disable=useless-object-inheritance
+# 'pylint: disable=useless-object-inheritance
 class BoundingBoxDecode(object):
     """
        Function: use to store BoundingBoxDecode base parameters
     """
+    # stored in Unified Buffer with pingpang
+    MAX_UB_ELEMENT_NUMBER_FP16 = 8704
+    # the number of data contained in each coordinate box
+    NUMBER_FOUR = 4
+    # the number of blocks skipped per repeat
+    STRIDE_EIGHT = 8
+    # the number of blocks skipped per repeat
+    STRIDE_FOUR = 4
+    # the number of blocks skipped per repeat
+    STRIDE_ONE = 1
+    # the number of blocks per transposition
+    LIST_NUMBER = 16
 
     def __init__(self, rois, deltas, means, stds, max_shape, wh_ratio_clip,
                  kernel_name):
@@ -183,19 +163,19 @@ class BoundingBoxDecode(object):
         self.deltas_shape = deltas.get("shape")
         self.deltas_dtype = deltas.get("dtype").lower()
         self.kernel_name = kernel_name
-
+        byte_size = 8
         self.rois_dtype_bytes_size = tbe_platform.cce_intrin.get_bit_len(
-            self.rois_dtype) // BYTE_SIZE
+            self.rois_dtype) // byte_size
         self.rois_data_each_block = constant.BLOCK_SIZE // \
                                     self.rois_dtype_bytes_size
         self.core_num = 32
         self.each_core_start_address, self.each_core_calcul_num = \
             self.get_core_param()
         self.init_gm_tensor()
-
-        self.ub_max_size = MAX_UB_ELEMENT_NUMBER_FP16
+        max_ub_element_number_fp32 = 4608
+        self.ub_max_size = BoundingBoxDecode.MAX_UB_ELEMENT_NUMBER_FP16
         if self.rois_dtype == "float32":
-            self.ub_max_size = MAX_UB_ELEMENT_NUMBER_FP32
+            self.ub_max_size = max_ub_element_number_fp32
 
         self.loop_cycle = self.get_loop_cycle()
         self.start_block_addrss, self.block_number = self.get_loop_param()
@@ -243,10 +223,10 @@ class BoundingBoxDecode(object):
         should process
         """
         number = self.get_element_number()
-        each_core_start_address = (number // (self.core_num * NUMBER_FOUR)) \
-                                  * NUMBER_FOUR
+        each_core_start_address = (number // (self.core_num * BoundingBoxDecode.NUMBER_FOUR)) \
+                                  * BoundingBoxDecode.NUMBER_FOUR
 
-        if number % (self.core_num * NUMBER_FOUR) == 0:
+        if number % (self.core_num * BoundingBoxDecode.NUMBER_FOUR) == 0:
             if each_core_start_address % self.rois_data_each_block == 0:
                 each_core_calcul_num = each_core_start_address
             else:
@@ -370,7 +350,7 @@ class BoundingBoxDecode(object):
                 block_number = block_number_loop - start_block_addrss * \
                                (self.loop_cycle - 1)
                 while block_number * self.loop_cycle < block_number_loop or \
-                      block_number * self.rois_data_each_block > MAX_UB_ELEMENT_NUMBER_FP16:
+                      block_number * self.rois_data_each_block > BoundingBoxDecode.MAX_UB_ELEMENT_NUMBER_FP16:
                     self.loop_cycle += 1
                     start_block_addrss = block_number_loop // self.loop_cycle
                     block_number = block_number_loop - start_block_addrss * \
@@ -393,9 +373,11 @@ class BoundingBoxDecode(object):
         -------
         repeat_times: the vector calculation repeat times
         """
-        each_repeat_block_number = BLOCK_NUMBER_FP16
+        block_number_fp16 = 32
+        block_number_fp32= 64
+        each_repeat_block_number = block_number_fp16
         if self.rois_dtype == "float32":
-            each_repeat_block_number = BLOCK_NUMBER_FP32
+            each_repeat_block_number = block_number_fp32
         # determine the number of repeat each ping/pang
         if self.block_number < each_repeat_block_number:
             repeat_times = 1
@@ -432,39 +414,39 @@ class BoundingBoxDecode(object):
         deltas_src_ub_48 = deltas_src_ub[48]
         self.tik_instance.vmuls(
             constant.MASK128, deltas_src_ub, deltas_dst_ub,
-            scalar_list[4], repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            scalar_list[4], repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR)
         self.tik_instance.vadds(
             constant.MASK128, denorm_detal_dst_ub, deltas_src_ub,
-            scalar_list[0], repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            scalar_list[0], repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR)
 
         self.tik_instance.vmuls(
             constant.MASK128, deltas_src_ub_16, deltas_dst_ub[16],
-            scalar_list[5], repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            scalar_list[5], repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR)
         self.tik_instance.vadds(
             constant.MASK128, denorm_detal_dst_ub[16], deltas_src_ub_16,
-            scalar_list[1], repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            scalar_list[1], repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR)
 
         self.tik_instance.vmuls(
             constant.MASK128, deltas_src_ub_32, deltas_dst_ub[32],
-            scalar_list[6], repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            scalar_list[6], repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR)
         self.tik_instance.vadds(
             constant.MASK128, denorm_detal_dst_ub[32], deltas_src_ub_32,
-            scalar_list[2], repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            scalar_list[2], repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR)
 
         self.tik_instance.vmuls(
             constant.MASK128, deltas_src_ub_48, deltas_dst_ub[48],
-            scalar_list[7], repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            scalar_list[7], repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR)
         self.tik_instance.vadds(
             constant.MASK128, denorm_detal_dst_ub[48], deltas_src_ub_48,
-            scalar_list[3], repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            scalar_list[3], repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR)
 
         return denorm_detal_dst_ub
 
@@ -488,43 +470,49 @@ class BoundingBoxDecode(object):
         denorm_detal_dst_ub_32 = denorm_detal_dst_ub[32]
         max_ratio_fp16_ub = \
             self.tik_instance.Tensor("float16",
-                                     (self.ub_max_size / NUMBER_FOUR,),
+                                     (self.ub_max_size / BoundingBoxDecode.NUMBER_FOUR,),
                                      name="max_ratio_fp16_ub",
                                      scope=tik.scope_ubuf)
 
         self.tik_instance.vector_dup(constant.MASK128, max_ratio_fp16_ub,
                                      self.wh_ratio_clip, repeat_times,
-                                     STRIDE_ONE, STRIDE_EIGHT)
+                                     BoundingBoxDecode.STRIDE_ONE, BoundingBoxDecode.STRIDE_EIGHT)
         self.tik_instance.vln(constant.MASK128, max_ratio_fp16_ub,
-                              max_ratio_fp16_ub, repeat_times, STRIDE_ONE,
-                              STRIDE_ONE, STRIDE_EIGHT, STRIDE_EIGHT)
+                              max_ratio_fp16_ub, repeat_times, BoundingBoxDecode.STRIDE_ONE,
+                              BoundingBoxDecode.STRIDE_ONE, BoundingBoxDecode.STRIDE_EIGHT,
+                              BoundingBoxDecode.STRIDE_EIGHT)
         self.tik_instance.vabs(constant.MASK128, max_ratio_fp16_ub,
-                               max_ratio_fp16_ub, repeat_times, STRIDE_ONE,
-                               STRIDE_ONE, STRIDE_EIGHT, STRIDE_EIGHT)
+                               max_ratio_fp16_ub, repeat_times, BoundingBoxDecode.STRIDE_ONE,
+                               BoundingBoxDecode.STRIDE_ONE, BoundingBoxDecode.STRIDE_EIGHT,
+                               BoundingBoxDecode.STRIDE_EIGHT)
 
         self.tik_instance.vmin(constant.MASK128, denorm_detal_dst_ub_32,
                                denorm_detal_dst_ub_32, max_ratio_fp16_ub,
-                               repeat_times, STRIDE_FOUR * repeat_times,
-                               STRIDE_FOUR * repeat_times, STRIDE_ONE,
-                               STRIDE_FOUR, STRIDE_FOUR, STRIDE_EIGHT)
+                               repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+                               BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_ONE,
+                               BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR,
+                               BoundingBoxDecode.STRIDE_EIGHT)
         self.tik_instance.vmin(constant.MASK128, denorm_detal_dst_ub_48,
                                denorm_detal_dst_ub_48, max_ratio_fp16_ub,
-                               repeat_times, STRIDE_FOUR * repeat_times,
-                               STRIDE_FOUR * repeat_times, STRIDE_ONE,
-                               STRIDE_FOUR, STRIDE_FOUR, STRIDE_EIGHT)
-        self.tik_instance.vmuls(
-            constant.MASK128, max_ratio_fp16_ub, max_ratio_fp16_ub, -1.0,
-            repeat_times, STRIDE_ONE, STRIDE_ONE, STRIDE_EIGHT, STRIDE_EIGHT)
+                               repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+                               BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_ONE,
+                               BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR,
+                               BoundingBoxDecode.STRIDE_EIGHT)
+        self.tik_instance.vmuls( constant.MASK128, max_ratio_fp16_ub, max_ratio_fp16_ub, -1.0,
+                               repeat_times, BoundingBoxDecode.STRIDE_ONE, BoundingBoxDecode.STRIDE_ONE,
+                               BoundingBoxDecode.STRIDE_EIGHT, BoundingBoxDecode.STRIDE_EIGHT)
         self.tik_instance.vmax(constant.MASK128, denorm_detal_dst_ub_32,
                                denorm_detal_dst_ub_32, max_ratio_fp16_ub,
-                               repeat_times, STRIDE_FOUR * repeat_times,
-                               STRIDE_FOUR * repeat_times, STRIDE_ONE,
-                               STRIDE_FOUR, STRIDE_FOUR, STRIDE_EIGHT)
+                               repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+                               BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_ONE,
+                               BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR,
+                               BoundingBoxDecode.STRIDE_EIGHT)
         self.tik_instance.vmax(constant.MASK128, denorm_detal_dst_ub_48,
                                denorm_detal_dst_ub_48, max_ratio_fp16_ub,
-                               repeat_times, STRIDE_FOUR * repeat_times,
-                               STRIDE_FOUR * repeat_times, STRIDE_ONE,
-                               STRIDE_FOUR, STRIDE_FOUR, STRIDE_EIGHT)
+                               repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+                               BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_ONE,
+                               BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR,
+                               BoundingBoxDecode.STRIDE_EIGHT)
 
         return denorm_detal_dst_ub
 
@@ -558,44 +546,52 @@ class BoundingBoxDecode(object):
         # calculate denorm_rois_dst_ub == (px, py, pw, ph) ==>(px, py)
         self.tik_instance.vadd(
             constant.MASK128, rois_src_ub, rois_dst_ub, rois_dst_ub_32,
-            repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR * repeat_times, STRIDE_FOUR,
-            STRIDE_FOUR, STRIDE_FOUR)
+            repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR,
+            BoundingBoxDecode.STRIDE_FOUR)
         self.tik_instance.vmuls(
             constant.MASK128, denorm_rois_dst_ub, rois_src_ub, 0.5,
-            repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR,
+            BoundingBoxDecode.STRIDE_FOUR)
 
         self.tik_instance.vadd(
             constant.MASK128, rois_src_ub_16, rois_dst_ub_16, rois_dst_ub_48,
-            repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR * repeat_times, STRIDE_FOUR,
-            STRIDE_FOUR, STRIDE_FOUR)
+            repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR,
+            BoundingBoxDecode.STRIDE_FOUR)
         self.tik_instance.vmuls(
             constant.MASK128, denorm_rois_dst_ub[16], rois_src_ub_16, 0.5,
-            repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR,
+            BoundingBoxDecode.STRIDE_FOUR)
 
         # calculate denorm_rois_dst_ub == (px, py, pw, ph) ==>(pw, ph)
         self.tik_instance.vsub(
             constant.MASK128, rois_src_ub_32, rois_dst_ub_32, rois_dst_ub,
-            repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR * repeat_times, STRIDE_FOUR,
-            STRIDE_FOUR, STRIDE_FOUR)
+            repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR,
+            BoundingBoxDecode.STRIDE_FOUR)
         self.tik_instance.vadds(
             constant.MASK128, denorm_rois_dst_ub[32], rois_src_ub_32, 1.0,
-            repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR,
+            BoundingBoxDecode.STRIDE_FOUR)
 
         self.tik_instance.vsub(
             constant.MASK128, rois_src_ub_48, rois_dst_ub_48, rois_dst_ub_16,
-            repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR * repeat_times, STRIDE_FOUR,
-            STRIDE_FOUR, STRIDE_FOUR)
+            repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times, 
+            BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR,
+            BoundingBoxDecode.STRIDE_FOUR)
         self.tik_instance.vadds(
             constant.MASK128, denorm_rois_dst_ub[48], rois_src_ub_48, 1.0,
-            repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR,
+            BoundingBoxDecode.STRIDE_FOUR)
 
         return denorm_rois_dst_ub
 
@@ -626,46 +622,49 @@ class BoundingBoxDecode(object):
         # calculate denorm_rois_dst_ub == (gx, gy, gw, gh) ==>gw, gh
         self.tik_instance.vexp(
             constant.MASK128, denorm_detal_dst_ub_32, denorm_detal_dst_ub_32,
-            repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR,
+            BoundingBoxDecode.STRIDE_FOUR)
         self.tik_instance.vmul(
             constant.MASK128, denorm_detal_dst_ub_32, denorm_detal_dst_ub_32,
-            denorm_rois_dst_ub_32, repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR, STRIDE_FOUR, STRIDE_FOUR)
+            denorm_rois_dst_ub_32, repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR)
 
         self.tik_instance.vexp(
             constant.MASK128, denorm_detal_dst_ub_48, denorm_detal_dst_ub_48,
-            repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR,
+            BoundingBoxDecode.STRIDE_FOUR)
         self.tik_instance.vmul(
             constant.MASK128, denorm_detal_dst_ub_48, denorm_detal_dst_ub_48,
-            denorm_rois_dst_ub_48, repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR, STRIDE_FOUR, STRIDE_FOUR)
+            denorm_rois_dst_ub_48, repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR)
 
         # calculate denorm_rois_dst_ub == (gx, gy, gw, gh) ==>gx, gy
         self.tik_instance.vmul(
             constant.MASK128, denorm_detal_dst_ub, denorm_detal_dst_ub,
-            denorm_rois_dst_ub_32, repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR * repeat_times, STRIDE_FOUR,
-            STRIDE_FOUR, STRIDE_FOUR)
+            denorm_rois_dst_ub_32, repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR,
+            BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR)
         self.tik_instance.vadd(
             constant.MASK128, denorm_detal_dst_ub, denorm_detal_dst_ub,
-            denorm_rois_dst_ub, repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR, STRIDE_FOUR, STRIDE_FOUR)
+            denorm_rois_dst_ub, repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR)
 
         self.tik_instance.vmul(
             constant.MASK128, denorm_detal_dst_ub_16, denorm_detal_dst_ub_16,
-            denorm_rois_dst_ub_48, repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR, STRIDE_FOUR, STRIDE_FOUR)
+            denorm_rois_dst_ub_48, repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR)
         self.tik_instance.vadd(
             constant.MASK128, denorm_detal_dst_ub_16, denorm_detal_dst_ub_16,
-            denorm_rois_dst_ub[16], repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR, STRIDE_FOUR, STRIDE_FOUR)
+            denorm_rois_dst_ub[16], repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR)
 
         return denorm_detal_dst_ub
 
@@ -682,7 +681,7 @@ class BoundingBoxDecode(object):
         ----------
         denorm_rois_dst_ub: the ub tensor with denorm_rois
         denorm_detal_dst_ub: the ub tensor with denorm_detal
- 561       repeat_times: the vector calculation repeat times
+        repeat_times: the vector calculation repeat times
 
         Returns
         -------
@@ -697,60 +696,69 @@ class BoundingBoxDecode(object):
         # calculate (x1, y1, x2, y2) ==>x1, y1
         self.tik_instance.vmuls(
             constant.MASK128, denorm_rois_dst_ub, denorm_detal_dst_ub_32,
-            -0.5, repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            -0.5, repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR,
+            BoundingBoxDecode.STRIDE_FOUR)
         self.tik_instance.vadd(
             constant.MASK128, denorm_rois_dst_ub, denorm_detal_dst_ub,
-            denorm_rois_dst_ub, repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR, STRIDE_FOUR, STRIDE_FOUR)
+            denorm_rois_dst_ub, repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR)
         self.tik_instance.vadds(
             constant.MASK128, denorm_rois_dst_ub, denorm_rois_dst_ub, 0.5,
-            repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR,
+            BoundingBoxDecode.STRIDE_FOUR)
 
         self.tik_instance.vmuls(
             constant.MASK128, denorm_rois_dst_ub_16, denorm_detal_dst_ub_48,
-            -0.5, repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            -0.5, repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR,
+            BoundingBoxDecode.STRIDE_FOUR)
         self.tik_instance.vadd(
             constant.MASK128, denorm_rois_dst_ub_16, denorm_detal_dst_ub_16,
-            denorm_rois_dst_ub_16, repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR, STRIDE_FOUR, STRIDE_FOUR)
+            denorm_rois_dst_ub_16, repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR)
         self.tik_instance.vadds(
             constant.MASK128, denorm_rois_dst_ub_16, denorm_rois_dst_ub_16,
-            0.5, repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            0.5, repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR,
+            BoundingBoxDecode.STRIDE_FOUR)
 
         # calculate (x1, y1, x2, y2) ==>x2, y2
         self.tik_instance.vmuls(
             constant.MASK128, denorm_rois_dst_ub_32, denorm_detal_dst_ub_32,
-            0.5, repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            0.5, repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR,
+            BoundingBoxDecode.STRIDE_FOUR)
         self.tik_instance.vadd(
             constant.MASK128, denorm_rois_dst_ub_32, denorm_detal_dst_ub,
-            denorm_rois_dst_ub_32, repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR, STRIDE_FOUR, STRIDE_FOUR)
+            denorm_rois_dst_ub_32, repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR)
         self.tik_instance.vadds(
             constant.MASK128, denorm_rois_dst_ub_32, denorm_rois_dst_ub_32,
-            -0.5, repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            -0.5, repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR,
+            BoundingBoxDecode.STRIDE_FOUR)
 
         self.tik_instance.vmuls(
             constant.MASK128, denorm_rois_dst_ub_48, denorm_detal_dst_ub_48,
-            0.5, repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            0.5, repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR,
+            BoundingBoxDecode.STRIDE_FOUR)
         self.tik_instance.vadd(
             constant.MASK128, denorm_rois_dst_ub_48, denorm_detal_dst_ub_16,
-            denorm_rois_dst_ub_48, repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR * repeat_times, STRIDE_FOUR,
-            STRIDE_FOUR, STRIDE_FOUR)
+            denorm_rois_dst_ub_48, repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR,
+            BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR)
         self.tik_instance.vadds(
             constant.MASK128, denorm_rois_dst_ub_48, denorm_rois_dst_ub_48,
-            -0.5, repeat_times, STRIDE_FOUR * repeat_times,
-            STRIDE_FOUR * repeat_times, STRIDE_FOUR, STRIDE_FOUR)
+            -0.5, repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR,
+            BoundingBoxDecode.STRIDE_FOUR)
 
         return denorm_rois_dst_ub
 
@@ -777,69 +785,76 @@ class BoundingBoxDecode(object):
         if self.max_shape is not None:
             max_shape_one_ub = \
                 self.tik_instance.Tensor("float16",
-                                         (self.ub_max_size / NUMBER_FOUR,),
+                                         (self.ub_max_size / BoundingBoxDecode.NUMBER_FOUR,),
                                          name="max_shape_one_ub",
                                          scope=tik.scope_ubuf)
             max_shape_ub = \
                 self.tik_instance.Tensor("float16",
-                                         (self.ub_max_size / NUMBER_FOUR,),
+                                         (self.ub_max_size / BoundingBoxDecode.NUMBER_FOUR,),
                                          name="max_shape_ub",
                                          scope=tik.scope_ubuf)
             zero_ub = \
                 self.tik_instance.Tensor("float16",
-                                         (self.ub_max_size / NUMBER_FOUR,),
+                                         (self.ub_max_size / BoundingBoxDecode.NUMBER_FOUR,),
                                          name="zero_ub",
                                          scope=tik.scope_ubuf)
 
             self.tik_instance.vector_dup(constant.MASK128, max_shape_one_ub,
                                          self.max_shape[0] - 1, repeat_times,
-                                         STRIDE_ONE, STRIDE_EIGHT)
+                                         BoundingBoxDecode.STRIDE_ONE, BoundingBoxDecode.STRIDE_EIGHT)
             self.tik_instance.vector_dup(constant.MASK128, max_shape_ub,
                                          self.max_shape[1] - 1, repeat_times,
-                                         STRIDE_ONE, STRIDE_EIGHT)
+                                         BoundingBoxDecode.STRIDE_ONE, BoundingBoxDecode.STRIDE_EIGHT)
             self.tik_instance.vector_dup(constant.MASK128, zero_ub, 0.0,
-                                         repeat_times, STRIDE_ONE, STRIDE_EIGHT)
+                                         repeat_times, BoundingBoxDecode.STRIDE_ONE, BoundingBoxDecode.STRIDE_EIGHT)
             self.tik_instance.vmin(constant.MASK128, denorm_rois_dst_ub,
                                    denorm_rois_dst_ub, max_shape_ub,
-                                   repeat_times, STRIDE_FOUR * repeat_times,
-                                   STRIDE_FOUR * repeat_times, STRIDE_ONE,
-                                   STRIDE_FOUR, STRIDE_FOUR, STRIDE_EIGHT)
+                                   repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+                                   BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_ONE,
+                                   BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR,
+                                   BoundingBoxDecode.STRIDE_EIGHT)
             self.tik_instance.vmin(constant.MASK128, denorm_rois_dst_ub_16,
                                    denorm_rois_dst_ub_16, max_shape_one_ub,
-                                   repeat_times, STRIDE_FOUR * repeat_times,
-                                   STRIDE_FOUR * repeat_times, STRIDE_ONE,
-                                   STRIDE_FOUR, STRIDE_FOUR, STRIDE_EIGHT)
+                                   repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+                                   BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_ONE,
+                                   BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR,
+                                   BoundingBoxDecode.STRIDE_EIGHT)
             self.tik_instance.vmin(constant.MASK128, denorm_rois_dst_ub_32,
                                    denorm_rois_dst_ub_32, max_shape_ub,
-                                   repeat_times, STRIDE_FOUR * repeat_times,
-                                   STRIDE_FOUR * repeat_times, STRIDE_ONE,
-                                   STRIDE_FOUR, STRIDE_FOUR, STRIDE_EIGHT)
+                                   repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+                                   STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_ONE,
+                                   STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_EIGHT)
             self.tik_instance.vmin(constant.MASK128, denorm_rois_dst_ub_48,
                                    denorm_rois_dst_ub_48, max_shape_one_ub,
-                                   repeat_times, STRIDE_FOUR * repeat_times,
-                                   STRIDE_FOUR * repeat_times, STRIDE_ONE,
-                                   STRIDE_FOUR, STRIDE_FOUR, STRIDE_EIGHT)
+                                   repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+                                   BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_ONE,
+                                   BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR,
+                                   BoundingBoxDecode.STRIDE_EIGHT)
             self.tik_instance.vmax(constant.MASK128, denorm_rois_dst_ub,
                                    denorm_rois_dst_ub, zero_ub,
                                    repeat_times,
-                                   STRIDE_FOUR * repeat_times,
-                                   STRIDE_FOUR * repeat_times, STRIDE_ONE,
-                                   STRIDE_FOUR, STRIDE_FOUR, STRIDE_EIGHT)
+                                   BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+                                   BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_ONE,
+                                   BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR,
+                                   BoundingBoxDecode.STRIDE_EIGHT)
             self.tik_instance.vmax(constant.MASK128, denorm_rois_dst_ub_16,
                                    denorm_rois_dst_ub_16, zero_ub,
-                                   repeat_times, STRIDE_FOUR * repeat_times,
-                                   STRIDE_FOUR * repeat_times, STRIDE_ONE,
-                                   STRIDE_FOUR, STRIDE_FOUR, STRIDE_EIGHT)
+                                   repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+                                   BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_ONE,
+                                   BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR,
+                                   BoundingBoxDecode.STRIDE_EIGHT)
             self.tik_instance.vmax(constant.MASK128, denorm_rois_dst_ub_32,
                                    denorm_rois_dst_ub_32, zero_ub,
-                                   repeat_times, STRIDE_FOUR * repeat_times,
-                                   STRIDE_FOUR * repeat_times, STRIDE_ONE,
-                                   STRIDE_FOUR, STRIDE_FOUR, STRIDE_EIGHT)
+                                   repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+                                   BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_ONE,
+                                   BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR,
+                                   BoundingBoxDecode.STRIDE_EIGHT)
             self.tik_instance.vmax(constant.MASK128, denorm_rois_dst_ub_48,
                                    denorm_rois_dst_ub_48, zero_ub,
-                                   repeat_times, STRIDE_FOUR * repeat_times,
-                                   STRIDE_FOUR * repeat_times, STRIDE_ONE,
-                                   STRIDE_FOUR, STRIDE_FOUR, STRIDE_EIGHT)
+                                   repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
+                                   BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_ONE,
+                                   BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR,
+                                   BoundingBoxDecode.STRIDE_EIGHT)
 
         return denorm_rois_dst_ub
 
@@ -896,6 +911,7 @@ class BoundingBoxDecode(object):
                                     constant.DEFAULT_NBURST, block_num,
                                     constant.STRIDE_ZERO, constant.STRIDE_ZERO)
 
+    # 'pylint: disable=too-use-list-comprehension
     def bounding_box_decode_compute(self, scalar_list, repeat_times,
                                     rois_src_ub, deltas_src_ub):
         """
@@ -924,13 +940,13 @@ class BoundingBoxDecode(object):
                                          scope=tik.scope_ubuf)
 
             self.tik_instance.vconv(constant.MASK64, '', rois_src_ub_vconv,
-                                    rois_src_ub, repeat_times * STRIDE_EIGHT,
-                                    STRIDE_ONE, STRIDE_ONE, STRIDE_FOUR,
-                                    STRIDE_EIGHT)
+                                    rois_src_ub, repeat_times * BoundingBoxDecode.STRIDE_EIGHT,
+                                    BoundingBoxDecode.STRIDE_ONE, BoundingBoxDecode.STRIDE_ONE,
+                                    BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_EIGHT)
             self.tik_instance.vconv(constant.MASK64, '', deltas_src_ub_vconv,
-                                    deltas_src_ub, repeat_times * STRIDE_EIGHT,
-                                    STRIDE_ONE, STRIDE_ONE, STRIDE_FOUR,
-                                    STRIDE_EIGHT)
+                                    deltas_src_ub, repeat_times * BoundingBoxDecode.STRIDE_EIGHT,
+                                    BoundingBoxDecode.STRIDE_ONE, BoundingBoxDecode.STRIDE_ONE,
+                                    BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_EIGHT)
         else:
             deltas_src_ub_vconv = deltas_src_ub
             rois_src_ub_vconv = rois_src_ub
@@ -954,23 +970,24 @@ class BoundingBoxDecode(object):
 
         # transform rois and deltas data with 16x16
         rois_src_list = [
-            rois_src_ub_vconv[LIST_NUMBER * i] for i in range(LIST_NUMBER)
+            rois_src_ub_vconv[BoundingBoxDecode.LIST_NUMBER * i] for i in range(BoundingBoxDecode.LIST_NUMBER)
         ]
         rois_dst_list = [
-            rois_dst_ub[LIST_NUMBER * i] for i in range(LIST_NUMBER)
+            rois_dst_ub[BoundingBoxDecode.LIST_NUMBER * i] for i in range(BoundingBoxDecode.LIST_NUMBER)
         ]
         deltas_src_list = [
-            deltas_src_ub_vconv[LIST_NUMBER * i] for i in range(LIST_NUMBER)
+            deltas_src_ub_vconv[BoundingBoxDecode.LIST_NUMBER * i] for i in range(BoundingBoxDecode.LIST_NUMBER)
         ]
         deltas_dst_list = [
-            deltas_dst_ub[LIST_NUMBER * i] for i in range(LIST_NUMBER)
+            deltas_dst_ub[BoundingBoxDecode.LIST_NUMBER * i] for i in range(BoundingBoxDecode.LIST_NUMBER)
         ]
+        number_two = 2
         self.tik_instance.vnchwconv(True, True, rois_dst_list, rois_src_list,
-                                    repeat_times * NUMBER_TWO, LIST_NUMBER,
-                                    LIST_NUMBER)
+                                    repeat_times * number_two, BoundingBoxDecode.LIST_NUMBER,
+                                    BoundingBoxDecode.LIST_NUMBER)
         self.tik_instance.vnchwconv(True, True, deltas_dst_list,
-                                    deltas_src_list, repeat_times * NUMBER_TWO,
-                                    LIST_NUMBER, LIST_NUMBER)
+                                    deltas_src_list, repeat_times * number_two,
+                                    BoundingBoxDecode.LIST_NUMBER, BoundingBoxDecode.LIST_NUMBER)
 
         denorm_detal_dst_ub = self.calculate_denorm_delta(
             scalar_list, deltas_src_ub_vconv, deltas_dst_ub,
@@ -987,17 +1004,18 @@ class BoundingBoxDecode(object):
                                                repeat_times)
 
         res_list = [
-            denorm_rois_dst_ub[LIST_NUMBER * i] for i in range(LIST_NUMBER)
+            denorm_rois_dst_ub[BoundingBoxDecode.LIST_NUMBER * i] for i in range(BoundingBoxDecode.LIST_NUMBER)
         ]
         self.tik_instance.vnchwconv(True, True, res_list, res_list,
-                                    repeat_times * NUMBER_TWO, LIST_NUMBER,
-                                    LIST_NUMBER)
+                                    repeat_times * number_two, BoundingBoxDecode.LIST_NUMBER,
+                                    BoundingBoxDecode.LIST_NUMBER)
 
         if self.rois_dtype == "float32":
             self.tik_instance.vconv(constant.MASK64, '', rois_src_ub,
                                     denorm_rois_dst_ub,
-                                    repeat_times * STRIDE_EIGHT, STRIDE_ONE,
-                                    STRIDE_ONE, STRIDE_EIGHT, STRIDE_FOUR)
+                                    repeat_times * BoundingBoxDecode.STRIDE_EIGHT, BoundingBoxDecode.STRIDE_ONE,
+                                    BoundingBoxDecode.STRIDE_ONE, BoundingBoxDecode.STRIDE_EIGHT,
+                                    BoundingBoxDecode.STRIDE_FOUR)
             denorm_rois_dst_ub = rois_src_ub
 
         return denorm_rois_dst_ub
@@ -1030,7 +1048,8 @@ class BoundingBoxDecode(object):
                                          denorm_rois_dst_ub)
         else:
             loop_input = block_id * self.each_core_start_address
-            with self.tik_instance.for_range(0, self.loop_cycle, thread_num=THREAD_NUM) as cycle:
+            thread_num_value = 2
+            with self.tik_instance.for_range(0, self.loop_cycle, thread_num=thread_num_value) as cycle:
                 loop_input = loop_input + cycle * self.start_block_addrss * self.rois_data_each_block
                 rois_src_ub, deltas_src_ub = self.data_move_mte2_function(
                     loop_input, self.block_number)

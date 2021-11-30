@@ -16,13 +16,13 @@
 ceil
 """
 import functools
-
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 
-# pylint: disable=locally-disabled,unused-argument
+
+# 'pylint: disable=locally-disabled,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("ceil")
 def ceil_compute(input_x, output_y, kernel_name="ceil"):
     """

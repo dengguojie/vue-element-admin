@@ -22,10 +22,16 @@ from te.utils import shape_util
 import te.platform as tbe_platform
 from te import tik
 
-# vnchwconv can deal 16*16
-TRANSPOSE_SIZE = 256
-# one block can save the size of fp16
-ONE_BLOCK_FP16_SIZE = 16
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    the class for constant
+    """
+    # vnchwconv can deal 16*16
+    TRANSPOSE_SIZE = 256
+    # one block can save the size of fp16
+    ONE_BLOCK_FP16_SIZE = 16
 
 
 def get_ceil_int(int1, int2):
@@ -41,8 +47,8 @@ def get_ceil_int(int1, int2):
     return _result + 1
 
 
-# pylint: disable=too-many-instance-attributes,too-many-arguments
-# pylint: disable=too-many-locals,too-many-statements,too-many-branches
+# 'pylint: disable=too-many-instance-attributes,too-many-arguments
+# 'pylint: disable=too-many-locals,too-many-statements,too-many-branches
 class ConcatWithVnchw:
     """
     Function: use to finish ConcatLastDim main functions
@@ -129,17 +135,17 @@ class ConcatWithVnchw:
         if self.data_dtype in ["float32", "float16"] \
                 and input_last_dim in sup_shape \
                 and self.input_num in sup_count \
-                and output_last_dim * factor <= 16 and self.src_size >= TRANSPOSE_SIZE:
+                and output_last_dim * factor <= 16 and self.src_size >= Constant.TRANSPOSE_SIZE:
             self.use_last_dim = True
 
         if self.data_dtype in ["float16"] \
-                and input_last_dim == 1 and self.src_size >= TRANSPOSE_SIZE:
+                and input_last_dim == 1 and self.src_size >= Constant.TRANSPOSE_SIZE:
             self.use_last_dim = True
 
         if self.data_dtype == "float16" \
                 and input_last_dim == 1 \
                 and self.input_num == 3 \
-                and self.src_size >= TRANSPOSE_SIZE * 8:
+                and self.src_size >= Constant.TRANSPOSE_SIZE * 8:
             self.use_last_dim_odd = True
 
         return self.use_last_dim or self.use_last_dim_odd
@@ -169,24 +175,24 @@ class ConcatWithVnchw:
         core_tail = core_pro % max_mov_num
 
         input_ub_0 = \
-            self.tik_instance.Tensor("float16", (TRANSPOSE_SIZE*max_mov_num,),
+            self.tik_instance.Tensor("float16", (Constant.TRANSPOSE_SIZE*max_mov_num,),
                                      tik.scope_ubuf, "input_ub_0")
         vnchw_ub_0 = \
             self.tik_instance.Tensor("float16",
-                                     (TRANSPOSE_SIZE*self.input_num*max_mov_num,),
+                                     (Constant.TRANSPOSE_SIZE*self.input_num*max_mov_num,),
                                      tik.scope_ubuf, "vnchw_ub_0")
         out_ub_0 = \
             self.tik_instance.Tensor("float16",
-                                     (TRANSPOSE_SIZE*self.input_num*max_mov_num,),
+                                     (Constant.TRANSPOSE_SIZE*self.input_num*max_mov_num,),
                                      tik.scope_ubuf, "out_ub_0")
-        input_ub_1 = self.tik_instance.Tensor("float16", (TRANSPOSE_SIZE*max_mov_num,),
+        input_ub_1 = self.tik_instance.Tensor("float16", (Constant.TRANSPOSE_SIZE*max_mov_num,),
                                               tik.scope_ubuf, "input_ub_1")
         vnchw_ub_1 = \
             self.tik_instance.Tensor("float16",
-                                     (TRANSPOSE_SIZE*self.input_num*max_mov_num,),
+                                     (Constant.TRANSPOSE_SIZE*self.input_num*max_mov_num,),
                                      tik.scope_ubuf, "vnchw_ub_1")
         out_ub_1 = self.tik_instance.Tensor("float16",
-                                            (TRANSPOSE_SIZE*self.input_num*max_mov_num,),
+                                            (Constant.TRANSPOSE_SIZE*self.input_num*max_mov_num,),
                                             tik.scope_ubuf, "out_ub_1")
 
         tiling_ub_list_0 = [input_ub_0, vnchw_ub_0, out_ub_0]
@@ -194,9 +200,9 @@ class ConcatWithVnchw:
 
         def _run_copy_input_and_vnchw(input_idx, ub_list, gm_input_offset,
                                       run_mov_num, copy_tail):
-            copy_len = run_mov_num * TRANSPOSE_SIZE - copy_tail
+            copy_len = run_mov_num * Constant.TRANSPOSE_SIZE - copy_tail
             nburst = get_ceil_int(copy_len,
-                                  ONE_BLOCK_FP16_SIZE)
+                                  Constant.ONE_BLOCK_FP16_SIZE)
             ub_copy, ub_vnchw, _, gm_input = ub_list
             # copy gm to ub
             self.tik_instance.data_move(ub_copy,
@@ -204,11 +210,11 @@ class ConcatWithVnchw:
                                         0, 1, nburst, 0, 0)
             # vnchwconv to ub_vnchw
             _src_addrs = [
-                ub_copy[ONE_BLOCK_FP16_SIZE * x]
-                for x in range(ONE_BLOCK_FP16_SIZE)
+                ub_copy[Constant.ONE_BLOCK_FP16_SIZE * x]
+                for x in range(Constant.ONE_BLOCK_FP16_SIZE)
             ]
             dst_offset_ub = self.last_dim * input_idx
-            dst_loop = ONE_BLOCK_FP16_SIZE // self.last_dim
+            dst_loop = Constant.ONE_BLOCK_FP16_SIZE // self.last_dim
             inner_offset_ub = self.last_dim * self.input_num
             _dst_addrs = []
             for dloop in range(dst_loop):
@@ -216,7 +222,7 @@ class ConcatWithVnchw:
                     _dst_addrs.append(
                         ub_vnchw[
                             (dst_offset_ub + dloop * inner_offset_ub + in_loop)
-                            * ONE_BLOCK_FP16_SIZE])
+                            * Constant.ONE_BLOCK_FP16_SIZE])
             _dst_rep_stride = 16 * self.input_num
             _src_rep_stride = 16
             if run_mov_num == 1:
@@ -229,28 +235,28 @@ class ConcatWithVnchw:
         def _run_vnchw_all_to_out(ub_list, gm_output_offset,
                                   run_mov_num, copy_tail):
             _, ub_vnchw, ub_out, gm_output = ub_list
-            _dst_rep_stride = (TRANSPOSE_SIZE // 16) * self.input_num
-            _src_rep_stride = (TRANSPOSE_SIZE // 16) * self.input_num
+            _dst_rep_stride = (Constant.TRANSPOSE_SIZE // 16) * self.input_num
+            _src_rep_stride = (Constant.TRANSPOSE_SIZE // 16) * self.input_num
             if run_mov_num == 1:
                 _dst_rep_stride = 0
                 _src_rep_stride = 0
             for i_idx in range(self.input_num):
                 _src_addrs = [
-                    ub_vnchw[i_idx * TRANSPOSE_SIZE + ONE_BLOCK_FP16_SIZE * x]
-                    for x in range(ONE_BLOCK_FP16_SIZE)
+                    ub_vnchw[i_idx * Constant.TRANSPOSE_SIZE + Constant.ONE_BLOCK_FP16_SIZE * x]
+                    for x in range(Constant.ONE_BLOCK_FP16_SIZE)
                 ]
                 _dst_addrs = [
                     ub_out[(i_idx + x * self.input_num) *
-                           ONE_BLOCK_FP16_SIZE]
-                    for x in range(ONE_BLOCK_FP16_SIZE)
+                           Constant.ONE_BLOCK_FP16_SIZE]
+                    for x in range(Constant.ONE_BLOCK_FP16_SIZE)
                 ]
                 self.tik_instance.vnchwconv(False, False, _dst_addrs,
                                             _src_addrs, run_mov_num,
                                             _dst_rep_stride, _src_rep_stride)
             copy_len = \
-                (run_mov_num * TRANSPOSE_SIZE - copy_tail)*self.input_num
+                (run_mov_num * Constant.TRANSPOSE_SIZE - copy_tail)*self.input_num
             nburst = get_ceil_int(copy_len,
-                                  ONE_BLOCK_FP16_SIZE)
+                                  Constant.ONE_BLOCK_FP16_SIZE)
             # copy ub to gm
             self.tik_instance.data_move(gm_output[gm_output_offset], ub_out, 0,
                                         1, nburst, 0, 0)
@@ -276,28 +282,28 @@ class ConcatWithVnchw:
         with self.tik_instance.for_range(0, core_loop // 2) as loop_idx:
             _idx = loop_idx*2
             _run_one_loop(tiling_ub_list_0,
-                          _idx * TRANSPOSE_SIZE * max_mov_num,
+                          _idx * Constant.TRANSPOSE_SIZE * max_mov_num,
                           max_mov_num)
             _idx = loop_idx*2 + 1
             _run_one_loop(tiling_ub_list_1,
-                          _idx * TRANSPOSE_SIZE * max_mov_num,
+                          _idx * Constant.TRANSPOSE_SIZE * max_mov_num,
                           max_mov_num)
 
         if core_loop % 2 == 1:
             _idx = core_loop - 1
             _run_one_loop(tiling_ub_list_0,
-                          _idx * TRANSPOSE_SIZE * max_mov_num,
+                          _idx * Constant.TRANSPOSE_SIZE * max_mov_num,
                           max_mov_num)
 
         if core_tail != 0:
             _idx = core_loop
             _run_one_loop(tiling_ub_list_1,
-                          _idx * TRANSPOSE_SIZE * max_mov_num,
+                          _idx * Constant.TRANSPOSE_SIZE * max_mov_num,
                           core_tail)
 
         if mov_tail != 0:
-            _offset = core_loop * TRANSPOSE_SIZE * max_mov_num \
-                      + core_tail * TRANSPOSE_SIZE
+            _offset = core_loop * Constant.TRANSPOSE_SIZE * max_mov_num \
+                      + core_tail * Constant.TRANSPOSE_SIZE
             _run_one_loop(tiling_ub_list_0, _offset, 1, mov_tail)
 
     def concat_last_dim_compute(self):
@@ -308,11 +314,11 @@ class ConcatWithVnchw:
             int(tbe_platform.CceProductParams().getParams("Unified_Buffer")
                 // 2 // 2 - 16)
         max_mov_num = \
-            ub_half_size // TRANSPOSE_SIZE // (self.input_num*2 + 1)
+            ub_half_size // Constant.TRANSPOSE_SIZE // (self.input_num*2 + 1)
 
         # core scedule
-        mov_num = (self.src_size + TRANSPOSE_SIZE - 1) // TRANSPOSE_SIZE
-        mov_tail = mov_num*TRANSPOSE_SIZE - self.src_size
+        mov_num = (self.src_size + Constant.TRANSPOSE_SIZE - 1) // Constant.TRANSPOSE_SIZE
+        mov_tail = mov_num * Constant.TRANSPOSE_SIZE - self.src_size
 
         move_num_per_core = get_ceil_int(mov_num, self.core_num)
 
@@ -327,7 +333,7 @@ class ConcatWithVnchw:
 
         with self.tik_instance.for_range(0, core_used, block_num=core_used) as core_idx:
             src_offset_core = \
-                core_idx * move_num_per_core * TRANSPOSE_SIZE
+                core_idx * move_num_per_core * Constant.TRANSPOSE_SIZE
             dst_offset_core = src_offset_core * self.input_num
             if mov_tail == 0 and move_num_core_tail == move_num_per_core:
                 concat_fuc(
@@ -568,18 +574,18 @@ class ConcatWith5HD:
                 inner_sigment = inner_sigment + 1
 
         max_transpose_sigment = \
-            ub_half_size // TRANSPOSE_SIZE // 3
+            ub_half_size // Constant.TRANSPOSE_SIZE // 3
 
         copy_size = \
-            self.output_shape[2]*self.output_shape[3]*self.shape_5hd_c0
-        copy_loop = copy_size // (max_transpose_sigment*TRANSPOSE_SIZE)
-        copy_loop_tail = copy_size % (max_transpose_sigment*TRANSPOSE_SIZE)
-        tail_transpose_sigment = copy_loop_tail // TRANSPOSE_SIZE
+            self.output_shape[2] * self.output_shape[3] * self.shape_5hd_c0
+        copy_loop = copy_size // (max_transpose_sigment * Constant.TRANSPOSE_SIZE)
+        copy_loop_tail = copy_size % (max_transpose_sigment * Constant.TRANSPOSE_SIZE)
+        tail_transpose_sigment = copy_loop_tail // Constant.TRANSPOSE_SIZE
         copy_nchw_tail = \
-            get_ceil_int(copy_loop_tail, TRANSPOSE_SIZE)*TRANSPOSE_SIZE \
+            get_ceil_int(copy_loop_tail, Constant.TRANSPOSE_SIZE) * Constant.TRANSPOSE_SIZE \
             - copy_loop_tail
 
-        input_size = TRANSPOSE_SIZE*max_transpose_sigment
+        input_size = Constant.TRANSPOSE_SIZE * max_transpose_sigment
         input_ub_0 = \
             self.tik_instance.Tensor("float16", (input_size,),
                                      tik.scope_ubuf, "input_ub_0")
@@ -607,9 +613,9 @@ class ConcatWith5HD:
 
         def _run_copy_input_and_vnchw(input_idx, ub_list, gm_input_offset,
                                       run_mov_num, copy_tail):
-            copy_len = run_mov_num * TRANSPOSE_SIZE - copy_tail
+            copy_len = run_mov_num * Constant.TRANSPOSE_SIZE - copy_tail
             nburst = get_ceil_int(copy_len,
-                                  ONE_BLOCK_FP16_SIZE)
+                                  Constant.ONE_BLOCK_FP16_SIZE)
             ub_copy, ub_vnchw, ub_out, gm_input = ub_list
             # copy gm to ub
             self.tik_instance.data_move(ub_copy,
@@ -617,12 +623,12 @@ class ConcatWith5HD:
                                         0, 1, nburst, 0, 0)
             # vnchwconv to ub_vnchw
             _src_addrs = [
-                ub_copy[ONE_BLOCK_FP16_SIZE * x]
-                for x in range(ONE_BLOCK_FP16_SIZE)
+                ub_copy[Constant.ONE_BLOCK_FP16_SIZE * x]
+                for x in range(Constant.ONE_BLOCK_FP16_SIZE)
             ]
             _dst_addrs = [
-                ub_vnchw[ONE_BLOCK_FP16_SIZE * x]
-                for x in range(ONE_BLOCK_FP16_SIZE)
+                ub_vnchw[Constant.ONE_BLOCK_FP16_SIZE * x]
+                for x in range(Constant.ONE_BLOCK_FP16_SIZE)
             ]
             _dst_rep_stride = 16
             _src_rep_stride = 16
@@ -636,8 +642,8 @@ class ConcatWith5HD:
             # copy vnchw_ub_0 to out_ub_0
             nburst = self.last_ori_dim_list[input_idx]
             des_c_dim = \
-                sum(self.last_ori_dim_list[:input_idx]) % ONE_BLOCK_FP16_SIZE
-            des_offset = des_c_dim * ONE_BLOCK_FP16_SIZE
+                sum(self.last_ori_dim_list[:input_idx]) % Constant.ONE_BLOCK_FP16_SIZE
+            des_offset = des_c_dim * Constant.ONE_BLOCK_FP16_SIZE
             src_repeat_block = \
                 self.shape_5hd_c0 - self.last_ori_dim_list[input_idx]
             des_repeat_block = \
@@ -652,9 +658,9 @@ class ConcatWith5HD:
         def _run_vector_dump(ub_list, run_mov_num):
             _, _, ub_out, _ = ub_list
             # copy gm to ub
-            vector_size = run_mov_num * TRANSPOSE_SIZE
-            repeat = get_ceil_int(vector_size, ONE_BLOCK_FP16_SIZE*8)
-            self.tik_instance.vector_dup(ONE_BLOCK_FP16_SIZE*8,
+            vector_size = run_mov_num * Constant.TRANSPOSE_SIZE
+            repeat = get_ceil_int(vector_size, Constant.ONE_BLOCK_FP16_SIZE*8)
+            self.tik_instance.vector_dup(Constant.ONE_BLOCK_FP16_SIZE*8,
                                          ub_out, 0.0,
                                          repeat, 1, 8)
 
@@ -668,21 +674,21 @@ class ConcatWith5HD:
                 _src_rep_stride = 0
 
             _src_addrs = [
-                ub_out[ONE_BLOCK_FP16_SIZE * x]
-                for x in range(ONE_BLOCK_FP16_SIZE)
+                ub_out[Constant.ONE_BLOCK_FP16_SIZE * x]
+                for x in range(Constant.ONE_BLOCK_FP16_SIZE)
             ]
             _dst_addrs = [
-                ub_vnchw[ONE_BLOCK_FP16_SIZE * x]
-                for x in range(ONE_BLOCK_FP16_SIZE)
+                ub_vnchw[Constant.ONE_BLOCK_FP16_SIZE * x]
+                for x in range(Constant.ONE_BLOCK_FP16_SIZE)
             ]
             self.tik_instance.vnchwconv(False, False, _dst_addrs,
                                         _src_addrs, run_mov_num,
                                         _dst_rep_stride, _src_rep_stride)
 
             copy_len = \
-                (run_mov_num * TRANSPOSE_SIZE - copy_tail)
+                (run_mov_num * Constant.TRANSPOSE_SIZE - copy_tail)
             nburst = get_ceil_int(copy_len,
-                                  ONE_BLOCK_FP16_SIZE)
+                                  Constant.ONE_BLOCK_FP16_SIZE)
             # copy ub to gm
             self.tik_instance.data_move(gm_output[gm_output_offset], ub_vnchw,
                                         0, 1, nburst, 0, 0)
@@ -732,18 +738,18 @@ class ConcatWith5HD:
                 with self.tik_instance.for_range(0, copy_loop) as loop_idx:
                     _idx = loop_idx
                     _run_one_loop(tiling_ub_list_0, batch_offset_list,
-                                  _idx * TRANSPOSE_SIZE * max_transpose_sigment,
+                                  _idx * Constant.TRANSPOSE_SIZE * max_transpose_sigment,
                                   max_transpose_sigment)
 
             if tail_transpose_sigment != 0:
                 _idx = copy_loop
                 _run_one_loop(tiling_ub_list_1, batch_offset_list,
-                              _idx * TRANSPOSE_SIZE * max_transpose_sigment,
+                              _idx * Constant.TRANSPOSE_SIZE * max_transpose_sigment,
                               tail_transpose_sigment)
 
             if copy_nchw_tail != 0:
                 offset = \
                     copy_loop*max_transpose_sigment + tail_transpose_sigment
                 _run_one_loop(tiling_ub_list_1, batch_offset_list,
-                              offset * TRANSPOSE_SIZE,
+                              offset * Constant.TRANSPOSE_SIZE,
                               1, copy_nchw_tail)

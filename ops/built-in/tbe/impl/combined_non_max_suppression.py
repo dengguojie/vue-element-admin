@@ -26,17 +26,22 @@ from impl.batch_multi_class_non_max_suppression import tik_func_sort_with_ub
 from impl.batch_multi_class_non_max_suppression import filter_score_compute
 
 
-# scaling factor
-DOWN_FACTOR = 0.10
-# RPN compute 16 proposals per iteration
-RPN_PROPOSAL_NUM = 16
-# define the positive min value in fp16
-MIN_SCALAR_FP16 = 2 ** (-24)
-# define a fp16 value = 2**12
-TMP_SCALAR_FP16 = 2 ** 12
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    the class for constant
+    """
+    # scaling factor
+    DOWN_FACTOR = 0.10
+    # RPN compute 16 proposals per iteration
+    RPN_PROPOSAL_NUM = 16
+    # define the positive min value in fp16
+    MIN_SCALAR_FP16 = 2 ** (-24)
+    # define a fp16 value = 2**12
+    TMP_SCALAR_FP16 = 2 ** 12
 
 
-# pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-statements,too-many-locals
+# 'pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-statements,too-many-locals
 class CombinedNonMaxSuppression:
     """
     Function: use to store CombinedNonMaxSuppression base parameters
@@ -139,7 +144,7 @@ class CombinedNonMaxSuppression:
 
         # for nms function param calc
         self.max_selected_nms_num_in_ub = \
-            ceil_div(max_size_per_class, RPN_PROPOSAL_NUM) * RPN_PROPOSAL_NUM
+            ceil_div(max_size_per_class, Constant.RPN_PROPOSAL_NUM) * Constant.RPN_PROPOSAL_NUM
         # record the output nms num for one class
         self.selected_proposals_cnt = self.tik_instance.Scalar(dtype="uint16")
         # record the proposal burst num for one loop, value = 128 or self.proposal_topk_k % 128
@@ -157,9 +162,9 @@ class CombinedNonMaxSuppression:
         if self.need_clip_window:
             if self.change_coordinate_frame:
                 self.down_flag = False
-                self.clip_window_value_list = [self.tik_instance.Scalar(dtype="float16") for _ in range(6)]
+                self.clip_window_value_list = [self.tik_instance.Scalar(dtype="float16")] * 6
             else:
-                self.clip_window_value_list = [self.tik_instance.Scalar(dtype="float16") for _ in range(4)]
+                self.clip_window_value_list = [self.tik_instance.Scalar(dtype="float16")] * 4
         else:
             self.clip_window_value_list = None
         # init 1 valid num scalar
@@ -168,15 +173,18 @@ class CombinedNonMaxSuppression:
         self.down_scalar_list = None
         # init down scalar
         if self.down_flag:
-            self.down_scalar_list = [self.tik_instance.Scalar(dtype="float16") for _ in range(2)]
-            self.down_scalar_list[0].set_as(DOWN_FACTOR)
-            self.down_scalar_list[1].set_as(1 / DOWN_FACTOR)
+            self.down_scalar_list = [self.tik_instance.Scalar(dtype="float16")] * 2
+            self.down_scalar_list[0].set_as(Constant.DOWN_FACTOR)
+            self.down_scalar_list[1].set_as(1 / Constant.DOWN_FACTOR)
 
     def check_par(self):
-        """check_par
+        """
+        check_par
         """
         def _error_code_002_check(op_name, param_name, value_range, value):
-            """_error_code_002_check"""
+            """
+            _error_code_002_check
+            """
             if value < value_range[0] or value > value_range[1]:
                 error_info = {
                     'errCode': para_check.OP_ERROR_CODE_002,
@@ -201,7 +209,8 @@ class CombinedNonMaxSuppression:
         para_check.check_dtype(self.boxes_type, ("float16",), param_name="boxes")
 
     def get_tik_instance(self):
-        """get_tik_instance
+        """
+        get_tik_instance
         """
         return self.tik_instance
 
@@ -211,7 +220,8 @@ class CombinedNonMaxSuppression:
         return 0
 
     def build_tik_instance(self, kernel_name_value):
-        """build_tik_instance
+        """
+        build_tik_instance
         """
         self.tik_instance.BuildCCE(kernel_name=kernel_name_value,
                                    inputs=self.input_gm_list,
@@ -222,7 +232,8 @@ class CombinedNonMaxSuppression:
         return self.tik_instance
 
     def init_tik_mem(self):
-        """init tik gm mem
+        """
+        init tik gm mem
         """
         # init gm input
         boxes_gm = self.tik_instance.Tensor("float16", self.boxes_shape, name="boxes_gm", scope=tik.scope_gm)
@@ -301,7 +312,8 @@ class CombinedNonMaxSuppression:
                                                                     scope=tik.scope_gm, is_workspace=True)
 
     def init_tik_ub_mem_for_nms(self):
-        """init_tik_ub_mem_for_nms
+        """
+        init_tik_ub_mem_for_nms
         """
         ub_selected_proposals = self.tik_instance.Tensor("float16", [self.max_selected_nms_num_in_ub, 8],
                                                          name="ub_selected_proposals", scope=tik.scope_ubuf)
@@ -338,14 +350,16 @@ class CombinedNonMaxSuppression:
         return nms_var_dict
 
     def init_tik_ub_mem_for_topk(self):
-        """init_tik_ub_mem_for_topk
+        """
+        init_tik_ub_mem_for_topk
         """
         # init one ub for topk output
         self.ub_max_topk = self.tik_instance.Tensor("float16", (self.proposal_topk_k, 8),
                                                     name="ub_max_topk", scope=tik.scope_ubuf)
 
     def get_core_schedule(self):
-        """get_core_schedule
+        """
+        get_core_schedule
         """
         if self.max_total_size < 16:
             self.aicore_num = 1
@@ -366,7 +380,8 @@ def total_num(shape):
 
 
 def ceil_div(value, factor):
-    """Compute the smallest integer value that is greater than
+    """
+    Compute the smallest integer value that is greater than
     or equal to value/factor
     """
     result = (value + (factor - 1)) // factor
@@ -374,12 +389,12 @@ def ceil_div(value, factor):
 
 
 def get_class_tensor(tik_instance, class_ub, class_num, len_per_class, start_class=0.0):
-    """get class tensor
+    """
+    get class tensor
     """
     util_tik_comm_func.tik_func_vector(tik_instance, class_ub, start_class, len_per_class)
     with tik_instance.for_range(1, class_num) as _class_idx:
         dst_offset = _class_idx * len_per_class
-        # get ub_class_all[n] = ub_class_all[n-1] + 1
         src_offset = (_class_idx - 1) * len_per_class
         _repeat_time = len_per_class // 128
         _repeat_tail = len_per_class % 128
@@ -394,7 +409,8 @@ def get_class_tensor(tik_instance, class_ub, class_num, len_per_class, start_cla
 
 
 def copy_tail_data(tik_instance, gm_dst_info, ub_src_info, gm_workspace_info, copy_len):
-    """copy_tail_data when output is not align, will use workspace to align force
+    """
+    copy_tail_data when output is not align, will use workspace to align force
     """
     gm_dst, gm_dst_offset = gm_dst_info
     ub_src, ub_src_offset = ub_src_info
@@ -433,7 +449,7 @@ def clip_boxes_compute(tik_instance, clip_ub, clip_value, clip_num, clip_flag=Tr
                                             clip_num, 1, 1, 0, 8, 8, 0)
 
 
-# pylint: disable=too-many-branches
+# 'pylint: disable=too-many-branches
 def batch_multi_class_nms_copy_out(tik_instance, nms, ub_result_boxes, ub_result_boxes_class,
                                    output_batch_offset, workspace_core_offset, clip_flag=False):
     """
@@ -498,7 +514,6 @@ def batch_multi_class_nms_copy_out(tik_instance, nms, ub_result_boxes, ub_result
         util_tik_comm_func.tik_func_vextract(tik_instance, ub_result_boxes, ub_out_box_y1, loop_burst_len, 1)
         util_tik_comm_func.tik_func_vcomple(tik_instance, "vmul", ub_out_box_y1, ub_scores_valid_mask, ub_out_box_y1,
                                             apply_men_len * 16)
-        # DOWN_FACTOR
         if nms.down_flag:
             util_tik_comm_func.tik_func_vmuls(tik_instance, ub_out_box_y1, ub_out_box_y1,
                                               down_scalar, nms.max_total_size)
@@ -565,7 +580,8 @@ def batch_multi_class_nms_copy_out(tik_instance, nms, ub_result_boxes, ub_result
 
 
 def batch_multi_class_nms_output(tik_instance, core_idx, _batch_idx, nms, clip_flag):
-    """do batch_multi_class_nms_output
+    """
+    do batch_multi_class_nms_output
 
     Parameters:
     ----------
@@ -702,7 +718,7 @@ def batch_multi_class_nms_output(tik_instance, core_idx, _batch_idx, nms, clip_f
                                            output_batch_offset, workspace_offset, clip_flag)
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def check_supported(boxes, scores, max_output_size_per_class,
                     max_total_size, iou_threshold, score_threshold,
                     nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections,
@@ -715,10 +731,9 @@ def check_supported(boxes, scores, max_output_size_per_class,
     """
     valid_detections_shape = valid_detections.get("ori_shape")
 
-    if(len(valid_detections_shape) == 2):
+    if (len(valid_detections_shape) == 2):
       return True, ""
-    else:
-      reason = "if the valid_detections_shape shape len != 2, not supported by aicore"
+    reason = "if the valid_detections_shape shape len != 2, not supported by aicore"
     return False, reason
 
 

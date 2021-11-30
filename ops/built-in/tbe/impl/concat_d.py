@@ -21,13 +21,10 @@ from te.utils import para_check
 from impl.concat_v2_d import concat_v2_d
 from impl.concat_v2_d import op_select_format as concat_v2_op_select_format
 from impl.concat_v2_d import get_op_support_info as concat_v2_get_op_support_info
-from impl.util.util_select_op_base import SplitInput
-from impl.util.util_select_op_base import SplitOutput
-from impl.util.util_select_op_base import get_op_cal_info
 
 
-# pylint: disable = unused-argument
-# pylint: disable=consider-using-in
+# 'pylint: disable = unused-argument
+# 'pylint: disable=consider-using-in
 def get_op_support_info(input_values, output_data, concat_dim, kernel_name="concat"):
     """
     get_op_support_info
@@ -35,8 +32,8 @@ def get_op_support_info(input_values, output_data, concat_dim, kernel_name="conc
     return concat_v2_get_op_support_info(input_values, output_data, concat_dim, kernel_name)
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-branches
-# pylint: disable=too-many-locals,too-many-statements,unused-variable
+# 'pylint: disable=locally-disabled,unused-argument,too-many-branches
+# 'pylint: disable=too-many-locals,too-many-statements,unused-variable
 def op_select_format(input_values, output_data, concat_dim,
                      kernel_name="concat"):
     """

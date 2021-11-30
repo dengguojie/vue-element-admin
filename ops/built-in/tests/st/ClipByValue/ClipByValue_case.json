@@ -379,8 +379,8 @@
         ],
         "format": "NHWC",
         "ori_shape": [
-          5,
-          1
+         -1,
+         -1
         ],
         "ori_format": "NHWC",
         "name": "input_t",
@@ -406,7 +406,7 @@
         ],
         "format": "NHWC",
         "ori_shape": [
-          1
+          -1
         ],
         "ori_format": "NHWC",
         "name": "clip_value_min",
@@ -427,7 +427,7 @@
         ],
         "format": "NHWC",
         "ori_shape": [
-          1
+          -1
         ],
         "ori_format": "NHWC",
         "name": "clip_value_max",
@@ -451,8 +451,8 @@
         ],
         "format": "NHWC",
         "ori_shape": [
-          5,
-          1
+          -1,
+          -1
         ],
         "ori_format": "NHWC",
         "name": "output_t",

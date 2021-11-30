@@ -20,18 +20,21 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from impl.util.util_select_op_base import get_op_cal_info
 
-# 256B can store up to 64 numbers when the data is int32 type
-NUM64 = 64
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    the class for constant
+    """
+    # 256B can store up to 64 numbers when the data is int32 type
+    NUM64 = 64
+    # const vlaue 2
+    VALUE_TWO = 2
+    # The maximum value of the mask corresponding to 8 blocks
+    MAX_MASK8 = 255
 
-# const vlaue 2
-VALUE_TWO = 2
 
-# The maximum value of the mask corresponding to 8 blocks
-MAX_MASK8 = 255
-
-
-# pylint: disable = unused-argument
-# pylint: disable=invalid-name,useless-object-inheritance,too-few-public-methods
+# 'pylint: disable = unused-argument
+# 'pylint: disable=invalid-name,useless-object-inheritance,too-few-public-methods
 def get_op_support_info(x, y, concat_dim, kernel_name="concat_offset_d"):
     """
     get_op_support_info
@@ -42,7 +45,7 @@ def get_op_support_info(x, y, concat_dim, kernel_name="concat_offset_d"):
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,unused-argument, invalid-name
+# 'pylint: disable=locally-disabled,unused-argument, invalid-name
 @para_check.check_op_params(para_check.DYNAMIC_INPUT, para_check.DYNAMIC_OUTPUT,
                             para_check.REQUIRED_ATTR_INT, para_check.KERNEL_NAME)
 def concat_offset_d(x, y, concat_dim, kernel_name="concat_offset_d"):
@@ -102,11 +105,11 @@ def concat_offset_d_check(x, concat_dim, input0_rank, dict_num, kernel_name):
             error_detail = "the shape of input_%d should be not bigger than 8" % i
             error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
         elif concat_dim >= shape_input[0]:
-            rule_desc = "Concat dim should be less than input0_rank,the input0_rank is %d"% input0_rank
+            rule_desc = "Concat dim should be less than input0_rank,the input0_rank is %d" % input0_rank
             error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "concat_dim", concat_dim)
         elif concat_dim < 0:
             concat_dim = concat_dim - input0_rank
-            rule_desc = "Concat dim should be larger or equal to 0,the input0_rank is %d"% input0_rank
+            rule_desc = "Concat dim should be larger or equal to 0,the input0_rank is %d" % input0_rank
             error_manager_vector.raise_err_check_params_rules(kernel_name, rule_desc, "concat_dim", concat_dim)
         para_check.check_shape(shape_input, max_rank=1, param_name="x")
         para_check.check_dtype(x[i].get("dtype").lower(), ("int32",), param_name="x")
@@ -145,7 +148,7 @@ class ConcatOffsetDCompute(object):
         data_input = []
         data_output = []
         tik_instance = tik.Tik()
-        cdim_mask = MAX_MASK8 - pow(VALUE_TWO, int(self.concat_dim))
+        cdim_mask = Constant.MAX_MASK8 - pow(Constant.VALUE_TWO, int(self.concat_dim))
         for i in range(self.dict_num):
             data_input.append(tik_instance.Tensor(
                 self.dtype, [self.input0_rank],
@@ -153,13 +156,13 @@ class ConcatOffsetDCompute(object):
             data_output.append(tik_instance.Tensor(
                 self.dtype, [self.input0_rank],
                 name="".join(["data_output", str(i)]), scope=tik.scope_gm))
-        data_row1_ub = tik_instance.Tensor(self.dtype, [NUM64],
+        data_row1_ub = tik_instance.Tensor(self.dtype, [Constant.NUM64],
                                            name="data_row1_ub",
                                            scope=tik.scope_ubuf)
-        data_row2_ub = tik_instance.Tensor(self.dtype, [NUM64],
+        data_row2_ub = tik_instance.Tensor(self.dtype, [Constant.NUM64],
                                            name="data_row2_ub",
                                            scope=tik.scope_ubuf)
-        tik_instance.vector_dup(NUM64, data_row1_ub, 0, 1, 1, 1)
+        tik_instance.vector_dup(Constant.NUM64, data_row1_ub, 0, 1, 1, 1)
 
         for m in range(self.dict_num):
             tik_instance.data_move(data_output[m], data_row1_ub, 0, 1, 1, 0, 0)

@@ -117,3 +117,10 @@ ut_case.add_precision_case("all", {"params": [{"shape": (16, 32), "dtype": "int8
 #                                   "calc_expect_func": calc_expect_func,
 #                                   "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 ##                                   })
+
+def test_op_check_supported(test_arg):
+    from impl.cast import check_supported
+    x = {"ori_shape": (1, 16, 5, 5), "dtype": "float16", "ori_format": "NCHW"}
+    y = {"ori_shape": (1, 16, 5, 5), "dtype": "int64", "ori_format": "NCHW"}
+    check_supported(x, y, 9, kernel_name="cast")
+ut_case.add_cust_test_func(test_func=test_op_check_supported)

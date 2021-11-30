@@ -16,10 +16,9 @@
 # ============================================================================
 """
 concat_v2_d: Concatenates tensors along one dimension.
-            The number of dimensions of input tensors must match,
-            and all dimensions except 'axis' must be equal.
-            tf ConcactV2 op
-
+The number of dimensions of input tensors must match,
+and all dimensions except 'axis' must be equal.
+tf ConcactV2 op
 """
 from types import MethodType
 
@@ -27,7 +26,6 @@ import functools
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
-from te import tik
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
@@ -42,7 +40,7 @@ from impl.util.util_select_op_base import get_op_cal_info
 from impl.dynamic.concat_v2_d import ConcatV2 as DynamicConcatV2
 
 
-# pylint: disable = unused-argument
+# 'pylint: disable=unused-argument,too-many-locals
 def get_op_support_info(input_values,
                         output_data,
                         axis,
@@ -78,9 +76,9 @@ def get_op_support_info(input_values,
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-branches
-# pylint: disable=too-many-locals,too-many-statements,unused-variable
-# pylint: disable=too-many-boolean-expressions
+# 'pylint: disable=locally-disabled,unused-argument,too-many-branches
+# 'pylint: disable=too-many-locals,too-many-statements,unused-variable
+# 'pylint: disable=too-many-boolean-expressions
 def op_select_format(input_values,
                      output_data,
                      axis,
@@ -122,7 +120,6 @@ def op_select_format(input_values,
     concat_dim = axis % shape_len
 
     # add op_select_format for not align input with 5HD start
-    # like: m.2 + m,2 + m,2 = m,6
     concat_with_5hd_not_align = \
         ConcatWith5HD(input_values, output_data, axis, kernel_name)
     is_support_other_5hd = concat_with_5hd_not_align.check_op_select()
@@ -187,7 +184,7 @@ def op_select_format(input_values,
         base_data_type.remove("float")
         other_data_type.remove("float")
 
-    dtype_base_out = base_data_type.copy()
+    dtype_base_out = base_data_type[:]
     format_base_out = ["ND"] * len(dtype_base_out)
     if is_support_hd:
         other_format = "NC1HWC0" if shape_len == 4 else "NDC1HWC0"
@@ -228,7 +225,8 @@ def concat_v2_d_compute(input_values,
                         output_data,
                         axis,
                         kernel_name="concat_v2_d"):
-    """how to make concat_v2_d compute these tensors.
+    """
+    how to make concat_v2_d compute these tensors.
     -----------
     Parameters
     ----------
@@ -266,6 +264,7 @@ def _is_dynamic_concat_better_performance(input_values, axis):
     return [input_shapes, axis % shape_dims] in better_performance_params
 
 
+# 'pylint: disable=variable_type_changed
 def _do_with_dynamic_concat_v2_d(input_values, axis, kernel_name):
     def cal_tiling(_input_values, _axis):
         if len(_input_values) == 0:
@@ -323,7 +322,8 @@ def _do_with_dynamic_concat_v2_d(input_values, axis, kernel_name):
                     tiling_inst.only_last_input_not_align.set_as(tiling_inst.all_align)
                     with inst.if_scope(tiling_inst._dims[i * 2] % tiling_inst.block_element == 0):
                         tiling_inst.only_last_input_not_align.set_as(0)
-                tiling_inst.all_align.set_as(tiling_inst.all_align + tiling_inst._dims[i * 2] % tiling_inst.block_element)
+                tiling_inst.all_align.set_as(tiling_inst.all_align +
+                                             tiling_inst._dims[i * 2] % tiling_inst.block_element)
 
     concat_instance = DynamicConcatV2(input_values, axis, kernel_name)
     concat_instance.tiling_param.init = MethodType(init_tiling, concat_instance.tiling_param)
@@ -381,8 +381,9 @@ def concat_v2_d(input_values, output_data, axis, kernel_name="concat_v2_d"):
             break
         for j, _ in enumerate(first_input_shape):
             if element_shape[j] != first_input_shape[j] and j != axis_new:
-                error_detail = "Axes must equal except merge axis, element_shape[j] != first_input_shape[j] and j != axis_new, "\
-                                "element_shape[j]:%s, first_input_shape[j]:%s, j:%s, axis_new:%s" % (element_shape[j], first_input_shape[j], j, axis_new)
+                error_detail = "Axes must equal except merge axis, element_shape[j] != first_input_shape[j] "\
+                              "and j != axis_new, element_shape[j]:%s, first_input_shape[j]:%s, j:%s, axis_new:%s" % (
+                              element_shape[j], first_input_shape[j], j, axis_new)
                 error_manager_vector.raise_err_specific_reson(kernel_name, error_detail)
 
     # when format is 5HD check whether concat by C and redefine the axis

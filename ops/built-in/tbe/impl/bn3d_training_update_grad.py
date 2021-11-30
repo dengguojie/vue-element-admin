@@ -20,18 +20,11 @@ import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
-from impl.util import util_select_op_base
-from impl.util.util_select_op_base import SplitInput
-from impl.util.util_select_op_base import SplitOutput
-from impl.util.util_select_op_base import get_op_cal_info
 from impl.bn_training_update_grad import bn_training_update_grad
 
-SCALAR_ONE = 1
 
-
-# pylint: disable = unused-argument
-# pylint: disable=invalid-name,redefined-builtin,too-many-statements
+# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
+# 'pylint: disable=invalid-name,redefined-builtin,too-many-statements
 @tbe_platform.fusion_manager.fusion_manager.register("bn3d_training_update_grad")
 def bn3d_training_update_grad_compute(grads, x, batch_mean, batch_variance,
                                       diff_scale, diff_offset, epsilon,
@@ -88,7 +81,8 @@ def bn3d_training_update_grad_compute(grads, x, batch_mean, batch_variance,
     data_adds = tbe.vadds(batch_variance, epsilon)
     data_rsqrt = tbe.vsqrt(data_adds)
     shape_var = shape_util.shape_to_list(batch_variance.shape)
-    data_cast = tbe.broadcast(tvm.const(SCALAR_ONE, "float32"), shape_var)
+    scalar_one = 1
+    data_cast = tbe.broadcast(tvm.const(scalar_one, "float32"), shape_var)
     data_rsqrts = tbe.vdiv(data_cast, data_rsqrt)
     rsqrts_broadcast = tbe.broadcast(data_rsqrts, shape_x)
     x_norm = tbe.vmul(x_sub, rsqrts_broadcast)
@@ -100,6 +94,7 @@ def bn3d_training_update_grad_compute(grads, x, batch_mean, batch_variance,
     return res_list
 
 
+# 'pylint: disable=too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
@@ -136,5 +131,3 @@ def bn3d_training_update_grad(grads, x, batch_mean, batch_variance,
 
     bn_training_update_grad(grads, x, batch_mean, batch_variance, diff_scale,
                             diff_offset, epsilon, kernel_name=kernel_name)
-
-

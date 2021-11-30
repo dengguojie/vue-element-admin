@@ -22,15 +22,6 @@ from te.utils.error_manager import error_manager_vector
 from impl import common_util
 
 
-# count of shape dim
-DIM_CNT = 2
-# the second dim num
-DIM_SECOND_SIZE = 4
-# minimum value for float16
-FLOAT16_MINIMUM = 2**(-24)
-FLOAT16_SCALAR = 2**12
-
-
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
 def check_valid(bbox_tensor, img_metas, valid_tensor,
@@ -71,11 +62,12 @@ def check_valid(bbox_tensor, img_metas, valid_tensor,
         error_detail = "dtype of img_metas and bbox_tensor should be same"
         error_manager_vector.raise_err_two_input_dtype_invalid(kernel_name, "img_metas", \
                                                                "bbox_tensor", error_detail)
-
-    if len(bbox_shape) != DIM_CNT:
+    dim_cnt = 2
+    dim_second_size = 4
+    if len(bbox_shape) != dim_cnt:
         error_detail = "the length of bbox_tensor'shape must be 2, while it is: %d" % len(bbox_shape)
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "bbox_tensor", error_detail)
-    if bbox_shape[-1] != DIM_SECOND_SIZE:
+    if bbox_shape[-1] != dim_second_size:
         error_detail = "the second dim of bbox_tensor must be 4, while it's: %d" % bbox_shape[-1]
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "bbox_tensor", error_detail)
 
@@ -88,7 +80,7 @@ def check_valid(bbox_tensor, img_metas, valid_tensor,
     return cvd.check_valid()
 
 
-# pylint: disable=useless-object-inheritance,too-many-instance-attributes
+# 'pylint: disable=useless-object-inheritance,too-many-instance-attributes
 class CheckValid(object):
     """
     object of CheckValid
@@ -126,7 +118,6 @@ class CheckValid(object):
             name="bbox_tensor_gm",
             scope=tik.scope_gm)
 
-        # return buffer, gm be whole
         self.data_ret_int8_gm = self.tik_instance.Tensor(
             "int8",
             self.valid_shape,
@@ -195,7 +186,8 @@ class CheckValid(object):
             scope=tik.scope_ubuf)
 
     def get_handle_num_with_clip_128(self, column):
-        """get get_handle_num_with_clip_128
+        """
+        get get_handle_num_with_clip_128
 
         Parameters
         ----------
@@ -210,7 +202,8 @@ class CheckValid(object):
         return min(self.job_buf_row * column, 128)
 
     def clear_quad_flags(self):
-        """clear_quad_flags
+        """
+        clear_quad_flags
 
         Parameters
         ----------
@@ -229,7 +222,8 @@ class CheckValid(object):
             _process_elem_count, self.quad_flags_sum_ub, 0, _repeat_time, 1, 8)
 
     def get_job_buffer_row(self):
-        """get_job_buffer_row
+        """
+        get_job_buffer_row
 
         Parameters
         ----------
@@ -242,7 +236,8 @@ class CheckValid(object):
         return self.__default_rows_per_job
 
     def get_job_num(self):
-        """get_job_num
+        """
+        get_job_num
 
         Parameters
         ----------
@@ -255,7 +250,8 @@ class CheckValid(object):
         return self.job_num
 
     def __calc_last_job_row(self):
-        """__calc_last_job_row
+        """
+        __calc_last_job_row
 
         Parameters
         ----------
@@ -287,7 +283,8 @@ class CheckValid(object):
 
 
     def __calc_job_num(self):
-        """__calc_job_num
+        """
+        __calc_job_num
 
         Parameters
         ----------
@@ -304,7 +301,8 @@ class CheckValid(object):
         return job_num
 
     def __extract_threshold_as_scalar(self):
-        """__extract_threshold_as_scalar
+        """
+        __extract_threshold_as_scalar
 
         Parameters
         ----------
@@ -339,7 +337,8 @@ class CheckValid(object):
         self.threshold_w.set_as(img_metas_dummy_ub[1])
 
     def get_last_job_header(self, head_type):
-        """get_last_job_header
+        """
+        get_last_job_header
 
         Parameters
         ----------
@@ -370,7 +369,8 @@ class CheckValid(object):
         return last_align_job_head
 
     def __move_job_bbox_to_ub(self, job_index=0, inverted=False):
-        """__move_job_bbox_to_ub
+        """
+        __move_job_bbox_to_ub
 
         Parameters
         ----------
@@ -403,7 +403,8 @@ class CheckValid(object):
                                         _burst_fp16, 0, 0)
 
     def __move_once_job_ret_to_gm(self, job_index=0, inverted=False):
-        """__move_once_job_ret_to_gm
+        """
+        __move_once_job_ret_to_gm
 
         Parameters
         ----------
@@ -447,7 +448,8 @@ class CheckValid(object):
                                         _burst_int8, 0, 0)
 
     def calc_col_ge_flag(self):
-        """calculate for each column, and add this column'result into
+        """
+        calculate for each column, and add this column'result into
         quad_flags_sum
 
         Parameters
@@ -463,7 +465,8 @@ class CheckValid(object):
 
         _deal_elem_num = self.get_handle_num_with_clip_128(4)
         rep_offset_fp16 = _deal_elem_num * 2 // 32
-
+        float16_minimum = 2**(-24)
+        float16_scalar = 2**12
         self.tik_instance.vector_dup(_deal_elem_num, self.zeros_ub, 0,
                                      _repeat_time, 1, 8)
 
@@ -483,7 +486,7 @@ class CheckValid(object):
                                rep_offset_fp16)
 
         self.tik_instance.vector_dup(_deal_elem_num, self.quad_threshold_ub,
-                                     FLOAT16_MINIMUM, _repeat_time, 1,
+                                     float16_minimum, _repeat_time, 1,
                                      rep_offset_fp16)
 
         self.tik_instance.vmin(_deal_elem_num, self.zeros_ub, self.ones_ub,
@@ -492,7 +495,7 @@ class CheckValid(object):
                                rep_offset_fp16)
 
         self.tik_instance.vector_dup(_deal_elem_num, self.quad_threshold_ub,
-                                     FLOAT16_SCALAR, _repeat_time, 1,
+                                     float16_scalar, _repeat_time, 1,
                                      rep_offset_fp16)
 
         self.tik_instance.vmul(_deal_elem_num, self.ones_ub,
@@ -531,6 +534,8 @@ class CheckValid(object):
         _deal_elem_num = self.get_handle_num_with_clip_128(4)
 
         rep_offset_fp16 = _deal_elem_num * 2 // 32
+        float16_minimum = 2**(-24)
+        float16_scalar = 2**12
 
         _mask64 = 0xAAAAAAAAAAAAAAAA
         self.tik_instance.vector_dup([_mask64, _mask64], self.quad_threshold_ub,
@@ -548,7 +553,7 @@ class CheckValid(object):
                                rep_offset_fp16, rep_offset_fp16)
 
         self.tik_instance.vector_dup(_deal_elem_num, self.quad_threshold_ub,
-                                     FLOAT16_MINIMUM, _repeat_time, 1, 8)
+                                     float16_minimum, _repeat_time, 1, 8)
 
         self.tik_instance.vmin(_deal_elem_num, self.ones_ub, self.zeros_ub,
                                self.quad_threshold_ub, _repeat_time, 1, 1, 1,
@@ -564,7 +569,7 @@ class CheckValid(object):
 
         # mul 2 times
         self.tik_instance.vector_dup(_deal_elem_num, self.quad_threshold_ub,
-                                     FLOAT16_SCALAR, _repeat_time, 1,
+                                     float16_scalar, _repeat_time, 1,
                                      rep_offset_fp16)
 
         self.tik_instance.vmul(_deal_elem_num, self.ones_ub,
@@ -581,6 +586,9 @@ class CheckValid(object):
         self.__add_col_flag_to_sum()
 
     def __add_col_flag_to_sum(self):
+        """
+        add_col_flag_to_sum.
+        """
         _repeat_time = max(self.job_buf_row * 4 // 128, 1)
         _process_elem_count = self.get_handle_num_with_clip_128(4)
         rep_offset_fp16 = _process_elem_count * 2 // 32
@@ -599,7 +607,9 @@ class CheckValid(object):
             rep_offset_fp16)
 
     def merge_successive_four_elem_to_one_val(self):
-        """merge successive four elements elements into once."""
+        """
+        merge successive four elements elements into once.
+        """
         _repeat_time = max(self.job_buf_row * 4 // 128, 1)
         _process_elem_count = self.get_handle_num_with_clip_128(4)
         rep_offset_fp16 = _process_elem_count * 2 // 32
@@ -618,7 +628,8 @@ class CheckValid(object):
             max(_repeat_time // 2, 1), 1, 1, rep_offset_fp16)
 
     def transform_to_one_or_zero(self):
-        """transform_to_one_or_zero
+        """
+        transform_to_one_or_zero
 
         Parameters
         ----------
@@ -657,7 +668,8 @@ class CheckValid(object):
                                 rep_offset_fp16)
 
     def check_valid_compute(self, job_index, inverted=False):
-        """entrance for each core
+        """
+        entrance for each core
 
         Parameters
         ----------
@@ -674,7 +686,6 @@ class CheckValid(object):
         self.clear_quad_flags()  # must clear it in each core
         self.__move_job_bbox_to_ub(job_index, inverted)
         with self.tik_instance.for_range(0, 2) as n_col:
-            # col=0,1, point to x1, y1
             with self.tik_instance.if_scope(n_col == 0):
                 self.calc_col_ge_flag()
 
@@ -687,7 +698,8 @@ class CheckValid(object):
         self.__move_once_job_ret_to_gm(job_index, inverted)
 
     def check_valid(self):
-        """main entrance for check valid operation
+        """
+        main entrance for check valid operation
 
         Parameters
         ----------

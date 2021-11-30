@@ -241,6 +241,25 @@ case_5 = {
 
 ut_case.add_precision_case("Ascend910A", case_5)
 
+def test_op_select_format_001(test_arg):
+    from impl.centralization import op_select_format
+    op_select_format(
+        {
+            "shape": (16, 16, 16, 16),
+            "dtype": "float16",
+            "format": "NHWC",
+            "ori_shape": (16, 16, 16, 16),
+            "ori_format": "NHWC"
+        }, {
+            "shape": (16, 16, 16, 16),
+            "dtype": "float16",
+            "format": "NHWC",
+            "ori_shape": (16, 16, 16, 16),
+            "ori_format": "NHWC"
+        }, [1])
+
+ut_case.add_cust_test_func(test_func=test_op_select_format_001)
+
 if __name__ == '__main__':
     user_home_path = os.path.expanduser("~")
     simulator_lib_path = os.path.join(user_home_path, "/usr/local/Ascend/toolkit/tools/simulator")

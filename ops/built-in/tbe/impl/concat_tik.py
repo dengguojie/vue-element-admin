@@ -19,14 +19,13 @@ concat_tik
 """
 import math
 import numpy as np
-
 from te import tik
 import te.platform as tbe_platform
 
 
-# pylint: disable=too-many-instance-attributes,unused-argument
-# pylint: disable=too-many-statements,too-many-lines,too-many-locals
-# pylint: disable=too-many-branches,too-many-return-statements,too-many-public-methods
+# 'pylint: disable=too-many-instance-attributes,unused-argument
+# 'pylint: disable=too-many-statements,too-many-lines,too-many-locals
+# 'pylint: disable=too-many-branches,too-many-return-statements,too-many-public-methods
 class ConcatSchedule:
     """
         Function: use to store concat base parameters
@@ -137,7 +136,7 @@ class ConcatSchedule:
                 concat_axis = 0
 
         # calcu the output shape again
-        out_shape = list(input_shapes[0]).copy()
+        out_shape = list(input_shapes[0])[:]
         out_shape[concat_axis] = 0
         for _, input_shape in enumerate(input_shapes):
             out_shape[concat_axis] = \
@@ -145,7 +144,7 @@ class ConcatSchedule:
 
         return input_shapes, concat_axis, out_shape
 
-    # pylint: disable=too-many-branches
+    # 'pylint: disable=too-many-branches
     def check_tik_supported(self):
         """
         check if tik schedule support this shape
@@ -224,6 +223,7 @@ class ConcatSchedule:
         the_max_size = 0
         for _, input_shape in enumerate(self.input_shapes):
             concat_axis_len = input_shape[self.concat_axis]
+            # 'pylint: disable=variable_type_changed
             the_max_size = max(the_max_size, concat_axis_len)
             if concat_axis_len < self.ele_each_block:
                 if_supported = False
@@ -273,7 +273,7 @@ class ConcatSchedule:
         """
         input_tensors = []
         for index, tensor_shape in enumerate(input_shapes):
-            tensor_name = "gm_input_" + str(index)
+            tensor_name = "gm_input_%s" % (str(index))
             gm_tensor = self.tik_instance.Tensor(
                 dtype, tensor_shape, name=tensor_name, scope=tik.scope_gm)
             input_tensors.append(gm_tensor)
@@ -358,7 +358,8 @@ class ConcatSchedule:
         return use_core_num, ele_num_each_loop, ele_last
 
     def concat_ping_pang_flag(self, ele_num):
-        """concat_ping_pang_flag
+        """
+        concat_ping_pang_flag
         """
         if ele_num < self.ub_half_size:
             loop_num = 0
@@ -388,7 +389,7 @@ class ConcatSchedule:
 
         return True
 
-    # pylint: disable=too-many-locals,too-many-statements
+    # 'pylint: disable=too-many-locals,too-many-statements
     def concat_compute_for_each_tensor(self, tensor_list, input_tensor_info,
                                        output_tensor_info, ele_num):
         """
@@ -641,7 +642,8 @@ class ConcatSchedule:
         return loop_num, last_loop_num, core_used
 
     def concat_last_dim_for_scalar(self):
-        """copy all data from src to des
+        """
+        copy all data from src to des
         """
         loop_num, last_loop_num, core_used = \
             self.get_loop_para_scalar(self.input_shapes)
@@ -675,7 +677,7 @@ class ConcatSchedule:
                     self.concat_compute_each_core_scalar(
                         in_offset, out_offset, compute_loop)
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def concat_each_tensor_loop_scalar(self, ub_input, input_tensor,
                                        output_tensor, compute_loop,
                                        last_axis_len):
@@ -819,7 +821,8 @@ class ConcatSchedule:
                                            loop_last)
 
     def get_max_dims_remainder_half(self):
-        """get_max_dims_remainder_half
+        """
+        get_max_dims_remainder_half
         """
         loop_num_list, _, _ = \
             get_offset_and_mask(self.concat_axis, self.input_shapes,
@@ -829,6 +832,7 @@ class ConcatSchedule:
         # get max input size
         max_input_dim_size = 0
         for _, shape in enumerate(self.input_shapes):
+        # 'pylint: disable=variable_type_changed
             max_input_dim_size = \
                 max(max_input_dim_size, shape[self.concat_axis])
 
@@ -860,7 +864,8 @@ class ConcatSchedule:
         return max_dims, thread_num, max_input_dim_size
 
     def concat_last_dim_vector_branch(self):
-        """copy all data from src to des
+        """
+        copy all data from src to des
         """
         # when input dtype is int32, can not use vector command to vadds
         if self.ele_each_block == 8:
@@ -921,7 +926,8 @@ class ConcatSchedule:
 
     def proc_vector_scedule(self, dims_len, dims_offset,
                             thread_num, core_zero=0):
-        """proc_vector_scedule
+        """
+        proc_vector_scedule
         """
         if core_zero != 0:
             dims_len = dims_len - core_zero
@@ -961,7 +967,8 @@ class ConcatSchedule:
             thread_num = 1
 
         def _run_one_segment(_dims_len, _segment_index):
-            """_run_one_segment
+            """
+            _run_one_segment
             """
             # get gm dim offset
             dim_offset = \
@@ -974,9 +981,10 @@ class ConcatSchedule:
         if dims_len != 0:
             _run_one_segment(dims_len, dims_loop)
 
-    # pylint: disable=too-many-statements,too-many-branches
+    # 'pylint: disable=too-many-statements,too-many-branches
     def function_for_vector_concat(self, dims_len, dims_offset, core_zero=0):
-        """function_for_half_block
+        """
+        function_for_half_block
         """
         ub_tensor = self.tik_instance.Tensor(
             self.dtype,
@@ -1185,7 +1193,8 @@ class ConcatSchedule:
             1, out_burst_len, 0, 0)
 
     def data_move_cut_by_fisrt_dim(self):
-        """data_move_cut_by_fisrt_dim
+        """
+        data_move_cut_by_fisrt_dim
         """
         concat_fuc = None
         inner_loop = self.ele_each_block
@@ -1220,7 +1229,8 @@ class ConcatSchedule:
 
     def proc_data_scedule_align(self, _core_index,
                                 core_dims_offset, core_process):
-        """proc_data_scedule
+        """
+        proc_data_scedule
         """
         output_gm_offset = []
         for idx, _ in enumerate(self.input_shapes):
@@ -1474,7 +1484,8 @@ def check_use_scalar(shapes_list, axis, ele_each_block,
 
 def check_use_vector_branch(shapes_list, dtype, output_shape,
                             axis, ele_each_block):
-    """check_use_vector_branch
+    """
+    check_use_vector_branch
     """
     # check concat with last dim
     if axis != (len(output_shape) - 1) or len(output_shape) == 1:
@@ -1489,6 +1500,7 @@ def check_use_vector_branch(shapes_list, dtype, output_shape,
 
     input_max_size = 0
     for _, input_shape in enumerate(shapes_list):
+    # 'pylint: disable=variable_type_changed
         input_max_size = max(input_max_size, input_shape[axis])
 
     if input_max_size < ele_each_block:
@@ -1650,7 +1662,8 @@ def gen_vector_mask(tail_num, ele_num, mask_mode="POST"):
 
 
 def get_ceil_int(int1, int2):
-    """get cel for input1 and input2
+    """
+    get cel for input1 and input2
     """
     if int1 == 0:
         return 1

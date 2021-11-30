@@ -24,8 +24,8 @@ from te.utils.error_manager import error_manager_vector
 from tbe.common.register import set_fusion_buildcfg
 
 
-# pylint: disable=too-many-locals
-# pylint: disable=locally-disabled,too-few-public-methods,no-init
+# 'pylint: disable=too-many-locals
+# 'pylint: disable=locally-disabled,too-few-public-methods,no-init
 def _format_check(arg_input):
     """
     Function to check if the data_format is in line with norms.
@@ -99,7 +99,7 @@ def _check_shape_dims(shape, data_format):
         if len(shape) not in (5, 6):
             error_detail = "bninference only support 5D or 6D Tensor"
             error_manager_vector.raise_err_input_shape_invalid("bninference", "input_x",
-                                                            error_detail)
+                                                               error_detail)
 
 
 def param_scale_check(shape_x, shape_scale):
@@ -133,7 +133,7 @@ def param_scale_check(shape_x, shape_scale):
                                                                        error_detail)
 
 
-# pylint: disable=locally-disabled,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-arguments
 def _shape_check(shape_x, shape_mean, shape_variance, scale, format_x):
     """
     Function to check if the shape is in line with norms.
@@ -172,8 +172,8 @@ def _shape_check(shape_x, shape_mean, shape_variance, scale, format_x):
         param_scale_check(shape_x, shape_scale)
 
 
-# pylint: disable=invalid-name,redefined-outer-name
-# pylint: disable=too-many-locals
+# 'pylint: disable=invalid-name,redefined-outer-name
+# 'pylint: disable=too-many-locals
 def _fused_scale_bias_compute(x, mean, variance, scale, bias):
     """
     algorithm: Scale
@@ -222,7 +222,7 @@ def _fused_scale_bias_compute(x, mean, variance, scale, bias):
     return res
 
 
-# pylint: disable=invalid-name,redefined-outer-name
+# 'pylint: disable=invalid-name,redefined-outer-name
 def _fused_scale_compute(x, mean, variance, scale):
     """
     algorithm: Scale
@@ -268,7 +268,7 @@ def _fused_scale_compute(x, mean, variance, scale):
     return res
 
 
-# pylint: disable=invalid-name,redefined-outer-name
+# 'pylint: disable=invalid-name,redefined-outer-name
 def _fused_compute(x, mean, variance):
     """
     Parameters
@@ -293,7 +293,7 @@ def _fused_compute(x, mean, variance):
     return res_y
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name,protected-access
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,invalid-name,protected-access
 @tbe_platform.fusion_manager.fusion_manager.register("bninference_d")
 def bninference_d_compute(x, mean, variance, scale, bias, y,
                           momentum, epsilon, use_global_stats, mode):
@@ -434,7 +434,7 @@ def para_shape_check(x, mean, variance, scale, format_x):
     _shape_check(shape_x, shape_mean, shape_variance, scale, format_x)
 
 
-# pylint: disable=redefined-argument-from-local
+# 'pylint: disable=redefined-argument-from-local
 def get_fusion_params(x, mean, variance, scale, bias, y):
     """
     Get L1 fusion_params
@@ -459,7 +459,7 @@ def get_fusion_params(x, mean, variance, scale, bias, y):
                     if "L1_fusion_type" in x.op.attrs else -1
                 if l1_fusion_type == 1:
                     error_manager_vector.raise_err_specific_reson("bninference",
-                                        "bninference does not support l1 width fusion")
+                        "bninference does not support l1 width fusion")
             is_l1_depth_fusion = (l1_fusion_type == 0) or is_l1_depth_fusion
 
     l1_fusion_type = 0 if is_l1_depth_fusion else -1
@@ -486,7 +486,8 @@ def para_scale_bias_check(x, mean, variance, scale, offect, use_global_stats, ke
     _format_check(x)
     _dtype_scale_offset_check(x, mean, variance, scale, offect)
     if not use_global_stats:
-        error_manager_vector.raise_err_input_value_invalid("bninference", "use_global_stats", 'True', str(use_global_stats))
+        error_manager_vector.raise_err_input_value_invalid("bninference", "use_global_stats",
+                                                           'True', str(use_global_stats))
     para_shape_scale_offset_check(x, mean, variance, scale, offect, format_x)
 
 
@@ -503,7 +504,8 @@ def _para_check(x, mean, variance, scale, use_global_stats, kernel_name):
     _format_check(x)
     _dtype_check(x, mean, variance)
     if not use_global_stats:
-        error_manager_vector.raise_err_input_value_invalid("bninference", "use_global_stats", 'True', str(use_global_stats))
+        error_manager_vector.raise_err_input_value_invalid("bninference", "use_global_stats",
+                                                           'True', str(use_global_stats))
     para_shape_check(x, mean, variance, scale, format_x)
 
 
@@ -536,7 +538,7 @@ def get_param_scale_shape(shape_x, shape_scale, format_x):
     return shape
 
 
-# pylint: disable=too-many-branches,too-many-statements
+# 'pylint: disable=too-many-branches,too-many-statements
 def gen_tensor(x, mean, variance, scale, offect):
     """
     :param x:x tensor
@@ -634,7 +636,7 @@ def get_l1_paras(x):
     return attr_x, l1_fusion_type
 
 
-# pylint: disable=locally-disabled,no-member
+# 'pylint: disable=locally-disabled,no-member
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_FLOAT,
@@ -695,4 +697,3 @@ def bninference_d(x, mean, variance, scale, offect, y, momentum, epsilon,
               "tensor_list": tensor_list,
               "l1_fusion_option": is_l1_depth_fusion}
     tbe.cce_build_code(sch, config)
-

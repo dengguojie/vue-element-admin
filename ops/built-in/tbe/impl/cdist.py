@@ -22,17 +22,17 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils import shape_util
 
-# General limitation of the reduce size for input shape: 2**31
-SHAPE_SIZE_LIMIT = 2147483648
-
 
 def tensor_pow(tensor, power):
+    """
+    tensor_pow
+    """
     log_value = tbe.vlog(tensor, priority_flag=0)
     ret = tbe.vexp(tbe.vmuls(log_value, power))
     return ret
 
 
-#pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-locals
 @fusion_manager.register("cdist")
 def cdist_compute(input_x1, input_x2, output_y, p, kernel_name="cdist"):
     """
@@ -92,6 +92,7 @@ def cdist_compute(input_x1, input_x2, output_y, p, kernel_name="cdist"):
     return ret
 
 
+# 'pylint: disable=too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_FLOAT,
                             para_check.KERNEL_NAME)
@@ -133,8 +134,8 @@ def cdist(input_x1, input_x2, output_y, p=2.0, kernel_name="cdist"):
 
     para_check.check_tensor_shape_size(x1_shape)
     para_check.check_tensor_shape_size(x2_shape)
-
-    para_check.check_shape_size(x1_shape, SHAPE_SIZE_LIMIT)
+    shape_size_limit = 2147483648
+    para_check.check_shape_size(x1_shape, shape_size_limit)
     para_check.check_dtype_rule(x1_dtype, check_data_list)
     para_check.check_dtype_rule(x2_dtype, check_data_list)
 

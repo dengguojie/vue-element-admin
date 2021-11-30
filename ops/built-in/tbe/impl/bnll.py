@@ -22,35 +22,31 @@ bnll
   Supportive_dtype_format :
    ["float16", "float32"]
    ["ND"]
-
 """
-# pylint: disable=E0401
-# pylint: disable=C0412
-# pylint: disable=W0613
+# 'pylint: disable=E0401
+# 'pylint: disable=C0412
+# 'pylint: disable=W0613
 import functools
-
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
 from te.utils import para_check
 from impl.util.platform_adapter import error_manager_vector
 
-CONST_ZERO = 0.0
-CONST_ONE = 1.0
-CONST_NEGATIVE_ONE = -1.0
-
 
 def _bnll_compute(data, dtype):
-
-    scalar_zero = tvm.const(CONST_ZERO, dtype)
+    const_zero = 0.0
+    const_one = 1.0
+    const_negative_one = -1.0
+    scalar_zero = tvm.const(const_zero, dtype)
 
     negative_data = tbe.vmins(data, scalar_zero)
     positive_data = tbe.vmaxs(data, scalar_zero)
 
-    data_reverse = tbe.vaxpy(positive_data, negative_data, tvm.const(CONST_NEGATIVE_ONE, dtype))
+    data_reverse = tbe.vaxpy(positive_data, negative_data, tvm.const(const_negative_one, dtype))
 
     res = tbe.vexp(data_reverse)
-    res = tbe.vadds(res, tvm.const(CONST_ONE, dtype))
+    res = tbe.vadds(res, tvm.const(const_one, dtype))
     res = tbe.vlog(res)
     res = tbe.vadd(res, positive_data)
 

@@ -26,9 +26,6 @@ from te.utils import shape_util
 from impl.util.platform_adapter import error_manager_vector
 from impl.util import util_common
 
-MAX_SUPPORT_SHAPE = 1 << 30 # Limit of all dims' product
-SPECIAL_SHAPE_NUM = 10000000 # Limit of one dim
-
 
 def _new_alloc(ir_builder, dtype, shape, name, scope):
     """
@@ -81,6 +78,7 @@ def _kernel_ir(dst, src, dst_type, src_type):
     return ir_builder.get()
 
 
+# 'pylint: disable=inconsistent-return-statements
 def _int8_uint8_process(data, dst_type):
     """
     deal with src dtype=int8 and uint8 case
@@ -105,6 +103,7 @@ def _int8_uint8_process(data, dst_type):
                                                   "cast to float16,float32,int32,uint8.")
 
 
+# 'pylint: disable=inconsistent-return-statements
 def _int32_process(data, dst_type):
     """
     deal with src dtype=int32 case
@@ -153,6 +152,7 @@ def _int32_process(data, dst_type):
                                                   "cast to bool,int8,uint8,float32,float16.")
 
 
+# 'pylint: disable=inconsistent-return-statements
 def _float32_process(data, dst_type):
     """
     deal with src dtype=float32 case
@@ -167,6 +167,7 @@ def _float32_process(data, dst_type):
                                                   "cast to int32,float16.")
 
 
+# 'pylint: disable=inconsistent-return-statements
 def _float16_process(data, dst_type):
     """
     deal with src dtype=float16 case
@@ -214,7 +215,7 @@ def _cast_dsttype_conversion(dst_type):
     return dst_type
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
     """
     verify the types of cast supported by tbe
@@ -250,11 +251,11 @@ def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
 
     if check_result:
         return True, ""
-    reason = "when input dtyps is %s, output dtype[%s] is not in checklist:%s" %(src_type, dst_type, str(check_list))
+    reason = "when input dtyps is %s, output dtype[%s] is not in checklist:%s" % (src_type, dst_type, str(check_list))
     return False, reason
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# pylint: disable=locally-disabled,too-many-arguments,unused-argument,inconsistent-return-statements
 @tbe_platform.fusion_manager.fusion_manager.register("cast")
 def cast_compute(data, output_y, dst_type, kernel_name="cast"):
     """

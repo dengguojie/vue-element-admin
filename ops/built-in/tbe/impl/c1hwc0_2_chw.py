@@ -19,24 +19,6 @@ from te import tik
 from te import platform as tbe_platform
 
 
-# UB size in byte
-UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
-# AICORE count
-CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-# C0 length
-VNC_LEN = 16
-# bytes in one block
-BLOCK_BYTE_SIZE = 32
-# repeat up limit for vector
-REPEAT_LIMIT = 255
-# mask value for float32
-MASK_64 = 64
-# float16/32 type list
-TYPE_FLOAT_LIST = ("float16",)
-# used for vnchwconv
-VNC_IDX_LIST = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
-
-
 def _ceil_div(value_x, value_y):
     """
     do ceil division
@@ -66,7 +48,7 @@ def _get_dtype_factor(dtype):
     return dtype_factor
 
 
-# pylint: disable=too-many-locals,too-many-statements
+# 'pylint: disable=too-many-locals,too-many-statements
 def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in, shape_out):
     """
     do c1hwc0 to chw transfer by multiple core on axis hw
@@ -77,17 +59,20 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in, shape_out):
     axis_hw = axis_h * axis_w
     hw_size = axis_hw
     dtype_len = _get_dtype_factor(data_in.dtype)
-    ele_count_per_block = BLOCK_BYTE_SIZE // dtype_len
+    vnc_len = 16
+    block_byte_size = 32
+    ele_count_per_block = block_byte_size // dtype_len
     # save 8kb to avoid repeat time of vnchwconv is larger than 255
-    mod_ub_size = UB_SIZE
+    mod_ub_size = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
     if mod_ub_size > 248 * 1024:
         mod_ub_size = 248 * 1024
     need_ub_size = _floor_trunc(mod_ub_size // 2 // dtype_len, ele_count_per_block)
 
     # each core process certain hw'c lines
-    core_num = _ceil_div(hw_size, _ceil_div(hw_size, CORE_NUM))
+    core_num = _ceil_div(hw_size, _ceil_div(hw_size,
+                         tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)))
     # to make sure every core process hw is block align except last core
-    sub_hw_per_loop = _floor_trunc(need_ub_size // VNC_LEN // axis_c0, ele_count_per_block) * VNC_LEN
+    sub_hw_per_loop = _floor_trunc(need_ub_size // vnc_len // axis_c0, ele_count_per_block) * vnc_len
     per_core_hw_cnt = _floor_trunc(_ceil_div(hw_size, core_num), ele_count_per_block)
     last_core_hw_cnt = hw_size - per_core_hw_cnt * (core_num - 1)
 
@@ -97,12 +82,12 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in, shape_out):
 
     with tik_inst.for_range(0, core_num, block_num=core_num) as block_idx:
 
-        # pylint: disable=too-many-locals,too-many-statements
+        # 'pylint: disable=too-many-locals,too-many-statements
         def _hw_transfer_process(axis_n_index, axis_c1_index, sub_hw_len):
             """
             process of hw transfer
             """
-
+            # 'pylint: disable=too-use-list-comprehension
             def _inner_hw_transfer(sub_hw_lp_idx, inner_hw_len):
                 """
                 inner hw transfer process
@@ -127,9 +112,10 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in, shape_out):
                                        0, 1, axis_c0, 0, 0)
 
                 # do hwc0 to c0hw transfer
-                src_addr_list = [in_ub[VNC_LEN * i] for i in VNC_IDX_LIST]
-                dst_addr_list = [out_ub[sub_hw_per_loop * i] for i in VNC_IDX_LIST]
-                repeat_cnt = _ceil_div(inner_hw_block_block_align * axis_c0, VNC_LEN)
+                vnc_idx_list = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
+                src_addr_list = [in_ub[vnc_len * i] for i in vnc_idx_list]
+                dst_addr_list = [out_ub[sub_hw_per_loop * i] for i in vnc_idx_list]
+                repeat_cnt = _ceil_div(inner_hw_block_block_align * axis_c0, vnc_len)
                 src_stride = 0 if repeat_cnt == 1 else 16
                 dst_stride = 0 if repeat_cnt == 1 else 1
                 tik_inst.vnchwconv(False, False,
@@ -185,10 +171,7 @@ def c1hwc0_2_chw_compute(tik_inst, data_in, data_out):
     """
     do hwc to chw transfer
     """
-
-    shape_in = [int(x) for x in data_in.shape[:]]
-    shape_out = [int(x) for x in data_out.shape[:]]
-    _multi_core_on_hw(tik_inst, data_in, data_out, shape_in, shape_out)
+    _multi_core_on_hw(tik_inst, data_in, data_out, shape_in.shape, shape_out.shape)
 
 
 def c1hwc0_2_chw(in_shape, dst_shape, in_dtype, kernel_name="c1hwc0_2_chw"):
