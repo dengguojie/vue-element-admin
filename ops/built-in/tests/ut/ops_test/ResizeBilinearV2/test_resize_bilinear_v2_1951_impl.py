@@ -91,12 +91,10 @@ def test_1951_fp16_small_shape(test_arg):
         resize_bilinear_v2(tensor_dict(image_shape, "NCHW", image_dtype, tensor_format="NC1HWC0"),
                            tensor_dict([2], "NCHW", "int32"),
                            tensor_dict(output_shape, "NCHW", "float16", tensor_format="NC1HWC0", is_output=True),
-                           None, None, None, None,
                            False, False, "test_1951_fp32_small_shape_fp16_to_fp16")
         resize_bilinear_v2(tensor_dict(image_shape, "NCHW", image_dtype, tensor_format="NC1HWC0"),
                            tensor_dict([2], "NCHW", "int32"),
                            tensor_dict(output_shape, "NCHW", "float32", tensor_format="NC1HWC0", is_output=True),
-                           None, None, None, None,
                            False, False, "test_1951_fp32_small_shape_fp16_to_fp32")
 
     set_current_compile_soc_info(test_arg)
@@ -124,17 +122,14 @@ def test_1951_fp32_small_shape(test_arg):
         resize_bilinear_v2(tensor_dict(image_shape, "NCHW", image_dtype, tensor_format="NC1HWC0"),
                            tensor_dict([2], "NCHW", "int32"),
                            tensor_dict(output_shape, "NCHW", "float32", tensor_format="NC1HWC0", is_output=True),
-                           None, None, None, None,
                            True, False, "test_1951_fp32_small_shape_tf")
         resize_bilinear_v2(tensor_dict(image_shape, "NCHW", image_dtype, tensor_format="NC1HWC0"),
                            tensor_dict([2], "NCHW", "int32"),
                            tensor_dict(output_shape, "NCHW", "float32", tensor_format="NC1HWC0", is_output=True),
-                           None, None, None, None,
                            False, True, "test_1951_fp32_small_shape_tt")
         resize_bilinear_v2(tensor_dict(image_shape, "NCHW", image_dtype, tensor_format="NC1HWC0"),
                            tensor_dict([2], "NCHW", "int32"),
                            tensor_dict(output_shape, "NCHW", "float32", tensor_format="NC1HWC0", is_output=True),
-                           None, None, None, None,
                            False, False, "test_1951_fp32_small_shape_ff")
     set_current_compile_soc_info(test_arg)
 

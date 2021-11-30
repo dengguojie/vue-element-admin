@@ -29,7 +29,7 @@ case1 = {"params": [{"shape": (32, 1, 512, 512, 16), "dtype": "float32", "format
                      "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
                     {"shape": (32, 1, 512, 512, 16), "dtype": "float32", "format": "NCHW",
                      "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW",
-                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]}, None, None, None, None,
+                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
                     False, False],
          "case_name": "dynamic_resize_bilinear_v2_d_1",
          "expect": "success",
@@ -43,7 +43,7 @@ case2 = {"params": [{"shape": (-1, -1, -1, -1, 16), "dtype": "float32", "format"
                      "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW", "range": [(1, None)]},
                     {"shape": (-1, -1, -1, -1, 16), "dtype": "float32", "format": "NCHW",
                      "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW",
-                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]}, None, None, None, None,
+                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
                     False, False],
          "case_name": "dynamic_resize_bilinear_v2_d_1",
          "expect": "success",
@@ -57,7 +57,7 @@ case3 = {"params": [{"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format"
                      "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW", "range": [(1, None)]},
                     {"shape": (-1, -1, -1, -1, 16), "dtype": "float32", "format": "NCHW",
                      "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW",
-                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]}, None, None, None, None,
+                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
                     False, False],
          "case_name": "dynamic_resize_bilinear_v2_d_1",
          "expect": "success",
@@ -71,7 +71,7 @@ case4 = {"params": [{"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format"
                      "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW", "range": [(1, None)]},
                     {"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format": "NCHW",
                      "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW",
-                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]}, [16, 16], [8, 8], 0, 0,
+                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
                     False, False],
          "case_name": "dynamic_resize_bilinear_v2_d_fp16_to_fp16",
          "expect": "success",
@@ -85,7 +85,7 @@ case5 = {"params": [{"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format"
                      "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW", "range": [(1, None)]},
                     {"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format": "NCHW",
                      "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW",
-                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]}, [16, 16], [8, 8], 0, 0,
+                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
                     False, True],
          "case_name": "dynamic_resize_bilinear_v2_d_fp16_to_fp16_5",
          "expect": "success",
@@ -99,7 +99,7 @@ case6 = {"params": [{"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format"
                      "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW", "range": [(1, None)]},
                     {"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format": "NCHW",
                      "ori_shape": (34, 2, 1, 1, 16), "ori_format": "NCHW",
-                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]}, [16, 16], [8, 8], 0, 0,
+                     "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
                     True, False],
          "case_name": "dynamic_resize_bilinear_v2_d_fp16_to_fp16_6",
          "expect": "success",
@@ -220,7 +220,7 @@ def tune_space_resize_bilinear_v2_case1(test_arg):
     tune_param_expect["tune_param"]["sub_param"][2]["param_list"][2]["type"] = "range"
     tune_param_expect["tune_param"]["sub_param"][2]["param_list"][2]["value"] = [1, aicore_num]
 
-    tune_param_actual = tune_space_resize_bilinear_v2(images, size, y, None, None, None, None, False, False,
+    tune_param_actual = tune_space_resize_bilinear_v2(images, size, y, False, False,
                                                       "resize_bilinear_v2")
     if not cmp_data(json.loads(tune_param_actual), tune_param_expect):
         raise Exception("Failed to call tune_space_resize_bilinear_v2 in resize_bilinear_v2.")
@@ -258,7 +258,7 @@ def tune_param_check_supported_resize_bilinear_v2_case1(test_arg):
                                                      "cut_height_num": aicore_num,
                                                      "cut_width_num": aicore_num}}
     print('tune_param: ', tune_param)
-    if not tune_param_check_supported_resize_bilinear_v2(images, size, y, None, None, None, None, False, False,
+    if not tune_param_check_supported_resize_bilinear_v2(images, size, y, False, False,
                                                          "resize_bilinear_v2",
                                                          json.dumps(tune_param)):
         raise Exception("Failed to call tune_param_check_supported_resize_bilinear_v2 in resize_bilinear_v2.")
@@ -292,7 +292,7 @@ def tune_param_check_supported_resize_bilinear_v2_case2(test_arg):
                                                      "cut_batch_c1_num": aicore_num // 2,
                                                      "cut_height_num": 1,
                                                      "cut_width_num": 1}}
-    if not tune_param_check_supported_resize_bilinear_v2(images, size, y, None, None, None, None, False, False,
+    if not tune_param_check_supported_resize_bilinear_v2(images, size, y, False, False,
                                                          "resize_bilinear_v2",
                                                          json.dumps(tune_param)):
         raise Exception("Failed to call tune_param_check_supported_resize_bilinear_v2 in resize_bilinear_v2.")
@@ -324,7 +324,7 @@ def tune_param_check_supported_resize_bilinear_v2_case3(test_arg):
                                                      "cut_batch_c1_num": 1,
                                                      "cut_height_num": 1,
                                                      "cut_width_num": 1}}
-    if tune_param_check_supported_resize_bilinear_v2(images, size, y, None, None, None, None, False, False,
+    if tune_param_check_supported_resize_bilinear_v2(images, size, y, False, False,
                                                      "resize_bilinear_v2",
                                                      json.dumps(tune_param)):
         raise Exception("Failed to call tune_param_check_supported_resize_bilinear_v2 in resize_bilinear_v2.")
@@ -357,34 +357,16 @@ def tune_param_check_supported_resize_bilinear_v2_case4(test_arg):
                                                      "cut_batch_c1_num": aicore_num,
                                                      "cut_height_num": aicore_num,
                                                      "cut_width_num": aicore_num}}
-    if tune_param_check_supported_resize_bilinear_v2(images, size, y, None, None, None, None, False, False,
+    if tune_param_check_supported_resize_bilinear_v2(images, size, y, False, False,
                                                      "resize_bilinear_v2",
                                                      json.dumps(tune_param)):
         raise Exception("Failed to call tune_param_check_supported_resize_bilinear_v2 in resize_bilinear_v2.")
-
-
-def sync_resize(test_arg):
-    import tbe
-    from impl.dynamic.sync_resize_bilinear_v2 import SyncResizeBilinearV2
-    params = [{"shape": (-1, -1, -1, -1, 16), "dtype": "float16", "format": "NCHW", "ori_shape": (34, 2, 1, 1, 16),
-               "ori_format": "NCHW", "range": [(1, None), (1, None), (1, None), (1, None), (1, None)]},
-              {"shape": (2,), "dtype": "int32", "format": "NCHW", "ori_shape": (34, 2, 1, 1, 16),
-               "ori_format": "NCHW", "range": [(1, None)]}, {"shape": (-1, -1, -1, -1, 16), "dtype": "float16",
-                                                             "format": "NCHW", "ori_shape": (34, 2, 1, 1, 16),
-                                                             "ori_format": "NCHW",
-                                                             "range": [(1, None), (1, None), (1, None),
-                                                                       (1, None), (1, None)]},
-              [16, 16], [8, 8], 0, 0, True, False, "resize_bilinear_v2"]
-    with tbe.common.context.op_context.OpContext("dynamic"):
-        obj = SyncResizeBilinearV2(*params)
-        obj.resize_bilinear_v2_operator()
 
 
 ut_case.add_cust_test_func(test_func=tune_param_check_supported_resize_bilinear_v2_case1)
 ut_case.add_cust_test_func(test_func=tune_param_check_supported_resize_bilinear_v2_case2)
 ut_case.add_cust_test_func(test_func=tune_param_check_supported_resize_bilinear_v2_case3)
 ut_case.add_cust_test_func(test_func=tune_param_check_supported_resize_bilinear_v2_case4)
-ut_case.add_cust_test_func(test_func=sync_resize)
 
 
 if __name__ == '__main__':

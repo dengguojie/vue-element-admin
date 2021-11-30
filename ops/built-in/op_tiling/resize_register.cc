@@ -147,4 +147,6 @@ REGISTER_OP_TILING_FUNC_BUFFERED_V2(ResizeNearestNeighborV2, ResizeCommonTiling)
 REGISTER_OP_TILING_FUNC_BUFFERED_V2(ResizeBilinearV2, ResizeCommonTiling);
 // register tiling interface of the ResizeNearestNeighborV2Grad op.
 REGISTER_OP_TILING_FUNC_BUFFERED_V2(ResizeNearestNeighborV2Grad, ResizeCommonTiling);
+// register tiling interface of the SyncResizeBilinearV2 op.
+REGISTER_OP_TILING_FUNC_BUFFERED_V2(SyncResizeBilinearV2, ResizeCommonTiling);
 }  // namespace optiling

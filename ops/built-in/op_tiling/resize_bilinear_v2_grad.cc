@@ -279,4 +279,6 @@ bool ResizeBilinearV2GradTiling(const std::string& op_type, const TeOpParas& op_
 }
 // register tiling interface of the ResizeBilinearV2Grad op.
 REGISTER_OP_TILING_FUNC_BUFFERED(ResizeBilinearV2Grad, ResizeBilinearV2GradTiling);
+// register tiling interface of the SyncResizeBilinearV2Grad op.
+REGISTER_OP_TILING_FUNC_BUFFERED(SyncResizeBilinearV2Grad, ResizeBilinearV2GradTiling);
 }  // namespace optiling.

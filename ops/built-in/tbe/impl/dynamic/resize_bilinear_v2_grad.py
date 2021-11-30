@@ -22,7 +22,6 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import error_manager_vector
-from impl.dynamic.sync_resize_bilinear_v2_grad import SyncResizeBilinearV2Grad
 
 
 # 'pylint:disable=too-few-public-methods,too-many-instance-attributes
@@ -1193,10 +1192,6 @@ class ResizeBilinearV2Grad:
 def resize_bilinear_v2_grad(grads,
                             images,
                             y,
-                            size=None,
-                            ori_image_size=None,
-                            src_start_w=None,
-                            dst_start_w=None,
                             align_corners=False,
                             half_pixel_centers=False,
                             kernel_name="resize_bilinear_v2_grad"):
@@ -1212,14 +1207,6 @@ def resize_bilinear_v2_grad(grads,
         dict with keys(range and dtype) of images
     y : dict
         dict with keys(range and dtype) of output
-    size : list or tuple
-        resize size, include H, W, default to None
-    ori_image_size: list or tuple
-        origin image size before split, include H, W, default to None
-    src_start_w: int
-        start w of src image, default to None
-    dst_start_w: int
-        start w of dst image, default to None
     align_corners : bool
         decide how to calculate for scale
     half_pixel_centers : bool
@@ -1232,10 +1219,6 @@ def resize_bilinear_v2_grad(grads,
     None
     """
     _check_param(grads, images, align_corners, half_pixel_centers)
-    if ori_image_size is not None and len(ori_image_size) == 2:
-        obj = SyncResizeBilinearV2Grad(grads, images, size, ori_image_size, src_start_w, dst_start_w, align_corners,
-                                       half_pixel_centers, kernel_name)
-    else:
-        obj = ResizeBilinearV2Grad(grads, images, align_corners, half_pixel_centers, kernel_name)
+    obj = ResizeBilinearV2Grad(grads, images, align_corners, half_pixel_centers, kernel_name)
     instance = obj.compute()
     return instance

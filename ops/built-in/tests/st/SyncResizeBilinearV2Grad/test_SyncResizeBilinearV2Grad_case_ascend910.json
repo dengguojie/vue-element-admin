@@ -1,0 +1,104 @@
+[{
+    "case_name": "ResizeBilinearV2Grad_static_shape_resize_bilinear_v2_grad_6_ascend910a",
+    "op": "SyncResizeBilinearV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          32,
+          256
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          16,
+          256
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "original_image"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          3,
+          3,
+          16,
+          256
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "size",
+        "type": "list_int",
+        "value": [3, 32]
+      },
+      {
+        "name": "ori_image_size",
+        "type": "list_int",
+        "value": [3, 16]
+      },
+      {
+        "name": "src_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "dst_start_w",
+        "type": "int",
+        "value": 0
+      },
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  }
+]

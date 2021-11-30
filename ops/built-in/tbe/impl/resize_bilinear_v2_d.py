@@ -131,28 +131,6 @@ def is_dynamic_white_list(ori_format, ori_input_shape, out_size):
     return True
 
 
-def check_sync(y, size):
-    """
-    check if use sync op
-    """
-    y_shape = y.get("ori_shape")
-    y_format = y.get("ori_format")
-
-    h_out = 0
-    w_out = 0
-    if y_format == "NHWC":
-        h_out = y_shape[1]
-        w_out = y_shape[2]
-    elif y_format in ("NCHW", "NC1HWC0"):
-        h_out = y_shape[2]
-        w_out = y_shape[3]
-
-    if [h_out, w_out] != list(size):
-        return True
-    else:
-        return False
-
-
 # pylint: disable=unused-argument,unused-variable,too-many-arguments
 def check_supported(images, y, size, align_corners=False, half_pixel_centers=False, kernel_name="resize_bilinear_v2"):
     """
@@ -197,10 +175,6 @@ def check_supported(images, y, size, align_corners=False, half_pixel_centers=Fal
     is_use_dynamic = is_dynamic_white_list(image_format, image_shape, size)
     if is_use_dynamic:
         return False, "this case will use dynamic Op ResizeBilinearV2"
-
-    is_sync = check_sync(y, size)
-    if is_sync:
-        return False, "this sync case will use dynamic Op ResizeBilinearV2"
 
     return True, ""
 

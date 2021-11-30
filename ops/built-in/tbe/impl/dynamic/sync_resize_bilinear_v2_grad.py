@@ -15,6 +15,7 @@ sync_resize_bilinear_v2_grad.py
 """
 
 from impl.util.platform_adapter import tik
+from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import tbe_context
@@ -1186,3 +1187,53 @@ class SyncResizeBilinearV2Grad:
 
             src_stride = mask // self.data_each_block
             self.tik_instance.vec_add(mask, src, src[num], src, repeat_time, 0, src_stride, 0)
+
+
+@register_operator("SyncResizeBilinearV2Grad")
+# 'pylint: disable=unused-argument
+def sync_resize_bilinear_v2_grad(grads,
+                                 images,
+                                 y,
+                                 size=None,
+                                 ori_image_size=None,
+                                 src_start_w=None,
+                                 dst_start_w=None,
+                                 align_corners=False,
+                                 half_pixel_centers=False,
+                                 kernel_name="resize_bilinear_v2_grad"):
+    """
+    algorithm:resize_bilinear_v2_grad
+    Operation for resize_bilinear_v2_grad
+
+    Parameters
+    ----------
+    grads : dict
+        dict with keys(range and dtype) of grads
+    images : dict
+        dict with keys(range and dtype) of images
+    y : dict
+        dict with keys(range and dtype) of output
+    size : list or tuple
+        resize size, include H, W, default to None
+    ori_image_size: list or tuple
+        origin image size before split, include H, W, default to None
+    src_start_w: int
+        start w of src image, default to None
+    dst_start_w: int
+        start w of dst image, default to None
+    align_corners : bool
+        decide how to calculate for scale
+    half_pixel_centers : bool
+        decide how to calculate for location
+    kernel_name : str
+        kernel name, default value is "resize_bilinear_v2_grad"
+
+    Returns
+    -------
+    None
+    """
+    _check_param(grads, images, align_corners, half_pixel_centers)
+    obj = SyncResizeBilinearV2Grad(grads, images, size, ori_image_size, src_start_w, dst_start_w, align_corners,
+                                   half_pixel_centers, kernel_name)
+    instance = obj.compute()
+    return instance

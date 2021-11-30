@@ -25,7 +25,6 @@ from impl.util.platform_adapter import tbe_context
 from impl.auto_tune.resize_bilinear_v2 import tune_space_resize_bilinear_v2 as tune_space
 from impl.auto_tune.resize_bilinear_v2 import tune_param_check_supported_resize_bilinear_v2 \
                                        as tune_param_check_supported
-from impl.dynamic.sync_resize_bilinear_v2 import SyncResizeBilinearV2
 from tbe.common.register import register_tune_space
 from tbe.common.register import register_tune_param_check_supported
 
@@ -2508,16 +2507,10 @@ def fill_index_in_ub(tik_instance, idx_ub, idx_num, vector_num=64):
 
 @register_operator("ResizeBilinearV2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_LIST_INT,
-                            para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def resize_bilinear_v2(images,
                        size,
                        y,
-                       ori_image_size=None,
-                       split_size=None,
-                       src_start_w=None,
-                       dst_start_w=None,
                        align_corners=False,
                        half_pixel_centers=False,
                        kernel_name="resize_bilinear_v2"):
@@ -2534,10 +2527,6 @@ def resize_bilinear_v2(images,
     y: dict
         the dict of output, include shape of input_tensor which layout
         only support 5HD and dtype supports 'float16', 'float32'
-    ori_image_size : list
-    split_size: list
-    src_start_w: int
-    dst_start_w: int
     align_corners: bool
         whether align_corners
     half_pixel_centers: bool
@@ -2549,11 +2538,7 @@ def resize_bilinear_v2(images,
     -------
     tik_instance
     """
-    if ori_image_size is not None and len(ori_image_size) == 2:
-        obj = SyncResizeBilinearV2(images, size, y, ori_image_size, split_size, src_start_w, dst_start_w, align_corners,
-                                   half_pixel_centers, kernel_name)
-    else:
-        obj = ResizeBilinearV2(images, size, y, align_corners, half_pixel_centers, kernel_name)
+    obj = ResizeBilinearV2(images, size, y, align_corners, half_pixel_centers, kernel_name)
 
     return obj.resize_bilinear_v2_operator()
 
@@ -2562,10 +2547,6 @@ def resize_bilinear_v2(images,
 def tune_space_resize_bilinear_v2(images,
                                   size,
                                   y,
-                                  ori_image_size=None,
-                                  split_size=None,
-                                  src_start_w=None,
-                                  dst_start_w=None,
                                   align_corners=False,
                                   half_pixel_centers=False,
                                   kernel_name="resize_bilinear_v2"):
@@ -2582,10 +2563,6 @@ def tune_space_resize_bilinear_v2(images,
     y: dict
         the dict of output, include shape of input_tensor which layout
         only support 5HD and dtype supports 'float16', 'float32'
-    ori_image_size : list
-    split_size: list
-    src_start_w: int
-    dst_start_w: int
     align_corners: bool
         whether align_corners
     half_pixel_centers: bool
@@ -2597,18 +2574,13 @@ def tune_space_resize_bilinear_v2(images,
     -------
     tune_param: param lists of auto tune
     """
-    return tune_space(images, size, y, ori_image_size, split_size, src_start_w, dst_start_w, align_corners,
-                      half_pixel_centers, kernel_name)
+    return tune_space(images, size, y, align_corners, half_pixel_centers, kernel_name)
 
 
 @register_tune_param_check_supported("ResizeBilinearV2")
 def tune_param_check_supported_resize_bilinear_v2(images,
                                                   size,
                                                   y,
-                                                  ori_image_size=None,
-                                                  split_size=None,
-                                                  src_start_w=None,
-                                                  dst_start_w=None,
                                                   align_corners=False,
                                                   half_pixel_centers=False,
                                                   kernel_name="resize_bilinear_v2",
@@ -2626,10 +2598,6 @@ def tune_param_check_supported_resize_bilinear_v2(images,
     y: dict
         the dict of output, include shape of input_tensor which layout
         only support 5HD and dtype supports 'float16', 'float32'
-    ori_image_size : list
-    split_size: list
-    src_start_w: int
-    dst_start_w: int
     align_corners: bool
         whether align_corners
     half_pixel_centers: bool
@@ -2642,5 +2610,4 @@ def tune_param_check_supported_resize_bilinear_v2(images,
     -------
     check result of tune_param
     """
-    return tune_param_check_supported(images, size, y, ori_image_size, split_size, src_start_w, dst_start_w,
-                                      align_corners, half_pixel_centers, kernel_name, tune_param)
+    return tune_param_check_supported(images, size, y, align_corners, half_pixel_centers, kernel_name, tune_param)

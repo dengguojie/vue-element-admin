@@ -1717,14 +1717,6 @@ bool SyncResizeInferShape(const Operator& op) {
 
 // ---------------ResizeBilinearV2 Op Start-------------------
 IMPLEMT_COMMON_INFERFUNC(ResizeBilinearV2InferShape) {
-  vector<int64_t> split_size;
-  op.GetAttr("split_size", split_size);
-  if (split_size.size() == DIM_SIZE2) {
-    if (!SyncResizeInferShape(op)) {
-      return GRAPH_FAILED;
-    }
-    return GRAPH_SUCCESS;
-  } else {
   const vector<string> depend_names = {"size"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
   if (!ResizeConstInferShape(op, "x", "size", "y")) {
@@ -1736,8 +1728,24 @@ IMPLEMT_COMMON_INFERFUNC(ResizeBilinearV2InferShape) {
   output_desc_y->SetDataType(DT_FLOAT);
 
   return GRAPH_SUCCESS;
-  }
 }
+
+COMMON_INFER_FUNC_REG(ResizeBilinearV2, ResizeBilinearV2InferShape);
+INFER_VALUE_RANGE_DEFAULT_REG(ResizeBilinearV2);
+// ---------------ResizeBilinearV2 Op End-------------------
+
+// ---------------SyncResizeBilinearV2 Op Start-------------------
+IMPLEMT_COMMON_INFERFUNC(SyncResizeBilinearV2InferShape) {
+  vector<int64_t> split_size;
+  op.GetAttr("split_size", split_size);
+    if (!SyncResizeInferShape(op)) {
+      return GRAPH_FAILED;
+    }
+    return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(SyncResizeBilinearV2, SyncResizeBilinearV2InferShape);
+// ---------------SyncResizeBilinearV2 Op End-------------------
 
 COMMON_INFER_FUNC_REG(ResizeBilinearV2, ResizeBilinearV2InferShape);
 INFER_VALUE_RANGE_DEFAULT_REG(ResizeBilinearV2);
@@ -2111,6 +2119,73 @@ IMPLEMT_INFERFUNC(ResizeBilinearV2Grad, ResizeBilinearV2GradInfer) {
 
 INFER_FUNC_REG(ResizeBilinearV2Grad, ResizeBilinearV2GradInfer);
 // ---------------ResizeBilinearV2Grad Op End-------------------
+// ---------------SyncResizeBilinearV2Grad Op Start-------------------
+IMPLEMT_INFERFUNC(SyncResizeBilinearV2Grad, SyncResizeBilinearV2GradInfer) {
+  auto op_desc_info = OpDescUtils::GetOpDescFromOperator(op);
+  auto input_desc_grad = op_desc_info->MutableInputDesc("grads");
+  auto input_desc_image = op_desc_info->MutableInputDesc("original_image");
+  vector<int64_t> grads_shape = input_desc_grad->MutableShape().GetDims();
+  vector<int64_t> images_shape = input_desc_image->MutableShape().GetDims();
+  DataType input_dtype = input_desc_image->GetDataType();
+  Format input_format = input_desc_grad->GetFormat();
+  auto output_desc_y = op_desc_info->MutableOutputDesc("y");
+  std::vector<std::pair<int64_t, int64_t>> grads_range;
+  std::vector<std::pair<int64_t, int64_t>> image_range;
+
+  bool is_unkown_rank_grads = grads_shape == UNKNOWN_RANK ? true : false;
+  bool is_unkown_rank_images = images_shape == UNKNOWN_RANK ? true : false;
+
+  if (is_unkown_rank_grads) {
+    OP_LOGW(op.GetName().c_str(), "the input os unkown rank, will set the input -1, -1, -1 , -1");
+    grads_shape = {-1, -1, -1, -1};
+  } else {
+    input_desc_grad->GetShapeRange(grads_range);
+  }
+  if (is_unkown_rank_images) {
+    OP_LOGW(op.GetName().c_str(), "the input os unkown rank, will set the input -1, -1, -1 , -1");
+    images_shape = {-1, -1, -1, -1};
+  } else {
+    input_desc_image->GetShapeRange(image_range);
+  }
+
+  MakeUpShapeRange(grads_shape, grads_range);
+  MakeUpShapeRange(images_shape, image_range);
+
+  std::vector<std::pair<int64_t, int64_t>> y_range;
+  vector<int64_t> y_shape;
+  if (input_format == FORMAT_NHWC && grads_shape.size() > 3 && images_shape.size() > 2) {
+    y_shape.push_back(grads_shape[0]);
+    y_shape.push_back(images_shape[1]);
+    y_shape.push_back(images_shape[2]);
+    y_shape.push_back(grads_shape[3]);
+    y_range.push_back(grads_range[0]);
+    y_range.push_back(image_range[1]);
+    y_range.push_back(image_range[2]);
+    y_range.push_back(grads_range[3]);
+  } else if (input_format == FORMAT_NCHW && grads_shape.size() > 1 && images_shape.size() > 3) {
+    y_shape.push_back(grads_shape[0]);
+    y_shape.push_back(grads_shape[1]);
+    y_shape.push_back(images_shape[2]);
+    y_shape.push_back(images_shape[3]);
+    y_range.push_back(grads_range[0]);
+    y_range.push_back(grads_range[1]);
+    y_range.push_back(image_range[2]);
+    y_range.push_back(image_range[3]);
+  } else {
+    string expected_format_list = ConcatString("FORMAT_NHWC, FORMAT_NCHW");
+    std::string err_msg = GetInputFormatNotSupportErrMsg("input_format", expected_format_list, ConcatString(input_format));
+    VECTOR_INFER_SHAPE_INNER_ERR_REPORT(op.GetName(), err_msg);
+  }
+  output_desc_y->SetShape(GeShape(y_shape));
+  output_desc_y->SetOriginShape(GeShape(y_shape));
+  output_desc_y->SetShapeRange(y_range);
+  output_desc_y->SetDataType(input_dtype);
+
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(SyncResizeBilinearV2Grad, SyncResizeBilinearV2GradInfer);
+// ---------------SyncResizeBilinearV2Grad Op End-------------------
 
 IMPLEMT_INFERFUNC(EncodeJpeg, EncodeJpegInfer) {
   return EncodeImageShapeFn(op);
