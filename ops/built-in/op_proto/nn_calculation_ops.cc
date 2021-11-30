@@ -3027,7 +3027,7 @@ static bool SetConv2dBpInputOutShapeRange(const OpDetailInfo &op_info, const Pos
   int32_t w_y_position = y_format_pos.w_position;
   int64_t dx_h = y_shape.GetDim(h_y_position);
   int64_t dx_w = y_shape.GetDim(w_y_position);
-  int64_t dx_n = input_shape.GetDim(n_y_position);
+  int64_t dx_n = y_shape.GetDim(n_y_position);
   int64_t dx_c = filter_value.c_value * groups;
   int64_t input_h = input_shape.GetDim(h_y_position);
   int64_t input_w = input_shape.GetDim(w_y_position);
