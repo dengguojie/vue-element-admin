@@ -103,7 +103,6 @@ class ComputeGraphInfo:
         # Do info collection
         self._collect_info(output_tensors)
         self._fake_node()
-        self._current_support_check()
         self._init_max_ub_count()
 
     def _collect_info(self, output_tensors: Iterable[Tensor]):
@@ -181,13 +180,6 @@ class ComputeGraphInfo:
             _out = _fake_node_compute(pure_out_tensors)
             # update info while last_node is fake_node
             self._collect_info([_out, ])
-
-    def _current_support_check(self):
-        _shape = list(list(self.real_output_tensor_set)[0].shape)
-        for _tensor in self.real_output_tensor_set:
-            if list(_tensor.shape) != _shape:
-                raise RuntimeError("Dynamic ReduceSchedule does "
-                                   "not support outputs with different shapes")
 
     def gen_endpoint_output_tensor_set(self):
         """

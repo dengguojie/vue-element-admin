@@ -15,12 +15,12 @@
  */
 
 /*!
- * \file reduce_tiling_v2.h
+ * \file reduce_tiling_v3.h
  * \brief
  */
 
-#ifndef REDUCE_TILING_V2_H
-#define REDUCE_TILING_V2_H
+#ifndef REDUCE_TILING_V3_H
+#define REDUCE_TILING_V3_H
 #include <cmath>
 #include <vector>
 #include "vector_tiling.h"
@@ -67,6 +67,7 @@ struct ReduceCompileInfo {
                                                                    const nlohmann::json& json_info);
     void ParseReduceCompileInfo(ReduceCompileInfo* parsed_compile_info_ptr, const std::string& op_type,
                                 const nlohmann::json& parsed_json_obj);
+    bool GetCompileInfoForRunInfo(ReduceCompileInfo& parsed_compile_info, const nlohmann::json& json_info);
 };
 
 struct ReduceGeInfo {
@@ -201,4 +202,4 @@ std::shared_ptr<AutoTilingHandler> CreateReduceTilingHandler(const std::string& 
                                                                  const std::string& pattern,
                                                                  const nlohmann::json& parsed_compile_info);
 }  // namespace optiling
-#endif  // REDUCE_TILING_V2_H
+#endif  // REDUCE_TILING_V3_H
