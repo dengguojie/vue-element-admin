@@ -47,11 +47,23 @@ case4 = {"params": [{"shape": (2,2,620,620,16), "dtype": "float16", "format": "N
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
+case5 = {"params": [{"shape": (2,32,136,136,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (2,32,136,136,16),"ori_format": "NC1HWC0"},
+                    {"shape": (2,32,68,68,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (2,32,68,68,16),"ori_format": "NC1HWC0"},
+                    {"shape": (2,32,4,290,16), "dtype": "uint16", "format": "NC1HWC0", "ori_shape": (2,32,4,290,16),"ori_format": "NC1HWC0"},
+                    {"shape": (2,32,136,136,16), "dtype": "float16", "format": "NC1HWC0", "ori_shape": (2,32,136,136,16),"ori_format": "NC1HWC0"},
+                    [1, 1, 2, 2],
+                    [1, 1, 2, 2],
+                    [1, 1, 0, 0]],
+         "case_name": "max_pool_grad_with_arxmax_v2_5",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 
 ut_case.add_case(["Ascend710", "Ascend910A"], case1)
 ut_case.add_case(["Ascend710", "Ascend910A"], case2)
 ut_case.add_case(["Ascend710", "Ascend910A"], case3)
 ut_case.add_case(["Ascend710", "Ascend910A"], case4)
+ut_case.add_case(["Ascend710", "Ascend910A"], case5)
 
 if __name__ == '__main__':
     # ut_case.run()

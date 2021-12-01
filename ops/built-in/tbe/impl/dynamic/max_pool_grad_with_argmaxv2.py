@@ -825,7 +825,7 @@ class MaxpoolGrad:
                 mask_offset_h.set_as(start_ho_index * shape_wo)
                 argmax_offset = self.tik_instance.Scalar(dtype='int64', name='argmax_offset')
                 argmax_offset.set_as(((n_index * self.c1 + c1_index) * self.kh * self.kw +
-                                      index_h * self.kh + index_w) *
+                                      index_h * self.kw + index_w) *
                                      self.one_window_size +
                                      mask_offset_h)
 
@@ -934,7 +934,7 @@ class MaxpoolGrad:
                 mask_offset_h.set_as(start_ho_index * shape_wo)
                 argmax_offset = self.tik_instance.Scalar(dtype='int64', name='argmax_offset')
                 argmax_offset.set_as(((n_index * self.c1 + c1_index) * self.kh * self.kw +
-                                      index_h * self.kh + index_w) *
+                                      index_h * self.kw + index_w) *
                                      self.one_window_size +
                                      mask_offset_h)
 
@@ -1074,7 +1074,7 @@ class MaxpoolGrad:
                                          * shape_wo)
                     argmax_offset = self.tik_instance.Scalar(dtype='int64', name='argmax_offset')
                     argmax_offset.set_as(((n_index * self.c1 + c1_index) * self.kh * self.kw +
-                                          index_h * self.kh + index_w) *
+                                          index_h * self.kw + index_w) *
                                          self.one_window_size +
                                          mask_offset_h)
 
@@ -1219,7 +1219,7 @@ class MaxpoolGrad:
                                          * shape_wo)
                     argmax_offset = self.tik_instance.Scalar(dtype='int64', name='argmax_offset')
                     argmax_offset.set_as(((n_index * self.c1 + c1_index) * self.kh * self.kw +
-                                          index_h * self.kh + index_w) *
+                                          index_h * self.kw + index_w) *
                                          self.one_window_size +
                                          mask_offset_h)
 
@@ -1426,7 +1426,7 @@ class MaxpoolGrad:
 
                         argmax_offset = self.tik_instance.Scalar(dtype='int64', name='argmax_offset')
                         argmax_offset.set_as(((n_index * self.c1 + c1_index) * self.kh * self.kw +
-                                              index_h * self.kh + index_w) *
+                                              index_h * self.kw + index_w) *
                                              self.one_window_size +
                                              mask_offset_h_w)
 
@@ -1715,7 +1715,7 @@ class MaxpoolGrad:
 
                         argmax_offset = self.tik_instance.Scalar(dtype='int64', name='argmax_offset')
                         argmax_offset.set_as(((n_index * self.c1 + c1_index) * self.kh * self.kw +
-                                              index_h * self.kh + index_w) *
+                                              index_h * self.kw + index_w) *
                                              self.one_window_size +
                                              mask_offset_h_w)
 

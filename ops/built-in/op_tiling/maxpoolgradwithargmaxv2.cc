@@ -265,8 +265,8 @@ static void CalTilingParam(MaxPoolGradWithArgmaxV2TilingParams& tiling_params, C
   int32_t kw = compile_info.kw;
   int32_t stride_h = compile_info.stride_h;
   int32_t stride_w = compile_info.stride_w;
-  int32_t pad_left = compile_info.pad_h;
-  int32_t pad_top = compile_info.pad_w;
+  int32_t pad_top = compile_info.pad_h;
+  int32_t pad_left = compile_info.pad_w;
   int32_t ceil_mode = compile_info.ceil_mode;
 
   OP_TILING_CHECK(stride_h == 0,
@@ -314,10 +314,15 @@ static void CalTilingParam(MaxPoolGradWithArgmaxV2TilingParams& tiling_params, C
     tiling_params.pad_right = 0;
   }
 
-  if ((tiling_params.ho != ho) || (tiling_params.wo != wo)) {
+  if (tiling_params.ho != ho) {
     VECTOR_INNER_ERR_REPORT_TILIING("max_pool_grad_with_argmax_v2", "Wrong ori_output shape");
     VECTOR_INNER_ERR_REPORT_TILIING("max_pool_grad_with_argmax_v2", "ho is %d", ho);
     VECTOR_INNER_ERR_REPORT_TILIING("max_pool_grad_with_argmax_v2", "tiling_params.ho is %d", tiling_params.ho);
+  }
+  if (tiling_params.wo != wo) {
+    VECTOR_INNER_ERR_REPORT_TILIING("max_pool_grad_with_argmax_v2", "Wrong ori_output shape");
+    VECTOR_INNER_ERR_REPORT_TILIING("max_pool_grad_with_argmax_v2", "wo is %d", wo);
+    VECTOR_INNER_ERR_REPORT_TILIING("max_pool_grad_with_argmax_v2", "tiling_params.wo is %d", tiling_params.wo);
   }
 
   // get block num
