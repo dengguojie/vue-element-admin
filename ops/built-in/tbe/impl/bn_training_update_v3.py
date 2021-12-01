@@ -317,4 +317,3 @@ def bn_training_update_v3(x, sum, square_sum, scale, offset,
     config = {"name": kernel_name,
               "tensor_list": tensor_list}
     tbe.cce_build_code(sch, config)
-

@@ -31,7 +31,8 @@ from impl.util.util_select_op_base import gen_param
 from impl.util.util_select_op_base import get_dynamic_param_in_json
 
 
-# 'pylint: disable=unused-argument,useless-object-inheritance,too-many-locals,too-many-branches,too-many-lines,invalid-name
+# 'pylint: disable=unused-argument,useless-object-inheritance
+# 'pylint: disable=too-many-locals,too-many-branches,too-many-lines,invalid-name
 # 'pylint: disable=too-many-instance-attributes,too-many-statements,too-many-boolean-expressions,too-many-arguments
 class BatchToSpaceNdFive(object):
     """Function: use to finish BatchToSpaceNd main functions to reset data.

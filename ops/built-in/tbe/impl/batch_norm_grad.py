@@ -22,13 +22,6 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
-# define a scalar, value = 0.0
-SCALAR_ZERO = 0.0
-# define a scalar, value = 1.0
-SCALAR_ONE = 1.0
-
-NONETYPE = type(None)
-
 
 # 'pylint: disable=locally-disabled,too-many-locals,too-many-arguments
 # 'pylint: disable=locally-disabled,unused-argument,invalid-name
@@ -112,7 +105,8 @@ def batch_norm_grad_compute(y_backprop, x, scale, reserve_space_1,
     data_sub = tbe.vsub(x_cast, reserve_space_1_broadcast)
     data_adds = tbe.vadds(reserve_space_2, epsilon)
     data_rsqrt = tbe.vsqrt(data_adds)
-    data_cast = tbe.broadcast(tvm.const(SCALAR_ONE, "float32"), shape_scale)
+    scalar_one = 1.0
+    data_cast = tbe.broadcast(tvm.const(scalar_one, "float32"), shape_scale)
     data_rsqrts = tbe.vdiv(data_cast, data_rsqrt)
     data_rsqrts_broadcast = tbe.broadcast(data_rsqrts, shape_x)
     input_xl = tbe.vmul(data_sub, data_rsqrts_broadcast)
@@ -138,10 +132,11 @@ def batch_norm_grad_compute(y_backprop, x, scale, reserve_space_1,
 
     if x.dtype == "float16":
         x_backprop = tbe.cast_to(x_backprop, "float16")
+    scalar_zero = 0.0
     # output_scale
-    scale_backprop = tbe.vadds(scale_backprop, tvm.const(SCALAR_ZERO, "float32"))
+    scale_backprop = tbe.vadds(scale_backprop, tvm.const(scalar_zero, "float32"))
     # output_offset
-    offset_backprop = tbe.vadds(offset_backprop, tvm.const(SCALAR_ZERO, "float32"))
+    offset_backprop = tbe.vadds(offset_backprop, tvm.const(scalar_zero, "float32"))
 
     if format_data not in ("NC1HWC0", "NDC1HWC0"):
         scale_backprop = tbe.sum(scale_backprop, axis, False)
@@ -261,14 +256,14 @@ def _check_shape_len(shape_y_backprop, shape_x, shape_scale,
                 shape_reserve_space_2) != 1:
             error_detail = "input feature map must be 1D format in kernel!" \
                            "but scale,reserve_space_1,reserve_space_2 is %d,%d,%d"\
-                           %(len(shape_scale), len(shape_reserve_space_1), len(shape_reserve_space_2))
+                           % (len(shape_scale), len(shape_reserve_space_1), len(shape_reserve_space_2))
             error_manager_vector.raise_err_input_shape_invalid("batch_norm_grad", \
                                                                "scale,reserve_space_1,reserve_space_2", error_detail)
     else:
         if len(shape_y_backprop) not in (5, 6) or len(shape_scale) not in (5, 6):
             error_detail = "This operator can only support 5D or 6D, " \
                            "but (y_backprop,x,scale)'s shape length is %d,%d,%d" \
-                           %(len(shape_y_backprop), len(shape_x), len(shape_scale))
+                           % (len(shape_y_backprop), len(shape_x), len(shape_scale))
             error_manager_vector.raise_err_input_shape_invalid("batch_norm_grad", \
                                                                "y_backprop,x,scale", error_detail)
         if len(shape_reserve_space_1) not in (5, 6) or len(shape_reserve_space_2) not in (5, 6):

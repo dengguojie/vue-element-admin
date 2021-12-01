@@ -15,20 +15,12 @@
 """
 batch_norm_3d
 """
-import te.lang.cce as tbe
-import te.platform as tbe_platform
-from te import tvm
 from te.utils import para_check
-from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
-from impl.util.util_select_op_base import SplitInput
-from impl.util.util_select_op_base import SplitOutput
-from impl.util.util_select_op_base import get_op_cal_info
 from impl.batch_norm import batch_norm
 
 
 # 'pylint: disable=locally-disabled,unused-argument,invalid-name
-# 'pylint: disable=locally-disabled,redefined-builtin, too-many-locals
+# 'pylint: disable=locally-disabled,redefined-builtin, too-many-locals, too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_OUTPUT,

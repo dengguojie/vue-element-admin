@@ -97,7 +97,6 @@ class LstmCellGradInput():
 
         self.check_input_param()
 
-        product_name = "cloud"
         self.tik_instance = tik.Tik(tik.Dprofile())
         self.aicore_num = tik.Dprofile().get_aicore_num()
 
@@ -754,15 +753,15 @@ def basic_lstm_cell_c_state_grad_v2(c,
     None
     """
     if len(c["shape"]) == 5:
-        c["shape"] = list([c["shape"][1], c["shape"][2], c["shape"][3], c["shape"][4]])
+        c["shape"] = [c["shape"][1], c["shape"][2], c["shape"][3], c["shape"][4]]
     if len(dh["shape"]) == 5:
-        dh["shape"] = list([dh["shape"][1], dh["shape"][2], dh["shape"][3], dh["shape"][4]])
-    dy["shape"] = list([dy["shape"][1], dy["shape"][2], dy["shape"][3], dy["shape"][4]])
-    i["shape"] = list([i["shape"][1], i["shape"][2], i["shape"][3], i["shape"][4]])
-    j["shape"] = list([j["shape"][1], j["shape"][2], j["shape"][3], j["shape"][4]])
-    f["shape"] = list([f["shape"][1], f["shape"][2], f["shape"][3], f["shape"][4]])
-    o["shape"] = list([o["shape"][1], o["shape"][2], o["shape"][3], o["shape"][4]])
-    tanhct["shape"] = list([tanhct["shape"][1], tanhct["shape"][2], tanhct["shape"][3], tanhct["shape"][4]])
+        dh["shape"] = [dh["shape"][1], dh["shape"][2], dh["shape"][3], dh["shape"][4]]
+    dy["shape"] = [dy["shape"][1], dy["shape"][2], dy["shape"][3], dy["shape"][4]]
+    i["shape"] = [i["shape"][1], i["shape"][2], i["shape"][3], i["shape"][4]]
+    j["shape"] = [j["shape"][1], j["shape"][2], j["shape"][3], j["shape"][4]]
+    f["shape"] = [f["shape"][1], f["shape"][2], f["shape"][3], f["shape"][4]]
+    o["shape"] = [o["shape"][1], o["shape"][2], o["shape"][3], o["shape"][4]]
+    tanhct["shape"] = [tanhct["shape"][1], tanhct["shape"][2], tanhct["shape"][3], tanhct["shape"][4]]
     dht_out = dy
     dht = dh
     dct = dc

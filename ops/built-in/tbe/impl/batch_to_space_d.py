@@ -24,9 +24,6 @@ from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
-DIM_CNT = 5
-CROPS_LEN = 2
-
 
 # 'pylint: disable = unused-argument,too-many-locals,invalid-name
 def get_op_support_info(x, y, block_size, crops, kernel_name="batch_to_space_d"):
@@ -79,11 +76,13 @@ def batch_to_space_d(x, y, block_size, crops, kernel_name="batch_to_space_d"):
         error_detail = "input_shape of x should be positive integer"
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
 
-    if len(input_shape) != DIM_CNT:
+    dim_cnt = 5
+    if len(input_shape) != dim_cnt:
         error_detail = "the length of input_shape must be 5,while it is: %d" % len(input_shape)
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
 
-    if not (len(crops) == CROPS_LEN and len(crops[0]) == CROPS_LEN and len(crops[1]) == CROPS_LEN):
+    crops_len = 2
+    if not (len(crops) == crops_len and len(crops[0]) == crops_len and len(crops[1]) == crops_len):
         error_detail = "shape of crops should be 2*2"
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "crops", error_detail)
 

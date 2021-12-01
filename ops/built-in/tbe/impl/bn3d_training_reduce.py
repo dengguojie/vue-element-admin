@@ -15,18 +15,10 @@
 """
 bn_3d_training_reduce
 """
-import math
 
 import te.lang.cce as tbe
 import te.platform as tbe_platform
-from te import tvm
 from te.utils import para_check
-from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
-from impl.util import util_select_op_base
-from impl.util.util_select_op_base import SplitInput
-from impl.util.util_select_op_base import SplitOutput
-from impl.util.util_select_op_base import get_op_cal_info
 from impl.bn_training_reduce import bn_training_reduce
 
 
@@ -86,7 +78,6 @@ def bn3d_training_reduce_compute(x, sum, square_sum,
     """
     if x.dtype == "float16":
         x = tbe.cast_to(x, "float32")
-    data_format = sum.get("format")
 
     res = _reduce_compute_5hd(x)
 

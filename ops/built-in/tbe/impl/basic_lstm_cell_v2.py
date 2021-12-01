@@ -87,7 +87,8 @@ def handle_static(w_xc_x_static, gate_shape, build_list, product_info,
         operation_list[index_name + "_ub_true"] = "vector_add"
 
 
-# 'pylint: disable=locally-disabled,too-many-statements,unnecessary-lambda,too-many-locals,invalid-name,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-statements,unnecessary-lambda
+# 'pylint: disable=too-many-locals,invalid-name,too-many-arguments
 @tbe_platform.fusion_manager.fusion_manager.register("basic_lstm_cell_v2")
 def basic_lstm_cell_v2_compute(x, cont, w_xc_x_static, w_xh, bias, h_t, c_t,
                                expose_hidden, product_info, impl_mode="high_performance"):
@@ -664,7 +665,7 @@ def basiclstm_cell_v2_check(x, w_xc_x_static, h, c, w_xh, h_t, c_t,
     if w_xh["shape"][0] != output_dim + intput_dim or w_xh["shape"][1] != 4 * output_dim:
         error_detail = "shape_w_xh[0] should be equal to output_dim plus input_dim %d," \
                        "shape_w_xh[1] should be equal to 4 * output_dim %d" \
-                        %(output_dim + intput_dim, 4 * output_dim)
+                        % (output_dim + intput_dim, 4 * output_dim)
         error_manager_vector.raise_err_input_shape_invalid("BasicLSTMCellV2",
                                                            "w_xh", error_detail)
     if expose_hidden:
@@ -674,7 +675,7 @@ def basiclstm_cell_v2_check(x, w_xc_x_static, h, c, w_xh, h_t, c_t,
             error_manager_vector.raise_err_check_params_rules("BasicLSTMCellV2",
                                                               rule_desc, "h", param_value)
         if h["dtype"] not in dtype_all or c["dtype"] not in dtype_all:
-            error_detail = "h,c only support (%s)"% (dtype_str)
+            error_detail = "h,c only support (%s)" % (dtype_str)
             error_manager_vector.raise_err_two_input_dtype_invalid("BasicLSTMCellV2",
                                                                    "h", "c", error_detail)
         if h["shape"][0] != output_dim or h["shape"][1] != n_dim or \

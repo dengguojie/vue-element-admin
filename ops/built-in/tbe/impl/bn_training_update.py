@@ -21,6 +21,7 @@ from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
+from tbe.common.buildcfg import get_current_build_config
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
@@ -477,8 +478,6 @@ def bn_training_update(x,
     -------
     None
     """
-
-    from tbe.common.buildcfg import get_current_build_config
     # dynamic and static code. for now, only static
     if get_current_build_config("enable_op_prebuild") or True:
         bn_training_update_prebuild(x,
@@ -513,4 +512,3 @@ def bn_training_update(x,
                                      factor,
                                      epsilon,
                                      kernel_name)
-

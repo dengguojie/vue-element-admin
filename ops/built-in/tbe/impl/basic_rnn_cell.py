@@ -26,9 +26,6 @@ from te.utils import para_check
 
 from impl import tanh_compute
 
-MIN_FP32 = 2**(-126)
-NONETYPE = type(None)
-
 
 # 'pylint: disable=too-many-instance-attributes
 class BasicRNNCell:
@@ -262,7 +259,7 @@ class BasicRNNCell:
         ht_tensors: dict
             tensor list of ht compute
         """
-        ht_tensors = self.tanh_ht_tensor.copy()
+        ht_tensors = dict(self.tanh_ht_tensor)
         ht_tensors["l0c_wht_xt"] = self.tensor_list1["l0c_wht_xt"]
         ht_tensors["l0c_wht_xt_bias_h"] = self.tensor_list1[
             "l0c_wht_xt_bias_h"]
@@ -305,7 +302,7 @@ class BasicRNNCell:
         ot_tensors: dict
             tensor list of ot compute
         """
-        ot_tensors = self.tanh_ot_tensor.copy()
+        ot_tensors = dict(self.tanh_ot_tensor)
         ot_tensors["ub_bias_o"] = self.tensor_list2["ub_bias_o"]
         ot_tensors["l0c_bias_o"] = self.tensor_list2["l0c_bias_o"]
         ot_tensors["l0c_who_ht"] = self.tensor_list2["l0c_who_ht"]
@@ -340,7 +337,7 @@ class BasicRNNCell:
 
         emit_cmd_list = self.emit_cmd
 
-        tensors = self.tensor_list1.copy()
+        tensors = dict(self.tensor_list1)
         tensors.update(self.tensor_list2)
         scope_list = self.scope_list
         for key in scope_list:
@@ -1146,12 +1143,14 @@ def check_shapes(input_shape, check_shape):
             raise RuntimeError("the dim(%d) is error" % (index))
 
 
-# 'pylint: disable=too-many-arguments, invalid-name
-@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
-                 para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
-                 para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                 para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_INT,
-                 para_check.KERNEL_NAME)
+# 'pylint: disable=too-many-arguments, invalid-name, unused-argument
+@para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
+                            para_check.OPTION_INPUT, para_check.OPTION_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.OPTION_INPUT, para_check.REQUIRED_INPUT,
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_BOOL,
+                            para_check.OPTION_ATTR_INT, para_check.KERNEL_NAME)
 def basic_rnn_cell(x,
                    cont,
                    w_xh_x_static,

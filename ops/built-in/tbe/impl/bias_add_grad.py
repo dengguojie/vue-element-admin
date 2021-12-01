@@ -179,7 +179,7 @@ def bias_add_grad_compute(x, y, data_format, kernel_name="bias_add_grad"):
         if len(shape) < 2:
             error_manager_vector.raise_err_specific_reson("bias_add_grad", "cce_bias_add_grad \
                                                           only support shape larger than 2D")
-        result = tbe.sum(x, [x for x in range(len(shape) - 1)])
+        result = tbe.sum(x, list(range(len(shape) - 1)))
 
     result = tbe.cast_to(result, y_dtype)
 

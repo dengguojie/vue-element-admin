@@ -352,10 +352,7 @@ def bn_training_reduce_grad(grads, x, diff_scale, diff_offset, scale,
     shape_grads = grads.get("shape")
     shape_x = x.get("shape")
     shape_diff_scale = diff_scale.get("shape")
-    shape_diff_offset = diff_offset.get("shape")
     shape_scale = scale.get("shape")
-    shape_batch_mean = batch_mean.get("shape")
-    shape_batch_variance = batch_variance.get("shape")
     shape_util.compare_tensor_dict_key(grads, x, "shape")
 
     dtype_grads = grads.get("dtype")
@@ -435,4 +432,3 @@ def bn_training_reduce_grad(grads, x, diff_scale, diff_offset, scale,
     config = {"name": kernel_name,
               "tensor_list": tensor_list}
     tbe.cce_build_code(sch, config)
-

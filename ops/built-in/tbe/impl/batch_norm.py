@@ -15,6 +15,7 @@
 """
 batch_norm
 """
+import functools
 import te.lang.cce as tbe
 import te.platform as tbe_platform
 from te import tvm
@@ -24,9 +25,6 @@ from te.utils.error_manager import error_manager_vector
 from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
-import functools
-
-NONETYPE = type(None)
 
 
 # 'pylint: disable=unused-argument,invalid-name
@@ -161,10 +159,12 @@ def _check_dims_equal(shape_x, shape, data_format):
                                                                "scale,offset,mean,variance", error_detail)
     elif data_format == "NCHW":
         if shape_x[1] != shape[0]:
-            error_manager_vector.raise_err_inputs_shape_not_equal("batch_norm", "shape_x[1]", "shape[0]", shape_x[1], shape[0], shape[0])
+            error_manager_vector.raise_err_inputs_shape_not_equal("batch_norm", "shape_x[1]", "shape[0]",
+                                                                  shape_x[1], shape[0], shape[0])
     else:
         if shape_x[3] != shape[0]:
-            error_manager_vector.raise_err_inputs_shape_not_equal("batch_norm", "shape_x[3]", "shape[0]", shape_x[3], shape[0], shape[0])
+            error_manager_vector.raise_err_inputs_shape_not_equal("batch_norm", "shape_x[3]", "shape[0]",
+                                                                  shape_x[3], shape[0], shape[0])
 
 
 
@@ -187,19 +187,19 @@ def _check_shape_dims(shape, data_format, is_x=False):
     """
     if data_format == "NC1HWC0":
         if len(shape) != 5:
-            error_detail = "The input shape only support 5D Tensor, len(shape) != 5, len(shape) = %s" % len(shape) 
+            error_detail = "The input shape only support 5D Tensor, len(shape) != 5, len(shape) = %s" % len(shape)
             error_manager_vector.raise_err_input_shape_invalid("batch_norm", "len(shape)", error_detail)
     elif data_format == "NDC1HWC0":
         if len(shape) != 6:
-            error_detail = "The input shape only support 6D Tensor, len(shape) != 6, len(shape) = %s" % len(shape) 
+            error_detail = "The input shape only support 6D Tensor, len(shape) != 6, len(shape) = %s" % len(shape)
             error_manager_vector.raise_err_input_shape_invalid("batch_norm", "len(shape)", error_detail)
     elif is_x:
         if len(shape) != 4:
-            error_detail = "The input shape only support 4D Tensor, len(shape) != 4, len(shape) = %s" % len(shape) 
+            error_detail = "The input shape only support 4D Tensor, len(shape) != 4, len(shape) = %s" % len(shape)
             error_manager_vector.raise_err_input_shape_invalid("batch_norm", "len(shape)", error_detail)
     else:
         if len(shape) != 1:
-            error_detail = "The input shape only support 1D Tensor, len(shape) != 1, len(shape) = %s" % len(shape) 
+            error_detail = "The input shape only support 1D Tensor, len(shape) != 1, len(shape) = %s" % len(shape)
             error_manager_vector.raise_err_input_shape_invalid("batch_norm", "len(shape)", error_detail)
 
 
@@ -250,6 +250,7 @@ def _shape_check(shape_x, shape_scale, shape_offset,
     elif mean is not None or variance is not None:
         error_detail = "Estimated_mean or estimated_variance must be empty for training"
         error_manager_vector.raise_err_specific_reson("batch_norm", error_detail)
+
 
 # 'pylint: disable=locally-disabled,too-many-arguments,invalid-name
 def _output_data_y_compute(x, mean, variance, scale, offset, epsilon):

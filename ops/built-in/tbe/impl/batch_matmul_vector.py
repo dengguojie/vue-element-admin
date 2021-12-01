@@ -1100,7 +1100,7 @@ def _tranpose_notchange_last(data, shape_res, perm, dtype):
         get the flag for permutation according to perm
 
         """
-        flag = [i for i in perm]# 'pylint: disable=unnecessary-comprehension
+        flag = perm[:]
         for i, item in enumerate(perm):
             flag[item] = i
 

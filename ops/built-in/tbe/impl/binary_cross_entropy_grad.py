@@ -23,15 +23,6 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 
-# define a scalar, value = 1
-SCALAR_ONE = 1
-# define a scalar, value = -1
-SCALAR_NEGTIVE_ONE = -1
-# define a scalar, value = -1
-SCALAR_EPS = 1e-12
-NoneType = type(None)
-
-
 # 'pylint: disable=locally-disabled,unused-argument
 # 'pylint: disable=too-many-arguments,invalid-name,too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("binary_cross_entropy_grad")
@@ -84,22 +75,25 @@ def binary_cross_entropy_grad_compute(
     grad_output = tbe.broadcast(grad_output, shape)
 
     val1 = tbe.vsub(x, y)
+    scalar_one = 1
+    scalar_eps = 1e-12
+    scalar_negtive_one = -1
     if support is True:
         minus_predict = tbe.vmuls(
-            x, tvm.const(SCALAR_NEGTIVE_ONE, dtype="float32"))
+            x, tvm.const(scalar_negtive_one, dtype="float32"))
 
         val2_tmp = tbe.vadds(
-            minus_predict, tvm.const(SCALAR_ONE, dtype="float32"))
+            minus_predict, tvm.const(scalar_one, dtype="float32"))
         val2 = tbe.vmul(x, val2_tmp)
-        val2 = tbe.vmaxs(val2, tvm.const(SCALAR_EPS, dtype="float32"))
+        val2 = tbe.vmaxs(val2, tvm.const(scalar_eps, dtype="float32"))
     else:
         minus_predict = tbe.vmuls(
-            x, tvm.const(SCALAR_NEGTIVE_ONE, dtype="float16"))
+            x, tvm.const(scalar_negtive_one, dtype="float16"))
 
         val2_tmp = tbe.vadds(
-            minus_predict, tvm.const(SCALAR_ONE, dtype="float16"))
+            minus_predict, tvm.const(scalar_one, dtype="float16"))
         val2 = tbe.vmul(x, val2_tmp)
-        val2 = tbe.vmaxs(val2, tvm.const(SCALAR_EPS, dtype="float16"))
+        val2 = tbe.vmaxs(val2, tvm.const(scalar_eps, dtype="float16"))
     result = tbe.vdiv(val1, val2)
     if weight is not None:
         result = tbe.vmul(weight, result)

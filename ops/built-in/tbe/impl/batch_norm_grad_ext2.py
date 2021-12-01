@@ -22,11 +22,6 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
-# define a scalar, value = 0.0
-SCALAR_ZERO = 0.0
-# define a scalar, value = 1.0
-SCALAR_ONE = 1.0
-
 
 # 'pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
 # 'pylint: disable=locally-disabled,too-many-arguments
@@ -107,7 +102,8 @@ def batch_norm_grad_ext2_compute(y_backprop, x, scale, reserve_space_1,
     data_sub = tbe.vsub(x_cast, reserve_space_1_broadcast)
     data_adds = tbe.vadds(reserve_space_2, epsilon)
     data_rsqrt = tbe.vsqrt(data_adds)
-    data_cast = tbe.broadcast(tvm.const(SCALAR_ONE, "float32"), shape_scale)
+    scalar_one = 1.0
+    data_cast = tbe.broadcast(tvm.const(scalar_one, "float32"), shape_scale)
     data_rsqrts = tbe.vdiv(data_cast, data_rsqrt)
     data_rsqrts_broadcast = tbe.broadcast(data_rsqrts, shape_x)
     input_xl = tbe.vmul(data_sub, data_rsqrts_broadcast)
@@ -134,10 +130,11 @@ def batch_norm_grad_ext2_compute(y_backprop, x, scale, reserve_space_1,
 
     if x.dtype == "float16":
         x_backprop = tbe.cast_to(x_backprop, "float16")
+    scalar_zero = 0.0
     # output_scale
-    scale_backprop = tbe.vadds(scale_backprop, tvm.const(SCALAR_ZERO, "float32"))
+    scale_backprop = tbe.vadds(scale_backprop, tvm.const(scalar_zero, "float32"))
     # output_offset
-    offset_backprop = tbe.vadds(offset_backprop, tvm.const(SCALAR_ZERO, "float32"))
+    offset_backprop = tbe.vadds(offset_backprop, tvm.const(scalar_zero, "float32"))
 
     if format_data != "NC1HWC0":
         scale_backprop = tbe.sum(scale_backprop, axis, False)

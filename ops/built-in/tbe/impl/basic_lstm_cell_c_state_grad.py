@@ -98,7 +98,6 @@ class LstmCellGradInput():
 
         self.check_input_param()
 
-        product_name = "cloud"
         self.tik_instance = tik.Tik(tik.Dprofile())
         self.aicore_num = tik.Dprofile().get_aicore_num()
 

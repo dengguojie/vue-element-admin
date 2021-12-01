@@ -26,8 +26,6 @@ from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
-SCALAR_ONE = 1
-
 
 # 'pylint: disable = unused-argument
 # 'pylint: disable=invalid-name,too-many-arguments,consider-using-in
@@ -196,7 +194,8 @@ def bn_training_update_grad_compute(grads, x, batch_mean, batch_variance,
     data_adds = tbe.vadds(batch_variance, epsilon)
     data_rsqrt = tbe.vsqrt(data_adds)
     shape_var = shape_util.shape_to_list(batch_variance.shape)
-    data_cast = tbe.broadcast(tvm.const(SCALAR_ONE, "float32"), shape_var)
+    scalar_one = 1
+    data_cast = tbe.broadcast(tvm.const(scalar_one, "float32"), shape_var)
     data_rsqrts = tbe.vdiv(data_cast, data_rsqrt)
     rsqrts_broadcast = tbe.broadcast(data_rsqrts, shape_x)
     x_norm = tbe.vmul(x_sub, rsqrts_broadcast)
@@ -248,7 +247,7 @@ def _check_shape(shape_grads, shape_x, shape_batch_mean, shape_batch_variance, d
     else:
         dim_c1 = shape_grads[2]
         dim_c0 = shape_grads[5]
-        n = shape_batch_mean[0]* shape_batch_mean[1]
+        n = shape_batch_mean[0] * shape_batch_mean[1]
         h = shape_batch_mean[3]
         w = shape_batch_mean[4]
         c1 = shape_batch_mean[2]
@@ -365,4 +364,3 @@ def bn_training_update_grad(grads, x, batch_mean, batch_variance,
     config = {"name": kernel_name,
               "tensor_list": tensor_list}
     tbe.cce_build_code(sch, config)
-

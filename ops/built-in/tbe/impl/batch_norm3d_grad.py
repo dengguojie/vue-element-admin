@@ -15,12 +15,7 @@
 """
 batch_norm_grad
 """
-import te.lang.cce as tbe
-import te.platform as tbe_platform
-from te import tvm
 from te.utils import para_check
-from te.utils import shape_util
-from te.utils.error_manager import error_manager_vector
 from impl.batch_norm_grad import batch_norm_grad
 
 

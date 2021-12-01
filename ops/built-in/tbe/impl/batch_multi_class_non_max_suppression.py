@@ -30,16 +30,23 @@ from impl.batch_multi_class_nms_topk import sort_with_ub
 # 'pylint: disable=too-many-lines,too-many-instance-attributes,too-many-statements
 # 'pylint: disable=too-many-arguments,unused-argument,too-many-locals,too-many-branches
 # 'pylint: disable=invalid-name
-# scaling factor
-DOWN_FACTOR = 0.10
-# process 128 proposals at a time
-BURST_PROPOSAL_NUM = 128
-# RPN compute 16 proposals per iteration
-RPN_PROPOSAL_NUM = 16
-# define the positive min value in fp16
-MIN_SCALAR_FP16 = 2**(-24)
-# define a fp16 value = 2**12
-TMP_SCALAR_FP16 = 2**12
+
+
+# 'pylint: disable=too-few-public-methods, not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    # scaling factor
+    DOWN_FACTOR = 0.10
+    # process 128 proposals at a time
+    BURST_PROPOSAL_NUM = 128
+    # RPN compute 16 proposals per iteration
+    RPN_PROPOSAL_NUM = 16
+    # define the positive min value in fp16
+    MIN_SCALAR_FP16 = 2**(-24)
+    # define a fp16 value = 2**12
+    TMP_SCALAR_FP16 = 2**12
 
 
 class BatchMultiClassNonMaxSuppression:
@@ -150,7 +157,7 @@ class BatchMultiClassNonMaxSuppression:
 
         # for nms function param calc
         self.max_selected_nms_num_in_ub = \
-            ceil_div(max_size_per_class, RPN_PROPOSAL_NUM) * RPN_PROPOSAL_NUM
+            ceil_div(max_size_per_class, Constant.RPN_PROPOSAL_NUM) * Constant.RPN_PROPOSAL_NUM
         # record the output nms num for one class
         self.selected_proposals_cnt = self.tik_instance.Scalar(dtype="uint16")
         # record the proposal burst num for one loop, value = 128 or self.proposal_topk_k % 128
@@ -180,8 +187,8 @@ class BatchMultiClassNonMaxSuppression:
         # init down scalar
         if self.down_flag:
             self.down_scalar_list = [self.tik_instance.Scalar(dtype="float16") for _ in range(2)]
-            self.down_scalar_list[0].set_as(DOWN_FACTOR)
-            self.down_scalar_list[1].set_as(1 / DOWN_FACTOR)
+            self.down_scalar_list[0].set_as(Constant.DOWN_FACTOR)
+            self.down_scalar_list[1].set_as(1 / Constant.DOWN_FACTOR)
 
     @staticmethod
     def get_l1_core_idx(core_idx):
@@ -404,7 +411,7 @@ class BatchMultiClassNonMaxSuppression:
 
 
 def total_num(shape):
-    """return total_num"""
+    """the valur of shape_total_num should be returned"""
     shape_total_num = reduce(lambda a, b: a*b, shape)
     return shape_total_num
 
@@ -656,8 +663,8 @@ def clip_window_compute(tik_instance, input_gm_list, input_ub_list, gm_offset, s
                        copy_num, 1, 1, 1, 8, 8, 8)
 
     tik_func_vector(tik_instance, zero_tensor, 0.0, 16)
-    tik_func_vector(tik_instance, min_fp16, MIN_SCALAR_FP16, 16)
-    tik_func_vector(tik_instance, concst24, TMP_SCALAR_FP16, 16)
+    tik_func_vector(tik_instance, min_fp16, Constant.MIN_SCALAR_FP16, 16)
+    tik_func_vector(tik_instance, concst24, Constant.TMP_SCALAR_FP16, 16)
 
     tik_func_vcomple(tik_instance, "vmin", sub1, sub1, min_fp16,
                      copy_num, 1, 1, 0, 8, 8, 0)
@@ -869,41 +876,43 @@ def do_nms_compute(tik_instance, nms_var_dict, thresh):
     left_proposal_cnt.set_as(total_input_proposal_num)
     # store the whole
     # change with burst
-    temp_proposals_ub = tik_instance.Tensor("float16", [BURST_PROPOSAL_NUM, 8],
+    temp_proposals_ub = tik_instance.Tensor("float16", [Constant.BURST_PROPOSAL_NUM, 8],
                                             name="temp_proposals_ub", scope=tik.scope_ubuf)
     tik_instance.vector_dup(128, temp_proposals_ub[0], 0, 8, 1, 8)
-    temp_area_ub = tik_instance.Tensor("float16", [BURST_PROPOSAL_NUM],
+    temp_area_ub = tik_instance.Tensor("float16", [Constant.BURST_PROPOSAL_NUM],
                                        name="temp_area_ub", scope=tik.scope_ubuf)
     temp_iou_ub = \
-        tik_instance.Tensor("float16", [ceil_div(total_output_proposal_num, RPN_PROPOSAL_NUM) * RPN_PROPOSAL_NUM + 128,
+        tik_instance.Tensor("float16", [ceil_div(total_output_proposal_num,
+                                        Constant.RPN_PROPOSAL_NUM) * Constant.RPN_PROPOSAL_NUM + 128,
                                         16],
                             name="temp_iou_ub", scope=tik.scope_ubuf)
     temp_join_ub = \
-        tik_instance.Tensor("float16", [ceil_div(total_output_proposal_num, RPN_PROPOSAL_NUM) * RPN_PROPOSAL_NUM + 128,
+        tik_instance.Tensor("float16", [ceil_div(total_output_proposal_num,
+                                        Constant.RPN_PROPOSAL_NUM) * Constant.RPN_PROPOSAL_NUM + 128,
                                         16],
                             name="temp_join_ub", scope=tik.scope_ubuf)
     temp_sup_matrix_ub = \
-        tik_instance.Tensor("uint16", [ceil_div(total_output_proposal_num, RPN_PROPOSAL_NUM) * RPN_PROPOSAL_NUM + 128],
+        tik_instance.Tensor("uint16", [ceil_div(total_output_proposal_num, Constant.RPN_PROPOSAL_NUM) * Constant.RPN_PROPOSAL_NUM + 128],
                             name="temp_sup_matrix_ub", scope=tik.scope_ubuf)
-    temp_sup_vec_ub = tik_instance.Tensor("uint16", [BURST_PROPOSAL_NUM],
+    temp_sup_vec_ub = tik_instance.Tensor("uint16", [Constant.BURST_PROPOSAL_NUM],
                                           name="temp_sup_vec_ub", scope=tik.scope_ubuf)
     # main body
     nms_flag = tik_instance.Scalar(dtype="uint16")
     nms_flag.set_as(0)
-    with tik_instance.for_range(0, ceil_div(total_input_proposal_num, BURST_PROPOSAL_NUM)) as burst_index:
+    with tik_instance.for_range(0, ceil_div(total_input_proposal_num, Constant.BURST_PROPOSAL_NUM)) as burst_index:
         # update counter
-        with tik_instance.if_scope(left_proposal_cnt < BURST_PROPOSAL_NUM):
+        with tik_instance.if_scope(left_proposal_cnt < Constant.BURST_PROPOSAL_NUM):
             handling_proposals_cnt.set_as(left_proposal_cnt)
         with tik_instance.else_scope():
-            handling_proposals_cnt.set_as(BURST_PROPOSAL_NUM)
+            handling_proposals_cnt.set_as(Constant.BURST_PROPOSAL_NUM)
 
         handling_ceil = tik_instance.Scalar(dtype="uint16")
         handling_ceil.set_as(ceil_div(handling_proposals_cnt, 16))
         selected_ceil = tik_instance.Scalar(dtype="uint16")
         selected_ceil.set_as(ceil_div(selected_proposals_cnt, 16))
         # clear temp_sup_vec_ub
-        tik_instance.vector_dup(128, temp_sup_vec_ub[0], 1, temp_sup_vec_ub.shape[0] // BURST_PROPOSAL_NUM, 1, 8)
-        temp_proposals_ub = ub_max_topk[burst_index * BURST_PROPOSAL_NUM * 8:]
+        tik_instance.vector_dup(128, temp_sup_vec_ub[0], 1, temp_sup_vec_ub.shape[0] // Constant.BURST_PROPOSAL_NUM, 1, 8)
+        temp_proposals_ub = ub_max_topk[burst_index * Constant.BURST_PROPOSAL_NUM * 8:]
         # calculate the area of reduced-proposal
         tik_instance.vrpac(temp_area_ub[0], temp_proposals_ub[0], handling_ceil)
         # start to update iou and or area from the first 16 proposal
@@ -918,16 +927,14 @@ def do_nms_compute(tik_instance, nms_var_dict, thresh):
                     # and selReducedProposals
                     tik_instance.viou(temp_iou_ub[0, 0], ub_selected_proposals[0],
                                       temp_proposals_ub[i*16*8], selected_ceil)
-                    # calculate intersection of tempReducedProposals and
-                    # tempReducedProposals(include itself)
+                    # calculate intersection of tempReducedProposals and tempReducedProposals(include itself)
                     tik_instance.viou(temp_iou_ub[selected_ceil * 16, 0],
                                       temp_proposals_ub[0], temp_proposals_ub[i*16*8], i + 1)
                     # calculate join of tempReducedProposals
                     # and selReducedProposals
                     tik_instance.vaadd(temp_join_ub[0, 0], ub_selected_area[0], temp_area_ub[i * 16],
                                        selected_ceil)
-                    # calculate intersection of tempReducedProposals and
-                    # tempReducedProposals(include itself)
+                    # calculate intersection of tempReducedProposals and tempReducedProposals(include itself)
                     tik_instance.vaadd(temp_join_ub[selected_ceil * 16, 0],
                                        temp_area_ub, temp_area_ub[i * 16], i + 1)
                     # calculate join*(thresh/(1+thresh))
@@ -1118,7 +1125,6 @@ def get_sorted_proposal_compute(tik_instance, output_ub, input_gm_list, gm_offse
         with tik_instance.new_stmt_scope():
             clip_window_compute(tik_instance, input_gm_list, input_ub_list, gm_offset, clip_window_value_list,
                                 copy_num)
-        # DOWN_FACTOR
         if reduce_scalar is not None:
             tik_func_vmuls(tik_instance, ub_tmp_boxes[0, :], ub_tmp_boxes[0, :], reduce_scalar[0], copy_num)
             tik_func_vmuls(tik_instance, ub_tmp_boxes[1, :], ub_tmp_boxes[1, :], reduce_scalar[0], copy_num)
@@ -1204,13 +1210,13 @@ def filter_score_compute(tik_instance, score_ub, score_valid_num_ub, scores_vali
                                             name="score_ub_mask", scope=tik.scope_ubuf)
         tik_func_vadds(tik_instance, scores_valid_mask, score_ub, score_thresh*(-1.0), score_num)
         tik_func_vector(tik_instance, tmp_ub_for_vmax, 0.0, 16)
-        tik_func_vector(tik_instance, tmp_ub_for_vmin, MIN_SCALAR_FP16, 16)
+        tik_func_vector(tik_instance, tmp_ub_for_vmin, Constant.MIN_SCALAR_FP16, 16)
         tik_func_vcomple(tik_instance, "vmin", scores_valid_mask, scores_valid_mask, tmp_ub_for_vmin,
                          score_num, 1, 1, 0, 8, 8, 0)
         tik_func_vcomple(tik_instance, "vmax", scores_valid_mask, scores_valid_mask, tmp_ub_for_vmax,
                          score_num, 1, 1, 0, 8, 8, 0)
-        tik_func_vmuls(tik_instance, scores_valid_mask, scores_valid_mask, TMP_SCALAR_FP16, score_num)
-        tik_func_vmuls(tik_instance, scores_valid_mask, scores_valid_mask, TMP_SCALAR_FP16, score_num)
+        tik_func_vmuls(tik_instance, scores_valid_mask, scores_valid_mask, Constant.TMP_SCALAR_FP16, score_num)
+        tik_func_vmuls(tik_instance, scores_valid_mask, scores_valid_mask, Constant.TMP_SCALAR_FP16, score_num)
         tik_func_vcomple(tik_instance, "vmul", score_ub, scores_valid_mask, score_ub,
                          score_num, 1, 1, 1, 8, 8, 8)
         tik_func_vmuls(tik_instance, score_ub_mask, scores_valid_mask, 1, score_num)
@@ -1498,7 +1504,6 @@ def batch_multi_class_nms_copy_out(tik_instance, nms, ub_result_boxes, ub_result
         tik_func_vextract(tik_instance, ub_result_boxes, ub_out_box_y1, loop_burst_len, 1)
         tik_func_vcomple(tik_instance, "vmul", ub_out_box_y1, ub_scores_valid_mask, ub_out_box_y1,
                          apply_men_len*16)
-        # DOWN_FACTOR
         if nms.down_flag:
             tik_func_vmuls(tik_instance, ub_out_box_y1, ub_out_box_y1, down_scalar, nms.max_total_size)
         tik_instance.data_move(nms.output_gm_list[0][output_batch_offset*4], ub_out_box_x1,
@@ -1785,7 +1790,7 @@ def batch_multi_class_non_max_suppression(boxes, scores, clip_window, num_valid_
                                   nms.boxes_num, nms.valid_num_value)
 
         with tik_instance.for_range(0, class_num) as _class_idx:
-            # for each class, init selected_proposals_cnt = 0
+            # for each class, init selected_proposals_cnt is 0
             nms.selected_proposals_cnt.set_as(0)
             with tik_instance.new_stmt_scope():
                 nms_for_single_class(_real_batch_idx, _class_idx, nms, _real_core_idx)

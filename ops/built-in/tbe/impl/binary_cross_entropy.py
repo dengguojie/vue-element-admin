@@ -25,13 +25,6 @@ from impl.util import util_select_op_base
 from impl.util import util_common
 
 
-
-# eps value
-SCALAR_EPS = 1e-12
-# the type of None
-NoneType = type(None)
-
-
 # 'pylint: disable=invalid-name,too-many-arguments
 # 'pylint: disable=unused-argument,too-many-locals
 def op_select_format(x, y, weight, output,
@@ -82,7 +75,7 @@ def op_select_format(x, y, weight, output,
     else:
         dtype_base = ["float16", "float"]
 
-    dtype_base_out = dtype_base.copy()
+    dtype_base_out = dtype_base[:]
     format_base_out = ["ND"] * len(dtype_base)
 
     if is_support_hd:
@@ -156,8 +149,9 @@ def binary_cross_entropy_compute(x, y, weight, output,
 
     const_one = tvm.const(1, trans_dtype)
     const_neg_one = tvm.const(-1, trans_dtype)
+    scalar_eps = 1e-12
     # calcu value : y * log(x)
-    x = tbe.vmaxs(x, tvm.const(SCALAR_EPS, trans_dtype))
+    x = tbe.vmaxs(x, tvm.const(scalar_eps, trans_dtype))
     x_log_tmp = tbe.vlog(x, priority_flag=1)
     data_mul1 = tbe.vmul(x_log_tmp, y)
     # calcu value : (1-y) * log(1-x)
@@ -165,7 +159,7 @@ def binary_cross_entropy_compute(x, y, weight, output,
     x1_tmp = tbe.vadds(x_neg_tmp, const_one)
     y_neg_tmp = tbe.vmuls(y, const_neg_one)
     y1_tmp = tbe.vadds(y_neg_tmp, const_one)
-    x1_tmp = tbe.vmaxs(x1_tmp, tvm.const(SCALAR_EPS, trans_dtype))
+    x1_tmp = tbe.vmaxs(x1_tmp, tvm.const(scalar_eps, trans_dtype))
     x1_log_tmp = tbe.vlog(x1_tmp, priority_flag=1)
     data_mul2 = tbe.vmul(x1_log_tmp, y1_tmp)
     # calcu value : y * log(x) + (1-y) * log(1-x)
