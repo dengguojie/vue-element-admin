@@ -15,8 +15,8 @@
 """
 decode_bbox_v2
 """
-# pylint: disable=unused-argument,too-many-arguments,invalid-name,no-self-use,too-many-branches
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=unused-argument,too-many-arguments,invalid-name,no-self-use,too-many-branches
+# 'pylint: disable=too-many-instance-attributes
 import math
 import functools
 
@@ -25,38 +25,44 @@ from te import platform as tbe_platform
 from te.utils import para_check
 from impl.util.platform_adapter import error_manager_vector
 
-SHAPE_SIZE_ONE = 1
-SHAPE_SIZE_FOUR = 4
-RESERVED_UB = 20480
-# MAX ELIMENT NUM OF FP16 IN 1BLOCK
-FP16_ELIMENTS_BLOCK = 16
-# MAX ELIMENT NUM OF FP32 IN 1BLOCK
-FP32_ELIMENTS_BLOCK = 8
-FP16_VECTOR_MASK_MAX = 128
-FP32_VECTOR_MASK_MAX = 64
-# vnchwconv instr compute min blocks
-TRANS_MIN_BLKS = 16
-# do transpose need split ub to trisection
-TRISECTION_UB = 3
-BLOCK_BYTES = 32
-CONFIG_TWO = 2
-REPEAT_TIMES_MAX = 255
-SMMU_ID = 0
-DATA_MOV_STRIDE = 0
-DATA_MOV_NBURST = 1
-REMAIN_REPEAT = 1
-DEQ_SCALE = 1.0
-SCALAR_HALF = 0.5
+
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    the class for constant
+    """
+    SHAPE_SIZE_ONE = 1
+    SHAPE_SIZE_FOUR = 4
+    RESERVED_UB = 20480
+    # MAX ELIMENT NUM OF FP16 IN 1BLOCK
+    FP16_ELIMENTS_BLOCK = 16
+    # MAX ELIMENT NUM OF FP32 IN 1BLOCK
+    FP32_ELIMENTS_BLOCK = 8
+    FP16_VECTOR_MASK_MAX = 128
+    FP32_VECTOR_MASK_MAX = 64
+    # vnchwconv instr compute min blocks
+    TRANS_MIN_BLKS = 16
+    # do transpose need split ub to trisection
+    TRISECTION_UB = 3
+    BLOCK_BYTES = 32
+    CONFIG_TWO = 2
+    REPEAT_TIMES_MAX = 255
+    SMMU_ID = 0
+    DATA_MOV_STRIDE = 0
+    DATA_MOV_NBURST = 1
+    REMAIN_REPEAT = 1
+    DEQ_SCALE = 1.0
+    SCALAR_HALF = 0.5
 
 
-# pylint: disable=no-member,attribute-defined-outside-init,dangerous-default-value
+# 'pylint: disable=no-member,attribute-defined-outside-init,dangerous-default-value
 class DecodeBboxV2():
     """
        Function: use to store  base parameters
        Modify : 2020-07-27
     """
 
-    # pylint: disable=too-many-statements
+    # 'pylint: disable=too-many-statements
     def __init__(self, boxes, anchors, scales, decode_clip, reversed_box,
                  kernel_name):
         """
@@ -96,17 +102,17 @@ class DecodeBboxV2():
         self.scale_h = scales[2]
         self.scale_w = scales[3]
         self.total_ub = tik.Dprofile().get_unified_buffer_size()
-        self.available_ub_size = self.total_ub // CONFIG_TWO - RESERVED_UB
+        self.available_ub_size = self.total_ub // Constant.CONFIG_TWO - Constant.RESERVED_UB
         self.aicore_num = tik.Dprofile().get_aicore_num()
-        self.ele_block_dict = {"float32": FP32_ELIMENTS_BLOCK,
-                               "float16": FP16_ELIMENTS_BLOCK}
-        self.vector_mask_max_dict = {"float32": FP32_VECTOR_MASK_MAX,
-                                     "float16": FP16_VECTOR_MASK_MAX}
+        self.ele_block_dict = {"float32": Constant.FP32_ELIMENTS_BLOCK,
+                               "float16": Constant.FP16_ELIMENTS_BLOCK}
+        self.vector_mask_max_dict = {"float32": Constant.FP32_VECTOR_MASK_MAX,
+                                     "float16": Constant.FP16_VECTOR_MASK_MAX}
         self.boxes_ele_per_block = self.ele_block_dict.get(self.boxes_dtype)
-        self.ele_reversed_dict = {True: SHAPE_SIZE_FOUR,
-                                  False: SHAPE_SIZE_ONE}
+        self.ele_reversed_dict = {True: Constant.SHAPE_SIZE_FOUR,
+                                  False: Constant.SHAPE_SIZE_ONE}
         self.ele_multiple = self.ele_reversed_dict.get(self.reversed_box)
-        self.compute_blks_multiple = self.ele_multiple / SHAPE_SIZE_FOUR
+        self.compute_blks_multiple = self.ele_multiple / Constant.SHAPE_SIZE_FOUR
         self.element_num = int(functools.reduce(lambda x, y: x * y,
                                                 self.boxes_shape) /
                                self.ele_multiple)
@@ -114,12 +120,12 @@ class DecodeBboxV2():
                                       self.boxes_ele_per_block)
         if self.reversed_box is True:
             self.block_nums_per_loop_max = self.available_ub_size // \
-                                           (BLOCK_BYTES * self.ele_multiple *
-                                            CONFIG_TWO)
+                                           (Constant.BLOCK_BYTES * self.ele_multiple *
+                                            Constant.CONFIG_TWO)
         else:
             self.block_nums_per_loop_max = self.available_ub_size // \
-                                           (BLOCK_BYTES * TRISECTION_UB) // \
-                                           TRANS_MIN_BLKS * TRANS_MIN_BLKS
+                                           (Constant.BLOCK_BYTES * Constant.TRISECTION_UB) // \
+                                           Constant.TRANS_MIN_BLKS * Constant.TRANS_MIN_BLKS
         # Calculate the blocks that need to be calculated for each core
         self.cal_blocks_per_core = math.ceil(self.boxes_blocks /
                                              self.aicore_num)
@@ -177,16 +183,16 @@ class DecodeBboxV2():
                 name="anchors_ub", scope=tik.scope_ubuf)
         else:
             self.boxes_ub = self.tik_instance.Tensor(
-                self.boxes_dtype, [math.ceil(move_blocks / TRANS_MIN_BLKS) *
-                                   TRANS_MIN_BLKS * self.boxes_ele_per_block],
+                self.boxes_dtype, [math.ceil(move_blocks / Constant.TRANS_MIN_BLKS) *
+                                   Constant.TRANS_MIN_BLKS * self.boxes_ele_per_block],
                 name="boxes_ub", scope=tik.scope_ubuf)
             self.anchors_ub = self.tik_instance.Tensor(
-                self.anchors_dtype, [math.ceil(move_blocks / TRANS_MIN_BLKS) *
-                                     TRANS_MIN_BLKS * self.boxes_ele_per_block],
+                self.anchors_dtype, [math.ceil(move_blocks / Constant.TRANS_MIN_BLKS) *
+                                     Constant.TRANS_MIN_BLKS * self.boxes_ele_per_block],
                 name="anchors_ub", scope=tik.scope_ubuf)
             self.anchors_trans_ub = self.tik_instance.Tensor(
-                self.anchors_dtype, [math.ceil(move_blocks / TRANS_MIN_BLKS) *
-                                     TRANS_MIN_BLKS * self.boxes_ele_per_block],
+                self.anchors_dtype, [math.ceil(move_blocks / Constant.TRANS_MIN_BLKS) *
+                                     Constant.TRANS_MIN_BLKS * self.boxes_ele_per_block],
                 name="anchors_trans_ub", scope=tik.scope_ubuf)
 
     def input_unpack(self, compute_blocks):
@@ -228,16 +234,16 @@ class DecodeBboxV2():
         """
         transpose_n4_to_4n
         """
-        repeat_time = math.ceil(trans_blocks / TRANS_MIN_BLKS)
-        dst_rep_stride = TRANS_MIN_BLKS
-        src_rep_stride = TRANS_MIN_BLKS
+        repeat_time = math.ceil(trans_blocks / Constant.TRANS_MIN_BLKS)
+        dst_rep_stride = Constant.TRANS_MIN_BLKS
+        src_rep_stride = Constant.TRANS_MIN_BLKS
         if repeat_time == 1:
             dst_rep_stride = 0
             src_rep_stride = 0
         src_addr_list = [src_ub[i*self.boxes_ele_per_block]
-                         for i in range(0, TRANS_MIN_BLKS)]
+                         for i in range(0, Constant.TRANS_MIN_BLKS)]
         dst_addr_list = [dst_ub[i*self.boxes_ele_per_block]
-                         for i in range(0, TRANS_MIN_BLKS)]
+                         for i in range(0, Constant.TRANS_MIN_BLKS)]
         self.tik_instance.vnchwconv(False, False, dst_addr_list, src_addr_list,
                                     repeat_time,
                                     dst_rep_stride, src_rep_stride)
@@ -305,28 +311,28 @@ class DecodeBboxV2():
         data_move_in_each_loop
         """
         if self.reversed_box is True:
-            for j in range(0, SHAPE_SIZE_FOUR):
+            for j in range(0, Constant.SHAPE_SIZE_FOUR):
                 self.tik_instance.data_move(
                     self.boxes_ub[j*compute_blocks*self.boxes_ele_per_block],
                     self.boxes_gm[move_offset_loop+j*self.element_num],
-                    SMMU_ID, DATA_MOV_NBURST, compute_blocks,
-                    DATA_MOV_STRIDE, DATA_MOV_STRIDE)
+                    Constant.SMMU_ID, Constant.DATA_MOV_NBURST, compute_blocks,
+                    Constant.DATA_MOV_STRIDE, Constant.DATA_MOV_STRIDE)
                 self.tik_instance.data_move(
                     self.anchors_ub[j*compute_blocks*self.boxes_ele_per_block],
                     self.anchors_gm[move_offset_loop+j*self.element_num],
-                    SMMU_ID, DATA_MOV_NBURST, compute_blocks,
-                    DATA_MOV_STRIDE, DATA_MOV_STRIDE)
+                    Constant.SMMU_ID, Constant.DATA_MOV_NBURST, compute_blocks,
+                    Constant.DATA_MOV_STRIDE, Constant.DATA_MOV_STRIDE)
         else:
             self.tik_instance.data_move(
                 self.boxes_ub,
                 self.boxes_gm[move_offset_loop],
-                SMMU_ID, DATA_MOV_NBURST, compute_blocks,
-                DATA_MOV_STRIDE, DATA_MOV_STRIDE)
+                Constant.SMMU_ID, Constant.DATA_MOV_NBURST, compute_blocks,
+                Constant.DATA_MOV_STRIDE, Constant.DATA_MOV_STRIDE)
             self.tik_instance.data_move(
                 self.anchors_ub,
                 self.anchors_gm[move_offset_loop],
-                SMMU_ID, DATA_MOV_NBURST, compute_blocks,
-                DATA_MOV_STRIDE, DATA_MOV_STRIDE)
+                Constant.SMMU_ID, Constant.DATA_MOV_NBURST, compute_blocks,
+                Constant.DATA_MOV_STRIDE, Constant.DATA_MOV_STRIDE)
             self.transpose_n4_to_4n(compute_blocks, self.anchors_ub,
                                     self.anchors_trans_ub)
             self.transpose_n4_to_4n(compute_blocks, self.boxes_ub,
@@ -341,16 +347,16 @@ class DecodeBboxV2():
                             "vsub", compute_blocks, src_ub1=self.anchor_xmin_ub)
         self.anchor_w = self.anchor_xmax_ub
 
-        if not self.isclose(self.scale_y, DEQ_SCALE):
+        if not self.isclose(self.scale_y, Constant.DEQ_SCALE):
             self.vector_compute(self.ty_ub, self.ty_ub, "vmuls",
                                 compute_blocks, scalar=1/self.scale_y)
-        if not self.isclose(self.scale_x, DEQ_SCALE):
+        if not self.isclose(self.scale_x, Constant.DEQ_SCALE):
             self.vector_compute(self.tx_ub, self.tx_ub, "vmuls",
                                 compute_blocks, scalar=1/self.scale_x)
-        if not self.isclose(self.scale_h, DEQ_SCALE):
+        if not self.isclose(self.scale_h, Constant.DEQ_SCALE):
             self.vector_compute(self.th_ub, self.th_ub, "vmuls",
                                 compute_blocks, scalar=1/self.scale_h)
-        if not self.isclose(self.scale_w, DEQ_SCALE):
+        if not self.isclose(self.scale_w, Constant.DEQ_SCALE):
             self.vector_compute(self.tw_ub, self.tw_ub, "vmuls",
                                 compute_blocks, scalar=1/self.scale_w)
         self.vector_compute(self.ty_ub, self.ty_ub, "vmul",
@@ -387,17 +393,17 @@ class DecodeBboxV2():
         self.vector_compute(self.th_ub, self.th_ub, "vmul",
                             compute_blocks, src_ub1=self.anchor_h)
         self.vector_compute(self.anchor_h, self.anchor_h,
-                            "vmuls", compute_blocks, scalar=SCALAR_HALF)
+                            "vmuls", compute_blocks, scalar=Constant.SCALAR_HALF)
         self.vector_compute(self.anchor_w, self.anchor_w,
-                            "vmuls", compute_blocks, scalar=SCALAR_HALF)
+                            "vmuls", compute_blocks, scalar=Constant.SCALAR_HALF)
         self.vector_compute(self.ty_ub, self.ty_ub,
                             "vadd", compute_blocks, src_ub1=self.anchor_h)
         self.vector_compute(self.tx_ub, self.tx_ub,
                             "vadd", compute_blocks, src_ub1=self.anchor_w)
         self.vector_compute(self.th_ub, self.th_ub, "vmuls",
-                            compute_blocks, scalar=SCALAR_HALF)
+                            compute_blocks, scalar=Constant.SCALAR_HALF)
         self.vector_compute(self.tw_ub, self.tw_ub, "vmuls",
-                            compute_blocks, scalar=SCALAR_HALF)
+                            compute_blocks, scalar=Constant.SCALAR_HALF)
         self.vector_compute(self.anchor_ymin_ub, self.ty_ub, "vsub",
                             compute_blocks, src_ub1=self.th_ub)
         self.vector_compute(self.anchor_ymax_ub, self.ty_ub, "vadd",
@@ -407,21 +413,21 @@ class DecodeBboxV2():
         self.vector_compute(self.anchor_xmax_ub, self.tx_ub, "vadd",
                             compute_blocks, src_ub1=self.tw_ub)
         if self.reversed_box is True:
-            for j in range(0, SHAPE_SIZE_FOUR):
+            for j in range(0, Constant.SHAPE_SIZE_FOUR):
                 self.tik_instance.data_move(
                     self.y_gm[move_offset_loop+j*self.element_num],
                     self.anchors_ub[j * compute_blocks *
                                     self.boxes_ele_per_block],
-                    SMMU_ID, DATA_MOV_NBURST, compute_blocks,
-                    DATA_MOV_STRIDE, DATA_MOV_STRIDE)
+                    Constant.SMMU_ID, Constant.DATA_MOV_NBURST, compute_blocks,
+                    Constant.DATA_MOV_STRIDE, Constant.DATA_MOV_STRIDE)
         else:
             self.transpose_n4_to_4n(compute_blocks, self.anchors_trans_ub,
                                     self.anchors_ub)
             self.tik_instance.data_move(
                 self.y_gm[move_offset_loop],
                 self.anchors_ub,
-                SMMU_ID, DATA_MOV_NBURST, compute_blocks,
-                DATA_MOV_STRIDE, DATA_MOV_STRIDE)
+                Constant.SMMU_ID, Constant.DATA_MOV_NBURST, compute_blocks,
+                Constant.DATA_MOV_STRIDE, Constant.DATA_MOV_STRIDE)
 
     def vector_compute(self, dst_ub, src_ub0, compute_type, compute_blocks,
                        src_ub1=None, scalar=None):
@@ -432,32 +438,32 @@ class DecodeBboxV2():
         compute_ele_nums = int(self.ele_block_dict.get(src_ub0.dtype) * \
                                compute_blocks * self.compute_blks_multiple)
         compute_instr_loops = compute_ele_nums // (self.vector_mask_max *
-                                                   REPEAT_TIMES_MAX)
+                                                   Constant.REPEAT_TIMES_MAX)
         compute_offset = 0
         if compute_instr_loops > 0:
             with self.tik_instance.for_range(0, compute_instr_loops) as \
                     instr_loops_index:
                 compute_offset = instr_loops_index * \
-                                 self.vector_mask_max * REPEAT_TIMES_MAX * \
+                                 self.vector_mask_max * Constant.REPEAT_TIMES_MAX * \
                                  self.blk_stride
                 if compute_type == "vconv":
                     self.vconv_instr_gen(self.vector_mask_max, compute_offset,
-                                         dst_ub, src_ub0, REPEAT_TIMES_MAX)
+                                         dst_ub, src_ub0, Constant.REPEAT_TIMES_MAX)
                 if compute_type in ["vsub", "vadd", "vmul", "vmin"]:
                     self.double_in_instr_gen(self.vector_mask_max,
                                              compute_offset,
                                              dst_ub, src_ub0, src_ub1,
-                                             REPEAT_TIMES_MAX, compute_type)
+                                             Constant.REPEAT_TIMES_MAX, compute_type)
                 if compute_type in ["vmuls", "vmins", "vector_dup", "vexp"]:
                     self.tensor_scalar_instr_gen(self.vector_mask_max,
                                                  compute_offset,
                                                  dst_ub, src_ub0,
-                                                 REPEAT_TIMES_MAX,
+                                                 Constant.REPEAT_TIMES_MAX,
                                                  scalar, compute_type)
             compute_offset = compute_instr_loops * self.vector_mask_max * \
-                             REPEAT_TIMES_MAX * self.blk_stride
+                             Constant.REPEAT_TIMES_MAX * self.blk_stride
         repeat_time = (compute_ele_nums %
-                       (self.vector_mask_max * REPEAT_TIMES_MAX) //
+                       (self.vector_mask_max * Constant.REPEAT_TIMES_MAX) //
                        self.vector_mask_max)
         if repeat_time > 0:
             if compute_type == "vconv":
@@ -477,21 +483,21 @@ class DecodeBboxV2():
         last_num = compute_ele_nums % self.vector_mask_max
         if self.reversed_box is False:
             if last_num > 0:
-                if last_num > self.vector_mask_max/CONFIG_TWO:
+                if last_num > self.vector_mask_max / Constant.CONFIG_TWO:
                     last_num = int(self.vector_mask_max)
                 else:
-                    last_num = int(self.vector_mask_max/CONFIG_TWO)
+                    last_num = int(self.vector_mask_max / Constant.CONFIG_TWO)
         if last_num > 0:
             if compute_type == "vconv":
                 self.vconv_instr_gen(last_num, compute_offset,
-                                     dst_ub, src_ub0, REMAIN_REPEAT)
+                                     dst_ub, src_ub0, Constant.REMAIN_REPEAT)
             if compute_type in ["vsub", "vadd", "vmul", "vmin"]:
                 self.double_in_instr_gen(last_num, compute_offset,
                                          dst_ub, src_ub0, src_ub1,
-                                         REMAIN_REPEAT, compute_type)
+                                         Constant.REMAIN_REPEAT, compute_type)
             if compute_type in ["vmuls", "vmins", "vector_dup", "vexp"]:
                 self.tensor_scalar_instr_gen(last_num, compute_offset,
-                                             dst_ub, src_ub0, REMAIN_REPEAT,
+                                             dst_ub, src_ub0, Constant.REMAIN_REPEAT,
                                              scalar, compute_type)
 
     def double_in_instr_gen(self, mask, offset, dst_ub,
@@ -549,9 +555,9 @@ class DecodeBboxV2():
             self.vector_mask_max_dict.get(dst_ub.dtype),
             self.vector_mask_max_dict.get(src_ub.dtype))
         if self.reversed_box is True:
-            self.blk_stride = SHAPE_SIZE_ONE
+            self.blk_stride = Constant.SHAPE_SIZE_ONE
         else:
-            self.blk_stride = SHAPE_SIZE_FOUR
+            self.blk_stride = Constant.SHAPE_SIZE_FOUR
         self.dst_rep_stride = self.vector_mask_max // \
                               self.ele_block_dict.get(dst_ub.dtype) * \
                               self.blk_stride
@@ -568,15 +574,23 @@ class DecodeBboxV2():
         para_check.check_shape(self.anchors_shape, min_rank=2, max_rank=2,
                                param_name="anchors")
         if self.boxes_shape != self.anchors_shape:
-            error_manager_vector.raise_err_inputs_shape_not_equal("decode_bbox_v2", "boxes_shape", "anchors_shape", self.boxes_shape, self.boxes_shape, self.anchors_shape)
-        
+            error_manager_vector.raise_err_inputs_shape_not_equal("decode_bbox_v2", "boxes_shape",
+                                                                  "anchors_shape", self.boxes_shape,
+                                                                  self.boxes_shape, self.anchors_shape)
+
         if self.reversed_box is False:
-            if self.boxes_shape[-1] != SHAPE_SIZE_FOUR:
-                error_manager_vector.raise_err_inputs_shape_not_equal("decode_bbox_v2", "boxes_shape's last dim", "SHAPE_SIZE_FOUR", self.boxes_shape[-1], SHAPE_SIZE_FOUR, SHAPE_SIZE_FOUR)
-        
+            if self.boxes_shape[-1] != Constant.SHAPE_SIZE_FOUR:
+                error_manager_vector.raise_err_inputs_shape_not_equal("decode_bbox_v2", "boxes_shape's last dim",
+                                                                      "SHAPE_SIZE_FOUR", self.boxes_shape[-1],
+                                                                      Constant.SHAPE_SIZE_FOUR,
+                                                                      Constant.SHAPE_SIZE_FOUR)
+
         if self.reversed_box is True:
-            if self.boxes_shape[0] != SHAPE_SIZE_FOUR:
-                error_manager_vector.raise_err_inputs_shape_not_equal("decode_bbox_v2", "boxes_shape's first dim", "SHAPE_SIZE_FOUR", self.boxes_shape[0], SHAPE_SIZE_FOUR, SHAPE_SIZE_FOUR)
+            if self.boxes_shape[0] != Constant.SHAPE_SIZE_FOUR:
+                error_manager_vector.raise_err_inputs_shape_not_equal("decode_bbox_v2", "boxes_shape's first dim",
+                                                                      "SHAPE_SIZE_FOUR", self.boxes_shape[0],
+                                                                      Constant.SHAPE_SIZE_FOUR,
+                                                                      Constant.SHAPE_SIZE_FOUR)
 
         check_list_boxes = ["float16", "float32"]
         check_list_anchors = ["float16", "float32"]
@@ -587,15 +601,20 @@ class DecodeBboxV2():
                 "tik.vnchwconv", dtype=self.boxes_dtype):
             para_check.check_dtype(self.boxes_dtype, ["float16"], param_name="boxes")
         if self.boxes_dtype != self.anchors_dtype:
-            error_manager_vector.raise_err_inputs_dtype_not_equal("decode_bbox_v2", "boxes_dtype", "anchors_dtype", self.boxes_dtype, self.anchors_dtype)
-        
-        if self.decode_clip < 0 or self.decode_clip > 10:
-            error_manager_vector.raise_err_input_param_not_in_range("decode_bbox_v2", "decode_clip", 0, 10, self.decode_clip)
+            error_manager_vector.raise_err_inputs_dtype_not_equal("decode_bbox_v2", "boxes_dtype", "anchors_dtype",
+                                                                  self.boxes_dtype, self.anchors_dtype)
 
-        if len(self.scale_list) != SHAPE_SIZE_FOUR:
-            error_manager_vector.raise_err_inputs_shape_not_equal("decode_bbox_v2", "length of scale_list", "SHAPE_SIZE_FOUR", len(self.scale_list), SHAPE_SIZE_FOUR, SHAPE_SIZE_FOUR)
-    
-    def isclose(self, valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
+        if self.decode_clip < 0 or self.decode_clip > 10:
+            error_manager_vector.raise_err_input_param_not_in_range("decode_bbox_v2", "decode_clip", 0, 10,
+                                                                    self.decode_clip)
+
+        if len(self.scale_list) != Constant.SHAPE_SIZE_FOUR:
+            error_manager_vector.raise_err_inputs_shape_not_equal("decode_bbox_v2", "length of scale_list",
+                                                                  "SHAPE_SIZE_FOUR", len(self.scale_list),
+                                                                  Constant.SHAPE_SIZE_FOUR, Constant.SHAPE_SIZE_FOUR)
+
+    @staticmethod
+    def isclose(valuex, valuey, rel_tol=1e-08, abs_tol=0.0):
         """
         determines whether the values of two floating-point numbers
         are close or equal

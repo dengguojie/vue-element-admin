@@ -13,20 +13,17 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 cross
 """
-import math
 import functools
 from te import tik
 from te import platform as cce
-
 from te.utils import para_check
 
-import numpy as np
 
-class Cross(object):
+class Cross():
     """
-        Function: Compute the cross product of two tensor
-        Create: 2020-07-10
-        Modify: 2021-03-30
+    Function: Compute the cross product of two tensor
+    Create: 2020-07-10
+    Modify: 2021-03-30
     """
     def __init__(self, x1, x2, dim, kernel_name="cross"):
 
@@ -49,7 +46,7 @@ class Cross(object):
         if self.dim == -65530:
             for i in range(0, len(self.shape_x)):
                 self.intervel_num = self.intervel_num * self.shape_x[i]
-                if(self.shape_x[i] == 3):
+                if self.shape_x[i] == 3:
                     self.dim = i
                     break
         elif self.dim < -len(self.shape_x) or self.dim > len(self.shape_x) - 1:
@@ -88,13 +85,13 @@ class Cross(object):
         self.x2_ub = self.tik_instance.Tensor(self.dtype_x,
                                               (self.vector_mask_max, ), name="x2_ub", scope=tik.scope_ubuf)
         # as data_saver's index
-        self.ub_lower_index = self.tik_instance.Scalar(dtype = "int32", init_value = - self.vector_mask_max - 1)
+        self.ub_lower_index = self.tik_instance.Scalar(dtype="int32", init_value=- self.vector_mask_max - 1)
 
         # as data_record, do page_update
         self.y_ub = self.tik_instance.Tensor(self.dtype_x,
                                              (self.vector_mask_max, ), name="y_ub", scope=tik.scope_ubuf)
         # init data_record
-        self.gm_lower_index = self.tik_instance.Scalar(dtype = "int32", init_value = 0)
+        self.gm_lower_index = self.tik_instance.Scalar(dtype="int32", init_value=0)
         self.tik_instance.data_move(self.y_ub[self.gm_lower_index], self.y_gm[self.gm_lower_index], 0, 1, 8, 0, 0)
 
         # out loop
@@ -134,31 +131,31 @@ class Cross(object):
         """
         with self.tik_instance.for_range(0, self.loop_times) as i:
             with self.tik_instance.for_range(0, self.intervel_num) as j:
-                i_index = self.tik_instance.Scalar(dtype = "int32",
-                                                   init_value = i * 3 * self.intervel_num + j)
-                j_index = self.tik_instance.Scalar(dtype = "int32",
-                                                   init_value = i * 3 * self.intervel_num + j + self.intervel_num)
-                k_index = self.tik_instance.Scalar(dtype = "int32",
-                                                   init_value = i * 3 * self.intervel_num + j + 2 * self.intervel_num)
+                i_index = self.tik_instance.Scalar(dtype="int32",
+                                                   init_value=i * 3 * self.intervel_num + j)
+                j_index = self.tik_instance.Scalar(dtype="int32",
+                                                   init_value=i * 3 * self.intervel_num + j + self.intervel_num)
+                k_index = self.tik_instance.Scalar(dtype="int32",
+                                                   init_value=i * 3 * self.intervel_num + j + 2 * self.intervel_num)
                 # data move in
-                self.set_data2UB(self.left_i_ub, self.x1_ub, i_index)
-                self.set_data2UB(self.right_i_ub, self.x2_ub, i_index)
-                self.set_data2UB(self.left_j_ub, self.x1_ub, j_index)
-                self.set_data2UB(self.right_j_ub, self.x2_ub, j_index)
-                self.set_data2UB(self.left_k_ub, self.x1_ub, k_index)
-                self.set_data2UB(self.right_k_ub, self.x2_ub, k_index)
+                self.set_data2ub(self.left_i_ub, self.x1_ub, i_index)
+                self.set_data2ub(self.right_i_ub, self.x2_ub, i_index)
+                self.set_data2ub(self.left_j_ub, self.x1_ub, j_index)
+                self.set_data2ub(self.right_j_ub, self.x2_ub, j_index)
+                self.set_data2ub(self.left_k_ub, self.x1_ub, k_index)
+                self.set_data2ub(self.right_k_ub, self.x2_ub, k_index)
                 # compute
                 self.cross_compute_each_three_num()
                 # data move out
-                self.set_data2GM(self.output_i_ub, i_index)
-                self.set_data2GM(self.output_j_ub, j_index)
-                self.set_data2GM(self.output_k_ub, k_index)
+                self.set_data2gm(self.output_i_ub, i_index)
+                self.set_data2gm(self.output_j_ub, j_index)
+                self.set_data2gm(self.output_k_ub, k_index)
         # last data move out
         self.tik_instance.data_move(self.y_gm[self.gm_lower_index], self.y_ub[self.gm_lower_index], 0, 1, 8, 0, 0)
         self.tik_instance.BuildCCE(
-            inputs = [self.x1_gm, self.x2_gm],
-            outputs = [self.y_gm],
-            kernel_name = self.kernel_name)
+            inputs=[self.x1_gm, self.x2_gm],
+            outputs=[self.y_gm],
+            kernel_name=self.kernel_name)
         return self.tik_instance
 
     def cross_compute_each_three_num(self):
@@ -186,7 +183,7 @@ class Cross(object):
         self.tik_instance.vec_mul(1, output_k_right, self.right_i_ub, self.left_j_ub, 1, 8, 8, 8)
         self.tik_instance.vec_sub(1, self.output_k_ub, output_k_left, output_k_right, 1, 8, 8, 8)
 
-    def set_data2UB(self, dst, src, index):
+    def set_data2ub(self, dst, src, index):
         """
         get data from GM to saver tensor
         """
@@ -208,7 +205,7 @@ class Cross(object):
                                             0, 1, 8, 0, 0)
                 dst[0].set_as(src[index - self.ub_lower_index])
 
-    def set_data2GM(self, src, index):
+    def set_data2gm(self, src, index):
         """
         set data to GM from saver tensor
         """
@@ -227,7 +224,7 @@ class Cross(object):
                 self.y_ub[index - self.gm_lower_index].set_as(src)
 
 
-# pylint: disable=too-many-locals,invalid-name,unused-argument,too-many-arguments
+# 'pylint: disable=too-many-locals,invalid-name,unused-argument,too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.KERNEL_NAME)

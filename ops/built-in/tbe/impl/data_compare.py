@@ -23,14 +23,18 @@ from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
-NUM_ONE = 1.0
-NUM_ZERO = 0.0
 
-__all__ = ["data_compare"]
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    Constant
+    """
+    NUM_ONE = 1.0
+    NUM_ZERO = 0.0
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=too-many-locals
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=too-many-locals
 @tbe_platform.fusion_manager.fusion_manager.register("data_compare")
 def data_compare_compute(input_x, input_y, output_num, atol, rtol, kernel_name="data_compare"):
     """
@@ -69,8 +73,8 @@ def data_compare_compute(input_x, input_y, output_num, atol, rtol, kernel_name="
 
     res_cmp = tbe.vcmp(res_vabs, res_vadds, 'gt')
 
-    zero_scaler = tvm.const(NUM_ZERO, "float16")
-    one_scaler = tvm.const(NUM_ONE, "float16")
+    zero_scaler = tvm.const(Constant.NUM_ZERO, "float16")
+    one_scaler = tvm.const(Constant.NUM_ONE, "float16")
     res_sel = tbe.vsel(res_cmp, one_scaler, zero_scaler)
 
     if tbe_platform.cce_conf.api_check_support("tbe.sum", "float32"):

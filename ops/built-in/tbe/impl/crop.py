@@ -23,12 +23,18 @@ from impl import constant_util as constant
 from impl import common_util
 from impl.util import util_select_op_base
 
-# reserve size for ub
-RESERVE_SIZE = 16 * 1024
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    Constant
+    """
+    # reserve size for ub
+    RESERVE_SIZE = 16 * 1024
 
 
-# pylint: disable=invalid-name,too-many-arguments,unused-argument,too-many-instance-attributes
-# pylint: disable=too-many-locals,too-many-statements,too-many-lines
+# 'pylint: disable=invalid-name,too-many-arguments,unused-argument,too-many-instance-attributes
+# 'pylint: disable=too-many-locals,too-many-statements,too-many-lines
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_INT, para_check.REQUIRED_ATTR_LIST_INT, para_check.KERNEL_NAME)
 def crop(x, size, y, axis=2, offsets=(0), kernel_name="crop"):
@@ -99,7 +105,7 @@ class Crop:
         self.dtype = input_dict.get("x1").get("dtype").lower()
         self.dsize = common_util.get_data_size(self.dtype)
         total_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-        ub_size = (total_size - RESERVE_SIZE) // (2 * self.dsize)
+        ub_size = (total_size - Constant.RESERVE_SIZE) // (2 * self.dsize)
         burst_len = constant.BLOCK_SIZE // self.dsize
         ub_size = ((ub_size + burst_len - 1) // burst_len) * burst_len
         self.one_max_size = ub_size
@@ -467,6 +473,7 @@ class Crop:
                 pattern_num = pattern_before
             if ub_in_num < pattern_num:
                 pattern_num = ub_in_num
+            # 'pylint: disable=variable_type_changed
             pattern_num = _get_tail_num(inner_loop, pattern_num, out_element_align_num, -1,
                                         out_element_align_num)
 
@@ -948,14 +955,15 @@ def check_and_adjust_offset(input_dict):
         error_detail = "the parameter[%s][%s] are not equal in shape with shapes[%s][%s]." \
                         % ("x1", "x2", ','.join(str(i) for i in x1_shape),  ','.join(str(i) for i in x2_shape))
         error_manager_vector.raise_err_specific_reson("crop", error_detail)
-    
+
     # check his-es check offset
     x1_ori_shape = input_dict.get("x1").get("shape")
     if 'ori_shape' in input_dict.get("x1"):
         x1_ori_shape = input_dict.get("x1").get("ori_shape")
     axis = input_dict.get("axis")
     if axis >= len(x1_ori_shape) or axis < -len(x1_ori_shape):
-        error_manager_vector.raise_err_input_param_not_in_range("crop", "axis", str(-len(x1_ori_shape)), str(len(x1_ori_shape)), axis)
+        error_manager_vector.raise_err_input_param_not_in_range("crop", "axis", str(-len(x1_ori_shape)),
+                                                                str(len(x1_ori_shape)), axis)
 
     if axis < 0:
         input_dict["axis"] = axis + len(x1_ori_shape)

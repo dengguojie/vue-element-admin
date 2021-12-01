@@ -24,8 +24,8 @@ from impl.util import util_tik_comm_func
 from impl.util import util_select_op_base
 
 
-# pylint: disable=locally-disabled,invalid-name,too-many-arguments,too-many-locals
-# pylint: disable=unused-argument,too-many-branches
+# 'pylint: disable=locally-disabled,invalid-name,too-many-arguments,too-many-locals
+# 'pylint: disable=unused-argument,too-many-branches,too-many-return-statements
 def check_supported(x, boxes, box_index, y, crop_size, extrapolation_value,
                     method, kernel_name="crop_and_resize"):
     """To check whether the AICORE operator can support the length of w/h or not
@@ -42,7 +42,7 @@ def check_supported(x, boxes, box_index, y, crop_size, extrapolation_value,
     boxes_num = boxes_shape[0]
 
     if boxes_num <= 50 or boxes_num > 4000:
-        reason =  "boxes_num is %s, the performance is better on aicpu" %(str(boxes_num),)
+        reason =  "boxes_num is %s, the performance is better on aicpu" % (str(boxes_num),)
         return False, reason
 
     if input_type in ("float32", "float16",) and method in ("bilinear",) and len(input_shape) == 4:
@@ -53,7 +53,7 @@ def check_supported(x, boxes, box_index, y, crop_size, extrapolation_value,
     else:
         reason = "input_dtye must in (\"float32\", \"float16\",) method must be bilinear input_shape'size must be 4"\
                  "but input_type is %s, method is %s, input_shape'size is %s"\
-                  %(input_type, method, str(len(input_shape)))
+                  % (input_type, method, str(len(input_shape)))
         return False, reason
 
     # format must be ("NHWC", "NCHW")
@@ -70,13 +70,13 @@ def check_supported(x, boxes, box_index, y, crop_size, extrapolation_value,
         return False, reason
 
     if input_c > 2048 or input_c < 256 or max(output_h, output_w) > 16:
-        reason = "shape is not supported by aicore,input shape:%s, crop shape:%s" %(str(input_shape), str(crop_size))
+        reason = "shape is not supported by aicore,input shape:%s, crop shape:%s" % (str(input_shape), str(crop_size))
         return False, reason
 
     if input_h * input_w * copy_block > 65530 or output_h * output_w * copy_block > 65530 // 2:
         # will use stride when copy data
         reason = "shape is too big to compute on aicore, input shape:%s, crop shape:%s" \
-          %(str(input_shape), str(crop_size))
+          % (str(input_shape), str(crop_size))
         return False, reason
 
     return True, ""
@@ -106,7 +106,7 @@ def op_select_format(x, boxes, box_index, y, crop_size, extrapolation_value,
         if input_h * input_w <= 65530 // 2:
             support_dtype.append("float32")
 
-    dtype_base_in = support_dtype.copy()
+    dtype_base_in = support_dtype[:]
     dtype_base_out = ["float32"] * len(support_dtype)
     dtype_base_index = ["int32"] * len(support_dtype)
     format_base_5hd = ["NC1HWC0"] * len(support_dtype)
@@ -130,7 +130,7 @@ def op_select_format(x, boxes, box_index, y, crop_size, extrapolation_value,
     return param_dynamic_in_json
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class CropAndResize:
     """
     Function: use to store CropAndResize base parameters
@@ -297,7 +297,7 @@ def fill_index_in_ub(tik_instance, idx_ub, idx_num):
             idx_ub[_idx].set_as(_idx)
 
 
-# pylint: disable=too-many-statements
+# 'pylint: disable=too-many-statements
 def do_crop_and_resize_compute_one_core(box_num_sigment, obj, box_num_offset):
     """do crop and resize in one core
         step 1 read boxes from boxes and calc h_top_index/h_bottom_index/h_lerp/w_left_index/w_right_index/w_lerp

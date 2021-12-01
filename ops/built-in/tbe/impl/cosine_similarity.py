@@ -17,12 +17,11 @@ cosine_similarity
 """
 
 import te.lang.cce as tbe
+from impl import constant_util as constant
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils import shape_util
-
-SHAPE_SIZE_LIMIT = 2147483648
 
 
 def cosine_similarity_compute_helper(input_x1, input_x2, dim):
@@ -79,7 +78,7 @@ def cosine_similarity_compute(input_x1, input_x2, output_y, dim, eps):
     return output_y
 
 
-#pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_FLOAT, para_check.KERNEL_NAME)
@@ -114,8 +113,8 @@ def cosine_similarity(input_x1, input_x2, output_y,
     para_check.check_kernel_name(kernel_name)
     para_check.check_shape_rule(shape_x1)
     para_check.check_shape_rule(shape_x2)
-    para_check.check_shape_size(shape_x1, SHAPE_SIZE_LIMIT)
-    para_check.check_shape_size(shape_x2, SHAPE_SIZE_LIMIT)
+    para_check.check_shape_size(shape_x1, constant.SHAPE_SIZE_LIMIT)
+    para_check.check_shape_size(shape_x2, constant.SHAPE_SIZE_LIMIT)
 
     check_tuple = "float32"
     input_data_type1 = input_x1.get("dtype").lower()

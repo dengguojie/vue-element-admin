@@ -16,18 +16,19 @@
 cummin
 """
 
+import functools
+import math
 from te.utils import para_check
 from te.utils.op_utils import check_dtype
 from te import tik
 from te import platform as cce
-import functools
-import math
 
 
-class Cummin(object):
+class Cummin():
     """
     Implementation of Cummin
     """
+    # 'pylint: disable=too-many-branchs,too-many-statements
     def __init__(self, input_x, dim, kernel_name):
         """
         init of cummin
@@ -45,23 +46,23 @@ class Cummin(object):
         self.data_each_block = 32 // self.dtype_bytes_size
         self.data_each_block_argmin = 32 // self.dtype_bytes_size_argmin
         self.max_mask = 256 // 4
-        if(self.input_x_dtype == "float32" or self.input_x_dtype == "int32"):
+        if self.input_x_dtype == "float32" or self.input_x_dtype == "int32":
             self.max_mask = 256 // 4
         else:
             self.max_mask = 256 // 2
         self.pad_mask = 64
         input_x_pad_size = self.dtype_bytes_size * self.pad_mask
-        if(self.input_x_dtype != "float32" and self.input_x_dtype != "int32"):
+        if self.input_x_dtype != "float32" and self.input_x_dtype != "int32":
             self.ub_size = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE) - input_x_pad_size * 2
         else:
             self.ub_size = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
-        if(self.input_x_dtype == "float32"):
+        if self.input_x_dtype == "float32":
             divider = self.dtype_bytes_size * 2 + self.dtype_bytes_size_argmin * 2 + self.dtype_fp32 * 2 + 2
             self.ub_tensor_size = self.ub_size // divider // 2 // self.max_mask * self.max_mask
-        elif(self.input_x_dtype == "float16"):
+        elif self.input_x_dtype == "float16":
             divider = self.dtype_bytes_size * 2 + self.dtype_bytes_size_argmin * 2 + self.dtype_fp32 * 2 + 2
             self.ub_tensor_size = self.ub_size // divider // 2 // self.max_mask * self.max_mask
-        elif(self.input_x_dtype == "int32"):
+        elif self.input_x_dtype == "int32":
             divider = self.dtype_bytes_size * 2 + self.dtype_bytes_size_argmin * 2 + self.dtype_fp32 * 4 + 2
             self.ub_tensor_size = self.ub_size // divider // 2 // self.max_mask * self.max_mask
         else:
@@ -95,27 +96,41 @@ class Cummin(object):
         shape_tmp.pop(dim)
         self.shape_no_dim_tmp = shape_tmp
         self.max_ai_core_num = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
-        if(len(after_shape) == 0):
+        if len(after_shape) == 0:
             self.after_num = 1
         else:
             self.after_num = functools.reduce(lambda x, y: x * y, after_shape)
-        if(len(self.shape_no_dim_tmp) != 0):
+        if len(self.shape_no_dim_tmp) != 0:
             self.tensor_1d_num = functools.reduce(lambda x, y: x * y, self.shape_no_dim_tmp)
         else:
             self.tensor_1d_num = 1
-        if(self.tensor_1d_num >= (self.max_ai_core_num - 1) * 32):
+        if self.tensor_1d_num >= (self.max_ai_core_num - 1) * 32:
             self.ai_core_num = self.max_ai_core_num - 1
         else:
             self.ai_core_num = 1
-        if(self.ai_core_num == 1):
+        if self.ai_core_num == 1:
             self.num_each_core = self.tensor_1d_num
         else:
             self.num_each_core = self.tensor_1d_num // self.ai_core_num // 32 * 32
-        self.last_core_num = self.tensor_1d_num - self.num_each_core * self.ai_core_num 
+        self.last_core_num = self.tensor_1d_num - self.num_each_core * self.ai_core_num
         self.pad_num = 0
-        if(self.last_core_num % 32 != 0 and self.ai_core_num > 1):
+        if self.last_core_num % 32 != 0 and self.ai_core_num > 1:
             self.pad_num = 32 - self.last_core_num % 32
             self.last_core_num = self.last_core_num + self.pad_num
+
+        self.input_x_ub = None
+        self.last_x_ub = None
+        self.argmin_ub = None
+        self.last_argmin_ub = None
+        self.argmin_ub_cast = None
+        self.last_argmin_ub_cast = None
+        self.input_x_ub_cast = None
+        self.last_x_ub_cast = None
+        self.is_le = None
+        self.dim_this_time = None
+        self.offset_this_dim = None
+        self.last_first_offset = None
+        self.zero_scalar = None
 
     def cummin_compute(self):
         """
@@ -135,7 +150,7 @@ class Cummin(object):
         compute on each dim.
         take the 0th dim as the unit, open muti-core calculation.
         """
-        if(self.ai_core_num == 1):
+        if self.ai_core_num == 1:
             self.cummin_compute_each_core(dim_move_offset, self.num_each_core)
         else:
             with self.tik_instance.for_range(0, self.max_ai_core_num, block_num=self.max_ai_core_num) as core_id:
@@ -153,10 +168,10 @@ class Cummin(object):
         loop_time = core_move_num // self.ub_tensor_size
         move_offset = core_move_offset
         need_db = True
-        if(loop_time < 2):
+        if loop_time < 2:
             need_db = False
-        if(loop_time > 0):
-            if(need_db):
+        if loop_time > 0:
+            if need_db:
                 with self.tik_instance.for_range(0, loop_time, thread_num=2) as loop_id:
                     move_offset = loop_id * self.ub_tensor_size + core_move_offset
                     self.cummin_compute_each_loop(move_offset,
@@ -168,7 +183,7 @@ class Cummin(object):
                                                   self.ub_tensor_size)
             move_offset = loop_time * self.ub_tensor_size + core_move_offset
         last_num = core_move_num % self.ub_tensor_size
-        if(last_num > 0):
+        if last_num > 0:
             self.cummin_compute_each_loop(move_offset, last_num)
 
     def cummin_compute_each_loop(self, move_offset, move_num):
@@ -192,8 +207,8 @@ class Cummin(object):
         self.dim_this_time.set_as(i)
         with self.tik_instance.if_scope(i == 0):
             loop = num // (self.max_mask_argmin_dtype * 255)
-            if (self.ub_tensor_size >= self.max_mask_argmin_dtype * 255):
-                if(loop > 0):
+            if self.ub_tensor_size >= self.max_mask_argmin_dtype * 255:
+                if loop > 0:
                     for index in range(loop):
                         compute_offset = index * self.max_mask_argmin_dtype * 255
                         self.tik_instance.vec_dup(self.max_mask_argmin_dtype,
@@ -202,14 +217,14 @@ class Cummin(object):
                                                   255, 8)
             compute_offset = loop * self.max_mask_argmin_dtype * 255
             repeat_time = num % (self.max_mask_argmin_dtype * 255) // self.max_mask_argmin_dtype
-            if(repeat_time > 0):
+            if repeat_time > 0:
                 self.tik_instance.vec_dup(self.max_mask_argmin_dtype,
                                           self.argmin_ub[compute_offset],
                                           self.zero_scalar,
                                           repeat_time, 8)
             compute_offset += repeat_time * self.max_mask_argmin_dtype
             last_num = num % self.max_mask_argmin_dtype
-            if(last_num > 0):
+            if last_num > 0:
                 self.tik_instance.vec_dup(last_num, self.argmin_ub[compute_offset], self.zero_scalar, 1, 8)
             self.tik_instance.data_move(self.output_y_gm[self.offset_this_dim],
                                         self.input_x_ub,
@@ -244,8 +259,8 @@ class Cummin(object):
         """
         mask_int32 = 64
         loop = num // (mask_int32 * 255)
-        if (self.ub_tensor_size >= mask_int32 * 255):
-            if(loop > 0):
+        if self.ub_tensor_size >= mask_int32 * 255:
+            if loop > 0:
                 for index in range(loop):
                     compute_offset = index * mask_int32 * 255
                     self.tik_instance.vec_dup(mask_int32,
@@ -254,14 +269,14 @@ class Cummin(object):
                                               255, 8)
         compute_offset = loop * mask_int32 * 255
         repeat_time = num % (mask_int32 * 255) // mask_int32
-        if(repeat_time > 0):
+        if repeat_time > 0:
             self.tik_instance.vec_dup(mask_int32,
                                       self.argmin_ub[compute_offset],
                                       self.dim_this_time,
                                       repeat_time, 8)
         compute_offset += repeat_time * mask_int32
         last_num = num % mask_int32
-        if(last_num > 0):
+        if last_num > 0:
             self.tik_instance.vec_dup(last_num,
                                       self.argmin_ub[compute_offset],
                                       self.dim_this_time,
@@ -272,8 +287,8 @@ class Cummin(object):
         Convert the type of argmin to fp32
         """
         loop = num // (self.max_mask_argmin_dtype * 255)
-        if (self.ub_tensor_size >= self.max_mask_argmin_dtype * 255):
-            if(loop > 0):
+        if self.ub_tensor_size >= self.max_mask_argmin_dtype * 255:
+            if loop > 0:
                 for index in  range(loop):
                     compute_offset = index * self.max_mask_argmin_dtype * 255
                     self.tik_instance.vec_conv(self.max_mask_argmin_dtype, '',
@@ -286,7 +301,7 @@ class Cummin(object):
                                                255, 8, 8)
         compute_offset = loop * self.max_mask_argmin_dtype * 255
         repeat_time = num % (self.max_mask_argmin_dtype * 255) // self.max_mask_argmin_dtype
-        if(repeat_time > 0):
+        if repeat_time > 0:
             self.tik_instance.vec_conv(self.max_mask_argmin_dtype, '',
                                        self.last_argmin_ub_cast[compute_offset],
                                        self.last_argmin_ub[compute_offset],
@@ -297,7 +312,7 @@ class Cummin(object):
                                        repeat_time, 8, 8)
         compute_offset += repeat_time * self.max_mask_argmin_dtype
         last_num = num % self.max_mask_argmin_dtype
-        if(last_num > 0):
+        if last_num > 0:
             self.tik_instance.vec_conv(last_num, '',
                                        self.last_argmin_ub_cast[compute_offset],
                                        self.last_argmin_ub[compute_offset],
@@ -312,8 +327,8 @@ class Cummin(object):
         Convert the type of argmin back
         """
         loop = num // (self.max_mask_argmin_dtype * 255)
-        if (self.ub_tensor_size >= self.max_mask_argmin_dtype * 255):
-            if(loop > 0):
+        if self.ub_tensor_size >= self.max_mask_argmin_dtype * 255:
+            if loop > 0:
                 for index in range(loop):
                     compute_offset = index * self.max_mask_argmin_dtype * 255
                     self.tik_instance.vec_conv(self.max_mask_argmin_dtype, 'round',
@@ -322,14 +337,14 @@ class Cummin(object):
                                                255, 8, 8)
         compute_offset = loop * self.max_mask_argmin_dtype * 255
         repeat_time = num % (self.max_mask_argmin_dtype * 255) // self.max_mask_argmin_dtype
-        if(repeat_time > 0):
+        if repeat_time > 0:
             self.tik_instance.vec_conv(self.max_mask_argmin_dtype, 'round',
                                        self.argmin_ub[compute_offset],
                                        self.argmin_ub_cast[compute_offset],
                                        repeat_time, 8, 8)
         compute_offset += repeat_time * self.max_mask_argmin_dtype
         last_num = num % self.max_mask_argmin_dtype
-        if(last_num > 0):
+        if last_num > 0:
             self.tik_instance.vec_conv(last_num, 'round',
                                        self.argmin_ub[compute_offset],
                                        self.argmin_ub_cast[compute_offset],
@@ -339,10 +354,10 @@ class Cummin(object):
         """
         Convert the type of x, if x is not fp32 or fp16, convert to fp16
         """
-        if(self.input_x_dtype == "int32"):
+        if self.input_x_dtype == "int32":
             loop = num // (self.max_mask_argmin_dtype * 255)
-            if (self.ub_tensor_size >= self.max_mask_argmin_dtype * 255):
-                if(loop > 0):
+            if self.ub_tensor_size >= self.max_mask_argmin_dtype * 255:
+                if loop > 0:
                     for index in range(loop):
                         compute_offset = index * self.max_mask_argmin_dtype * 255
                         self.tik_instance.vec_conv(self.max_mask_argmin_dtype, '',
@@ -355,7 +370,7 @@ class Cummin(object):
                                                    255, 8, 8)
             compute_offset = loop * self.max_mask_argmin_dtype * 255
             repeat_time = num % (self.max_mask_argmin_dtype * 255) // self.max_mask_argmin_dtype
-            if(repeat_time > 0):
+            if repeat_time > 0:
                 self.tik_instance.vec_conv(self.max_mask_argmin_dtype, '',
                                            self.input_x_ub_cast[compute_offset],
                                            self.input_x_ub[compute_offset],
@@ -368,7 +383,7 @@ class Cummin(object):
                                            8, 8)
             compute_offset += repeat_time * self.max_mask_argmin_dtype
             last_num = num % self.max_mask_argmin_dtype
-            if(last_num > 0):
+            if last_num > 0:
                 self.tik_instance.vec_conv(last_num, '',
                                            self.input_x_ub_cast[compute_offset],
                                            self.input_x_ub[compute_offset],
@@ -377,11 +392,11 @@ class Cummin(object):
                                            self.last_x_ub_cast[compute_offset],
                                            self.last_x_ub[compute_offset],
                                            1, 8, 8)
-        elif(self.input_x_dtype != "float32" and self.input_x_dtype != "float16"):
+        elif self.input_x_dtype != "float32" and self.input_x_dtype != "float16":
             x_stride = self.max_mask * self.dtype_bytes_size // 32
             loop = num // (self.max_mask * 255)
-            if (self.ub_tensor_size >= self.max_mask * 255):
-                if(loop > 0):
+            if self.ub_tensor_size >= self.max_mask * 255:
+                if loop > 0:
                     for index in range(loop):
                         compute_offset = index * self.max_mask * 255
                         self.tik_instance.vec_conv(self.max_mask, '',
@@ -394,7 +409,7 @@ class Cummin(object):
                                                    255, 8, x_stride)
             compute_offset = loop * self.max_mask * 255
             repeat_time = num % (self.max_mask * 255) // self.max_mask
-            if(repeat_time > 0):
+            if repeat_time > 0:
                 self.tik_instance.vec_conv(self.max_mask, '',
                                            self.input_x_ub_cast[compute_offset],
                                            self.input_x_ub[compute_offset],
@@ -405,7 +420,7 @@ class Cummin(object):
                                            repeat_time, 8, x_stride)
             compute_offset += repeat_time * self.max_mask
             last_num = num % self.max_mask
-            if(last_num > 0):
+            if last_num > 0:
                 self.tik_instance.vec_conv(last_num, '',
                                            self.input_x_ub_cast[compute_offset],
                                            self.input_x_ub[compute_offset],
@@ -419,10 +434,10 @@ class Cummin(object):
         """
         Convert the type of x back
         """
-        if(self.input_x_dtype == "int32"):
+        if self.input_x_dtype == "int32":
             loop = num // (self.max_mask_argmin_dtype * 255)
-            if (self.ub_tensor_size >= self.max_mask_argmin_dtype * 255):
-                if(loop > 0):
+            if self.ub_tensor_size >= self.max_mask_argmin_dtype * 255:
+                if loop > 0:
                     for index in range(loop):
                         compute_offset = index * self.max_mask_argmin_dtype * 255
                         self.tik_instance.vec_conv(self.max_mask_argmin_dtype, 'round',
@@ -431,23 +446,23 @@ class Cummin(object):
                                                    255, 8, 8)
             compute_offset = loop * self.max_mask_argmin_dtype * 255
             repeat_time = num % (self.max_mask_argmin_dtype * 255) // self.max_mask_argmin_dtype
-            if(repeat_time > 0):
+            if repeat_time > 0:
                 self.tik_instance.vec_conv(self.max_mask_argmin_dtype, 'round',
                                            self.input_x_ub[compute_offset],
                                            self.input_x_ub_cast[compute_offset],
                                            repeat_time, 8, 8)
             compute_offset += repeat_time * self.max_mask_argmin_dtype
             last_num = num % self.max_mask_argmin_dtype
-            if(last_num > 0):
+            if last_num > 0:
                 self.tik_instance.vec_conv(last_num, 'round',
                                            self.input_x_ub[compute_offset],
                                            self.input_x_ub_cast[compute_offset],
                                            1, 8, 8)
-        elif(self.input_x_dtype != "float32" and self.input_x_dtype != "int32" and self.input_x_dtype != "float16"):
+        elif self.input_x_dtype != "float32" and self.input_x_dtype != "int32" and self.input_x_dtype != "float16":
             x_stride = self.max_mask * self.dtype_bytes_size // 32
             loop = num // (self.max_mask * 255)
-            if (self.ub_tensor_size >= self.max_mask * 255):
-                if(loop > 0):
+            if self.ub_tensor_size >= self.max_mask * 255:
+                if loop > 0:
                     for index in range(loop):
                         compute_offset = index * self.max_mask * 255
                         self.tik_instance.vec_conv(self.max_mask, '',
@@ -456,14 +471,14 @@ class Cummin(object):
                                                    255, x_stride, 8)
             compute_offset = loop * self.max_mask * 255
             repeat_time = num % (self.max_mask * 255) // self.max_mask
-            if(repeat_time > 0):
+            if repeat_time > 0:
                 self.tik_instance.vec_conv(self.max_mask, '',
                                            self.input_x_ub[compute_offset],
                                            self.input_x_ub_cast[compute_offset],
                                            repeat_time, x_stride, 8)
             compute_offset += repeat_time * self.max_mask
             last_num = num % self.max_mask
-            if(last_num > 0):
+            if last_num > 0:
                 self.tik_instance.vec_conv(last_num, '',
                                            self.input_x_ub[compute_offset],
                                            self.input_x_ub_cast[compute_offset],
@@ -477,9 +492,9 @@ class Cummin(object):
         """
         mask_now = 64
         x_stride = self.dtype_bytes_size * mask_now // 32
-        if(self.input_x_dtype == "float32" or self.input_x_dtype == "float16"):
+        if self.input_x_dtype == "float32" or self.input_x_dtype == "float16":
             loop = num // mask_now
-            if(loop > 0):
+            if loop > 0:
                 for index in range(loop):
                     compute_offset = index * mask_now
                     self.tik_instance.vec_cmpv_le(self.is_le,
@@ -500,7 +515,7 @@ class Cummin(object):
                                               1, 8, 8, 8)
             compute_offset = loop * mask_now
             last_num = num % mask_now
-            if(last_num > 0):
+            if last_num > 0:
                 self.tik_instance.vec_cmpv_le(self.is_le,
                                               self.input_x_ub[compute_offset],
                                               self.last_x_ub[compute_offset],
@@ -519,7 +534,7 @@ class Cummin(object):
                                           1, 8, 8, 8)
         else:
             loop = num // mask_now
-            if(loop > 0):
+            if loop > 0:
                 for index in range(loop):
                     compute_offset = index * mask_now
                     self.tik_instance.vec_cmpv_le(self.is_le,
@@ -540,7 +555,7 @@ class Cummin(object):
                                               1, 8, 8, 8)
             compute_offset = loop * mask_now
             last_num = num % mask_now
-            if(last_num > 0):
+            if last_num > 0:
                 self.tik_instance.vec_cmpv_le(self.is_le,
                                               self.input_x_ub_cast[compute_offset],
                                               self.last_x_ub_cast[compute_offset],
@@ -597,8 +612,8 @@ class Cummin(object):
                                                             name="last_argmin_ub_cast",
                                                             scope=tik.scope_ubuf)
 
-        if(self.input_x_dtype != "float32" and self.input_x_dtype != "float16"):
-            if(self.input_x_dtype == "int32"):
+        if self.input_x_dtype != "float32" and self.input_x_dtype != "float16":
+            if self.input_x_dtype == "int32":
                 self.input_x_ub_cast = self.tik_instance.Tensor("float32",
                                                                 (self.ub_tensor_size,),
                                                                 name="input_x_ub_cast",
@@ -626,7 +641,7 @@ class Cummin(object):
         self.zero_scalar = self.tik_instance.Scalar(dtype="int32", init_value=0)
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT,
                             para_check.KERNEL_NAME)
@@ -659,7 +674,7 @@ def cummin(x, y, argmin, dim, kernel_name="cummin"):
     ne_dims = dims * -1
     if(dim < ne_dims or dim > (dims - 1)):
         raise RuntimeError("Only support {} =< dim <= {} while dim is {}".format(ne_dims, dims - 1, dim))
-    if(dim < 0):
+    if dim < 0:
         dim = dim + dims
 
     para_check.check_shape_rule(shape)

@@ -14,25 +14,6 @@
 # ============================================================================
 """
 data_format_dim_map
-
-  Op_description :
-    Returns the dimension index in the destination data format given the one in.
-
-    # data_format_dim_map(
-    #   x,
-    #   y,
-    #   src_format,
-    #   dst_format,
-    #   kernel_name='data_format_dim_map')
-
-  Supportive_dtype_format :
-    ['int32']
-    ['ND', 'NCHW', 'NHWC', 'NC1HWC0']
-
-  Constraint :
-    [1] All : `x` Must be in the range [-4, 4).
-    [2] All : `src_format` and `dst_format` must be length of 4.
-    [3] All : shape size limit is 2147483648.
 """
 
 import te.lang.cce as tbe
@@ -45,13 +26,17 @@ from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
-# mod rhs
-MOD_RHS = 4
-# quarter
-QUARTER = 0.25
+
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    Constant
+    """
+    MOD_RHS = 4
+    QUARTER = 0.25
 
 
-# pylint: disable = unused-argument,invalid-name
+# 'pylint: disable = unused-argument,invalid-name
 def get_op_support_info(x,
                         y,
                         src_format="NHWC",
@@ -98,11 +83,11 @@ def _data_format_dim_map_mod(data):
     """
 
     data = tbe.cast_to(data, 'float16')
-    data = tbe.vadds(data, MOD_RHS)
-    data_div_4 = tbe.vmuls(data, QUARTER)
+    data = tbe.vadds(data, Constant.MOD_RHS)
+    data_div_4 = tbe.vmuls(data, Constant.QUARTER)
     data_floor = tbe.floor(data_div_4)
     data_floor = tbe.cast_to(data_floor, 'float16')
-    data_mul_4 = tbe.vmuls(data_floor, MOD_RHS)
+    data_mul_4 = tbe.vmuls(data_floor, Constant.MOD_RHS)
     data_mod = tbe.vsub(data, data_mul_4)
     return data_mod
 
@@ -130,7 +115,7 @@ def _dimension_index(data_mod, ind):
                        "int32")
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("data_format_dim_map")
 def _data_format_dim_map_compute(x,
                                  y,

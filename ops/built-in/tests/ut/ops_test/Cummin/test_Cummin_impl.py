@@ -66,3 +66,58 @@ ut_case.add_precision_case("Ascend910A", {
     "case_name": "test_cummin_case_3",
     "calc_expect_func": calc_expect_func
 })
+
+ut_case.add_precision_case("Ascend910A", {
+    "params": [{"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (32,), "shape": (32,),
+                "param_type": "input"},
+               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (32,), "shape": (32,),
+                "param_type": "output"},
+               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (32,), "shape": (32,),
+                "param_type": "output"}, 0],
+    "case_name": "test_cummin_case_4",
+    "calc_expect_func": calc_expect_func
+})
+
+ut_case.add_precision_case("Ascend910A", {
+    "params": [{"dtype": "int8", "format": "ND", "ori_format": "ND", "ori_shape": (32, 32), "shape": (32, 32),
+                "param_type": "input"},
+               {"dtype": "int8", "format": "ND", "ori_format": "ND", "ori_shape": (32, 8), "shape": (32, 32),
+                "param_type": "output"},
+               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (32, 32), "shape": (32, 32),
+                "param_type": "output"}, 0],
+    "case_name": "test_cummin_case_5",
+    "calc_expect_func": calc_expect_func
+})
+
+ut_case.add_precision_case("Ascend910A", {
+    "params": [{"dtype": "uint8", "format": "ND", "ori_format": "ND", "ori_shape": (2, 32, 32), "shape": (2, 32, 32),
+                "param_type": "input"},
+               {"dtype": "uint8", "format": "ND", "ori_format": "ND", "ori_shape": (2, 32, 32), "shape": (2, 32, 32),
+                "param_type": "output"},
+               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (2, 32, 16), "shape": (2, 32, 32),
+                "param_type": "output"}, 0],
+    "case_name": "test_cummin_case_6",
+    "calc_expect_func": calc_expect_func
+})
+
+ut_case.add_precision_case("Ascend910A", {
+    "params": [{"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (36,), "shape": (36,),
+                "param_type": "input"},
+               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (36,), "shape": (36,),
+                "param_type": "output"},
+               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (36,), "shape": (36,),
+                "param_type": "output"}, 0],
+    "case_name": "test_cummin_case_7",
+    "calc_expect_func": calc_expect_func
+})
+
+ut_case.add_precision_case("Ascend910A", {
+    "params": [{"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (100002,), "shape": (100002,),
+                "param_type": "input"},
+               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (100002,), "shape": (100002,),
+                "param_type": "output"},
+               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (100002,), "shape": (100002,),
+                "param_type": "output"}, 0],
+    "case_name": "test_cummin_case_8",
+    "calc_expect_func": calc_expect_func
+})

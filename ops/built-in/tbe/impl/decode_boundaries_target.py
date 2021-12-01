@@ -19,18 +19,22 @@ from te import tik
 from impl.util.platform_adapter import para_check
 
 
-NMAX = 128
-SHAPE_DIMENSION = 2
-SHAPE_ONE = 1
-SHAPE_TWO = 4
-MAX = 65500
-LINE = 16
-FOUR = 4
-VECTOR = 128
-LINE3 = 32
-VECTOR_NUM = 8
-MATRIX_NUM = 256
-MIN = 4
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    the class for constant
+    """
+    NMAX = 128
+    SHAPE_DIMENSION = 2
+    SHAPE_ONE = 1
+    SHAPE_TWO = 4
+    MAX = 65500
+    LINE = 16
+    FOUR = 4
+    VECTOR = 128
+    LINE3 = 32
+    VECTOR_NUM = 8
+    MATRIX_NUM = 256
 
 
 class InputInfo():
@@ -144,17 +148,17 @@ def check_input(boundary_predictions, anchors, boundary_encoded, n_max):
     if shape_boundary_predictions_num != len(anchors.get("shape")) or \
             shape_boundary_predictions_num != len(boundary_encoded.get("shape")):
         raise RuntimeError("dimension of inputs should be consistent")
-    if shape_boundary_predictions_num != SHAPE_DIMENSION:
+    if shape_boundary_predictions_num != Constant.SHAPE_DIMENSION:
         raise RuntimeError("dimension of inputs should be 2")
     if not isinstance(n_x, int):
         raise RuntimeError("n dimension of input should be int")
     if n_x != n_y:
         raise RuntimeError("n dimension of inputs should be consistent")
-    if m_x != SHAPE_ONE:
+    if m_x != Constant.SHAPE_ONE:
         raise RuntimeError("m dimension of input_x should be 1")
-    if m_y != SHAPE_TWO:
+    if m_y != Constant.SHAPE_TWO:
         raise RuntimeError("m dimension of input_y should be 4")
-    if n_x <= 0 or n_x > MAX:
+    if n_x <= 0 or n_x > Constant.MAX:
         raise RuntimeError("n dimension of inputs should in [1, 65500]")
 
     # tiling
@@ -176,8 +180,8 @@ def tranpose(input_tensor, n_matrix, tik_instance, **kwargs):
         tensortype, tensorshape, name=tensorname, scope=tik.scope_ubuf)
 
     with tik_instance.for_range(0, n_matrix) as i:
-        tik_instance.vtranspose(tensor_trs[i * MATRIX_NUM],
-                                input_tensor[i * MATRIX_NUM])
+        tik_instance.vtranspose(tensor_trs[i * Constant.MATRIX_NUM],
+                                input_tensor[i * Constant.MATRIX_NUM])
 
     return tensor_trs
 
@@ -237,15 +241,15 @@ def process_calculate(tik_instance, input_info, output_info,
                                    data_boundary_predictions[current_handling_times *
                                                              input_info.n_max],
                                    0, 1, input_info.burst_x, 0, 0)
-            with tik_instance.for_range(0, FOUR) as i:
-                tik_instance.data_move(data_y_ub[i * LINE],
-                                       data_anchors[current_handling_times * FOUR *
-                                                    input_info.n_max + i * FOUR],
-                                       0, input_info.burst_y, 1, 0, FOUR - 1)
+            with tik_instance.for_range(0, Constant.FOUR) as i:
+                tik_instance.data_move(data_y_ub[i * Constant.LINE],
+                                       data_anchors[current_handling_times * Constant.FOUR *
+                                                    input_info.n_max + i * Constant.FOUR],
+                                       0, input_info.burst_y, 1, 0, Constant.FOUR - 1)
 
             data_y_ub_trs = tranpose(
                 input_tensor=data_y_ub,
-                n_matrix=output_info.n_matrix * FOUR,
+                n_matrix=output_info.n_matrix * Constant.FOUR,
                 tik_instance=tik_instance,
                 type=input_info.dtype_anchors,
                 shape=output_info.shape_matrix,
@@ -259,67 +263,67 @@ def process_calculate(tik_instance, input_info, output_info,
                 input_info.dtype_anchors, output_info.shape_vector,
                 name="data_anchor_x0y0", scope=tik.scope_ubuf)
 
-            tik_instance.vsub(VECTOR,
+            tik_instance.vsub(Constant.VECTOR,
                               data_anchor_wh,
-                              data_y_ub_trs[LINE3],
+                              data_y_ub_trs[Constant.LINE3],
                               data_y_ub_trs,
                               output_info.rep,
                               1,
-                              LINE,
-                              LINE,
-                              1 * VECTOR_NUM,
-                              LINE * VECTOR_NUM,
-                              LINE * VECTOR_NUM)
-            tik_instance.vadd(VECTOR,
+                              Constant.LINE,
+                              Constant.LINE,
+                              1 * Constant.VECTOR_NUM,
+                              Constant.LINE * Constant.VECTOR_NUM,
+                              Constant.LINE * Constant.VECTOR_NUM)
+            tik_instance.vadd(Constant.VECTOR,
                               data_anchor_x0y0,
-                              data_y_ub_trs[LINE3],
+                              data_y_ub_trs[Constant.LINE3],
                               data_y_ub_trs,
                               output_info.rep,
                               1,
-                              LINE,
-                              LINE,
-                              1 * VECTOR_NUM,
-                              LINE * VECTOR_NUM,
-                              LINE * VECTOR_NUM)
+                              Constant.LINE,
+                              Constant.LINE,
+                              1 * Constant.VECTOR_NUM,
+                              Constant.LINE * Constant.VECTOR_NUM,
+                              Constant.LINE * Constant.VECTOR_NUM)
 
-            # calculate data_anchor_xa = (x1+x2)*0.5
+            # calculate 'data_anchor_xa = (x1+x2)*0.5'
             data_anchor_xaya = tik_instance.Tensor(
                 input_info.dtype_anchors, output_info.shape_vector,
                 name="data_anchor_xaya", scope=tik.scope_ubuf)
 
-            tik_instance.vmuls(VECTOR, data_anchor_xaya,
+            tik_instance.vmuls(Constant.VECTOR, data_anchor_xaya,
                                data_anchor_x0y0,
                                tik_instance.Scalar(
                                    dtype="float16", init_value=0.5),
                                output_info.rep,
                                1, 1,
-                               VECTOR_NUM, VECTOR_NUM)
+                               Constant.VECTOR_NUM, Constant.VECTOR_NUM)
 
             # calculate input * data_anchor_wh
             data_z_ub0 = tik_instance.Tensor(
                 input_info.dtype_anchors, output_info.shape_vector,
                 name="data_z_ub0", scope=tik.scope_ubuf)
 
-            tik_instance.vmul(VECTOR,
+            tik_instance.vmul(Constant.VECTOR,
                               data_z_ub0,
                               data_x_ub,
                               data_anchor_wh,
                               output_info.rep,
                               1, 1, 1,
-                              VECTOR_NUM, VECTOR_NUM, VECTOR_NUM)
+                              Constant.VECTOR_NUM, Constant.VECTOR_NUM, Constant.VECTOR_NUM)
 
             # calculate input * data_anchor_wh + data_anchor_xaya
             data_z_ub = tik_instance.Tensor(
                 input_info.dtype_boundary_predictions, output_info.shape_vector,
                 name="data_z_ub", scope=tik.scope_ubuf)
 
-            tik_instance.vadd(VECTOR,
+            tik_instance.vadd(Constant.VECTOR,
                               data_z_ub,
                               data_z_ub0,
                               data_anchor_xaya,
                               output_info.rep,
                               1, 1, 1,
-                              VECTOR_NUM, VECTOR_NUM, VECTOR_NUM)
+                              Constant.VECTOR_NUM, Constant.VECTOR_NUM, Constant.VECTOR_NUM)
 
             # copy ub to gm
             tik_instance.data_move(data_z[current_handling_times * input_info.n_max],
@@ -357,15 +361,15 @@ def process_end(tik_instance, input_info, output_info,
                                    data_boundary_predictions[current_handling_times *
                                                              input_info.n_max],
                                    0, 1, input_info.burst_x, 0, 0)
-            with tik_instance.for_range(0, FOUR) as i:
-                tik_instance.data_move(data_y_ub[i * LINE],
-                                       data_anchors[current_handling_times * FOUR *
-                                                    input_info.n_max + i * FOUR],
-                                       0, input_info.burst_y, 1, 0, FOUR - 1)
+            with tik_instance.for_range(0, Constant.FOUR) as i:
+                tik_instance.data_move(data_y_ub[i * Constant.LINE],
+                                       data_anchors[current_handling_times * Constant.FOUR *
+                                                    input_info.n_max + i * Constant.FOUR],
+                                       0, input_info.burst_y, 1, 0, Constant.FOUR - 1)
 
             data_y_ub_trs = tranpose(
                 input_tensor=data_y_ub,
-                n_matrix=output_info.n_matrix * FOUR,
+                n_matrix=output_info.n_matrix * Constant.FOUR,
                 tik_instance=tik_instance,
                 type=input_info.dtype_anchors,
                 shape=output_info.shape_matrix,
@@ -380,45 +384,45 @@ def process_end(tik_instance, input_info, output_info,
                 name="data_anchor_x0y0", scope=tik.scope_ubuf)
 
             tik_instance.vsub(output_info.overflow,
-                              data_anchor_wh[output_info.rep * VECTOR],
-                              data_y_ub_trs[LINE3 +
-                                            output_info.rep * MATRIX_NUM * VECTOR_NUM],
+                              data_anchor_wh[output_info.rep * Constant.VECTOR],
+                              data_y_ub_trs[Constant.LINE3 +
+                                            output_info.rep * Constant.MATRIX_NUM * Constant.VECTOR_NUM],
                               data_y_ub_trs[output_info.rep *
-                                            MATRIX_NUM * VECTOR_NUM],
+                                            Constant.MATRIX_NUM * Constant.VECTOR_NUM],
                               1,
                               1,
-                              LINE,
-                              LINE,
-                              1 * VECTOR_NUM,
-                              LINE * VECTOR_NUM,
-                              LINE * VECTOR_NUM)
+                              Constant.LINE,
+                              Constant.LINE,
+                              1 * Constant.VECTOR_NUM,
+                              Constant.LINE * Constant.VECTOR_NUM,
+                              Constant.LINE * Constant.VECTOR_NUM)
 
             tik_instance.vadd(output_info.overflow,
-                              data_anchor_x0y0[output_info.rep * VECTOR],
-                              data_y_ub_trs[LINE3 +
-                                            output_info.rep * MATRIX_NUM * VECTOR_NUM],
+                              data_anchor_x0y0[output_info.rep * Constant.VECTOR],
+                              data_y_ub_trs[Constant.LINE3 +
+                                            output_info.rep * Constant.MATRIX_NUM * Constant.VECTOR_NUM],
                               data_y_ub_trs[output_info.rep *
-                                            MATRIX_NUM * VECTOR_NUM],
+                                            Constant.MATRIX_NUM * Constant.VECTOR_NUM],
                               1,
                               1,
-                              LINE,
-                              LINE,
-                              1 * VECTOR_NUM,
-                              LINE * VECTOR_NUM,
-                              LINE * VECTOR_NUM)
+                              Constant.LINE,
+                              Constant.LINE,
+                              1 * Constant.VECTOR_NUM,
+                              Constant.LINE * Constant.VECTOR_NUM,
+                              Constant.LINE * Constant.VECTOR_NUM)
 
-            # calculate data_anchor_xa = (x1+x2)*0.5
+            # calculate 'data_anchor_xa = (x1+x2)*0.5'
             data_anchor_xaya = tik_instance.Tensor(
                 input_info.dtype_anchors, output_info.shape_vector,
                 name="data_anchor_xaya", scope=tik.scope_ubuf)
 
-            tik_instance.vmuls(output_info.overflow, data_anchor_xaya[output_info.rep * VECTOR],
-                               data_anchor_x0y0[output_info.rep * VECTOR],
+            tik_instance.vmuls(output_info.overflow, data_anchor_xaya[output_info.rep * Constant.VECTOR],
+                               data_anchor_x0y0[output_info.rep * Constant.VECTOR],
                                tik_instance.Scalar(
                                    dtype="float16", init_value=0.5),
                                1,
                                1, 1,
-                               VECTOR_NUM, VECTOR_NUM)
+                               Constant.VECTOR_NUM, Constant.VECTOR_NUM)
 
             # calculate input * data_anchor_wh
             data_z_ub0 = tik_instance.Tensor(
@@ -426,12 +430,12 @@ def process_end(tik_instance, input_info, output_info,
                 name="data_z_ub0", scope=tik.scope_ubuf)
 
             tik_instance.vmul(output_info.overflow,
-                              data_z_ub0[output_info.rep * VECTOR],
-                              data_x_ub[output_info.rep * VECTOR],
-                              data_anchor_wh[output_info.rep * VECTOR],
+                              data_z_ub0[output_info.rep * Constant.VECTOR],
+                              data_x_ub[output_info.rep * Constant.VECTOR],
+                              data_anchor_wh[output_info.rep * Constant.VECTOR],
                               1,
                               1, 1, 1,
-                              VECTOR_NUM, VECTOR_NUM, VECTOR_NUM)
+                              Constant.VECTOR_NUM, Constant.VECTOR_NUM, Constant.VECTOR_NUM)
 
             # calculate input * data_anchor_wh + data_anchor_xaya
             data_z_ub = tik_instance.Tensor(
@@ -439,12 +443,12 @@ def process_end(tik_instance, input_info, output_info,
                 name="data_z_ub", scope=tik.scope_ubuf)
 
             tik_instance.vadd(output_info.overflow,
-                              data_z_ub[output_info.rep * VECTOR],
-                              data_z_ub0[output_info.rep * VECTOR],
-                              data_anchor_xaya[output_info.rep * VECTOR],
+                              data_z_ub[output_info.rep * Constant.VECTOR],
+                              data_z_ub0[output_info.rep * Constant.VECTOR],
+                              data_anchor_xaya[output_info.rep * Constant.VECTOR],
                               1,
                               1, 1, 1,
-                              VECTOR_NUM, VECTOR_NUM, VECTOR_NUM)
+                              Constant.VECTOR_NUM, Constant.VECTOR_NUM, Constant.VECTOR_NUM)
 
             # copy ub to gm
             tik_instance.data_move(data_z[current_handling_times * input_info.n_max],
@@ -488,7 +492,7 @@ def decode_boundaries_target(boundary_predictions, anchors, boundary_encoded,
         dtype_boundary_predictions=boundary_predictions.get("dtype").lower(),
         dtype_anchors=anchors.get("dtype").lower()
     )
-    input_info.set_nmax(n_max=NMAX)
+    input_info.set_nmax(n_max=Constant.NMAX)
     output_info = Output()
 
     total_handling_times, last_handling_n = check_input(
@@ -515,23 +519,23 @@ def decode_boundaries_target(boundary_predictions, anchors, boundary_encoded,
 
             # number of LINE*LINE
             output_info.update(
-                n_vector=int_ceil_div(output_info.burst_num, MATRIX_NUM),
-                n_matrix=int_ceil_div(output_info.burst_num * FOUR, MATRIX_NUM)
+                n_vector=int_ceil_div(output_info.burst_num, Constant.MATRIX_NUM),
+                n_matrix=int_ceil_div(output_info.burst_num * Constant.FOUR, Constant.MATRIX_NUM)
             )
             output_info.update(
-                shape_vector=(output_info.n_vector, LINE, LINE),
-                shape_matrix=(output_info.n_matrix * FOUR, LINE, LINE)
+                shape_vector=(output_info.n_vector, Constant.LINE, Constant.LINE),
+                shape_matrix=(output_info.n_matrix * Constant.FOUR, Constant.LINE, Constant.LINE)
             )
 
             # move x_gm to ub times
             # move y_gm to ub times
             input_info.update(
-                burst_x=int_ceil_div(output_info.burst_num, LINE),
-                burst_y=int_ceil_div(output_info.burst_num * FOUR, LINE)
+                burst_x=int_ceil_div(output_info.burst_num, Constant.LINE),
+                burst_y=int_ceil_div(output_info.burst_num * Constant.FOUR, Constant.LINE)
             )
 
             output_info.update(
-                rep=output_info.burst_num // VECTOR,
+                rep=output_info.burst_num // Constant.VECTOR,
                 overflow=0
             )
 
@@ -549,25 +553,25 @@ def decode_boundaries_target(boundary_predictions, anchors, boundary_encoded,
 
         # number of LINE*LINE
         output_info.update(
-            n_vector=int_ceil_div(output_info.burst_num, MATRIX_NUM),
-            n_matrix=int_ceil_div(output_info.burst_num * FOUR, MATRIX_NUM)
+            n_vector=int_ceil_div(output_info.burst_num, Constant.MATRIX_NUM),
+            n_matrix=int_ceil_div(output_info.burst_num * Constant.FOUR, Constant.MATRIX_NUM)
         )
         output_info.update(
-            shape_vector=(output_info.n_vector, LINE, LINE),
-            shape_matrix=(output_info.n_matrix * FOUR, LINE, LINE)
+            shape_vector=(output_info.n_vector, Constant.LINE, Constant.LINE),
+            shape_matrix=(output_info.n_matrix * Constant.FOUR, Constant.LINE, Constant.LINE)
         )
 
         # move x_gm to ub times
         # move y_gm to ub times
         input_info.update(
-            burst_x=int_ceil_div(output_info.burst_num, LINE),
-            burst_y=int_ceil_div(output_info.burst_num * FOUR, LINE)
+            burst_x=int_ceil_div(output_info.burst_num, Constant.LINE),
+            burst_y=int_ceil_div(output_info.burst_num * Constant.FOUR, Constant.LINE)
         )
 
         output_info.update(
             rep=0,
-            overflow=output_info.burst_num - VECTOR *
-            (output_info.burst_num // VECTOR)
+            overflow=output_info.burst_num - Constant.VECTOR *
+            (output_info.burst_num // Constant.VECTOR)
         )
 
         process_end(tik_instance=tik_instance,

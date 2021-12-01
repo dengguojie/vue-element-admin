@@ -18,16 +18,15 @@ confusion_transpose_d
 import te.platform as tbe_platform
 from te.utils import para_check
 from te.utils import shape_util
+from impl import constant_util as constant
 from impl.transpose_d import transpose_d
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import tbe
 
-SIZE_SIXTEEN = 16
 
-
-# pylint: disable=too-many-locals,too-many-arguments,invalid-name,unused-argument
-# pylint: disable=simplifiable-if-statement,no-else-return
+# 'pylint: disable=too-many-locals,too-many-arguments,invalid-name,unused-argument
+# 'pylint: disable=simplifiable-if-statement,no-else-return
 def _prod(input_shape):
     """
     Calculate the product of all elements
@@ -55,12 +54,15 @@ def _reshape_frac(shape_in, shape_out):
         shape_in:  input shape of Reshape op
         shape_out: output shape of Reshape op
         w0:  minimum length in width for fractal format
+
     return:
         a splited shape which can be used to interpret fractal Reshape
         as a Reshape + Transpose calculation
     """
     if _prod(shape_in) != _prod(shape_out):
-        error_manager_vector.raise_err_inputs_shape_not_equal("confusion_transpose_d", "_prod(shape_in)", "_prod(shape_out)", _prod(shape_in), _prod(shape_out), _prod(shape_out))
+        error_manager_vector.raise_err_inputs_shape_not_equal("confusion_transpose_d", "_prod(shape_in)",
+                                                              "_prod(shape_out)", _prod(shape_in),
+                                                              _prod(shape_out), _prod(shape_out))
     idx_in = len(shape_in) - 1
     idx_out = len(shape_out) - 1
     shape_frac = []
@@ -312,7 +314,8 @@ def _shape_after_transpose(input_shape, trans_perm):
         transposed perm
     """
     if len(input_shape) != len(trans_perm):
-        error_manager_vector.raise_err_inputs_shape_not_equal("confusion_transpose_d", "input_shape", "trans_perm", input_shape, trans_perm, trans_perm)
+        error_manager_vector.raise_err_inputs_shape_not_equal("confusion_transpose_d", "input_shape", "trans_perm",
+                                                              input_shape, trans_perm, trans_perm)
     transposed_merged_perm = []
     for _, i in enumerate(range(len(trans_perm))):
         transposed_merged_perm.append(input_shape[trans_perm[i]])
@@ -356,7 +359,8 @@ def _shape_before_transpose(merged_frac, transpose_perm):
     """
     shape_before = []
     if len(merged_frac) != len(transpose_perm):
-        error_manager_vector.raise_err_inputs_shape_not_equal("confusion_transpose_d", "merged_frac", "transpose_perm", merged_frac, transpose_perm, transpose_perm)
+        error_manager_vector.raise_err_inputs_shape_not_equal("confusion_transpose_d", "merged_frac", "transpose_perm",
+                                                              merged_frac, transpose_perm, transpose_perm)
     for _, i in enumerate(range(len(merged_frac))):
         shape_before.append([])
 
@@ -446,8 +450,8 @@ def _division_sixteen(shape):
     if shape[-1] == 0 or shape[-2] == 0:
         error_detail = "value of shape is illegal, shape[-1]:%s, shape[-2]:%s" % (shape[-1], shape[-2])
         error_manager_vector.raise_err_specific_reson("confusion_transpose_d", error_detail)
-        
-    if shape[-1] % SIZE_SIXTEEN == 0 and shape[-2] % SIZE_SIXTEEN == 0:
+
+    if shape[-1] % constant.SIZE_SIXTEEN == 0 and shape[-2] % constant.SIZE_SIXTEEN == 0:
         return True
     else:
         return False
@@ -532,9 +536,11 @@ def op_select_format(x, y, perm, shape, transpose_first,
     return param_dynamic_in_json
 
 
-# pylint: disable=too-many-boolean-expressions
+# 'pylint: disable=too-many-boolean-expressions,too-many-return-statements,too-many-branchs
 def _is_matmul_fusion_case(y, perm, shape, transpose_first):
-    "check if it is case of fusion with matmul"
+    """
+    check if it is case of fusion with matmul
+    """
     soc_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
     if isinstance(y, dict) and\
             (isinstance(perm, (list, tuple))) and \
@@ -542,11 +548,11 @@ def _is_matmul_fusion_case(y, perm, shape, transpose_first):
         if list(perm) == [0, 2, 1, 3]:
             if soc_version == "Ascend910":
                 if not transpose_first:
-                    batch_supported = [i for i in range(16, 176, 16)]
+                    batch_supported = list(range(16, 176, 16))
                     if list(y.get("shape"))[1:] == [16, 4, 8, 16, 16] and list(shape)[1:] == [128, 16, 64] and \
                         y.get("shape")[0] in batch_supported and shape[0] in batch_supported:
                         return True
-                    batch_supported = [i for i in range(4, 28, 4)]
+                    batch_supported = list(range(4, 28, 4))
                     if list(y.get("shape"))[1:] == [16, 4, 32, 16, 16] and list(shape)[1:] == [512, 16, 64] and \
                         y.get("shape")[0] in batch_supported and shape[0] in batch_supported:
                         return True
@@ -576,7 +582,9 @@ def _is_matmul_fusion_case(y, perm, shape, transpose_first):
 @tbe_platform.fusion_manager.fusion_manager.register("confusion_transpose_d")
 def confusion_transpose_d_compute(x, y, perm, shape, transpose_first,
                                   kernel_name="confusion_transpose_d"):
-    "compute for matmul + confusion_transpose_d fusion"
+    """
+    compute for matmul + confusion_transpose_d fusion
+    """
     if _is_matmul_fusion_case(y, perm, shape, transpose_first):
         tensor_a = getattr(x, "tensor_a")
         tensor_b = getattr(x, "tensor_b")

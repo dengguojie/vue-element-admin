@@ -9,10 +9,10 @@ ut_case = ElementwiseOpUT("Cos", None, None)
 
 
 # ============ auto gen ["Ascend910"] test cases start ===============
-ut_case.add_elewise_case_simple(["Ascend910"], ["float32", "float16"], (1,))
-ut_case.add_elewise_case_simple(["Ascend910"], ["float32", "float16"], (1, 1))
-ut_case.add_elewise_case_simple(["Ascend910"], ["float32", "float16"], (16, 32))
-ut_case.add_elewise_case_simple(["Ascend910"], ["float32", "float16"], (16, 2, 32))
+ut_case.add_elewise_case_simple(["Ascend910A"], ["float32", "float16"], (1,))
+ut_case.add_elewise_case_simple(["Ascend910A"], ["float32", "float16"], (1, 1))
+ut_case.add_elewise_case_simple(["Ascend910A"], ["float32", "float16"], (16, 32))
+ut_case.add_elewise_case_simple(["Ascend910A"], ["float32", "float16"], (16, 2, 32))
 # ut_case.add_elewise_case_simple(["Ascend910"], ["float32", "float16"], (16, 2, 4, 32))
 # ut_case.add_elewise_case_simple(["Ascend910"], ["float32", "float16"], (512, 1024))
 # ut_case.add_elewise_case_simple(["Ascend910"], ["float32", "float16"], (2, 1024))

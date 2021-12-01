@@ -132,7 +132,7 @@ case13 = {"params": [{"shape": (1,3,4,8), "dtype": "float16", "format": "NCHW", 
                     {"shape": (1,3,4,8), "dtype": "int8", "format": "NCHW", "ori_shape": (1,3,4,8),"ori_format": "NCHW"},
                     2, "int32"],
          "case_name": "confusion_matrix_13",
-         "expect": "success",
+         "expect": RuntimeError,
          "format_expect": [],
          "support_expect": True}
 case14 = {"params": [{"shape": (1,), "dtype": "float16", "format": "NCHW", "ori_shape": (1,),"ori_format": "NCHW"},
@@ -369,9 +369,42 @@ case38 = {"params": [{"shape": (1,), "dtype": "int32", "format": "NCHW", "ori_sh
          "expect": "success",
          "format_expect": [],
          "support_expect": True}
-
-
-
+case39 = {"params": [{"shape": (1,), "dtype": "int32", "format": "NCHW", "ori_shape": (1,),"ori_format": "NCHW"},
+                    {"shape": (1,), "dtype": "int32", "format": "NCHW", "ori_shape": (1,),"ori_format": "NCHW"},
+                    None,
+                    {"shape": (1,), "dtype": "int32", "format": "NCHW", "ori_shape": (1,),"ori_format": "NCHW"},
+                    2, "int32"],
+         "case_name": "confusion_matrix_39",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+case40 = {"params": [{"shape": (1,), "dtype": "int32", "format": "NCHW", "ori_shape": (1,),"ori_format": "NCHW"},
+                    {"shape": (1,), "dtype": "int32", "format": "NCHW", "ori_shape": (1,),"ori_format": "NCHW"},
+                    {"shape": (1,), "dtype": "int8", "format": "NCHW", "ori_shape": (1,),"ori_format": "NCHW"},
+                    {"shape": (1,), "dtype": "int8", "format": "NCHW", "ori_shape": (1,),"ori_format": "NCHW"},
+                    2, "int8"],
+         "case_name": "confusion_matrix_40",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+case41 = {"params": [{"shape": (1,), "dtype": "int32", "format": "NCHW", "ori_shape": (1,),"ori_format": "NCHW"},
+                    {"shape": (1,), "dtype": "int32", "format": "NCHW", "ori_shape": (1,),"ori_format": "NCHW"},
+                    {"shape": (1,), "dtype": "float16", "format": "NCHW", "ori_shape": (1,),"ori_format": "NCHW"},
+                    {"shape": (1,), "dtype": "int8", "format": "NCHW", "ori_shape": (1,),"ori_format": "NCHW"},
+                    2, "int8"],
+         "case_name": "confusion_matrix_41",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
+case42 = {"params": [{"shape": (1,), "dtype": "int32", "format": "NCHW", "ori_shape": (1,),"ori_format": "NCHW"},
+                    {"shape": (1,), "dtype": "int32", "format": "NCHW", "ori_shape": (1,),"ori_format": "NCHW"},
+                    {"shape": (1,), "dtype": "int32", "format": "NCHW", "ori_shape": (1,),"ori_format": "NCHW"},
+                    {"shape": (1,), "dtype": "int8", "format": "NCHW", "ori_shape": (1,),"ori_format": "NCHW"},
+                    2, "int8"],
+         "case_name": "confusion_matrix_42",
+         "expect": "success",
+         "format_expect": [],
+         "support_expect": True}
 
 
 
@@ -415,7 +448,10 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case35)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case36)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case37)
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case38)
-
+ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case39)
+ut_case.add_case(["Ascend710", "Ascend910A"], case40)
+ut_case.add_case(["Ascend710", "Ascend910A"], case41)
+ut_case.add_case(["Ascend710", "Ascend910A"], case42)
 
 
 def test_op_get_op_support_info(test_arg): 

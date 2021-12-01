@@ -17,24 +17,28 @@ decode_wheels_target
 """
 from te import tik
 from impl.util.platform_adapter import para_check
-# the max num of single copy
-SINGLE_N_MAX = 640
-
-N_MAX = 65500
-
-ONE = 1
-TWO = 2
-FOUR = 4
-EIGHT = 8
-TEN = 10
-SIXTEEN = 16
-BLOCK_DATA = 32
-MASK = 128
-MAXTRIX = 256
-MAXTRIX_DATA = 512
 
 
-# pylint: disable=super-with-arguments
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    the class for constant
+    """
+    SINGLE_N_MAX = 640
+    N_MAX = 65500
+    ONE = 1
+    TWO = 2
+    FOUR = 4
+    EIGHT = 8
+    TEN = 10
+    SIXTEEN = 16
+    BLOCK_DATA = 32
+    MASK = 128
+    MAXTRIX = 256
+    MAXTRIX_DATA = 512
+
+
+# 'pylint: disable=super-with-arguments
 def int_ceil_div(divisor_a, divisor_b):
     """
     round up function
@@ -46,7 +50,7 @@ def int_ceil_div(divisor_a, divisor_b):
     """
     if divisor_b == 0:
         raise RuntimeError("division by zero")
-    return (divisor_a + divisor_b - ONE) // divisor_b
+    return (divisor_a + divisor_b - Constant.ONE) // divisor_b
 
 
 def check_decode_wheels_target_params(boundary_predictions, anchors, boundary_encoded):
@@ -75,7 +79,7 @@ def check_decode_wheels_target_params(boundary_predictions, anchors, boundary_en
         raise RuntimeError("dtype of inputs should be float16")
     if shape_x_num != shape_y_num or shape_x_num != shape_z_num or shape_y_num != shape_z_num:
         raise RuntimeError("dimension of inputs should be consistent")
-    if shape_x_num != TWO:
+    if shape_x_num != Constant.TWO:
         raise RuntimeError("dimension of inputs should be TWO")
     check_decode_wheels_target_params_1(shape_x, shape_y, shape_z)
 
@@ -96,13 +100,13 @@ def check_decode_wheels_target_params_1(shape_x, shape_y, shape_z):
         raise RuntimeError("n dimension of input should be int")
     if n_x != n_y or n_x != n_z or n_y != n_z:
         raise RuntimeError("n dimension of inputs should be consistent")
-    if m_x != EIGHT:
+    if m_x != Constant.EIGHT:
         raise RuntimeError("m dimension of boundary_predictions should be EIGHT")
-    if m_y != FOUR:
+    if m_y != Constant.FOUR:
         raise RuntimeError("m dimension of anchors should be FOUR")
-    if m_z != EIGHT:
+    if m_z != Constant.EIGHT:
         raise RuntimeError("m dimension of boundary_encoded should be EIGHT")
-    if n_x < ONE or n_x > N_MAX:
+    if n_x < Constant.ONE or n_x > Constant.N_MAX:
         raise RuntimeError("n dimension of inputs should in [1, 65500]")
 
 
@@ -116,9 +120,9 @@ class Tiling:
     def __init__(self, n_x, core_num):
         self.n_x = n_x
         self.core_num = core_num
-        self.last_n = self.n_x % SINGLE_N_MAX
-        self.last_core = self.n_x // SINGLE_N_MAX % self.core_num
-        self.factor = self.n_x // SINGLE_N_MAX // self.core_num
+        self.last_n = self.n_x % Constant.SINGLE_N_MAX
+        self.last_core = self.n_x // Constant.SINGLE_N_MAX % self.core_num
+        self.factor = self.n_x // Constant.SINGLE_N_MAX // self.core_num
 
     def set_shape_maxtrix(self, n_x):
         """
@@ -145,23 +149,23 @@ class InitShape:
     def __init__(self, n_x):
         self.n_x = n_x
         # number of SIXTEEN*SIXTEEN
-        self.n_maxtrix = int_ceil_div(n_x * EIGHT, MAXTRIX)
+        self.n_maxtrix = int_ceil_div(n_x * Constant.EIGHT, Constant.MAXTRIX)
         # shape of calculate
-        self.shape_maxtrix = (self.n_maxtrix, SIXTEEN, SIXTEEN)
+        self.shape_maxtrix = (self.n_maxtrix, Constant.SIXTEEN, Constant.SIXTEEN)
         # repeat times of rep_stride*block
-        self.repeat_whxy = self.n_maxtrix * TWO // EIGHT
+        self.repeat_whxy = self.n_maxtrix * Constant.TWO // Constant.EIGHT
         # rep_stride*block of one repeat
-        self.rep_stride = self.n_maxtrix * TWO % EIGHT
+        self.rep_stride = self.n_maxtrix * Constant.TWO % Constant.EIGHT
         # number of instruction
-        self.instruction_number = TWO
+        self.instruction_number = Constant.TWO
 
         if self.repeat_whxy == 0:
-            self.repeat_whxy = ONE
-            self.instruction_number = ONE
+            self.repeat_whxy = Constant.ONE
+            self.instruction_number = Constant.ONE
 
         if self.rep_stride == 0:
-            self.instruction_number = ONE
-            self.rep_stride = EIGHT
+            self.instruction_number = Constant.ONE
+            self.rep_stride = Constant.EIGHT
 
     def set_input_shape(self, repeat_whxy):
         """
@@ -227,7 +231,7 @@ class InitSecondTensor:
         self.data_y_ub_trs = tik_instance.Tensor(
             dtype_x, init_shape.shape_maxtrix, name="data_y_ub_trs", scope=tik.scope_ubuf)
         self.data_y_ub_trs1 = tik_instance.Tensor(
-            dtype_x, (init_shape.n_maxtrix, EIGHT, SIXTEEN),
+            dtype_x, (init_shape.n_maxtrix, Constant.EIGHT, Constant.SIXTEEN),
             name="data_y_ub_trs1", scope=tik.scope_ubuf)
 
     def set_data_x_ub(self, data_x_ub):
@@ -296,141 +300,145 @@ def calculate_process(tik_instance, gm_tensor, shape, current_data_x, current_da
     tik_instance.data_move(mid_tensor.data_x_ub,
                            gm_tensor.data_x[current_data_x],
                            0,
-                           ONE, int_ceil_div(shape.n_x * EIGHT, SIXTEEN),
+                           Constant.ONE, int_ceil_div(shape.n_x * Constant.EIGHT, Constant.SIXTEEN),
                            0, 0)
 
     tik_instance.data_move(mid_tensor.data_y_ub,
                            gm_tensor.data_y[current_data_y],
                            0,
-                           int_ceil_div(shape.n_x * FOUR, SIXTEEN), ONE,
-                           0, ONE)
-    if shape.n_x not in (ONE, TWO):
-        tik_instance.data_move(mid_tensor.data_y_ub[0 + SIXTEEN],
-                               gm_tensor.data_y[current_data_y + EIGHT],
-                               0, int_ceil_div(shape.n_x * FOUR, SIXTEEN), ONE, 0, ONE)
+                           int_ceil_div(shape.n_x * Constant.FOUR, Constant.SIXTEEN), Constant.ONE,
+                           0, Constant.ONE)
+    if shape.n_x not in (Constant.ONE, Constant.TWO):
+        tik_instance.data_move(mid_tensor.data_y_ub[0 + Constant.SIXTEEN],
+                               gm_tensor.data_y[current_data_y + Constant.EIGHT],
+                               0, int_ceil_div(shape.n_x * Constant.FOUR, Constant.SIXTEEN),
+                               Constant.ONE, 0, Constant.ONE)
     with tik_instance.for_range(0, shape.n_maxtrix) as i:
-        tik_instance.vtranspose(mid_tensor.data_x_ub_trs[MAXTRIX * i],
-                                mid_tensor.data_x_ub[MAXTRIX * i])
-        tik_instance.vtranspose(mid_tensor.data_y_ub_trs[MAXTRIX * i],
-                                mid_tensor.data_y_ub[MAXTRIX * i])
+        tik_instance.vtranspose(mid_tensor.data_x_ub_trs[Constant.MAXTRIX * i],
+                                mid_tensor.data_x_ub[Constant.MAXTRIX * i])
+        tik_instance.vtranspose(mid_tensor.data_y_ub_trs[Constant.MAXTRIX * i],
+                                mid_tensor.data_y_ub[Constant.MAXTRIX * i])
 
     # extract tensor_y_ub_trs
-    tik_instance.vadds(MASK,
+    tik_instance.vadds(Constant.MASK,
                        mid_tensor.data_y_ub_trs1,
                        mid_tensor.data_y_ub_trs,
                        gm_tensor.dump_0,
                        shape.n_maxtrix,
-                       ONE, ONE,
-                       EIGHT, SIXTEEN)
+                       Constant.ONE, Constant.ONE,
+                       Constant.EIGHT, Constant.SIXTEEN)
     # calculate data_anchor_wh and data_anchor_x0y0
-    with tik_instance.if_scope(shape.instruction_number == ONE):
-        with tik_instance.for_range(0, FOUR) as i:
-            with tik_instance.for_range(0, TWO) as j:
-                tik_instance.vsub(SIXTEEN * shape.rep_stride,
-                                  mid_tensor.data_anchor_wh[SIXTEEN * i * TWO + SIXTEEN * j],
-                                  mid_tensor.data_y_ub_trs1[SIXTEEN * j + BLOCK_DATA],
-                                  mid_tensor.data_y_ub_trs1[SIXTEEN * j],
+    with tik_instance.if_scope(shape.instruction_number == Constant.ONE):
+        with tik_instance.for_range(0, Constant.FOUR) as i:
+            with tik_instance.for_range(0, Constant.TWO) as j:
+                tik_instance.vsub(Constant.SIXTEEN * shape.rep_stride,
+                                  mid_tensor.data_anchor_wh[Constant.SIXTEEN * i * Constant.TWO + Constant.SIXTEEN * j],
+                                  mid_tensor.data_y_ub_trs1[Constant.SIXTEEN * j + Constant.BLOCK_DATA],
+                                  mid_tensor.data_y_ub_trs1[Constant.SIXTEEN * j],
                                   shape.repeat_whxy,
-                                  EIGHT,
-                                  FOUR,
-                                  FOUR,
-                                  EIGHT * shape.rep_stride,
-                                  FOUR * shape.rep_stride,
-                                  FOUR * shape.rep_stride)
-                tik_instance.vadd(SIXTEEN * shape.rep_stride,
-                                  mid_tensor.data_anchor_x0y0[SIXTEEN * i * TWO + SIXTEEN * j],
-                                  mid_tensor.data_y_ub_trs1[SIXTEEN * j + BLOCK_DATA],
-                                  mid_tensor.data_y_ub_trs1[SIXTEEN * j],
+                                  Constant.EIGHT,
+                                  Constant.FOUR,
+                                  Constant.FOUR,
+                                  Constant.EIGHT * shape.rep_stride,
+                                  Constant.FOUR * shape.rep_stride,
+                                  Constant.FOUR * shape.rep_stride)
+                tik_instance.vadd(Constant.SIXTEEN * shape.rep_stride,
+                                  mid_tensor.data_anchor_x0y0[Constant.SIXTEEN * i * Constant.TWO
+                                                              + Constant.SIXTEEN * j],
+                                  mid_tensor.data_y_ub_trs1[Constant.SIXTEEN * j + Constant.BLOCK_DATA],
+                                  mid_tensor.data_y_ub_trs1[Constant.SIXTEEN * j],
                                   shape.repeat_whxy,
-                                  EIGHT,
-                                  FOUR,
-                                  FOUR,
-                                  EIGHT * shape.rep_stride,
-                                  FOUR * shape.rep_stride,
-                                  FOUR * shape.rep_stride)
+                                  Constant.EIGHT,
+                                  Constant.FOUR,
+                                  Constant.FOUR,
+                                  Constant.EIGHT * shape.rep_stride,
+                                  Constant.FOUR * shape.rep_stride,
+                                  Constant.FOUR * shape.rep_stride)
 
     with tik_instance.else_scope():
-        with tik_instance.for_range(0, FOUR) as i:
-            with tik_instance.for_range(0, TWO) as j:
-                tik_instance.vsub(MASK,
-                                  mid_tensor.data_anchor_wh[SIXTEEN * i * TWO + SIXTEEN * j],
-                                  mid_tensor.data_y_ub_trs1[SIXTEEN * j + BLOCK_DATA],
-                                  mid_tensor.data_y_ub_trs1[SIXTEEN * j],
+        with tik_instance.for_range(0, Constant.FOUR) as i:
+            with tik_instance.for_range(0, Constant.TWO) as j:
+                tik_instance.vsub(Constant.MASK,
+                                  mid_tensor.data_anchor_wh[Constant.SIXTEEN * i * Constant.TWO + Constant.SIXTEEN * j],
+                                  mid_tensor.data_y_ub_trs1[Constant.SIXTEEN * j + Constant.BLOCK_DATA],
+                                  mid_tensor.data_y_ub_trs1[Constant.SIXTEEN * j],
                                   shape.repeat_whxy,
-                                  EIGHT, FOUR, FOUR,
-                                  EIGHT * EIGHT, BLOCK_DATA, BLOCK_DATA)
+                                  Constant.EIGHT, Constant.FOUR, Constant.FOUR,
+                                  Constant.EIGHT * Constant.EIGHT, Constant.BLOCK_DATA, Constant.BLOCK_DATA)
 
-                tik_instance.vsub(SIXTEEN * shape.rep_stride,
-                                  mid_tensor.data_anchor_wh[SIXTEEN * i * TWO + SIXTEEN * j
-                                                            + shape.repeat_whxy * FOUR * MAXTRIX],
-                                  mid_tensor.data_y_ub_trs1[SIXTEEN * j + BLOCK_DATA
-                                                            + shape.repeat_whxy * MAXTRIX_DATA],
-                                  mid_tensor.data_y_ub_trs1[SIXTEEN * j
-                                                            + shape.repeat_whxy * MAXTRIX_DATA],
-                                  ONE,
-                                  EIGHT, FOUR, FOUR,
-                                  EIGHT * shape.rep_stride,
-                                  FOUR * shape.rep_stride,
-                                  FOUR * shape.rep_stride)
+                tik_instance.vsub(Constant.SIXTEEN * shape.rep_stride,
+                                  mid_tensor.data_anchor_wh[Constant.SIXTEEN * i * Constant.TWO + Constant.SIXTEEN * j
+                                                            + shape.repeat_whxy * Constant.FOUR * Constant.MAXTRIX],
+                                  mid_tensor.data_y_ub_trs1[Constant.SIXTEEN * j + Constant.BLOCK_DATA
+                                                            + shape.repeat_whxy * Constant.MAXTRIX_DATA],
+                                  mid_tensor.data_y_ub_trs1[Constant.SIXTEEN * j
+                                                            + shape.repeat_whxy * Constant.MAXTRIX_DATA],
+                                  Constant.ONE,
+                                  Constant.EIGHT, Constant.FOUR, Constant.FOUR,
+                                  Constant.EIGHT * shape.rep_stride,
+                                  Constant.FOUR * shape.rep_stride,
+                                  Constant.FOUR * shape.rep_stride)
 
-                tik_instance.vadd(MASK,
-                                  mid_tensor.data_anchor_x0y0[SIXTEEN * i * TWO + SIXTEEN * j],
-                                  mid_tensor.data_y_ub_trs1[SIXTEEN * j + BLOCK_DATA],
-                                  mid_tensor.data_y_ub_trs1[SIXTEEN * j],
+                tik_instance.vadd(Constant.MASK,
+                                  mid_tensor.data_anchor_x0y0[Constant.SIXTEEN * i * Constant.TWO
+                                                              + Constant.SIXTEEN * j],
+                                  mid_tensor.data_y_ub_trs1[Constant.SIXTEEN * j + Constant.BLOCK_DATA],
+                                  mid_tensor.data_y_ub_trs1[Constant.SIXTEEN * j],
                                   shape.repeat_whxy,
-                                  EIGHT, FOUR, FOUR,
-                                  EIGHT * EIGHT, BLOCK_DATA, BLOCK_DATA)
+                                  Constant.EIGHT, Constant.FOUR, Constant.FOUR,
+                                  Constant.EIGHT * Constant.EIGHT, Constant.BLOCK_DATA, Constant.BLOCK_DATA)
 
-                tik_instance.vadd(SIXTEEN * shape.rep_stride,
-                                  mid_tensor.data_anchor_x0y0[SIXTEEN * i * TWO + SIXTEEN * j
-                                                              + shape.repeat_whxy * FOUR * MAXTRIX],
-                                  mid_tensor.data_y_ub_trs1[SIXTEEN * j + BLOCK_DATA
-                                                            + shape.repeat_whxy * MAXTRIX_DATA],
-                                  mid_tensor.data_y_ub_trs1[SIXTEEN * j
-                                                            + shape.repeat_whxy * MAXTRIX_DATA],
-                                  ONE,
-                                  EIGHT, FOUR, FOUR,
-                                  EIGHT * shape.rep_stride,
-                                  FOUR * shape.rep_stride,
-                                  FOUR * shape.rep_stride)
+                tik_instance.vadd(Constant.SIXTEEN * shape.rep_stride,
+                                  mid_tensor.data_anchor_x0y0[Constant.SIXTEEN * i * Constant.TWO
+                                                              + Constant.SIXTEEN * j
+                                                              + shape.repeat_whxy * Constant.FOUR * Constant.MAXTRIX],
+                                  mid_tensor.data_y_ub_trs1[Constant.SIXTEEN * j + Constant.BLOCK_DATA
+                                                            + shape.repeat_whxy * Constant.MAXTRIX_DATA],
+                                  mid_tensor.data_y_ub_trs1[Constant.SIXTEEN * j
+                                                            + shape.repeat_whxy * Constant.MAXTRIX_DATA],
+                                  Constant.ONE,
+                                  Constant.EIGHT, Constant.FOUR, Constant.FOUR,
+                                  Constant.EIGHT * shape.rep_stride,
+                                  Constant.FOUR * shape.rep_stride,
+                                  Constant.FOUR * shape.rep_stride)
 
     # calculate mid_tensor.data_anchor_xy
 
-    tik_instance.vmuls(MASK, mid_tensor.data_anchor_xy,
+    tik_instance.vmuls(Constant.MASK, mid_tensor.data_anchor_xy,
                        mid_tensor.data_anchor_x0y0,
                        gm_tensor.dump_half,
-                       shape.n_maxtrix * TWO,
-                       ONE, ONE,
-                       EIGHT, EIGHT)
+                       shape.n_maxtrix * Constant.TWO,
+                       Constant.ONE, Constant.ONE,
+                       Constant.EIGHT, Constant.EIGHT)
 
     # calculate input * mid_tensor.data_anchor_wh
-    tik_instance.vmul(MASK,
+    tik_instance.vmul(Constant.MASK,
                       mid_tensor.data_z_ub0,
                       mid_tensor.data_x_ub_trs,
                       mid_tensor.data_anchor_wh,
-                      shape.n_maxtrix * TWO,
-                      ONE, ONE, ONE,
-                      EIGHT, EIGHT, EIGHT)
+                      shape.n_maxtrix * Constant.TWO,
+                      Constant.ONE, Constant.ONE, Constant.ONE,
+                      Constant.EIGHT, Constant.EIGHT, Constant.EIGHT)
 
     # calculate input * mid_tensor.data_anchor_wh + mid_tensor.data_anchor_xy
 
-    tik_instance.vadd(MASK,
+    tik_instance.vadd(Constant.MASK,
                       mid_tensor.data_z_ub1,
                       mid_tensor.data_z_ub0,
                       mid_tensor.data_anchor_xy,
-                      shape.n_maxtrix * TWO,
-                      ONE, ONE, ONE,
-                      EIGHT, EIGHT, EIGHT)
+                      shape.n_maxtrix * Constant.TWO,
+                      Constant.ONE, Constant.ONE, Constant.ONE,
+                      Constant.EIGHT, Constant.EIGHT, Constant.EIGHT)
     # transpose output
     with tik_instance.for_range(0, shape.n_maxtrix) as i:
-        tik_instance.vtranspose(mid_tensor.data_z_ub[MAXTRIX * i],
-                                mid_tensor.data_z_ub1[MAXTRIX * i])
+        tik_instance.vtranspose(mid_tensor.data_z_ub[Constant.MAXTRIX * i],
+                                mid_tensor.data_z_ub1[Constant.MAXTRIX * i])
 
     # copy ub to gm
     tik_instance.data_move(gm_tensor.data_z[current_data_x],
                            mid_tensor.data_z_ub,
                            0,
-                           ONE, int_ceil_div(shape.n_x * EIGHT, SIXTEEN),
+                           Constant.ONE, int_ceil_div(shape.n_x * Constant.EIGHT, Constant.SIXTEEN),
                            0, 0)
 
 
@@ -469,26 +477,26 @@ def decode_wheels_target(
     tiling = Tiling(shape_x[0], core_num)
 
     # gm_tensor init
-    gm_tensor = InitTensor(tik_instance, shape_x, [shape_x[0], FOUR], 'float16')
+    gm_tensor = InitTensor(tik_instance, shape_x, [shape_x[0], Constant.FOUR], 'float16')
     if tiling.factor > 0:
-        thread_num = TWO if tiling.factor != ONE else ONE
+        thread_num = Constant.TWO if tiling.factor != Constant.ONE else Constant.ONE
         with tik_instance.for_range(0, core_num, block_num=core_num) as current_core:
             with tik_instance.for_range(0, tiling.factor, thread_num=thread_num) as current_factor:
-                shape = InitShape(SINGLE_N_MAX)
-                current_data_x = EIGHT * SINGLE_N_MAX * (current_core + core_num * current_factor)
-                current_data_y = FOUR * SINGLE_N_MAX * (current_core + core_num * current_factor)
+                shape = InitShape(Constant.SINGLE_N_MAX)
+                current_data_x = Constant.EIGHT * Constant.SINGLE_N_MAX * (current_core + core_num * current_factor)
+                current_data_y = Constant.FOUR * Constant.SINGLE_N_MAX * (current_core + core_num * current_factor)
                 calculate_process(tik_instance, gm_tensor, shape, current_data_x, current_data_y)
     if tiling.last_core > 0:
-        thread_num = TWO if tiling.last_core != ONE else ONE
+        thread_num = Constant.TWO if tiling.last_core != Constant.ONE else Constant.ONE
         with tik_instance.for_range(0, tiling.last_core, thread_num=thread_num) as current_core:
-            shape = InitShape(SINGLE_N_MAX)
-            current_data_x = EIGHT * SINGLE_N_MAX * (core_num * tiling.factor + current_core)
-            current_data_y = FOUR * SINGLE_N_MAX * (core_num * tiling.factor + current_core)
+            shape = InitShape(Constant.SINGLE_N_MAX)
+            current_data_x = Constant.EIGHT * Constant.SINGLE_N_MAX * (core_num * tiling.factor + current_core)
+            current_data_y = Constant.FOUR * Constant.SINGLE_N_MAX * (core_num * tiling.factor + current_core)
             calculate_process(tik_instance, gm_tensor, shape, current_data_x, current_data_y)
     if tiling.last_n > 0:
         shape = InitShape(tiling.last_n)
-        current_data_x = EIGHT * SINGLE_N_MAX * (core_num * tiling.factor + tiling.last_core)
-        current_data_y = FOUR * SINGLE_N_MAX * (core_num * tiling.factor + tiling.last_core)
+        current_data_x = Constant.EIGHT * Constant.SINGLE_N_MAX * (core_num * tiling.factor + tiling.last_core)
+        current_data_y = Constant.FOUR * Constant.SINGLE_N_MAX * (core_num * tiling.factor + tiling.last_core)
         calculate_process(tik_instance, gm_tensor, shape, current_data_x, current_data_y)
 
     # build_cce

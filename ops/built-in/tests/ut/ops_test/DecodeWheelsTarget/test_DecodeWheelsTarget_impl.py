@@ -64,14 +64,14 @@ err3 = {"params": [{"shape": (100, 6), "dtype": "float16", "format": "ND", "ori_
         "format_expect": [],
         "support_expect": True}
 
-ut_case.add_case("Ascend910", case1)
-ut_case.add_case("Ascend910", case2)
-ut_case.add_case("Ascend910", case3)
-ut_case.add_case("Ascend910", case4)
-ut_case.add_case("Ascend910", case5)
-ut_case.add_case("Ascend910", err1)
-ut_case.add_case("Ascend910", err2)
-ut_case.add_case("Ascend910", err3)
+ut_case.add_case("Ascend910A", case1)
+ut_case.add_case("Ascend910A", case2)
+ut_case.add_case("Ascend910A", case3)
+ut_case.add_case("Ascend910A", case4)
+ut_case.add_case("Ascend910A", case5)
+ut_case.add_case("Ascend910A", err1)
+ut_case.add_case("Ascend910A", err2)
+ut_case.add_case("Ascend910A", err3)
 
 def calc_expect_func(inputA, inputB, output):
     input_shape_x = inputA['shape']

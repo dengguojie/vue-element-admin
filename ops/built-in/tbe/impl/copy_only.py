@@ -50,7 +50,7 @@ def _get_ceil_int(int1, int2):
     return _result + 1
 
 
-# pylint: disable=locally-disabled,too-many-instance-attributes
+# 'pylint: disable=locally-disabled,too-many-instance-attributes
 class CopyOnly():
     """Function: use to finish CopyOnly main functions
     """
@@ -87,7 +87,7 @@ class CopyOnly():
         if self.data_size != self.data_dst_size:
             raise RuntimeError("The size of src and des is not equal,"
                                " can not use fuc(CopyOnly)")
-        # get dtype size, float16 size = 2 byte   / float32 size = 4 byte
+        # get dtype size, float16 size is 2 byte, float32 size is 4 byte
         self.dtype_size = \
             tbe_platform.cce_intrin.get_bit_len(self.src_dtype) // 8
         # get one block data size, block align len

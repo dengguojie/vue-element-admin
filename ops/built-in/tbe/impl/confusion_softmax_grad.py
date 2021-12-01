@@ -22,7 +22,7 @@ from te.utils import shape_util
 from impl.util import util_common
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name,too-many-locals
 def _broadcast_nz(tensor, shape):
     broadcast_axes = []
     src_shape = shape_util.shape_to_list(tensor.shape)

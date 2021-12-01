@@ -15,8 +15,8 @@
 """
 confusion_matrix
 """
-# pylint: disable=locally-disabled,too-many-lines,ungrouped-imports,unused-variable,
-# pylint: disable=too-many-locals,too-many-statements,too-many-arguments,unused-import
+# 'pylint: disable=locally-disabled,too-many-lines,ungrouped-imports,unused-variable,
+# 'pylint: disable=too-many-locals,too-many-statements,too-many-arguments,unused-import
 import math
 
 import te.platform as tbe_platform
@@ -25,26 +25,27 @@ from te import tvm
 from te.utils.error_manager import error_manager_vector
 from impl.util.util_select_op_base import get_op_cal_info
 
-CCE_GLOBAL_AXIS = tvm.thread_axis("cce_global")
-CCE_MASK_AXIS = tvm.thread_axis("cce_mask")
-MASK_VAR = tvm.var("MASK")
-DEQ_VAR = tvm.var("DEQ")
-# one vector instruction can compute numbers
-VEC_NUMS_HALF = 64
-VEC_NUMS = 128
-# uint8 Maximum
-UINT8_MAX = 255
-# one vector instruction calculation block numbers
-VEC_BLOCK_NUMS = 8
-# 1 Byte = 8 bits
-BITS_NUMS = 8
-# 1 block has 32 Bytes
-BYTES_PER_BLOCK = 32
-# per block has 16 float16 numbers
-FLOAT16_NUMS = 16
+
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    Constant
+    """
+    # one vector instruction can compute numbers
+    VEC_NUMS_HALF = 64
+    VEC_NUMS = 128
+    # uint8 Maximum
+    UINT8_MAX = 255
+    # one vector instruction calculation block numbers
+    VEC_BLOCK_NUMS = 8
+    BITS_NUMS = 8
+    # 1 block has 32 Bytes
+    BYTES_PER_BLOCK = 32
+    # per block has 16 float16 numbers
+    FLOAT16_NUMS = 16
 
 
-# pylint: disable = unused-argument,invalid-name
+# 'pylint: disable = unused-argument,invalid-name
 def get_op_support_info(labels,
                         predictions,
                         weights,
@@ -71,32 +72,32 @@ def cast_to(ibuilder, data_amounts, src_buf, dst_buf):
     dst_dtype = dst_buf.dtype
     if src_dtype == "float16" and dst_dtype == "int32":
         vconv_instr = "vconv_f162s32f"
-        vconv_compute_num = VEC_NUMS_HALF
+        vconv_compute_num = Constant.VEC_NUMS_HALF
     elif src_dtype == "float32" and dst_dtype == "float16":
         vconv_instr = "vconv_f322f16"
-        vconv_compute_num = VEC_NUMS_HALF
+        vconv_compute_num = Constant.VEC_NUMS_HALF
     elif src_dtype == "float32" and dst_dtype == "int32":
         vconv_instr = "vconv_f322s32f"
-        vconv_compute_num = VEC_NUMS_HALF
+        vconv_compute_num = Constant.VEC_NUMS_HALF
     # vconv_s322f32 only support cloud_v100
     elif src_dtype == "int32" and dst_dtype == "float32":
         vconv_instr = "vconv_s322f32"
-        vconv_compute_num = VEC_NUMS_HALF
+        vconv_compute_num = Constant.VEC_NUMS_HALF
     elif src_dtype == "int8" and dst_dtype == "float16":
         vconv_instr = "vconv_s82f16"
-        vconv_compute_num = VEC_NUMS
+        vconv_compute_num = Constant.VEC_NUMS
     elif src_dtype == "uint8" and dst_dtype == "float16":
         vconv_instr = "vconv_u82f16"
-        vconv_compute_num = VEC_NUMS
+        vconv_compute_num = Constant.VEC_NUMS
     elif src_dtype == "float16" and dst_dtype == "float32":
         vconv_instr = "vconv_f162f32"
-        vconv_compute_num = VEC_NUMS_HALF
+        vconv_compute_num = Constant.VEC_NUMS_HALF
     elif src_dtype == "float16" and dst_dtype == "int8":
         vconv_instr = "vconv_f162s8f"
-        vconv_compute_num = VEC_NUMS
+        vconv_compute_num = Constant.VEC_NUMS
     elif src_dtype == "float16" and dst_dtype == "uint8":
         vconv_instr = "vconv_f162u8f"
-        vconv_compute_num = VEC_NUMS
+        vconv_compute_num = Constant.VEC_NUMS
 
     def compute_stride(src_type, dst_type, vconv_num):
         """
@@ -120,8 +121,8 @@ def cast_to(ibuilder, data_amounts, src_buf, dst_buf):
 
     repeats = int(data_amounts // vconv_compute_num)
     remain = int(data_amounts % vconv_compute_num)
-    init_times = int(repeats // UINT8_MAX)
-    init_remain = int(repeats % UINT8_MAX)
+    init_times = int(repeats // Constant.UINT8_MAX)
+    init_remain = int(repeats % Constant.UINT8_MAX)
     with ibuilder.if_scope(repeats != 0):
         if init_times != 0:
             with ibuilder.for_range(0, init_times) as rch:
@@ -129,18 +130,18 @@ def cast_to(ibuilder, data_amounts, src_buf, dst_buf):
                     tbe_platform.cce_intrin_md.reset_mask_insn(
                         ibuilder, dst_buf.dtype, bits=vconv_compute_num)
                     ibuilder.emit(tvm.call_extern(dst_buf.dtype, vconv_instr, \
-                                                  dst_buf.access_ptr('w', offset=rch * UINT8_MAX
+                                                  dst_buf.access_ptr('w', offset=rch * Constant.UINT8_MAX
                                                                      * vconv_compute_num), \
-                                                  src_buf.access_ptr('r', offset=rch * UINT8_MAX
+                                                  src_buf.access_ptr('r', offset=rch * Constant.UINT8_MAX
                                                                      * vconv_compute_num), \
                                                   255, 1, 1, dst_strides, src_strides))
         if init_remain != 0:
             with ibuilder.new_scope():
                 tbe_platform.cce_intrin_md.reset_mask_insn(ibuilder, dst_buf.dtype, bits=vconv_compute_num)
                 ibuilder.emit(tvm.call_extern(dst_buf.dtype, vconv_instr, \
-                                              dst_buf.access_ptr('w', offset=init_times * UINT8_MAX
+                                              dst_buf.access_ptr('w', offset=init_times * Constant.UINT8_MAX
                                                                  * vconv_compute_num), \
-                                              src_buf.access_ptr('r', offset=init_times * UINT8_MAX
+                                              src_buf.access_ptr('r', offset=init_times * Constant.UINT8_MAX
                                                                  * vconv_compute_num), \
                                               init_remain, 1, 1, dst_strides, src_strides))
 
@@ -162,14 +163,14 @@ def vector_dump_set(ibuilder, scalar, block_num, buf):
     """
     vec_dtype = buf.dtype
     if vec_dtype in ["float32", "int32"]:
-        vec_compute_nums = VEC_NUMS_HALF
+        vec_compute_nums = Constant.VEC_NUMS_HALF
     else:
-        vec_compute_nums = VEC_NUMS
+        vec_compute_nums = Constant.VEC_NUMS
 
-    repeat_times = int(block_num // VEC_BLOCK_NUMS)
-    remain_len = int(block_num % VEC_BLOCK_NUMS)
-    init_times = int(repeat_times // UINT8_MAX)
-    init_remain = int(repeat_times % UINT8_MAX)
+    repeat_times = int(block_num // Constant.VEC_BLOCK_NUMS)
+    remain_len = int(block_num % Constant.VEC_BLOCK_NUMS)
+    init_times = int(repeat_times // Constant.UINT8_MAX)
+    init_remain = int(repeat_times % Constant.UINT8_MAX)
 
     with ibuilder.if_scope(repeat_times != 0):
         if init_times != 0:
@@ -178,7 +179,7 @@ def vector_dump_set(ibuilder, scalar, block_num, buf):
                     tbe_platform.cce_intrin_md.reset_mask_insn(ibuilder, buf.dtype, bits=vec_compute_nums)
                     ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 2)
                     ibuilder.emit(tvm.call_extern(buf.dtype, "vector_dup", \
-                                                  buf.access_ptr('w', offset=rch * UINT8_MAX
+                                                  buf.access_ptr('w', offset=rch * Constant.UINT8_MAX
                                                                  * vec_compute_nums), \
                                                   tvm.const(scalar, dtype=vec_dtype), \
                                                   255, 1, 1, 8, 8))
@@ -187,14 +188,14 @@ def vector_dump_set(ibuilder, scalar, block_num, buf):
                 tbe_platform.cce_intrin_md.reset_mask_insn(ibuilder, buf.dtype, bits=vec_compute_nums)
                 ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 2)
                 ibuilder.emit(tvm.call_extern(buf.dtype, "vector_dup", \
-                                              buf.access_ptr('w', offset=init_times * UINT8_MAX
+                                              buf.access_ptr('w', offset=init_times * Constant.UINT8_MAX
                                                              * vec_compute_nums), \
                                               tvm.const(scalar, dtype=vec_dtype), \
                                               init_remain, 1, 1, 8, 8))
 
     with ibuilder.if_scope(remain_len != 0):
         with ibuilder.new_scope():
-            mask_len = remain_len * (vec_compute_nums // VEC_BLOCK_NUMS)
+            mask_len = remain_len * (vec_compute_nums // Constant.VEC_BLOCK_NUMS)
             tbe_platform.cce_intrin_md.reset_mask_insn(ibuilder, buf.dtype, bits=mask_len)
             ibuilder.scope_attr(tbe_platform.CCE_AXIS, "coproc_scope", 2)
             ibuilder.emit(tvm.call_extern(buf.dtype, "vector_dup", \
@@ -218,7 +219,7 @@ def apply_for_new_alloc(ibuilder,
     return tmp_buffer
 
 
-# pylint: disable=locally-disabled,too-many-branches
+# 'pylint: disable=locally-disabled,too-many-branches
 def params_check(shape_labels, shape_predictions, out_type, labels_dtype,
                  predictions_dtype, shape_weights, weights_dtype):
     """
@@ -267,10 +268,12 @@ def params_check(shape_labels, shape_predictions, out_type, labels_dtype,
             error_manager_vector.raise_err_specific_reson("confusion_matrix", error_detail)
     if not tbe_platform.cce_conf.intrinsic_check_support(\
             "Intrinsic_vconv", "f322s32f") and labels_dtype == "float32":
-        error_manager_vector.raise_err_input_dtype_not_supported("confusion_matrix", "labels", "not float32", "float32")
+        error_manager_vector.raise_err_input_dtype_not_supported("confusion_matrix", "labels",
+                                                                 "not float32", "float32")
     if not tbe_platform.cce_conf.intrinsic_check_support("Intrinsic_vconv", \
            "f322s32f") and predictions_dtype == "float32":
-        error_manager_vector.raise_err_input_dtype_not_supported("confusion_matrix", "predictions", "not float32", "float32")
+        error_manager_vector.raise_err_input_dtype_not_supported("confusion_matrix", "predictions",
+                                                                 "not float32", "float32")
 
 
 def compute_ub_length(number, dtype_a, dtype_b):
@@ -278,8 +281,8 @@ def compute_ub_length(number, dtype_a, dtype_b):
     compute predictions ub length
     """
     ub_size = 15 * 1024  # define ub size
-    type_size_a = tbe_platform.cce_intrin.get_bit_len(dtype_a) // BITS_NUMS
-    type_size_b = tbe_platform.cce_intrin.get_bit_len(dtype_b) // BITS_NUMS
+    type_size_a = tbe_platform.cce_intrin.get_bit_len(dtype_a) // Constant.BITS_NUMS
+    type_size_b = tbe_platform.cce_intrin.get_bit_len(dtype_b) // Constant.BITS_NUMS
 
     if number * (type_size_a + type_size_b) > ub_size:  # label numbers
         length = ub_size // (type_size_a + type_size_b)
@@ -295,8 +298,8 @@ def compute_perblock_nums(dtype):
     """
     Calculate the numbers of this data type every block have
     """
-    type_size = tbe_platform.cce_intrin.get_bit_len(dtype) // BITS_NUMS
-    perblock_nums = BYTES_PER_BLOCK // type_size
+    type_size = tbe_platform.cce_intrin.get_bit_len(dtype) // Constant.BITS_NUMS
+    perblock_nums = Constant.BYTES_PER_BLOCK // type_size
 
     return perblock_nums
 
@@ -310,9 +313,9 @@ def compute_outub_size(height, width, dtype, core_nums):
     out_blocks = math.ceil(height * width / out_ele_perblock)
     block_per_core = math.ceil(out_blocks / core_nums)
     use_cores = math.ceil(out_blocks / block_per_core)
-    out_ele_size = tbe_platform.cce_intrin.get_bit_len(dtype) // BITS_NUMS
-    out_f16_size = tbe_platform.cce_intrin.get_bit_len("float16") // BITS_NUMS
-    out_int8_size = tbe_platform.cce_intrin.get_bit_len("int8") // BITS_NUMS
+    out_ele_size = tbe_platform.cce_intrin.get_bit_len(dtype) // Constant.BITS_NUMS
+    out_f16_size = tbe_platform.cce_intrin.get_bit_len("float16") // Constant.BITS_NUMS
+    out_int8_size = tbe_platform.cce_intrin.get_bit_len("int8") // Constant.BITS_NUMS
     if dtype in ["int8", "uint8"]:
         need_size = block_per_core * out_ele_perblock * (out_f16_size + out_int8_size)
         if need_size > ubuf_size:
@@ -327,7 +330,7 @@ def compute_outub_size(height, width, dtype, core_nums):
     else:
         need_size = block_per_core * out_ele_size * out_ele_perblock
         if need_size > ubuf_size:
-            block_num = ubuf_size // BYTES_PER_BLOCK
+            block_num = ubuf_size // Constant.BYTES_PER_BLOCK
             out_factor = math.ceil(block_per_core / block_num)
             last_remian = block_per_core % block_num
         else:
@@ -365,7 +368,7 @@ def copy_weight_to_ub(ibuilder, gm_in, dst_buf, out, length):
                                       0, 1, int(length // num_per_block) + 1, 0, 0))
 
 
-# pylint: disable=locally-disabled,too-many-branches
+# 'pylint: disable=locally-disabled,too-many-branches
 def confusion_matrix_ir(labels, prediction, weight, output):
     """
     Generate the confusion_matrix op IR
@@ -414,11 +417,11 @@ def confusion_matrix_ir(labels, prediction, weight, output):
     # apply for confusion_buf,weight_buf
     block_num, block_per_core, out_factor, last_remian, total_len, use_cores = compute_outub_size(
         height, width, output_dtype, device_core_num)
-    block_num_int8 = int(total_len // BYTES_PER_BLOCK) + 1
-    block_num_fp16 = int(total_len // FLOAT16_NUMS) + 1
+    block_num_int8 = int(total_len // Constant.BYTES_PER_BLOCK) + 1
+    block_num_fp16 = int(total_len // Constant.FLOAT16_NUMS) + 1
     if output_dtype in ["int8", "uint8"]:
         if weight_dtype in ["int8", "uint8", "float32"]:
-            confusion_buf = apply_for_new_alloc(ibuilder, "float16", (block_num_fp16, FLOAT16_NUMS), \
+            confusion_buf = apply_for_new_alloc(ibuilder, "float16", (block_num_fp16, Constant.FLOAT16_NUMS), \
                                                 scope=tbe_platform.scope_ubuf, name="confusion_buf")
             confusion_buf_out = apply_for_new_alloc(ibuilder, output_dtype,
                                                     (block_num_int8, output_perblock_nums), \
@@ -442,7 +445,7 @@ def confusion_matrix_ir(labels, prediction, weight, output):
                                                         name="confusion_buf_out")
             else:
                 # weight_dtype == "int32" only support cloud
-                confusion_buf = apply_for_new_alloc(ibuilder, "float16", (block_num_fp16, FLOAT16_NUMS),
+                confusion_buf = apply_for_new_alloc(ibuilder, "float16", (block_num_fp16, Constant.FLOAT16_NUMS),
                                                     scope=tbe_platform.scope_ubuf, name="confusion_buf")
                 confusion_buf_out = apply_for_new_alloc(ibuilder, output_dtype,
                                                         (block_num_int8, output_perblock_nums),
@@ -514,17 +517,17 @@ def confusion_matrix_ir(labels, prediction, weight, output):
     reg_buf = ibuilder.allocate("int32", (2,), scope=tbe_platform.scope_reg, name="reg_buf")
     reg_tmp = ibuilder.allocate(weight_castto_dtype, (4,), scope=tbe_platform.scope_reg, name="reg_tmp")
     # apply for weights add ub_buf
-    value_buf = apply_for_new_alloc(ibuilder, weight_castto_dtype, (BITS_NUMS,), \
+    value_buf = apply_for_new_alloc(ibuilder, weight_castto_dtype, (Constant.BITS_NUMS,), \
                                     scope=tbe_platform.scope_ubuf, name="value_buf")
-    value_buf1 = apply_for_new_alloc(ibuilder, weight_castto_dtype, (BITS_NUMS,), \
+    value_buf1 = apply_for_new_alloc(ibuilder, weight_castto_dtype, (Constant.BITS_NUMS,), \
                                      scope=tbe_platform.scope_ubuf, name="value_buf1")
 
     # apply for label_buf, predict_buf
     label_buf_int32 = apply_for_new_alloc(ibuilder, "int32",
-                                          (int(length // BITS_NUMS) + 1, BITS_NUMS), \
+                                          (int(length // Constant.BITS_NUMS) + 1, Constant.BITS_NUMS), \
                                           scope=tbe_platform.scope_ubuf, name="label_buf_int32")
     predict_buf_int32 = apply_for_new_alloc(ibuilder, "int32",
-                                            (int(length // BITS_NUMS) + 1, BITS_NUMS), \
+                                            (int(length // Constant.BITS_NUMS) + 1, Constant.BITS_NUMS), \
                                             scope=tbe_platform.scope_ubuf, name="predict_buf_int32")
     if labels_dtype != "int32":
         label_buf = apply_for_new_alloc(ibuilder, labels_dtype,
@@ -533,7 +536,7 @@ def confusion_matrix_ir(labels, prediction, weight, output):
                                         scope=tbe_platform.scope_ubuf, name="label_buf")
     if labels_dtype in ("int8", "uint8"):
         cast_fp16_buf_a = apply_for_new_alloc(ibuilder, "float16",
-                                              (int(length // FLOAT16_NUMS) + 1, FLOAT16_NUMS), \
+                                              (int(length // Constant.FLOAT16_NUMS) + 1, Constant.FLOAT16_NUMS), \
                                               scope=tbe_platform.scope_ubuf, name="cast_fp16_buf_a")
     if prediction_dtype != "int32":
         predict_buf = apply_for_new_alloc(ibuilder, prediction_dtype,
@@ -542,7 +545,7 @@ def confusion_matrix_ir(labels, prediction, weight, output):
                                           scope=tbe_platform.scope_ubuf, name="predict_buf")
     if prediction_dtype in ("int8", "uint8"):
         cast_fp16_buf_b = apply_for_new_alloc(ibuilder, "float16",
-                                              (int(length // FLOAT16_NUMS) + 1, FLOAT16_NUMS), \
+                                              (int(length // Constant.FLOAT16_NUMS) + 1, Constant.FLOAT16_NUMS), \
                                               scope=tbe_platform.scope_ubuf, name="cast_fp16_buf_b")
 
     with ibuilder.for_range(0, out_factor) as out:
@@ -833,11 +836,11 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
     # apply for confusion_buf,weight_buf
     block_num, block_per_core, out_factor, last_remian, total_len, use_cores = compute_outub_size(
         height, width, output_dtype, device_core_num)
-    block_num_int8 = int(total_len // BYTES_PER_BLOCK) + 1
-    block_num_fp16 = int(total_len // FLOAT16_NUMS) + 1
+    block_num_int8 = int(total_len // Constant.BYTES_PER_BLOCK) + 1
+    block_num_fp16 = int(total_len // Constant.FLOAT16_NUMS) + 1
 
     if output_dtype in ["int8", "uint8"]:
-        confusion_buf = apply_for_new_alloc(ibuilder, "float16", (block_num_fp16, FLOAT16_NUMS), \
+        confusion_buf = apply_for_new_alloc(ibuilder, "float16", (block_num_fp16, Constant.FLOAT16_NUMS), \
                                             scope=tbe_platform.scope_ubuf, name="confusion_buf")
         confusion_buf_out = apply_for_new_alloc(ibuilder, output_dtype,
                                                 (block_num_int8, output_perblock_nums), \
@@ -857,17 +860,17 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
     reg_buf = ibuilder.allocate("int32", (2,), scope=tbe_platform.scope_reg, name="reg_buf")
     reg_tmp = ibuilder.allocate(weight_castto_dtype, (4,), scope=tbe_platform.scope_reg, name="reg_tmp")
     # apply for weights add ub_buf
-    value_buf = apply_for_new_alloc(ibuilder, weight_castto_dtype, (BITS_NUMS,), \
+    value_buf = apply_for_new_alloc(ibuilder, weight_castto_dtype, (Constant.BITS_NUMS,), \
                                     scope=tbe_platform.scope_ubuf, name="value_buf")
-    value_buf1 = apply_for_new_alloc(ibuilder, weight_castto_dtype, (BITS_NUMS,), \
+    value_buf1 = apply_for_new_alloc(ibuilder, weight_castto_dtype, (Constant.BITS_NUMS,), \
                                      scope=tbe_platform.scope_ubuf, name="value_buf1")
 
     # apply for label_buf, predict_buf
     label_buf_int32 = apply_for_new_alloc(ibuilder, "int32",
-                                          (int(length // BITS_NUMS) + 1, BITS_NUMS), \
+                                          (int(length // Constant.BITS_NUMS) + 1, Constant.BITS_NUMS), \
                                           scope=tbe_platform.scope_ubuf, name="label_buf_int32")
     predict_buf_int32 = apply_for_new_alloc(ibuilder, "int32",
-                                            (int(length // BITS_NUMS) + 1, BITS_NUMS), \
+                                            (int(length // Constant.BITS_NUMS) + 1, Constant.BITS_NUMS), \
                                             scope=tbe_platform.scope_ubuf, name="predict_buf_int32")
     if labels_dtype != "int32":
         label_buf = apply_for_new_alloc(ibuilder, labels_dtype,
@@ -876,7 +879,7 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
                                         scope=tbe_platform.scope_ubuf, name="label_buf")
     if labels_dtype in ("int8", "uint8"):
         cast_fp16_buf_a = apply_for_new_alloc(ibuilder, "float16",
-                                              (int(length // FLOAT16_NUMS) + 1, FLOAT16_NUMS), \
+                                              (int(length // Constant.FLOAT16_NUMS) + 1, Constant.FLOAT16_NUMS), \
                                               scope=tbe_platform.scope_ubuf, name="cast_fp16_buf_a")
     if prediction_dtype != "int32":
         predict_buf = apply_for_new_alloc(ibuilder, prediction_dtype,
@@ -885,7 +888,7 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
                                           scope=tbe_platform.scope_ubuf, name="predict_buf")
     if prediction_dtype in ("int8", "uint8"):
         cast_fp16_buf_b = apply_for_new_alloc(ibuilder, "float16",
-                                              (int(length // FLOAT16_NUMS) + 1, FLOAT16_NUMS), \
+                                              (int(length // Constant.FLOAT16_NUMS) + 1, Constant.FLOAT16_NUMS), \
                                               scope=tbe_platform.scope_ubuf, name="cast_fp16_buf_b")
 
     weight_blocks = int(length // compute_perblock_nums(weight_castto_dtype)) + 1
@@ -1071,7 +1074,7 @@ def confusion_matrix_ir_weight_none(labels, prediction, output):
 
 
 # @util.check_input_type((list, tuple), int, str, str, bool, bool)
-# pylint: disable=locally-disabled,invalid-name,unused-argument
+# 'pylint: disable=locally-disabled,invalid-name,unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_STR,
                             para_check.KERNEL_NAME, para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL)

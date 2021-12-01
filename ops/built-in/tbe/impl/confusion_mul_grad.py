@@ -22,8 +22,8 @@ from te.utils import para_check
 from te.utils import shape_util
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument
-# pylint: disable=locally-disabled,too-many-locals,unused-variable
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
+# 'pylint: disable=locally-disabled,too-many-locals,unused-variable
 def shape_broadcast(data_1, data_2):
     """
     broadcast the two input

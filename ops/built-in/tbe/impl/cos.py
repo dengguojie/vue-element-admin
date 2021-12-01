@@ -23,10 +23,16 @@ from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 
-# 2pi, the cycle of cosin
-TWO_PI = 2*3.14159265358979
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    Constant
+    """
+    # 2pi, the cycle of cosin
+    TWO_PI = 2*3.14159265358979
 
-# pylint: disable=locally-disabled, unused-argument
+
+# 'pylint: disable=locally-disabled, unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("cos")
 def cos_compute(input_x, output_y, kernel_name="cos"):
     """
@@ -60,9 +66,9 @@ def cos_compute(input_x, output_y, kernel_name="cos"):
         has_improve_precision = True
 
     # round the input
-    round_fp16 = tbe.round(tbe.vmuls(input_x, 1.0/TWO_PI))
+    round_fp16 = tbe.round(tbe.vmuls(input_x, 1.0 / Constant.TWO_PI))
     round_fp32 = tbe.cast_to(round_fp16, dtype)
-    input_x_round = tbe.vsub(input_x, tbe.vmuls(round_fp32, TWO_PI))
+    input_x_round = tbe.vsub(input_x, tbe.vmuls(round_fp32, Constant.TWO_PI))
 
     # the initial value one
     const_res = tvm.const(1.0, dtype=dtype)
