@@ -85,7 +85,7 @@ int32_t GetLibItem(const std::string& opType, const nlohmann::json& opCompileInf
       int32_t res = (int32_t)tune_shape_list[i][DEFAULT_INDEX_TWO];
       return res;
     }
-    if ((tune_shape_list[i][0] == xShape[0]) && ((tune_shape_list[i][1] / 16) == xShape[DEFAULT_INDEX_TWO])) {
+    if ((tune_shape_list[i][0] == xShape[0]) && (((tune_shape_list[i][1] + 15) / 16) == xShape[DEFAULT_INDEX_TWO])) {
       OP_LOGD(opType.c_str(), "The matched schedule = %lld", tune_shape_list[i][DEFAULT_INDEX_TWO]);
       int32_t res = (int32_t)tune_shape_list[i][DEFAULT_INDEX_TWO];
       return res;

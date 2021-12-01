@@ -172,23 +172,36 @@ Status DynamicRNNSeqFusionPass::Fusion(ge::ComputeGraph &graph, Mapping &mapping
   FUSION_PASS_CHECK(fusedNode == nullptr,
                     OP_LOGE(FUSED_OP_TYPE.c_str(), "fusedNode OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
-  std::vector <int64_t> dimInitC = fusedNode->GetOpDesc()->GetInputDesc(4).GetShape().GetDims();
-  if (dimInitC.size() == 2) {
-    OP_LOGD(FUSED_OP_TYPE.c_str(), "init_c's size is 2.");
-    std::vector <int64_t> initCDims = {1, dimInitC[0], dimInitC[1]};
-    ge::GeShape tensorInitCOriginShape(initCDims);
 
-    // process init_h
-    ge::GeTensorDesc init_h_desc = *fusedDesc->MutableInputDesc("init_h");
-    init_h_desc.SetOriginShape(tensorInitCOriginShape);
-    init_h_desc.SetShape(tensorInitCOriginShape);
-    fusedDesc->UpdateInputDesc("init_h", init_h_desc);
+  bool hasInitH = fusedDesc->MutableInputDesc("init_h") != nullptr;
+  bool hasInitC = fusedDesc->MutableInputDesc("init_c") != nullptr;
+  if (hasInitH) {
+    std::vector <int64_t> dimInitH = fusedNode->GetOpDesc()->GetInputDesc(4).GetShape().GetDims();
+    if (dimInitH.size() == 2) {
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "init_h's size is 2.");
+      std::vector <int64_t> initHDims = {1, dimInitH[0], dimInitH[1]};
+      ge::GeShape tensorInitHOriginShape(initHDims);
 
-    // process init_c
-    ge::GeTensorDesc init_c_desc = *fusedDesc->MutableInputDesc("init_c");
-    init_c_desc.SetOriginShape(tensorInitCOriginShape);
-    init_c_desc.SetShape(tensorInitCOriginShape);
-    fusedDesc->UpdateInputDesc("init_c", init_c_desc);
+      // process init_h
+      ge::GeTensorDesc init_h_desc = *fusedDesc->MutableInputDesc("init_h");
+      init_h_desc.SetOriginShape(tensorInitHOriginShape);
+      init_h_desc.SetShape(tensorInitHOriginShape);
+      fusedDesc->UpdateInputDesc("init_h", init_h_desc);
+    }
+  }
+  if (hasInitC) {
+    std::vector <int64_t> dimInitC = fusedNode->GetOpDesc()->GetInputDesc(5).GetShape().GetDims();
+    if (dimInitC.size() == 2) {
+      OP_LOGD(FUSED_OP_TYPE.c_str(), "init_c's size is 2.");
+      std::vector <int64_t> initCDims = {1, dimInitC[0], dimInitC[1]};
+      ge::GeShape tensorInitCOriginShape(initCDims);
+
+      // process init_c
+      ge::GeTensorDesc init_c_desc = *fusedDesc->MutableInputDesc("init_c");
+      init_c_desc.SetOriginShape(tensorInitCOriginShape);
+      init_c_desc.SetShape(tensorInitCOriginShape);
+      fusedDesc->UpdateInputDesc("init_c", init_c_desc);
+    }
   }
 
   // process seq_length
