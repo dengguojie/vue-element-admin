@@ -65,6 +65,9 @@ Status ParseOpToGraphUpsample(const ge::Operator& op, Graph& graph) {
                                        .set_input_roi(const_op)
                                        .set_input_scales(data1)
                                        .set_attr_mode(mode_value1);
+  
+  ChangeFormatFromOnnx(resize_op, 0, ge::FORMAT_NCHW, true);
+  ChangeFormatFromOnnx(resize_op, 0, ge::FORMAT_NCHW, false);
 
   std::vector<ge::Operator> inputs = {data0, const_op, data1};
   std::vector<std::pair<ge::Operator, std::vector<size_t>>> output_indexs;
