@@ -9,6 +9,7 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 
 import os
 import os.path
+import subprocess
 import sys
 import time
 import re
@@ -187,6 +188,28 @@ def print_info_log(info_msg):
     _print_log("INFO", info_msg)
 
 
+class CallingCounter(object):
+    def __init__(self, func):
+        self.func = func
+        self.count = 0
+
+    def __call__(self, *args, **kwargs):
+        self.count += 1
+        return self.func(*args, **kwargs)
+
+
+@CallingCounter
+def print_step_log(step_msg):
+    """
+    print step log
+    @param step_msg: the info message
+    @return: none
+    """
+    step_count = str(print_step_log.count)
+    msg_format = "".join(["[STEP", step_count, "] ", step_msg])
+    _print_log("INFO", msg_format)
+
+
 def check_path_valid(path, isdir=False):
     """
     Function Description:
@@ -259,8 +282,11 @@ def check_output_path(output_path, testcase_list, machine_type):
             finally:
                 pass
         else:
-            print_error_log("Specified output path already has %s directory, "
-                            "please delete or move it and retry." % testcase_list[0]['op'])
+            src_path = os.path.join(op_name_path, 'src')
+            if os.path.exists(src_path):
+                print_error_log("Specified output path already has %s directory, "
+                                "please delete or move it and retry." % testcase_list[0]['op'])
+                sys.exit(ConstManager.OP_TEST_GEN_INVALID_PATH_ERROR)
         output_path = op_name_path
     return output_path
 
@@ -513,6 +539,21 @@ def add_new_key_to_cross_list(tensor, cross_key_list):
     for key in new_key_list:
         if tensor.get(key):
             cross_key_list.append(key)
+
+
+def execute_command(cmd):
+    print_info_log('Execute command: %s' % cmd)
+    process = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT)
+    while process.poll() is None:
+        line = process.stdout.readline()
+        line = line.strip()
+        if line:
+            print(line)
+    if process.returncode != 0:
+        print_error_log('Failed to execute command: %s' % cmd)
+        raise OpTestGenException(
+            ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
 
 
 class ScanFile:

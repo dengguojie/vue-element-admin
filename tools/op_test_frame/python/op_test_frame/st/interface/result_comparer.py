@@ -208,7 +208,7 @@ def _data_compare(npu_output, cpu_output, err_thd):
     return result, fulfill_percent, max_error
 
 
-def compare2(result_dir, expect_dir):
+def compare_by_path(result_dir, expect_dir):
     """
     compare output data with expect data by path
     :param result_dir: result data path

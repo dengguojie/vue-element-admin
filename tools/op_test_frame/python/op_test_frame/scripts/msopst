@@ -8,11 +8,11 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 """
 import os
 import sys
-import argparse
 import ast
 from atexit import register
 
 from op_test_frame.st.interface import utils
+from op_test_frame.st.interface.arg_parser import MsopstArgParser
 from op_test_frame.st.interface.acl_op_runner import AclOpRunner
 from op_test_frame.st.interface.ms_op_runner import MsOpRunner
 from op_test_frame.st.interface import result_comparer
@@ -26,39 +26,9 @@ from op_test_frame.st.interface.model_parser import get_shape
 from op_test_frame.st.interface import st_report
 from op_test_frame.st.interface.advance_ini_parser import AdvanceIniParser
 from op_test_frame.st.interface.const_manager import ConstManager
+from op_test_frame.st.interface.atc_transform_om import AtcTransformOm
 
 abnormal_termination = False
-
-
-def _check_device_id(device_id):
-    if not device_id.isdigit():
-        utils.print_error_log(
-            'please enter an integer number for device id,'
-            'now is %s.' % device_id)
-        sys.exit(ConstManager.OP_TEST_GEN_INVALID_DEVICE_ID_ERROR)
-    return
-
-
-def _gen_error_threshold(err_thr):
-    if err_thr == "":
-        err_thr = [0.01, 0.05]
-    else:
-        try:
-            err_thr = ast.literal_eval(err_thr)
-        except ValueError:
-            utils.print_error_log("Error_threshold is unsupported. Example [0.01, 0.01].")
-            raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_ERROR_THRESHOLD_ERROR)
-    return _check_error_threshold(err_thr)
-
-
-def _check_error_threshold(err_thr):
-    if isinstance(err_thr, list):
-        if len(err_thr) == 0:
-            return err_thr
-        if len(err_thr) == 2:
-            return utils.check_list_float(err_thr, "Error_threshold")
-    utils.print_error_log("Error_threshold is unsupported. Example [0.01, 0.01].")
-    raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_INVALID_ERROR_THRESHOLD_ERROR)
 
 
 def _generate_op_project(args, report, machine_type):
@@ -83,21 +53,47 @@ def _generate_op_project(args, report, machine_type):
     return case_list
 
 
-def _runner_and_compare(args, case_list, report, err_thr, get_advance_args=None):
+def _generate_run_cmd_op_project(args, report, machine_type, get_advance_args=None):
+    # design test case list from json file
+    design = CaseDesign(args.input_file, args.case_name, report)
+    case_list, compile_flag = design.design()
     output_path = os.path.realpath(args.output_path)
+    # generate acl project and generate test data
+    if case_list[0].get('st_mode') == 'ms_python_train':
+        ms_op_generator_instance = MsOpGenerator(
+            case_list, (output_path, args.device_id), machine_type, report)
+        ms_op_generator_instance.generate()
+    else:
+        # atc tools transform acl_op.json of single operator to om model.
+        atc_transform = AtcTransformOm(case_list, output_path, compile_flag, machine_type, report)
+        atc_transform.transform_acl_json_to_om(args.soc_version, get_advance_args)
+        acl_op_generator_instance = AclOpGenerator(
+            case_list, (output_path, args.device_id, machine_type), report, compile_flag)
+        acl_op_generator_instance.generate()
+        path = os.path.join(output_path,
+                            case_list[0]['op'].replace('/', '_'))
+        runner = AclOpRunner(path, args.soc_version, report, get_advance_args)
+        runner.acl_compile()
+    # generate data
+    data_generator = DataGenerator(case_list, output_path, False, report)
+    data_generator.generate()
+    return case_list
+
+
+def _runner_and_compare(args, case_list, report, get_advance_args=None):
     # run operator
-    path = os.path.join(output_path,
-                        case_list[0]['op'].replace('/', '_'))
+    output_op_path = os.path.join(args.output_path,
+                                  case_list[0]['op'].replace('/', '_'))
+    path = os.path.realpath(output_op_path)
     if case_list[0].get('st_mode') == 'ms_python_train':
         op_name_fixed = utils.fix_name_lower_with_under(case_list[0]['op'])
         runner = MsOpRunner(path, op_name_fixed, args.soc_version, report)
         runner.process()
     else:
         runner = AclOpRunner(path, args.soc_version, report, get_advance_args)
-        runner.process()
-
+        runner.run()
         # compare
-        result_comparer.compare(report, path, err_thr)
+        result_comparer.compare(report, path, args.err_thr)
 
 
 def _do_mi_cmd(args, cmd, report):
@@ -107,11 +103,9 @@ def _do_mi_cmd(args, cmd, report):
         elif cmd == "change_shape":
             change_shape(args)
         elif cmd == "gen":
-            # check device id invaild
-            _check_device_id(args.device_id)
             _generate_op_project(args, report, True)
-        elif cmd == "compare2":
-            result_comparer.compare2(args.result_path, args.expect_path)
+        elif cmd == "compare_by_path":
+            result_comparer.compare_by_path(args.result_path, args.expect_path)
         elif cmd == "compare":
             # when the report is input,should avoid update the report
             global abnormal_termination
@@ -121,8 +115,7 @@ def _do_mi_cmd(args, cmd, report):
             report.load(report_path)
             utils.print_info_log("Load %s success." % args.report_path)
             run_dir = os.path.dirname(report_path)
-            err_thr = _gen_error_threshold(args.error_threshold)
-            result_comparer.compare(report, run_dir, err_thr)
+            result_comparer.compare(report, run_dir, args.err_thr)
             report.save(report_path)
             utils.print_info_log('The st report saved in: %s.' % report_path)
             report.console_print()
@@ -140,16 +133,13 @@ def _do_run_cmd(args, report):
             utils.print_error_log(
                 'The value of "soc_version" is empty. Please modify it.')
             sys.exit(ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
-        # check device id invaild
-        _check_device_id(args.device_id)
-        err_thr = _gen_error_threshold(args.error_threshold)
         if args.config_file != "":
             # check config_file invalid
             utils.check_path_valid(args.config_file)
-            _gen_build_convert_run(args, report, err_thr)
+            _gen_build_convert_run(args, report)
         else:
-            case_list = _generate_op_project(args, report, False)
-            _runner_and_compare(args, case_list, report, err_thr)
+            case_list = _generate_run_cmd_op_project(args, report, False)
+            _runner_and_compare(args, case_list, report)
 
     except utils.OpTestGenException as ex:
         sys.exit(ex.error_info)
@@ -157,7 +147,7 @@ def _do_run_cmd(args, report):
         pass
 
 
-def _gen_build_convert_run(args, report, err_thr):
+def _gen_build_convert_run(args, report):
     output_path = os.path.realpath(args.output_path)
     get_advance_args = AdvanceIniParser(args.config_file)
     get_advance_args.get_advance_args_option()
@@ -165,11 +155,11 @@ def _gen_build_convert_run(args, report, err_thr):
     if acl_mode == ConstManager.BOTH_GEN_AND_RUN_ACL_PROJ or \
             acl_mode == ConstManager.BOTH_GEN_AND_RUN_ACL_PROJ_PERFORMANCE:
         # gen op project and build & convert & execute the project.
-        case_list = _generate_op_project(args, report, False)
-        _runner_and_compare(args, case_list, report, err_thr, get_advance_args)
+        case_list = _generate_run_cmd_op_project(args, report, False, get_advance_args)
+        _runner_and_compare(args, case_list, report, get_advance_args)
     elif acl_mode == ConstManager.ONLY_GEN_WITHOUT_RUN_ACL_PROJ:
         # only gen op project.
-        _generate_op_project(args, report, False)
+        _generate_run_cmd_op_project(args, report, False)
     elif acl_mode == ConstManager.ONLY_RUN_WITHOUT_GEN_ACL_PROJ or \
             acl_mode == ConstManager.ONLY_RUN_WITHOUT_GEN_ACL_PROJ_PERFORMANCE:
         # only build & convert & execute the project.
@@ -197,141 +187,11 @@ def _gen_build_convert_run(args, report, err_thr):
         else:
             runner = AclOpRunner(path, args.soc_version,
                                  report, get_advance_args)
-            runner.process()
+            runner.run()
             # compare
-            result_comparer.compare(report, path, err_thr)
+            result_comparer.compare(report, path, args.err_thr)
             report.save(report_path)
             utils.print_info_log('The st report saved in: %s.' % report_path)
-
-
-def _create_parser(create_parser):
-    """
-    parse create cmd
-    :param create_parser:
-    """
-    create_parser.add_argument(
-        "-i", "--input", dest="input_file", default="",
-        help="<Required> the input file, .ini file", required=True)
-    create_parser.add_argument(
-        "-out", "--output", dest="output_path", default="",
-        help="<Optional> the output path", required=False)
-    create_parser.add_argument(
-        "-m", "--model", dest="model_path", default="",
-        help="<Optional> the model path", required=False)
-    create_parser.add_argument(
-        '-q', "--quiet", dest="quiet", action="store_true", default=False,
-        help="<Optional> quiet mode, skip human-computer interactions",
-        required=False)
-
-
-def _run_parser(run_parser):
-    """
-    parse run cmd
-    :param run_parser:
-    """
-    run_parser.add_argument(
-        "-i", "--input", dest="input_file", default="",
-        help="<Required> the input file, .json file, ", required=True)
-    run_parser.add_argument(
-        '-soc', "--soc_version", dest="soc_version",
-        help="<Required> the soc version to run", required=True)
-    run_parser.add_argument(
-        "-out", "--output", dest="output_path", default="",
-        help="<Optional> the output path", required=False)
-    run_parser.add_argument(
-        '-c', "--case_name", dest="case_name", default='all',
-        help="<Optional> the case name to run or gen, splits with ',', "
-             "like 'case0,case1'.", required=False)
-    run_parser.add_argument(
-        '-d', "--device_id", dest="device_id", default="0",
-        help="<Optional> input device id, default is 0."
-        , required=False)
-    run_parser.add_argument(
-        '-conf', "--config_file", dest="config_file", default="",
-        help="<Optional> config_file, msopst advance config file.",
-        required=False)
-    run_parser.add_argument(
-        '-err_thr', "--error_threshold", dest="error_threshold", default="[0.01, 0.05]",
-        help="<Optional> error_threshold, Error threshold of result"
-             "comparison, like [0.001, 0.001].",
-        required=False)
-
-
-def _mi_parser(mi_parser):
-    """
-    parse mi cmd
-    :param mi_parser:
-    """
-    subparsers = mi_parser.add_subparsers(help='commands')
-    get_shape_parser = subparsers.add_parser(
-        'get_shape', help='Get shape.')
-    change_shape_parser = subparsers.add_parser(
-        'change_shape', help='Change shape.')
-    gen_parser = subparsers.add_parser(
-        'gen', help='Generate test case resource.')
-    compare_parser = subparsers.add_parser(
-        'compare', help='Compare result data with expect output.')
-    compare2_parser = subparsers.add_parser(
-        'compare2', help='Compare result data with expect output by st '
-                         'report.')
-
-    # get shape parser
-    get_shape_parser.add_argument(
-        "-m", "--model", dest="model_path", default="",
-        help="<Required> the model path", required=True)
-    get_shape_parser.add_argument(
-        "-out", "--output", dest="output_path", default="",
-        help="<Optional> the output path", required=False)
-
-    # change shape parser
-    change_shape_parser.add_argument(
-        "-m", "--model", dest="model_path", default="",
-        help="<Required> the model path", required=True)
-    change_shape_parser.add_argument(
-        "-i", "--input", dest="input_file", default="",
-        help="<Required> the input file, .json file", required=True)
-    change_shape_parser.add_argument(
-        "-out", "--output", dest="output_path", default="",
-        help="<Optional> the output path", required=False)
-
-    # gen parser
-    gen_parser.add_argument(
-        "-i", "--input", dest="input_file", default="",
-        help="<Required> the input file, .json file, ", required=True)
-    gen_parser.add_argument(
-        "-out", "--output", dest="output_path", default="",
-        help="<Optional> the output path", required=False)
-    gen_parser.add_argument(
-        '-c', "--case_name", dest="case_name", default='all',
-        help="<Optional> the case name to run or gen, splits with ',', like "
-             "'case0,case1'.", required=False)
-    gen_parser.add_argument(
-        '-d', "--device_id", dest="device_id", default="0",
-        help="<Optional> input device id, default is 0."
-        , required=False)
-
-    # compare parse
-    compare_parser.add_argument(
-        "-i", "--report path", dest="report_path", default="",
-        help="<Required> the st report file path",
-        required=False)
-    compare_parser.add_argument(
-        "-out", "--output", dest="output_path", default="",
-        help="<Optional> the output path", required=False)
-    compare_parser.add_argument(
-        '-err_thr', "--error_threshold", dest="error_threshold", default="[0.01, 0.05]",
-        help="<Optional> error_threshold, Error threshold of result"
-             "comparison, like [0.001, 0.001].",
-        required=False)
-
-    # comapre2 parse
-    compare2_parser.add_argument(
-        "-result", "--result path", dest="result_path", default="",
-        help="<Required> the result file path, ", required=True)
-    compare2_parser.add_argument(
-        "-expect", "--expect path", dest="expect_path", default="",
-        help="<Required> the expect result file path",
-        required=True)
 
 
 def save_report(report, output_path):
@@ -349,22 +209,12 @@ def main():
     :return:
     """
     # parse input argument
-    parse = argparse.ArgumentParser()
-    subparsers = parse.add_subparsers(help='commands')
-    create_parser = subparsers.add_parser(
-        'create', help='Create test case json file.', allow_abbrev=False)
-    run_parser = subparsers.add_parser(
-        'run', help='Run the test case on the aihost.', allow_abbrev=False)
-    mi_parser = subparsers.add_parser(
-        'mi', help='Interaction with the IDE.', allow_abbrev=False)
-    _create_parser(create_parser)
-    _run_parser(run_parser)
-    _mi_parser(mi_parser)
-
-    if len(sys.argv) <= 1:
-        parse.print_usage()
-        sys.exit(ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
-    args = parse.parse_args(sys.argv[1:])
+    try:
+        args = MsopstArgParser()
+    except utils.OpTestGenException as ex:
+        sys.exit(ex.error_info)
+    finally:
+        pass
     # run/mi gen command generator report.
     report = st_report.OpSTReport(" ".join(sys.argv))
     register(save_report, report=report, output_path=args.output_path)

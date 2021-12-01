@@ -9,7 +9,6 @@ Huawei Technologies Co., Ltd. All Rights Reserved © 2020
 
 import os
 import time
-import subprocess
 
 from op_test_frame.common import op_status
 
@@ -33,6 +32,7 @@ class AclOpRunner:
         """
         Compile acl op
         """
+        utils.print_step_log("[%s] Compile testcase test code." % (os.path.basename(__file__)))
         utils.print_info_log('Start to compile %s.' % self.path)
         cmakelist_path = os.path.join(self.path, ConstManager.CMAKE_LIST_FILE_NAME)
         if not os.path.exists(cmakelist_path):
@@ -43,6 +43,7 @@ class AclOpRunner:
                 ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
 
         # do cmake and make
+        origin_path = os.getcwd()
         build_path = os.path.join(self.path, ConstManager.BUILD_INTERMEDIATES_HOST)
         utils.check_path_valid(build_path, True)
         os.chdir(build_path)
@@ -51,42 +52,23 @@ class AclOpRunner:
         cmd_str = "cd %s && %s && %s" % (build_path, " ".join(cmake_cmd),
                                          " ".join(['make']))
         utils.print_info_log("Compile command line: %s " % cmd_str)
+        main_path = os.path.join(self.path, 'run', 'out', ConstManager.MAIN)
         try:
-            self._execute_command(cmake_cmd)
-            self._execute_command(['make'])
+            utils.execute_command(cmake_cmd)
+            utils.execute_command(['make'])
         except utils.OpTestGenException:
             self.add_op_st_stage_result(op_status.FAILED, "compile_acl_code",
                                         None, cmd_str)
+            if not os.path.exists(main_path):
+                utils.print_error_log("Please check the env LD_LIBRARAY_PATH or env NPU_HOST_LIB.")
+                raise utils.OpTestGenException(
+                    ConstManager.ACL_COMPILE_ERROR)
         finally:
             pass
         utils.print_info_log('Finish to compile %s.' % self.path)
+        os.chdir(origin_path)
         self.add_op_st_stage_result(op_status.SUCCESS, "compile_acl_code",
                                     None, cmd_str)
-        # set atc & acl log level env.
-        self.set_log_level_env()
-        # do atc single op model conversion
-        utils.print_info_log('Start to convert single op.')
-        run_out_path = os.path.join(self.path, ConstManager.RUN_OUT)
-        os.chdir(run_out_path)
-        atc_cmd = self._get_atc_cmd()
-        cmd_str = "cd %s && %s " % (run_out_path, " ".join(atc_cmd))
-        utils.print_info_log("ATC command line: %s" % cmd_str)
-        try:
-            atc_start_time = time.time()
-            self._execute_command(atc_cmd)
-            atc_end_time = time.time()
-            utils.print_info_log('Atc execute time: %f s.'
-                                 % (atc_end_time - atc_start_time))
-        except utils.OpTestGenException:
-            self.add_op_st_stage_result(op_status.FAILED,
-                                        "atc_single_op_convert",
-                                        None, cmd_str)
-        finally:
-            pass
-        self.add_op_st_stage_result(op_status.SUCCESS,
-                                    "atc_single_op_convert",
-                                    None, cmd_str)
-        utils.print_info_log('Finish to convert single op.')
 
     def add_op_st_stage_result(self, status=op_status.FAILED,
                                stage_name=None, result=None, cmd=None):
@@ -98,52 +80,11 @@ class AclOpRunner:
         for case_report in self.report.report_list:
             case_report.trace_detail.add_stage_result(stage_result)
 
-    def _get_atc_cmd(self):
-        atc_cmd = ['atc', '--singleop=test_data/config/acl_op.json',
-                   '--soc_version=' + self.soc_version, '--output=op_models']
-        if self.advance_args is not None:
-            atc_advance_cmd = self.advance_args.get_atc_advance_cmd()
-            atc_cmd.extend(atc_advance_cmd)
-        return atc_cmd
-
-    @staticmethod
-    def _execute_command(cmd):
-        utils.print_info_log('Execute command: %s' % cmd)
-        process = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT)
-        while process.poll() is None:
-            line = process.stdout.readline()
-            line = line.strip()
-            if line:
-                print(line)
-        if process.returncode != 0:
-            utils.print_error_log('Failed to execute command: %s' % cmd)
-            raise utils.OpTestGenException(
-                ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
-
-    def set_log_level_env(self):
-        """
-        set log level
-        """
-        if self.advance_args is not None:
-            utils.print_info_log('Set env for ATC & ACL.')
-            get_log_level, get_slog_flag = self.advance_args.get_env_value()
-            set_log_level_env = ['export', 'ASCEND_GLOBAL_LOG_LEVEL='
-                                 + get_log_level]
-            set_slog_print_env = ['export', 'ASCEND_SLOG_PRINT_TO_STDOUT='
-                                  + get_slog_flag]
-            utils.print_info_log("Set env command line: %s && %s " % (
-                " ".join(set_log_level_env), " ".join(set_slog_print_env)))
-            os.environ['ASCEND_GLOBAL_LOG_LEVEL'] = get_log_level
-            os.environ['ASCEND_SLOG_PRINT_TO_STDOUT'] = get_slog_flag
-            utils.print_info_log('Finish to set env for ATC & ACL.')
-
     def run(self):
         """
         Run acl op
         """
         main_path = os.path.join(self.path, 'run', 'out', ConstManager.MAIN)
-        utils.print_info_log('Start to run %s.' % main_path)
         if not os.path.exists(main_path):
             utils.print_error_log(
                 'There is no execute file "%s" in %s. Please check the path '
@@ -158,11 +99,21 @@ class AclOpRunner:
         if self.advance_args is not None:
             get_performance_mode = self.advance_args.get_performance_mode_flag()
         if get_performance_mode:
+            utils.print_step_log("[%s] Get system performance data." % (os.path.basename(__file__)))
+            prof_run_start = time.time()
             self.prof_run(out_path)
+            prof_run_end = time.time()
+            utils.print_info_log('System performance data executes time: %f s.'
+                                 % (prof_run_end - prof_run_start))
         else:
+            utils.print_step_log("[%s] Start to execute testcase." % (os.path.basename(__file__)))
             utils.print_info_log("Run command line: cd %s && %s " % (
                 out_path, " ".join(run_cmd)))
-            self._execute_command(run_cmd)
+            main_run_start = time.time()
+            utils.execute_command(run_cmd)
+            main_run_end = time.time()
+            utils.print_info_log('Testcase execute in %s, cost time: %f s.'
+                                 % (self.soc_version, (main_run_end - main_run_start)))
             utils.print_info_log('Finish to run %s.' % main_path)
 
     def prof_run(self, out_path):
@@ -182,7 +133,7 @@ class AclOpRunner:
                    '--aicpu=on', '--runtime-api=on', '--output=./' + ConstManager.PROF]
         utils.print_info_log("Run command line: cd %s && %s " % (
             out_path, " ".join(run_cmd)))
-        self._execute_command(run_cmd)
+        utils.execute_command(run_cmd)
         utils.print_info_log('Finish to run main with msprof.')
         self.prof_analyze(os.path.join(out_path, ConstManager.PROF), toolkit_root_path)
 
@@ -320,19 +271,12 @@ class AclOpRunner:
                            toolkit_root_path + ConstManager.MSPROF_PYC_REL_PATH,
                            'export', 'summary',
                            '-dir=./']
-            self._execute_command(analyze_cmd)
+            utils.execute_command(analyze_cmd)
             self._get_data_from_csv_summary(job_path, run_result_list)
         except IOError:
             utils.print_error_log("Operate directory of profiling data failed")
         finally:
             pass
-
-    def process(self):
-        """
-        compile and run acl op
-        """
-        self.acl_compile()
-        self.run()
 
 
 def _get_op_case_info_list(column_line_list, row_list, op_name_list, op_case_info_list):

@@ -187,7 +187,9 @@ class ArgParser:
 
     def _check_compute_unit_valid(self, args_compute_unit):
         compute_unit_list = args_compute_unit.split(",")
+        compute_unit_valid = []
         for unit in compute_unit_list:
+            compute_unit_valid.append(unit.lower())
             unit_parse_list = unit.split("-", 1)
             if len(unit_parse_list) == 1:
                 self._init_core_type(unit_parse_list,
@@ -199,7 +201,7 @@ class ArgParser:
                                      ConstManager.AICORE)
             else:
                 self._print_compute_unit_invalid_log()
-        self.compute_unit = compute_unit_list
+        self.compute_unit = compute_unit_valid
         return ConstManager.MS_OP_GEN_NONE_ERROR
 
     @staticmethod

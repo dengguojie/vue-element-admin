@@ -9,14 +9,15 @@ Change History: 2020-07-11 file Created
 """
 
 import os
+import shutil
 import sys
-import json
 from shutil import copytree
 from shutil import copy2
 from shutil import Error
 
 from op_test_frame.common import op_status
 from op_test_frame.st.interface.global_config_parser import GlobalConfig as GC
+from op_test_frame.st.interface.atc_transform_om import AtcTransformOm
 from .const_manager import ConstManager
 from . import utils
 from . import op_st_case_info
@@ -24,100 +25,8 @@ from ..template.code_snippet import CodeTemplate
 from . import dynamic_handle
 
 
-def _get_desc_dic(tmp_dic, key_desc, testcase_struct, output_path):
-    tmp_dic[key_desc] = []
-    input_name_list = []
-    for index, desc_dic in enumerate(testcase_struct.get(key_desc)):
-        if desc_dic.get('ori_format') is not None and \
-                desc_dic.get('ori_shape') is not None:
-            res_desc_dic = {
-                'format': desc_dic.get('format'),
-                'origin_format': desc_dic.get('ori_format'),
-                'type': desc_dic.get('type'),
-                'shape': desc_dic.get('shape'),
-                'origin_shape': desc_dic.get('ori_shape')}
-        else:
-            res_desc_dic = {
-                'format': desc_dic.get('format'),
-                'type': desc_dic.get('type'),
-                'shape': desc_dic.get('shape')}
-        # add is_const in acl_op.json
-        utils.ConstInput.add_const_info_in_acl_json(desc_dic, res_desc_dic, output_path,
-                                                    testcase_struct.get(ConstManager.CASE_NAME), index)
-        # Add name field for input*.paramType = optional or dynamic scenarios.
-        input_name = desc_dic.get('name')
-        if input_name is not None:
-            # check the input_desc has the same name.
-            if input_name in input_name_list:
-                utils.print_error_log(
-                    "The input name: (%s) has already exist." % input_name)
-                raise utils.OpTestGenException(
-                    ConstManager.OP_TEST_GEN_INVALID_INPUT_NAME_ERROR)
-            input_name_list.append(input_name)
-            res_desc_dic.update(
-                {'name': desc_dic.get('name')})
-        # Add shape_range in acl.json for dynamic shape of operators
-        if desc_dic.get(ConstManager.SHAPE_RANGE):
-            res_desc_dic.update(
-                {ConstManager.SHAPE_RANGE: desc_dic.get(ConstManager.SHAPE_RANGE)})
-        tmp_dic[key_desc].append(res_desc_dic)
-
-
-def _get_testcase_dict(testcase_struct, output_path):
-    # init dic with op name
-    tmp_dic = {'op': testcase_struct.get('op')}
-    # process input desc
-    if "input_desc" in testcase_struct.keys():
-        _get_desc_dic(tmp_dic, "input_desc", testcase_struct, output_path)
-    # process output desc
-    if "output_desc" in testcase_struct.keys():
-        _get_desc_dic(tmp_dic, "output_desc", testcase_struct, output_path)
-    # process attr
-    if "attr" in testcase_struct.keys():
-        tmp_dic['attr'] = []
-        for attr_dic in testcase_struct.get('attr'):
-            if attr_dic.get('type') == 'data_type' and attr_dic.get(
-                    'value') in ConstManager.ATTR_TYPE_SUPPORT_TYPE_MAP.keys():
-                attr_dic['value'] = ConstManager.ATTR_TYPE_SUPPORT_TYPE_MAP.get(
-                    attr_dic.get('value'))
-            tmp_dic.get('attr').append(attr_dic)
-    return tmp_dic
-
-
-def _create_acl_op_json_content(testcase_list, output_path, compile_flag):
-    content = []
-    if compile_flag is not None:
-        compile_dic = {'compile_flag': compile_flag}
-        content.append(compile_dic)
-    for testcase_struct in testcase_list:
-        tmp_dic = _get_testcase_dict(testcase_struct, output_path)
-        # only append non-repetitive json struct
-        if tmp_dic not in content:
-            content.append(tmp_dic)
-    try:
-        return str(json.dumps(content, sort_keys=True, indent=2))
-    except TypeError:
-        utils.print_error_log("")
-    finally:
-        pass
-    return ""
-
-
-def _write_content_to_file(content, file_path):
-    try:
-        with os.fdopen(os.open(file_path, ConstManager.WRITE_FLAGS,
-                               ConstManager.WRITE_MODES), 'w+') as file_object:
-            file_object.write(content)
-    except OSError as err:
-        utils.print_error_log("Unable to write file(%s): %s." % (file_path,
-                                                                 str(err)))
-        raise utils.OpTestGenException(ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
-    finally:
-        pass
-    utils.print_info_log("File %s generated successfully." % file_path)
-
-
 def _append_content_to_file(content, file_path):
+    utils.print_step_log("[%s] Generate testcase test code." % (os.path.basename(__file__)))
     try:
         with os.fdopen(os.open(file_path, ConstManager.WRITE_FLAGS,
                                ConstManager.WRITE_MODES), 'a+') as file_object:
@@ -313,6 +222,11 @@ def copy_template(src, dst):
         dstname = os.path.join(dst, name)
         try:
             if os.path.isdir(dstname) and os.listdir(dstname):
+                if name == 'run':
+                    src_acl_json = src + ConstManager.TEST_DATA_CONFIG_RELATIVE_PATH + '/acl.json'
+                    dst_acl_json = dst + ConstManager.TEST_DATA_CONFIG_RELATIVE_PATH + '/acl.json'
+                    shutil.copyfile(src_acl_json, dst_acl_json)
+                    continue
                 utils.print_error_log("%s is not empty,please settle it "
                                       "and retry ." % dstname)
                 sys.exit()
@@ -378,12 +292,10 @@ class AclOpGenerator:
                                 output_testcase_cpp_path)
 
         ## f3.prepare acl json content and write file
-        acl_json_content = _create_acl_op_json_content(
-            self.testcase_list, self.output_path, self.compile_flag)
-        output_acl_op_json_path = self.output_path + \
-                                  ConstManager.ACL_OP_JSON_RELATIVE_PATH
-        _write_content_to_file(acl_json_content,
-                               output_acl_op_json_path)
+        if self.machine_type:
+            atc_transform = AtcTransformOm(
+                self.testcase_list, self.output_path, self.compile_flag, self.machine_type, self.report)
+            atc_transform.create_acl_op()
         # deal with report
         gen_acl_result = op_st_case_info.OpSTStageResult(
             op_status.SUCCESS,

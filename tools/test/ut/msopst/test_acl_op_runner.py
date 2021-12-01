@@ -7,10 +7,13 @@ from op_test_frame.st.interface import utils
 from op_test_frame.st.interface.const_manager import ConstManager
 from op_test_frame.st.interface.st_report import OpSTReport
 from op_test_frame.st.interface.acl_op_runner import AclOpRunner
+from op_test_frame.st.interface.atc_transform_om import AtcTransformOm
 from op_test_frame.st.interface.advance_ini_parser import AdvanceIniParser
 
 sys.path.append(os.path.dirname(__file__) + "/../../")
 MSOPST_CONF_INI = './msopst/golden/base_case/input/msopst.ini'
+CASE_LIST = [{'op': 'Op'}]
+
 
 class Process():
     def __init__(self, return_code=1):
@@ -18,6 +21,7 @@ class Process():
 
     def poll(self):
         return "None"
+
 
 class TestUtilsMethods(unittest.TestCase):
     def test_msopst_compile1(self):
@@ -41,7 +45,7 @@ class TestUtilsMethods(unittest.TestCase):
         report = OpSTReport()
         with mock.patch('op_test_frame.st.interface.utils.check_path_valid'):
             with mock.patch(
-                    'op_test_frame.st.interface.acl_op_runner.AclOpRunner._execute_command'):
+                    'op_test_frame.st.interface.utils.execute_command'):
                 with mock.patch('os.path.exists', return_value=True), mock.patch('os.chdir'):
                     runner = AclOpRunner('/home', 'ddd', report)
                     runner.acl_compile()
@@ -59,7 +63,7 @@ class TestUtilsMethods(unittest.TestCase):
         report = OpSTReport()
         with mock.patch('op_test_frame.st.interface.utils.check_path_valid'):
             with mock.patch(
-                    'op_test_frame.st.interface.acl_op_runner.AclOpRunner._execute_command'):
+                    'op_test_frame.st.interface.utils.execute_command'):
                 with mock.patch('os.path.exists',
                                 return_value=True), mock.patch('os.chdir'):
                     runner = AclOpRunner('/home', 'ddd', report)
@@ -69,40 +73,37 @@ class TestUtilsMethods(unittest.TestCase):
         report = OpSTReport()
         with mock.patch('op_test_frame.st.interface.utils.check_path_valid'):
             with mock.patch(
-                    'op_test_frame.st.interface.acl_op_runner.AclOpRunner._execute_command'):
+                    'op_test_frame.st.interface.utils.execute_command'):
                 with mock.patch('os.path.exists',
                                 return_value=True), mock.patch('os.chdir'):
                     runner = AclOpRunner('/home', 'ddd', report)
-                    runner.process()
+                    runner.run()
 
     def test_msopst_run4(self):
         report = OpSTReport()
         with mock.patch('op_test_frame.st.interface.utils.check_path_valid'):
             with mock.patch(
-                    'op_test_frame.st.interface.acl_op_runner.AclOpRunner._execute_command'):
+                    'op_test_frame.st.interface.utils.execute_command'):
                 with mock.patch('os.path.exists',
                                 return_value=True), mock.patch('os.chdir'):
                     advance = AdvanceIniParser(MSOPST_CONF_INI)
                     runner = AclOpRunner('/home', 'ddd', report, advance)
-                    runner.process()
+                    runner.run()
 
     def test_msopst_get_atc_cmd(self):
-        report = OpSTReport()
-        advance = AdvanceIniParser(MSOPST_CONF_INI)
-        runner = AclOpRunner('/home', 'ddd', report, advance)
-        runner._get_atc_cmd()
+        with mock.patch('op_test_frame.st.interface.utils.check_path_valid'):
+            with mock.patch('os.makedirs', return_value=True):
+                AtcTransformOm._get_atc_cmd('Ascend310', None)
 
     def test_msopst_set_log_level_env(self):
-        report = OpSTReport()
-        advance = AdvanceIniParser(MSOPST_CONF_INI)
-        runner = AclOpRunner('/home', 'ddd', report, advance)
-        runner.set_log_level_env()
+        with mock.patch('op_test_frame.st.interface.utils.check_path_valid'):
+            AtcTransformOm._set_log_level_env(None)
 
     def test_msopst_prof_run1(self):
         with mock.patch('os.getenv', return_value="/home"):
             with mock.patch('os.path.exists', return_value=True):
                 with mock.patch(
-                        'op_test_frame.st.interface.acl_op_runner.AclOpRunner._execute_command'):
+                        'op_test_frame.st.interface.utils.execute_command'):
                     report = OpSTReport()
                     advance = AdvanceIniParser(MSOPST_CONF_INI)
                     runner = AclOpRunner('/home', 'ddd', report, advance)

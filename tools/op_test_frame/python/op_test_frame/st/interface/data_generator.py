@@ -12,6 +12,7 @@ import sys
 import os
 import importlib
 import functools
+import time
 
 import numpy as np
 
@@ -265,14 +266,16 @@ class DataGenerator:
         generate data by case list
         """
         utils.check_path_valid(self.output_path, True)
+        gen_data_start = time.time()
         for case in self.case_list:
             # support no input scene
             if len(case.get('input_desc')) < 1:
                 utils.print_info_log("There are no inputs. Skip generating input data.")
                 return
             case_name = case.get('case_name')
+            utils.print_step_log("[%s] Generate data for testcase." % (os.path.basename(__file__)))
             utils.print_info_log(
-                'Start to generate the data for %s.' % case_name)
+                'Start to generate the input data for %s.' % case_name)
             param_info = ""
             # get intput  and output param
             param_info_list, calc_func_params_tmp = \
@@ -309,6 +312,10 @@ class DataGenerator:
                 utils.print_info_log(
                     'Finish to generator the expect output data for '
                     '%s.' % case_name)
+        gen_data_end = time.time()
+        utils.print_info_log('Generate data execute time: %f s.'
+                             % (gen_data_end - gen_data_start))
+        utils.print_info_log("Generate data for testcase in %s." % self.output_path)
 
     @staticmethod
     def _get_tensors_and_func(case, calc_func_params_tmp):
@@ -340,11 +347,11 @@ class DataGenerator:
         case_name = case.get('case_name')
         expect_data_dir = os.path.join(self.output_path, 'expect')
         utils.make_dirs(expect_data_dir)
-        utils.print_info_log(
-            'Start to generate the expect output data for %s.' %
-            case_name)
         if case.get("calc_expect_func_file") \
                 and case.get("calc_expect_func_file_func"):
+            utils.print_info_log(
+                'Start to generate the expect output data for %s.' %
+                case_name)
             expect_result_tensors, expect_func = self._get_tensors_and_func(
                 case, calc_func_params_tmp)
             for idx, expect_result_tensor in enumerate(expect_result_tensors):

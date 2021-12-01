@@ -393,7 +393,7 @@ class TestUtilsMethods(unittest.TestCase):
                         'op_test_frame.st.interface.acl_op_generator'
                         '.copy_template'):
                     with mock.patch(
-                            'op_test_frame.st.interface.acl_op_generator'
+                            'op_test_frame.st.interface.atc_transform_om.AtcTransformOm'
                             '._write_content_to_file'):
                         with mock.patch('op_test_frame.st.interface'
                                         '.case_generator'
@@ -435,8 +435,7 @@ class TestUtilsMethods(unittest.TestCase):
         err_thr = [0.01, 0.01]
         with mock.patch('op_test_frame.st.interface.utils.check_path_valid'):
             with mock.patch(
-                    'op_test_frame.st.interface.acl_op_runner'
-                    '.AclOpRunner._execute_command'):
+                    'op_test_frame.st.interface.utils.execute_command'):
                 with mock.patch('os.path.exists',
                                 return_value=True), mock.patch('os.chdir'):
                     with mock.patch('os.access', return_value=True):
@@ -447,22 +446,20 @@ class TestUtilsMethods(unittest.TestCase):
                                     'OpSTReport.get_case_report',
                                     return_value=op_st_report):
                                 runner = AclOpRunner('/home', 'ddd', report)
-                                runner.process()
+                                runner.run()
                                 result_comparer.compare(
                                     report, ST_GOLDEN_OP_RESULT_TXT, err_thr)
 
     def test_compare_func_3(self):
         """
-        verify the normal scene of compare2 function in result_comparer.py
+        verify the normal scene of compare_by_path function in result_comparer.py
         """
         report = OpSTReport()
         op_st = OpSTCase("AddN", {"calc_expect_func_file_func": 1})
         op_st_case_trace = OpSTCaseTrace(op_st)
         op_st_report = OpSTCaseReport(op_st_case_trace)
         with mock.patch('op_test_frame.st.interface.utils.check_path_valid'):
-            with mock.patch(
-                    'op_test_frame.st.interface.acl_op_runner'
-                    '.AclOpRunner._execute_command'):
+            with mock.patch('op_test_frame.st.interface.utils.execute_command'):
                 with mock.patch('os.path.exists',
                                 return_value=True), mock.patch('os.chdir'):
                     with mock.patch('os.access', return_value=True):
@@ -476,8 +473,8 @@ class TestUtilsMethods(unittest.TestCase):
                                         return_value=op_st_report):
                                     runner = AclOpRunner(
                                         '/home', 'ddd', report)
-                                    runner.process()
-                                    result_comparer.compare2(
+                                    runner.run()
+                                    result_comparer.compare_by_path(
                                         report, ST_GOLDEN_OP_RESULT_TXT)
 
     def test_compare_func_4(self):
@@ -627,9 +624,7 @@ class TestUtilsMethods(unittest.TestCase):
                      mock.patch('os.path.exists', return_value=True), \
                      mock.patch('os.access', return_value=True), \
                      mock.patch('os.chdir'):
-                    with mock.patch(
-                            'op_test_frame.st.interface.acl_op_runner'
-                            '.AclOpRunner._execute_command'):
+                    with mock.patch('op_test_frame.st.interface.utils.execute_command'):
                         runner.prof_analyze(os.path.join(
                             out_path, ConstManager.PROF), toolkit_root_path)
 
@@ -738,8 +733,7 @@ class TestUtilsMethods(unittest.TestCase):
         with pytest.raises(SystemExit):
             with mock.patch('sys.argv', args):
                 with mock.patch(
-                        'op_test_frame.st.interface.utils'
-                        '.check_path_valid'):
+                        'op_test_frame.st.interface.utils.execute_command'):
                     msopst.main()
         pooling_output_src = os.path.join(ST_OUTPUT, 'Pooling/src')
         pooling_output_json = os.path.join(ST_OUTPUT,
@@ -870,7 +864,9 @@ class TestUtilsMethods(unittest.TestCase):
                 'Ascend310', '-conf', MSOPST_CONF_INI, '-out', ST_OUTPUT]
         with pytest.raises(SystemExit):
             with mock.patch('sys.argv', args):
-                msopst.main()
+                with mock.patch(
+                        'op_test_frame.st.interface.utils.execute_command'):
+                    msopst.main()
         adds_output_src = os.path.join(ST_OUTPUT, 'Adds/src')
         self.assertTrue(test_utils.check_file_context(
             adds_output_src, ST_GOLDEN_OP_GEN_WITH_VALUE_ACL_PROJECT_OUTPUT))
@@ -903,7 +899,9 @@ class TestUtilsMethods(unittest.TestCase):
                 'Ascend310', '-conf', MSOPST_CONF_INI, '-out', ST_OUTPUT]
         with pytest.raises(SystemExit):
             with mock.patch('sys.argv', args):
-                msopst.main()
+                with mock.patch(
+                        'op_test_frame.st.interface.utils.execute_command'):
+                    msopst.main()
         fuzz_add_output_src = os.path.join(ST_OUTPUT, 'Add/src/testcase.cpp')
         fuzz_add_output_json = os.path.join(ST_OUTPUT,
                                            'Add/run/out/test_data/config/')
@@ -938,7 +936,9 @@ class TestUtilsMethods(unittest.TestCase):
                 'Ascend310', '-conf', MSOPST_CONF_INI, '-out', ST_OUTPUT]
         with pytest.raises(SystemExit):
             with mock.patch('sys.argv', args):
-                msopst.main()
+                with mock.patch(
+                        'op_test_frame.st.interface.utils.execute_command'):
+                    msopst.main()
         const_testcase_cpp = os.path.join(ST_OUTPUT, 'ResizeBilinearV2/src/testcase.cpp')
         const_op_execute_cpp = os.path.join(ST_OUTPUT, 'ResizeBilinearV2/src/op_execute.cpp')
         const_acl_op_json = os.path.join(ST_OUTPUT, 'ResizeBilinearV2/run/out/test_data'
@@ -959,7 +959,9 @@ class TestUtilsMethods(unittest.TestCase):
                 'Ascend310', '-conf', MSOPST_CONF_INI, '-out', ST_OUTPUT]
         with pytest.raises(SystemExit):
             with mock.patch('sys.argv', args):
-                msopst.main()
+                with mock.patch(
+                        'op_test_frame.st.interface.utils.execute_command'):
+                    msopst.main()
         const_testcase_cpp = os.path.join(ST_OUTPUT, 'ResizeBilinearV2/src/testcase.cpp')
         const_op_execute_cpp = os.path.join(ST_OUTPUT, 'ResizeBilinearV2/src/op_execute.cpp')
         const_acl_op_json = os.path.join(ST_OUTPUT, 'ResizeBilinearV2/run/out/test_data'
@@ -981,7 +983,9 @@ class TestUtilsMethods(unittest.TestCase):
                 'Ascend310', '-conf', MSOPST_CONF_INI, '-out', ST_OUTPUT]
         with pytest.raises(SystemExit):
             with mock.patch('sys.argv', args):
-                msopst.main()
+                with mock.patch(
+                        'op_test_frame.st.interface.utils.execute_command'):
+                    msopst.main()
         const_testcase_cpp = os.path.join(ST_OUTPUT, 'ResizeBilinearV2/src/testcase.cpp')
         const_op_execute_cpp = os.path.join(ST_OUTPUT, 'ResizeBilinearV2/src/op_execute.cpp')
         const_acl_op_json = os.path.join(ST_OUTPUT, 'ResizeBilinearV2/run/out/test_data'
@@ -1002,7 +1006,8 @@ class TestUtilsMethods(unittest.TestCase):
                 'Ascend310', '-conf', MSOPST_CONF_INI, '-out', ST_OUTPUT]
         with pytest.raises(SystemExit):
             with mock.patch('sys.argv', args):
-                msopst.main()
+                with mock.patch('op_test_frame.st.interface.utils.execute_command'):
+                    msopst.main()
         const_testcase_cpp = os.path.join(ST_OUTPUT, 'TestScalar/src/testcase.cpp')
         const_acl_op_json = os.path.join(ST_OUTPUT, 'TestScalar/run/out/test_data'
                                                     '/config/acl_op.json')

@@ -54,6 +54,8 @@ class ConstManager:
     OP_TEST_GEN_TF_GET_PLACEHOLDER_ERROR = 1005
     OP_TEST_GEN_TF_CHANGE_PLACEHOLDER_ERROR = 1006
 
+    ATC_TRANSFORM_ERROR = 1110
+    ACL_COMPILE_ERROR = 1111
     ACL_TEST_GEN_NONE_ERROR = 0
     ACL_TEST_GEN_ERROR = 255
 
@@ -73,6 +75,7 @@ class ConstManager:
     MAIN_CPP_RELATIVE_PATH = "/src/main.cpp"
     TESTCASE_CPP_RELATIVE_PATH = "/src/testcase.cpp"
     ACL_OP_JSON_RELATIVE_PATH = "/run/out/test_data/config/acl_op.json"
+    TEST_DATA_CONFIG_RELATIVE_PATH = "/run/out/test_data/config"
     TESTCASE_PY_RELATIVE_PATH = "/src/test_{op_name}.py"
     PYTEST_INI_RELATIVE_PATH = "/src/pytest.ini"
     INPUT_SUFFIX_LIST = ['.ini', '.py']

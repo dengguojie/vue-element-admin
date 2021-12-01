@@ -4,18 +4,27 @@ from unittest import mock
 from op_test_frame.st.interface import utils
 from op_test_frame.st.interface.const_manager import ConstManager
 from op_test_frame.st.interface import acl_op_generator
+from op_test_frame.st.interface.atc_transform_om import AtcTransformOm
+from op_test_frame.st.interface.st_report import OpSTReport
+
+CASE_LIST = [{'op': 'Op'}]
+
 
 class TestUtilsMethods(unittest.TestCase):
     def test_msopst_write_content_to_file_error(self):
         with pytest.raises(utils.OpTestGenException) as error:
             with mock.patch('os.fdopen', side_effect=OSError):
-                acl_op_generator._write_content_to_file("content", "/home")
+                AtcTransformOm._write_content_to_file("content", "/home")
         self.assertEqual(error.value.args[0],
                          ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
 
     def test_msopst_create_acl_op_json_content_error(self):
+        report = OpSTReport()
         with mock.patch('json.dumps', side_effect=TypeError):
-            acl_op_generator._create_acl_op_json_content("", "", None)
+            with mock.patch('op_test_frame.st.interface.utils.check_path_valid'):
+                with mock.patch('os.makedirs', return_value=True):
+                    atc_transform = AtcTransformOm(CASE_LIST, '/home', None, False, report)
+                    atc_transform.create_acl_op_json_content("", "", None)
 
     def test_msopst_append_content_to_file_error(self):
         with pytest.raises(utils.OpTestGenException) as error:

@@ -133,6 +133,7 @@ class CaseDesign:
         self.check_argument_valid()
 
         # design sub test case by json file
+        utils.print_step_log("[%s] Start to parser testcase json." % (os.path.basename(__file__)))
         case_list = self.generate_cases()
 
         if len(case_list) == 0:

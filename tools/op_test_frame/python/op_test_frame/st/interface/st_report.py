@@ -22,11 +22,24 @@ apply info classes: OpSTCaseReport, OpSTReport
 import os
 import json
 
+import numpy as np
 from op_test_frame.common import op_status
 from op_test_frame.utils import file_util
 from .op_st_case_info import OpSTCaseTrace
 from .const_manager import ConstManager
 from . import utils
+
+
+class ReportJsonEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, complex):
+            return {obj.__class__.__name__: True, "real": obj.real, "imag": obj.imag}
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
 
 
 class OpSTCaseReport:
@@ -176,7 +189,7 @@ run command: %s
         report_data_dir = os.path.dirname(report_data_path)
         if not os.path.exists(report_data_dir):
             file_util.makedirs(report_data_dir, mode=ConstManager.DATA_DIR_MODES)
-        json_str = json.dumps(json_obj, indent=4)
+        json_str = json.dumps(json_obj, indent=4, cls=ReportJsonEncoder)
         try:
             if os.path.exists(report_data_path):
                 os.remove(report_data_path)
