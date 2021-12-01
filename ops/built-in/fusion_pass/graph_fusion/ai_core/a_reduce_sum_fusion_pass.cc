@@ -180,7 +180,8 @@ Status AReduceSumFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, v
                             reinterpret_cast<uint8_t*>(inputAssit.get()),
                             len_dim * sizeof(int32_t))), assitPtr = nullptr;
                             return PARAM_INVALID);
-    vector<ge::GeTensorPtr> weights = {assitPtr};
+    vector<ge::GeTensorPtr> weights = ge::OpDescUtils::MutableWeights(sumNode);
+    weights.push_back(assitPtr);
     ge::OpDescUtils::SetWeights(sumNode, weights);
     auto constInputNodes = OpDescUtils::GetConstInputs(sumNode);
     FUSION_PASS_CHECK(constInputNodes.empty(),
