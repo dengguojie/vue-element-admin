@@ -58,7 +58,44 @@ create_lib(){
   echo $dotted_line
   echo "TIPS"
   echo "If you compile a shared or static lib, you can copy your lib from the subfolder of./build/cann to the corresponding folder of/usr/local/ascend"
-  echo $dotted_line  
+  echo $dotted_line
+  if [[  "$upload" =~ "TRUE" ]];then
+    
+    piplist=`pip3 list`
+    if [[ ! $piplist =~ "esdk-obs-python" ]];then
+      wget https://ascend-cann.obs.cn-north-4.myhuaweicloud.com/huaweicloud-obs-sdk-python.zip
+      unzip -d ./temp huaweicloud-obs-sdk-python.zip
+      cd ./temp/src
+      python3 setup.py install
+      cd ../..
+    fi
+    gitconfig=`git config --list`
+    if [[ $gitconfig =~ "user.name" ]];then
+      name=`git config --list | grep name`
+      username=${name##*\=}
+    else
+      username=$(date "+%Y%m%d%H%M%S")
+    fi
+    
+    declare -A lib_dir
+    lib_dir=([optiling]="./build/cann/ops/built-in/op_tiling/liboptiling.so"
+             [opsproto]="./build/cann/ops/built-in/op_proto/libopsproto.so"
+     )
+     for lib in optiling opsproto
+       do
+         if [[ "$@" =~ "--$lib" ]];then
+            cd ../..
+            res=`python3 scripts/upload.py ${lib_dir[$lib]} $username $PWD`
+            if [[ $res =~ "ops-transfer" ]];then
+              echo "upload success, and the download link is"
+              echo $res
+            else
+              echo "upload failed, but do not effect local $lib"
+            fi
+            echo $dotted_line
+         fi
+       done
+  fi
 }
 
 set_env(){
@@ -400,6 +437,7 @@ checkopts() {
   build_mode=FALSE
   cov=FALSE
   CI_MODE=FALSE
+  upload=FALSE
   # Process the options
   while getopts 'xhj:usvg:a-:m-:f:' opt
   do
@@ -442,7 +480,8 @@ checkopts() {
                        exit 0;;
            base_env) chmod 744 ./scripts/install_base_env.sh 
                     ./scripts/install_base_env.sh
-		    exit 0;;
+                    exit 0;;
+           upload) upload=TRUE ;;
            install_daily) username="$2"
                           pwsswd="$3"
                           echo $dotted_line
@@ -721,7 +760,7 @@ main() {
     -DCPU_UT=$CPU_UT -DPASS_UT=$PASS_UT -DTILING_UT=$TILING_UT\
     -DPROTO_UT=$PROTO_UT -DPLUGIN_UT=$PLUGIN_UT -DONNX_PLUGIN_UT=$ONNX_PLUGIN_UT\
     -DUT_NO_EXEC=$UT_NO_EXEC -DBUILD_MODE=$build_mode" 
-    create_lib
+    create_lib $@
     exit 0
   fi
   
