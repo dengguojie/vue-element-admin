@@ -684,7 +684,8 @@ def dtype_check_decorator(func, *args, **kwargs):
         if not isinstance(args[0][0], tvm.tensor.Tensor):
             dict_args = {
                 "errCode": "E90001",
-                "detailed_cause": f"The first input type must be list of tvm.tensor, while type is [{type(args[0][0])}]"}
+                "detailed_cause": f"The first input type must be list of tvm.tensor, "
+                                  f"while type is [{type(args[0][0])}]"}
             raise RuntimeError(dict_args, get_error_message(dict_args))
         judge_dtype = args[0][0].dtype
     else:
