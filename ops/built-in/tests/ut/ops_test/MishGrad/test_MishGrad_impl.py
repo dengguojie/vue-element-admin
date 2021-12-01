@@ -69,11 +69,11 @@ case5 = {
     "format_expect": [],
     "support_expect": True}
 
-ut_case.add_case(["Ascend910A"], case1)
-ut_case.add_case(["Ascend910A"], case2)
-ut_case.add_case(["Ascend910A"], case3)
-ut_case.add_case(["Ascend910A"], case4)
-ut_case.add_case(["Ascend910A"], case5)
+ut_case.add_case(["Ascend910A", "Ascend920A"], case1)
+ut_case.add_case(["Ascend910A", "Ascend920A"], case2)
+ut_case.add_case(["Ascend910A", "Ascend920A"], case3)
+ut_case.add_case(["Ascend910A", "Ascend920A"], case4)
+ut_case.add_case(["Ascend910A", "Ascend920A"], case5)
 
 
 def calc_expect_func(input_grad, input_x, input_tanhx):
@@ -98,6 +98,6 @@ def compute_tanhx(data):
 
 
 if __name__ == '__main__':
-    ut_case.run("Ascend910A")
+    ut_case.run(["Ascend910A", "Ascend920A"])
     # ut_case.run()
     exit(0)
