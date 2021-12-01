@@ -448,11 +448,9 @@ def tune(tik_instance, num, num_16, num_2048, rounds, num_gm, data_out, data_out
 
     if num <= NUM_BLOCK:
         repeat_times = num_16 // BLOCK
-        thread_num = 2 if rounds > 1 else 1
-        with tik_instance.for_range(0, rounds, thread_num=thread_num) as i:
-            float_ub = tik_instance.Tensor("float16", [num_16], name="float_ub", scope=tik.scope_ubuf)
-            int_ub = tik_instance.Tensor("int32", [num_16], name="int_ub", scope=tik.scope_ubuf)
-
+        float_ub = tik_instance.Tensor("float16", [num_16], name="float_ub", scope=tik.scope_ubuf)
+        int_ub = tik_instance.Tensor("int32", [num_16], name="int_ub", scope=tik.scope_ubuf)
+        with tik_instance.for_range(0, rounds) as i:
             tik_instance.data_move(float_ub[0], data_out[i * num_16], 0, 1, repeat_times, 0, 0)
             tik_instance.data_move(data_out_[i * num], float_ub[0], 0, 1, repeat_times, 0, 0)
 
@@ -460,13 +458,11 @@ def tune(tik_instance, num, num_16, num_2048, rounds, num_gm, data_out, data_out
             tik_instance.data_move(data_indices_[i * num], int_ub[0], 0, 1, 2 * repeat_times, 0, 0)
 
     else:
-        num_res_align = ((num % NUM_BLOCK) + BLOCK - 1) // BLOCK * BLOCK
         repeat_times = NUM_BLOCK // BLOCK
-        thread_num = 2 if num_gm > 2 else 1
+        float_ub = tik_instance.Tensor("float16", [NUM_BLOCK], name="float_ub", scope=tik.scope_ubuf)
+        int_ub = tik_instance.Tensor("int32", [NUM_BLOCK], name="int_ub", scope=tik.scope_ubuf) 
         with tik_instance.for_range(0, rounds) as i:
-            with tik_instance.for_range(0, num_gm - 1, thread_num=thread_num) as j:
-                float_ub = tik_instance.Tensor("float16", [NUM_BLOCK], name="float_ub", scope=tik.scope_ubuf)
-                int_ub = tik_instance.Tensor("int32", [NUM_BLOCK], name="int_ub", scope=tik.scope_ubuf)
+            with tik_instance.for_range(0, num_gm) as j:
                 tik_instance.data_move(float_ub[0], data_out[i * num_2048 + j * NUM_BLOCK], 0, 1,
                                        repeat_times, 0, 0)
                 tik_instance.data_move(data_out_[i * num + j * NUM_BLOCK], float_ub[0], 0, 1,
@@ -476,18 +472,6 @@ def tune(tik_instance, num, num_16, num_2048, rounds, num_gm, data_out, data_out
                                        2 * repeat_times, 0, 0)
                 tik_instance.data_move(data_indices_[i * num + j * NUM_BLOCK], int_ub[0], 0, 1,
                                        2 * repeat_times, 0, 0)
-            # for last block in 32Byte align
-            float_ub = tik_instance.Tensor("float16", [num_res_align], name="float_ub", scope=tik.scope_ubuf)
-            int_ub = tik_instance.Tensor("int32", [num_res_align], name="int_ub", scope=tik.scope_ubuf)
-            tik_instance.data_move(float_ub[0], data_out[i * num_2048 + (num_gm - 1) * NUM_BLOCK], 0, 1,
-                                   num_res_align // BLOCK, 0, 0)
-            tik_instance.data_move(data_out_[i * num + (num_gm - 1) * NUM_BLOCK], float_ub[0], 0, 1,
-                                   num_res_align // BLOCK, 0, 0)
-
-            tik_instance.data_move(int_ub[0], data_indices[i * num_2048 + (num_gm - 1) * NUM_BLOCK], 0, 1,
-                                   2 * num_res_align // BLOCK, 0, 0)
-            tik_instance.data_move(data_indices_[i * num + (num_gm - 1) * NUM_BLOCK], int_ub[0], 0, 1,
-                                   2 * num_res_align // BLOCK, 0, 0)
 
     return data_out_, data_indices_
 
