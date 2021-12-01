@@ -1,0 +1,124 @@
+[
+  {
+    "case_name": "ResizeNearestNeighborV2Grad_dynamic_shape_dynamic_resize_nearest_neighbor_v2_grad_d_1_ascend910a",
+    "op": "ResizeNearestNeighborV2Grad",
+    "input_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "shape_range": [
+          [
+            1,
+            65535
+          ],[
+            1,
+            65535
+          ],[
+            1,
+            65535
+          ],[
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "name": "grads"
+      },
+      {
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "int32"
+        ],
+        "shape": [
+          2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "size"
+      }
+    ],
+    "output_desc": [
+      {
+        "format": [
+          "NHWC"
+        ],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "shape_range": [
+          [
+            1,
+            65535
+          ],[
+            1,
+            65535
+          ],[
+            1,
+            65535
+          ],[
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "name": "y"
+      }
+    ],
+    "attr": [
+      {
+        "name": "align_corners",
+        "type": "bool",
+        "value": false
+      },
+      {
+        "name": "half_pixel_centers",
+        "type": "bool",
+        "value": false
+      }
+    ]
+  }
+]
