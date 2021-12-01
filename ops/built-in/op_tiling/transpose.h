@@ -120,6 +120,22 @@ enum TransposeScenario {
   SCENARIO_INIT = 99,// SCENARIO_INIT
 };
 
+enum TilingModelPri {
+  TM_PRI_0 = 0,
+  TM_PRI_1 = 1,
+  TM_PRI_2 = 2,
+  TM_PRI_3 = 3,
+  TM_PRI_4 = 4,
+  TM_PRI_5 = 5,
+  TM_PRI_6 = 6,
+  TM_PRI_7 = 7,
+  TM_PRI_8 = 8,
+  TM_PRI_9 = 9,
+  TM_PRI_10 = 10,
+  TM_PRI_11 = 11,
+  TM_PRI_MAX = 99,
+};
+
 enum SubScenarioLastAxisTrans {
   LAST_AXIS_TR_COMMON = 0,
   LAST_AXIS_TR_F2T = 1,  // fat 2 thin

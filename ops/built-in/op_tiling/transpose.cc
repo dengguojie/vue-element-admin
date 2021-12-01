@@ -35,9 +35,8 @@ using namespace std;
 
 
 namespace optiling {
-
 #define LOOP_FOR_UB_PADDING 10
-#define TRANSPOSE_CHECK_RET(res) \
+#define RETURN_IF_FAIL(res)      \
   if (res == false) {            \
     return false;                \
   }
@@ -71,6 +70,7 @@ static std::mutex infoIdMutex;
 static RuntimeInfo runtimeInfoList[MAX_INFO_NUM];
 static ShapeInfo shapeInfoList[MAX_INFO_NUM];
 static vector<int64_t> tilingVecList[MAX_INFO_NUM];
+static const int T_WORKSPACE_SIZE = 1024;
 
 bool TransposeParseFunc(const std::string& op_type,
                         const nlohmann::json& compile_info,
@@ -505,8 +505,6 @@ static void VectorSub(const int64_t* a,
                       int64_t aSize,
                       int64_t bSize,
                       int64_t& cSize) {
-  //qsort((void*)a, aSize, sizeof(int64_t), AscendCompare);
-  //qsort((void*)b, bSize, sizeof(int64_t), AscendCompare);
   for (int i = 0; i < aSize; i++) {
     bool found = false;
     for (int j = 0; j < bSize; j++) {
@@ -563,8 +561,8 @@ static bool Is32BAligned(const CompilerInfo& compilerInfo, const ShapeInfo& shap
 }
 
 static void BlockAlign(vector<int64_t>& vec, int64_t& size) {
-  int i = size;
-  int k = i % ELE_NUM_PER_BLOCK_B64;
+  int blk_size = size;
+  int k = blk_size % ELE_NUM_PER_BLOCK_B64;
   int align = 0;
   if (k != 0) {
     align = ELE_NUM_PER_BLOCK_B64 - k;
@@ -1027,8 +1025,8 @@ static bool IsSmallShape(const ShapeInfo& shapeInfo) {
 }
 
 static void CalcOutShape(ShapeInfo& shapeInfo) {
-  vector<int64_t>& inShape = shapeInfo.reducedInShape;
-  vector<int64_t>& perm = shapeInfo.reducedPerm;
+  const vector<int64_t>& inShape = shapeInfo.reducedInShape;
+  const vector<int64_t>& perm = shapeInfo.reducedPerm;
   vector<int64_t>& outShape = shapeInfo.reducedOutShape;
   for (int64_t i = 0; i < shapeInfo.dim; i++) {
     outShape[i] = inShape[perm[i]];
@@ -1269,7 +1267,6 @@ static bool IsScenario9(const CompilerInfo& compilerInfo, ShapeInfo& shapeInfo) 
       break;
     }
     dstMode = true;
-
   } while (false);
 
   do {
@@ -2513,7 +2510,7 @@ static int64_t CalcStride(const vector<int64_t>& shape, int64_t dim, int index) 
 }
 
 /*
- *reoder the stride by dst shape.
+ * reoder the stride by dst shape.
  *
  *            0  1  2      3  4                                    0   3  2      1  4
  *         -----------------------                              ---------------------------
@@ -3043,7 +3040,7 @@ static void MakeDstIndexAsOutShape(const ShapeInfo& shapeInfo, RuntimeInfo& runt
  * ubPermRaw: 5,4,1,0; ubPerm: 3,2,1,0
  */
 static void MakeDiscreteBeContiguous(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
-  BorrowInfo& borrowInfo = runtimeInfo.borrowInfo;
+  const BorrowInfo& borrowInfo = runtimeInfo.borrowInfo;
   int64_t perm[BORROW_MAX_AXIS_NUM_LT];
   for (int i = 0; i < BORROW_MAX_AXIS_NUM_LT; i++) {
     perm[i] = borrowInfo.ubPermRaw[i];
@@ -3149,7 +3146,6 @@ static void CalcSrcBorrowAxisIndex(const ShapeInfo& si, RuntimeInfo& runtimeInfo
             si.reducedInShape[dim - i - offset] % (bi.srcIndexIn[srcNum].step * bi.srcIndexIn[srcNum].loop);
         break;
       } else {
-        bi.srcIndexIn[srcNum].loop = 1;
         bi.srcIndexIn[srcNum].step = si.reducedInShape[dim - i - offset];
         bi.srcIndexIn[srcNum].loop = si.reducedInShape[dim - i - offset] / bi.srcIndexIn[srcNum].step;
       }
@@ -3164,7 +3160,7 @@ static bool IsSrcAxisFullyUsed(const ShapeInfo& si, const RuntimeInfo& ri) {
 }
 
 static bool IsSrcAxisInDstFullyUsed(const ShapeInfo& si, RuntimeInfo& runtimeInfo, int64_t axis) {
-  BorrowInfo& bi = runtimeInfo.borrowInfo;
+  const BorrowInfo& bi = runtimeInfo.borrowInfo;
   for (int64_t i = 0; i < bi.dstNum; i++) {
     if (axis == bi.dstIndexIn[i].idx_in) {
       if (bi.dstIndexIn[i].step == si.reducedInShape[bi.dstIndexIn[i].idx_in]) {
@@ -3386,7 +3382,6 @@ static bool CalcDstBorrowAxisIndex(const ShapeInfo& si, RuntimeInfo& ri, int bor
     if (borrowed * si.lastAxisLen < si.elePerBlock) {
       return false;
     } else {
-      // ExtendSrcAxisIndex(si, ri, BORROW_SRC_AXIS_NUM);
     }
   }
   return true;
@@ -3975,7 +3970,7 @@ static bool TilingDataScenario4(const CompilerInfo& compilerInfo, const ShapeInf
                                 RuntimeInfo& runtimeInfo) {
   CalcLeftVol(compilerInfo, shapeInfo, runtimeInfo);
   CalcSrcBorrowAxisIndex(shapeInfo, runtimeInfo, BORROW_SRC_AXIS_NUM);
-  TRANSPOSE_CHECK_RET(CalcDstBorrowAxisIndex(shapeInfo, runtimeInfo, BORROW_DST_AXIS_NUM));
+  RETURN_IF_FAIL(CalcDstBorrowAxisIndex(shapeInfo, runtimeInfo, BORROW_DST_AXIS_NUM));
   MergeDupAxis(shapeInfo, runtimeInfo);
   ReorderIndexInfo(shapeInfo, runtimeInfo);
   CalcSrcDstPerm(shapeInfo, runtimeInfo);
@@ -3993,7 +3988,7 @@ static bool TilingDataScenario5(const CompilerInfo& compilerInfo, const ShapeInf
                                 RuntimeInfo& runtimeInfo) {
   CalcLeftVol(compilerInfo, shapeInfo, runtimeInfo);
   CalcSrcBorrowAxisIndex(shapeInfo, runtimeInfo, BORROW_SRC_AXIS_NUM_LT);
-  TRANSPOSE_CHECK_RET(CalcDstBorrowAxisIndex(shapeInfo, runtimeInfo, BORROW_DST_AXIS_NUM_LT));
+  RETURN_IF_FAIL(CalcDstBorrowAxisIndex(shapeInfo, runtimeInfo, BORROW_DST_AXIS_NUM_LT));
   MergeDupAxis(shapeInfo, runtimeInfo);
   ReorderIndexInfo(shapeInfo, runtimeInfo);
   CalcSrcDstPerm(shapeInfo, runtimeInfo);
@@ -4348,7 +4343,6 @@ static void DispatchNCR(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
   FindLongestColPerm(shapeInfo, runtimeInfo);
 
   for (int64_t i = 0; i < runtimeInfo.colPermSize; i++) {
-
     int64_t col[TRANSPOSE_MAX_AXIS_NUM] = {0};
     int64_t row[TRANSPOSE_MAX_AXIS_NUM] = {0};
     int64_t n[TRANSPOSE_MAX_AXIS_NUM] = {0};
@@ -4361,7 +4355,6 @@ static void DispatchNCR(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
     }
 
     int64_t re = CalcSrcRightIndexInDst(shapeInfo.reducedPerm, dim, col, colSize);
-
     if (re >= dim - 1 || re < 0) {
       continue;
     }
@@ -4385,19 +4378,18 @@ static void DispatchNCR(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
     ncr.nVol = CalcVolumeByPartialPerm(shapeInfo, n, nSize);
     ncr.cVol = CalcVolumeByPartialPerm(shapeInfo, col, colSize);
     ncr.rVol = CalcVolumeByPartialPerm(shapeInfo, row, rowSize);
-
   }
 }
 
 class Model001 : public TilingModel {
  public:
-  Model001(int64_t coreNum, int64_t ubBlocks) : TilingModel(1, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model001") {
+  Model001(int64_t coreNum, int64_t ubBlocks) : TilingModel(TM_PRI_1, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model001") {
     maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks) / 2;
     maxRow = 128;
   }
   ~Model001() {
   }
-  bool Decision(const NCR& n, int64_t dim) {
+  bool Decision(const NCR& n, int64_t dim) override {
     bool res = ((n.nVol >= coreNum) && (n.cVol >= 64) && (n.rVol >= 64));
     if (!res) {
       return false;
@@ -4410,13 +4402,13 @@ class Model001 : public TilingModel {
 
 class Model002 : public TilingModel {
  public:
-  Model002(int64_t coreNum, int64_t ubBlocks) : TilingModel(2, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model002") {
+  Model002(int64_t coreNum, int64_t ubBlocks) : TilingModel(TM_PRI_2, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model002") {
     maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks) / 2;
     maxRow = 128;
   }
   ~Model002() {
   }
-  bool Decision(const NCR& n, int64_t dim) {
+  bool Decision(const NCR& n, int64_t dim) override {
     bool res = ((n.cVol >= 64) && (n.rVol >= 64 * coreNum));
     if (!res) {
       return false;
@@ -4429,13 +4421,13 @@ class Model002 : public TilingModel {
 
 class Model003 : public TilingModel {
  public:
-  Model003(int64_t coreNum, int64_t ubBlocks) : TilingModel(3, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model003") {
+  Model003(int64_t coreNum, int64_t ubBlocks) : TilingModel(TM_PRI_3, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model003") {
     maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks) / 2;
     maxRow = 128;
   }
   ~Model003() {
   }
-  bool Decision(const NCR& n, int64_t dim) {
+  bool Decision(const NCR& n, int64_t dim) override {
     bool res = ((n.cVol >= 64 * coreNum) && (n.rVol >= 64));
     if (!res) {
       return false;
@@ -4448,11 +4440,11 @@ class Model003 : public TilingModel {
 
 class Model004 : public TilingModel {
  public:
-  Model004(int64_t coreNum, int64_t ubBlocks) : TilingModel(4, coreNum, ubBlocks, LAST_AXIS_TR_F2T, "Model004_f2t") {
+  Model004(int64_t coreNum, int64_t ubBlocks) : TilingModel(TM_PRI_4, coreNum, ubBlocks, LAST_AXIS_TR_F2T, "Model004_f2t") {
   }
   ~Model004() {
   }
-  bool Decision(const NCR& n, int64_t dim) {
+  bool Decision(const NCR& n, int64_t dim) override {
     isf2t = true;
     ncr = n;
     if (n.colSize != 1) {
@@ -4479,11 +4471,11 @@ class Model004 : public TilingModel {
 
 class Model005 : public TilingModel {
  public:
-  Model005(int64_t coreNum, int64_t ubBlocks) : TilingModel(5, coreNum, ubBlocks, LAST_AXIS_TR_T2F, "Model005_t2f") {
+  Model005(int64_t coreNum, int64_t ubBlocks) : TilingModel(TM_PRI_5, coreNum, ubBlocks, LAST_AXIS_TR_T2F, "Model005_t2f") {
   }
   ~Model005() {
   }
-  bool Decision(const NCR& n, int64_t dim) {
+  bool Decision(const NCR& n, int64_t dim) override {
     ist2f = true;
     ncr = n;
     if (n.rowSize != 1) {
@@ -4521,13 +4513,13 @@ class Model005 : public TilingModel {
 
 class Model006 : public TilingModel {
  public:
-  Model006(int64_t coreNum, int64_t ubBlocks) : TilingModel(6, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model006") {
+  Model006(int64_t coreNum, int64_t ubBlocks) : TilingModel(TM_PRI_6, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model006") {
     maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks) / 2;
     maxRow = 128;
   }
   ~Model006() {
   }
-  bool Decision(const NCR& n, int64_t dim) {
+  bool Decision(const NCR& n, int64_t dim) override {
     if (n.nVol >= coreNum) {
       if (n.cVol >= 24 && n.rVol >= 24) {
         sp.Set(coreNum, 1, 1);
@@ -4552,11 +4544,11 @@ class Model006 : public TilingModel {
 
 class Model007 : public TilingModel {
  public:
-  Model007(int64_t coreNum, int64_t ubBlocks) : TilingModel(7, coreNum, ubBlocks, LAST_AXIS_TR_F2T, "Model007_f2t") {
+  Model007(int64_t coreNum, int64_t ubBlocks) : TilingModel(TM_PRI_7, coreNum, ubBlocks, LAST_AXIS_TR_F2T, "Model007_f2t") {
   }
   ~Model007() {
   }
-  bool Decision(const NCR& n, int64_t dim) {
+  bool Decision(const NCR& n, int64_t dim) override {
     isf2t = true;
     ncr = n;
     if (n.colSize != 1) {
@@ -4577,11 +4569,11 @@ class Model007 : public TilingModel {
 
 class Model008 : public TilingModel {
  public:
-  Model008(int64_t coreNum, int64_t ubBlocks) : TilingModel(8, coreNum, ubBlocks, LAST_AXIS_TR_T2F, "Model008_t2f") {
+  Model008(int64_t coreNum, int64_t ubBlocks) : TilingModel(TM_PRI_8, coreNum, ubBlocks, LAST_AXIS_TR_T2F, "Model008_t2f") {
   }
   ~Model008() {
   }
-  bool Decision(const NCR& n, int64_t dim) {
+  bool Decision(const NCR& n, int64_t dim) override {
     ist2f = true;
     ncr = n;
     if (n.rowSize != 1) {
@@ -4601,9 +4593,6 @@ class Model008 : public TilingModel {
     }
     return true;
   }
-  bool Ist2f() {
-    return true;
-  }
 
  private:
   bool IsValid(const NCR& ncr, int64_t dim) {
@@ -4618,13 +4607,13 @@ class Model008 : public TilingModel {
 class Model001_b16 : public TilingModel {
  public:
   Model001_b16(int64_t coreNum, int64_t ubBlocks)
-      : TilingModel(1, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model001_b16") {
+      : TilingModel(TM_PRI_1, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model001_b16") {
     maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks);
     maxRow = 128;
   }
   ~Model001_b16() {
   }
-  bool Decision(const NCR& n, int64_t dim) {
+  bool Decision(const NCR& n, int64_t dim) override {
     bool res = ((n.nVol >= coreNum) && (n.cVol >= 64) && (n.rVol >= 64));
     if (!res) {
       return false;
@@ -4638,13 +4627,13 @@ class Model001_b16 : public TilingModel {
 class Model002_b16 : public TilingModel {
  public:
   Model002_b16(int64_t coreNum, int64_t ubBlocks)
-      : TilingModel(2, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model002_b16") {
+      : TilingModel(TM_PRI_2, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model002_b16") {
     maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks);
     maxRow = 128;
   }
   ~Model002_b16() {
   }
-  bool Decision(const NCR& n, int64_t dim) {
+  bool Decision(const NCR& n, int64_t dim) override {
     bool res = ((n.cVol >= 64) && (n.rVol >= 64 * coreNum));
     if (!res) {
       return false;
@@ -4658,13 +4647,13 @@ class Model002_b16 : public TilingModel {
 class Model003_b16 : public TilingModel {
  public:
   Model003_b16(int64_t coreNum, int64_t ubBlocks)
-      : TilingModel(3, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model003_b16") {
+      : TilingModel(TM_PRI_3, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model003_b16") {
     maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks);
     maxRow = 128;
   }
   ~Model003_b16() {
   }
-  bool Decision(const NCR& n, int64_t dim) {
+  bool Decision(const NCR& n, int64_t dim) override {
     bool res = ((n.cVol >= 64 * coreNum) && (n.rVol >= 64));
     if (!res) {
       return false;
@@ -4678,11 +4667,11 @@ class Model003_b16 : public TilingModel {
 class Model004_b16 : public TilingModel {
  public:
   Model004_b16(int64_t coreNum, int64_t ubBlocks)
-      : TilingModel(4, coreNum, ubBlocks, LAST_AXIS_TR_F2T, "Model004_b16_f2t") {
+      : TilingModel(TM_PRI_4, coreNum, ubBlocks, LAST_AXIS_TR_F2T, "Model004_b16_f2t") {
   }
   ~Model004_b16() {
   }
-  bool Decision(const NCR& n, int64_t dim) {
+  bool Decision(const NCR& n, int64_t dim) override {
     isf2t = true;
     ncr = n;
     if (n.colSize != 1) {
@@ -4713,11 +4702,11 @@ class Model004_b16 : public TilingModel {
 class Model005_b16 : public TilingModel {
  public:
   Model005_b16(int64_t coreNum, int64_t ubBlocks)
-      : TilingModel(5, coreNum, ubBlocks, LAST_AXIS_TR_T2F, "Model005_b16_t2f") {
+      : TilingModel(TM_PRI_5, coreNum, ubBlocks, LAST_AXIS_TR_T2F, "Model005_b16_t2f") {
   }
   ~Model005_b16() {
   }
-  bool Decision(const NCR& n, int64_t dim) {
+  bool Decision(const NCR& n, int64_t dim) override {
     ist2f = true;
     ncr = n;
     if (n.rowSize != 1) {
@@ -4743,9 +4732,6 @@ class Model005_b16 : public TilingModel {
     }
     return true;
   }
-  bool Ist2f() {
-    return true;
-  }
 
  private:
   bool IsValid(const NCR& ncr, int64_t dim) {
@@ -4760,13 +4746,13 @@ class Model005_b16 : public TilingModel {
 class Model006_b16 : public TilingModel {
  public:
   Model006_b16(int64_t coreNum, int64_t ubBlocks)
-      : TilingModel(6, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model006_b16") {
+      : TilingModel(TM_PRI_6, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model006_b16") {
     maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks);
     maxRow = 128;
   }
   ~Model006_b16() {
   }
-  bool Decision(const NCR& n, int64_t dim) {
+  bool Decision(const NCR& n, int64_t dim) override {
     if (n.nVol >= coreNum) {
       if (n.cVol >= 32 && n.rVol >= 32) {
         sp.Set(coreNum, 1, 1);
@@ -4792,11 +4778,11 @@ class Model006_b16 : public TilingModel {
 class Model007_b16 : public TilingModel {
  public:
   Model007_b16(int64_t coreNum, int64_t ubBlocks)
-      : TilingModel(7, coreNum, ubBlocks, LAST_AXIS_TR_F2T, "Model007_b16_f2t") {
+      : TilingModel(TM_PRI_7, coreNum, ubBlocks, LAST_AXIS_TR_F2T, "Model007_b16_f2t") {
   }
   ~Model007_b16() {
   }
-  bool Decision(const NCR& n, int64_t dim) {
+  bool Decision(const NCR& n, int64_t dim) override {
     isf2t = true;
     ncr = n;
     if (n.colSize != 1) {
@@ -4822,7 +4808,7 @@ class Model008_b16 : public TilingModel {
   }
   ~Model008_b16() {
   }
-  bool Decision(const NCR& n, int64_t dim) {
+  bool Decision(const NCR& n, int64_t dim) override {
     ist2f = true;
     ncr = n;
     if (n.rowSize != 1) {
@@ -4855,13 +4841,13 @@ class Model008_b16 : public TilingModel {
 class Model002_b64 : public TilingModel {
  public:
   Model002_b64(int64_t coreNum, int64_t ubBlocks)
-      : TilingModel(2, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model002_b64") {
+      : TilingModel(TM_PRI_2, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model002_b64") {
     maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks) / 4;
     maxRow = 128;
   }
   ~Model002_b64() {
   }
-  bool Decision(const NCR& n, int64_t dim) {
+  bool Decision(const NCR& n, int64_t dim) override {
     bool res = ((n.cVol >= 16) && (n.rVol >= 16 * coreNum));
     if (!res) {
       return false;
@@ -4917,7 +4903,7 @@ static void MakeNCRDecision(const CompilerInfo& compilerInfo, const ShapeInfo& s
 }
 
 static void Composite(RuntimeInfo& runtimeInfo, int64_t coreNum) {
-  TilingModel& tm = runtimeInfo.tilingModel;
+  const TilingModel& tm = runtimeInfo.tilingModel;
   int64_t nFactor = tm.sp.nFactor;
   int64_t colFactor = tm.sp.colFactor;
   int64_t rowFactor = tm.sp.rowFactor;
@@ -4956,10 +4942,10 @@ static bool TilingDataScenario7(const CompilerInfo& compilerInfo, const ShapeInf
   SplitNByFactor(runtimeInfo, shapeInfo.elePerBlock);
 
   res = SplitColByFactor(compilerInfo, runtimeInfo, shapeInfo.elePerBlock);
-  TRANSPOSE_CHECK_RET(res);
+  RETURN_IF_FAIL(res);
 
   res = SplitRowByFactor(compilerInfo, runtimeInfo, shapeInfo.elePerBlock);
-  TRANSPOSE_CHECK_RET(res);
+  RETURN_IF_FAIL(res);
 
   Composite(runtimeInfo, compilerInfo.coreNum);
 
@@ -4975,7 +4961,6 @@ bool TilingDataScenario9(const CompilerInfo& compilerInfo, const ShapeInfo& shap
   int64_t dim = shapeInfo.dim;
   int64_t index = 0;
   int64_t vol = 1;
-
 
   if (shapeInfo.mteMode == MTE_MODE_DST) {
     // 1. dst stride
@@ -5008,7 +4993,6 @@ bool TilingDataScenario9(const CompilerInfo& compilerInfo, const ShapeInfo& shap
 
     // 6. init tuple
     CalcTupleDstS9(compilerInfo, shapeInfo, runtimeInfo);
-
   } else {
     // 1. dst stride
     for (int64_t i = 0; i < dim - 2; i++) {
@@ -5101,8 +5085,7 @@ static void Composite3D(const CompilerInfo& compilerInfo, const ShapeInfo& shape
                         int64_t nFactor, int64_t nUnit, int64_t cFactor, int64_t rFactor,
                         int64_t colUnit, int64_t rowUnit, int64_t colTail, int64_t rowTail,
                         int64_t p1Num[], int64_t p2Num[], int64_t loop1[], int64_t loop2[]) {
-
-  TwoDInfo & twoDInfo = runtimeInfo.twoDInfo;
+  TwoDInfo& twoDInfo = runtimeInfo.twoDInfo;
 
   twoDInfo.infoPerCore2DSize = compilerInfo.coreNum;
   
@@ -5224,7 +5207,6 @@ static bool TilingDataScenario11(const CompilerInfo & compilerInfo,
   if (shapeInfo.reducedInShape[shapeInfo.dim - 2] < rowUnit) {
     rowUnit = shapeInfo.reducedInShape[shapeInfo.dim - 2];
   }
-
 
   CalcUnit(shapeInfo, colUnit, rowUnit, colUnitNum, rowUnitNum, colTail, rowTail);
 
@@ -5428,7 +5410,6 @@ bool GetCompileParams(const string& opType, const TransposeInputCompile& opCompi
 
 static void SerializeScenario0(utils::OpRunInfo& runInfo, const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo,
                                const RuntimeInfo& runtimeInfo) {
-
   DEFINE_PARAMETERS;
 
   // part1: head
@@ -6027,7 +6008,7 @@ static void SerializeScenario8(utils::OpRunInfo& runInfo, const CompilerInfo& co
   }
 
   runInfo.SetBlockDim(compilerInfo.coreNum);
-  runInfo.AddWorkspace(1024);
+  runInfo.AddWorkspace(T_WORKSPACE_SIZE);
 }
 
 static void SerializeScenario9(utils::OpRunInfo& runInfo, const CompilerInfo& compilerInfo, const ShapeInfo& shapeInfo,
@@ -6246,5 +6227,4 @@ bool TransposeTiling(const std::string& opType, const ge::Operator& opParas, con
 REGISTER_OP_TILING_V3_CUSTOM(DepthToSpace, TransposeTiling, TransposeParseFunc, TransposeInputCompile);
 REGISTER_OP_TILING_V3_CUSTOM(SpaceToDepth, TransposeTiling, TransposeParseFunc, TransposeInputCompile);
 REGISTER_OP_TILING_V3_CUSTOM(Transpose, TransposeTiling, TransposeParseFunc, TransposeInputCompile);
-
 }  // namespace optiling
