@@ -66,10 +66,9 @@ def _is_support_nd_nz_nz(shape_1, shape_2):
                shape_2[-1] == shape_1[-1]
 
 
-# 'pylint: disable=unused-argument, too-many-nested-blocks
+# 'pylint: disable=unused-argument,too-many-nested-blocks,too-many-arguments
 # 'pylint: disable=invalid-name,too-many-locals,too-many-branches
 # 'pylint: disable=too-many-statements,too-many-boolean-expressions
-# op select format
 def op_select_format(input_x, input_y, output_z, alpha, kernel_name="axpy"):
     """
     select format dynamically, supporting dynamic shape format selecting
