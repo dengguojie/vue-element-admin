@@ -71,6 +71,7 @@ class OpFlags(Enum):
     cmp_flag = "elewise_binary_vcmpv_eq"
     sel_flag = "elewise_multiple_sel"
     dilation_flag = "dilation"
+    fixpipe_flag = "fixpipe"
 
 
 class OpPatterns(Enum):
@@ -117,6 +118,7 @@ class OpPatterns(Enum):
     WRITE_SELECT_PATTERN = "write_select"
     COSINE_EMBEDDING_LOSS_PATTERN = "cosine_embedding_loss"
     DILATION_PATTERN = "dilation"
+    FIXPIPE_PATTERN = "fixpipe"
 
 
 class OpSubPatterns(Enum):

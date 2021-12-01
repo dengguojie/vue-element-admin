@@ -1729,6 +1729,13 @@ cube-conv2d-python:
       - auto_schedule/python/lang/dynamic/schedule/conv2d_tilingcase.py
       - auto_schedule/python/lang/dynamic/schedule/conv2d_schedule.py
       - ops/built-in/tbe/impl/dynamic/avg_pool.py
+      - auto_schedule/python/tbe/dsl/static_schedule/fixpipe_schedule.py
+      - ops/built-in/tbe/impl/fix_pipe.py
+      - ops/built-in/tbe/impl/fixpipe_op/__init__.py
+      - ops/built-in/tbe/impl/fixpipe_op/fixpipe_base.py
+      - ops/built-in/tbe/impl/fixpipe_op/fixpipe_conv2d.py
+      - ops/built-in/tbe/impl/fixpipe_op/fixpipe_factory.py
+      - ops/built-in/tbe/impl/fixpipe_op/fixpipe_util.py
   llt:
     ut_check: true
     st_check: false

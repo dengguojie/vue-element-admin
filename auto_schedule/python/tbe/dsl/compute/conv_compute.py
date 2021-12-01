@@ -19,6 +19,7 @@ conv2d DSL interface.
 """
 from __future__ import division
 import math
+import tbe
 from tbe import tvm
 from tbe.tvm.buffer_manager import get_buffer_manager
 from tbe.dsl.base.operation import get_te_var
@@ -26,6 +27,7 @@ from tbe.dsl.compute.conv_compute_v2 import conv_v220_compute
 from tbe.common import utils
 from tbe.common.testing.dsl_source_info import source_info_decorator
 from tbe.common.platform.platform_info import get_soc_spec
+from tbe.common.platform import intrinsic_check_support
 from tbe.common.buildcfg import get_current_build_config
 from tbe.common.platform import CUBE_MKN
 from tbe.common.utils.errormgr import error_manager_cube as err_man
@@ -120,17 +122,9 @@ def is_support_v200():
 
 def is_support_v220():
     """
-    Check if Ascend920A version.
-
-    Returns
-    -------
-    True: Ascend920A version.
-    False: other version.
+    Check if support fixpipe.
     """
-    soc_version = get_soc_spec("SOC_VERSION")
-    if soc_version == "Ascend920":
-        return True
-    return False
+    return tbe.common.platform.platform_info.intrinsic_check_support("Intrinsic_fix_pipe_unit_list")
 
 
 def check_load3d_w_out_1_support():
@@ -145,8 +139,11 @@ def check_load3d_w_out_1_support():
     True: support
     False: not support
     """
+    if is_support_v220():
+        return True
+
     soc_version = get_soc_spec("SOC_VERSION")
-    if soc_version in ["Ascend310", "Hi3796CV300CS", "Ascend920"]:
+    if soc_version in ["Ascend310", "Hi3796CV300CS"]:
         return True
     return False
 

@@ -19,15 +19,33 @@ Schedule of conv2d in v220.
 """
 from collections import deque
 from functools import reduce
+import tbe
 from tbe import tvm
+from tbe.common.utils import log
 from tbe.common.platform import platform_info as cce
-from te.platform.cce_params import scope_fb0, scope_fb1, scope_bt
+from te.platform.cce_params import scope_fb0, scope_fb1, scope_fb2, scope_fb3, scope_bt, scope_cbuf
 from tbe.common.platform import CUBE_MKN
 from tbe.common.platform.platform_info import get_soc_spec
 from tbe.common.tiling.get_tiling import get_tiling
 from tbe.common.utils.errormgr import error_manager_cube as err_man
 from tbe.dsl.static_schedule import util
 
+FIXPIPE_REFORM_TAG = "fixpipe_reform"
+QUANT_SCALE_0_STR = "quant_scale_0"
+QUANT_SCALE_1_STR = "quant_scale_1"
+RELU_WEIGHT_0_STR = "relu_weight_0"
+RELU_WEIGHT_1_STR = "relu_weight_1"
+ELTWISE_SRC_STR = "eltwise_src"
+
+INTRINSIC_FIXPIPE_UNIT_LIST = "Intrinsic_fix_pipe_unit_list"
+UNIT_POST_ELTWISE = "post_eltwise"
+FIXPIPE_SCOPE_MAP = {
+    QUANT_SCALE_0_STR: scope_fb0,
+    QUANT_SCALE_1_STR: scope_fb1,
+    RELU_WEIGHT_0_STR: scope_fb3,
+    RELU_WEIGHT_1_STR: scope_fb2,
+    ELTWISE_SRC_STR: scope_cbuf
+}
 
 NON_L1_FUSION = -1
 DEPTH_L1_FUSION = 0
@@ -72,6 +90,141 @@ def is_placeholder(tensor):
         return False
     return True
 
+def is_support_fixpipe_op():
+    if tbe.common.platform.platform_info.intrinsic_check_support(INTRINSIC_FIXPIPE_UNIT_LIST):
+        return tbe.common.platform.platform_info.intrinsic_check_support(
+            INTRINSIC_FIXPIPE_UNIT_LIST, UNIT_POST_ELTWISE)
+
+    return False
+
+class FixpipeFusionNew(object):
+    """
+    """
+    def __init__(self):
+        """
+        class FixpipeFusionNew init func
+        """
+        self.fixpipe_flag = False
+        self.inline_tensors = []
+        self.fixpipe_params = []
+        self.fixpipe_tensors = [] # param tensors
+        self.eltwise_src = None
+        self.eltwise_dtype = "None"
+        self.eltwise_flag = False
+        self.quant_pre_flag = False
+        self.relu_pre_flag = False
+        self.quant_post_flag = False
+        self.relu_post_flag = False
+        self.nz2nd_flag = False
+        self.cache_read_tensors = []
+        self.cache_read_tensors_channelwise = []
+    
+    def fetch_quant_relu_flag(self):
+        """
+        fetch the quant_pre_flag and relu_pre_flag for tiling info dict.
+        """
+        return self.quant_pre_flag, self.relu_pre_flag, self.quant_post_flag, self.relu_post_flag
+
+    def fetch_eltwise_info(self):
+        """
+        return eltwise src info
+        """
+        return self.eltwise_flag, self.eltwise_dtype
+    
+    def get_eltwise_info(self):
+        """
+        get eltwise src info
+        """
+        for idx, tensor_param in enumerate(self.fixpipe_params):
+            if tensor_param.value == ELTWISE_SRC_STR:
+                self.eltwise_src = self.fixpipe_tensors[idx]
+                self.eltwise_dtype = self.eltwise_src.dtype
+                self.eltwise_flag = True
+
+    def parse_fusion_pattern(self, res):
+        """
+        parse fixpipe fusion
+        """
+        tensor_queue = deque()
+        tensor_queue.append(res)
+        find_fixpipe = False
+        while tensor_queue:
+            src_tensor = tensor_queue.popleft()
+            tag = src_tensor.op.tag
+
+            if tag in ("convolution_c_col", "convolution_c_col_bias"):
+                break
+
+            if find_fixpipe:
+                if not is_placeholder(src_tensor):
+                    self.inline_tensors.append(src_tensor)
+
+            if tag == FIXPIPE_REFORM_TAG:
+                find_fixpipe = True
+                self.fixpipe_flag = True
+                self.fixpipe_params = src_tensor.op.attrs["vector_params"]
+                self.fixpipe_tensors = src_tensor.op.attrs["vector_tensors"]
+                self.nz2nd_flag = src_tensor.op.attrs["nz2nd_flag"].value
+                self.get_eltwise_info()
+
+                tensor_queue.clear()
+            if src_tensor.op.input_tensors:
+                append_list = list(i for i in src_tensor.op.input_tensors)
+                append_list.reverse()
+                tensor_queue.extend(append_list)
+        log.debug("fixpipe inline tensors:{}".format(self.inline_tensors))
+
+    def fixpipe_inputs_set_scope(self, sch, op_graph):
+        """
+        set scope for fixpipe vector input tensors
+        """
+        next_op_map = {}
+
+        for input_op in op_graph.input_ops:
+            next_op_map[input_op["dst_buffer"]] = input_op["next_op"][0]["dst_buffer"]
+
+        for idx, tensor_param in enumerate(self.fixpipe_params):
+            if tensor_param.value not in FIXPIPE_SCOPE_MAP.keys():
+                raise RuntimeError("tensor {} cannot set scope to fb".format(tensor_param))
+
+            tensor = self.fixpipe_tensors[idx]
+            scope = FIXPIPE_SCOPE_MAP.get(tensor_param.value)
+            if tensor_param.value == ELTWISE_SRC_STR:
+                input_l1 = sch.cache_read(tensor, scope, next_op_map[tensor])
+                self.cache_read_tensors_channelwise.extend([input_l1])
+                continue
+            
+            input_fb = sch.cache_read(tensor, scope, next_op_map[tensor])
+            input_l1 = sch.cache_read(tensor, cce.scope_cbuf, input_fb)
+            self.cache_read_tensors.extend([input_fb, input_l1])
+        
+    def fixpipe_inputs_emit_insn(self,sch):
+        """
+        Dma for the inputs of fixpipe fusion ops.
+        """
+        for tensor in self.cache_read_tensors:
+            sch[tensor].emit_insn(tensor.op.axis[0], "dma_copy")
+
+        for tensor in self.cache_read_tensors_channelwise:
+            sch[tensor].emit_insn(tensor.op.axis[0], "dma_copy")
+    
+    def inline_fixpipe_tensor(self, sch):
+        """
+        Inline the body tensors in fixpipe fusion compute.
+        """
+        for tensor in self.inline_tensors:
+            sch[tensor].compute_inline()
+    
+    def fixpipe_inputs_compute_at(self, sch, res, fixpipe_slice_axis, cl0_at_res_axis):
+        """
+        Attach the inputs of fixpipe fusion ops to res tensor.
+        """
+        for tensor in self.cache_read_tensors:
+            sch[tensor].compute_at(sch[res], fixpipe_slice_axis)
+        
+        for tensor in self.cache_read_tensors_channelwise:
+            sch[tensor].compute_at(sch[res], cl0_at_res_axis)
+
 
 class FixpipeFusion:
     """
@@ -80,6 +233,9 @@ class FixpipeFusion:
     def __init__(self):
         self.quant_pre_flag = False
         self.relu_pre_flag = False
+        self.quant_post_flag = False
+        self.relu_post_flag = False
+        self.nz2nd_flag = False
         self.weight_input = None
         self.inline_tensors = []
         self.fixpipe_inputs = [] # scale of dequant/requant, weight_input of prelu
@@ -122,7 +278,7 @@ class FixpipeFusion:
         """
         fetch the quant_pre_flag and relu_pre_flag for tiling info dict.
         """
-        return self.quant_pre_flag, self.relu_pre_flag
+        return self.quant_pre_flag, self.relu_pre_flag, self.quant_post_flag, self.relu_post_flag
 
     def fixpipe_inputs_set_scope(self, sch, op_graph):
         """
@@ -143,13 +299,14 @@ class FixpipeFusion:
             input_l1 = sch.cache_read(tensor, cce.scope_cbuf, input_fb)
             self.cache_read_tensors.extend([input_fb, input_l1])
 
-    def fixpipe_inputs_compute_at(self, sch, res, fixpipe_slice_axis):
+    def fixpipe_inputs_compute_at(self, sch, res, fixpipe_slice_axis, cl0_at_res_axis):
         """
         Attach the inputs of fixpipe fusion ops to res tensor.
         """
+        _ = cl0_at_res_axis
         for tensor in self.cache_read_tensors:
             sch[tensor].compute_at(sch[res], fixpipe_slice_axis)
-
+            
     def inline_fixpipe_tensor(self, sch):
         """
         Inline the body tensors in fixpipe fusion compute.
@@ -791,7 +948,7 @@ class Conv2dSchedule:
         self._core_num = get_soc_spec("CORE_NUM")
 
         #====================create feature instance=============================
-        self._fixpipe_fusion = FixpipeFusion()
+        self._fixpipe_fusion = FixpipeFusionNew() if is_support_fixpipe_op() else FixpipeFusion()
         self._input_nd2nz = InputNd2Nz(conv_param)
         self._weight_nd2nz = WeightNd2Nz(conv_param)
         self._output_nz2nd = OutputNz2Nd(res)
@@ -827,7 +984,11 @@ class Conv2dSchedule:
         c_shape = tiling_query_param["c_shape"]
         mad_dtype = tiling_query_param["mad_dtype"]
         bias_flag = tiling_query_param["bias_flag"]
-        quant_pre_flag, relu_pre_flag = self._fixpipe_fusion.fetch_quant_relu_flag()
+        quant_pre_flag, relu_pre_flag, quant_post_flag, relu_post_flag = self._fixpipe_fusion.fetch_quant_relu_flag()
+        eltwise_flag = False
+        eltwise_dtype = "None"
+        if is_support_fixpipe_op():
+            eltwise_flag, eltwise_dtype = self._fixpipe_fusion.fetch_eltwise_info()
 
         # group conv, send one group_opt a, b, c shape to tiling
         info_dict = {"op_type": 'conv2d',
@@ -844,7 +1005,14 @@ class Conv2dSchedule:
                      "dilation": [self._dilate_h, self._dilate_w],
                      "group": self._group_opt,
                      "bias_flag": bias_flag,
-                     "fixpipe_buffer_dict": {"quant_pre_flag": quant_pre_flag, "relu_pre_flag": relu_pre_flag},
+                     "fixpipe_buffer_dict": {"quant_pre_flag": quant_pre_flag, 
+                                             "relu_pre_flag": relu_pre_flag,
+                                             "quant_post_flag": quant_post_flag,
+                                             "relu_post_flag": relu_post_flag},
+                     "eltwise_dict": {
+                         "eltwise_flag": eltwise_flag,
+                         "eltwise_dtype": eltwise_dtype
+                     },
                      "in_fm_memory_type": self._lx_fusion.input_memory_type,
                      "out_fm_memory_type": self._lx_fusion.output_memory_type,
                      "l1_fusion_type": self._lx_fusion.l1_fusion_type,
@@ -891,7 +1059,12 @@ class Conv2dSchedule:
                                                         'BL1_pbuffer': 1,
                                                         'AL0_pbuffer': 1,
                                                         'BL0_pbuffer': 1,
-                                                        'CL0_pbuffer': 1}
+                                                        'CL0_pbuffer': 1,
+                                                        'AUB_pbuffer': 1,
+                                                        'BUB_pbuffer': 1,
+                                                        'CUB_pbuffer': 1,
+                                                        'UBG_pbuffer': 1}
+            default_tiling["n_bef_batch_flag"] = False
             default_tiling["A_overhead_opt_flag"] = False
             default_tiling["B_overhead_opt_flag"] = False
 
@@ -917,9 +1090,11 @@ class Conv2dSchedule:
             """
             tiling = get_tiling(info_dict)
             tiling["CUB_matrix"] = tiling["CL0_matrix"]
-            if tiling is None:
+            if tiling is None or tiling["AL0_matrix"][2] == 32:
+                log.warn("get invalid tiling, default tiling will be used")
                 tiling = get_default_tiling()
 
+            tiling["CUB_matrix"] = tiling["CL0_matrix"]
             return tiling
 
         if self._dynamic_shape.flag and tiling_case:
@@ -1112,7 +1287,7 @@ class Conv2dSchedule:
                         "bias_l1": bias_l1, "bias_bt": bias_bt}
         return tensor_param
 
-    def special_process_pre(self, tensor_param):
+    def special_process_pre(self, res, tensor_param):
         """
         Special process before tiling is parsed.
         """
@@ -1153,6 +1328,9 @@ class Conv2dSchedule:
         align_row_major()
 
         self._fixpipe_fusion.inline_fixpipe_tensor(sch)
+        if res.op.name == "res_fp32_conv2d" and is_support_fixpipe_op():
+            # for single conv2d inline res_conv2d
+            sch[res.op.input_tensors[0]].compute_inline()
 
         # inline row_major_reshape
         if fmap_row_major_reshape is not None:
@@ -1286,6 +1464,8 @@ class Conv2dSchedule:
         if al1_tiling:
             k_al1, multi_m_al1, batch_al1, _ = al1_tiling
             k1_al1 = k_al1 // (((kernel_h - 1)*dilate_h + 1)*((kernel_w - 1)*dilate_w + 1)*block_k0)
+            if k1_al1 == 0:
+                k1_al1 = 1
             batch_al1 = self._inner_batch.config_batch_al1(batch_al1, batch_cl0)
 
         if bl1_tiling:
@@ -1385,14 +1565,14 @@ class Conv2dSchedule:
 
             return reorder_mn_flag
 
-        if self._output_nz2nd.flag:
+        if self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag:
             res_n_axis, res_hw_axis, res_c_axis = res.op.axis # [n, howo, co]
             # split c axis into c1 and c0 to avoid nonlinear ir
             res_c1_axis, res_c0_axis = sch[res].split(res_c_axis, 16) # [n, howo, co1, co0]
         else:
             res_n_axis, res_c1_axis, res_hw_axis, res_c0_axis = res.op.axis # [n, co1, howo, co0]
 
-        if self._output_nz2nd.flag:
+        if self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag:
             res_g, res_co1_ori = sch[res].split(res_c1_axis, factor=co1_opt)
             res_cio, res_cii = sch[res].split(res_co1_ori, nc_cl0)
         elif res.dtype == "int8":
@@ -1413,7 +1593,7 @@ class Conv2dSchedule:
 
         res_mo, res_mi = sch[res].split(res_hw_axis, mc_cl0*m0_cl0)
 
-        if self._output_nz2nd.flag:
+        if self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag:
             sch[res].reorder(res_g,   # group_opt
                              res_cio, # co1_opt // nc
                              res_mo,  # howo // (mc*m0)
@@ -1463,7 +1643,7 @@ class Conv2dSchedule:
         al1_at_res_axis = res_mooi
 
         if self._inner_batch.flag:
-            if self._output_nz2nd.flag:
+            if self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag:
                 pass
             elif res.dtype == "float32":
                 sch[res].reorder(res_no,
@@ -1511,7 +1691,7 @@ class Conv2dSchedule:
 
         cl0_at_res_axis = res_moi # c_slice_axis
 
-        if self._output_nz2nd.flag:
+        if self._output_nz2nd.flag or self._fixpipe_fusion.nz2nd_flag:
             res_pragma_axis = res_mi
         else:
             res_pragma_axis = res_cii
@@ -1623,7 +1803,7 @@ class Conv2dSchedule:
 
         #===============================attach=======================================
         fixpipe_slice_axis = cl0_at_res_axis if self._group_opt*self._co1_opt > 16 else bindcore_axis
-        self._fixpipe_fusion.fixpipe_inputs_compute_at(sch, res, fixpipe_slice_axis)
+        self._fixpipe_fusion.fixpipe_inputs_compute_at(sch, res, fixpipe_slice_axis, cl0_at_res_axis)
 
         sch[cl0].compute_at(sch[res], cl0_at_res_axis)
         sch[al0].compute_at(sch[cl0], al0_at_cl0_axis)
@@ -1851,6 +2031,11 @@ class Conv2dSchedule:
                 "float32": "channel_split"
             }
 
+            def get_res_insn_str():
+                if is_support_fixpipe_op():
+                    return "fixpipe_op"
+                return "dma_copy"
+
             def res_channel_merge_split_emit_insn():
                 """
                 Emit insn for res tensor in channel merge/split situation.
@@ -1862,7 +2047,10 @@ class Conv2dSchedule:
                 """
                 Emit insn for res tensor in common usage.
                 """
-                sch[res].emit_insn(res_pragma_axis, "dma_copy")
+                sch[res].emit_insn(res_pragma_axis, get_res_insn_str())
+
+            if is_support_fixpipe_op():
+                return res_common_emit_insn()
 
             if self._output_nz2nd.flag:
                 return self._output_nz2nd.res_nz2nd_emit_insn(sch, res, res_pragma_axis)
@@ -1938,7 +2126,7 @@ def conv_v220_schedule(sch, res, conv_param, op_graph, tiling_dict_flag, tiling_
 
     tensor_param = schedule.config_scope()
 
-    schedule.special_process_pre(tensor_param)
+    schedule.special_process_pre(res, tensor_param)
 
     tiling_param, emit_insn_dict = schedule.tile_attach_tensor(res, tensor_param)
 

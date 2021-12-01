@@ -96,7 +96,8 @@ OP_PATTERN_RULES = {
                                          OpPatterns.WRITE_SELECT_PATTERN,
                                          OpPatterns.STRIDED_READ_PATTERN,
                                          OpPatterns.STRIDED_WRITE_PATTERN,
-                                         OpPatterns.DILATION_PATTERN),
+                                         OpPatterns.DILATION_PATTERN,
+                                         OpPatterns.FIXPIPE_PATTERN),
     OpPatternRules.single_only_pattern_rule: (OpPatterns.SEGMENT_PATTERN,
                                               OpPatterns.INPLACE_PATTERN),
     OpPatternRules.reduce_pattern_rule: OpPatterns.REDUCE_PATTERN,
@@ -165,7 +166,8 @@ SIMPLE_MAPPING = {
                                    OpFlags.sel_flag),
     OpPatterns.CONV3D_BACKPROP_FILTER_PATTERN:
     OpFlags.conv3d_backprop_filter_flag,
-    OpPatterns.DILATION_PATTERN: OpFlags.dilation_flag
+    OpPatterns.DILATION_PATTERN: OpFlags.dilation_flag,
+    OpPatterns.FIXPIPE_PATTERN: OpFlags.fixpipe_flag
 }
 
 

@@ -109,6 +109,7 @@ from .ascend_dequant_s16_schedule import ascend_dequant_s16_schedule
 from .ascend_requant_schedule import ascend_requant_schedule
 from .ascend_requant_s16_schedule import ascend_requant_s16_schedule
 from . import util as te_util  # 'pylint: disable=E0401
+from .fixpipe_schedule import fixpipe_schedule
 from .cosine_embedding_loss_schedule import \
     cosine_embedding_loss_schedule
 from .dilation_schedule import dilation_schedule
@@ -603,6 +604,7 @@ PATTERN_SCHEDULE_FUNC_MAP = {
     OpPatterns.LAYER_NORM_GRAD_PATTERN: layer_norm_grad_schedule,
     OpPatterns.L2LOSS_MUL_ADDN_PATTERN: l2loss_mul_addn_schedule,
     OpPatterns.COSINE_EMBEDDING_LOSS_PATTERN: cosine_embedding_loss_schedule,
+    OpPatterns.FIXPIPE_PATTERN: fixpipe_schedule,
 }
 
 
@@ -617,7 +619,8 @@ def comm_pattern_schedule(pattern, op_info, outs):
                    OpPatterns.STRIDED_WRITE_PATTERN,
                    OpPatterns.ASCEND_REQUANT_PATTERN,
                    OpPatterns.ASCEND_DEQUANT_S16_PATTERN,
-                   OpPatterns.ASCEND_REQUANT_S16_PATTERN]:
+                   OpPatterns.ASCEND_REQUANT_S16_PATTERN,
+                   OpPatterns.FIXPIPE_PATTERN]:
         spec_mid_list = []
         input_tensors = op_info["input_tensors"]
         sch_func = PATTERN_SCHEDULE_FUNC_MAP[pattern]
@@ -905,6 +908,7 @@ def global_core_schedule(  # 'pylint: disable=R0911, R0912, R0914, R0915
             OpPatterns.BN_UPDATE_PATTERN,
             OpPatterns.READ_SELECT_PATTERN,
             OpPatterns.WRITE_SELECT_PATTERN,
+            OpPatterns.FIXPIPE_PATTERN,
     ]:
         outs_bak = list(outs)
         schedule, spec_mid_list, outs = comm_pattern_schedule(pattern, op_info, outs)
