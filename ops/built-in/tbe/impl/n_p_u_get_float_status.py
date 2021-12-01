@@ -20,6 +20,7 @@ from te.utils import para_check
 from te import tik
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     This class for Constant.

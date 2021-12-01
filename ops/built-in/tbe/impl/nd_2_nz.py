@@ -23,6 +23,7 @@ from te import tik
 from impl import trans_data_positive_source_tc
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     This class for Constant.

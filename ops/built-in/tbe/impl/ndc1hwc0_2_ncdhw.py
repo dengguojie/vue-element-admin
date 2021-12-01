@@ -25,6 +25,7 @@ from te.utils import para_check
 from impl import trans_data_negative_target_ntc
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     This class for Constant

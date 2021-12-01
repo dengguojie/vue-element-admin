@@ -26,6 +26,7 @@ from impl.constant_util import MASK64
 from impl.util.platform_adapter import error_manager_vector
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     
     """

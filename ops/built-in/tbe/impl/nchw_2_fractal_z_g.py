@@ -21,6 +21,7 @@ from te import platform as tbe_platform
 from te.utils import para_check
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     This class for Constant.

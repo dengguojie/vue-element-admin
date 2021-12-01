@@ -26,6 +26,7 @@ from impl.constant_util import MASK64
 from impl.util.platform_adapter import error_manager_vector
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     The class for constant.
@@ -120,7 +121,7 @@ class NllLossCompute:
     None
     """
     def __init__(self, x, target, weight, reduction, ignore_index, kernel_name):
-        TWO_KB = 2048
+        two_kb = 2048
         self.init_tik_instance()
         self.target = target
         self.weight = weight
@@ -139,7 +140,7 @@ class NllLossCompute:
         self.invalid_target = (ignore_index < 0 or ignore_index >= self.c_dim) \
             and ignore_index != -100
         self.ub_size_bytes = tbe_platform.CceProductParams().getParams(
-            "Unified_Buffer") - TWO_KB
+            "Unified_Buffer") - two_kb
         self.init_gm_size()
         self.init_gm()
         self.init_tiling_size()

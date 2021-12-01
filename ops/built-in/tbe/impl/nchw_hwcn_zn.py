@@ -31,6 +31,7 @@ from te.utils.op_utils import *
 # 'pylint: disable=locally-disabled,too-many-branches,too-few-public-methods
 # 'pylint: disable=locally-disabled,unnecessary-comprehension
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     This class for Constant.
