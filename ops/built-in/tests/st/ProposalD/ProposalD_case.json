@@ -46,7 +46,7 @@
         "format": "NCHW",
         "ori_shape": [
           1,
-          2
+          3
         ],
         "ori_format": "NCHW",
         "name": "im_info_dic",
@@ -207,7 +207,7 @@
         "format": "NCHW",
         "ori_shape": [
           1,
-          2
+          3
         ],
         "ori_format": "NCHW",
         "name": "im_info_dic",
