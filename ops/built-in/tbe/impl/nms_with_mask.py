@@ -507,7 +507,7 @@ def nms_with_mask(box_scores, selected_boxes, selected_idx, selected_mask, iou_t
     return _tik_func_nms_single_core_multithread(input_shape, iou_thr, output_size, kernel_name)
 
 
-class _NMSHelper(object):
+class _NMSHelper():
     """
     handle all input proposals, e.g. N may > 128
 
@@ -558,8 +558,8 @@ class _NMSHelper(object):
         self.all_inp_proposals_gm_1980 = all_inp_proposals_gm_1980
 
         self.N, _ = input_shape
-        self.ceil_N = _ceiling(self.N, self.vector_mask_max)
-        # note: N canbe used in size, but not for def tensor, should use ceil_N
+        self.ceil_n = _ceiling(self.N, self.vector_mask_max)
+        # note: N canbe used in size, but not for def tensor, should use ceil_n
         self.input_size = self.N * ELEMENT_NUM
         self.iou_thres_factor = iou_thres / (iou_thres + 1)
 
@@ -575,17 +575,17 @@ class _NMSHelper(object):
         self.one_datatype_scalar = tik_instance.Scalar(self.data_type, 'one_dtype_scalar', init_value=1.)
 
         # note: defed size need to 32b aligned
-        self.x1_ub = tik_instance.Tensor(shape=(self.ceil_N,), dtype=self.data_type, name='x1_ub', scope=tik.scope_ubuf)
-        self.x2_ub = tik_instance.Tensor(shape=(self.ceil_N,), dtype=self.data_type, name='x2_ub', scope=tik.scope_ubuf)
-        self.y1_ub = tik_instance.Tensor(shape=(self.ceil_N,), dtype=self.data_type, name='y1_ub', scope=tik.scope_ubuf)
-        self.y2_ub = tik_instance.Tensor(shape=(self.ceil_N,), dtype=self.data_type, name='y2_ub', scope=tik.scope_ubuf)
+        self.x1_ub = tik_instance.Tensor(shape=(self.ceil_n,), dtype=self.data_type, name='x1_ub', scope=tik.scope_ubuf)
+        self.x2_ub = tik_instance.Tensor(shape=(self.ceil_n,), dtype=self.data_type, name='x2_ub', scope=tik.scope_ubuf)
+        self.y1_ub = tik_instance.Tensor(shape=(self.ceil_n,), dtype=self.data_type, name='y1_ub', scope=tik.scope_ubuf)
+        self.y2_ub = tik_instance.Tensor(shape=(self.ceil_n,), dtype=self.data_type, name='y2_ub', scope=tik.scope_ubuf)
 
         # 1980's input => new soc's output_mask_ub
-        self.all_inp_proposals_ub_1980_fp32 = tik_instance.Tensor('float32', (self.ceil_N, ELEMENT_NUM),
+        self.all_inp_proposals_ub_1980_fp32 = tik_instance.Tensor('float32', (self.ceil_n, ELEMENT_NUM),
                                                                   name="all_inp_proposals_ub_1980_fp32",
                                                                   scope=tik.scope_ubuf)
         # def tmp ub tensor
-        self.tmp_tensor_ub_fp16 = tik_instance.Tensor('float16', (self.ceil_N,), tik.scope_ubuf, 'tmp_tensor_ub_fp16')
+        self.tmp_tensor_ub_fp16 = tik_instance.Tensor('float16', (self.ceil_n,), tik.scope_ubuf, 'tmp_tensor_ub_fp16')
         self.tmp_tensor_ub_fp16_burst = tik_instance.Tensor('float16', (BURST_PROPOSAL_NUM,), tik.scope_ubuf,
                                                             'tmp_tensor_ub_fp16_burst')
 
@@ -633,10 +633,10 @@ class _NMSHelper(object):
         -------
         None
         """
-        self.xx1 = self.tik_instance.Tensor(self.data_type, (self.ceil_N,), tik.scope_ubuf, "xx1_ub")
-        self.yy1 = self.tik_instance.Tensor(self.data_type, (self.ceil_N,), tik.scope_ubuf, "yy1_ub")
+        self.xx1 = self.tik_instance.Tensor(self.data_type, (self.ceil_n,), tik.scope_ubuf, "xx1_ub")
+        self.yy1 = self.tik_instance.Tensor(self.data_type, (self.ceil_n,), tik.scope_ubuf, "yy1_ub")
         # xx2 is reused several times
-        self.xx2 = self.tik_instance.Tensor(self.data_type, (self.ceil_N,), tik.scope_ubuf, "xx2_ub")
+        self.xx2 = self.tik_instance.Tensor(self.data_type, (self.ceil_n,), tik.scope_ubuf, "xx2_ub")
         self.x1i = self.tik_instance.Scalar(self.data_type, name='x1i_scalar')
         self.y1i = self.tik_instance.Scalar(self.data_type, name='y1i_scalar')
         self.x2i = self.tik_instance.Scalar(self.data_type, name='x2i_scalar')
@@ -717,7 +717,7 @@ class _NMSHelper(object):
         self._tailing_handle_vector_dup(self.dsorts_ub, scalar_dsorts_size, dsorts_size, FP16_SIZE)
         selected_idx_ub_fp16 = self.tmp_tensor_ub_fp16
         self._tailing_handle_vector_dup(selected_idx_ub_fp16, scalar_dsorts_size, dsorts_size, FP16_SIZE)
-        self._tailing_handle_vec_conv(selected_idx_ub_fp16, self.selected_idx_ub, self.ceil_N, FP16_SIZE, INT32_SIZE,
+        self._tailing_handle_vec_conv(selected_idx_ub_fp16, self.selected_idx_ub, self.ceil_n, FP16_SIZE, INT32_SIZE,
                                       '', 1.)
         self._tailing_handle_vsub(self.dsorts_ub, self.dsorts_ub, selected_idx_ub_fp16, dsorts_size, FP16_SIZE,
                                   FP16_SIZE, FP16_SIZE)
@@ -730,9 +730,9 @@ class _NMSHelper(object):
         # idx_fp16_ub stores next nonzero idx, dtype needs conv to int8
         self.idx_fp16_ub = tik_instance.Tensor('float16', (SHAPE_NEXT_NONZERO,), tik.scope_ubuf, 'idx_fp16_ub')
 
-        # practically ceil_N is less than MASK_VCMAX_FP16 * REPEAT_TIMES_MAX
-        self.repeat_vmul_vcmax = self.ceil_N % (MASK_VCMAX_FP16 * REPEAT_TIMES_MAX) // MASK_VCMAX_FP16
-        self.last_num_vmul_vcmax = self.ceil_N % MASK_VCMAX_FP16
+        # practically ceil_n is less than MASK_VCMAX_FP16 * REPEAT_TIMES_MAX
+        self.repeat_vmul_vcmax = self.ceil_n % (MASK_VCMAX_FP16 * REPEAT_TIMES_MAX) // MASK_VCMAX_FP16
+        self.last_num_vmul_vcmax = self.ceil_n % MASK_VCMAX_FP16
         self.vcmax_mask = self.repeat_vmul_vcmax + (1 if self.last_num_vmul_vcmax > 0 else 0)
 
     def _input_trans(self):
@@ -779,7 +779,7 @@ class _NMSHelper(object):
         else:
             # max. burst is 65535, so max. bytes is 65535*32b, support max. N is 65535*32/2/8=131070 for fp16
             self.tik_instance.data_move(self.all_inp_proposals_ub_1980_fp32, self.all_inp_proposals_gm_1980, 0, 1,
-                                        self.ceil_N * ELEMENT_NUM * self.input_bytes_each_elem // CONFIG_DATA_ALIGN,
+                                        self.ceil_n * ELEMENT_NUM * self.input_bytes_each_elem // CONFIG_DATA_ALIGN,
                                         src_stride=0, dst_stride=0)
 
         # fp32. uint32 covers 32 elems, so shape[0] is 256/32=8
@@ -826,9 +826,9 @@ class _NMSHelper(object):
         vector_proposals_max = self.vector_mask_max // 8
         offset = 0
 
-        # step1: max. repeat
-        # only this tailing need the step1, other tailings don't need it, as ceil_N may > vector_proposals_max * 255
-        loop_num = self.ceil_N // (vector_proposals_max * REPEAT_TIMES_MAX)
+        # step1: max repeat
+        # only this tailing need the step1, other tailings don't need it, as ceil_n may > vector_proposals_max * 255
+        loop_num = self.ceil_n // (vector_proposals_max * REPEAT_TIMES_MAX)
         for i in range(0, loop_num):
             self.tik_instance.vreduce(mask=self.vector_mask_max,
                                       dst=dst_ub[offset],
@@ -842,7 +842,7 @@ class _NMSHelper(object):
             offset = (i + 1) * vector_proposals_max * REPEAT_TIMES_MAX
 
         # step2: repeat num
-        repeat = self.ceil_N % (vector_proposals_max * REPEAT_TIMES_MAX) // vector_proposals_max
+        repeat = self.ceil_n % (vector_proposals_max * REPEAT_TIMES_MAX) // vector_proposals_max
         if repeat > 0:
             self.tik_instance.vreduce(mask=self.vector_mask_max,
                                       dst=dst_ub[offset],
@@ -855,7 +855,7 @@ class _NMSHelper(object):
                                       src1_rep_stride=0)
 
         # step3: last num
-        last_num = self.ceil_N % vector_proposals_max
+        last_num = self.ceil_n % vector_proposals_max
         if last_num > 0:
             offset += repeat * vector_proposals_max
             self.tik_instance.vreduce(mask=8 * last_num,
@@ -888,7 +888,7 @@ class _NMSHelper(object):
         offset = 0
 
         # step2: repeat num
-        repeat = self.ceil_N % (vector_proposals_max * REPEAT_TIMES_MAX) // vector_proposals_max
+        repeat = self.ceil_n % (vector_proposals_max * REPEAT_TIMES_MAX) // vector_proposals_max
         if repeat > 0:
             self.tik_instance.vreduce(mask=self.input_vector_mask_max,
                                       dst=dst_ub[offset * 5],
@@ -901,7 +901,7 @@ class _NMSHelper(object):
                                       src1_rep_stride=0)
 
         # step3: last num
-        last_num = self.ceil_N % vector_proposals_max
+        last_num = self.ceil_n % vector_proposals_max
         if last_num > 0:
             offset += repeat * vector_proposals_max
             self.tik_instance.vreduce(mask=8 * last_num,
@@ -1264,7 +1264,7 @@ class _NMSHelper(object):
         selected_boxes_ub:
         """
         # def selected_boxes_ub
-        selected_boxes_ub = self.tik_instance.Tensor(self.input_dtype, (self.ceil_N, VALID_COLUMN_NUM), tik.scope_ubuf,
+        selected_boxes_ub = self.tik_instance.Tensor(self.input_dtype, (self.ceil_n, VALID_COLUMN_NUM), tik.scope_ubuf,
                                                      'selected_boxes_ub')
 
         # create pattern, shape is 16 or 8, which is enough and it'll be reused in vreduce, and vreduce output
@@ -1310,8 +1310,8 @@ class _NMSHelper(object):
         None
         """
         # int32 is fixed for output index
-        selected_idx_ub = self.tik_instance.Tensor('int32', (self.ceil_N,), tik.scope_ubuf, 'selected_idx_ub')
-        with self.tik_instance.for_range(0, self.ceil_N) as i:
+        selected_idx_ub = self.tik_instance.Tensor('int32', (self.ceil_n,), tik.scope_ubuf, 'selected_idx_ub')
+        with self.tik_instance.for_range(0, self.ceil_n) as i:
             selected_idx_ub[i].set_as(i)
 
         return selected_idx_ub
@@ -1328,10 +1328,10 @@ class _NMSHelper(object):
         -------
         None
         """
-        self._tailing_handle_vmuls(self.x1_ub, self.x1_ub, DOWN_FACTOR, self.ceil_N)
-        self._tailing_handle_vmuls(self.x2_ub, self.x2_ub, DOWN_FACTOR, self.ceil_N)
-        self._tailing_handle_vmuls(self.y1_ub, self.y1_ub, DOWN_FACTOR, self.ceil_N)
-        self._tailing_handle_vmuls(self.y2_ub, self.y2_ub, DOWN_FACTOR, self.ceil_N)
+        self._tailing_handle_vmuls(self.x1_ub, self.x1_ub, DOWN_FACTOR, self.ceil_n)
+        self._tailing_handle_vmuls(self.x2_ub, self.x2_ub, DOWN_FACTOR, self.ceil_n)
+        self._tailing_handle_vmuls(self.y1_ub, self.y1_ub, DOWN_FACTOR, self.ceil_n)
+        self._tailing_handle_vmuls(self.y2_ub, self.y2_ub, DOWN_FACTOR, self.ceil_n)
 
     def _area(self):
         """
@@ -1351,17 +1351,17 @@ class _NMSHelper(object):
             return self.total_areas_ub
 
         tik_instance = self.tik_instance
-        self.total_areas_ub = tik_instance.Tensor(self.data_type, (self.ceil_N,), name="total_areas_ub",
+        self.total_areas_ub = tik_instance.Tensor(self.data_type, (self.ceil_n,), name="total_areas_ub",
                                                   scope=tik.scope_ubuf)
 
         # reuse tmp tensor xx2 for y2suby1
         y2suby1 = self.xx2
 
-        self._tailing_handle_vsub(self.total_areas_ub, self.x2_ub, self.x1_ub, self.ceil_N, self.bytes_each_elem,
+        self._tailing_handle_vsub(self.total_areas_ub, self.x2_ub, self.x1_ub, self.ceil_n, self.bytes_each_elem,
                                   self.bytes_each_elem, self.bytes_each_elem)
-        self._tailing_handle_vsub(y2suby1, self.y2_ub, self.y1_ub, self.ceil_N, self.bytes_each_elem,
+        self._tailing_handle_vsub(y2suby1, self.y2_ub, self.y1_ub, self.ceil_n, self.bytes_each_elem,
                                   self.bytes_each_elem, self.bytes_each_elem)
-        self._tailing_handle_vmul(self.total_areas_ub, self.total_areas_ub, y2suby1, self.ceil_N, None,
+        self._tailing_handle_vmul(self.total_areas_ub, self.total_areas_ub, y2suby1, self.ceil_n, None,
                                   self.bytes_each_elem, self.bytes_each_elem, self.bytes_each_elem)
 
         return self.total_areas_ub
@@ -1384,25 +1384,25 @@ class _NMSHelper(object):
         self.y2i.set_as(self.y2_ub[cur])
 
         # `xx1 = max(x1[i], x1[1:]),  yy1 = max(y1[i], y1[1:]), xx2=min(x2[i], x2[1:]),  yy2=min(y2[i], y2[1:])`
-        self._tailing_handle_vmaxs(self.xx1, self.x1_ub, self.x1i, self.ceil_N)
-        self._tailing_handle_vmins(self.xx2, self.x2_ub, self.x2i, self.ceil_N)
+        self._tailing_handle_vmaxs(self.xx1, self.x1_ub, self.x1i, self.ceil_n)
+        self._tailing_handle_vmins(self.xx2, self.x2_ub, self.x2i, self.ceil_n)
 
         # `w = max(0, xx2-xx1+offset), h = max(0, yy2-yy1+offset), offset=0 here`
-        self._tailing_handle_vsub(self.xx1, self.xx2, self.xx1, self.ceil_N, self.bytes_each_elem,
+        self._tailing_handle_vsub(self.xx1, self.xx2, self.xx1, self.ceil_n, self.bytes_each_elem,
                                   self.bytes_each_elem, self.bytes_each_elem)
         # w stores in xx1
-        self._tailing_handle_vmaxs(self.xx1, self.xx1, self.zero_datatype_scalar, self.ceil_N)
+        self._tailing_handle_vmaxs(self.xx1, self.xx1, self.zero_datatype_scalar, self.ceil_n)
 
         # reuse tmp tensor
         self.yy2 = self.xx2
-        self._tailing_handle_vmaxs(self.yy1, self.y1_ub, self.y1i, self.ceil_N)
-        self._tailing_handle_vmins(self.yy2, self.y2_ub, self.y2i, self.ceil_N)
-        self._tailing_handle_vsub(self.yy1, self.yy2, self.yy1, self.ceil_N, self.bytes_each_elem,
+        self._tailing_handle_vmaxs(self.yy1, self.y1_ub, self.y1i, self.ceil_n)
+        self._tailing_handle_vmins(self.yy2, self.y2_ub, self.y2i, self.ceil_n)
+        self._tailing_handle_vsub(self.yy1, self.yy2, self.yy1, self.ceil_n, self.bytes_each_elem,
                                   self.bytes_each_elem, self.bytes_each_elem)
         # h stores in yy1
-        self._tailing_handle_vmaxs(self.yy1, self.yy1, self.zero_datatype_scalar, self.ceil_N)
+        self._tailing_handle_vmaxs(self.yy1, self.yy1, self.zero_datatype_scalar, self.ceil_n)
         # inter stores in xx1
-        self._tailing_handle_vmul(self.xx1, self.xx1, self.yy1, self.ceil_N, None,
+        self._tailing_handle_vmul(self.xx1, self.xx1, self.yy1, self.ceil_n, None,
                                   self.bytes_each_elem, self.bytes_each_elem, self.bytes_each_elem)
 
         return self.xx1
@@ -1501,11 +1501,11 @@ class _NMSHelper(object):
         areas = self._area()
         self.area_cur.set_as(areas[cur])
         aadds = self.xx2
-        self._tailing_handle_vadds(aadds, areas, self.area_cur, self.ceil_N)
-        self._tailing_handle_vmuls(aadds, aadds, self.iou_thres_factor, self.ceil_N)
+        self._tailing_handle_vadds(aadds, areas, self.area_cur, self.ceil_n)
+        self._tailing_handle_vmuls(aadds, aadds, self.iou_thres_factor, self.ceil_n)
 
         # cmpmask 2 bitmask
-        output_mask_int8_ub = self._tailing_handle_cmp_le_and_2bitmask(inter, aadds, self.ceil_N)
+        output_mask_int8_ub = self._tailing_handle_cmp_le_and_2bitmask(inter, aadds, self.ceil_n)
 
         # set output_mask[cur] = 0, because will be added into DST, and deleted from SRC proposal list
         output_mask_int8_ub[cur].set_as(self.zero_int8_scalar)
@@ -1598,12 +1598,12 @@ class _NMSHelper(object):
         selected_mask_ub
         """
         # def and init selected_mask_ub
-        selected_mask_ub = self.tik_instance.Tensor('uint8', (self.ceil_N,), name="selected_mask_ub",
+        selected_mask_ub = self.tik_instance.Tensor('uint8', (self.ceil_n,), name="selected_mask_ub",
                                                     scope=tik.scope_ubuf)
         selected_mask_ub_tmp = self.tmp_tensor_ub_fp16
         scalar_i = self.tik_instance.Scalar('float16', init_value=0)
-        self._tailing_handle_vector_dup(selected_mask_ub_tmp, scalar_i, size=self.ceil_N, src_bytes=FP16_SIZE)
-        self._tailing_handle_vec_conv(selected_mask_ub, selected_mask_ub_tmp, self.ceil_N, UINT8_SIZE, FP16_SIZE,
+        self._tailing_handle_vector_dup(selected_mask_ub_tmp, scalar_i, size=self.ceil_n, src_bytes=FP16_SIZE)
+        self._tailing_handle_vec_conv(selected_mask_ub, selected_mask_ub_tmp, self.ceil_n, UINT8_SIZE, FP16_SIZE,
                                       'round')
 
         cur = self.tik_instance.Scalar(dtype='int32', name='cur_scalar', init_value=0)
@@ -1666,15 +1666,15 @@ def _tik_func_nms_multi_core_basic_api(input_shape, input_dtype, thresh, total_o
 
     tik_instance.data_move(out_proposals_gm, output_proposals_ub, 0, nburst=1,
                            # `max. burst is 65535, unit is 32B, so support: 65535*32/2/8=131070 proposals if fp16.`
-                           burst=(nms_helper.ceil_N * VALID_COLUMN_NUM * \
+                           burst=(nms_helper.ceil_n * VALID_COLUMN_NUM * \
                                   nms_helper.bytes_each_elem // CONFIG_DATA_ALIGN),
                            src_stride=0, dst_stride=0)
     tik_instance.data_move(out_index_gm, output_index_ub, 0, nburst=1,
-                           burst=(nms_helper.ceil_N * INT32_SIZE // CONFIG_DATA_ALIGN),
+                           burst=(nms_helper.ceil_n * INT32_SIZE // CONFIG_DATA_ALIGN),
                            src_stride=0, dst_stride=0)
     tik_instance.data_move(out_mask_gm, output_mask_ub, 0, nburst=1,
                            # here need _ceiling() as ceilN can be 16; 16*1//32=0 is wrong
-                           burst=_ceiling(nms_helper.ceil_N * UINT8_SIZE, CONFIG_DATA_ALIGN) // CONFIG_DATA_ALIGN,
+                           burst=_ceiling(nms_helper.ceil_n * UINT8_SIZE, CONFIG_DATA_ALIGN) // CONFIG_DATA_ALIGN,
                            src_stride=0, dst_stride=0)
     tik_instance.BuildCCE(kernel_name=kernel_name_var,
                           inputs=[proposals],
@@ -1759,25 +1759,22 @@ def _used_ub_size(n, input_dtype):
     """
     if input_dtype == 'float16':
         input_bytes_each_elem = FP16_SIZE
-        input_vector_mask_max = BURST_PROPOSAL_NUM
     elif input_dtype == 'float32':
         input_bytes_each_elem = FP32_SIZE
-        input_vector_mask_max = BURST_PROPOSAL_NUM // 2
-
     vector_mask_max = BURST_PROPOSAL_NUM // 2
-    ceil_N = _ceiling(n, vector_mask_max)
-    valid_mask_size_int8 = ceil_N
-    dsorts_size = ceil_N
+    ceil_n = _ceiling(n, vector_mask_max)
+    valid_mask_size_int8 = ceil_n
+    dsorts_size = ceil_n
     bytes_each_elem = FP32_SIZE
 
     # x1, y2, x2, y2
-    xy_size = ceil_N * bytes_each_elem * 4
-    inp_size = ceil_N * ELEMENT_NUM * bytes_each_elem
-    tmp_ub_size = (ceil_N + BURST_PROPOSAL_NUM) * FP16_SIZE
+    xy_size = ceil_n * bytes_each_elem * 4
+    inp_size = ceil_n * ELEMENT_NUM * bytes_each_elem
+    tmp_ub_size = (ceil_n + BURST_PROPOSAL_NUM) * FP16_SIZE
     next_nonzero_size = SHAPE_NEXT_NONZERO * INT32_SIZE
     output_mask_int8 = valid_mask_size_int8 * INT8_SIZE
     # xx1, yy1, xx2, yy2
-    xxyy_size = ceil_N * bytes_each_elem * 3
+    xxyy_size = ceil_n * bytes_each_elem * 3
     output_mask_f16_size = BURST_PROPOSAL_NUM * FP16_SIZE
     # size of data_fp16_zero and data_fp16_one
     data_fp16_zero_one_size = BURST_PROPOSAL_NUM * FP16_SIZE * 2
@@ -1789,13 +1786,13 @@ def _used_ub_size(n, input_dtype):
     init_for_vcmax_size = (dsorts_size + MASK_VCMAX_FP16 * 2 + SHAPE_NEXT_NONZERO * 2) * FP16_SIZE
     # size used in _input_trans(), 16 is size of pattern, 4 means x1/y1/x2/y2
     input_trans_size = 8 * UINT32_SIZE * 4
-    selected_boxes_size = ceil_N * VALID_COLUMN_NUM * input_bytes_each_elem
+    selected_boxes_size = ceil_n * VALID_COLUMN_NUM * input_bytes_each_elem
     pattern_size = 16 * UINT16_SIZE
-    selected_idx_size = ceil_N * INT32_SIZE
+    selected_idx_size = ceil_n * INT32_SIZE
     # size used in _area()
-    area_size = ceil_N * bytes_each_elem
+    area_size = ceil_n * bytes_each_elem
     # size used in loops()
-    loops_size = ceil_N * UINT8_SIZE
+    loops_size = ceil_n * UINT8_SIZE
 
     return xy_size + inp_size + tmp_ub_size + next_nonzero_size + output_mask_int8 + xxyy_size + \
            output_mask_f16_size + data_fp16_zero_one_size + valid_mask_int8 + tmp_mask_size + \

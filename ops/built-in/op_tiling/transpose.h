@@ -59,8 +59,8 @@ namespace optiling {
 #define EPB8 8
 #define EPB16 16
 #define EPB32 32
-#define LAST_AXIS_N_TRANS_MAX_SIZE_B16 32 * 1024   // unit: 2B
-#define LAST_TWO_TRANS_MAX_SIZE_B16 255 * 16 * 16  // unit: 2B
+#define LAST_AXIS_N_TRANS_MAX_SIZE_B16 (32 * 1024)  // unit: 2B
+#define LAST_TWO_TRANS_MAX_SIZE_B16 (255 * 16 * 16)  // unit: 2B
 #define MDMS 0
 #define MDTS 1
 #define TDMS 2
@@ -142,7 +142,7 @@ enum SubScenarioLastAxisTrans {
   LAST_AXIS_TR_T2F = 2,  // thin 2 fat
 };
 
-enum MteMode {
+enum  MteMode {
   MTE_MODE_NULL = 0,  //default
   MTE_MODE_DST = 1,   // dst contiguous
   MTE_MODE_SRC = 2    // src contiguous

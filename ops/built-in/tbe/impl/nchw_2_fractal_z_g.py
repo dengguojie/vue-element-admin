@@ -20,13 +20,16 @@ from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
 
-EPB = 16
-UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
-CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-OFFSET_1 = 256 * 256
-OFFSET_2 = 0
-MAX_CORE_NUM = 32
-SRC_C_UNIT = 16
+
+class Constant:
+    """
+    This class for Constant.
+    """
+    EPB = 16
+    CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    OFFSET_1 = 256 * 256
+    OFFSET_2 = 0
+    SRC_C_UNIT = 16
 
 
 # 'pylint: disable=superfluous-parens,useless-object-inheritance,invalid-name
@@ -102,24 +105,24 @@ class Nchw2Fractalzg(object):
                     v.append(0)
 
             def _pad_zero(self):
-                self._pad_zero_impl(self.loop_src_n_base, CORE_NUM)
-                self._pad_zero_impl(self.loop_src_n_repeat, CORE_NUM)
-                self._pad_zero_impl(self.loop_src_c_base, CORE_NUM)
-                self._pad_zero_impl(self.loop_src_c_repeat, CORE_NUM)
-                self._pad_zero_impl(self.loop_src_c_tail, CORE_NUM)
-                self._pad_zero_impl(self.loop_gc_base, CORE_NUM)
-                self._pad_zero_impl(self.loop_gc_repeat, CORE_NUM)
-                self._pad_zero_impl(self.loop_gc_tail, CORE_NUM)
-                self._pad_zero_impl(self.loop_cout_orig_base, CORE_NUM)
-                self._pad_zero_impl(self.loop_cout_orig_repeat, CORE_NUM)
-                self._pad_zero_impl(self.loop_cout_orig_tail, CORE_NUM)
+                self._pad_zero_impl(self.loop_src_n_base, Constant.CORE_NUM)
+                self._pad_zero_impl(self.loop_src_n_repeat, Constant.CORE_NUM)
+                self._pad_zero_impl(self.loop_src_c_base, Constant.CORE_NUM)
+                self._pad_zero_impl(self.loop_src_c_repeat, Constant.CORE_NUM)
+                self._pad_zero_impl(self.loop_src_c_tail, Constant.CORE_NUM)
+                self._pad_zero_impl(self.loop_gc_base, Constant.CORE_NUM)
+                self._pad_zero_impl(self.loop_gc_repeat, Constant.CORE_NUM)
+                self._pad_zero_impl(self.loop_gc_tail, Constant.CORE_NUM)
+                self._pad_zero_impl(self.loop_cout_orig_base, Constant.CORE_NUM)
+                self._pad_zero_impl(self.loop_cout_orig_repeat, Constant.CORE_NUM)
+                self._pad_zero_impl(self.loop_cout_orig_tail, Constant.CORE_NUM)
 
         def __init__(self, shape_in, shape_out, groups):
             self.src_n = shape_in[0]
             self.cout_orig = shape_in[0] // groups
             self.cin_orig = shape_in[1]
             self.src_c = shape_in[1]
-            self.cin_orig_ms = EPB if self.cin_orig > EPB else  self.cin_orig # mjaor section
+            self.cin_orig_ms = Constant.EPB if self.cin_orig > Constant.EPB else  self.cin_orig # mjaor section
             self.kh = shape_in[2]
             self.kw = shape_in[3]
             self.dst_n = shape_out[1] * shape_out[2]
@@ -127,10 +130,10 @@ class Nchw2Fractalzg(object):
             self.loop_on_chw = 1
             self.loop_on_groups = self.groups
             self.n = shape_out[1] * shape_out[2]
-            self.n16 = self.n // EPB
-            self.loop_on_cout_orig = self.cout_orig // EPB
-            self.cout_orig_tail = self.cout_orig - self.loop_on_cout_orig * EPB
-            self.src_c_unit = SRC_C_UNIT
+            self.n16 = self.n // Constant.EPB
+            self.loop_on_cout_orig = self.cout_orig // Constant.EPB
+            self.cout_orig_tail = self.cout_orig - self.loop_on_cout_orig * Constant.EPB
+            self.src_c_unit = Constant.SRC_C_UNIT
             self.loop_on_src_c = 0
             self.c0 = shape_out[3]
             self.khw = self.kh * self.kw
@@ -143,7 +146,7 @@ class Nchw2Fractalzg(object):
             self.pf_src_c_repeat = []
 
             #c_gt_16
-            self.gc_tail = self.groups * self.src_c % SRC_C_UNIT
+            self.gc_tail = self.groups * self.src_c % Constant.SRC_C_UNIT
             self.pf_cout_orig_base = []
             self.pf_cout_orig_repeat = []
             self.pf_cout_orig_tail = []
@@ -165,10 +168,10 @@ class Nchw2Fractalzg(object):
                                            self.pf_cout_orig_base, self.pf_cout_orig_repeat, self.cout_orig_tail)
 
         def _calc_src_c_unit(self):
-            if self.cin_orig <= EPB:
+            if self.cin_orig <= Constant.EPB:
                 self.src_c_unit = self.src_c
             else:
-                self.src_c_unit = SRC_C_UNIT
+                self.src_c_unit = Constant.SRC_C_UNIT
                 self.loop_on_src_c = self.src_c // self.src_c_unit
                 self.src_c_tail = self.src_c - self.loop_on_src_c * self.src_c_unit
 
@@ -206,12 +209,12 @@ class Nchw2Fractalzg(object):
 
         def _dispatch_loop_c_le_16(self):
             # step 1: src_n factor
-            factor_n = self.groups if self.groups < CORE_NUM else CORE_NUM
+            factor_n = self.groups if self.groups < Constant.CORE_NUM else Constant.CORE_NUM
             unit = self.cout_orig
             self._each_factor_process_num(self.src_n, factor_n, unit, self.pf_src_n_base, self.pf_src_n_repeat)
 
             # step 2: src_c factor
-            factor_c = CORE_NUM // factor_n
+            factor_c = Constant.CORE_NUM // factor_n
             if factor_c == 0:
                 factor_c = 1
             unit = self.src_c_unit
@@ -220,19 +223,20 @@ class Nchw2Fractalzg(object):
         def _dispatch_loop_c_gt_16(self):
             # step 1: src_n factor
             total = self.groups * self.src_c
-            unit = SRC_C_UNIT
-            factor_gc = (total // unit) if (total // unit) < CORE_NUM else CORE_NUM
+            unit = Constant.SRC_C_UNIT
+            factor_gc = (total // unit) if (total // unit) < Constant.CORE_NUM else Constant.CORE_NUM
             self._each_factor_process_num(total, factor_gc, unit, self.pf_gc_base, self.pf_gc_repeat)
 
             # step 2: src_c factor
             total = self.loop_on_cout_orig
             unit = 1
-            factor_cout = CORE_NUM // factor_gc
+            factor_cout = Constant.CORE_NUM // factor_gc
             if factor_cout == 0:
                 factor_cout = 1
             self._each_factor_process_num(total, factor_cout, unit, self.pf_cout_orig_base, self.pf_cout_orig_repeat)
 
     def __init__(self, tik_inst, data_in, data_out):
+        UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
         self.tik_inst = tik_inst
         self.ub_input = tik_inst.Tensor("float16", (UB_SIZE // 2, ), tik.scope_ubuf, "ub_input")
         self.data_in = data_in
@@ -243,7 +247,7 @@ class Nchw2Fractalzg(object):
         return tp
 
     def _get_param_by_block_idx_le_16(self, block_idx, tp, pc_src_n_base, pc_src_n_repeat):
-        for i in range(CORE_NUM):
+        for i in range(Constant.CORE_NUM):
             with self.tik_inst.if_scope(block_idx == i):
                 pc_src_n_base.set_as(tp.pcp.loop_src_n_base[i])
                 pc_src_n_repeat.set_as(tp.pcp.loop_src_n_repeat[i])
@@ -251,37 +255,37 @@ class Nchw2Fractalzg(object):
     def _clear_tail_memory(self, tp, ub_input, left_zero, left_part, right_part, is_left):
         tik_inst = self.tik_inst
         with tik_inst.if_scope(is_left == 1):
-            with self.tik_inst.if_scope(left_part * tp.khw % EPB != 0):
-                self.tik_inst.vector_dup(16, ub_input[OFFSET_2 + left_zero * tp.khw * EPB + left_part * tp.khw * EPB],
-                                         0, EPB - (left_part * tp.khw % EPB), 1, 1)
+            with self.tik_inst.if_scope(left_part * tp.khw % Constant.EPB != 0):
+                self.tik_inst.vector_dup(16, ub_input[Constant.OFFSET_2 + left_zero * tp.khw * Constant.EPB + left_part * tp.khw * Constant.EPB],
+                                         0, Constant.EPB - (left_part * tp.khw % Constant.EPB), 1, 1)
         with tik_inst.else_scope():
-            with self.tik_inst.if_scope(right_part * tp.khw % EPB != 0):
-                self.tik_inst.vector_dup(16, ub_input[OFFSET_2 + left_zero * tp.khw * EPB + right_part * tp.khw * EPB],
-                                         0, EPB - (right_part * tp.khw % EPB), 1, 1)
+            with self.tik_inst.if_scope(right_part * tp.khw % Constant.EPB != 0):
+                self.tik_inst.vector_dup(16, ub_input[Constant.OFFSET_2 + left_zero * tp.khw * Constant.EPB + right_part * tp.khw * Constant.EPB],
+                                         0, Constant.EPB - (right_part * tp.khw % Constant.EPB), 1, 1)
 
     def _zero_offset_1(self, ub_input, repeat=248):
         # mask,dst,scalar, repeat_times, dst_blk_stride, dst_rep_stride
-        self.tik_inst.vector_dup(128, ub_input[OFFSET_1], 0, repeat, 1, 8)
+        self.tik_inst.vector_dup(128, ub_input[Constant.OFFSET_1], 0, repeat, 1, 8)
 
     def _zero_offset_2(self, ub_input, repeat=248):
-        self.tik_inst.vector_dup(128, ub_input[OFFSET_2], 0, repeat, 1, 8)
+        self.tik_inst.vector_dup(128, ub_input[Constant.OFFSET_2], 0, repeat, 1, 8)
 
     def _calc_src_addr_le_16(self, tp, lsn, lct, left_part, is_left, src_addr):
         tik_inst = self.tik_inst
         with tik_inst.if_scope(is_left == 1):
-            src_addr.set_as(lsn * tp.cout_orig * tp.vol_chw + lct * EPB * tp.vol_chw)
+            src_addr.set_as(lsn * tp.cout_orig * tp.vol_chw + lct * Constant.EPB * tp.vol_chw)
         with tik_inst.else_scope():
-            src_addr.set_as(lsn * tp.cout_orig * tp.vol_chw + lct * EPB * tp.vol_chw + left_part * tp.khw)
+            src_addr.set_as(lsn * tp.cout_orig * tp.vol_chw + lct * Constant.EPB * tp.vol_chw + left_part * tp.khw)
 
     def _calc_dst_addr_le_16(self, tp, lct, top_distance, nc0_counter, dst_addr):
-        dst_addr.set_as(nc0_counter * tp.khw * tp.dst_n * EPB + lct * EPB * EPB + top_distance * EPB)
+        dst_addr.set_as(nc0_counter * tp.khw * tp.dst_n * Constant.EPB + lct * Constant.EPB * Constant.EPB + top_distance * Constant.EPB)
 
     def _calc_burst_len(self, tp, left_part, right_part, is_left, burst_len):
         tik_inst = self.tik_inst
         with tik_inst.if_scope(is_left == 1):
-            burst_len.set_as((left_part * tp.khw + EPB - 1) / EPB)
+            burst_len.set_as((left_part * tp.khw + Constant.EPB - 1) / Constant.EPB)
         with tik_inst.else_scope():
-            burst_len.set_as((right_part * tp.khw + EPB - 1) / EPB)
+            burst_len.set_as((right_part * tp.khw + Constant.EPB - 1) / Constant.EPB)
 
     def _copy_in_le_16(self, tp, ub_input, ub_offset, lsn, lct, cout_orig_tail,
                        left_zero, left_part, right_part, is_left):
@@ -292,9 +296,9 @@ class Nchw2Fractalzg(object):
         self._calc_burst_len(tp, left_part, right_part, is_left, burst_len)
         loop_num = tik_inst.Scalar("int64", init_value=cout_orig_tail)
         with tik_inst.if_scope(cout_orig_tail == 0):
-            loop_num.set_as(EPB)
+            loop_num.set_as(Constant.EPB)
         with tik_inst.for_range(0, loop_num) as i:
-            tik_inst.data_move(self.ub_input[OFFSET_1 + ub_offset * EPB],
+            tik_inst.data_move(self.ub_input[Constant.OFFSET_1 + ub_offset * Constant.EPB],
                                self.data_in[src_addr + i * tp.vol_chw], 0, 1, burst_len, 0, 0)
             ub_offset.set_as(ub_offset + burst_len)
 
@@ -304,22 +308,22 @@ class Nchw2Fractalzg(object):
         src_stride = tik_inst.Scalar("int64", init_value=0)
         dst_stride = tik_inst.Scalar("int64", init_value=0)
         with tik_inst.if_scope(is_left == 1):
-            line_blocks = (left_part * tp.khw + EPB - 1) / EPB
-            ele_num_per_line = line_blocks * EPB
-            src_addr_list = [ub_input[OFFSET_1 + ele_num_per_line * i] for i in range(EPB)]
-            dst_addr_list = [ub_input[OFFSET_2 + left_zero * tp.khw * EPB + EPB * i] for i in range(EPB)]
+            line_blocks = (left_part * tp.khw + Constant.EPB - 1) / Constant.EPB
+            ele_num_per_line = line_blocks * Constant.EPB
+            src_addr_list = [ub_input[Constant.OFFSET_1 + ele_num_per_line * i] for i in range(Constant.EPB)]
+            dst_addr_list = [ub_input[Constant.OFFSET_2 + left_zero * tp.khw * Constant.EPB + Constant.EPB * i] for i in range(Constant.EPB)]
             repeat_cnt_first = line_blocks
             with tik_inst.if_scope(repeat_cnt_first != 1):
                 src_stride.set_as(1)
                 dst_stride.set_as(16)
             tik_inst.vnchwconv(False, False, dst_addr_list, src_addr_list, repeat_cnt_first, dst_stride, src_stride)
         with tik_inst.else_scope():
-            line_blocks = (right_part * tp.khw + EPB - 1) / EPB
-            ele_num_per_line = line_blocks * EPB
-            src_addr_list = [ub_input[OFFSET_1 + ele_num_per_line * i] for i in range(EPB)]
+            line_blocks = (right_part * tp.khw + Constant.EPB - 1) / Constant.EPB
+            ele_num_per_line = line_blocks * Constant.EPB
+            src_addr_list = [ub_input[Constant.OFFSET_1 + ele_num_per_line * i] for i in range(Constant.EPB)]
             # step 1 : first vnchwconv
-            src_addr_list = [ub_input[OFFSET_1 + ele_num_per_line * i] for i in range(EPB)]
-            dst_addr_list = [ub_input[OFFSET_2 + left_zero * tp.khw * EPB + EPB * i] for i in range(EPB)]
+            src_addr_list = [ub_input[Constant.OFFSET_1 + ele_num_per_line * i] for i in range(Constant.EPB)]
+            dst_addr_list = [ub_input[Constant.OFFSET_2 + left_zero * tp.khw * Constant.EPB + Constant.EPB * i] for i in range(Constant.EPB)]
             repeat_cnt_first = line_blocks
             with tik_inst.if_scope(repeat_cnt_first != 1):
                 src_stride.set_as(1)
@@ -330,8 +334,8 @@ class Nchw2Fractalzg(object):
         self._clear_tail_memory(tp, ub_input, left_zero, left_part, right_part, is_left)
 
         # step 3 : second vnchwconv, move block data together
-        src_addr_list = [ub_input[OFFSET_2 + tp.khw * EPB * i] for i in range(EPB)]
-        dst_addr_list = [ub_input[OFFSET_1 + EPB * i] for i in range(EPB)]
+        src_addr_list = [ub_input[Constant.OFFSET_2 + tp.khw * Constant.EPB * i] for i in range(Constant.EPB)]
+        dst_addr_list = [ub_input[Constant.OFFSET_1 + Constant.EPB * i] for i in range(Constant.EPB)]
         repeat_cnt_second = tp.khw
         with tik_inst.if_scope(repeat_cnt_second == 1):
             src_stride.set_as(0)
@@ -347,15 +351,15 @@ class Nchw2Fractalzg(object):
         cout_orig_tail_s = tik_inst.Scalar("int64", init_value=cout_orig_tail)
         self._calc_dst_addr_le_16(tp, lct, top_distance, nc0_counter, dst_addr)
         with tik_inst.if_scope(cout_orig_tail == 0):
-            tik_inst.data_move(self.data_out[dst_addr], self.ub_input[OFFSET_1], 0, tp.khw, EPB, 0, tp.dst_n - EPB)
+            tik_inst.data_move(self.data_out[dst_addr], self.ub_input[Constant.OFFSET_1], 0, tp.khw, Constant.EPB, 0, tp.dst_n - Constant.EPB)
         with tik_inst.else_scope():
-            tik_inst.data_move(self.data_out[dst_addr], self.ub_input[OFFSET_1],
-                               0, tp.khw, cout_orig_tail_s, EPB - cout_orig_tail_s, tp.dst_n - cout_orig_tail_s)
+            tik_inst.data_move(self.data_out[dst_addr], self.ub_input[Constant.OFFSET_1],
+                               0, tp.khw, cout_orig_tail_s, Constant.EPB - cout_orig_tail_s, tp.dst_n - cout_orig_tail_s)
 
     def _update_param_lr_part_le_16(self, tp, left_zero, left_part, right_part):
         tik_inst = self.tik_inst
-        with tik_inst.if_scope(left_zero + tp.cin_orig > EPB):
-            left_part.set_as(EPB - left_zero)
+        with tik_inst.if_scope(left_zero + tp.cin_orig > Constant.EPB):
+            left_part.set_as(Constant.EPB - left_zero)
             right_part.set_as(tp.cin_orig - left_part)
         with tik_inst.else_scope():
             left_part.set_as(tp.cin_orig)
@@ -372,7 +376,7 @@ class Nchw2Fractalzg(object):
         with tik_inst.if_scope(is_left == 0):
             left_zero.set_as(right_part)
         with tik_inst.else_scope():
-            with tik_inst.if_scope(left_zero + tp.cin_orig < EPB):
+            with tik_inst.if_scope(left_zero + tp.cin_orig < Constant.EPB):
                 left_zero.set_as(left_zero + tp.cin_orig)
             with tik_inst.else_scope():
                 nc0_counter.set_as(nc0_counter + 1)
@@ -400,9 +404,9 @@ class Nchw2Fractalzg(object):
         self._copy_out_le_16(tp, ub_input, lsn, lct, cout_orig_tail, top_distance, nc0_counter)
 
     def _calc_base_pos_le_16(self, tp, pc_src_n_base, left_zero, top_distance, nc0_counter):
-        left_zero.set_as(pc_src_n_base * tp.cin_orig % EPB)
+        left_zero.set_as(pc_src_n_base * tp.cin_orig % Constant.EPB)
         top_distance.set_as(pc_src_n_base * tp.cout_orig % tp.dst_n)
-        nc0_counter.set_as(pc_src_n_base * tp.cin_orig / EPB)
+        nc0_counter.set_as(pc_src_n_base * tp.cin_orig / Constant.EPB)
 
     def compute_c_le_16(self, tp, data_in, data_out):
         """
@@ -419,7 +423,7 @@ class Nchw2Fractalzg(object):
         right_part = tik_inst.Scalar("int64", init_value=0)
         is_left = tik_inst.Scalar("int64", init_value=1)
 
-        with tik_inst.for_range(0, CORE_NUM, block_num=CORE_NUM) as block_idx:
+        with tik_inst.for_range(0, Constant.CORE_NUM, block_num=Constant.CORE_NUM) as block_idx:
             self._get_param_by_block_idx_le_16(block_idx, tp, pc_src_n_base, pc_src_n_repeat)
             self._calc_base_pos_le_16(tp, pc_src_n_base, left_zero, top_distance, nc0_counter)
 
@@ -449,7 +453,7 @@ class Nchw2Fractalzg(object):
 
     def _get_param_by_block_idx_gt_16(self, block_idx, tp, pc_gc_base, pc_gc_repeat, pc_gc_tail,
                                       pc_cout_orig_base, pc_cout_orig_repeat, pc_cout_orig_tail):
-        for i in range(CORE_NUM):
+        for i in range(Constant.CORE_NUM):
             with self.tik_inst.if_scope(block_idx == i):
                 pc_gc_base.set_as(tp.pcp.loop_gc_base[i])
                 pc_gc_repeat.set_as(tp.pcp.loop_gc_repeat[i])
@@ -460,22 +464,22 @@ class Nchw2Fractalzg(object):
 
     def _calc_param_gt_16(self, tp, lgc, left_zero, top_distance, nc0_counter, left_part, right_part):
         tik_inst = self.tik_inst
-        top_distance.set_as(lgc * EPB // tp.cin_orig * tp.cout_orig % tp.dst_n)
+        top_distance.set_as(lgc * Constant.EPB // tp.cin_orig * tp.cout_orig % tp.dst_n)
         nc0_counter.set_as(lgc)
         left_zero.set_as(0)
-        left_part.set_as((tp.src_c - (lgc * EPB) % tp.src_c))
-        with tik_inst.if_scope(left_part >= EPB):
-            left_part.set_as(EPB)
+        left_part.set_as((tp.src_c - (lgc * Constant.EPB) % tp.src_c))
+        with tik_inst.if_scope(left_part >= Constant.EPB):
+            left_part.set_as(Constant.EPB)
             right_part.set_as(0)
         with tik_inst.else_scope():
-            right_part.set_as(EPB - left_part)
+            right_part.set_as(Constant.EPB - left_part)
 
     def _calc_param_cg_tail_gt_16(self, tp, lgc, lct, left_zero, top_distance,
                                   nc0_counter, left_part, right_part, is_left):
         left_zero.set_as(0)
-        top_distance.set_as(lgc * EPB // tp.cin_orig * tp.cout_orig % tp.dst_n)
+        top_distance.set_as(lgc * Constant.EPB // tp.cin_orig * tp.cout_orig % tp.dst_n)
         nc0_counter.set_as(lgc)
-        left_part.set_as((tp.src_c - (lgc * EPB) % tp.src_c))
+        left_part.set_as((tp.src_c - (lgc * Constant.EPB) % tp.src_c))
         right_part.set_as(0)
         is_left.set_as(1)
 
@@ -483,16 +487,16 @@ class Nchw2Fractalzg(object):
         tik_inst = self.tik_inst
         hwc_counter = tik_inst.Scalar("int64", init_value=0)
         with tik_inst.if_scope(is_left == 1):
-            hwc_counter.set_as(lgc * EPB // tp.src_c)
+            hwc_counter.set_as(lgc * Constant.EPB // tp.src_c)
             src_addr.set_as(hwc_counter * tp.cout_orig * tp.vol_chw +\
-                            lct * EPB * tp.vol_chw +\
-                            lgc * EPB % tp.src_c * tp.khw)
+                            lct * Constant.EPB * tp.vol_chw +\
+                            lgc * Constant.EPB % tp.src_c * tp.khw)
         with tik_inst.else_scope():
-            hwc_counter.set_as((lgc * EPB + left_part) // tp.src_c)
-            src_addr.set_as(hwc_counter * tp.cout_orig * tp.vol_chw + lct * EPB * tp.vol_chw)
+            hwc_counter.set_as((lgc * Constant.EPB + left_part) // tp.src_c)
+            src_addr.set_as(hwc_counter * tp.cout_orig * tp.vol_chw + lct * Constant.EPB * tp.vol_chw)
 
     def _calc_dst_addr_gt_16(self, tp, lgc, lct, top_distance, nc0_counter, dst_addr):
-        dst_addr.set_as(nc0_counter * tp.khw * tp.dst_n * EPB + lct * EPB * EPB + top_distance * EPB)
+        dst_addr.set_as(nc0_counter * tp.khw * tp.dst_n * Constant.EPB + lct * Constant.EPB * Constant.EPB + top_distance * Constant.EPB)
 
     def _copy_in_gt_16(self, tp, ub_input, ub_offset, lgc, lct, cout_orig_tail,
                        left_zero, left_part, right_part, is_left):
@@ -503,9 +507,9 @@ class Nchw2Fractalzg(object):
         self._calc_burst_len(tp, left_part, right_part, is_left, burst_len)
         loop_num = tik_inst.Scalar("int64", init_value=cout_orig_tail)
         with tik_inst.if_scope(cout_orig_tail == 0):
-            loop_num.set_as(EPB)
+            loop_num.set_as(Constant.EPB)
         with tik_inst.for_range(0, loop_num) as i:
-            tik_inst.data_move(self.ub_input[OFFSET_1 + ub_offset * EPB],
+            tik_inst.data_move(self.ub_input[Constant.OFFSET_1 + ub_offset * Constant.EPB],
                                self.data_in[src_addr + i * tp.vol_chw], 0, 1, burst_len, 0, 0)
             ub_offset.set_as(ub_offset + burst_len)
 
@@ -515,10 +519,10 @@ class Nchw2Fractalzg(object):
         cout_orig_tail_s = tik_inst.Scalar("int64", init_value=cout_orig_tail)
         self._calc_dst_addr_gt_16(tp, lgc, lct, top_distance, nc0_counter, dst_addr)
         with tik_inst.if_scope(cout_orig_tail == 0):
-            tik_inst.data_move(self.data_out[dst_addr], self.ub_input[OFFSET_1], 0, tp.khw, EPB, 0, tp.dst_n - EPB)
+            tik_inst.data_move(self.data_out[dst_addr], self.ub_input[Constant.OFFSET_1], 0, tp.khw, Constant.EPB, 0, tp.dst_n - Constant.EPB)
         with tik_inst.else_scope():
-            tik_inst.data_move(self.data_out[dst_addr], self.ub_input[OFFSET_1],
-                               0, tp.khw, cout_orig_tail_s, EPB - cout_orig_tail_s, tp.dst_n - cout_orig_tail_s)
+            tik_inst.data_move(self.data_out[dst_addr], self.ub_input[Constant.OFFSET_1],
+                               0, tp.khw, cout_orig_tail_s, Constant.EPB - cout_orig_tail_s, tp.dst_n - cout_orig_tail_s)
 
     def _copy_left_part_gt_16(self, tp, ub_input, ub_offset, lgc, lct, cout_orig_tail, left_zero, top_distance,
                               nc0_counter, left_part, right_part, is_left):
@@ -568,7 +572,7 @@ class Nchw2Fractalzg(object):
         right_part = tik_inst.Scalar("int64", init_value=0)
         is_left = tik_inst.Scalar("int64", init_value=1)
 
-        with tik_inst.for_range(0, CORE_NUM, block_num=CORE_NUM) as block_idx:
+        with tik_inst.for_range(0, Constant.CORE_NUM, block_num=Constant.CORE_NUM) as block_idx:
             self._get_param_by_block_idx_gt_16(block_idx, tp, pc_gc_base, pc_gc_repeat, pc_gc_tail,
                                                pc_cout_orig_base, pc_cout_orig_repeat, pc_cout_orig_tail)
 
@@ -645,7 +649,7 @@ def nchw_2_fractal_z_g(src, dst, src_format, dst_format, groups, kernel_name="nc
     data_out = tik_inst.Tensor(out_dtype, shape_out, tik.scope_gm, name="data_out", is_atomic_add=True)
     instance = Nchw2Fractalzg(tik_inst, data_in, data_out)
     tp = instance._tiling(shape_in, shape_out, groups)
-    if (shape_in[1] <= EPB):
+    if (shape_in[1] <= Constant.EPB):
         instance.compute_c_le_16(tp, data_in, data_out)
     else:
         instance.compute_c_gt_16(tp, data_in, data_out)

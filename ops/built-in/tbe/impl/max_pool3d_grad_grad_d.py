@@ -21,15 +21,6 @@ import te.lang.cce as tbe
 from te import tvm
 from te.utils.error_manager import error_manager_vector
 
-# shape limit
-# int32's max value
-SHAPE_SIZE_LIMIT = 2 ** 31 - 1
-C0SIZE = 16
-NoneType = type(None)
-CAFFE_DATA_MODE = 0
-TENSORFLOW_DATA_MODE = 1
-MAX_BUILD_ROUND_FOR_RECALC_UB = 8
-
 
 # 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 # 'pylint: disable=too-many-locals,too-many-boolean-expressions
@@ -64,6 +55,8 @@ def max_pool3d_grad_grad_d(orig_input, orig_output, grad_grad, assist, output,
     -------
     None
     """
+    
+    max_build_round_for_recalc_ub = 8
     if (pads[0] == 0 and pads[1] == 0 and pads[2] == 0 and \
             pads[3] == 0 and pads[4] == 0 and pads[5] == 0):
         padding = "VALID"
@@ -97,7 +90,7 @@ def max_pool3d_grad_grad_d(orig_input, orig_output, grad_grad, assist, output,
 
     #UB size can not be calculated accurately, so retry 8 times at most
     build_count = 0
-    while build_count <= MAX_BUILD_ROUND_FOR_RECALC_UB:
+    while build_count <= max_build_round_for_recalc_ub:
         res = tbe.pooling3d_max_grad_grad(orig_input_tensor,
                                           orig_output_tensor,
                                           grad_grad_tensor,

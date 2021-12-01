@@ -19,8 +19,13 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
 
-# constant 8
-NUM_EIGHT = 8
+
+class Constant:
+    """
+    This class for Constant.
+    """
+    # constant 8
+    NUM_EIGHT = 8
 
 
 # 'pylint:disable=invalid-name,too-many-locals,unused-argument,unused-variable
@@ -42,9 +47,9 @@ def n_p_u_get_float_status(addr, data, kernel_name="n_p_u_get_float_status"):
     tik_instance = tik.Tik()
     aicore_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
-    input_addr = tik_instance.Tensor("float32", (NUM_EIGHT,), name="input_addr",
+    input_addr = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,), name="input_addr",
                                      scope=tik.scope_gm)
-    output_data = tik_instance.Tensor("float32", (NUM_EIGHT,),
+    output_data = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,),
                                       name="output_data",
                                       scope=tik.scope_gm)
 
@@ -52,9 +57,9 @@ def n_p_u_get_float_status(addr, data, kernel_name="n_p_u_get_float_status"):
         status_in_scalar_buffer = tik_instance.Scalar(dtype="uint64",
                                                       init_value=0)
         tik_instance.get_overflow_status(status_in_scalar_buffer)
-        data_ub = tik_instance.Tensor("float32", (NUM_EIGHT,), name="data_ub",
+        data_ub = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,), name="data_ub",
                                       scope=tik.scope_ubuf)
-        tik_instance.vector_dup(NUM_EIGHT, data_ub, 1, 1, 0, 0)
+        tik_instance.vector_dup(Constant.NUM_EIGHT, data_ub, 1, 1, 0, 0)
         data_ub_input = tik_instance.Tensor("float16", (38400,),
                                             name="data_ub_input",
                                             scope=tik.scope_ubuf)
@@ -67,7 +72,7 @@ def n_p_u_get_float_status(addr, data, kernel_name="n_p_u_get_float_status"):
         tik_instance.vector_dup(128, data_ub_input, 9, 150, 8, 1)
         with tik_instance.if_scope(status_in_scalar_buffer != 0):
             tik_instance.data_move(input_addr, data_ub, 0, 1, 1, 0, 0)
-        tik_instance.vector_dup(NUM_EIGHT, data_ub, 0, 1, 0, 0)
+        tik_instance.vector_dup(Constant.NUM_EIGHT, data_ub, 0, 1, 0, 0)
         tik_instance.data_move(output_data, data_ub, 0, 1, 1, 0, 0)
     tik_instance.BuildCCE(kernel_name, inputs=[input_addr],
                           outputs=[output_data])

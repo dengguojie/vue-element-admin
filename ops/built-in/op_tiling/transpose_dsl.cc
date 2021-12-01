@@ -42,6 +42,9 @@ const std::int32_t ELEMENT_IN_BLOCK_DEFAULT = 16;
 const std::int32_t ELEMENT_IN_BLOCK_B32 = 8;
 const std::int32_t ELEMENT_IN_BLOCK_B8 = 32;
 const std::int32_t ELEMENT_IN_BLOCK_B64 = 4;
+static const size_t BLOCK_SIZE = 32;
+static const int64_t ALIGN_THRESHOLD = 512;
+
 
 const int64_t GetElementByType(const ge::DataType& dtype) {
   // element nums in one block, default, fp16, int16, uin16

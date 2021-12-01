@@ -23,7 +23,7 @@ from te.utils import para_check
 from impl.util import util_select_op_base
 
 
-# pylint: disable = unused-argument,invalid-name
+# 'pylint: disable = unused-argument,invalid-name
 def get_op_support_info(x1, y, across_spatial=True, kernel_name="normalize_sum"):
     """
     get_op_support_info
@@ -54,7 +54,7 @@ def get_op_support_info(x1, y, across_spatial=True, kernel_name="normalize_sum")
     return op_cal_info_in_json
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("normalize_sum")
 def normalize_sum_compute(x1, y, data_format, across_spatial=True,
                           kernel_name="normalize_sum"):
@@ -108,7 +108,7 @@ def normalize_sum_compute(x1, y, data_format, across_spatial=True,
     return x1_cast_sqr_sum
 
 
-# pylint: disable=locally-disabled,invalid-name
+# 'pylint: disable=locally-disabled,invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def normalize_sum(x1, y, across_spatial=True, kernel_name="normalize_sum"):
@@ -163,7 +163,7 @@ def normalize_sum(x1, y, across_spatial=True, kernel_name="normalize_sum"):
     res = normalize_sum_compute(data_x1, y, data_format, across_spatial,
                                 kernel_name)
 
-    # pylint: disable=no-member
+    # 'pylint: disable=no-member
     with tvm.target.cce():
         sch = tbe.auto_schedule(res)
 

@@ -32,8 +32,6 @@ namespace optiling {
 namespace utils {
 namespace transpose {
 static const size_t MAX_DIM_LEN = 8;
-static const size_t BLOCK_SIZE = 32;
-static const int64_t ALIGN_THRESHOLD = 512;
 
 struct CompileInfo {
   int64_t core_num{0};
@@ -97,12 +95,12 @@ class Transpose {
   void AdjustInputFactor(transpose::AdjustTilingParams& adjustTilingParams);
   void AdjustOutputFactor(transpose::AdjustTilingParams& adjustTilingParams);
   void UbNoOverlap(int64_t output_in_ub);
-  void InputUbTiling(transpose::UbTilingParams& ubTilingParams);
-  void OutputUbTiling(transpose::UbTilingParams& ubTilingParams);
-  bool UbSplitSameAxis(transpose::UbTilingParams& ubTilingParams);
-  bool InputCrossUbTiling(transpose::CrossUbTilingParams& crossUbTilingParams);
-  bool OutputCrossUbTiling(transpose::CrossUbTilingParams& crossUbTilingParams);
-  void CrossUbUpdateSameAxis(transpose::CrossUbTilingParams& crossUbTilingParams);
+  void InputUbTiling(transpose::UbTilingParams& tilingParams);
+  void OutputUbTiling(transpose::UbTilingParams& tilingParams);
+  bool UbSplitSameAxis(transpose::UbTilingParams& tilingParams);
+  bool InputCrossUbTiling(transpose::CrossUbTilingParams& tilingParams);
+  bool OutputCrossUbTiling(transpose::CrossUbTilingParams& tilingParams);
+  void CrossUbUpdateSameAxis(transpose::CrossUbTilingParams& tilingParams);
 
  private:
   const std::string& op_type;

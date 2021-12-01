@@ -38,7 +38,7 @@ MIN_SCALAR_FP16 = 2 ** (-24)
 TMP_SCALAR_FP16 = 2 ** 12
 
 
-class NonMaxSuppression(object):
+class NonMaxSuppression():
     """
     Function: use to store NonMaxSuppression base parameters
     Modify : 2020-12-01

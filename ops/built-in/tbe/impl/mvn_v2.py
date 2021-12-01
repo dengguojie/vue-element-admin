@@ -22,10 +22,6 @@ from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import shape_util
 
-# const value
-CONST_HALF = 0.5
-CONST_SQRT_ITER = 3
-
 
 # 'pylint: disable = unused-argument
 # 'pylint: disable=invalid-name,too-many-arguments
@@ -124,7 +120,8 @@ def mvn_v2_compute(x, y, eps=1e-9, axis=None, kernel_name="mvn_v2"):
     """
     dtype_x = x.dtype
     is_cast = False
-
+    const_half = 0.5
+    const_sqrt_iter = 3
     if tbe_platform.api_check_support("te.lang.cce.vmuls", "float32"):
         if dtype_x == "float16":
             is_cast = True
@@ -166,10 +163,10 @@ def mvn_v2_compute(x, y, eps=1e-9, axis=None, kernel_name="mvn_v2"):
     else:
         y_sqrt = tbe.vsqrt(var)
 
-        for _ in range(CONST_SQRT_ITER):
+        for _ in range(const_sqrt_iter):
             data_sqrt = tbe.vdiv(var, y_sqrt)
             data_sqrt = tbe.vadd(data_sqrt, y_sqrt)
-            data_sqrt = tbe.vmuls(data_sqrt, tvm.const(CONST_HALF, var.dtype))
+            data_sqrt = tbe.vmuls(data_sqrt, tvm.const(const_half, var.dtype))
             y_sqrt = data_sqrt
 
         y_add = tbe.vadds(y_sqrt, eps)

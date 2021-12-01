@@ -25,14 +25,18 @@ from impl.util.platform_adapter import para_check
 from impl.constant_util import MASK64
 from impl.util.platform_adapter import error_manager_vector
 
-DIM2 = 2
-NEGATIVE = -1
-TWO_KB = 2048
-MAXREPEAT = 255
-NUM_SIXTYFOUR = MASK64
+
+class Constant:
+    """
+    The class for constant.
+    """
+    DIM2 = 2
+    NEGATIVE = -1
+    MAXREPEAT = 255
+    NUM_SIXTYFOUR = MASK64
 
 
-# 'pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments
 def check_supported(x, target, weight, y, total_weight, reduction="mean",
                     ignore_index=-100, kernel_name="nll_loss"):
     """
@@ -86,13 +90,13 @@ def _shape_and_dtype_check(x, target, weight, kernel_name):
     para_check.check_dtype_rule(x_dtype, "float32")
     para_check.check_dtype_rule(target_dtype, "int32")
     para_check.check_dtype_rule(weight_dtype, "float32")
-    if len(x_shape) > DIM2:
+    if len(x_shape) > Constant.DIM2:
         error_manager_vector.raise_err_specific_reson("nll_loss", "The dimension of x \
                                                       should be equal to or less than 2")
     if len(target_shape) != 1:
         error_manager_vector.raise_err_specific_reson("nll_loss", "The dimension of \
                                                       target only support 1")
-    if len(x_shape) == DIM2 and x_shape[0] != target_shape[0]:
+    if len(x_shape) == Constant.DIM2 and x_shape[0] != target_shape[0]:
         error_manager_vector.raise_err_specific_reson("nll_loss", "The first dimension \
                                                       of x and target should be equal")
     if len(weight_shape) != 1:
@@ -116,6 +120,7 @@ class NllLossCompute:
     None
     """
     def __init__(self, x, target, weight, reduction, ignore_index, kernel_name):
+        TWO_KB = 2048
         self.init_tik_instance()
         self.target = target
         self.weight = weight
@@ -171,7 +176,7 @@ class NllLossCompute:
         self.weight_gm_size = self.weight_shape[0]
         self.out_gm_size = self.weight_shape[0]
         self.total_weight_size = 1
-        if self.x_dims == DIM2 and self.reduction == "none":
+        if self.x_dims == Constant.DIM2 and self.reduction == "none":
             self.output_gm_size = self.n_dim
         else:
             self.output_gm_size = 1
@@ -191,10 +196,10 @@ class NllLossCompute:
         self.big_target = False
         self.none_reduction_is_multi_core = False
         self.target_ub_size = math.ceil(self.target_shape[0] /
-                                        NUM_SIXTYFOUR)*NUM_SIXTYFOUR
+                                        Constant.NUM_SIXTYFOUR)*Constant.NUM_SIXTYFOUR
         self.refactor_weight_size = self.target_ub_size
         self.weight_ub_size = math.ceil(self.weight_shape[0] /
-                                        NUM_SIXTYFOUR+1)*NUM_SIXTYFOUR
+                                        Constant.NUM_SIXTYFOUR+1)*Constant.NUM_SIXTYFOUR
         self.work_tensor_size = math.ceil(self.target_shape[0]/512)*8
         if self.reduction == "none":
             self.work_tensor_size = 0
@@ -220,7 +225,7 @@ class NllLossCompute:
                 self.big_target = True
                 self.move_max_line = self.last_ub_size // (self.x_shape[-1]+4)
             self.target_ub_size = math.ceil(self.move_max_line /
-                                            NUM_SIXTYFOUR)*NUM_SIXTYFOUR
+                                            Constant.NUM_SIXTYFOUR)*Constant.NUM_SIXTYFOUR
             self.refactor_x_size = self.target_ub_size
             self.refactor_weight_size = self.target_ub_size
             self.work_tensor_size = math.ceil(self.move_max_line/512)*8
@@ -380,11 +385,11 @@ class NllLossCompute:
                                                    name="output",
                                                    scope=tik.scope_gm,
                                                    is_atomic_add=True)
-        if self.x_dims == DIM2 and self.reduction == "sum":
+        if self.x_dims == Constant.DIM2 and self.reduction == "sum":
             self.total_weight = self.tik_instance.Tensor(
                 self.x_dtype, [self.total_weight_size], name="total_weight",
                 scope=tik.scope_gm, is_atomic_add=True)
-        elif self.x_dims == DIM2 and self.reduction == "mean":
+        elif self.x_dims == Constant.DIM2 and self.reduction == "mean":
             self.total_weight = self.tik_instance.Tensor(
                 self.x_dtype, [self.total_weight_size], name="total_weight",
                 scope=tik.scope_gm)
@@ -429,7 +434,7 @@ class NllLossCompute:
                 "float32", [self.work_tensor_size],
                 name="work_tensor_ub", scope=tik.scope_ubuf)
             self.temp_total_weight_ub = self.tik_instance.Tensor(
-                "float32", [2*NUM_SIXTYFOUR], name="temp_total_weight_ub",
+                "float32", [2*Constant.NUM_SIXTYFOUR], name="temp_total_weight_ub",
                 scope=tik.scope_ubuf)
         if self.reduction == "none":
             self.align_tensor_ub = self.tik_instance.Tensor(
@@ -437,14 +442,14 @@ class NllLossCompute:
                 name="align_tensor_ub", scope=tik.scope_ubuf)
         if self.big_target and self.reduction == "mean":
             self.temp_output_ub = self.tik_instance.Tensor(
-                "float32", [NUM_SIXTYFOUR], name="temp_output_ub",
+                "float32", [Constant.NUM_SIXTYFOUR], name="temp_output_ub",
                 scope=tik.scope_ubuf)
             self.temp_total_x_ub = self.tik_instance.Tensor(
-                "float32", [NUM_SIXTYFOUR], name="temp_total_x_ub",
+                "float32", [Constant.NUM_SIXTYFOUR], name="temp_total_x_ub",
                 scope=tik.scope_ubuf)
         if self.reduction == "sum" or self.big_target is True:
             self.temp_total_x_ub = self.tik_instance.Tensor(
-                "float32", [NUM_SIXTYFOUR], name="temp_total_x_ub",
+                "float32", [Constant.NUM_SIXTYFOUR], name="temp_total_x_ub",
                 scope=tik.scope_ubuf)
 
     def init_one_dim_ub(self):
@@ -458,13 +463,13 @@ class NllLossCompute:
         -------
         None
         """
-        self.x_ub = self.tik_instance.Tensor("float32", [NUM_SIXTYFOUR],
+        self.x_ub = self.tik_instance.Tensor("float32", [Constant.NUM_SIXTYFOUR],
                                              name="x_ub",
                                              scope=tik.scope_ubuf)
-        self.target_ub = self.tik_instance.Tensor("float32", [NUM_SIXTYFOUR],
+        self.target_ub = self.tik_instance.Tensor("float32", [Constant.NUM_SIXTYFOUR],
                                                   name="target_ub",
                                                   scope=tik.scope_ubuf)
-        self.weight_ub = self.tik_instance.Tensor("float32", [NUM_SIXTYFOUR],
+        self.weight_ub = self.tik_instance.Tensor("float32", [Constant.NUM_SIXTYFOUR],
                                                   name="weight_ub",
                                                   scope=tik.scope_ubuf)
         self.index_x = self.tik_instance.Scalar(dtype="int32")
@@ -500,13 +505,13 @@ class NllLossCompute:
             "float32", [self.work_tensor_size],
             name="work_tensor_ub", scope=tik.scope_ubuf)
         self.align_tensor_ub = self.tik_instance.Tensor(
-            "float32", [NUM_SIXTYFOUR], name="align_tensor_ub",
+            "float32", [Constant.NUM_SIXTYFOUR], name="align_tensor_ub",
             scope=tik.scope_ubuf)
         self.reduce_x_ub = self.tik_instance.Tensor(
-            "float32", [NUM_SIXTYFOUR], name="reduce_x_ub",
+            "float32", [Constant.NUM_SIXTYFOUR], name="reduce_x_ub",
             scope=tik.scope_ubuf)
         self.reduce_weight_ub = self.tik_instance.Tensor(
-            "float32", [NUM_SIXTYFOUR], name="reduce_weight_ub",
+            "float32", [Constant.NUM_SIXTYFOUR], name="reduce_weight_ub",
             scope=tik.scope_ubuf)
 
     def one_dim_compute(self):
@@ -531,7 +536,7 @@ class NllLossCompute:
                                     1, 1, 1, 0, 0)
         self.tik_instance.vmul(1, self.x_ub, self.x_ub, self.weight_ub,
                                1, 1, 1, 1, 1, 0, 0)
-        self.tik_instance.vmuls(1, self.x_ub, self.x_ub, NEGATIVE,
+        self.tik_instance.vmuls(1, self.x_ub, self.x_ub, Constant.NEGATIVE,
                                 1, 1, 1, 0, 0)
 
         if self.x_dims == 2:
@@ -634,7 +639,7 @@ class NllLossCompute:
                                 self.temp_weight_ub, self.refactor_x_ub,
                                 self.x_ub, self.target_ub)
         self.tik_instance.vmuls(MASK64, self.refactor_x_ub,
-                                self.refactor_x_ub, NEGATIVE,
+                                self.refactor_x_ub, Constant.NEGATIVE,
                                 repeat, 1, 1, 8, 8)
         self.tik_instance.vmul(
             MASK64, self.refactor_x_ub, self.refactor_x_ub,
@@ -730,22 +735,22 @@ class NllLossCompute:
         -------
         None
         """
-        vcadd_repeat_time = math.ceil(sum_size/NUM_SIXTYFOUR)
+        vcadd_repeat_time = math.ceil(sum_size/Constant.NUM_SIXTYFOUR)
         head_repeat = vcadd_repeat_time - 1
-        tail_mask = int(sum_size % NUM_SIXTYFOUR)
+        tail_mask = int(sum_size % Constant.NUM_SIXTYFOUR)
         if tail_mask == 0:
             self.tik_instance.vec_reduce_add(MASK64, dst_ub, src_ub,
                                              work_ub, vcadd_repeat_time, 8)
         else:
             self.tik_instance.vcadd(
                 tail_mask, dst_ub,
-                src_ub[head_repeat*NUM_SIXTYFOUR], 1, 1, 1, 8)
+                src_ub[head_repeat*Constant.NUM_SIXTYFOUR], 1, 1, 1, 8)
             if head_repeat > 0:
-                self.tik_instance.vec_reduce_add(MASK64, dst_ub[NUM_SIXTYFOUR],
+                self.tik_instance.vec_reduce_add(MASK64, dst_ub[Constant.NUM_SIXTYFOUR],
                                                  src_ub, work_ub,
                                                  head_repeat, 8)
                 self.tik_instance.vadd(1, dst_ub, dst_ub,
-                                       dst_ub[NUM_SIXTYFOUR],
+                                       dst_ub[Constant.NUM_SIXTYFOUR],
                                        1, 1, 1, 1, 8, 8, 8)
 
     def mean_compute_process(self, line, offset, x_burst, mask=MASK64):
@@ -770,7 +775,7 @@ class NllLossCompute:
             self.refactor_weight_ub[offset],
             math.ceil(line/64), 1, 1, 1, 8, 8, 8)
         self.tik_instance.vmuls(mask, self.refactor_x_ub,
-                                self.refactor_x_ub, NEGATIVE,
+                                self.refactor_x_ub, Constant.NEGATIVE,
                                 math.ceil(line/64), 1, 1, 8, 8)
         self.sum_compute(line, self.x_ub,
                          self.refactor_x_ub, self.work_tensor_ub)
@@ -967,7 +972,7 @@ class NllLossCompute:
                     self.temp_output_ub, 1, 1, 1, 1, 8, 8, 8)
                 self.tik_instance.vmuls(
                     1, self.temp_total_x_ub, self.temp_total_x_ub,
-                    NEGATIVE, 1, 1, 1, 8, 8)
+                    Constant.NEGATIVE, 1, 1, 1, 8, 8)
                 self.tik_instance.data_move(self.output, self.temp_total_x_ub,
                                             0, 1, 1, 0, 0)
                 self.tik_instance.data_move(self.total_weight,
@@ -1061,30 +1066,30 @@ class NllLossCompute:
                                             self.data_weight[self.index_x],
                                             0, 1, 1, 0, 0)
 
-        if repeat > MAXREPEAT:
-            loop_repeat = math.ceil(repeat/MAXREPEAT)
-            max_repeat = MAXREPEAT
+        if repeat > Constant.MAXREPEAT:
+            loop_repeat = math.ceil(repeat/Constant.MAXREPEAT)
+            max_repeat = Constant.MAXREPEAT
         else:
             max_repeat = 1
             loop_repeat = 1
-        tail_offset = (loop_repeat - 1)*MAXREPEAT*8
-        tail_repeat = int(repeat % MAXREPEAT)
+        tail_offset = (loop_repeat - 1)*Constant.MAXREPEAT*8
+        tail_repeat = int(repeat % Constant.MAXREPEAT)
         if tail_repeat == 0:
-            tail_repeat = MAXREPEAT
+            tail_repeat = Constant.MAXREPEAT
         with self.tik_instance.for_range(0, loop_repeat-1) as loop:
-            self.tik_instance.vmul(1, self.x_ub[loop*MAXREPEAT*8],
-                                   self.x_ub[loop*MAXREPEAT*8],
-                                   self.weight_ub[loop*MAXREPEAT*8],
+            self.tik_instance.vmul(1, self.x_ub[loop*Constant.MAXREPEAT*8],
+                                   self.x_ub[loop*Constant.MAXREPEAT*8],
+                                   self.weight_ub[loop*Constant.MAXREPEAT*8],
                                    max_repeat, 1, 1, 1, 1, 1, 1)
-            self.tik_instance.vmuls(1, self.x_ub[loop*MAXREPEAT*8],
-                                    self.x_ub[loop*MAXREPEAT*8],
-                                    NEGATIVE, max_repeat, 1, 1, 1, 1)
+            self.tik_instance.vmuls(1, self.x_ub[loop*Constant.MAXREPEAT*8],
+                                    self.x_ub[loop*Constant.MAXREPEAT*8],
+                                    Constant.NEGATIVE, max_repeat, 1, 1, 1, 1)
         self.tik_instance.vmul(1, self.x_ub[tail_offset],
                                self.x_ub[tail_offset],
                                self.weight_ub[tail_offset],
                                tail_repeat, 1, 1, 1, 1, 1, 1)
         self.tik_instance.vmuls(1, self.x_ub[tail_offset],
-                                self.x_ub[tail_offset], NEGATIVE, tail_repeat,
+                                self.x_ub[tail_offset], Constant.NEGATIVE, tail_repeat,
                                 1, 1, 1, 1)
         with self.tik_instance.for_range(0, sort_index) as index:
             total_x_ub[index].set_as(self.x_ub[8*index])
@@ -1260,18 +1265,18 @@ class NllLossCompute:
                 self.big_weight_with_mean()
             else:
                 self.big_weight_compute()
-        elif self.x_dims == DIM2 and self.reduction == "mean":
+        elif self.x_dims == Constant.DIM2 and self.reduction == "mean":
             if self.big_target:
                 self.big_target_compute()
             else:
                 self.reduction_is_mean_compute()
-        elif self.x_dims == DIM2:
+        elif self.x_dims == Constant.DIM2:
             self.reduction_is_none_and_sum_compute()
         else:
             error_manager_vector.raise_err_specific_reson("nll_loss", "No algorithm matched, \
                                                           please check distribution rules.")
 
-        if self.x_dims == DIM2 and (self.reduction == "sum" or
+        if self.x_dims == Constant.DIM2 and (self.reduction == "sum" or
                                     self.reduction == "mean"):
             self.tik_instance.BuildCCE(kernel_name=self.kernel_name,
                                        inputs=[self.data_x, self.data_target,

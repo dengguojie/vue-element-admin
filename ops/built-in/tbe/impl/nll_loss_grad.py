@@ -25,13 +25,17 @@ from te import platform as tbe_platform
 from impl.constant_util import MASK64
 from impl.util.platform_adapter import error_manager_vector
 
-DIM2 = 2
-NUM_EIGHT = 8
-NUM_FOUR = 4
-NEGATIVE = -1
-MAX_REPEAT = 255
-ONE_KB = 1024
-NUM_SIXTYFOUR = MASK64
+
+class Constant:
+    
+    """
+    The class for constant.
+    """
+    DIM2 = 2
+    NUM_EIGHT = 8
+    NEGATIVE = -1
+    MAX_REPEAT = 255
+    ONE_KB = MASK64
 
 
 # 'pylint: disable=unused-argument, invalid-name, too-many-arguments
@@ -105,10 +109,10 @@ def _shape_and_dtype_check(x, y_grad, target, weight, total_weight, reduction,
     if len(x_shape) == 1 and y_grad_shape[0] != 1:
         error_manager_vector.raise_err_specific_reson("nll_loss_grad", "The shape of y_grad  \
                                                       must be (1,), while input x is 1D.")
-    if len(x_shape) > DIM2:
+    if len(x_shape) > Constant.DIM2:
         error_manager_vector.raise_err_specific_reson("nll_loss_grad", "The dimension of x \
                                                       should be equal to or less than two.")
-    if len(x_shape) == DIM2 and x_shape[0] != target_shape[0]:
+    if len(x_shape) == Constant.DIM2 and x_shape[0] != target_shape[0]:
         error_manager_vector.raise_err_specific_reson("nll_loss_grad", "The first dimension \
                                                       of x and target should be equal")
     if x_shape[-1] != weight_shape[0]:
@@ -193,33 +197,33 @@ class NllLossGradCompute:
             "Unified_Buffer") - 2048
         self.ub_size_float = self.ub_size_bytes//4
         self.db_ub_size = self.ub_size_bytes/2
-        if len(self.x_shape) == DIM2:
+        if len(self.x_shape) == Constant.DIM2:
             self.output_gm_size = self.x_shape[0] * self.x_shape[1]
         else:
             self.output_gm_size = self.x_shape[0]
         self.n_dim = self.x_shape[0]
         self.c_dim = self.x_shape[-1]
-        self.repeat_time = math.ceil(self.c_dim / NUM_SIXTYFOUR)
-        self.move_len = math.ceil(self.c_dim / NUM_EIGHT)
-        if self.c_dim > NUM_EIGHT:
-            self.end_num = self.c_dim % NUM_EIGHT
-        self.y_grad_ub_size = math.ceil(self.y_grad_shape[0]/NUM_SIXTYFOUR) * \
-                              NUM_SIXTYFOUR
-        self.target_ub_size = math.ceil(self.target_shape[0]/NUM_SIXTYFOUR) * \
-                              NUM_SIXTYFOUR
-        self.total_weight_ub_size = NUM_SIXTYFOUR
-        self.weight_ub_size = math.ceil(self.weight_shape[0]/NUM_SIXTYFOUR) * \
-                              NUM_SIXTYFOUR
+        self.repeat_time = math.ceil(self.c_dim / Constant.ONE_KB)
+        self.move_len = math.ceil(self.c_dim / Constant.NUM_EIGHT)
+        if self.c_dim > Constant.NUM_EIGHT:
+            self.end_num = self.c_dim % Constant.NUM_EIGHT
+        self.y_grad_ub_size = math.ceil(self.y_grad_shape[0]/Constant.ONE_KB) * \
+                              Constant.ONE_KB
+        self.target_ub_size = math.ceil(self.target_shape[0]/Constant.ONE_KB) * \
+                              Constant.ONE_KB
+        self.total_weight_ub_size = Constant.ONE_KB
+        self.weight_ub_size = math.ceil(self.weight_shape[0]/Constant.ONE_KB) * \
+                              Constant.ONE_KB
         if self.invalid_target:
             # reserve 32b for ignore_index
             self.weight_ub_size += 8
-        self.dup_ub_size = math.ceil(self.x_shape[-1]/NUM_SIXTYFOUR) * \
-                           NUM_SIXTYFOUR
+        self.dup_ub_size = math.ceil(self.x_shape[-1]/Constant.ONE_KB) * \
+                           Constant.ONE_KB
         self.y_grad_gm_size = self.y_grad_shape[0]
         self.target_gm_size = self.target_shape[0]
         self.data_total_weight_size = 1
         self.weight_gm_size = self.weight_shape[0]
-        self.dup_repeat = math.ceil(self.c_dim/NUM_SIXTYFOUR)
+        self.dup_repeat = math.ceil(self.c_dim/Constant.ONE_KB)
         self.last_ub_size = self.ub_size_float - self.weight_ub_size
 
         # one_line_size include one num of refactor weight, one num of target
@@ -314,19 +318,19 @@ class NllLossGradCompute:
                                                name="dup_ub",
                                                scope=tik.scope_ubuf)
         self.y_grad_ub = self.tik_instance.Tensor("float32",
-                                                  [NUM_SIXTYFOUR],
+                                                  [Constant.ONE_KB],
                                                   name="y_grad_ub",
                                                   scope=tik.scope_ubuf)
         self.target_ub = self.tik_instance.Tensor(self.weight_dtype,
-                                                  [NUM_SIXTYFOUR],
+                                                  [Constant.ONE_KB],
                                                   name="target_ub",
                                                   scope=tik.scope_ubuf)
         if self.big_weight is True:
             self.total_weight_ub = self.tik_instance.Tensor(
-                self.x_dtype, [NUM_SIXTYFOUR],
+                self.x_dtype, [Constant.ONE_KB],
                 name="total_weight_ub", scope=tik.scope_ubuf)
         self.weight_ub = self.tik_instance.Tensor(self.weight_dtype,
-                                                  [NUM_SIXTYFOUR],
+                                                  [Constant.ONE_KB],
                                                   name="weight_ub",
                                                   scope=tik.scope_ubuf)
         if self.data_weight_size < 1024*256:
@@ -371,7 +375,7 @@ class NllLossGradCompute:
             name="refactor_weight_ub", scope=tik.scope_ubuf)
         if self.reduction != "none":
             self.total_weight_ub = self.tik_instance.Tensor(
-                self.x_dtype, [NUM_SIXTYFOUR],
+                self.x_dtype, [Constant.ONE_KB],
                 name="total_weight_ub", scope=tik.scope_ubuf)
         self.dup_ub = self.tik_instance.Tensor(
             self.x_dtype, [self.dup_ub_size], name="dup_ub",
@@ -437,13 +441,13 @@ class NllLossGradCompute:
         self.tik_instance.vmul(1, self.weight_ub, self.weight_ub,
                                self.y_grad_ub, 1, 1, 1, 1, 1, 0, 0)
         self.tik_instance.vmuls(1, self.weight_ub, self.weight_ub,
-                                NEGATIVE, 1, 1, 1, 0, 0)
+                                Constant.NEGATIVE, 1, 1, 1, 0, 0)
         if self.move_out_time > 1:
             self.tik_instance.vector_dup(MASK64, self.dup_ub, 0,
-                                         self.single_max_repeat, 1, NUM_EIGHT)
+                                         self.single_max_repeat, 1, Constant.NUM_EIGHT)
         else:
             self.tik_instance.vector_dup(MASK64, self.dup_ub, 0,
-                                         self.tail_repeat, 1, NUM_EIGHT)
+                                         self.tail_repeat, 1, Constant.NUM_EIGHT)
         with self.tik_instance.for_range(0, self.move_out_time) as cycle:
             with self.tik_instance.if_scope(cycle < self.move_out_time - 1):
                 self.tik_instance.data_move(self.output[cycle*self.offet],
@@ -467,18 +471,18 @@ class NllLossGradCompute:
         -------
         None
         """
-        max_repeat_num = MAX_REPEAT*NUM_SIXTYFOUR
-        max_repeat_loop = math.ceil(repeat/MAX_REPEAT)
-        last_repeat = repeat % MAX_REPEAT
+        max_repeat_num = Constant.MAX_REPEAT*Constant.ONE_KB
+        max_repeat_loop = math.ceil(repeat/Constant.MAX_REPEAT)
+        last_repeat = repeat % Constant.MAX_REPEAT
         if last_repeat == 0:
-            last_repeat = MAX_REPEAT
+            last_repeat = Constant.MAX_REPEAT
         for i in range(max_repeat_loop-1):
             self.tik_instance.vector_dup(MASK64, dup_up[i*max_repeat_num],
-                                         0, MAX_REPEAT, 1, NUM_EIGHT)
+                                         0, Constant.MAX_REPEAT, 1, Constant.NUM_EIGHT)
 
         self.tik_instance.vector_dup(
             MASK64, dup_up[(max_repeat_loop-1)*max_repeat_num], 0,
-            last_repeat, 1, NUM_EIGHT)
+            last_repeat, 1, Constant.NUM_EIGHT)
 
     def insert_valid_value(self, dst, src, index, left_value, right_value):
         """
@@ -510,7 +514,7 @@ class NllLossGradCompute:
         self.tik_instance.data_move(
             dst[offset], src, 0, 1, burst - 1, 0, 0)
         temp_out_ub = self.tik_instance.Tensor(
-            self.x_dtype, [NUM_EIGHT],
+            self.x_dtype, [Constant.NUM_EIGHT],
             name="temp_out_ub", scope=tik.scope_ubuf)
         self.tik_instance.vector_dup(8, temp_out_ub, 0, 1, 1, 0)
 
@@ -603,7 +607,7 @@ class NllLossGradCompute:
                             self.tik_instance.vdiv(
                                 1, self.weight_ub, self.weight_ub,
                                 self.total_weight_ub, 1, 1, 1, 1,
-                                NUM_EIGHT, NUM_EIGHT, NUM_EIGHT)
+                                Constant.NUM_EIGHT, Constant.NUM_EIGHT, Constant.NUM_EIGHT)
                         else:
                             self.tik_instance.vrec(1, self.weight_ub,
                                                    self.weight_ub,
@@ -611,13 +615,13 @@ class NllLossGradCompute:
                             self.tik_instance.vmul(
                                 1, self.weight_ub, self.weight_ub,
                                 self.total_weight_ub, 1, 1, 1, 1,
-                                NUM_EIGHT, NUM_EIGHT, NUM_EIGHT)
+                                Constant.NUM_EIGHT, Constant.NUM_EIGHT, Constant.NUM_EIGHT)
                     self.tik_instance.vmuls(1, self.weight_ub, self.weight_ub,
-                                            NEGATIVE, 1, 1, 1,
-                                            NUM_EIGHT, NUM_EIGHT)
+                                            Constant.NEGATIVE, 1, 1, 1,
+                                            Constant.NUM_EIGHT, Constant.NUM_EIGHT)
                     self.tik_instance.vmul(1, self.weight_ub, self.weight_ub,
                                            self.y_grad_ub, 1, 1, 1, 1,
-                                           NUM_EIGHT, NUM_EIGHT, NUM_EIGHT)
+                                           Constant.NUM_EIGHT, Constant.NUM_EIGHT, Constant.NUM_EIGHT)
                     with self.tik_instance.for_range(
                             0, self.move_out_time) as time:
                         out_put_offset = line_num*self.c_dim + time*self.offet
@@ -689,7 +693,7 @@ class NllLossGradCompute:
         #compute ub size
         self.dup_ub_size = math.ceil(self.max_total_num/64)*64
         self.target_ub_size = math.ceil(self.max_line/64)*64
-        self.total_weight_ub_size = NUM_SIXTYFOUR
+        self.total_weight_ub_size = Constant.ONE_KB
         self.weight_ub_size = math.ceil(self.c_dim/64)*64
         if self.invalid_target:
             # reserve 32b for ignore_index
@@ -712,7 +716,7 @@ class NllLossGradCompute:
         if self.reduction == "none":
             self.y_grad_ub_size = self.target_ub_size
         else:
-            self.y_grad_ub_size = NUM_SIXTYFOUR
+            self.y_grad_ub_size = Constant.ONE_KB
 
     def compute_valid_value(self, dst, src, index, offset, repeat):
         """
@@ -735,9 +739,9 @@ class NllLossGradCompute:
             self.tik_instance.vmul(
                 MASK64, dst[index*offset], dst[index*offset],
                 src[index*offset], repeat, 1, 1, 1,
-                NUM_EIGHT, NUM_EIGHT, NUM_EIGHT)
+                Constant.NUM_EIGHT, Constant.NUM_EIGHT, Constant.NUM_EIGHT)
         self.tik_instance.vmuls(MASK64, dst[index*offset], dst[index*offset],
-                                NEGATIVE, repeat, 1, 1, 8, 8)
+                                Constant.NEGATIVE, repeat, 1, 1, 8, 8)
         if self.reduction == "mean":
             if tbe_platform.cce_conf.api_check_support(
                     "te.lang.cce.vdiv", "float32"):
@@ -775,6 +779,7 @@ class NllLossGradCompute:
             elif dst_need_index:
                 names["index_x" + str(var)].set_as(0)
 
+    # 'pylint: disable=too-many-branches
     def select_valid_value(self, line_num, line_size, dst, src, target,
                            dst_need_index=True, src_need_index=True):
         """
@@ -859,12 +864,12 @@ class NllLossGradCompute:
             self.select_valid_value(line_num, self.c_dim, self.dup_ub,
                                     self.weight_ub, self.target_ub)
 
-        vmul_repeat_times = math.ceil(repeat/MAX_REPEAT)
-        max_repeat_num = MAX_REPEAT*NUM_SIXTYFOUR
+        vmul_repeat_times = math.ceil(repeat/Constant.MAX_REPEAT)
+        max_repeat_num = Constant.MAX_REPEAT*Constant.ONE_KB
         last_vmul_offset = max_repeat_num
-        last_vmul_repeat = repeat % MAX_REPEAT
+        last_vmul_repeat = repeat % Constant.MAX_REPEAT
         if last_vmul_repeat == 0:
-            last_vmul_repeat = MAX_REPEAT
+            last_vmul_repeat = Constant.MAX_REPEAT
 
         if self.reduction == "none" and self.c_dim != 1:
             compute_ub = self.refactor_weight_ub
@@ -872,7 +877,7 @@ class NllLossGradCompute:
             compute_ub = self.dup_ub
         for i in range(0, vmul_repeat_times-1):
             self.compute_valid_value(compute_ub, self.y_grad_ub, i,
-                                     max_repeat_num, MAX_REPEAT)
+                                     max_repeat_num, Constant.MAX_REPEAT)
         self.compute_valid_value(
             compute_ub, self.y_grad_ub, vmul_repeat_times - 1,
             last_vmul_offset, last_vmul_repeat)
@@ -886,7 +891,7 @@ class NllLossGradCompute:
                                         self.dup_ub, 0, 1, output_burst, 8, 8)
         else:
             temp_out_ub = self.tik_instance.Tensor(
-                self.x_dtype, [NUM_EIGHT],
+                self.x_dtype, [Constant.NUM_EIGHT],
                 name="temp_out_ub", scope=tik.scope_ubuf)
             self.tik_instance.data_move(
                 self.output[core_offset*self.c_dim], self.dup_ub, 0, 1,
@@ -976,7 +981,7 @@ class NllLossGradCompute:
             self.one_dim_compute()
         if self.big_weight:
             self.two_dim_with_big_weight_compute()
-        elif self.x_dim == DIM2:
+        elif self.x_dim == Constant.DIM2:
             self.normal_two_dim_compute()
 
         self.tik_instance.BuildCCE(kernel_name=self.kernel_name,

@@ -151,7 +151,7 @@ class PSROIPoolingGradV2DClass(object):
                                            "rois[%s] and y[%s] must be equal."
                                % (error_info['op_name'], error_info['param_name1'],
                                   error_info['param_name2'], error_info['param_name3']))
-        
+
         if self.dtype == FP16 and tbe_platform.get_soc_spec(tbe_platform.SOC_VERSION) == "Ascend910":
             error_info = {'errCode': 'E80018',
                           'param_name1': self.dtype,

@@ -25,6 +25,8 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 
+
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     The class for constant.

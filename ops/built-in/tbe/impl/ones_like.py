@@ -18,7 +18,6 @@ ones_like
 import functools
 
 import te.lang.cce as tbe
-import te.platform as tbe_platform
 from te.utils import para_check
 from te import tvm
 

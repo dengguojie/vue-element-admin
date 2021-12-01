@@ -24,10 +24,13 @@ from te import tik
 from te.utils import para_check
 from impl import trans_data_negative_target_ntc
 
-# available ub size
-UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
-# available number of cores
-AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
+
+class Constant:
+    """
+    This class for Constant
+    """
+    # available number of cores
+    AICORE_NUM = cce.cce_conf.get_soc_spec(cce.cce_conf.CORE_NUM)
 
 
 # 'pylint: disable=locally-disabled,too-many-lines
@@ -345,9 +348,9 @@ def _set_core_num(origin_num):
     """
     function of set core num
     """
-    if origin_num < AICORE_NUM:
+    if origin_num < Constant.AICORE_NUM:
         return origin_num
-    return AICORE_NUM
+    return Constant.AICORE_NUM
 
 
 def _set_loop(tik_instance, num_core, max_core, total_dim):
@@ -356,7 +359,7 @@ def _set_loop(tik_instance, num_core, max_core, total_dim):
     """
     core_loop = tik_instance.Scalar("uint64")
 
-    with tik_instance.if_scope(num_core < total_dim % AICORE_NUM):
+    with tik_instance.if_scope(num_core < total_dim % Constant.AICORE_NUM):
         core_loop.set_as(_ceil_div(total_dim, max_core))
     with tik_instance.else_scope():
         core_loop.set_as(total_dim // max_core)
@@ -378,6 +381,8 @@ class Ndc1hwc02NcdhwCompute:
         """
         initialize some properties
         """
+        # available ub size
+        UB_SIZE_B = cce.cce_conf.get_soc_spec(cce.cce_conf.UB_SIZE)
         self.src_shape = list(src_shape)
         self.dst_shape = list(dst_shape)
         self.dtype = dtype

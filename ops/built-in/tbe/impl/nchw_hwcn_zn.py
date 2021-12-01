@@ -31,15 +31,17 @@ from te.utils.op_utils import *
 # 'pylint: disable=locally-disabled,too-many-branches,too-few-public-methods
 # 'pylint: disable=locally-disabled,unnecessary-comprehension
 
-# parameter naming allocated UB
-OUTPUT_NAME_SUFFIX = [0]
-UB_NAME_SUFFIX = [0]
-# available ub size
-UB_SIZE_B = tvm_cce.cce_conf.get_soc_spec(tvm_cce.cce_conf.UB_SIZE)
-# available number of cores
-AICORE_NUM = tvm_cce.cce_conf.get_soc_spec(tvm_cce.cce_conf.CORE_NUM)
-# MTE stride up limit
-MTE_MAX_STRIDES = 65535
+class Constant:
+    """
+    This class for Constant.
+    """
+    # parameter naming allocated UB
+    OUTPUT_NAME_SUFFIX = [0]
+    UB_NAME_SUFFIX = [0]
+    # available number of cores
+    AICORE_NUM = tvm_cce.cce_conf.get_soc_spec(tvm_cce.cce_conf.CORE_NUM)
+    # MTE stride up limit
+    MTE_MAX_STRIDES = 65535
 
 
 def _ceil_div(value, block):
@@ -130,13 +132,13 @@ def nchw_hwcn_fz(input_tensor, output_tensor, raw_shape_4d, src_format,
         axis_c1 = (axis_c + 16 - 1) // 16
         axis_n0 = (axis_n + 16 - 1) // 16
         check_shape((axis_c1, axis_h, axis_w, axis_n0, 16, 16))
-        OUTPUT_NAME_SUFFIX[0] += 1
+        Constant.OUTPUT_NAME_SUFFIX[0] += 1
         ir_schedule = tvm.extern(
             [(axis_c1, axis_h, axis_w, axis_n0, 16, 16)], [input_tensor],
             lambda ins, outs:
             _c1hwn0nic0_ir(ins[0], raw_shape_4d, outs[0]),
             dtype=[output_tensor.dtype],
-            name="output_" + hex(OUTPUT_NAME_SUFFIX[0]))
+            name="output_" + hex(Constant.OUTPUT_NAME_SUFFIX[0]))
 
     elif src_format.upper() == "HWCN" and \
             (dst_format.upper() == "FRACTAL_Z"
@@ -145,13 +147,13 @@ def nchw_hwcn_fz(input_tensor, output_tensor, raw_shape_4d, src_format,
         axis_c1 = (axis_c + 16 - 1) // 16
         axis_n0 = (axis_n + 16 - 1) // 16
         check_shape((axis_c1, axis_h, axis_w, axis_n0, 16, 16))
-        OUTPUT_NAME_SUFFIX[0] += 1
+        Constant.OUTPUT_NAME_SUFFIX[0] += 1
         ir_schedule = tvm.extern(
             [(axis_c1, axis_h, axis_w, axis_n0, 16, 16)], [input_tensor],
             lambda ins, outs:
             _c1hwn0nic0_hwcn_ir(ins[0], raw_shape_4d, outs[0]),
             dtype=[output_tensor.dtype],
-            name="output_" + hex(OUTPUT_NAME_SUFFIX[0]))
+            name="output_" + hex(Constant.OUTPUT_NAME_SUFFIX[0]))
 
     elif src_format.upper() == "HWCN" and \
             dst_format.upper() == "FRACTAL_ZN_LSTM":
@@ -164,14 +166,14 @@ def nchw_hwcn_fz(input_tensor, output_tensor, raw_shape_4d, src_format,
         axis_c1 = (axis_c - axis_n // 4 + 16 - 1) // 16
         check_shape((axis_c1 + axis_n0, axis_h, axis_w, axis_n0 * 4,
                      16, 16))
-        OUTPUT_NAME_SUFFIX[0] += 1
+        Constant.OUTPUT_NAME_SUFFIX[0] += 1
         ir_schedule = tvm.extern(
             [(axis_c1 + axis_n0, axis_h, axis_w, axis_n0 * 4, 16, 16)],
             [input_tensor],
             lambda ins, outs:
             _c1hwn0nic0_hwcn_lstm_ir(ins[0], raw_shape_4d, outs[0]),
             dtype=[output_tensor.dtype],
-            name="output_" + hex(OUTPUT_NAME_SUFFIX[0]))
+            name="output_" + hex(Constant.OUTPUT_NAME_SUFFIX[0]))
 
     return ir_schedule
 
@@ -192,7 +194,7 @@ def _allocate_ub(ib_, dtype, size, name):
     :return:
         desc: ub buffer
     '''
-    name = name + ".local.UB" + hex(UB_NAME_SUFFIX[0])
+    name = name + ".local.UB" + hex(Constant.UB_NAME_SUFFIX[0])
     buf_var = ib_.allocate(dtype, (size,), name, scope=param.scope_ubuf)
     return tvm.decl_buffer((size,),
                            dtype,
@@ -332,6 +334,8 @@ def _get_vnchwconv_cube_buf_max_hp(actual_col_size, dtype):
         type: int
         desc: cube_size
     '''
+    # available ub size
+    UB_SIZE_B = tvm_cce.cce_conf.get_soc_spec(tvm_cce.cce_conf.UB_SIZE)
     if dtype.lower() == "float16":
         byte_len = 2
     elif dtype.lower() == "float32":
@@ -764,7 +768,7 @@ def _c1hwn0nic0_ir(input_tensor, shape_4d, output):
     ib_ = tvm.ir_builder.create()
     params = FormatTransferParams(ib_)
 
-    UB_NAME_SUFFIX[0] += 1
+    Constant.UB_NAME_SUFFIX[0] += 1
     input_ub = _allocate_ub(ib_, input_tensor.dtype, vnchwconv_cube_buf_max,
                             "input_ub")
     output_ub = _allocate_ub(ib_, output.dtype, vnchwconv_cube_buf_max,
@@ -860,7 +864,7 @@ def _c1hwn0nic0_ir(input_tensor, shape_4d, output):
                                     reg_array)
                             _mov_data_p2p(args)
 
-                        if (n0_range-1) * repeat_factor <= MTE_MAX_STRIDES:
+                        if (n0_range-1) * repeat_factor <= Constant.MTE_MAX_STRIDES:
                             ib_.emit(
                                 tvm.call_extern(
                                     output.dtype.lower(),
@@ -951,7 +955,7 @@ def _c1hwn0nic0_ir(input_tensor, shape_4d, output):
                                     col_size, c0_loop, reg_array)
                             _mov_data_p2p(args)
 
-                        if (n0_range-1) * repeat_factor <= MTE_MAX_STRIDES:
+                        if (n0_range-1) * repeat_factor <= Constant.MTE_MAX_STRIDES:
                             ib_.emit(
                                 tvm.call_extern(
                                     output.dtype.lower(),
@@ -1036,7 +1040,7 @@ def _c1hwn0nic0_ir(input_tensor, shape_4d, output):
                                 col_size, c0_loop, reg_array)
                         _mov_data_p2p(args)
 
-                    if (n0_range-1) * repeat_factor <= MTE_MAX_STRIDES:
+                    if (n0_range-1) * repeat_factor <= Constant.MTE_MAX_STRIDES:
                         ib_.emit(
                             tvm.call_extern(
                                 output.dtype.lower(),
@@ -1139,7 +1143,7 @@ def _c1hwn0nic0_hwcn_ir(input_tensor, shape_4d, output):
     ib_ = tvm.ir_builder.create()
     params = FormatTransferParams(ib_)
 
-    UB_NAME_SUFFIX[0] += 1
+    Constant.UB_NAME_SUFFIX[0] += 1
     input_ub = _allocate_ub(ib_, input_tensor.dtype, vnchwconv_cube_buf_max,
                             "input_ub")
     output_ub = _allocate_ub(ib_, output.dtype, vnchwconv_cube_buf_max,
@@ -1368,7 +1372,7 @@ def _c1hwn0nic0_hwcn_lstm_ir(input_tensor, shape_4d, output):
     ib_ = tvm.ir_builder.create()
     params = FormatTransferParams(ib_)
 
-    UB_NAME_SUFFIX[0] += 1
+    Constant.UB_NAME_SUFFIX[0] += 1
     input_ub = _allocate_ub(ib_, input_tensor.dtype, vnchwconv_cube_buf_max,
                             "input_ub")
     output_ub = _allocate_ub(ib_, output.dtype, vnchwconv_cube_buf_max,
