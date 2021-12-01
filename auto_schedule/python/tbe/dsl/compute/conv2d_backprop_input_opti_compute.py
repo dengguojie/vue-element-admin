@@ -112,6 +112,10 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
         self._dy_c1_extend = self._group_dict.get(cube_util.GroupDictKeys.dy_c1_extend)
         self._groups_ori = self._group_dict.get(cube_util.GroupDictKeys.groups)
         self._cube_vector_split_flag = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
+        self._support_l0c_to_ub_flag = (tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2ub") or
+                                        tbe_platform.intrinsic_check_support("Intrinsic_data_move_l0c2ub"))
+        self._support_l0c_to_out_flag = tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out")
+        self._support_l1_to_bt_flag = tbe_platform.intrinsic_check_support("Intrinsic_data_move_l12bt")
         self.pooling_mode = pooling_mode
         self.impl_mode = impl_mode
 
@@ -440,6 +444,34 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
                 name="bias_add_vector")
             return c_add_vector
 
+        def _inner_generate_mmad_bt(matrix_a, matrix_b, bias):  # pylint:disable=R0914
+            g_extend_dim, n_dim, hw_dim, k1_dim, m0_dim, k0_dim = cube_util.shape_to_list(matrix_a.shape)
+            g_extend_dim, bk1_dim, co1_dim, co0_dim, bk0_dim = list(i.value for i in matrix_b.shape)
+            shape_c = (g_extend_dim, n_dim, co1_dim, hw_dim * m0_dim, co0_dim)
+            k0_axis = tvm.reduce_axis([0, k0_dim], name="k0")
+            k1_axis = tvm.reduce_axis([0, k1_dim], name="k1")
+            bias_shape = cube_util.shape_to_list(bias.shape)
+
+            bias_bt = tvm.compute(
+                bias_shape,
+                lambda *indice: bias(*indice).astype('float32'),
+                name='bias_bt'
+            )
+
+            mmad = tvm.compute(
+                shape_c,
+                lambda g_index, n_index, co1_index, m_index, co0_index: tvm.sum(
+                    (
+                        matrix_a[g_index, n_index, m_index // self._m0,
+                                 k1_axis, m_index % self._m0, k0_axis] *
+                        matrix_b[g_index, k1_axis, co1_index, co0_index, k0_axis]
+                    ).astype('float32') + bias_bt[co1_index * co0_dim + co0_index],
+                    axis=[k1_axis, k0_axis]
+                ),
+                name='c_add_bt'
+            )
+            return mmad
+
         def _inner_generate_mmad(matrix_a, matrix_b):  # pylint:disable=R0914
             g_extend_dim, n_dim, hw_dim, k1_dim, m0_dim, k0_dim = cube_util.shape_to_list(matrix_a.shape)
             g_extend_dim, bk1_dim, co1_dim, co0_dim, bk0_dim = list(i.value for i in matrix_b.shape)
@@ -515,8 +547,12 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
                 )
             return mmad
 
-        res_c = _inner_generate_mmad(tensor_a, tensor_b)
-        res_c = _add_bias_in_l0c(res_c, tensor_bias)
+        if (tensor_bias is not None and self._support_l1_to_bt_flag and
+                self._stride_h == 1 and self._stride_w == 1 and tensor_bias.dtype == 'float32'):
+            res_c = _inner_generate_mmad_bt(tensor_a, tensor_b, tensor_bias)
+        else:
+            res_c = _inner_generate_mmad(tensor_a, tensor_b)
+            res_c = _add_bias_in_l0c(res_c, tensor_bias)
 
         batch_dx_img, c1_dx_img, h_dx_img, w_dx_img, c0_dx_img = self._output_shape
         group_l0c, batch_l0c, co1_l0c, m_l0c, co0_l0c = cube_util.shape_to_list(
@@ -535,7 +571,7 @@ class DeConvKernelSize1Pattern(cube_util.CubeDslPattern):  # pylint:disable=R090
 
         # from l0c(GNC1MC0) to ub(N[GC1]MC0)
         output_shape = [batch_dx_img, c1_dx_img, h_dx_img * w_dx_img, c0_dx_img]
-        if self._cube_vector_split_flag:
+        if self._support_l0c_to_out_flag and self._stride_h == 1 and self._stride_w == 1:
             if res_c_dtype == "float32" and tensor_a.dtype == "float32":
                 output_shape = [batch_dx_img, c1_dx_img * 2, h_dx_img * w_dx_img, 8]
                 output_shape_fp32 = [batch_dx_img, c1_dx_img * 2, h_dx_img, w_dx_img, 8]

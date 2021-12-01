@@ -91,6 +91,8 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
         self._cou1_g = self._group_dict.get(cube_util.GroupDictKeys.dy_c1_extend)
         self._cin1_g = self._group_dict.get(cube_util.GroupDictKeys.dx_c1_extend)
         self._cube_vector_split_flag = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
+        self._support_l0c_to_out_flag = tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out")
+        self._support_l1_to_bt_flag = tbe_platform.intrinsic_check_support("Intrinsic_data_move_l12bt")
         self.pooling_mode = pooling_mode
         self.l0a_dma_flag = l0a_dma_flag
         self.load3d_special_multiply = 1
@@ -536,12 +538,23 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
         if w_col.dtype == "int8" and dy_col.dtype == "int8":
             res_c_type = "int32"
 
+        bias_table_flag = False
         if tensor_bias is not None and tensor_bias.dtype == "int32":
             bias = tensor_bias
         else:
             bias = None
+        if tensor_bias is not None and self._support_l1_to_bt_flag and tensor_bias.dtype == "float32":
+            bias_shape = cube_util.shape_to_list(tensor_bias.shape)
+            bias = tvm.compute(
+                bias_shape,
+                lambda *indice: tensor_bias(*indice).astype('float32'),
+                name='bias_bt'
+            )
+            bias_table_flag = True
+
         dx_col = super().generate_c(
-            dy_col, w_col, c_type=res_c_type, tensor_bias=bias, offset_x=self._offset_x, impl_mode=self.impl_mode
+            dy_col, w_col, c_type=res_c_type, tensor_bias=bias, offset_x=self._offset_x, impl_mode=self.impl_mode,
+            bias_table_flag=bias_table_flag
         )
         # mad dx shape
         dx_g, dx_batch, dx_c1, dx_hw, dx_c0 = cube_util.shape_to_list(dx_col.shape)
@@ -556,7 +569,7 @@ class DeConvPattern(cube_util.CubeDslPattern):  # pylint: disable=R0902
         if w_col.dtype == "int8" and dy_col.dtype == "int8":
             output_dtype = "int32"
 
-        if self._cube_vector_split_flag:
+        if self._support_l0c_to_out_flag:
             if w_col.dtype == "bfloat16" and dy_col.dtype == "bfloat16":
                 output_dtype = "bfloat16"
             if w_col.dtype == "float32":

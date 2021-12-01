@@ -685,7 +685,7 @@ class Conv2dDxOptiSchedule:
                 self._check_tilinng_k_l1()
             return data_amount_l1b
 
-        cube_vector_split_flag = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
+        no_need_use_ub_flag = self.dx_para.get_para_map("no_need_use_ub_flag")
         _, block_k, block_n = tbe_platform.CUBE_MKN[TENSOR_MAP.get("b_l1").dtype]["mac"]
         # if filter dtype is int8, than channel block_size is 32
         if tensor.dtype == "int32" or fusion_type in (
@@ -767,7 +767,7 @@ class Conv2dDxOptiSchedule:
             else:
                 TILING = deepcopy(tiling_case)
 
-        if cube_vector_split_flag:
+        if no_need_use_ub_flag:
             TILING["CUB_matrix"] = TILING["CL0_matrix"]
 
         if "dedy_w" in var_map and not var_map.get("dedy_w")[1]:
@@ -833,7 +833,7 @@ class Conv2dDxOptiSchedule:
         )
 
         # check tilling in CUB  attention:light when stride get  #########
-        if "dedy_h" not in var_map and "dedy_w" not in var_map and not cube_vector_split_flag:
+        if "dedy_h" not in var_map and "dedy_w" not in var_map and not no_need_use_ub_flag:
             self._check_tilling_cub(
                 default_tiling_flag,
                 strideh,
@@ -1151,6 +1151,9 @@ class Conv2dDxOptiSchedule:
             else:
                 if tensor_dx_gm.op.input_tensors[0].op.name == "bias_add_vector":
                     tensor_cub = tensor_dilate_ub
+                elif (tensor_dx_gm.op.input_tensors[0].op.name == "C" or
+                      tensor_dx_gm.op.input_tensors[0].op.name == "c_add_bt"):
+                    tensor_cub = None
                 else:
                     tensor_cub = tensor_dx_gm.op.input_tensors[0]
             if fusion_type in (
@@ -1289,17 +1292,14 @@ class Conv2dDxOptiSchedule:
 
         self._print_debug("dx fusion tag:", res.op.tag)
         tensor_dx_gm, TENSOR_MAP = _check_dx_fusion_type(res, TENSOR_MAP)
-        cube_vector_split_flag = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
-        self.dx_para.update_para_map("cube_vector_split_flag", cube_vector_split_flag)
         _get_l1_fusion_para()
         fusion_type = self.dx_para.get_para_map("FUSION_TYPE")
         var_map = _get_var_map(var_range)
 
         # get tensor of ub by fusion_type
-        if self.dx_para.get_para_map("cube_vector_split_flag"):
-            tensor_cub = None
-        else:
-            tensor_cub = _get_ub_tensor(fusion_type)
+        tensor_cub = _get_ub_tensor(fusion_type)
+        no_need_use_ub_flag = (tensor_cub == None)
+        self.dx_para.update_para_map("no_need_use_ub_flag", no_need_use_ub_flag)
 
         if fusion_type in (FUSION_DX_DEQUANT, FUSION_DX_DEQUANT_QUANT, FUSION_DX_REQUANT):
             c_ub_img = tensor_cub.op.input_tensors[0]
@@ -1325,7 +1325,15 @@ class Conv2dDxOptiSchedule:
             else:
                 tensor_mmad = tensor_cub.op.input_tensors[0]
         else:
-            if self.dx_para.get_para_map("cube_vector_split_flag"):
+            if tensor_dx_gm.op.input_tensors[0].name == 'c_add_bt':
+                c_add_bias = tensor_dx_gm.op.input_tensors[0]
+                bias_bt = c_add_bias.op.input_tensors[2]
+                bias_ddr = bias_bt.op.input_tensors[0]
+                bias_l1 = sch.cache_read(bias_ddr, tbe_platform_info.scope_cbuf, [bias_bt])
+                TENSOR_MAP["c_add_bt"] = c_add_bias
+                TENSOR_MAP["bias_bt"] = bias_bt
+                TENSOR_MAP["bias_l1"] = bias_l1
+            if self.dx_para.get_para_map("no_need_use_ub_flag"):
                 tensor_mmad = tensor_dx_gm.op.input_tensors[0]
 
         a_l0a = tensor_mmad.op.input_tensors[0]
@@ -1364,6 +1372,10 @@ class Conv2dDxOptiSchedule:
             sch[c_add_bias].set_scope(tbe_platform_info.scope_cc)
             sch[bias_l0c].set_scope(tbe_platform_info.scope_cc)
             sch[bias_ub_brc].set_scope(tbe_platform_info.scope_ubuf)
+        if TENSOR_MAP.get("c_add_bt") is not None:
+            sch[c_add_bias].set_scope(tbe_platform_info.scope_cc)
+            sch[bias_l1].set_scope(tbe_platform_info.scope_cbuf)
+            sch[bias_bt].set_scope("local.BT")
         sch[weight_l1].set_scope(tbe_platform_info.scope_cbuf)
         TENSOR_MAP["b_l1"] = weight_l1
         sch[weight_l0].set_scope(tbe_platform_info.scope_cb)
@@ -2180,7 +2192,7 @@ class Conv2dDxOptiSchedule:
                 if var_map:
                     tensor_vn = TENSOR_MAP["tensor_vn"]
                     sch[tensor_vn].compute_at(sch[c_gm], l0c_m_inner_outer)
-            if not self.dx_para.get_para_map("cube_vector_split_flag"):
+            if not self.dx_para.get_para_map("no_need_use_ub_flag"):
                 sch[c_ub].compute_at(sch[c_gm], l0c_m_inner_outer)
 
             if "data_transfer" in TENSOR_MAP:
@@ -2276,7 +2288,7 @@ class Conv2dDxOptiSchedule:
             _double_buffer_l0c()
 
             # C_UB
-            if not self.dx_para.get_para_map("cube_vector_split_flag"):
+            if not self.dx_para.get_para_map("no_need_use_ub_flag"):
                 _double_buffer_cub(fusion_type)
 
         def _double_buffer_l0c():
@@ -2565,7 +2577,12 @@ class Conv2dDxOptiSchedule:
                 sch[bias_ub].emit_insn(bias_ub.op.axis[0], 'dma_copy')
                 sch[bias_ub_brc].emit_insn(bias_ub_brc.op.axis[0], 'vector_auto')
                 mad_dict["init_bias"] = 1
-            if (self.dx_para.get_para_map("cube_vector_split_flag") and
+
+            if bias_bt is not None:
+                sch[bias_bt].emit_insn(bias_bt.op.axis[0], 'dma_copy')
+                sch[bias_l1].emit_insn(bias_l1.op.axis[0], 'dma_copy')
+
+            if (self.dx_para.get_para_map("no_need_use_ub_flag") and
                 "impl_mode" in c_l0c.op.attrs and
                 c_l0c.op.attrs["impl_mode"] == "high_performance"):
                 mad_dict["hf32"] = 1
@@ -2654,7 +2671,7 @@ class Conv2dDxOptiSchedule:
             # in some specific fusion mode cub_tensor need to be reused_by
             if (fusion_type not in (FUSION_DX_DRELU, FUSION_DX_ADD_DRELU) and
                 not (bias_add_vector_ub is not None and dilate_ub is None)) and \
-                not self.dx_para.get_para_map("cube_vector_split_flag"):
+                not self.dx_para.get_para_map("no_need_use_ub_flag"):
                 sch[c_ub].mem_unique()
 
         def _check_overload_dy(overload_flag_gm, overload_flag_l0c):
@@ -2746,6 +2763,11 @@ class Conv2dDxOptiSchedule:
             TENSOR_MAP.get("c_add_bias")
         )
 
+        bias_l1, bias_bt, c_add_bt = (
+            TENSOR_MAP.get("bias_l1"),
+            TENSOR_MAP.get("bias_bt"),
+            TENSOR_MAP.get("c_add_bt")
+        )
         self._get_tiling(
             dx_res_write, fusion_type, kernel_name, is_conv1d_bool, tiling_case, var_map, l0c_multi_group_flag
         )
@@ -2831,12 +2853,15 @@ class Conv2dDxOptiSchedule:
             sch[c_l0c].op.axis[0]
         ]
         sch[c_l0c].compute_at(sch[c_gm], c_slice_axis)
-        if self.dx_para.get_para_map("cube_vector_split_flag") and not var_map:
+        if self.dx_para.get_para_map("no_need_use_ub_flag") and not var_map:
             sch[c_l0c].storage_align(sch[c_l0c].op.axis[2], CUBE_MUL_SHAPE, 0)
         if bias_l0c is not None:
             sch[bias_l0c].compute_at(sch[c_gm], c_slice_axis)
             sch[c_add_bias].compute_at(sch[c_gm], c_slice_axis)
             sch[bias_ub_brc].compute_at(sch[c_gm], c_slice_axis)
+        if bias_bt is not None:
+            sch[bias_l1].compute_at(sch[c_gm], c_slice_axis)
+            sch[bias_bt].compute_at(sch[c_gm], c_slice_axis)
 
         self._print_ir_conv("attach l0c", sch)
 
@@ -2914,7 +2939,7 @@ class Conv2dDxOptiSchedule:
                 (None, None),
                 (None, None),
                 )
-        if not l0c_multi_group_flag and not self.dx_para.get_para_map("cube_vector_split_flag"):
+        if not l0c_multi_group_flag and not self.dx_para.get_para_map("no_need_use_ub_flag"):
             _buffer_tile_l0c_c1()
         # do buffer_tile or buffer_align for cub
         if need_buffer_tile:

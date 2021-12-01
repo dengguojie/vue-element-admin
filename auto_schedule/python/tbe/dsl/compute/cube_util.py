@@ -417,7 +417,8 @@ class CubeDslPattern:
         return type_c
 
     def generate_c(  # pylint: disable=R0913,R0914
-            self, tensor_a, tensor_b, tensor_bias=None, c_type=None, offset_x=0, impl_mode=""):
+            self, tensor_a, tensor_b, tensor_bias=None, c_type=None, offset_x=0, impl_mode="",
+            bias_table_flag=False):
         """
         calculate the mad result tensor
 
@@ -449,6 +450,20 @@ class CubeDslPattern:
             tensor_a.dtype, tensor_b.dtype))
 
         offset_x = offset_x if is_support_v200() else 0
+
+        if bias_table_flag and tensor_bias is not None:
+            tensor_c = tvm.compute(
+                shape_c,
+                lambda g_index, n_index, co1_index, m_index, co0_index: tvm.sum(
+                    ((tensor_a(g_index, n_index, m_index // a_m0, axis_k1, m_index % a_m0, axis_k0) - offset_x) *
+                    tensor_b(g_index, axis_k1, co1_index, co0_index, axis_k0)).astype(type_c) +
+                    tensor_bias(b_n0 * co1_index + co0_index),
+                    axis=[axis_k1, axis_k0]),
+                name="C",
+                tag="mad")
+            self._tensor_c = tensor_c
+            return tensor_c
+
         tensor_c = tvm.compute(
             shape_c,
             lambda g_index, n_index, co1_index, m_index, co0_index: tvm.sum(

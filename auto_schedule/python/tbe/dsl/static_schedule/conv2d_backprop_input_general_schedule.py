@@ -213,6 +213,9 @@ def general_schedule(
     fmap_l1_addr_flag = fusion_para.get("fmap_l1_addr_flag")
     fmap_l1_valid_size = fusion_para.get("fmap_l1_valid_size")
     cube_vector_split = tbe_platform_info.get_soc_spec("CUBE_VECTOR_SPLIT")
+    support_l0c_to_out = tbe_platform.intrinsic_check_support("Intrinsic_fix_pipe_l0c2out")
+    support_l1_to_bt = tbe_platform.intrinsic_check_support("Intrinsic_data_move_l12bt")
+    support_ub_to_l1 = tbe_platform.intrinsic_check_support("Intrinsic_data_move_ub2l1")
 
     def _get_var_map(var_range):
         """
@@ -406,7 +409,7 @@ def general_schedule(
                     stride_h, stride_w = list(
                         i.value for i in a_filling.op.attrs["stride_expand"]
                     )
-                    a_zero_scope = tbe_platform_info.scope_cbuf if cube_vector_split else tbe_platform_info.scope_ubuf
+                    a_zero_scope = tbe_platform_info.scope_cbuf if not support_ub_to_l1 else tbe_platform_info.scope_ubuf
                     if stride_h > 1 or stride_w > 1:
                         # in l0a_dma_copy scenes pad!=0 and stride=1, there is no a_zero
                         a_zero = a_filling.op.input_tensors[1]  # dEdY_zero in ub
@@ -418,7 +421,7 @@ def general_schedule(
                     tensor_map["a_l1"] = a_l1
 
                     a_ddr = a_filling.op.input_tensors[0]
-                    if cube_vector_split:
+                    if not support_ub_to_l1:
                         a_ub = None
                         if a_ddr.op.input_tensors:
                             if "NHWC_trans_5HD" in a_ddr.op.tag:
@@ -542,7 +545,7 @@ def general_schedule(
             sch[a_col_before].set_scope(tbe_platform_info.scope_cbuf)
             sch[a_col].set_scope(tbe_platform_info.scope_ca)
             sch[c_col].set_scope(tbe_platform_info.scope_cc)
-            if not cube_vector_split:
+            if not support_l0c_to_out:
                 sch[c_ub].set_scope(tbe_platform_info.scope_ubuf)
 
             return tensor_map
@@ -566,6 +569,15 @@ def general_schedule(
                 sch[c_add_bias].set_scope(tbe_platform_info.scope_cc)
                 sch[bias_l0c].set_scope(tbe_platform_info.scope_cc)
                 sch[bias_ub_brc].set_scope(tbe_platform_info.scope_ubuf)
+            elif len(c_col.op.input_tensors) > 2 and support_l1_to_bt:
+                bias_bt = c_col.op.input_tensors[2]
+                tensor_map["bias_bt"] = bias_bt
+                sch[bias_bt].set_scope('local.BT')
+                bias_ddr = bias_bt.op.input_tensors[0]
+                bias_l1 = sch.cache_read(bias_ddr, tbe_platform_info.scope_cbuf, [bias_bt])
+                tensor_map["bias_l1"] = bias_l1
+                sch[bias_bt].emit_insn(bias_bt.op.axis[0], "dma_copy")
+                sch[bias_l1].emit_insn(bias_l1.op.axis[0], "dma_copy")
 
         def _bias_tensor():
             if c_ub is not None and c_ub.op.input_tensors[0].name == "c_add_bias":
@@ -583,7 +595,7 @@ def general_schedule(
                 tensor_map["tensor_bias"] = tensor_bias
                 tensor_map["bias_ub"] = bias_ub
             else:
-                if cube_vector_split:
+                if support_l0c_to_out:
                     if "5HD_trans_NHWC" in c_ddr.op.tag:
                         c_col_temp = c_ddr.op.input_tensors[0]
                         c_col = c_col_temp.op.input_tensors[0]
@@ -947,6 +959,8 @@ def general_schedule(
     c_add_bias = tensor_map.get("c_add_bias")
     bias_l0c = tensor_map.get("bias_l0c")
     bias_ub_brc = tensor_map.get("bias_ub_brc")
+    bias_bt = tensor_map.get("bias_bt")
+    bias_l1 = tensor_map.get("bias_l1")
     # dynamic avgpoolgrad
     a_avg = tensor_map.get("a_avg")
     mean_matrix_fp16 = tensor_map.get("mean_matrix_fp16")
@@ -1123,7 +1137,7 @@ def general_schedule(
     else:
         tiling = tiling_case
 
-    if var_map or (cube_vector_split and (stride_h > 1 or stride_w > 1)):
+    if var_map or (not support_ub_to_l1 and (stride_h > 1 or stride_w > 1)):
         # close overhead flag in dynamic mode
         # close overhead flag in v220 when stride > 1
         tiling['A_overhead_opt_flag'] = 0
@@ -1235,7 +1249,7 @@ def general_schedule(
         if bl1_tilling_k % bl0_tiling_kb != 0:
             _raise_dx_general_err("k_BL1 % kb != 0.")
 
-        if (cl0_tiling_nc % cub_tiling_nc_factor != 0) and (not cube_vector_split):
+        if (cl0_tiling_nc % cub_tiling_nc_factor != 0) and (not support_l0c_to_out):
             _raise_dx_general_err("nc % nc_factor != 0.")
 
         if al1_tilling_k > bl1_tilling_k and al1_tilling_k % bl1_tilling_k != 0:
@@ -1392,7 +1406,7 @@ def general_schedule(
     _tiling_check_pbuffer()
 
     def _cub_process():  # pylint: disable=R0912,R0915
-        if cube_vector_split:
+        if support_l0c_to_out:
             return
         def _attach_cub():
             # c_ub will attach on deconv_res in dynamic shape by default
@@ -1528,7 +1542,7 @@ def general_schedule(
                 affine_l0c = 1, 1, cl0_tiling_nc * factor, cl0_tiling_mc * cl0_tiling_m0 // load3d_special_multiply,\
                              cl0_tiling_n0 // factor
 
-        if cube_vector_split:
+        if support_l0c_to_out:
             sch_agent.attach_at(c_col, c_ddr, affine_shape=affine_l0c)
         else:
             c_col_shape = cube_util.shape_to_list(c_col.shape)
@@ -1725,8 +1739,7 @@ def general_schedule(
                 (1, 1),
                 (1, tbe_platform.CUBE_MKN[a_col_before.dtype]["mac"][1])
             )
-        
-        if cube_vector_split and (stride_h > 1 or stride_w > 1):
+        if not support_ub_to_l1 and (stride_h > 1 or stride_w > 1):
             sch_agent.same_attach(a_filling, a_l1)
             sch_agent.same_attach(a_zero, a_l1)
 
@@ -1922,6 +1935,9 @@ def general_schedule(
             sch_agent.same_attach(bias_add_vector, c_ub)
             if bias_ub is not None and split_bias_flag:
                 sch_agent.same_attach(bias_ub, c_ub)
+        if bias_bt is not None:
+            sch_agent.same_attach(bias_bt, c_col)
+            sch_agent.same_attach(bias_l1, c_col)
 
     def _do_l1andub_process():
         if al1_tilling_k < bl1_tilling_k:
@@ -1935,7 +1951,7 @@ def general_schedule(
                 _bl1_process()
                 _al1_process()
 
-        if not cube_vector_split and (tensor_attr["a_filling_in_ub_flag"] or "a_avg" in tensor_map):
+        if support_ub_to_l1 and (tensor_attr["a_filling_in_ub_flag"] or "a_avg" in tensor_map):
             _aub_process()
 
     def _do_nbuffer_split():
@@ -1985,7 +2001,7 @@ def general_schedule(
         def _aub_double_buffer():
             if tensor_attr["a_filling_in_ub_flag"] and \
                 tiling.get("manual_pingpong_buffer").get("AUB_pbuffer") == 2 and \
-                    "a_avg" not in tensor_map and not cube_vector_split:
+                    "a_avg" not in tensor_map and support_ub_to_l1:
                 sch[a_filling].double_buffer()
                 if "a_zero" in tensor_map:
                     sch[a_zero].double_buffer()
@@ -2002,7 +2018,7 @@ def general_schedule(
 
         if a_l1_db_flag == 2:
             sch[a_l1].double_buffer()
-            if cube_vector_split and (stride_h > 1 or stride_w > 1):
+            if not support_ub_to_l1 and (stride_h > 1 or stride_w > 1):
                 sch[a_filling].double_buffer()
                 sch[a_zero].double_buffer()
 
@@ -2025,7 +2041,7 @@ def general_schedule(
                 sch[bias_ub_brc].preload()
 
         if tiling.get("manual_pingpong_buffer").get("CUB_pbuffer") == 2 and "a_avg" not in tensor_map:
-            if not cube_vector_split:
+            if not support_l0c_to_out:
                 sch[c_ub].double_buffer()
             if bias_add_vector is not None:
                 sch[bias_add_vector].double_buffer()
@@ -2105,7 +2121,7 @@ def general_schedule(
             _emit_requant_fusion_insn()
         elif tensor_attr.get("quant_fuse"):
             _emit_quant_fusion_insn()
-        elif not cube_vector_split:
+        elif not support_l0c_to_out:
             sch_agent[c_ub].emit_insn(sch_agent[c_ub].op.axis[0], "dma_copy")
 
         if (deconv_res.op.tag == "emit_insn_elewise_multiple_sel|bool" or
@@ -2160,7 +2176,7 @@ def general_schedule(
             
             al1_insn, _, _ = sch_agent[a_l1].nlast_scopes(3)
 
-            if cube_vector_split and (stride_h > 1 or stride_w > 1):
+            if not support_ub_to_l1 and (stride_h > 1 or stride_w > 1):
                 sch_agent[a_filling].reused_by(a_zero)
                 sch_agent[a_zero].emit_insn(sch_agent[a_zero].op.axis[0], "set_2d")
                 if tensor_attr.get("FM_NHWC_TRANS_5HD"):
@@ -2714,7 +2730,7 @@ def general_schedule(
         _handle_dynamic_workspace(stride_w)
     else:
         _handle_workspace()
-    if not l0c_multi_group_flag and not cube_vector_split:
+    if not l0c_multi_group_flag and not support_l0c_to_out:
         _c_col_buffer_tile()
     if preload:
         if l0c_pbuffer == 2:
