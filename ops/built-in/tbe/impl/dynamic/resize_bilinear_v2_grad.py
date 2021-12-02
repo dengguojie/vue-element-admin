@@ -179,6 +179,8 @@ class ResizeBilinearV2Grad:
             l_ratio = self.tik_instance.Tensor("float32", (256, 8), name="l_ratio", scope=tik.scope_ubuf)
             r_ratio = self.tik_instance.Tensor("float32", (256, 8), name="r_ratio", scope=tik.scope_ubuf)
             count_num = self.tik_instance.Tensor("int32", (40, 16), name="count_num", scope=tik.scope_ubuf)
+            self.dup_zero(l_ratio, 256 * 8)
+            self.dup_zero(r_ratio, 256 * 8)
 
             self.tik_instance.vec_dup(Constant.MASK, const_one, 1.0, 1, 8)
             self.tik_instance.vec_dup(Constant.MASK, const_zero, 0.0, 1, 8)
@@ -234,6 +236,7 @@ class ResizeBilinearV2Grad:
         loop_scalar = self.tik_instance.Scalar("int32", name="loop", init_value=1)
         base_scalar = self.tik_instance.Scalar("int32", name="base", init_value=0)
         tmp_src = self.tik_instance.Scalar("int32", name="tmp")
+        self.dup_zero(tmp_index, 256 * 16)
 
         with self.tik_instance.for_range(0, self.grads_w) as dst_w:
             tmp_index[dst_w] = dst_w
@@ -593,6 +596,8 @@ class ResizeBilinearV2Grad:
         grads_ub = self.tik_instance.Tensor(self.grads_dtype, (256, 16), scope=tik.scope_ubuf, name="grads_ub")
         output_ub = self.tik_instance.Tensor(self.grads_dtype, (640, 16), scope=tik.scope_ubuf, name="output_ub")
         output_ub2 = self.tik_instance.Tensor(self.grads_dtype, (640, 16), scope=tik.scope_ubuf, name="output_ub2")
+        self.dup_zero(grads_ub, 256 * 16)
+
         with self.tik_instance.if_scope(core_idx < self.need_core_num - 1):
             with self.tik_instance.for_range(0, self.h_per_core) as per_idx:
                 h_idx = core_idx * self.h_per_core + per_idx
@@ -1095,7 +1100,7 @@ class ResizeBilinearV2Grad:
         """
         dup zero to ub
         """
-        dup_value = 0.0
+        dup_value = 0
 
         loop = num // (self.max_mask * 255)
         if loop > 0:
