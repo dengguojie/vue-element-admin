@@ -30,31 +30,43 @@
 
 namespace optiling {
 
+static const int64_t OFFSET_2 = 2;
+static const int64_t STRIDE_16 = 16;
+static const int64_t STRIDE_2 = 2;
+static const int64_t AXIS_OUT_UB = 0;
+static const int64_t AXIS_IN_UB = 1;
+static const int64_t AXIS_IN_FIRST_UB_SPLIT = 2;
+static const int64_t AXIS_IN_SECOND_UB_SPLIT = 3;
+
+static const int64_t FP32_TRANSPOSE_LIMIT = 128;
 static const int64_t MAX_DIM_NUM = 8;
 static const int64_t BLOCK = 32;
 static const int64_t FP16 = 2;
 static const int64_t INT8 = 1;
 static const int64_t FP32 = 4;
 static const int64_t DEFAULT_VALUE = -1;
-
 static const int64_t BaseSch = 0;
 static const int64_t BorrowNSch = 1;
 static const int64_t BorrowHSch = 2;
 static const int64_t StorageAlignBranch = 0;
 static const int64_t CommonAlignBranch = 1;
 static const int64_t PACKET_SENDING_RATE = 256;
+
 static const int64_t CONST_KEY = 123;
+static const int64_t FORWARD_KEY = 2;
+static const int64_t BACKWARD_KEY = 3;
+static const size_t KEY_NUM = 7;
 
 struct CompileInfoTransdataDSL {
   // construct func
   CompileInfoTransdataDSL() = default;
-  CompileInfoTransdataDSL(const std::string& op_type, const nlohmann::json &compile_info);
+  CompileInfoTransdataDSL(const std::string& op_type, const nlohmann::json& compile_info);
   // check value
   bool Check();
-  bool check_success{true};
-
-  std::string transdata_op_type;
-  int64_t is_forward{DEFAULT_VALUE};
+  bool check_success{false};
+  bool is_const_compile{false};
+  bool is_const{false};
+  bool is_forward{false};
   int64_t align_size{DEFAULT_VALUE};
   int64_t pad_align_size{DEFAULT_VALUE};
   int64_t core_num{DEFAULT_VALUE};
@@ -63,8 +75,6 @@ struct CompileInfoTransdataDSL {
   std::vector<int64_t> permute;
   std::vector<int64_t> unknown_dims;
   std::vector<std::vector<int64_t>> ub_info;
-  bool is_const_compile{false};
-  bool is_const{false};
   std::unordered_map<std::string, int32_t> const_block_dims;
 };
 
@@ -78,9 +88,9 @@ struct TilingInfoTransdataDSL {
   int64_t ub_1_factor{DEFAULT_VALUE};
   int64_t mte2_burst_len{DEFAULT_VALUE};
   int64_t mte3_burst_len{DEFAULT_VALUE};
-  bool split_once{false};
-  float percent{DEFAULT_VALUE};
   int64_t core{DEFAULT_VALUE};
+  bool split_once{false};
+  float percent{0};
 };
 
 struct TransdataDSLMTEInfo {
@@ -90,96 +100,99 @@ struct TransdataDSLMTEInfo {
 };
 
 class TransdataBase {
-  public:
-    explicit TransdataBase(const std::string & _op_type, const ge::Operator & _op_paras,
-                           const CompileInfoTransdataDSL & _compileInfo,
-                           utils::OpRunInfo & _run_info) : op_type(_op_type),
-                                                           op_paras(_op_paras),
-                                                           compileInfo(_compileInfo),
-                                                           run_info(_run_info) {}
-    ~TransdataBase() {
-    }
-    bool DoTiling();
+ public:
+  explicit TransdataBase(const std::string& _op_type, const ge::Operator& _op_paras,
+                         const CompileInfoTransdataDSL& _compileInfo, utils::OpRunInfo& _run_info)
+      : op_type(_op_type), op_paras(_op_paras), compileInfo(_compileInfo), run_info(_run_info) {
+  }
+  ~TransdataBase() {
+  }
+  bool DoTiling();
 
  private:
-    bool CalcTiling();
-    bool WriteTilingData();
-    bool GetCompileInfo();
-    bool IsConstRuntime();
-    bool GetInputOutput();
-    bool ChooseStrategy();
-    bool BaseUBTiling();
-    bool BaseBlockTiling();
+  bool CalcTiling();
+  bool WriteTilingData();
 
-    bool InferInput();
-    bool InferOutput();
-    bool DoFusing(int64_t * input, int64_t * output, size_t ori_length);
+  bool UpdateValue();
+  bool IsConstRuntime();
+  bool GetInputOutput();
+  bool ChooseStrategy();
+  bool BaseUBTiling();
+  bool BaseBlockTiling();
 
-    bool UBTilingFilter(int64_t * input, int64_t * output);
-    bool UBTilingForwardProcess(int64_t * input, int64_t * output);
-    bool UBTilingBackwardProcess(int64_t * input, int64_t * output);
-    void UBTilingUpdate(int64_t ptrA, int64_t ptrB, int64_t factorA, int64_t factorB,
-                        int64_t mte2, int64_t mte3, float percent, int64_t core);
+  bool InferInput();
+  bool InferOutput();
+  bool DoFusing(int64_t* input, int64_t* output, size_t ori_length);
 
-    void FindAxisInUB(int64_t * axis_in_ub);
-    void ForwardBlockProcess(int64_t * axis_in_ub);
-    void BackwardBlockProcess(int64_t * axis_in_ub);
+  bool UBTilingFilter(int64_t* input, int64_t* output);
+  bool UBTilingForwardProcess(int64_t* input, int64_t* output);
+  bool UBTilingBackwardProcess(int64_t* input, int64_t* output);
+  void UBTilingUpdate(int64_t ptrA, int64_t ptrB, int64_t factorA, int64_t factorB, int64_t mte2, int64_t mte3,
+                      float percent, int64_t core);
 
-  private:
-    int64_t SetAlign(int64_t value, int64_t align_factor);
-    int64_t Prod(int64_t * input, int64_t ptr, int64_t length);
-    int32_t CalcTilingKey();
-    int64_t LimitMap(int64_t factor);
-    bool CommonAlignLimit(int64_t dim_len, int64_t ub_size);
-    void StorageAlign(int64_t * new_input, int64_t * new_out, int64_t * input);
-    bool CheckValidSplit(int64_t * input, int64_t * output, int64_t ptrA, int64_t ptrB);
-    void GetOutPutRealTail(int64_t ptr, int64_t factor, TransdataDSLMTEInfo * mte);
+  void FindAxisInUB(int64_t* axis_in_ub, int64_t length);
+  void ForwardBlockProcess(int64_t* axis_in_ub);
+  void BackwardBlockProcess(int64_t* axis_in_ub);
 
-  private:
-    const std::string & op_type;
-    const ge::Operator & op_paras;
-    const CompileInfoTransdataDSL & compileInfo;
-    utils::OpRunInfo & run_info;
-    TilingInfoTransdataDSL tilingInfo;
-    TransdataDSLMTEInfo mte2;
-    TransdataDSLMTEInfo mte3;
+ private:
+  int64_t SetAlign(int64_t value, int64_t align_factor);
+  int64_t Prod(int64_t* input, int64_t ptr, int64_t length);
+  int32_t CalcTilingKey();
+  int64_t LimitMap(int64_t factor);
+  bool CommonAlignLimit(int64_t dim_len, int64_t ub_size);
+  void StorageAlign(int64_t* new_input, int64_t* new_out, int64_t* input);
+  bool CheckValidSplit(int64_t* input, int64_t* output, int64_t ptrA, int64_t ptrB);
+  void GetOutPutRealTail(int64_t ptr, int64_t factor, TransdataDSLMTEInfo* mte);
 
-    bool is_last_transpose;
-    int64_t tiling_length;
-    int64_t input_shape[MAX_DIM_NUM];
-    int64_t output_shape[MAX_DIM_NUM];
-    int64_t reshape[MAX_DIM_NUM];
-    int64_t reshape_mapping_output[MAX_DIM_NUM];
+ private:
+  const std::string& op_type;
+  const ge::Operator& op_paras;
+  const CompileInfoTransdataDSL& compileInfo;
+  utils::OpRunInfo& run_info;
 
-    int64_t c0_idx{DEFAULT_VALUE};
-    int64_t c1_idx{DEFAULT_VALUE};
-    // possible tiling
-    int64_t ub_tiling_num;
-    int64_t possible_ub_tiling[MAX_DIM_NUM * MAX_DIM_NUM];
-    // tiling ub size
-    int64_t UBSize;
-    int64_t computeType;
-    int64_t shapeType;
-    bool isDataMove{true};
+  int64_t input_shape[MAX_DIM_NUM] = {0};
+  int64_t output_shape[MAX_DIM_NUM] = {0};
+  int64_t reshape[MAX_DIM_NUM] = {0};
+  int64_t reshape_mapping_output[MAX_DIM_NUM] = {0};
+  int64_t possible_ub_tiling[MAX_DIM_NUM * MAX_DIM_NUM] = {0};
 
+  size_t size_input{0};
+  size_t size_output{0};
+  size_t size_reshape{0};
+  size_t computeType{0};
+  size_t shapeType{0};
+
+  int64_t c0_idx{DEFAULT_VALUE};
+  int64_t c1_idx{DEFAULT_VALUE};
+  int64_t UBSize{DEFAULT_VALUE};
+  int64_t ub_tiling_num{DEFAULT_VALUE};
+
+  bool is_last_transpose{false};
+  bool isDataMove{true};
+
+  TilingInfoTransdataDSL tilingInfo;
+  TransdataDSLMTEInfo mte2;
+  TransdataDSLMTEInfo mte3;
 };
 
-class TransdataTilingHandler: public AutoTilingHandler {
-  public:
-    TransdataTilingHandler(const std::string& o, const std::string& p, const nlohmann::json& c)
-            : AutoTilingHandler(o, p), compileInfo(o, c) {}
-    ~TransdataTilingHandler() = default;
-    bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const override;
-    bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const override;
-    bool ParsedSuccess() {return compileInfo.check_success;};
+class TransdataTilingHandler : public AutoTilingHandler {
+ public:
+  TransdataTilingHandler(const std::string& o, const std::string& p, const nlohmann::json& c)
+      : AutoTilingHandler(o, p), compileInfo(o, c) {
+  }
+  ~TransdataTilingHandler() = default;
+  bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const override;
+  bool DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info, const OpInfo& op_info) const override;
+  bool ParsedSuccess() {
+    return compileInfo.check_success;
+  };
 
-  private:
-    const CompileInfoTransdataDSL compileInfo;
+ private:
+  const CompileInfoTransdataDSL compileInfo;
 };
 
-std::shared_ptr<AutoTilingHandler> CreateTransdataTilingHandler(const std::string& op_type,
-                                                                const std::string& pattern,
+std::shared_ptr<AutoTilingHandler> CreateTransdataTilingHandler(const std::string& op_type, const std::string& pattern,
                                                                 const nlohmann::json& parsed_compile_info);
-} // namespace optiling
+}  // namespace optiling
 
-#endif //TRANSDATA_DSL_H
+#endif  // TRANSDATA_DSL_H
