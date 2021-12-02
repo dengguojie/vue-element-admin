@@ -29,7 +29,11 @@ from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
 
-MAX_BLOCK_NUM = 65536
+class Constant:
+    """
+    The class for constant
+    """
+    MAX_BLOCK_NUM = 65536
 
 
 # pylint: disable = unused-argument
@@ -218,11 +222,11 @@ def get_max_factor(n):
     -------
     the max factor: -1 if not found
     """
-    if n < MAX_BLOCK_NUM:
+    if n < Constant.MAX_BLOCK_NUM:
         return n
 
     factors = []
-    for i in range(2, MAX_BLOCK_NUM):
+    for i in range(2, Constant.MAX_BLOCK_NUM):
         if n % i == 0:
             factors = factors + [i, ]
 
@@ -300,7 +304,7 @@ def get_new_shape_axis(shape, axis):
             dst_out_shape = shape[axis[0]:]
             dst_axis = [i - out_shape_len for i in axis]
         else:
-            if out_ele_num > MAX_BLOCK_NUM - 1:
+            if out_ele_num > Constant.MAX_BLOCK_NUM - 1:
                 max_factor = get_max_factor(out_ele_num)
                 if max_factor == -1:
                     dst_out_shape = [out_ele_num, ] + list(shape[axis[0]:])
@@ -316,7 +320,7 @@ def get_new_shape_axis(shape, axis):
         dst_out_shape = shape
         dst_axis = axis
 
-    if dst_out_shape[0] > MAX_BLOCK_NUM - 1:
+    if dst_out_shape[0] > Constant.MAX_BLOCK_NUM - 1:
         max_factor = get_max_factor(dst_out_shape[0])
         if max_factor != -1:
             dst_out_shape = [max_factor, dst_out_shape[0]//max_factor] + \
@@ -476,7 +480,7 @@ class ReverseExt2:
                                         burst_len, 0, 0)
         else:
             inner_data_num = functools.reduce(lambda x, y: x * y, self.inner_shape)
-            is_multicore = inner_data_num > 32 and self.shape_x[0] < MAX_BLOCK_NUM
+            is_multicore = inner_data_num > 32 and self.shape_x[0] < Constant.MAX_BLOCK_NUM
             if self.use_vgather is True and is_multicore is not True:
                 self.base_addr = self.tik_instance.Scalar("uint32", name="base_addr")
                 self.offset_ub = self.tik_instance.Tensor(
@@ -892,7 +896,7 @@ class ReverseExt2:
         None
         """
         inner_data_num = functools.reduce(lambda x, y: x * y, self.inner_shape)
-        if loop_axis == 0 and inner_data_num > 32 and self.shape_x[0] < MAX_BLOCK_NUM:
+        if loop_axis == 0 and inner_data_num > 32 and self.shape_x[0] < Constant.MAX_BLOCK_NUM:
             with self.tik_instance.for_range(
                     0, outer_loop_shape[0],
                     block_num=self.outer_shape[0]) as index:

@@ -20,9 +20,11 @@ import te.platform as tbe_platform
 from te import tik
 
 
-UB_30K_SIZE = 150 * 1024
-
-ROINUM = 128
+class Constant:
+    """
+    The class for constant
+    """
+    UB_30K_SIZE = 150 * 1024
 
 
 def _tf_n52n8(tik_instance, rois_ub, rois_n5, block_num):
@@ -1425,7 +1427,7 @@ def roi_align_true(feature_map_dict, rois_dict, roisn_dict, output, scale, pool_
                 w_number = 0
 
                 w_number_ub = 0
-                ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - UB_30K_SIZE
+                ub_size_bytes = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - Constant.UB_30K_SIZE
                 feature_map_to_ub_verify = ub_size_bytes // (fm_c1 * feature_shape[2] * feature_shape[3] * 16 *
                                                              n_bust * 2)
                 feature_map_to_l1_verify = l1_size // (fm_c1 * feature_shape[2] * feature_shape[3] * 16 * n_bust * 2)
