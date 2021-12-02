@@ -533,31 +533,31 @@ vector_A:
       - ops/built-in/op_tiling/dynamic_lstm_grad_cell.cc
       - ops/built-in/op_tiling/dynamic_rnn.cc
       - ops/built-in/op_tiling/softmax_tiling.cc
-      - ops/built-in/tbe/impl/ascend_quant.py
-      - ops/built-in/tbe/impl/ascend_quant_util.py
-      - ops/built-in/tbe/impl/basic_lstm_cell.py
-      - ops/built-in/tbe/impl/batch_matmul.py
-      - ops/built-in/tbe/impl/bnll.py
-      - ops/built-in/tbe/impl/cumprod_d.py
-      - ops/built-in/tbe/impl/cumsum_d.py
-      - ops/built-in/tbe/impl/cumulativelogsumexp_d.py
-      - ops/built-in/tbe/impl/dynamic/aipp.py
-      - ops/built-in/tbe/impl/dynamic/dynamic_lstm_grad_cell.py
-      - ops/built-in/tbe/impl/dynamic/dynamic_rnn.py
-      - ops/built-in/tbe/impl/dynamic/log_softmax_grad.py
-      - ops/built-in/tbe/impl/dynamic/log_softmax_v2.py
-      - ops/built-in/tbe/impl/dynamic/softmax_grad.py
-      - ops/built-in/tbe/impl/dynamic/softmax_v2.py
-      - ops/built-in/tbe/impl/dynamic_gru_v2_hidden.py
-      - ops/built-in/tbe/impl/fully_connection.py
-      - ops/built-in/tbe/impl/leaky_relu.py
-      - ops/built-in/tbe/impl/log_softmax_grad.py
-      - ops/built-in/tbe/impl/log_softmax_v2.py
-      - ops/built-in/tbe/impl/mish.py
-      - ops/built-in/tbe/impl/mvn.py
-      - ops/built-in/tbe/impl/prior_box_d_v2.py
-      - ops/built-in/tbe/impl/softmax_grad.py
-      - ops/built-in/tbe/impl/yolo_boxes_encode.py
+      - ops/built-in/tbe/impl/ascend_quant.py
+      - ops/built-in/tbe/impl/ascend_quant_util.py
+      - ops/built-in/tbe/impl/basic_lstm_cell.py
+      - ops/built-in/tbe/impl/batch_matmul.py
+      - ops/built-in/tbe/impl/bnll.py
+      - ops/built-in/tbe/impl/cumprod_d.py
+      - ops/built-in/tbe/impl/cumsum_d.py
+      - ops/built-in/tbe/impl/cumulativelogsumexp_d.py
+      - ops/built-in/tbe/impl/dynamic/aipp.py
+      - ops/built-in/tbe/impl/dynamic/dynamic_lstm_grad_cell.py
+      - ops/built-in/tbe/impl/dynamic/dynamic_rnn.py
+      - ops/built-in/tbe/impl/dynamic/log_softmax_grad.py
+      - ops/built-in/tbe/impl/dynamic/log_softmax_v2.py
+      - ops/built-in/tbe/impl/dynamic/softmax_grad.py
+      - ops/built-in/tbe/impl/dynamic/softmax_v2.py
+      - ops/built-in/tbe/impl/dynamic_gru_v2_hidden.py
+      - ops/built-in/tbe/impl/fully_connection.py
+      - ops/built-in/tbe/impl/leaky_relu.py
+      - ops/built-in/tbe/impl/log_softmax_grad.py
+      - ops/built-in/tbe/impl/log_softmax_v2.py
+      - ops/built-in/tbe/impl/mish.py
+      - ops/built-in/tbe/impl/mvn.py
+      - ops/built-in/tbe/impl/prior_box_d_v2.py
+      - ops/built-in/tbe/impl/softmax_grad.py
+      - ops/built-in/tbe/impl/yolo_boxes_encode.py
     unrelease:
       - auto_schedule/python/tbe/dsl/compute/avg_pool2d.py
       - auto_schedule/python/tbe/dsl/static_schedule/ascend_anti_quant_schedule.py
