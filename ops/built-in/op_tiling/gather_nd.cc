@@ -82,10 +82,9 @@ struct GatherNdParam {
 };
 
 bool CheckTensorShape(const std::string& opType, std::vector<int64_t> paramsShape, std::vector<int64_t> indicesShape,
-                      std::vector<int64_t> yShape, int32_t indicesLastDim) {
+                      int32_t indicesLastDim) {
   int32_t paramsDims = paramsShape.size();
   int32_t indicesDims = indicesShape.size();
-  int32_t yDims = yShape.size();
   int32_t calcOutputDims = 0;
 
   if (indicesLastDim == 0 && indicesDims == 1) {
@@ -99,25 +98,7 @@ bool CheckTensorShape(const std::string& opType, std::vector<int64_t> paramsShap
       VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherNdTiling] : CheckTensorShape, indices.shape[i] must be > 0");
       return false;
     }
-    outputShape.push_back(indicesShape[i]);
   }
-  for (int32_t i = indicesLastDim; i < paramsDims; i++) {
-    outputShape.push_back(paramsShape[i]);
-  }
-
-  calcOutputDims = outputShape.size();
-  if (yDims != calcOutputDims) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherNdTiling] : CheckTensorShape, y Shape dim is invalid");
-    return false;
-  }
-
-  for (int32_t i = 0; i < yDims; i++) {
-    if (yShape[i] != outputShape[i]) {
-      VECTOR_INNER_ERR_REPORT_TILIING(opType, "op [GatherNdTiling] : CheckTensorShape, y Shape is invalid");
-      return false;
-    }
-  }
-
   return true;
 }
 
@@ -262,7 +243,6 @@ bool GatherNdTiling(const std::string& opType, const TeOpParas& opParas, const n
 
   std::vector<int64_t> paramsShape = opParas.inputs[0].tensor[0].shape;
   std::vector<int64_t> indicesShape = opParas.inputs[1].tensor[0].shape;
-  std::vector<int64_t> yShape = opParas.outputs[0].tensor[0].shape;
   int32_t paramsDims = paramsShape.size();
   int32_t indicesDims = indicesShape.size();
   if (indicesDims < 1) {
@@ -281,7 +261,7 @@ bool GatherNdTiling(const std::string& opType, const TeOpParas& opParas, const n
   }
 
   // check inputs shape
-  bool ret = CheckTensorShape(opType, paramsShape, indicesShape, yShape, indicesLastDim);
+  bool ret = CheckTensorShape(opType, paramsShape, indicesShape, indicesLastDim);
   if (!ret) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "op GatherNdTiling: inputs shape are invalid.");
     return ret;
