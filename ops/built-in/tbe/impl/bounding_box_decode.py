@@ -584,7 +584,7 @@ class BoundingBoxDecode(object):
         self.tik_instance.vsub(
             constant.MASK128, rois_src_ub_48, rois_dst_ub_48, rois_dst_ub_16,
             repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
-            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times, 
+            BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
             BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR,
             BoundingBoxDecode.STRIDE_FOUR)
         self.tik_instance.vadds(
@@ -822,8 +822,9 @@ class BoundingBoxDecode(object):
             self.tik_instance.vmin(constant.MASK128, denorm_rois_dst_ub_32,
                                    denorm_rois_dst_ub_32, max_shape_ub,
                                    repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
-                                   STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_ONE,
-                                   STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_EIGHT)
+                                   BoundingBoxDecode.STRIDE_FOUR * repeat_times, BoundingBoxDecode.STRIDE_ONE,
+                                   BoundingBoxDecode.STRIDE_FOUR, BoundingBoxDecode.STRIDE_FOUR,
+                                   BoundingBoxDecode.STRIDE_EIGHT)
             self.tik_instance.vmin(constant.MASK128, denorm_rois_dst_ub_48,
                                    denorm_rois_dst_ub_48, max_shape_one_ub,
                                    repeat_times, BoundingBoxDecode.STRIDE_FOUR * repeat_times,
@@ -911,7 +912,7 @@ class BoundingBoxDecode(object):
                                     constant.DEFAULT_NBURST, block_num,
                                     constant.STRIDE_ZERO, constant.STRIDE_ZERO)
 
-    # 'pylint: disable=too-use-list-comprehension
+    # 'pylint: disable=not-use-list-comprehension
     def bounding_box_decode_compute(self, scalar_list, repeat_times,
                                     rois_src_ub, deltas_src_ub):
         """

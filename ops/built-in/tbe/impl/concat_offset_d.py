@@ -20,6 +20,7 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from impl.util.util_select_op_base import get_op_cal_info
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """

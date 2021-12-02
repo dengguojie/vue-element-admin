@@ -255,7 +255,7 @@ def check_supported(input_x, output_y, dst_type, kernel_name="cast"):
     return False, reason
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,inconsistent-return-statements
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,inconsistent-return-statements
 @tbe_platform.fusion_manager.fusion_manager.register("cast")
 def cast_compute(data, output_y, dst_type, kernel_name="cast"):
     """

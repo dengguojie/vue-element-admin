@@ -198,7 +198,8 @@ class BoundingBoxEncode():
 
     def set_means_stds_scalar(self, means, stds):
         """
-        set_means_stds_scalar"""
+        set_means_stds_scalar
+        """
         dtype = "float16"
         # set means value [0, 0, 0, 0]
         means_0_scalar = self.tik_instance.Scalar(dtype, name="means_0_scalar")
@@ -358,7 +359,7 @@ class BoundingBoxEncode():
                 self.data_move_mte3_function(loop_input, self.block_number,
                                              delta_dst_ub)
 
-    # pylint: disable=too-many-locals,too-many-statements,too-many-branches
+    # 'pylint: disable=too-many-locals,too-many-statements,too-many-branches
     def bounding_box_encode_compute(self, scalar_list, repeat_times,
                                     anchorbox_src_ub, groundtruthbox_src_ub):
         """

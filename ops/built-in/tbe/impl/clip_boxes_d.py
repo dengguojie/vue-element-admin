@@ -278,7 +278,7 @@ class InitMiddleTensor:
                                     const_num.dstorsrc_rep_stride1)
 
 
-# 'pylint: disable=too-use-list-comprehension,too-many-locals
+# 'pylint: disable=not-use-list-comprehension,too-many-locals
 def processing_one_loop(tik_instance, data_gm, tiling_para, img_size, offset):
     """
     Using Pingpang, this func is one loop processing
@@ -400,7 +400,8 @@ def processing_one_loop(tik_instance, data_gm, tiling_para, img_size, offset):
                            tiling_para.num_of_blk,
                            0, 0)
 
-# 'pylint: disable=too-use-list-comprehension,too-many-locals
+
+# 'pylint: disable=not-use-list-comprehension,too-many-locals
 def processing_tail(tik_instance, data_gm, tiling_para, img_size):
     """
 

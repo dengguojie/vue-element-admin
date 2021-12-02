@@ -136,6 +136,7 @@ def bn3d_training_update_compute(x,
 
     return res
 
+
 # 'pylint: disable=too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
@@ -206,4 +207,3 @@ def bn3d_training_update(x,
 
     bn_training_update(x, sum, square_sum, scale, offset, mean, variance, y, mean_out, variance_out,
                        batch_mean, batch_variance, factor, epsilon, kernel_name=kernel_name)
-

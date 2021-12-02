@@ -87,7 +87,7 @@ def _multi_core_on_hw(tik_inst, data_in, data_out, shape_in, shape_out):
             """
             process of hw transfer
             """
-            # 'pylint: disable=too-use-list-comprehension
+            # 'pylint: disable=not-use-list-comprehension
             def _inner_hw_transfer(sub_hw_lp_idx, inner_hw_len):
                 """
                 inner hw transfer process

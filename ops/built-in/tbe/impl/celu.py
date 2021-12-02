@@ -24,6 +24,8 @@ from te import platform as tbe_platform
 from topi import generic
 from topi.cce import util
 
+
+# 'pylint:disable=too-many-arguments, too-many-locals
 @fusion_manager.register("Celu")
 def celu_compute(x, y, a1, a2, a3, kernel_name="celu"):
     """
