@@ -71,8 +71,9 @@ int64_t LevenshteinDistance(const std::vector<T> &s,
 
   // Special case for i = 0: Distance between empty string and string
   // of length j is just j.
-  for (int64_t j = 1; j < kTSize; ++j)
+  for (int64_t j = 1; j < kTSize; ++j) {
     scratch[j - 1] = j;
+  }
 
   for (int64_t i = 1; i <= kSSize; ++i) {
     // Invariant: scratch[j - 1] equals cost(i - 1, j).

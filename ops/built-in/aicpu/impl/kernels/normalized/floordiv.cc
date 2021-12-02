@@ -149,7 +149,7 @@ uint32_t FloorDivCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
   if (data_num >= kParallelDataNumSameShape) {
     uint32_t min_core_num = 1;
     uint32_t max_core_num = std::max(
-      min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
+        min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
 
     if (data_num <= kParallelDataNumSameShapeMid) {
       max_core_num = std::min(max_core_num, 4U);  // up to 4 cpu cores
@@ -182,12 +182,12 @@ uint32_t FloorDivCpuKernel::BcastCompute(CpuKernelContext &ctx, Bcast &bcast) {
   auto in0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto in1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
   auto out = reinterpret_cast<T *>(ctx.Output(0)->GetData());
-  int64_t data_num = ctx.Output(0)->NumElements();
 
+  int64_t data_num = ctx.Output(0)->NumElements();
   if (data_num >= kParallelDataNum) {
     uint32_t min_core_num = 1;
     uint32_t max_core_num = std::max(
-      min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
+        min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
 
     if (data_num <= kParallelDataNumMid) {
       max_core_num = std::min(max_core_num, 4U);  // up to 4 cpu cores
