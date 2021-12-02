@@ -142,7 +142,7 @@ enum SubScenarioLastAxisTrans {
   LAST_AXIS_TR_T2F = 2,  // thin 2 fat
 };
 
-enum  MteMode {
+enum MteMode {
   MTE_MODE_NULL = 0,  //default
   MTE_MODE_DST = 1,   // dst contiguous
   MTE_MODE_SRC = 2    // src contiguous
