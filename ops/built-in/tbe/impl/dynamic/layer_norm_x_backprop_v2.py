@@ -17,12 +17,13 @@ layer_norm_x_backprop_v2
 """
 # 'pylint: disable=too-many-lines
 import tbe as mytbe
+from tbe.dsl.base import operation
 from impl.util.platform_adapter import tvm
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
-from impl.util.platform_adapter import operation
+from impl.util.platform_adapter import tbe_context
 
 
 # 'pylint: disable=too-few-public-methods
@@ -186,8 +187,6 @@ def _get_params(shape_x, shape_mean, shape_gamma):
         {"param_axis": param_axis, "reduce_axis": reduce_axis,
         "mean_num": mean_num}
     """
-    param_axis = _update_gamma_shape(shape_x, shape_gamma)[1]
-
     reduce_axis_tmp = []
     flag = -1
     for i, (xtem, mean) in enumerate(zip(shape_x, shape_mean)):
@@ -205,9 +204,21 @@ def _get_params(shape_x, shape_mean, shape_gamma):
     for i in reduce_axis:
         mean_num *= shape_x[i]
 
-    params = {"param_axis": param_axis, "reduce_axis": reduce_axis, "mean_num": mean_num}
+    params = {"reduce_axis": reduce_axis,
+              "mean_num": mean_num}
 
     return params
+
+
+def _broadcast_interval_dimension(tensor, shape):
+    if tensor.shape[0] == 1 and tensor.shape[-1] == 1:
+        tmp_shape = [1] + shape[1:]
+        tmp_tensor = tbe.broadcast(tensor, tmp_shape)
+        tensor_target = tbe.broadcast(tmp_tensor, shape)
+        return tensor_target
+    else:
+        tensor_target = tbe.broadcast(tensor, shape)
+        return tensor_target
 
 
 def _get_pd_xl(data, shape_x):
@@ -288,7 +299,7 @@ def _get_pd_var(data, params, shape_x, pd_xl, cast_dtype):
         (data_x - data_mean)*np.power((data_variance + EPSLON), (-0.5))
     """
     pd_var_1, var_elta_2 = _get_pd_var_front(data, cast_dtype)
-    data_mean_cast = tbe.broadcast(data.get("data_mean"), shape_x)
+    data_mean_cast = _broadcast_interval_dimension(data.get("data_mean"), shape_x)
     sub_x_mean = tbe.vsub(data.get("data_x"), data_mean_cast)
 
     pdvar_mul1 = tbe.vmul(pd_xl, sub_x_mean)
@@ -296,7 +307,7 @@ def _get_pd_var(data, params, shape_x, pd_xl, cast_dtype):
     pdvar_mul3 = tbe.vmul(pdvar_sum, pd_var_1)
     pd_var = tbe.vmuls(pdvar_mul3, tvm.const(-0.5, dtype=cast_dtype))
 
-    var_elta_2_cast = tbe.broadcast(var_elta_2, shape_x)
+    var_elta_2_cast = _broadcast_interval_dimension(var_elta_2, shape_x)
     res_for_gamma = tbe.vmul(sub_x_mean, var_elta_2_cast)
 
     return pd_var, var_elta_2, sub_x_mean, res_for_gamma
@@ -373,9 +384,9 @@ def _get_pd_x_front(data, params, shape_x, cast_dtype):
     pd_xl = _get_pd_xl(data, shape_x)
     pd_var, var_elta_2, sub_x_mean, res_for_gamma = _get_pd_var(data, params, shape_x, pd_xl, cast_dtype)
     pd_mean = _get_pd_mean(params, pd_xl, var_elta_2, cast_dtype)
-    var_elta_2_cast = tbe.broadcast(var_elta_2, shape_x)
+    var_elta_2_cast = _broadcast_interval_dimension(var_elta_2, shape_x)
     pd_x_1 = tbe.vmul(var_elta_2_cast, pd_xl)
-    pdx2_broad = tbe.broadcast(pd_var, shape_x)
+    pdx2_broad = _broadcast_interval_dimension(pd_var, shape_x)
     pdx2_mul = tbe.vmul(pdx2_broad, sub_x_mean)
     pd_x_2 = tbe.vmuls(pdx2_mul, tvm.const((2*(params.get("mean_num")**(-1))), dtype=cast_dtype))
     pd_x_3 = tbe.vmuls(pd_mean, tvm.const((params.get("mean_num")**(-1)), dtype=cast_dtype))
@@ -412,7 +423,7 @@ def _get_pd_x(data, params, shape_x, dtype, cast_dtype):
     """
     pd_x_1, pd_x_2, pd_x_3, res_for_gamma = _get_pd_x_front(data, params, shape_x, cast_dtype)
 
-    pdx_broad = tbe.broadcast(pd_x_3, shape_x)
+    pdx_broad = _broadcast_interval_dimension(pd_x_3, shape_x)
     pdx_add = tbe.vadd(pd_x_1, pd_x_2)
     pd_x_ub = tbe.vadd(pdx_add, pdx_broad)
 
@@ -458,7 +469,7 @@ def _get_res(data, params, shape_x, dtype, cast_dtype):
 
 # 'pylint: disable=too-many-arguments
 def _get_pds(data_dy, data_x, data_variance, data_mean,
-             data_gamma, shape_gamma_ori):
+             data_gamma, shape_gamma_ori, params):
     """
     get params and data, compute pd_x, pd_gamma, pd_beta.
 
@@ -494,8 +505,6 @@ def _get_pds(data_dy, data_x, data_variance, data_mean,
         has_improve_precision = True
         cast_dtype = "float32"
 
-    params = _get_params(shape_x, shape_mean, shape_gamma_ori)
-
     if has_improve_precision:
         data_dy = tbe.cast_to(data_dy, "float32")
         data_x = tbe.cast_to(data_x, "float32")
@@ -516,7 +525,7 @@ def _get_pds(data_dy, data_x, data_variance, data_mean,
 def layer_norm_x_backprop_v2_compute(input_dy, input_x,
                                      input_variance, input_mean,
                                      input_gamma, output_pd_x, output_res_gamma,
-                                     kernel_name="layer_norm_x_backprop_v2"):
+                                     params, kernel_name="layer_norm_x_backprop_v2"):
     """
     DSL description of the layernorm_grad operator's mathematical
     calculation process
@@ -543,7 +552,8 @@ def layer_norm_x_backprop_v2_compute(input_dy, input_x,
     res_tuple: tuple
         (pd_x, res_for_gamma)
     """
-    pd_x, res_for_gamma = _get_pds(input_dy, input_x, input_variance, input_mean, input_gamma, input_gamma.shape)
+    pd_x, res_for_gamma = _get_pds(input_dy, input_x, input_variance, input_mean, input_gamma,
+                                   input_gamma.shape, params)
     res_list = [pd_x, res_for_gamma]
 
     return res_list
@@ -597,31 +607,44 @@ def layer_norm_x_backprop_v2(input_dy, input_x, input_variance, input_mean,
     dtype = input_dy.get("dtype").lower()
     shape_dy = input_dy.get("shape")
     shape_x = input_x.get("shape")
+    first_dim = shape_x[0]
     last_dim = shape_x[-1]
     shape_variance = input_variance.get("shape")
     shape_gamma = input_gamma.get("shape")
 
-    dynamic_shape_dy = shape_dy
-    dynamic_shape_variance = shape_variance
-    dynamic_shape_gamma = shape_gamma
-    dim_0 = operation.var("dim_0")
-    dim_1 = operation.var("dim_1")
-    dynamic_shape_dy = (dim_0, dim_1, last_dim)
-    dynamic_shape_x = dynamic_shape_dy
-    dynamic_shape_variance = (dim_0, dim_1, 1)
-    dynamic_shape_mean = dynamic_shape_variance
+    if len(shape_dy) == 4:
+        dim_0 = tbe.var("dim_0")
+        dim_1 = tbe.var("dim_1")
+        dim_2 = tbe.var("dim_2")
+        dynamic_shape_dy = (first_dim, dim_2, last_dim)
+        dynamic_shape_variance = (1, dim_2, 1)
+        dynamic_shape_gamma = (first_dim, 1, last_dim)
+        params = {
+            "reduce_axis": tuple([0, 2]),
+            "mean_num": first_dim * last_dim
+        }
+    else:
+        dim_0 = tbe.var("dim_0")
+        dim_1 = tbe.var("dim_1")
+        dim_2 = tbe.var("dim_2")
+        dynamic_shape_dy = (dim_0, dim_1, last_dim)
+        dynamic_shape_variance = (dim_0, dim_1, 1)
+        dynamic_shape_gamma = _update_gamma_shape(shape_x, shape_gamma)[0]
+        params = _get_params(dynamic_shape_dy, dynamic_shape_variance, dynamic_shape_gamma)
 
+    data_gm = _get_data_gm({"shape_dy": dynamic_shape_dy, "shape_x": dynamic_shape_dy,
+                            "shape_var": dynamic_shape_variance,
+                            "shape_mean": dynamic_shape_variance,
+                            "shape_gamma": dynamic_shape_gamma}, dtype)
     with tbe.compute():
-        dynamic_shape_gamma = (1, 1, last_dim)
-        data_gm = _get_data_gm({"shape_dy": dynamic_shape_dy, "shape_x": dynamic_shape_x,
-                                "shape_var": dynamic_shape_variance,
-                                "shape_mean": dynamic_shape_mean,
-                                "shape_gamma": dynamic_shape_gamma}, dtype)
+        input_format = input_dy.get("format").upper()
+        current_compute = operation.get_context().get_current_compute()
+        current_compute.add("input_format", input_format)
 
         res_list = layer_norm_x_backprop_v2_compute(data_gm[0], data_gm[1],
                                                     data_gm[2], data_gm[3],
                                                     data_gm[4], output_pd_x,
-                                                    output_res_gamma)
+                                                    output_res_gamma, params)
 
     with tvm.target.cce():
         sch = tbe.auto_schedule(res_list)

@@ -34,13 +34,13 @@ SPECIAL = "special"
 SPECIAL_SCALAR = "special_scalar"
 CONST = "const"
 ORIGINAL = "original"
-DB_KEY = 10000
 
 class TilingStrategy(Enum):
     """
     TilingStrategy
     """
-    NONE_CUT = auto()
+    THREE_DIMEN = auto()
+    FOUR_DIMEN = auto()
 
 
 @register_tiling_case(pattern=Pattern.LAYER_NORM_X_BACKPROP_V2)
@@ -56,16 +56,23 @@ def calc_layer_norm_x_backprop_v2(outs, option=None):
     -------
     list of dict, each dict for a tiling case
     """
-    outs = list(outs) if isinstance(outs, (list, tuple)) else [outs]
-    out = outs[0]
-    shape = util.shape_to_list(out.shape)
+    input_format = operation.get_context().get_current_compute().get("input_format")
     cases = []
 
-    base_key = 10000
-    cases.append({
-        "key": base_key,
-        "block_tiling_axis": 0,
-        "ub_tiling_axis": 1,
-        "tiling_strategy": TilingStrategy.NONE_CUT})
+    three_dimen_key = 10000
+    four_dimen_key = 20000
+
+    if input_format == "FRACTAL_NZ":
+        cases.append({
+            "key": four_dimen_key,
+            "block_tiling_axis": 0,
+            "ub_tiling_axis": 1,
+            "tiling_strategy": TilingStrategy.FOUR_DIMEN})
+    else:
+        cases.append({
+            "key": three_dimen_key,
+            "block_tiling_axis": 0,
+            "ub_tiling_axis": 1,
+            "tiling_strategy": TilingStrategy.THREE_DIMEN})
 
     return cases

@@ -17,11 +17,13 @@
 """
 layer_norm_x_backprop_v2 schedule
 """
+import math
 from tbe import dsl
 from tbe import tvm
 from tbe.dsl.base.expr_compare import expr_equal
 from tbe.dsl.base.operation import register_schedule
 from tbe.dsl.base.operation import add_compile_info
+from tbe.dsl.base.operation import get_compile_info
 
 from . import util
 from .constants import DTYPE_BYTE_MAPPING
@@ -76,10 +78,11 @@ class LayerNormXBackpropScheduleV2:
 
         self._dtypes = set()
         self._max_dtype_bytes = 4
-        self._coexisting_quantity = 7
+        self._coexisting_quantity = 8
         self._ub_size = util.get_ub_size()
         self._correct_factor = 2 if self._open_double_buffer else 1
         self._tmp_ub_size = 0
+        self.align_num = 0
 
         self._compute_at_map = {}
 
@@ -123,8 +126,10 @@ class LayerNormXBackpropScheduleV2:
         if pd_x.dtype == "float16":
             pd_x_ub = dsl.cast_to(pd_x, res_for_gamma.dtype)
             res = dsl.vadd(pd_x_ub, res_for_gamma)
+            self.align_num = 16
         else:
             res = dsl.vadd(pd_x, res_for_gamma)
+            self.align_num = 8
         return res
 
     def _construct_compute_graph(self):
@@ -193,13 +198,74 @@ class LayerNormXBackpropScheduleV2:
             storage_bound = int(self._tensor_space // DTYPE_BYTE_MAPPING[tensor_i.dtype])
             sch[tensor_i].set_buffer_size(storage_bound)
 
+    def _do_storage_align(self):
+        pd_x, _ = self._out_tensors
+        if not int(pd_x.shape[-1]) % self.align_num:
+            return
+        for tensor_i in self._cache_read_buffer_tensor_map.keys():
+            if tensor_i.op.name in [
+                "data_x.local.UB",
+                "data_dy.local.UB"
+            ]:
+                self._schedule[tensor_i].storage_align(tensor_i.op.axis[-2], self.align_num, 0)
+        for tensor_i in self._pure_middle_tensors.union(self._out_tensors):
+            if tensor_i.op.name in [
+                "broadcast_tensor_3",
+                "broadcast_tensor_4",
+                "broadcast_tensor_1",
+                "broadcast_tensor_5",
+                "broadcast_tensor_2",
+                "broadcast_tensor_0",
+                "cast_0",
+                "cast_1",
+                "mul_0",
+                "mul_14",
+                "sub_7",
+                "sub_8",
+                "mul_15",
+                "add_18",
+                "add_19",
+                "cast_6",
+                "mul_8",
+                "mul_16",
+                "add_16"
+            ]:
+                self._schedule[tensor_i].storage_align(tensor_i.op.axis[-2], self.align_num, 0)
+        for tensor_i in self._cache_write_buffer_tensor_map.keys():
+            if tensor_i.op.name in [
+                "cast_5.local.UB",
+                "mul_11.local.UB",
+                "add_19.local.UB"
+            ]:
+                self._schedule[tensor_i].storage_align(tensor_i.op.axis[-2], self.align_num, 0)
+
     def _do_tiling(self):
-        funcs = {TilingStrategy.NONE_CUT: self._do_tiling_none_cut}
+        funcs = {TilingStrategy.THREE_DIMEN: self._do_tiling_three_dimen,
+                 TilingStrategy.FOUR_DIMEN: self._do_tiling_four_dimen}
         funcs[self._tiling_strategy]()
 
-    def _do_tiling_none_cut(self):
+    def _do_tiling_four_dimen(self):
         res = self._out
-        last_dim = int(res.shape[-1])
+        first_dim = res.shape[0]
+        last_dim = math.ceil(int(res.shape[-1]) / self.align_num) * self.align_num
+
+        core_num = util.get_core_num()
+        ub_factor = self._tensor_space // (self._max_dtype_bytes * first_dim * last_dim)
+
+        ub_outer, ub_inner = self._schedule[res].split(res.op.axis[1], factor=ub_factor)
+        block_outer, block_inner = self._schedule[res].split(ub_outer, nparts=core_num)
+
+        self.sum_x_block_outer = block_outer
+        self._compute_at_axis = block_inner
+        self._emit_insn_axis = ub_inner
+
+        axis_order = [block_outer, block_inner, ub_inner, res.op.axis[0], res.op.axis[2]]
+        self._schedule[self._out].reorder(*axis_order)
+
+    def _do_tiling_three_dimen(self):
+        self._do_storage_align()
+        res = self._out
+        last_dim = math.ceil(int(res.shape[-1]) / self.align_num) * self.align_num
         core_num = util.get_core_num()
         ub_factor = self._tensor_space // (self._max_dtype_bytes * last_dim)
 

@@ -46,13 +46,22 @@ case3 = {"params": [{"shape": (-1, -1, 512), "dtype": "float32", "format": "ND",
                     {"shape": (-1, -1, 512), "dtype": "float32", "format": "ND", "ori_shape": (30, 496, 512),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))}],
          "expect": "success",
          "support_expect": True}
-case4 = {"params": [{"shape": (-1, -1, 512), "dtype": "float16", "format": "ND", "ori_shape": (30, 496, 512),"ori_format": "ND", "range": ((0, 1), (0, 1), (0, 1))},
-                    {"shape": (-1, -1, 512), "dtype": "float16", "format": "ND", "ori_shape": (30, 496, 512),"ori_format": "ND","range": ((0, 1), (0, 1), (0, 1))},
+case4 = {"params": [{"shape": (-1, -1, 30), "dtype": "float16", "format": "ND", "ori_shape": (30, 496, 30),"ori_format": "ND", "range": ((0, 1), (0, 1), (0, 1))},
+                    {"shape": (-1, -1, 30), "dtype": "float16", "format": "ND", "ori_shape": (30, 496, 30),"ori_format": "ND","range": ((0, 1), (0, 1), (0, 1))},
                     {"shape": (-1, -1, 1), "dtype": "float16", "format": "ND", "ori_shape": (30, 496, 1),"ori_format": "ND", "range": ((0, 5), (0, 5), (0, 5))},
                     {"shape": (-1, -1, 1), "dtype": "float16", "format": "ND", "ori_shape": (30, 496, 1),"ori_format": "ND", "range": ((0, 5), (0, 5), (0, 5))},
-                    {"shape": (512,), "dtype": "float16", "format": "ND", "ori_shape": (512,),"ori_format": "ND", "range": ((0, 1),)},
-                    {"shape": (-1, -1, 512), "dtype": "float16", "format": "ND", "ori_shape": (30, 496, 512),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))},
-                    {"shape": (-1, -1, 512), "dtype": "float32", "format": "ND", "ori_shape": (30, 496, 512),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))}],
+                    {"shape": (30,), "dtype": "float16", "format": "ND", "ori_shape": (30,),"ori_format": "ND", "range": ((0, 1),)},
+                    {"shape": (-1, -1, 30), "dtype": "float16", "format": "ND", "ori_shape": (30, 496, 30),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))},
+                    {"shape": (-1, -1, 30), "dtype": "float32", "format": "ND", "ori_shape": (30, 496, 30),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))}],
+         "expect": "success",
+         "support_expect": True}
+case5 = {"params": [{"shape": (64, -1, -1, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (64, 114, 16, 16),"ori_format": "FRACTAL_NZ", "range": ((0, 1), (0, 1), (0, 1), (0, 1))},
+                    {"shape": (64, -1, -1, 16), "dtype": "float16", "format": "FRACTAL_NZ", "ori_shape": (64, 114, 16, 16),"ori_format": "FRACTAL_NZ","range": ((0, 1), (0, 1), (0, 1), (0, 1))},
+                    {"shape": (-1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1824, 1),"ori_format": "ND", "range": ((0, 5), (0, 5))},
+                    {"shape": (-1, 1), "dtype": "float16", "format": "ND", "ori_shape": (1824, 1),"ori_format": "ND", "range": ((0, 5), (0, 5))},
+                    {"shape": (1024,), "dtype": "float16", "format": "ND", "ori_shape": (1024,),"ori_format": "ND", "range": ((0, 1),)},
+                    {"shape": (64, -1, 16), "dtype": "float16", "format": "ND", "ori_shape": (64, 1824, 16),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))},
+                    {"shape": (64, -1, 16), "dtype": "float32", "format": "ND", "ori_shape": (64, 1824, 16),"ori_format": "ND","range": ((0, 5), (0, 5), (0, 5))}],
          "expect": "success",
          "support_expect": True}
 
@@ -73,6 +82,7 @@ ut_case.add_case(["Ascend910A"], case1)
 ut_case.add_case(["Ascend910A"], case2)
 ut_case.add_case(["Ascend910A"], case3)
 ut_case.add_case(["Ascend910A"], case4)
+ut_case.add_case(["Ascend910A"], case5)
 ut_case.add_cust_test_func(test_func=test_generalization)
 
 if __name__ == '__main__':
