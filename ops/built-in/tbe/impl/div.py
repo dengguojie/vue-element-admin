@@ -31,8 +31,14 @@ from impl.util.util_compute import check_batchmatmul_fuse
 from impl.util import util_select_op_base
 from impl.util import util_common
 
-# Determine whether the 16 bit alignment
-SIZE_SIXTEEN = constant.C0_SIZE
+
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    # Determine whether the 16 bit alignment
+    SIZE_SIXTEEN = 16
 
 
 # 'pylint: disable=too-many-arguments
@@ -136,7 +142,7 @@ def _can_division_sixteen(shape):
         expected_value = "equal to 0"
         real_value = "not equal to 0"
         error_manager_vector.raise_err_input_value_invalid("div", "value of shape", expected_value, real_value)
-    if shape[-1] % SIZE_SIXTEEN == 0 and shape[-2] % SIZE_SIXTEEN == 0:
+    if shape[-1] % Constant.SIZE_SIXTEEN == 0 and shape[-2] % Constant.SIZE_SIXTEEN == 0:
         return True
 
     return False
@@ -564,7 +570,7 @@ def op_select_format(x, y, output, kernel_name="div"):
         y_flag.get("Scalar")) or (x_flag.get("Scalar") and y_flag.get("4d"))
     format_flag["FRACTAL_Z"] = format_flag.get("NC1HWC0") or (x_flag.get("4d") and \
         y_flag.get("Scalar")) or (x_flag.get("Scalar") and y_flag.get("4d"))
-    format_flag["FRACTAL_NZ"] = format_flag["FRACTAL_NZ"] or (len(shape_x) >= 2 and \
+    format_flag["FRACTAL_NZ"] = format_flag.get("FRACTAL_NZ") or (len(shape_x) >= 2 and \
         y_flag.get("Scalar")) or (len(shape_y) >= 2 and x_flag.get("Scalar") and \
             shape_y[-1] % 16 == 0 and shape_y[-2] % 16 == 0)
 
@@ -581,7 +587,7 @@ def op_select_format(x, y, output, kernel_name="div"):
         (x_flag.get("4d") and y_flag.get("4d") and x_cdim % 16 == 0 and y_cdim % 16 == 0 and ())
 
     # NDC1HWC0 FRACTAL_Z_3D
-    format_list = [i for i in format_flag if format_flag[i]]
+    format_list = [i for i in format_flag if format_flag.get(i)]
 
     # ND+ND NZ+NZ 5HD+5HD FZ+FZ
     if len(shape_x) >= 2 and len(shape_y) >= 2:

@@ -21,8 +21,14 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 
-# 'define a scalar, value = -(2**32 - 1)
-MIN_VAL = -3402823424.0
+
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    # 'define a scalar, value = -(2**32 - 1)
+    MIN_VAL = -3402823424.0
 
 
 # 'pylint: disable=invalid-name,unused-argument,too-many-arguments,too-many-locals,unused-variable
@@ -664,8 +670,7 @@ class Dilation2D(Dilation2DBase):
         self.filter_offset_list = _get_product_of_each_dim(self.filter_shape, len(self.filter_shape))
         self.tiling_params = {}
         self.pad_w = self.pad_left + self.pad_right + self.w_in
-        # 'pylint': disable=simplifiable-if-expression
-        self.need_vconv = True if self.x_dtype == "float16" and self.y_dtype == "float32" else False
+        self.need_vconv = ((self.x_dtype == "float16") and (self.y_dtype == "float32"))
 
     def do_tiling(self, tiling_shape, ub_size):
         """
@@ -990,13 +995,13 @@ class Dilation2D(Dilation2DBase):
                             rep_stride_list, blk_stride_list, num * self.c0)
             if self.pad_left > 0:
                 num = (self.pad_left - fw_i * self.rate_w + self.stride_w - 1) // self.stride_w
-                self.vector_dup(expand_start, expand_ub, num * self.c0, MIN_VAL)
+                self.vector_dup(expand_start, expand_ub, num * self.c0, Constant.MIN_VAL)
             if self.pad_right > 0:
                 end = (self.pad_left - fw_i * self.rate_w + self.w_in + self.stride_w - 1) // self.stride_w
                 num = self.out_backprop_w - end
-                self.vector_dup(expand_start + end * self.c0, expand_ub, num * self.c0, MIN_VAL)
+                self.vector_dup(expand_start + end * self.c0, expand_ub, num * self.c0, Constant.MIN_VAL)
         with self.instance.else_scope():
-            self.vector_dup(expand_start, expand_ub, h_size, MIN_VAL)
+            self.vector_dup(expand_start, expand_ub, h_size, Constant.MIN_VAL)
 
     # cut_n: branch1 left up area
     def cut_n_update_left_up_area(self, update_matrix_ub, n_offset):
@@ -3701,7 +3706,7 @@ class Dilation2D(Dilation2DBase):
                             blk_stride_list, num * self.c0)
             with self.instance.if_scope(self.pad_left - w_offset * self.stride_w > 0):
                 num = (x_w_offset - fw_i * self.rate_w + self.stride_w - 1) // self.stride_w
-                self.vector_dup(expand_start, expand_ub, num * self.c0, MIN_VAL)
+                self.vector_dup(expand_start, expand_ub, num * self.c0, Constant.MIN_VAL)
 
             w_len = (w_offset + w_num - 1) * self.stride_w - self.pad_left + self.window_w - 1
 
@@ -3713,10 +3718,10 @@ class Dilation2D(Dilation2DBase):
                 num_.set_as(w_num - end)
                 with self.instance.if_scope(num_ < 0):
                     num_.set_as(0)
-                self.vector_dup(expand_start + end * self.c0, expand_ub, num_ * self.c0, MIN_VAL)
+                self.vector_dup(expand_start + end * self.c0, expand_ub, num_ * self.c0, Constant.MIN_VAL)
 
         with self.instance.else_scope():
-            self.vector_dup(expand_start, expand_ub, h_size, MIN_VAL)
+            self.vector_dup(expand_start, expand_ub, h_size, Constant.MIN_VAL)
 
     def cut_w(self, ub_list, offset_list, w_num, out_offset):
         """

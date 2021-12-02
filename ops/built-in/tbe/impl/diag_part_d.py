@@ -23,8 +23,13 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 
 
-# 'define a VALUE, value = 2
-VALUE_TWO = 2
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    # 'define a VALUE, value = 2
+    VALUE_TWO = 2
 
 
 # 'pylint: disable=locally-disabled,unused-argument,invalid-name,no-member
@@ -54,7 +59,7 @@ def diag_part_d_compute(x, assist, y, kernel_name="diag_part_d"):
 
     res_vmul = tbe.vmul(x, assist)
     sum_dims = []
-    len_output = len(shape_x) // VALUE_TWO
+    len_output = len(shape_x) // Constant.VALUE_TWO
     for dims in range(len_output):
         sum_dims.append(dims + len_output)
 
@@ -108,7 +113,7 @@ def diag_part_d(x, assist, y, kernel_name="diag_part_d"):
         error_detail = "the shape of x and assist must be equal!"
         error_manager_vector.raise_err_two_input_shape_invalid(kernel_name, "x", \
                                                                "assist", error_detail)
-    len_shape_out = len(shape_x) // VALUE_TWO
+    len_shape_out = len(shape_x) // Constant.VALUE_TWO
     for i in range(len_shape_out):
         if shape_x[i] != shape_x[i + len_shape_out]:
             error_detail = "the shape of input x is not supported!"

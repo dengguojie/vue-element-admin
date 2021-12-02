@@ -27,22 +27,28 @@ from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
-# available ub size
-TOTAL_UB_MEMORY = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
-# available number of cores
-MAX_CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-# byte of type int8, uint8
-SIZE_ONE_BYTE = 1
-# bytes of type int16, uint16, float16
-SIZE_TWO_BYTES = 2
-# bytes of type int32, uint32, float32
-SIZE_FOUR_BYTES = 4
-# bytes of type uint64
-SIZE_EIGHT_BYTES = 8
-# minimum unit of data_move: 32Bytes
-DATA_MOVE_MIN_UNIT = 32
-# maximum burst number
-MAX_N_BURST = 4095
+
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    # available ub size
+    TOTAL_UB_MEMORY = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+    # available number of cores
+    MAX_CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    # byte of type int8, uint8
+    SIZE_ONE_BYTE = 1
+    # bytes of type int16, uint16, float16
+    SIZE_TWO_BYTES = 2
+    # bytes of type int32, uint32, float32
+    SIZE_FOUR_BYTES = 4
+    # bytes of type uint64
+    SIZE_EIGHT_BYTES = 8
+    # minimum unit of data_move: 32Bytes
+    DATA_MOVE_MIN_UNIT = 32
+    # maximum burst number
+    MAX_N_BURST = 4095
 
 
 # 'pylint: disable = unused-argument
@@ -71,9 +77,9 @@ def _cal_core(tik_instance, total_core_loop_num, num_core, core_number):
     core_loop = tik_instance.Scalar("uint64")
     sum_core = tik_instance.Scalar("uint64")
     core_loop.set_as(total_core_loop_num // core_number)
-    sum_core.set_as((core_loop + 1) * (total_core_loop_num % MAX_CORE_NUM) + core_loop *
-                    (num_core - total_core_loop_num % MAX_CORE_NUM))
-    with tik_instance.if_scope(num_core < total_core_loop_num % MAX_CORE_NUM):
+    sum_core.set_as((core_loop + 1) * (total_core_loop_num % Constant.MAX_CORE_NUM) + core_loop *
+                    (num_core - total_core_loop_num % Constant.MAX_CORE_NUM))
+    with tik_instance.if_scope(num_core < total_core_loop_num % Constant.MAX_CORE_NUM):
         core_loop.set_as((total_core_loop_num + core_number - 1) // core_number)
         sum_core.set_as(core_loop * num_core)
 
@@ -154,15 +160,15 @@ class DepthToSpaceNHWCCompute:
         self.output_width = self.input_width * block_size
         self.output_depth = self.input_depth // (block_size * block_size)
 
-        num_bit = SIZE_TWO_BYTES
+        num_bit = Constant.SIZE_TWO_BYTES
         if self.dtype in ("int8", "uint8"):
-            num_bit = SIZE_ONE_BYTE
+            num_bit = Constant.SIZE_ONE_BYTE
         elif self.dtype in ("int32", "uint32", "float32"):
-            num_bit = SIZE_FOUR_BYTES
+            num_bit = Constant.SIZE_FOUR_BYTES
         elif self.dtype in ("uint64", "int64"):
-            num_bit = SIZE_EIGHT_BYTES
+            num_bit = Constant.SIZE_EIGHT_BYTES
         # the number of data that can be moved in each data_move
-        self.num_data = DATA_MOVE_MIN_UNIT // num_bit
+        self.num_data = Constant.DATA_MOVE_MIN_UNIT // num_bit
 
         self.output_shape = (self.output_batch, self.output_height, self.output_width, self.output_depth)
         para_check.check_shape(self.output_shape, param_name="y")
@@ -179,7 +185,7 @@ class DepthToSpaceNHWCCompute:
         # if minimum granularity of data_move < 32B
         self.ub_rearrange = (self.min_size < self.num_data or self.is_align)
         # the number of data that UB can put in
-        self.ub_memory = min(TOTAL_UB_MEMORY, 252 * 1024) // num_bit - self.num_data
+        self.ub_memory = min(Constant.TOTAL_UB_MEMORY, 252 * 1024) // num_bit - self.num_data
         # rearrange case need double divide UB
         if self.ub_rearrange:
             self.ub_memory = self.ub_memory // 2
@@ -250,10 +256,10 @@ class DepthToSpaceNHWCCompute:
             return 1
         else:
             loop_number = functools.reduce(lambda x1, x2: x1 * x2, self.tiling_shape[:tiling_index])
-        if loop_number < MAX_CORE_NUM:
+        if loop_number < Constant.MAX_CORE_NUM:
             return loop_number
 
-        return MAX_CORE_NUM
+        return Constant.MAX_CORE_NUM
 
     def data_move_gm2ub(self, tik_instance, num_b, num_h, num_block_h, num_w, dst_ub_index):
         """
@@ -276,17 +282,21 @@ class DepthToSpaceNHWCCompute:
         """
         src_x_index = self.min_size * num_block_h + self.input_width * \
                       (num_h + self.input_height * num_b) * self.input_depth
-        with tik_instance.for_range(0, self.input_width // MAX_N_BURST) \
+        with tik_instance.for_range(0, self.input_width // Constant.MAX_N_BURST) \
                 as num_burst:
-            tik_instance.data_move(self.input_x_ub[dst_ub_index + self.num_data_one_move * MAX_N_BURST * num_burst],
-                                   self.input_x_gm[src_x_index + self.input_depth * MAX_N_BURST * num_burst], 0,
-                                   MAX_N_BURST, self.num_data_one_move // self.num_data,
+            tik_instance.data_move(self.input_x_ub[dst_ub_index + self.num_data_one_move * \
+                                   Constant.MAX_N_BURST * num_burst],
+                                   self.input_x_gm[src_x_index + self.input_depth * \
+                                   Constant.MAX_N_BURST * num_burst], 0,
+                                   Constant.MAX_N_BURST, self.num_data_one_move // self.num_data,
                                    (self.input_depth - self.min_size) // self.num_data, 0)
-        if self.input_width % MAX_N_BURST != 0:
+        if self.input_width % Constant.MAX_N_BURST != 0:
             tik_instance.data_move(
-                self.input_x_ub[dst_ub_index + self.input_width // MAX_N_BURST * self.num_data_one_move * MAX_N_BURST],
-                self.input_x_gm[src_x_index + self.input_width // MAX_N_BURST * self.input_depth * MAX_N_BURST], 0,
-                self.input_width % MAX_N_BURST, self.num_data_one_move // self.num_data,
+                self.input_x_ub[dst_ub_index + self.input_width // Constant.MAX_N_BURST * \
+                self.num_data_one_move * Constant.MAX_N_BURST],
+                self.input_x_gm[src_x_index + self.input_width // Constant.MAX_N_BURST * \
+                self.input_depth * Constant.MAX_N_BURST], 0,
+                self.input_width % Constant.MAX_N_BURST, self.num_data_one_move // self.num_data,
                 (self.input_depth - self.min_size) // self.num_data, 0)
 
     def data_move_ub2gm_case_division(self, tik_instance, core_loop, loop_number, num_core_loop, dst_y_first_index):
@@ -910,7 +920,7 @@ class DepthToSpaceNHWCCompute:
         ub_rearrange_case_multi_core
         """
         div_groups = self.input_batch * self.input_height
-        each_core_process_groups = math.ceil(div_groups / MAX_CORE_NUM)
+        each_core_process_groups = math.ceil(div_groups / Constant.MAX_CORE_NUM)
         use_cores = math.ceil(div_groups / each_core_process_groups)
         last_core_process_groups = div_groups - (use_cores - 1) * each_core_process_groups
         self.each_core_process_nums = each_core_process_groups * self.one_core_min_size

@@ -23,24 +23,30 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
 from impl import common_util
 
-# available size of ub
-MAX_UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-# available number of cores
-MAX_CORE = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-# reserved ub size
-RESERVED_UB_SIZE = 4 * 1024
-# vector_repeat
-MAX_REPEAT = 255
-# vector fp32 size
-VECTOR_FP32_SIZE = 64
-# vector fp32 mask size
-MASK64_VALUE = 64
-# block fp32 size
-BLOCK_FP32_SIZE = 8
-# maximum dma_copy stride
-MAX_STRIDE = 65535
-# uint16 bit size
-UINT16_BIT_SIZE = 8
+
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    # available size of ub
+    MAX_UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+    # available number of cores
+    MAX_CORE = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+    # reserved ub size
+    RESERVED_UB_SIZE = 4 * 1024
+    # vector_repeat
+    MAX_REPEAT = 255
+    # vector fp32 size
+    VECTOR_FP32_SIZE = 64
+    # vector fp32 mask size
+    MASK64_VALUE = 64
+    # block fp32 size
+    BLOCK_FP32_SIZE = 8
+    # maximum dma_copy stride
+    MAX_STRIDE = 65535
+    # uint16 bit size
+    UINT16_BIT_SIZE = 8
 
 
 # 'pylint: disable=invalid-name,too-many-arguments,unused-argument,too-many-instance-attributes,too-many-locals
@@ -177,20 +183,22 @@ def check_supported(grad, x, offsets, helper, grad_x, grad_offsets, strides, pad
         return False, reason
 
     group_c = x_shape[3] // deformable_groups
-    if group_c % BLOCK_FP32_SIZE != 0:
-        reason = "group_c[%s] is not multiple of BLOCK_FP32_SIZE[%s]" % (str(group_c), str(BLOCK_FP32_SIZE))
+    if group_c % Constant.BLOCK_FP32_SIZE != 0:
+        reason = "group_c[%s] is not multiple of BLOCK_FP32_SIZE[%s]" % (str(group_c),
+            str(Constant.BLOCK_FP32_SIZE))
         return False, reason
 
     dsize = common_util.get_data_size(x_dtype)
     k_h, k_w = ksize
     min_grad_size = k_h * k_w * deformable_groups * group_c
     min_offsets_size = 3 * deformable_groups * k_h * k_w
-    if min_offsets_size < BLOCK_FP32_SIZE:
-        num = math.ceil(BLOCK_FP32_SIZE / min_offsets_size)
+    if min_offsets_size < Constant.BLOCK_FP32_SIZE:
+        num = math.ceil(Constant.BLOCK_FP32_SIZE / min_offsets_size)
         min_offsets_size = num * min_offsets_size
         min_grad_size = num * min_grad_size
-    min_offsets_align = (min_offsets_size + BLOCK_FP32_SIZE - 1) // BLOCK_FP32_SIZE * BLOCK_FP32_SIZE
-    ub_size = (MAX_UB_SIZE - RESERVED_UB_SIZE) // dsize
+    min_offsets_align = (min_offsets_size + Constant.BLOCK_FP32_SIZE - 1) // \
+                         Constant.BLOCK_FP32_SIZE * Constant.BLOCK_FP32_SIZE
+    ub_size = (Constant.MAX_UB_SIZE - Constant.RESERVED_UB_SIZE) // dsize
     size = _get_ub_need_size(min_grad_size, min_offsets_align, group_c)
     if size > ub_size:
         reason = "size needed exceed ub_size"
@@ -237,10 +245,11 @@ def _get_ub_need_size(grad_size, offsets_size, group_c):
     """
     get the size of the UB corresponding to the shape
     """
-    zero_ub_size, h_max_ub_size, w_max_ub_size = VECTOR_FP32_SIZE, VECTOR_FP32_SIZE, VECTOR_FP32_SIZE
-    mask_ub_size = 5 * UINT16_BIT_SIZE // 2
+    zero_ub_size, h_max_ub_size, w_max_ub_size = Constant.VECTOR_FP32_SIZE, \
+                                                 Constant.VECTOR_FP32_SIZE, Constant.VECTOR_FP32_SIZE
+    mask_ub_size = 5 * Constant.UINT16_BIT_SIZE // 2
     x_ub_size = 4 * group_c
-    fp32_floor, fp32_ceil = 2 * grad_size + VECTOR_FP32_SIZE, 2 * grad_size + VECTOR_FP32_SIZE
+    fp32_floor, fp32_ceil = 2 * grad_size + Constant.VECTOR_FP32_SIZE, 2 * grad_size + Constant.VECTOR_FP32_SIZE
     int32_floor, int32_ceil = 2 * grad_size, 2 * grad_size
     ceil_sub, sub_floor = max(2 * grad_size, offsets_size), max(2 * grad_size, offsets_size)
     grad_ub_size, grad_scale_ub = grad_size, grad_size
@@ -316,15 +325,23 @@ class DeformableOffsetsGrad:
         grad_size = self.tiling_params["grad_size"]
         offset_size = self.tiling_params["offset_size"]
 
-        zero_ub = self.instance.Tensor(self.dtype, (VECTOR_FP32_SIZE,), name="zero_ub", scope=tbe_platform.scope_ubuf)
-        h_max_ub = self.instance.Tensor(self.dtype, (VECTOR_FP32_SIZE,), name="h_max_ub", scope=tbe_platform.scope_ubuf)
-        w_max_ub = self.instance.Tensor(self.dtype, (VECTOR_FP32_SIZE,), name="w_max_ub", scope=tbe_platform.scope_ubuf)
+        zero_ub = self.instance.Tensor(self.dtype, (Constant.VECTOR_FP32_SIZE,),
+                                       name="zero_ub", scope=tbe_platform.scope_ubuf)
+        h_max_ub = self.instance.Tensor(self.dtype, (Constant.VECTOR_FP32_SIZE,),
+                                        name="h_max_ub", scope=tbe_platform.scope_ubuf)
+        w_max_ub = self.instance.Tensor(self.dtype, (Constant.VECTOR_FP32_SIZE,),
+                                        name="w_max_ub", scope=tbe_platform.scope_ubuf)
 
-        mask_ub1 = self.instance.Tensor("uint16", (UINT16_BIT_SIZE,), name="mask_ub1", scope=tbe_platform.scope_ubuf)
-        mask_ub2 = self.instance.Tensor("uint16", (UINT16_BIT_SIZE,), name="mask_ub2", scope=tbe_platform.scope_ubuf)
-        mask_ub3 = self.instance.Tensor("uint16", (UINT16_BIT_SIZE,), name="mask_ub3", scope=tbe_platform.scope_ubuf)
-        mask_ub4 = self.instance.Tensor("uint16", (UINT16_BIT_SIZE,), name="mask_ub4", scope=tbe_platform.scope_ubuf)
-        mask_ub5 = self.instance.Tensor("uint16", (UINT16_BIT_SIZE,), name="mask_ub5", scope=tbe_platform.scope_ubuf)
+        mask_ub1 = self.instance.Tensor("uint16", (Constant.UINT16_BIT_SIZE,),
+                                        name="mask_ub1", scope=tbe_platform.scope_ubuf)
+        mask_ub2 = self.instance.Tensor("uint16", (Constant.UINT16_BIT_SIZE,),
+                                        name="mask_ub2", scope=tbe_platform.scope_ubuf)
+        mask_ub3 = self.instance.Tensor("uint16", (Constant.UINT16_BIT_SIZE,),
+                                        name="mask_ub3", scope=tbe_platform.scope_ubuf)
+        mask_ub4 = self.instance.Tensor("uint16", (Constant.UINT16_BIT_SIZE,),
+                                        name="mask_ub4", scope=tbe_platform.scope_ubuf)
+        mask_ub5 = self.instance.Tensor("uint16", (Constant.UINT16_BIT_SIZE,),
+                                        name="mask_ub5", scope=tbe_platform.scope_ubuf)
 
         x_ub_lt = self.instance.Tensor(self.dtype, (self.group_c,), name="x_ub_lt", scope=tbe_platform.scope_ubuf)
         x_ub_lb = self.instance.Tensor(self.dtype, (self.group_c,), name="x_ub_lb", scope=tbe_platform.scope_ubuf)
@@ -339,9 +356,10 @@ class DeformableOffsetsGrad:
         size = max(grad_size * 2, offset_size)
         ceil_sub = self.instance.Tensor(self.dtype, (size,), name="ceil_sub", scope=tbe_platform.scope_ubuf)
         sub_floor = self.instance.Tensor(self.dtype, (size,), name="sub_floor", scope=tbe_platform.scope_ubuf)
-        fp32_ceil_index = self.instance.Tensor(self.dtype, (grad_size * 2 + VECTOR_FP32_SIZE,), name="fp32_ceil_index",
+        fp32_ceil_index = self.instance.Tensor(self.dtype, (grad_size * 2 + Constant.VECTOR_FP32_SIZE,),
+                                               name="fp32_ceil_index",
                                                scope=tbe_platform.scope_ubuf)
-        fp32_floor_index = self.instance.Tensor(self.dtype, (grad_size * 2 + VECTOR_FP32_SIZE,),
+        fp32_floor_index = self.instance.Tensor(self.dtype, (grad_size * 2 + Constant.VECTOR_FP32_SIZE,),
                                                 name="fp32_floor_index",
                                                 scope=tbe_platform.scope_ubuf)
         int32_ceil_index = self.instance.Tensor("int32", (grad_size * 2,), name="int32_ceil_index",
@@ -365,9 +383,9 @@ class DeformableOffsetsGrad:
         self.tiling_params["tiling_shape"] = tiling_shape
 
         # [n, h_out] cut core, block tiling index in [0, 1]
-        block_index = _get_index_num(tiling_shape, 0, 2, 1, MAX_CORE)
+        block_index = _get_index_num(tiling_shape, 0, 2, 1, Constant.MAX_CORE)
         block_len = _get_shape_size(tiling_shape[:block_index + 1])
-        block_num = MAX_CORE
+        block_num = Constant.MAX_CORE
         if block_len < block_num:
             block_num = block_len
         self.tiling_params["block_num"] = block_num
@@ -394,9 +412,10 @@ class DeformableOffsetsGrad:
                 tmp_shape.extend(tiling_shape[block_index + index + 1:])
                 grad_size = _get_shape_size(tmp_shape)
                 offset_size = tmp_shape[0] * tmp_shape[1] * tmp_shape[2] * min_offset_size
-                offset_size_align = (offset_size + BLOCK_FP32_SIZE - 1) // BLOCK_FP32_SIZE * BLOCK_FP32_SIZE
+                offset_size_align = (offset_size + Constant.BLOCK_FP32_SIZE - 1) // \
+                                     Constant.BLOCK_FP32_SIZE * Constant.BLOCK_FP32_SIZE
                 size = _get_ub_need_size(grad_size, offset_size_align, self.group_c)
-                if size <= ub_size and offset_size >= BLOCK_FP32_SIZE:
+                if size <= ub_size and offset_size >= Constant.BLOCK_FP32_SIZE:
                     flag = True
                     self.tiling_params["ub_index"] = block_index + index
                     self.tiling_params["ub_factor"] = t_factor
@@ -426,7 +445,7 @@ class DeformableOffsetsGrad:
         """
         offsets grad compute func
         """
-        ub_size = (MAX_UB_SIZE - RESERVED_UB_SIZE) // self.dsize
+        ub_size = (Constant.MAX_UB_SIZE - Constant.RESERVED_UB_SIZE) // self.dsize
         # try open double buffer
         flag_db = self.tiling(ub_size // 2)
         # try close double buffer
@@ -719,9 +738,9 @@ class DeformableOffsetsGrad:
         int32_zero_ub = zero_ub.reinterpret_cast_to("int32")
         int32_h_max_ub = h_max_ub.reinterpret_cast_to("int32")
         int32_w_max_ub = w_max_ub.reinterpret_cast_to("int32")
-        self.vector_dup(0, int32_zero_ub, VECTOR_FP32_SIZE, 0)
-        self.vector_dup(0, int32_h_max_ub, VECTOR_FP32_SIZE, self.h_in - 1)
-        self.vector_dup(0, int32_w_max_ub, VECTOR_FP32_SIZE, self.w_in - 1)
+        self.vector_dup(0, int32_zero_ub, Constant.VECTOR_FP32_SIZE, 0)
+        self.vector_dup(0, int32_h_max_ub, Constant.VECTOR_FP32_SIZE, self.h_in - 1)
+        self.vector_dup(0, int32_w_max_ub, Constant.VECTOR_FP32_SIZE, self.w_in - 1)
 
         # 'make index value in [[0,h_in) ,[0, w_in)]
         self.vector_binary_op(size, [int32_floor_index, int32_floor_index, int32_w_max_ub], "min",
@@ -753,9 +772,9 @@ class DeformableOffsetsGrad:
         x_ub_rt = buf_list[19]
         x_ub_rb = buf_list[20]
 
-        self.vector_dup(0, zero_ub, VECTOR_FP32_SIZE, 0)
-        self.vector_dup(0, h_max_ub, VECTOR_FP32_SIZE, self.h_in - 1)
-        self.vector_dup(0, w_max_ub, VECTOR_FP32_SIZE, self.w_in - 1)
+        self.vector_dup(0, zero_ub, Constant.VECTOR_FP32_SIZE, 0)
+        self.vector_dup(0, h_max_ub, Constant.VECTOR_FP32_SIZE, self.h_in - 1)
+        self.vector_dup(0, w_max_ub, Constant.VECTOR_FP32_SIZE, self.w_in - 1)
 
         floor_h = self.instance.Scalar("int32", name="floor_h")
         floor_w = self.instance.Scalar("int32", name="floor_w")
@@ -788,20 +807,20 @@ class DeformableOffsetsGrad:
                           ceil_w * self.groups * self.group_c + \
                           groups * self.group_c
 
-            group_c_burst = self.group_c // BLOCK_FP32_SIZE
+            group_c_burst = self.group_c // Constant.BLOCK_FP32_SIZE
             self.instance.data_move(x_ub_lt, self.x_gm[dx_lt_index], 0, 1, group_c_burst, 0, 0)
             self.instance.data_move(x_ub_lb, self.x_gm[dx_lb_index], 0, 1, group_c_burst, 0, 0)
             self.instance.data_move(x_ub_rt, self.x_gm[dx_rt_index], 0, 1, group_c_burst, 0, 0)
             self.instance.data_move(x_ub_rb, self.x_gm[dx_rb_index], 0, 1, group_c_burst, 0, 0)
 
-            num = self.group_c // VECTOR_FP32_SIZE
-            tail = self.group_c % VECTOR_FP32_SIZE
+            num = self.group_c // Constant.VECTOR_FP32_SIZE
+            tail = self.group_c % Constant.VECTOR_FP32_SIZE
             with self.instance.for_range(0, num) as l_i:
-                self.vector_sel(MASK64_VALUE, size, buf_list,
-                                [index + l_i * VECTOR_FP32_SIZE, l_i * VECTOR_FP32_SIZE])
+                self.vector_sel(Constant.MASK64_VALUE, size, buf_list,
+                                [index + l_i * Constant.VECTOR_FP32_SIZE, l_i * Constant.VECTOR_FP32_SIZE])
             if tail > 0:
                 self.vector_sel(tail, size, buf_list,
-                                [index + num * VECTOR_FP32_SIZE, num * VECTOR_FP32_SIZE])
+                                [index + num * Constant.VECTOR_FP32_SIZE, num * Constant.VECTOR_FP32_SIZE])
 
             self.instance.set_atomic_add(1)
             self.instance.data_move(self.grad_x_gm[dx_lt_index], x_ub_lt, 0, 1, group_c_burst, 0, 0)
@@ -891,9 +910,9 @@ class DeformableOffsetsGrad:
         grad_size, offset_size, helper_size = size_list
         grad_ub, offset_ub, helper_ub = ub_list
         grad_start, offset_start, helper_start = start_list
-        grad_burst_len = grad_size // BLOCK_FP32_SIZE
-        offset_burst_len = (offset_size + BLOCK_FP32_SIZE - 1) // BLOCK_FP32_SIZE
-        helper_burst_len = (helper_size + BLOCK_FP32_SIZE - 1) // BLOCK_FP32_SIZE
+        grad_burst_len = grad_size // Constant.BLOCK_FP32_SIZE
+        offset_burst_len = (offset_size + Constant.BLOCK_FP32_SIZE - 1) // Constant.BLOCK_FP32_SIZE
+        helper_burst_len = (helper_size + Constant.BLOCK_FP32_SIZE - 1) // Constant.BLOCK_FP32_SIZE
 
         self.instance.data_move(grad_ub, self.grad_gm[grad_start], 0, 1, grad_burst_len, 0, 0)
         self.instance.data_move(offset_ub, self.offsets_gm[offset_start], 0, 1, offset_burst_len, 0, 0)
@@ -919,10 +938,10 @@ class DeformableOffsetsGrad:
         gm_base_size = self.w_out * self.k_w * self.groups * self.group_c
         num = grad_size // (self.k_h * self.k_w * self.groups * self.group_c)
         move_base_size = num * self.k_w * self.groups * self.group_c
-        grad_burst_len = move_base_size // BLOCK_FP32_SIZE
-        src_stride = (self.w_out - num) * self.k_w * self.groups * self.group_c // BLOCK_FP32_SIZE
+        grad_burst_len = move_base_size // Constant.BLOCK_FP32_SIZE
+        src_stride = (self.w_out - num) * self.k_w * self.groups * self.group_c // Constant.BLOCK_FP32_SIZE
 
-        if src_stride > MAX_STRIDE:
+        if src_stride > Constant.MAX_STRIDE:
             with self.instance.for_range(0, self.k_h) as k_i:
                 self.instance.data_move(grad_ub[k_i * move_base_size], self.grad_gm[grad_start + k_i * gm_base_size],
                                         0, 1, grad_burst_len, 0, 0)
@@ -930,8 +949,8 @@ class DeformableOffsetsGrad:
             self.instance.data_move(grad_ub, self.grad_gm[grad_start], 0,
                                     self.k_h, grad_burst_len, src_stride, 0)
 
-        offset_burst_len = (offset_size + BLOCK_FP32_SIZE - 1) // BLOCK_FP32_SIZE
-        helper_burst_len = (helper_size + BLOCK_FP32_SIZE - 1) // BLOCK_FP32_SIZE
+        offset_burst_len = (offset_size + Constant.BLOCK_FP32_SIZE - 1) // Constant.BLOCK_FP32_SIZE
+        helper_burst_len = (helper_size + Constant.BLOCK_FP32_SIZE - 1) // Constant.BLOCK_FP32_SIZE
         self.instance.data_move(offset_ub, self.offsets_gm[offset_start], 0, 1, offset_burst_len, 0, 0)
         self.instance.data_move(helper_ub, self.helper_gm[helper_start], 0, 1, helper_burst_len, 0, 0)
 
@@ -942,21 +961,21 @@ class DeformableOffsetsGrad:
         """
         vector_dup function, set ub_buf to 0
         """
-        one_cnt = VECTOR_FP32_SIZE
+        one_cnt = Constant.VECTOR_FP32_SIZE
         repeat = size // one_cnt
         remainder = size % one_cnt
-        loop_repeat = repeat // MAX_REPEAT
-        loop_remainder = repeat % MAX_REPEAT
+        loop_repeat = repeat // Constant.MAX_REPEAT
+        loop_remainder = repeat % Constant.MAX_REPEAT
 
         if _is_immediate(size):
             if loop_repeat > 0:
                 with self.instance.for_range(0, loop_repeat) as l_i:
                     self.instance.vec_dup(one_cnt,
-                                          ub_buf[start_index + l_i * one_cnt * MAX_REPEAT],
-                                          val, MAX_REPEAT, 8)
+                                          ub_buf[start_index + l_i * one_cnt * Constant.MAX_REPEAT],
+                                          val, Constant.MAX_REPEAT, 8)
             if loop_remainder > 0:
                 self.instance.vec_dup(one_cnt,
-                                      ub_buf[start_index + loop_repeat * one_cnt * MAX_REPEAT],
+                                      ub_buf[start_index + loop_repeat * one_cnt * Constant.MAX_REPEAT],
                                       val, loop_remainder, 8)
             if remainder > 0:
                 self.instance.vec_dup(remainder,
@@ -969,11 +988,11 @@ class DeformableOffsetsGrad:
             mask.set_as(remainder)
             with self.instance.for_range(0, loop_repeat) as l_i:
                 self.instance.vec_dup(one_cnt,
-                                      ub_buf[start_index + l_i * one_cnt * MAX_REPEAT],
+                                      ub_buf[start_index + l_i * one_cnt * Constant.MAX_REPEAT],
                                       val, self.repeat_max, 8)
             with self.instance.if_scope(loop_remainder > 0):
                 self.instance.vec_dup(one_cnt,
-                                      ub_buf[start_index + loop_repeat * one_cnt * MAX_REPEAT],
+                                      ub_buf[start_index + loop_repeat * one_cnt * Constant.MAX_REPEAT],
                                       val, loop_remainder_s, 8)
             with self.instance.if_scope(remainder > 0):
                 self.instance.vec_dup(mask,
@@ -986,24 +1005,24 @@ class DeformableOffsetsGrad:
         vconv func
         """
         dst_ub, src_ub = ub_list
-        one_cnt = VECTOR_FP32_SIZE
+        one_cnt = Constant.VECTOR_FP32_SIZE
         repeat = size // one_cnt
         remainder = size % one_cnt
-        loop_repeat = repeat // MAX_REPEAT
-        loop_remainder = repeat % MAX_REPEAT
+        loop_repeat = repeat // Constant.MAX_REPEAT
+        loop_remainder = repeat % Constant.MAX_REPEAT
 
         if _is_immediate(size):
             if loop_repeat > 0:
                 with self.instance.for_range(0, loop_repeat) as l_i:
                     self.instance.vconv(one_cnt, round_mode,
-                                        dst_ub[dst_start + l_i * one_cnt * MAX_REPEAT],
-                                        src_ub[src_start + l_i * one_cnt * MAX_REPEAT],
-                                        MAX_REPEAT,
+                                        dst_ub[dst_start + l_i * one_cnt * Constant.MAX_REPEAT],
+                                        src_ub[src_start + l_i * one_cnt * Constant.MAX_REPEAT],
+                                        Constant.MAX_REPEAT,
                                         1, 1, 8, 8)
             if loop_remainder > 0:
                 self.instance.vconv(one_cnt, round_mode,
-                                    dst_ub[dst_start + loop_repeat * one_cnt * MAX_REPEAT],
-                                    src_ub[src_start + loop_repeat * one_cnt * MAX_REPEAT],
+                                    dst_ub[dst_start + loop_repeat * one_cnt * Constant.MAX_REPEAT],
+                                    src_ub[src_start + loop_repeat * one_cnt * Constant.MAX_REPEAT],
                                     loop_remainder,
                                     1, 1, 8, 8)
             if remainder > 0:
@@ -1019,14 +1038,14 @@ class DeformableOffsetsGrad:
             mask.set_as(remainder)
             with self.instance.for_range(0, loop_repeat) as l_i:
                 self.instance.vconv(one_cnt, round_mode,
-                                    dst_ub[dst_start + l_i * one_cnt * MAX_REPEAT],
-                                    src_ub[src_start + l_i * one_cnt * MAX_REPEAT],
+                                    dst_ub[dst_start + l_i * one_cnt * Constant.MAX_REPEAT],
+                                    src_ub[src_start + l_i * one_cnt * Constant.MAX_REPEAT],
                                     self.repeat_max,
                                     1, 1, 8, 8)
             with self.instance.if_scope(loop_remainder > 0):
                 self.instance.vconv(one_cnt, round_mode,
-                                    dst_ub[dst_start + loop_repeat * one_cnt * MAX_REPEAT],
-                                    src_ub[src_start + loop_repeat * one_cnt * MAX_REPEAT],
+                                    dst_ub[dst_start + loop_repeat * one_cnt * Constant.MAX_REPEAT],
+                                    src_ub[src_start + loop_repeat * one_cnt * Constant.MAX_REPEAT],
                                     loop_remainder_s,
                                     1, 1, 8, 8)
             with self.instance.if_scope(remainder > 0):
@@ -1042,25 +1061,25 @@ class DeformableOffsetsGrad:
         vadds func
         """
         dst_ub, src_ub = ub_list
-        one_cnt = VECTOR_FP32_SIZE
+        one_cnt = Constant.VECTOR_FP32_SIZE
         repeat = size // one_cnt
         remainder = size % one_cnt
-        loop_repeat = repeat // MAX_REPEAT
-        loop_remainder = repeat % MAX_REPEAT
+        loop_repeat = repeat // Constant.MAX_REPEAT
+        loop_remainder = repeat % Constant.MAX_REPEAT
 
         if _is_immediate(size):
             if loop_repeat > 0:
                 with self.instance.for_range(0, loop_repeat) as l_i:
                     self.instance.vadds(one_cnt,
-                                        dst_ub[dst_start + l_i * one_cnt * MAX_REPEAT],
-                                        src_ub[src_start + l_i * one_cnt * MAX_REPEAT],
+                                        dst_ub[dst_start + l_i * one_cnt * Constant.MAX_REPEAT],
+                                        src_ub[src_start + l_i * one_cnt * Constant.MAX_REPEAT],
                                         val,
-                                        MAX_REPEAT,
+                                        Constant.MAX_REPEAT,
                                         1, 1, 8, 8)
             if loop_remainder > 0:
                 self.instance.vadds(one_cnt,
-                                    dst_ub[dst_start + loop_repeat * one_cnt * MAX_REPEAT],
-                                    src_ub[src_start + loop_repeat * one_cnt * MAX_REPEAT],
+                                    dst_ub[dst_start + loop_repeat * one_cnt * Constant.MAX_REPEAT],
+                                    src_ub[src_start + loop_repeat * one_cnt * Constant.MAX_REPEAT],
                                     val,
                                     loop_remainder,
                                     1, 1, 8, 8)
@@ -1078,15 +1097,15 @@ class DeformableOffsetsGrad:
             mask.set_as(remainder)
             with self.instance.for_range(0, loop_repeat) as l_i:
                 self.instance.vadds(one_cnt,
-                                    dst_ub[dst_start + l_i * one_cnt * MAX_REPEAT],
-                                    src_ub[src_start + l_i * one_cnt * MAX_REPEAT],
+                                    dst_ub[dst_start + l_i * one_cnt * Constant.MAX_REPEAT],
+                                    src_ub[src_start + l_i * one_cnt * Constant.MAX_REPEAT],
                                     val,
                                     self.repeat_max,
                                     1, 1, 8, 8)
             with self.instance.if_scope(loop_remainder > 0):
                 self.instance.vadds(one_cnt,
-                                    dst_ub[dst_start + loop_repeat * one_cnt * MAX_REPEAT],
-                                    src_ub[src_start + loop_repeat * one_cnt * MAX_REPEAT],
+                                    dst_ub[dst_start + loop_repeat * one_cnt * Constant.MAX_REPEAT],
+                                    src_ub[src_start + loop_repeat * one_cnt * Constant.MAX_REPEAT],
                                     val,
                                     loop_remainder_s,
                                     1, 1, 8, 8)
@@ -1123,35 +1142,41 @@ class DeformableOffsetsGrad:
         dst_blk_stride, src0_blk_stride, src1_blk_stride = blk_stride_list
         dst_rep_stride, src0_rep_stride, src1_rep_stride = rep_stride_list
 
-        one_cnt = VECTOR_FP32_SIZE
+        one_cnt = Constant.VECTOR_FP32_SIZE
         repeat = size // one_cnt
         remainder = size % one_cnt
-        loop_repeat = repeat // MAX_REPEAT
-        loop_remainder = repeat % MAX_REPEAT
+        loop_repeat = repeat // Constant.MAX_REPEAT
+        loop_remainder = repeat % Constant.MAX_REPEAT
 
         if _is_immediate(size):
             if loop_repeat > 0:
                 with self.instance.for_range(0, loop_repeat) as l_i:
                     func_map[op_name](one_cnt,
-                                      dst_ub[dst_start + l_i * dst_rep_stride * BLOCK_FP32_SIZE * MAX_REPEAT],
-                                      src0_ub[src0_start + l_i * src0_rep_stride * BLOCK_FP32_SIZE * MAX_REPEAT],
-                                      src1_ub[src1_start + l_i * src1_rep_stride * BLOCK_FP32_SIZE * MAX_REPEAT],
-                                      MAX_REPEAT,
+                                      dst_ub[dst_start + l_i * dst_rep_stride * \
+                                      Constant.BLOCK_FP32_SIZE * Constant.MAX_REPEAT],
+                                      src0_ub[src0_start + l_i * src0_rep_stride * \
+                                      Constant.BLOCK_FP32_SIZE * Constant.MAX_REPEAT],
+                                      src1_ub[src1_start + l_i * src1_rep_stride * \
+                                      Constant.BLOCK_FP32_SIZE * Constant.MAX_REPEAT],
+                                      Constant.MAX_REPEAT,
                                       dst_blk_stride, src0_blk_stride, src1_blk_stride,
                                       dst_rep_stride, src0_rep_stride, src1_rep_stride)
             if loop_remainder > 0:
                 func_map[op_name](one_cnt,
-                                  dst_ub[dst_start + loop_repeat * dst_rep_stride * BLOCK_FP32_SIZE * MAX_REPEAT],
-                                  src0_ub[src0_start + loop_repeat * src0_rep_stride * BLOCK_FP32_SIZE * MAX_REPEAT],
-                                  src1_ub[src1_start + loop_repeat * src1_rep_stride * BLOCK_FP32_SIZE * MAX_REPEAT],
+                                  dst_ub[dst_start + loop_repeat * dst_rep_stride * \
+                                  Constant.BLOCK_FP32_SIZE * Constant.MAX_REPEAT],
+                                  src0_ub[src0_start + loop_repeat * src0_rep_stride * \
+                                  Constant.BLOCK_FP32_SIZE * Constant.MAX_REPEAT],
+                                  src1_ub[src1_start + loop_repeat * src1_rep_stride * \
+                                  Constant.BLOCK_FP32_SIZE * Constant.MAX_REPEAT],
                                   loop_remainder,
                                   dst_blk_stride, src0_blk_stride, src1_blk_stride,
                                   dst_rep_stride, src0_rep_stride, src1_rep_stride)
             if remainder > 0:
                 func_map[op_name](remainder,
-                                  dst_ub[dst_start + repeat * dst_rep_stride * BLOCK_FP32_SIZE],
-                                  src0_ub[src0_start + repeat * src0_rep_stride * BLOCK_FP32_SIZE],
-                                  src1_ub[src1_start + repeat * src1_rep_stride * BLOCK_FP32_SIZE],
+                                  dst_ub[dst_start + repeat * dst_rep_stride * Constant.BLOCK_FP32_SIZE],
+                                  src0_ub[src0_start + repeat * src0_rep_stride * Constant.BLOCK_FP32_SIZE],
+                                  src1_ub[src1_start + repeat * src1_rep_stride * Constant.BLOCK_FP32_SIZE],
                                   1,
                                   dst_blk_stride, src0_blk_stride, src1_blk_stride,
                                   dst_rep_stride, src0_rep_stride, src1_rep_stride)
@@ -1162,25 +1187,31 @@ class DeformableOffsetsGrad:
             mask.set_as(remainder)
             with self.instance.for_range(0, loop_repeat) as l_i:
                 func_map[op_name](one_cnt,
-                                  dst_ub[dst_start + l_i * dst_rep_stride * BLOCK_FP32_SIZE * MAX_REPEAT],
-                                  src0_ub[src0_start + l_i * src0_rep_stride * BLOCK_FP32_SIZE * MAX_REPEAT],
-                                  src1_ub[src1_start + l_i * src1_rep_stride * BLOCK_FP32_SIZE * MAX_REPEAT],
+                                  dst_ub[dst_start + l_i * dst_rep_stride * \
+                                  Constant.BLOCK_FP32_SIZE * Constant.MAX_REPEAT],
+                                  src0_ub[src0_start + l_i * src0_rep_stride * \
+                                  Constant.BLOCK_FP32_SIZE * Constant.MAX_REPEAT],
+                                  src1_ub[src1_start + l_i * src1_rep_stride * \
+                                  Constant.BLOCK_FP32_SIZE * Constant.MAX_REPEAT],
                                   self.repeat_max,
                                   dst_blk_stride, src0_blk_stride, src1_blk_stride,
                                   dst_rep_stride, src0_rep_stride, src1_rep_stride)
             with self.instance.if_scope(loop_remainder > 0):
                 func_map[op_name](one_cnt,
-                                  dst_ub[dst_start + loop_repeat * dst_rep_stride * BLOCK_FP32_SIZE * MAX_REPEAT],
-                                  src0_ub[src0_start + loop_repeat * src0_rep_stride * BLOCK_FP32_SIZE * MAX_REPEAT],
-                                  src1_ub[src1_start + loop_repeat * src1_rep_stride * BLOCK_FP32_SIZE * MAX_REPEAT],
+                                  dst_ub[dst_start + loop_repeat * dst_rep_stride * \
+                                  Constant.BLOCK_FP32_SIZE * Constant.MAX_REPEAT],
+                                  src0_ub[src0_start + loop_repeat * src0_rep_stride * \
+                                  Constant.BLOCK_FP32_SIZE * Constant.MAX_REPEAT],
+                                  src1_ub[src1_start + loop_repeat * src1_rep_stride * \
+                                  Constant.BLOCK_FP32_SIZE * Constant.MAX_REPEAT],
                                   loop_remainder_s,
                                   dst_blk_stride, src0_blk_stride, src1_blk_stride,
                                   dst_rep_stride, src0_rep_stride, src1_rep_stride)
             with self.instance.if_scope(remainder > 0):
                 func_map[op_name](mask,
-                                  dst_ub[dst_start + repeat * dst_rep_stride * BLOCK_FP32_SIZE],
-                                  src0_ub[src0_start + repeat * src0_rep_stride * BLOCK_FP32_SIZE],
-                                  src1_ub[src1_start + repeat * src1_rep_stride * BLOCK_FP32_SIZE],
+                                  dst_ub[dst_start + repeat * dst_rep_stride * Constant.BLOCK_FP32_SIZE],
+                                  src0_ub[src0_start + repeat * src0_rep_stride * Constant.BLOCK_FP32_SIZE],
+                                  src1_ub[src1_start + repeat * src1_rep_stride * Constant.BLOCK_FP32_SIZE],
                                   1,
                                   dst_blk_stride, src0_blk_stride, src1_blk_stride,
                                   dst_rep_stride, src0_rep_stride, src1_rep_stride)
@@ -1264,10 +1295,10 @@ class DeformableOffsetsGrad:
         """
         summation of group_c axis, [...,kh,kw,group_c] -> [...,kh,kw]
         """
-        if self.group_c <= VECTOR_FP32_SIZE:
+        if self.group_c <= Constant.VECTOR_FP32_SIZE:
             self.reduce_sum_group_c_le_64(out_index, self.group_c, size, out_ub)
         else:
-            if self.group_c // BLOCK_FP32_SIZE > MAX_REPEAT:
+            if self.group_c // Constant.BLOCK_FP32_SIZE > Constant.MAX_REPEAT:
                 self.group_c_stride_gt_255(out_index, size, out_ub)
             else:
                 self.group_c_stride_le_255(out_index, size, out_ub)
@@ -1277,7 +1308,7 @@ class DeformableOffsetsGrad:
         processing group_c less than or equal to 64 scenes
         """
         repeat = size // one_cnt
-        max_repeat = MAX_REPEAT // BLOCK_FP32_SIZE * BLOCK_FP32_SIZE
+        max_repeat = Constant.MAX_REPEAT // Constant.BLOCK_FP32_SIZE * Constant.BLOCK_FP32_SIZE
         loop_repeat = repeat // max_repeat
         loop_remainder = repeat % max_repeat
 
@@ -1288,13 +1319,13 @@ class DeformableOffsetsGrad:
                                         out_ub[l_i * max_repeat],
                                         out_ub[l_i * max_repeat * one_cnt],
                                         max_repeat,
-                                        1, 1, one_cnt // BLOCK_FP32_SIZE)
+                                        1, 1, one_cnt // Constant.BLOCK_FP32_SIZE)
             if loop_remainder > 0:
                 self.instance.vcadd(one_cnt,
                                     out_ub[loop_repeat * max_repeat],
                                     out_ub[loop_repeat * max_repeat * one_cnt],
                                     loop_remainder,
-                                    1, 1, one_cnt // BLOCK_FP32_SIZE)
+                                    1, 1, one_cnt // Constant.BLOCK_FP32_SIZE)
         else:
             max_repeat_s = self.instance.Scalar("uint32", name="max_repeat_s")
             max_repeat_s.set_as(max_repeat)
@@ -1305,13 +1336,13 @@ class DeformableOffsetsGrad:
                                     out_ub[l_i * max_repeat],
                                     out_ub[l_i * max_repeat * one_cnt],
                                     max_repeat_s,
-                                    1, 1, one_cnt // BLOCK_FP32_SIZE)
+                                    1, 1, one_cnt // Constant.BLOCK_FP32_SIZE)
             with self.instance.if_scope(loop_remainder > 0):
                 self.instance.vcadd(one_cnt,
                                     out_ub[loop_repeat * max_repeat],
                                     out_ub[loop_repeat * max_repeat * one_cnt],
                                     loop_remainder_s,
-                                    1, 1, one_cnt // BLOCK_FP32_SIZE)
+                                    1, 1, one_cnt // Constant.BLOCK_FP32_SIZE)
 
         input_dict = {
             "instance": self.instance,
@@ -1329,46 +1360,52 @@ class DeformableOffsetsGrad:
         """
         group_c_num = size // self.group_c
         with self.instance.for_range(0, group_c_num) as l_i:
-            self.vcadd_one_group_c(out_ub, [l_i * VECTOR_FP32_SIZE, l_i * self.group_c])
-        self.reduce_sum_group_c_le_64(out_index, VECTOR_FP32_SIZE, group_c_num * VECTOR_FP32_SIZE, out_ub)
+            self.vcadd_one_group_c(out_ub, [l_i * Constant.VECTOR_FP32_SIZE, l_i * self.group_c])
+        self.reduce_sum_group_c_le_64(out_index, Constant.VECTOR_FP32_SIZE,
+                                      group_c_num * Constant.VECTOR_FP32_SIZE, out_ub)
 
     def group_c_stride_le_255(self, out_index, size, out_ub):
         """
         using repeat to sum group_c, when the stride of group_c <= 255
         """
         group_c_num = size // self.group_c
-        loop_repeat = group_c_num // MAX_REPEAT
-        loop_remainder = group_c_num % MAX_REPEAT
-        one_cnt = VECTOR_FP32_SIZE
+        loop_repeat = group_c_num // Constant.MAX_REPEAT
+        loop_remainder = group_c_num % Constant.MAX_REPEAT
+        one_cnt = Constant.VECTOR_FP32_SIZE
 
         if _is_immediate(size):
             if loop_repeat > 0:
                 with self.instance.for_range(0, loop_repeat) as l_i:
-                    self.vcadd_stride_group_c(MAX_REPEAT, out_ub,
-                                              [l_i * MAX_REPEAT * one_cnt, l_i * MAX_REPEAT * self.group_c])
+                    self.vcadd_stride_group_c(Constant.MAX_REPEAT, out_ub,
+                                              [l_i * Constant.MAX_REPEAT * one_cnt,
+                                              l_i * Constant.MAX_REPEAT * self.group_c])
             if loop_remainder > 0:
                 self.vcadd_stride_group_c(loop_remainder, out_ub,
-                                          [loop_repeat * MAX_REPEAT * one_cnt, loop_repeat * MAX_REPEAT * self.group_c])
+                                          [loop_repeat * Constant.MAX_REPEAT * one_cnt,
+                                          loop_repeat * Constant.MAX_REPEAT * self.group_c])
         else:
             loop_remainder_s = self.instance.Scalar("uint32", name="loop_remainder_s")
             loop_remainder_s.set_as(loop_remainder)
             with self.instance.for_range(0, loop_repeat) as l_i:
                 self.vcadd_stride_group_c(self.repeat_max, out_ub,
-                                          [l_i * MAX_REPEAT * one_cnt, l_i * MAX_REPEAT * self.group_c])
+                                          [l_i * Constant.MAX_REPEAT * one_cnt,
+                                          l_i * Constant.MAX_REPEAT * self.group_c])
             with self.instance.if_scope(loop_remainder > 0):
                 self.vcadd_stride_group_c(loop_remainder_s, out_ub,
-                                          [loop_repeat * MAX_REPEAT * one_cnt, loop_repeat * MAX_REPEAT * self.group_c])
+                                          [loop_repeat * Constant.MAX_REPEAT * one_cnt,
+                                          loop_repeat * Constant.MAX_REPEAT * self.group_c])
 
-        self.reduce_sum_group_c_le_64(out_index, VECTOR_FP32_SIZE, group_c_num * VECTOR_FP32_SIZE, out_ub)
+        self.reduce_sum_group_c_le_64(out_index, Constant.VECTOR_FP32_SIZE,
+                                      group_c_num * Constant.VECTOR_FP32_SIZE, out_ub)
 
     def vcadd_stride_group_c(self, repeat, out_ub, start_list):
         """
         using repeat to sum group_c
         """
         dst_start, src_start = start_list
-        one_cnt = VECTOR_FP32_SIZE
-        num = self.group_c // VECTOR_FP32_SIZE
-        tail = self.group_c % VECTOR_FP32_SIZE
+        one_cnt = Constant.VECTOR_FP32_SIZE
+        num = self.group_c // Constant.VECTOR_FP32_SIZE
+        tail = self.group_c % Constant.VECTOR_FP32_SIZE
         if tail > 0:
             self.instance.vadd(tail,
                                out_ub[src_start],
@@ -1397,11 +1434,11 @@ class DeformableOffsetsGrad:
         sum each group_c
         """
         dst_start, src_start = start_list
-        one_cnt = VECTOR_FP32_SIZE
-        num = self.group_c // VECTOR_FP32_SIZE
-        tail = self.group_c % VECTOR_FP32_SIZE
-        loop_repeat = num // MAX_REPEAT
-        loop_remainder = num % MAX_REPEAT
+        one_cnt = Constant.VECTOR_FP32_SIZE
+        num = self.group_c // Constant.VECTOR_FP32_SIZE
+        tail = self.group_c % Constant.VECTOR_FP32_SIZE
+        loop_repeat = num // Constant.MAX_REPEAT
+        loop_remainder = num % Constant.MAX_REPEAT
         if tail > 0:
             self.instance.vadd(tail,
                                out_ub[src_start],
@@ -1413,17 +1450,17 @@ class DeformableOffsetsGrad:
                 self.instance.vadd(one_cnt,
                                    out_ub[src_start],
                                    out_ub[src_start],
-                                   out_ub[src_start + l_i * MAX_REPEAT * one_cnt],
-                                   MAX_REPEAT,
+                                   out_ub[src_start + l_i * Constant.MAX_REPEAT * one_cnt],
+                                   Constant.MAX_REPEAT,
                                    1, 1, 1, 8, 8, 8)
         if loop_remainder > 0 and loop_repeat > 0:
             self.instance.vadd(one_cnt,
                                out_ub[src_start],
                                out_ub[src_start],
-                               out_ub[src_start + loop_repeat * MAX_REPEAT * one_cnt],
+                               out_ub[src_start + loop_repeat * Constant.MAX_REPEAT * one_cnt],
                                loop_remainder,
                                1, 1, 1, 8, 8, 8)
-        size = MAX_REPEAT if loop_repeat > 0 else loop_remainder
+        size = Constant.MAX_REPEAT if loop_repeat > 0 else loop_remainder
         cur_size = size // 2
         cur_tail = size % 2
         while cur_size > 0:

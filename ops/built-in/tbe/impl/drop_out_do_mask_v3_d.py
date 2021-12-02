@@ -27,13 +27,18 @@ from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
 from impl.util.platform_adapter import para_check
 
-MATMUL_BATCH_SIZE = 0
-BATCH_MATMUL_BATCH_SIZE1 = 1
-BATCH_MATMUL_BATCH_SIZE2 = 2
-BATCH_MATMUL_BATCH_SIZE3 = 3
-BATCH_MATMUL_BATCH_SIZE4 = 4
 
-SHAPE_SIZE_LIMIT = 1 << 30
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    MATMUL_BATCH_SIZE = 0
+    BATCH_MATMUL_BATCH_SIZE1 = 1
+    BATCH_MATMUL_BATCH_SIZE2 = 2
+    BATCH_MATMUL_BATCH_SIZE3 = 3
+    BATCH_MATMUL_BATCH_SIZE4 = 4
+    SHAPE_SIZE_LIMIT = 1 << 30
 
 
 def reshape_input_mask(input_tensor, input_mask, kernel_name):
@@ -59,11 +64,11 @@ def reshape_input_mask(input_tensor, input_mask, kernel_name):
 
     if matmul_flag:
         lambda_expression = None
-        if len(batch_shape) == MATMUL_BATCH_SIZE:
+        if len(batch_shape) == Constant.MATMUL_BATCH_SIZE:
             lambda_expression = lambda *indices: input_mask(*indices)
-        elif len(batch_shape) == BATCH_MATMUL_BATCH_SIZE1:
+        elif len(batch_shape) == Constant.BATCH_MATMUL_BATCH_SIZE1:
             lambda_expression = lambda *indices: input_mask(*indices)
-        elif len(batch_shape) == BATCH_MATMUL_BATCH_SIZE2:
+        elif len(batch_shape) == Constant.BATCH_MATMUL_BATCH_SIZE2:
             lambda_expression = lambda *indices: input_mask(
                 indices[0] // batch_shape[-1],
                 indices[0] % batch_shape[-1],
@@ -72,7 +77,7 @@ def reshape_input_mask(input_tensor, input_mask, kernel_name):
                 indices[-2],
                 indices[-1]
             )
-        elif len(batch_shape) == BATCH_MATMUL_BATCH_SIZE3:
+        elif len(batch_shape) == Constant.BATCH_MATMUL_BATCH_SIZE3:
             lambda_expression = lambda *indices: input_mask(
                 indices[0] // batch_shape[-1] // batch_shape[-2],
                 indices[0] // batch_shape[-1] % batch_shape[-2],
@@ -82,7 +87,7 @@ def reshape_input_mask(input_tensor, input_mask, kernel_name):
                 indices[-2],
                 indices[-1]
             )
-        elif len(batch_shape) == BATCH_MATMUL_BATCH_SIZE4:
+        elif len(batch_shape) == Constant.BATCH_MATMUL_BATCH_SIZE4:
             lambda_expression = lambda *indices: input_mask(
                 indices[0] // batch_shape[-1] // batch_shape[-2] // batch_shape[-3],
                 indices[0] // batch_shape[-1] // batch_shape[-2] % batch_shape[-3],
@@ -183,11 +188,11 @@ def drop_out_do_mask_v3_d(input_tensor, input_mask, output, input_keep_prob,
     para_check.check_dtype_rule(
         input_mask.get('dtype').lower(), ("uint8"))
     para_check.check_shape_rule(input_tensor.get('shape'),
-                          max_shape_num=SHAPE_SIZE_LIMIT)
+                          max_shape_num=Constant.SHAPE_SIZE_LIMIT)
     para_check.check_shape_rule(input_mask.get('shape'),
-                          max_shape_num=SHAPE_SIZE_LIMIT)
-    para_check.check_shape_size(input_tensor.get('shape'), SHAPE_SIZE_LIMIT)
-    para_check.check_shape_size(input_mask.get('shape'), SHAPE_SIZE_LIMIT)
+                          max_shape_num=Constant.SHAPE_SIZE_LIMIT)
+    para_check.check_shape_size(input_tensor.get('shape'), Constant.SHAPE_SIZE_LIMIT)
+    para_check.check_shape_size(input_mask.get('shape'), Constant.SHAPE_SIZE_LIMIT)
     input_name_list = ['input_tensor', 'input_mask']
     list_placeholder = _get_placeholder([input_tensor, input_mask],
                                          input_name_list)

@@ -21,8 +21,14 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 
-# 'define a scalar, value = -(2**32 - 1)
-MIN_VAL = -3402823424.0
+
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    # 'define a scalar, value = -(2**32 - 1)
+    MIN_VAL = -3402823424.0
 
 
 # 'pylint: disable=invalid-name,unused-argument,too-many-arguments,too-many-locals
@@ -904,10 +910,14 @@ class Dilation2D(Dilation2DBase):
                                              scope=tbe_platform.scope_ubuf)
 
         x_size = self.tiling_params["ub_size_info"].get("input")
-        x_ub = self.instance.Tensor(self.y_dtype, (x_size,), name="x_ub", scope=tbe_platform.scope_ubuf)
+        x_ub = self.instance.Tensor(self.y_dtype, (x_size,),
+                                    name="x_ub",
+                                    scope=tbe_platform.scope_ubuf)
 
         expand_size = self.tiling_params["ub_size_info"].get("expand")
-        expand_ub = self.instance.Tensor(self.y_dtype, (expand_size,), name="expand_ub", scope=tbe_platform.scope_ubuf)
+        expand_ub = self.instance.Tensor(self.y_dtype, (expand_size,),
+                                         name="expand_ub",
+                                         scope=tbe_platform.scope_ubuf)
 
         out_backprop_size = self.tiling_params["ub_size_info"].get("out_backprop")
         out_backprop_ub = self.instance.Tensor(self.y_dtype, (out_backprop_size,),
@@ -915,7 +925,9 @@ class Dilation2D(Dilation2DBase):
                                                scope=tbe_platform.scope_ubuf)
 
         mask_ub_size = self.tiling_params["ub_size_info"].get("mask_ub")
-        mask_ub = self.instance.Tensor("uint16", (mask_ub_size,), name="mask_ub", scope=tbe_platform.scope_ubuf)
+        mask_ub = self.instance.Tensor("uint16", (mask_ub_size,), 
+                                       name="mask_ub",
+                                       scope=tbe_platform.scope_ubuf)
 
         # update_matrix_ub vector dup zero
         update_matrix_size = self.tiling_params["ub_size_info"].get("update_matrix")
@@ -926,10 +938,14 @@ class Dilation2D(Dilation2DBase):
 
         # max_data_ub vector dup zero
         max_data_size = self.tiling_params["ub_size_info"].get("max_data")
-        max_data_ub = self.instance.Tensor(self.x_dtype, (max_data_size,), name="max_data_ub", scope=tik.scope_ubuf)
+        max_data_ub = self.instance.Tensor(self.x_dtype, (max_data_size,),
+                                           name="max_data_ub",
+                                           scope=tik.scope_ubuf)
         self.vector_dup(0, max_data_ub, max_data_size, 0)
         # sel_zero_ub vector dup zero
-        sel_zero_ub = self.instance.Tensor(self.x_dtype, (max_data_size,), name="sel_zero_ub", scope=tik.scope_ubuf)
+        sel_zero_ub = self.instance.Tensor(self.x_dtype, (max_data_size,),
+                                           name="sel_zero_ub",
+                                           scope=tik.scope_ubuf)
         self.vector_dup(0, sel_zero_ub, max_data_size, 0)
 
         ub_list = [expand_ub, x_ub, filter_ub, out_backprop_ub, mask_ub, update_matrix_ub, max_data_ub, sel_zero_ub]
@@ -971,18 +987,19 @@ class Dilation2D(Dilation2DBase):
         blk_stride_list = [1, self.stride_w, 0]
 
         with self.instance.if_scope(tik.all(h_in >= 0, h_in < self.h_in)):
-            self.vector_add(start_list, ub_list, self.out_backprop_w, rep_stride_list, blk_stride_list, num * self.c0)
+            self.vector_add(start_list, ub_list, self.out_backprop_w, rep_stride_list,
+                            blk_stride_list, num * self.c0)
             self.vector_add([expand_start + 8, x_start + 8, filter_start + 8], ub_list, self.out_backprop_w,
                             rep_stride_list, blk_stride_list, num * self.c0)
             if self.pad_left > 0:
                 num = (self.pad_left - fw_i * self.rate_w + self.stride_w - 1) // self.stride_w
-                self.vector_dup(expand_start, expand_ub, num * self.c0, MIN_VAL)
+                self.vector_dup(expand_start, expand_ub, num * self.c0, Constant.MIN_VAL)
             if self.pad_right > 0:
                 end = (self.pad_left - fw_i * self.rate_w + self.w_in + self.stride_w - 1) // self.stride_w
                 num = self.out_backprop_w - end
-                self.vector_dup(expand_start + end * self.c0, expand_ub, num * self.c0, MIN_VAL)
+                self.vector_dup(expand_start + end * self.c0, expand_ub, num * self.c0, Constant.MIN_VAL)
         with self.instance.else_scope():
-            self.vector_dup(expand_start, expand_ub, h_size, MIN_VAL)
+            self.vector_dup(expand_start, expand_ub, h_size, Constant.MIN_VAL)
 
     def cut_n(self, ub_list, offset_list, n_num, out_offset):
         """
@@ -1431,7 +1448,7 @@ class Dilation2D(Dilation2DBase):
                             blk_stride_list, num * self.c0)
             with self.instance.if_scope(self.pad_left - w_offset * self.stride_w > 0):
                 num = (x_w_offset - fw_i * self.rate_w + self.stride_w - 1) // self.stride_w
-                self.vector_dup(expand_start, expand_ub, num * self.c0, MIN_VAL)
+                self.vector_dup(expand_start, expand_ub, num * self.c0, Constant.MIN_VAL)
 
             w_len = (w_offset + w_num - 1) * self.stride_w - self.pad_left + self.window_w - 1
 
@@ -1443,9 +1460,9 @@ class Dilation2D(Dilation2DBase):
                 num_.set_as(w_num - end)
                 with self.instance.if_scope(num_ < 0):
                     num_.set_as(0)
-                self.vector_dup(expand_start + end * self.c0, expand_ub, num_ * self.c0, MIN_VAL)
+                self.vector_dup(expand_start + end * self.c0, expand_ub, num_ * self.c0, Constant.MIN_VAL)
         with self.instance.else_scope():
-            self.vector_dup(expand_start, expand_ub, h_size, MIN_VAL)
+            self.vector_dup(expand_start, expand_ub, h_size, Constant.MIN_VAL)
 
     def cut_w(self, ub_list, offset_list, w_num, out_offset):
         """

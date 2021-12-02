@@ -22,9 +22,14 @@ from te import tik
 from te import platform as cce
 
 
-A = 509.0 # Prime number for LCG calculation
-MAX = 1023.0 # Maximum period of LCG
-BIAS = math.sqrt(2)
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    PRIME_NUM = 509.0 # Prime number for LCG calculation
+    MAX = 1023.0 # Maximum period of LCG
+    BIAS = math.sqrt(2)
 
 
 def _ceil_div(value, factor):
@@ -62,7 +67,7 @@ class DropoutV2(object):
     """
     Define dropout calculation process
     """
-    # 'pylint: too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def __init__(self, x, seed, y, mask, new_seed, p, kernel_name="dropout_v2"):
         """
         Use the lcg algorithm to generate random numbers and implement dropout calculations
@@ -267,9 +272,9 @@ class DropoutV2(object):
         :return:
         """
         repeat_time = int(repeat_time)
-        a = self.tik_instance.Scalar(dtype="float32", init_value=A)
-        bias = self.tik_instance.Scalar(dtype="float32", init_value=BIAS)
-        m = self.tik_instance.Scalar(dtype="float32", init_value=A / MAX)
+        a = self.tik_instance.Scalar(dtype="float32", init_value=Constant.PRIME_NUM)
+        bias = self.tik_instance.Scalar(dtype="float32", init_value=Constant.BIAS)
+        m = self.tik_instance.Scalar(dtype="float32", init_value=Constant.PRIME_NUM / Constant.MAX)
         self.tik_instance.vec_muls(mask, self.seed_drop_ub[offset], self.seed_ub[offset], m, repeat_time, 8, 8)
         self.tik_instance.vec_muls(mask, self.seed_ub[offset], self.seed_ub[offset], a, repeat_time, 8, 8)
         self.tik_instance.vec_adds(mask, self.seed_ub[offset], self.seed_ub[offset], bias, repeat_time, 8, 8)
@@ -277,8 +282,8 @@ class DropoutV2(object):
                                    8, 8)
         self.tik_instance.vec_conv(mask, "", self.seed_drop_ub[offset], self.seed_tmp_int[offset], repeat_time, 8,
                                    8)
-        self.tik_instance.vec_muls(mask, self.seed_drop_ub[offset], self.seed_drop_ub[offset], MAX, repeat_time, 8,
-                                   8)
+        self.tik_instance.vec_muls(mask, self.seed_drop_ub[offset], self.seed_drop_ub[offset], Constant.MAX,
+                                   repeat_time, 8, 8)
         self.tik_instance.vec_sub(mask, self.seed_ub[offset], self.seed_ub[offset], self.seed_drop_ub[offset],
                                   repeat_time, 8, 8, 8)
         self.tik_instance.vec_abs(mask, self.seed_ub[offset], self.seed_ub[offset], repeat_time, 8, 8)
@@ -291,7 +296,7 @@ class DropoutV2(object):
         :param offset: relative address offset
         :return:
         """
-        threshold = MAX * self.prob
+        threshold = Constant.MAX * self.prob
         self.seed_tmp_uint = self.seed_tmp_int.reinterpret_cast_to("uint64")
         self.tik_instance.vec_dup(mask, self.seed_drop_ub[offset], threshold, repeat_time, 8)
         self.tik_instance.vec_dup(mask, self.seed_mask_ub[offset], 1, repeat_time, 8)
@@ -326,6 +331,7 @@ class DropoutV2(object):
                                       repeat_time, 8, 8, 8)
             self.tik_instance.vec_muls(mask, self.seed_drop_ub[offset], self.seed_drop_ub[offset],
                                        1 / (1 - self.prob), repeat_time, 8, 8)
+
 
 # 'pylint: disable=too-many-arguments
 @fusion_manager.register("dropout_v2")

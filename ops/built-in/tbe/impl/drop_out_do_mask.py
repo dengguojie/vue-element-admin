@@ -27,8 +27,14 @@ from te.utils import shape_util
 from impl.util.platform_adapter import error_manager_vector
 from impl.util import util_select_op_base
 
-# elems one batch can process
-SIZE_SIXTEEN = 16
+
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    # elems one batch can process
+    SIZE_SIXTEEN = 16
 
 
 # 'pylint: disable=too-many-branches,unused-argument
@@ -50,7 +56,7 @@ def _division_sixteen(shape):
         error_detail = "value of shape is illegal, shape[-1]:%s, shape[-2]:%s" % (shape[-1], shape[-2])
         error_manager_vector.raise_err_specific_reson("dropout_do_mask", error_detail)
 
-    return shape[-1] % SIZE_SIXTEEN == 0 and shape[-2] % SIZE_SIXTEEN == 0
+    return shape[-1] % Constant.SIZE_SIXTEEN == 0 and shape[-2] % Constant.SIZE_SIXTEEN == 0
 
 
 def op_select_format(input_tensor,

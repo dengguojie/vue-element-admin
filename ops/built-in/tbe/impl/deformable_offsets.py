@@ -26,21 +26,25 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import para_check
 
 
-BITS_OF_BYTE = 8
-BLOCK_BYTES_SIZE = 32
-VECTOR_BYTES_SIZE = 256
-# const parameters used for float16 and uint16
-FP16_SIZE = 2
-FP16_MASK = 128
-FP16_RATIO = 1
-# const parameters used for float32 and int32
-FP32_SIZE = 4
-FP32_MASK = 64
-FP32_RATIO = 2
-BLOCK_SIZE = 32
-# Mask size for clip operation.
-CAL_MASK_SIZE = 64
-F16_CAL_MASK_SIZE = 128
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    BLOCK_BYTES_SIZE = 32
+    VECTOR_BYTES_SIZE = 256
+    # const parameters used for float16 and uint16
+    FP16_SIZE = 2
+    FP16_MASK = 128
+    FP16_RATIO = 1
+    # const parameters used for float32 and int32
+    FP32_SIZE = 4
+    FP32_MASK = 64
+    FP32_RATIO = 2
+    BLOCK_SIZE = 32
+    # Mask size for clip operation.
+    CAL_MASK_SIZE = 64
+    F16_CAL_MASK_SIZE = 128
 
 
 def _ceil_div(value, block):
@@ -70,17 +74,17 @@ def get_params(dtype):
     None.
     """
     if dtype in ("float16", "uint16"):
-        size = FP16_SIZE
-        mask = FP16_MASK
-        ratio = FP16_RATIO
+        size = Constant.FP16_SIZE
+        mask = Constant.FP16_MASK
+        ratio = Constant.FP16_RATIO
     elif dtype in ("float32", "int32"):
-        size = FP32_SIZE
-        mask = FP32_MASK
-        ratio = FP32_RATIO
+        size = Constant.FP32_SIZE
+        mask = Constant.FP32_MASK
+        ratio = Constant.FP32_RATIO
     return size, mask, ratio
 
 
-# 'pylint: disable=unused-argument,unused-variable  
+# 'pylint: disable=unused-argument,unused-variable
 # 'pylint: disable=too-many-arguments,too-many-locals,too-many-return-statements
 def check_supported(x,
                     offsets,
@@ -124,11 +128,12 @@ def check_supported(x,
     return True, ""
 
 
-# 'pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-statements
+# 'pylint: disable=too-many-instance-attributes,too-many-arguments
 class DeformableOffsets:
     """
     initialize some properties
     """
+    # 'pylint: disable=too-many-statements
     def __init__(self, x, offsets, helper, y, strides, pads, ksize,
                  data_format="NHWC", deformable_groups=1, modulated=True,
                  kernel_name="deformable_offsets"):
@@ -151,8 +156,8 @@ class DeformableOffsets:
         self.total_ub = tik.Dprofile().get_unified_buffer_size()
         self.ai_core_num = tik.Dprofile().get_aicore_num()
         self.dtype_bytes_size = common_util.get_data_size(self.x_dtype)
-        self.data_in_one_block = BLOCK_BYTES_SIZE // self.dtype_bytes_size
-        self.data_in_one_vector = VECTOR_BYTES_SIZE // self.dtype_bytes_size
+        self.data_in_one_block = Constant.BLOCK_BYTES_SIZE // self.dtype_bytes_size
+        self.data_in_one_vector = Constant.VECTOR_BYTES_SIZE // self.dtype_bytes_size
         max_ub_elem = (self.total_ub - 21480) // self.dtype_bytes_size
         self.dim_offsets_n = self.offsets_shape[0]
         self.dim_offsets_h = self.offsets_shape[1]
@@ -255,7 +260,7 @@ class DeformableOffsets:
         tail_elem = process_num % mask
         if tail_elem != 0:
             self.tik_instance.vec_dup(tail_elem, ub_to_dup[repeat_times * mask],
-                                      const_val, 1, tail_elem // (BLOCK_SIZE // size))
+                                      const_val, 1, tail_elem // (Constant.BLOCK_SIZE // size))
 
     def vector_adds(self, dst, src, const, process_num, dtype="float32"):
         """
@@ -285,8 +290,8 @@ class DeformableOffsets:
                                     src[mask * repeat_times],
                                     const,
                                     1, 1, 1,
-                                    tail_elem // (BLOCK_SIZE // size),
-                                    tail_elem // (BLOCK_SIZE // size))
+                                    tail_elem // (Constant.BLOCK_SIZE // size),
+                                    tail_elem // (Constant.BLOCK_SIZE // size))
 
     def vector_add(self, dst, src1, src2, process_num, dtype="float32"):
         """
@@ -316,9 +321,9 @@ class DeformableOffsets:
                                    src1[mask * repeat_times],
                                    src2[mask * repeat_times],
                                    1, 1, 1, 1,
-                                   tail_elem // (BLOCK_SIZE // size),
-                                   tail_elem // (BLOCK_SIZE // size),
-                                   tail_elem // (BLOCK_SIZE // size))
+                                   tail_elem // (Constant.BLOCK_SIZE // size),
+                                   tail_elem // (Constant.BLOCK_SIZE // size),
+                                   tail_elem // (Constant.BLOCK_SIZE // size))
 
     def vector_sub(self, dst, src1, src2, process_num, dtype="float32"):
         """
@@ -348,9 +353,9 @@ class DeformableOffsets:
                                    src1[mask * repeat_times],
                                    src2[mask * repeat_times],
                                    1, 1, 1, 1,
-                                   tail_elem // (BLOCK_SIZE // size),
-                                   tail_elem // (BLOCK_SIZE // size),
-                                   tail_elem // (BLOCK_SIZE // size))
+                                   tail_elem // (Constant.BLOCK_SIZE // size),
+                                   tail_elem // (Constant.BLOCK_SIZE // size),
+                                   tail_elem // (Constant.BLOCK_SIZE // size))
 
     def vector_mul(self, dst, src1, src2, process_num, dtype="float32"):
         """
@@ -380,9 +385,9 @@ class DeformableOffsets:
                                    src1[mask * repeat_times],
                                    src2[mask * repeat_times],
                                    1, 1, 1, 1,
-                                   tail_elem // (BLOCK_SIZE // size),
-                                   tail_elem // (BLOCK_SIZE // size),
-                                   tail_elem // (BLOCK_SIZE // size))
+                                   tail_elem // (Constant.BLOCK_SIZE // size),
+                                   tail_elem // (Constant.BLOCK_SIZE // size),
+                                   tail_elem // (Constant.BLOCK_SIZE // size))
 
     def vector_muls(self, dst, src, const, process_num, dtype="float32"):
         """
@@ -413,8 +418,8 @@ class DeformableOffsets:
                                     src[mask * repeat_times],
                                     const,
                                     1, 1, 1,
-                                    tail_elem // (BLOCK_SIZE // size),
-                                    tail_elem // (BLOCK_SIZE // size))
+                                    tail_elem // (Constant.BLOCK_SIZE // size),
+                                    tail_elem // (Constant.BLOCK_SIZE // size))
 
     def vector_conv_int322fp16(self, dst_ub_fp16, src_ub_int, process_num):
         """
@@ -568,40 +573,40 @@ class DeformableOffsets:
         vsel_support = tbe_platform.api_check_support("tik.vsel", dtype="float32")
         if vsel_support and vmax_support:
             self.ub_limit_h = self.tik_instance.Tensor(
-                "float32", (CAL_MASK_SIZE,), name="ub_limit_h", scope=tbe_platform.scope_ubuf)
+                "float32", (Constant.CAL_MASK_SIZE,), name="ub_limit_h", scope=tbe_platform.scope_ubuf)
             self.ub_limit_w = self.tik_instance.Tensor(
-                "float32", (CAL_MASK_SIZE,), name="ub_limit_w", scope=tbe_platform.scope_ubuf)
+                "float32", (Constant.CAL_MASK_SIZE,), name="ub_limit_w", scope=tbe_platform.scope_ubuf)
             self.ub_limit_0 = self.tik_instance.Tensor(
-                "float32", (CAL_MASK_SIZE,), name="ub_limit_0", scope=tbe_platform.scope_ubuf)
-            self.vector_dup(self.ub_limit_h, CAL_MASK_SIZE, self.dim_h_in - 1, dtype="float32")
-            self.vector_dup(self.ub_limit_w, CAL_MASK_SIZE, self.dim_w_in - 1, dtype="float32")
-            self.vector_dup(self.ub_limit_0, CAL_MASK_SIZE, 0, dtype="float32")
+                "float32", (Constant.CAL_MASK_SIZE,), name="ub_limit_0", scope=tbe_platform.scope_ubuf)
+            self.vector_dup(self.ub_limit_h, Constant.CAL_MASK_SIZE, self.dim_h_in - 1, dtype="float32")
+            self.vector_dup(self.ub_limit_w, Constant.CAL_MASK_SIZE, self.dim_w_in - 1, dtype="float32")
+            self.vector_dup(self.ub_limit_0, Constant.CAL_MASK_SIZE, 0, dtype="float32")
         else:
             self.ub_limit_h = self.tik_instance.Tensor(
-                "float16", (F16_CAL_MASK_SIZE,), name="ub_limit_h", scope=tbe_platform.scope_ubuf)
+                "float16", (Constant.F16_CAL_MASK_SIZE,), name="ub_limit_h", scope=tbe_platform.scope_ubuf)
             self.ub_limit_w = self.tik_instance.Tensor(
-                "float16", (F16_CAL_MASK_SIZE,), name="ub_limit_w", scope=tbe_platform.scope_ubuf)
+                "float16", (Constant.F16_CAL_MASK_SIZE,), name="ub_limit_w", scope=tbe_platform.scope_ubuf)
             self.ub_limit_0 = self.tik_instance.Tensor(
-                "float16", (F16_CAL_MASK_SIZE,), name="ub_limit_0", scope=tbe_platform.scope_ubuf)
-            self.vector_dup(self.ub_limit_h, F16_CAL_MASK_SIZE, self.dim_h_in - 1, dtype="float16")
-            self.vector_dup(self.ub_limit_w, F16_CAL_MASK_SIZE, self.dim_w_in - 1, dtype="float16")
-            self.vector_dup(self.ub_limit_0, F16_CAL_MASK_SIZE, 0, dtype="float16")
+                "float16", (Constant.F16_CAL_MASK_SIZE,), name="ub_limit_0", scope=tbe_platform.scope_ubuf)
+            self.vector_dup(self.ub_limit_h, Constant.F16_CAL_MASK_SIZE, self.dim_h_in - 1, dtype="float16")
+            self.vector_dup(self.ub_limit_w, Constant.F16_CAL_MASK_SIZE, self.dim_w_in - 1, dtype="float16")
+            self.vector_dup(self.ub_limit_0, Constant.F16_CAL_MASK_SIZE, 0, dtype="float16")
             self.ub_offsets_ceil_f16 = self.tik_instance.Tensor(
-                "float16", (F16_CAL_MASK_SIZE,), name="ub_offsets_ceil_f16", scope=tbe_platform.scope_ubuf)
+                "float16", (Constant.F16_CAL_MASK_SIZE,), name="ub_offsets_ceil_f16", scope=tbe_platform.scope_ubuf)
             self.ub_offsets_floor_f16 = self.tik_instance.Tensor(
-                "float16", (F16_CAL_MASK_SIZE,), name="ub_offsets_floor_f16", scope=tbe_platform.scope_ubuf)
+                "float16", (Constant.F16_CAL_MASK_SIZE,), name="ub_offsets_floor_f16", scope=tbe_platform.scope_ubuf)
         self.sel_mask1 = self.tik_instance.Tensor(
-            "uint16", (F16_CAL_MASK_SIZE,), name="sel_mask1", scope=tbe_platform.scope_ubuf)
+            "uint16", (Constant.F16_CAL_MASK_SIZE,), name="sel_mask1", scope=tbe_platform.scope_ubuf)
         self.sel_mask2 = self.tik_instance.Tensor(
-            "uint16", (F16_CAL_MASK_SIZE,), name="sel_mask2", scope=tbe_platform.scope_ubuf)
+            "uint16", (Constant.F16_CAL_MASK_SIZE,), name="sel_mask2", scope=tbe_platform.scope_ubuf)
         self.sel_mask_ceil_x = self.tik_instance.Tensor(
-            "uint16", (F16_CAL_MASK_SIZE,), name="sel_mask_ceil_x", scope=tbe_platform.scope_ubuf)
+            "uint16", (Constant.F16_CAL_MASK_SIZE,), name="sel_mask_ceil_x", scope=tbe_platform.scope_ubuf)
         self.sel_mask_ceil_y = self.tik_instance.Tensor(
-            "uint16", (F16_CAL_MASK_SIZE,), name="sel_mask_ceil_y", scope=tbe_platform.scope_ubuf)
+            "uint16", (Constant.F16_CAL_MASK_SIZE,), name="sel_mask_ceil_y", scope=tbe_platform.scope_ubuf)
         self.sel_mask_floor_x = self.tik_instance.Tensor(
-            "uint16", (F16_CAL_MASK_SIZE,), name="sel_mask_floor_x", scope=tbe_platform.scope_ubuf)
+            "uint16", (Constant.F16_CAL_MASK_SIZE,), name="sel_mask_floor_x", scope=tbe_platform.scope_ubuf)
         self.sel_mask_floor_y = self.tik_instance.Tensor(
-            "uint16", (F16_CAL_MASK_SIZE,), name="sel_mask_floor_y", scope=tbe_platform.scope_ubuf)
+            "uint16", (Constant.F16_CAL_MASK_SIZE,), name="sel_mask_floor_y", scope=tbe_platform.scope_ubuf)
 
     def deformable_offset_compute(self):
         """
@@ -768,38 +773,42 @@ class DeformableOffsets:
 
                     if not self.cmp_flag:
                         ub_offset_x_ceil_f16 = self.tik_instance.Tensor("float16",
-                                                                        (F16_CAL_MASK_SIZE,),
+                                                                        (Constant.F16_CAL_MASK_SIZE,),
                                                                         scope=tbe_platform.scope_ubuf,
                                                                         name="ub_offset_x_ceil_f16")
                         ub_offset_y_ceil_f16 = self.tik_instance.Tensor("float16",
-                                                                        (F16_CAL_MASK_SIZE,),
+                                                                        (Constant.F16_CAL_MASK_SIZE,),
                                                                         scope=tbe_platform.scope_ubuf,
                                                                         name="ub_offset_y_ceil_f16")
                         ub_offset_x_floor_f16 = self.tik_instance.Tensor("float16",
-                                                                         (F16_CAL_MASK_SIZE,),
+                                                                         (Constant.F16_CAL_MASK_SIZE,),
                                                                          scope=tbe_platform.scope_ubuf,
                                                                          name="ub_offset_x_floor_f16")
                         ub_offset_y_floor_f16 = self.tik_instance.Tensor("float16",
-                                                                         (F16_CAL_MASK_SIZE,),
+                                                                         (Constant.F16_CAL_MASK_SIZE,),
                                                                          scope=tbe_platform.scope_ubuf,
                                                                          name="ub_offset_y_floor_f16")
                         scalar_tmp_f16 = self.tik_instance.Scalar(dtype="float16")
                         scalar_tmp_f16.set_as(
                             self.ub_offsets_ceil_f16[group_idx * self.dim_kh * self.dim_kw + \
                                                      kh_idx * self.dim_kw + kw_idx])
-                        self.vector_dup(ub_offset_x_ceil_f16, F16_CAL_MASK_SIZE, scalar_tmp_f16, dtype="float16")
+                        self.vector_dup(ub_offset_x_ceil_f16, Constant.F16_CAL_MASK_SIZE,
+                                        scalar_tmp_f16, dtype="float16")
                         scalar_tmp_f16.set_as(
                             self.ub_offsets_ceil_f16[(self.dim_group + group_idx) * self.dim_kh * self.dim_kw + \
                                                      kh_idx * self.dim_kw + kw_idx])
-                        self.vector_dup(ub_offset_y_ceil_f16, F16_CAL_MASK_SIZE, scalar_tmp_f16, dtype="float16")
+                        self.vector_dup(ub_offset_y_ceil_f16, Constant.F16_CAL_MASK_SIZE,
+                                        scalar_tmp_f16, dtype="float16")
                         scalar_tmp_f16.set_as(
                             self.ub_offsets_floor_f16[group_idx * self.dim_kh * self.dim_kw + \
                                                       kh_idx * self.dim_kw + kw_idx])
-                        self.vector_dup(ub_offset_x_floor_f16, F16_CAL_MASK_SIZE, scalar_tmp_f16, dtype="float16")
+                        self.vector_dup(ub_offset_x_floor_f16, Constant.F16_CAL_MASK_SIZE,
+                                        scalar_tmp_f16, dtype="float16")
                         scalar_tmp_f16.set_as(
                             self.ub_offsets_floor_f16[(self.dim_group + group_idx) * self.dim_kh * self.dim_kw + \
                                                       kh_idx * self.dim_kw + kw_idx])
-                        self.vector_dup(ub_offset_y_floor_f16, F16_CAL_MASK_SIZE, scalar_tmp_f16, dtype="float16")
+                        self.vector_dup(ub_offset_y_floor_f16, Constant.F16_CAL_MASK_SIZE,
+                                        scalar_tmp_f16, dtype="float16")
 
                         self.tik_instance.vec_cmpv_ge(self.sel_mask1,
                                                       ub_offset_y_ceil_f16,
@@ -809,7 +818,7 @@ class DeformableOffsets:
                                                       ub_offset_y_ceil_f16,
                                                       self.ub_limit_h,
                                                       1, 0, 0)
-                        self.tik_instance.vand(F16_CAL_MASK_SIZE,
+                        self.tik_instance.vand(Constant.F16_CAL_MASK_SIZE,
                                                self.sel_mask_ceil_y,
                                                self.sel_mask1,
                                                self.sel_mask2,
@@ -822,7 +831,7 @@ class DeformableOffsets:
                                                       ub_offset_y_floor_f16,
                                                       self.ub_limit_h,
                                                       1, 0, 0)
-                        self.tik_instance.vand(F16_CAL_MASK_SIZE,
+                        self.tik_instance.vand(Constant.F16_CAL_MASK_SIZE,
                                                self.sel_mask_floor_y,
                                                self.sel_mask1,
                                                self.sel_mask2,
@@ -835,7 +844,7 @@ class DeformableOffsets:
                                                       ub_offset_x_ceil_f16,
                                                       self.ub_limit_w,
                                                       1, 0, 0)
-                        self.tik_instance.vand(F16_CAL_MASK_SIZE,
+                        self.tik_instance.vand(Constant.F16_CAL_MASK_SIZE,
                                                self.sel_mask_ceil_x,
                                                self.sel_mask1,
                                                self.sel_mask2,
@@ -848,72 +857,72 @@ class DeformableOffsets:
                                                       ub_offset_x_floor_f16,
                                                       self.ub_limit_w,
                                                       1, 0, 0)
-                        self.tik_instance.vand(F16_CAL_MASK_SIZE,
+                        self.tik_instance.vand(Constant.F16_CAL_MASK_SIZE,
                                                self.sel_mask_floor_x,
                                                self.sel_mask1,
                                                self.sel_mask2,
                                                1, 1, 1, 1, 8, 8, 8)
                         self.clip_tensor(ub_offset_x_ceil_f16,
                                          ub_offset_y_ceil_f16,
-                                         F16_CAL_MASK_SIZE,
+                                         Constant.F16_CAL_MASK_SIZE,
                                          dtype="float16")
                         self.clip_tensor(ub_offset_x_floor_f16,
                                          ub_offset_y_floor_f16,
-                                         F16_CAL_MASK_SIZE,
+                                         Constant.F16_CAL_MASK_SIZE,
                                          dtype="float16")
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_x_ceil_int32,
                                                           ub_offset_x_ceil_f16,
-                                                          CAL_MASK_SIZE,
+                                                          Constant.CAL_MASK_SIZE,
                                                           mode="ceil")
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_x_floor_int32,
                                                           ub_offset_x_floor_f16,
-                                                          CAL_MASK_SIZE,
+                                                          Constant.CAL_MASK_SIZE,
                                                           mode="ceil")
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_y_ceil_int32,
                                                           ub_offset_y_ceil_f16,
-                                                          CAL_MASK_SIZE,
+                                                          Constant.CAL_MASK_SIZE,
                                                           mode="ceil")
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_y_floor_int32,
                                                           ub_offset_y_floor_f16,
-                                                          CAL_MASK_SIZE,
+                                                          Constant.CAL_MASK_SIZE,
                                                           mode="ceil")
                     else:
                         ub_offset_x_ceil_f32 = self.tik_instance.Tensor("float32",
-                                                                        (CAL_MASK_SIZE,),
+                                                                        (Constant.CAL_MASK_SIZE,),
                                                                         scope=tbe_platform.scope_ubuf,
                                                                         name="ub_offset_x_ceil_f32")
                         ub_offset_y_ceil_f32 = self.tik_instance.Tensor("float32",
-                                                                        (CAL_MASK_SIZE,),
+                                                                        (Constant.CAL_MASK_SIZE,),
                                                                         scope=tbe_platform.scope_ubuf,
                                                                         name="ub_offset_y_ceil_f32")
                         ub_offset_x_floor_f32 = self.tik_instance.Tensor("float32",
-                                                                         (CAL_MASK_SIZE,),
+                                                                         (Constant.CAL_MASK_SIZE,),
                                                                          scope=tbe_platform.scope_ubuf,
                                                                          name="ub_offset_x_floor_f32")
                         ub_offset_y_floor_f32 = self.tik_instance.Tensor("float32",
-                                                                         (CAL_MASK_SIZE,),
+                                                                         (Constant.CAL_MASK_SIZE,),
                                                                          scope=tbe_platform.scope_ubuf,
                                                                          name="ub_offset_y_floor_f32")
                         scalar_tmp_f32.set_as(
                             self.ub_offsets_ceil[group_idx * self.dim_kh * self.dim_kw + \
                                                  kh_idx * self.dim_kw + kw_idx])
-                        self.vector_dup(ub_offset_x_ceil_f32, CAL_MASK_SIZE, scalar_tmp_f32)
+                        self.vector_dup(ub_offset_x_ceil_f32, Constant.CAL_MASK_SIZE, scalar_tmp_f32)
                         scalar_tmp_f32.set_as(
                             self.ub_offsets_ceil[(self.dim_group + group_idx) * self.dim_kh * self.dim_kw + \
                                                  kh_idx * self.dim_kw + kw_idx])
-                        self.vector_dup(ub_offset_y_ceil_f32, CAL_MASK_SIZE, scalar_tmp_f32)
+                        self.vector_dup(ub_offset_y_ceil_f32, Constant.CAL_MASK_SIZE, scalar_tmp_f32)
                         scalar_tmp_f32.set_as(
                             self.ub_offsets_floor[group_idx * self.dim_kh * self.dim_kw + \
                                                   kh_idx * self.dim_kw + kw_idx])
-                        self.vector_dup(ub_offset_x_floor_f32, CAL_MASK_SIZE, scalar_tmp_f32)
+                        self.vector_dup(ub_offset_x_floor_f32, Constant.CAL_MASK_SIZE, scalar_tmp_f32)
                         scalar_tmp_f32.set_as(
                             self.ub_offsets_floor[(self.dim_group + group_idx) * self.dim_kh * self.dim_kw + \
                                                   kh_idx * self.dim_kw + kw_idx])
-                        self.vector_dup(ub_offset_y_floor_f32, CAL_MASK_SIZE, scalar_tmp_f32)
+                        self.vector_dup(ub_offset_y_floor_f32, Constant.CAL_MASK_SIZE, scalar_tmp_f32)
 
                         self.tik_instance.vec_cmpv_ge(self.sel_mask1,
                                                       ub_offset_y_ceil_f32,
@@ -923,7 +932,7 @@ class DeformableOffsets:
                                                       ub_offset_y_ceil_f32,
                                                       self.ub_limit_h,
                                                       1, 0, 0)
-                        self.tik_instance.vand(CAL_MASK_SIZE,
+                        self.tik_instance.vand(Constant.CAL_MASK_SIZE,
                                                self.sel_mask_ceil_y,
                                                self.sel_mask1,
                                                self.sel_mask2,
@@ -936,7 +945,7 @@ class DeformableOffsets:
                                                       ub_offset_y_floor_f32,
                                                       self.ub_limit_h,
                                                       1, 0, 0)
-                        self.tik_instance.vand(CAL_MASK_SIZE,
+                        self.tik_instance.vand(Constant.CAL_MASK_SIZE,
                                                self.sel_mask_floor_y,
                                                self.sel_mask1,
                                                self.sel_mask2,
@@ -949,7 +958,7 @@ class DeformableOffsets:
                                                       ub_offset_x_ceil_f32,
                                                       self.ub_limit_w,
                                                       1, 0, 0)
-                        self.tik_instance.vand(CAL_MASK_SIZE,
+                        self.tik_instance.vand(Constant.CAL_MASK_SIZE,
                                                self.sel_mask_ceil_x,
                                                self.sel_mask1,
                                                self.sel_mask2,
@@ -962,36 +971,36 @@ class DeformableOffsets:
                                                       ub_offset_x_floor_f32,
                                                       self.ub_limit_w,
                                                       1, 0, 0)
-                        self.tik_instance.vand(CAL_MASK_SIZE,
+                        self.tik_instance.vand(Constant.CAL_MASK_SIZE,
                                                self.sel_mask_floor_x,
                                                self.sel_mask1,
                                                self.sel_mask2,
                                                1, 1, 1, 1, 8, 8, 8)
                         self.clip_tensor(ub_offset_x_ceil_f32,
                                          ub_offset_y_ceil_f32,
-                                         CAL_MASK_SIZE)
+                                         Constant.CAL_MASK_SIZE)
                         self.clip_tensor(ub_offset_x_floor_f32,
                                          ub_offset_y_floor_f32,
-                                         CAL_MASK_SIZE)
+                                         Constant.CAL_MASK_SIZE)
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_x_ceil_int32,
                                                           ub_offset_x_ceil_f32,
-                                                          CAL_MASK_SIZE,
+                                                          Constant.CAL_MASK_SIZE,
                                                           mode="ceil")
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_x_floor_int32,
                                                           ub_offset_x_floor_f32,
-                                                          CAL_MASK_SIZE,
+                                                          Constant.CAL_MASK_SIZE,
                                                           mode="ceil")
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_y_ceil_int32,
                                                           ub_offset_y_ceil_f32,
-                                                          CAL_MASK_SIZE,
+                                                          Constant.CAL_MASK_SIZE,
                                                           mode="ceil")
                         util_tik_comm_func.tik_func_vconv(self.tik_instance,
                                                           ub_offsets_y_floor_int32,
                                                           ub_offset_y_floor_f32,
-                                                          CAL_MASK_SIZE,
+                                                          Constant.CAL_MASK_SIZE,
                                                           mode="ceil")
                     scalar_idx_lth_int.set_as(ub_offsets_y_floor_int32[0])
                     scalar_idx_ltw_int.set_as(ub_offsets_x_floor_int32[0])
@@ -1005,28 +1014,28 @@ class DeformableOffsets:
                         self.x_dtype, (self.dim_group_c,), scope=tbe_platform.scope_ubuf, name="ub_rt_x")
                     ub_rb_x = self.tik_instance.Tensor(
                         self.x_dtype, (self.dim_group_c,), scope=tbe_platform.scope_ubuf, name="ub_rb_x")
-                    self.tik_instance.vand(CAL_MASK_SIZE,
+                    self.tik_instance.vand(Constant.CAL_MASK_SIZE,
                                            self.sel_mask1,
                                            self.sel_mask_floor_y,
                                            self.sel_mask_floor_x,
                                            1, 1, 1, 1, 8, 8, 8)
                     self.get_x(ub_lt_x, [n_idx, scalar_idx_lth_int, scalar_idx_ltw_int, group_idx],
                                self.dim_group_c, self.sel_mask1)
-                    self.tik_instance.vand(CAL_MASK_SIZE,
+                    self.tik_instance.vand(Constant.CAL_MASK_SIZE,
                                            self.sel_mask1,
                                            self.sel_mask_ceil_y,
                                            self.sel_mask_floor_x,
                                            1, 1, 1, 1, 8, 8, 8)
                     self.get_x(ub_lb_x, [n_idx, scalar_idx_lbh_int, scalar_idx_lbw_int, group_idx],
                                self.dim_group_c, self.sel_mask1)
-                    self.tik_instance.vand(CAL_MASK_SIZE,
+                    self.tik_instance.vand(Constant.CAL_MASK_SIZE,
                                            self.sel_mask1,
                                            self.sel_mask_floor_y,
                                            self.sel_mask_ceil_x,
                                            1, 1, 1, 1, 8, 8, 8)
                     self.get_x(ub_rt_x, [n_idx, scalar_idx_rth_int, scalar_idx_rtw_int, group_idx],
                                self.dim_group_c, self.sel_mask1)
-                    self.tik_instance.vand(CAL_MASK_SIZE,
+                    self.tik_instance.vand(Constant.CAL_MASK_SIZE,
                                            self.sel_mask1,
                                            self.sel_mask_ceil_y,
                                            self.sel_mask_ceil_x,

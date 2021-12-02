@@ -22,7 +22,13 @@ from tbe import tik
 from impl.add import add
 from impl import common_util
 
-MIN_VAL = -65534.0
+
+# 'pylint: disable=too-few-public-methods,not-use-list-comprehension
+class Constant:
+    """
+    The class for constant
+    """
+    MIN_VAL = -65534.0
 
 
 # 'pylint: disable=invalid-name,unused-argument,too-many-arguments,too-many-locals,too-many-branches
@@ -858,22 +864,22 @@ class Dilation2D(Dilation2DBase):
                     for wo_i in range(0, self.wo_start):
                         fw_i = (self.pad_left - wo_i * self.stride_w + self.rate_w - 1) // self.rate_w
                         l_expand = expand_start + wo_i * w_size
-                        self.vector_dup(l_expand, expand_ub, fw_i * self.c0, MIN_VAL)
+                        self.vector_dup(l_expand, expand_ub, fw_i * self.c0, Constant.MIN_VAL)
                 if self.w_out - self.wo_end > 0:
                     for wo_i in range(self.wo_end, self.w_out):
                         w_beg = wo_i * self.stride_w - self.pad_left
                         end = (self.w_in - w_beg + self.rate_w - 1) // self.rate_w
                         num = self.filter_w - end
                         r_expand = expand_start + wo_i * w_size + end * self.c0
-                        self.vector_dup(r_expand, expand_ub, num * self.c0, MIN_VAL)
+                        self.vector_dup(r_expand, expand_ub, num * self.c0, Constant.MIN_VAL)
             else:
                 if self.wo_start > 0:
                     left_size = self.wo_start * w_size
-                    self.vector_dup(expand_start, expand_ub, left_size, MIN_VAL)
+                    self.vector_dup(expand_start, expand_ub, left_size, Constant.MIN_VAL)
                 if self.w_out - self.wo_end > 0:
                     right_size = (self.w_out - self.wo_end) * w_size
                     start_index = expand_start + self.wo_end * w_size
-                    self.vector_dup(start_index, expand_ub, right_size, MIN_VAL)
+                    self.vector_dup(start_index, expand_ub, right_size, Constant.MIN_VAL)
 
                 if self.wo_start > 0:
                     for wo_i in range(0, self.wo_start):
@@ -901,7 +907,7 @@ class Dilation2D(Dilation2DBase):
                         self.vector_add([r_expand, r_x, r_filter], ub_list, 1, rep_stride_list, blk_stride_list,
                                         end * self.c0)
         with self.instance.else_scope():
-            self.vector_dup(expand_start, expand_ub, h_size, MIN_VAL)
+            self.vector_dup(expand_start, expand_ub, h_size, Constant.MIN_VAL)
 
     def reduce_h(self, fh_index, fh_size, expand_ub):
         """
@@ -1169,16 +1175,16 @@ class Dilation2D(Dilation2DBase):
                         with self.instance.for_range(left_start, left_end) as wo_i:
                             fw_i = (self.pad_left - wo_i * self.stride_w + self.rate_w - 1) // self.rate_w
                             l_expand = expand_start + (wo_i - w_offset) * w_size
-                            self.vector_dup(l_expand, expand_ub, fw_i * self.c0, MIN_VAL)
+                            self.vector_dup(l_expand, expand_ub, fw_i * self.c0, Constant.MIN_VAL)
                 if self.pad_right > 0:
                     with self.instance.if_scope(right_end > right_start):
                         with self.instance.for_range(right_start, right_end) as wo_i:
                             end = (self.w_in - (wo_i * self.stride_w - self.pad_left) + self.rate_w - 1) // self.rate_w
                             num = self.filter_w - end
                             r_expand = expand_start + (wo_i - w_offset) * w_size + end * self.c0
-                            self.vector_dup(r_expand, expand_ub, num * self.c0, MIN_VAL)
+                            self.vector_dup(r_expand, expand_ub, num * self.c0, Constant.MIN_VAL)
             with self.instance.else_scope():
-                self.vector_dup(expand_start, expand_ub, w_num * w_size, MIN_VAL)
+                self.vector_dup(expand_start, expand_ub, w_num * w_size, Constant.MIN_VAL)
             self.reduce_h(fh_i, fh_size, expand_ub)
         reduce_index = self.reduce_w(fh_size, fw_size, expand_ub)
         self.instance.data_move(self.y_gm[out_offset], expand_ub[reduce_index], 0, 1, fw_size // self.block_size, 0, 0)
