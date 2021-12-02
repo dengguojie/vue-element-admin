@@ -58,8 +58,11 @@ private:
     std::string SLICE_CAL_LEAKYRELU = "LeakyRelu";
     std::string SLICE_CAL_VADD = "Vadd";
     std::string SLICE_CAL_RELU = "Relu";
-    const std::vector<std::string> ELEM_WISE_WHITE_LIST = {SLICE_CAL_ELTWISE, SLICE_CAL_LEAKYRELU, \
-                                                           SLICE_CAL_VADD, SLICE_CAL_RELU};
+    std::string SLICE_CAL_ADD = "Add";
+    std::string SLICE_CAL_RELU6 = "Relu6";
+    std::string SLICE_CAL_Mul = "Mul";
+    const std::vector<std::string> ELEM_WISE_WHITE_LIST = {SLICE_CAL_ELTWISE, SLICE_CAL_LEAKYRELU, SLICE_CAL_ADD,\
+                                                           SLICE_CAL_VADD, SLICE_CAL_RELU, SLICE_CAL_RELU6, SLICE_CAL_Mul};
     // Calc slice info del/update function
     void ConvDelSplitInfoByOpType(std::vector<ge::NodePtr> &fusion_nodes, std::vector<AxisSplitMap> &split_maps);
     void ConvUpdateSplitInfoByOpType(std::vector<ge::NodePtr> &fusion_nodes,
