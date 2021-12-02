@@ -194,6 +194,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/gather_v2_fusion_pass.cc
   graph_fusion/ai_core/gelu_fusion_pass.cc
   graph_fusion/ai_core/gelu_onnx_fusion_pass.cc
+  graph_fusion/ai_core/gemm_to_matmul_fusion_pass.cc
   graph_fusion/ai_core/gemm_transpose_fusion_pass.cc
   graph_fusion/ai_core/gru_fusion_pass.cc
   graph_fusion/ai_core/hostbn_fusion_pass.cc
@@ -214,6 +215,7 @@ set(_aicore_fusion_srcs
   graph_fusion/ai_core/logsoftmaxgrad_fusion_pass.cc
   graph_fusion/ai_core/lstm_fusion_pass.cc
   graph_fusion/ai_core/map_index_pass.cc
+  graph_fusion/ai_core/matmul_transdata_fusion_pass.cc
   graph_fusion/ai_core/matmul_biasadd_fusion_pass.cc
   graph_fusion/ai_core/matmul_reshape_biasadd_fusion_pass.cc
   graph_fusion/ai_core/matmul_cast_fusion_pass.cc

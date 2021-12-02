@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "anchor_util.h"
+#include "common/util/platform_info.h"
 #include "error_util.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/attr_utils.h"
@@ -143,6 +144,19 @@ Status GemmTransFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
   FUSION_PASS_CHECK(gemm_node == nullptr,
                     ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "gemm_node is null, fusion failed."),
                     return PARAM_INVALID);
+
+  PlatformInfo platform_info;
+  OptionalInfo opti_compilation_info;
+  FUSION_PASS_CHECK(
+    PlatformInfoManager::Instance().GetPlatformInfoWithOutSocVersion(platform_info, opti_compilation_info) != SUCCESS,
+    ge::CommonRuntimeErrLog(FUSED_OP_TYPE.c_str(), "Get platform_info failed."),
+    return FAILED
+  );
+  map<string, vector<string>> intrinsic_map = platform_info.ai_core_intrinsic_dtype_map;
+  if (intrinsic_map.size() > 0 && intrinsic_map.find("Intrinsic_fix_pipe_l0c2out") != intrinsic_map.end()) {
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "gemm will change to matmul");
+    return NOT_CHANGED;
+  }
 
   int a_anchor = 0;
   int b_anchor = 1;
