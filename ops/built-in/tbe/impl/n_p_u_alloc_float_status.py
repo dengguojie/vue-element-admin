@@ -18,8 +18,14 @@ n_p_u_alloc_float_status
 from te.utils import para_check
 from te import tik
 
-# constant 8
-NUM_EIGHT = 8
+
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    This class for Constant.
+    """
+    # constant 8
+    NUM_EIGHT = 8
 
 
 # 'pylint: disable=invalid-name, too-many-locals, unused-argument
@@ -38,11 +44,11 @@ def n_p_u_alloc_float_status(data, kernel_name="n_p_u_alloc_float_status"):
     tik_instance: tik_instance
     """
     tik_instance = tik.Tik()
-    data_output = tik_instance.Tensor("float32", (NUM_EIGHT,),
+    data_output = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,),
                                       name="data_output", scope=tik.scope_gm)
-    data_ub = tik_instance.Tensor("float32", (NUM_EIGHT,), name="data_ub",
+    data_ub = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,), name="data_ub",
                                   scope=tik.scope_ubuf)
-    tik_instance.vector_dup(NUM_EIGHT, data_ub, 0, 1, 1, 1)
+    tik_instance.vector_dup(Constant.NUM_EIGHT, data_ub, 0, 1, 1, 1)
     tik_instance.data_move(data_output, data_ub, 0, 1, 1, 0, 0)
     tik_instance.BuildCCE(kernel_name, inputs=[], outputs=[data_output])
     return tik_instance

@@ -22,24 +22,29 @@ from te import platform as tbe_platform
 from te.utils.op_utils import *
 
 
-# UB size in byte
-UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
-# AICORE count
-CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-# C0 length
-C0_LEN = 16
-# repeat up limit for vector
-REPEAT_LIMIT = 255
-# repeat up limit for mte
-MTE_REPEAT_LIMIT = 4095
-# stride limit for mte
-STRIDE_LIMIT = 65535
-# mask value
-MASK_128 = 128
-# float16/32 type list
-TYPE_FLOAT_LIST = ("float16",)
-# int/uint8 type list
-TYPE_CHAR_LIST = ("int8",)
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    This class for Constant.
+    """
+    # UB size in byte
+    UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+    # AICORE count
+    CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    # C0 length
+    C0_LEN = 16
+    # repeat up limit for vector
+    REPEAT_LIMIT = 255
+    # repeat up limit for mte
+    MTE_REPEAT_LIMIT = 4095
+    # stride limit for mte
+    STRIDE_LIMIT = 65535
+    # mask value
+    MASK_128 = 128
+    # float16/32 type list
+    TYPE_FLOAT_LIST = ("float16",)
+    # int/uint8 type list
+    TYPE_CHAR_LIST = ("int8",)
 
 
 def _ceil_div(value_x, value_y):
@@ -63,22 +68,22 @@ def _clean_ubuf(tik_inst, src, src_offset, dup_len):
     if dup_len > 0:
         repeat = dup_len // (batch_size * dtype_factor)
         left_elem = dup_len % (batch_size * dtype_factor)
-        repeat_loop = repeat // REPEAT_LIMIT
-        repeat_left = repeat % REPEAT_LIMIT
+        repeat_loop = repeat // Constant.REPEAT_LIMIT
+        repeat_left = repeat % Constant.REPEAT_LIMIT
         dup_value = float(0)
 
         if repeat_loop > 0:
             with tik_inst.for_range(0, repeat_loop) as rpt_idx:
-                tik_inst.vector_dup(MASK_128,
+                tik_inst.vector_dup(Constant.MASK_128,
                                     src[src_offset + rpt_idx *
-                                        REPEAT_LIMIT *
+                                        Constant.REPEAT_LIMIT *
                                         batch_size * dtype_factor],
-                                    dup_value, REPEAT_LIMIT, 1, 8)
+                                    dup_value, Constant.REPEAT_LIMIT, 1, 8)
 
         if repeat_left > 0:
-            tik_inst.vector_dup(MASK_128,
+            tik_inst.vector_dup(Constant.MASK_128,
                                 src[src_offset + repeat_loop *
-                                    REPEAT_LIMIT *
+                                    Constant.REPEAT_LIMIT *
                                     batch_size * dtype_factor],
                                 dup_value, repeat_left, 1, 8)
 
@@ -99,20 +104,20 @@ def _fp16_2_char_conv(tik_inst, dst, src, dup_len, dst_offset=0):
     if dup_len > 0:
         repeat = dup_len // par_count
         left_elem = dup_len % par_count
-        repeat_loop = repeat // REPEAT_LIMIT
-        repeat_left = repeat % REPEAT_LIMIT
+        repeat_loop = repeat // Constant.REPEAT_LIMIT
+        repeat_left = repeat % Constant.REPEAT_LIMIT
 
         if repeat_loop > 0:
             with tik_inst.for_range(0, repeat_loop) as rpt_idx:
-                tik_inst.vconv(MASK_128, "",
-                               dst[rpt_idx * REPEAT_LIMIT * par_count +
+                tik_inst.vconv(Constant.MASK_128, "",
+                               dst[rpt_idx * Constant.REPEAT_LIMIT * par_count +
                                    dst_offset],
                                src,
-                               REPEAT_LIMIT, 1, 1, 4, 0)
+                               Constant.REPEAT_LIMIT, 1, 1, 4, 0)
 
         if repeat_left > 0:
-            tik_inst.vconv(MASK_128, "",
-                           dst[repeat_loop * REPEAT_LIMIT * par_count +
+            tik_inst.vconv(Constant.MASK_128, "",
+                           dst[repeat_loop * Constant.REPEAT_LIMIT * par_count +
                                dst_offset],
                            src,
                            repeat_left, 1, 1, 4, 0)
@@ -129,11 +134,11 @@ def _get_max_element_in_ub(col_size, in_dtype):
     get the up limit elements in UB
     """
 
-    if in_dtype.lower() in TYPE_FLOAT_LIST:
-        up_limit_size = UB_SIZE // 2
-    elif in_dtype.lower() in TYPE_CHAR_LIST:
+    if in_dtype.lower() in Constant.TYPE_FLOAT_LIST:
+        up_limit_size = Constant.UB_SIZE // 2
+    elif in_dtype.lower() in Constant.TYPE_CHAR_LIST:
         # save 256 Byte for vector_dup zero
-        up_limit_size = UB_SIZE - C0_LEN * C0_LEN
+        up_limit_size = Constant.UB_SIZE - Constant.C0_LEN * Constant.C0_LEN
 
     if col_size < up_limit_size:
         up_limit_size = col_size
@@ -146,11 +151,11 @@ def _get_max_element_in_ub_c1hw(col_size, block_size, in_dtype):
     get the up limit elements in UB for multiple core on c1hw
     """
 
-    if in_dtype.lower() in TYPE_FLOAT_LIST:
-        up_limit_size = UB_SIZE // 2 // 2 // block_size
+    if in_dtype.lower() in Constant.TYPE_FLOAT_LIST:
+        up_limit_size = Constant.UB_SIZE // 2 // 2 // block_size
     else:
         # save 256 Byte to set zero for int8/uint8
-        up_limit_size = (UB_SIZE - C0_LEN * C0_LEN) // 2 // block_size
+        up_limit_size = (Constant.UB_SIZE - Constant.C0_LEN * Constant.C0_LEN) // 2 // block_size
 
     loop_cnt = col_size // up_limit_size
     left_col = col_size % up_limit_size
@@ -174,11 +179,11 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
 
     axis_n, axis_c1, axis_h, axis_w, axis_c0 = shape_in
 
-    multi_n_loop_cnt = axis_n // CORE_NUM
-    multi_n_left_cnt = axis_n % CORE_NUM
+    multi_n_loop_cnt = axis_n // Constant.CORE_NUM
+    multi_n_left_cnt = axis_n % Constant.CORE_NUM
     col_size = axis_c1 * axis_h * axis_w * axis_c0
-    zero_loop_cnt = (_ceil_div(axis_n, C0_LEN) * C0_LEN - axis_n) // CORE_NUM
-    zero_line_left = (_ceil_div(axis_n, C0_LEN) * C0_LEN - axis_n) % CORE_NUM
+    zero_loop_cnt = (_ceil_div(axis_n, Constant.C0_LEN) * Constant.C0_LEN - axis_n) // Constant.CORE_NUM
+    zero_line_left = (_ceil_div(axis_n, Constant.C0_LEN) * Constant.C0_LEN - axis_n) % Constant.CORE_NUM
 
     in_ub_size = \
         _get_max_element_in_ub(col_size, data_in.dtype) // axis_c0 * axis_c0
@@ -186,13 +191,13 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
     in_ub = tik_inst.Tensor(data_in.dtype, (in_ub_size,),
                             name="in_ub", scope=tik.scope_ubuf)
     # tensor for setting in_ub to zero
-    if data_in.dtype.lower() in TYPE_CHAR_LIST:
-        zero_ub_size = C0_LEN * C0_LEN // 2
+    if data_in.dtype.lower() in Constant.TYPE_CHAR_LIST:
+        zero_ub_size = Constant.C0_LEN * Constant.C0_LEN // 2
         zero_ub = tik_inst.Tensor("float16", (zero_ub_size,),
                                   name="zero_ub", scope=tik.scope_ubuf)
         _clean_ubuf(tik_inst, zero_ub, 0, zero_ub_size)
 
-    with tik_inst.for_range(0, CORE_NUM, block_num=CORE_NUM) as block_idx:
+    with tik_inst.for_range(0, Constant.CORE_NUM, block_num=Constant.CORE_NUM) as block_idx:
 
         def _n_transfer_process(n_line, n_loop_count):
             """
@@ -210,13 +215,13 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
                 if not n_line:
                     input_offset = \
                         ub_loop_index * in_ub_size + \
-                        (block_idx + n_loop_count * CORE_NUM) * c1hwc0_size
+                        (block_idx + n_loop_count * Constant.CORE_NUM) * c1hwc0_size
                     tik_inst.data_move(in_ub,
                                        data_in[input_offset],
                                        0, 1, data_size // axis_c0, 0, 0)
 
                 repeat_cnt = data_size // axis_c0
-                dst_strides = _ceil_div(axis_n, C0_LEN) * C0_LEN
+                dst_strides = _ceil_div(axis_n, Constant.C0_LEN) * Constant.C0_LEN
 
                 def _move_data_out(rp_lp_index, rp_cnt):
                     """
@@ -225,13 +230,13 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
 
                     output_offset = \
                         (ub_loop_index * (in_ub_size // axis_c0 * dst_strides)
-                         + block_idx + n_loop_count * CORE_NUM +
-                         rp_lp_index * dst_strides * MTE_REPEAT_LIMIT +
+                         + block_idx + n_loop_count * Constant.CORE_NUM +
+                         rp_lp_index * dst_strides * Constant.MTE_REPEAT_LIMIT +
                          n_line) * axis_c0
-                    ub_offset = rp_lp_index * MTE_REPEAT_LIMIT * axis_c0
+                    ub_offset = rp_lp_index * Constant.MTE_REPEAT_LIMIT * axis_c0
 
                     # the strides limit is [1, 65535]
-                    if (dst_strides - 1) <= STRIDE_LIMIT:
+                    if (dst_strides - 1) <= Constant.STRIDE_LIMIT:
                         tik_inst.data_move(data_out[output_offset],
                                            in_ub[ub_offset],
                                            0, rp_cnt, 1, 0, dst_strides - 1)
@@ -243,12 +248,12 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
                                 in_ub[ub_offset + idx * axis_c0],
                                 0, 1, 1, 0, 0)
 
-                if repeat_cnt > MTE_REPEAT_LIMIT:
-                    rp_lp_cnt = repeat_cnt // MTE_REPEAT_LIMIT
-                    rp_left = repeat_cnt % MTE_REPEAT_LIMIT
+                if repeat_cnt > Constant.MTE_REPEAT_LIMIT:
+                    rp_lp_cnt = repeat_cnt // Constant.MTE_REPEAT_LIMIT
+                    rp_left = repeat_cnt % Constant.MTE_REPEAT_LIMIT
 
                     with tik_inst.for_range(0, rp_lp_cnt) as rp_lp_idx:
-                        _move_data_out(rp_lp_idx, MTE_REPEAT_LIMIT)
+                        _move_data_out(rp_lp_idx, Constant.MTE_REPEAT_LIMIT)
                     if rp_left:
                         _move_data_out(rp_lp_cnt, rp_left)
 
@@ -275,8 +280,8 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
             with tik_inst.if_scope(block_idx < multi_n_left_cnt):
                 _n_transfer_process(0, multi_n_loop_cnt)
 
-        if axis_n % C0_LEN:
-            if data_in.dtype.lower() in TYPE_FLOAT_LIST:
+        if axis_n % Constant.C0_LEN:
+            if data_in.dtype.lower() in Constant.TYPE_FLOAT_LIST:
                 _clean_ubuf(tik_inst, in_ub, 0, in_ub_size)
             else:
                 _fp16_2_char_conv(tik_inst, in_ub, zero_ub, in_ub_size)
@@ -298,10 +303,10 @@ def _multi_core_on_c1hw(tik_inst, data_in, data_out, shape_in):
     c1hw_size = axis_c1 * axis_h * axis_w
 
     # each core process certain c1hw lines
-    core_num = _ceil_div(c1hw_size, _ceil_div(c1hw_size, CORE_NUM))
+    core_num = _ceil_div(c1hw_size, _ceil_div(c1hw_size, Constant.CORE_NUM))
     per_core_c1hw_cnt = _ceil_div(c1hw_size, core_num)
     left_c1hw_cnt = c1hw_size - per_core_c1hw_cnt * (core_num - 1)
-    n_16_align = _ceil_div(axis_n, C0_LEN) * C0_LEN
+    n_16_align = _ceil_div(axis_n, Constant.C0_LEN) * Constant.C0_LEN
     nc0_align_size = n_16_align * axis_c0
 
     # to load xxx axis_n*axis_c0 each time
@@ -315,8 +320,8 @@ def _multi_core_on_c1hw(tik_inst, data_in, data_out, shape_in):
     out_ub = tik_inst.Tensor(data_in.dtype, (ub_size,),
                              name="out_ub", scope=tik.scope_ubuf)
     # set out_ub to zero
-    if data_in.dtype.lower() in TYPE_CHAR_LIST:
-        zero_ub_size = C0_LEN * C0_LEN // 2
+    if data_in.dtype.lower() in Constant.TYPE_CHAR_LIST:
+        zero_ub_size = Constant.C0_LEN * Constant.C0_LEN // 2
         zero_ub = tik_inst.Tensor("float16", (zero_ub_size,),
                                   name="zero_ub", scope=tik.scope_ubuf)
         _clean_ubuf(tik_inst, zero_ub, 0, zero_ub_size)
@@ -339,7 +344,7 @@ def _multi_core_on_c1hw(tik_inst, data_in, data_out, shape_in):
 
                 input_offset = (block_idx * per_core_c1hw_cnt +
                                 c1hw_lp_index * per_loop_size) * axis_c0
-                if (c1hw_size - col_size) <= STRIDE_LIMIT:
+                if (c1hw_size - col_size) <= Constant.STRIDE_LIMIT:
                     tik_inst.data_move(in_ub,
                                        data_in[input_offset],
                                        0,
@@ -359,7 +364,7 @@ def _multi_core_on_c1hw(tik_inst, data_in, data_out, shape_in):
                                 out_ub[col_idx * nc0_align_size],
                                 in_ub[col_idx * axis_c0],
                                 0, 1, axis_n, 0, 0)
-                        elif (col_size - 1) <= STRIDE_LIMIT:
+                        elif (col_size - 1) <= Constant.STRIDE_LIMIT:
                             tik_inst.data_move(
                                 out_ub[col_idx * nc0_align_size],
                                 in_ub[col_idx * axis_c0],
@@ -374,7 +379,7 @@ def _multi_core_on_c1hw(tik_inst, data_in, data_out, shape_in):
                                     0, 1, 1, 0, 0)
                 else:
                     with tik_inst.for_range(0, axis_n) as col_idx:
-                        if (n_16_align - 1) <= STRIDE_LIMIT:
+                        if (n_16_align - 1) <= Constant.STRIDE_LIMIT:
                             tik_inst.data_move(
                                 out_ub[col_idx * axis_c0],
                                 in_ub[col_idx * col_size * axis_c0],
@@ -425,8 +430,8 @@ def _multi_core_on_nc1hw(tik_inst, data_in, data_out, shape_in):
     axis_n, _, _, _, axis_c0 = shape_in
 
     # each core process certain n lines
-    n_16_align = _ceil_div(axis_n, C0_LEN) * C0_LEN
-    core_num = _ceil_div(n_16_align, _ceil_div(n_16_align, CORE_NUM))
+    n_16_align = _ceil_div(axis_n, Constant.C0_LEN) * Constant.C0_LEN
+    core_num = _ceil_div(n_16_align, _ceil_div(n_16_align, Constant.CORE_NUM))
     per_core_n_cnt = _ceil_div(n_16_align, core_num)
     left_n_cnt = n_16_align - per_core_n_cnt * (core_num - 1)
     in_ub_size = \
@@ -434,8 +439,8 @@ def _multi_core_on_nc1hw(tik_inst, data_in, data_out, shape_in):
                                data_in.dtype) // axis_c0 * axis_c0
     in_ub = tik_inst.Tensor(data_in.dtype, (in_ub_size,),
                             name="in_ub", scope=tik.scope_ubuf)
-    if data_in.dtype.lower() in TYPE_CHAR_LIST:
-        zero_ub_size = C0_LEN * C0_LEN // 2
+    if data_in.dtype.lower() in Constant.TYPE_CHAR_LIST:
+        zero_ub_size = Constant.C0_LEN * Constant.C0_LEN // 2
         zero_ub = tik_inst.Tensor("float16", (zero_ub_size,),
                                   name="zero_ub", scope=tik.scope_ubuf)
         _clean_ubuf(tik_inst, zero_ub, 0, zero_ub_size)
@@ -458,7 +463,7 @@ def _multi_core_on_nc1hw(tik_inst, data_in, data_out, shape_in):
                                block_idx * per_core_n_cnt * axis_c0
                 with tik_inst.if_scope(cur_nc0_size > axis_n * axis_c0):
                     nc0_size_1 = axis_n * axis_c0 - input_offset
-                    if data_in.dtype.lower() in TYPE_CHAR_LIST:
+                    if data_in.dtype.lower() in Constant.TYPE_CHAR_LIST:
                         _fp16_2_char_conv(tik_inst, in_ub, zero_ub, nc0_size)
                     else:
                         _clean_ubuf(tik_inst, in_ub, 0, nc0_size)
@@ -539,7 +544,7 @@ def nc1hwc0_2_nz(src, dst, src_format, dst_format, kernel_name="nc1hwc0_2_nz"):
     input_dtype = src.get("dtype").lower()
     dst_dtype = dst.get("dtype").lower()
     shape_out = (shape_in[1], shape_in[2], shape_in[3],
-                 _ceil_div(shape_in[0], C0_LEN), C0_LEN, shape_in[-1])
+                 _ceil_div(shape_in[0], Constant.C0_LEN), Constant.C0_LEN, shape_in[-1])
     check_list = ("float16", "int8")
 
     if input_dtype != dst_dtype:
@@ -548,8 +553,8 @@ def nc1hwc0_2_nz(src, dst, src_format, dst_format, kernel_name="nc1hwc0_2_nz"):
             dst_format.upper() == "FRACTAL_Z"):
         raise RuntimeError("The src_format must be NC1HWC0 and"
                            " dst_format must be FRACTAL_Z!")
-    if not ((input_dtype == "int8" and shape_in[-1] == 2 * C0_LEN) or
-            (input_dtype == "float16" and shape_in[-1] == C0_LEN)):
+    if not ((input_dtype == "int8" and shape_in[-1] == 2 * Constant.C0_LEN) or
+            (input_dtype == "float16" and shape_in[-1] == Constant.C0_LEN)):
         raise RuntimeError("The last dim length of input tensor should "
                            "align with input dtype!")
 

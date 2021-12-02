@@ -33,16 +33,6 @@ from impl.util.util_select_op_base import SplitInput
 from impl.util.util_select_op_base import SplitOutput
 from impl.util.util_select_op_base import get_op_cal_info
 
-# shape limit
-# int32's max value
-SHAPE_SIZE_LIMIT = 2 ** 31 - 1
-# c0 size
-C0SIZE = 16
-
-NoneType = type(None)
-CAFFE_DATA_MODE = 0
-TENSORFLOW_DATA_MODE = 1
-
 
 # 'pylint: disable=unused-argument
 def get_op_support_info(x, y, ksize, strides, padding="SAME", pads=(0, 0, 0, 0, 0, 0),

@@ -24,24 +24,29 @@ from te.utils.op_utils import *
 from impl import trans_data_positive_source_ntc
 
 
-# UB size in byte
-UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
-# AICORE count
-CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
-# C0 length
-C0_LEN = 16
-# bytes in one block
-BLOCK_BYTE_SIZE = 32
-# repeat up limit for vector
-REPEAT_LIMIT = 255
-# mask value for float32
-MASK_64 = 64
-# float16/32 type list
-TYPE_FLOAT_LIST = ("float16", "float32")
-# used for reg
-REG_IDX_LIST = (0, 1, 2, 3, 4, 5, 6, 7)
-# used for vnchwconv
-ADDR_IDX_LIST = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    This class for Constant.
+    """
+    # UB size in byte
+    UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+    # AICORE count
+    CORE_NUM = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.CORE_NUM)
+    # C0 length
+    C0_LEN = 16
+    # bytes in one block
+    BLOCK_BYTE_SIZE = 32
+    # repeat up limit for vector
+    REPEAT_LIMIT = 255
+    # mask value for float32
+    MASK_64 = 64
+    # float16/32 type list
+    TYPE_FLOAT_LIST = ("float16", "float32")
+    # used for reg
+    REG_IDX_LIST = (0, 1, 2, 3, 4, 5, 6, 7)
+    # used for vnchwconv
+    ADDR_IDX_LIST = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
 
 
 def _ceil_div(value_x, value_y):
@@ -75,27 +80,27 @@ def _clean_ubuf(tik_inst, src, src_offset, dup_len):
         dtype_factor = 2
     elif src.dtype.lower() == "float32":
         dtype_factor = 1
-    batch_size = MASK_64
+    batch_size = Constant.MASK_64
 
     if dup_len > 0:
         repeat = dup_len // (batch_size * dtype_factor)
         left_elem = dup_len % (batch_size * dtype_factor)
-        repeat_loop = repeat // REPEAT_LIMIT
-        repeat_left = repeat % REPEAT_LIMIT
+        repeat_loop = repeat // Constant.REPEAT_LIMIT
+        repeat_left = repeat % Constant.REPEAT_LIMIT
         dup_value = float(0)
 
         if repeat_loop > 0:
             with tik_inst.for_range(0, repeat_loop) as rpt_idx:
-                tik_inst.vector_dup(MASK_64 * dtype_factor,
+                tik_inst.vector_dup(Constant.MASK_64 * dtype_factor,
                                     src[src_offset + rpt_idx *
-                                        REPEAT_LIMIT *
+                                        Constant.REPEAT_LIMIT *
                                         batch_size * dtype_factor],
-                                    dup_value, REPEAT_LIMIT, 1, 8)
+                                    dup_value, Constant.REPEAT_LIMIT, 1, 8)
 
         if repeat_left > 0:
-            tik_inst.vector_dup(MASK_64 * dtype_factor,
+            tik_inst.vector_dup(Constant.MASK_64 * dtype_factor,
                                 src[src_offset + repeat_loop *
-                                    REPEAT_LIMIT *
+                                    Constant.REPEAT_LIMIT *
                                     batch_size * dtype_factor],
                                 dup_value, repeat_left, 1, 8)
 
@@ -111,13 +116,13 @@ def _get_vnchwconv_ub_size(cube_size, parts):
     count needed ub size of the vnchwconv command
     """
 
-    is_parts_cube_less_ub = parts * cube_size <= UB_SIZE
+    is_parts_cube_less_ub = parts * cube_size <= Constant.UB_SIZE
     if is_parts_cube_less_ub:
         allocated_ub = cube_size
     else:
-        allocated_ub = UB_SIZE // parts
+        allocated_ub = Constant.UB_SIZE // parts
 
-    # the max repeat time of vnchwconv is 255, for simple deduct 1024 from UB_SIZE
+    # the max repeat time of vnchwconv is 255, for simple deduct 1024 from Constant.UB_SIZE
     if allocated_ub > (248 * 1024) // 2:
         allocated_ub = (248 * 1024) // 2
 
@@ -145,23 +150,23 @@ def _scalar_conv(tik_inst, dst_ub, src_ub, axis_params, reg_list):
         with tik_inst.for_range(0, dhw_len) as dhw_idx:
             if reg_loop:
                 with tik_inst.for_range(0, reg_loop) as reg_lp_idx:
-                    for idx in REG_IDX_LIST:
+                    for idx in Constant.REG_IDX_LIST:
                         src_offset = (sub_n_index * c_len + c1_index * c0_len +
                                       reg_lp_idx * reg_cnt + idx) * dhw_pad_len + dhw_idx
                         reg_list[idx].set_as(src_ub[src_offset])
 
-                    for idx in REG_IDX_LIST:
+                    for idx in Constant.REG_IDX_LIST:
                         dst_offset = ((c1_index * dhw_len + dhw_idx) * sub_n_len +
                                       sub_n_index) * c0_len + reg_lp_idx * reg_cnt + idx
                         dst_ub[dst_offset].set_as(reg_list[idx])
 
             if c0_left:
-                for idx in REG_IDX_LIST[:c0_left]:
+                for idx in Constant.REG_IDX_LIST[:c0_left]:
                     src_offset = (sub_n_index * c_len + c1_index * c0_len +
                                   reg_loop * reg_cnt + idx) * dhw_pad_len + dhw_idx
                     reg_list[idx].set_as(src_ub[src_offset])
 
-                for idx in REG_IDX_LIST[:c0_left]:
+                for idx in Constant.REG_IDX_LIST[:c0_left]:
                     dst_offset = ((c1_index * dhw_len + dhw_idx) * sub_n_len +
                                   sub_n_index) * c0_len + reg_loop * reg_cnt + idx
                     dst_ub[dst_offset].set_as(reg_list[idx])
@@ -176,24 +181,24 @@ def _scalar_conv(tik_inst, dst_ub, src_ub, axis_params, reg_list):
         dhw_len_new = dhw_len // reg_factor
         dhw_len_left = dhw_len % reg_factor
         with tik_inst.for_range(0, dhw_len_new) as dhw_idx:
-            for idx in REG_IDX_LIST[:reg_cnt_new]:
+            for idx in Constant.REG_IDX_LIST[:reg_cnt_new]:
                 src_offset = ((idx % c0_size + c1_count * 16 + sub_n_index * c_len) * dhw_pad_len +
                               dhw_idx * reg_factor + idx // c0_size)
                 reg_list[idx].set_as(src_ub[src_offset])
 
-            for idx in REG_IDX_LIST[:reg_cnt_new]:
+            for idx in Constant.REG_IDX_LIST[:reg_cnt_new]:
                 dst_offset = ((dhw_idx * reg_factor + c1_count * dhw_len) * sub_n_len +
                               sub_n_index + idx // c0_size) * c0_len + idx % c0_size
                 dst_ub[dst_offset].set_as(reg_list[idx])
 
         if dhw_len_left:
             with tik_inst.for_range(0, dhw_len_left) as dhw_left_idx:
-                for idx in REG_IDX_LIST[:c0_size]:
+                for idx in Constant.REG_IDX_LIST[:c0_size]:
                     src_offset = ((idx + c1_count * 16 + sub_n_index * c_len) * dhw_pad_len +
                                   dhw_len_new * reg_factor + dhw_left_idx)
                     reg_list[idx].set_as(src_ub[src_offset])
 
-                for idx in REG_IDX_LIST[:reg_cnt_new]:
+                for idx in Constant.REG_IDX_LIST[:reg_cnt_new]:
                     dst_offset = ((dhw_len_new * reg_factor + c1_count * dhw_len) * sub_n_len +
                                   dhw_left_idx + sub_n_index) * c0_len + idx
                     dst_ub[dst_offset].set_as(reg_list[idx])
@@ -218,7 +223,7 @@ def _check_input_params(input_params):
     """
 
     in_shape, dst_shape, in_dtype, dst_dtype, src_format, dst_format = input_params
-    check_list = TYPE_FLOAT_LIST
+    check_list = Constant.TYPE_FLOAT_LIST
 
     if in_dtype != dst_dtype:
         raise RuntimeError("The input and output dtype should be same!")
@@ -240,38 +245,38 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
 
     axis_n, axis_c, axis_d, axis_h, axis_w = shape_in
     hw_size = axis_h * axis_w
-    ni_no_size = _ceil_div(axis_n, C0_LEN) * C0_LEN
+    ni_no_size = _ceil_div(axis_n, Constant.C0_LEN) * Constant.C0_LEN
     cdhw_size = func_reduce(lambda x, y: x * y, shape_in[1:])
-    axis_c1 = _ceil_div(axis_c, C0_LEN)
+    axis_c1 = _ceil_div(axis_c, Constant.C0_LEN)
     dtype_factor = _get_dtype_factor(data_in.dtype)
 
     # each core process certain cdhw lines
-    core_num = _ceil_div(axis_n, _ceil_div(axis_n, CORE_NUM))
+    core_num = _ceil_div(axis_n, _ceil_div(axis_n, Constant.CORE_NUM))
     per_core_n_cnt = _ceil_div(axis_n, core_num)
     left_n_cnt = axis_n - per_core_n_cnt * (core_num - 1)
     # to count the padding lines
-    zero_loop_cnt = (_ceil_div(axis_n, C0_LEN) * C0_LEN - axis_n) // core_num
-    zero_line_left = (_ceil_div(axis_n, C0_LEN) * C0_LEN - axis_n) % core_num
+    zero_loop_cnt = (_ceil_div(axis_n, Constant.C0_LEN) * Constant.C0_LEN - axis_n) // core_num
+    zero_line_left = (_ceil_div(axis_n, Constant.C0_LEN) * Constant.C0_LEN - axis_n) % core_num
 
     # to check whether the half UB can hold cdhw or not
     dtype_factor = _get_dtype_factor(data_in.dtype)
     out_size = func_reduce(lambda x, y: x * y,
-                           (axis_c1 * C0_LEN, axis_d, axis_h, axis_w, dtype_factor))
+                           (axis_c1 * Constant.C0_LEN, axis_d, axis_h, axis_w, dtype_factor))
     # to avoid the repeat times of MTE bigger than 4095
-    is_chwd_less_half_ub = out_size <= ((UB_SIZE - 4 * BLOCK_BYTE_SIZE) // 2)
+    is_chwd_less_half_ub = out_size <= ((Constant.UB_SIZE - 4 * Constant.BLOCK_BYTE_SIZE) // 2)
     # used to scalar conv
-    reg_list = [tik_inst.Scalar(data_in.dtype) for i in REG_IDX_LIST]
+    reg_list = [tik_inst.Scalar(data_in.dtype) for i in Constant.REG_IDX_LIST]
 
     if is_chwd_less_half_ub:
         # split the UB into two parts, and to load cdhw each time
-        ub_size = (UB_SIZE - 4 * BLOCK_BYTE_SIZE) // 2 // dtype_factor
+        ub_size = (Constant.UB_SIZE - 4 * Constant.BLOCK_BYTE_SIZE) // 2 // dtype_factor
     else:
         # to adapt the vnchwconv command
-        hw_align_c0_mul_16 = _ceil_div(hw_size, C0_LEN) * C0_LEN * 16
-        # split the UB into two parts, and to make sure the ub_size is align with C0_LEN
+        hw_align_c0_mul_16 = _ceil_div(hw_size, Constant.C0_LEN) * Constant.C0_LEN * 16
+        # split the UB into two parts, and to make sure the ub_size is align with Constant.C0_LEN
         ub_size = _get_vnchwconv_ub_size(hw_align_c0_mul_16 * dtype_factor,
-                                         2) // dtype_factor // C0_LEN * C0_LEN
-        ub_col_size = ub_size // 16 // C0_LEN * C0_LEN
+                                         2) // dtype_factor // Constant.C0_LEN * Constant.C0_LEN
+        ub_col_size = ub_size // 16 // Constant.C0_LEN * Constant.C0_LEN
         if ub_col_size == 0:
             raise RuntimeError("The UB is too small!")
 
@@ -289,11 +294,11 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
             process of hw transfer
             """
 
-            c0_count_in_c = axis_c // C0_LEN
-            c_left = axis_c % C0_LEN
+            c0_count_in_c = axis_c // Constant.C0_LEN
+            c_left = axis_c % Constant.C0_LEN
 
             if is_chwd_less_half_ub:
-                dhw_align_size = _ceil_div(axis_d * hw_size, C0_LEN) * C0_LEN
+                dhw_align_size = _ceil_div(axis_d * hw_size, Constant.C0_LEN) * Constant.C0_LEN
                 dhw_size = axis_d * hw_size
 
                 def _get_mv_in_para():
@@ -301,7 +306,7 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
                     to count how many cdhw can be loaded in one time
                     """
 
-                    nc1dhwc0_cnt = ub_size // (axis_c1 * axis_d * hw_size * C0_LEN)
+                    nc1dhwc0_cnt = ub_size // (axis_c1 * axis_d * hw_size * Constant.C0_LEN)
                     if n_len <= nc1dhwc0_cnt:
                         mv_in_lp = 1
                         len_new = n_len
@@ -325,15 +330,15 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
                         in_ub,
                         data_in[input_offset],
                         0, 1,
-                        _ceil_div(sub_n_len * cdhw_size, BLOCK_BYTE_SIZE // dtype_factor),
+                        _ceil_div(sub_n_len * cdhw_size, Constant.BLOCK_BYTE_SIZE // dtype_factor),
                         0, 0)
 
-                    if axis_c % C0_LEN:
+                    if axis_c % Constant.C0_LEN:
                         # set the dst ub to zero to avoid dirty data
                         with tik_inst.if_scope(mv_in_lp_index == 0):
                             _clean_ubuf(tik_inst, out_ub, 0, ub_size)
                     # do transpose from xcdhw to c1dhwxc0
-                    axis_param_1 = (sub_n_len, axis_c, axis_d * hw_size, axis_d * hw_size, C0_LEN)
+                    axis_param_1 = (sub_n_len, axis_c, axis_d * hw_size, axis_d * hw_size, Constant.C0_LEN)
                     _scalar_conv(tik_inst, out_ub, in_ub, axis_param_1, reg_list)
 
                     with tik_inst.for_range(0, axis_d) as d_idx:
@@ -341,8 +346,8 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
                             output_offset = (block_idx * per_core_n_cnt +
                                              mv_in_lp_index * n_len_new +
                                              (d_idx * axis_c1 + c1_idx) *
-                                             hw_size * ni_no_size) * C0_LEN
-                            mid_offset = (c1_idx * axis_d + d_idx) * hw_size * sub_n_len * C0_LEN
+                                             hw_size * ni_no_size) * Constant.C0_LEN
+                            mid_offset = (c1_idx * axis_d + d_idx) * hw_size * sub_n_len * Constant.C0_LEN
                             # move out hwc0 each time
                             tik_inst.data_move(data_out[output_offset],
                                                out_ub[mid_offset],
@@ -361,14 +366,14 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
 
                         with tik_inst.for_range(0, c_lines) as c_idx:
                             input_offset = ((block_idx * per_core_n_cnt + n_index) * cdhw_size +
-                                            (c0_index * C0_LEN + c_idx) * dhw_size)
+                                            (c0_index * Constant.C0_LEN + c_idx) * dhw_size)
                             tik_inst.data_move(in_ub[c_idx * dhw_align_size],
                                                data_in[input_offset],
-                                               0, 1, _ceil_div(dhw_size, C0_LEN), 0, 0)
+                                               0, 1, _ceil_div(dhw_size, Constant.C0_LEN), 0, 0)
                         # do vnchwconv
-                        src_addr_list = [in_ub[dhw_align_size * i] for i in ADDR_IDX_LIST]
-                        dst_addr_list = [out_ub[C0_LEN * i] for i in ADDR_IDX_LIST]
-                        repeat_cnt = _ceil_div(dhw_size, C0_LEN)
+                        src_addr_list = [in_ub[dhw_align_size * i] for i in Constant.ADDR_IDX_LIST]
+                        dst_addr_list = [out_ub[Constant.C0_LEN * i] for i in Constant.ADDR_IDX_LIST]
+                        repeat_cnt = _ceil_div(dhw_size, Constant.C0_LEN)
                         src_stride = 0 if repeat_cnt == 1 else 1
                         dst_stride = 0 if repeat_cnt == 1 else 16
                         tik_inst.vnchwconv(False, False,
@@ -379,14 +384,14 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
                         with tik_inst.for_range(0, axis_d) as d2_idx:
                             output_offset = (block_idx * per_core_n_cnt + n_index +
                                              (d2_idx * axis_c1 + c0_index) *
-                                             hw_size * ni_no_size) * C0_LEN
+                                             hw_size * ni_no_size) * Constant.C0_LEN
                             tik_inst.data_move(data_out[output_offset],
-                                               out_ub[d2_idx * hw_size * C0_LEN],
+                                               out_ub[d2_idx * hw_size * Constant.C0_LEN],
                                                0, hw_size, 1, 0, ni_no_size - 1)
 
                     if c0_count_in_c:
                         with tik_inst.for_range(0, c0_count_in_c) as c0_idx:
-                            _inner_process_fp16(c0_idx, C0_LEN)
+                            _inner_process_fp16(c0_idx, Constant.C0_LEN)
                         if c_left:
                             _clean_ubuf(tik_inst, in_ub,
                                         c_left * dhw_align_size, (16 - c_left) * dhw_align_size)
@@ -398,7 +403,7 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
                         _inner_process_fp16(0, c_left)
 
                 if (data_in.dtype.lower() == "float16" and
-                        dhw_align_size * C0_LEN <= ub_size and dhw_size >= C0_LEN):
+                        dhw_align_size * Constant.C0_LEN <= ub_size and dhw_size >= Constant.C0_LEN):
                     with tik_inst.for_range(0, n_len) as n_idx_1:
                         _cdhw_less_half_ub_process_fp16(n_idx_1)
                 else:
@@ -438,30 +443,30 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
                                             in_ub[sub_c_idx * ub_col_size],
                                             data_in[input_offset_1 + sub_c_idx * axis_d * hw_size],
                                             0, 1,
-                                            _ceil_div(hw_len, BLOCK_BYTE_SIZE // dtype_factor),
+                                            _ceil_div(hw_len, Constant.BLOCK_BYTE_SIZE // dtype_factor),
                                             0, 0)
 
                                     if data_in.dtype.lower() == "float16":
                                         # do vnchwconv transfer
                                         src_addr_list = [in_ub[ub_col_size * i]
-                                                         for i in ADDR_IDX_LIST]
-                                        dst_addr_list = [out_ub[C0_LEN * i]
-                                                         for i in ADDR_IDX_LIST]
-                                        repeat_cnt = _ceil_div(hw_len, C0_LEN)
+                                                         for i in Constant.ADDR_IDX_LIST]
+                                        dst_addr_list = [out_ub[Constant.C0_LEN * i]
+                                                         for i in Constant.ADDR_IDX_LIST]
+                                        repeat_cnt = _ceil_div(hw_len, Constant.C0_LEN)
                                         src_stride = 0 if repeat_cnt == 1 else 1
                                         dst_stride = 0 if repeat_cnt == 1 else 16
                                         tik_inst.vnchwconv(False, False,
                                                            dst_addr_list, src_addr_list,
                                                            repeat_cnt, dst_stride, src_stride)
                                     else:
-                                        axis_param = (1, sub_c_count, hw_len, ub_col_size, C0_LEN)
+                                        axis_param = (1, sub_c_count, hw_len, ub_col_size, Constant.C0_LEN)
                                         _scalar_conv(tik_inst, out_ub, in_ub, axis_param, reg_list)
 
                                     # move out hw_len block each time
                                     output_offset_1 = (block_idx * per_core_n_cnt + n_idx +
                                                        ((d1_idx * axis_c1 + c0_index) * hw_size +
                                                         loop_index * ub_col_size) *
-                                                       ni_no_size) * C0_LEN
+                                                       ni_no_size) * Constant.C0_LEN
                                     tik_inst.data_move(data_out[output_offset_1],
                                                        out_ub,
                                                        0, hw_len, dtype_factor // 2,
@@ -482,12 +487,12 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
 
                         if c0_count_in_c:
                             with tik_inst.for_range(0, c0_count_in_c) as c0_idx:
-                                _c0hw_hwc0_transfer(c0_idx, C0_LEN)
+                                _c0hw_hwc0_transfer(c0_idx, Constant.C0_LEN)
                             if c_left:
                                 # to avoid dirty data
                                 if data_in.dtype.lower() == "float16":
                                     _clean_ubuf(tik_inst, in_ub, c_left * ub_col_size,
-                                                (C0_LEN - c_left) * ub_col_size)
+                                                (Constant.C0_LEN - c_left) * ub_col_size)
                                 else:
                                     _clean_ubuf(tik_inst, out_ub, 0, ub_size)
                                 _c0hw_hwc0_transfer(c0_count_in_c, c_left)
@@ -497,7 +502,7 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
                                 # to avoid dirty data
                                 if data_in.dtype.lower() == "float16":
                                     _clean_ubuf(tik_inst, in_ub, c_left * ub_col_size,
-                                                (C0_LEN - c_left) * ub_col_size)
+                                                (Constant.C0_LEN - c_left) * ub_col_size)
                                 else:
                                     _clean_ubuf(tik_inst, out_ub, 0, ub_size)
                             _c0hw_hwc0_transfer(0, c_left)
@@ -508,9 +513,9 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
         with tik_inst.else_scope():
             _n_transfer_process(per_core_n_cnt)
 
-        if axis_n % C0_LEN:
+        if axis_n % Constant.C0_LEN:
             if is_chwd_less_half_ub:
-                _clean_ubuf(tik_inst, out_ub, 0, hw_size * C0_LEN)
+                _clean_ubuf(tik_inst, out_ub, 0, hw_size * Constant.C0_LEN)
                 buf_loop_cnt = 0
                 hw_left_size = 0
             else:
@@ -532,7 +537,7 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
                 else:
                     with tik_inst.for_range(0, buf_loop_cnt) as lp_idx:
                         tik_inst.data_move(
-                            data_out[output_offset_z + lp_idx * ub_col_size * ni_no_size * C0_LEN],
+                            data_out[output_offset_z + lp_idx * ub_col_size * ni_no_size * Constant.C0_LEN],
                             out_ub,
                             0, ub_col_size,
                             dtype_factor // 2,
@@ -540,7 +545,7 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
                     if hw_left_size:
                         tik_inst.data_move(
                             data_out[output_offset_z +
-                                     buf_loop_cnt * ub_col_size * ni_no_size * C0_LEN],
+                                     buf_loop_cnt * ub_col_size * ni_no_size * Constant.C0_LEN],
                             out_ub,
                             0, hw_left_size,
                             dtype_factor // 2,
@@ -552,7 +557,7 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
                         with tik_inst.for_range(0, axis_c1) as c1_idx:
                             output_offset_zero = (axis_n + block_idx * zero_loop_cnt +
                                                   z_lp_idx + (d_idx * axis_c1 + c1_idx) *
-                                                  hw_size * ni_no_size) * C0_LEN
+                                                  hw_size * ni_no_size) * Constant.C0_LEN
                             _padding_ni_no_cube(output_offset_zero)
 
             if zero_line_left:
@@ -561,7 +566,7 @@ def _multi_core_on_n(tik_inst, data_in, data_out, shape_in):
                         with tik_inst.for_range(0, axis_c1) as c1_idx:
                             output_offset_zero = (axis_n + core_num * zero_loop_cnt +
                                                   block_idx + (d_idx * axis_c1 + c1_idx) *
-                                                  hw_size * ni_no_size) * C0_LEN
+                                                  hw_size * ni_no_size) * Constant.C0_LEN
                             _padding_ni_no_cube(output_offset_zero)
 
 
@@ -600,8 +605,8 @@ def ncdhw_2_fractal_z_3d(src, dst, src_format, dst_format,
     """
 
     in_shape = src.get("shape")
-    dst_shape = (in_shape[2], _ceil_div(in_shape[1], C0_LEN), in_shape[3],
-                 in_shape[4], _ceil_div(in_shape[0], C0_LEN), C0_LEN, C0_LEN)
+    dst_shape = (in_shape[2], _ceil_div(in_shape[1], Constant.C0_LEN), in_shape[3],
+                 in_shape[4], _ceil_div(in_shape[0], Constant.C0_LEN), Constant.C0_LEN, Constant.C0_LEN)
     in_dtype = src.get("dtype").lower()
     dst_dtype = dst.get("dtype").lower()
 

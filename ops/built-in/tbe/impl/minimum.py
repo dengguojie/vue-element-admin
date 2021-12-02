@@ -21,8 +21,6 @@ from te.utils import para_check
 from te.utils import shape_util
 from te import tvm
 
-SHAPE_SIZE_LIMIT = 2147483648  # shape limit
-
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
 # 'pylint: disable=unused-variable,invalid-name

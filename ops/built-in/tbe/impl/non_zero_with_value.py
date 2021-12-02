@@ -17,7 +17,6 @@ non_zero_with_value
 """
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import register_operator
-from impl.util.platform_adapter import tbe_context
 
 
 # 'pylint: disable=too-few-public-methods
@@ -49,7 +48,7 @@ class NonZero:
         self.y_dtype = y_dtype
         self.kernel_name = kernel_name
         self.tik_instance = tik.Tik(tik.Dprofile("v200", "aic"))
-        self.ub_minimum_num = Constant.UB_MINIMUM_SIZE // Constant.dtype_dict[x_dtype]
+        self.ub_minimum_num = Constant.UB_MINIMUM_SIZE // Constant.dtype_dict.get(x_dtype)
         self.size = x_shape[0] * x_shape[1]
         self.x_shape_one_dim = (self.size,)
         self.tiling = 8192
@@ -109,10 +108,10 @@ class NonZero:
                                                        is_atomic_add=True)
 
         # The number of bytes required for the workspace
-        workspace_data_out = Constant.dtype_dict[self.y_dtype] * self.core_loop * 2 * self.one_core_num
-        workspace_data_value_out = Constant.dtype_dict[self.x_dtype] * self.core_loop * 2 * self.one_core_num
-        workspace_shape_out = Constant.dtype_dict[Constant.SHAPE_DTYPE] * self.core_loop * self.ub_minimum_num
-        workspace_sync_barrier = Constant.dtype_dict["int64"] * (self.core_loop * Constant.UB_MINIMUM_SIZE //
+        workspace_data_out = Constant.dtype_dict.get(self.y_dtype) * self.core_loop * 2 * self.one_core_num
+        workspace_data_value_out = Constant.dtype_dict.get(self.x_dtype) * self.core_loop * 2 * self.one_core_num
+        workspace_shape_out = Constant.dtype_dict.get(Constant.SHAPE_DTYPE) * self.core_loop * self.ub_minimum_num
+        workspace_sync_barrier = Constant.dtype_dict.get("int64") * (self.core_loop * Constant.UB_MINIMUM_SIZE //
                                                                  Constant.REPEAT_STRIDE)
         self.workspace = [workspace_data_out, workspace_data_value_out, workspace_shape_out, workspace_sync_barrier]
 
@@ -122,6 +121,7 @@ class NonZero:
         """
         self.tik_instance.data_move(dst, src, sid=0, nburst=1, burst=burst_value, src_stride=0, dst_stride=0)
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _build_row_index_mtr(self, blk_idx, t_idx, col, row_auxiliary_matrix, blk_size):
         """
         build row index matrix for input
@@ -193,6 +193,7 @@ class NonZero:
                                         Constant.REPEAT_STRIDE, 0)
         return row_auxiliary_matrix
 
+    # 'pylint: disable=too-many-arguments,too-many-locals,too-many-statements
     def _build_col_index_mtr(self, blk_align_size, blk_size, col, col_auxiliary_matrix, blk_idx, t_idx):
         """
         build col index matrix for input
@@ -351,6 +352,7 @@ class NonZero:
 
         return self.tik_instance
 
+    # 'pylint: disable=too-many-locals,too-many-statements
     def compute_one_core(self, blk_idx, cur_core_num):
         """
         compute fuction for each core.
@@ -498,7 +500,7 @@ class NonZero:
         """
         vector dump data for each loop.
         """
-        unit = 256 // (Constant.dtype_dict[x_dtype])
+        unit = 256 // (Constant.dtype_dict.get(x_dtype))
         repeat = size // unit
         left = size % unit
         repeat_loop = repeat // 255
@@ -519,7 +521,7 @@ class NonZero:
         """
         get the mask for values non_zero elements.
         """
-        unit = 256 // (Constant.dtype_dict[x_dtype])
+        unit = 256 // (Constant.dtype_dict.get(x_dtype))
         repeat = size // unit
         left = size % unit
         repeat_loop = repeat // 255
@@ -538,6 +540,7 @@ class NonZero:
             offset = (repeat - 1) * 64 + left
             self.tik_instance.vcmpvs_ne(dst[offset // 32], src[offset], scalar, 1, 1, Constant.REPEAT_STRIDE)
 
+    # 'pylint: disable=too-many-locals,too-many-statements
     def multi_core_sync(self, blk_idx, shape_out_ub):
         """
         sync data for cores in sync workspace.
@@ -646,7 +649,7 @@ class NonZero:
                     self._data_move(self.res_gm[1, out_gm_offset], tmp_ub[1, ub_offset], 1)
                     self._data_move(self.res_value_gm[out_gm_offset], value_tmp_ub[ub_offset], 1)
 
-
+# 'pylint: disable=too-many-arguments
 def check_supported(x, value, index, count, transpose, kernel_name="non_zero_with_value"):
     """
     check the attr transpose
@@ -660,7 +663,7 @@ def check_supported(x, value, index, count, transpose, kernel_name="non_zero_wit
     return False, reason
 
 
-# pylint: disable=locally-disabled,unused-argument,too-many-locals
+# 'pylint: disable=locally-disabled,unused-argument,too-many-locals,too-many-arguments
 @register_operator("NonZeroWithValue")
 def non_zero_with_value(x, value, index, count, transpose, kernel_name="non_zero_with_value"):
     """

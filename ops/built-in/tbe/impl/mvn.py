@@ -23,10 +23,6 @@ from te.utils import shape_util
 from impl.util import util_select_op_base
 from impl.util.platform_adapter import error_manager_vector
 
-# const value
-CONST_HALF = 0.5
-CONST_SQRT_ITER = 3
-
 
 # 'pylint: disable = unused-argument
 # 'pylint: disable=invalid-name,too-many-arguments
@@ -129,7 +125,8 @@ def mvn_compute(x, y, normalize_variance, across_channels,
 
     dtype_x = x.dtype
     is_cast = False
-
+    const_half = 0.5
+    const_sqrt_iter = 3
     if tbe_platform.api_check_support("te.lang.cce.vmuls", "float32"):
         if dtype_x == "float16":
             is_cast = True
@@ -171,10 +168,10 @@ def mvn_compute(x, y, normalize_variance, across_channels,
         else:
             y_sqrt = tbe.vsqrt(var)
 
-            for _ in range(CONST_SQRT_ITER):
+            for _ in range(const_sqrt_iter):
                 data_sqrt = tbe.vdiv(var, y_sqrt)
                 data_sqrt = tbe.vadd(data_sqrt, y_sqrt)
-                data_sqrt = tbe.vmuls(data_sqrt, tvm.const(CONST_HALF, var.dtype))
+                data_sqrt = tbe.vmuls(data_sqrt, tvm.const(const_half, var.dtype))
                 y_sqrt = data_sqrt
 
             y_add = tbe.vadds(y_sqrt, eps)

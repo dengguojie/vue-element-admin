@@ -19,8 +19,14 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
 
-# constant 8
-NUM_EIGHT = 8
+
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    This class for Constant.
+    """
+    # constant 8
+    NUM_EIGHT = 8
 
 
 # 'pylint:disable=invalid-name,too-many-locals,unused-argument,unused-variable
@@ -42,17 +48,17 @@ def n_p_u_clear_float_status(addr, data, kernel_name="n_p_u_clear_float_status")
     tik_instance = tik.Tik()
     aicore_num = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
 
-    output_data = tik_instance.Tensor("float32", (NUM_EIGHT,),
+    output_data = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,),
                                       name="output_data", scope=tik.scope_gm)
-    input_data = tik_instance.Tensor("float32", (NUM_EIGHT,), name="input_data",
+    input_data = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,), name="input_data",
                                      scope=tik.scope_gm)
-    input_data_ub = tik_instance.Tensor("float32", (NUM_EIGHT,),
+    input_data_ub = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,),
                                         name="input_data_ub",
                                         scope=tik.scope_ubuf)
     tik_instance.data_move(input_data_ub, input_data, 0, 1, 1, 0, 0)
     with tik_instance.for_range(0, aicore_num, block_num=aicore_num) as cycle:
         tik_instance.set_overflow_status(0)
-        data_ub = tik_instance.Tensor("float32", (NUM_EIGHT,), name="data_ub",
+        data_ub = tik_instance.Tensor("float32", (Constant.NUM_EIGHT,), name="data_ub",
                                       scope=tik.scope_ubuf)
         data_ub_input = tik_instance.Tensor("float16", (38400,),
                                             name="data_ub_input",
@@ -63,7 +69,7 @@ def n_p_u_clear_float_status(addr, data, kernel_name="n_p_u_clear_float_status")
         tik_instance.vector_dup(128, data_ub_input, 6, 150, 8, 1)
         tik_instance.vector_dup(128, data_ub_input, 7, 150, 8, 1)
         tik_instance.vector_dup(128, data_ub_input, 8, 150, 8, 1)
-        tik_instance.vector_dup(NUM_EIGHT, data_ub, 0, 1, 0, 0)
+        tik_instance.vector_dup(Constant.NUM_EIGHT, data_ub, 0, 1, 0, 0)
 
         tik_instance.data_move(output_data, data_ub, 0, 1, 1, 8, 8)
 

@@ -21,26 +21,26 @@ import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
 
-# available ub size
-TOTAL_UB_MEMORY = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-# available number of cores
-MAX_CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-# bytes of type int8
-SIZE_ONE_BYTES = 1
-# bytes of type float16
-SIZE_TWO_BYTES = 2
-# size of the cube unit
-CUBE_SIZE = 16
-# size of the cube unit of last axis when dtype is int8
-CUBE_SIZE_2 = 32
-# minimum unit of data_move: 32Bytes
-DATA_MOVE_MIN_UNIT = 32
-# maximum repeat number
-MAX_REPEATS = 255
-# maximum blk stride
-MAX_STRIDE_BLK = 65535
-# maximum mask
-MAX_MASK = 128
+
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    This class for Constant
+    """
+    # available number of cores
+    MAX_CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+    # size of the cube unit
+    CUBE_SIZE = 16
+    # size of the cube unit of last axis when dtype is int8
+    CUBE_SIZE_2 = 32
+    # minimum unit of data_move: 32Bytes
+    DATA_MOVE_MIN_UNIT = 32
+    # maximum repeat number
+    MAX_REPEATS = 255
+    # maximum blk stride
+    MAX_STRIDE_BLK = 65535
+    # maximum mask
+    MAX_MASK = 128
 
 
 # 'pylint: disable=too-many-instance-attributes,too-many-arguments
@@ -53,7 +53,7 @@ def _cal_core(tik_instance, total_core_loop_num, num_core, core_number):
     core_loop = tik_instance.Scalar("uint64")
     sum_core = tik_instance.Scalar("uint64")
 
-    with tik_instance.if_scope(num_core < total_core_loop_num % MAX_CORE_NUM):
+    with tik_instance.if_scope(num_core < total_core_loop_num % Constant.MAX_CORE_NUM):
         core_loop.set_as((total_core_loop_num + core_number - 1) //
                          core_number)
         sum_core.set_as(core_loop * num_core)
@@ -61,9 +61,9 @@ def _cal_core(tik_instance, total_core_loop_num, num_core, core_number):
     with tik_instance.else_scope():
         core_loop.set_as(total_core_loop_num // core_number)
         sum_core.set_as((core_loop + 1) *
-                        (total_core_loop_num % MAX_CORE_NUM) +
+                        (total_core_loop_num % Constant.MAX_CORE_NUM) +
                         core_loop * (num_core - total_core_loop_num %
-                                     MAX_CORE_NUM))
+                                     Constant.MAX_CORE_NUM))
 
     return core_loop, sum_core
 
@@ -72,10 +72,10 @@ def _set_core_num(loop_number):
     """
     set the block_num
     """
-    if loop_number < MAX_CORE_NUM:
+    if loop_number < Constant.MAX_CORE_NUM:
         return loop_number
 
-    return MAX_CORE_NUM
+    return Constant.MAX_CORE_NUM
 
 
 def _cal_core_loop(tik_instance, num_data_one_loop, core_loop, ub_ori):
@@ -117,20 +117,20 @@ def _cast_dtype(tik_instance, dst, src, cast_repeat_time,
     cast the data form int8 to float16 and from float16 to int8
     """
     if cast_case == "int8_2_float16":
-        tik_instance.vconv(MAX_MASK, 'none', dst, src, cast_repeat_time,
+        tik_instance.vconv(Constant.MAX_MASK, 'none', dst, src, cast_repeat_time,
                            1, 1, 8, 4, None)
         with tik_instance.if_scope(cast_remainder != 0):
             tik_instance.vconv(cast_remainder, 'none',
-                               dst[cast_repeat_time * MAX_MASK],
-                               src[cast_repeat_time * MAX_MASK],
+                               dst[cast_repeat_time * Constant.MAX_MASK],
+                               src[cast_repeat_time * Constant.MAX_MASK],
                                1, 1, 1, 8, 4, None)
     elif cast_case == "float16_2_int8":
-        tik_instance.vconv(MAX_MASK, 'none', dst, src, cast_repeat_time,
+        tik_instance.vconv(Constant.MAX_MASK, 'none', dst, src, cast_repeat_time,
                            1, 1, 4, 8, None)
         with tik_instance.if_scope(cast_remainder != 0):
             tik_instance.vconv(cast_remainder, 'none',
-                               dst[cast_repeat_time * MAX_MASK],
-                               src[cast_repeat_time * MAX_MASK],
+                               dst[cast_repeat_time * Constant.MAX_MASK],
+                               src[cast_repeat_time * Constant.MAX_MASK],
                                1, 1, 1, 4, 8, None)
 
 
@@ -193,6 +193,12 @@ class ND2ZNComputeInt8:
         """
         initialize some properties
         """
+        # available ub size
+        TOTAL_UB_MEMORY = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+        # bytes of type int8
+        SIZE_ONE_BYTES = 1
+        # bytes of type float16
+        SIZE_TWO_BYTES = 2
         self.src_shape_ori = src_shape[:]
         self.src_shape = src_shape[:]
         self.dtype = dtype
@@ -200,18 +206,18 @@ class ND2ZNComputeInt8:
         if len(src_shape) == 1:
             self.src_shape = [1, src_shape[0]]
         self.dst_shape = self.src_shape[:]
-        self.dst_shape[-2:] = [(self.src_shape[-2] + CUBE_SIZE_2 - 1) //
-                               CUBE_SIZE_2,
-                               (self.src_shape[-1] + CUBE_SIZE - 1) //
-                               CUBE_SIZE,
-                               CUBE_SIZE, CUBE_SIZE_2]
+        self.dst_shape[-2:] = [(self.src_shape[-2] + Constant.CUBE_SIZE_2 - 1) //
+                               Constant.CUBE_SIZE_2,
+                               (self.src_shape[-1] + Constant.CUBE_SIZE - 1) //
+                               Constant.CUBE_SIZE,
+                               Constant.CUBE_SIZE, Constant.CUBE_SIZE_2]
         self.num_byte = SIZE_ONE_BYTES
         self.cast_num_byte = SIZE_TWO_BYTES
 
         # the number of data that can be moved in each data_move
-        self.num_data = DATA_MOVE_MIN_UNIT // self.num_byte
+        self.num_data = Constant.DATA_MOVE_MIN_UNIT // self.num_byte
         # the number of float16 data that can be moved in each data_move
-        self.cast_num_data = DATA_MOVE_MIN_UNIT // self.cast_num_byte
+        self.cast_num_data = Constant.DATA_MOVE_MIN_UNIT // self.cast_num_byte
         para_check.check_shape_rule(self.dst_shape)
         para_check.check_tensor_shape_size(self.dst_shape)
         # the number of data that UB can put in
@@ -256,15 +262,15 @@ class ND2ZNComputeInt8:
                                           self.src_shape[:-2]) == 1)
 
         if is_four_d:
-            if self.src_shape[-1] % CUBE_SIZE_2 == 0:
+            if self.src_shape[-1] % Constant.CUBE_SIZE_2 == 0:
                 format_transfer_case = 0
                 if self.dst_shape[-3] * self.dst_shape[-1] * \
                         self.dst_shape[-2] > self.ub_memory:
                     format_transfer_case = 3
-            elif 0 < self.src_shape[-1] % CUBE_SIZE_2 <= CUBE_SIZE:
+            elif 0 < self.src_shape[-1] % Constant.CUBE_SIZE_2 <= Constant.CUBE_SIZE:
                 format_transfer_case = 1
                 if self.dst_shape[-3] * self.dst_shape[-1] * \
-                        self.dst_shape[-2] + CUBE_SIZE_2 * CUBE_SIZE > \
+                        self.dst_shape[-2] + Constant.CUBE_SIZE_2 * Constant.CUBE_SIZE > \
                         self.ub_memory:
                     format_transfer_case = 3
             else:
@@ -284,34 +290,34 @@ class ND2ZNComputeInt8:
         vector_dup zeros when dup_number is python variable
         """
         scalar_zero = tik_instance.Scalar(dtype="float16", init_value=0.0)
-        repeat_number = dup_number // MAX_MASK
-        tail = dup_number % MAX_MASK
+        repeat_number = dup_number // Constant.MAX_MASK
+        tail = dup_number % Constant.MAX_MASK
 
-        with tik_instance.for_range(0, repeat_number // MAX_REPEATS) as \
+        with tik_instance.for_range(0, repeat_number // Constant.MAX_REPEATS) as \
                 num_repeat_loop:
-            tik_instance.vector_dup(MAX_MASK,
-                                    ub_trans[MAX_MASK * MAX_REPEATS *
+            tik_instance.vector_dup(Constant.MAX_MASK,
+                                    ub_trans[Constant.MAX_MASK * Constant.MAX_REPEATS *
                                              num_repeat_loop + offset],
                                     scalar_zero,
-                                    MAX_REPEATS,
+                                    Constant.MAX_REPEATS,
                                     self.cast_num_byte // 2,
-                                    MAX_MASK // self.cast_num_data)
-        if repeat_number % MAX_REPEATS != 0:
-            tik_instance.vector_dup(MAX_MASK,
-                                    ub_trans[repeat_number // MAX_REPEATS *
-                                             MAX_MASK * MAX_REPEATS + offset],
+                                    Constant.MAX_MASK // self.cast_num_data)
+        if repeat_number % Constant.MAX_REPEATS != 0:
+            tik_instance.vector_dup(Constant.MAX_MASK,
+                                    ub_trans[repeat_number // Constant.MAX_REPEATS *
+                                             Constant.MAX_MASK * Constant.MAX_REPEATS + offset],
                                     scalar_zero,
-                                    repeat_number % MAX_REPEATS,
+                                    repeat_number % Constant.MAX_REPEATS,
                                     self.cast_num_byte // 2,
-                                    MAX_MASK // self.cast_num_data)
+                                    Constant.MAX_MASK // self.cast_num_data)
         if tail != 0:
             tik_instance.vector_dup(tail,
-                                    ub_trans[MAX_MASK * repeat_number +
+                                    ub_trans[Constant.MAX_MASK * repeat_number +
                                              offset],
                                     scalar_zero,
                                     1,
                                     self.cast_num_byte // 2,
-                                    MAX_MASK // self.cast_num_data)
+                                    Constant.MAX_MASK // self.cast_num_data)
 
     def data_rearrange_case_zero(self, tik_instance, ub_ori, ub_cast_fp16,
                                  ub_trans, ub_cast_int8, loop_num, is_last):
@@ -322,73 +328,73 @@ class ND2ZNComputeInt8:
         cast_repeat_time = tik_instance.Scalar("uint64")
         cast_remainder = tik_instance.Scalar("uint64")
         with tik_instance.if_scope(is_last == 1):
-            if (self.src_shape[-2] % CUBE_SIZE_2) == 0:
-                cast_repeat_time.set_as(loop_num * CUBE_SIZE_2 *
+            if (self.src_shape[-2] % Constant.CUBE_SIZE_2) == 0:
+                cast_repeat_time.set_as(loop_num * Constant.CUBE_SIZE_2 *
                                         self.dst_shape[-3] *
-                                        self.dst_shape[-2] // MAX_MASK)
-                cast_remainder.set_as(loop_num * CUBE_SIZE_2 *
+                                        self.dst_shape[-2] // Constant.MAX_MASK)
+                cast_remainder.set_as(loop_num * Constant.CUBE_SIZE_2 *
                                       self.dst_shape[-3] *
-                                      self.dst_shape[-2] % MAX_MASK)
+                                      self.dst_shape[-2] % Constant.MAX_MASK)
             else:
-                cast_repeat_time.set_as((loop_num * CUBE_SIZE_2 - CUBE_SIZE_2 +
-                                         self.src_shape[-2] % CUBE_SIZE_2) *
+                cast_repeat_time.set_as((loop_num * Constant.CUBE_SIZE_2 - Constant.CUBE_SIZE_2 +
+                                         self.src_shape[-2] % Constant.CUBE_SIZE_2) *
                                         self.dst_shape[-3] *
-                                        self.dst_shape[-2] // MAX_MASK)
-                cast_remainder.set_as((loop_num * CUBE_SIZE_2 - CUBE_SIZE_2 +
-                                       self.src_shape[-2] % CUBE_SIZE_2) *
+                                        self.dst_shape[-2] // Constant.MAX_MASK)
+                cast_remainder.set_as((loop_num * Constant.CUBE_SIZE_2 - Constant.CUBE_SIZE_2 +
+                                       self.src_shape[-2] % Constant.CUBE_SIZE_2) *
                                       self.dst_shape[-3] * self.dst_shape[-2] %
-                                      MAX_MASK)
+                                      Constant.MAX_MASK)
         with tik_instance.else_scope():
-            cast_repeat_time.set_as(loop_num * CUBE_SIZE_2 *
+            cast_repeat_time.set_as(loop_num * Constant.CUBE_SIZE_2 *
                                     self.dst_shape[-3] * self.dst_shape[-2] //
-                                    MAX_MASK)
-            cast_remainder.set_as(loop_num * CUBE_SIZE_2 * self.dst_shape[-3] *
-                                  self.dst_shape[-2] % MAX_MASK)
+                                    Constant.MAX_MASK)
+            cast_remainder.set_as(loop_num * Constant.CUBE_SIZE_2 * self.dst_shape[-3] *
+                                  self.dst_shape[-2] % Constant.MAX_MASK)
         # cast the data from int8 to float16
         _cast_dtype(tik_instance, ub_cast_fp16, ub_ori, cast_repeat_time,
                     cast_remainder, "int8_2_float16")
-        num_row_one_loop = loop_num * CUBE_SIZE_2
+        num_row_one_loop = loop_num * Constant.CUBE_SIZE_2
         scalar_zero = tik_instance.Scalar(dtype="float16", init_value=0.0)
         # last axis padding zero
-        if self.src_shape[-1] % CUBE_SIZE != 0:
+        if self.src_shape[-1] % Constant.CUBE_SIZE != 0:
             mask = 0
-            for i, _ in enumerate(range(CUBE_SIZE -
-                                        self.src_shape[-1] % CUBE_SIZE)):
-                mask += 2 ** (CUBE_SIZE - 1 - i)
+            for i, _ in enumerate(range(Constant.CUBE_SIZE -
+                                        self.src_shape[-1] % Constant.CUBE_SIZE)):
+                mask += 2 ** (Constant.CUBE_SIZE - 1 - i)
 
-            with tik_instance.for_range(0, num_row_one_loop // MAX_REPEATS) \
+            with tik_instance.for_range(0, num_row_one_loop // Constant.MAX_REPEATS) \
                     as num_repeat:
                 tik_instance.vector_dup([0, mask],
-                                        ub_cast_fp16[(MAX_REPEATS *
+                                        ub_cast_fp16[(Constant.MAX_REPEATS *
                                                       num_repeat + 1) *
                                                      self.dst_shape[-3] *
                                                      self.dst_shape[-2] -
-                                                     CUBE_SIZE],
-                                        scalar_zero, MAX_REPEATS,
+                                                     Constant.CUBE_SIZE],
+                                        scalar_zero, Constant.MAX_REPEATS,
                                         0, self.dst_shape[-3] *
                                         self.dst_shape[-2] //
                                         self.cast_num_data)
-            with tik_instance.if_scope(num_row_one_loop % MAX_REPEATS != 0):
+            with tik_instance.if_scope(num_row_one_loop % Constant.MAX_REPEATS != 0):
                 tik_instance.vector_dup([0, mask],
                                         ub_cast_fp16[((num_row_one_loop //
-                                                       MAX_REPEATS) *
-                                                      MAX_REPEATS + 1) *
+                                                       Constant.MAX_REPEATS) *
+                                                      Constant.MAX_REPEATS + 1) *
                                                      self.dst_shape[-3] *
                                                      self.dst_shape[-2] -
-                                                     CUBE_SIZE],
+                                                     Constant.CUBE_SIZE],
                                         scalar_zero,
-                                        num_row_one_loop % MAX_REPEATS,
+                                        num_row_one_loop % Constant.MAX_REPEATS,
                                         0, self.dst_shape[-3] *
                                         self.dst_shape[-2] //
                                         self.cast_num_data)
         # second last axis padding zero
-        if (self.src_shape[-2] % CUBE_SIZE_2) != 0:
+        if (self.src_shape[-2] % Constant.CUBE_SIZE_2) != 0:
             with tik_instance.if_scope(is_last == 1):
-                dup_number = (CUBE_SIZE_2 - self.src_shape[-2] %
-                              CUBE_SIZE_2) * self.dst_shape[-3] *\
+                dup_number = (Constant.CUBE_SIZE_2 - self.src_shape[-2] %
+                              Constant.CUBE_SIZE_2) * self.dst_shape[-3] *\
                              self.dst_shape[-2]
                 offset = ((loop_num - 1) * self.dst_shape[-1] +
-                          self.src_shape[-2] % CUBE_SIZE_2) * \
+                          self.src_shape[-2] % Constant.CUBE_SIZE_2) * \
                          self.dst_shape[-3] * self.dst_shape[-2]
                 self.vector_dup_zero_python(tik_instance, ub_cast_fp16,
                                             dup_number, offset)
@@ -397,18 +403,18 @@ class ND2ZNComputeInt8:
         with tik_instance.for_range(0, loop_num) as num_row:
             offset = num_row * self.dst_shape[-3] * self.dst_shape[-2] * \
                      self.dst_shape[-1]
-            dst_list_low = [ub_trans[i * CUBE_SIZE_2 + offset]
-                            for i in range(CUBE_SIZE)]
+            dst_list_low = [ub_trans[i * Constant.CUBE_SIZE_2 + offset]
+                            for i in range(Constant.CUBE_SIZE)]
             src_list_low = [ub_cast_fp16[i * self.dst_shape[-3] *
                                          self.dst_shape[-2] + offset]
-                            for i in range(CUBE_SIZE)]
-            dst_list_high = [ub_trans[i * CUBE_SIZE_2 + CUBE_SIZE + offset]
+                            for i in range(Constant.CUBE_SIZE)]
+            dst_list_high = [ub_trans[i * Constant.CUBE_SIZE_2 + Constant.CUBE_SIZE + offset]
                              for i in range(16)]
             src_list_high = [ub_cast_fp16[i * self.dst_shape[-3] *
                                           self.dst_shape[-2] +
-                                          CUBE_SIZE * self.dst_shape[-3] *
+                                          Constant.CUBE_SIZE * self.dst_shape[-3] *
                                           self.dst_shape[-2] + offset]
-                             for i in range(CUBE_SIZE)]
+                             for i in range(Constant.CUBE_SIZE)]
             if self.dst_shape[-3] == 1:
 
                 tik_instance.vnchwconv(False, False,
@@ -420,17 +426,17 @@ class ND2ZNComputeInt8:
             else:
                 tik_instance.vnchwconv(False, False,
                                        dst_list_low, src_list_low,
-                                       self.dst_shape[-3], CUBE_SIZE_2,
+                                       self.dst_shape[-3], Constant.CUBE_SIZE_2,
                                        self.cast_num_byte // 2)
                 tik_instance.vnchwconv(False, False,
                                        dst_list_high, src_list_high,
-                                       self.dst_shape[-3], CUBE_SIZE_2,
+                                       self.dst_shape[-3], Constant.CUBE_SIZE_2,
                                        self.cast_num_byte // 2)
 
-        cast_repeat_time.set_as(loop_num * CUBE_SIZE_2 * self.dst_shape[-3] *
-                                self.dst_shape[-2] // MAX_MASK)
-        cast_remainder.set_as(loop_num * CUBE_SIZE * self.dst_shape[-3] *
-                              self.dst_shape[-2] % MAX_MASK)
+        cast_repeat_time.set_as(loop_num * Constant.CUBE_SIZE_2 * self.dst_shape[-3] *
+                                self.dst_shape[-2] // Constant.MAX_MASK)
+        cast_remainder.set_as(loop_num * Constant.CUBE_SIZE * self.dst_shape[-3] *
+                              self.dst_shape[-2] % Constant.MAX_MASK)
         # cast the data from float16 to int8
         _cast_dtype(tik_instance, ub_cast_int8, ub_trans, cast_repeat_time,
                     cast_remainder, "float16_2_int8")
@@ -445,74 +451,74 @@ class ND2ZNComputeInt8:
         cast_repeat_time = tik_instance.Scalar("uint64")
         cast_remainder = tik_instance.Scalar("uint64")
         with tik_instance.if_scope(is_last == 1):
-            if (self.src_shape[-2] % CUBE_SIZE_2) == 0:
-                cast_repeat_time.set_as(loop_num * CUBE_SIZE_2 *
+            if (self.src_shape[-2] % Constant.CUBE_SIZE_2) == 0:
+                cast_repeat_time.set_as(loop_num * Constant.CUBE_SIZE_2 *
                                         (self.dst_shape[-3] + 1) *
-                                        self.dst_shape[-2] // MAX_MASK)
-                cast_remainder.set_as(loop_num * CUBE_SIZE_2 *
+                                        self.dst_shape[-2] // Constant.MAX_MASK)
+                cast_remainder.set_as(loop_num * Constant.CUBE_SIZE_2 *
                                       (self.dst_shape[-3] + 1) *
-                                      self.dst_shape[-2] % MAX_MASK)
+                                      self.dst_shape[-2] % Constant.MAX_MASK)
             else:
-                cast_repeat_time.set_as((loop_num * CUBE_SIZE_2 - CUBE_SIZE_2 +
-                                         self.src_shape[-2] % CUBE_SIZE_2) *
+                cast_repeat_time.set_as((loop_num * Constant.CUBE_SIZE_2 - Constant.CUBE_SIZE_2 +
+                                         self.src_shape[-2] % Constant.CUBE_SIZE_2) *
                                         (self.dst_shape[-3] + 1) *
-                                        self.dst_shape[-2] // MAX_MASK)
-                cast_remainder.set_as((loop_num * CUBE_SIZE_2 - CUBE_SIZE_2 +
-                                       self.src_shape[-2] % CUBE_SIZE_2) *
+                                        self.dst_shape[-2] // Constant.MAX_MASK)
+                cast_remainder.set_as((loop_num * Constant.CUBE_SIZE_2 - Constant.CUBE_SIZE_2 +
+                                       self.src_shape[-2] % Constant.CUBE_SIZE_2) *
                                       (self.dst_shape[-3] + 1) *
-                                      self.dst_shape[-2] % MAX_MASK)
+                                      self.dst_shape[-2] % Constant.MAX_MASK)
         with tik_instance.else_scope():
-            cast_repeat_time.set_as(loop_num * CUBE_SIZE_2 *
+            cast_repeat_time.set_as(loop_num * Constant.CUBE_SIZE_2 *
                                     (self.dst_shape[-3] + 1) *
-                                    self.dst_shape[-2] // MAX_MASK)
-            cast_remainder.set_as(loop_num * CUBE_SIZE_2 *
+                                    self.dst_shape[-2] // Constant.MAX_MASK)
+            cast_remainder.set_as(loop_num * Constant.CUBE_SIZE_2 *
                                   (self.dst_shape[-3] + 1) *
-                                  self.dst_shape[-2] % MAX_MASK)
+                                  self.dst_shape[-2] % Constant.MAX_MASK)
         # cast the data from int8 to float16
         _cast_dtype(tik_instance, ub_cast_fp16, ub_ori, cast_repeat_time,
                     cast_remainder, "int8_2_float16")
-        num_row_one_loop = loop_num * CUBE_SIZE_2
+        num_row_one_loop = loop_num * Constant.CUBE_SIZE_2
         scalar_zero = tik_instance.Scalar(dtype="float16", init_value=0.0)
         # last axis padding zero
-        if self.src_shape[-1] % CUBE_SIZE != 0:
+        if self.src_shape[-1] % Constant.CUBE_SIZE != 0:
             mask = 0
-            for i, _ in enumerate(range(CUBE_SIZE -
-                                        self.src_shape[-1] % CUBE_SIZE)):
-                mask += 2 ** (CUBE_SIZE - 1 - i)
+            for i, _ in enumerate(range(Constant.CUBE_SIZE -
+                                        self.src_shape[-1] % Constant.CUBE_SIZE)):
+                mask += 2 ** (Constant.CUBE_SIZE - 1 - i)
 
-            with tik_instance.for_range(0, num_row_one_loop // MAX_REPEATS) \
+            with tik_instance.for_range(0, num_row_one_loop // Constant.MAX_REPEATS) \
                     as num_repeat:
                 tik_instance.vector_dup([0, mask],
-                                        ub_cast_fp16[(MAX_REPEATS *
+                                        ub_cast_fp16[(Constant.MAX_REPEATS *
                                                       num_repeat + 1) *
                                                      (self.dst_shape[-3] + 1) *
                                                      self.dst_shape[-2] -
-                                                     CUBE_SIZE_2],
-                                        scalar_zero, MAX_REPEATS,
+                                                     Constant.CUBE_SIZE_2],
+                                        scalar_zero, Constant.MAX_REPEATS,
                                         0, (self.dst_shape[-3] + 1) *
                                         self.dst_shape[-2] //
                                         self.cast_num_data)
-            with tik_instance.if_scope(num_row_one_loop % MAX_REPEATS != 0):
+            with tik_instance.if_scope(num_row_one_loop % Constant.MAX_REPEATS != 0):
                 tik_instance.vector_dup([0, mask],
                                         ub_cast_fp16[((num_row_one_loop //
-                                                       MAX_REPEATS) *
-                                                      MAX_REPEATS + 1) *
+                                                       Constant.MAX_REPEATS) *
+                                                      Constant.MAX_REPEATS + 1) *
                                                      (self.dst_shape[-3] + 1) *
                                                      self.dst_shape[-2] -
-                                                     CUBE_SIZE_2],
+                                                     Constant.CUBE_SIZE_2],
                                         scalar_zero,
-                                        num_row_one_loop % MAX_REPEATS,
+                                        num_row_one_loop % Constant.MAX_REPEATS,
                                         0, (self.dst_shape[-3] + 1) *
                                         self.dst_shape[-2] //
                                         self.cast_num_data)
         # second last axis padding zero
-        if self.src_shape[-2] % CUBE_SIZE_2 != 0:
+        if self.src_shape[-2] % Constant.CUBE_SIZE_2 != 0:
             with tik_instance.if_scope(is_last == 1):
-                dup_number = (CUBE_SIZE_2 - self.src_shape[-2] %
-                              CUBE_SIZE_2) * (self.dst_shape[-3] + 1) *\
+                dup_number = (Constant.CUBE_SIZE_2 - self.src_shape[-2] %
+                              Constant.CUBE_SIZE_2) * (self.dst_shape[-3] + 1) *\
                              self.dst_shape[-2]
                 offset = ((loop_num - 1) * self.dst_shape[-1] +
-                          self.src_shape[-2] % CUBE_SIZE_2) *  \
+                          self.src_shape[-2] % Constant.CUBE_SIZE_2) *  \
                          (self.dst_shape[-3] + 1) * self.dst_shape[-2]
                 self.vector_dup_zero_python(tik_instance, ub_cast_fp16,
                                             dup_number, offset)
@@ -523,19 +529,19 @@ class ND2ZNComputeInt8:
                          self.dst_shape[-2] * self.dst_shape[-1]
             dst_offset = num_row * self.dst_shape[-3] * self.dst_shape[-2] * \
                          self.dst_shape[-1]
-            dst_list_low = [ub_trans[i * CUBE_SIZE_2 + dst_offset]
-                            for i in range(CUBE_SIZE)]
+            dst_list_low = [ub_trans[i * Constant.CUBE_SIZE_2 + dst_offset]
+                            for i in range(Constant.CUBE_SIZE)]
             src_list_low = [ub_cast_fp16[i * (self.dst_shape[-3] + 1) *
                                          self.dst_shape[-2] + src_offset]
-                            for i in range(CUBE_SIZE)]
-            dst_list_high = [ub_trans[i * CUBE_SIZE_2 + CUBE_SIZE + dst_offset]
+                            for i in range(Constant.CUBE_SIZE)]
+            dst_list_high = [ub_trans[i * Constant.CUBE_SIZE_2 + Constant.CUBE_SIZE + dst_offset]
                              for i in range(16)]
             src_list_high = [ub_cast_fp16[i * (self.dst_shape[-3] + 1) *
                                           self.dst_shape[-2] +
-                                          CUBE_SIZE *
+                                          Constant.CUBE_SIZE *
                                           (self.dst_shape[-3] + 1) *
                                           self.dst_shape[-2] + src_offset]
-                             for i in range(CUBE_SIZE)]
+                             for i in range(Constant.CUBE_SIZE)]
 
             if self.dst_shape[-3] == 1:
                 tik_instance.vnchwconv(False, False,
@@ -547,17 +553,17 @@ class ND2ZNComputeInt8:
             else:
                 tik_instance.vnchwconv(False, False,
                                        dst_list_low, src_list_low,
-                                       self.dst_shape[-3], CUBE_SIZE_2,
+                                       self.dst_shape[-3], Constant.CUBE_SIZE_2,
                                        self.cast_num_byte // 2)
                 tik_instance.vnchwconv(False, False,
                                        dst_list_high, src_list_high,
-                                       self.dst_shape[-3], CUBE_SIZE_2,
+                                       self.dst_shape[-3], Constant.CUBE_SIZE_2,
                                        self.cast_num_byte // 2)
 
-        cast_repeat_time.set_as(loop_num * CUBE_SIZE_2 * self.dst_shape[-3] *
-                                self.dst_shape[-2] // MAX_MASK)
-        cast_remainder.set_as(loop_num * CUBE_SIZE * self.dst_shape[-3] *
-                              self.dst_shape[-2] % MAX_MASK)
+        cast_repeat_time.set_as(loop_num * Constant.CUBE_SIZE_2 * self.dst_shape[-3] *
+                                self.dst_shape[-2] // Constant.MAX_MASK)
+        cast_remainder.set_as(loop_num * Constant.CUBE_SIZE * self.dst_shape[-3] *
+                              self.dst_shape[-2] % Constant.MAX_MASK)
         # cast the data from float16 to int8
         _cast_dtype(tik_instance, ub_cast_int8, ub_trans, cast_repeat_time,
                     cast_remainder, "float16_2_int8")
@@ -573,59 +579,59 @@ class ND2ZNComputeInt8:
         cast_repeat_time = tik_instance.Scalar("uint64")
         cast_remainder = tik_instance.Scalar("uint64")
         with tik_instance.if_scope(num_loop_time == self.dst_shape[-4] - 1):
-            if (self.src_shape[-2] % CUBE_SIZE_2) == 0:
-                cast_repeat_time.set_as(loop_num * CUBE_SIZE *
-                                        self.dst_shape[-1] // MAX_MASK)
-                cast_remainder.set_as(loop_num * CUBE_SIZE *
-                                      self.dst_shape[-1] % MAX_MASK)
+            if (self.src_shape[-2] % Constant.CUBE_SIZE_2) == 0:
+                cast_repeat_time.set_as(loop_num * Constant.CUBE_SIZE *
+                                        self.dst_shape[-1] // Constant.MAX_MASK)
+                cast_remainder.set_as(loop_num * Constant.CUBE_SIZE *
+                                      self.dst_shape[-1] % Constant.MAX_MASK)
             else:
-                cast_repeat_time.set_as((self.src_shape[-2] % CUBE_SIZE_2) *
-                                        loop_num * CUBE_SIZE // MAX_MASK)
-                cast_remainder.set_as((self.src_shape[-2] % CUBE_SIZE_2) *
-                                      loop_num * CUBE_SIZE % MAX_MASK)
+                cast_repeat_time.set_as((self.src_shape[-2] % Constant.CUBE_SIZE_2) *
+                                        loop_num * Constant.CUBE_SIZE // Constant.MAX_MASK)
+                cast_remainder.set_as((self.src_shape[-2] % Constant.CUBE_SIZE_2) *
+                                      loop_num * Constant.CUBE_SIZE % Constant.MAX_MASK)
         with tik_instance.else_scope():
-            cast_repeat_time.set_as(loop_num * CUBE_SIZE *
-                                    self.dst_shape[-1] // MAX_MASK)
-            cast_remainder.set_as(loop_num * CUBE_SIZE * self.dst_shape[-1] %
-                                  MAX_MASK)
+            cast_repeat_time.set_as(loop_num * Constant.CUBE_SIZE *
+                                    self.dst_shape[-1] // Constant.MAX_MASK)
+            cast_remainder.set_as(loop_num * Constant.CUBE_SIZE * self.dst_shape[-1] %
+                                  Constant.MAX_MASK)
         # cast the data from int8 to float16
         _cast_dtype(tik_instance, ub_cast_fp16, ub_ori, cast_repeat_time,
                     cast_remainder, "int8_2_float16")
         scalar_zero = tik_instance.Scalar(dtype="float16", init_value=0.0)
         # last axis padding zero
-        if self.src_shape[-1] % CUBE_SIZE != 0:
+        if self.src_shape[-1] % Constant.CUBE_SIZE != 0:
             with tik_instance.if_scope(is_last == 1):
                 mask = 0
-                for i, _ in enumerate(range(CUBE_SIZE -
-                                            self.src_shape[-1] % CUBE_SIZE)):
-                    mask += 2 ** (CUBE_SIZE - 1 - i)
+                for i, _ in enumerate(range(Constant.CUBE_SIZE -
+                                            self.src_shape[-1] % Constant.CUBE_SIZE)):
+                    mask += 2 ** (Constant.CUBE_SIZE - 1 - i)
 
                 tik_instance.vector_dup([0, mask],
-                                        ub_cast_fp16[loop_num * CUBE_SIZE -
-                                                     CUBE_SIZE],
-                                        scalar_zero, CUBE_SIZE_2,
-                                        0, loop_num * CUBE_SIZE //
+                                        ub_cast_fp16[loop_num * Constant.CUBE_SIZE -
+                                                     Constant.CUBE_SIZE],
+                                        scalar_zero, Constant.CUBE_SIZE_2,
+                                        0, loop_num * Constant.CUBE_SIZE //
                                         self.cast_num_data)
         # second last axis padding zero
-        if (self.src_shape[-2] % CUBE_SIZE_2) != 0:
+        if (self.src_shape[-2] % Constant.CUBE_SIZE_2) != 0:
             with tik_instance.if_scope(num_loop_time ==
                                        self.dst_shape[-4] - 1):
-                dup_number = (CUBE_SIZE_2 - self.src_shape[-2] %
-                              CUBE_SIZE_2) * loop_num * self.dst_shape[-2]
-                offset = (self.src_shape[-2] % CUBE_SIZE_2) * loop_num * \
+                dup_number = (Constant.CUBE_SIZE_2 - self.src_shape[-2] %
+                              Constant.CUBE_SIZE_2) * loop_num * self.dst_shape[-2]
+                offset = (self.src_shape[-2] % Constant.CUBE_SIZE_2) * loop_num * \
                          self.dst_shape[-2]
                 self.vector_dup_zero_python(tik_instance, ub_cast_fp16,
                                             dup_number, offset)
         # data rearrange
-        dst_list_low = [ub_trans[i * CUBE_SIZE_2] for i in range(CUBE_SIZE)]
+        dst_list_low = [ub_trans[i * Constant.CUBE_SIZE_2] for i in range(Constant.CUBE_SIZE)]
         src_list_low = [ub_cast_fp16[i * loop_num * self.dst_shape[-2]]
-                        for i in range(CUBE_SIZE)]
-        dst_list_high = [ub_trans[i * CUBE_SIZE_2 + CUBE_SIZE]
+                        for i in range(Constant.CUBE_SIZE)]
+        dst_list_high = [ub_trans[i * Constant.CUBE_SIZE_2 + Constant.CUBE_SIZE]
                          for i in range(16)]
         src_list_high = [ub_cast_fp16[i * loop_num * self.dst_shape[-2] +
-                                      CUBE_SIZE * loop_num *
+                                      Constant.CUBE_SIZE * loop_num *
                                       self.dst_shape[-2]]
-                         for i in range(CUBE_SIZE)]
+                         for i in range(Constant.CUBE_SIZE)]
         if loop_num == 1:
             tik_instance.vnchwconv(False, False, dst_list_low, src_list_low,
                                    1, 0, 0)
@@ -633,16 +639,16 @@ class ND2ZNComputeInt8:
                                    1, 0, 0)
         else:
             tik_instance.vnchwconv(False, False, dst_list_low, src_list_low,
-                                   loop_num, CUBE_SIZE_2,
+                                   loop_num, Constant.CUBE_SIZE_2,
                                    self.cast_num_byte // 2)
             tik_instance.vnchwconv(False, False, dst_list_high, src_list_high,
-                                   loop_num, CUBE_SIZE_2,
+                                   loop_num, Constant.CUBE_SIZE_2,
                                    self.cast_num_byte // 2)
 
-        cast_repeat_time.set_as(CUBE_SIZE * loop_num * self.dst_shape[-1] //
-                                MAX_MASK)
-        cast_remainder.set_as(CUBE_SIZE * loop_num * self.dst_shape[-1] %
-                              MAX_MASK)
+        cast_repeat_time.set_as(Constant.CUBE_SIZE * loop_num * self.dst_shape[-1] //
+                                Constant.MAX_MASK)
+        cast_remainder.set_as(Constant.CUBE_SIZE * loop_num * self.dst_shape[-1] %
+                              Constant.MAX_MASK)
         # cast the data from float16 to int8
         _cast_dtype(tik_instance, ub_cast_int8, ub_trans, cast_repeat_time,
                     cast_remainder, "float16_2_int8")
@@ -657,60 +663,60 @@ class ND2ZNComputeInt8:
         cast_repeat_time = tik_instance.Scalar("uint64")
         cast_remainder = tik_instance.Scalar("uint64")
         with tik_instance.if_scope(num_loop_time == self.dst_shape[-4] - 1):
-            if (self.src_shape[-2] % CUBE_SIZE_2) == 0:
-                cast_repeat_time.set_as((loop_num + 1) * CUBE_SIZE *
-                                        self.dst_shape[-1] // MAX_MASK)
-                cast_remainder.set_as((loop_num + 1) * CUBE_SIZE *
-                                      self.dst_shape[-1] % MAX_MASK)
+            if (self.src_shape[-2] % Constant.CUBE_SIZE_2) == 0:
+                cast_repeat_time.set_as((loop_num + 1) * Constant.CUBE_SIZE *
+                                        self.dst_shape[-1] // Constant.MAX_MASK)
+                cast_remainder.set_as((loop_num + 1) * Constant.CUBE_SIZE *
+                                      self.dst_shape[-1] % Constant.MAX_MASK)
             else:
-                cast_repeat_time.set_as((self.src_shape[-2] % CUBE_SIZE_2) *
-                                        (loop_num + 1) * CUBE_SIZE // MAX_MASK)
-                cast_remainder.set_as((self.src_shape[-2] % CUBE_SIZE_2) *
-                                      (loop_num + 1) * CUBE_SIZE % MAX_MASK)
+                cast_repeat_time.set_as((self.src_shape[-2] % Constant.CUBE_SIZE_2) *
+                                        (loop_num + 1) * Constant.CUBE_SIZE // Constant.MAX_MASK)
+                cast_remainder.set_as((self.src_shape[-2] % Constant.CUBE_SIZE_2) *
+                                      (loop_num + 1) * Constant.CUBE_SIZE % Constant.MAX_MASK)
         with tik_instance.else_scope():
-            cast_repeat_time.set_as((loop_num + 1) * CUBE_SIZE *
-                                    self.dst_shape[-1] // MAX_MASK)
-            cast_remainder.set_as((loop_num + 1) * CUBE_SIZE *
-                                  self.dst_shape[-1] % MAX_MASK)
+            cast_repeat_time.set_as((loop_num + 1) * Constant.CUBE_SIZE *
+                                    self.dst_shape[-1] // Constant.MAX_MASK)
+            cast_remainder.set_as((loop_num + 1) * Constant.CUBE_SIZE *
+                                  self.dst_shape[-1] % Constant.MAX_MASK)
         # cast the data from int8 to float16
         _cast_dtype(tik_instance, ub_cast_fp16, ub_ori, cast_repeat_time,
                     cast_remainder, "int8_2_float16")
         scalar_zero = tik_instance.Scalar(dtype="float16", init_value=0.0)
         # last axis padding zero
-        if self.src_shape[-1] % CUBE_SIZE != 0:
+        if self.src_shape[-1] % Constant.CUBE_SIZE != 0:
             with tik_instance.if_scope(is_last == 1):
                 mask = 0
-                for i, _ in enumerate(range(CUBE_SIZE -
-                                            self.src_shape[-1] % CUBE_SIZE)):
-                    mask += 2 ** (CUBE_SIZE - 1 - i)
+                for i, _ in enumerate(range(Constant.CUBE_SIZE -
+                                            self.src_shape[-1] % Constant.CUBE_SIZE)):
+                    mask += 2 ** (Constant.CUBE_SIZE - 1 - i)
 
                 tik_instance.vector_dup([0, mask],
                                         ub_cast_fp16[(loop_num + 1) *
-                                                     CUBE_SIZE - CUBE_SIZE_2],
-                                        scalar_zero, CUBE_SIZE_2,
-                                        0, (loop_num + 1) * CUBE_SIZE //
+                                                     Constant.CUBE_SIZE - Constant.CUBE_SIZE_2],
+                                        scalar_zero, Constant.CUBE_SIZE_2,
+                                        0, (loop_num + 1) * Constant.CUBE_SIZE //
                                         self.cast_num_data)
         # second last axis padding zero
-        if (self.src_shape[-2] % CUBE_SIZE_2) != 0:
+        if (self.src_shape[-2] % Constant.CUBE_SIZE_2) != 0:
             with tik_instance.if_scope(num_loop_time ==
                                        self.dst_shape[-4] - 1):
-                dup_number = (CUBE_SIZE_2 - self.src_shape[-2] %
-                              CUBE_SIZE_2) * (loop_num + 1) *\
+                dup_number = (Constant.CUBE_SIZE_2 - self.src_shape[-2] %
+                              Constant.CUBE_SIZE_2) * (loop_num + 1) *\
                              self.dst_shape[-2]
-                offset = (self.src_shape[-2] % CUBE_SIZE_2) *\
+                offset = (self.src_shape[-2] % Constant.CUBE_SIZE_2) *\
                          (loop_num + 1) * self.dst_shape[-2]
                 self.vector_dup_zero_python(tik_instance, ub_cast_fp16,
                                             dup_number, offset)
         # data rearrange
-        dst_list_low = [ub_trans[i * CUBE_SIZE_2] for i in range(CUBE_SIZE)]
+        dst_list_low = [ub_trans[i * Constant.CUBE_SIZE_2] for i in range(Constant.CUBE_SIZE)]
         src_list_low = [ub_cast_fp16[i * (loop_num + 1) * self.dst_shape[-2]]
-                        for i in range(CUBE_SIZE)]
-        dst_list_high = [ub_trans[i * CUBE_SIZE_2 + CUBE_SIZE]
+                        for i in range(Constant.CUBE_SIZE)]
+        dst_list_high = [ub_trans[i * Constant.CUBE_SIZE_2 + Constant.CUBE_SIZE]
                          for i in range(16)]
         src_list_high = [ub_cast_fp16[i * (loop_num + 1) * self.dst_shape[-2] +
-                                      CUBE_SIZE * (loop_num + 1) *
+                                      Constant.CUBE_SIZE * (loop_num + 1) *
                                       self.dst_shape[-2]]
-                         for i in range(CUBE_SIZE)]
+                         for i in range(Constant.CUBE_SIZE)]
         if loop_num == 1:
             tik_instance.vnchwconv(False, False, dst_list_low, src_list_low,
                                    1, 0, 0)
@@ -718,16 +724,16 @@ class ND2ZNComputeInt8:
                                    1, 0, 0)
         else:
             tik_instance.vnchwconv(False, False, dst_list_low, src_list_low,
-                                   loop_num, CUBE_SIZE_2,
+                                   loop_num, Constant.CUBE_SIZE_2,
                                    self.cast_num_byte // 2)
             tik_instance.vnchwconv(False, False, dst_list_high, src_list_high,
-                                   loop_num, CUBE_SIZE_2,
+                                   loop_num, Constant.CUBE_SIZE_2,
                                    self.cast_num_byte // 2)
 
-        cast_repeat_time.set_as(CUBE_SIZE * loop_num * self.dst_shape[-1] //
-                                MAX_MASK)
-        cast_remainder.set_as(CUBE_SIZE * loop_num * self.dst_shape[-1] %
-                              MAX_MASK)
+        cast_repeat_time.set_as(Constant.CUBE_SIZE * loop_num * self.dst_shape[-1] //
+                                Constant.MAX_MASK)
+        cast_remainder.set_as(Constant.CUBE_SIZE * loop_num * self.dst_shape[-1] %
+                              Constant.MAX_MASK)
         # cast the data from float16 to int8
         _cast_dtype(tik_instance, ub_cast_int8, ub_trans, cast_repeat_time,
                     cast_remainder, "float16_2_int8")
@@ -805,15 +811,15 @@ class ND2ZNComputeInt8:
                     src_gm_index = num_fourth_last_axis * num_data_one_loop - \
                                    (remainder - 1) * num_data_one_loop
                     with tik_instance.if_scope(is_last == 1):
-                        if self.src_shape[-2] % CUBE_SIZE_2 != 0:
+                        if self.src_shape[-2] % Constant.CUBE_SIZE_2 != 0:
                             tik_instance.data_move(ub_ori[src_ub_index],
                                                    self.src_gm[src_gm_index],
                                                    0, 1,
                                                    (remainder *
                                                     num_data_one_loop -
-                                                    (CUBE_SIZE_2 -
+                                                    (Constant.CUBE_SIZE_2 -
                                                      self.src_shape[-2] %
-                                                     CUBE_SIZE_2) *
+                                                     Constant.CUBE_SIZE_2) *
                                                     self.dst_shape[-3] *
                                                     self.dst_shape[-2]) //
                                                    self.num_data, 0, 0)
@@ -879,22 +885,22 @@ class ND2ZNComputeInt8:
                                             num_core, core_number)
             align_loop, remainder = _cal_core_loop(tik_instance,
                                                    num_data_one_loop +
-                                                   CUBE_SIZE * CUBE_SIZE_2,
+                                                   Constant.CUBE_SIZE * Constant.CUBE_SIZE_2,
                                                    core_loop, ub_ori_data)
             with tik_instance.for_range(0, core_loop) as num_core_loop:
                 total_core_loop = sum_core + num_core_loop
                 num_fourth_last_axis = total_core_loop
                 is_last = tik_instance.Scalar("uint64", init_value=0)
                 src_gm_index = num_fourth_last_axis * self.src_shape[-1] * \
-                               CUBE_SIZE_2
+                               Constant.CUBE_SIZE_2
                 src_ub_index = (num_core_loop % align_loop) * \
-                               (num_data_one_loop + CUBE_SIZE_2 * CUBE_SIZE)
+                               (num_data_one_loop + Constant.CUBE_SIZE_2 * Constant.CUBE_SIZE)
                 with tik_instance.if_scope(num_fourth_last_axis ==
                                            self.dst_shape[-4] - 1):
                     is_last.set_as(1)
-                    if self.src_shape[-2] % CUBE_SIZE_2 != 0:
+                    if self.src_shape[-2] % Constant.CUBE_SIZE_2 != 0:
                         with tik_instance.for_range(0, self.src_shape[-2] %
-                                                    CUBE_SIZE_2) as \
+                                                    Constant.CUBE_SIZE_2) as \
                                 num_cube_row:
                             tik_instance.data_move(ub_ori[src_ub_index +
                                                           num_cube_row *
@@ -911,7 +917,7 @@ class ND2ZNComputeInt8:
                                                     self.num_data - 1) //
                                                    self.num_data, 0, 0)
                     else:
-                        with tik_instance.for_range(0, CUBE_SIZE_2) as \
+                        with tik_instance.for_range(0, Constant.CUBE_SIZE_2) as \
                                 num_cube_row:
                             tik_instance.data_move(ub_ori[src_ub_index +
                                                           num_cube_row *
@@ -928,7 +934,7 @@ class ND2ZNComputeInt8:
                                                     self.num_data - 1) //
                                                    self.num_data, 0, 0)
                 with tik_instance.else_scope():
-                    with tik_instance.for_range(0, CUBE_SIZE_2) as \
+                    with tik_instance.for_range(0, Constant.CUBE_SIZE_2) as \
                             num_cube_row:
                         tik_instance.data_move(ub_ori[src_ub_index +
                                                       num_cube_row *
@@ -1019,15 +1025,15 @@ class ND2ZNComputeInt8:
                 num_fourth_last_axis = total_core_loop
                 is_last = tik_instance.Scalar("uint64", init_value=0)
                 src_gm_index = num_fourth_last_axis * self.src_shape[-1] * \
-                               CUBE_SIZE_2
+                               Constant.CUBE_SIZE_2
                 src_ub_index = (num_core_loop % align_loop) * \
                                num_data_one_loop
                 with tik_instance.if_scope(num_fourth_last_axis ==
                                            self.dst_shape[-4] - 1):
                     is_last.set_as(1)
-                    if self.src_shape[-2] % CUBE_SIZE_2 != 0:
+                    if self.src_shape[-2] % Constant.CUBE_SIZE_2 != 0:
                         with tik_instance.for_range(0, self.src_shape[-2] %
-                                                    CUBE_SIZE_2) as \
+                                                    Constant.CUBE_SIZE_2) as \
                                 num_cube_row:
                             tik_instance.data_move(ub_ori[src_ub_index +
                                                           num_cube_row *
@@ -1043,7 +1049,7 @@ class ND2ZNComputeInt8:
                                                     self.num_data - 1) //
                                                    self.num_data, 0, 0)
                     else:
-                        with tik_instance.for_range(0, CUBE_SIZE_2) as \
+                        with tik_instance.for_range(0, Constant.CUBE_SIZE_2) as \
                                 num_cube_row:
                             tik_instance.data_move(ub_ori[src_ub_index +
                                                           num_cube_row *
@@ -1059,7 +1065,7 @@ class ND2ZNComputeInt8:
                                                     self.num_data - 1) //
                                                    self.num_data, 0, 0)
                 with tik_instance.else_scope():
-                    with tik_instance.for_range(0, CUBE_SIZE_2) as \
+                    with tik_instance.for_range(0, Constant.CUBE_SIZE_2) as \
                             num_cube_row:
                         tik_instance.data_move(ub_ori[src_ub_index +
                                                       num_cube_row *
@@ -1114,12 +1120,12 @@ class ND2ZNComputeInt8:
         and the shape of dst is 4-D
         """
         self.ub_memory = self.ub_memory - self.ub_memory % \
-                         (CUBE_SIZE_2 * CUBE_SIZE_2)
+                         (Constant.CUBE_SIZE_2 * Constant.CUBE_SIZE_2)
         ub_ori_data = self.ub_memory
         ub_trans_data = ub_ori_data
         # loop_col is divisible by 2
         loop_col, loop_remainder = _cal_core_loop_python(
-            CUBE_SIZE_2 * CUBE_SIZE, self.dst_shape[-3], ub_ori_data)
+            Constant.CUBE_SIZE_2 * Constant.CUBE_SIZE, self.dst_shape[-3], ub_ori_data)
         num_data_one_loop = self.dst_shape[-4] * self.dst_shape[-3] * \
                             self.dst_shape[-2] * self.dst_shape[-1]
         loop_times = self.dst_shape[-4]
@@ -1161,27 +1167,27 @@ class ND2ZNComputeInt8:
 
                 with tik_instance.for_range(
                     0, self.dst_shape[-3] // loop_col) as num_loop_cube:
-                    if self.src_shape[-1] % CUBE_SIZE_2 != 0 or \
-                            (self.src_shape[-1] - loop_col * CUBE_SIZE) // \
-                            self.num_data > MAX_STRIDE_BLK:
-                        if self.src_shape[-2] % CUBE_SIZE_2 != 0:
+                    if self.src_shape[-1] % Constant.CUBE_SIZE_2 != 0 or \
+                            (self.src_shape[-1] - loop_col * Constant.CUBE_SIZE) // \
+                            self.num_data > Constant.MAX_STRIDE_BLK:
+                        if self.src_shape[-2] % Constant.CUBE_SIZE_2 != 0:
                             with tik_instance.if_scope(num_loop_time ==
                                                        self.dst_shape[-4] - 1):
                                 with tik_instance.for_range(
-                                    0, self.src_shape[-2] % CUBE_SIZE_2)\
+                                    0, self.src_shape[-2] % Constant.CUBE_SIZE_2)\
                                     as num_cube_row:
                                     src_gm_index = num_outer_axis * \
                                                    self.src_shape[-1] * \
                                                    self.src_shape[-2] + \
                                                    (num_loop_time *
-                                                    CUBE_SIZE_2 +
+                                                    Constant.CUBE_SIZE_2 +
                                                     num_cube_row) * \
                                                    self.src_shape[-1] + \
                                                    num_loop_cube * loop_col * \
-                                                   CUBE_SIZE
+                                                   Constant.CUBE_SIZE
                                     tik_instance.data_move(ub_ori
                                                            [loop_col *
-                                                            CUBE_SIZE *
+                                                            Constant.CUBE_SIZE *
                                                             num_cube_row],
                                                            self.src_gm
                                                            [src_gm_index],
@@ -1190,20 +1196,20 @@ class ND2ZNComputeInt8:
                                                            self.num_byte //
                                                            2, 0, 0)
                             with tik_instance.else_scope():
-                                with tik_instance.for_range(0, CUBE_SIZE_2) \
+                                with tik_instance.for_range(0, Constant.CUBE_SIZE_2) \
                                         as num_cube_row:
                                     src_gm_index = num_outer_axis * \
                                                    self.src_shape[-1] * \
                                                    self.src_shape[-2] + \
                                                    (num_loop_time *
-                                                    CUBE_SIZE_2 +
+                                                    Constant.CUBE_SIZE_2 +
                                                     num_cube_row) * \
                                                    self.src_shape[-1] + \
                                                    num_loop_cube * loop_col * \
-                                                   CUBE_SIZE
+                                                   Constant.CUBE_SIZE
                                     tik_instance.data_move(ub_ori
                                                            [loop_col *
-                                                            CUBE_SIZE *
+                                                            Constant.CUBE_SIZE *
                                                             num_cube_row],
                                                            self.src_gm
                                                            [src_gm_index],
@@ -1212,18 +1218,18 @@ class ND2ZNComputeInt8:
                                                            self.num_byte // 2,
                                                            0, 0)
                         else:
-                            with tik_instance.for_range(0, CUBE_SIZE_2) as \
+                            with tik_instance.for_range(0, Constant.CUBE_SIZE_2) as \
                                     num_cube_row:
                                 src_gm_index = num_outer_axis * \
                                                self.src_shape[-1] * \
                                                self.src_shape[-2] + \
-                                               (num_loop_time * CUBE_SIZE_2 +
+                                               (num_loop_time * Constant.CUBE_SIZE_2 +
                                                 num_cube_row) * \
                                                self.src_shape[-1] + \
                                                num_loop_cube * loop_col * \
-                                               CUBE_SIZE
+                                               Constant.CUBE_SIZE
                                 tik_instance.data_move(ub_ori
-                                                       [loop_col * CUBE_SIZE *
+                                                       [loop_col * Constant.CUBE_SIZE *
                                                         num_cube_row],
                                                        self.src_gm
                                                        [src_gm_index],
@@ -1234,9 +1240,9 @@ class ND2ZNComputeInt8:
                     else:
                         src_gm_index = num_outer_axis * self.src_shape[-1] * \
                                        self.src_shape[-2] + num_loop_time * \
-                                       CUBE_SIZE_2 * self.src_shape[-1] + \
-                                       num_loop_cube * loop_col * CUBE_SIZE
-                        if self.src_shape[-2] % CUBE_SIZE_2 != 0:
+                                       Constant.CUBE_SIZE_2 * self.src_shape[-1] + \
+                                       num_loop_cube * loop_col * Constant.CUBE_SIZE
+                        if self.src_shape[-2] % Constant.CUBE_SIZE_2 != 0:
                             with tik_instance.if_scope(num_loop_time ==
                                                        self.dst_shape[-4] - 1):
                                 tik_instance.data_move(ub_ori[src_ub_index],
@@ -1244,33 +1250,33 @@ class ND2ZNComputeInt8:
                                                        [src_gm_index],
                                                        0,
                                                        self.src_shape[-2] %
-                                                       CUBE_SIZE_2,
+                                                       Constant.CUBE_SIZE_2,
                                                        loop_col *
                                                        self.num_byte // 2,
                                                        (self.src_shape[-1] -
                                                         loop_col *
-                                                        CUBE_SIZE) //
+                                                        Constant.CUBE_SIZE) //
                                                        self.num_data, 0)
                             with tik_instance.else_scope():
                                 tik_instance.data_move(ub_ori[src_ub_index],
                                                        self.src_gm
                                                        [src_gm_index],
-                                                       0, CUBE_SIZE_2,
+                                                       0, Constant.CUBE_SIZE_2,
                                                        loop_col *
                                                        self.num_byte // 2,
                                                        (self.src_shape[-1] -
                                                         loop_col *
-                                                        CUBE_SIZE) //
+                                                        Constant.CUBE_SIZE) //
                                                        self.num_data, 0)
                         else:
                             tik_instance.data_move(ub_ori[src_ub_index],
                                                    self.src_gm
                                                    [src_gm_index],
-                                                   0, CUBE_SIZE_2,
+                                                   0, Constant.CUBE_SIZE_2,
                                                    loop_col * self.num_byte //
                                                    2,
                                                    (self.src_shape[-1] -
-                                                    loop_col * CUBE_SIZE) //
+                                                    loop_col * Constant.CUBE_SIZE) //
                                                    self.num_data, 0)
                     with tik_instance.if_scope(tik.all(num_loop_cube ==
                                                        self.dst_shape[-3] //
@@ -1298,9 +1304,9 @@ class ND2ZNComputeInt8:
                                            0, 0)
 
                 if loop_remainder != 0:
-                    if self.src_shape[-1] % CUBE_SIZE_2 == 0 or \
-                            CUBE_SIZE < self.src_shape[-1] % CUBE_SIZE_2 < \
-                            CUBE_SIZE_2:
+                    if self.src_shape[-1] % Constant.CUBE_SIZE_2 == 0 or \
+                            Constant.CUBE_SIZE < self.src_shape[-1] % Constant.CUBE_SIZE_2 < \
+                            Constant.CUBE_SIZE_2:
                         self.remainder_case_zero(tik_instance, ub_ori,
                                                  ub_cast_fp16, ub_trans,
                                                  ub_cast_int8, is_last,
@@ -1332,91 +1338,91 @@ class ND2ZNComputeInt8:
                             self.dst_shape[-2] * self.dst_shape[-1]
         src_ub_index = 0
         is_last.set_as(1)
-        if self.src_shape[-1] % CUBE_SIZE_2 != 0 or \
-                (self.src_shape[-1] - loop_remainder * CUBE_SIZE) //  \
-                self.num_data > MAX_STRIDE_BLK:
-            if self.src_shape[-2] % CUBE_SIZE_2 != 0:
+        if self.src_shape[-1] % Constant.CUBE_SIZE_2 != 0 or \
+                (self.src_shape[-1] - loop_remainder * Constant.CUBE_SIZE) //  \
+                self.num_data > Constant.MAX_STRIDE_BLK:
+            if self.src_shape[-2] % Constant.CUBE_SIZE_2 != 0:
                 with tik_instance.if_scope(num_loop_time ==
                                            self.dst_shape[-4] - 1):
                     with tik_instance.for_range(0, self.src_shape[-2] %
-                                                CUBE_SIZE_2) as num_cube_row:
+                                                Constant.CUBE_SIZE_2) as num_cube_row:
                         src_gm_index = num_outer_axis * self.src_shape[-1] * \
                                        self.src_shape[-2] + \
-                                       (num_loop_time * CUBE_SIZE_2 +
+                                       (num_loop_time * Constant.CUBE_SIZE_2 +
                                         num_cube_row) * self.src_shape[-1] + \
-                                       count_loop * loop_col * CUBE_SIZE
+                                       count_loop * loop_col * Constant.CUBE_SIZE
                         tik_instance.data_move(ub_ori[loop_remainder *
-                                                      CUBE_SIZE *
+                                                      Constant.CUBE_SIZE *
                                                       num_cube_row],
                                                self.src_gm[src_gm_index],
                                                0, 1,
-                                               (loop_remainder * CUBE_SIZE +
+                                               (loop_remainder * Constant.CUBE_SIZE +
                                                 self.num_data - 1) //
                                                self.num_data, 0, 0)
                 with tik_instance.else_scope():
-                    with tik_instance.for_range(0, CUBE_SIZE_2) \
+                    with tik_instance.for_range(0, Constant.CUBE_SIZE_2) \
                             as num_cube_row:
                         src_gm_index = num_outer_axis * self.src_shape[-1] * \
                                        self.src_shape[-2] + \
-                                       (num_loop_time * CUBE_SIZE_2 +
+                                       (num_loop_time * Constant.CUBE_SIZE_2 +
                                         num_cube_row) * self.src_shape[-1] + \
-                                       count_loop * loop_col * CUBE_SIZE
+                                       count_loop * loop_col * Constant.CUBE_SIZE
                         tik_instance.data_move(ub_ori[loop_remainder *
-                                                      CUBE_SIZE *
+                                                      Constant.CUBE_SIZE *
                                                       num_cube_row],
                                                self.src_gm[src_gm_index],
                                                0, 1,
-                                               (loop_remainder * CUBE_SIZE +
+                                               (loop_remainder * Constant.CUBE_SIZE +
                                                 self.num_data - 1) //
                                                self.num_data, 0, 0)
             else:
-                with tik_instance.for_range(0, CUBE_SIZE_2) as num_cube_row:
+                with tik_instance.for_range(0, Constant.CUBE_SIZE_2) as num_cube_row:
                     src_gm_index = num_outer_axis * self.src_shape[-1] * \
                                    self.src_shape[-2] + \
-                                   (num_loop_time * CUBE_SIZE_2 +
+                                   (num_loop_time * Constant.CUBE_SIZE_2 +
                                     num_cube_row) * self.src_shape[-1] +\
-                                   count_loop * loop_col * CUBE_SIZE
-                    tik_instance.data_move(ub_ori[loop_remainder * CUBE_SIZE *
+                                   count_loop * loop_col * Constant.CUBE_SIZE
+                    tik_instance.data_move(ub_ori[loop_remainder * Constant.CUBE_SIZE *
                                                   num_cube_row],
                                            self.src_gm[src_gm_index],
                                            0, 1,
-                                           (loop_remainder * CUBE_SIZE +
+                                           (loop_remainder * Constant.CUBE_SIZE +
                                             self.num_data - 1) //
                                            self.num_data, 0, 0)
         else:
             src_gm_index = num_outer_axis * self.src_shape[-1] * \
-                           self.src_shape[-2] + num_loop_time * CUBE_SIZE_2 * \
+                           self.src_shape[-2] + num_loop_time * Constant.CUBE_SIZE_2 * \
                            self.src_shape[-1] + count_loop * loop_col *\
-                           CUBE_SIZE
-            if self.src_shape[-2] % CUBE_SIZE_2 != 0:
+                           Constant.CUBE_SIZE
+            if self.src_shape[-2] % Constant.CUBE_SIZE_2 != 0:
                 with tik_instance.if_scope(num_loop_time ==
                                            self.dst_shape[-4] - 1):
                     tik_instance.data_move(ub_ori[src_ub_index],
                                            self.src_gm[src_gm_index], 0,
-                                           self.src_shape[-2] % CUBE_SIZE_2,
+                                           self.src_shape[-2] % Constant.CUBE_SIZE_2,
                                            loop_remainder * self.num_byte // 2,
                                            (self.src_shape[-1] -
-                                            loop_remainder * CUBE_SIZE +
+                                            loop_remainder * Constant.CUBE_SIZE +
                                             self.num_data - 1) //
                                            self.num_data,
                                            0)
                 with tik_instance.else_scope():
                     tik_instance.data_move(ub_ori[src_ub_index],
                                            self.src_gm[src_gm_index],
-                                           0, CUBE_SIZE_2,
+                                           0, Constant.CUBE_SIZE_2,
                                            loop_remainder * self.num_byte // 2,
                                            (self.src_shape[-1] -
-                                            loop_remainder * CUBE_SIZE +
+                                            loop_remainder * Constant.CUBE_SIZE +
                                             self.num_data - 1) //
                                            self.num_data,
                                            0)
             else:
                 tik_instance.data_move(ub_ori[src_ub_index],
                                        self.src_gm[src_gm_index],
-                                       0, CUBE_SIZE_2,
+                                       0, Constant.CUBE_SIZE_2,
                                        loop_remainder * self.num_byte // 2,
                                        (self.src_shape[-1] - loop_remainder *
-                                        CUBE_SIZE + self.num_data - 1) //
+                                        Constant.CUBE_SIZE + self.num_data - 1) //
                                        self.num_data, 0)
 
         self.data_rearrange_case_two(tik_instance, ub_ori, ub_cast_fp16,
@@ -1447,51 +1453,51 @@ class ND2ZNComputeInt8:
                             self.dst_shape[-2] * self.dst_shape[-1]
         is_last.set_as(1)
 
-        if self.src_shape[-2] % CUBE_SIZE_2 != 0:
+        if self.src_shape[-2] % Constant.CUBE_SIZE_2 != 0:
             with tik_instance.if_scope(num_loop_time ==
                                        self.dst_shape[-4] - 1):
                 with tik_instance.for_range(0, self.src_shape[-2] %
-                                            CUBE_SIZE_2) as num_cube_row:
+                                            Constant.CUBE_SIZE_2) as num_cube_row:
                     src_gm_index = num_outer_axis * self.src_shape[-1] * \
                                    self.src_shape[-2] + \
-                                   (num_loop_time * CUBE_SIZE_2 +
+                                   (num_loop_time * Constant.CUBE_SIZE_2 +
                                     num_cube_row) * self.src_shape[-1] +\
-                                   count_loop * loop_col * CUBE_SIZE
+                                   count_loop * loop_col * Constant.CUBE_SIZE
                     tik_instance.data_move(ub_ori[(loop_remainder + 1) *
-                                                  CUBE_SIZE * num_cube_row],
+                                                  Constant.CUBE_SIZE * num_cube_row],
                                            self.src_gm[src_gm_index],
                                            0, 1,
-                                           (loop_remainder * CUBE_SIZE +
+                                           (loop_remainder * Constant.CUBE_SIZE +
                                             self.num_data - 1) //
                                            self.num_data,
                                            0, 0)
             with tik_instance.else_scope():
-                with tik_instance.for_range(0, CUBE_SIZE_2) as num_cube_row:
+                with tik_instance.for_range(0, Constant.CUBE_SIZE_2) as num_cube_row:
                     src_gm_index = num_outer_axis * self.src_shape[-1] *  \
                                    self.src_shape[-2] + \
-                                   (num_loop_time * CUBE_SIZE_2 +
+                                   (num_loop_time * Constant.CUBE_SIZE_2 +
                                     num_cube_row) * self.src_shape[-1] +\
-                                   count_loop * loop_col * CUBE_SIZE
+                                   count_loop * loop_col * Constant.CUBE_SIZE
                     tik_instance.data_move(ub_ori[(loop_remainder + 1) *
-                                                  CUBE_SIZE * num_cube_row],
+                                                  Constant.CUBE_SIZE * num_cube_row],
                                            self.src_gm[src_gm_index],
                                            0, 1,
-                                           (loop_remainder * CUBE_SIZE +
+                                           (loop_remainder * Constant.CUBE_SIZE +
                                             self.num_data - 1) //
                                            self.num_data,
                                            0, 0)
         else:
-            with tik_instance.for_range(0, CUBE_SIZE_2) as num_cube_row:
+            with tik_instance.for_range(0, Constant.CUBE_SIZE_2) as num_cube_row:
                 src_gm_index = num_outer_axis * self.src_shape[-1] *\
                                self.src_shape[-2] + \
-                               (num_loop_time * CUBE_SIZE_2 + num_cube_row) * \
+                               (num_loop_time * Constant.CUBE_SIZE_2 + num_cube_row) * \
                                self.src_shape[-1] + count_loop * loop_col * \
-                               CUBE_SIZE
+                               Constant.CUBE_SIZE
                 tik_instance.data_move(ub_ori[(loop_remainder + 1) *
-                                              CUBE_SIZE * num_cube_row],
+                                              Constant.CUBE_SIZE * num_cube_row],
                                        self.src_gm[src_gm_index],
                                        0, 1,
-                                       (loop_remainder * CUBE_SIZE +
+                                       (loop_remainder * Constant.CUBE_SIZE +
                                         self.num_data - 1) // self.num_data,
                                        0, 0)
 
