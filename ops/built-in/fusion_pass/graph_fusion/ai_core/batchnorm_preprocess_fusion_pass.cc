@@ -76,7 +76,9 @@ Status BatchNormPreprocessFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& m
 
   // add input edge to new node
   for (unsigned int i=0; i<bn_node->GetAllInDataAnchors().size(); i++) {
-    ge::GraphUtils::AddEdge(bn_node->GetInDataAnchor(i)->GetPeerOutAnchor(), new_bn_node->GetInDataAnchor(i));
+    if (bn_node->GetInDataAnchor(i)->GetPeerOutAnchor() != nullptr) {
+      ge::GraphUtils::AddEdge(bn_node->GetInDataAnchor(i)->GetPeerOutAnchor(), new_bn_node->GetInDataAnchor(i));
+    }
   }
   // add in control edge to new nodea
   if (bn_node->GetInControlAnchor() != nullptr) {
