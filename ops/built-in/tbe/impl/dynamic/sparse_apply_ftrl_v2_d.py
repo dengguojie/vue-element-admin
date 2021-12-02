@@ -132,7 +132,7 @@ class SparseApplyFtrl(SparseApplyDynamic):
             # `tmp = ln(accum_new)`
             self.tik_instance.vln(mask, tmp_ub, accum_ub, repeat_times, 1, 1, 8, 8)
 
-            # 'accum_new^(-lr_power)'
+            # `accum_new^(-lr_power)`
             self.tik_instance.vmuls(mask, tmp_ub, tmp_ub, -self.lr_power, repeat_times, 1, 1, 8, 8)
 
             # `tmp = accum_new ^ (-lr_power)`

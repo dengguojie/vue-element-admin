@@ -25,7 +25,6 @@ from impl.util.platform_adapter import OpPatternMode
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import register_operator_compute
 from impl.util.platform_adapter import get_current_build_config
-from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import is_supported_vlrelu
 from impl.common_util import get_vlrelu
 from impl.common_util import get_attr

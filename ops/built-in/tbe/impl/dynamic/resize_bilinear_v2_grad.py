@@ -70,6 +70,7 @@ def _check_param(grads, images, align_corners, half_pixel_centers):
     para_check.check_dtype(grads_dtype, ["float32"])
     para_check.check_dtype(images_dtype, ["float32"])
 
+
 # 'pylint: disable=invalid-name,useless-object-inheritance,too-many-instance-attributes
 # 'pylint: disable=too-many-arguments,too-many-locals,too-many-public-methods
 class ResizeBilinearV2Grad:

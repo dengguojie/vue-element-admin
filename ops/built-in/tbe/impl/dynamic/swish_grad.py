@@ -17,9 +17,9 @@ dynamic swish_grad
 `y = sigmoid(scale*x) + x*sigmoid'(scale*x)`
 `sigmoid = sigmoid*(1 - sigmoid)`
 let:
-A = fwd_input = x                   # input of swish forward
-B = fwd_output = x*sigmoid(scale*x) # output of swish forward
-y = scale*B + B/A*(1 - scale*B)
+`A = fwd_input = x`                   # input of swish forward
+`B = fwd_output = x*sigmoid(scale*x)` # output of swish forward
+`y = scale*B + B/A*(1 - scale*B)`
 """
 
 from impl.util.platform_adapter import tvm

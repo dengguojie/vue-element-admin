@@ -19,7 +19,7 @@ import tbe.common.register as tbe_register
 from impl.util.platform_adapter import para_check
 
 
-# pylint: disable=too-many-arguments,unused-argument,unnecessary-pass
+# 'pylint: disable=too-many-arguments,unused-argument,unnecessary-pass
 @tbe_register.register_param_generalization("LayerNormGrad")
 def layer_norm_grad_generalization(input_dy,
                                    input_x,
