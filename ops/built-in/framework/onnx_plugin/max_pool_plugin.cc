@@ -19,6 +19,10 @@
  * \brief
  */
 #include "onnx_common.h"
+#include "nn_pooling_ops.h"
+#include "transformation_ops.h"
+#include "array_ops.h"
+#include "pad_ops.h"
 
 using namespace ge;
 namespace domi {

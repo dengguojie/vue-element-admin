@@ -24,7 +24,6 @@ rights reserved.
 #include "common/util/error_manager/error_manager.h"
 #include "graph/operator.h"
 #include "graph.h"
-#include "all_ops.h"
 #include "op_log.h"
 
 namespace domi {

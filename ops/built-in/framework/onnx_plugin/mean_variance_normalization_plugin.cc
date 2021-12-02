@@ -19,6 +19,7 @@
  * \brief
  */
 #include "onnx_common.h"
+#include "array_ops.h"
 
 namespace domi {
 static const int OUTPUT_SIZE = 1;

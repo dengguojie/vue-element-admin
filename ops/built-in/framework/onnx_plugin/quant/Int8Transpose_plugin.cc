@@ -11,6 +11,8 @@
  * http://www.apache.org/licenses/LICENSE-2.0
  */
 #include "../onnx_common.h"
+#include "array_ops.h"
+#include "transformation_ops.h"
 
 using namespace ge;
 namespace domi {

@@ -19,6 +19,8 @@
  * \brief
  */
 #include "onnx_common.h"
+#include "split_combination_ops.h"
+#include "array_ops.h"
 
 using namespace std;
 using namespace ge;

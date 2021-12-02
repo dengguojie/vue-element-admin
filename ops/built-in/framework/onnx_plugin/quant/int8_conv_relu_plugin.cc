@@ -19,6 +19,10 @@
  * \brief
  */
 #include "../onnx_common.h"
+#include "array_ops.h"
+#include "nn_calculation_ops.h"
+#include "quantize_ops.h"
+#include "nonlinear_fuc_ops.h"
 
 namespace domi {
 

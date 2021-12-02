@@ -20,6 +20,8 @@
  */
 #include "onnx_common.h"
 
+#include "array_ops.h"
+#include "elewise_calculation_ops.h"
 namespace domi {
 
 Status ParseParamsAddcmul(const Message* op_src, ge::Operator& op_dest) {

@@ -12,6 +12,7 @@
  */
 
 #include "onnx_common.h"
+#include "array_ops.h"
 
 using domi::ONNX;
 

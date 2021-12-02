@@ -19,6 +19,7 @@
  * \brief
  */
 #include "onnx_common.h"
+#include "array_ops.h"
 
 namespace domi {
 Status ParseParamsScatterElements(const Message* op_src, ge::Operator& op_dest) {

@@ -11,6 +11,7 @@
  * http://www.apache.org/licenses/LICENSE-2.0
  */
 #include "onnx_common.h"
+#include "array_ops.h"
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;
 Status ParseParamsSize(const Message *op_src, ge::Operator &op_dest) {

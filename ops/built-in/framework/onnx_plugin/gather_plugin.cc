@@ -20,6 +20,8 @@
  */
 
 #include "onnx_common.h"
+#include "selection_ops.h"
+#include "array_ops.h"
 
 using namespace ge;
 namespace domi {

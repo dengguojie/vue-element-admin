@@ -19,6 +19,9 @@
  * \brief
  */
 #include "onnx_common.h"
+#include "array_ops.h"
+#include "transformation_ops.h"
+#include "selection_ops.h"
 
 using namespace ge;
 namespace domi {

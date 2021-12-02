@@ -13,6 +13,7 @@ rights reserved.
  */
 
 #include "onnx_common.h"
+#include "array_ops.h"
 namespace domi {
   enum DataTypeOnnx {
   DTO_FLOAT = 1,     // float type

@@ -19,6 +19,8 @@
  * \brief
  */
 #include "onnx_common.h"
+#include "nn_calculation_ops.h"
+#include "array_ops.h"
 
 namespace domi {
 

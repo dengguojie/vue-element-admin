@@ -11,6 +11,11 @@
  * http://www.apache.org/licenses/LICENSE-2.0
  */
 #include "onnx_common.h"
+#include "array_ops.h"
+#include "elewise_calculation_ops.h"
+#include "pad_ops.h"
+#include "split_combination_ops.h"
+#include "matrix_calculation_ops.h"
 
 using namespace std;
 using namespace ge;

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include "onnx_common.h"
+#include "array_ops.h"
  
 namespace domi {
 Status parse_params_hard_max(const Message *op_src, ge::Operator &op_dest)

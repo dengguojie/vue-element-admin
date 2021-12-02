@@ -20,6 +20,7 @@
  */
  #include <cmath>
 #include "onnx_common.h"
+#include "array_ops.h"
 
 namespace domi {
 static const float ALPHA_DEFAULT = 1.67326324235;

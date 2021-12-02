@@ -12,6 +12,8 @@
  */
 
 #include "onnx_common.h"
+#include "array_ops.h"
+#include "transformation_ops.h"
 using namespace ge;
 using ge::Operator;
 namespace domi {

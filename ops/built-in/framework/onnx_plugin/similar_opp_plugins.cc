@@ -12,6 +12,7 @@
  */
 
 #include "onnx_common.h"
+#include "array_ops.h"
 
 namespace domi {
 #define REGISTER_PARSE_PARAMS_OP(ATC_OPP)                                    \

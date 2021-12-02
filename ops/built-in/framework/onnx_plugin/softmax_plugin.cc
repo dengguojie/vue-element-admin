@@ -12,6 +12,7 @@
  */
 
 #include "onnx_common.h"
+#include "array_ops.h"
 
 namespace domi {
 using NodeProto = ge::onnx::NodeProto;

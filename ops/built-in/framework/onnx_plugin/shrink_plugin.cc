@@ -12,6 +12,7 @@
  */
 
 #include "onnx_common.h"
+#include "array_ops.h"
 
 namespace domi {
 static const float BIAS_DEFAULT = 0.0;

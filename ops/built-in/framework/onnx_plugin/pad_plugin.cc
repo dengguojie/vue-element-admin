@@ -12,6 +12,8 @@
  */
 
 #include "onnx_common.h"
+#include "array_ops.h"
+#include "pad_ops.h"
 
 using namespace std;
 using namespace ge;

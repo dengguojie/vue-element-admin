@@ -20,6 +20,10 @@
  */
 
 #include "onnx_common.h"
+#include "selection_ops.h"
+#include "elewise_calculation_ops.h"
+#include "array_ops.h"
+#include "split_combination_ops.h"
 
 using namespace std;
 using namespace ge;

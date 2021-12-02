@@ -20,6 +20,8 @@
  */
 #include "onnx_common.h"
 #include "../../op_proto/util/error_util.h"
+#include "array_ops.h"
+#include "nn_calculation_ops.h"
 
 namespace domi {
 

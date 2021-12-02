@@ -12,6 +12,7 @@
  */
 
 #include "onnx_common.h"
+#include "array_ops.h"
 
 namespace domi {
 static const float EPSILON_DEFAULT = 1e-05;

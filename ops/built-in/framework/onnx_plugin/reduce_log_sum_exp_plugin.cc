@@ -19,6 +19,10 @@
  * \brief
  */
 #include "onnx_common.h"
+#include "array_ops.h"
+#include "elewise_calculation_ops.h"
+#include "reduce_ops.h"
+#include "math_ops.h"
 
 using namespace std;
 using namespace ge;
