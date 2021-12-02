@@ -356,7 +356,10 @@ Status ConvAddFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
                       OP_LOGI(fused_op_type_.c_str(), "The input of add %s is null!", add_node->GetName().c_str()),
                       return NOT_CHANGED);
     auto node_in_front_of_add = add_node->GetInDataAnchor(1)->GetPeerOutAnchor()->GetOwnerNode();
-
+    FUSION_PASS_CHECK((conv_node->GetType() == kConvolution2D || node_in_front_of_add->GetType() == "Reshape"),
+                       OP_LOGI(fused_op_type_.c_str(), "add other input is %s , not changed.",
+                               node_in_front_of_add->GetName().c_str()),
+                       return NOT_CHANGED);
     if (node_in_front_of_add->GetType() == "Reshape") {
       /* This case, the BiasAdd is Add and the input of Add is Reshape,
        * we just get the first weight of reshape as the bias. */

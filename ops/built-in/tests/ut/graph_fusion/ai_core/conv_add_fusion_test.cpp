@@ -1515,4 +1515,105 @@ TEST_F(conv3d_mul_add_fusion_test, conv_add_fusion_test_13) {
     delete[] conv_input_filter_tensor_value;
 }
 
+/* NHWC conv2d without bias + add(reshape) */
+TEST_F(conv3d_mul_add_fusion_test, conv_add_fusion_test_14) {
+    ge::Graph graph("conv_add_fusion_test_12");
 
+    auto conv_input_x_data = op::Data("conv_input_x_data");
+    std::vector<int64_t> dims_x{1, 56, 56, 64};
+    ge::Shape shape_x(dims_x);
+    ge::TensorDesc tensorDescX(shape_x, FORMAT_NHWC, DT_FLOAT);
+    conv_input_x_data.update_input_desc_x(tensorDescX);
+    conv_input_x_data.update_output_desc_y(tensorDescX);
+
+    auto conv_input_filter_data = op::Const("conv_input_filter_data");
+
+    Tensor conv_input_filter_tensor;
+    float *conv_input_filter_tensor_value = new float[64 * 64];
+    for (int i = 0; i < 64 * 64; i++) {
+        *(conv_input_filter_tensor_value + i) = 0.1;
+    }
+    conv_input_filter_tensor.SetData((uint8_t *) conv_input_filter_tensor_value, 64 * 64 * 4);
+
+    std::vector<int64_t> dims_filter{64, 1, 1, 64};
+    ge::Shape shape_filter(dims_filter);
+    ge::TensorDesc tensorDescFilter(shape_filter, FORMAT_NHWC, DT_FLOAT);
+    conv_input_filter_tensor.SetTensorDesc(tensorDescFilter);
+    conv_input_filter_data.set_attr_value(conv_input_filter_tensor);
+
+    auto const_add = op::Const("const_add");
+
+    Tensor const_add_tensor;
+    int16_t *const_add_tensor_value = new int16_t[1];
+    for (int i = 0; i < 1; i++) {
+        *(const_add_tensor_value + i) = 2;
+    }
+    const_add_tensor.SetData((uint8_t *) const_add_tensor_value, 1 * 2);
+
+    std::vector<int64_t> dims_add{1};
+    ge::Shape shape_add(dims_add);
+    ge::TensorDesc tensorDescAdd(shape_add, FORMAT_NHWC, DT_FLOAT16);
+    const_add_tensor.SetTensorDesc(tensorDescAdd);
+    const_add.set_attr_value(const_add_tensor);
+
+    auto conv_op = op::Conv2D("conv_1");
+    conv_op.set_input_x(conv_input_x_data)
+            .set_input_filter(conv_input_filter_data);
+    conv_op.set_attr_data_format("NHWC");
+    conv_op.set_attr_strides({1, 2, 2, 1});
+    conv_op.set_attr_pads({1, 1, 1, 1});
+    
+    auto reshape_op = op::Reshape("reshape");
+    std::vector<int64_t> reshape_input_dims{1, 128};
+    std::vector<int64_t> reshape_output_dims{1, 1, 1, 128};
+    ge::Shape reshape_input_shape(reshape_input_dims);
+    ge::Shape reshape_output_shape(reshape_output_dims);
+    ge::TensorDesc ReshapeInputTensorDesc(reshape_input_shape, FORMAT_NCHW, DT_FLOAT16);
+    ge::TensorDesc ReshapeOutputTensorDesc(reshape_output_shape, FORMAT_NCHW, DT_FLOAT16);
+    reshape_op.update_input_desc_x(ReshapeInputTensorDesc);
+    reshape_op.update_output_desc_y(ReshapeOutputTensorDesc);
+    
+    auto reshape_x_data = op::Data("reshape_x_data");
+    std::vector<int64_t> dims_reshape{1, 128};
+    ge::Shape reshape_x(dims_reshape);
+    ge::TensorDesc tensorDesc(reshape_x, FORMAT_NHWC, DT_FLOAT);
+    reshape_x_data.update_input_desc_x(tensorDesc);
+    reshape_x_data.update_output_desc_y(tensorDesc);
+    auto reshapeConst = op::Constant();
+    reshape_op.set_input_x(reshape_x_data);
+    reshape_op.set_input_shape(reshapeConst);
+
+    auto add_op = op::Add("add_op");
+    add_op.set_input_x1(conv_op)
+            .set_input_x2(reshape_op);
+
+    auto end_op1 = op::Square("end_op1");
+    end_op1.set_input_x(add_op);
+
+    auto end_op2 = op::Asin("end_op2");
+    end_op2.set_input_x(add_op);
+
+    std::vector<Operator> inputs{conv_input_x_data, conv_input_filter_data, const_add, reshape_x_data, reshapeConst};
+    std::vector<Operator> outputs{end_op1, end_op2};
+
+    graph.SetInputs(inputs).SetOutputs(outputs);
+    ge::ComputeGraphPtr compute_graph_ptr = ge::GraphUtils::GetComputeGraph(graph);
+    fe::FusionPassTestUtils::InferShapeAndType(compute_graph_ptr);
+    fe::FusionPassTestUtils::RunGraphFusionPass("TBEConvAddFusion", fe::BUILT_IN_GRAPH_PASS, *compute_graph_ptr);
+    // compute_graph_ptr->Dump();
+    int Conv2Cnt = 0;
+    int AddCnt = 0;
+    for (auto node: compute_graph_ptr->GetAllNodes()) {
+        if (node->GetType() == "Conv2D") {
+            Conv2Cnt++;
+        }
+        if (node->GetType() == "Add") {
+            AddCnt++;
+        }
+    }
+    EXPECT_EQ(Conv2Cnt, 1);
+    EXPECT_EQ(AddCnt, 1);
+
+    delete[] const_add_tensor_value;
+    delete[] conv_input_filter_tensor_value;
+}
