@@ -3564,7 +3564,7 @@ class MaxPool3DGradCompute:
                     num_bit = self.num_bit_fp32
                     n_burst = ub2gm_shape[1]
                     burst_len = _prod(ub2gm_shape[2:]) * num_bit // Constant.MINI_UNIT
-                    # c0 * num_bit // Constant.MINI_UNIT is 2
+                    # `info: c0 * num_bit // Constant.MINI_UNIT is 2
                     src_stride = (pad_hw_left + pad_hw_right) * 2
                     dst_stride = 0
 
@@ -3893,7 +3893,7 @@ class MaxPool3DGradCompute:
                     num_bit = self.num_bit_fp32
                     n_burst = ub2gm_shape[1]
                     burst_len = _prod(ub2gm_shape[2:]) * num_bit // Constant.MINI_UNIT
-                    # c0 * num_bit // Constant.MINI_UNIT is 2
+                    # 'info: c0 * num_bit // Constant.MINI_UNIT is 2
                     src_stride = (map_wi - num_w) * 2
                     dst_stride = (self.w - num_w) * 2
 

@@ -18,6 +18,7 @@ non_zero_with_value
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import register_operator
 
+
 # 'pylint: disable=too-few-public-methods
 class Constant:
     """
