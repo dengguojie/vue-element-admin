@@ -629,10 +629,11 @@ class MaxpoolGrad:
                 with self.tik_instance.else_scope():
                     last_valid_hi.set_as(self.hi - ((cut_ho_nums - 1) * each_process_ho * self.stride_h - pad_top))
                 with self.tik_instance.if_scope(last_valid_hi <= each_process_hi):
-                    self.tik_instance.data_move(self.res_gm[self.offset_gm],
-                                                col2img_fp16_ub[pad_top_rows * wi * Constant.C0 + pad_left *
-                                                Constant.C0], 0, last_valid_hi, self.wi * Constant.C0 // 16,
-                                                pad_left + pad_right, 0)
+                    with self.tik_instance.if_scope(last_valid_hi > 0):
+                        self.tik_instance.data_move(self.res_gm[self.offset_gm],
+                                                    col2img_fp16_ub[pad_top_rows * wi * Constant.C0 + pad_left *
+                                                    Constant.C0], 0, last_valid_hi, self.wi * Constant.C0 // 16,
+                                                    pad_left + pad_right, 0)
                 with self.tik_instance.else_scope():
                     self.tik_instance.data_move(self.res_gm[self.offset_gm],
                                                 col2img_fp16_ub[pad_top_rows * wi * Constant.C0 + pad_left *
@@ -981,18 +982,18 @@ class MaxpoolGrad:
         self._vconv(col2img_fp32_ub, 0, col2img_fp16_ub, 0,
                     self.ele_num, "float32")
 
-        with self.tik_instance.if_scope(start_threshold > pad_top):
-            self.tik_instance.data_move(self.res_gm[offset_gm_block],
-                                        col2img_fp16_ub[
-                                            start_threshold * wi * Constant.C0 + pad_left * Constant.C0],
-                                        0, each_process_hi_block, self.wi * Constant.C0 // 16,
-                                        pad_left + pad_right, 0)
-
-        with self.tik_instance.else_scope():
-            self.tik_instance.data_move(self.res_gm[offset_gm_block],
-                                        col2img_fp16_ub[pad_top * wi * Constant.C0 + pad_left * Constant.C0],
-                                        0, each_process_hi_block, self.wi * Constant.C0 // 16,
-                                        pad_left + pad_right, 0)
+        with self.tik_instance.if_scope(each_process_hi_block > 0):
+            with self.tik_instance.if_scope(start_threshold > pad_top):
+                self.tik_instance.data_move(self.res_gm[offset_gm_block],
+                                            col2img_fp16_ub[
+                                                start_threshold * wi * Constant.C0 + pad_left * Constant.C0],
+                                            0, each_process_hi_block, self.wi * Constant.C0 // 16,
+                                            pad_left + pad_right, 0)
+            with self.tik_instance.else_scope():
+                self.tik_instance.data_move(self.res_gm[offset_gm_block],
+                                            col2img_fp16_ub[pad_top * wi * Constant.C0 + pad_left * Constant.C0],
+                                            0, each_process_hi_block, self.wi * Constant.C0 // 16,
+                                            pad_left + pad_right, 0)
 
     # 'pylint: disable=unused-variable,too-many-locals,unused-variable
     def _tilling_ho(self, each_process_ho, n_index, c1_index,
@@ -1512,7 +1513,7 @@ class MaxpoolGrad:
                 start_pos_w.set_as(wi_min - cut_wo_nums_index * each_process_wo * self.stride_w)
 
                 with self.tik_instance.if_scope(
-                        tik.all(cut_wo_nums_index < cut_wo_nums - 1, mov_len_h > 0)):
+                        tik.all(cut_wo_nums_index < cut_wo_nums - 1, mov_len_h > 0, mov_len_w > 0)):
                     self.tik_instance.data_move(self.res_gm[offset_gm_inside],
                                                 col2img_fp16_ub[start_pos_h * each_process_wi *
                                                                 Constant.C0 + start_pos_w * Constant.C0], 0,
