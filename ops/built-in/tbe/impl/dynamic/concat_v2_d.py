@@ -389,7 +389,8 @@ class ConcatV2:
                 dim_i.set_as(dim_i * src_type_size // dst_type_size)
 
         # 'pylint: disable=no-self-use
-        def need_ub_size(self):
+        @staticmethod
+        def need_ub_size():
             """
             :return: ub size needed by tiling
             """

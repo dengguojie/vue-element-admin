@@ -368,20 +368,6 @@ def dynamic_gru_v2(x, weight_input, weight_hidden, bias_input, bias_hidden, seq_
     is_dynamic = True
     type_len_dict = {"float16": 2, "float32": 4, "int8": 1, "uint8": 1,
                  "int32": 4, "int64": 8, }
-    """
-    from tbe.common.context import get_context
-
-    compile_mode = context.get_addition("hybrid_compile_mode")
-
-    if compile_mode is None:
-        compile_mode = "multi_template"
-
-    if compile_mode not in ["single_template", "multi_template"]:
-        error_manager_vector.raise_err_specific_reson("DynamicGRUV2", "compile_mode is not support, please check!")
-
-    if compile_mode == "single_template":
-        is_dynamic = False
-    """
 
     _check_dtype(x, weight_input, weight_hidden, bias_input, bias_hidden,
                  init_h, y, output_h, update, reset, new, hidden_new)
@@ -667,10 +653,8 @@ def _dynamic_gru_v2_inner(input_list, custom_list):
     shape_x_input = input_x.shape
     shape_w1_input = weight1.shape
     if is_dynamic:
-        t_size = shape_x_input[0]
         m_size = shape_x_input[2]
     else:
-        t_size = shape_x_input[0].value
         m_size = shape_x_input[2].value
 
     hidden_size = shape_w1_input[3].value
@@ -1123,8 +1107,8 @@ def _dynamic_gru_v2_inner(input_list, custom_list):
     shape_a_z_bigz_4 = 1 * 1 * factor_l1_k_2 * 16 * 16
     shape_b_3 = 1 * factor_l1_k_1 * 1 * factor_l1_n * 16 * 16
     shape_b_4 = 1 * factor_l1_k_2 * 1 * factor_l1_n * 16 * 16
-    SHAPE_C_1 = 1 * 3 * factor_l1_n * 1 * 16 * 16
-    SHAPE_C_2 = 1 * 3 * factor_l1_n * 1 * 16 * 16
+    shape_c_3 = 1 * 3 * factor_l1_n * 1 * 16 * 16
+    shape_c_4 = 1 * 3 * factor_l1_n * 1 * 16 * 16
     shape_bias_1 = 1 * 3 * factor_l1_n * 1 * 1 * 16
     shape_i_1 = 1 * factor_l1_n * 1 * 16 * 16
     shape_out_1 = 1 * hidden_size * 1 * 16 * 16
@@ -1265,26 +1249,26 @@ def _dynamic_gru_v2_inner(input_list, custom_list):
     sch[b_l1_1].set_buffer_size(shape_b_3)
     sch[a_l0a_1].set_buffer_size(shape_a_z_bigz_3)
     sch[b_l0b_1].set_buffer_size(shape_b_3)
-    sch[c_l0c_1].set_buffer_size(SHAPE_C_1)
-    sch[c_ub_1].set_buffer_size(SHAPE_C_1)
+    sch[c_l0c_1].set_buffer_size(shape_c_3)
+    sch[c_ub_1].set_buffer_size(shape_c_3)
 
     if bias1 is not None:
         sch[bias_ub_1].set_buffer_size(shape_bias_1)
         if fp16_input_output:
             sch[bias_ub_1_fp32].set_buffer_size(shape_bias_1)
-        sch[bias_bc_ub_1].set_buffer_size(SHAPE_C_1)
+        sch[bias_bc_ub_1].set_buffer_size(shape_c_3)
 
     sch[a_l1_2].set_buffer_size(shape_a_z_bigz_4)
     sch[b_l1_2].set_buffer_size(shape_b_4)
     sch[a_l0a_2].set_buffer_size(shape_a_z_bigz_4)
     sch[b_l0b_2].set_buffer_size(shape_b_4)
-    sch[c_l0c_2].set_buffer_size(SHAPE_C_2)
-    sch[c_ub_2].set_buffer_size(SHAPE_C_2)
+    sch[c_l0c_2].set_buffer_size(shape_c_4)
+    sch[c_ub_2].set_buffer_size(shape_c_4)
     if bias2 is not None:
         sch[bias_ub_2].set_buffer_size(shape_bias_1)
         if fp16_input_output:
             sch[bias_ub_2_fp32].set_buffer_size(shape_bias_1)
-        sch[bias_bc_ub_2].set_buffer_size(SHAPE_C_2)
+        sch[bias_bc_ub_2].set_buffer_size(shape_c_4)
 
     sch[r_t_1].set_buffer_size(shape_i_1)
     sch[i_t_1].set_buffer_size(shape_i_1)

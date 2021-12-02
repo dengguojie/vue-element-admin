@@ -385,19 +385,19 @@ class SyncResizeBilinearV2(OpBase):
             self.tik_instance.vadds(64, src_idx_fp_ub, src_idx_fp_ub, float(dst_start), vector_repeat_num, 1, 1,
                                     8, 8)
             if self.half_pixel_centers:
-                # calcu: '(idx + 0.5) * scale - 0.5'
+                # `calcu: (idx + 0.5) * scale - 0.5`
                 self.tik_instance.vadds(64, calcu_out_in_idx_tmp_ub, src_idx_fp_ub, 0.5, vector_repeat_num, 1, 1, 8, 8)
                 self.tik_instance.vmuls(64, calcu_out_in_idx_tmp_ub, calcu_out_in_idx_tmp_ub, scale, vector_repeat_num,
                                         1, 1, 8, 8)
                 self.tik_instance.vadds(64, calcu_out_in_idx_tmp_ub, calcu_out_in_idx_tmp_ub, -0.5, vector_repeat_num,
                                         1, 1, 8, 8)
                 if mem_info is not None:
-                    # when the fp32_point < 0, will modify to 0
+                    # `when the fp32_point < 0, will modify to 0`
                     self.tik_instance.vmax(64, calcu_out_in_idx_tmp_ub, calcu_out_in_idx_tmp_ub,
                                            mem_info.get("zero").get("fp32"), vector_repeat_num,
                                            1, 1, 0, 8, 8, 0)
             else:
-                # calcu: 'idx * scale'
+                # `calcu: idx * scale`
                 self.tik_instance.vmuls(64, calcu_out_in_idx_tmp_ub, src_idx_fp_ub, scale, vector_repeat_num, 1, 1, 8,
                                         8)
 
@@ -437,7 +437,7 @@ class SyncResizeBilinearV2(OpBase):
                                                                      src_idx_fp_ub.shape,
                                                                      name="calcu_out_in_idx_int_fp32",
                                                                      scope=tik.scope_ubuf)
-                # do fp32 vmin(calcu_out_in_idx_tmp_ub, max_h/max_w)
+                # `do fp32 vmin(calcu_out_in_idx_tmp_ub, max_h/max_w)`
                 if max_idx_ub is not None:
                     util_tik_comm_func.tik_func_vcomple(self.tik_instance,
                                                         "vmin",
@@ -478,7 +478,7 @@ class SyncResizeBilinearV2(OpBase):
                                               dst_blk=4,
                                               dst_rep=32)
             if self.half_pixel_centers:
-                # calcu: '(idx + 0.5) * scale - 0.5'
+                # `calcu: (idx + 0.5) * scale - 0.5`
                 util_tik_comm_func.tik_func_vadds(self.tik_instance,
                                                   src1,
                                                   idx_ub_fp32,
@@ -518,7 +518,7 @@ class SyncResizeBilinearV2(OpBase):
                                                     src1_rep=0,
                                                     dst_rep=32)
             else:
-                # calcu: 'idx * scale'
+                # `calcu: idx * scale`
                 util_tik_comm_func.tik_func_vmuls(self.tik_instance,
                                                   src1,
                                                   idx_ub_fp32,

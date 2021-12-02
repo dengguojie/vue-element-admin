@@ -103,6 +103,7 @@ def align_value(value, factor):
     return (value + factor - 1) // factor * factor
 
 
+# 'pylint: disable=unused-argument
 def check_supported(x_dict, indices_dict, y_dict, kernel_name="GatherNd"):
     """
     Parameters

@@ -95,8 +95,8 @@ class TikOpBase:
                 loop_count = repeat_times // Constant.MAX_REPEAT_NUM
                 with self.tik_instance.for_range(0, loop_count) as i:
                     vector_offset = i * Constant.MAX_REPEAT_NUM * front_mask
-                    func_name(front_mask, dest[vector_offset], src0[vector_offset], src1[vector_offset], 
-                    Constant.MAX_REPEAT_NUM, constant.STRIDE_ONE, constant.STRIDE_ONE, constant.STRIDE_ONE, 
+                    func_name(front_mask, dest[vector_offset], src0[vector_offset], src1[vector_offset],
+                    Constant.MAX_REPEAT_NUM, constant.STRIDE_ONE, constant.STRIDE_ONE, constant.STRIDE_ONE,
                     constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT)
                     rest_repeat_num = rest_repeat_num - Constant.MAX_REPEAT_NUM
                 with self.tik_instance.if_scope(rest_repeat_num != 1):
@@ -211,7 +211,7 @@ class TikOpBase:
             count = 0
             while rest_repeat_num > Constant.MAX_REPEAT_NUM:
                 vector_offset = count * Constant.MAX_REPEAT_NUM * front_mask
-                func_name(front_mask, dest[vector_offset], src[vector_offset], Constant.MAX_REPEAT_NUM, 
+                func_name(front_mask, dest[vector_offset], src[vector_offset], Constant.MAX_REPEAT_NUM,
                 constant.STRIDE_ONE, constant.STRIDE_ONE, constant.REPEAT_STRIDE_EIGHT, constant.REPEAT_STRIDE_EIGHT)
                 count = count + 1
                 rest_repeat_num = rest_repeat_num - Constant.MAX_REPEAT_NUM

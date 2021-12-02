@@ -61,7 +61,6 @@ def cosh_compute(input_x, output_cosh, kernel_name="cosh"):
     scaler_zero_point_five = 0.5
     # `define a scaler , value = 2`
     scalar_two = 2
-    scalar_two
     dtype = input_x.dtype
     dtype_ = input_x.dtype
     shape = input_x.shape

@@ -155,9 +155,9 @@ def _result3_compute(placeholders):
 
 def _result_grad_compute(placeholders):
     """
-    placeholders: data_x, data_gelu
-    return: res_grad
-    res_grad = `res/x +`
+    `placeholders: data_x, data_gelu`
+    `return: res_grad`
+    `res_grad = `res/x +``
        `x*0.5*(1 - tanh(math_four)*tanh(math_four))*`
        `np.sqrt(2 / np.pi)*(1 + 3*0.044715*x2)`
     """

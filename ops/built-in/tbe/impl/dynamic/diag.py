@@ -118,7 +118,8 @@ class Diag():
         self.assist_gm = self.tik_instance.Tensor(self.dtype_x, (Constant.NUM_64, Constant.NUM_64), name="assist_gm",
                                                   scope=tik.scope_gm, init_value=assist_data)
 
-    def ceil(self, data_a, data_b):
+    @staticmethod
+    def ceil(data_a, data_b):
         """
         func ceil
         """
@@ -311,7 +312,7 @@ def diag(x, y, kernel_name="diag"):
     """
     #check shape
     if len(x.get("shape")) > 4:
-        error_detail = "length of x'shape should be less than 5 but got: %d" % len(shape_x)
+        error_detail = "length of x'shape should be less than 5 but got: %d" % len(x.get("shape"))
         error_manager_vector.raise_err_input_shape_invalid(kernel_name, "x", error_detail)
     obj = Diag(x, kernel_name)
     tik_instance = obj.diag_compute()

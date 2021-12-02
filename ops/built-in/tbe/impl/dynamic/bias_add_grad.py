@@ -28,7 +28,13 @@ from impl.util.platform_adapter import shape_util
 from impl.util import util_common
 from impl.util.platform_adapter import register_operator
 
-REDUCE_LIST = None
+
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class SortParam:
+    """
+    The class for SortParam
+    """
+    REDUCE_LIST = None
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,too-many-branches
@@ -95,7 +101,7 @@ def _infer_axes(input_data_format, data_format, shape):
             if len(shape) < 2:
                 error_manager_vector.raise_err_specific_reson("bias_add_grad", "cce_bias_add_grad \
                                                               only support shape larger than 2D")
-            g_shape_list = [x for x in range(len(shape) - 1)]
+            g_shape_list = list(range(len(shape) - 1))
 
     return g_shape_list
 
@@ -125,7 +131,7 @@ def bias_add_grad_compute(x, y, data_format, kernel_name="bias_add_grad"):
     if dtype == "float16" and tbe_platform.api_check_support("te.lang.cce.sum", "float32"):
         x = tbe.cast_to(x, "float32")
 
-    result = tbe.reduce_sum(x, REDUCE_LIST)
+    result = tbe.reduce_sum(x, SortParam.REDUCE_LIST)
     result = tbe.cast_to(result, y_dtype)
 
     return result
@@ -170,14 +176,13 @@ def bias_add_grad(x, y, data_format, kernel_name="bias_add_grad"):
 
     g_shape_list = _infer_axes(input_data_format, data_format, shape)
     input_axis = {"shape": [len(g_shape_list), ], "value": g_shape_list, "rel_pos_to_reduce": "axis"}
-    global REDUCE_LIST
     ins = classify([x, input_axis], OpPatternMode.REDUCE, {"keepdims": False})
     schedules, tensors = [], []
     for (_x, axes) in ins:
         with tbe.compute():
             shape_x = shape_util.variable_shape([_x, axes], op_mode="reduce")[0]
             input_data = tvm.placeholder(shape_x, name="input_data", dtype=dtype)
-            REDUCE_LIST = shape_util.axis_check(len(shape_x), axes.get("value"))
+            SortParam.REDUCE_LIST = shape_util.axis_check(len(shape_x), axes.get("value"))
 
             res = bias_add_grad_compute(input_data, y, data_format, kernel_name)
             tensors.append([input_data, res])

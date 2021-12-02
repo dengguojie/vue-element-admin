@@ -100,10 +100,10 @@ class ConcatOffsetCompute(object):
         for i, input_dict in enumerate(input_list):
             _input_shape = [Constant.MAX_INPUT_RANK]
             _input_dtype = input_dict.get("dtype").lower()
-            _input_name = "x_input_list" + str(i)
+            _input_name = "x_input_list{}".format(i)
             _input_gm = self.tik_instance.Tensor(_input_dtype, _input_shape, name=_input_name, scope=tik.scope_gm)
             self.gm_input_list.append(_input_gm)
-            _output_name = "x_output_list" + str(i)
+            _output_name = "x_output_list{}".format(i)
             _output_gm = self.tik_instance.Tensor(_input_dtype, _input_shape, name=_output_name, scope=tik.scope_gm)
             self.gm_output_list.append(_output_gm)
 

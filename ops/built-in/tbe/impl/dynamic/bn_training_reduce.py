@@ -228,7 +228,7 @@ def bn_training_reduce(x, sum, square_sum, kernel_name="bn_training_reduce"):
                     range_list[idx] = [(0, None)] * all_unknown_shape_len
 
         def _get_dim(i):
-            return max([s[i] for s in shape_local])
+            return max(([s[i] for s in shape_local]))
 
         def _select_min_upper_bound(input_list):
             min_ele = Constant.VAR_BOUND_LIMIT + 1
@@ -243,7 +243,7 @@ def bn_training_reduce(x, sum, square_sum, kernel_name="bn_training_reduce"):
             if shape_out[i] != -1:
                 return shape_out[i], shape_out[i]
 
-            return max([r[i][0] for r in range_local]), _select_min_upper_bound([r[i][1] for r in range_local])
+            return max(([r[i][0] for r in range_local])), _select_min_upper_bound(([r[i][1] for r in range_local]))
 
         shape_local = [x["shape"] for x in inputs_before_reduce]
         range_local = [
@@ -1926,7 +1926,6 @@ class BnReduceAtomicSchedule:
         self._calculate_emit_insn()
         self._do_emit_insn()
 
-        self._calculate_double_buffer()
         self._do_double_buffer()
 
         for i in range(0, len(outs)):
@@ -2278,7 +2277,7 @@ class BnReduceAtomicSchedule:
             for i in self._cache_read_tensors_and_buffer_map:
                 if i in tensor_list:
                     read_buffer = self._cache_read_tensors_and_buffer_map[i]
-                    align_factor = Constant.BLOCK_SIZE_BYTE // Constant.DTYPE_BYTE_MAPPING[read_buffer.dtype]
+                    align_factor = Constant.BLOCK_SIZE_BYTE // Constant.DTYPE_BYTE_MAPPING.get(read_buffer.dtype)
                     para = {
                         "align_axis_var": read_buffer.op.axis[align_axis],
                         "align_factor": align_factor,
@@ -2288,7 +2287,7 @@ class BnReduceAtomicSchedule:
             for i in self._cache_write_tensors_and_buffer_map:
                 if i in tensor_list:
                     write_buffer = self._cache_write_tensors_and_buffer_map[i]
-                    align_factor = Constant.BLOCK_SIZE_BYTE // Constant.DTYPE_BYTE_MAPPING[write_buffer.dtype]
+                    align_factor = Constant.BLOCK_SIZE_BYTE // Constant.DTYPE_BYTE_MAPPING.get(write_buffer.dtype)
                     para = {
                         "align_axis_var": write_buffer.op.axis[align_axis],
                         "align_factor": align_factor,
@@ -2297,7 +2296,7 @@ class BnReduceAtomicSchedule:
                     self._storage_align_para[write_buffer] = para
             for tensor in self._mid_output_tensors:
                 if tensor in tensor_list:
-                    align_factor = Constant.BLOCK_SIZE_BYTE // Constant.DTYPE_BYTE_MAPPING[tensor.dtype]
+                    align_factor = Constant.BLOCK_SIZE_BYTE // Constant.DTYPE_BYTE_MAPPING.get(tensor.dtype)
                     para = {
                         "align_axis_var": tensor.op.axis[mid_out_align_axis],
                         "align_factor": align_factor,
@@ -2322,7 +2321,7 @@ class BnReduceAtomicSchedule:
                 return
             res_align_axis = res_a1_start_index - 1
 
-            align_factor = Constant.BLOCK_SIZE_BYTE // Constant.DTYPE_BYTE_MAPPING[self._final_out_tensor_ub_rf.dtype]
+            align_factor = Constant.BLOCK_SIZE_BYTE // Constant.DTYPE_BYTE_MAPPING.get(self._final_out_tensor_ub_rf.dtype)
             para = {
                 "align_axis_var": self._final_out_tensor_ub_rf.op.axis[res_align_axis + self._axis_offset],
                 "align_factor": align_factor,
@@ -3217,11 +3216,6 @@ class BnReduceAtomicSchedule:
         }
         self._compute_at_map[self._final_out_tensor_ub_rf] = para
 
-    def _calculate_double_buffer(self):
-        """
-        double buffer operations
-        read_buffer : the all read_cache for input in ub, type is list
-        """
 
     def _calculate_emit_insn(self):
         """

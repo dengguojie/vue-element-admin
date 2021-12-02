@@ -15,7 +15,7 @@
 """
 max_pool_grad_with_argmaxv2
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 import math
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tik
@@ -24,42 +24,44 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import register_operator
 from impl.util.platform_adapter import tbe_context
 
-# # tiling param num
-TILING_ARG_NUM = 32
-# MIN VALUE OF FP16
-MIN_VALUE_FP16 = -65500.0
-# MIN VALUE OF POSIRIVE FP32
-MIN_VALUE_FP32 = 1.18e-38
-# VALID MASK BITS FOR 128
-MASK128_VALUE = 128
-# VALID MASK BITS FOR 64
-MASK64_VALUE = 64
-# MAX_VECTOR_REPEATE_TIME
-MAX_VECTOR_REPEATE_TIME = 255
-# VECTOR FP16 SIZE
-VECTOR_FP16_SIZE = 128
-# VECTOR FP32 SIZE
-VECTOR_FP32_SIZE = 64
-# BLOCK SIZE(32B)
-BLOCK_SIZE = 32
-# UB SIZE
-UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-# RESERVED UB SIZE
-RESERVED_UB_SIZE = 8 * 1024
-C0 = 16
-# BLOCK NUMS
-CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
-# maximum dma_copy stride
-MAX_STRIDE = 65535
-DT_INT32 = 3
-# max int32
-MAX_INT32 = 2 ** 31 - 1
-# workspace size
-WORKSPACE_SIZE = 2 ** 30
+
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    The class for constant
+    """
+    # # tiling param num
+    TILING_ARG_NUM = 32
+    # MIN VALUE OF FP16
+    MIN_VALUE_FP16 = -65500.0
+    # VALID MASK BITS FOR 128
+    MASK128_VALUE = 128
+    # VALID MASK BITS FOR 64
+    MASK64_VALUE = 64
+    # MAX_VECTOR_REPEATE_TIME
+    MAX_VECTOR_REPEATE_TIME = 255
+    # VECTOR FP16 SIZE
+    VECTOR_FP16_SIZE = 128
+    # VECTOR FP32 SIZE
+    VECTOR_FP32_SIZE = 64
+    # BLOCK SIZE(32B)
+    BLOCK_SIZE = 32
+    # UB SIZE
+    UB_SIZE = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
+    # RESERVED UB SIZE
+    RESERVED_UB_SIZE = 8 * 1024
+    C0 = 16
+    # BLOCK NUMS
+    CORE_NUM = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
+    DT_INT32 = 3
+    # max int32
+    MAX_INT32 = 2 ** 31 - 1
+    # workspace size
+    WORKSPACE_SIZE = 2 ** 30
 
 
-# pylint: disable=too-many-arguments,too-many-statements,too-many-branches
-# pylint: disable=invalid-name,unused-argument
+# 'pylint: disable=too-many-arguments,too-many-statements,too-many-branches
+# 'pylint: disable=invalid-name,unused-argument
 def check_param(x, argmax, grad, ksize, strides, data_format, dilation, pads, kernel_name):
     """
     check parameters, if one is invalid, then raise error
@@ -151,7 +153,7 @@ def check_param(x, argmax, grad, ksize, strides, data_format, dilation, pads, ke
                                                             str(data_format))
 
 
-# pylint: disable = too-many-instance-attributes,too-few-public-methods
+# 'pylint: disable = too-many-instance-attributes,too-few-public-methods
 class MaxpoolGrad:
     """
     MaxpoolGrad  Object include all fuction and paras
@@ -171,12 +173,12 @@ class MaxpoolGrad:
         self.kernel_name = kernel_name
 
         self.tik_instance = tik.Tik()
-        self.core_num = CORE_NUM
+        self.core_num = Constant.CORE_NUM
         self.dtype_size = tbe_platform.get_bit_len(self.dtype.lower()) // 8
-        self.ub_ele = (UB_SIZE - RESERVED_UB_SIZE) // self.dtype_size
+        self.ub_ele = (Constant.UB_SIZE - Constant.RESERVED_UB_SIZE) // self.dtype_size
         # need seven buffers
         self.one_seventh_ub_ele = self.ub_ele // 7
-        self.workspace = [WORKSPACE_SIZE]
+        self.workspace = [Constant.WORKSPACE_SIZE]
         self.init_gm_tensor()
 
         # define some scalar
@@ -241,7 +243,7 @@ class MaxpoolGrad:
         """Get runtime params from tiling
         """
         with self.tik_instance.new_stmt_scope():
-            tiling_ub = self.tik_instance.Tensor("int32", (TILING_ARG_NUM,),
+            tiling_ub = self.tik_instance.Tensor("int32", (Constant.TILING_ARG_NUM,),
                                                  name="tiling_ub",
                                                  scope=tik.scope_ubuf)
             self.tik_instance.data_move(tiling_ub, self.tiling_gm, 0, 1, 4, 0, 0)
@@ -285,24 +287,24 @@ class MaxpoolGrad:
     def init_gm_tensor(self):
         """Init gm tensor
         """
-        self.tiling_gm = self.tik_instance.Tensor("int32", (TILING_ARG_NUM,), name="tiling_gm",
+        self.tiling_gm = self.tik_instance.Tensor("int32", (Constant.TILING_ARG_NUM,), name="tiling_gm",
                                                   scope=tik.scope_gm)
-        self.ori_input_gm = self.tik_instance.Tensor(self.dtype, (MAX_INT32,), name="ori_input_gm",
+        self.ori_input_gm = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,), name="ori_input_gm",
                                                      scope=tik.scope_gm)
-        self.argmax_gm = self.tik_instance.Tensor("uint16", (MAX_INT32,), name="argmax_gm",
+        self.argmax_gm = self.tik_instance.Tensor("uint16", (Constant.MAX_INT32,), name="argmax_gm",
                                                   scope=tik.scope_gm)
-        self.grad_gm = self.tik_instance.Tensor(self.dtype, (MAX_INT32,), name="grad_gm",
+        self.grad_gm = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,), name="grad_gm",
                                                 scope=tik.scope_gm)
-        self.res_gm = self.tik_instance.Tensor(self.dtype, (MAX_INT32,), name="res_gm",
+        self.res_gm = self.tik_instance.Tensor(self.dtype, (Constant.MAX_INT32,), name="res_gm",
                                                scope=tik.scope_gm)
         # temporary storage of overlap in workspace
-        self.overlap_gm = self.tik_instance.Tensor("float32", (WORKSPACE_SIZE,), name="overlap_gm",
+        self.overlap_gm = self.tik_instance.Tensor("float32", (Constant.WORKSPACE_SIZE,), name="overlap_gm",
                                                    scope=tik.scope_gm, is_workspace=True)
 
     def init_ub_tensor(self):
         """Init ub tensor
         """
-        # grad_ub and temp_zero 
+        # grad_ub and temp_zero
         self.ub_a = self.tik_instance.Tensor(self.dtype, (self.one_seventh_ub_ele,), name="ub_a", scope=tik.scope_ubuf)
         # grad_sel_ub_fp16 and col2img_ub_fp16
         self.ub_b = self.tik_instance.Tensor(self.dtype, (self.one_seventh_ub_ele,), name="ub_b", scope=tik.scope_ubuf)
@@ -310,7 +312,7 @@ class MaxpoolGrad:
         self.ub_c = self.tik_instance.Tensor("uint16", (self.one_seventh_ub_ele,), name="ub_c", scope=tik.scope_ubuf)
         # col2img_ub_fp32
         self.ub_d = self.tik_instance.Tensor("float32", (self.one_seventh_ub_ele,), name="ub_d", scope=tik.scope_ubuf)
-        # grad_sel_ub_fp32 and temp_tensor_ub 
+        # grad_sel_ub_fp32 and temp_tensor_ub
         self.ub_e = self.tik_instance.Tensor("float32", (self.one_seventh_ub_ele,), name="ub_e", scope=tik.scope_ubuf)
 
     def init_ub_scalar(self):
@@ -331,68 +333,68 @@ class MaxpoolGrad:
             self.ele_num.set_as(shape[0])
 
         if dtype == "float16":
-            self.total_repeate_time.set_as(self.ele_num // VECTOR_FP16_SIZE)
-            self.remain_ele.set_as(self.ele_num % VECTOR_FP16_SIZE)
-            mask_value = VECTOR_FP16_SIZE
+            self.total_repeate_time.set_as(self.ele_num // Constant.VECTOR_FP16_SIZE)
+            self.remain_ele.set_as(self.ele_num % Constant.VECTOR_FP16_SIZE)
+            mask_value = Constant.VECTOR_FP16_SIZE
         elif dtype == "float32":
-            self.total_repeate_time.set_as(self.ele_num // VECTOR_FP32_SIZE)
-            self.remain_ele.set_as(self.ele_num % VECTOR_FP32_SIZE)
-            mask_value = VECTOR_FP32_SIZE
+            self.total_repeate_time.set_as(self.ele_num // Constant.VECTOR_FP32_SIZE)
+            self.remain_ele.set_as(self.ele_num % Constant.VECTOR_FP32_SIZE)
+            mask_value = Constant.VECTOR_FP32_SIZE
         else:
             error_manager_vector.raise_err_input_dtype_not_supported("max_pool_grad_with_argmax_v2", "dtype",
                                                                      "float16, float32", str(dtype))
-        self.repeate_max_time.set_as(self.total_repeate_time // MAX_VECTOR_REPEATE_TIME)
-        self.remain_repeate_time.set_as(self.total_repeate_time % MAX_VECTOR_REPEATE_TIME)
+        self.repeate_max_time.set_as(self.total_repeate_time // Constant.MAX_VECTOR_REPEATE_TIME)
+        self.remain_repeate_time.set_as(self.total_repeate_time % Constant.MAX_VECTOR_REPEATE_TIME)
 
         src_addr = self.tik_instance.Scalar(dtype="int64", name="src_addr")
         with self.tik_instance.if_scope(self.repeate_max_time > 0):
             with self.tik_instance.for_range(0, self.repeate_max_time) as loop1:
-                src_addr.set_as(src_start + loop1 * MAX_VECTOR_REPEATE_TIME * mask_value)
+                src_addr.set_as(src_start + loop1 * Constant.MAX_VECTOR_REPEATE_TIME * mask_value)
                 self.tik_instance.vector_dup(mask_value, src[src_addr],
-                                             dup_reg, MAX_VECTOR_REPEATE_TIME,
+                                             dup_reg, Constant.MAX_VECTOR_REPEATE_TIME,
                                              1, 8)
         with self.tik_instance.if_scope(self.remain_repeate_time > 0):
-            src_addr.set_as(src_start + self.repeate_max_time * MAX_VECTOR_REPEATE_TIME * mask_value)
+            src_addr.set_as(src_start + self.repeate_max_time * Constant.MAX_VECTOR_REPEATE_TIME * mask_value)
             self.tik_instance.vector_dup(mask_value, src[src_addr],
                                          dup_reg, self.remain_repeate_time, 1, 8)
         with self.tik_instance.if_scope(self.remain_ele > 0):
-            src_addr.set_as(src_start + self.repeate_max_time * MAX_VECTOR_REPEATE_TIME * mask_value +
+            src_addr.set_as(src_start + self.repeate_max_time * Constant.MAX_VECTOR_REPEATE_TIME * mask_value +
                             self.remain_repeate_time * mask_value)
             self.tik_instance.vector_dup(self.remain_ele, src[src_addr], dup_reg, 1, 1, 8)
 
     def _vconv(self, src, src_start, dst, dst_start, ele_num, src_dtype):
-        self.total_repeate_time.set_as(ele_num // VECTOR_FP32_SIZE)
-        self.remain_ele.set_as(ele_num % VECTOR_FP32_SIZE)
-        mask_value = VECTOR_FP32_SIZE
+        self.total_repeate_time.set_as(ele_num // Constant.VECTOR_FP32_SIZE)
+        self.remain_ele.set_as(ele_num % Constant.VECTOR_FP32_SIZE)
+        mask_value = Constant.VECTOR_FP32_SIZE
 
-        self.repeate_max_time.set_as(self.total_repeate_time // MAX_VECTOR_REPEATE_TIME)
-        self.remain_repeate_time.set_as(self.total_repeate_time % MAX_VECTOR_REPEATE_TIME)
+        self.repeate_max_time.set_as(self.total_repeate_time // Constant.MAX_VECTOR_REPEATE_TIME)
+        self.remain_repeate_time.set_as(self.total_repeate_time % Constant.MAX_VECTOR_REPEATE_TIME)
 
         if src_dtype == 'float16':
             src_stride, dst_stride = 4, 8
             with self.tik_instance.if_scope(self.repeate_max_time > 0):
                 with self.tik_instance.for_range(0, self.repeate_max_time) as loop1:
                     self.tik_instance.vconv(
-                        MASK64_VALUE, "",
+                        Constant.MASK64_VALUE, "",
                         dst[
-                            dst_start + loop1 * MAX_VECTOR_REPEATE_TIME * mask_value],
+                            dst_start + loop1 * Constant.MAX_VECTOR_REPEATE_TIME * mask_value],
                         src[
-                            src_start + loop1 * MAX_VECTOR_REPEATE_TIME * mask_value],
-                        MAX_VECTOR_REPEATE_TIME, 1, 1, dst_stride, src_stride)
+                            src_start + loop1 * Constant.MAX_VECTOR_REPEATE_TIME * mask_value],
+                        Constant.MAX_VECTOR_REPEATE_TIME, 1, 1, dst_stride, src_stride)
             with self.tik_instance.if_scope(self.remain_repeate_time > 0):
                 self.tik_instance.vconv(
-                    MASK64_VALUE, "",
+                    Constant.MASK64_VALUE, "",
                     dst[
-                        dst_start + self.repeate_max_time * MAX_VECTOR_REPEATE_TIME * mask_value],
+                        dst_start + self.repeate_max_time * Constant.MAX_VECTOR_REPEATE_TIME * mask_value],
                     src[
-                        src_start + self.repeate_max_time * MAX_VECTOR_REPEATE_TIME * mask_value],
+                        src_start + self.repeate_max_time * Constant.MAX_VECTOR_REPEATE_TIME * mask_value],
                     self.remain_repeate_time, 1, 1, dst_stride, src_stride)
             with self.tik_instance.if_scope(self.remain_ele > 0):
                 self.tik_instance.vconv(
                     self.remain_ele, "",
-                    dst[dst_start + self.repeate_max_time * MAX_VECTOR_REPEATE_TIME *
+                    dst[dst_start + self.repeate_max_time * Constant.MAX_VECTOR_REPEATE_TIME *
                         mask_value + self.remain_repeate_time * mask_value],
-                    src[src_start + self.repeate_max_time * MAX_VECTOR_REPEATE_TIME *
+                    src[src_start + self.repeate_max_time * Constant.MAX_VECTOR_REPEATE_TIME *
                         mask_value + self.remain_repeate_time * mask_value],
                     1, 1, 1, dst_stride, src_stride)
         else:
@@ -400,29 +402,30 @@ class MaxpoolGrad:
             with self.tik_instance.if_scope(self.repeate_max_time > 0):
                 with self.tik_instance.for_range(0, self.repeate_max_time) as loop1:
                     self.tik_instance.vconv(
-                        MASK64_VALUE, "",
+                        Constant.MASK64_VALUE, "",
                         dst[
-                            dst_start + loop1 * MAX_VECTOR_REPEATE_TIME * mask_value],
+                            dst_start + loop1 * Constant.MAX_VECTOR_REPEATE_TIME * mask_value],
                         src[
-                            src_start + loop1 * MAX_VECTOR_REPEATE_TIME * mask_value],
-                        MAX_VECTOR_REPEATE_TIME, 1, 1, dst_stride, src_stride)
+                            src_start + loop1 * Constant.MAX_VECTOR_REPEATE_TIME * mask_value],
+                        Constant.MAX_VECTOR_REPEATE_TIME, 1, 1, dst_stride, src_stride)
             with self.tik_instance.if_scope(self.remain_repeate_time > 0):
                 self.tik_instance.vconv(
-                    MASK64_VALUE, "",
+                    Constant.MASK64_VALUE, "",
                     dst[
-                        dst_start + self.repeate_max_time * MAX_VECTOR_REPEATE_TIME * mask_value],
+                        dst_start + self.repeate_max_time * Constant.MAX_VECTOR_REPEATE_TIME * mask_value],
                     src[
-                        src_start + self.repeate_max_time * MAX_VECTOR_REPEATE_TIME * mask_value],
+                        src_start + self.repeate_max_time * Constant.MAX_VECTOR_REPEATE_TIME * mask_value],
                     self.remain_repeate_time, 1, 1, dst_stride, src_stride)
             with self.tik_instance.if_scope(self.remain_ele > 0):
                 self.tik_instance.vconv(
                     self.remain_ele, "",
-                    dst[dst_start + self.repeate_max_time * MAX_VECTOR_REPEATE_TIME *
+                    dst[dst_start + self.repeate_max_time * Constant.MAX_VECTOR_REPEATE_TIME *
                         mask_value + self.remain_repeate_time * mask_value],
-                    src[src_start + self.repeate_max_time * MAX_VECTOR_REPEATE_TIME *
+                    src[src_start + self.repeate_max_time * Constant.MAX_VECTOR_REPEATE_TIME *
                         mask_value + self.remain_repeate_time * mask_value],
                     1, 1, 1, dst_stride, src_stride)
 
+    # 'pylint: disable=unused-variable,too-many-locals
     def _vector_op(self, operator, src1, src2, dst, dtype, ele_num, stride_cofig=None, offset=None):
         repeate_times = self.tik_instance.Scalar(dtype="int64", name="repeate_times")
         remain_ele = self.tik_instance.Scalar(dtype="int64", name="remain_ele")
@@ -430,15 +433,15 @@ class MaxpoolGrad:
         remain_max_loop = self.tik_instance.Scalar(dtype="int64", name="remain_max_loop")
 
         if dtype == "float16":
-            repeate_times.set_as(ele_num // VECTOR_FP16_SIZE)
-            remain_ele.set_as(ele_num % VECTOR_FP16_SIZE)
-            mask = VECTOR_FP16_SIZE
+            repeate_times.set_as(ele_num // Constant.VECTOR_FP16_SIZE)
+            remain_ele.set_as(ele_num % Constant.VECTOR_FP16_SIZE)
+            mask = Constant.VECTOR_FP16_SIZE
         else:
-            repeate_times.set_as(ele_num // VECTOR_FP32_SIZE)
-            remain_ele.set_as(ele_num % VECTOR_FP32_SIZE)
-            mask = VECTOR_FP32_SIZE
-        repeat_max_loop.set_as(repeate_times // MAX_VECTOR_REPEATE_TIME)
-        remain_max_loop.set_as(repeate_times % MAX_VECTOR_REPEATE_TIME)
+            repeate_times.set_as(ele_num // Constant.VECTOR_FP32_SIZE)
+            remain_ele.set_as(ele_num % Constant.VECTOR_FP32_SIZE)
+            mask = Constant.VECTOR_FP32_SIZE
+        repeat_max_loop.set_as(repeate_times // Constant.MAX_VECTOR_REPEATE_TIME)
+        remain_max_loop.set_as(repeate_times % Constant.MAX_VECTOR_REPEATE_TIME)
         if operator == "vmuls":
             if offset:
                 dst_start = offset[0]
@@ -451,7 +454,7 @@ class MaxpoolGrad:
 
             dst_offset = self.tik_instance.Scalar(dtype="int64", name="dst_offset")
             src1_offset = self.tik_instance.Scalar(dtype="int64", name="src1_offset")
-            block_length = BLOCK_SIZE // (tbe_platform.get_bit_len(dst.dtype.lower()) // 8)
+            block_length = Constant.BLOCK_SIZE // (tbe_platform.get_bit_len(dst.dtype.lower()) // 8)
 
             with self.tik_instance.for_range(0, repeat_max_loop) as repeat_idx:
                 dst_offset.set_as(dst_start + block_length * stride_cofig[2] * 255 * repeat_idx)
@@ -479,7 +482,7 @@ class MaxpoolGrad:
         if operator == "vadd":
             if stride_cofig is None:
                 stride_cofig = 1, 1, 1, 8, 8, 8
-            block_length = BLOCK_SIZE // (tbe_platform.get_bit_len(dst.dtype.lower()) // 8)
+            block_length = Constant.BLOCK_SIZE // (tbe_platform.get_bit_len(dst.dtype.lower()) // 8)
             dst_offset = self.tik_instance.Scalar(dtype="int64", name="dst_offset")
             src1_offset = self.tik_instance.Scalar(dtype="int64", name="src1_offset")
             src2_offset = self.tik_instance.Scalar(dtype="int64", name="src2_offset")
@@ -550,49 +553,49 @@ class MaxpoolGrad:
         mask_value = 128
         self.total_repeate_time.set_as(self.ele_num // 128)
         self.remain_ele.set_as(self.ele_num % 128)
-        self.repeate_max_time.set_as(self.total_repeate_time // MAX_VECTOR_REPEATE_TIME)
-        self.remain_repeate_time.set_as(self.total_repeate_time % MAX_VECTOR_REPEATE_TIME)
+        self.repeate_max_time.set_as(self.total_repeate_time // Constant.MAX_VECTOR_REPEATE_TIME)
+        self.remain_repeate_time.set_as(self.total_repeate_time % Constant.MAX_VECTOR_REPEATE_TIME)
 
         src_addr = self.tik_instance.Scalar(dtype="int64", name="src_addr")
         with self.tik_instance.if_scope(self.repeate_max_time > 0):
             with self.tik_instance.for_range(0, self.repeate_max_time) as loop1:
-                src_addr.set_as(src_start + loop1 * MAX_VECTOR_REPEATE_TIME * mask_value)
+                src_addr.set_as(src_start + loop1 * Constant.MAX_VECTOR_REPEATE_TIME * mask_value)
                 self.tik_instance.vector_dup(mask_value, src[src_addr],
-                                             dup_reg, MAX_VECTOR_REPEATE_TIME,
+                                             dup_reg, Constant.MAX_VECTOR_REPEATE_TIME,
                                              1, 8)
         with self.tik_instance.if_scope(self.remain_repeate_time > 0):
-            src_addr.set_as(src_start + self.repeate_max_time * MAX_VECTOR_REPEATE_TIME * mask_value)
+            src_addr.set_as(src_start + self.repeate_max_time * Constant.MAX_VECTOR_REPEATE_TIME * mask_value)
             self.tik_instance.vector_dup(mask_value, src[src_addr],
                                          dup_reg, self.remain_repeate_time,
                                          1, 8)
         if self.remain_ele > 0:
-            src_addr.set_as(src_start + self.repeate_max_time * MAX_VECTOR_REPEATE_TIME * mask_value +
+            src_addr.set_as(src_start + self.repeate_max_time * Constant.MAX_VECTOR_REPEATE_TIME * mask_value +
                             self.remain_repeate_time * mask_value)
             self.tik_instance.vector_dup(self.remain_ele, src[src_addr], dup_reg, 1, 1, 8)
 
     def _vsel_grad_col(self, mask_ub, grad_ub, grad_shape_0):
         grad_sel_ub = self.ub_b
-        temp_zero = self.tik_instance.Tensor("float16", (MASK128_VALUE,),
+        temp_zero = self.tik_instance.Tensor("float16", (Constant.MASK128_VALUE,),
                                              name="temp_zero", scope=tik.scope_ubuf)
         self._vector_dup(temp_zero, 0, temp_zero.shape, self.scalar_zero_fp16, "float16")
 
         # vsel
         with self.tik_instance.for_range(0, grad_shape_0) as mask_index:
-            fractal_repeat = C0 * C0 // VECTOR_FP16_SIZE
+            fractal_repeat = Constant.C0 * Constant.C0 // Constant.VECTOR_FP16_SIZE
             with self.tik_instance.for_range(0, fractal_repeat) as fractal_index:
                 mask_type_bit_size = tbe_platform.get_bit_len("uint16")
                 mask_offset = (mask_index * fractal_repeat + fractal_index) * \
-                              MASK128_VALUE // mask_type_bit_size
+                              Constant.MASK128_VALUE // mask_type_bit_size
 
                 cmpmask = self.tik_instance.mov_tensor_to_cmpmask(mask_ub[mask_offset])
-                grad_ub_offset = (mask_index * fractal_repeat + fractal_index) * MASK128_VALUE
-                self.tik_instance.vsel(MASK128_VALUE, 0, grad_sel_ub[grad_ub_offset], cmpmask,
+                grad_ub_offset = (mask_index * fractal_repeat + fractal_index) * Constant.MASK128_VALUE
+                self.tik_instance.vsel(Constant.MASK128_VALUE, 0, grad_sel_ub[grad_ub_offset], cmpmask,
                                        grad_ub[grad_ub_offset], temp_zero,
                                        1, 1, 1, 1, 8, 8, 8)
 
         return grad_sel_ub
 
-    # pylint: disable=unused-variable
+    # 'pylint: disable=unused-variable,too-many-locals
     def _mov_func(self, cut_ho_nums_index, cut_ho_nums, remain_ho_nums, each_process_ho,
                   each_process_hi, each_valid_ho, col2img_fp32_ub, temp_tensor_ub, pad,
                   col2img_ub_shape, temp_size):
@@ -611,11 +614,11 @@ class MaxpoolGrad:
         with self.tik_instance.if_scope(
                 tik.all(cut_ho_nums_index < cut_ho_nums - 1, each_valid_hi > 0)):
             self.tik_instance.data_move(self.res_gm[self.offset_gm],
-                                        col2img_fp16_ub[pad_top_rows * wi * C0 + pad_left * C0], 0,
-                                        each_valid_hi, self.wi * C0 // 16,
+                                        col2img_fp16_ub[pad_top_rows * wi * Constant.C0 + pad_left * Constant.C0], 0,
+                                        each_valid_hi, self.wi * Constant.C0 // 16,
                                         pad_left + pad_right, 0)
 
-            self.offset_gm.set_as(self.offset_gm + each_valid_hi * self.wi * C0)
+            self.offset_gm.set_as(self.offset_gm + each_valid_hi * self.wi * Constant.C0)
 
         last_valid_hi = self.tik_instance.Scalar(dtype="int64", name="last_valid_hi")
         remain_hi = self.tik_instance.Scalar(dtype="int64", name="remain_hi")
@@ -627,36 +630,34 @@ class MaxpoolGrad:
                     last_valid_hi.set_as(self.hi - ((cut_ho_nums - 1) * each_process_ho * self.stride_h - pad_top))
                 with self.tik_instance.if_scope(last_valid_hi <= each_process_hi):
                     self.tik_instance.data_move(self.res_gm[self.offset_gm],
-                                                col2img_fp16_ub[pad_top_rows * wi * C0 + pad_left * C0],
-                                                0,
-                                                last_valid_hi, self.wi * C0 // 16,
+                                                col2img_fp16_ub[pad_top_rows * wi * Constant.C0 + pad_left *
+                                                Constant.C0], 0, last_valid_hi, self.wi * Constant.C0 // 16,
                                                 pad_left + pad_right, 0)
                 with self.tik_instance.else_scope():
                     self.tik_instance.data_move(self.res_gm[self.offset_gm],
-                                                col2img_fp16_ub[pad_top_rows * wi * C0 + pad_left * C0],
-                                                0,
-                                                each_process_hi, self.wi * C0 // 16,
+                                                col2img_fp16_ub[pad_top_rows * wi * Constant.C0 + pad_left *
+                                                Constant.C0], 0, each_process_hi, self.wi * Constant.C0 // 16,
                                                 pad_left + pad_right, 0)
                     remain_hi.set_as(last_valid_hi - each_process_hi)
                     temp_zero = self.ub_a
-                    temp_zero_shape = (remain_hi, self.wi * C0)
+                    temp_zero_shape = (remain_hi, self.wi * Constant.C0)
                     self._vector_dup(temp_zero, 0, temp_zero_shape,
                                      self.scalar_zero_fp16, "float16")
                     self.tik_instance.data_move(
-                        self.res_gm[self.offset_gm + each_process_hi * self.wi * C0],
+                        self.res_gm[self.offset_gm + each_process_hi * self.wi * Constant.C0],
                         temp_zero,
                         0,
-                        1, remain_hi * self.wi * C0 // 16,
+                        1, remain_hi * self.wi * Constant.C0 // 16,
                         0, 0)
-                self.offset_gm.set_as(self.offset_gm + last_valid_hi * self.wi * C0)
+                self.offset_gm.set_as(self.offset_gm + last_valid_hi * self.wi * Constant.C0)
         with self.tik_instance.else_scope():
             with self.tik_instance.if_scope(cut_ho_nums_index == cut_ho_nums - 1):
                 self.tik_instance.data_move(self.res_gm[self.offset_gm],
-                                            col2img_fp16_ub[pad_top_rows * wi * C0 + pad_left * C0],
+                                            col2img_fp16_ub[pad_top_rows * wi * Constant.C0 + pad_left * Constant.C0],
                                             0,
-                                            each_valid_hi, self.wi * C0 // 16,
+                                            each_valid_hi, self.wi * Constant.C0 // 16,
                                             pad_left + pad_right, 0)
-                self.offset_gm.set_as(self.offset_gm + each_valid_hi * self.wi * C0)
+                self.offset_gm.set_as(self.offset_gm + each_valid_hi * self.wi * Constant.C0)
 
             with self.tik_instance.if_scope(cut_ho_nums_index == cut_ho_nums):
                 with self.tik_instance.if_scope(cut_ho_nums == 0):
@@ -666,37 +667,37 @@ class MaxpoolGrad:
                 with self.tik_instance.if_scope(last_valid_hi <= each_process_hi):
                     self.tik_instance.data_move(self.res_gm[self.offset_gm],
                                                 col2img_fp16_ub[
-                                                    pad_top_rows * wi * C0 + pad_left * C0],
+                                                    pad_top_rows * wi * Constant.C0 + pad_left * Constant.C0],
                                                 0,
-                                                last_valid_hi, self.wi * C0 // 16,
+                                                last_valid_hi, self.wi * Constant.C0 // 16,
                                                 pad_left + pad_right, 0)
                 with self.tik_instance.else_scope():
                     self.tik_instance.data_move(self.res_gm[self.offset_gm],
                                                 col2img_fp16_ub[
-                                                    pad_top_rows * wi * C0 + pad_left * C0],
+                                                    pad_top_rows * wi * Constant.C0 + pad_left * Constant.C0],
                                                 0,
-                                                each_process_hi, self.wi * C0 // 16,
+                                                each_process_hi, self.wi * Constant.C0 // 16,
                                                 pad_left + pad_right, 0)
                     remain_hi.set_as(last_valid_hi - each_process_hi)
                     temp_zero = self.ub_a
-                    temp_zero_shape = (remain_hi, self.wi * C0)
+                    temp_zero_shape = (remain_hi, self.wi * Constant.C0)
                     self._vector_dup(temp_zero, 0, temp_zero_shape,
                                      self.scalar_zero_fp16, "float16")
                     self.tik_instance.data_move(
-                        self.res_gm[self.offset_gm + each_process_hi * self.wi * C0],
+                        self.res_gm[self.offset_gm + each_process_hi * self.wi * Constant.C0],
                         temp_zero,
                         0,
-                        1, remain_hi * self.wi * C0 // 16,
+                        1, remain_hi * self.wi * Constant.C0 // 16,
                         0, 0)
-                self.offset_gm.set_as(self.offset_gm + last_valid_hi * self.wi * C0)
+                self.offset_gm.set_as(self.offset_gm + last_valid_hi * self.wi * Constant.C0)
 
         with self.tik_instance.if_scope(self.kh > self.stride_h):
             self.ele_num.set_as(temp_size[0] * temp_size[1] * temp_size[2])
             self._vector_op("vmuls", col2img_fp32_ub, 1.0, temp_tensor_ub, "float32",
                             self.ele_num,
-                            None, [0, each_process_ho * self.stride_h * wi * C0])
+                            None, [0, each_process_ho * self.stride_h * wi * Constant.C0])
 
-    # pylint: disable=unused-variable
+    # 'pylint: disable=unused-variable,too-many-locals
     def _move_func_block(self, cut_ho_nums_index, cut_ho_nums, start_h, end_h, each_process_ho,
                          valid_hi_block, col2img_fp32_ub, temp_tensor_ub,
                          remained_hi, remain, pad, col2img_ub_shape, temp_size):
@@ -719,18 +720,18 @@ class MaxpoolGrad:
                 with self.tik_instance.if_scope(mov_len_h > 0):
                     self.tik_instance.data_move(self.res_gm[self.offset_gm],
                                                 col2img_fp16_ub[(hi_min - start_h) *
-                                                                wi * C0 +
-                                                                pad_left * C0],
-                                                0, mov_len_h, self.wi * C0 // 16,
+                                                                wi * Constant.C0 +
+                                                                pad_left * Constant.C0],
+                                                0, mov_len_h, self.wi * Constant.C0 // 16,
                                                 pad_left + pad_right, 0)
-                    self.offset_gm.set_as(self.offset_gm + mov_len_h * self.wi * C0)
+                    self.offset_gm.set_as(self.offset_gm + mov_len_h * self.wi * Constant.C0)
                     remained_hi.set_as(remained_hi - mov_len_h)
 
                 with self.tik_instance.if_scope(cut_ho_nums_index == cut_ho_nums - 1):
                     with self.tik_instance.if_scope(remain == 0):
                         with self.tik_instance.if_scope(remained_hi > 0):
                             temp_zero = self.ub_a
-                            temp_zero_shape = (1, self.wi, C0)
+                            temp_zero_shape = (1, self.wi, Constant.C0)
                             temp_zero_dtype = "float16"
                             self._vector_dup(temp_zero,
                                              0,
@@ -741,12 +742,12 @@ class MaxpoolGrad:
                             with self.tik_instance.for_range(0, remained_hi) as index_0:
                                 self.tik_instance.data_move(self.res_gm[self.offset_gm],
                                                             temp_zero, 0,
-                                                            1, self.wi * C0 // 16, 0, 0)
-                                self.offset_gm.set_as(self.offset_gm + self.wi * C0)
+                                                            1, self.wi * Constant.C0 // 16, 0, 0)
+                                self.offset_gm.set_as(self.offset_gm + self.wi * Constant.C0)
                 with self.tik_instance.if_scope(cut_ho_nums_index == cut_ho_nums):
                     with self.tik_instance.if_scope(remained_hi > 0):
                         temp_zero = self.ub_a
-                        temp_zero_shape = (1, self.wi, C0)
+                        temp_zero_shape = (1, self.wi, Constant.C0)
                         temp_zero_dtype = "float16"
                         self._vector_dup(temp_zero,
                                          0,
@@ -756,17 +757,17 @@ class MaxpoolGrad:
                         with self.tik_instance.for_range(0, remained_hi) as index_0:
                             self.tik_instance.data_move(self.res_gm[self.offset_gm],
                                                         temp_zero, 0,
-                                                        1, self.wi * C0 // 16, 0, 0)
-                            self.offset_gm.set_as(self.offset_gm + self.wi * C0)
+                                                        1, self.wi * Constant.C0 // 16, 0, 0)
+                            self.offset_gm.set_as(self.offset_gm + self.wi * Constant.C0)
 
         with self.tik_instance.if_scope(self.kh > self.stride_h):
             self.ele_num.set_as(temp_size[0] * temp_size[1] * temp_size[2])
             self._vector_op("vmuls", col2img_fp32_ub, 1.0, temp_tensor_ub, "float32",
                             self.ele_num,
-                            None, [0, each_process_ho * self.stride_h * wi * C0])
+                            None, [0, each_process_ho * self.stride_h * wi * Constant.C0])
         return remained_hi
 
-    # pylint: disable=unused-variable
+    # 'pylint: disable=unused-variable,too-many-locals
     def _not_tilling(self, n_index, c1_index,
                      each_process_ho_block, each_process_hi_block,
                      mov_len_ho, mov_len_hi,
@@ -787,18 +788,18 @@ class MaxpoolGrad:
         mask_index = self.tik_instance.Scalar(dtype="int64", name="mask_index")
 
         # define col res
-        col2img_ub_shape = (hi, wi, C0)
+        col2img_ub_shape = (hi, wi, Constant.C0)
         col2img_fp32_ub = self.ub_d
 
-        ori_output_shape = (howo_ceil16, 16, C0)
+        ori_output_shape = (howo_ceil16, 16, Constant.C0)
         output_data_nums = self.tik_instance.Scalar(dtype="int64", name="output_data_nums")
-        output_data_nums.set_as(mov_len_ho * self.wo * C0)
+        output_data_nums.set_as(mov_len_ho * self.wo * Constant.C0)
         output_data_burst = self.tik_instance.Scalar(dtype="int64", name="output_data_burst")
         output_data_burst.set_as(output_data_nums // 16)
 
         src_output_offset = self.tik_instance.Scalar(dtype="int64", name="src_output_offset")
         src_output_offset.set_as(((n_index * self.c1 + c1_index) * self.ho + start_ho_index) * \
-                                 self.wo * C0)
+                                 self.wo * Constant.C0)
 
         # mov ori grad to ub, shape is ori_output_shape
         grad_ub = self.ub_a
@@ -851,9 +852,10 @@ class MaxpoolGrad:
                 self._vconv(grad_sel_ub, 0, grad_sel_ub_fp32, 0,
                             self.ele_num, "float16")
                 with self.tik_instance.for_range(0, mov_len_ho) as ho_idx:
-                    col_index.set_as(index_h * wi * C0 + index_w * C0 + wi * C0 * self.stride_h * ho_idx)
-                    mask_index.set_as(self.wo * C0 * ho_idx)
-                    self.ele_num.set_as(self.wo * C0 // 2)
+                    col_index.set_as(index_h * wi * Constant.C0 + index_w * Constant.C0 + wi * Constant.C0 *
+                    self.stride_h * ho_idx)
+                    mask_index.set_as(self.wo * Constant.C0 * ho_idx)
+                    self.ele_num.set_as(self.wo * Constant.C0 // 2)
                     self._vector_op("vadd", col2img_fp32_ub[col_index:], grad_sel_ub_fp32[mask_index:],
                                     col2img_fp32_ub[col_index:], "float32", self.ele_num,
                                     stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2,
@@ -869,13 +871,13 @@ class MaxpoolGrad:
         self._vconv(col2img_fp32_ub, 0, col2img_fp16_ub, 0,
                     self.ele_num, "float32")
 
-        pad_top_offset = pad_top * wi * C0
+        pad_top_offset = pad_top * wi * Constant.C0
         self.tik_instance.data_move(self.res_gm[self.offset_gm],
-                                    col2img_fp16_ub[pad_top_offset + pad_left * C0],
-                                    0, self.hi, self.wi * C0 // 16,
+                                    col2img_fp16_ub[pad_top_offset + pad_left * Constant.C0],
+                                    0, self.hi, self.wi * Constant.C0 // 16,
                                     pad_left + pad_right, 0)
 
-    # pylint: disable=unused-variable
+    # 'pylint: disable=unused-variable,too-many-locals
     def _not_tilling_nc1h(self, n_index, c1_index,
                           each_process_ho_block, each_process_hi_block,
                           mov_len_ho, mov_len_hi,
@@ -896,18 +898,18 @@ class MaxpoolGrad:
         mask_index = self.tik_instance.Scalar(dtype="int64", name="mask_index")
 
         # define col res
-        col2img_ub_shape = (hi, wi, C0)
+        col2img_ub_shape = (hi, wi, Constant.C0)
         col2img_fp32_ub = self.ub_d
 
-        ori_output_shape = (howo_ceil16, 16, C0)
+        ori_output_shape = (howo_ceil16, 16, Constant.C0)
         output_data_nums = self.tik_instance.Scalar(dtype="int64", name="output_data_nums")
-        output_data_nums.set_as(mov_len_ho * self.wo * C0)
+        output_data_nums.set_as(mov_len_ho * self.wo * Constant.C0)
         output_data_burst = self.tik_instance.Scalar(dtype="int64", name="output_data_burst")
         output_data_burst.set_as(output_data_nums // 16)
 
         src_output_offset = self.tik_instance.Scalar(dtype="int64", name="src_output_offset")
         src_output_offset.set_as(((n_index * self.c1 + c1_index) * self.ho + start_ho_index) * \
-                                 self.wo * C0)
+                                 self.wo * Constant.C0)
 
         # mov ori grad to ub, shape is ori_output_shape
         grad_ub = self.ub_a
@@ -960,9 +962,10 @@ class MaxpoolGrad:
                 self._vconv(grad_sel_ub, 0, grad_sel_ub_fp32, 0,
                             self.ele_num, "float16")
                 with self.tik_instance.for_range(0, mov_len_ho) as ho_idx:
-                    col_index.set_as(index_h * wi * C0 + index_w * C0 + wi * C0 * self.stride_h * ho_idx)
-                    mask_index.set_as(self.wo * C0 * ho_idx)
-                    self.ele_num.set_as(self.wo * C0 // 2)
+                    col_index.set_as(index_h * wi * Constant.C0 + index_w * Constant.C0 + wi * Constant.C0 * \
+                    self.stride_h * ho_idx)
+                    mask_index.set_as(self.wo * Constant.C0 * ho_idx)
+                    self.ele_num.set_as(self.wo * Constant.C0 // 2)
                     self._vector_op("vadd", col2img_fp32_ub[col_index:], grad_sel_ub_fp32[mask_index:],
                                     col2img_fp32_ub[col_index:], "float32", self.ele_num,
                                     stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2,
@@ -981,17 +984,17 @@ class MaxpoolGrad:
         with self.tik_instance.if_scope(start_threshold > pad_top):
             self.tik_instance.data_move(self.res_gm[offset_gm_block],
                                         col2img_fp16_ub[
-                                            start_threshold * wi * C0 + pad_left * C0],
-                                        0, each_process_hi_block, self.wi * C0 // 16,
+                                            start_threshold * wi * Constant.C0 + pad_left * Constant.C0],
+                                        0, each_process_hi_block, self.wi * Constant.C0 // 16,
                                         pad_left + pad_right, 0)
 
         with self.tik_instance.else_scope():
             self.tik_instance.data_move(self.res_gm[offset_gm_block],
-                                        col2img_fp16_ub[pad_top * wi * C0 + pad_left * C0],
-                                        0, each_process_hi_block, self.wi * C0 // 16,
+                                        col2img_fp16_ub[pad_top * wi * Constant.C0 + pad_left * Constant.C0],
+                                        0, each_process_hi_block, self.wi * Constant.C0 // 16,
                                         pad_left + pad_right, 0)
 
-    # pylint: disable=unused-variable
+    # 'pylint: disable=unused-variable,too-many-locals,unused-variable
     def _tilling_ho(self, each_process_ho, n_index, c1_index,
                     each_process_ho_block, each_process_hi_block,
                     mov_len_ho, mov_len_hi,
@@ -1019,16 +1022,17 @@ class MaxpoolGrad:
             self.each_process_hi.set_as(each_process_ho * self.stride_h)
             temp_size_h.set_as(1)
             temp_size_w.set_as(16)
-        temp_size = (temp_size_h, temp_size_w, C0)
+        temp_size = (temp_size_h, temp_size_w, Constant.C0)
 
         temp_tensor_ub = self.ub_e
 
         each_process_ho_wo_div16 = self.ho_wo_16
-        ori_output_shape = (each_process_ho_wo_div16, 16, C0)
+        ori_output_shape = (each_process_ho_wo_div16, 16, Constant.C0)
 
-        col2img_ub_shape = (self.each_process_hi, wi, C0)
+        col2img_ub_shape = (self.each_process_hi, wi, Constant.C0)
         col2img_fp32_ub = self.ub_d
 
+        # 'pylint: disable=unused-variable,too-many-locals
         def process_ho(output_data_nums, cut_ho_nums_index, each_valid_ho):
             """
             :param output_data_nums:
@@ -1051,7 +1055,7 @@ class MaxpoolGrad:
 
             src_output_offset = self.tik_instance.Scalar(dtype='int64', name='src_output_offset')
             src_output_offset.set_as(((n_index * self.c1 + c1_index) * self.ho + start_ho_index +
-                                      each_process_ho * cut_ho_nums_index) * self.wo * C0)
+                                      each_process_ho * cut_ho_nums_index) * self.wo * Constant.C0)
 
             # mov ori grad to ub
             grad_ub = self.ub_a
@@ -1104,9 +1108,10 @@ class MaxpoolGrad:
                     col_index = self.tik_instance.Scalar(dtype="int64", name="col_index")
                     mask_idx = self.tik_instance.Scalar(dtype="int64", name="mask_idx")
                     with self.tik_instance.for_range(0, each_valid_ho) as h_idx:
-                        col_index.set_as(index_h * wi * C0 + index_w * C0 + wi * C0 * self.stride_h * h_idx)
-                        mask_idx.set_as(self.wo * C0 * h_idx)
-                        self.ele_num.set_as(self.wo * C0 // 2)
+                        col_index.set_as(index_h * wi * Constant.C0 + index_w * Constant.C0 + wi * Constant.C0 * \
+                        self.stride_h * h_idx)
+                        mask_idx.set_as(self.wo * Constant.C0 * h_idx)
+                        self.ele_num.set_as(self.wo * Constant.C0 // 2)
                         self._vector_op("vadd", col2img_fp32_ub[col_index:],
                                         grad_sel_ub_fp32[mask_idx:],
                                         col2img_fp32_ub[col_index:], "float32", self.ele_num,
@@ -1124,14 +1129,14 @@ class MaxpoolGrad:
 
         output_data_nums = self.tik_instance.Scalar(dtype="int64", name="output_data_nums")
         with self.tik_instance.for_range(0, cut_ho_nums) as cut_ho_nums_index:
-            output_data_nums.set_as(each_process_ho * self.wo * C0)
+            output_data_nums.set_as(each_process_ho * self.wo * Constant.C0)
             process_ho(output_data_nums, cut_ho_nums_index, each_process_ho)
 
         with self.tik_instance.if_scope(remain_ho_nums > 0):
-            output_data_nums.set_as(remain_ho_nums * self.wo * C0)
+            output_data_nums.set_as(remain_ho_nums * self.wo * Constant.C0)
             process_ho(output_data_nums, cut_ho_nums, remain_ho_nums)
 
-    # pylint: disable=unused-variable
+    # 'pylint: disable=unused-variable,too-many-locals
     def _tilling_ho_nc1h(self, each_process_ho, n_index, c1_index,
                          each_process_ho_block, each_process_hi_block,
                          mov_len_ho, mov_len_hi,
@@ -1159,20 +1164,21 @@ class MaxpoolGrad:
             self.each_process_hi.set_as(each_process_ho * self.stride_h)
             temp_size_h.set_as(1)
             temp_size_w.set_as(16)
-        temp_size = (temp_size_h, temp_size_w, C0)
+        temp_size = (temp_size_h, temp_size_w, Constant.C0)
 
         temp_tensor_ub = self.ub_e
 
         each_process_ho_wo_div16 = self.ho_wo_16
-        ori_output_shape = (each_process_ho_wo_div16, 16, C0)
+        ori_output_shape = (each_process_ho_wo_div16, 16, Constant.C0)
 
-        col2img_ub_shape = (self.each_process_hi, wi, C0)
+        col2img_ub_shape = (self.each_process_hi, wi, Constant.C0)
         col2img_fp32_ub = self.ub_d
 
         self.offset_gm.set_as(offset_gm_block)
         remained_hi = self.tik_instance.Scalar(dtype='int64', name='remained_hi')
         remained_hi.set_as(each_process_hi_block)
 
+        # 'pylint: disable=unused-variable,too-many-locals
         def process_ho(output_data_nums, cut_ho_nums_index, each_valid_ho, remained_hi):
             """
 
@@ -1196,7 +1202,7 @@ class MaxpoolGrad:
             end_h.set_as(cut_ho_nums_index * each_process_ho * self.stride_h + self.each_process_hi)
 
             src_output_offset = ((n_index * self.c1 + c1_index) * self.ho + start_ho_index +
-                                 each_process_ho * cut_ho_nums_index) * self.wo * C0
+                                 each_process_ho * cut_ho_nums_index) * self.wo * Constant.C0
 
             # mov ori grad to ub
             grad_ub = self.ub_a
@@ -1247,17 +1253,17 @@ class MaxpoolGrad:
                                 self.ele_num, "float16")
 
                     with self.tik_instance.for_range(0, each_valid_ho) as h_idx:
-                        col_index = index_h * wi * C0 + index_w * C0 + \
-                                    wi * C0 * self.stride_h * h_idx
-                        mask_idx = self.wo * C0 * h_idx
+                        col_index = index_h * wi * Constant.C0 + index_w * Constant.C0 + \
+                                    wi * Constant.C0 * self.stride_h * h_idx
+                        mask_idx = self.wo * Constant.C0 * h_idx
                         self._vector_op("vadd", col2img_fp32_ub[col_index:],
                                         grad_sel_ub_fp32[mask_idx:],
-                                        col2img_fp32_ub[col_index:], "float32", self.wo * C0 // 2,
+                                        col2img_fp32_ub[col_index:], "float32", self.wo * Constant.C0 // 2,
                                         stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2,
                                                       self.stride_w * 16, self.stride_w * 16, 16))
                         self._vector_op("vadd", col2img_fp32_ub[col_index + 8:],
                                         grad_sel_ub_fp32[mask_idx + 8:],
-                                        col2img_fp32_ub[col_index + 8:], "float32", self.wo * C0 // 2,
+                                        col2img_fp32_ub[col_index + 8:], "float32", self.wo * Constant.C0 // 2,
                                         stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2,
                                                       self.stride_w * 16, self.stride_w * 16, 16))
 
@@ -1285,15 +1291,15 @@ class MaxpoolGrad:
 
         output_data_nums = self.tik_instance.Scalar(dtype='int64', name='output_data_nums')
         with self.tik_instance.for_range(0, cut_ho_nums) as cut_ho_nums_index:
-            output_data_nums.set_as(each_process_ho * self.wo * C0)
+            output_data_nums.set_as(each_process_ho * self.wo * Constant.C0)
             remained_hi = process_ho(output_data_nums, cut_ho_nums_index, each_process_ho,
                                      remained_hi)
 
         with self.tik_instance.if_scope(remain_ho_nums > 0):
-            output_data_nums.set_as(remain_ho_nums * self.wo * C0)
+            output_data_nums.set_as(remain_ho_nums * self.wo * Constant.C0)
             process_ho(output_data_nums, cut_ho_nums, remain_ho_nums, remained_hi)
 
-    # pylint: disable=unused-variable
+    # 'pylint: disable=unused-variable,too-many-locals
     def _tilling_ho_wo(self, each_process_wo, n_index, c1_index,
                        each_process_ho_block, each_process_hi_block,
                        mov_len_ho, mov_len_hi,
@@ -1342,7 +1348,7 @@ class MaxpoolGrad:
         each_process_wo_div16 = self.ho_wo_16
 
         # define col res, init to zero
-        col2img_ub_shape = (each_process_hi, each_process_wi, C0)
+        col2img_ub_shape = (each_process_hi, each_process_wi, Constant.C0)
         col2img_fp32_ub = self.ub_d
 
         if offset_gm_block is not None:
@@ -1351,7 +1357,7 @@ class MaxpoolGrad:
         overlap_shape_w = self.tik_instance.Scalar(dtype='int64', name='overlap_shape_w')
         overlap_offset = self.tik_instance.Scalar(dtype='int64', name='overlap_offset')
         with self.tik_instance.if_scope(self.stride_h < self.kh):
-            overlap_shape_w.set_as((self.wi + pad_left + pad_right) * C0)
+            overlap_shape_w.set_as((self.wi + pad_left + pad_right) * Constant.C0)
             overlap_offset.set_as(self.offset_gm)
             # save every h overlap on gm
             overlap_buffer = self.overlap_gm
@@ -1379,28 +1385,28 @@ class MaxpoolGrad:
                         with self.tik_instance.if_scope(cut_wo_nums_index == 0):
                             with self.tik_instance.for_range(0, overlap_h_nums) as index_khs:
                                 self.tik_instance.data_move(
-                                    col2img_fp32_ub[index_khs * each_process_wi * C0],
+                                    col2img_fp32_ub[index_khs * each_process_wi * Constant.C0],
                                     overlap_buffer[overlap_offset + index_khs * overlap_shape_w],
-                                    0, 1, each_process_wi * C0 // 8,
+                                    0, 1, each_process_wi * Constant.C0 // 8,
                                     0, 0)
 
                         with self.tik_instance.else_scope():
-                            start_pos.set_as((each_process_wi - self.stride_w * each_process_wo) * C0)
+                            start_pos.set_as((each_process_wi - self.stride_w * each_process_wo) * Constant.C0)
                             with self.tik_instance.for_range(0, overlap_h_nums) as index_khs:
                                 self.tik_instance.data_move(
-                                    col2img_fp32_ub[index_khs * each_process_wi * C0 + start_pos],
+                                    col2img_fp32_ub[index_khs * each_process_wi * Constant.C0 + start_pos],
                                     overlap_buffer[overlap_offset + index_khs * overlap_shape_w +
                                                    cut_wo_nums_index * each_process_wo *
-                                                   self.stride_w * C0 + start_pos],
-                                    0, 1, self.stride_w * each_process_wo * C0 // 8,
+                                                   self.stride_w * Constant.C0 + start_pos],
+                                    0, 1, self.stride_w * each_process_wo * Constant.C0 // 8,
                                     0, 0)
 
-                ori_output_shape = (each_process_wo_div16, 16, C0)
+                ori_output_shape = (each_process_wo_div16, 16, Constant.C0)
                 output_data_nums = self.tik_instance.Scalar(dtype='int64', name='output_data_nums')
-                output_data_nums.set_as(each_process_wo * C0)
+                output_data_nums.set_as(each_process_wo * Constant.C0)
                 src_output_offset = self.tik_instance.Scalar(dtype='int64', name='src_output_offset')
                 src_output_offset.set_as(((n_index * self.c1 + c1_index) * self.ho + start_ho_index + ho_index) *
-                                         self.wo * C0 + cut_wo_nums_index * each_process_wo * C0)
+                                         self.wo * Constant.C0 + cut_wo_nums_index * each_process_wo * Constant.C0)
 
                 # move ori grad to ub
                 grad_ub = self.ub_a
@@ -1453,21 +1459,21 @@ class MaxpoolGrad:
                                     self.ele_num, "float16")
 
                         with self.tik_instance.for_range(0, 1) as h_idx:
-                            col_index = index_h * each_process_wi * C0 + index_w * C0 + \
-                                        each_process_wi * C0 * self.stride_h * h_idx
-                            mask_idx = each_process_wo * C0 * h_idx
+                            col_index = index_h * each_process_wi * Constant.C0 + index_w * Constant.C0 + \
+                                        each_process_wi * Constant.C0 * self.stride_h * h_idx
+                            mask_idx = each_process_wo * Constant.C0 * h_idx
 
                             self._vector_op("vadd", col2img_fp32_ub[col_index:],
                                             grad_sel_ub_fp32[mask_idx:],
                                             col2img_fp32_ub[col_index:], "float32",
-                                            each_process_wo * C0 // 2,
+                                            each_process_wo * Constant.C0 // 2,
                                             stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2,
                                                           self.stride_w * 16, self.stride_w * 16,
                                                           16))
                             self._vector_op("vadd", col2img_fp32_ub[col_index + 8:],
                                             grad_sel_ub_fp32[mask_idx + 8:],
                                             col2img_fp32_ub[col_index + 8:], "float32",
-                                            each_process_wo * C0 // 2,
+                                            each_process_wo * Constant.C0 // 2,
                                             stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2,
                                                           self.stride_w * 16, self.stride_w * 16,
                                                           16))
@@ -1509,12 +1515,12 @@ class MaxpoolGrad:
                         tik.all(cut_wo_nums_index < cut_wo_nums - 1, mov_len_h > 0)):
                     self.tik_instance.data_move(self.res_gm[offset_gm_inside],
                                                 col2img_fp16_ub[start_pos_h * each_process_wi *
-                                                                C0 + start_pos_w * C0], 0,
-                                                mov_len_h, mov_len_w * C0 // 16,
+                                                                Constant.C0 + start_pos_w * Constant.C0], 0,
+                                                mov_len_h, mov_len_w * Constant.C0 // 16,
                                                 each_process_wi - mov_len_w,
                                                 self.wi - mov_len_w)
-                    offset_gm_inside.set_as(offset_gm_inside + mov_len_w * C0)
-                    self.offset_gm.set_as(self.offset_gm + mov_len_h * mov_len_w * C0)
+                    offset_gm_inside.set_as(offset_gm_inside + mov_len_w * Constant.C0)
+                    self.offset_gm.set_as(self.offset_gm + mov_len_h * mov_len_w * Constant.C0)
 
                 with self.tik_instance.if_scope(tik.all(mov_len_h > 0, mov_len_w > 0)):
                     with self.tik_instance.if_scope(remain_wo_nums == 0):
@@ -1528,48 +1534,48 @@ class MaxpoolGrad:
                                 self.tik_instance.data_move(
                                     self.res_gm[offset_gm_inside],
                                     col2img_fp16_ub[start_pos_h * each_process_wi *
-                                                    C0 + start_pos_w * C0],
+                                                    Constant.C0 + start_pos_w * Constant.C0],
                                     0, mov_len_h,
-                                    last_valid_wi * C0 // 16,
+                                    last_valid_wi * Constant.C0 // 16,
                                     each_process_wi - last_valid_wi, self.wi - last_valid_wi)
-                                offset_gm_inside.set_as(offset_gm_inside + last_valid_wi * C0)
+                                offset_gm_inside.set_as(offset_gm_inside + last_valid_wi * Constant.C0)
                                 self.offset_gm.set_as(
-                                    self.offset_gm + mov_len_h * last_valid_wi * C0)
+                                    self.offset_gm + mov_len_h * last_valid_wi * Constant.C0)
                             with self.tik_instance.else_scope():
                                 self.tik_instance.data_move(self.res_gm[offset_gm_inside],
                                                             col2img_fp16_ub[
                                                                 start_pos_h * each_process_wi *
-                                                                C0 + start_pos_w * C0], 0,
-                                                            mov_len_h, each_process_wi * C0 // 16,
+                                                                Constant.C0 + start_pos_w * Constant.C0], 0,
+                                                            mov_len_h, each_process_wi * Constant.C0 // 16,
                                                             0,
                                                             self.wi - each_process_wi)
-                                offset_gm_inside.set_as(offset_gm_inside + each_process_wi * C0)
+                                offset_gm_inside.set_as(offset_gm_inside + each_process_wi * Constant.C0)
 
                                 remain_wi.set_as(last_valid_wi - each_process_wi)
-                                temp_zero_shape = (remain_wi * C0,)
+                                temp_zero_shape = (remain_wi * Constant.C0,)
                                 temp_zero = self.ub_a
                                 self._vector_dup(temp_zero, 0, temp_zero_shape,
                                                  self.scalar_zero_fp16, temp_zero.dtype)
                                 with self.tik_instance.for_range(0, mov_len_h) as index_0:
-                                    self.ele_num.set_as(remain_wi * C0)
+                                    self.ele_num.set_as(remain_wi * Constant.C0)
                                     self.tik_instance.data_move(
-                                        self.res_gm[offset_gm_inside + index_0 * self.wi * C0],
+                                        self.res_gm[offset_gm_inside + index_0 * self.wi * Constant.C0],
                                         temp_zero, 0, 1,
                                         self.ele_num // 16, 0, 0)
-                                offset_gm_inside.set_as(offset_gm_inside + remain_wi * C0)
+                                offset_gm_inside.set_as(offset_gm_inside + remain_wi * Constant.C0)
                                 self.offset_gm.set_as(
-                                    self.offset_gm + mov_len_h * last_valid_wi * C0)
+                                    self.offset_gm + mov_len_h * last_valid_wi * Constant.C0)
                     with self.tik_instance.else_scope():
                         with self.tik_instance.if_scope(cut_wo_nums_index == cut_wo_nums - 1):
                             self.tik_instance.data_move(self.res_gm[offset_gm_inside],
                                                         col2img_fp16_ub[
                                                             start_pos_h * each_process_wi *
-                                                            C0 + start_pos_w * C0], 0,
-                                                        mov_len_h, mov_len_w * C0 // 16,
+                                                            Constant.C0 + start_pos_w * Constant.C0], 0,
+                                                        mov_len_h, mov_len_w * Constant.C0 // 16,
                                                         each_process_wi - mov_len_w,
                                                         self.wi - mov_len_w)
-                            offset_gm_inside.set_as(offset_gm_inside + mov_len_w * C0)
-                            self.offset_gm.set_as(self.offset_gm + mov_len_h * mov_len_w * C0)
+                            offset_gm_inside.set_as(offset_gm_inside + mov_len_w * Constant.C0)
+                            self.offset_gm.set_as(self.offset_gm + mov_len_h * mov_len_w * Constant.C0)
 
                 # move back to init col2img_fp16 tensor
                 with self.tik_instance.if_scope(cut_wo_nums_index < cut_wo_nums - 1):
@@ -1579,26 +1585,26 @@ class MaxpoolGrad:
                             self.tik_instance.data_move(
                                 overlap_buffer[overlap_offset + index_s * overlap_shape_w +
                                                cut_wo_nums_index * each_process_wo *
-                                               self.stride_w * C0],
+                                               self.stride_w * Constant.C0],
                                 col2img_fp32_ub[self.stride_h *
-                                                each_process_wi * C0 + each_process_wi *
-                                                C0 * index_s],
-                                0, 1, self.stride_w * each_process_wo * C0 // 8, 0, 0)
+                                                each_process_wi * Constant.C0 + each_process_wi *
+                                                Constant.C0 * index_s],
+                                0, 1, self.stride_w * each_process_wo * Constant.C0 // 8, 0, 0)
 
                     with self.tik_instance.if_scope(self.kw > self.stride_w):
                         with self.tik_instance.for_range(0, self.kh) as index_kh:
-                            offset = [index_kh * each_process_wi * C0,
-                                      index_kh * each_process_wi * C0 + self.stride_w * each_process_wo * C0]
+                            offset = [index_kh * each_process_wi * Constant.C0, index_kh * each_process_wi * \
+                            Constant.C0 + self.stride_w * each_process_wo * Constant.C0]
                             self._vector_op("vmuls", col2img_fp32_ub, 1.0, col2img_fp32_ub,
                                             col2img_fp32_ub.dtype,
-                                            (each_process_wi - each_process_wo * self.stride_w) * C0,
+                                            (each_process_wi - each_process_wo * self.stride_w) * Constant.C0,
                                             None, offset)
                         with self.tik_instance.for_range(0, self.kh) as index_kh:
                             self._vector_dup(col2img_fp32_ub,
-                                             index_kh * each_process_wi * C0 +
+                                             index_kh * each_process_wi * Constant.C0 +
                                              (each_process_wi - self.stride_w *
-                                              each_process_wo) * C0,
-                                             (self.stride_w * each_process_wo * C0,),
+                                              each_process_wo) * Constant.C0,
+                                             (self.stride_w * each_process_wo * Constant.C0,),
                                              self.scalar_zero,
                                              col2img_fp32_ub.dtype)
 
@@ -1614,28 +1620,28 @@ class MaxpoolGrad:
                                 self.tik_instance.data_move(
                                     overlap_buffer[overlap_offset + index_s * overlap_shape_w +
                                                    cut_wo_nums_index * each_process_wo *
-                                                   self.stride_w * C0],
+                                                   self.stride_w * Constant.C0],
                                     col2img_fp32_ub[self.stride_h *
-                                                    each_process_wi * C0 + each_process_wi *
-                                                    C0 * index_s],
-                                    0, 1, self.stride_w * each_process_wo * C0 // 8, 0, 0)
+                                                    each_process_wi * Constant.C0 + each_process_wi *
+                                                    Constant.C0 * index_s],
+                                    0, 1, self.stride_w * each_process_wo * Constant.C0 // 8, 0, 0)
 
                         with self.tik_instance.if_scope(self.kw > self.stride_w):
                             with self.tik_instance.for_range(0, self.kh) as index_kh:
-                                offset = [index_kh * each_process_wi * C0,
-                                          index_kh * each_process_wi * C0 +
-                                          self.stride_w * each_process_wo * C0]
+                                offset = [index_kh * each_process_wi * Constant.C0,
+                                          index_kh * each_process_wi * Constant.C0 +
+                                          self.stride_w * each_process_wo * Constant.C0]
                                 self._vector_op("vmuls", col2img_fp32_ub, 1.0, col2img_fp32_ub,
                                                 col2img_fp32_ub.dtype,
                                                 (each_process_wi - each_process_wo *
-                                                 self.stride_w) * C0,
+                                                 self.stride_w) * Constant.C0,
                                                 None, offset)
                             with self.tik_instance.for_range(0, self.kh) as index_kh:
                                 self._vector_dup(col2img_fp32_ub,
-                                                 index_kh * each_process_wi * C0 +
+                                                 index_kh * each_process_wi * Constant.C0 +
                                                  (each_process_wi - self.stride_w *
-                                                  each_process_wo) * C0,
-                                                 (self.stride_w * each_process_wo * C0,),
+                                                  each_process_wo) * Constant.C0,
+                                                 (self.stride_w * each_process_wo * Constant.C0,),
                                                  self.scalar_zero,
                                                  col2img_fp32_ub.dtype)
                         with self.tik_instance.else_scope():
@@ -1646,10 +1652,10 @@ class MaxpoolGrad:
                             with self.tik_instance.for_range(0, overlap_h_nums) as index_s:
                                 self.tik_instance.data_move(
                                     overlap_buffer[overlap_offset + index_s * overlap_shape_w + (cut_wo_nums - 1) *
-                                                   each_process_wo * self.stride_w * C0],
-                                    col2img_fp32_ub[self.stride_h * each_process_wi * C0 +
-                                                    each_process_wi * C0 * index_s],
-                                    0, 1, each_process_wi * C0 // 8, 0, 0)
+                                                   each_process_wo * self.stride_w * Constant.C0],
+                                    col2img_fp32_ub[self.stride_h * each_process_wi * Constant.C0 +
+                                                    each_process_wi * Constant.C0 * index_s],
+                                    0, 1, each_process_wi * Constant.C0 // 8, 0, 0)
 
             with self.tik_instance.if_scope(remain_wo_nums > 0):
                 each_process_remain_wi = self.tik_instance.Scalar(dtype="int64", name="each_process_remain_wi")
@@ -1667,37 +1673,38 @@ class MaxpoolGrad:
                     with self.tik_instance.if_scope(ho_index != 0):
                         with self.tik_instance.if_scope(cut_wo_nums == 0):
                             with self.tik_instance.for_range(0, overlap_h_nums) as index_khs:
-                                self.tik_instance.data_move(col2img_fp32_ub[index_khs * each_process_wi * C0],
+                                self.tik_instance.data_move(col2img_fp32_ub[index_khs * each_process_wi * Constant.C0],
                                                             overlap_buffer[
                                                                 overlap_offset + index_khs * overlap_shape_w],
                                                             0, 1,
-                                                            each_process_remain_wi * C0 // 8,
+                                                            each_process_remain_wi * Constant.C0 // 8,
                                                             0, 0)
                         with self.tik_instance.else_scope():
-                            start_pos.set_as((each_process_wi - self.stride_w * each_process_wo) * C0)
+                            start_pos.set_as((each_process_wi - self.stride_w * each_process_wo) * Constant.C0)
                             overlap_burst.set_as((self.wi + pad_left + pad_right -
                                                   (each_process_wi + self.stride_w * each_process_wo * (
-                                                              cut_wo_nums - 1))) * C0)
-                            with self.tik_instance.if_scope(overlap_burst > (self.stride_w * remain_wo_nums * C0)):
-                                overlap_burst.set_as(self.stride_w * remain_wo_nums * C0)
+                                                              cut_wo_nums - 1))) * Constant.C0)
+                            with self.tik_instance.if_scope(overlap_burst > (self.stride_w * \
+                            remain_wo_nums * Constant.C0)):
+                                overlap_burst.set_as(self.stride_w * remain_wo_nums * Constant.C0)
 
                             with self.tik_instance.for_range(0, overlap_h_nums) as index_khs:
                                 self.tik_instance.data_move(
-                                    col2img_fp32_ub[index_khs * each_process_wi * C0 + start_pos],
+                                    col2img_fp32_ub[index_khs * each_process_wi * Constant.C0 + start_pos],
                                     overlap_buffer[overlap_offset + index_khs * overlap_shape_w +
                                                    cut_wo_nums * each_process_wo *
-                                                   self.stride_w * C0 + start_pos],
+                                                   self.stride_w * Constant.C0 + start_pos],
                                     0, 1, overlap_burst // 8, 0, 0)
 
                 # mov forward output and grad to UB
-                ori_output_ub_shape = (each_process_wo_div16, 16, C0)
+                ori_output_ub_shape = (each_process_wo_div16, 16, Constant.C0)
 
                 grad_ub = self.ub_a
                 self.tik_instance.data_move(
                     grad_ub, self.grad_gm[((n_index * self.c1 + c1_index) *
-                                           self.ho + start_ho_index + ho_index) * self.wo * C0 +
-                                          cut_wo_nums * each_process_wo * C0],
-                    0, 1, remain_wo_nums * C0 // 16, 0, 0)
+                                           self.ho + start_ho_index + ho_index) * self.wo * Constant.C0 +
+                                          cut_wo_nums * each_process_wo * Constant.C0],
+                    0, 1, remain_wo_nums * Constant.C0 // 16, 0, 0)
 
                 mask_shape = (self.mask_shape_128,)
 
@@ -1743,20 +1750,20 @@ class MaxpoolGrad:
 
                         # each procee ho is 1, so here loop value is 1
                         with self.tik_instance.for_range(0, 1) as h_idx:
-                            col_index = index_h * each_process_wi * C0 + index_w * C0 + \
-                                        each_process_wi * C0 * self.stride_h * h_idx
-                            mask_idx = each_process_wo * C0 * h_idx
+                            col_index = index_h * each_process_wi * Constant.C0 + index_w * Constant.C0 + \
+                                        each_process_wi * Constant.C0 * self.stride_h * h_idx
+                            mask_idx = each_process_wo * Constant.C0 * h_idx
                             self._vector_op("vadd", col2img_fp32_ub[col_index:],
                                             grad_sel_ub_fp32[mask_idx:],
                                             col2img_fp32_ub[col_index:], "float32",
-                                            remain_wo_nums * C0 // 2,
+                                            remain_wo_nums * Constant.C0 // 2,
                                             stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2,
                                                           self.stride_w * 16, self.stride_w * 16,
                                                           16))
                             self._vector_op("vadd", col2img_fp32_ub[col_index + 8:],
                                             grad_sel_ub_fp32[mask_idx + 8:],
                                             col2img_fp32_ub[col_index + 8:], "float32",
-                                            remain_wo_nums * C0 // 2,
+                                            remain_wo_nums * Constant.C0 // 2,
                                             stride_cofig=(self.stride_w * 2, self.stride_w * 2, 2,
                                                           self.stride_w * 16, self.stride_w * 16,
                                                           16))
@@ -1804,47 +1811,47 @@ class MaxpoolGrad:
                     with self.tik_instance.if_scope(last_valid_wi <= each_process_wi):
                         self.tik_instance.data_move(
                             self.res_gm[offset_gm_inside],
-                            col2img_fp16_ub[start_pos_h * each_process_wi * C0 + start_pos_w * C0],
+                            col2img_fp16_ub[start_pos_h * each_process_wi * Constant.C0 + start_pos_w * Constant.C0],
                             0, mov_len_h,
-                            last_valid_wi * C0 // 16,
+                            last_valid_wi * Constant.C0 // 16,
                             each_process_wi - last_valid_wi,
                             self.wi - last_valid_wi)
-                        offset_gm_inside.set_as(offset_gm_inside + last_valid_wi * C0)
-                        self.offset_gm.set_as(self.offset_gm + mov_len_h * last_valid_wi * C0)
+                        offset_gm_inside.set_as(offset_gm_inside + last_valid_wi * Constant.C0)
+                        self.offset_gm.set_as(self.offset_gm + mov_len_h * last_valid_wi * Constant.C0)
                     with self.tik_instance.else_scope():
                         self.tik_instance.data_move(self.res_gm[offset_gm_inside],
                                                     col2img_fp16_ub[start_pos_h * each_process_wi *
-                                                                    C0 + start_pos_w * C0], 0,
+                                                                    Constant.C0 + start_pos_w * Constant.C0], 0,
                                                     mov_len_h,
-                                                    each_process_wi * C0 // 16,
+                                                    each_process_wi * Constant.C0 // 16,
                                                     0,
                                                     self.wi - each_process_wi)
-                        offset_gm_inside.set_as(offset_gm_inside + each_process_wi * C0)
+                        offset_gm_inside.set_as(offset_gm_inside + each_process_wi * Constant.C0)
 
                         remain_wi.set_as(last_valid_wi - each_process_wi)
-                        temp_zero_shape = (remain_wi * C0,)
+                        temp_zero_shape = (remain_wi * Constant.C0,)
                         temp_zero = self.ub_a
                         self._vector_dup(temp_zero, 0, temp_zero_shape,
                                          self.scalar_zero_fp16, temp_zero.dtype)
                         with self.tik_instance.for_range(0, mov_len_h) as index_0:
                             self.tik_instance.data_move(
-                                self.res_gm[offset_gm_inside + index_0 * self.wi * C0],
+                                self.res_gm[offset_gm_inside + index_0 * self.wi * Constant.C0],
                                 temp_zero, 0, 1,
                                 temp_zero_shape[0] // 16, 0, 0)
-                        offset_gm_inside.set_as(offset_gm_inside + remain_wi * C0)
-                        self.offset_gm.set_as(self.offset_gm + mov_len_h * last_valid_wi * C0)
+                        offset_gm_inside.set_as(offset_gm_inside + remain_wi * Constant.C0)
+                        self.offset_gm.set_as(self.offset_gm + mov_len_h * last_valid_wi * Constant.C0)
 
                 with self.tik_instance.if_scope(self.kh > self.stride_h):
                     overlap_burst.set_as(
-                        (self.wi + pad_left + pad_right - self.stride_w * each_process_wo * cut_wo_nums) * C0)
-                    with self.tik_instance.if_scope(overlap_burst > each_process_remain_wi * C0):
-                        overlap_burst.set_as(each_process_remain_wi * C0)
+                        (self.wi + pad_left + pad_right - self.stride_w * each_process_wo * cut_wo_nums) * Constant.C0)
+                    with self.tik_instance.if_scope(overlap_burst > each_process_remain_wi * Constant.C0):
+                        overlap_burst.set_as(each_process_remain_wi * Constant.C0)
                     with self.tik_instance.for_range(0, overlap_h_nums) as index_s:
                         self.tik_instance.data_move(
                             overlap_buffer[overlap_offset + index_s * overlap_shape_w + cut_wo_nums *
-                                           each_process_wo * self.stride_w * C0],
+                                           each_process_wo * self.stride_w * Constant.C0],
                             col2img_fp32_ub[self.stride_h * each_process_wi *
-                                            C0 + each_process_wi * C0 * index_s],
+                                            Constant.C0 + each_process_wi * Constant.C0 * index_s],
                             0, 1, overlap_burst // 8, 0, 0)
                 with self.tik_instance.if_scope(self.kw <= self.stride_w):
                     self._vector_dup(col2img_fp32_ub, 0, col2img_fp32_ub.shape,
@@ -1854,10 +1861,10 @@ class MaxpoolGrad:
                 remained_hi.set_as(remained_hi - mov_len_h)
 
             with self.tik_instance.if_scope(tik.all(ho_index == mov_len_ho - 1, remained_hi > 0)):
-                # one_h = (self.wi, C0)
+                # `one_h = (self.wi, C0)`
                 temp_zero = self.ub_a
-                w_ele_num = self.one_seventh_ub_ele // C0
-                temp_zero_shape = (w_ele_num, C0)
+                w_ele_num = self.one_seventh_ub_ele // Constant.C0
+                temp_zero_shape = (w_ele_num, Constant.C0)
                 self._vector_dup(temp_zero, 0,
                                  temp_zero_shape,
                                  self.scalar_zero_fp16,
@@ -1868,20 +1875,20 @@ class MaxpoolGrad:
                     with self.tik_instance.for_range(0, total_repeate_time) as time_index:
                         self.tik_instance.data_move(self.res_gm[self.offset_gm],
                                                     temp_zero, 0,
-                                                    1, w_ele_num * C0 // 16, 0, 0)
-                        self.offset_gm.set_as(self.offset_gm + w_ele_num * C0)
+                                                    1, w_ele_num * Constant.C0 // 16, 0, 0)
+                        self.offset_gm.set_as(self.offset_gm + w_ele_num * Constant.C0)
                     with self.tik_instance.if_scope(remain_ele > 0):
                         self.tik_instance.data_move(self.res_gm[self.offset_gm],
                                                     temp_zero, 0,
-                                                    1, remain_ele * C0 // 16, 0, 0)
-                        self.offset_gm.set_as(self.offset_gm + remain_ele * C0)
+                                                    1, remain_ele * Constant.C0 // 16, 0, 0)
+                        self.offset_gm.set_as(self.offset_gm + remain_ele * Constant.C0)
 
-    # pylint: disable=unused-variable
+    # 'pylint: disable=unused-variable,too-many-locals
     def max_pool_grad_compute_tiling(self):
         """maxpoolgrad compute tiling
         """
         if self.dtype == "float16":
-            self.pad_value = MIN_VALUE_FP16
+            self.pad_value = Constant.MIN_VALUE_FP16
         else:
             error_manager_vector.raise_err_input_dtype_not_supported("max_pool_grad_with_argmaxv2", "dtype",
                                                                      "float16", str(self.dtype))
@@ -1895,8 +1902,8 @@ class MaxpoolGrad:
             # call select tiling mode function
             with self.tik_instance.if_scope(block_index <= self.act_core_num - 1):
                 self.pad = (self.pad_left, self.pad_right, self.pad_top, self.pad_bottom)
-                # real_block == 32
-                with self.tik_instance.if_scope(self.real_block == CORE_NUM):
+                # `real_block == 32`
+                with self.tik_instance.if_scope(self.real_block == Constant.CORE_NUM):
                     with self.tik_instance.for_range(0, self.block_cycle) as cycle_index:
                         n_index = self.tik_instance.Scalar(dtype='int64', name='n_axis')
                         c1_index = self.tik_instance.Scalar(dtype='int64', name='c1_index')
@@ -1907,7 +1914,7 @@ class MaxpoolGrad:
                             c1_index.set_as(index_sum % self.c1)
                             shape = (self.ho, self.wo, self.hi, self.wi)
                             self.offset_gm.set_as(
-                                (n_index * self.c1 + c1_index) * self.hi * self.wi * C0)
+                                (n_index * self.c1 + c1_index) * self.hi * self.wi * Constant.C0)
                             with self.tik_instance.if_scope(self.tiling_mode == 2):
                                 with self.tik_instance.new_stmt_scope():
                                     self._tilling_ho_wo(self.each_process_wo, n_index, c1_index,
@@ -1981,14 +1988,14 @@ class MaxpoolGrad:
 
                                 with self.tik_instance.if_scope(start_hi_index <= self.pad_top):
                                     offset_gm_block.set_as(
-                                        (n_index * self.c1 + c1_index) * self.hi * self.wi * C0)
+                                        (n_index * self.c1 + c1_index) * self.hi * self.wi * Constant.C0)
                                     pad_top_block.set_as(self.pad_top - start_hi_index)
                                     self.tik_instance.scalar_max(start_threshold, start_threshold,
                                                                  pad_top_block)
                                     actual_start_hi_index.set_as(0)
                                 with self.tik_instance.else_scope():
                                     offset_gm_block.set_as(((n_index * self.c1 + c1_index) * self.hi +
-                                                            start_hi_index - self.pad_top) * self.wi * C0)
+                                                            start_hi_index - self.pad_top) * self.wi * Constant.C0)
                                     pad_top_block.set_as(0)
                                     actual_start_hi_index.set_as(actual_start_hi_index - self.pad_top)
 
@@ -2087,7 +2094,7 @@ class MaxpoolGrad:
                     with self.tik_instance.else_scope():
                         with self.tik_instance.for_range(0, self.nc1, thread_num=1) as nc1_index:
                             self.offset_gm.set_as((block_index * self.nc1 + nc1_index) *
-                                                  self.hi * self.wi * C0)
+                                                  self.hi * self.wi * Constant.C0)
                             n_index = (block_index * self.nc1 + nc1_index) // self.c1
                             c1_index = (block_index * self.nc1 + nc1_index) % self.c1
 
@@ -2117,7 +2124,7 @@ class MaxpoolGrad:
                                                       0, 0,
                                                       0, None, shape, self.pad)
 
-    # pylint: disable=unused-variable
+    # 'pylint: disable=unused-variable
     def tik_instance_function(self):
         """
         main function of tik_instance
@@ -2148,8 +2155,8 @@ class MaxpoolGrad:
         return self.tik_instance
 
 
-# pylint: disable=dangerous-default-value,too-many-locals,
-# pylint: disable=too-many-arguments,,unused-argument,invalid-name
+# 'pylint: disable=dangerous-default-value,too-many-locals,
+# 'pylint: disable=too-many-arguments,,unused-argument,invalid-name
 @register_operator("MaxPoolGardWithArgmaxV2")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
@@ -2167,7 +2174,7 @@ def max_pool_grad_with_argmax_v2(x,
                                  ksize,
                                  strides,
                                  pads=[0, 0, 0, 0],
-                                 dtype=DT_INT32,
+                                 dtype=Constant.DT_INT32,
                                  dilation=(1, 1, 1, 1),
                                  ceil_mode=False,
                                  kernel_name="max_pool_grad_with_argmax_v2"):
@@ -2202,7 +2209,7 @@ def max_pool_grad_with_argmax_v2(x,
     return the tik api function
     """
     ori_format = x.get("ori_format")
-    if ori_format == "NCHW" or ori_format == "NC1HWC0":
+    if ori_format in ("NCHW","NC1HWC0"):
         ksize = (ksize[0], ksize[2], ksize[3], ksize[1])
         strides = (strides[0], strides[2], strides[3], strides[1])
         pads = (pads[0], pads[2], pads[3], pads[1])

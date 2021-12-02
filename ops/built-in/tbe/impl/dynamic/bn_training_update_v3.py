@@ -64,13 +64,14 @@ def _check_dtype(dtype_x, dtype_sum, dtype_square_sum,
     para_check.check_dtype(dtype_offset, ("float32",))
 
 
+# 'pylint: disable=too-many-nested-blocks
 def _refine_ins_list(ins_list):
-    for i in range(len(ins_list)):
+    for index, ins_list_value in enumerate(ins_list):
         shape_range = []
-        for dim, dim_val in enumerate(ins_list[i]["shape"]):
+        for dim, dim_val in enumerate(ins_list[index]["shape"]):
             if dim_val == -1:
-                if "range" in ins_list[i]:
-                    range_bottom, range_top = ins_list[i]["range"][dim]
+                if "range" in ins_list_value:
+                    range_bottom, range_top = ins_list[index]["range"][dim]
                     if range_bottom <= 1:
                         if range_top is not None and range_top <= 1:
                             range_top = 2
@@ -81,7 +82,7 @@ def _refine_ins_list(ins_list):
                     shape_range.append((2, None))
             else:
                 shape_range.append((dim_val, dim_val))
-        ins_list[i]["range"] = tuple(shape_range)
+        ins_list[index]["range"] = tuple(shape_range)
     return ins_list
 
 
