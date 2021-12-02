@@ -1,5 +1,5 @@
 /**
- * Copyright 2019 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,12 +21,10 @@
 #include "register/register.h"
 
 namespace domi {
-
 // register SelfAdjointEig op to GE
 REGISTER_CUSTOM_OP("SelfAdjointEig")
     .FrameworkType(TENSORFLOW)
     .OriginOpType("SelfAdjointEigV2")
     .ParseParamsFn(AutoMappingFn)
     .ImplyType(ImplyType::AI_CPU);
-
 }  // namespace domi

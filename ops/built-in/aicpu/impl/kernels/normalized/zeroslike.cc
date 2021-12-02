@@ -90,7 +90,7 @@ uint32_t ZerosLikeCpuKernel::ZerosLikePartCompute(CpuKernelContext &ctx) {
   size_t data_num = ctx.Input(0)->NumElements();
   Tensor *y = ctx.Output(0);
   auto y_addr = y->GetData();
-  auto ret = memset_s(y_addr, data_num*sizeof(T), 0 , data_num*sizeof(T));
+  auto ret = memset_s(y_addr, data_num * sizeof(T), 0, data_num * sizeof(T));
   if (ret != EOK) {
     KERNEL_LOG_ERROR("memset_s error, ret=%d", ret);
   }
