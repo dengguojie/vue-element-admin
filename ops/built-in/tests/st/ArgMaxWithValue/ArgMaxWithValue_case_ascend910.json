@@ -11,7 +11,8 @@
           "float16"
         ],
         "shape": [
-          -2
+          -1,
+          -1
         ],
         "data_distribute": [
           "uniform"
@@ -21,6 +22,20 @@
             0.1,
             1.0
           ]
+        ],
+        "shape_range": [
+          [
+            1,
+            65535
+          ],
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1
         ],
         "name": "x"
       }
@@ -34,7 +49,22 @@
           "float16"
         ],
         "shape": [
-          -2
+          -1,
+          -1
+        ],
+        "shape_range": [
+          [
+            1,
+            65535
+          ],
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1
         ],
         "name": "indice"
       },
@@ -46,7 +76,22 @@
           "float16"
         ],
         "shape": [
-          -2
+          -1,
+          -1
+        ],
+        "shape_range": [
+          [
+            1,
+            65535
+          ],
+          [
+            1,
+            65535
+          ]
+        ],
+        "typical_shape": [
+          1,
+          1
         ],
         "name": "values"
       }
@@ -56,324 +101,11 @@
         "name": "dimension",
         "type": "int",
         "value": 1
-      }
-    ]
-  },
-  {
-    "case_name": "ArgMaxWithValue_dynamic_shape_argmax_case_ascend910a",
-    "op": "ArgMaxWithValue",
-    "input_desc": [
-      {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float16"
-        ],
-        "shape": [
-          1,
-          1,
-          1,
-          1,
-          1
-        ],
-        "data_distribute": [
-          "uniform"
-        ],
-        "value_range": [
-          [
-            0.1,
-            1.0
-          ]
-        ],
-        "name": "x",
-        "shape_range": [
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ]
-        ],
-        "typical_shape": [
-          1,
-          1,
-          1,
-          1,
-          1
-        ]
-      }
-    ],
-    "output_desc": [
-      {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float16"
-        ],
-        "shape": [
-          1,
-          1,
-          1,
-          1,
-          1
-        ],
-        "name": "indice",
-        "shape_range": [
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ]
-        ],
-        "typical_shape": [
-          1,
-          1,
-          1,
-          1,
-          1
-        ]
       },
       {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float16"
-        ],
-        "shape": [
-          1,
-          1,
-          1,
-          1,
-          1
-        ],
-        "name": "values",
-        "shape_range": [
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ]
-        ],
-        "typical_shape": [
-          1,
-          1,
-          1,
-          1,
-          1
-        ]
-      }
-    ],
-    "attr": [
-      {
-        "name": "dimension",
-        "type": "int",
-        "value": 1
-      }
-    ]
-  },
-  {
-    "case_name": "ArgMaxWithValue_dynamic_shape_argmax_case__1_ascend910a",
-    "op": "ArgMaxWithValue",
-    "input_desc": [
-      {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float32"
-        ],
-        "shape": [
-          1,
-          1,
-          1,
-          1,
-          1
-        ],
-        "data_distribute": [
-          "uniform"
-        ],
-        "value_range": [
-          [
-            0.1,
-            1.0
-          ]
-        ],
-        "name": "x",
-        "shape_range": [
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ]
-        ],
-        "typical_shape": [
-          1,
-          1,
-          1,
-          1,
-          1
-        ]
-      }
-    ],
-    "output_desc": [
-      {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float32"
-        ],
-        "shape": [
-          1,
-          1,
-          1,
-          1,
-          1
-        ],
-        "name": "indice",
-        "shape_range": [
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ]
-        ],
-        "typical_shape": [
-          1,
-          1,
-          1,
-          1,
-          1
-        ]
-      },
-      {
-        "format": [
-          "ND"
-        ],
-        "type": [
-          "float32"
-        ],
-        "shape": [
-          1,
-          1,
-          1,
-          1,
-          1
-        ],
-        "name": "values",
-        "shape_range": [
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ],
-          [
-            1,
-            65535
-          ]
-        ],
-        "typical_shape": [
-          1,
-          1,
-          1,
-          1,
-          1
-        ]
-      }
-    ],
-    "attr": [
-      {
-        "name": "dimension",
-        "type": "int",
-        "value": 1
+        "name": "keep_dims",
+        "type": "bool",
+        "value": false
       }
     ]
   }
