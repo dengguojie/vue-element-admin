@@ -53,7 +53,7 @@ bool GetMcInfoNegative200(int64_t& dst_cr_lp_cnt, int64_t dst_cr_left, int64_t& 
     tmp_full_loop_cnt_cr = 0;
   }
   int64_t reminder_loop_cnt_cr = dst_cr_lp_cnt % core_num;
-  if (reminder_loop_cnt_cr == 0 && dst_cr_left > params.dst_cr_lp_unit / 2) {
+  if (reminder_loop_cnt_cr == 0 && dst_cr_left > params.dst_cr_lp_unit / TRANSDATA_TILING_FACTOR_2) {
     tmp_full_loop_cnt_cr += core_num;
   }
   int64_t full_loop_cnt_cr = tmp_full_loop_cnt_cr + reminder_loop_cnt_cr;
@@ -123,7 +123,7 @@ bool GetMcInfoNegative200(int64_t& dst_cr_lp_cnt, int64_t dst_cr_left, int64_t& 
     params.nlc_cl_left = dst_cl_left;
     params.lc_cl_left = dst_cl_left;
   } else {
-    params.mc_pos = 2;
+    params.mc_pos = TRANSDATA_TILING_PARAM_2;
     params.is_mc_cl = 0;
     params.is_mc_cr = 1;
     params.used_core_cnt = GetCeilDiv(dst_cr_lp_cnt, GetCeilDiv(dst_cr_lp_cnt, core_num));
@@ -164,16 +164,16 @@ bool TilingNegativeNtc200(vector<int64_t>& in_shape, vector<int64_t>& out_shape,
   } else {
     params.src_r2nd_dst_r1st_same = 0;
   }
-  params.ub_offset = ub_size / 2 / block_elem_cnt * block_elem_cnt;
+  params.ub_offset = ub_size / TRANSDATA_TILING_FACTOR_2 / block_elem_cnt * block_elem_cnt;
   int64_t vnc_col_block_size = GetFloorDiv(params.ub_offset / VNC_LINES, block_elem_cnt);
-  if (vnc_col_block_size % 2 == 0) {
+  if (vnc_col_block_size % TRANSDATA_TILING_FACTOR_2 == 0) {
     vnc_col_block_size -= 1;
   }
   int64_t vnc_col_size = vnc_col_block_size * block_elem_cnt;
   params.vnc_col_size = vnc_col_size;
 
   // dst axis C-RIGHT tiling parameters
-  params.dst_cr_dims = 2;
+  params.dst_cr_dims = TRANSDATA_TILING_PARAM_2;
   int32_t src_axis_pos_c = std::strchr(src_format.c_str(), 'C') - src_format.c_str();
   int32_t dst_axis_pos_c = std::strchr(dst_format.c_str(), 'C') - dst_format.c_str();
   int64_t axis_dst_cr_size = GetShapeSize(out_shape, dst_axis_pos_c + 1);
@@ -183,11 +183,11 @@ bool TilingNegativeNtc200(vector<int64_t>& in_shape, vector<int64_t>& out_shape,
   int64_t tmp_dst_cr_lp_unit;
   int64_t cr_gate;
   if (axis_dst_cr_size % c0_len == 0) {
-    cr_gate = 2 * VNC_LINES;
+    cr_gate = TRANSDATA_TILING_FACTOR_2 * VNC_LINES;
   } else if (GetFloorDiv(cr_per_vnc_line, GetCeilFillA(axis_dst_cr_size, c0_len)) <= axis_src_c_size) {
-    cr_gate = 8 * VNC_LINES;
+    cr_gate = TRANSDATA_TILING_FACTOR_8 * VNC_LINES;
   } else {
-    cr_gate = 15 * VNC_LINES;
+    cr_gate = TRANSDATA_TILING_FACTOR_15 * VNC_LINES;
   }
 
   if ((dtype == DT_FLOAT16 || dtype == DT_INT8 || dtype == DT_UINT8 ||
@@ -197,7 +197,7 @@ bool TilingNegativeNtc200(vector<int64_t>& in_shape, vector<int64_t>& out_shape,
   } else {
     // twice vnchwconv flow
     if (dtype == DT_INT8 || dtype == DT_UINT8) {
-      tmp_dst_cr_lp_unit = vnc_col_size / 2 / c0_len / block_elem_cnt * block_elem_cnt;
+      tmp_dst_cr_lp_unit = vnc_col_size / TRANSDATA_TILING_FACTOR_2 / c0_len / block_elem_cnt * block_elem_cnt;
     } else {
       tmp_dst_cr_lp_unit = vnc_col_size / c0_len / block_elem_cnt * block_elem_cnt;
     }
@@ -265,7 +265,7 @@ bool TilingNegativeNtc200(vector<int64_t>& in_shape, vector<int64_t>& out_shape,
              ((dtype == DT_FLOAT || dtype == DT_INT32 || dtype == DT_UINT32) && vnc_fp32_flag == 1)) &&
              (axis_dst_cr_size >= cr_gate)) {
     tmp_src_c_lp_unit = tmp_dst_cr_lp_unit / GetCeilFillA(params.dst_cr_lp_unit, c0_len);
-  }else {
+  } else {
     tmp_src_c_lp_unit = tmp_dst_cr_lp_unit / GetCeilFillA(params.dst_cr_lp_unit, block_elem_cnt);
   }
 
@@ -280,7 +280,7 @@ bool TilingNegativeNtc200(vector<int64_t>& in_shape, vector<int64_t>& out_shape,
   params.dst_c_size = axis_dst_c_size;
 
   // dst axis C-LEFT tiling parameters
-  params.dst_cl_dims = 2;
+  params.dst_cl_dims = TRANSDATA_TILING_PARAM_2;
   int64_t axis_dst_cl_size = 1;
   for (int32_t i = 0; i < dst_axis_pos_c; i++) {
     axis_dst_cl_size *= out_shape[i];
@@ -295,9 +295,10 @@ bool TilingNegativeNtc200(vector<int64_t>& in_shape, vector<int64_t>& out_shape,
     tmp_dst_cl_lp_unit = params.ub_offset / (params.src_c_lp_unit * GetCeilFillA(params.dst_cr_lp_unit,
                                                                                  c0_len) * c0_len);
     params.dst_cl_lp_unit = axis_dst_cl_size > tmp_dst_cl_lp_unit ? tmp_dst_cl_lp_unit : axis_dst_cl_size;
-  } else if (dst_c_dst_cr_size < 54 * block_elem_cnt && dst_cr_lp_cnt == 1 && src_c_lp_cnt == 1) {
+  } else if (dst_c_dst_cr_size < TRANSDATA_TILING_FACTOR_54 * block_elem_cnt && dst_cr_lp_cnt == 1 &&
+             src_c_lp_cnt == 1) {
     params.tiling_mode = TILING_MODE_2003;
-    int64_t supposed_lp_unit = 4 * block_elem_cnt;
+    int64_t supposed_lp_unit = TRANSDATA_TILING_FACTOR_4 * block_elem_cnt;
     tmp_dst_cl_lp_unit = tmp_dst_cr_lp_unit / (params.src_c_lp_unit * params.dst_cr_lp_unit);
     params.dst_cl_lp_unit = tmp_dst_cl_lp_unit > supposed_lp_unit ? supposed_lp_unit : tmp_dst_cl_lp_unit;
   } else {
@@ -350,7 +351,7 @@ bool TilingNegativeNtc200(vector<int64_t>& in_shape, vector<int64_t>& out_shape,
 
   params.dst_cl_step_out = GetShapeSize(out_shape, dst_axis_pos_c);
   params.dst_cl_lp_step_out = params.dst_cl_lp_unit * params.dst_cl_step_out;
-  if (params.dst_cl_dims == 2) {
+  if (params.dst_cl_dims == TRANSDATA_TILING_PARAM_2) {
     params.dst_cl_step_in = 0;
   } else {
     char dst_cl_chr = dst_format[0];

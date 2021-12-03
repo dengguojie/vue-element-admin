@@ -110,7 +110,7 @@ namespace optiling
       int64_t used_core_cnt = GetCeilDiv(src_cr_lp_cnt, GetCeilDiv(src_cr_lp_cnt, core_num));
       int64_t nlc_cr_lp_cnt = GetCeilDiv(src_cr_lp_cnt, used_core_cnt);
       int64_t lc_cr_lp_cnt = src_cr_lp_cnt - nlc_cr_lp_cnt * (used_core_cnt - 1);
-      params.core_params.push_back(2);                                  // mc_pos
+      params.core_params.push_back(TRANSDATA_TILING_PARAM_2);             // mc_pos
       params.core_params.push_back(used_core_cnt);                        // used_core_cnt
       params.core_params.push_back(nlc_cr_lp_cnt * params.src_cr_lp_step_in);  // core_step_in
       params.core_params.push_back(nlc_cr_lp_cnt * params.src_cr_lp_step_out); // core_step_out
@@ -214,7 +214,7 @@ namespace optiling
         axis_h = 1;
         axis_c = 1;
         axis_n = in_shape[0];
-      } else if (in_shape.size() == 2) {
+      } else if (in_shape.size() == SHAPE_LEN_2D) {
         axis_h = 1;
         axis_c = in_shape[0];
         axis_n = in_shape[1];
@@ -294,10 +294,10 @@ namespace optiling
                                 in_shape_new, out_shape_new, src_format_new, dst_format_new);
 
     // get tiling params for using vnchwconv
-    int64_t half_ub_size = c0_len == C0_16 ? ub_size / 2 : ub_size / 4;
+    int64_t half_ub_size = c0_len == C0_16 ? ub_size / TRANSDATA_TILING_FACTOR_2 : ub_size / TRANSDATA_TILING_FACTOR_4;
     int64_t one_vnc_line_size = half_ub_size / VNC_LINES / block_elem_cnt * block_elem_cnt;
     int64_t tmp_ub_offset = one_vnc_line_size * VNC_LINES;
-    params.ub_offset = c0_len == C0_16 ? tmp_ub_offset : tmp_ub_offset * 2;
+    params.ub_offset = c0_len == C0_16 ? tmp_ub_offset : tmp_ub_offset * TRANSDATA_TILING_FACTOR_2;
     params.vnc_line_size = one_vnc_line_size;
     params.c0_size = c0_len;
 
@@ -309,8 +309,8 @@ namespace optiling
     int64_t axis_src_cr_size = GetShapeSize(in_shape_new, c_idx + 1);
     int64_t tmp_src_cr_lp_unit = params.vnc_line_size / c0_len / block_elem_cnt * block_elem_cnt;
     const std::vector<DataType> dtype_list = {ge::DT_FLOAT, ge::DT_INT32, ge::DT_UINT32};
-    if (axis_src_cr_size < 2 * block_elem_cnt || std::find(dtype_list.begin(),
-                                                           dtype_list.end(), dType) != dtype_list.end()) {
+    if (axis_src_cr_size < TRANSDATA_TILING_FACTOR_2 * block_elem_cnt ||
+        std::find(dtype_list.begin(), dtype_list.end(), dType) != dtype_list.end()) {
       params.tiling_mode = TILING_MODE_1000;
       params.src_cr_lp_unit = axis_src_cr_size > tmp_src_cr_lp_unit ? tmp_src_cr_lp_unit : axis_src_cr_size;
     } else {
@@ -354,7 +354,7 @@ namespace optiling
     int64_t src_cr_lp_cnt = GetCeilDiv(axis_src_cr_size, params.src_cr_lp_unit);
     params.src_cr_step_in = 1;
     params.src_cr_lp_step_in = params.src_cr_step_in * params.src_cr_lp_unit;
-    if (params.cr_dims == 2) {
+    if (params.cr_dims == TRANSDATA_TILING_PARAM_2) {
       params.src_cr_step_out = 0;
       params.src_cr_lp_step_out = 0;
     } else {
@@ -419,7 +419,7 @@ namespace optiling
     }
     params.src_cl_step_in = GetShapeSize(in_shape_new, c_idx);
     params.src_cl_lp_step_in = params.src_cl_step_in * params.src_cl_lp_unit;
-    if (params.cl_dims == 2) {
+    if (params.cl_dims == TRANSDATA_TILING_PARAM_2) {
       params.src_cl_step_out = 0;
       params.src_cl_lp_step_out = 0;
     } else {
