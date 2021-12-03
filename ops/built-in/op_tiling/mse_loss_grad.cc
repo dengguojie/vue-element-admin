@@ -13,50 +13,65 @@
 #include "reduce_tiling.h"
 #include "eletwise.h"
 #include "../fusion_pass/common/fp16_t.hpp"
+#include "op_tiling_util.h"
 
 namespace optiling {
-bool MseLossGradTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                       OpRunInfo& run_info) {
-  bool ret = EletwiseTiling(op_type, op_paras, op_info, run_info);
-  std::vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
+
+struct MseLossGradCompileInfo {
+  std::shared_ptr<AutoTilingHandler> tiling_handler;
+  ge::DataType dtype;
+};
+
+bool MseLossGradTiling(const std::string& op_type, const ge::Operator& op_paras,
+                                  const MseLossGradCompileInfo& parsed_info, utils::OpRunInfo& run_info) {
+  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
+  OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op_info failed."),
+                  return false);
+
+  auto input_desc = operator_info->MutableInputDesc(0);
+  OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed."),
+                  return false);
+
+  const std::vector<int64_t> input_shape = input_desc->MutableShape().GetDims();
+
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"),
+                  return false);
+  bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info);
   // reduce_mean_cof is not required when handling pure dma_copy case
-  if (input_shape[0] == 1) {
-    return ret;
-  }
 
-  if (op_info.count("reduce_mean_cof_dtype") > 0) {
-    const std::string& reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<std::string>();
-    float reduce_mean_cof = 1.0;
-    if (reduce_mean_cof_dtype == "float32") {
-      for (uint32_t i = 0; i < input_shape.size(); i++) {
-        if (input_shape[i] == 0) {
-          VECTOR_INNER_ERR_REPORT_TILIING("mes_loss_grad", "inputshape = 0 is not support");
-          return false;
-        }
-
-        reduce_mean_cof = reduce_mean_cof / input_shape[i];
-      }
-      reduce_mean_cof = 2.0 * reduce_mean_cof;
-      ByteBufferPut(run_info.tiling_data, (float)reduce_mean_cof);
-      OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);
-    } else if (reduce_mean_cof_dtype == "float16") {
-      for (uint32_t i = 0; i < input_shape.size(); i++) {
-        if(input_shape[i] == 0){
-          VECTOR_INNER_ERR_REPORT_TILIING("mse_loss_grad", "inputshape = 0 is not support");
-          return false;
-        }
-          reduce_mean_cof = reduce_mean_cof / input_shape[i];
-      }
-      reduce_mean_cof = 2.0 * reduce_mean_cof;
-      fe::fp16_t reduce_mean_cof_fp16 = reduce_mean_cof;
-      ByteBufferPut(run_info.tiling_data, (fe::fp16_t)reduce_mean_cof_fp16);
-      ByteBufferPut(run_info.tiling_data, (uint16_t)0);
-      OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);
-    }
+  float reduce_mean_cof = 1.0;
+  for (uint32_t i = 0; i < input_shape.size(); i++) {
+    OP_TILING_CHECK(input_shape[i] == 0, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input_shape cannot include 0."),
+                    return false);
+    reduce_mean_cof = reduce_mean_cof / input_shape[i];
   }
+  if (parsed_info.dtype == ge::DT_FLOAT) {
+    run_info.AddTilingData((float)reduce_mean_cof);
+  } else if (parsed_info.dtype == ge::DT_FLOAT16) {
+    fe::fp16_t reduce_mean_cof_fp16 = reduce_mean_cof;
+    run_info.AddTilingData((fe::fp16_t)reduce_mean_cof_fp16);
+    run_info.AddTilingData((uint16_t)0);
+  }
+  OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);
 
   return ret;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(MseLossGrad, MseLossGradTiling);
+static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::json& compile_info,
+                                 MseLossGradCompileInfo& parsed_info) {
+  parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_BROADCAST, compile_info);
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"),
+                  return false);
+  std::string dtype;
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "reduce_mean_cof_dtype", dtype),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo get reduce_mean_cof_dtype error"),
+                  return false);
+  parsed_info.dtype = (dtype == "float32") ? ge::DT_FLOAT : ge::DT_FLOAT16;
+
+  return true;
+}
+
+REGISTER_OP_TILING_V3_CUSTOM(MseLossGrad, MseLossGradTiling, ParseJsonCompileInfo, MseLossGradCompileInfo);
 }  // namespace optiling

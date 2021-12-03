@@ -5,18 +5,21 @@
 #include <gtest/gtest.h>
 #define private public
 #include "register/op_tiling_registry.h"
+#include "reduce_ops.h"
+#include "array_ops.h"
+#include "common/utils/ut_op_util.h"
 
 using namespace std;
 
 class ReduceStdWithMeanTiling : public testing::Test {
-protected:
-    static void SetUpTestCase() {
-      std::cout << "ReduceStdWithMeanTiling SetUp" << std::endl;
-    }
+ protected:
+  static void SetUpTestCase() {
+    std::cout << "ReduceStdWithMeanTiling SetUp" << std::endl;
+  }
 
-    static void TearDownTestCase() {
-      std::cout << "ReduceStdWithMeanTiling TearDown" << std::endl;
-    }
+  static void TearDownTestCase() {
+    std::cout << "ReduceStdWithMeanTiling TearDown" << std::endl;
+  }
 };
 
 static string to_string(const std::stringstream &tiling_data) {
@@ -32,154 +35,85 @@ static string to_string(const std::stringstream &tiling_data) {
   return result;
 }
 
+using namespace ge;
+using namespace ut_util;
+
 TEST_F(ReduceStdWithMeanTiling, ReduceStdWithMeanTiling1) {
-  using namespace optiling;
-  std::string op_name = "ReduceStdWithMean";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ReduceStdWithMean");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  auto opParas = op::ReduceStdWithMean("ReduceStdWithMean");
 
+  vector<vector<int64_t>> input_shapes = {
+      {7, 2},
+  };
 
-  std::string compileInfo = R"({ "_ori_axis": [0], "_pattern": "CommReduce","push_status": 0,"_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5], "_ub_info": [16256], "_ub_info_rf": [16256], "_vars": {"-1000500": ["_dim_1_0", "_block_factor", "_ub_factor"]}})";
+  vector<ge::DataType> dtypes = {ge::DT_FLOAT, ge::DT_FLOAT};
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, {7}, ge::DT_FLOAT, ge::FORMAT_ND, {}); 
+  std::string compileInfo = R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float32", "attr_unbiased":"false"})";
 
-  std::vector<int64_t> input{1};
-  std::vector<int64_t> output{1};
-  std::string in_dtype = "float32";
-
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = in_dtype;
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = in_dtype;
-  TeOpTensorArg tensor_arg;
-  tensor_arg.tensor.push_back(tensor_input);
-  tensor_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_arg_out;
-  tensor_arg_out.tensor.push_back(tensor_output);
-  tensor_arg_out.arg_type = TA_SINGLE;
-  TeOpParas opParas;
-  opParas.inputs.push_back(tensor_arg);
-  opParas.outputs.push_back(tensor_arg_out);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "ReduceStdWithMean__COUNTER__1";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 1);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1 1 1 ");
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "7 2 8 8 1056964608 ");
 }
 
 TEST_F(ReduceStdWithMeanTiling, ReduceStdWithMeanTiling2) {
-  using namespace optiling;
-  std::string op_name = "ReduceStdWithMean";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ReduceStdWithMean");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  auto opParas = op::ReduceStdWithMean("ReduceStdWithMean");
 
+  vector<vector<int64_t>> input_shapes = {
+      {7, 2},
+  };
 
-  std::string compileInfo = R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [32, 1, 8, 1, 1], "_pattern_info": [5, 4, 9], "_ub_info": [16256, 16000, 16256], "_ub_info_rf": [16256, 16000, 16256], "reduce_mean_cof_dtype": "float32", "attr_unbiased":"false"})";
+  vector<ge::DataType> dtypes = {ge::DT_FLOAT16, ge::DT_FLOAT16};
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, {7}, ge::DT_FLOAT16, ge::FORMAT_ND, {}); 
+  std::string compileInfo = R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [2, 1, 16, 0, 1], "_pattern_info": [5, 4, 9], "_ub_info": [31488, 31104, 31488], "_ub_info_rf": [31488, 31104, 31488], "reduce_mean_cof_dtype": "float16", "attr_unbiased":"false"})";
 
-  std::vector<int64_t> input{7, 2};
-  std::vector<int64_t> output{7};
-  std::string in_dtype = "float32";
-
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = in_dtype;
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = in_dtype;
-  TeOpTensorArg tensor_arg;
-  tensor_arg.tensor.push_back(tensor_input);
-  tensor_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_arg_out;
-  tensor_arg_out.tensor.push_back(tensor_output);
-  tensor_arg_out.arg_type = TA_SINGLE;
-  TeOpParas opParas;
-  opParas.inputs.push_back(tensor_arg);
-  opParas.outputs.push_back(tensor_arg_out);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "ReduceStdWithMean__COUNTER__2";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 1);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "7 2 8 8 1056964608 ");
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "7 2 16 16 14336 ");
 }
 
 TEST_F(ReduceStdWithMeanTiling, ReduceStdWithMeanTiling3) {
-  using namespace optiling;
-  std::string op_name = "ReduceStdWithMean";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ReduceStdWithMean");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  auto opParas = op::ReduceStdWithMean("ReduceStdWithMean");
 
+  vector<vector<int64_t>> input_shapes = {
+      {3, 4, 5},
+  };
 
-  std::string compileInfo = R"({ "_ori_axis": [1], "_pattern": "CommReduce", "push_status": 0, "_common_info": [2, 1, 16, 0, 1], "_pattern_info": [5, 4, 9], "_ub_info": [31488, 31104, 31488], "_ub_info_rf": [31488, 31104, 31488], "reduce_mean_cof_dtype": "float16", "attr_unbiased":"false"})";
+  vector<ge::DataType> dtypes = {ge::DT_FLOAT, ge::DT_FLOAT};
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, {3}, ge::DT_FLOAT, ge::FORMAT_ND, {}); 
+  std::string compileInfo = R"({ "_ori_axis": [1, 2], "_pattern": "CommReduce", "push_status": 0, "_common_info": [2, 1, 16, 0, 1], "_pattern_info": [5, 4, 9], "_ub_info": [31488, 31104, 31488], "_ub_info_rf": [31488, 31104, 31488], "reduce_mean_cof_dtype": "float16", "attr_unbiased":"false"})";
 
-  std::vector<int64_t> input{7, 2};
-  std::vector<int64_t> output{7};
-  std::string in_dtype = "float16";
-
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = in_dtype;
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = in_dtype;
-  TeOpTensorArg tensor_arg;
-  tensor_arg.tensor.push_back(tensor_input);
-  tensor_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_arg_out;
-  tensor_arg_out.tensor.push_back(tensor_output);
-  tensor_arg_out.arg_type = TA_SINGLE;
-  TeOpParas opParas;
-  opParas.inputs.push_back(tensor_arg);
-  opParas.outputs.push_back(tensor_arg_out);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "ReduceStdWithMean__COUNTER__3";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 1);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "7 2 16 16 14336 ");
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "3 20 16 16 10854 ");
 }
 
 TEST_F(ReduceStdWithMeanTiling, ReduceStdWithMeanTiling4) {
-  using namespace optiling;
-  std::string op_name = "ReduceStdWithMean";
-  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("ReduceStdWithMean");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  auto opParas = op::ReduceStdWithMean("ReduceStdWithMean");
 
+  vector<vector<int64_t>> input_shapes = {
+      {3, 4, 5},
+  };
 
+  vector<ge::DataType> dtypes = {ge::DT_FLOAT16, ge::DT_FLOAT16};
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, {3}, ge::DT_FLOAT16, ge::FORMAT_ND, {}); 
   std::string compileInfo = R"({ "_ori_axis": [1, 2], "_pattern": "CommReduce", "push_status": 0, "_common_info": [2, 1, 16, 0, 1], "_pattern_info": [5, 4, 9], "_ub_info": [31488, 31104, 31488], "_ub_info_rf": [31488, 31104, 31488], "reduce_mean_cof_dtype": "float16", "attr_unbiased":"false"})";
 
-  std::vector<int64_t> input{3, 4, 5};
-  std::vector<int64_t> output{3};
-  std::string in_dtype = "float16";
-
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = in_dtype;
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = in_dtype;
-  TeOpTensorArg tensor_arg;
-  tensor_arg.tensor.push_back(tensor_input);
-  tensor_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_arg_out;
-  tensor_arg_out.tensor.push_back(tensor_output);
-  tensor_arg_out.arg_type = TA_SINGLE;
-  TeOpParas opParas;
-  opParas.inputs.push_back(tensor_arg);
-  opParas.outputs.push_back(tensor_arg_out);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "ReduceStdWithMean__COUNTER__3";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(runInfo.block_dim, 1);
-  EXPECT_EQ(to_string(runInfo.tiling_data), "3 4 5 4 4 13312 ");
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "3 20 16 16 10854 ");
 }

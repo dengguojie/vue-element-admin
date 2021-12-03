@@ -30,6 +30,7 @@
 #include "op_const.h"
 #include "external/graph/operator.h"
 #include "graph/utils/op_desc_utils.h"
+#include "vector_tiling_profiling.h"
 
 #define REGISTER_OP_TILING_V3_WITH_VECTOR(optype, opfunc, vector_key, optional_key)                             \
   bool Tbe##optype##TilingV3WithVec(const ge::Operator& para, const void* op_info_void,                         \
@@ -67,6 +68,12 @@
 namespace optiling {
 using optiling::ByteBuffer;
 using namespace ge;
+
+const std::string PATTERN_REDUCE = "CommReduce";
+const std::string PATTERN_ELEMWISE = "ElemWise";
+const std::string PATTERN_BROADCAST = "Broadcast";
+const std::string PATTERN_NORM = "Norm";
+const std::string PATTERN_TRANSPOSE = "Transpose";
 
 const std::map<std::string, std::int64_t> NO_OPTIONAL_VALUE;
 const std::map<std::string, DataType> STR_TO_DATATYPE = {{"float", DT_FLOAT},

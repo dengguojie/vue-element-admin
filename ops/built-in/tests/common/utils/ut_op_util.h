@@ -48,8 +48,8 @@
   paras.UpdateInputDesc(#key, tensor_desc_##key)
 
 #define TENSOR_OUTPUT_WITH_SHAPE(paras, key, shape, dtype, foramt, range)                       \
-  auto tensor_desc_##key = create_desc_shape_range(shape, dtype, foramt, shape, foramt, range); \
-  paras.UpdateOutputDesc(#key, tensor_desc_##key)
+  auto tensor_desc_out_##key = create_desc_shape_range(shape, dtype, foramt, shape, foramt, range); \
+  paras.UpdateOutputDesc(#key, tensor_desc_out_##key)
 
 #define RUN_TILING_V3(op, tiling_iter, compile_info, run_info) \
   ge::AscendString op_compile_info_as = compile_info.c_str();  \
