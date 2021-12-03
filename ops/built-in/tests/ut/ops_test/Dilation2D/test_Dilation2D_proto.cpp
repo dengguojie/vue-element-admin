@@ -160,3 +160,263 @@ TEST_F(dilation2d_infer_test, dilation2d_infer_test_4) {
   auto output_desc = op.GetOutputDesc("y");
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_shape);
 }
+
+TEST_F(dilation2d_infer_test, VerifierDilation2D_001) {
+  ge::op::Dilation2D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17, 17},
+                                               ge::FORMAT_NCHW));
+  op.UpdateInputDesc("filter",
+                     create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT, ge::FORMAT_NCHW, {1024, 3, 3}, ge::FORMAT_NCHW));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_infer_test, VerifierDilation2D_002) {
+  ge::op::Dilation2D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17, 17},
+                                               ge::FORMAT_NCHW));
+  op.UpdateInputDesc("filter",
+                     create_desc_with_ori({1024, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1024, 3}, ge::FORMAT_NCHW));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_infer_test, VerifierDilation2D_003) {
+  ge::op::Dilation2D op;
+  op.UpdateInputDesc(
+      "x", create_desc_with_ori({1, 1024, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17}, ge::FORMAT_NCHW));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1024, 3, 3}, ge::FORMAT_NCHW));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_infer_test, VerifierDilation2D_004) {
+  ge::op::Dilation2D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17, 17},
+                                               ge::FORMAT_NCHW));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1024, 3, 3}, ge::FORMAT_NCHW));
+  op.SetAttr("data_format", false);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_infer_test, VerifierDilation2D_005) {
+  ge::op::Dilation2D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17, 17},
+                                               ge::FORMAT_NCHW));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1024, 3, 3}, ge::FORMAT_NCHW));
+  op.SetAttr("data_format", "ND");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_infer_test, VerifierDilation2D_006) {
+  ge::op::Dilation2D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17, 17},
+                                               ge::FORMAT_NCHW));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1024, 3, 3}, ge::FORMAT_NCHW));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_infer_test, VerifierDilation2D_007) {
+  ge::op::Dilation2D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_infer_test, VerifierDilation2D_008) {
+  ge::op::Dilation2D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1});
+  op.SetAttr("strides", stride_list);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_infer_test, VerifierDilation2D_009) {
+  ge::op::Dilation2D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1, 1});
+  op.SetAttr("strides", stride_list);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_infer_test, VerifierDilation2D_010) {
+  ge::op::Dilation2D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1, 1});
+  op.SetAttr("strides", stride_list);
+  std::vector<int64_t> rate_list = vector<int64_t>({1, 3, 2});
+  op.SetAttr("rates", rate_list);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_infer_test, VerifierDilation2D_011) {
+  ge::op::Dilation2D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1, 1});
+  op.SetAttr("strides", stride_list);
+  std::vector<int64_t> rate_list = vector<int64_t>({1, 3, 2, 1});
+  op.SetAttr("rates", rate_list);
+  op.SetAttr("padding_mode", true);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_infer_test, VerifierDilation2D_012) {
+  ge::op::Dilation2D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1, 1});
+  op.SetAttr("strides", stride_list);
+  std::vector<int64_t> rate_list = vector<int64_t>({1, 3, 2, 1});
+  op.SetAttr("rates", rate_list);
+  op.SetAttr("padding_mode", "error");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_infer_test, VerifierDilation2D_013) {
+  ge::op::Dilation2D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1, 1});
+  op.SetAttr("strides", stride_list);
+  std::vector<int64_t> rate_list = vector<int64_t>({1, 3, 2, 1});
+  op.SetAttr("rates", rate_list);
+  op.SetAttr("padding_mode", "SAME");
+  op.SetAttr("pads", true);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_infer_test, VerifierDilation2D_014) {
+  ge::op::Dilation2D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1, 1});
+  op.SetAttr("strides", stride_list);
+  std::vector<int64_t> rate_list = vector<int64_t>({1, 3, 2, 1});
+  op.SetAttr("rates", rate_list);
+  op.SetAttr("padding_mode", "SAME");
+  std::vector<int64_t> pads = vector<int64_t>({0, 0, 0});
+  op.SetAttr("pads", pads);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_infer_test, VerifierDilation2D_015) {
+  ge::op::Dilation2D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1, 1});
+  op.SetAttr("strides", stride_list);
+  std::vector<int64_t> rate_list = vector<int64_t>({1, 3, 2, 1});
+  op.SetAttr("rates", rate_list);
+  op.SetAttr("padding_mode", "SAME");
+  std::vector<int64_t> pads = vector<int64_t>({0, 0, 0, 0});
+  op.SetAttr("pads", pads);
+  op.SetAttr("ceil_mode", "ceil_mode");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_infer_test, VerifierDilation2D_016) {
+  ge::op::Dilation2D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1, 1});
+  op.SetAttr("strides", stride_list);
+  std::vector<int64_t> rate_list = vector<int64_t>({2, 3, 2, 1});
+  op.SetAttr("rates", rate_list);
+  op.SetAttr("padding_mode", "SAME");
+  std::vector<int64_t> pads = vector<int64_t>({0, 0, 0, 0});
+  op.SetAttr("pads", pads);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_infer_test, VerifierDilation2D_017) {
+  ge::op::Dilation2D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  std::vector<int64_t> stride_list = vector<int64_t>({2, 1, 1, 1});
+  op.SetAttr("strides", stride_list);
+  std::vector<int64_t> rate_list = vector<int64_t>({1, 3, 2, 1});
+  op.SetAttr("rates", rate_list);
+  op.SetAttr("padding_mode", "SAME");
+  std::vector<int64_t> pads = vector<int64_t>({0, 0, 0, 0});
+  op.SetAttr("pads", pads);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_infer_test, VerifierDilation2D_018) {
+  ge::op::Dilation2D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1, 1});
+  op.SetAttr("strides", stride_list);
+  std::vector<int64_t> rate_list = vector<int64_t>({1, 3, 2, 1});
+  op.SetAttr("rates", rate_list);
+  op.SetAttr("padding_mode", "CALCULATED");
+  std::vector<int64_t> pads = vector<int64_t>({10000, 0, 0, 0});
+  op.SetAttr("pads", pads);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

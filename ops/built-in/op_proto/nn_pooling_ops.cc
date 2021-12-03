@@ -2784,7 +2784,7 @@ IMPLEMT_INFER_DATA_SLICE(AvgPool3DD, AvgPool3DDInferDataSlice) {
   int32_t stride_h = 0;
   int32_t stride_w = 0;
 
-  if (GetStridesAndKSize(op, x_format, stride_d, stride_h, stride_w, filter_d, filter_h, filter_w)) {
+  if (!GetStridesAndKSize(op, x_format, stride_d, stride_h, stride_w, filter_d, filter_h, filter_w)) {
     OP_LOGE(op.GetName().c_str(), "Failed to get attr strides or ksize in AvgPool3D.");
     return GRAPH_FAILED;
   }

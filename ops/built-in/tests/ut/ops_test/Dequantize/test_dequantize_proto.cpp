@@ -67,3 +67,16 @@ TEST_F(dequantize, dequantize_case) {
     std::vector<std::pair<int64_t, int64_t>> expected_shape_range = {{2, 100}, {2, 100}};
     EXPECT_EQ(output_shape_range, expected_shape_range);
 }
+
+TEST_F(dequantize, dequantize_case_001) {
+  ge::op::Dequantize op;
+  std::vector<std::pair<int64_t, int64_t>> shape_range = {{2, 100}, {2, 100}};
+  auto tensor_desc =
+      create_desc_shape_range({-1, -1}, ge::DT_INT8, ge::FORMAT_ND, {11, 33}, ge::FORMAT_ND, shape_range);
+  op.UpdateInputDesc("x", tensor_desc);
+  std::string mode = "MIN_SECOND";
+  op.SetAttr("mode", mode);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

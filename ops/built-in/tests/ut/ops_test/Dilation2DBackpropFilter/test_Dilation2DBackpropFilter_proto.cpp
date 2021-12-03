@@ -180,3 +180,304 @@ TEST_F(dilation2d_filter_infer_test, dilation2d_filter_infer_test_4) {
   auto output_desc = op.GetOutputDesc("y");
   EXPECT_EQ(output_desc.GetShape().GetDims(), expected_shape);
 }
+
+TEST_F(dilation2d_filter_infer_test, VerifierDilation2DBackpropFilter_001) {
+  ge::op::Dilation2DBackpropFilter op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17, 17},
+                                               ge::FORMAT_NCHW));
+  op.UpdateInputDesc("filter",
+                     create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT, ge::FORMAT_NCHW, {1024, 3, 3}, ge::FORMAT_NCHW));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_filter_infer_test, VerifierDilation2DBackpropFilter_002) {
+  ge::op::Dilation2DBackpropFilter op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17, 17},
+                                               ge::FORMAT_NCHW));
+  op.UpdateInputDesc("filter",
+                     create_desc_with_ori({1024, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1024, 3}, ge::FORMAT_NCHW));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_filter_infer_test, VerifierDilation2DBackpropFilter_003) {
+  ge::op::Dilation2DBackpropFilter op;
+  op.UpdateInputDesc(
+      "x", create_desc_with_ori({1, 1024, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17}, ge::FORMAT_NCHW));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1024, 3, 3}, ge::FORMAT_NCHW));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_filter_infer_test, VerifierDilation2DBackpropFilter_004) {
+  ge::op::Dilation2DBackpropFilter op;
+  op.UpdateInputDesc(
+      "x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17}, ge::FORMAT_NCHW));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1024, 3, 3}, ge::FORMAT_NCHW));
+  op.UpdateInputDesc(
+      "out_backprop", create_desc_with_ori({1, 1024, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17}, ge::FORMAT_NCHW));
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_filter_infer_test, VerifierDilation2DBackpropFilter_005) {
+  ge::op::Dilation2DBackpropFilter op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17, 17},
+                                               ge::FORMAT_NCHW));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1024, 3, 3}, ge::FORMAT_NCHW));
+  op.UpdateInputDesc(
+      "out_backprop", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17}, ge::FORMAT_NCHW));
+  op.SetAttr("data_format", false);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_filter_infer_test, VerifierDilation2DBackpropFilter_006) {
+  ge::op::Dilation2DBackpropFilter op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17, 17},
+                                               ge::FORMAT_NCHW));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1024, 3, 3}, ge::FORMAT_NCHW));
+  op.UpdateInputDesc(
+      "out_backprop", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17}, ge::FORMAT_NCHW));
+  op.SetAttr("data_format", "ND");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_filter_infer_test, VerifierDilation2DBackpropFilter_007) {
+  ge::op::Dilation2DBackpropFilter op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17, 17},
+                                               ge::FORMAT_NCHW));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1024, 3, 3}, ge::FORMAT_NCHW));
+  op.SetAttr("data_format", "NCHW");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+
+TEST_F(dilation2d_filter_infer_test, VerifierDilation2DBackpropFilter_008) {
+  ge::op::Dilation2DBackpropFilter op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "out_backprop", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17}, ge::FORMAT_NCHW));
+  op.SetAttr("data_format", "NCHW");  
+  
+  std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1});
+  op.SetAttr("strides", stride_list);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_filter_infer_test, VerifierDilation2DBackpropFilter_009) {
+  ge::op::Dilation2DBackpropFilter op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "out_backprop", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17}, ge::FORMAT_NCHW));
+  op.SetAttr("data_format", "NCHW");
+  std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1, 1});
+  op.SetAttr("strides", stride_list);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_filter_infer_test, VerifierDilation2DBackpropFilter_010) {
+  ge::op::Dilation2DBackpropFilter op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "out_backprop", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17}, ge::FORMAT_NCHW));
+  op.SetAttr("data_format", "NCHW");
+  std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1, 1});
+  op.SetAttr("strides", stride_list);
+  std::vector<int64_t> rate_list = vector<int64_t>({1, 3, 2});
+  op.SetAttr("rates", rate_list);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_filter_infer_test, VerifierDilation2DBackpropFilter_011) {
+  ge::op::Dilation2DBackpropFilter op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "out_backprop", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17}, ge::FORMAT_NCHW));
+  op.SetAttr("data_format", "NCHW");
+  std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1, 1});
+  op.SetAttr("strides", stride_list);
+  std::vector<int64_t> rate_list = vector<int64_t>({1, 3, 2, 1});
+  op.SetAttr("rates", rate_list);
+  op.SetAttr("padding_mode", true);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_filter_infer_test, VerifierDilation2DBackpropFilter_012) {
+  ge::op::Dilation2DBackpropFilter op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "out_backprop", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17}, ge::FORMAT_NCHW));
+  op.SetAttr("data_format", "NCHW");
+  std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1, 1});
+  op.SetAttr("strides", stride_list);
+  std::vector<int64_t> rate_list = vector<int64_t>({1, 3, 2, 1});
+  op.SetAttr("rates", rate_list);
+  op.SetAttr("padding_mode", "error");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_filter_infer_test, VerifierDilation2DBackpropFilter_013) {
+  ge::op::Dilation2DBackpropFilter op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "out_backprop", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17}, ge::FORMAT_NCHW));
+  op.SetAttr("data_format", "NCHW");
+  std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1, 1});
+  op.SetAttr("strides", stride_list);
+  std::vector<int64_t> rate_list = vector<int64_t>({1, 3, 2, 1});
+  op.SetAttr("rates", rate_list);
+  op.SetAttr("padding_mode", "SAME");
+  op.SetAttr("pads", true);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_filter_infer_test, VerifierDilation2DBackpropFilter_014) {
+  ge::op::Dilation2DBackpropFilter op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "out_backprop", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17}, ge::FORMAT_NCHW));
+  op.SetAttr("data_format", "NCHW");
+  std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1, 1});
+  op.SetAttr("strides", stride_list);
+  std::vector<int64_t> rate_list = vector<int64_t>({1, 3, 2, 1});
+  op.SetAttr("rates", rate_list);
+  op.SetAttr("padding_mode", "SAME");
+  std::vector<int64_t> pads = vector<int64_t>({0, 0, 0});
+  op.SetAttr("pads", pads);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_filter_infer_test, VerifierDilation2DBackpropFilter_015) {
+  ge::op::Dilation2DBackpropFilter op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "out_backprop", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17}, ge::FORMAT_NCHW));
+  op.SetAttr("data_format", "NCHW");
+  std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1, 1});
+  op.SetAttr("strides", stride_list);
+  std::vector<int64_t> rate_list = vector<int64_t>({1, 3, 2, 1});
+  op.SetAttr("rates", rate_list);
+  op.SetAttr("padding_mode", "SAME");
+  std::vector<int64_t> pads = vector<int64_t>({0, 0, 0, 0});
+  op.SetAttr("pads", pads);
+  op.SetAttr("ceil_mode", "ceil_mode");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_filter_infer_test, VerifierDilation2DBackpropFilter_016) {
+  ge::op::Dilation2DBackpropFilter op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "out_backprop", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17}, ge::FORMAT_NCHW));
+  op.SetAttr("data_format", "NCHW");
+  std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1, 1});
+  op.SetAttr("strides", stride_list);
+  std::vector<int64_t> rate_list = vector<int64_t>({2, 3, 2, 1});
+  op.SetAttr("rates", rate_list);
+  op.SetAttr("padding_mode", "SAME");
+  std::vector<int64_t> pads = vector<int64_t>({0, 0, 0, 0});
+  op.SetAttr("pads", pads);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_filter_infer_test, VerifierDilation2DBackpropFilter_017) {
+  ge::op::Dilation2DBackpropFilter op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "out_backprop", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17}, ge::FORMAT_NCHW));
+  op.SetAttr("data_format", "NCHW");
+  std::vector<int64_t> stride_list = vector<int64_t>({2, 1, 1, 1});
+  op.SetAttr("strides", stride_list);
+  std::vector<int64_t> rate_list = vector<int64_t>({1, 3, 2, 1});
+  op.SetAttr("rates", rate_list);
+  op.SetAttr("padding_mode", "SAME");
+  std::vector<int64_t> pads = vector<int64_t>({0, 0, 0, 0});
+  op.SetAttr("pads", pads);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(dilation2d_filter_infer_test, VerifierDilation2DBackpropFilter_018) {
+  ge::op::Dilation2DBackpropFilter op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1024, 17, 17},
+                                               ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "filter", create_desc_with_ori({1024, 3, 3}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1024, 3, 3}, ge::FORMAT_NHWC));
+  op.UpdateInputDesc(
+      "out_backprop", create_desc_with_ori({1, 1024, 17, 17}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 1024, 17}, ge::FORMAT_NCHW));
+  op.SetAttr("data_format", "NCHW");
+  std::vector<int64_t> stride_list = vector<int64_t>({1, 1, 1, 1});
+  op.SetAttr("strides", stride_list);
+  std::vector<int64_t> rate_list = vector<int64_t>({1, 3, 2, 1});
+  op.SetAttr("rates", rate_list);
+  op.SetAttr("padding_mode", "CALCULATED");
+  std::vector<int64_t> pads = vector<int64_t>({10000, 0, 0, 0});
+  op.SetAttr("pads", pads);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

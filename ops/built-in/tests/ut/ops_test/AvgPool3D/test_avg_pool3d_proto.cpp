@@ -152,3 +152,112 @@ TEST_F(AvgPool3DProtoTest, avg_pool3d_dynamic_shape_dynamic_d_valid_case) {
   auto ret = op.InferShapeAndType();
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
+
+TEST_F(AvgPool3DProtoTest, InferDataSliceAvgPool3D_001) {
+  ge::op::AvgPool3D op;
+  op.UpdateInputDesc(
+      "x", create_desc_with_ori({1, 16, 5, 5, 5}, ge::DT_FLOAT16, ge::FORMAT_ND, {1, 5, 1, 5, 5, 16}, ge::FORMAT_ND));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPool3DProtoTest, InferDataSliceAvgPool3D_002) {
+  ge::op::AvgPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 16, 5, 5, 5}, ge::DT_FLOAT16, ge::FORMAT_NDHWC, {1, 5, 1, 5, 5, 16},
+                                               ge::FORMAT_NDHWC));
+  op.SetAttr("ksize", {1, 0, 7, 0, 1});
+  op.SetAttr("strides", {1, 1, 0, 1, 1});
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPool3DProtoTest, InferDataSliceAvgPool3D_003) {
+  ge::op::AvgPool3D op;
+  op.UpdateInputDesc("x",
+                     create_desc_shape_range({1, -1, 5, 5, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC, {1, -1, 1, 5, 5, 16},
+                                             ge::FORMAT_NDHWC, {{1, 1}, {1, 10}, {5, 5}, {5, 5}, {16, 16}}));
+  op.SetAttr("ksize", {1, 2, 2, 2, 1});
+  op.SetAttr("strides", {1, 1, 1, 1, 1});
+  op.SetAttr("pads", "zero");
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPool3DProtoTest, InferDataSliceAvgPool3D_004) {
+  ge::op::AvgPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1, 5, 5, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC, {1, 1, 1, 5, 5, 16},
+                                               ge::FORMAT_NDHWC));
+  op.SetAttr("ksize", {1, 2, 2, 2, 1});
+  op.SetAttr("strides", {1, 1, 1, 1, 1});
+  op.SetAttr("padding", "VALID");
+  op.SetAttr("pads", {0, 0, 0, 0, 0, 0});
+  op.SetAttr("ceil_mode", true);
+  op.SetAttr("count_include_pad", true);
+  op.SetAttr("divisor_override", 0);
+  op.SetAttr("data_format", "NDHWC");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(AvgPool3DProtoTest, InferDataSliceAvgPool3D_005) {
+  ge::op::AvgPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1, 5, 5, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC, {1, 1, 1, 5, 5, 16},
+                                               ge::FORMAT_NDHWC));
+  op.SetAttr("ksize", {1, 2, 2, 2, 1});
+  op.SetAttr("strides", {1, 1, 1, 1, 1});
+  op.SetAttr("padding", "SAME");
+  op.SetAttr("pads", {0, 0, 0, 0, 0, 0});
+  op.SetAttr("ceil_mode", true);
+  op.SetAttr("count_include_pad", true);
+  op.SetAttr("divisor_override", 0);
+  op.SetAttr("data_format", "NDHWC");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(AvgPool3DProtoTest, InferDataSliceAvgPool3D_006) {
+  ge::op::AvgPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1, 5, 5, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC, {1, 1, 1, 5, 5, 16},
+                                               ge::FORMAT_NDHWC));
+  op.SetAttr("ksize", {1, 2, 2, 2, 1});
+  op.SetAttr("strides", {1, 1, 1, 1, 1});
+  op.SetAttr("padding", {4, 4, 4});
+  op.SetAttr("pads", {0, 0, 0, 0, 0, 0});
+  op.SetAttr("ceil_mode", true);
+  op.SetAttr("count_include_pad", true);
+  op.SetAttr("divisor_override", 0);
+  op.SetAttr("data_format", "NDHWC");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(AvgPool3DProtoTest, InferDataSliceAvgPool3D_007) {
+  ge::op::AvgPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_ori({1, 1, 5, 5, 16}, ge::DT_FLOAT16, ge::FORMAT_NDHWC, {1, 1, 1, 5, 5, 16},
+                                               ge::FORMAT_NDHWC));
+  op.SetAttr("ksize", {1, 2, 2, 2, 1});
+  op.SetAttr("strides", {1, 1, 1, 1, 1});
+  op.SetAttr("padding", 1);
+  op.SetAttr("pads", {0, 0, 0, 0, 0, 0});
+  op.SetAttr("ceil_mode", true);
+  op.SetAttr("count_include_pad", true);
+  op.SetAttr("divisor_override", 0);
+  op.SetAttr("data_format", "NDHWC");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
