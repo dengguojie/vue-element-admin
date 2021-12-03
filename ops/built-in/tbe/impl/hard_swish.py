@@ -26,7 +26,9 @@ from impl.util.platform_adapter import para_check
 
 # 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constants:
-    # constants used in the equation
+    """
+    The class for constant.
+    """
     CONST_THREE = 3
     CONST_SIX = 6
     CONST_ONE_IN_SIX = 1 / 6

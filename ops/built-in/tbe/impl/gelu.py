@@ -32,10 +32,10 @@ def _tanh_parameter_compute(placeholders):
     :param placeholders: input data
     return: result equals (x+0.044715*tf.pow(x,3))
     """
-    CSVALUE = tvm.const(0.044715, "float32")
+    cs_value = tvm.const(0.044715, "float32")
     mul_0 = tbe.vmul(placeholders, placeholders)
     pow_0 = tbe.vmul(mul_0, placeholders)
-    mul_1 = tbe.vmuls(pow_0, CSVALUE)
+    mul_1 = tbe.vmuls(pow_0, cs_value)
     result = tbe.vadd(placeholders, mul_1)
 
     return result
