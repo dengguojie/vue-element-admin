@@ -24,7 +24,7 @@ def init_case():
         for c1, h in input_shape_all:
             input_shape = (batch_num, c1, h, h, c0_num)
             ori_shape = (batch_num, c1 * c0_num, h, h)
-            weight_shape = (c1 * c0_num,)
+            weight_shape = (c1 * c0_num, 1, 1)
             params = [
                 {"shape": input_shape, "dtype": data_type, "format": format_5d,
                  "ori_shape": ori_shape, "ori_format": format_nd},

@@ -1148,10 +1148,12 @@ def check_input(input_0, input_1, input_2, output_0, kernel_name):
     weight_shape = tuple(input_1.get("shape"))
     bias_shape = tuple(input_2.get("shape"))
     channel_num = input_shape[1] * input_shape[4]
-    if len(weight_shape) != 1 or weight_shape[0] != channel_num:
+    if (len(weight_shape) != 1 or weight_shape[0] != channel_num) and \
+            (len(weight_shape) != 3 or weight_shape != (channel_num, 1, 1)):
         error_manager_vector.raise_err_input_value_invalid(
             kernel_name, "shape of gamma", "not support", str(input_shape))
-    if len(bias_shape) != 1 or bias_shape[0] != channel_num:
+    if (len(bias_shape) != 1 or bias_shape[0] != channel_num) and \
+            (len(bias_shape) != 3 or bias_shape != (channel_num, 1, 1)):
         error_manager_vector.raise_err_input_value_invalid(
             kernel_name, "shape of beta", "not support", str(input_shape))
 
