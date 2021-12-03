@@ -526,8 +526,8 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case14) {
                                     "Transpose",
                                     op_info);
   ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
-  EXPECT_EQ(runInfo.GetBlockDim(), 31);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "61, 333, 30, 1, 11, 1, 61");
+  EXPECT_EQ(runInfo.GetBlockDim(), 28);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "61, 333, 30, 1, 6, 2, 45");
 }
 
 TEST_F(TransposeDslTiling, transpose_dsl_tiling_case15) {
@@ -559,8 +559,8 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case15) {
                                     "Transpose",
                                     op_info);
   ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
-  EXPECT_EQ(runInfo.GetBlockDim(), 31);
-  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "30, 333, 61, 1, 11, 61, 1");
+  EXPECT_EQ(runInfo.GetBlockDim(), 32);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "30, 333, 61, 1, 11, 60, 2");
 }
 
 TEST_F(TransposeDslTiling, transpose_dsl_tiling_case16) {
@@ -660,4 +660,74 @@ TEST_F(TransposeDslTiling, transpose_dsl_tiling_case18) {
   ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo));
   EXPECT_EQ(runInfo.GetBlockDim(), 32);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "88, 660, 8, 22, 21, 1, 21");
+}
+
+TEST_F(TransposeDslTiling, transpose_dsl_tiling_case19) {
+  // last transpose, fp16, cross, [4, 3, 1, 2, 0]
+  std::vector<std::vector<int64_t>> inputs {
+      {28, 49, 31, 1, 25}
+  };
+  std::vector<std::vector<int64_t>> outputs {
+      {25, 1, 49, 31, 28}
+  };
+  std::string compile_info = R"({"_mergeable": [0, 0, 1, 2, 0], "_pattern": "Transpose", "_core_num": 32, "_ub_size": 262144, "_ori_permute": [2, 1, 0], "_permute": [2, 1, 0], "_transpose_vars": [true, true, true], "_only_const_tiling": false, "_is_const": false, "_vars": {"0": ["_dim_0", "_dim_1", "_dim_2"], "2000000": ["_dim_0", "_dim_1", "_dim_2", "_block_factor_0", "_ub_factor_0"], "2000001": ["_dim_0", "_dim_1", "_dim_2", "_block_factor_0", "_ub_factor_0", "_ub_factor_1"], "2000002": ["_dim_0", "_dim_1", "_dim_2", "_block_factor_0", "_ub_factor_0", "_ub_factor_2"], "2000101": ["_dim_0", "_dim_1", "_dim_2", "_block_factor_1", "_ub_factor_0", "_ub_factor_1"], "2000111": ["_dim_0", "_dim_1", "_dim_2", "_block_factor_1", "_ub_factor_1"], "2000102": ["_dim_0", "_dim_1", "_dim_2", "_block_factor_1", "_ub_factor_0", "_ub_factor_2"], "2000112": ["_dim_0", "_dim_1", "_dim_2", "_block_factor_1", "_ub_factor_1", "_ub_factor_2"], "2000202": ["_dim_0", "_dim_1", "_dim_2", "_block_factor_2", "_ub_factor_0", "_ub_factor_2"], "2000212": ["_dim_0", "_dim_1", "_dim_2", "_block_factor_2", "_ub_factor_1", "_ub_factor_2"], "2000222": ["_dim_0", "_dim_1", "_dim_2", "_block_factor_2", "_ub_factor_2"], "3000000": ["_dim_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"0": ["_dim_0", "_dim_1", "_dim_2"], "2000000": ["_dim_0", "_dim_1", "_dim_2", "_block_factor_0", "_ub_factor_0"], "2000001": ["_dim_0", "_dim_1", "_dim_2", "_block_factor_0", "_ub_factor_0", "_ub_factor_1"], "2000002": ["_dim_0", "_dim_1", "_dim_2", "_block_factor_0", "_ub_factor_0", "_ub_factor_2"], "2000101": ["_dim_0", "_dim_1", "_dim_2", "_block_factor_1", "_ub_factor_0", "_ub_factor_1"], "2000111": ["_dim_0", "_dim_1", "_dim_2", "_block_factor_1", "_ub_factor_1"], "2000102": ["_dim_0", "_dim_1", "_dim_2", "_block_factor_1", "_ub_factor_0", "_ub_factor_2"], "2000112": ["_dim_0", "_dim_1", "_dim_2", "_block_factor_1", "_ub_factor_1", "_ub_factor_2"], "2000202": ["_dim_0", "_dim_1", "_dim_2", "_block_factor_2", "_ub_factor_0", "_ub_factor_2"], "2000212": ["_dim_0", "_dim_1", "_dim_2", "_block_factor_2", "_ub_factor_1", "_ub_factor_2"], "2000222": ["_dim_0", "_dim_1", "_dim_2", "_block_factor_2", "_ub_factor_2"], "3000000": ["_dim_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"0": [], "2000000": [], "2000001": [], "2000002": [], "2000101": [], "2000111": [], "2000102": [], "2000112": [], "2000202": [], "2000212": [], "2000222": [], "3000000": []}, "_custom_vars": {"0": [], "2000000": [], "2000001": [], "2000002": [], "2000101": [], "2000111": [], "2000102": [], "2000112": [], "2000202": [], "2000212": [], "2000222": [], "3000000": []}})";
+  ge::DataType dtype = ge::DT_FLOAT16;
+
+  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
+
+  for (size_t i = 0; i < inputs.size(); i++) {
+    AddParams(op_desc, inputs[i], dtype);
+  }
+  for (size_t i = 0; i < outputs.size(); i++) {
+    AddParams(op_desc, inputs[i], dtype, OUTPUT);
+  }
+
+  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
+
+  OpInfo opInfo(inputs, dtype, std::vector<std::vector<int32_t>>());
+
+  nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
+  optiling::utils::OpRunInfo runInfo;
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "Transpose",
+                                    op_info);
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo, opInfo));
+  EXPECT_EQ(runInfo.GetBlockDim(), 31);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "28, 1519, 25, 10, 5");
+}
+
+TEST_F(TransposeDslTiling, transpose_dsl_tiling_case20) {
+  // last transpose, fp16, cross, [4, 3, 1, 2, 0]
+  std::vector<std::vector<int64_t>> inputs {
+      {5, 22, 41, 18, 92}
+  };
+  std::vector<std::vector<int64_t>> outputs {
+      {5, 18, 22, 92, 41}
+  };
+  std::string compile_info = R"({"_mergeable": [0, 0, 0, 0, 0], "_pattern": "Transpose", "_core_num": 32, "_ub_size": 262144, "_ori_permute": [0, 3, 1, 4, 2], "_permute": [0, 2, 4, 1, 3], "_transpose_vars": [true, true, true, true, true], "_only_const_tiling": false, "_is_const": false, "_vars": {"0": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4"], "2000000": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_0", "_ub_factor_0"], "2000011": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_0", "_ub_factor_1"], "2000012": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_0", "_ub_factor_1", "_ub_factor_2"], "2000022": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_0", "_ub_factor_2"], "2000033": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_0", "_ub_factor_3"], "2000014": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_0", "_ub_factor_1", "_ub_factor_4"], "2000034": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_0", "_ub_factor_3", "_ub_factor_4"], "2000044": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_0", "_ub_factor_4"], "2000111": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_1", "_ub_factor_1"], "2000112": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_1", "_ub_factor_1", "_ub_factor_2"], "2000133": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_1", "_ub_factor_3"], "2000114": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_1", "_ub_factor_1", "_ub_factor_4"], "2000134": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_1", "_ub_factor_3", "_ub_factor_4"], "2000212": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_2", "_ub_factor_1", "_ub_factor_2"], "2000222": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_2", "_ub_factor_2"], "2000233": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_2", "_ub_factor_3"], "2000214": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_2", "_ub_factor_1", "_ub_factor_4"], "2000234": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_2", "_ub_factor_3", "_ub_factor_4"], "2000244": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_2", "_ub_factor_4"], "2000333": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_3", "_ub_factor_3"], "2000334": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_3", "_ub_factor_3", "_ub_factor_4"], "2000414": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_4", "_ub_factor_1", "_ub_factor_4"], "2000434": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_4", "_ub_factor_3", "_ub_factor_4"], "2000444": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_4", "_ub_factor_4"], "3000000": ["_dim_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"0": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4"], "2000000": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_0", "_ub_factor_0"], "2000011": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_0", "_ub_factor_1"], "2000012": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_0", "_ub_factor_1", "_ub_factor_2"], "2000022": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_0", "_ub_factor_2"], "2000033": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_0", "_ub_factor_3"], "2000014": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_0", "_ub_factor_1", "_ub_factor_4"], "2000034": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_0", "_ub_factor_3", "_ub_factor_4"], "2000044": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_0", "_ub_factor_4"], "2000111": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_1", "_ub_factor_1"], "2000112": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_1", "_ub_factor_1", "_ub_factor_2"], "2000133": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_1", "_ub_factor_3"], "2000114": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_1", "_ub_factor_1", "_ub_factor_4"], "2000134": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_1", "_ub_factor_3", "_ub_factor_4"], "2000212": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_2", "_ub_factor_1", "_ub_factor_2"], "2000222": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_2", "_ub_factor_2"], "2000233": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_2", "_ub_factor_3"], "2000214": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_2", "_ub_factor_1", "_ub_factor_4"], "2000234": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_2", "_ub_factor_3", "_ub_factor_4"], "2000244": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_2", "_ub_factor_4"], "2000333": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_3", "_ub_factor_3"], "2000334": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_3", "_ub_factor_3", "_ub_factor_4"], "2000414": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_4", "_ub_factor_1", "_ub_factor_4"], "2000434": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_4", "_ub_factor_3", "_ub_factor_4"], "2000444": ["_dim_0", "_dim_1", "_dim_2", "_dim_3", "_dim_4", "_block_factor_4", "_ub_factor_4"], "3000000": ["_dim_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"0": [], "2000000": [], "2000011": [], "2000012": [], "2000022": [], "2000033": [], "2000014": [], "2000034": [], "2000044": [], "2000111": [], "2000112": [], "2000133": [], "2000114": [], "2000134": [], "2000212": [], "2000222": [], "2000233": [], "2000214": [], "2000234": [], "2000244": [], "2000333": [], "2000334": [], "2000414": [], "2000434": [], "2000444": [], "3000000": []}, "_custom_vars": {"0": [], "2000000": [], "2000011": [], "2000012": [], "2000022": [], "2000033": [], "2000014": [], "2000034": [], "2000044": [], "2000111": [], "2000112": [], "2000133": [], "2000114": [], "2000134": [], "2000212": [], "2000222": [], "2000233": [], "2000214": [], "2000234": [], "2000244": [], "2000333": [], "2000334": [], "2000414": [], "2000434": [], "2000444": [], "3000000": []}})";
+  ge::DataType dtype = ge::DT_FLOAT16;
+
+  ge::OpDescPtr op_desc = std::make_shared<ge::OpDesc>();
+
+  for (size_t i = 0; i < inputs.size(); i++) {
+    AddParams(op_desc, inputs[i], dtype);
+  }
+  for (size_t i = 0; i < outputs.size(); i++) {
+    AddParams(op_desc, inputs[i], dtype, OUTPUT);
+  }
+
+  ge::Operator op_paras = ge::OpDescUtils::CreateOperatorFromOpDesc(op_desc);
+
+  OpInfo opInfo(inputs, dtype, std::vector<std::vector<int32_t>>());
+
+  nlohmann::json op_info = nlohmann::json::parse(compile_info.c_str());
+  optiling::utils::OpRunInfo runInfo;
+  std::shared_ptr<AutoTilingHandler> outer_compile_info = \
+    CreateTransposeDslTilingHandler(this->test_info_->name(),
+                                    "Transpose",
+                                    op_info);
+  ASSERT_TRUE(outer_compile_info->DoTiling(op_paras, runInfo, opInfo));
+  EXPECT_EQ(runInfo.GetBlockDim(), 30);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "5, 22, 41, 18, 92, 3, 80");
 }

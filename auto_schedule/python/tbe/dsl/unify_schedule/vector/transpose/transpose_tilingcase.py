@@ -29,7 +29,7 @@ from tbe.dsl.unify_schedule.constants import DTYPE_BYTE_MAPPING
 from tbe.dsl.unify_schedule import util
 
 DEFAULT = "default"
-ALIGN_THRESHOLD = 128
+ALIGN_THRESHOLD = 512
 
 TYPE_IN_BLOCK = {
     1: 32,
@@ -140,7 +140,8 @@ class TransposeComputation(Computation, ABC):
         dtype = self.out.dtype
         ele_in_block = TYPE_IN_BLOCK[DTYPE_BYTE_MAPPING[dtype]]
         nlast_align = is_nlast_transpose and (not isinstance(shape[-1], int)
-                                              or shape[-1] > ALIGN_THRESHOLD or shape[-1] % ele_in_block == 0)
+                                              or shape[-1] > ALIGN_THRESHOLD // DTYPE_BYTE_MAPPING[dtype]
+                                              or shape[-1] % ele_in_block == 0)
         is_read_align = is_nlast_transpose and (not isinstance(shape[-1], int) or shape[-1] % ele_in_block == 0)
 
         dim_len = len(shape)
