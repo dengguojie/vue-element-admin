@@ -16,6 +16,9 @@
 drop_out_do_mask.py
 """
 # 'pylint: disable=too-many-arguments,too-few-public-methods,too-many-instance-attributes
+from impl.util import util_select_op_base
+from impl.util.util_tensor_dict import TensorClass
+from impl.util.util_tensor_dict import get_format_for_format_ignore
 from impl.util.platform_adapter import tik
 from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import para_check
@@ -35,7 +38,57 @@ class Constant:
     TILING_ARG_NUM = 16
 
 
-# 'pylint: disable=invalid-name
+# 'pylint: disable=too-many-locals,unused-argument,invalid-name
+def op_select_format(input_tensor,
+                     input_mask,
+                     input_keep_prob,
+                     output,
+                     kernel_name="dropout_do_mask"):
+    """
+    Returns the dtype and format for DropoutDoMask
+    """
+    tensor_cls = TensorClass(input_tensor)
+
+    dtype_base = ["float16", "float"]
+    format_base = ["ND"]
+    format_base += get_format_for_format_ignore(tensor_cls, need_align=True)
+
+    tensor_dtype = []
+    tensor_format = []
+    for _format in format_base:
+        tensor_dtype = tensor_dtype + dtype_base
+        tensor_format = tensor_format + [_format] * len(dtype_base)
+
+    input_tensor_dtype_str = ",".join(tensor_dtype)
+    input_tensor_format_str = ",".join(tensor_format)
+    input_mask_dtype_str = ",".join(["uint8"] * len(tensor_dtype))
+    input_mask_format_str = ",".join(["ND"] * len(tensor_dtype))
+    input_keep_prob_dtype_str = input_tensor_dtype_str
+    input_keep_prob_format_str = input_mask_format_str
+
+    input0 = util_select_op_base.gen_param(classify="input0", name="x",
+                                           datatype=input_tensor_dtype_str,
+                                           format=input_tensor_format_str,
+                                           unknownshape_format=input_tensor_format_str)
+    input1 = util_select_op_base.gen_param(classify="input1", name="mask",
+                                           datatype=input_mask_dtype_str,
+                                           format=input_mask_format_str,
+                                           unknownshape_format=input_mask_format_str)
+    input2 = util_select_op_base.gen_param(classify="input2", name="keep_prob",
+                                           datatype=input_keep_prob_dtype_str,
+                                           format=input_keep_prob_format_str,
+                                           unknownshape_format=input_keep_prob_format_str)
+    output0 = util_select_op_base.gen_param(classify="output0", name="y",
+                                            datatype=input_tensor_dtype_str,
+                                            format=input_tensor_format_str,
+                                            unknownshape_format=input_tensor_format_str)
+
+    param_list = [input0, input1, input2, output0]
+    param_dynamic_in_json = util_select_op_base.get_dynamic_param_in_json(param_list)
+
+    return param_dynamic_in_json
+
+
 class DropOutDoMask:
     """
     Function: use to store dropoutdomask base parameters
