@@ -1003,8 +1003,8 @@ class MaxpoolGrad:
                     start_threshold,
                     offset_gm_block, shape, pad):
 
-        pad_left, pad_right, pad_top, pad_bottom = pad
-        shape_ho, shape_wo, shape_hi, shape_wi = shape
+        pad_left, pad_right, _, _ = pad
+        shape_wo = shape[1]
 
         cut_ho_nums = self.tik_instance.Scalar(dtype='int64', name='cut_ho_nums')
         remain_ho_nums = self.tik_instance.Scalar(dtype='int64', name='remain_ho_nums')
@@ -1145,8 +1145,8 @@ class MaxpoolGrad:
                          start_threshold,
                          offset_gm_block, shape, pad):
 
-        pad_left, pad_right, pad_top, pad_bottom = pad
-        shape_ho, shape_wo, shape_hi, shape_wi = shape
+        pad_left, pad_right, _, pad_bottom = pad
+        shape_wo = shape[1]
 
         cut_ho_nums = self.tik_instance.Scalar(dtype='int64', name='cut_ho_nums')
         remain_ho_nums = self.tik_instance.Scalar(dtype='int64', name='remain_ho_nums')
@@ -2210,7 +2210,7 @@ def max_pool_grad_with_argmax_v2(x,
     return the tik api function
     """
     ori_format = x.get("ori_format")
-    if ori_format in ("NCHW","NC1HWC0"):
+    if ori_format in ("NCHW", "NC1HWC0"):
         ksize = (ksize[0], ksize[2], ksize[3], ksize[1])
         strides = (strides[0], strides[2], strides[3], strides[1])
         pads = (pads[0], pads[2], pads[3], pads[1])

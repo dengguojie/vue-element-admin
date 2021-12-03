@@ -1195,7 +1195,7 @@ class SyncResizeBilinearV2Grad:
 
 
 @register_operator("SyncResizeBilinearV2Grad")
-# 'pylint: disable=unused-argument
+# 'pylint: disable=unused-argument,too-many-arguments
 def sync_resize_bilinear_v2_grad(grads,
                                  images,
                                  y,
