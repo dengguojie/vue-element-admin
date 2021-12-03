@@ -31,15 +31,20 @@ from . import utils
 
 
 class ReportJsonEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.integer):
-            return int(obj)
-        elif isinstance(obj, np.floating):
-            return float(obj)
-        elif isinstance(obj, complex):
-            return {obj.__class__.__name__: True, "real": obj.real, "imag": obj.imag}
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
+    """
+    class ReportJsonEncoder
+    """
+    def default(self, o):
+        if isinstance(o, np.integer):
+            return int(o)
+        elif isinstance(o, np.floating):
+            return float(o)
+        elif isinstance(o, complex):
+            return {o.__class__.__name__: True, "real": o.real, "imag": o.imag}
+        elif isinstance(o, np.ndarray):
+            return o.tolist()
+        else:
+            return super(json.JSONEncoder, self).default(o)
 
 
 class OpSTCaseReport:

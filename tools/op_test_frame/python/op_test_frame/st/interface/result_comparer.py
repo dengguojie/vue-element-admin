@@ -123,8 +123,7 @@ def _display_error_output(real_data, expect_data, err_idx, relative_diff):
                                                                              fp_diff, rate_diff))
         elif count == 10:
             dot_3 = '...'
-            utils.print_info_log('{:<15} {:<15} {:<15} {:<15} {:<15}'.format(dot_3, dot_3, dot_3,
-                                                                             dot_3, dot_3))
+            utils.print_info_log('{dot:<15} {dot:<15} {dot:<15} {dot:<15} {dot:<15}'.format(dot=dot_3))
     utils.print_info_log('---------------------------------------------------------------------------------------')
 
 
@@ -169,43 +168,47 @@ def _check_overflows_count(data_compe):
             data_compe[np.isnan(data_compe)][0:10]))
 
 
-def _data_compare(npu_output, cpu_output, err_thd):
-    diff_thd, pct_thd, max_diff_hd = err_thd[0], err_thd[1], 0.1
-    real_data = npu_output.flatten()
-    data_compe = cpu_output.flatten()
-    if real_data.size == 0 and real_data.size == data_compe.size:
-        utils.print_info_log(
-            'The npu_output is [],and it is same as bm_output, the result of data_compare is \"Pass\"')
-        return "Pass", 0.0, 0
+def _get_compare_result(real_data, data_compare, max_diff_hd, diff_thd, pct_thd):
     start = 0
     end = real_data.size - 1
     if end < start:
         end = start
     max_error = 0
     result = "Failed"
-    if real_data.size != data_compe.size:
+    if real_data.size != data_compare.size:
         utils.print_error_log(
             'Error,the size of npu output[%s] and benchmark[%s] is not equal.' % (
-                real_data.size, data_compe.size))
+                real_data.size, data_compare.size))
         return result, 0.0, max_error
-    _check_overflows_count(data_compe)
+    _check_overflows_count(data_compare)
     split_count = int(end - start + 1) if end != start else 1
     utils.print_info_log(
         'total_count:%s; max_diff_thd:%s;' % (split_count, max_diff_hd))
     try:
         diff_abs = np.abs(np.subtract(real_data.astype(np.float32),
-                                      data_compe.astype(np.float32)))
+                                      data_compare.astype(np.float32)))
     except MemoryError:
         return result, 0.0, max_error
     finally:
         pass
-    _display_output(real_data, data_compe, start, end, diff_thd)
+    _display_output(real_data, data_compare, start, end, diff_thd)
     result, err_list, fulfill_percent = _get_error_percent(
-        [diff_abs, diff_thd, max_diff_hd], real_data, data_compe, split_count,
+        [diff_abs, diff_thd, max_diff_hd], real_data, data_compare, split_count,
         pct_thd)
     if result == "Failed":
-        _display_error_output(real_data, data_compe, err_list[0], err_list[1])
+        _display_error_output(real_data, data_compare, err_list[0], err_list[1])
     return result, fulfill_percent, max_error
+
+
+def _data_compare(npu_output, cpu_output, err_thd):
+    diff_thd, pct_thd, max_diff_hd = err_thd[0], err_thd[1], 0.1
+    real_data = npu_output.flatten()
+    data_compare = cpu_output.flatten()
+    if real_data.size == 0 and real_data.size == data_compare.size:
+        utils.print_info_log(
+            'The npu_output is [],and it is same as bm_output, the result of data_compare is \"Pass\"')
+        return "Pass", 0.0, 0
+    return _get_compare_result(real_data, data_compare, max_diff_hd, diff_thd, pct_thd)
 
 
 def compare_by_path(result_dir, expect_dir):

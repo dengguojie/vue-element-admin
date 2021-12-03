@@ -72,7 +72,7 @@ class ConstManager:
     SUPPORT_PATH_PATTERN = r"^[A-Za-z0-9_\./:()=\\-]+$"
     EMPTY = ""
     SRC_RELATIVE_TEMPLATE_PATH = "/../template/acl_op_src"
-    MAIN_CPP_RELATIVE_PATH = "/src/main.cpp"
+
     TESTCASE_CPP_RELATIVE_PATH = "/src/testcase.cpp"
     ACL_OP_JSON_RELATIVE_PATH = "/run/out/test_data/config/acl_op.json"
     TEST_DATA_CONFIG_RELATIVE_PATH = "/run/out/test_data/config"

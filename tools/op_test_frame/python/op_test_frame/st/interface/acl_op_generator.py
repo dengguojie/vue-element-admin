@@ -209,6 +209,24 @@ def _create_exact_testcase_content(testcase_struct, device_id):
     return testcase_content, output_file_path_list
 
 
+def _copy_src_to_dst(name, src, dst, srcname, dstname):
+    # skip run directory.
+    if os.path.isdir(dstname) and os.listdir(dstname):
+        if name == 'run':
+            src_acl_json = ''.join([src, ConstManager.TEST_DATA_CONFIG_RELATIVE_PATH, '/acl.json'])
+            dst_acl_json = ''.join([dst, ConstManager.TEST_DATA_CONFIG_RELATIVE_PATH, '/acl.json'])
+            shutil.copyfile(src_acl_json, dst_acl_json)
+            return
+        utils.print_error_log("%s is not empty,please settle it "
+                              "and retry ." % dstname)
+        sys.exit()
+    if os.path.isdir(srcname):
+        copytree(srcname, dstname)
+    else:
+        copy2(srcname, dstname)
+    return
+
+
 def copy_template(src, dst):
     """
     copy template from src dir to dst dir
@@ -221,19 +239,7 @@ def copy_template(src, dst):
         srcname = os.path.join(src, name)
         dstname = os.path.join(dst, name)
         try:
-            if os.path.isdir(dstname) and os.listdir(dstname):
-                if name == 'run':
-                    src_acl_json = src + ConstManager.TEST_DATA_CONFIG_RELATIVE_PATH + '/acl.json'
-                    dst_acl_json = dst + ConstManager.TEST_DATA_CONFIG_RELATIVE_PATH + '/acl.json'
-                    shutil.copyfile(src_acl_json, dst_acl_json)
-                    continue
-                utils.print_error_log("%s is not empty,please settle it "
-                                      "and retry ." % dstname)
-                sys.exit()
-            if os.path.isdir(srcname):
-                copytree(srcname, dstname)
-            else:
-                copy2(srcname, dstname)
+            _copy_src_to_dst(name, src, dst, srcname, dstname)
         except (IOError, OSError) as why:
             errors.append((srcname, dstname, str(why)))
         finally:

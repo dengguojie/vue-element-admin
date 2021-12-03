@@ -188,7 +188,10 @@ def print_info_log(info_msg):
     _print_log("INFO", info_msg)
 
 
-class CallingCounter(object):
+class CallingCounter:
+    """
+    Class CallingCounter
+    """
     def __init__(self, func):
         self.func = func
         self.count = 0
@@ -196,6 +199,18 @@ class CallingCounter(object):
     def __call__(self, *args, **kwargs):
         self.count += 1
         return self.func(*args, **kwargs)
+
+    def get_count(self):
+        """
+        get self.count
+        """
+        return self.count
+
+    def get_func(self):
+        """
+        get self.func
+        """
+        return self.func
 
 
 @CallingCounter
@@ -542,6 +557,9 @@ def add_new_key_to_cross_list(tensor, cross_key_list):
 
 
 def execute_command(cmd):
+    """
+    Execute command
+    """
     print_info_log('Execute command: %s' % cmd)
     process = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT)

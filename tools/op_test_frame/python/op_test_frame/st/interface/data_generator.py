@@ -179,6 +179,60 @@ class DataGenerator:
         finally:
             pass
 
+    def _get_input_dict_with_data(self, input_desc, file_path, input_shape):
+        """
+        Data generation modes in two scenarios are considered.s:
+        1.Trans data 2.constant data
+        """
+        is_const_distribute = (input_desc.get(ConstManager.IS_CONST) and
+                               input_desc.get(ConstManager.DATA_DISTRIBUTE) and
+                               input_desc.get(ConstManager.VALUE) is None)
+        if is_const_distribute:
+            input_dic = self._get_const_data_input_dict(input_desc, file_path, input_shape)
+        else:
+            input_dic = self._get_trans_data_input_dict(input_desc, file_path, input_shape)
+        return input_dic
+
+    def _get_const_data_input_dict(self, input_desc, file_path, input_shape):
+        data_list = np.fromfile(file_path, dtype=input_desc.get('type'))
+        self._check_data_size(data_list, file_path, input_shape)
+        input_shape = tuple(input_shape)
+        data = np.array(data_list).reshape(input_shape)
+        input_dic = {
+            'value': data,
+            'dtype': input_desc.get('type'),
+            'shape': input_shape,
+            'format': input_desc.get('format')
+        }
+        return input_dic
+
+    def _get_trans_data_input_dict(self, input_desc, file_path, input_shape):
+        if os.path.exists(file_path):
+            utils.print_error_log(
+                'The file %s already exists, please delete it then'
+                ' retry.' % file_path)
+            raise utils.OpTestGenException(
+                ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
+        data = self._gen_input_data(input_shape, input_desc, file_path)
+        try:
+            input_dic = {
+                'value': data,
+                'dtype': input_desc.get('type'),
+                'shape': input_shape,
+                'format': input_desc.get('format')
+            }
+            data.tofile(file_path)
+            os.chmod(file_path, ConstManager.WRITE_MODES)
+        except OSError as error:
+            utils.print_warn_log(
+                'Failed to generate data for %s. %s' % (
+                    file_path, error))
+            raise utils.OpTestGenException(
+                ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
+        finally:
+            pass
+        return input_dic
+
     def _get_input_desc_and_gen_data(
             self, case, case_name, calc_func_params_tmp, param_info_list):
         """
@@ -193,50 +247,11 @@ class DataGenerator:
             file_path = os.path.join(
                 self.output_path,
                 case_name + '_input_' + str(index) + '.bin')
-            is_const_distribute = (input_desc.get(ConstManager.IS_CONST) and
-                                   input_desc.get(ConstManager.DATA_DISTRIBUTE) and
-                                   input_desc.get(ConstManager.VALUE) is None)
-            if is_const_distribute:
-                data_list = np.fromfile(file_path, dtype=input_desc.get('type'))
-                self._check_data_size(data_list, file_path, input_shape)
-                input_shape = tuple(input_shape)
-                data = np.array(data_list).reshape(input_shape)
-                input_dic = {
-                    'value': data,
-                    'dtype': input_desc.get('type'),
-                    'shape': input_shape,
-                    'format': input_desc.get('format')
-                }
-            else:
-                if os.path.exists(file_path):
-                    utils.print_error_log(
-                        'The file %s already exists, please delete it then'
-                        ' retry.' % file_path)
-                    raise utils.OpTestGenException(
-                        ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
-                data = self._gen_input_data(input_shape, input_desc, file_path)
-                try:
-                    input_dic = {
-                        'value': data,
-                        'dtype': input_desc.get('type'),
-                        'shape': input_shape,
-                        'format': input_desc.get('format')
-                    }
-                    data.tofile(file_path)
-                    os.chmod(file_path, ConstManager.WRITE_MODES)
-                except OSError as error:
-                    utils.print_warn_log(
-                        'Failed to generate data for %s. %s' % (
-                            file_path, error))
-                    raise utils.OpTestGenException(
-                        ConstManager.OP_TEST_GEN_WRITE_FILE_ERROR)
-                finally:
-                    pass
-
+            input_dict = self._get_input_dict_with_data(input_desc, file_path, input_shape)
             if input_desc.get('name'):
                 input_name = input_desc.get('name')
                 calc_func_params_tmp.update(
-                    {input_name: input_dic})
+                    {input_name: input_dict})
                 param_info_list.append("{input_name}".format(
                     input_name=input_name))
 
@@ -267,13 +282,13 @@ class DataGenerator:
         """
         utils.check_path_valid(self.output_path, True)
         gen_data_start = time.time()
+        utils.print_step_log("[%s] Generate data for testcase." % (os.path.basename(__file__)))
         for case in self.case_list:
             # support no input scene
             if len(case.get('input_desc')) < 1:
                 utils.print_info_log("There are no inputs. Skip generating input data.")
                 return
             case_name = case.get('case_name')
-            utils.print_step_log("[%s] Generate data for testcase." % (os.path.basename(__file__)))
             utils.print_info_log(
                 'Start to generate the input data for %s.' % case_name)
             param_info = ""

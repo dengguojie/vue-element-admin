@@ -286,6 +286,9 @@ class SubCaseDesignFuzz(SD.SubCaseDesign):
 
     @staticmethod
     def get_fuzz_func_return(fuzz_func):
+        """
+        Get fuzz func
+        """
         fuzz_return_list = []
         fuzz_return = fuzz_func()
         if isinstance(fuzz_return, dict):
