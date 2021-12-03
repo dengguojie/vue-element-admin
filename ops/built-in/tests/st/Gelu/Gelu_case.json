@@ -157,8 +157,8 @@
         ],
         "format": "ND",
         "ori_shape": [
-          2,
-          2
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "name": "args",
@@ -187,8 +187,8 @@
         ],
         "format": "ND",
         "ori_shape": [
-          2,
-          2
+          -1,
+          -1
         ],
         "ori_format": "ND",
         "name": "kwargs",
