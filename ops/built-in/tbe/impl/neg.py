@@ -59,7 +59,7 @@ def neg_compute(input_x, output_y, kernel_name="neg"):
     shape = shape_util.shape_to_list(input_x.shape)
 
     if dtype == "int32":
-        data_tmp = tbe.broadcast(-1, shape)
+        data_tmp = tbe.broadcast(Constant.SCALER_NEGATIVE_ONE, shape)
         res = tbe.vmul(input_x, data_tmp)
     else:
         res = tbe.vmuls(input_x, Constant.SCALER_NEGATIVE_ONE_FLOAT)
