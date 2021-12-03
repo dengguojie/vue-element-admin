@@ -99,18 +99,18 @@ def calc_expect_func(inputs, weights, bias, offset_w, outputs, strides, pads, di
     out = _NCHW_to_NC1HWC0(out)
     return out
 
-def gen_trans_precision_data_case(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
-                                  groups, data_format, offset_x, expect):
-    return {
-        "params":
-            [inputs, weights, bias, offset_w, outputs, strides, pads, dilations, groups, data_format, offset_x],
-        "calc_expect_func": calc_expect_func,
-        "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
+# def gen_trans_precision_data_case(inputs, weights, bias, offset_w, outputs, strides, pads, dilations,
+#                                   groups, data_format, offset_x, expect):
+#     return {
+#         "params":
+#             [inputs, weights, bias, offset_w, outputs, strides, pads, dilations, groups, data_format, offset_x],
+#         "calc_expect_func": calc_expect_func,
+#         "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)}
 
 
-print("adding Conv2D op precision testcases")
-for test_case in tc.conv2D_ut_precision_testcase:
-    ut_case.add_precision_case(test_case[0], gen_trans_precision_data_case(*test_case[1:]))
+# print("adding Conv2D op precision testcases")
+# for test_case in tc.conv2D_ut_precision_testcase:
+#     ut_case.add_precision_case(test_case[0], gen_trans_precision_data_case(*test_case[1:]))
 
 
 if __name__ == '__main__':

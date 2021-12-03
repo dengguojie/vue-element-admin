@@ -27,6 +27,8 @@ from impl.util.util_conv2d_dynamic import check_l1_size
 from impl.util.util_conv2d_dynamic import create_fuzz_range
 from impl.util.util_conv2d_dynamic import correct_input_range
 from impl.util.util_conv2d_dynamic import get_format_attr
+from impl.util.util_conv2d_dynamic import check_graph_mode
+from impl.util.util_conv2d_dynamic import check_conv2d_range
 from .conv2d import conv2d
 from .conv2d import conv2d_fusion_compute
 
@@ -140,18 +142,27 @@ def depthwise_conv2d_generalization(x, filter, bias, offset_w, y, strides, dilat
         if unknow_rank:
             err_man.raise_err_specific_user("depthwise_conv2d", "not support unknow_rank under mode {}".format(
                 generalize_config["mode"]))
-        x_range = gen_depthwise_conv2d_range(x, filter, strides, pads, dilations)
-        x["ori_range"] = x_range
-        have_range = {"x": x, "y": y}
-        for name, tensor in have_range.items():
-            # only change shape NHW dim to -1, range is already set at infershape
-            valid = isinstance(tensor.get("ori_shape"), (list, tuple)) and len(tensor["ori_shape"]) == ORI_SHAPE_LEN
-            if not valid:
-                err_man.raise_err_specific_user("depthwise_conv2d", "invalid {} ori_shape {}, only support {}d".format(
-                    name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
-            tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
-               if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]
+        log.debug("depthwise_conv2d generalization inputs: %s", x)
+        if not check_graph_mode(x):
+            x_range = gen_depthwise_conv2d_range(x, filter, strides, pads, dilations)
+            x["ori_range"] = x_range
+            have_range = {"x": x, "y": y}
+            for name, tensor in have_range.items():
+                # only change shape NHW dim to -1, range is already set at infershape
+                valid = isinstance(tensor.get("ori_shape"), (list, tuple)) and len(tensor["ori_shape"]) == ORI_SHAPE_LEN
+                if not valid:
+                    err_man.raise_err_specific_user("depthwise_conv2d", "invalid {} ori_shape {}, only support {}d".format(
+                        name, str(tensor.get("ori_shape")), str(ORI_SHAPE_LEN)))
+                tensor["ori_shape"] = [-1, tensor["ori_shape"][1], -1, -1] \
+                if tensor.get("ori_format") == "NCHW" else [-1, -1, -1, tensor["ori_shape"][3]]
+        else:
+            check_result = check_conv2d_range(x, filter, strides, pads, dilations)
+            if check_result:
+                log.debug("depthwise_conv2d generalization invalid range, check_result: %s", check_result)
+                return check_result
         result.append([x, filter, bias, offset_w, y, strides, dilations, pads, data_format, offset_x, kernel_name])
+
+    log.debug("depthwise_conv2d generalization result: %s", result)
     return result
 
 

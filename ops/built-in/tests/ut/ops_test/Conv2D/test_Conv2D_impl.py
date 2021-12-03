@@ -199,8 +199,8 @@ def test_conv2d_fuzz_build_tilingcase(test_arg):
                 'dtype': 'float16'
             }, (1, 1, 1, 1), (0, 0, 0, 0), (1, 1, 1, 1), 1, 'NCHW', 0, 'test_conv2d_fuzz_build_tilingcase']
         conv2d(*input_list)
-print("adding conv2d test_conv2d_fuzz_build_tilingcase testcase")
-ut_case.add_cust_test_func(test_func=test_conv2d_fuzz_build_tilingcase)
+# print("adding conv2d test_conv2d_fuzz_build_tilingcase testcase")
+# ut_case.add_cust_test_func(test_func=test_conv2d_fuzz_build_tilingcase)
 
 def test_conv2d_fuzz_build_correct_range(test_arg):
     import json

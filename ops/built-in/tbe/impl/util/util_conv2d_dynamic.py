@@ -32,6 +32,7 @@ import impl.util.util_deconv_comm as comm
 from te.platform import get_soc_spec
 from te.platform import cce_params
 from tbe.common.context import get_context
+from tbe.common.utils import log
 
 
 # the bytes length of several dtype
@@ -141,6 +142,115 @@ def create_fuzz_range(op_type, dim_value, grade_item):
             high = g_value
             break
     return [low, high]
+
+
+def check_graph_mode(tensor):
+    """
+    check graph mode or single mode in fuzz compile
+    """
+    if (DYNAMIC_FLAG in tensor.get("ori_shape") and "ori_range" in tensor.keys()):
+        return True
+    return False
+
+
+def check_input_range(input_range, idx_h, idx_w, kh_dilate, kw_dilate, pads):
+    """
+    graph mode fuzz, check range[low] for output >= 1
+    """
+    padt, padd, padl, padr = pads
+    if DYNAMIC_FLAG not in pads:
+        low_h = kh_dilate - padt - padd
+        if input_range[idx_h][0] < low_h:
+            log.debug("graph mode: the h_range[0] must be greater than or equal to kernel_h")
+            return "lower_limit"
+
+        low_w = kw_dilate - padl - padr
+        if input_range[idx_w][0] < low_w:
+            log.debug("graph mode: the w_range[0] must be greater than or equal to kernel_w")
+            return "lower_limit"
+    return ""
+
+
+def check_range_l1_size(inputs, kh_dilate, kw_dilate, strides, pads):
+    """
+    graph mode fuzz, check range[high] exceed l1 buf
+    """
+    l1_size = tbe_platform.get_soc_spec("L1_SIZE")
+    # default type fp16
+    type_byte = BIT_RATIO_DICT.get(inputs["dtype"], 2)
+    idx_h = inputs.get("ori_format").find("H")
+    idx_w = inputs.get("ori_format").find("W")
+    w_in = inputs.get("ori_range")[idx_w][1]
+    if (w_in is None):
+        w_in = 4096
+    pad_top, pad_bottom, pad_left, pad_right = pads
+    if DYNAMIC_FLAG in pads:
+        w_out = (w_in + strides[idx_w] - 1) // strides[idx_w]
+    else:
+        w_out = (w_in + (pad_left + pad_right) - kw_dilate) // strides[idx_w] + 1
+    limit_h_out = math.floor(tbe_platform.CUBE_MKN[inputs["dtype"]]['mac'][0] / w_out) + 2
+    hw_size = ((limit_h_out - 1) * strides[idx_h] + kh_dilate) * w_in
+    limit_size = hw_size * tbe_platform.CUBE_MKN[inputs["dtype"]]['mac'][1] * type_byte
+    if limit_size > l1_size:
+        log.debug("input range is too large, the mininum tiling may exceed L1buffer")
+        return "upper_limit"
+    return ""
+
+
+def check_range_value(op_type, input_range, idx_h, idx_w):
+    """
+    check if input range is < 0
+    """
+    if (input_range[idx_h][0] is not None and input_range[idx_h][0] <= 0) or \
+        (input_range[idx_h][1] is not None and input_range[idx_h][1] <= 0) or \
+        (input_range[idx_w][0] is not None and input_range[idx_w][0] <= 0) or \
+        (input_range[idx_w][1] is not None and input_range[idx_w][1] <= 0):
+            err_man.raise_err_specific_user(op_type, "input invalid range <= 0.")
+
+
+def check_conv2d_range(inputs, weights, strides, pads, dilations):
+    """
+    graph mode fuzz, check input range
+    """
+    op_type = "conv2d"
+    input_range = inputs.get("ori_range")
+    x_format = inputs.get("ori_format")
+    w_shape = weights.get("ori_shape")
+    w_format = weights.get("ori_format")
+
+    if x_format == "NCHW":
+        idx_h = 2
+        idx_w = 3
+        dilh = dilations[2]
+        dilw = dilations[3]
+    elif x_format == "NHWC":
+        idx_h = 1
+        idx_w = 2
+        dilh = dilations[1]
+        dilw = dilations[2]
+    else:
+        err_man.raise_err_specific_user(op_type, "input fmap format only support NCHW or NHWC.")
+
+    check_range_value(op_type, input_range, idx_h, idx_w)
+
+    kh, kw = get_format_attr(w_shape, w_format)
+    kh_dilate = dilh * (kh - 1) + 1
+    kw_dilate = dilw * (kw - 1) + 1
+
+    low_check = check_input_range(input_range, idx_h, idx_w, kh_dilate, kw_dilate, pads)
+    up_check = check_range_l1_size(inputs, kh_dilate, kw_dilate, strides, pads)
+    if not up_check and not low_check:
+        return []
+
+    type_info = []
+    if up_check:
+        type_info.append(up_check)
+    if low_check:
+        type_info.append(low_check)
+
+    check_result = [{"result": "UNSUPPORTED", "reason": {"param_index": [0], "type": type_info}}]
+    return check_result
+
 
 def correct_input_range(op_type, input_range, x_shape, idx_h, idx_w, kh_dilate, kw_dilate, pads):
     """
