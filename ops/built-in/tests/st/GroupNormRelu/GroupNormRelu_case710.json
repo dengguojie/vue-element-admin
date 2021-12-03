@@ -1,0 +1,88 @@
+[
+  {
+    "op": "GroupNormRelu",
+    "input_desc": [
+      {
+        "shape": [
+          8,
+          16,
+          120,
+          120,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          8,
+          256,
+          120,
+          120
+        ],
+        "ori_format": "NCHW",
+        "param_type": "input",
+        "name": "x",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "gamma",
+        "type": "float16"
+      },
+      {
+        "shape": [
+          256
+        ],
+        "format": "ND",
+        "ori_shape": [
+          256
+        ],
+        "ori_format": "ND",
+        "param_type": "input",
+        "name": "beta",
+        "type": "float16"
+      }
+    ],
+    "output_desc": [
+      {
+        "shape": [
+          8,
+          16,
+          120,
+          120,
+          16
+        ],
+        "format": "NC1HWC0",
+        "ori_shape": [
+          8,
+          256,
+          120,
+          120
+        ],
+        "ori_format": "NCHW",
+        "param_type": "output",
+        "name": "y",
+        "type": "float16"
+      }
+    ],
+    "attr": [
+      {
+        "name": "num_groups",
+        "value": 32,
+        "type": "int"
+      },
+      {
+        "name": "eps",
+        "value": 1e-05,
+        "type": "float"
+      }
+    ],
+    "case_name": "test_GroupNormRelu_000"
+  }
+]

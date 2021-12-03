@@ -1882,4 +1882,16 @@ IMPLEMT_COMMON_INFERFUNC(NormalizeBatchInferShape) {
 
 COMMON_INFER_FUNC_REG(NormalizeBatch, NormalizeBatchInferShape);
 //-----------------------NormalizeBatch END---------------------
+// ------------GroupNormRelu Op Start----------------
+IMPLEMT_COMMON_INFERFUNC(GroupNormReluInferShape) {
+  TensorDesc tensordesc_output = op.GetOutputDesc("y");
+  TensorDesc tensordesc_input = op.GetInputDesc("x");
+  tensordesc_output.SetShape(tensordesc_input.GetShape());
+  tensordesc_output.SetDataType(tensordesc_input.GetDataType());
+  (void)op.UpdateOutputDesc("y", tensordesc_output);
+  return GRAPH_SUCCESS;
+}
+
+COMMON_INFER_FUNC_REG(GroupNormRelu, GroupNormReluInferShape);
+// ------------GroupNormRelu Op End----------------
 }  // namespace ge
