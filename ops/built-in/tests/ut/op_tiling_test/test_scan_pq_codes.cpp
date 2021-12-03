@@ -78,7 +78,7 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_0) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   std::cout << "Tiling_data is: " << to_string(runInfo.tiling_data) << std::endl;
-  EXPECT_EQ(to_string(runInfo.tiling_data), "4 1 0 4 0 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "4 0 0 1 4 ");
 }
 
 TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_1) {
@@ -128,7 +128,7 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_1) {
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   std::cout << "Tiling_data is: " << to_string(runInfo.tiling_data) << std::endl;
-  EXPECT_EQ(to_string(runInfo.tiling_data), "8 1 0 8 0 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "8 0 1 1 0 ");
 }
 
 TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_2) {
@@ -140,7 +140,7 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_2) {
   std::string compileInfo = "{\"vars\": {\"core_nums\": 8, \"split_count\": 2, \"split_index\": 0}}";
 
   std::vector<int64_t> ivfShape{40960, 16};
-  std::vector<int64_t> bucketListShape{2};
+  std::vector<int64_t> bucketListShape{8};
   std::vector<int64_t> pqDistanceShape{40960};
 
   TeOpTensor tensorIvf;
@@ -174,11 +174,11 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_2) {
   opParas.op_type = op_name;
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
-  op_compile_info.key = "scanPQCodes.key0";
+  op_compile_info.key = "scanPQCodes.key2";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   std::cout << "Tiling_data is: " << to_string(runInfo.tiling_data) << std::endl;
-  EXPECT_EQ(to_string(runInfo.tiling_data), "2 1 0 2 0 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "8 0 1 1 0 ");
 }
 TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_3) {
   using namespace optiling;
@@ -186,10 +186,10 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_3) {
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  std::string compileInfo = "{\"vars\": {\"core_nums\": 8, \"split_count\": 2, \"split_index\": 1}}";
+  std::string compileInfo = "{\"vars\": {\"core_nums\": 7, \"split_count\": 2, \"split_index\": 1}}";
 
   std::vector<int64_t> ivfShape{20480, 16};
-  std::vector<int64_t> bucketListShape{2};
+  std::vector<int64_t> bucketListShape{8};
   std::vector<int64_t> pqDistanceShape{20480};
 
   TeOpTensor tensorIvf;
@@ -223,11 +223,11 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_3) {
   opParas.op_type = op_name;
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
-  op_compile_info.key = "scanPQCodes.key0";
+  op_compile_info.key = "scanPQCodes.key3";
   OpRunInfo runInfo;
   ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
   std::cout << "Tiling_data is: " << to_string(runInfo.tiling_data) << std::endl;
-  EXPECT_EQ(to_string(runInfo.tiling_data), "2 1 0 2 0 ");
+  EXPECT_EQ(to_string(runInfo.tiling_data), "0 8 0 0 0 ");
 }
 /*
 TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_2) {
@@ -321,7 +321,7 @@ TEST_F(ScanPQCodesTiling, scan_pq_codes_tiling_4) {
   opParas.op_type = op_name;
   OpCompileInfo op_compile_info;
   op_compile_info.str = compileInfo;
-  op_compile_info.key = "scanPQCodes.key2";
+  op_compile_info.key = "scanPQCodes.key4";
   OpRunInfo runInfo;
   ASSERT_FALSE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
 }
