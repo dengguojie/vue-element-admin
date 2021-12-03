@@ -27,11 +27,13 @@
 #include "util/common_shape_fns.h"
 #include "util/error_util.h"
 #include "op_log.h"
+#include "op_const.h"
 #include "graph/utils/node_utils.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/type_utils.h"
 #include "axis_util.h"
 #include "inc/graph/utils/type_utils.h"
+
 namespace ge {
 IMPLEMT_INFERFUNC(DecodeGif, DecodeGifInfer) {
   const char *op_name = op.GetName().c_str();
@@ -1538,78 +1540,112 @@ static void GetResizeConstValue(const Operator& op, const GeTensor* const_tensor
   }
 }
 
-bool ResizeConstInferShape(const Operator& op, const string& image_name,
-                           const string& size_name, const string& output_name) {
+bool ResizeConstInferShape(const Operator& op, const std::pair<uint32_t, std::string> image_info,
+                           const std::pair<uint32_t, std::string> size_info,
+                           const std::pair<uint32_t, std::string> output_info) {
+  static const size_t output_len = 4;
+  static const size_t size_len = 2;
   auto op_desc = OpDescUtils::GetOpDescFromOperator(op);
-  CHECK(op_desc == nullptr, OP_LOGE(op.GetName().c_str(), "op desc is null."), return false);
+  CHECK(op_desc == nullptr, OP_LOGE(TbeGetName(op).c_str(), "op desc is null."), return false);
 
-  auto input_desc_x = op_desc->MutableInputDesc(image_name);
-  auto input_desc_size = op_desc->MutableInputDesc(size_name);
-  auto output_desc_y = op_desc->MutableOutputDesc(output_name);
-  auto image_shape = input_desc_x->MutableShape().GetDims();
+  auto input_desc_x = op_desc->MutableInputDesc(image_info.first);
+  CHECK(input_desc_x == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op).c_str(), OtherErrMsg("input x is null.")), return false);
+  auto output_desc_y = op_desc->MutableOutputDesc(output_info.first);
+  CHECK(output_desc_y == nullptr,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op).c_str(), OtherErrMsg("output y is null.")), return false);
+
+  // infer dtype start
+  output_desc_y->SetDataType(input_desc_x->GetDataType());
+  // infer dtype end
+
+  // infer shape start
+  const GeShape& x_shape = input_desc_x->MutableShape();
   auto input_format = input_desc_x->GetFormat();
-  auto input_size_dtype = input_desc_size->GetDataType();
+  OP_LOGD(TbeGetName(op).c_str(), "get the format is %s", TypeUtils::FormatToSerialString(input_format).c_str());
+  CHECK(input_format != FORMAT_NHWC && input_format != FORMAT_NCHW,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op).c_str(), OtherErrMsg("The input format is valid")),
+        return false);
+  const int64_t image_n_idx = 0;
+  // format is NHWC, c_idx = 3, format is NCHW, c_idx = 1,
+  const int64_t image_c_idx = input_format == FORMAT_NHWC ? 3 : 1;
+  const int64_t image_h_idx = input_format == FORMAT_NHWC ? 1 : 2;
+  const int64_t image_w_idx = input_format == FORMAT_NHWC ? 2 : 3;
+  // get const value
+  bool is_size_const = true;
+  vector<int64_t> size_out;
+  if (!ops::GetConstIntData(op, size_info.first, size_out)) {
+    OP_LOGW(TbeGetName(op).c_str(), "get const value of input size failed, set out hw = -1, -1");
+    size_out = {-1, -1};
+    is_size_const = false;
+  }
 
-  std::vector<std::pair<int64_t, int64_t>> x_range;
-  // check whether is -2 case
-  bool is_unkown_rank = image_shape == UNKNOWN_RANK ? true : false;
-  if (is_unkown_rank) {
-    OP_LOGW(op.GetName().c_str(), "the input os unkown rank, will set the input -1, -1, -1 , -1");
-    image_shape = {-1, -1, -1, -1};
+  // the size num must be 2, mean output h, output w
+  OP_LOGD(TbeGetName(op).c_str(), "the size num must be 2. get the num is %zu", size_out.size());
+  CHECK(size_out.size() != size_len,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op).c_str(), OtherErrMsg("the input size num must be 2.")),
+        return false);
+
+  // get y shape
+  GeShape& y_shape = output_desc_y->MutableShape();
+  y_shape.SetDimNum(output_len);
+  if (!x_shape.IsUnknownDimNum()) {
+    OP_LOGD(TbeGetName(op).c_str(), "the input shape size must be 4. get shape size is %zu", x_shape.GetDimNum());
+    CHECK(x_shape.GetDimNum() != output_len,
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op).c_str(), OtherErrMsg("The dim of input x is not 4")),
+          return false);
+    y_shape.SetDim(image_n_idx, x_shape.GetDim(image_n_idx));
+    y_shape.SetDim(image_c_idx, x_shape.GetDim(image_c_idx));
   } else {
-    input_desc_x->GetShapeRange(x_range);
+    OP_LOGW(TbeGetName(op).c_str(), "the input is unkown rank, will set the out nc = -1, -1");
+    y_shape.SetDim(image_n_idx, -1);
+    y_shape.SetDim(image_c_idx, -1);
+  }
+  y_shape.SetDim(image_h_idx, size_out[0]);
+  y_shape.SetDim(image_w_idx, size_out[1]);
+  // infer shape end
+
+  // charge whether is dynamic, when output is static shape, return true
+  CHECK(!y_shape.IsUnknownShape(), OP_LOGD(TbeGetName(op).c_str(), "the output is static shape. infer succ"),
+        return true);
+
+  OP_LOGD(TbeGetName(op).c_str(), "the output is dynamic shape. will infer range");
+  // infer shape_range start
+  std::vector<std::pair<int64_t, int64_t>> x_range;
+  vector<int64_t> image_shape{-1, -1, -1, -1};
+  // check whether is -2 case
+  if (!x_shape.IsUnknownDimNum()) {
+    image_shape = x_shape.GetDims();
+    (void)input_desc_x->GetShapeRange(x_range);
   }
   MakeUpShapeRange(image_shape, x_range);
-  
-  vector<int64_t> size_out;
-  std::vector<std::pair<int64_t, int64_t>> output_range;
-  auto size_idx = static_cast<uint32_t>(op_desc->GetInputIndexByName(size_name));
-  const GeTensor *size_tensor = OpDescUtils::GetInputConstData(op, size_idx);
-  if (size_tensor == nullptr) {
-    OP_LOGW(op.GetName().c_str(), "get sise const value failed, will set output h w = [-1, -1]");
-    size_out.push_back(-1);
-    size_out.push_back(-1);
-    output_range.push_back(std::pair<int64_t, int64_t>{1, -1});
-    output_range.push_back(std::pair<int64_t, int64_t>{1, -1});
+  OP_LOGD(TbeGetName(op).c_str(), "the input range size must be 4. get size is %zu", x_range.size());
+  CHECK(x_range.size() != output_len,
+        VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op).c_str(), OtherErrMsg("the x range size is not equal 4")),
+        return false);
+  if (!is_size_const) {
+    std::vector<std::pair<int64_t, int64_t>> size_value_range;
+    auto input_size_x = op_desc->MutableInputDesc(size_info.first);
+    CHECK(input_size_x == nullptr,
+          VECTOR_INFER_SHAPE_INNER_ERR_REPORT(TbeGetName(op).c_str(), OtherErrMsg("input size is null.")),
+          return false);
+    // means no const value, will get the value range
+    (void)input_size_x->GetValueRange(size_value_range);
+    // the size num must be 2, so the value range num must be 2
+    if (size_value_range.size() != size_len) {
+      x_range[image_h_idx] = std::pair<int64_t, int64_t>(0, -1);
+      x_range[image_w_idx] = std::pair<int64_t, int64_t>(0, -1);
+    } else {
+      x_range[image_h_idx] = size_value_range[0];
+      x_range[image_w_idx] = size_value_range[1];
+    }
   } else {
-    GetResizeConstValue(op, size_tensor, input_size_dtype, size_out);
-    output_range.push_back(std::pair<int64_t, int64_t>{size_out[0], size_out[0]});
-    output_range.push_back(std::pair<int64_t, int64_t>{size_out[1], size_out[1]});
+    x_range[image_h_idx] = std::pair<int64_t, int64_t>(size_out[0], size_out[0]);
+    x_range[image_w_idx] = std::pair<int64_t, int64_t>(size_out[1], size_out[1]);
   }
 
-  // get input shape range
-  std::vector<std::pair<int64_t, int64_t>> result_range;
-
-  vector<int64_t> y_shape;
-  if (input_format == FORMAT_NHWC && image_shape.size() > 3) {
-    y_shape.push_back(image_shape[0]);
-    y_shape.push_back(size_out[0]);
-    y_shape.push_back(size_out[1]);
-    y_shape.push_back(image_shape[3]);
-    result_range.push_back(x_range[0]);
-    result_range.push_back(output_range[0]);
-    result_range.push_back(output_range[1]);
-    result_range.push_back(x_range[3]);
-  } else if (input_format == FORMAT_NCHW && image_shape.size() > 1) {
-    y_shape.push_back(image_shape[0]);
-    y_shape.push_back(image_shape[1]);
-    y_shape.push_back(size_out[0]);
-    y_shape.push_back(size_out[1]);
-    result_range.push_back(x_range[0]);
-    result_range.push_back(x_range[1]);
-    result_range.push_back(output_range[0]);
-    result_range.push_back(output_range[1]);
-  } else {
-    OP_LOGE(op.GetName().c_str(), "Not supported this format %d", input_format);
-    return false;
-  }
-
-  output_desc_y->SetShape(GeShape(y_shape));
-  output_desc_y->SetOriginShape(GeShape(y_shape));
-  auto input_dtype = input_desc_x->GetDataType();
-  output_desc_y->SetDataType(input_dtype);
-  output_desc_y->SetShapeRange(result_range);
-
+  output_desc_y->SetShapeRange(x_range);
+  // infer shape_range end
   return true;
 }
 
@@ -1717,14 +1753,17 @@ bool SyncResizeInferShape(const Operator& op) {
 
 // ---------------ResizeBilinearV2 Op Start-------------------
 IMPLEMT_COMMON_INFERFUNC(ResizeBilinearV2InferShape) {
-  const vector<string> depend_names = {"size"};
-  PREPARE_DYNAMIC_SHAPE(depend_names);
-  if (!ResizeConstInferShape(op, "x", "size", "y")) {
+  static const std::pair<uint32_t, std::string> input_x{0, "x"};
+  static const std::pair<uint32_t, std::string> input_size{1, "size"};
+  static const std::pair<uint32_t, std::string> output_y{0, "y"};
+  const vector<string> depends{input_size.second};
+  PREPARE_DYNAMIC_SHAPE(depends);
+  if (!ResizeConstInferShape(op, input_x, input_size, output_y)) {
     return GRAPH_FAILED;
   }
 
   auto op_desc_info = OpDescUtils::GetOpDescFromOperator(op);
-  auto output_desc_y = op_desc_info->MutableOutputDesc("y");
+  auto output_desc_y = op_desc_info->MutableOutputDesc(output_y.first);
   output_desc_y->SetDataType(DT_FLOAT);
 
   return GRAPH_SUCCESS;
@@ -2040,9 +2079,12 @@ COMMON_INFER_FUNC_REG(ResizeNearestNeighborV2D, ResizeInferShape);
 // ---------------ResizeNearestNeighborV2 Op Start-------------------
 // ---------------ResizeBilinearV2 Op Start-------------------
 IMPLEMT_COMMON_INFERFUNC(ResizeNearestNeighborV2InferShape) {
-  const vector<string> depend_names = {"size"};
-  PREPARE_DYNAMIC_SHAPE(depend_names);
-  if (!ResizeConstInferShape(op, "x", "size", "y")) {
+  static const std::pair<uint32_t, std::string> input_x{0, "x"};
+  static const std::pair<uint32_t, std::string> input_size{1, "size"};
+  static const std::pair<uint32_t, std::string> output_y{0, "y"};
+  const vector<string> depends{input_size.second};
+  PREPARE_DYNAMIC_SHAPE(depends);
+  if (!ResizeConstInferShape(op, input_x, input_size, output_y)) {
     return GRAPH_FAILED;
   }
 
