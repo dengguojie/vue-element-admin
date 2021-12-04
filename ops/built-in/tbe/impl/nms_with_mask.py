@@ -23,12 +23,13 @@ from te import tik
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
+
 # 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
     The class for constant.
     """
-    
+
     # shape's dim of input must be 2
     INPUT_DIM = 2
     # scaling factor
@@ -127,23 +128,27 @@ def _get_reduced_proposal(ib, out_proposal, output_proposals_final, in_proposal,
     if tbe_platform.api_check_support("tik.vreduce", "float16") and tbe_platform.api_check_support(
             "tik.v4dtrans", "float16"):
         with ib.for_range(0, Constant.VALID_COLUMN_NUM) as i:
-            ib.vextract(coord_addr[Constant.BURST_PROPOSAL_NUM * i], in_proposal, Constant.BURST_PROPOSAL_NUM // Constant.RPN_PROPOSAL_NUM, i)
+            ib.vextract(coord_addr[Constant.BURST_PROPOSAL_NUM * i],
+                        in_proposal, Constant.BURST_PROPOSAL_NUM // Constant.RPN_PROPOSAL_NUM, i)
         # transpose 5*burst_proposal_num to burst_proposal_num*5, output boxes and scores
         ib.v4dtrans(True, output_proposals_final, coord_addr, Constant.BURST_PROPOSAL_NUM, Constant.VALID_COLUMN_NUM)
     else:
         with ib.for_range(0, Constant.COORD_COLUMN_NUM) as i:
-            ib.vextract(coord_addr[Constant.BURST_PROPOSAL_NUM * i], in_proposal, Constant.BURST_PROPOSAL_NUM // Constant.RPN_PROPOSAL_NUM, i)
+            ib.vextract(coord_addr[Constant.BURST_PROPOSAL_NUM * i],
+                        in_proposal, Constant.BURST_PROPOSAL_NUM // Constant.RPN_PROPOSAL_NUM, i)
 
     # coordinate multiplied by down_factor to prevent out of range
     ib.vmuls(128, coord_addr, coord_addr, Constant.DOWN_FACTOR, 4, 1, 1, 8, 8)
 
     # add 1 for x1 and y1 because nms operate would reduces 1
     ib.vadds(128, coord_addr[0], coord_addr[0], 1.0, 1, 1, 1, 8, 8)
-    ib.vadds(128, coord_addr[Constant.BURST_PROPOSAL_NUM * 1], coord_addr[Constant.BURST_PROPOSAL_NUM * 1], 1.0, 1, 1, 1, 8, 8)
+    ib.vadds(128, coord_addr[Constant.BURST_PROPOSAL_NUM * 1],
+             coord_addr[Constant.BURST_PROPOSAL_NUM * 1], 1.0, 1, 1, 1, 8, 8)
 
     # compose new proposals
     with ib.for_range(0, Constant.COORD_COLUMN_NUM) as i:
-        ib.vconcat(out_proposal, coord_addr[Constant.BURST_PROPOSAL_NUM * i], Constant.BURST_PROPOSAL_NUM // Constant.RPN_PROPOSAL_NUM, i)
+        ib.vconcat(out_proposal, coord_addr[Constant.BURST_PROPOSAL_NUM * i],
+                   Constant.BURST_PROPOSAL_NUM // Constant.RPN_PROPOSAL_NUM, i)
 
 
 # 'pylint: disable=too-many-locals,too-many-arguments
@@ -182,8 +187,10 @@ def _tik_func_nms_single_core_multithread(input_shape, thresh, total_output_prop
     out_index = tik_instance.Tensor("int32", (total_output_proposal_num,), name="out_index", scope=tik.scope_gm)
     out_mask = tik_instance.Tensor("uint8", (total_output_proposal_num,), name="out_mask", scope=tik.scope_gm)
     # address is 32B aligned
-    output_index_ub = tik_instance.Tensor("int32", (Constant.BURST_PROPOSAL_NUM,), name="output_index_ub", scope=tik.scope_ubuf)
-    output_mask_ub = tik_instance.Tensor("uint8", (Constant.BURST_PROPOSAL_NUM,), name="output_mask_ub", scope=tik.scope_ubuf)
+    output_index_ub = tik_instance.Tensor("int32", (Constant.BURST_PROPOSAL_NUM,),
+                                          name="output_index_ub", scope=tik.scope_ubuf)
+    output_mask_ub = tik_instance.Tensor("uint8", (Constant.BURST_PROPOSAL_NUM,),
+                                         name="output_mask_ub", scope=tik.scope_ubuf)
     output_proposals_ub = tik_instance.Tensor("float16", (Constant.BURST_PROPOSAL_NUM, Constant.VALID_COLUMN_NUM),
                                               name="output_proposals_ub",
                                               scope=tik.scope_ubuf)
@@ -203,26 +210,32 @@ def _tik_func_nms_single_core_multithread(input_shape, thresh, total_output_prop
         name="selected_reduced_proposals_ub",
         scope=tik.scope_ubuf)
     # init middle selected area
-    selected_area_ub = tik_instance.Tensor("float16", (_ceiling(total_output_proposal_num, Constant.RPN_PROPOSAL_NUM),),
+    selected_area_ub = tik_instance.Tensor("float16", (_ceiling(total_output_proposal_num,
+                                                                Constant.RPN_PROPOSAL_NUM),),
                                            name="selected_area_ub",
                                            scope=tik.scope_ubuf)
     # init middle sup_vec
-    sup_vec_ub = tik_instance.Tensor("uint16", (_ceiling(total_output_proposal_num, Constant.RPN_PROPOSAL_NUM),),
+    sup_vec_ub = tik_instance.Tensor("uint16", (_ceiling(total_output_proposal_num,
+                                                         Constant.RPN_PROPOSAL_NUM),),
                                      name="sup_vec_ub",
                                      scope=tik.scope_ubuf)
     tik_instance.vector_dup(16, sup_vec_ub[0], 1, 1, 1, 8)
 
     # init nms tensor
-    temp_area_ub = tik_instance.Tensor("float16", (Constant.BURST_PROPOSAL_NUM,), name="temp_area_ub", scope=tik.scope_ubuf)
+    temp_area_ub = tik_instance.Tensor("float16", (Constant.BURST_PROPOSAL_NUM,),
+                                       name="temp_area_ub", scope=tik.scope_ubuf)
     temp_iou_ub = tik_instance.Tensor("float16",
-                                      (_ceiling(total_output_proposal_num, Constant.RPN_PROPOSAL_NUM), Constant.RPN_PROPOSAL_NUM),
+                                      (_ceiling(total_output_proposal_num,
+                                                Constant.RPN_PROPOSAL_NUM), Constant.RPN_PROPOSAL_NUM),
                                       name="temp_iou_ub",
                                       scope=tik.scope_ubuf)
     temp_join_ub = tik_instance.Tensor("float16",
-                                       (_ceiling(total_output_proposal_num, Constant.RPN_PROPOSAL_NUM), Constant.RPN_PROPOSAL_NUM),
+                                       (_ceiling(total_output_proposal_num,
+                                                 Constant.RPN_PROPOSAL_NUM), Constant.RPN_PROPOSAL_NUM),
                                        name="temp_join_ub",
                                        scope=tik.scope_ubuf)
-    temp_sup_matrix_ub = tik_instance.Tensor("uint16", (_ceiling(total_output_proposal_num, Constant.RPN_PROPOSAL_NUM),),
+    temp_sup_matrix_ub = tik_instance.Tensor("uint16", (_ceiling(total_output_proposal_num,
+                                                                 Constant.RPN_PROPOSAL_NUM),),
                                              name="temp_sup_matrix_ub",
                                              scope=tik.scope_ubuf)
     temp_sup_vec_ub = tik_instance.Tensor("uint16", (Constant.BURST_PROPOSAL_NUM,),
@@ -235,7 +248,8 @@ def _tik_func_nms_single_core_multithread(input_shape, thresh, total_output_prop
                                               scope=tik.scope_ubuf)
         data_zero, data_one = _get_src_tensor(tik_instance)
 
-        middle_reduced_proposals = tik_instance.Tensor("float16", (Constant.BURST_PROPOSAL_NUM, Constant.ELEMENT_NUM),
+        middle_reduced_proposals = tik_instance.Tensor("float16", (Constant.BURST_PROPOSAL_NUM,
+                                                                   Constant.ELEMENT_NUM),
                                                        name="middle_reduced_proposals",
                                                        scope=tik.scope_ubuf)
 
@@ -245,18 +259,21 @@ def _tik_func_nms_single_core_multithread(input_shape, thresh, total_output_prop
                                                  name="nms_tensor_pattern",
                                                  scope=tik.scope_ubuf)
         # init ori coord
-        coord_addr = tik_instance.Tensor("float16", (Constant.VALID_COLUMN_NUM, Constant.BURST_PROPOSAL_NUM),
+        coord_addr = tik_instance.Tensor("float16", (Constant.VALID_COLUMN_NUM,
+                                                     Constant.BURST_PROPOSAL_NUM),
                                          name="coord_addr",
                                          scope=tik.scope_ubuf)
         # init reduce zoom coord
-        zoom_coord_reduce = tik_instance.Tensor("float16", (Constant.COORD_COLUMN_NUM, Constant.BURST_PROPOSAL_NUM),
+        zoom_coord_reduce = tik_instance.Tensor("float16", (Constant.COORD_COLUMN_NUM,
+                                                            Constant.BURST_PROPOSAL_NUM),
                                                 name="zoom_coord_reduce",
                                                 scope=tik.scope_ubuf)
         # init reduce num
         num_nms = tik_instance.Scalar(dtype="uint32")
     else:
         # init ori coord
-        coord_addr = tik_instance.Tensor("float16", (Constant.COORD_COLUMN_NUM, Constant.BURST_PROPOSAL_NUM),
+        coord_addr = tik_instance.Tensor("float16", (Constant.COORD_COLUMN_NUM,
+                                                     Constant.BURST_PROPOSAL_NUM),
                                          name="coord_addr",
                                          scope=tik.scope_ubuf)
         mask = tik_instance.Scalar(dtype="uint8")
@@ -281,8 +298,10 @@ def _tik_func_nms_single_core_multithread(input_shape, thresh, total_output_prop
         with tik_instance.else_scope():
             handling_proposals_cnt.set_as(Constant.BURST_PROPOSAL_NUM)
 
-        tik_instance.data_move(fresh_proposals_ub[0], proposals[burst_index * Constant.BURST_PROPOSAL_NUM * Constant.ELEMENT_NUM], 0, 1,
-                               _ceil_div(handling_proposals_cnt * Constant.RPN_PROPOSAL_NUM, Constant.CONFIG_DATA_ALIGN), 0, 0, 0)
+        tik_instance.data_move(fresh_proposals_ub[0],
+                               proposals[burst_index * Constant.BURST_PROPOSAL_NUM * Constant.ELEMENT_NUM], 0, 1,
+                               _ceil_div(handling_proposals_cnt *
+                                         Constant.RPN_PROPOSAL_NUM, Constant.CONFIG_DATA_ALIGN), 0, 0, 0)
         # reduce fresh proposal
         _get_reduced_proposal(tik_instance, temp_reduced_proposals_ub, output_proposals_ub, fresh_proposals_ub,
                               coord_addr)
@@ -293,7 +312,8 @@ def _tik_func_nms_single_core_multithread(input_shape, thresh, total_output_prop
         length = tik_instance.Scalar(dtype="uint16")
         length.set_as(_ceiling(selected_proposals_cnt, Constant.RPN_PROPOSAL_NUM))
         # clear temp_sup_vec_ub
-        tik_instance.vector_dup(128, temp_sup_vec_ub[0], 1, temp_sup_vec_ub.shape[0] // Constant.BURST_PROPOSAL_NUM, 1, 8)
+        tik_instance.vector_dup(128, temp_sup_vec_ub[0], 1,
+                                temp_sup_vec_ub.shape[0] // Constant.BURST_PROPOSAL_NUM, 1, 8)
 
         with tik_instance.for_range(0, _ceil_div(handling_proposals_cnt, Constant.RPN_PROPOSAL_NUM)) as i:
             length.set_as(length + Constant.RPN_PROPOSAL_NUM)
@@ -303,17 +323,21 @@ def _tik_func_nms_single_core_multithread(input_shape, thresh, total_output_prop
                               _ceil_div(selected_proposals_cnt, Constant.RPN_PROPOSAL_NUM))
             # calculate intersection of tempReducedProposals and tempReducedProposals(include itself)
             tik_instance.viou(temp_iou_ub[_ceiling(selected_proposals_cnt, Constant.RPN_PROPOSAL_NUM), 0],
-                              temp_reduced_proposals_ub, temp_reduced_proposals_ub[i * Constant.RPN_PROPOSAL_NUM, 0], i + 1)
+                              temp_reduced_proposals_ub,
+                              temp_reduced_proposals_ub[i * Constant.RPN_PROPOSAL_NUM, 0], i + 1)
             # calculate join of tempReducedProposals and selReducedProposals
             tik_instance.vaadd(temp_join_ub, selected_area_ub, temp_area_ub[i * Constant.RPN_PROPOSAL_NUM],
                                _ceil_div(selected_proposals_cnt, Constant.RPN_PROPOSAL_NUM))
             # calculate intersection of tempReducedProposals and tempReducedProposals(include itself)
-            tik_instance.vaadd(temp_join_ub[_ceiling(selected_proposals_cnt, Constant.RPN_PROPOSAL_NUM), 0], temp_area_ub,
+            tik_instance.vaadd(temp_join_ub[_ceiling(selected_proposals_cnt,
+                                                     Constant.RPN_PROPOSAL_NUM), 0], temp_area_ub,
                                temp_area_ub[i * Constant.RPN_PROPOSAL_NUM], i + 1)
             # calculate join*(thresh/(1+thresh))
-            tik_instance.vmuls(128, temp_join_ub, temp_join_ub, thresh, _ceil_div(length, Constant.ELEMENT_NUM), 1, 1, 8, 8)
+            tik_instance.vmuls(128, temp_join_ub, temp_join_ub, thresh,
+                               _ceil_div(length, Constant.ELEMENT_NUM), 1, 1, 8, 8)
             # compare and generate suppression matrix
-            tik_instance.vcmpv_gt(temp_sup_matrix_ub, temp_iou_ub, temp_join_ub, _ceil_div(length, Constant.ELEMENT_NUM), 1, 1,
+            tik_instance.vcmpv_gt(temp_sup_matrix_ub, temp_iou_ub,
+                                  temp_join_ub, _ceil_div(length, Constant.ELEMENT_NUM), 1, 1,
                                   8, 8)
             # generate suppression vector
             rpn_cor_ir = tik_instance.set_rpn_cor_ir(0)
@@ -322,7 +346,8 @@ def _tik_func_nms_single_core_multithread(input_shape, thresh, total_output_prop
                                               _ceil_div(selected_proposals_cnt, Constant.RPN_PROPOSAL_NUM))
             with tik_instance.if_scope(i > 0):
                 rpn_cor_ir = tik_instance.rpn_cor(
-                    temp_sup_matrix_ub[_ceiling(selected_proposals_cnt, Constant.RPN_PROPOSAL_NUM)], temp_sup_vec_ub, 1, 1, i)
+                    temp_sup_matrix_ub[_ceiling(selected_proposals_cnt,
+                                                Constant.RPN_PROPOSAL_NUM)], temp_sup_vec_ub, 1, 1, i)
             # diagonal
             tik_instance.rpn_cor_diag(temp_sup_vec_ub[i * Constant.RPN_PROPOSAL_NUM],
                                       temp_sup_matrix_ub[length - Constant.RPN_PROPOSAL_NUM], rpn_cor_ir)
@@ -337,22 +362,26 @@ def _tik_func_nms_single_core_multithread(input_shape, thresh, total_output_prop
             tik_instance.mov_cmpmask_to_tensor(nms_tensor_pattern.reinterpret_cast_to("uint16"), cmpmask)
 
             # save the area corresponding to these filtered proposals for the next nms use
-            tik_instance.vreduce(128, selected_area_ub[selected_proposals_cnt], temp_area_ub, nms_tensor_pattern, 1, 1,
+            tik_instance.vreduce(128, selected_area_ub[selected_proposals_cnt],
+                                 temp_area_ub, nms_tensor_pattern, 1, 1,
                                  8, 0, 0, num_nms, "counter")
             # sup_vec_ub set as 0
-            tik_instance.vector_dup(16, sup_vec_ub[selected_proposals_cnt], 0, _ceil_div(num_nms, Constant.RPN_PROPOSAL_NUM), 1,
+            tik_instance.vector_dup(16, sup_vec_ub[selected_proposals_cnt],
+                                    0, _ceil_div(num_nms, Constant.RPN_PROPOSAL_NUM), 1,
                                     1)
 
             # save the filtered proposal for next nms use
             tik_instance.vector_dup(128, zoom_coord_reduce, 0, 4, 1, 8)
             tik_instance.vector_dup(128, middle_reduced_proposals, 0, 8, 1, 8)
             with tik_instance.for_range(0, Constant.COORD_COLUMN_NUM) as i:
-                tik_instance.vreduce(128, zoom_coord_reduce[i, 0], coord_addr[i, 0], nms_tensor_pattern, 1, 1, 8, 0, 0,
+                tik_instance.vreduce(128, zoom_coord_reduce[i, 0],
+                                     coord_addr[i, 0], nms_tensor_pattern, 1, 1, 8, 0, 0,
                                      None, "counter")
             with tik_instance.for_range(0, Constant.COORD_COLUMN_NUM) as i:
                 tik_instance.vconcat(middle_reduced_proposals, zoom_coord_reduce[i, 0],
                                      _ceil_div(num_nms, Constant.RPN_PROPOSAL_NUM), i)
-            tik_instance.data_move(selected_reduced_proposals_ub[selected_proposals_cnt, 0], middle_reduced_proposals,
+            tik_instance.data_move(selected_reduced_proposals_ub[selected_proposals_cnt, 0],
+                                   middle_reduced_proposals,
                                    0, 1, _ceil_div(num_nms * Constant.ELEMENT_NUM, Constant.RPN_PROPOSAL_NUM), 0, 0)
 
             selected_proposals_cnt.set_as(selected_proposals_cnt + num_nms)
@@ -369,7 +398,8 @@ def _tik_func_nms_single_core_multithread(input_shape, thresh, total_output_prop
                 with tik_instance.if_scope(temp_sup_vec_ub[i] == 0):
                     with tik_instance.for_range(0, Constant.ELEMENT_NUM) as j:
                         # update selected_reduced_proposals_ub
-                        selected_reduced_proposals_ub[selected_proposals_cnt, j].set_as(temp_reduced_proposals_ub[i, j])
+                        selected_reduced_proposals_ub[selected_proposals_cnt,
+                                                      j].set_as(temp_reduced_proposals_ub[i, j])
                     # update selected_area_ub
                     selected_area_ub[selected_proposals_cnt].set_as(temp_area_ub[i])
                     # update sup_vec_ub
@@ -385,7 +415,8 @@ def _tik_func_nms_single_core_multithread(input_shape, thresh, total_output_prop
         left_proposal_cnt.set_as(left_proposal_cnt - handling_proposals_cnt)
         # mov target proposals to out - mte3
         tik_instance.data_move(ret[burst_index * Constant.BURST_PROPOSAL_NUM, 0], output_proposals_ub, 0, 1,
-                               _ceil_div(handling_proposals_cnt * Constant.VALID_COLUMN_NUM, Constant.RPN_PROPOSAL_NUM), 0, 0, 0)
+                               _ceil_div(handling_proposals_cnt *
+                                         Constant.VALID_COLUMN_NUM, Constant.RPN_PROPOSAL_NUM), 0, 0, 0)
         tik_instance.data_move(out_index[burst_index * Constant.BURST_PROPOSAL_NUM], output_index_ub, 0, 1,
                                _ceil_div(handling_proposals_cnt, Constant.ELEMENT_NUM), 0, 0, 0)
         tik_instance.data_move(out_mask[burst_index * Constant.BURST_PROPOSAL_NUM], output_mask_ub, 0, 1,
@@ -435,7 +466,8 @@ def nms_with_mask(box_scores, selected_boxes, selected_idx, selected_mask, iou_t
     """
     # check shape
     input_shape = box_scores.get("shape")
-    para_check.check_shape(input_shape, min_dim=1, min_rank=Constant.INPUT_DIM, max_rank=Constant.INPUT_DIM, param_name="box_scores")
+    para_check.check_shape(input_shape, min_dim=1,
+                           min_rank=Constant.INPUT_DIM, max_rank=Constant.INPUT_DIM, param_name="box_scores")
 
     # new soc branch
     if tbe_platform.api_check_support("tik.vreduce", "float16") and not tbe_platform.api_check_support("tik.vaadd",
@@ -461,8 +493,10 @@ def nms_with_mask(box_scores, selected_boxes, selected_idx, selected_mask, iou_t
     burst_size = Constant.BURST_PROPOSAL_NUM * int32_size + Constant.BURST_PROPOSAL_NUM * uint8_size + \
                  Constant.BURST_PROPOSAL_NUM * Constant.VALID_COLUMN_NUM * fp16_size
     # compute shape is [N,8]
-    selected_size = _ceiling(input_shape[0], Constant.RPN_PROPOSAL_NUM) * Constant.ELEMENT_NUM * fp16_size + _ceiling(
-        input_shape[0], Constant.RPN_PROPOSAL_NUM) * fp16_size + _ceiling(input_shape[0], Constant.RPN_PROPOSAL_NUM) * uint16_size
+    selected_size = _ceiling(input_shape[0],
+                             Constant.RPN_PROPOSAL_NUM) * Constant.ELEMENT_NUM * fp16_size + _ceiling(
+        input_shape[0], Constant.RPN_PROPOSAL_NUM) *\
+                    fp16_size + _ceiling(input_shape[0], Constant.RPN_PROPOSAL_NUM) * uint16_size
     # intermediate calculation results
     temp_iou_size = _ceiling(input_shape[0], Constant.RPN_PROPOSAL_NUM) * Constant.RPN_PROPOSAL_NUM * fp16_size
     temp_join_size = _ceiling(input_shape[0], Constant.RPN_PROPOSAL_NUM) * Constant.RPN_PROPOSAL_NUM * fp16_size
@@ -569,10 +603,14 @@ class _NMSHelper():
         self.one_datatype_scalar = tik_instance.Scalar(self.data_type, 'one_dtype_scalar', init_value=1.)
 
         # note: defed size need to 32b aligned
-        self.x1_ub = tik_instance.Tensor(shape=(self.ceil_n,), dtype=self.data_type, name='x1_ub', scope=tik.scope_ubuf)
-        self.x2_ub = tik_instance.Tensor(shape=(self.ceil_n,), dtype=self.data_type, name='x2_ub', scope=tik.scope_ubuf)
-        self.y1_ub = tik_instance.Tensor(shape=(self.ceil_n,), dtype=self.data_type, name='y1_ub', scope=tik.scope_ubuf)
-        self.y2_ub = tik_instance.Tensor(shape=(self.ceil_n,), dtype=self.data_type, name='y2_ub', scope=tik.scope_ubuf)
+        self.x1_ub = tik_instance.Tensor(shape=(self.ceil_n,),
+                                         dtype=self.data_type, name='x1_ub', scope=tik.scope_ubuf)
+        self.x2_ub = tik_instance.Tensor(shape=(self.ceil_n,),
+                                         dtype=self.data_type, name='x2_ub', scope=tik.scope_ubuf)
+        self.y1_ub = tik_instance.Tensor(shape=(self.ceil_n,),
+                                         dtype=self.data_type, name='y1_ub', scope=tik.scope_ubuf)
+        self.y2_ub = tik_instance.Tensor(shape=(self.ceil_n,),
+                                         dtype=self.data_type, name='y2_ub', scope=tik.scope_ubuf)
 
         # 1980's input => new soc's output_mask_ub
         self.all_inp_proposals_ub_1980_fp32 = tik_instance.Tensor('float32', (self.ceil_n, Constant.ELEMENT_NUM),
@@ -648,7 +686,8 @@ class _NMSHelper():
         -------
         None
         """
-        self.output_mask_f16 = self.tik_instance.Tensor('float16', (Constant.BURST_PROPOSAL_NUM,), name="output_mask_f16",
+        self.output_mask_f16 = self.tik_instance.Tensor('float16',
+                                                        (Constant.BURST_PROPOSAL_NUM,), name="output_mask_f16",
                                                         scope=tik.scope_ubuf)
         zero_fp16_scalar = self.tik_instance.Scalar(dtype="float16", name="zero_scalar", init_value=0.0)
         one_fp16_scalar = self.tik_instance.Scalar(dtype="float16", name="one_scalar", init_value=1.0)
@@ -681,7 +720,8 @@ class _NMSHelper():
         self.valid_mask_fp16_ub = self.tmp_tensor_ub_fp16
 
         scalar_i = tik_instance.Scalar('float16', init_value=1)
-        self._tailing_handle_vector_dup(self.valid_mask_fp16_ub, scalar_i, self.valid_mask_size_int8, Constant.FP16_SIZE)
+        self._tailing_handle_vector_dup(self.valid_mask_fp16_ub,
+                                        scalar_i, self.valid_mask_size_int8, Constant.FP16_SIZE)
         self._tailing_handle_vec_conv(self.valid_mask_int8_ub, self.valid_mask_fp16_ub, self.valid_mask_size_int8,
                                       Constant.INT8_SIZE, Constant.FP16_SIZE, 'round')
 
@@ -711,21 +751,25 @@ class _NMSHelper():
         self._tailing_handle_vector_dup(self.dsorts_ub, scalar_dsorts_size, dsorts_size, Constant.FP16_SIZE)
         selected_idx_ub_fp16 = self.tmp_tensor_ub_fp16
         self._tailing_handle_vector_dup(selected_idx_ub_fp16, scalar_dsorts_size, dsorts_size, Constant.FP16_SIZE)
-        self._tailing_handle_vec_conv(selected_idx_ub_fp16, self.selected_idx_ub, self.ceil_n, Constant.FP16_SIZE, Constant.INT32_SIZE,
+        self._tailing_handle_vec_conv(selected_idx_ub_fp16,
+                                      self.selected_idx_ub, self.ceil_n, Constant.FP16_SIZE, Constant.INT32_SIZE,
                                       '', 1.)
         self._tailing_handle_vsub(self.dsorts_ub, self.dsorts_ub, selected_idx_ub_fp16, dsorts_size, Constant.FP16_SIZE,
                                   Constant.FP16_SIZE, Constant.FP16_SIZE)
 
         self.vcmax_ub = tik_instance.Tensor('float16', (Constant.MASK_VCMAX_FP16,), tik.scope_ubuf, 'vcmax_ub')
-        self.middle_max_val = tik_instance.Tensor('float16', (Constant.MASK_VCMAX_FP16,), tik.scope_ubuf, 'middle_max_val')
+        self.middle_max_val = tik_instance.Tensor('float16',
+                                                  (Constant.MASK_VCMAX_FP16,), tik.scope_ubuf, 'middle_max_val')
         self.dst_max_val_ub = tik_instance.Tensor('float16', (Constant.SHAPE_NEXT_NONZERO,), tik.scope_ubuf,
                                                   'dst_max_val_ub')
 
         # idx_fp16_ub stores next nonzero idx, dtype needs conv to int8
-        self.idx_fp16_ub = tik_instance.Tensor('float16', (Constant.SHAPE_NEXT_NONZERO,), tik.scope_ubuf, 'idx_fp16_ub')
+        self.idx_fp16_ub = tik_instance.Tensor('float16',
+                                               (Constant.SHAPE_NEXT_NONZERO,), tik.scope_ubuf, 'idx_fp16_ub')
 
         # practically ceil_n is less than Constant.MASK_VCMAX_FP16 * REPEAT_TIMES_MAX
-        self.repeat_vmul_vcmax = self.ceil_n % (Constant.MASK_VCMAX_FP16 * Constant.REPEAT_TIMES_MAX) // Constant.MASK_VCMAX_FP16
+        self.repeat_vmul_vcmax = self.ceil_n % (Constant.MASK_VCMAX_FP16 *
+                                                Constant.REPEAT_TIMES_MAX) // Constant.MASK_VCMAX_FP16
         self.last_num_vmul_vcmax = self.ceil_n % Constant.MASK_VCMAX_FP16
         self.vcmax_mask = self.repeat_vmul_vcmax + (1 if self.last_num_vmul_vcmax > 0 else 0)
 
@@ -773,15 +817,19 @@ class _NMSHelper():
             repeat = _ceil_div(self.N * Constant.ELEMENT_NUM, Constant.BURST_PROPOSAL_NUM)
             with self.tik_instance.for_range(0, repeat) as i:
                 offset = i * Constant.BURST_PROPOSAL_NUM
-                self.tik_instance.data_move(self.tmp_tensor_ub_fp16_burst, self.all_inp_proposals_gm_1980[offset], 0, 1,
-                                            Constant.BURST_PROPOSAL_NUM * self.input_bytes_each_elem // Constant.CONFIG_DATA_ALIGN,
+                self.tik_instance.data_move(self.tmp_tensor_ub_fp16_burst,
+                                            self.all_inp_proposals_gm_1980[offset], 0, 1,
+                                            Constant.BURST_PROPOSAL_NUM *
+                                            self.input_bytes_each_elem // Constant.CONFIG_DATA_ALIGN,
                                             src_stride=0, dst_stride=0)
                 self._tailing_handle_vec_conv(self.all_inp_proposals_ub_1980_fp32[offset],
-                                              self.tmp_tensor_ub_fp16_burst, Constant.BURST_PROPOSAL_NUM, Constant.FP32_SIZE, Constant.FP16_SIZE)
+                                              self.tmp_tensor_ub_fp16_burst,
+                                              Constant.BURST_PROPOSAL_NUM, Constant.FP32_SIZE, Constant.FP16_SIZE)
         else:
             # max. burst is 65535, so max. bytes is 65535*32b, support max. N is 65535*32/2/8=131070 for fp16
             self.tik_instance.data_move(self.all_inp_proposals_ub_1980_fp32, self.all_inp_proposals_gm_1980, 0, 1,
-                                        self.ceil_n * Constant.ELEMENT_NUM * self.input_bytes_each_elem // Constant.CONFIG_DATA_ALIGN,
+                                        self.ceil_n * Constant.ELEMENT_NUM *
+                                        self.input_bytes_each_elem // Constant.CONFIG_DATA_ALIGN,
                                         src_stride=0, dst_stride=0)
 
         # fp32. uint32 covers 32 elems, so shape[0] is 256/32=8
@@ -838,7 +886,8 @@ class _NMSHelper():
                                       src1_pattern=src1_pattern_ub,
                                       repeat_times=Constant.REPEAT_TIMES_MAX,
                                       src0_blk_stride=1,
-                                      src0_rep_stride=self.vector_mask_max * self.bytes_each_elem // Constant.CONFIG_DATA_ALIGN,
+                                      src0_rep_stride=self.vector_mask_max *
+                                                      self.bytes_each_elem // Constant.CONFIG_DATA_ALIGN,
                                       # here 0 means: pattern is reused in each repeat
                                       src1_rep_stride=0)
             offset = (i + 1) * vector_proposals_max * Constant.REPEAT_TIMES_MAX
@@ -852,7 +901,8 @@ class _NMSHelper():
                                       src1_pattern=src1_pattern_ub,
                                       repeat_times=repeat,
                                       src0_blk_stride=1,
-                                      src0_rep_stride=self.vector_mask_max * self.bytes_each_elem // Constant.CONFIG_DATA_ALIGN,
+                                      src0_rep_stride=self.vector_mask_max * self.bytes_each_elem //
+                                                      Constant.CONFIG_DATA_ALIGN,
                                       # here 0 means: pattern is reused in each repeat
                                       src1_rep_stride=0)
 
@@ -1267,10 +1317,12 @@ class _NMSHelper():
         """
         # 7967 is [1 1 1 1 1 0 0 0 1 1 1 1 1 0 0 0] for 16 inputs
         pattern_value_7967 = 7967
-        # [1 1 1 1 1 0 0 0   1 1 1 1 1 0 0 0   1 1 1 1 1 0 0 0   1 1 1 1 1 0 0 0] one uint32 can handle selection of 32 elems
+        # [1 1 1 1 1 0 0 0   1 1 1 1 1 0 0 0   1 1 1 1 1 0 0 0
+        # 1 1 1 1 1 0 0 0] one uint32 can handle selection of 32 elems
         pattern_value_522133279 = 522133279
         # def selected_boxes_ub
-        selected_boxes_ub = self.tik_instance.Tensor(self.input_dtype, (self.ceil_n, Constant.VALID_COLUMN_NUM), tik.scope_ubuf,
+        selected_boxes_ub = self.tik_instance.Tensor(self.input_dtype,
+                                                     (self.ceil_n, Constant.VALID_COLUMN_NUM), tik.scope_ubuf,
                                                      'selected_boxes_ub')
 
         # create pattern, shape is 16 or 8, which is enough and it'll be reused in vreduce, and vreduce output
@@ -1283,10 +1335,13 @@ class _NMSHelper():
             repeat = _ceil_div(self.N * Constant.ELEMENT_NUM, Constant.BURST_PROPOSAL_NUM)
             with self.tik_instance.for_range(0, repeat) as i:
                 offset = i * Constant.BURST_PROPOSAL_NUM
-                self.tik_instance.data_move(self.tmp_tensor_ub_fp16_burst, self.all_inp_proposals_gm_1980[offset], 0, 1,
-                                            Constant.BURST_PROPOSAL_NUM * self.input_bytes_each_elem // Constant.CONFIG_DATA_ALIGN, 0, 0)
+                self.tik_instance.data_move(self.tmp_tensor_ub_fp16_burst,
+                                            self.all_inp_proposals_gm_1980[offset], 0, 1,
+                                            Constant.BURST_PROPOSAL_NUM *
+                                            self.input_bytes_each_elem // Constant.CONFIG_DATA_ALIGN, 0, 0)
                 self.tik_instance.vreduce(mask=Constant.BURST_PROPOSAL_NUM,
-                                          dst=selected_boxes_ub[offset * Constant.VALID_COLUMN_NUM // Constant.ELEMENT_NUM],
+                                          dst=selected_boxes_ub[offset *
+                                                                Constant.VALID_COLUMN_NUM // Constant.ELEMENT_NUM],
                                           src0=self.tmp_tensor_ub_fp16_burst,
                                           src1_pattern=pattern,
                                           repeat_times=1,
@@ -1428,7 +1483,8 @@ class _NMSHelper():
         """
         tik_instance = self.tik_instance
 
-        tik_instance.vsel(Constant.BURST_PROPOSAL_NUM, 0, self.output_mask_f16, cmpmask, self.data_fp16_one, self.data_fp16_zero,
+        tik_instance.vsel(Constant.BURST_PROPOSAL_NUM, 0,
+                          self.output_mask_f16, cmpmask, self.data_fp16_one, self.data_fp16_zero,
                           1, 1, 1, 1, 8, 8, 8)
 
         tik_instance.vec_conv(handle_dst_size, "none", dst_ub, self.output_mask_f16, 1, 8, 8)
@@ -1456,7 +1512,8 @@ class _NMSHelper():
 
         # vmul
         if repeat > 0:
-            self.tik_instance.vmul(Constant.MASK_VCMAX_FP16, self.valid_mask_fp16_ub, self.valid_mask_fp16_ub, self.dsorts_ub,
+            self.tik_instance.vmul(Constant.MASK_VCMAX_FP16,
+                                   self.valid_mask_fp16_ub, self.valid_mask_fp16_ub, self.dsorts_ub,
                                    repeat, 1, 1, 1, 8, 8, 8)
 
         if last_num > 0:
@@ -1473,18 +1530,21 @@ class _NMSHelper():
             self.tik_instance.vcmax(last_num, self.vcmax_ub[repeat * 2], self.valid_mask_fp16_ub[offset], 1, 1, 1, 8)
 
         # pattern here means 101010..., vreduce once is enough
-        self.tik_instance.vreduce(Constant.MASK_VCMAX_FP16, self.middle_max_val, self.vcmax_ub, src1_pattern=1, repeat_times=1,
+        self.tik_instance.vreduce(Constant.MASK_VCMAX_FP16,
+                                  self.middle_max_val, self.vcmax_ub, src1_pattern=1, repeat_times=1,
                                   src0_blk_stride=1, src0_rep_stride=0, src1_rep_stride=0)
 
         # below: dst_max_val_ub[0], idx_fp16_ub[0], next_nonzero_int32_idx[0] stores meaningful val
         self.tik_instance.vcmax(self.vcmax_mask, self.dst_max_val_ub, self.middle_max_val, 1, 0, 1, 0)
 
         # dst idx, note: idx maybe valid_mask_size
-        self.tik_instance.vsub(Constant.SHAPE_NEXT_NONZERO, self.idx_fp16_ub, self.dsorts_ub, self.dst_max_val_ub, 1, 1, 1,
+        self.tik_instance.vsub(Constant.SHAPE_NEXT_NONZERO,
+                               self.idx_fp16_ub, self.dsorts_ub, self.dst_max_val_ub, 1, 1, 1,
                                1, 8, 8, 8)
 
         # conv to int32
-        self._tailing_handle_vec_conv(self.next_nonzero_int32_idx, self.idx_fp16_ub, Constant.SHAPE_NEXT_NONZERO, Constant.INT32_SIZE,
+        self._tailing_handle_vec_conv(self.next_nonzero_int32_idx,
+                                      self.idx_fp16_ub, Constant.SHAPE_NEXT_NONZERO, Constant.INT32_SIZE,
                                       Constant.FP16_SIZE, mode='round')
 
     def _one_loop(self, cur):
@@ -1585,7 +1645,8 @@ class _NMSHelper():
 
         # [0 0 1 1] * [1 0 1 0] = [0 0 1 0]
         self._tailing_handle_vmul(self.tmp_valid_mask_float16, self.tmp_valid_mask_float16, self.tmp_mask_float16,
-                                  self.valid_mask_size_int8, self.vector_mask_max, Constant.FP16_SIZE, Constant.FP16_SIZE, Constant.FP16_SIZE)
+                                  self.valid_mask_size_int8,
+                                  self.vector_mask_max, Constant.FP16_SIZE, Constant.FP16_SIZE, Constant.FP16_SIZE)
 
         # float16 to int8
         self._tailing_handle_vec_conv(self.valid_mask_int8_ub, self.tmp_valid_mask_float16, self.valid_mask_size_int8,
@@ -1609,7 +1670,8 @@ class _NMSHelper():
         selected_mask_ub_tmp = self.tmp_tensor_ub_fp16
         scalar_i = self.tik_instance.Scalar('float16', init_value=0)
         self._tailing_handle_vector_dup(selected_mask_ub_tmp, scalar_i, size=self.ceil_n, src_bytes=Constant.FP16_SIZE)
-        self._tailing_handle_vec_conv(selected_mask_ub, selected_mask_ub_tmp, self.ceil_n, Constant.UINT8_SIZE, Constant.FP16_SIZE,
+        self._tailing_handle_vec_conv(selected_mask_ub,
+                                      selected_mask_ub_tmp, self.ceil_n, Constant.UINT8_SIZE, Constant.FP16_SIZE,
                                       'round')
 
         cur = self.tik_instance.Scalar(dtype='int32', name='cur_scalar', init_value=0)
@@ -1658,7 +1720,8 @@ def _tik_func_nms_multi_core_basic_api(input_shape, input_dtype, thresh, total_o
                                     name="in_proposals",
                                     scope=tik.scope_gm)
 
-    nms_helper = _NMSHelper(tik_instance, proposals, (total_input_proposal_num, Constant.ELEMENT_NUM), input_dtype, thresh)
+    nms_helper = _NMSHelper(tik_instance, proposals,
+                            (total_input_proposal_num, Constant.ELEMENT_NUM), input_dtype, thresh)
     output_proposals_ub = nms_helper.selected_boxes_gen()
     output_index_ub = nms_helper.selected_idx_ub
     output_mask_ub = nms_helper.loops()
@@ -1680,7 +1743,9 @@ def _tik_func_nms_multi_core_basic_api(input_shape, input_dtype, thresh, total_o
                            src_stride=0, dst_stride=0)
     tik_instance.data_move(out_mask_gm, output_mask_ub, 0, nburst=1,
                            # here need _ceiling() as ceilN can be 16; 16*1//32=0 is wrong
-                           burst=_ceiling(nms_helper.ceil_n * Constant.UINT8_SIZE, Constant.CONFIG_DATA_ALIGN) // Constant.CONFIG_DATA_ALIGN,
+                           burst=_ceiling(nms_helper.ceil_n *
+                                          Constant.UINT8_SIZE,
+                                          Constant.CONFIG_DATA_ALIGN) // Constant.CONFIG_DATA_ALIGN,
                            src_stride=0, dst_stride=0)
     tik_instance.BuildCCE(kernel_name=kernel_name_var,
                           inputs=[proposals],
@@ -1789,7 +1854,8 @@ def _used_ub_size(n, input_dtype):
     # size of tmp_valid_mask_float16 and tmp_mask_float16
     tmp_mask_size = valid_mask_size_int8 * Constant.FP16_SIZE
     # size used in _init_for_vcmax()
-    init_for_vcmax_size = (dsorts_size + Constant.MASK_VCMAX_FP16 * 2 + Constant.SHAPE_NEXT_NONZERO * 2) * Constant.FP16_SIZE
+    init_for_vcmax_size = (dsorts_size + Constant.MASK_VCMAX_FP16 * 2 +
+                           Constant.SHAPE_NEXT_NONZERO * 2) * Constant.FP16_SIZE
     # size used in _input_trans(), 16 is size of pattern, 4 means x1/y1/x2/y2
     input_trans_size = 8 * Constant.UINT32_SIZE * 4
     selected_boxes_size = ceil_n * Constant.VALID_COLUMN_NUM * input_bytes_each_elem
