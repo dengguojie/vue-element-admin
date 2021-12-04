@@ -258,7 +258,7 @@ class NonZero:
                                                    init_value=mulps_align_num * Constant.UB_REPEAT_SIZE -
                                                    Constant.UB_REPEAT_SIZE)
             start_init_nums = self.tik_instance.Scalar("int32", "start_init_nums", init_value=Constant.UB_REPEAT_SIZE)
-
+            # 'pylint: unused-variable
             with self.tik_instance.for_range(0, ln_max_loop) as emit_idx:
                 cur_emit_nums = self.tik_instance.Scalar("int32", "cur_emit_nums", init_value=start_init_nums)
                 mask = self.tik_instance.Scalar("int32", "mask", init_value=Constant.UB_REPEAT_SIZE)
@@ -649,7 +649,8 @@ class NonZero:
                     self._data_move(self.res_gm[1, out_gm_offset], tmp_ub[1, ub_offset], 1)
                     self._data_move(self.res_value_gm[out_gm_offset], value_tmp_ub[ub_offset], 1)
 
-# 'pylint: disable=too-many-arguments
+
+# 'pylint: disable=too-many-arguments, unused-argument,
 def check_supported(x, value, index, count, transpose, kernel_name="non_zero_with_value"):
     """
     check the attr transpose

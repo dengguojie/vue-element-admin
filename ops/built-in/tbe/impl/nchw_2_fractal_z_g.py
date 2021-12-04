@@ -257,11 +257,13 @@ class Nchw2Fractalzg(object):
         tik_inst = self.tik_inst
         with tik_inst.if_scope(is_left == 1):
             with self.tik_inst.if_scope(left_part * tp.khw % Constant.EPB != 0):
-                self.tik_inst.vector_dup(16, ub_input[Constant.OFFSET_2 + left_zero * tp.khw * Constant.EPB + left_part * tp.khw * Constant.EPB],
+                self.tik_inst.vector_dup(16, ub_input[Constant.OFFSET_2 + left_zero * tp.khw *
+                                                      Constant.EPB + left_part * tp.khw * Constant.EPB],
                                          0, Constant.EPB - (left_part * tp.khw % Constant.EPB), 1, 1)
         with tik_inst.else_scope():
             with self.tik_inst.if_scope(right_part * tp.khw % Constant.EPB != 0):
-                self.tik_inst.vector_dup(16, ub_input[Constant.OFFSET_2 + left_zero * tp.khw * Constant.EPB + right_part * tp.khw * Constant.EPB],
+                self.tik_inst.vector_dup(16, ub_input[Constant.OFFSET_2 + left_zero *
+                                                      tp.khw * Constant.EPB + right_part * tp.khw * Constant.EPB],
                                          0, Constant.EPB - (right_part * tp.khw % Constant.EPB), 1, 1)
 
     def _zero_offset_1(self, ub_input, repeat=248):
@@ -279,7 +281,8 @@ class Nchw2Fractalzg(object):
             src_addr.set_as(lsn * tp.cout_orig * tp.vol_chw + lct * Constant.EPB * tp.vol_chw + left_part * tp.khw)
 
     def _calc_dst_addr_le_16(self, tp, lct, top_distance, nc0_counter, dst_addr):
-        dst_addr.set_as(nc0_counter * tp.khw * tp.dst_n * Constant.EPB + lct * Constant.EPB * Constant.EPB + top_distance * Constant.EPB)
+        dst_addr.set_as(nc0_counter * tp.khw * tp.dst_n * Constant.EPB + lct *
+                        Constant.EPB * Constant.EPB + top_distance * Constant.EPB)
 
     def _calc_burst_len(self, tp, left_part, right_part, is_left, burst_len):
         tik_inst = self.tik_inst
@@ -312,7 +315,8 @@ class Nchw2Fractalzg(object):
             line_blocks = (left_part * tp.khw + Constant.EPB - 1) / Constant.EPB
             ele_num_per_line = line_blocks * Constant.EPB
             src_addr_list = [ub_input[Constant.OFFSET_1 + ele_num_per_line * i] for i in range(Constant.EPB)]
-            dst_addr_list = [ub_input[Constant.OFFSET_2 + left_zero * tp.khw * Constant.EPB + Constant.EPB * i] for i in range(Constant.EPB)]
+            dst_addr_list = [ub_input[Constant.OFFSET_2 + left_zero * tp.khw *
+                                      Constant.EPB + Constant.EPB * i] for i in range(Constant.EPB)]
             repeat_cnt_first = line_blocks
             with tik_inst.if_scope(repeat_cnt_first != 1):
                 src_stride.set_as(1)
@@ -324,7 +328,8 @@ class Nchw2Fractalzg(object):
             src_addr_list = [ub_input[Constant.OFFSET_1 + ele_num_per_line * i] for i in range(Constant.EPB)]
             # step 1 : first vnchwconv
             src_addr_list = [ub_input[Constant.OFFSET_1 + ele_num_per_line * i] for i in range(Constant.EPB)]
-            dst_addr_list = [ub_input[Constant.OFFSET_2 + left_zero * tp.khw * Constant.EPB + Constant.EPB * i] for i in range(Constant.EPB)]
+            dst_addr_list = [ub_input[Constant.OFFSET_2 + left_zero * tp.khw *
+                                      Constant.EPB + Constant.EPB * i] for i in range(Constant.EPB)]
             repeat_cnt_first = line_blocks
             with tik_inst.if_scope(repeat_cnt_first != 1):
                 src_stride.set_as(1)
@@ -352,10 +357,12 @@ class Nchw2Fractalzg(object):
         cout_orig_tail_s = tik_inst.Scalar("int64", init_value=cout_orig_tail)
         self._calc_dst_addr_le_16(tp, lct, top_distance, nc0_counter, dst_addr)
         with tik_inst.if_scope(cout_orig_tail == 0):
-            tik_inst.data_move(self.data_out[dst_addr], self.ub_input[Constant.OFFSET_1], 0, tp.khw, Constant.EPB, 0, tp.dst_n - Constant.EPB)
+            tik_inst.data_move(self.data_out[dst_addr], self.ub_input[Constant.OFFSET_1], 0,
+                               tp.khw, Constant.EPB, 0, tp.dst_n - Constant.EPB)
         with tik_inst.else_scope():
             tik_inst.data_move(self.data_out[dst_addr], self.ub_input[Constant.OFFSET_1],
-                               0, tp.khw, cout_orig_tail_s, Constant.EPB - cout_orig_tail_s, tp.dst_n - cout_orig_tail_s)
+                               0, tp.khw, cout_orig_tail_s, Constant.EPB - cout_orig_tail_s,
+                               tp.dst_n - cout_orig_tail_s)
 
     def _update_param_lr_part_le_16(self, tp, left_zero, left_part, right_part):
         tik_inst = self.tik_inst
@@ -497,7 +504,8 @@ class Nchw2Fractalzg(object):
             src_addr.set_as(hwc_counter * tp.cout_orig * tp.vol_chw + lct * Constant.EPB * tp.vol_chw)
 
     def _calc_dst_addr_gt_16(self, tp, lgc, lct, top_distance, nc0_counter, dst_addr):
-        dst_addr.set_as(nc0_counter * tp.khw * tp.dst_n * Constant.EPB + lct * Constant.EPB * Constant.EPB + top_distance * Constant.EPB)
+        dst_addr.set_as(nc0_counter * tp.khw * tp.dst_n * Constant.EPB + lct *
+                        Constant.EPB * Constant.EPB + top_distance * Constant.EPB)
 
     def _copy_in_gt_16(self, tp, ub_input, ub_offset, lgc, lct, cout_orig_tail,
                        left_zero, left_part, right_part, is_left):
@@ -520,10 +528,12 @@ class Nchw2Fractalzg(object):
         cout_orig_tail_s = tik_inst.Scalar("int64", init_value=cout_orig_tail)
         self._calc_dst_addr_gt_16(tp, lgc, lct, top_distance, nc0_counter, dst_addr)
         with tik_inst.if_scope(cout_orig_tail == 0):
-            tik_inst.data_move(self.data_out[dst_addr], self.ub_input[Constant.OFFSET_1], 0, tp.khw, Constant.EPB, 0, tp.dst_n - Constant.EPB)
+            tik_inst.data_move(self.data_out[dst_addr], self.ub_input[Constant.OFFSET_1],
+                               0, tp.khw, Constant.EPB, 0, tp.dst_n - Constant.EPB)
         with tik_inst.else_scope():
             tik_inst.data_move(self.data_out[dst_addr], self.ub_input[Constant.OFFSET_1],
-                               0, tp.khw, cout_orig_tail_s, Constant.EPB - cout_orig_tail_s, tp.dst_n - cout_orig_tail_s)
+                               0, tp.khw, cout_orig_tail_s, Constant.EPB - cout_orig_tail_s,
+                               tp.dst_n - cout_orig_tail_s)
 
     def _copy_left_part_gt_16(self, tp, ub_input, ub_offset, lgc, lct, cout_orig_tail, left_zero, top_distance,
                               nc0_counter, left_part, right_part, is_left):

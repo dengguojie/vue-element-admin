@@ -55,9 +55,8 @@ def max_pool3d_grad_grad_d(orig_input, orig_output, grad_grad, assist, output,
     -------
     None
     """
-    
     max_build_round_for_recalc_ub = 8
-    if (pads[0] == 0 and pads[1] == 0 and pads[2] == 0 and \
+    if (pads[0] == 0 and pads[1] == 0 and pads[2] == 0 and
             pads[3] == 0 and pads[4] == 0 and pads[5] == 0):
         padding = "VALID"
     else:
@@ -88,7 +87,7 @@ def max_pool3d_grad_grad_d(orig_input, orig_output, grad_grad, assist, output,
                                     name="assist",
                                     dtype=input_dtype)
 
-    #UB size can not be calculated accurately, so retry 8 times at most
+    # UB size can not be calculated accurately, so retry 8 times at most
     build_count = 0
     while build_count <= max_build_round_for_recalc_ub:
         res = tbe.pooling3d_max_grad_grad(orig_input_tensor,
@@ -100,7 +99,7 @@ def max_pool3d_grad_grad_d(orig_input, orig_output, grad_grad, assist, output,
                                           pads, data_format, padding)
         try:
             with tvm.target.cce():
-                #because of attr could be assigned only once, so use attr name in schedule to judge tiling round.
+                # because of attr could be assigned only once, so use attr name in schedule to judge tiling round.
                 res.op.attrs["recalc_ub_round_"+str(build_count)] = build_count
                 build_count = build_count + 1
                 sch = tbe.auto_schedule(res)

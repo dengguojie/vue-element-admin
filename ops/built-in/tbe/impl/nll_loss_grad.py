@@ -28,7 +28,6 @@ from impl.util.platform_adapter import error_manager_vector
 
 # 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
-    
     """
     The class for constant.
     """
@@ -36,7 +35,7 @@ class Constant:
     NUM_EIGHT = 8
     NEGATIVE = -1
     MAX_REPEAT = 255
-    ONE_KB = MASK64
+    NUM_SIXTYFOUR = MASK64
 
 
 # 'pylint: disable=unused-argument, invalid-name, too-many-arguments
@@ -204,27 +203,27 @@ class NllLossGradCompute:
             self.output_gm_size = self.x_shape[0]
         self.n_dim = self.x_shape[0]
         self.c_dim = self.x_shape[-1]
-        self.repeat_time = math.ceil(self.c_dim / Constant.ONE_KB)
+        self.repeat_time = math.ceil(self.c_dim / Constant.NUM_SIXTYFOUR)
         self.move_len = math.ceil(self.c_dim / Constant.NUM_EIGHT)
         if self.c_dim > Constant.NUM_EIGHT:
             self.end_num = self.c_dim % Constant.NUM_EIGHT
-        self.y_grad_ub_size = math.ceil(self.y_grad_shape[0]/Constant.ONE_KB) * \
-                              Constant.ONE_KB
-        self.target_ub_size = math.ceil(self.target_shape[0]/Constant.ONE_KB) * \
-                              Constant.ONE_KB
-        self.total_weight_ub_size = Constant.ONE_KB
-        self.weight_ub_size = math.ceil(self.weight_shape[0]/Constant.ONE_KB) * \
-                              Constant.ONE_KB
+        self.y_grad_ub_size = math.ceil(self.y_grad_shape[0]/Constant.NUM_SIXTYFOUR) * \
+                              Constant.NUM_SIXTYFOUR
+        self.target_ub_size = math.ceil(self.target_shape[0]/Constant.NUM_SIXTYFOUR) * \
+                              Constant.NUM_SIXTYFOUR
+        self.total_weight_ub_size = Constant.NUM_SIXTYFOUR
+        self.weight_ub_size = math.ceil(self.weight_shape[0]/Constant.NUM_SIXTYFOUR) * \
+                              Constant.NUM_SIXTYFOUR
         if self.invalid_target:
             # reserve 32b for ignore_index
             self.weight_ub_size += 8
-        self.dup_ub_size = math.ceil(self.x_shape[-1]/Constant.ONE_KB) * \
-                           Constant.ONE_KB
+        self.dup_ub_size = math.ceil(self.x_shape[-1]/Constant.NUM_SIXTYFOUR) * \
+                           Constant.NUM_SIXTYFOUR
         self.y_grad_gm_size = self.y_grad_shape[0]
         self.target_gm_size = self.target_shape[0]
         self.data_total_weight_size = 1
         self.weight_gm_size = self.weight_shape[0]
-        self.dup_repeat = math.ceil(self.c_dim/Constant.ONE_KB)
+        self.dup_repeat = math.ceil(self.c_dim/Constant.NUM_SIXTYFOUR)
         self.last_ub_size = self.ub_size_float - self.weight_ub_size
 
         # one_line_size include one num of refactor weight, one num of target
@@ -319,19 +318,19 @@ class NllLossGradCompute:
                                                name="dup_ub",
                                                scope=tik.scope_ubuf)
         self.y_grad_ub = self.tik_instance.Tensor("float32",
-                                                  [Constant.ONE_KB],
+                                                  [Constant.NUM_SIXTYFOUR],
                                                   name="y_grad_ub",
                                                   scope=tik.scope_ubuf)
         self.target_ub = self.tik_instance.Tensor(self.weight_dtype,
-                                                  [Constant.ONE_KB],
+                                                  [Constant.NUM_SIXTYFOUR],
                                                   name="target_ub",
                                                   scope=tik.scope_ubuf)
         if self.big_weight is True:
             self.total_weight_ub = self.tik_instance.Tensor(
-                self.x_dtype, [Constant.ONE_KB],
+                self.x_dtype, [Constant.NUM_SIXTYFOUR],
                 name="total_weight_ub", scope=tik.scope_ubuf)
         self.weight_ub = self.tik_instance.Tensor(self.weight_dtype,
-                                                  [Constant.ONE_KB],
+                                                  [Constant.NUM_SIXTYFOUR],
                                                   name="weight_ub",
                                                   scope=tik.scope_ubuf)
         if self.data_weight_size < 1024*256:
@@ -376,7 +375,7 @@ class NllLossGradCompute:
             name="refactor_weight_ub", scope=tik.scope_ubuf)
         if self.reduction != "none":
             self.total_weight_ub = self.tik_instance.Tensor(
-                self.x_dtype, [Constant.ONE_KB],
+                self.x_dtype, [Constant.NUM_SIXTYFOUR],
                 name="total_weight_ub", scope=tik.scope_ubuf)
         self.dup_ub = self.tik_instance.Tensor(
             self.x_dtype, [self.dup_ub_size], name="dup_ub",
@@ -472,7 +471,7 @@ class NllLossGradCompute:
         -------
         None
         """
-        max_repeat_num = Constant.MAX_REPEAT*Constant.ONE_KB
+        max_repeat_num = Constant.MAX_REPEAT*Constant.NUM_SIXTYFOUR
         max_repeat_loop = math.ceil(repeat/Constant.MAX_REPEAT)
         last_repeat = repeat % Constant.MAX_REPEAT
         if last_repeat == 0:
@@ -694,7 +693,7 @@ class NllLossGradCompute:
         #compute ub size
         self.dup_ub_size = math.ceil(self.max_total_num/64)*64
         self.target_ub_size = math.ceil(self.max_line/64)*64
-        self.total_weight_ub_size = Constant.ONE_KB
+        self.total_weight_ub_size = Constant.NUM_SIXTYFOUR
         self.weight_ub_size = math.ceil(self.c_dim/64)*64
         if self.invalid_target:
             # reserve 32b for ignore_index
@@ -717,7 +716,7 @@ class NllLossGradCompute:
         if self.reduction == "none":
             self.y_grad_ub_size = self.target_ub_size
         else:
-            self.y_grad_ub_size = Constant.ONE_KB
+            self.y_grad_ub_size = Constant.NUM_SIXTYFOUR
 
     def compute_valid_value(self, dst, src, index, offset, repeat):
         """
@@ -780,7 +779,6 @@ class NllLossGradCompute:
             elif dst_need_index:
                 names["index_x" + str(var)].set_as(0)
 
-    # 'pylint: disable=too-many-branches
     def select_valid_value(self, line_num, line_size, dst, src, target,
                            dst_need_index=True, src_need_index=True):
         """
@@ -866,7 +864,7 @@ class NllLossGradCompute:
                                     self.weight_ub, self.target_ub)
 
         vmul_repeat_times = math.ceil(repeat/Constant.MAX_REPEAT)
-        max_repeat_num = Constant.MAX_REPEAT*Constant.ONE_KB
+        max_repeat_num = Constant.MAX_REPEAT*Constant.NUM_SIXTYFOUR
         last_vmul_offset = max_repeat_num
         last_vmul_repeat = repeat % Constant.MAX_REPEAT
         if last_vmul_repeat == 0:
