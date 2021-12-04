@@ -31,7 +31,6 @@ from te.utils.op_utils import *
 # 'pylint: disable=locally-disabled,too-many-branches,too-few-public-methods
 # 'pylint: disable=locally-disabled,unnecessary-comprehension
 
-
 # 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constant:
     """
@@ -40,6 +39,8 @@ class Constant:
     # parameter naming allocated UB
     OUTPUT_NAME_SUFFIX = [0]
     UB_NAME_SUFFIX = [0]
+    # available number of cores
+    AICORE_NUM = tvm_cce.cce_conf.get_soc_spec(tvm_cce.cce_conf.CORE_NUM)
     # MTE stride up limit
     MTE_MAX_STRIDES = 65535
 
@@ -81,10 +82,8 @@ class FormatTransferParams():
     """
 
     def __init__(self, ib_):
-        # available number of cores
-        aicore_num = tvm_cce.cce_conf.get_soc_spec(tvm_cce.cce_conf.CORE_NUM)
         self.ib_ = ib_
-        self.device_core_num = aicore_num
+        self.device_core_num = Constant.AICORE_NUM
         self.block = tvm.thread_axis("blockIdx.x")
         self.ib_.scope_attr(self.block, "thread_extent", self.device_core_num)
 
