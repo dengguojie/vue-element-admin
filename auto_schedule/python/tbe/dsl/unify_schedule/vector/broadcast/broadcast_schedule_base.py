@@ -540,19 +540,39 @@ class BaseBroadcastSchedule:
                 self._all_pre_node_broadcast.remove(_tensor.op.input_tensors[0])
                 self._broadcast_store_predicate.add(_tensor.op.input_tensors[0])
 
+        # ternary instruct out must be memory reused with input, so ternary instruct input can not do compute_inline
+        def is_ternary_ins_input(_tensor):
+            if _tensor not in self._in_out_map.keys():
+                return False
+            for tensor_out in self._in_out_map.get(_tensor):
+                tensor_out_insn = util.get_dsl_insn(tensor_out)
+                if tensor_out_insn in TERNARY_INSNS:
+                    return True
+            return False
+
+        def is_const_compute_inline(_tensor):
+            if util.get_dsl_insn(_tensor) == BROADCAST or is_ternary_ins_input(_tensor):
+                return False
+            src_shapes = _tensor.op.input_tensors[0].shape[ub_idx:]
+            dst_shapes = _tensor.shape[ub_idx:]
+            if no_broadcast(src_shapes, dst_shapes):
+                return True
+            return False
+
+        def is_dynamic_compute_inline(_tensor):
+            return self._broadcast_axis_num.get(_tensor) == 0 \
+                   and not is_ternary_ins_input(_tensor)
+
         self._compute_inline_tensors = self._absorbable_broadcast_tensors.copy()
         if self._tiling_strategy == TilingStrategy.CONST:
             ub_idx = self._ub_split_axis
             for tensor_i in self._broadcast_tensors - self._absorbable_broadcast_tensors:
-                if util.get_dsl_insn(tensor_i) != BROADCAST:
-                    src_shapes = tensor_i.op.input_tensors[0].shape[ub_idx:]
-                    dst_shapes = tensor_i.shape[ub_idx:]
-                    if no_broadcast(src_shapes, dst_shapes):
-                        update_store_predicate(tensor_i)
-                        self._compute_inline_tensors.add(self._get_ub_tensor(tensor_i))
+                if is_const_compute_inline(tensor_i):
+                    update_store_predicate(tensor_i)
+                    self._compute_inline_tensors.add(self._get_ub_tensor(tensor_i))
         else:
             for tensor_i in self._broadcast_axis_num:
-                if self._broadcast_axis_num.get(tensor_i) == 0:
+                if is_dynamic_compute_inline(tensor_i):
                     self._compute_inline_tensors.add(self._get_ub_tensor(tensor_i))
 
         self.__calc_tensor_space()
