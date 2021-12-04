@@ -68,7 +68,6 @@ bool StridedSliceV3Tiling(const std::string& opType, const ge::Operator& opParas
 
   // reading tensor begin end axes from tiling start
   std::vector<int64_t> input_axes_values;
-  std::vector<int64_t> input_strides_values;
   map<string, std::pair<int, vector<int64_t>&>> const_params = {
       {"begin", {1, slice_params_output.begin_list}},
       {"end", {2, slice_params_output.end_list}},
@@ -188,8 +187,7 @@ bool StridedSliceV3Tiling(const std::string& opType, const ge::Operator& opParas
         slice_params_output.end_list[index] - slice_params_output.begin_list[index];
   }
 
-  // setting the  default stride,now only support 1
-  // slice_params_output.stride_list.assign(slice_params_output.end_list.size(), 1);
+  // setting the default stride,now only support 1
   OP_LOGD(opType.c_str(), "origin stridedslicev3 params for stridedslice: %s", slice_params_output.to_string().c_str());
 
   int32_t core_num = GetCompileInfo<int32_t>(opCompileInfo, "block_dim");

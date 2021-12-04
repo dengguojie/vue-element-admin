@@ -93,8 +93,8 @@ void InitRunningParams(ScatterDivTilingParams& params) {
 }
 
 void CalScatterDivBranchRunningParams(ScatterDivTilingParams& runParams, int64_t varNum, int64_t indicesNum,
-                                      int64_t updatesNum, int64_t updateDataNum, int64_t ubSize, int64_t coreNum,
-                                      int64_t varSize, int64_t indicesSize, int64_t varDataEachBlock, int64_t supportDiv) {
+                            int64_t updatesNum, int64_t updateDataNum, int64_t ubSize, int64_t coreNum,
+                            int64_t varSize, int64_t indicesSize, int64_t varDataEachBlock, int64_t supportDiv) {
   int64_t varAllSizeByte = varSize * varNum;
   int64_t varSizeByte = varSize * runParams.indiceStep * updateDataNum;
   int64_t updateSizeByte = varSize * updatesNum;

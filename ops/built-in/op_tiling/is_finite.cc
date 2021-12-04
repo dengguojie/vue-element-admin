@@ -74,10 +74,9 @@ namespace optiling {
         return true;
     }
 
-    static bool GetCompileParams(const std::string& op_type, const nlohmann::json& op_compile_info_json, int64_t& core_num,
-                                 int64_t& ub_size, int64_t& input_data_byte) {
+    static bool GetCompileParams(const std::string& op_type, const nlohmann::json& op_compile_info_json, 
+		    int64_t& core_num, int64_t& ub_size, int64_t& input_data_byte) {
         using namespace nlohmann;
-
         auto all_vars = op_compile_info_json["vars"];
         if (all_vars.count("core_num") == 0) {
             VECTOR_INNER_ERR_REPORT_TILIING(op_type, "IsFiniteTiling: GetCompileParams, get core_num error.");
@@ -219,9 +218,8 @@ namespace optiling {
         OP_LOGD(op_type.c_str(), "IsFiniteTiling: need_core_num=%lld", need_core_num);
         OP_LOGD(op_type.c_str(), "IsFiniteTiling: per_core_size=%lld, per_core_loop_cnt=%lld, per_core_left_size=%lld",
                 per_core_size, per_core_loop_cnt, per_core_left_size);
-        OP_LOGD(op_type.c_str(), "IsFiniteTiling: last_core_size=%lld, last_core_loop_cnt=%lld, last_core_left_size=%lld",
-                last_core_size, last_core_loop_cnt, last_core_left_size);
-
+        OP_LOGD(op_type.c_str(), "IsFiniteTiling: last_core_size=%lld, last_core_loop_cnt=%lld,\
+		last_core_left_size=%lld.", last_core_size, last_core_loop_cnt, last_core_left_size);
         // set tiling data
         run_info.AddTilingData((int64_t)need_core_num);
         run_info.AddTilingData((int64_t)total_element_size);

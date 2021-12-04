@@ -37,7 +37,7 @@ bool ScaleTiling(const std::string& op_type, const TeOpParas& op_paras, const nl
 
     const std::vector<int64_t> input_shape_x = op_paras.inputs[0].tensor[0].shape;
 
-    //print debug
+    // print debug
     for (size_t i = 0; i < boardcast_scale_shape.size(); i++) {
         OP_LOGD("SCALETILING boardcast_scale_shape i=%d value=%d", i, boardcast_scale_shape[i]);
     }

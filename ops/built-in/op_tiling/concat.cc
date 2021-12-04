@@ -194,7 +194,7 @@ bool ConcatV2Tiling(const std::string& opType, const ge::Operator& opParas, cons
   auto operator_info = OpDescUtils::GetOpDescFromOperator(opParas);
   PROFILING_TILING_INIT(opType.c_str());
 
-  vector<vector<int64_t>> input_shapes = GetInputShapes(opParas);
+  vector< vector<int64_t> > input_shapes = GetInputShapes(opParas);
   if (input_shapes.empty()) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "Get input shapes failed.");
     return false;

@@ -244,7 +244,6 @@ namespace optiling {
         int32_t cut_h_size = 0;
         int32_t cut_stride = 0;
         int32_t cut_h_num = 0;
-        int32_t length = 0;
         int32_t need_cut_tmp = need_cut;
 
         int32_t img2col_w = kernel_h * kernel_w * 16;
@@ -272,7 +271,7 @@ namespace optiling {
         int32_t pool_h = input_h + pad_t + pad_b;
         if (cut_h_size >= cut_stride) {
             cut_h_num = Ceildiv(pool_h - cut_h_size, cut_stride) + 1;
-            length = cut_h_num * stride_h - 1 + kernel_h - 1;
+            int length = cut_h_num * stride_h - 1 + kernel_h - 1;
             if (length > pool_h) {
                 cut_h_num = cut_h_num - 1;
             }

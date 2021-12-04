@@ -42,8 +42,6 @@ namespace {
 }
 
 namespace optiling {
-
-
 struct opInfoV1 {
   /* data */
   int32_t core_num;

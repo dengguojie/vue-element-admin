@@ -46,6 +46,8 @@ const int64_t CASE_SAME_NO_TILING = 5;
 const int64_t CASE_SAME_TILING_HO = 6;
 const int64_t CASE_SAME_TILING_HO_WO = 7;
 const int64_t INDEX_2 = 2;
+const int64_t NUM_TWO = 2;
+const int64_t TILING_FACTOR_TWO = 2;
 
 struct TilingParams {
   // tiling params
@@ -1075,7 +1077,6 @@ bool MaxPoolGradTiling(const std::string& op_type, const TeOpParas& op_paras,
   int64_t sw;
   int64_t padding_int = 0;
   string padding;
-  string data_format;
   flag = GetUssCompileParams(op_type, op_compile_info_json, core_num_ys, ub_size, kh, kw, sh, sw, padding_int, l1_size);
   OP_LOGD(op_type.c_str(),
           "GetCompileParams, core_num is %d, ub_size is %d. l1_size is %d,"
@@ -1453,7 +1454,7 @@ bool MaxPoolGradTiling(const std::string& op_type, const TeOpParas& op_paras,
                params.remain_ele_grad_sel);
     params.wo_2 = params.new_wo * 2;
     params.sh_wi_2 = strides[1] * params.wi_batch * 2;
-    vector<int64_t> config_list = {strides[INDEX_2] * 2, strides[INDEX_2] * 2, 2,
+    vector<int64_t> config_list = {strides[INDEX_2] * TILING_FACTOR_TWO, strides[INDEX_2] * TILING_FACTOR_TWO, NUM_TWO,
                                    params.sh_wi_2, params.sh_wi_2, params.wo_2};
     params.config = CheckConfig(config_list);
     if (params.config == 1) {
@@ -1525,7 +1526,7 @@ bool MaxPoolGradTiling(const std::string& op_type, const TeOpParas& op_paras,
                params.remain_ele_grad_sel);
     params.wo_2 = params.new_wo * 2;
     params.sh_wi_2 = strides[1] * params.wi_batch * 2;
-    vector<int64_t> config_list = {strides[INDEX_2] * 2, strides[INDEX_2] * 2, 2,
+    vector<int64_t> config_list = {strides[INDEX_2] * TILING_FACTOR_TWO, strides[INDEX_2] * TILING_FACTOR_TWO, NUM_TWO,
                                    params.sh_wi_2, params.sh_wi_2, params.wo_2};
     params.config = CheckConfig(config_list);
     if (params.config == 1) {
@@ -1682,7 +1683,7 @@ bool MaxPoolGradTiling(const std::string& op_type, const TeOpParas& op_paras,
                params.remain_ele_grad_sel);
     params.wo_2 = params.new_wo * 2;
     params.sh_wi_2 = strides[1] * params.wi_batch * 2;
-    vector<int64_t> config_list = {strides[INDEX_2] * 2, strides[INDEX_2] * 2, 2,
+    vector<int64_t> config_list = {strides[INDEX_2] * TILING_FACTOR_TWO, strides[INDEX_2] * TILING_FACTOR_TWO, NUM_TWO,
                                    params.sh_wi_2, params.sh_wi_2, params.wo_2};
     params.config = CheckConfig(config_list);
     if (params.config == 1) {
@@ -1779,7 +1780,7 @@ bool MaxPoolGradTiling(const std::string& op_type, const TeOpParas& op_paras,
                params.remain_ele_grad_sel);
     params.wo_2 = params.new_wo * 2;
     params.sh_wi_2 = strides[1] * params.map_wi * 2;
-    vector<int64_t> config_list = {strides[INDEX_2] * 2, strides[INDEX_2] * 2, 2,
+    vector<int64_t> config_list = {strides[INDEX_2] * TILING_FACTOR_TWO, strides[INDEX_2] * TILING_FACTOR_TWO, NUM_TWO,
                                    params.sh_wi_2, params.sh_wi_2, params.wo_2};
     params.config = CheckConfig(config_list);
     if (params.config == 1) {
@@ -1845,7 +1846,7 @@ bool MaxPoolGradTiling(const std::string& op_type, const TeOpParas& op_paras,
                params.remain_ele_grad_sel);
     params.wo_2 = params.new_wo * 2;
     params.sh_wi_2 = strides[1] * params.map_wi * 2;
-    vector<int64_t> config_list = {strides[INDEX_2] * 2, strides[INDEX_2] * 2, 2,
+    vector<int64_t> config_list = {strides[INDEX_2] * TILING_FACTOR_TWO, strides[INDEX_2] * TILING_FACTOR_TWO, NUM_TWO,
                                    params.sh_wi_2, params.sh_wi_2, params.wo_2};
     params.config = CheckConfig(config_list);
     if (params.config == 1) {

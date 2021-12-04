@@ -78,17 +78,12 @@ void SetGRUGradRunInfo(map<std::string, int64_t> tilingPara, OpRunInfo& runInfo)
   ByteBufferPut(runInfo.tiling_data, tilingPara["fuseSize"]);
 }
 
-void PrintGRUGradParams(const map<std::string, int64_t> tilingPara) {
-  OP_LOGD("op [DynamicGRUCellGradTiling] : coreNum=%d.", tilingPara["coreNum"]);
-  OP_LOGD("op [DynamicGRUCellGradTiling] : loopNum=%d.", tilingPara["loopNum"]);
-  OP_LOGD("op [DynamicGRUCellGradTiling] : loopEle=%d.", tilingPara["loopEle"]);
-  OP_LOGD("op [DynamicGRUCellGradTiling] : blockSize=%d.", tilingPara["blockSize"]);
-  OP_LOGD("op [DynamicGRUCellGradTiling] : tailNum=%d.", tilingPara["tailNum"]);
-  OP_LOGD("op [DynamicGRUCellGradTiling] : tailCoreNum=%d.", tilingPara["tailCoreNum"]);
-  OP_LOGD("op [DynamicGRUCellGradTiling] : tailLoopEle=%d.", tilingPara["tailLoopEle"]);
-  OP_LOGD("op [DynamicGRUCellGradTiling] : tailLastEle=%d.", tilingPara["tailLastEle"]);
-  OP_LOGD("op [DynamicGRUCellGradTiling] : tSize=%d.", tilingPara["tSize"]);
-  OP_LOGD("op [DynamicGRUCellGradTiling] : fuseSize=%d.", tilingPara["fuseSize"]);
+void PrintGRUGradParams(const std::string& op_type, map<std::string, int64_t> tilingPara) {
+  OP_LOGD(op_type.c_str(), "DynamicGRUCellGradTiling: coreNum=%lld, loopNum=%lld, \
+        loopEle=%lld, blockSize=%lld, tailNum=%lld, tailCoreNum=%lld, tailLoopEle=%lld,\
+	tailLastEle=%lld, tSize=%lld, fuseSize=%lld.", tilingPara["coreNum"], tilingPara["loopNum"],
+	tilingPara["loopEle"], tilingPara["blockSize"], tilingPara["tailNum"], tilingPara["tailCoreNum"],
+	tilingPara["tailLoopEle"], tilingPara["tailLastEle"],tilingPara["tSize"],tilingPara["fuseSize"]);
 }
 
 bool DynamicGRUCellGradTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
@@ -148,7 +143,7 @@ bool DynamicGRUCellGradTiling(const std::string& op_type, const TeOpParas& op_pa
     tilingPara["tailLastEle"] = 0;
     run_info.block_dim = tilingPara["coreNum"];
     SetGRUGradRunInfo(tilingPara, run_info);
-    PrintGRUGradParams(tilingPara);
+    PrintGRUGradParams(op_type, tilingPara);
     return true;
   }
   int64_t coreNum = deviceCoreNum;
@@ -173,7 +168,7 @@ bool DynamicGRUCellGradTiling(const std::string& op_type, const TeOpParas& op_pa
     tilingPara["tailLastEle"] = (tailNum % tailLoopEle == 0) ? tailLoopEle : tailNum % tailLoopEle;
   }
 
-  PrintGRUGradParams(tilingPara);
+  PrintGRUGradParams(op_type, tilingPara);
   run_info.block_dim = tilingPara["coreNum"];
   SetGRUGradRunInfo(tilingPara, run_info);
   std::vector<int64_t> workspace;

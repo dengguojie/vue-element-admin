@@ -30,7 +30,6 @@ namespace {
 }
 
 namespace optiling {
-
 bool ConfusionSoftmaxGradTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
                                 utils::OpRunInfo& run_info) {
   auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);

@@ -163,6 +163,7 @@ void GetTilingData(TilingParams& param,
 
   param.block_tiling_axis = block_tiling_axis;
   param.is_fuse_block = is_fuse_block;
+  param.block_factor = 1;
   if (is_fuse_block > 0) {
     param.block_factor = n_parts;
     param.block_dim = GetBlockNum(out_shape, block_tiling_axis, n_parts);
@@ -170,7 +171,6 @@ void GetTilingData(TilingParams& param,
     param.block_factor = n_parts;
     param.block_dim = n_parts;
   }
-  param.block_factor = 1;
   int32_t dtype_size = GetBlockSize(input_dtype);
   OP_TILING_CHECK(dtype_size == 0,
                   VECTOR_INNER_ERR_REPORT_TILIING("AscendAntiQuant", "dtype_size cannot be zero."),

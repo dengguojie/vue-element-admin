@@ -48,14 +48,14 @@ bool BitwiseTiling(const std::string& op_type, const TeOpParas& op_paras, const 
         x1_broadcast_shape.insert(x1_broadcast_shape.begin(), std::abs(len_diff), 1);
     }
 
-    //make the shape as same as dsl, the shape should add a dim (2,) when dtype from int32 to int16
+    // make the shape as same as dsl, the shape should add a dim (2,) when dtype from int32 to int16
     if (shape_dtype == "int32") {
         x1_broadcast_shape.push_back(2);
         x2_broadcast_shape.push_back(2);
     }
 
     TeOpParas op_paras_tmp = op_paras;
-    //update new shape
+    // update new shape
     op_paras_tmp.inputs[0].tensor[0].shape = std::move(x1_broadcast_shape);
     op_paras_tmp.inputs[0].tensor[0].dtype = "int16";
     op_paras_tmp.inputs[1].tensor[0].shape = std::move(x2_broadcast_shape);
