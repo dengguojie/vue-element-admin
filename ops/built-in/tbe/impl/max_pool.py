@@ -404,6 +404,7 @@ def max_pool(input_data, output_data, ksize, strides, padding,
         sch = tbe.auto_schedule(res)
 
     config = {
+        "enable_vector_2x": False,
         "name": kernel_name,
         "tensor_list": [data_input, res],
         "l1_fusion_option": is_l1fusion}
