@@ -210,9 +210,9 @@ class AContainer(a_lib.ObjWithConst):
 
     def _init_vector_cmds(self):
         cmds = self._init_vector_base_cmds()
-        if self.const_soc_version in ("Ascend610", "Ascend710", "Ascend910"):
-            dbl_tri_cmds = {"vdiv": (self.tinst.vdiv, a_types.VecGatherCmdType.DBL_TRI)}
-            cmds.update(dbl_tri_cmds)
+
+        dbl_tri_cmds = {"vdiv": (self.tinst.vdiv, a_types.VecGatherCmdType.DBL_TRI)}
+        cmds.update(dbl_tri_cmds)
         self.const_vec_cmds = cmds
 
     @classmethod
