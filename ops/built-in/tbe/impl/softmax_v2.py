@@ -47,7 +47,7 @@ UB_SIZE_LIMIT = \
 UB_SIZE_LIMIT = UB_SIZE_LIMIT / 4
 
 
-# pylint: disable = unused-argument
+# 'pylint: disable = unused-argument
 def get_op_support_info(input_x, output_y, axis=-1, kernel_name="softmax_v2"):
     format_x = input_x.get("format")
     origin_format_x = input_x.get("ori_format")
