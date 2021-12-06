@@ -312,7 +312,7 @@ def _get_input_shape(fmap_nchw, dedy_nchw, dedw_nchw):
     if fmap_n != dedy_n:
         error_manager_cube.raise_err_scene_equal_limitation("conv2d_backprop_filter", "Fmap's N",
                                                   "Dedy's N")
-    if DYNAMIC_FLAG not in fmap_nchw:
+    if DYNAMIC_FLAG not in fmap_nchw or DYNAMIC_FLAG not in dedy_nchw:
         fmap_n = -1
     if DYNAMIC_FLAG in dedw_nchw:
         error_manager_cube.raise_err_specific_user(
@@ -347,10 +347,28 @@ def _get_input(x_out, filter_dilation, pads, stride):
         input_high = (x_out - 1) * stride + filter_dilation - pads[0] - pads[1] + stride - 1
     return input_low, input_high
 
+def _get_range_intersection(range1, range2, param_name):
+    """
+    get range intersection of two range
+    """
+    if range1[1] is None:
+        return range2
+    if range2[1] is None:
+        return range1
 
-def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
+    range_ins = [max(range1[0], range2[0]), min(range1[1], range2[1])]
+    if range_ins[0] > range_ins[1]:
+        reason = (f"the range of {param_name} is invalid because it has no intersection, "
+                  "and the actual values are {range1}, {range2}")
+        error_manager_cube.raise_err_specific("conv2dbackpropfilter", reason)
+
+    return range_ins
+
+def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape, dedy_range_n):
     correct_range_flag = False
     fmap_range_n, fmap_range_c, fmap_range_h, fmap_range_w = fmap_range
+    if dedy_range_n is not None:
+        fmap_range_n = _get_range_intersection(fmap_range_n, dedy_range_n, "batch")
     w_n, w_c, w_h, w_w = kernel
     if -1 in pads:
         # calculate dedy range for pad is SAME
@@ -407,7 +425,7 @@ def _range_correction(fmap_range, kernel, pads, stride, dilation, out_shape):
 def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
                                   pads, dilations, groups, fmap_dtype,
                                   dedy_dtype, dedw_dtype, kernel_name,
-                                  fmap_range):
+                                  fmap_range, dedy_range_n):
 
     def _check_attr_range_dw(name, value, attr_min=None, attr_max=None):
         if (not isinstance(value, int)) or value > attr_max \
@@ -481,7 +499,7 @@ def _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides,
     for index, dim_range in enumerate(fmap_range[:2]):
         _check_variable_range(dim_range, 1, name=name_lis[index])
     dedy_range, fmap_range, correct_range_flag = _range_correction(fmap_range,
-        dedw_nchw, pads, strides, dilations, dedy_shape)
+        dedw_nchw, pads, strides, dilations, dedy_shape, dedy_range_n)
 
     lower_bound, upper_bound = zip(*fmap_range)
     # Second : Furture Check, Mainly required by SRS
@@ -675,6 +693,13 @@ def _check_and_config_para(x, out_backprop, y,
     dedw_nchw = ret_nchw.get("dedw_shape")
     fmap_range = ret_nchw.get("x_range")
 
+    dedy_index_n = out_backprop.get("format").find("N")
+    dedy_range_ori = out_backprop.get("range")
+    if dedy_range_ori is not None and len(dedy_range_ori) > dedy_index_n:
+        dedy_range_n = dedy_range_ori[dedy_index_n]
+    else:
+        dedy_range_n = None
+
     fmap_shape, dedy_shape = \
         _get_input_shape(x_nchw, dedy_nchw, dedw_nchw)
 
@@ -687,7 +712,7 @@ def _check_and_config_para(x, out_backprop, y,
     strides, pads, dilations = _get_attrs(strides, pads, dilations, data_format)
     results = _check_conv2dbp_filter_params(fmap_shape, dedy_shape, dedw_nchw, strides, pads, dilations,
                                             groups, x_dtype, dedy_dtype, dedw_dtype, kernel_name,
-                                            fmap_range)
+                                            fmap_range, dedy_range_n)
     fmap_shape = results.get("fmap_shape")
     dedy_shape = results.get("dedy_shape")
     dedy_range = results.get("dedy_range")
