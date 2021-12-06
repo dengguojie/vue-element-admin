@@ -21,17 +21,23 @@
 
 #define private public
 #include "register/op_tiling_registry.h"
-
+#include "transformation_ops.h"
+#include "array_ops.h"
+#include "common/utils/ut_op_util.h"
 using namespace std;
 
 class FlattenTiling : public testing::Test {
  protected:
-  static void SetUpTestCase() { std::cout << "FlattenTiling SetUp" << std::endl; }
+  static void SetUpTestCase() {
+    std::cout << "FlattenTiling SetUp" << std::endl;
+  }
 
-  static void TearDownTestCase() { std::cout << "FlattenTiling TearDown" << std::endl; }
+  static void TearDownTestCase() {
+    std::cout << "FlattenTiling TearDown" << std::endl;
+  }
 };
 
-static string to_string(const std::stringstream &tiling_data) {
+static string to_string(const std::stringstream& tiling_data) {
   auto data = tiling_data.str();
   string result;
   int64_t tmp = 0;
@@ -44,41 +50,35 @@ static string to_string(const std::stringstream &tiling_data) {
   return result;
 }
 
+using namespace ge;
+#include "test_common.h"
+/*
+.INPUT(x, TensorType({DT_INT8, DT_INT16, DT_INT32, DT_INT64,
+                          DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64,
+                          DT_FLOAT, DT_FLOAT16}))
+    .OUTPUT(y, TensorType({DT_INT8, DT_INT16, DT_INT32, DT_INT64,
+                           DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64,
+                           DT_FLOAT, DT_FLOAT16}))
+    .ATTR(axis, Int, 1)
+*/
+
 TEST_F(FlattenTiling, FlattenTiling_tiling_1) {
-  using namespace optiling;
   std::string op_name = "Flatten";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
-
   std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_size\": 63488, \"block_size\": 8}}";
 
   std::vector<int64_t> input{4, 4, 4, 4};
   std::vector<int64_t> output{4, 64};
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float32";
-  tensor_input.format = "ND";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float32";
-  tensor_output.format = "ND";
+  auto opParas = op::Flatten(op_name);
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT, FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, DT_FLOAT, FORMAT_ND, {});
 
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234561";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "8 32 0 8 0 8 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "8 32 0 8 0 8 ");
+  for (int64_t i = 0; i < 10; i++) {
+    RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  }
 }
