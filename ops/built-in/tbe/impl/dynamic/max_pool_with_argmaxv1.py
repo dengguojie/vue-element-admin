@@ -395,15 +395,17 @@ class MaxPoolWithargmaxPytorch:
         none
         """
 
-        fmap_l1_shape = (28672, self.c0_size)
+        fmap_l1_shape = (self.input_h, self.input_w, self.c0_size)
         input_fmap_l1 = self.tik_instance.Tensor(self.input_dtype, fmap_l1_shape, name="input_fmap_l1",
                                                  scope=tik.scope_cbuf)
-        fmap_shape_ub = (4096, self.c0_size)
+        fmap_shape_ub = (self.fmap_h_num * 16, self.kernel_h,
+                         self.kernel_w, self.c0_size)
         fmap_ub = self.tik_instance.Tensor(self.input_dtype, fmap_shape_ub, name="fmap_ub",
                                            scope=tik.scope_ubuf)
-        mask_shape_ub = (256, self.c0_size)
+        mask_shape_ub = (self.kernel_h, self.kernel_w,
+                         self.fmap_h_num, self.c0_size)
         mask_ub = self.tik_instance.Tensor("uint16", mask_shape_ub, name="mask_ub", scope=tik.scope_ubuf)
-        data_x_max = self.tik_instance.Tensor("float16", (3360, 16), name="data_x_max",
+        data_x_max = self.tik_instance.Tensor("float16", (self.fmap_h_num, 16, 16), name="data_x_max",
                                               scope=tik.scope_ubuf)
 
         zero_scalar = self.tik_instance.Scalar("int64", init_value=0)
@@ -505,8 +507,9 @@ class MaxPoolWithargmaxPytorch:
         """
         fmap_img2col_cut_h_num = self.tik_instance.Scalar("int32", name="fmap_img2col_cut_h_num")
         fmap_img2col_cut_h_num.set_as((fmap_img2col_cut_h + 15) // 16)
-        mask_ub = self.tik_instance.Tensor("uint16", (256, 16), name="mask_ub", scope=tik.scope_ubuf)
-        data_x_max = self.tik_instance.Tensor("float16", (3360, 16), name="data_x_max",
+        mask_shape_ub = (self.kernel_h, self.kernel_w, fmap_cut_h_num, self.c0_size)
+        mask_ub = self.tik_instance.Tensor("uint16", mask_shape_ub, name="mask_ub", scope=tik.scope_ubuf)
+        data_x_max = self.tik_instance.Tensor("float16", (fmap_img2col_cut_h_num, 16, 16), name="data_x_max",
                                               scope=tik.scope_ubuf)
         len_tmp = self.tik_instance.Scalar(dtype="int32", init_value=0)
         len_tmp1 = self.tik_instance.Scalar(dtype="int32", init_value=0)
@@ -525,7 +528,7 @@ class MaxPoolWithargmaxPytorch:
         gm_l1_burst_len = self.tik_instance.Scalar("int32", name="gm_l1_burst_len")
 
         with self.tik_instance.new_stmt_scope():
-            zero_ub = self.tik_instance.Tensor("float16", (480 * self.c0_size,),
+            zero_ub = self.tik_instance.Tensor("float16", (self.input_w * self.c0_size,),
                                                name="zero_ub", scope=tik.scope_ubuf)
             self._clean_fp16_data_ub(zero_ub, self.input_w * self.c0_size, self.pad_value)
             with self.tik_instance.for_range(0, cut_h_size) as iter_num:  # 1
@@ -746,7 +749,7 @@ class MaxPoolWithargmaxPytorch:
         -------
         none
         """
-        fmap_l1_shape = (28672, self.c0_size)
+        fmap_l1_shape = (cut_h_size, self.input_w, self.c0_size)
         input_fmap_l1 = self.tik_instance.Tensor(
             self.input_dtype, fmap_l1_shape, name="input_fmap_l1", scope=tik.scope_cbuf)
         fmap_cut_h_num = self.tik_instance.Scalar("int32", name="fmap_cut_h_num")
@@ -754,7 +757,7 @@ class MaxPoolWithargmaxPytorch:
         out_size_cut_h = (cut_h_size - self.kernel_h + self.stride_h) // self.stride_h
         fmap_cut_h.set_as(self.output_w * out_size_cut_h)
         fmap_cut_h_num.set_as((fmap_cut_h + 15) // 16)
-        fmap_shape_ub = (4096 * self.c0_size,)
+        fmap_shape_ub = (fmap_cut_h_num * 16 * self.kernel_h * self.kernel_w * self.c0_size,)
 
         fmap_ub = self.tik_instance.Tensor(self.input_dtype, fmap_shape_ub, name="fmap_ub", scope=tik.scope_ubuf)
         with self.tik_instance.if_scope(flag_cut_h == 1):
@@ -795,7 +798,7 @@ class MaxPoolWithargmaxPytorch:
         zero_w = self.tik_instance.Scalar("int64", init_value=0)
 
         cut_w_size, cut_w_stride, cut_w_num = self.cut_w_size, self.cut_w_stride, self.cut_w_num
-        fmap_l1_shape = (28672, self.c0_size)
+        fmap_l1_shape = (cut_h_size, self.input_w, self.c0_size)
         input_fmap_l1 = self.tik_instance.Tensor(
             self.input_dtype, fmap_l1_shape, name="input_fmap_l1", scope=tik.scope_cbuf)
         with self.tik_instance.for_range(0, cut_w_num) as cut_w_index:
@@ -804,12 +807,12 @@ class MaxPoolWithargmaxPytorch:
             out_size_cut_w = (cut_w_size - self.kernel_w + self.stride_w) // self.stride_w
             fmap_cut_w = out_size_cut_w
             fmap_cut_w_num.set_as((fmap_cut_w + 15) // 16)
-            fmap_shape_ub = (4096, self.c0_size)
+            fmap_shape_ub = (fmap_cut_w_num * 16, self.kernel_h, self.kernel_w, self.c0_size)
             fmap_ub = self.tik_instance.Tensor(self.input_dtype, fmap_shape_ub, name="fmap_ub", scope=tik.scope_ubuf)
-            mask_shape_ub = (256, self.c0_size)
+            mask_shape_ub = (self.kernel_h, self.kernel_w, fmap_cut_w_num, self.c0_size)
             mask_ub = self.tik_instance.Tensor("uint16", mask_shape_ub, name="mask_ub", scope=tik.scope_ubuf)
             data_x_max = self.tik_instance.Tensor(
-                "float16", (3360, 16), name="data_x_max", scope=tik.scope_ubuf)
+                "float16", (fmap_cut_w_num, 16, 16), name="data_x_max", scope=tik.scope_ubuf)
             with self.tik_instance.if_scope(cur_h_idx != 0):
                 with self.tik_instance.if_scope(cur_h_idx != (cut_h_num - 1)):
                     # copy input fmap from gm to l1
@@ -1415,7 +1418,7 @@ class MaxPoolWithargmaxPytorch:
                                          Constant.SRC0STRIDEM1)
         with self.tik_instance.new_stmt_scope():
             feature_map_l1 = self.tik_instance.Tensor(
-                self.input_dtype, (256 * 256,), name="feature_map_l1", scope=tik.scope_cbuf)
+                self.input_dtype, (fmap_h_num * self.fmap_w * 256,), name="feature_map_l1", scope=tik.scope_cbuf)
 
             self.tik_instance.data_move(feature_map_l1, fmap_ub, 0, 1, fmap_h_num * self.fmap_w * 16, 0, 0)
             with self.tik_instance.for_range(0, fmap_h_num) as index_h:  # 2
@@ -1464,7 +1467,7 @@ class MaxPoolWithargmaxPytorch:
         with self.tik_instance.else_scope():
             fmap_h_num.set_as((self.fmap_h + 15) // 16)
 
-        mask_or_shape_ub = (240, 16)
+        mask_or_shape_ub = (fmap_h_num, 16)
         mask_or = self.tik_instance.Tensor("uint16", mask_or_shape_ub, name="mask_or", scope=tik.scope_ubuf)
         mask_not = self.tik_instance.Tensor("uint16", mask_or_shape_ub, name="mask_not", scope=tik.scope_ubuf)
 
