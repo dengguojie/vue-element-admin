@@ -21,7 +21,7 @@
 #include "scope_batchmulticlass_nms_pass.h"
 
 #include "op_log.h"
-#include "register/scope/scope_fusion_pass_register.h"
+
 
 namespace ge {
 namespace {

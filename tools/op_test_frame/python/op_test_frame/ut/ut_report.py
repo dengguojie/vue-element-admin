@@ -27,9 +27,14 @@ from op_test_frame.common import op_status
 from op_test_frame.utils import file_util
 from op_test_frame.ut.op_ut_case_info import OpUTCaseTrace
 
-DATA_FILE_FLAGS = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-DATA_FILE_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IRGRP
-DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    This class for Constant.
+    """
+    DATA_FILE_FLAGS = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    DATA_FILE_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IRGRP
+    DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
 
 
 class TestResultType(Enum):
@@ -232,12 +237,13 @@ run command: %s
         """
         report_path = os.path.realpath(report_path)
         if not os.path.exists(report_path):
-            file_util.makedirs(report_path, mode=DATA_DIR_MODES)
+            file_util.makedirs(report_path, mode=Constant.DATA_DIR_MODES)
 
         rpt_txt = self.summary_txt()
         rpt_file_path = os.path.join(report_path, "ut_test_report.txt")
         if not os.path.exists(rpt_file_path):
-            with os.fdopen(os.open(rpt_file_path, DATA_FILE_FLAGS, DATA_FILE_MODES), 'w') as rpt_fout:
+            with os.fdopen(os.open(rpt_file_path,
+                                   Constant.DATA_FILE_FLAGS, Constant.DATA_FILE_MODES), 'w') as rpt_fout:
                 rpt_fout.write(rpt_txt)
         else:
             with open(rpt_file_path, 'w') as rpt_file:
@@ -308,11 +314,12 @@ run command: %s
         report_data_path = os.path.realpath(report_data_path)
         report_data_dir = os.path.dirname(report_data_path)
         if not os.path.exists(report_data_dir):
-            file_util.makedirs(report_data_dir, mode=DATA_DIR_MODES)
+            file_util.makedirs(report_data_dir, mode=Constant.DATA_DIR_MODES)
         json_str = json.dumps(json_obj, indent=4)
 
         if not os.path.exists(report_data_path):
-            with os.fdopen(os.open(report_data_path, DATA_FILE_FLAGS, DATA_FILE_MODES), 'w') as rpt_fout:
+            with os.fdopen(os.open(report_data_path,
+                                   Constant.DATA_FILE_FLAGS, Constant.DATA_FILE_MODES), 'w') as rpt_fout:
                 rpt_fout.write(json_str)
         else:
             with open(report_data_path, 'w') as rpt_file:

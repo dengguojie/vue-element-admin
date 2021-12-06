@@ -48,7 +48,7 @@ def get_op_support_info(input_x, box_out, box_out_num, biases,
     get split info
     only support split N
     """
-    return util_select_op_base.get_split_n_info([i for i in range(input_num)], [0, 1])
+    return util_select_op_base.get_split_n_info(list(range(input_num)), [0, 1])
 
 
 # 'pylint: disable=invalid-name, too-many-locals, too-many-arguments

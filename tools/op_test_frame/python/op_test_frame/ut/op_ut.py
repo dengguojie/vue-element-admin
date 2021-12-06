@@ -101,10 +101,14 @@ class FuncCache:
         """
         return self.err_msg
 
-
-DATA_FILE_FLAGS = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-DATA_FILE_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IRGRP
-DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    This class for Constant.
+    """
+    DATA_FILE_FLAGS = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    DATA_FILE_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IRGRP
+    DATA_DIR_MODES = stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP
 
 
 def get_trace_info() -> str:
@@ -194,7 +198,7 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
         if case_name in self._case_info_map.keys():
             idx = 1
             while idx < 5000:
-                tmp_name = case_name + "__%d" % idx
+                tmp_name = "".join([case_name, "__%d" % idx])
                 idx += 1
                 if tmp_name not in self._case_info_map.keys():
                     case_name = tmp_name
@@ -341,11 +345,11 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
         data_dir = os.path.join(data_root_dir, self.op_type, run_soc_version)
         data_dir = os.path.realpath(data_dir)
         if not os.path.exists(data_dir):
-            file_util.makedirs(data_dir, mode=DATA_DIR_MODES)
+            file_util.makedirs(data_dir, mode=Constant.DATA_DIR_MODES)
         data_path = os.path.join(data_dir, file_name)
         if not os.path.exists(data_path):
             # create output data file with mode
-            with os.fdopen(os.open(data_path, DATA_FILE_FLAGS, DATA_FILE_MODES), 'w') as fout:
+            with os.fdopen(os.open(data_path, Constant.DATA_FILE_FLAGS, Constant.DATA_FILE_MODES), 'w') as fout:
                 fout.write("")
         return data_path
 
@@ -415,7 +419,7 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
         if case_name in self._case_info_map.keys():
             idx = 1
             while idx < 5000:
-                tmp_name = case_name + "__%d" % idx
+                tmp_name = "".join([case_name, "__%d" % idx])
                 idx += 1
                 if tmp_name not in self._case_info_map.keys():
                     case_name = tmp_name
@@ -540,14 +544,15 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
     def _save_compile_info_json(self, kernel_name: str, compile_info: Any):
         compile_info_save_path = os.path.join(self.KERNEL_DIR, self._get_compile_info_file_name(kernel_name))
         if not os.path.exists(compile_info_save_path):
-            with os.fdopen(os.open(compile_info_save_path, DATA_FILE_FLAGS, DATA_FILE_MODES), 'w') as fout:
+            with os.fdopen(os.open(compile_info_save_path,
+                                   Constant.DATA_FILE_FLAGS, Constant.DATA_FILE_MODES), 'w') as fout:
                 fout.write("")
 
         if isinstance(compile_info, str):
             compile_info_str = compile_info
         else:
             compile_info_str = json.dumps(compile_info, indent=4)
-        with open(compile_info_save_path, "w") as info_f:
+        with os.fdopen(os.open(compile_info_save_path), "w") as info_f:
             info_f.write(compile_info_str)
 
     def _get_compile_info(self, kernel_name):
@@ -617,12 +622,12 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
                                                                    check_exist=check_exist)
         if not compile_success:
             stage_status = op_ut_case_info.OpUTStageResult(status=op_status.FAILED,
-                                                           stage_name=op_ut_case_info.STAGE_COMPILE,
+                                                           stage_name=op_ut_case_info.Constant.STAGE_COMPILE,
                                                            err_msg="Failed",
                                                            err_trace=compile_err_msg)
         else:
             stage_status = op_ut_case_info.OpUTStageResult(status=op_status.SUCCESS,
-                                                           stage_name=op_ut_case_info.STAGE_COMPILE)
+                                                           stage_name=op_ut_case_info.Constant.STAGE_COMPILE)
         return stage_status
 
     def _run_compile_case(self, run_soc_version,
@@ -651,7 +656,7 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
 
         model_data_path = os.path.join(os.path.realpath(base_dir), simulator_mode, self.op_type, case_name)
         if not os.path.exists(model_data_path):
-            file_util.makedirs(model_data_path, DATA_DIR_MODES)
+            file_util.makedirs(model_data_path, Constant.DATA_DIR_MODES)
         return model_data_path
 
     def _do_tiling(self, run_soc_version: str, case_info: op_ut_case_info.OpUTCase,
@@ -686,6 +691,7 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
 
         return param_desc_list, param_name_list
 
+    @staticmethod
     def _check_and_fix_param_desc(self, param_desc_list, op_params):
 
         def _check_input(param_idx, op_param_desc: str):
@@ -817,7 +823,7 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
             run_success = False
             err_msg = get_trace_info()
         stage_status = op_ut_case_info.OpUTStageResult(status=op_status.SUCCESS if run_success else op_status.FAILED,
-                                                       stage_name=op_ut_case_info.STAGE_RUN,
+                                                       stage_name=op_ut_case_info.Constant.STAGE_RUN,
                                                        err_msg="Failed" if not run_success else None,
                                                        err_trace=err_msg)
         return stage_status
@@ -853,7 +859,7 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
             gen_success = False
             err_msg = get_trace_info()
         stage_status = op_ut_case_info.OpUTStageResult(status=op_status.SUCCESS if gen_success else op_status.FAILED,
-                                                       stage_name=op_ut_case_info.STAGE_RUN,
+                                                       stage_name=op_ut_case_info.Constant.STAGE_RUN,
                                                        err_msg="Failed" if not gen_success else None,
                                                        err_trace=err_msg)
         return stage_status
@@ -883,7 +889,7 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
         compare_success, err_msg = self._compare_output(case_info)
         stage_status = op_ut_case_info.OpUTStageResult(
             status=op_status.SUCCESS if compare_success else op_status.FAILED,
-            stage_name=op_ut_case_info.STAGE_COMPARE_PRECISION,
+            stage_name=op_ut_case_info.Constant.STAGE_COMPARE_PRECISION,
             err_msg=err_msg)
         return stage_status
 
@@ -932,7 +938,7 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
             err_trace = get_trace_info()
         stage_status = op_ut_case_info.OpUTStageResult(
             status=op_status.SUCCESS if run_success else op_status.FAILED,
-            stage_name=op_ut_case_info.STAGE_CUST_FUNC,
+            stage_name=op_ut_case_info.Constant.STAGE_CUST_FUNC,
             err_msg=None if run_success else "Failed",
             err_trace=err_trace)
         case_trace = op_ut_case_info.OpUTCaseTrace(run_soc_version, case_info)
@@ -953,7 +959,7 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
             err_trace = get_trace_info()
             stage_status = op_ut_case_info.OpUTStageResult(
                 status=op_status.ERROR,
-                stage_name=op_ut_case_info.STAGE_CUST_FUNC,
+                stage_name=op_ut_case_info.Constant.STAGE_CUST_FUNC,
                 err_msg="Error",
                 err_trace=err_trace)
             case_trace = op_ut_case_info.OpUTCaseTrace(run_soc_version, case_info)

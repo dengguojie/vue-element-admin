@@ -23,44 +23,46 @@ from te import tik
 
 from impl import constant_util as constant
 
-# reserve size for ub
-RESERVE_SIZE = 16 * 1024
+# 'pylint: disable=too-few-public-methods
+class Constant:
+    """
+    This class for Constant.
+    """
+    # reserve size for ub
+    RESERVE_SIZE = 16 * 1024
 
-# repeat one
-REPEAT_ONE = 1
+    # repeat one
+    REPEAT_ONE = 1
 
-# one nburst
-NBURST_ONE = 1
+    # one nburst
+    NBURST_ONE = 1
 
-# value one
-VALUE_ONE = 1
+    # value one
+    VALUE_ONE = 1
 
-# stride eight for dma
-STRIDE_EIGHT = 8
+    # stride eight for dma
+    STRIDE_EIGHT = 8
 
-# stride zero for dma
-GAP_ZERO = 0
+    # stride zero for dma
+    GAP_ZERO = 0
 
-# sid for dma
-SID = 0
+    # sid for dma
+    SID = 0
 
-# value zero
-VALUE_ZERO = 0
+    # value zero
+    VALUE_ZERO = 0
 
-# value two
-VALUE_TWO = 2
+    # value two
+    VALUE_TWO = 2
 
-# value three
-VALUE_THREE = 3
+    # value three
+    VALUE_THREE = 3
 
-# neg two
-NEG_TWO = -2
+    # neg one
+    NEG_ONE = -1
 
-# neg one
-NEG_ONE = -1
-
-# value half
-VALUE_HALF = 0.5
+    # value half
+    VALUE_HALF = 0.5
 
 
 # 'pylint: disable=too-many-instance-attributes
@@ -92,7 +94,7 @@ class CorrectBoxComputer():
         self.instance = tik.Tik(tik.Dprofile())
         self.one_max_size = (
             tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) -
-            RESERVE_SIZE) // 8
+            Constant.RESERVE_SIZE) // 8
         self.batch = input_dict.get("box_info")[0].get("shape")[0]
         self.dtype = input_dict.get("box_info")[0].get("dtype")
         self.classes = input_dict.get("classes")
@@ -199,7 +201,8 @@ class CorrectBoxComputer():
 
         return block_num, outer_loop, outer_tail
 
-    def get_adj_hw(self, height, width):
+    @staticmethod
+    def get_adj_hw(height, width):
         """
           compute height and weight with 32 alignment
 
@@ -331,8 +334,8 @@ class CorrectBoxComputer():
             self.inter_coords[
                 batch, param['co_id'], param['out_offset'] + param['w'] *
                 param['h'] * param['box_id']],
-            param['ub_b'], SID, NBURST_ONE, param['burlen'], GAP_ZERO,
-            GAP_ZERO)
+            param['ub_b'], Constant.SID, Constant.NBURST_ONE, param['burlen'], Constant.GAP_ZERO,
+            Constant.GAP_ZERO)
         if (param['h'] * param['w'] * self.dsize) % constant.BLOCK_SIZE != 0:
             with self.instance.if_scope(param['box_id'] == self.boxes - 1):
                 self.instance.data_move(
@@ -340,8 +343,8 @@ class CorrectBoxComputer():
                                       param['out_offset'] +
                                       param['w'] * param['h'] * param['box_id'] +
                                       tail_idx],
-                    param['last_32b'], SID, NBURST_ONE, VALUE_ONE, GAP_ZERO,
-                    GAP_ZERO)
+                    param['last_32b'], Constant.SID, Constant.NBURST_ONE, Constant.VALUE_ONE, Constant.GAP_ZERO,
+                    Constant.GAP_ZERO)
 
     def get_faces_params(self, adj_hw, c_num):
         """
@@ -382,10 +385,13 @@ class CorrectBoxComputer():
           -------
           None
           """
+        # neg two
+        NEG_TWO = -2
+        
         if tbe_platform.api_check_support("tik.vdiv", "float32"):
             self.instance.vdiv(self.mask, dst, divisor, dividend, repeat,
                                constant.STRIDE_ONE, constant.STRIDE_ONE, constant.STRIDE_ONE,
-                               STRIDE_EIGHT, STRIDE_EIGHT, STRIDE_EIGHT)
+                               Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
         else:
             with self.instance.new_stmt_scope():
                 tmp_tensor = self.instance.Tensor(self.dtype, dividend.shape,
@@ -393,21 +399,21 @@ class CorrectBoxComputer():
                                                   name="tmp_tensor")
                 # 1/dividend
                 self.instance.vec_rec(self.mask, tmp_tensor, dividend, repeat,
-                                      STRIDE_EIGHT, STRIDE_EIGHT)
+                                      Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
                 self.instance.vec_mul(self.mask, dividend, dividend, tmp_tensor,
                                       repeat,
-                                      STRIDE_EIGHT, STRIDE_EIGHT, STRIDE_EIGHT)
+                                      Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
                 self.instance.vec_adds(self.mask, dividend, dividend, NEG_TWO,
-                                       repeat, STRIDE_EIGHT, STRIDE_EIGHT)
+                                       repeat, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
                 self.instance.vec_mul(self.mask, dividend, dividend, tmp_tensor,
                                       repeat,
-                                      STRIDE_EIGHT, STRIDE_EIGHT, STRIDE_EIGHT)
-                self.instance.vec_muls(self.mask, dividend, dividend, NEG_ONE,
-                                       repeat, STRIDE_EIGHT, STRIDE_EIGHT)
+                                      Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
+                self.instance.vec_muls(self.mask, dividend, dividend, Constant.NEG_ONE,
+                                       repeat, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
 
                 self.instance.vec_mul(self.mask, dst, divisor, dividend, repeat,
-                                      STRIDE_EIGHT, STRIDE_EIGHT, STRIDE_EIGHT)
+                                      Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
     def get_burlen(self, length):
         """
@@ -497,57 +503,57 @@ class CorrectBoxComputer():
             # x vmuls param --> netw / new_w
             tmp_scalar.set_as(img_info[1])
             # ub_d netw
-            self.instance.vec_dup(self.mask, param['ub_d'], tmp_scalar,
-                                  REPEAT_ONE, STRIDE_EIGHT)
+            self.instance.vec_dup(self.mask, param.get('ub_d'), tmp_scalar,
+                                  Constant.REPEAT_ONE, Constant.STRIDE_EIGHT)
             # ub_e new_w
-            self.instance.vec_dup(self.mask, param['ub_e'], new_w,
-                                  REPEAT_ONE, STRIDE_EIGHT)
+            self.instance.vec_dup(self.mask, param.get('ub_e'), new_w,
+                                  Constant.REPEAT_ONE, Constant.STRIDE_EIGHT)
             # netw / new_w
 
-            self.newton_div(param['ub_d'], param['ub_d'], param['ub_e'],
-                            REPEAT_ONE)
+            self.newton_div(param.get('ub_d'), param.get('ub_d'), param.get('ub_e'),
+                            Constant.REPEAT_ONE)
 
-            x_vmuls_val.set_as(param['ub_d'][0])
+            x_vmuls_val.set_as(param.get('ub_d')[0])
 
             # x vadds param --> ((new_w - netw)/2.0/netw) * (netw / new_w)
             # --> ((-1)*(netw / new_w) + 1)* 0.5
-            self.instance.vec_muls(self.mask, param['ub_d'], param['ub_d'],
-                                   NEG_ONE, REPEAT_ONE,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
-            self.instance.vec_adds(self.mask, param['ub_d'], param['ub_d'],
-                                   VALUE_ONE, REPEAT_ONE,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
-            self.instance.vec_muls(self.mask, param['ub_d'], param['ub_d'],
-                                   VALUE_HALF, REPEAT_ONE,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
-            x_vadds_val.set_as(param['ub_d'][0])
+            self.instance.vec_muls(self.mask, param.get('ub_d'), param.get('ub_d'),
+                                   Constant.NEG_ONE, Constant.REPEAT_ONE,
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
+            self.instance.vec_adds(self.mask, param.get('ub_d'), param.get('ub_d'),
+                                   Constant.VALUE_ONE, Constant.REPEAT_ONE,
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
+            self.instance.vec_muls(self.mask, param.get('ub_d'), param.get('ub_d'),
+                                   Constant.VALUE_HALF, Constant.REPEAT_ONE,
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
+            x_vadds_val.set_as(param.get('ub_d')[0])
 
             # y vmuls param --> neth / new_h
             tmp_scalar.set_as(img_info[0])
             # ub_d neth
-            self.instance.vec_dup(self.mask, param['ub_d'], tmp_scalar,
-                                  REPEAT_ONE, STRIDE_EIGHT)
+            self.instance.vec_dup(self.mask, param.get('ub_d'), tmp_scalar,
+                                  Constant.REPEAT_ONE, Constant.STRIDE_EIGHT)
             # ub_e new_h
-            self.instance.vec_dup(self.mask, param['ub_e'], new_h,
-                                  REPEAT_ONE, STRIDE_EIGHT)
+            self.instance.vec_dup(self.mask, param.get('ub_e'), new_h,
+                                  Constant.REPEAT_ONE, Constant.STRIDE_EIGHT)
             # neth / new_h
 
-            self.newton_div(param['ub_d'], param['ub_d'], param['ub_e'],
-                            REPEAT_ONE)
+            self.newton_div(param.get('ub_d'), param.get('ub_d'), param.get('ub_e'),
+                            Constant.REPEAT_ONE)
 
-            y_vmuls_val.set_as(param['ub_d'][0])
+            y_vmuls_val.set_as(param.get('ub_d')[0])
 
             # y vadds param --> ((-1)*(neth / new_h) + 1)* 0.5
-            self.instance.vec_muls(self.mask, param['ub_d'], param['ub_d'],
-                                   NEG_ONE, REPEAT_ONE,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
-            self.instance.vec_adds(self.mask, param['ub_d'], param['ub_d'],
-                                   VALUE_ONE, REPEAT_ONE,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
-            self.instance.vec_muls(self.mask, param['ub_d'], param['ub_d'],
-                                   VALUE_HALF, REPEAT_ONE,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
-            y_vadds_val.set_as(param['ub_d'][0])
+            self.instance.vec_muls(self.mask, param.get('ub_d'), param.get('ub_d'),
+                                   Constant.NEG_ONE, Constant.REPEAT_ONE,
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
+            self.instance.vec_adds(self.mask, param.get('ub_d'), param.get('ub_d'),
+                                   Constant.VALUE_ONE, Constant.REPEAT_ONE,
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
+            self.instance.vec_muls(self.mask, param.get('ub_d'), param.get('ub_d'),
+                                   Constant.VALUE_HALF, Constant.REPEAT_ONE,
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
+            y_vadds_val.set_as(param.get('ub_d')[0])
 
         return x_vmuls_val, x_vadds_val, y_vmuls_val, y_vadds_val
 
@@ -583,22 +589,22 @@ class CorrectBoxComputer():
         # if netw/w < neth/h
         # vdup neth/h
         tmp_scalar.set_as(img_info[0])
-        self.instance.vec_dup(self.mask, param['ub_d'], tmp_scalar, REPEAT_ONE,
-                              STRIDE_EIGHT)
+        self.instance.vec_dup(self.mask, param['ub_d'], tmp_scalar, Constant.REPEAT_ONE,
+                              Constant.STRIDE_EIGHT)
         tmp_scalar.set_as(img_info[2])
-        self.instance.vec_dup(self.mask, param['ub_g'], tmp_scalar, REPEAT_ONE,
-                              STRIDE_EIGHT)
+        self.instance.vec_dup(self.mask, param['ub_g'], tmp_scalar, Constant.REPEAT_ONE,
+                              Constant.STRIDE_EIGHT)
 
-        self.newton_div(param['ub_d'], param['ub_d'], param['ub_g'], REPEAT_ONE)
+        self.newton_div(param['ub_d'], param['ub_d'], param['ub_g'], Constant.REPEAT_ONE)
 
         # vdup netw/w
         tmp_scalar.set_as(img_info[1])
-        self.instance.vec_dup(self.mask, param['ub_e'], tmp_scalar, REPEAT_ONE,
-                              STRIDE_EIGHT)
+        self.instance.vec_dup(self.mask, param['ub_e'], tmp_scalar, Constant.REPEAT_ONE,
+                              Constant.STRIDE_EIGHT)
         tmp_scalar.set_as(img_info[3])
-        self.instance.vec_dup(self.mask, param['ub_g'], tmp_scalar, REPEAT_ONE,
-                              STRIDE_EIGHT)
-        self.newton_div(param['ub_e'], param['ub_e'], param['ub_g'], REPEAT_ONE)
+        self.instance.vec_dup(self.mask, param['ub_g'], tmp_scalar, Constant.REPEAT_ONE,
+                              Constant.STRIDE_EIGHT)
+        self.newton_div(param['ub_e'], param['ub_e'], param['ub_g'], Constant.REPEAT_ONE)
 
         sel = self.instance.Tensor("uint16", (8, ), name="sel",
                                    scope=tbe_platform.scope_ubuf)
@@ -610,19 +616,19 @@ class CorrectBoxComputer():
         param['lgt_tensor'][0].set_as(tmp_scalar)
         tmp_scalar.set_as(img_info[3])
         self.instance.vec_muls(self.mask, param['ub_d'], param['ub_d'],
-                               tmp_scalar, REPEAT_ONE, STRIDE_EIGHT,
-                               STRIDE_EIGHT)
-        self.instance.vec_sel(self.mask, VALUE_ZERO, param['ret_tensor'], sel,
+                               tmp_scalar, Constant.REPEAT_ONE, Constant.STRIDE_EIGHT,
+                               Constant.STRIDE_EIGHT)
+        self.instance.vec_sel(self.mask, Constant.VALUE_ZERO, param['ret_tensor'], sel,
                               param['lgt_tensor'], param['ub_d'], constant.STRIDE_ONE)
         new_w.set_as(param['ret_tensor'][0])
         # get new h
         tmp_scalar.set_as(img_info[2])
         self.instance.vec_muls(self.mask, param['ub_e'], param['ub_e'],
-                               tmp_scalar, REPEAT_ONE, STRIDE_EIGHT,
-                               STRIDE_EIGHT)
+                               tmp_scalar, Constant.REPEAT_ONE, Constant.STRIDE_EIGHT,
+                               Constant.STRIDE_EIGHT)
         tmp_scalar.set_as(img_info[0])
         param['lgt_tensor'][0].set_as(tmp_scalar)
-        self.instance.vec_sel(self.mask, VALUE_ZERO, param['ret_tensor'], sel,
+        self.instance.vec_sel(self.mask, Constant.VALUE_ZERO, param['ret_tensor'], sel,
                               param['ub_e'], param['lgt_tensor'], constant.STRIDE_ONE)
         new_h.set_as(param['ret_tensor'][0])
         return new_h, new_w
@@ -793,8 +799,8 @@ class CorrectBoxComputer():
                                         param['in_data'][
                                             batch, cycle, param[
                                                 'mov_len'] * loop],
-                                        SID, NBURST_ONE,
-                                        param['burlen'], GAP_ZERO, GAP_ZERO)
+                                        Constant.SID, Constant.NBURST_ONE,
+                                        param['burlen'], Constant.GAP_ZERO, Constant.GAP_ZERO)
 
                 self.compute_big_xy(batch, loop, param, repeat)
 
@@ -832,64 +838,64 @@ class CorrectBoxComputer():
         tmp_scalar = self.instance.Scalar(self.dtype)
         bias_value = self.instance.Scalar(self.dtype)
         # h
-        with self.instance.if_scope(param['co_id'] == VALUE_TWO):
+        with self.instance.if_scope(param['co_id'] == Constant.VALUE_TWO):
             bias_value.set_as(
-                param['ub_bias'][VALUE_TWO * param['box_id'] + VALUE_ONE])
+                param['ub_bias'][Constant.VALUE_TWO * param['box_id'] + Constant.VALUE_ONE])
             tmp_scalar.set_as(param['img_ub'][0])
 
             self.instance.vec_muls(self.mask, param['ub_c'], param['ub_a'],
-                                   2, repeat, STRIDE_EIGHT, STRIDE_EIGHT) # 2 * sigmoid
+                                   2, repeat, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT) # 2 * sigmoid
 
             self.instance.vec_mul(self.mask, param['ub_b'], param['ub_c'], param['ub_c'],
-                                   repeat, STRIDE_EIGHT, STRIDE_EIGHT, STRIDE_EIGHT) # x ^ 2
+                                   repeat, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT) # x ^ 2
 
             self.instance.vec_muls(self.mask, param['ub_c'], param['ub_b'],
-                                   bias_value, repeat, STRIDE_EIGHT, STRIDE_EIGHT)
-                                   
+                                   bias_value, repeat, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
+
             self.instance.vec_dup(self.mask, param['ub_b'], tmp_scalar, repeat,
-                                  STRIDE_EIGHT)
+                                  Constant.STRIDE_EIGHT)
 
             self.newton_div(param['ub_b'], param['ub_c'], param['ub_b'], repeat)
 
             self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
                                    param['y_vmuls_val'], repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             if not self.relative:
                 tmp_scalar.set_as(param['img_ub'][2])
                 self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
                                        tmp_scalar, repeat,
-                                       STRIDE_EIGHT, STRIDE_EIGHT)
+                                       Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
             self.data_mov_out(batch, loop, param)
         # w
-        with self.instance.if_scope(param['co_id'] == VALUE_THREE):
-            bias_value.set_as(param['ub_bias'][VALUE_TWO * param['box_id']])
+        with self.instance.if_scope(param['co_id'] == Constant.VALUE_THREE):
+            bias_value.set_as(param['ub_bias'][Constant.VALUE_TWO * param['box_id']])
 
             # img ub: neth,netw,scaleh,scalew
             tmp_scalar.set_as(param['img_ub'][1])
 
             self.instance.vec_muls(self.mask, param['ub_c'], param['ub_a'],
-                                   2, repeat, STRIDE_EIGHT, STRIDE_EIGHT) # 2 * sigmoid
+                                   2, repeat, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT) # 2 * sigmoid
 
             self.instance.vec_mul(self.mask, param['ub_b'], param['ub_c'], param['ub_c'],
-                                   repeat, STRIDE_EIGHT, STRIDE_EIGHT, STRIDE_EIGHT) # x ^ 2
+                                   repeat, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT) # x ^ 2
 
             self.instance.vec_muls(self.mask, param['ub_c'], param['ub_b'],
-                                   bias_value, repeat, STRIDE_EIGHT, STRIDE_EIGHT)
-                                   
+                                   bias_value, repeat, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
+
             self.instance.vec_dup(self.mask, param['ub_b'], tmp_scalar, repeat,
-                                  STRIDE_EIGHT)
+                                  Constant.STRIDE_EIGHT)
 
             self.newton_div(param['ub_b'], param['ub_c'], param['ub_b'], repeat)
             self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
                                    param['x_vmuls_val'], repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             if not self.relative:
                 tmp_scalar.set_as(param['img_ub'][3])
                 self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
                                        tmp_scalar, repeat,
-                                       STRIDE_EIGHT, STRIDE_EIGHT)
+                                       Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.data_mov_out(batch, loop, param)
 
@@ -924,42 +930,42 @@ class CorrectBoxComputer():
            """
         tmp_scalar = self.instance.Scalar(self.dtype)
         # x
-        with self.instance.if_scope(param['co_id'] == VALUE_ZERO):
+        with self.instance.if_scope(param['co_id'] == Constant.VALUE_ZERO):
             # move windex to ub b
             self.instance.data_move(param['ub_b'],
                                     param['windex'][cycle * param['mov_len']],
-                                    SID, NBURST_ONE, param['burlen'],
-                                    GAP_ZERO, GAP_ZERO)
+                                    Constant.SID, Constant.NBURST_ONE, param['burlen'],
+                                    Constant.GAP_ZERO, Constant.GAP_ZERO)
 
             self.instance.vec_muls(self.mask, param['ub_c'], param['ub_a'],
                                    2.0, repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.instance.vec_adds(self.mask, param['ub_c'], param['ub_c'],
                                    -0.5, repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.instance.vec_add(self.mask, param['ub_b'], param['ub_c'],
                                    param['ub_b'], repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.instance.vec_muls(self.mask, param['ub_b'], param['ub_a'],
                                    (1.0 / param['w']), repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
                                    param['x_vmuls_val'], repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.instance.vec_adds(self.mask, param['ub_b'], param['ub_b'],
                                    param['x_vadds_val'], repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             if not self.relative:
                 tmp_scalar.set_as(param['img_ub'][3])
                 self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
                                        tmp_scalar, repeat,
-                                       STRIDE_EIGHT, STRIDE_EIGHT)
+                                       Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.data_mov_out(batch, cycle, param)
         # y
@@ -967,39 +973,39 @@ class CorrectBoxComputer():
             # move hindex to ub
             self.instance.data_move(param['ub_b'],
                                     param['hindex'][cycle * param['mov_len']],
-                                    SID,
-                                    NBURST_ONE,
+                                    Constant.SID,
+                                    Constant.NBURST_ONE,
                                     param['burlen'],
-                                    GAP_ZERO, GAP_ZERO)
+                                    Constant.GAP_ZERO, Constant.GAP_ZERO)
 
             self.instance.vec_muls(self.mask, param['ub_c'], param['ub_a'],
                                    2.0, repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.instance.vec_adds(self.mask, param['ub_c'], param['ub_c'],
                                    -0.5, repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.instance.vec_add(self.mask, param['ub_b'], param['ub_c'],
                                    param['ub_b'], repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
                                    (1.0 / param['h']), repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
                                    param['y_vmuls_val'], repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
             self.instance.vec_adds(self.mask, param['ub_b'], param['ub_b'],
                                    param['y_vadds_val'], repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             if not self.relative:
                 tmp_scalar.set_as(param['img_ub'][2])
                 self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
                                        tmp_scalar, repeat,
-                                       STRIDE_EIGHT, STRIDE_EIGHT)
+                                       Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.data_mov_out(batch, cycle, param)
 
@@ -1028,29 +1034,29 @@ class CorrectBoxComputer():
            -------
            None
            """
-        if self.hwtail_len != VALUE_ZERO and param['h'] == self.height[-1] and \
+        if self.hwtail_len != Constant.VALUE_ZERO and param['h'] == self.height[-1] and \
                 param['w'] == self.width[-1]:
-            with self.instance.if_scope(loop == param['mov_loop'] - VALUE_ONE):
-                param['burlen'].set_as(param['burlen'] - VALUE_ONE)
-                with self.instance.if_scope(param['burlen'] > VALUE_ZERO):
+            with self.instance.if_scope(loop == param['mov_loop'] - Constant.VALUE_ONE):
+                param['burlen'].set_as(param['burlen'] - Constant.VALUE_ONE)
+                with self.instance.if_scope(param['burlen'] > Constant.VALUE_ZERO):
                     self.instance.data_move(
                         self.inter_coords[batch, param['co_id'],
                                           param['out_offset'] + param['w'] *
                                           param['h'] * param['box_id'] +
                                           param['mov_len'] * loop],
-                        param['ub_b'], SID, NBURST_ONE,
-                        param['burlen'], GAP_ZERO, GAP_ZERO)
+                        param['ub_b'], Constant.SID, Constant.NBURST_ONE,
+                        param['burlen'], Constant.GAP_ZERO, Constant.GAP_ZERO)
 
-                param['burlen'].set_as(param['burlen'] + VALUE_ONE)
+                param['burlen'].set_as(param['burlen'] + Constant.VALUE_ONE)
                 tail_idx = self.instance.Scalar(name="tail_idx")
                 tail_idx.set_as(param['last_len'] - self.len_32b)
                 self.instance.data_move(param['last_32b'], self.inter_coords[
                     batch, param['co_id'], param['out_offset'] + param['w'] * \
                     param['h'] * param['box_id'] + param['mov_len'] * loop + \
                     tail_idx],
-                                        SID, NBURST_ONE, VALUE_ONE, GAP_ZERO,
-                                        GAP_ZERO)
-                with self.instance.for_range(VALUE_ZERO,
+                                        Constant.SID, Constant.NBURST_ONE, Constant.VALUE_ONE, Constant.GAP_ZERO,
+                                        Constant.GAP_ZERO)
+                with self.instance.for_range(Constant.VALUE_ZERO,
                                              self.hwtail_len) as cycle:
                     tmp_scalar = self.instance.Scalar(self.dtype)
                     tmp_scalar.set_as(param['ub_b'][param['last_len'] - \
@@ -1063,22 +1069,22 @@ class CorrectBoxComputer():
                         batch, param['co_id'],
                         param['out_offset'] + param['w'] * param['h'] * param['box_id'] +
                         param['mov_len'] * loop + tail_idx], param['last_32b'],
-                    SID, NBURST_ONE, VALUE_ONE, GAP_ZERO, GAP_ZERO)
+                    Constant.SID, Constant.NBURST_ONE, Constant.VALUE_ONE, Constant.GAP_ZERO, Constant.GAP_ZERO)
             with self.instance.else_scope():
                 dest = self.inter_coords[batch, param['co_id'], \
                                          param['out_offset'] + \
                                          param['w'] * param['h'] * \
                                          param['box_id'] + \
                                          param['mov_len'] * loop]
-                self.instance.data_move(dest, param['ub_b'], SID, NBURST_ONE,
-                                        param['burlen'], GAP_ZERO, GAP_ZERO)
+                self.instance.data_move(dest, param['ub_b'], Constant.SID, Constant.NBURST_ONE,
+                                        param['burlen'], Constant.GAP_ZERO, Constant.GAP_ZERO)
         else:
             dest = self.inter_coords[batch, param['co_id'], param['out_offset'] \
                                      + param['w'] * param['h'] * param['box_id'] \
                                      + param['mov_len'] * loop]
-            self.instance.data_move(dest, param['ub_b'], SID, NBURST_ONE,
+            self.instance.data_move(dest, param['ub_b'], Constant.SID, Constant.NBURST_ONE,
                                     param['burlen'],
-                                    GAP_ZERO, GAP_ZERO)
+                                    Constant.GAP_ZERO, Constant.GAP_ZERO)
 
     def small_surface_template(self, batch, param):
         """
@@ -1150,9 +1156,9 @@ class CorrectBoxComputer():
                                     param['in_data'][
                                         batch, param[
                                             'faces_one_loop'] * loop_idx, 0],
-                                    SID,
-                                    NBURST_ONE, param['burlen'], GAP_ZERO,
-                                    GAP_ZERO)
+                                    Constant.SID,
+                                    Constant.NBURST_ONE, param['burlen'], Constant.GAP_ZERO,
+                                    Constant.GAP_ZERO)
 
             with self.instance.for_range(0, param['faces'], thread_num=2) as cycle:
                 # Calculate the cindex.
@@ -1205,63 +1211,63 @@ class CorrectBoxComputer():
            """
         tmp_scalar = self.instance.Scalar(self.dtype)
         bias_value = self.instance.Scalar(self.dtype)
-        with self.instance.if_scope(param['co_id'] == VALUE_TWO):
+        with self.instance.if_scope(param['co_id'] == Constant.VALUE_TWO):
             bias_value.set_as(
-                param['ub_bias'][VALUE_TWO * param['box_id'] + VALUE_ONE])
+                param['ub_bias'][Constant.VALUE_TWO * param['box_id'] + Constant.VALUE_ONE])
             tmp_scalar.set_as(param['img_ub'][0])
 
             self.instance.vec_muls(self.mask, param['ub_c'], param['ub_a'][start_idx],
-                                   2, repeat, STRIDE_EIGHT, STRIDE_EIGHT) # 2 * sigmoid
+                                   2, repeat, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT) # 2 * sigmoid
 
             self.instance.vec_mul(self.mask, param['ub_b'], param['ub_c'], param['ub_c'],
-                                   repeat, STRIDE_EIGHT, STRIDE_EIGHT, STRIDE_EIGHT) # x ^ 2
+                                   repeat, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT) # x ^ 2
 
             self.instance.vec_muls(self.mask, param['ub_c'], param['ub_b'],
-                                   bias_value, repeat, STRIDE_EIGHT, STRIDE_EIGHT)
-                                   
+                                   bias_value, repeat, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
+
             self.instance.vec_dup(self.mask, param['ub_b'], tmp_scalar, repeat,
-                                  STRIDE_EIGHT)
+                                  Constant.STRIDE_EIGHT)
 
             self.newton_div(param['ub_b'], param['ub_c'], param['ub_b'],
                             repeat)
             self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
                                    param['y_vmuls_val'], repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             if not self.relative:
                 tmp_scalar.set_as(param['img_ub'][2])
                 self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
                                        tmp_scalar, repeat,
-                                       STRIDE_EIGHT, STRIDE_EIGHT)
+                                       Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.t_small_mov_to_gm(batch, param)
-        with self.instance.if_scope(param['co_id'] == VALUE_THREE):
-            bias_value.set_as(param['ub_bias'][VALUE_TWO * param['box_id']])
+        with self.instance.if_scope(param['co_id'] == Constant.VALUE_THREE):
+            bias_value.set_as(param['ub_bias'][Constant.VALUE_TWO * param['box_id']])
             tmp_scalar.set_as(param['img_ub'][1])
 
             self.instance.vec_muls(self.mask, param['ub_c'], param['ub_a'][start_idx],
-                                   2, repeat, STRIDE_EIGHT, STRIDE_EIGHT) # 2 * sigmoid
+                                   2, repeat, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT) # 2 * sigmoid
 
             self.instance.vec_mul(self.mask, param['ub_b'], param['ub_c'], param['ub_c'],
-                                   repeat, STRIDE_EIGHT, STRIDE_EIGHT, STRIDE_EIGHT) # x ^ 2
+                                   repeat, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT) # x ^ 2
 
             self.instance.vec_muls(self.mask, param['ub_c'], param['ub_b'],
-                                   bias_value, repeat, STRIDE_EIGHT, STRIDE_EIGHT)
-                                   
+                                   bias_value, repeat, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
+
             self.instance.vec_dup(self.mask, param['ub_b'], tmp_scalar, repeat,
-                                  STRIDE_EIGHT)
+                                  Constant.STRIDE_EIGHT)
 
             self.newton_div(param['ub_b'], param['ub_c'], param['ub_b'],
                             repeat)
             self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
                                    param['x_vmuls_val'], repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             if not self.relative:
                 tmp_scalar.set_as(param['img_ub'][3])
                 self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
                                        tmp_scalar, repeat,
-                                       STRIDE_EIGHT, STRIDE_EIGHT)
+                                       Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.t_small_mov_to_gm(batch, param)
 
@@ -1292,75 +1298,75 @@ class CorrectBoxComputer():
            None
            """
         tmp_scalar = self.instance.Scalar(self.dtype)
-        with self.instance.if_scope(param['co_id'] == VALUE_ZERO):
-            self.instance.data_move(param['ub_b'], param['windex'], SID,
-                                    NBURST_ONE, param['burlen'],
-                                    GAP_ZERO, GAP_ZERO)
+        with self.instance.if_scope(param['co_id'] == Constant.VALUE_ZERO):
+            self.instance.data_move(param['ub_b'], param['windex'], Constant.SID,
+                                    Constant.NBURST_ONE, param['burlen'],
+                                    Constant.GAP_ZERO, Constant.GAP_ZERO)
 
             self.instance.vec_muls(self.mask, param['ub_c'], param['ub_a'][start_idx],
                                    2.0, repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.instance.vec_adds(self.mask, param['ub_c'], param['ub_c'],
                                             -0.5, repeat,
-                                            STRIDE_EIGHT, STRIDE_EIGHT)
+                                            Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.instance.vec_add(self.mask, param['ub_b'], param['ub_c'],
                                    param['ub_b'], repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
                                    (1.0 / param['w']), repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
                                    param['x_vmuls_val'], repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.instance.vec_adds(self.mask, param['ub_b'], param['ub_b'],
                                    param['x_vadds_val'], repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             if not self.relative:
                 tmp_scalar.set_as(param['img_ub'][3])
                 self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
                                        tmp_scalar, repeat,
-                                       STRIDE_EIGHT, STRIDE_EIGHT)
+                                       Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.t_small_mov_to_gm(batch, param)
 
-        with self.instance.if_scope(param['co_id'] == VALUE_ONE):
-            self.instance.data_move(param['ub_b'], param['hindex'], SID,
-                                    NBURST_ONE,
-                                    param['burlen'], GAP_ZERO, GAP_ZERO)
+        with self.instance.if_scope(param['co_id'] == Constant.VALUE_ONE):
+            self.instance.data_move(param['ub_b'], param['hindex'], Constant.SID,
+                                    Constant.NBURST_ONE,
+                                    param['burlen'], Constant.GAP_ZERO, Constant.GAP_ZERO)
 
             self.instance.vec_muls(self.mask, param['ub_c'], param['ub_a'][start_idx],
                                    2.0, repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.instance.vec_adds(self.mask, param['ub_c'], param['ub_c'],
                                    -0.5, repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.instance.vec_add(self.mask, param['ub_b'], param['ub_c'],
                                    param['ub_b'], repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
                                    (1.0 / param['h']), repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
                                    param['y_vmuls_val'], repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
-                                   
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
+
             self.instance.vec_adds(self.mask, param['ub_b'], param['ub_b'],
                                    param['y_vadds_val'], repeat,
-                                   STRIDE_EIGHT, STRIDE_EIGHT)
+                                   Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
             if not self.relative:
                 tmp_scalar.set_as(param['img_ub'][2])
                 self.instance.vec_muls(self.mask, param['ub_b'], param['ub_b'],
                                        tmp_scalar, repeat,
-                                       STRIDE_EIGHT, STRIDE_EIGHT)
+                                       Constant.STRIDE_EIGHT, Constant.STRIDE_EIGHT)
 
             self.t_small_mov_to_gm(batch, param)
