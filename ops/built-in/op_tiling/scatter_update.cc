@@ -22,12 +22,13 @@
 #include <math.h>
 #include <iostream>
 #include <nlohmann/json.hpp>
-#include "op_tiling.h"
+#include "op_tiling_util.h"
 #include "graph/debug/ge_log.h"
 #include "graph/utils/op_desc_utils.h"
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
 #include "error_log.h"
+#include "vector_tiling_profiling.h"
 
 namespace optiling {
 const int64_t BLOCK_SIZE = 32;
@@ -47,6 +48,8 @@ const int64_t TILING_MODE_5 = 5;
 const int64_t ZERO = 0;
 constexpr int32_t BYTE_SIZE_2 = 2;
 constexpr int32_t BYTE_SIZE_4 = 4;
+// define the compile key of json.vars
+static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num", "ub_size", "var_size", "indices_size"};
 
 struct ScatterUpdateTilingParams {
   int64_t tilingMode;
@@ -88,19 +91,18 @@ void InitRunningParams(ScatterUpdateTilingParams& params) {
   params.last_core_last_num = 0;
 }
 
-void CalRunningParams(const std::string& opType, ScatterUpdateTilingParams& runParams, int64_t indicesNum, 
-		      int64_t updatesNum,int64_t updateDataNum, int64_t maxIndice, int64_t ubSize, int64_t coreNum, 
-		      int64_t varSize,int64_t indicesSize, int64_t varDataEachBlock, int64_t var_num, 
-		      const std::string &var_dtype, int64_t var_first_shape) {
+void CalRunningParams(const std::string& opType, ScatterUpdateTilingParams& runParams, int64_t indicesNum,
+                      int64_t updatesNum, int64_t updateDataNum, int64_t maxIndice, int64_t ubSize, int64_t coreNum,
+                      int64_t varSize, int64_t indicesSize, int64_t varDataEachBlock, int64_t var_num,
+                      ge::DataType var_dtype, int64_t var_first_shape) {
   int64_t updateSizeByte = varSize * updatesNum;
   int64_t halfUbSize = ubSize / 2;
   OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_update", "varSize = 0 is not support"),
                   return);
   OP_TILING_CHECK(indicesSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_update", "indicesSize = 0 is not support"),
-                  return);
-  OP_TILING_CHECK(varDataEachBlock == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_update", 
-		  "varDataEachBlock = 0 is not support"),
-                  return);
+                  return );
+  OP_TILING_CHECK(varDataEachBlock == 0,
+                  VECTOR_INNER_ERR_REPORT_TILIING("scatter_update", "varDataEachBlock = 0 is not support"), return );
   runParams.updatesLoopNum = updateDataNum / (halfUbSize / varSize);
   runParams.updatesLastNum = updateDataNum % (halfUbSize / varSize);
   runParams.indicesLoopNum = indicesNum / (halfUbSize / indicesSize);
@@ -136,13 +138,11 @@ void CalRunningParams(const std::string& opType, ScatterUpdateTilingParams& runP
   }
   if (opType == "InplaceUpdate") {
     int64_t dtype_bytes_size = 0;
-    if (var_dtype == "float16") {
+    if (var_dtype == ge::DT_FLOAT16) {
       dtype_bytes_size = BYTE_SIZE_2;
-    }
-    if (var_dtype == "float32") {
+    } else if (var_dtype == ge::DT_FLOAT) {
       dtype_bytes_size = BYTE_SIZE_4;
-    }
-    if (var_dtype == "int32") {
+    } else if (var_dtype == ge::DT_INT32) {
       dtype_bytes_size = BYTE_SIZE_4;
     }
     runParams.each_core_compute_num = runParams.indiceStep * var_num;
@@ -152,8 +152,8 @@ void CalRunningParams(const std::string& opType, ScatterUpdateTilingParams& runP
     } else {
       runParams.each_core_loop_compute_num = 0;
     }
-    runParams.each_core_last_num = runParams.each_core_compute_num - runParams.each_core_loop_num * \
-				      runParams.each_core_loop_compute_num;
+    runParams.each_core_last_num =
+        runParams.each_core_compute_num - runParams.each_core_loop_num * runParams.each_core_loop_compute_num;
     runParams.last_core_compute_num = var_first_shape * var_num - runParams.each_core_compute_num * \ 
 	                              (runParams.coreNum - 1);
     runParams.last_core_loop_num = (runParams.last_core_compute_num * dtype_bytes_size) / halfUbSize;
@@ -162,30 +162,30 @@ void CalRunningParams(const std::string& opType, ScatterUpdateTilingParams& runP
     } else {
       runParams.last_core_loop_compute_num = 0;
     }
-    runParams.last_core_last_num = runParams.last_core_compute_num - runParams.last_core_loop_num * \
-	                           runParams.last_core_loop_compute_num;
+    runParams.last_core_last_num =
+        runParams.last_core_compute_num - runParams.last_core_loop_num * runParams.last_core_loop_compute_num;
   }
 }
 
-void SetRuningParams(const std::string& opType, const ScatterUpdateTilingParams& params, OpRunInfo& runInfo) {
-  ByteBufferPut(runInfo.tiling_data, params.tilingMode);
-  ByteBufferPut(runInfo.tiling_data, params.indiceStep);
-  ByteBufferPut(runInfo.tiling_data, params.coreNum);
-  ByteBufferPut(runInfo.tiling_data, params.updatesDataNum);
-  ByteBufferPut(runInfo.tiling_data, params.indicesLoopNum);
-  ByteBufferPut(runInfo.tiling_data, params.indicesLastNum);
-  ByteBufferPut(runInfo.tiling_data, params.updatesNum);
-  ByteBufferPut(runInfo.tiling_data, params.updatesLoopNum);
-  ByteBufferPut(runInfo.tiling_data, params.updatesLastNum);
+void SetRuningParams(const std::string& opType, const ScatterUpdateTilingParams& params, utils::OpRunInfo& runInfo) {
+  runInfo.AddTilingData(params.tilingMode);
+  runInfo.AddTilingData(params.indiceStep);
+  runInfo.AddTilingData(params.coreNum);
+  runInfo.AddTilingData(params.updatesDataNum);
+  runInfo.AddTilingData(params.indicesLoopNum);
+  runInfo.AddTilingData(params.indicesLastNum);
+  runInfo.AddTilingData(params.updatesNum);
+  runInfo.AddTilingData(params.updatesLoopNum);
+  runInfo.AddTilingData(params.updatesLastNum);
   if (opType == "InplaceUpdate") {
-    ByteBufferPut(runInfo.tiling_data, params.each_core_compute_num);
-    ByteBufferPut(runInfo.tiling_data, params.each_core_loop_num);
-    ByteBufferPut(runInfo.tiling_data, params.each_core_loop_compute_num);
-    ByteBufferPut(runInfo.tiling_data, params.each_core_last_num);
-    ByteBufferPut(runInfo.tiling_data, params.last_core_compute_num);
-    ByteBufferPut(runInfo.tiling_data, params.last_core_loop_num);
-    ByteBufferPut(runInfo.tiling_data, params.last_core_loop_compute_num);
-    ByteBufferPut(runInfo.tiling_data, params.last_core_last_num);
+    runInfo.AddTilingData(params.each_core_compute_num);
+    runInfo.AddTilingData(params.each_core_loop_num);
+    runInfo.AddTilingData(params.each_core_loop_compute_num);
+    runInfo.AddTilingData(params.each_core_last_num);
+    runInfo.AddTilingData(params.last_core_compute_num);
+    runInfo.AddTilingData(params.last_core_loop_num);
+    runInfo.AddTilingData(params.last_core_loop_compute_num);
+    runInfo.AddTilingData(params.last_core_last_num);
   }
 }
 
@@ -200,104 +200,98 @@ void PrintTilingParams(const std::string& opType, const ScatterUpdateTilingParam
   OP_LOGD(opType.c_str(), "op [ScatterUpdateTiling] : updatesLoopNum=%ld.", params.updatesLoopNum);
   OP_LOGD(opType.c_str(), "op [ScatterUpdateTiling] : updatesLastNum=%ld.", params.updatesLastNum);
   if (opType == "InplaceUpdate") {
-    OP_LOGD(opType.c_str(), "op [InplaceUpdateTiling] : each_core_compute_num=%ld.", 
-            params.each_core_compute_num);
+    OP_LOGD(opType.c_str(), "op [InplaceUpdateTiling] : each_core_compute_num=%ld.", params.each_core_compute_num);
     OP_LOGD(opType.c_str(), "op [InplaceUpdateTiling] : each_core_loop_num=%ld.", params.each_core_loop_num);
-    OP_LOGD(opType.c_str(), "op [InplaceUpdateTiling] : each_core_loop_compute_num=%ld.", 
-	    params.each_core_loop_compute_num);
+    OP_LOGD(opType.c_str(), "op [InplaceUpdateTiling] : each_core_loop_compute_num=%ld.",
+            params.each_core_loop_compute_num);
     OP_LOGD(opType.c_str(), "op [InplaceUpdateTiling] : each_core_last_num=%ld.", params.each_core_last_num);
     OP_LOGD(opType.c_str(), "op [InplaceUpdateTiling] : last_core_compute_num=%ld.", params.last_core_compute_num);
     OP_LOGD(opType.c_str(), "op [InplaceUpdateTiling] : last_core_loop_num=%ld.", params.last_core_loop_num);
-    OP_LOGD(opType.c_str(), "op [InplaceUpdateTiling] : last_core_loop_compute_num=%ld.", 
-	    params.last_core_loop_compute_num);
+    OP_LOGD(opType.c_str(), "op [InplaceUpdateTiling] : last_core_loop_compute_num=%ld.",
+            params.last_core_loop_compute_num);
     OP_LOGD(opType.c_str(), "op [InplaceUpdateTiling] : last_core_last_num=%ld.", params.last_core_last_num);
   }
 }
 
-bool CheckScatterUpdateTensorShape(const std::string& opType, std::vector<int64_t> varShape,
-                                   std::vector<int64_t> indicesShape, std::vector<int64_t> updatesShape,
-                                   std::vector<int64_t> outShape) {
-  if (varShape != outShape) {
+bool CheckScatterUpdateTensorShape(const std::string& opType, const GeShape& varShape, const GeShape& indicesShape,
+                                   const GeShape& updatesShape, const GeShape& outShape) {
+  if (!(varShape == outShape)) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "the length of var must be same as the length of output.");
     return false;
   }
 
-  if (indicesShape.size() == 1 && indicesShape[0] == 1 && varShape.size() - updatesShape.size() == 1) {
+  if (indicesShape.GetDimNum() == 1 && indicesShape.GetDim(0) == 1 &&
+      varShape.GetDimNum() - updatesShape.GetDimNum() == 1) {
     OP_LOGI(opType.c_str(), "Input indices is a scalar.");
     return true;
   }
 
-  std::vector<int64_t> actualUpdatesShape = indicesShape;
-  int64_t varSize = varShape.size();
-  for (int64_t i = 1; i < varSize; i++) {
-    actualUpdatesShape.push_back(varShape[i]);
+  for (int64_t i = 0; i < indicesShape.GetDimNum(); i++) {
+    OP_TILING_CHECK(
+      updatesShape.GetDim(i) != indicesShape.GetDim(i),
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "the updatesShape[%zu] is not equal to indicesShape[%zu].",
+                                      i, i),
+      return false);
   }
-  if (updatesShape != actualUpdatesShape) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "updates does not satisfy the relation expression with actualUpdateShape.");
-    return false;
+
+  for (int64_t j = 1; j < varShape.GetDimNum(); j++) {
+    int64_t index = j + indicesShape.GetDimNum() - 1;
+    OP_TILING_CHECK(
+      updatesShape.GetDim(index) != varShape.GetDim(j),
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "the updatesShape[%zu] is not equal to varShape[%zu].",
+                                      index, j),
+      return false);
   }
   return true;
 }
 
-bool GetScatteUpdateCompileParams(const std::string& opType, const nlohmann::json& opCompileInfo, int64_t& coreNum,
-                                  int64_t& ubSize, int64_t& varSize, int64_t& indicesSize) {
-  using namespace nlohmann;
-  const auto& allVars = opCompileInfo["vars"];
-  if (allVars.count("core_num") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get core_num error");
-    return false;
-  }
-  coreNum = allVars["core_num"].get<std::int64_t>();
+bool GetScatteUpdateCompileParams(const std::string& opType, const std::vector<int64_t>& opCompileInfo,
+                                  int64_t& coreNum, int64_t& ubSize, int64_t& varSize, int64_t& indicesSize) {
+  OP_TILING_CHECK(
+      opCompileInfo.size() != COMPILE_INFO_KEY.size(),
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "the compile info num is not equal expect compile_info(%zu), is %zu",
+                                      COMPILE_INFO_KEY.size(), opCompileInfo.size()),
+      return false);
 
-  if (allVars.count("ub_size") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get ub_size error");
-    return false;
-  }
-  ubSize = allVars["ub_size"].get<std::int64_t>();
-
-  if (allVars.count("var_size") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get var_size error");
-    return false;
-  }
-  varSize = allVars["var_size"].get<std::int64_t>();
-
-  if (allVars.count("indices_size") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get indices_size error");
-    return false;
-  }
-  indicesSize = allVars["indices_size"].get<std::int64_t>();
+  coreNum = opCompileInfo[0];
+  ubSize = opCompileInfo[1];
+  varSize = opCompileInfo[2];
+  indicesSize = opCompileInfo[3];
 
   return true;
 }
 
-bool ScatterUpdateTiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& opCompileInfo,
-                         OpRunInfo& runInfo) {
+bool ScatterUpdateTiling(const std::string& opType, const ge::Operator& opParas,
+                         const std::vector<int64_t>& opCompileInfo, utils::OpRunInfo& runInfo) {
   using namespace ge;
-  std::cout << opType << endl;
+  PROFILING_TILING_INIT(opType.c_str());
+  auto operator_info = OpDescUtils::GetOpDescFromOperator(opParas);
   OP_LOGI(opType.c_str(), "ScatterUpdateTiling running.");
-  if (opCompileInfo == nullptr) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "opCompileInfo json error.");
-    return false;
+  OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get OpDesc failed."),
+                  return false);
+
+  auto var_desc = operator_info->MutableInputDesc(0);
+  auto indices_desc = operator_info->MutableInputDesc(1);
+  auto updates_desc = operator_info->MutableInputDesc(2);
+  OP_TILING_CHECK(var_desc == nullptr || indices_desc == nullptr || updates_desc == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(opType, "get InputDesc failed."), return false);
+
+  auto out_desc = operator_info->MutableOutputDesc(0);
+  OP_TILING_CHECK(out_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get OutputDesc failed."), return false);
+
+  const GeShape& varShape = var_desc->MutableShape();
+  const GeShape& indicesShape = indices_desc->MutableShape();
+  const GeShape& updatesShape = updates_desc->MutableShape();
+  const GeShape& outShape = out_desc->MutableShape();
+  ge::DataType var_dtype = indices_desc->GetDataType();
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
+
+  int64_t var_first_shape = varShape.GetDim(0);
+  int64_t var_num = 1;
+  for (int64_t i = 1; i < varShape.GetDimNum(); i++) {
+    var_num = var_num * varShape.GetDim(i);
   }
 
-  if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty() || opParas.inputs[1].tensor.empty() ||
-      opParas.inputs[2].tensor.empty()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "input shape error");
-    return false;
-  }
-
-  if (opParas.outputs.empty() || opParas.outputs[0].tensor.empty()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "output shape error");
-    return false;
-  }
-  const std::vector<int64_t>& varShape = opParas.inputs[0].tensor[0].shape;
-  const std::vector<int64_t>& indicesShape = opParas.inputs[1].tensor[0].shape;
-  const std::vector<int64_t>& updatesShape = opParas.inputs[2].tensor[0].shape;
-  const std::vector<int64_t>& outShape = opParas.outputs[0].tensor[0].shape;
-  std::string var_dtype = opParas.inputs[1].tensor[0].dtype;
-
-  int64_t var_num = std::accumulate(varShape.begin() + 1, varShape.end(), 1, std::multiplies<int64_t>());
-  int64_t var_first_shape = varShape[0];
   bool is_valid_shape = CheckScatterUpdateTensorShape(opType, varShape, indicesShape, updatesShape, outShape);
   if (!is_valid_shape) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "CheckScatterUpdateTensorShape failed.");
@@ -315,18 +309,18 @@ bool ScatterUpdateTiling(const std::string& opType, const TeOpParas& opParas, co
   }
   if (coreNum <= ZERO || ubSize <= ZERO || varSize <= ZERO || indicesSize <= ZERO) {
     VECTOR_INNER_ERR_REPORT_TILIING(
-        opType, "coreNum, ubSize, varSize, indicesSize must be greater to 0, but got %ld, %ld, %ld, %ld", coreNum, ubSize,
-        varSize, indicesSize);
+        opType, "coreNum, ubSize, varSize, indicesSize must be greater to 0, but got %ld, %ld, %ld, %ld", coreNum,
+        ubSize, varSize, indicesSize);
     return false;
   }
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
   ScatterUpdateTilingParams runParams;
   InitRunningParams(runParams);
-  int64_t indicesNum = std::accumulate(indicesShape.begin(), indicesShape.end(), 1, std::multiplies<int>());
-  int64_t updatesNum = std::accumulate(updatesShape.begin(), updatesShape.end(), 1, std::multiplies<int>());
-  int64_t updateDataNum =
-      (varShape.size() > 1) ? (std::accumulate(varShape.begin() + 1, varShape.end(), 1, std::multiplies<int>())) : 1;
-  int64_t maxIndice = varShape[0];
+  int64_t indicesNum = indicesShape.GetShapeSize();
+  int64_t updatesNum = updatesShape.GetShapeSize();
+  int64_t updateDataNum = (varShape.GetDimNum() > 1) ? var_num : 1;
+  int64_t maxIndice = varShape.GetDim(0);
   int64_t varDataEachBlock = BLOCK_SIZE / varSize;
 
   OP_LOGD(opType.c_str(), "op [ScatterUpdateTiling] : indicesNum=%ld.", indicesNum);
@@ -334,23 +328,22 @@ bool ScatterUpdateTiling(const std::string& opType, const TeOpParas& opParas, co
   OP_LOGD(opType.c_str(), "op [ScatterUpdateTiling] : updateDataNum=%ld.", updateDataNum);
   OP_LOGD(opType.c_str(), "op [ScatterUpdateTiling] : maxIndice=%ld.", maxIndice);
 
-  CalRunningParams(opType, runParams, indicesNum, updatesNum, updateDataNum, maxIndice, ubSize, coreNum, varSize, 
-		  indicesSize, varDataEachBlock, var_num, var_dtype, var_first_shape);
+  CalRunningParams(opType, runParams, indicesNum, updatesNum, updateDataNum, maxIndice, ubSize, coreNum, varSize,
+                   indicesSize, varDataEachBlock, var_num, var_dtype, var_first_shape);
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
 
   SetRuningParams(opType, runParams, runInfo);
 
   PrintTilingParams(opType, runParams);
 
-  runInfo.block_dim = runParams.coreNum;
-  std::vector<int64_t> workspace;
-  runInfo.workspaces = workspace;
-
+  runInfo.SetBlockDim(runParams.coreNum);
+  PROFILING_TILING_END();
   OP_LOGI(opType.c_str(), "ScatterUpdateTiling run success.");
 
   return true;
 }
 
 // register tiling interface of the ScatterUpdate op.
-REGISTER_OP_TILING_FUNC_BUFFERED(ScatterUpdate, ScatterUpdateTiling);
-REGISTER_OP_TILING_FUNC_BUFFERED(InplaceUpdate, ScatterUpdateTiling);
+REGISTER_OP_TILING_V3_WITH_VECTOR(ScatterUpdate, ScatterUpdateTiling, COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
+REGISTER_OP_TILING_V3_WITH_VECTOR(InplaceUpdate, ScatterUpdateTiling, COMPILE_INFO_KEY, NO_OPTIONAL_VALUE);
 }  // namespace optiling

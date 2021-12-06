@@ -24,8 +24,13 @@
 #include <gtest/gtest.h>
 #define private public
 #include "register/op_tiling_registry.h"
-
+#include "nn_pooling_ops.h"
+#include "array_ops.h"
+#include "common/utils/ut_op_util.h"
+#include "test_common.h"
 using namespace std;
+using namespace ut_util;
+using namespace ge;
 
 class MaxPoolTiling : public testing::Test {
  protected:
@@ -52,7 +57,6 @@ static string to_string(const std::stringstream& tiling_data) {
 }
 
 TEST_F(MaxPoolTiling, maxpool_tiling_0) {
-  using namespace optiling;
   std::string op_name = "MaxPool";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -61,41 +65,23 @@ TEST_F(MaxPoolTiling, maxpool_tiling_0) {
       "{\"vars\": {\"ub_ele\": 130560, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 1, \"strides_h\": 1, "
       "\"strides_w\": 1, \"padding\": 0}}";
 
-  std::vector<int64_t> input{16, 13, 79, 69, 16};
+  std::vector<int64_t> input{16, 79, 69, 208};
   std::vector<int64_t> output{16, 13, 79, 69, 16};
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float16";
-  tensor_input.format = "NC1HWC0";
-  tensor_input.ori_format = "NHwC";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float16";
-  tensor_output.format = "NC1HWC0";
-  tensor_output.ori_format = "NHwC";
+  auto opParas = op::MaxPool("MaxPool");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT16, FORMAT_NHWC, {});
+  TransformerOpBaseFormat(opParas, "x", FORMAT_NC1HWC0);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input, DT_FLOAT16, FORMAT_NC1HWC0, {});
 
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234560";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "0 32 35432 35416 79 69 79 69 79 69 0 0 0 0 1 1 1 4 2792 4 2776 0 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "0 32 35432 35416 79 69 79 69 79 69 0 0 0 0 1 1 1 4 2792 4 2776 0 ");
+  for (int64_t i = 0; i < 10; i++) {
+    RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  }
 }
 
 TEST_F(MaxPoolTiling, maxpool_tiling_1) {
-  using namespace optiling;
   std::string op_name = "MaxPool";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -104,41 +90,23 @@ TEST_F(MaxPoolTiling, maxpool_tiling_1) {
       "{\"vars\": {\"ub_ele\": 130560, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 1, \"strides_h\": 2, "
       "\"strides_w\": 2, \"padding\": 0}}";
 
-  std::vector<int64_t> input{16, 13, 10, 70, 16};
+  std::vector<int64_t> input{16, 10, 70, 208};
   std::vector<int64_t> output{16, 13, 5, 35, 16};
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float16";
-  tensor_input.format = "NC1HWC0";
-  tensor_input.ori_format = "NHwC";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float16";
-  tensor_output.format = "NC1HWC0";
-  tensor_output.ori_format = "NHwC";
+  auto opParas = op::MaxPool("MaxPool");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT16, FORMAT_NHWC, {});
+  TransformerOpBaseFormat(opParas, "x", FORMAT_NC1HWC0);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input, DT_FLOAT16, FORMAT_NC1HWC0, {});
 
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234561";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1 30 7 5 10 70 5 35 9 69 0 0 0 0 2 1 1 3 1 2 1 208 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 30 7 5 10 70 5 35 9 69 0 0 0 0 2 1 1 3 1 2 1 208 ");
+  for (int64_t i = 0; i < 10; i++) {
+    RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  }
 }
 
 TEST_F(MaxPoolTiling, maxpool_tiling_2) {
-  using namespace optiling;
   std::string op_name = "MaxPool";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -147,41 +115,23 @@ TEST_F(MaxPoolTiling, maxpool_tiling_2) {
       "{\"vars\": {\"ub_ele\": 130560, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 1, \"strides_h\": 2, "
       "\"strides_w\": 2, \"padding\": 0}}";
 
-  std::vector<int64_t> input{16, 13, 62, 250, 16};
+  std::vector<int64_t> input{16, 62, 250, 208};
   std::vector<int64_t> output{16, 13, 31, 125, 16};
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float16";
-  tensor_input.format = "NC1HWC0";
-  tensor_input.ori_format = "NHwC";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float16";
-  tensor_output.format = "NC1HWC0";
-  tensor_output.ori_format = "NHwC";
+  auto opParas = op::MaxPool("MaxPool");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT16, FORMAT_NHWC, {});
+  TransformerOpBaseFormat(opParas, "x", FORMAT_NC1HWC0);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input, DT_FLOAT16, FORMAT_NC1HWC0, {});
 
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234562";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "2 30 7 5 62 250 31 125 61 249 0 0 0 0 1 3 1 10 1 10 1 208 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "2 30 7 5 62 250 31 125 61 249 0 0 0 0 1 3 1 10 1 10 1 208 ");
+  for (int64_t i = 0; i < 10; i++) {
+    RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  }
 }
 
 TEST_F(MaxPoolTiling, maxpool_tiling_3) {
-  using namespace optiling;
   std::string op_name = "MaxPool";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -190,41 +140,23 @@ TEST_F(MaxPoolTiling, maxpool_tiling_3) {
       "{\"vars\": {\"ub_ele\": 130560, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 1, \"strides_h\": 2, "
       "\"strides_w\": 2, \"padding\": 0}}";
 
-  std::vector<int64_t> input{16, 13, 10, 2500, 16};
+  std::vector<int64_t> input{16, 10, 2500, 208};
   std::vector<int64_t> output{16, 13, 5, 1250, 16};
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float16";
-  tensor_input.format = "NC1HWC0";
-  tensor_input.ori_format = "NHwC";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float16";
-  tensor_output.format = "NC1HWC0";
-  tensor_output.ori_format = "NHwC";
+  auto opParas = op::MaxPool("MaxPool");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT16, FORMAT_NHWC, {});
+  TransformerOpBaseFormat(opParas, "x", FORMAT_NC1HWC0);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input, DT_FLOAT16, FORMAT_NC1HWC0, {});
 
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234563";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "3 30 7 5 10 2500 5 1250 9 2499 0 0 0 0 1 1 680 1 570 1 570 208 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "3 30 7 5 10 2500 5 1250 9 2499 0 0 0 0 1 1 680 1 570 1 570 208 ");
+  for (int64_t i = 0; i < 10; i++) {
+    RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  }
 }
 
 TEST_F(MaxPoolTiling, maxpool_tiling_4) {
-  using namespace optiling;
   std::string op_name = "MaxPool";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -233,35 +165,18 @@ TEST_F(MaxPoolTiling, maxpool_tiling_4) {
       "{\"vars\": {\"ub_ele\": 130560, \"core_num\": 32, \"ksize_h\": 1, \"ksize_w\": 1, \"strides_h\": 2, "
       "\"strides_w\": 2, \"padding\": 1}}";
 
-  std::vector<int64_t> input{16, 13, 10, 70, 16};
+  std::vector<int64_t> input{16, 10, 70, 208};
   std::vector<int64_t> output{16, 13, 5, 35, 16};
 
-  TeOpTensor tensor_input;
-  tensor_input.shape = input;
-  tensor_input.dtype = "float16";
-  tensor_input.format = "NC1HWC0";
-  tensor_input.ori_format = "NHwC";
-  TeOpTensor tensor_output;
-  tensor_output.shape = output;
-  tensor_output.dtype = "float16";
-  tensor_output.format = "NC1HWC0";
-  tensor_output.ori_format = "NHwC";
+  auto opParas = op::MaxPool("MaxPool");
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input, DT_FLOAT16, FORMAT_NHWC, {});
+  TransformerOpBaseFormat(opParas, "x", FORMAT_NC1HWC0);
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input, DT_FLOAT16, FORMAT_NC1HWC0, {});
 
-  TeOpTensorArg tensor_input_arg;
-  tensor_input_arg.tensor.push_back(tensor_input);
-  tensor_input_arg.arg_type = TA_SINGLE;
-  TeOpTensorArg tensor_output_arg;
-  tensor_output_arg.tensor.push_back(tensor_output);
-  tensor_output_arg.arg_type = TA_SINGLE;
-
-  TeOpParas opParas;
-  opParas.inputs.push_back(tensor_input_arg);
-  opParas.outputs.push_back(tensor_output_arg);
-  opParas.op_type = op_name;
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "1234564";
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data), "1 30 7 5 10 70 5 35 9 69 0 0 0 0 2 1 1 3 1 2 1 208 ");
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 30 7 5 10 70 5 35 9 69 0 0 0 0 2 1 1 3 1 2 1 208 ");
+  for (int64_t i = 0; i < 10; i++) {
+    RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  }
 }

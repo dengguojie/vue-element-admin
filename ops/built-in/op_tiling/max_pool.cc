@@ -24,7 +24,9 @@
 #include "../op_proto/util/error_util.h"
 #include "error_log.h"
 #include "op_log.h"
-#include "op_tiling.h"
+#include "op_tiling_util.h"
+#include "vector_tiling_profiling.h"
+#include "graph/utils/op_desc_utils.h"
 
 namespace {
   constexpr int32_t PADDING_VALUE = 2;
@@ -35,6 +37,15 @@ namespace {
 namespace optiling {
 using namespace ge;
 using namespace std;
+
+static const std::vector<std::string> COMPILE_INFO_KEY = {
+    "ub_ele",    "core_num", "ksize_h",    "ksize_w",  "strides_h", "strides_w", "padding",
+    "ceil_mode", "pad_top",  "pad_bottom", "pad_left", "pad_right", "global"};
+
+static const std::map<std::string, std::int64_t> OPTIONAL_VALUE = {
+    {"ub_ele", 0},    {"core_num", 0},  {"ksize_h", 0},   {"ksize_w", 0}, {"strides_h", 0},
+    {"strides_w", 0}, {"padding", 0},   {"ceil_mode", 0}, {"pad_top", 0}, {"pad_bottom", 0},
+    {"pad_left", 0},  {"pad_right", 0}, {"global", 0}};
 
 struct TilingParam {
   int32_t tiling_mode = 0;
@@ -89,29 +100,29 @@ static void PrintTilingParam(const TilingParam& param) {
           param.last_core_loop_num, param.last_core_loop_left, param.n_c1);
 }
 
-static void SetTilingParam(const TilingParam& param, OpRunInfo& run_info) {
-  ByteBufferPut(run_info.tiling_data, param.tiling_mode);
-  ByteBufferPut(run_info.tiling_data, param.act_core_num);
-  ByteBufferPut(run_info.tiling_data, param.one_core_ele);
-  ByteBufferPut(run_info.tiling_data, param.last_core_ele);
-  ByteBufferPut(run_info.tiling_data, param.input_h);
-  ByteBufferPut(run_info.tiling_data, param.input_w);
-  ByteBufferPut(run_info.tiling_data, param.output_h);
-  ByteBufferPut(run_info.tiling_data, param.output_w);
-  ByteBufferPut(run_info.tiling_data, param.pad_h);
-  ByteBufferPut(run_info.tiling_data, param.pad_w);
-  ByteBufferPut(run_info.tiling_data, param.pad_t);
-  ByteBufferPut(run_info.tiling_data, param.pad_b);
-  ByteBufferPut(run_info.tiling_data, param.pad_l);
-  ByteBufferPut(run_info.tiling_data, param.pad_r);
-  ByteBufferPut(run_info.tiling_data, param.c_factor);
-  ByteBufferPut(run_info.tiling_data, param.h_factor);
-  ByteBufferPut(run_info.tiling_data, param.w_factor);
-  ByteBufferPut(run_info.tiling_data, param.one_core_loop_num);
-  ByteBufferPut(run_info.tiling_data, param.one_core_loop_left);
-  ByteBufferPut(run_info.tiling_data, param.last_core_loop_num);
-  ByteBufferPut(run_info.tiling_data, param.last_core_loop_left);
-  ByteBufferPut(run_info.tiling_data, param.n_c1);
+static void SetTilingParam(const TilingParam& param, utils::OpRunInfo& run_info) {
+  run_info.AddTilingData(param.tiling_mode);
+  run_info.AddTilingData(param.act_core_num);
+  run_info.AddTilingData(param.one_core_ele);
+  run_info.AddTilingData(param.last_core_ele);
+  run_info.AddTilingData(param.input_h);
+  run_info.AddTilingData(param.input_w);
+  run_info.AddTilingData(param.output_h);
+  run_info.AddTilingData(param.output_w);
+  run_info.AddTilingData(param.pad_h);
+  run_info.AddTilingData(param.pad_w);
+  run_info.AddTilingData(param.pad_t);
+  run_info.AddTilingData(param.pad_b);
+  run_info.AddTilingData(param.pad_l);
+  run_info.AddTilingData(param.pad_r);
+  run_info.AddTilingData(param.c_factor);
+  run_info.AddTilingData(param.h_factor);
+  run_info.AddTilingData(param.w_factor);
+  run_info.AddTilingData(param.one_core_loop_num);
+  run_info.AddTilingData(param.one_core_loop_left);
+  run_info.AddTilingData(param.last_core_loop_num);
+  run_info.AddTilingData(param.last_core_loop_left);
+  run_info.AddTilingData(param.n_c1);
 }
 
 static void CalCoreNum(TilingParam& param, int32_t total_ele, int32_t core_num) {
@@ -125,8 +136,7 @@ static void CalCoreNum(TilingParam& param, int32_t total_ele, int32_t core_num) 
   param.last_core_ele = total_ele - (param.act_core_num - 1) * param.one_core_ele;
 }
 
-static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shape,
-                           const CompileInfoParam& compile_info_param) {
+static void CalTilingParam(TilingParam& param, const GeShape& input_shape, const CompileInfoParam& compile_info_param) {
   int32_t ub_ele = compile_info_param.ub_ele;
   int32_t core_num = compile_info_param.core_num;
   int32_t ksize_h = compile_info_param.ksize_h;
@@ -203,12 +213,12 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
   // calc core_num, core_ele, loop_num and loop_left
   // global pooling max_pool_v3
   if (ksize_h == param.input_h && ksize_w == param.input_w) {
-    param.n_c1 = input_shape[0] * input_shape[1];
+    param.n_c1 = input_shape.GetDim(0) * input_shape.GetDim(1);
     CalCoreNum(param, param.n_c1, core_num);
-    if (ub_ele >= (input_shape[2] * input_shape[3] * input_shape[4])) {
+    if (ub_ele >= (input_shape.GetDim(2) * input_shape.GetDim(3) * input_shape.GetDim(4))) {
       param.tiling_mode = TILING_MODE_6;
     } else {
-      param.h_factor = ub_ele / input_shape[4];  // acutal is hw_factor
+      param.h_factor = ub_ele / input_shape.GetDim(4);  // acutal is hw_factor
       int32_t input_hw_num = param.input_h * param.input_w;
       param.one_core_loop_num = input_hw_num / param.h_factor;
       // dif from other tiling mode,this is used to tiling hw
@@ -221,8 +231,8 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
   }
   if ((ksize_h == 1) && (ksize_w == 1) && (strides_h == 1) && (strides_w == 1)) {
     param.tiling_mode = 0;
-    int32_t max_ele = ub_ele / input_shape[4];
-    int32_t total_ele = input_shape[0] * input_shape[1] * input_shape[2] * input_shape[3];
+    int32_t max_ele = ub_ele / input_shape.GetDim(4);
+    int32_t total_ele = input_shape.GetDim(0) * input_shape.GetDim(1) * input_shape.GetDim(2) * input_shape.GetDim(3);
     CalCoreNum(param, total_ele, core_num);
     param.one_core_loop_num = param.one_core_ele / max_ele;
     param.one_core_loop_left = param.one_core_ele % max_ele;
@@ -230,17 +240,17 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
     param.last_core_loop_left = param.last_core_ele % max_ele;
   } else {
     int32_t one_sixth_ub_ele = ub_ele / 6;
-    param.n_c1 = input_shape[0] * input_shape[1];
-    if (param.pad_h * param.pad_w * input_shape[4] <= one_sixth_ub_ele) {
+    param.n_c1 = input_shape.GetDim(0) * input_shape.GetDim(1);
+    if (param.pad_h * param.pad_w * input_shape.GetDim(4) <= one_sixth_ub_ele) {
       param.tiling_mode = 1;
       CalCoreNum(param, param.n_c1, core_num);
-      param.c_factor = one_sixth_ub_ele / (param.pad_h * param.pad_w * input_shape[4]);
+      param.c_factor = one_sixth_ub_ele / (param.pad_h * param.pad_w * input_shape.GetDim(4));
       param.one_core_loop_num = param.one_core_ele / param.c_factor;
       param.one_core_loop_left = param.one_core_ele % param.c_factor;
       param.last_core_loop_num = param.last_core_ele / param.c_factor;
       param.last_core_loop_left = param.last_core_ele % param.c_factor;
-    } else if (ksize_h * param.pad_w * input_shape[4] <= one_sixth_ub_ele) {
-      param.h_factor = (one_sixth_ub_ele / (param.pad_w * input_shape[4]) - ksize_h) / strides_h + 1;
+    } else if (ksize_h * param.pad_w * input_shape.GetDim(4) <= one_sixth_ub_ele) {
+      param.h_factor = (one_sixth_ub_ele / (param.pad_w * input_shape.GetDim(4)) - ksize_h) / strides_h + 1;
       int32_t h_loop = param.output_h / param.h_factor;
       if (h_loop <= param.n_c1) {
         param.tiling_mode = 2;
@@ -258,7 +268,7 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
         param.last_core_loop_left = param.last_core_ele % param.h_factor;
       }
     } else {
-      param.w_factor = (one_sixth_ub_ele / input_shape[4] / ksize_h - ksize_w) / strides_w + 1;
+      param.w_factor = (one_sixth_ub_ele / input_shape.GetDim(4) / ksize_h - ksize_w) / strides_w + 1;
       param.one_core_loop_num = param.output_w / param.w_factor;
       param.one_core_loop_left = param.output_w % param.w_factor;
       param.last_core_loop_num = param.one_core_loop_num;
@@ -274,17 +284,28 @@ static void CalTilingParam(TilingParam& param, const vector<int64_t>& input_shap
   }
 }
 
-static bool GetCompileInfo(const nlohmann::json& op_info, const string& name, int32_t& value) {
-  const nlohmann::json& all_vars = op_info["vars"];
-  if (all_vars.empty()) {
-    return false;
-  }
-  if (all_vars.count(name) == 0) {
-    value = 0;
-    OP_LOGW("Get compile info parameter failed, maybe need update om, set %s default value 0", name.c_str());
-    return true;
-  }
-  value = all_vars[name].get<int32_t>();
+bool GetCompileInfo(const std::string& opType, const std::vector<int64_t>& opCompileInfo,
+                    CompileInfoParam& compile_info_param) {
+  OP_TILING_CHECK(
+      opCompileInfo.size() != COMPILE_INFO_KEY.size(),
+      VECTOR_INNER_ERR_REPORT_TILIING(opType, "the compile info num is not equal expect compile_info(%zu), is %zu",
+                                      COMPILE_INFO_KEY.size(), opCompileInfo.size()),
+      return false);
+
+  compile_info_param.ub_ele = static_cast<int32_t>(opCompileInfo[0]);
+  compile_info_param.core_num = static_cast<int32_t>(opCompileInfo[1]);
+  compile_info_param.ksize_h = static_cast<int32_t>(opCompileInfo[2]);
+  compile_info_param.ksize_w = static_cast<int32_t>(opCompileInfo[3]);
+  compile_info_param.strides_h = static_cast<int32_t>(opCompileInfo[4]);
+  compile_info_param.strides_w = static_cast<int32_t>(opCompileInfo[5]);
+  compile_info_param.padding = static_cast<int32_t>(opCompileInfo[6]);
+  compile_info_param.ceil_mode = static_cast<int32_t>(opCompileInfo[7]);
+  compile_info_param.pad_top = static_cast<int32_t>(opCompileInfo[8]);
+  compile_info_param.pad_bottom = static_cast<int32_t>(opCompileInfo[9]);
+  compile_info_param.pad_left = static_cast<int32_t>(opCompileInfo[10]);
+  compile_info_param.pad_right = static_cast<int32_t>(opCompileInfo[11]);
+  compile_info_param.global = static_cast<int32_t>(opCompileInfo[12]);
+
   return true;
 }
 
@@ -296,44 +317,43 @@ static bool GetCompileInfo(const nlohmann::json& op_info, const string& name, in
  * @param [out] run_info: result data
  * @return bool: success or not success
  */
-bool MaxPoolTiling(const string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                   OpRunInfo& run_info) {
+bool MaxPoolTiling(const string& op_type, const ge::Operator& op_paras, const std::vector<int64_t>& op_info,
+                   utils::OpRunInfo& run_info) {
   OP_LOGI(op_type.c_str(), "MaxPoolTiling running.");
+  PROFILING_TILING_INIT(op_type.c_str());
+  auto operator_info = OpDescUtils::GetOpDescFromOperator(op_paras);
+  OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get OpDesc failed."),
+                  return false);
 
+  auto input_desc = operator_info->MutableInputDesc(0);
+  OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get InputDesc failed."),
+                  return false);
   // get and check input format and shape
-  string input_format = op_paras.inputs[0].tensor[0].format;
-  OP_TILING_CHECK(input_format != "NC1HWC0",
+  ge::Format input_format = input_desc->GetFormat();
+  OP_TILING_CHECK(input_format != FORMAT_NC1HWC0,
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input format failed, only support NC1HWC0, but got %s.",
-                                                  input_format.c_str()),
+                                                  to_string(input_format).c_str()),
                   return false);
-  vector<int64_t> input_shape = op_paras.inputs[0].tensor[0].shape;
-  OP_TILING_CHECK(
-      input_shape.size() != 5,
-      VECTOR_INNER_ERR_REPORT_TILIING(
-          op_type, "Get input shape failed, the length of input shape must be 5, but got %lu.", input_shape.size()),
-      return false);
-  OP_TILING_CHECK(input_shape[4] != 16,
+
+  const GeShape& input_shape = input_desc->MutableShape();
+  OP_TILING_CHECK(input_shape.GetDimNum() != 5,
                   VECTOR_INNER_ERR_REPORT_TILIING(
-                      op_type, "Get input shape failed, dim 5 of input_shape must be 16, but got %lu.", input_shape[4]),
+                      op_type, "Get input shape failed, the length of input shape must be 5, but got %lu.",
+                      input_shape.GetDimNum()),
                   return false);
+
+  OP_TILING_CHECK(
+      input_shape.GetDim(4) != 16,
+      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Get input shape failed, dim 5 of input_shape must be 16, but got %lu.",
+                                      input_shape.GetDim(4)),
+      return false);
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
 
   CompileInfoParam compile_info_param;
+  // get compile info paramters
+  OP_TILING_CHECK(!GetCompileInfo(op_type, op_info, compile_info_param),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo errror."), return false);
 
-  const map<string, int32_t&> compile_params = {
-      {"ub_ele", compile_info_param.ub_ele},       {"core_num", compile_info_param.core_num},
-      {"ksize_h", compile_info_param.ksize_h},     {"ksize_w", compile_info_param.ksize_w},
-      {"strides_h", compile_info_param.strides_h}, {"strides_w", compile_info_param.strides_w},
-      {"padding", compile_info_param.padding},     {"ceil_mode", compile_info_param.ceil_mode},
-      {"pad_top", compile_info_param.pad_top},     {"pad_bottom", compile_info_param.pad_bottom},
-      {"pad_left", compile_info_param.pad_left},   {"pad_right", compile_info_param.pad_right},
-      {"global", compile_info_param.global}};
-  for (auto& param : compile_params) {
-    const auto& name = param.first;
-    OP_LOGD(op_type.c_str(), "GetCompileInfo %s.", name.c_str());
-    OP_TILING_CHECK(!GetCompileInfo(op_info, name, param.second),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetCompileInfo %s failed.", name.c_str()), return false);
-    OP_LOGD(op_type.c_str(), "%s=%d.", name.c_str(), param.second);
-  }
   // check compile info paramters
   OP_TILING_CHECK((compile_info_param.ub_ele <= 0), OP_LOGE(op_type.c_str(), "ub_ele must greater than 0."),
                   return false);
@@ -342,10 +362,12 @@ bool MaxPoolTiling(const string& op_type, const TeOpParas& op_paras, const nlohm
   OP_TILING_CHECK((compile_info_param.ksize_h <= 0) || (compile_info_param.ksize_w <= 0) ||
                       (compile_info_param.strides_h <= 0) || (compile_info_param.strides_w <= 0),
                   OP_LOGE(op_type.c_str(), "ksize and strides must greater than 0."), return false);
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
+
   // check ksize, strides and input shape
   TilingParam param;
-  param.input_h = input_shape[2];
-  param.input_w = input_shape[3];
+  param.input_h = input_shape.GetDim(2);
+  param.input_w = input_shape.GetDim(3);
   if (compile_info_param.global == 1) {
     compile_info_param.ksize_h = param.input_h;
     compile_info_param.ksize_w = param.input_w;
@@ -366,19 +388,19 @@ bool MaxPoolTiling(const string& op_type, const TeOpParas& op_paras, const nlohm
                 "Can not ensure that the last pooling starts strictly inside the image even after clip the last."),
         return false);
   }
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
+
   SetTilingParam(param, run_info);
   PrintTilingParam(param);
 
   // block_dim, use fot tik op; workspace, null for tik op
-  run_info.block_dim = param.act_core_num;
-  vector<int64_t> workspace;
-  run_info.workspaces = workspace;
-
+  run_info.SetBlockDim(param.act_core_num);
+  PROFILING_TILING_END();
   OP_LOGI(op_type.c_str(), "MaxPoolTiling run success.");
   return true;
 }
 
 // register tiling interface of maxpool op.
-REGISTER_OP_TILING_FUNC_BUFFERED(MaxPool, MaxPoolTiling);
-REGISTER_OP_TILING_FUNC_BUFFERED(MaxPoolV3, MaxPoolTiling);
+REGISTER_OP_TILING_V3_WITH_VECTOR(MaxPool, MaxPoolTiling, COMPILE_INFO_KEY, OPTIONAL_VALUE);
+REGISTER_OP_TILING_V3_WITH_VECTOR(MaxPoolV3, MaxPoolTiling, COMPILE_INFO_KEY, OPTIONAL_VALUE);
 }  // namespace optiling
