@@ -132,10 +132,14 @@ Status PReluAbsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
   FUSION_PASS_CHECK(mulNode == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "mulNode is null, fusion failed."),
                     return PARAM_INVALID);
 
-  int inputSize = 0;
-  inputSize = reluNode->GetInDataNodes().size();
+  int inputSize = reluNode->GetInDataNodes().size();
   FUSION_PASS_CHECK(inputSize != 1,
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "relu node size is [%lu], which not equal to 1.", inputSize),
+                    return NOT_CHANGED);
+
+  int outputSize = reluNode->GetOutDataNodes().size();
+  FUSION_PASS_CHECK(outputSize != 1,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "relu node output size is [%lu], which not equal to 1.", outputSize),
                     return NOT_CHANGED);
 
   inputSize = absNode->GetInDataNodes().size();
@@ -153,9 +157,19 @@ Status PReluAbsFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vec
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "sub node size is [%lu], which not equal to 1.", inputSize),
                     return NOT_CHANGED);
 
+  outputSize = subNode->GetOutDataNodes().size();
+  FUSION_PASS_CHECK(outputSize != 1,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "sub node output size is [%lu], which not equal to 1.", outputSize),
+                    return NOT_CHANGED);
+
   inputSize = mulNode->GetInDataNodes().size();
   FUSION_PASS_CHECK(inputSize != 2,
                     OP_LOGI(FUSED_OP_TYPE.c_str(), "mul node size is [%lu], which not equal to 2.", inputSize),
+                    return NOT_CHANGED);
+
+  outputSize = mulNode->GetOutDataNodes().size();
+  FUSION_PASS_CHECK(outputSize != 1,
+                    OP_LOGI(FUSED_OP_TYPE.c_str(), "mul node output size is [%lu], which not equal to 1.", outputSize),
                     return NOT_CHANGED);
 
   inputSize = addNode->GetInDataNodes().size();
