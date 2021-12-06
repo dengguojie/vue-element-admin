@@ -22,7 +22,7 @@ from impl.util.platform_adapter import tbe_platform
 from te.utils.error_manager import error_manager_vector
 
 
-# 'pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes,too-few-public-methods
 class SparseApplyRMSProp(SparseApplyDynamic):
     """
         Function: use to store sparse_apply_rms_prop base parameters

@@ -124,10 +124,10 @@ bool GetResizeBilinearV2Tiling(const ResizeClassCompileParams& compile_params, R
     GetTilingForNoBilinear(compile_params, tiling_params);
     return true;
   }
-  if ((compile_params.tuneParams.tiling_key == TILING_KEY_100110 || compile_params.tuneParams.tiling_key == TILING_KEY_100000) &&
-      compile_params.tuneParams.cut_batch_c1_num * compile_params.tuneParams.cut_height_num *
-              compile_params.tuneParams.cut_width_num <=
-          compile_params.core_num) {
+  if ((compile_params.tuneParams.tiling_key == TILING_KEY_100110 || compile_params.tuneParams.tiling_key == \ 
+       TILING_KEY_100000) && compile_params.tuneParams.cut_batch_c1_num * \ 
+       compile_params.tuneParams.cut_height_num * \
+       compile_params.tuneParams.cut_width_num <= compile_params.core_num) {
     OP_LOGI(compile_params.op_type, "Start setting tiling params by tune params.");
     tiling_params.tiling_key = compile_params.tuneParams.tiling_key;
     tiling_params.input_batch = tiling_params.input_batch * tiling_params.input_c1;

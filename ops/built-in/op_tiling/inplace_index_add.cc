@@ -39,6 +39,8 @@ const int32_t TILING_MODE_4 = 4;
 const int32_t TILING_MODE_5 = 5;
 const int32_t TILING_MODE_6 = 6;
 const int32_t TILING_MODE_7 = 7;
+const int32_t DIVIDE_NUM=9;
+const int32_t TILING_FACTOR_TWO=2;
 
 struct InplaceIndexAddTilingParam {
   int32_t tilingMode;
@@ -198,17 +200,17 @@ bool InplaceIndexAddTiling(const std::string& opType, const TeOpParas& opParas, 
   int32_t indicesSizeBytes = indicesSize * runParams.indicesNum;
 
   if (inputDtype == "int8" || inputDtype == "uint8") {
-    if (indicesSizeBytes < ubSize / 9) {
+    if (indicesSizeBytes < ubSize / DIVIDE_NUM) {
       runParams.tilingMode = TILING_MODE_4;
-    } else if (indicesSizeBytes < ubSize / 9 * 2) {
+    } else if (indicesSizeBytes < ubSize / DIVIDE_NUM * TILING_FACTOR_TWO) {
       runParams.tilingMode = TILING_MODE_5;
     } else {
       runParams.tilingMode = TILING_MODE_6;
     }
   } else {
-    if (indicesSizeBytes < ubSize / 9) {
+    if (indicesSizeBytes < ubSize / DIVIDE_NUM) {
       runParams.tilingMode = TILING_MODE_1;
-    } else if (indicesSizeBytes < ubSize / 9 * 2) {
+    } else if (indicesSizeBytes < ubSize / DIVIDE_NUM * TILING_FACTOR_TWO) {
       runParams.tilingMode = TILING_MODE_2;
     } else {
       runParams.tilingMode = TILING_MODE_3;

@@ -235,7 +235,6 @@ namespace optiling {
 
     void CalCol2Img1(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, const CompileInfoParams& compile_info,
                      int32_t ub_limit) {
-
         int32_t kernel_h = compile_info.kernel_h;
         int32_t kernel_w = compile_info.kernel_w;
         int32_t dtype_size = compile_info.dtype_size;
@@ -356,7 +355,6 @@ namespace optiling {
 
     void CalCol2Img4(MaxPoolGradWithArgmaxV1TilingParams& tiling_params, const CompileInfoParams& compile_info,
                      int32_t ub_limit) {
-
         int32_t kernel_h = compile_info.kernel_h;
         int32_t kernel_w = compile_info.kernel_w;
         int32_t dtype_size = compile_info.dtype_size;
@@ -423,7 +421,6 @@ namespace optiling {
             col2img_w = wo_max * stride_w;
         }
         int32_t col2img_h_every = (ho_max_every - 1) * stride_h + dilation_h * kernel_h;
-
 
         if (col2img_w < dxw) {
             col2img_w = dxw;

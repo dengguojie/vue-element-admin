@@ -216,3 +216,13 @@ TEST_F(PSROIPoolingGradV2DProtoTest, p_s_r_o_i_pooling_grad_v2_d_verify_test_cas
     auto status = op.VerifyAllAttr(true);
     EXPECT_EQ(status, ge::GRAPH_FAILED);
 }
+
+TEST_F(PSROIPoolingGradV2DProtoTest, p_s_r_o_i_pooling_grad_v2_d_verify_test_case_3) {
+  ge::op::PSROIPoolingGradV2D op;
+  op.UpdateInputDesc("x",
+                     create_desc_with_ori({4, 2, 7, 7}, ge::DT_FLOAT, ge::FORMAT_NCHW, {4, 2, 7, 7}, ge::FORMAT_NCHW));
+  op.UpdateInputDesc("rois", create_desc_with_ori({7, 7}, ge::DT_FLOAT, ge::FORMAT_NCHW, {7, 7}, ge::FORMAT_NCHW));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

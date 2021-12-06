@@ -30,32 +30,33 @@ namespace {
 namespace optiling {
 struct ScanPQCodesTilingParams{
   int64_t bucketNumTotal;
-  int64_t bucketNumPerCore;
-  int64_t bucketNumLeft;
-  int64_t coreUsedNum;
   int64_t bucketStartBase;
+  int64_t bucketNumLow;
+  int64_t bucketNumHigh;
+  int64_t highCoreNum;
 };
 
 void ScanPQCodesWriteTilingParams(const ScanPQCodesTilingParams& params, OpRunInfo& run_info) {
   ByteBufferPut(run_info.tiling_data, params.bucketNumTotal);
-  ByteBufferPut(run_info.tiling_data, params.bucketNumPerCore);
-  ByteBufferPut(run_info.tiling_data, params.bucketNumLeft);
-  ByteBufferPut(run_info.tiling_data, params.coreUsedNum);
   ByteBufferPut(run_info.tiling_data, params.bucketStartBase);
+  ByteBufferPut(run_info.tiling_data, params.bucketNumLow);
+  ByteBufferPut(run_info.tiling_data, params.bucketNumHigh);
+  ByteBufferPut(run_info.tiling_data, params.highCoreNum);
 }
 
 void ScanPQCodesPrintTilingParams(const std::string& opType, const ScanPQCodesTilingParams& params) {
   OP_LOGD("ScanPQCodes", "op [ScanPQCodes] : params.bucketNumTotal=%d", params.bucketNumTotal);
-  OP_LOGD("ScanPQCodes", "op [ScanPQCodes] : params.bucketNumPerCore=%d", params.bucketNumPerCore);
-  OP_LOGD("ScanPQCodes", "op [ScanPQCodes] : params.bucketNumLeft=%d", params.bucketNumLeft);
-  OP_LOGD("ScanPQCodes", "op [ScanPQCodes] : params.coreUsedNum=%d", params.coreUsedNum);
   OP_LOGD("ScanPQCodes", "op [ScanPQCodes] : params.bucketStartBase=%d", params.bucketStartBase);
+  OP_LOGD("ScanPQCodes", "op [ScanPQCodes] : params.bucketNumLow=%d", params.bucketNumLow);
+  OP_LOGD("ScanPQCodes", "op [ScanPQCodes] : params.bucketNumHigh=%d", params.bucketNumHigh);
+  OP_LOGD("ScanPQCodes", "op [ScanPQCodes] : params.highCoreNum=%d", params.highCoreNum);
 }
 
 int64_t ScanPQCodesCeilDiv(int64_t dividend, int64_t divisor) {
   return (dividend + divisor - 1) / divisor;
 }
 
+const int64_t TOTAL_CORE_NUM = 15;
 bool ScanPQCodesTiling(const std::string& opType, const TeOpParas& op_paras, const nlohmann::json& op_compile_info_json,
                        OpRunInfo& run_info) {
   OP_LOGI("========================ScanPQCodesTiling running====================");
@@ -89,26 +90,28 @@ bool ScanPQCodesTiling(const std::string& opType, const TeOpParas& op_paras, con
   }
   int64_t splitIndex = allVars["split_index"].get<std::int64_t>();
   int64_t bucketNumTotal = 0;
-  int64_t bucketNumPerCore = 0;
-  int64_t bucketNumLeft = 0;
-  int64_t coreUsedNum = 0;
   int64_t bucketStartBase = 0;
-  if (splitCount > 1) {
-    bucketNumTotal = (splitIndex < splitCount - 1) ? (bucketShape[0] / splitCount) :
-	              (bucketShape[0] - (bucketShape[0] / splitCount));
+  int64_t bucketNumLow = 0;
+  int64_t bucketNumHigh = 0;
+  int64_t highCoreNum = 0;
+  if (splitCount == 2) {
+    if (splitIndex == 0) {
+      bucketNumTotal = ScanPQCodesCeilDiv(bucketShape[0], TOTAL_CORE_NUM) * coreNums;
+      bucketStartBase = 0;
+    } else {
+      bucketStartBase = ScanPQCodesCeilDiv(bucketShape[0], TOTAL_CORE_NUM) * (TOTAL_CORE_NUM - coreNums);
+      bucketNumTotal = (bucketShape[0] >= bucketStartBase) ? (bucketShape[0] - bucketStartBase) : bucketShape[0];
+    }
   } else {
     bucketNumTotal = bucketShape[0];
+    bucketStartBase = 0;
   }
-  bucketNumPerCore = ScanPQCodesCeilDiv(bucketNumTotal, coreNums);
-  if (bucketNumPerCore == 0) {
-      VECTOR_INNER_ERR_REPORT_TILIING("scan_pq", "bucketNumPerCore is 0.");
-      return false;
-  }
-  bucketNumLeft = bucketNumTotal % bucketNumPerCore;
-  coreUsedNum = ScanPQCodesCeilDiv(bucketNumTotal, bucketNumPerCore);
-  bucketStartBase = (bucketShape[0] / splitCount) * splitIndex;
-  ScanPQCodesTilingParams params{bucketNumTotal, bucketNumPerCore, bucketNumLeft, coreUsedNum, bucketStartBase};
-  run_info.block_dim = coreUsedNum;
+  bucketNumLow = bucketNumTotal / coreNums;
+  bucketNumHigh = ScanPQCodesCeilDiv(bucketNumTotal, coreNums);
+  highCoreNum = bucketNumTotal % coreNums;
+  
+  ScanPQCodesTilingParams params{bucketNumTotal, bucketStartBase, bucketNumLow, bucketNumHigh, highCoreNum};
+  run_info.block_dim = coreNums;
   ScanPQCodesWriteTilingParams(params, run_info);
   ScanPQCodesPrintTilingParams(opType, params);
   return true;

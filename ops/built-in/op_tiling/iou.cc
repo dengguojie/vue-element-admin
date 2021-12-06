@@ -109,14 +109,6 @@ int32_t GetAreaX0Size(int32_t area_ub_size, int32_t gt_area_ub_size) {
   return area_ub_size > gt_area_ub_size ? area_ub_size : gt_area_ub_size;
 }
 
-int32_t GetGtBoxUbSegment(const string& dtype) {
-  if (dtype == "float16") {
-    return GTBOX_SEGMENT;
-  } else {
-    return GTBOX_SEGMENT / 2;
-  }
-}
-
 int32_t GetBBoxUbSegment(const string& dtype, bool product) {
   int32_t bbox_ub_segment = BBOX_SEGMENT;
   if (dtype == "float32") {
@@ -229,7 +221,7 @@ int32_t GetMinPointPerCore(const string& dtype) {
 }
 
 void CalRunningInfo(IouTilingParams& tiling_params, int32_t full_core_num, const vector<int64_t>& bboxes_shape,
-                    const vector<int64_t>& gtboxes_shape, string dtype, bool product) {
+                    const vector<int64_t>& gtboxes_shape, const string &dtype, bool product) {
   int32_t bboxes_num = bboxes_shape[0];
   int32_t gtboxes_num = gtboxes_shape[0];
   int32_t min_point_per_core = GetMinPointPerCore(dtype);

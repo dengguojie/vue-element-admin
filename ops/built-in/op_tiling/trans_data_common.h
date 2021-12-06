@@ -62,6 +62,16 @@ constexpr size_t SHAPE_LEN_CAPACITY_SIZE = 8;
 
 constexpr size_t FORMAT_LEN_2D = 2;
 
+constexpr int64_t TRANSDATA_TILING_FACTOR_2 = 2;
+constexpr int64_t TRANSDATA_TILING_FACTOR_4 = 4;
+constexpr int64_t TRANSDATA_TILING_FACTOR_8 = 8;
+constexpr int64_t TRANSDATA_TILING_FACTOR_16 = 16;
+constexpr int64_t TRANSDATA_TILING_FACTOR_15 = 15;
+constexpr int64_t TRANSDATA_TILING_FACTOR_54 = 54;
+constexpr int64_t TRANSDATA_TILING_FACTOR_56 = 56;
+
+constexpr int64_t TRANSDATA_TILING_PARAM_2 = 2;
+
 struct HeadTilingParam {
   int64_t shape_loop_cnt;
 };

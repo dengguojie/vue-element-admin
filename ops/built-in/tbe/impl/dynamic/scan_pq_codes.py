@@ -81,10 +81,10 @@ class ScanPQCodes():
         self.core_nums = tbe_platform.get_soc_spec(tbe_platform.CORE_NUM)
         # tiling params
         self.bucket_num_total = self.tik_instance.Scalar("int64", name="bucket_num_total")
-        self.bucket_num_per_core = self.tik_instance.Scalar("int64", name="bucket_num_per_core")
-        self.bucket_num_left = self.tik_instance.Scalar("int64", name="bucket_num_left")
-        self.core_used_num = self.tik_instance.Scalar("int64", name="core_used_num")
         self.bucket_start_base = self.tik_instance.Scalar("int64", name="bucket_start_base")
+        self.bucket_num_low = self.tik_instance.Scalar("int64", name="bucket_num_low")
+        self.bucket_num_high = self.tik_instance.Scalar("int64", name="bucket_num_high")
+        self.high_core_num = self.tik_instance.Scalar("int64", name="high_core_num")
         # attrs
         (total_limit, group_size, extreme_mode, split_count, split_index) = attrs
         self.group_size = group_size
@@ -209,13 +209,13 @@ class ScanPQCodes():
         tiling_para_index = 0
         self.bucket_num_total.set_as(tiling_ub[tiling_para_index])
         tiling_para_index = tiling_para_index + 1
-        self.bucket_num_per_core.set_as(tiling_ub[tiling_para_index])
-        tiling_para_index = tiling_para_index + 1
-        self.bucket_num_left.set_as(tiling_ub[tiling_para_index])
-        tiling_para_index = tiling_para_index + 1
-        self.core_used_num.set_as(tiling_ub[tiling_para_index])
-        tiling_para_index = tiling_para_index + 1
         self.bucket_start_base.set_as(tiling_ub[tiling_para_index])
+        tiling_para_index = tiling_para_index + 1
+        self.bucket_num_low.set_as(tiling_ub[tiling_para_index])
+        tiling_para_index = tiling_para_index + 1
+        self.bucket_num_high.set_as(tiling_ub[tiling_para_index])
+        tiling_para_index = tiling_para_index + 1
+        self.high_core_num.set_as(tiling_ub[tiling_para_index])
 
     def _calc_output_count(self, output_count, bucket_idx):
         output_count.set_as(0)
@@ -359,16 +359,15 @@ class ScanPQCodes():
                 self._calc_output_count(actual_total_num, self.bucket_num_total)
                 actual_count_ub_int32[0].set_as(actual_total_num)
                 self.tik_instance.data_move(self.actual_count_gm, actual_count_ub_int32, 0, 1, 1, 0, 0)
-            # if coreid < core_used_num - 1, no tail data handle, one bucket data handled by one core
-            with self.tik_instance.if_scope(core_idx < self.core_used_num - 1):
-                _inner_handle(self.bucket_num_per_core * core_idx, self.bucket_num_per_core * (core_idx + 1))
-            # if coreid == core_used_num - 1, handle tail or last loop block
-            with self.tik_instance.if_scope(core_idx == self.core_used_num - 1):
-                with self.tik_instance.if_scope(self.bucket_num_left):
-                    _inner_handle(self.bucket_num_per_core * core_idx,
-                                  self.bucket_num_per_core * core_idx + self.bucket_num_left)
-                with self.tik_instance.else_scope():
-                    _inner_handle(self.bucket_num_per_core * core_idx, self.bucket_num_per_core * (core_idx + 1))
+            with self.tik_instance.if_scope(core_idx < self.high_core_num):
+                _inner_handle(self.bucket_num_high * core_idx, self.bucket_num_high * (core_idx + 1))
+            with self.tik_instance.else_scope():
+                high_base = self.tik_instance.Scalar("int32", name="high_base")
+                low_core_idx = self.tik_instance.Scalar("int32", name="low_core_idx")
+                high_base.set_as(self.bucket_num_high * self.high_core_num)
+                low_core_idx.set_as(core_idx - self.high_core_num)
+                _inner_handle(high_base + self.bucket_num_low * low_core_idx,
+                              high_base + self.bucket_num_low * (low_core_idx + 1))
 
     def _handle_input_data(self, args):
         (bucket_offset_input, ivf_slice_size, inner_loop_time, thread_idx) = args

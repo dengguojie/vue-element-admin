@@ -43,7 +43,7 @@ class AclOpRunner:
                 ConstManager.OP_TEST_GEN_INVALID_DATA_ERROR)
 
         # do cmake and make
-        origin_path = os.getcwd()
+        origin_path = os.path.realpath(os.getcwd())
         build_path = os.path.join(self.path, ConstManager.BUILD_INTERMEDIATES_HOST)
         utils.check_path_valid(build_path, True)
         os.chdir(build_path)

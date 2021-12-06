@@ -31,6 +31,7 @@ const char * const kScopeType = "layer_norm_grad";
 const char * const kScopeRltType = "LayerNormGrad";
 const char * const kOpType = "LayerNormGrad";
 constexpr int32_t DST_OUTSIZE = 2;
+constexpr int32_t DST_INSIZE = 2;
 }  // namespace
 
 std::vector<ScopeFusionPatterns> ScopeLayerNormGradPass::DefinePatterns() {
@@ -162,7 +163,7 @@ std::vector<ge::OperatorPtr> ScopeLayerNormGradPass::FindOutNodesShouldInScope(c
       }
     }
 
-    if ((all_in && input_nums == 2) || (input_nums > 2 && can_find && !has_ln_output)) {
+    if ((all_in && input_nums == DST_INSIZE) || (input_nums > DST_INSIZE && can_find && !has_ln_output)) {
       // if the node is not in result_nodes, it will be insert to result_nodes
       bool find1 = true;
       for (auto& it1 : result_nodes) {

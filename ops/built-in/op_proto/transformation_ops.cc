@@ -44,6 +44,7 @@
 #include "register/infer_data_slice_registry.h"
 #include "graph/common_error_codes.h"
 #include "graph/debug/ge_attr_define.h"
+#include "op_const.h"
 
   // namespace ge
 namespace ge {
@@ -3388,37 +3389,40 @@ VERIFY_FUNC_REG(AffineGrid, AffineGridVerify);
 
 // ----------------AsStrided Op Begin-------------------
 IMPLEMT_COMMON_INFERFUNC(AsStridedInferShape) {
-  const vector<string> depend_names = {"size"};
+  const vector<string> depend_names = {"size", "stride", "storage_offset"};
   PREPARE_DYNAMIC_SHAPE(depend_names);
-  auto node = NodeUtils::GetNodeFromOperator(op);
-
   std::vector<int64_t> size_list;
-  Tensor size_tensor;
-  if (GRAPH_SUCCESS == op.GetInputConstData("size", size_tensor)) {
-    auto const_desc = op_desc->MutableInputDesc("size");
-    auto const_dtype = const_desc->GetDataType();
-    if (!GetConstValue(op, size_tensor, const_dtype, size_list)) {
-      OP_LOGW(op.GetName().c_str(), "Get const size value failed ");
-      return GRAPH_FAILED;
-    }
-  } else {
-    OP_LOGW(op.GetName().c_str(), "Failed to get size.");
+  // get size parameter
+  if (!ops::GetConstIntData(op, 1, size_list)) {
+    OP_LOGW(op.GetName().c_str(), "get const size failed!");
     return GRAPH_FAILED;
   }
 
   auto input_desc = op_desc->MutableInputDesc("x");
-  auto input_shape = input_desc->MutableShape().GetDims();
   auto input_dtype = input_desc->GetDataType();
   auto output_desc = op_desc->MutableOutputDesc("y");
   output_desc->SetDataType(input_dtype);
 
   std::vector<std::pair<int64_t, int64_t>> output_range;
-  for (size_t i = 0; i < size_list.size(); ++i) {
-    output_range.push_back(std::pair<int64_t, int64_t>(size_list[i], size_list[i]));
+  auto size_desc = op_desc->MutableInputDesc("size");
+  std::vector<int64_t> size_shape = size_desc->MutableShape().GetDims();
+  if (!IsUnknown(size_shape)) {
+    for (size_t i = 0; i < size_list.size(); ++i) {
+      if (size_list[i] == -1) {
+        output_range.push_back(std::pair<int64_t, int64_t>(0, size_list[i]));
+      } else {
+        output_range.push_back(std::pair<int64_t, int64_t>(size_list[i], size_list[i]));
+      }
+    }
+    output_desc->SetShapeRange(output_range);
+    output_desc->SetShape(GeShape(size_list));
+    output_desc->SetOriginShape(GeShape(size_list));
+  } else {
+    std::vector<int64_t> unknown_list;
+    unknown_list.push_back(-2);
+    output_desc->SetShape(GeShape(unknown_list));
+    output_desc->SetOriginShape(GeShape(unknown_list));
   }
-  output_desc->SetShape(GeShape(size_list));
-  output_desc->SetOriginShape(GeShape(size_list));
-  output_desc->SetShapeRange(output_range);
 
   return GRAPH_SUCCESS;
 }

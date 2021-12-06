@@ -71,3 +71,21 @@ TEST_F(ROIPoolingProtoTest, roi_pooling_verify_test_3) {
   auto status = op.VerifyAllAttr(true);
   EXPECT_EQ(status, ge::GRAPH_SUCCESS);  // support 2D rois
 }
+
+TEST_F(ROIPoolingProtoTest, roi_pooling_verify_test_4) {
+  ge::op::ROIPooling op;
+  op.UpdateInputDesc("x", create_desc({1, 128, 24, 78}, ge::DT_FLOAT16));
+  op.UpdateInputDesc("rois", create_desc({7000, 5}, ge::DT_FLOAT16));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(ROIPoolingProtoTest, roi_pooling_verify_test_5) {
+  ge::op::ROIPooling op;
+  op.UpdateInputDesc("x", create_desc({1, 128, 24, 78}, ge::DT_FLOAT16));
+  op.UpdateInputDesc("rois", create_desc({3, 4, 5, 6}, ge::DT_FLOAT16));
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

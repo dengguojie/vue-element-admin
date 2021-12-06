@@ -31,6 +31,7 @@ namespace optiling {
 const int64_t block_num = 16;
 // vnhwc process the min numbers
 const int64_t vnhwc_block_num = 256;
+const int64_t TILING_KEY_FOUR = 4;
 
 struct ResizeV2TilingParams {
   int64_t tiling_key;
@@ -417,7 +418,7 @@ bool ReverseV2Tiling(const std::string& op_type, const TeOpParas& op_paras, cons
       continue;
     }
     if ((mid_inner_loop + vnhwc_block_num - 1) / vnhwc_block_num * vnhwc_block_num * last_align_size > max_len &&
-         tiling_params.tiling_key == 4) {
+         tiling_params.tiling_key == TILING_KEY_FOUR) {
       inner_first_dim = i + 1;
       break;
     }

@@ -131,8 +131,8 @@ static void SetTilingMode(SliceParameters& parameters, int32_t core_num, const g
     parameters.tiling_mode = 2;
   }
 
-  if (parameters.output_shape[shape_len - 1] * dtype_size < BYTE_BLOCK && shape_len >= SHAPE_LEN && dtype == DT_FLOAT16 &&
-      CalShapeMul(parameters.output_shape, 0, shape_len - 3) % core_num == 0 &&
+  if (parameters.output_shape[shape_len - 1] * dtype_size < BYTE_BLOCK && shape_len >= SHAPE_LEN && 
+      dtype == DT_FLOAT16 && CalShapeMul(parameters.output_shape, 0, shape_len - 3) % core_num == 0 &&
       parameters.output_shape[shape_len - 2] >= 16 &&
       parameters.input[shape_len - 1] * TILING_FACTOR_256 <= CalVnchwUbSize(ub_size, dtype_size)) {
     parameters.tiling_mode = 3;
@@ -146,15 +146,16 @@ static void SetTilingMode(SliceParameters& parameters, int32_t core_num, const g
     parameters.tiling_mode = 4;
   }
 
-  if (shape_len == SHAPE_LEN && IsShapeEqualExceptLast(parameters.input, parameters.output_shape, shape_len - SHAPE_LEN) &&
-      parameters.output_shape[shape_len - 1] * dtype_size > BYTE_SIZE &&
+  if (shape_len == SHAPE_LEN && IsShapeEqualExceptLast(parameters.input, parameters.output_shape, shape_len - \
+      SHAPE_LEN) && parameters.output_shape[shape_len - 1] * dtype_size > BYTE_SIZE &&
       parameters.input[shape_len - 1] * BYTE_BLOCK * TILING_FACTOR_2 <= ub_size &&
       parameters.input[shape_len - 1] * dtype_size > BYTE_SIZE) {
     parameters.tiling_mode = TILING_MODE_6;
   }
 
-  if (shape_len == SHAPE_LEN && IsShapeEqualExceptLast(parameters.input, parameters.output_shape, shape_len - SHAPE_LEN) &&
-      parameters.output_shape[shape_len - 1] == 1 && BYTE_BLOCK * (parameters.input[shape_len - 1] + 1) < ub_size) {
+  if (shape_len == SHAPE_LEN && IsShapeEqualExceptLast(parameters.input, parameters.output_shape, shape_len - \ 
+      SHAPE_LEN) && parameters.output_shape[shape_len - 1] == 1 && BYTE_BLOCK * \
+      (parameters.input[shape_len - 1] + 1) < ub_size) {
     parameters.tiling_mode = TILING_MODE_8;
   }
 
@@ -168,8 +169,8 @@ static void SetTilingMode(SliceParameters& parameters, int32_t core_num, const g
     output_32bytes_align_rows = 1;
   }
   int64_t need_ub_size = input_inner_dims * TILING_FACTOR_16 * TILING_FACTOR_2;
-  if (shape_len == SHAPE_LEN && IsShapeEqualExceptLast(parameters.input, parameters.output_shape, shape_len - SHAPE_LEN) &&
-      need_ub_size * BYTE_BLOCK / dtype_size * output_32bytes_align_rows < ub_size &&
+  if (shape_len == SHAPE_LEN && IsShapeEqualExceptLast(parameters.input, parameters.output_shape, shape_len - \
+      SHAPE_LEN) && need_ub_size * BYTE_BLOCK / dtype_size * output_32bytes_align_rows < ub_size &&
       dtype_size % float16_type_size == 0) {
     parameters.tiling_mode = TILING_MODE_5;
   }

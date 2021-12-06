@@ -326,7 +326,6 @@ bool ScatterMulTiling(const std::string& opType, const TeOpParas& opParas, const
     runParams.coreNum = ceil(float(maxIndice) / runParams.indiceStep);
   }
 
-
   CalScatterMulBranchRunningParams(runParams, varNum, indicesNum, updatesNum, updateDataNum, ubSize,
                                    runParams.coreNum, varSize, indicesSize, varDataEachBlock);
 

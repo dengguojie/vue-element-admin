@@ -91,7 +91,7 @@ void InitRunningParams(ScatterUpdateTilingParams& params) {
 void CalRunningParams(const std::string& opType, ScatterUpdateTilingParams& runParams, int64_t indicesNum, 
 		      int64_t updatesNum,int64_t updateDataNum, int64_t maxIndice, int64_t ubSize, int64_t coreNum, 
 		      int64_t varSize,int64_t indicesSize, int64_t varDataEachBlock, int64_t var_num, 
-		      std::string var_dtype, int64_t var_first_shape) {
+		      const std::string &var_dtype, int64_t var_first_shape) {
   int64_t updateSizeByte = varSize * updatesNum;
   int64_t halfUbSize = ubSize / 2;
   OP_TILING_CHECK(varSize == 0, VECTOR_INNER_ERR_REPORT_TILIING("scatter_update", "varSize = 0 is not support"),
@@ -162,7 +162,8 @@ void CalRunningParams(const std::string& opType, ScatterUpdateTilingParams& runP
     } else {
       runParams.last_core_loop_compute_num = 0;
     }
-    runParams.last_core_last_num = runParams.last_core_compute_num - runParams.last_core_loop_num * runParams.last_core_loop_compute_num;
+    runParams.last_core_last_num = runParams.last_core_compute_num - runParams.last_core_loop_num * \
+	                           runParams.last_core_loop_compute_num;
   }
 }
 
@@ -202,7 +203,8 @@ void PrintTilingParams(const std::string& opType, const ScatterUpdateTilingParam
     OP_LOGD(opType.c_str(), "op [InplaceUpdateTiling] : each_core_compute_num=%ld.", 
             params.each_core_compute_num);
     OP_LOGD(opType.c_str(), "op [InplaceUpdateTiling] : each_core_loop_num=%ld.", params.each_core_loop_num);
-    OP_LOGD(opType.c_str(), "op [InplaceUpdateTiling] : each_core_loop_compute_num=%ld.", params.each_core_loop_compute_num);
+    OP_LOGD(opType.c_str(), "op [InplaceUpdateTiling] : each_core_loop_compute_num=%ld.", 
+	    params.each_core_loop_compute_num);
     OP_LOGD(opType.c_str(), "op [InplaceUpdateTiling] : each_core_last_num=%ld.", params.each_core_last_num);
     OP_LOGD(opType.c_str(), "op [InplaceUpdateTiling] : last_core_compute_num=%ld.", params.last_core_compute_num);
     OP_LOGD(opType.c_str(), "op [InplaceUpdateTiling] : last_core_loop_num=%ld.", params.last_core_loop_num);

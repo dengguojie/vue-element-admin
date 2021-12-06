@@ -153,10 +153,11 @@ bool LRUCacheV2Tiling(const std::string& op_type, const ge::Operator& op_paras, 
   SetRuningParams(run_params, run_info);
   PrintTilingParams(run_params, op_type);
   run_info.SetBlockDim(BLOCKDIM);
-  //add miss_index workspace size
-  auto miss_index_wsp_size = run_params.tiling_index_list_len * compile_params.set_num * compile_params.miss_index_bytes;
+  // add miss_index workspace size
+  auto miss_index_wsp_size = run_params.tiling_index_list_len * compile_params.set_num * 
+	                     compile_params.miss_index_bytes;
   run_info.AddWorkspace(miss_index_wsp_size);
-  //add time_stamp workspace size
+  // add time_stamp workspace size
   run_info.AddWorkspace(compile_params.time_stamp_wsp_size);
   OP_LOGD(op_type, "miss_index workspace size=%ld.", miss_index_wsp_size);
   OP_LOGD(op_type, "time_stamp workspace size=%ld.", compile_params.time_stamp_wsp_size);

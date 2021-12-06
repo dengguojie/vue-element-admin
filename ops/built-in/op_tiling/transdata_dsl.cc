@@ -222,7 +222,7 @@ bool TransdataBase::DoFusing(int64_t* input, int64_t* output, size_t ori_length)
   // __fuse__
   if (not compileInfo.is_const) {
     while (root_ptr + 1 <= length_input) {
-      if (root_ptr == length_input - 1 and compileInfo.src_fuse[root_ptr] == ori_length - 1) {
+      if (root_ptr == length_input - 1 and compileInfo.src_fuse[root_ptr] == static_cast<int64_t>(ori_length) - 1) {
         input[root_ptr] = input[compileInfo.src_fuse[root_ptr]];
         break;
       }
@@ -312,7 +312,7 @@ void TransdataBase::ForwardBlockProcess(int64_t* axis_in_ub) {
   bool exceed_limit = false;
 
   // find split idx
-  while (slide_idx < size_output) {
+  while (slide_idx < static_cast<int64_t>(size_output)) {
     if (base >= compileInfo.core_num) {
       exceed_limit = true;
       break;
@@ -375,7 +375,7 @@ void TransdataBase::BackwardBlockProcess(int64_t* axis_in_ub) {
   bool exceed_limit = false;
 
   // find split idx
-  while (slide_idx < size_input) {
+  while (slide_idx < static_cast<int64_t>(size_input)) {
     if (axis_in_ub[slide_idx] == AXIS_IN_UB) {
       slide_idx += 1;
       continue;
@@ -508,7 +508,7 @@ bool TransdataBase::UBTilingForwardProcess(int64_t* input, int64_t* output) {
     mte2.virLen = Prod(input, ptrI + 1, size_output);
     mte3.virLen = Prod(output, ptrO + 1, size_output);
     num_in_ub = mte2.virLen;
-    for (int64_t idx = ptrO + 1; idx < size_output; idx++) {
+    for (int64_t idx = ptrO + 1; idx < static_cast<int64_t>(size_output); idx++) {
       num_in_ub = compileInfo.permute[idx] < ptrI ? num_in_ub * output[idx] : num_in_ub;
     }
 
@@ -520,9 +520,9 @@ bool TransdataBase::UBTilingForwardProcess(int64_t* input, int64_t* output) {
       // split axis which do transpose need special align (m,n)->(n,m)
       int64_t boundO = run_out_ub ? UBSize / num_in_ub : output[ptrO];
       if (is_last_transpose) {
-        if (ptrO == size_output - OFFSET_2) {
+        if (ptrO == static_cast<int64_t>(size_output) - OFFSET_2) {
           boundO = boundO / compileInfo.align_size * compileInfo.align_size;
-        } else if (ptrO == size_output - 1) {
+        } else if (ptrO == static_cast<int64_t>(size_output) - 1) {
           bool is_fp16 = BLOCK / compileInfo.align_size == FP16;
           bool is_int8 = BLOCK / compileInfo.align_size == INT8;
           boundO = is_fp16 or is_int8 ? boundO / compileInfo.align_size * compileInfo.align_size
@@ -690,7 +690,7 @@ bool TransdataBase::UBTilingForwardProcess(int64_t* input, int64_t* output) {
     int64_t tailFactor = dimBound % mainFactor;
     float tail_percent = (float)(tailFactor) / (float)(mainFactor);
     float fine_tuning_threshold = 0.8;
-    if (tail_percent == 0 or tail_percent >= 0.8) {
+    if (tail_percent == 0 or tail_percent >= fine_tuning_threshold) {
       return true;
     }
     int loop = dimBound / mainFactor + 1;
@@ -736,7 +736,7 @@ bool TransdataBase::UBTilingBackwardProcess(int64_t* input, int64_t* output) {
     mte2.virLen = Prod(input, ptrI + 1, size_input);
     mte3.virLen = Prod(output, ptrO + 1, size_input);
     num_in_ub = mte2.virLen;
-    for (int64_t idx = ptrO + 1; idx < size_input; idx++) {
+    for (int64_t idx = ptrO + 1; idx < static_cast<int64_t>(size_input); idx++) {
       num_in_ub = compileInfo.permute[idx] < ptrI ? num_in_ub * output[idx] : num_in_ub;
     }
 
@@ -748,9 +748,9 @@ bool TransdataBase::UBTilingBackwardProcess(int64_t* input, int64_t* output) {
       // split axis which do transpose need special align (m,n)->(n,m)
       int64_t boundO = run_out_ub ? UBSize / num_in_ub : output[ptrO];
       if (is_last_transpose) {
-        if (ptrO == size_input - OFFSET_2) {
+        if (ptrO == static_cast<int64_t>(size_input) - OFFSET_2) {
           boundO = boundO / compileInfo.align_size * compileInfo.align_size;
-        } else if (ptrO == size_input - 1) {
+        } else if (ptrO == static_cast<int64_t>(size_input) - 1) {
           bool is_fp16 = BLOCK / compileInfo.align_size == FP16;
           bool is_int8 = BLOCK / compileInfo.align_size == INT8;
           boundO = is_fp16 or is_int8 ? boundO / compileInfo.align_size * compileInfo.align_size
@@ -977,9 +977,9 @@ bool TransdataBase::UpdateValue() {
   }
 
   if (compileInfo.is_forward) {
-    is_last_transpose = compileInfo.permute[size_output - 1] != size_output - 1;
+    is_last_transpose = compileInfo.permute[size_output - 1] != static_cast<int64_t>(size_output) - 1;
   } else {
-    is_last_transpose = compileInfo.permute[size_input - 1] != size_input - 1;
+    is_last_transpose = compileInfo.permute[size_input - 1] != static_cast<int64_t>(size_input) - 1;
   }
 
   return true;
@@ -1072,7 +1072,7 @@ bool TransdataBase::WriteTilingData() {
 
   // convert dim which is input after fused
   int64_t* target_shape = compileInfo.is_forward ? input_shape : output_shape;
-  for (int64_t i = 0; i < compileInfo.unknown_dims.size(); i++) {
+  for (size_t i = 0; i < compileInfo.unknown_dims.size(); i++) {
     run_info.AddTilingData((int32_t)target_shape[compileInfo.unknown_dims[i]]);
     OP_LOGD(op_type.c_str(), "input shape : %d", target_shape[i]);
   }

@@ -47,3 +47,60 @@ TEST_F(BatchMultiClassNonMaxSuppression, _infershape_fasterrcnn) {
   EXPECT_EQ(out_var_desc.GetShape().GetDims(), expected_var_output_shape);
 }
 
+TEST_F(BatchMultiClassNonMaxSuppression, InfershapeBatchMultiClassNonMax_001) {
+  ge::op::BatchMultiClassNonMaxSuppression op;
+  op.UpdateInputDesc(
+      "boxes", create_desc_with_ori({1, 1024, 1, 4}, ge::DT_FLOAT16, ge::FORMAT_ND, {1, 1024, 1, 4}, ge::FORMAT_ND));
+  op.UpdateInputDesc("scores",
+                     create_desc_with_ori({1, 1024, 1}, ge::DT_FLOAT16, ge::FORMAT_ND, {1, 1024, 1}, ge::FORMAT_ND));
+  op.SetAttr("transpose_box", true);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(BatchMultiClassNonMaxSuppression, InfershapeBatchMultiClassNonMax_002) {
+  ge::op::BatchMultiClassNonMaxSuppression op;
+  op.UpdateInputDesc("boxes", create_desc_with_ori({}, ge::DT_FLOAT16, ge::FORMAT_ND, {}, ge::FORMAT_ND));
+  op.UpdateInputDesc("scores",
+                     create_desc_with_ori({1, 1024, 1}, ge::DT_FLOAT16, ge::FORMAT_ND, {1, 1024, 1}, ge::FORMAT_ND));
+  op.SetAttr("transpose_box", false);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(BatchMultiClassNonMaxSuppression, InfershapeBatchMultiClassNonMax_003) {
+  ge::op::BatchMultiClassNonMaxSuppression op;
+  op.UpdateInputDesc(
+      "boxes", create_desc_with_ori({1, 1024, 1, 1}, ge::DT_FLOAT16, ge::FORMAT_ND, {1, 1024, 1, 1}, ge::FORMAT_ND));
+  op.UpdateInputDesc("scores",
+                     create_desc_with_ori({1, 1024, 1}, ge::DT_FLOAT16, ge::FORMAT_ND, {1, 1024, 1}, ge::FORMAT_ND));
+  op.SetAttr("transpose_box", false);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(BatchMultiClassNonMaxSuppression, InfershapeBatchMultiClassNonMax_004) {
+  ge::op::BatchMultiClassNonMaxSuppression op;
+  op.UpdateInputDesc(
+      "boxes", create_desc_with_ori({1, 1024, 1, 4}, ge::DT_FLOAT16, ge::FORMAT_ND, {1, 1024, 1, 4}, ge::FORMAT_ND));
+  op.UpdateInputDesc("scores", create_desc_with_ori({}, ge::DT_FLOAT16, ge::FORMAT_ND, {}, ge::FORMAT_ND));
+  op.SetAttr("transpose_box", false);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(BatchMultiClassNonMaxSuppression, InfershapeBatchMultiClassNonMax_005) {
+  ge::op::BatchMultiClassNonMaxSuppression op;
+  op.UpdateInputDesc(
+      "boxes", create_desc_with_ori({1, 1024, 2, 4}, ge::DT_FLOAT16, ge::FORMAT_ND, {1, 1024, 2, 4}, ge::FORMAT_ND));
+  op.UpdateInputDesc("scores",
+                     create_desc_with_ori({1, 1024, 1}, ge::DT_FLOAT16, ge::FORMAT_ND, {1, 1024, 1}, ge::FORMAT_ND));
+
+  op.SetAttr("transpose_box", false);
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

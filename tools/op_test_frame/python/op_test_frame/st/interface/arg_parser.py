@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # coding=utf-8
 """
 Function:
@@ -13,6 +14,9 @@ from .const_manager import ConstManager
 
 
 class MsopstArgParser:
+    """
+    class MsopstArgParser
+    """
     def __init__(self):
         # parse input argument
         parse = argparse.ArgumentParser()
@@ -46,17 +50,16 @@ class MsopstArgParser:
             self.model_path = args.model_path
             self.quiet = args.quiet
             self.output_path = args.output_path
-            return
         elif sys.argv[1] == 'mi':
             if len(sys.argv) <= 2:
                 mi_parser.print_usage()
                 sys.exit(ConstManager.OP_TEST_GEN_INVALID_PARAM_ERROR)
             else:
-                self.check_mi_args(args)
+                self._check_mi_args(args)
         else:
-            self.check_run_args(args)
+            self._check_run_args(args)
 
-    def check_mi_args(self, args):
+    def _check_mi_args(self, args):
         if sys.argv[2] == 'get_shape':
             self.model_path = args.model_path
             self.output_path = args.output_path
@@ -77,7 +80,7 @@ class MsopstArgParser:
             self.result_path = args.result_path
             self.expect_path = args.expect_path
 
-    def check_run_args(self, args):
+    def _check_run_args(self, args):
         self.input_file = args.input_file
         self.case_name = args.case_name
         self._check_soc_version(args.soc_version)
@@ -91,7 +94,6 @@ class MsopstArgParser:
             utils.print_error_log(
                 'The value of "soc_version" is empty. Please modify it.')
         self.soc_version = soc_version
-        return
 
     def _check_device_id(self, device_id):
         if not device_id.isdigit():
@@ -100,7 +102,6 @@ class MsopstArgParser:
                 ' now is %s.' % device_id)
             sys.exit(ConstManager.OP_TEST_GEN_INVALID_DEVICE_ID_ERROR)
         self.device_id = device_id
-        return
 
     def _gen_error_threshold(self, err_thr):
         if err_thr == "":
@@ -171,8 +172,8 @@ class MsopstArgParser:
                  "like 'case0,case1'.", required=False)
         run_parser.add_argument(
             '-d', "--device_id", dest="device_id", default="0",
-            help="<Optional> input device id, default is 0."
-            , required=False)
+            help="<Optional> input device id, default is 0.",
+            required=False)
         run_parser.add_argument(
             '-conf', "--config_file", dest="config_file", default="",
             help="<Optional> config_file, msopst advance config file.",
@@ -184,8 +185,7 @@ class MsopstArgParser:
                  "comparison, like [0.001, 0.001].",
             required=False)
 
-    @staticmethod
-    def _mi_parser(mi_parser):
+    def _mi_parser(self, mi_parser):
         """
         parse mi cmd
         :param mi_parser:
@@ -239,6 +239,10 @@ class MsopstArgParser:
             , required=False)
 
         # compare parse
+        self._mi_compare_parser(compare_parser, compare_by_path_parser)
+
+    @staticmethod
+    def _mi_compare_parser(compare_parser, compare_by_path_parser):
         compare_parser.add_argument(
             "-i", "--report path", dest="report_path", default="",
             help="<Required> the st report file path",

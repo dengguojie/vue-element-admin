@@ -25,6 +25,31 @@ TEST_F(dropOutGenMask, dropOutGenMask_infershape_diff_test){
   EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
 }
 
+TEST_F(dropOutGenMask, dropOutGenMask_infershape_diff_test_1){
+  ge::op::DropOutGenMask op;
+
+  ge::Tensor constTensor;
+  ge::TensorDesc constDesc(ge::Shape({4}), ge::FORMAT_NHWC, ge::DT_INT64);
+  constDesc.SetSize(4 * sizeof(int64_t));
+  constTensor.SetTensorDesc(constDesc);
+  int64_t constData[4] = {2, 3, 4, 5};
+  constTensor.SetData((uint8_t*)constData, 4 * sizeof(int64_t));
+  auto output_size = ge::op::Constant().set_attr_value(constTensor);
+
+  op.set_input_shape(output_size);
+  auto desc = op.GetInputDesc("shape");
+  desc.SetDataType(ge::DT_INT64);
+  op.UpdateInputDesc("shape", desc);
+
+  auto probDesc = op.GetInputDesc("prob");
+  probDesc.SetDataType(ge::DT_FLOAT);
+  probDesc.SetShape(ge::Shape());
+  op.UpdateInputDesc("prob", probDesc);  
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
 TEST_F(dropOutGenMask, dropOutGenMask_infershape_prob_rank_err_1){
   ge::op::DropOutGenMask op;
   auto probDesc = op.GetInputDesc("prob");

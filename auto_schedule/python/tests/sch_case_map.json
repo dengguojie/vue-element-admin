@@ -389,6 +389,9 @@
     "auto_schedule/python/tbe/dsl/compute/general_transdata.py":[
         "transdata"
     ],
+    "auto_schedule/python/tbe/dsl/base/classifier/transdata/general_transdata_classifier.py":[
+        "transdata"
+    ],
     "auto_schedule/python/tbe/dsl/unify_schedule/layer_norm_x_backprop_v2_schedule.py":[
         "layer_norm_x_backprop_v2/test_dynamic_layer_norm_x_backprop_v2_impl.py"
     ]

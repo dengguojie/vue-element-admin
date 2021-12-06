@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,9 +26,9 @@
 #include "../op_proto/util/util.h"
 #include "../op_proto/util/error_util.h"
 #include "op_log.h"
+#include "error_log.h"
 
 namespace optiling {
-
 static const int64_t TILING_MODE_0 = 0;
 
 static const int64_t TILING_MODE_1 = 1;
@@ -47,6 +47,8 @@ static const int64_t SPLIT_SECOND = 7025;
 static const int64_t SPLIT_THREE = 1000;
 
 static const int64_t PADDINGS_MAX_VALUE = 4;
+
+static const int64_t NUM_THREE = 3;
 
 struct PadV35HDCompileParams {
   int64_t core_num;
@@ -206,6 +208,10 @@ static void _printTensorValue(const PadV35HDCompileParams& compile_params, const
 }
 
 static int64_t get_core_num(std::vector<int64_t> x_shape, int64_t core_num) {
+  if (core_num == 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING("PADV35HD", "get core_num error");
+    return 0;
+  }
   auto nc_total = x_shape[0] * x_shape[1];
   auto ele_per_core = (nc_total - 1) / core_num + 1;
   auto core_used = (nc_total - 1) / ele_per_core + 1; 
@@ -226,26 +232,20 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
   int64_t not_last_core_numel = 0;
   int64_t last_core_numel = 0;
   auto nc_total = input_shape[0] * input_shape[1];
+  if (core_used == 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING("PADV35HD", "get core_used error");
+    return false;
+  }
   core_used = get_core_num(input_shape, compile_params.core_num);
   not_last_core_numel = (nc_total - 1) / core_used + 1;
   last_core_numel = nc_total - (core_used - 1) * not_last_core_numel;
   numel = output_third * output_fourth * output_fifth;
   bool all_zero = true;
   bool all_below_three = true;
-  for (auto ele: paddings_const_values) {
-    if (ele != 0) {
-      all_zero = false;
-      break;
-    }
-  }
-
-  for (auto ele: paddings_const_values) {
-    if (ele > 3) {
-      all_below_three = false;
-      break;
-    }
-  }
-
+  all_zero = std::all_of(paddings_const_values.begin(), paddings_const_values.end(),
+                         [](int64_t item) {return item == 0;});
+  all_below_three = std::all_of(paddings_const_values.begin(), paddings_const_values.end(),
+                         [](int64_t item) {return item < 3;});
   if (all_zero) {
     tiling_key =  TILING_MODE_3;
   }
@@ -256,8 +256,9 @@ static bool GetTilingParam(const std::vector<int64_t>& input_shape,
     ((output_fifth * output_fourth) <= (SPLIT_SECOND * compile_params.size)) && (all_below_three)) {
     tiling_key = TILING_MODE_1;
   }
-  else if ((input_shape[2] <= (SPLIT_THREE * compile_params.size)) && ((output_fifth * output_fourth) > (SPLIT_SECOND * compile_params.size)) &&
-    (paddings_const_values[6] <= PADDINGS_MAX_VALUE) && (paddings_const_values[7] <= PADDINGS_MAX_VALUE)) {
+  else if ((input_shape[2] <= (SPLIT_THREE * compile_params.size)) && ((output_fifth * output_fourth) > (SPLIT_SECOND * \
+	    compile_params.size)) && (paddings_const_values[6] <= PADDINGS_MAX_VALUE) && 
+           (paddings_const_values[7] <= PADDINGS_MAX_VALUE)) {
     tiling_key = TILING_MODE_2;
   }
   else {

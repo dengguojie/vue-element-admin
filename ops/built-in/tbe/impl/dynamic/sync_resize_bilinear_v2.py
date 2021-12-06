@@ -2348,7 +2348,7 @@ class SyncResizeBilinearV2(OpBase):
                 input_top = input_ori_ub_fp32_top
 
             input_num = do_nc_num * self.images_shape_c0 * 2
-            #  'calcu: top + (bottom - top) * input_h_weight'
+            # `calcu: top + (bottom - top) * input_h_weight`
             self.tik_instance.vsub(self.vector_num, input_bottom, input_bottom, input_top,
                                    (input_num + self.vector_num - 1) // self.vector_num, 1, 1, 1, 8, 8, 8)
             self.tik_instance.vmuls(self.vector_num, output_h_ub, input_bottom, input_h_weight,
@@ -2356,7 +2356,7 @@ class SyncResizeBilinearV2(OpBase):
             self.tik_instance.vadd(self.vector_num, output_h_ub, input_top, output_h_ub,
                                    (input_num + self.vector_num - 1) // self.vector_num, 1, 1, 1, 8, 8, 8)
 
-            #  'calcu: left + (right - left) * input_w_weight'
+            # `calcu: left + (right - left) * input_w_weight`
             input_num = do_nc_num * self.images_shape_c0
             with self.tik_instance.if_scope(input_w1_index != input_w0_index):
                 self.tik_instance.vsub(self.images_shape_c0, output_last, output_h_ub[self.images_shape_c0:],

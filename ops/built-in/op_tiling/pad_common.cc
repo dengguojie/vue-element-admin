@@ -225,11 +225,10 @@ void padCommon::GetDepth(const std::vector<int64_t>& inShape, const std::vector<
   }
   int block_num = MINI_UNIT / numBit;
   int64_t size = inShape.size();
-  int64_t pro_value = 0;
 
   // Eliminate "1" in head: [1,1,2,..,] -> [2,...]
   for (int i = 1; i <= size; i++) {
-    pro_value = accumulate(inShape.begin(), inShape.begin() + i, 1, multiplies<int64_t>());
+    int64_t pro_value = accumulate(inShape.begin(), inShape.begin() + i, 1, multiplies<int64_t>());
     depth = i;
     if (pro_value != 1) {
       break;
@@ -249,11 +248,9 @@ void padCommon::GetDepth(const std::vector<int64_t>& inShape, const std::vector<
   // can't satisfy regulation of circulation layer.
   // In align, min(depth) = 1, In not align, min(depth) = 0.
   if (branch == 0) {
-    int64_t top_vol = 0;
-    int64_t bottom_vol = 0;
     while (depth > 0) {
-      top_vol = _prod(depth, outShape) * padding[depth - 1][0];
-      bottom_vol = _prod(depth, outShape) * padding[depth - 1][1];
+      int64_t top_vol = _prod(depth, outShape) * padding[depth - 1][0];
+      int64_t bottom_vol = _prod(depth, outShape) * padding[depth - 1][1];
       if ((top_vol == 0 || top_vol >= block_num) && (bottom_vol == 0 || bottom_vol >= block_num)) {
         break;
       }
@@ -277,7 +274,6 @@ void padCommon::_calc_core_circulation(int branch, int index, const std::string&
    * In not align(0) and index is 0: data of div_core is more than core_vol_0.
    * core_gap_0 == core_gap_1: Because prod is always less than MaxCore in the func.
    * */
-  int64_t virCore = 0;
   if (numBit == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING("pad_common", "numbit = 0 is not support");
       return;
@@ -285,7 +281,7 @@ void padCommon::_calc_core_circulation(int branch, int index, const std::string&
   int64_t block_num = MINI_UNIT / numBit;
   int64_t prod = std::accumulate(inShape.begin(), inShape.begin() + index, 1, std::multiplies<int64_t>());
   if (vol->at(index) > 0) {
-    virCore = (prod != 1) ? inShape[index - 1] : vol->at(index) / block_num;
+    int64_t virCore = (prod != 1) ? inShape[index - 1] : vol->at(index) / block_num;
     total_core->at(index) = (virCore > maxCore) ? maxCore : virCore;
 
     div_core->at(index) =
@@ -356,9 +352,9 @@ void padCommon::GetCirculateParams(const std::string& pattern, const int numBit,
 void padCommon::SplitRL(int64_t& ptrR, int64_t& ptrL, int64_t maxCore, int64_t block, int64_t baseData,
                         int64_t baseCore) {
   // Regulation to split inShape[depth-1]:
-  // 1.right * core_data >= 32B;
-  // 2.left * virCore ~ maxCore;
-  // 3.left * right == inShape[depth-1]
+  // 1.`right * core_data >= 32B`;
+  // 2.`left * virCore ~ maxCore`;
+  // 3.`left * right == inShape[depth-1]`
   int64_t total = ptrR;
   int64_t bef_ptrR = ptrR;
   int64_t bef_prtL = ptrL;
@@ -552,9 +548,6 @@ void padCommon::GetRecurCorePro(PadDTilingParams& params, const std::vector<int6
     return;
   }
   int64_t block = MINI_UNIT / numBit;
-  int64_t baseCore = 0;
-  int64_t baseData = 0;
-  int64_t virCore = 0;
   int64_t size = inShape.size();
   if (depth < 0){
     depth = 1;
@@ -580,8 +573,8 @@ void padCommon::GetRecurCorePro(PadDTilingParams& params, const std::vector<int6
   } else {
     // A B C D
     // eg: depth = 3 size = 4
-    baseCore = accumulate(inShape.begin(), inShape.begin() + depth - 1, 1, std::multiplies<int64_t>());
-    baseData = _prod(depth, outShape);
+    int64_t baseCore = accumulate(inShape.begin(), inShape.begin() + depth - 1, 1, std::multiplies<int64_t>());
+    int64_t baseData = _prod(depth, outShape);
 
     int64_t ptrR = inShape[depth - 1];
     int64_t ptrL = 1;
@@ -590,7 +583,7 @@ void padCommon::GetRecurCorePro(PadDTilingParams& params, const std::vector<int6
     }
 
     // Return Scalar.
-    virCore = ptrL * baseCore;
+    int64_t virCore = ptrL * baseCore;
     params.total_core = (virCore > maxCore) ? maxCore : virCore;
     params.div_core =
         (virCore <= maxCore) ? virCore - 1 : (virCore % maxCore == 0) ? maxCore - 1 : virCore % maxCore - 1;
@@ -659,12 +652,10 @@ void padCommon::GetRecurCorePro(PadDTilingParams& params, const std::vector<int6
       }
       index = inShape.size();
     }
-  }
-  // Return recur_dup_mk (One-Time-Triggered)
-  // Vec_dup in Circulation layer will decide situation of Vec_dup in Recursion layer.
-  // Vec_dup in Recursion_Mov will effect Vec_dup in Recursion_Sort.
-  // recur_dup_mk only effect Recursion_Sort.
-  if (inShape[length] <= last_dim_limit) {
+    // Return recur_dup_mk (One-Time-Triggered)
+    // Vec_dup in Circulation layer will decide situation of Vec_dup in Recursion layer.
+    // Vec_dup in Recursion_Mov will effect Vec_dup in Recursion_Sort.
+    // recur_dup_mk only effect Recursion_Sort.
     DupTilingMax(params, index);
   }
 }

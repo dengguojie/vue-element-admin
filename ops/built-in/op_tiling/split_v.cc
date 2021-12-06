@@ -307,7 +307,7 @@ void CalSpecialParams(SplitVTilingParams& runParams, int64_t coreNum, int64_t da
 
 bool CalSplitVRunningParams(SplitVTilingParams& runParams, int64_t inputElems, std::vector<int64_t> inputShape,
                             int64_t ubElems, int64_t coreNum, int64_t splitDim, int64_t numSplit, int64_t dataBlock,
-                            std::vector<int64_t> sizeSplitsVec, ge::DataType inputDType, bool isSplitV) {
+                            const std::vector<int64_t>& sizeSplitsVec, ge::DataType inputDType, bool isSplitV) {
   int64_t shapeBefore = 1;
   int64_t shapeAfter = 1;
   int64_t shapeAfterDim = 1;
@@ -638,7 +638,7 @@ bool SplitVTiling(const std::string& opType, const ge::Operator& opParas, const 
   int64_t splitSizeValue = 0;
   std::vector<int64_t> sizeSplitsVec;
   if (isSplitV) {
-    //input size_splits index is 1
+    // input size_splits index is 1
     if (!ops::GetConstIntData(opParas, 1, sizeSplitsVec)) {
       VECTOR_INNER_ERR_REPORT_TILIING(opType, "SplitVTiling: Get size_splits value failed.");
       return false;

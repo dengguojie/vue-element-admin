@@ -29,7 +29,6 @@
 #include "error_log.h"
 
 namespace optiling {
-
 constexpr int64_t C0_16 = 16;
 constexpr int64_t VNC_LINES = 16;
 
@@ -131,16 +130,16 @@ void GetCommonParam(int64_t ub_size, int64_t block_elem_cnt, int64_t c0_len, int
 
   int64_t half_ub_size;
   if (c0_len == C0_16) {
-    half_ub_size = ub_size / 2;
+    half_ub_size = ub_size / TRANSDATA_TILING_FACTOR_2;
   } else {
-    half_ub_size = ub_size / 4;
+    half_ub_size = ub_size / TRANSDATA_TILING_FACTOR_4;
   }
   params.vnc_line_size = half_ub_size / VNC_LINES / block_elem_cnt * block_elem_cnt;
   int64_t tmp_ub_offset = params.vnc_line_size * VNC_LINES;
   if (c0_len == C0_16) {
     params.ub_offset = tmp_ub_offset;
   } else {
-    params.ub_offset = tmp_ub_offset * 2;
+    params.ub_offset = tmp_ub_offset * TRANSDATA_TILING_FACTOR_2;
   }
   params.c_mod_c0 = axis_c_size % c0_len;
   params.c0_size = c0_len;

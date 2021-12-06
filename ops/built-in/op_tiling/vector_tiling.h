@@ -47,6 +47,7 @@ public:
             op_in_type (_op_in_type),
             op_reduce_axes (_op_reduce_axes){
     }
+    ~OpInfo() = default;
 
     const std::vector<std::vector<int64_t>>& GetInputShape() const {
       return op_input_shapes;

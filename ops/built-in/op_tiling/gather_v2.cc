@@ -651,7 +651,7 @@ bool CalcCacheIndices(GatherV2TilingParams& run_params, int64_t indices_num_per_
   run_params.indices_row_num_once = indices_num_per_loop;
   run_params.row_num_once_ub = res_ub_size / (run_params.params_row * params_d_size);
   int64_t block_num = BLOCK_SIZE / params_d_size;
-  int64_t align_unit = block_num;
+  int64_t align_unit;
   if (tiling_mode == TILING_MODE_38 || tiling_mode == TILING_MODE_39) {
     align_unit = run_params.indices_row * block_num;
   } else if (tiling_mode == TILING_MODE_40 || tiling_mode == TILING_MODE_41) {

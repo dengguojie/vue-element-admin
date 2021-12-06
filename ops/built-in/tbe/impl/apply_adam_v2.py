@@ -30,11 +30,12 @@ class BertAdam():
     class of apply_adam_v2
     """
 
-    def __init__(self, data_num, data_type, kernel_name, cont):
+    def __init__(self, data_num, data_type, kernel_name, cont, adam_mode):
         self.data_num = data_num
         self.data_type = data_type
         self.kernel_name = kernel_name
         self.cont = cont
+        self.adam_mode = adam_mode
 
         self.tik = self.cont.tik
         self.tik_inst = self.cont.tinst
@@ -59,6 +60,8 @@ class BertAdam():
         self.global_grad_norm = self.tik_inst.Tensor(self.data_type, data_shape_1,
                                                      self.tik.scope_gm, "global_grad_norm")
         self.weight_decay = self.tik_inst.Tensor(self.data_type, data_shape_1, self.tik.scope_gm, "weight_decay")
+        if self.adam_mode == "mbart_adam":
+            self.step_size = self.tik_inst.Tensor(self.data_type, data_shape_1, self.tik.scope_gm, "step_size")
 
         self.var_out = self.tik_inst.Tensor(self.data_type, data_shape, self.tik.scope_gm, "var_out")
         self.m_out = self.tik_inst.Tensor(self.data_type, data_shape, self.tik.scope_gm, "m_out")
@@ -112,10 +115,14 @@ class BertAdam():
                 self._mode_compute_each_core(data_index_core_s, each_core_data_num)
             with self.tik_inst.else_scope():
                 self._mode_compute_each_core(data_index_core_s, last_core_data_num)
-
-        inputs_all = [self.var, self.m, self.v, self.lr,
-                      self.beta1, self.beta2, self.epsilon, self.grad, self.max_grad_norm,
-                      self.global_grad_norm, self.weight_decay]
+        if self.adam_mode == "mbart_adam":
+            inputs_all = [self.var, self.m, self.v, self.lr,
+                          self.beta1, self.beta2, self.epsilon, self.grad, self.max_grad_norm,
+                          self.global_grad_norm, self.step_size, self.weight_decay]
+        else:
+            inputs_all = [self.var, self.m, self.v, self.lr,
+                          self.beta1, self.beta2, self.epsilon, self.grad, self.max_grad_norm,
+                          self.global_grad_norm, self.weight_decay]
         outputs_all = [self.var_out, self.m_out, self.v_out]
         self.tik_inst.BuildCCE(
             inputs=inputs_all,
@@ -175,6 +182,10 @@ class BertAdam():
             self.tik_inst.vdiv(mask, global_grad_norm_ub, weight_decay_ub, global_grad_norm_ub, repeat_num, 1, 1, 1, 8,
                                8, 8)
             scalar_all.get("rec_global_grad_norm").set_as(global_grad_norm_ub[0])
+            if self.adam_mode == "mbart_adam":
+                step_size_ub = self.tik_inst.Tensor(self.data_type, data_shape, self.tik.scope_ubuf, "step_size")
+                self.tik_inst.data_move(step_size_ub, self.step_size, 0, 1, block_num, 0, 0)
+                scalar_all.get("step_size").set_as(step_size_ub[0])
 
     def _init_other_scalar(self, scalar_all):
         """
@@ -209,6 +220,8 @@ class BertAdam():
             "epsilon": self.tik_inst.Scalar(self.data_type),
             "lr_scheduled": self.tik_inst.Scalar(self.data_type),
         }
+        if self.adam_mode == "mbart_adam":
+            scalar_all["step_size"] = self.tik_inst.Scalar(self.data_type)
         self._init_beta_scalar(scalar_all)
         self._init_judge_scalar(scalar_all)
         self._init_other_scalar(scalar_all)
@@ -216,13 +229,16 @@ class BertAdam():
 
     def _mode_compute_each_core(self, data_index_core_s, data_num):
         scalar_all = self._init_scalar_all()
-        with self.tik_inst.if_scope(scalar_all.get("max_grad_norm_i") > 0):
-            with self.tik_inst.if_scope(scalar_all.get("global_grad_norm_i") > 1):
-                self._judge_weight_decay_each_core(scalar_all, data_index_core_s, data_num, 1)
+        if self.adam_mode == "mbart_adam":
+            self._judge_weight_decay_each_core(scalar_all, data_index_core_s, data_num, 0)
+        else:
+            with self.tik_inst.if_scope(scalar_all.get("max_grad_norm_i") > 0):
+                with self.tik_inst.if_scope(scalar_all.get("global_grad_norm_i") > 1):
+                    self._judge_weight_decay_each_core(scalar_all, data_index_core_s, data_num, 1)
+                with self.tik_inst.else_scope():
+                    self._judge_weight_decay_each_core(scalar_all, data_index_core_s, data_num, 0)
             with self.tik_inst.else_scope():
                 self._judge_weight_decay_each_core(scalar_all, data_index_core_s, data_num, 0)
-        with self.tik_inst.else_scope():
-            self._judge_weight_decay_each_core(scalar_all, data_index_core_s, data_num, 0)
 
     def _judge_weight_decay_each_core(self, scalar_all, data_index_core_s, data_num, compute_mode):
         with self.tik_inst.if_scope(scalar_all.get("weight_decay_i") > 0):
@@ -269,7 +285,10 @@ class BertAdam():
     # 'pylint: disable=too-many-arguments
     def _mode_compute_each_loop(self, data_buf, scalar_all, data_index_loop_s, data_num, compute_mode, drive_buf_name):
         self._data_move_in(data_buf, data_index_loop_s, data_num)
-        self._start_compute(data_buf, scalar_all, compute_mode, drive_buf_name)
+        if self.adam_mode == "mbart_adam":
+            self._start_compute_mbart_adam(data_buf, scalar_all, compute_mode, drive_buf_name)
+        else:
+            self._start_compute(data_buf, scalar_all, compute_mode, drive_buf_name)
         self._data_move_out(data_buf, data_index_loop_s, data_num)
 
     def _data_move_in(self, data_buf, data_index_loop_s, data_num):
@@ -334,6 +353,54 @@ class BertAdam():
                     src0_name="combined_param_ub", src1_name="temp_tensor_ub")])
         VecExecutor.exec_vec_cmd(data_buf, compute_cmd, drive_buf_name)
 
+    @staticmethod
+    def _start_compute_mbart_adam(data_buf, scalar_all, compute_mode, drive_buf_name):
+        """
+        start compute:
+        """
+        compute_cmd = []
+
+        compute_cmd.extend([
+            VecCmd(cmd_name="vmuls", dst_name="exp_avg_ub",
+                   src0_name="exp_avg_ub", scalar=scalar_all.get("beta1")),
+            VecCmd(cmd_name="vmuls", dst_name="temp_tensor_ub",
+                   src0_name="combined_grad_ub", scalar=scalar_all.get("ne_beta1")),
+            VecCmd(cmd_name="vadd", dst_name="exp_avg_ub",
+                   src0_name="exp_avg_ub", src1_name="temp_tensor_ub"),
+
+            VecCmd(cmd_name="vmuls", dst_name="exp_avg_sq_ub",
+                   src0_name="exp_avg_sq_ub", scalar=scalar_all.get("beta2")),
+            VecCmd(cmd_name="vmul", dst_name="temp_tensor_ub",
+                   src0_name="combined_grad_ub", src1_name="combined_grad_ub"),
+            VecCmd(cmd_name="vmuls", dst_name="temp_tensor_ub",
+                   src0_name="temp_tensor_ub", scalar=scalar_all.get("ne_beta2")),
+            VecCmd(cmd_name="vadd", dst_name="exp_avg_sq_ub",
+                   src0_name="exp_avg_sq_ub", src1_name="temp_tensor_ub"),
+
+            VecCmd(cmd_name="vsqrt", dst_name="temp_tensor_ub",
+                   src0_name="exp_avg_sq_ub"),
+            VecCmd(cmd_name="vadds", dst_name="temp_tensor_ub",
+                   src0_name="temp_tensor_ub", scalar=scalar_all.get("epsilon")),
+            VecCmd(cmd_name="vdiv", dst_name="temp_tensor_ub",
+                   src0_name="exp_avg_ub", src1_name="temp_tensor_ub"),
+            VecCmd(cmd_name="vmuls", dst_name="temp_tensor_ub",
+                   src0_name="temp_tensor_ub", scalar=scalar_all.get("step_size"))
+        ])
+
+        if compute_mode // 2 == 1:
+            compute_cmd.extend(
+                [VecCmd(cmd_name="vmuls", dst_name="combined_grad_ub",
+                        src0_name="combined_param_ub", scalar=scalar_all.get("weight_decay")),
+                 VecCmd(cmd_name="vmuls", dst_name="combined_grad_ub",
+                        src0_name="combined_param_ub", scalar=scalar_all.get("lr_scheduled")),
+                 VecCmd(cmd_name="vadd", dst_name="temp_tensor_ub",
+                        src0_name="temp_tensor_ub", src1_name="combined_grad_ub")])
+
+        compute_cmd.extend(
+            [VecCmd(cmd_name="vsub", dst_name="combined_param_ub",
+                    src0_name="combined_param_ub", src1_name="temp_tensor_ub")])
+        VecExecutor.exec_vec_cmd(data_buf, compute_cmd, drive_buf_name)
+
     def _data_move_out(self, data_buf, data_index_loop_s, data_num):
         """
         exp_avg_result, exp_avg_sq_result, combined_param_result, data move out
@@ -349,7 +416,7 @@ class BertAdam():
 
 # 'pylint: disable=too-many-arguments,too-many-locals
 def check_params(var, m, v, lr, beta1, beta2, epsilon, grad, max_grad_norm, global_grad_norm, weight_decay,
-                 var_out, m_out, v_out, kernel_name):
+                 step_size, var_out, m_out, v_out, adam_mode, kernel_name):
     """
     check params
     """
@@ -373,9 +440,13 @@ def check_params(var, m, v, lr, beta1, beta2, epsilon, grad, max_grad_norm, glob
         if param_dtype != input_dtype:
             error_manager_vector.raise_err_input_value_invalid(
                 kernel_name, "dtype of {}".format(param_name), input_dtype, param_dtype)
-
-    param_list_1 = (lr, beta1, beta2, epsilon, max_grad_norm, global_grad_norm, weight_decay)
-    param_name_list_1 = ("lr", "beta1", "beta2", "epsilon", "max_grad_norm", "global_grad_norm", "weight_decay")
+    if adam_mode == "mbart_adam":
+        param_list_1 = (lr, beta1, beta2, epsilon, max_grad_norm, global_grad_norm, weight_decay, step_size)
+        param_name_list_1 = ("lr", "beta1", "beta2", "epsilon", "max_grad_norm", "global_grad_norm",
+                             "weight_decay", "step_size")
+    else:
+        param_list_1 = (lr, beta1, beta2, epsilon, max_grad_norm, global_grad_norm, weight_decay)
+        param_name_list_1 = ("lr", "beta1", "beta2", "epsilon", "max_grad_norm", "global_grad_norm", "weight_decay")
     for param, param_name in zip(param_list_1, param_name_list_1):
         param_shape = param.get("shape")
         param_dtype = param.get("dtype").lower()
@@ -400,20 +471,30 @@ def get_data_num(data_shape):
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
-                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
-                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
+                            para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
+                            para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT,
+                            para_check.OPTION_ATTR_STR, para_check.KERNEL_NAME)
 # 'pylint: disable=unused-argument,too-many-arguments,too-many-locals
 def apply_adam_v2(var, m, v, lr, beta1, beta2, epsilon, grad, max_grad_norm, global_grad_norm, weight_decay,
-                  var_out, m_out, v_out, kernel_name="ApplyAdamV2"):
+                  step_size, var_out, m_out, v_out, adam_mode, kernel_name="ApplyAdamV2"):
     """
     algorithm: assign positive bboxes
-        if max_grad_norm > 0 and global_grad_norm > 1: combined_grad /= global_grad_norm
-        m = m * beta1 + combined_grad * (1 - beta1)
-        v = v * beta2 + combined_grad * combined_grad * (1 - beta2)
-        update = m / (v.sqrt() + epsilon)
-        if weight_decay > 0: update += weight_decay * var
-        update_with_lr = lr * update
-        var -= update_with_lr
+        default:
+            if max_grad_norm > 0 and global_grad_norm > 1: combined_grad /= global_grad_norm
+            m = m * beta1 + combined_grad * (1 - beta1)
+            v = v * beta2 + combined_grad * combined_grad * (1 - beta2)
+            update = m / (v.sqrt() + epsilon)
+            if weight_decay > 0: update += weight_decay * var
+            update_with_lr = lr * update
+            var -= update_with_lr
+        if adam_mode == "mbart_adam":
+            exp_avg = exp_avg * beta1 + combined_grad * (1-beta1)
+            exp_avg_sq = exp_avg_sq * beta2 + combined_grad * combined_grad * (1 - beta2)
+            update = exp_avg / (exp_avg_sq.sqrt() + epsilon)
+            update_with_st = update * step_size
+            if compute_mode // 2 == 1: update_with_st += weight_decay * lr * combined_param
+            combined_param -= update_with_st
+
     Parameters
     ----------
     var:
@@ -451,11 +532,11 @@ def apply_adam_v2(var, m, v, lr, beta1, beta2, epsilon, grad, max_grad_norm, glo
     None
     """
     check_params(var, m, v, lr, beta1, beta2, epsilon, grad, max_grad_norm, global_grad_norm, weight_decay,
-                 var_out, m_out, v_out, kernel_name)
+                 step_size, var_out, m_out, v_out, adam_mode, kernel_name)
     AContainer.reset_instance()
     cont = AContainer.get_instance()
     data_type = var.get("dtype").lower()
     data_shape = var.get("shape")
     data_num = get_data_num(data_shape)
-    obj = BertAdam(data_num, data_type, kernel_name, cont)
+    obj = BertAdam(data_num, data_type, kernel_name, cont, adam_mode)
     obj.mode_compute()

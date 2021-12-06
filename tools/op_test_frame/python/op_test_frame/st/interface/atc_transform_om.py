@@ -18,12 +18,15 @@ from . import op_st_case_info
 
 
 class AtcTransformOm:
-    def __init__(self, testcase_list, output_path, compile_flag, machine_type, report):
+    """
+    Class AtcTransformOm for creating acl_op.json and transforming om models.
+    """
+    def __init__(self, testcase_list, output_path, compile_flag, *arguments):
         self.testcase_list = testcase_list
-        self.machine_type = machine_type
-        self._check_output_path(output_path, testcase_list)
         self.compile_flag = compile_flag
-        self.report = report
+        self.machine_type = arguments[0]
+        self.report = arguments[1]
+        self._check_output_path(output_path, testcase_list)
 
     def _check_output_path(self, output_path, testcase_list):
         self.output_path = utils.check_output_path(
@@ -102,6 +105,9 @@ class AtcTransformOm:
         return tmp_dic
 
     def create_acl_op_json_content(self, testcase_list, output_path, compile_flag):
+        """
+        Prepare acl json content and write file
+        """
         content = []
         if compile_flag is not None:
             compile_dic = {'compile_flag': compile_flag}
@@ -171,7 +177,9 @@ class AtcTransformOm:
             case_report.trace_detail.add_stage_result(stage_result)
 
     def create_acl_op(self):
-        # 1.prepare acl json content and write file
+        """
+        Create acl_op.json
+        """
         acl_json_content = self.create_acl_op_json_content(
             self.testcase_list, self.output_path, self.compile_flag)
         output_test_data_config_path = os.path.join(self.output_path + ConstManager.TEST_DATA_CONFIG_RELATIVE_PATH)
@@ -181,13 +189,16 @@ class AtcTransformOm:
         self._write_content_to_file(acl_json_content, os.path.join(output_test_data_config_path, 'acl_op.json'))
 
     def transform_acl_json_to_om(self, soc_version, advance_args):
+        """
+        Transform acl_op.json to om models.
+        """
         # generate acl_op.json for atc tools.
         self.create_acl_op()
         # set log level env.
         self._set_log_level_env(advance_args)
         # do atc single op model conversion
         utils.print_step_log("[%s] Start to convert single op to om model." % (os.path.basename(__file__)))
-        origin_path = os.getcwd()
+        origin_path = os.path.realpath(os.getcwd())
         run_out_path = os.path.join(self.output_path, ConstManager.RUN_OUT)
         op_models_path = os.path.join(run_out_path, 'op_models')
         os.chdir(run_out_path)

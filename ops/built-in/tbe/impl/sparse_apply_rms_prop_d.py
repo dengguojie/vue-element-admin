@@ -142,7 +142,7 @@ class SparseApplyRMSProp(SparseApply):
             mom_ub = self._get_ub("mom_ub")[offset]
             grad_ub = self.grad_ub[offset]
 
-        # ms_: ms * rho + grad * grad * (1 - rho)
+        # ms_: `ms * rho + grad * grad * (1 - rho)`
         self.tik_instance.vmuls(mask, ms_ub, ms_ub, self.rho, repeat_times, 1, 1, 8, 8)
         self.tik_instance.vmul(mask, tmp_ub, grad_ub, grad_ub, repeat_times, 1, 1, 1, 8, 8, 8)
         self.tik_instance.vmuls(mask, tmp_ub, tmp_ub, (1 - self.rho), repeat_times, 1, 1, 8, 8)

@@ -23,7 +23,6 @@ from impl.util.platform_adapter import tbe_platform
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import shape_util
 from impl.util.platform_adapter import register_operator
-from impl.util.platform_adapter import tbe_context
 
 
 # 'pylint: disable=too-few-public-methods
@@ -216,9 +215,8 @@ def _broadcast_interval_dimension(tensor, shape):
         tmp_tensor = tbe.broadcast(tensor, tmp_shape)
         tensor_target = tbe.broadcast(tmp_tensor, shape)
         return tensor_target
-    else:
-        tensor_target = tbe.broadcast(tensor, shape)
-        return tensor_target
+    tensor_target = tbe.broadcast(tensor, shape)
+    return tensor_target
 
 
 def _get_pd_xl(data, shape_x):
@@ -497,7 +495,6 @@ def _get_pds(data_dy, data_x, data_variance, data_mean,
     """
     dtype = data_dy.dtype.lower()
     shape_x = shape_util.shape_to_list(data_x.shape)
-    shape_mean = shape_util.shape_to_list(data_mean.shape)
 
     has_improve_precision = False
     cast_dtype = dtype
@@ -609,7 +606,6 @@ def layer_norm_x_backprop_v2(input_dy, input_x, input_variance, input_mean,
     shape_x = input_x.get("shape")
     first_dim = shape_x[0]
     last_dim = shape_x[-1]
-    shape_variance = input_variance.get("shape")
     shape_gamma = input_gamma.get("shape")
 
     if len(shape_dy) == 4:
@@ -620,7 +616,7 @@ def layer_norm_x_backprop_v2(input_dy, input_x, input_variance, input_mean,
         dynamic_shape_variance = (1, dim_2, 1)
         dynamic_shape_gamma = (first_dim, 1, last_dim)
         params = {
-            "reduce_axis": tuple([0, 2]),
+            "reduce_axis": [0, 2],
             "mean_num": first_dim * last_dim
         }
     else:

@@ -40,7 +40,10 @@ DEFAULT = "default"
 DMA_COPY = "dma_copy"
 
 BLOCK_SIZE_BYTE = 32
-ALIGN_THRESHOLD = 128
+ONE_K_BYTES = 1024
+ALIGN_THRESHOLD = 512
+B8_COEXISTING_QUANTITY_FACTOR = 32
+GT_B8_COEXISTING_QUANTITY_FACTOR = 16
 
 TYPE_IN_BLOCK = {
     1: 32,
@@ -385,7 +388,7 @@ class TransposeSchedule(Schedule, ABC):
             and self._high_ub_split_axis_index == len(self._permute) - 1
         if self.Util.is_store_align(self._tiling_strategy) or self._is_const_store_align:
             self._coexisting_quantity = 1
-            self._ub_size -= 32
+            self._ub_size -= BLOCK_SIZE_BYTE
         elif self._last_transpose or self._is_const_align or is_cut_last:
             self._coexisting_quantity = 2
             if self._last_transpose and self._max_dtype_bytes > 2:
@@ -393,8 +396,11 @@ class TransposeSchedule(Schedule, ABC):
         elif self.Util.is_all_read_align(self._tiling_strategy):
             self._coexisting_quantity = 2
         else:
-            factor = 32 if self._max_dtype_bytes == 1 else 16
-            self._coexisting_quantity = factor * 2 + 2
+            if self._max_dtype_bytes == 1:
+                self._ub_size -= ONE_K_BYTES
+                self._coexisting_quantity = B8_COEXISTING_QUANTITY_FACTOR * 2 + 2
+            else:
+                self._coexisting_quantity = GT_B8_COEXISTING_QUANTITY_FACTOR * 2 + 2
 
     def _calc_reorder(self):
         pass
@@ -468,11 +474,11 @@ class TransposeSchedule(Schedule, ABC):
         is_nlast_transpose = self._ori_permute[dim_len] == dim_len
         ele_in_block = TYPE_IN_BLOCK[DTYPE_BYTE_MAPPING[self._out.dtype]]
         self._is_const_align = is_nlast_transpose and (
-            output_shape[dim_len] > ALIGN_THRESHOLD or output_shape[dim_len] %
+            output_shape[dim_len] > ALIGN_THRESHOLD // DTYPE_BYTE_MAPPING[self._out.dtype] or output_shape[dim_len] %
             ele_in_block == 0)
-        self._is_const_store_align = is_nlast_transpose and output_shape[dim_len] > ALIGN_THRESHOLD \
-            and output_shape[dim_len] % ele_in_block != 0 or len(
-            self._ori_permute) == 1
+        self._is_const_store_align = is_nlast_transpose and \
+            output_shape[dim_len] > ALIGN_THRESHOLD // DTYPE_BYTE_MAPPING[self._out.dtype] \
+            and output_shape[dim_len] % ele_in_block != 0 or len(self._ori_permute) == 1
         if self._is_const_store_align:
             tiling_format = {
                 "need_multi_core": "int",
@@ -939,19 +945,22 @@ class TransposeSchedule(Schedule, ABC):
         return True
 
     def _check_tiling_factor(self):
-        def calc_low_bound(inner_shape):
-            low_bound = 1
+        def calc_bound(inner_shape):
+            bound = 1
             for item in inner_shape[::-1]:
                 cur_bound = util.get_bound(item)[0]
                 if cur_bound is None:
-                    return False
-                low_bound *= cur_bound
-            if low_bound == 1 and not self.Util.is_read_align(self._tiling_strategy):
+                    return None
+                bound *= cur_bound
+            return bound
+
+        def update_bound(bound):
+            if bound == 1 and not self.Util.is_read_align(self._tiling_strategy):
                 align_factor = BLOCK_SIZE_BYTE // self._max_dtype_bytes
                 if self._last_transpose and align_factor < 16:
                     align_factor *= 16
-                low_bound = align_factor
-            return low_bound
+                bound = align_factor
+            return bound
 
         if self.Util.is_const(self._tiling_strategy):
             return True
@@ -962,18 +971,30 @@ class TransposeSchedule(Schedule, ABC):
             low_ub_inner = self._permute[self._ori_permute[self._low_ub_split_axis_index] + 1:]
             inner_input_shape = [shape[i] for i in low_ub_inner]
             inner_input_shape.append(self._low_ub_factor)
-            input_low_bound = calc_low_bound(inner_input_shape)
+            input_low_bound = calc_bound(inner_input_shape)
+            if input_low_bound is None:
+                return False
+            input_low_bound = update_bound(input_low_bound)
         if self.Util.is_all_none_cut(self._tiling_strategy):
-            high_ub_inner = list(set(self._base_order[self._high_ub_split_axis_index:]) - set(low_ub_inner))
+            high_ub_inner = self._base_order[self._high_ub_split_axis_index:]
             inner_output_shape = [shape[i] for i in high_ub_inner]
         else:
-            high_ub_inner = list(set(self._base_order[self._high_ub_split_axis_index + 1:]) - set(low_ub_inner))
+            high_ub_inner = self._base_order[self._high_ub_split_axis_index + 1:]
             inner_output_shape = [shape[i] for i in high_ub_inner]
             if not self._ub_split_same_axis:
                 inner_output_shape.append(self._high_ub_factor)
         output_low_bound = 1
         if len(inner_output_shape) != 0:
-            output_low_bound = calc_low_bound(inner_output_shape)
+            output_low_bound = calc_bound(inner_output_shape)
+            if output_low_bound is None:
+                return False
+            output_low_bound = update_bound(output_low_bound)
+        index_intersection = list(set(self._base_order[self._high_ub_split_axis_index:]).
+                                  intersection(set(low_ub_inner)))
+        shape_intersection = [shape[i] for i in index_intersection]
+        inters_bound = calc_bound(shape_intersection)
+        if output_low_bound >= inters_bound:
+            output_low_bound /= inters_bound
         if not self._tensor_space // self._max_dtype_bytes >= (input_low_bound * output_low_bound):
             return False
         return True

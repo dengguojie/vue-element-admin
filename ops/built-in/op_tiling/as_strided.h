@@ -15,30 +15,69 @@
  */
 
 /*!
- * \file transpose.h
+ * \file as_strided.h
  * \brief
  */
 #ifndef __AS_STRIDED_H__
 #define __AS_STRIDED_H__
 
-#include <vector>
 #include <string>
-#include <map>
-#include <queue>
-#include <memory>
+#include <algorithm>
+
 #include <nlohmann/json.hpp>
-#include "graph/debug/ge_log.h"
-#include "register/op_tiling.h"
+#include "op_tiling.h"
+#include "../op_proto/util/error_util.h"
+#include "op_log.h"
 
 namespace optiling {
 
+#define BYTES_PER_BLOCK 32
+#define VNC_ROWS 16
+#define MTE_GATE 4
+#define TILING_LAST_STRIDE_IS_ONE 3000
+#define TILING_LAST_DIM_IS_LARGE 3001
+#define TILING_LAST_DIM_IS_SMALL 3002
+#define TILING_INPUT_OR_OUTPUT_IS_ALL_IN 3003
+#define TILING_LAST_LARGE_DIM_LARGE_STRIDE 3004
+#define TILING_LAST_SMALL_DIM_LARGE_STRIDE 3005
+#define TILING_LAST_TWO_DIM_IS_LARGE 3006
+#define TILING_LAST_STRIDE_IS_ZERO_SIZE_IS_LARGE 3007
+#define TILING_LAST_STRIDE_IS_ZERO_SIZE_IS_SMALL 3008
+#define TILING_FIRST_STRIDE_IS_SMALL 3009
+
 struct AsStridedInfo {
-    int64_t axisLen;
-    int64_t stride;
-    AsStridedInfo() {
-        axisLen = 0;
-        stride = 0;
-    }
+  int64_t tiling_mode;
+  int64_t used_core_cnt;
+  int64_t out_ub_offset;
+  int64_t vnc_col_size;
+  int64_t m_axis_1_burst_unit;
+  int64_t m_axis_1_lp_unit;
+  int64_t m_axis_0_lp_unit;
+  int64_t mc_pos;
+  int64_t core_step_in;
+  int64_t nlc_m_axis_1_lp_cnt;
+  int64_t nlc_m_axis_1_lp_left;
+  int64_t lc_m_axis_1_lp_cnt;
+  int64_t lc_m_axis_1_lp_left;
+  int64_t nlc_m_axis_0_lp_cnt;
+  int64_t nlc_m_axis_0_lp_left;
+  int64_t lc_m_axis_0_lp_cnt;
+  int64_t lc_m_axis_0_lp_left;
+  int64_t storage_offset;
+  int64_t last_dim_size;
+  int64_t last_dim_stride;
+  int64_t rsecond_dim_size;
+  int64_t rsecond_dim_stride;
+  int64_t out_lp_step;
+  int64_t nfirst_cnt_per_row;
+  int64_t dim_num;  // except last dim
+  std::vector<int64_t> dim_except_last_paras;  // the order is: rsize0, size0, stride0, rsize1, size1, stride1 ...
+  AsStridedInfo() {
+    storage_offset = 0;
+    rsecond_dim_size = 1;
+    rsecond_dim_stride = 0;
+    nfirst_cnt_per_row = 1;
+  }
 };
 
 }// namespace optiling

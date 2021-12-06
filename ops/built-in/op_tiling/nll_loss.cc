@@ -32,6 +32,8 @@ namespace {
   constexpr int32_t TILING_FACTOR_2 = 2;
   constexpr int32_t TILING_DIVIDE_3 = 3;
   constexpr int32_t RESIZE_VALUE_4 = 4;
+  constexpr int32_t INDEX_THREE = 3;
+  constexpr int32_t IN_SIZE = 2;
 }
 
 namespace optiling {
@@ -78,7 +80,7 @@ bool GetCompileParams(const std::string& op_type, const std::vector<int64_t>& op
   core_num = op_compile_info[0];
   ub_size = op_compile_info[1];
   reduction = op_compile_info[2];
-  ignore_index = op_compile_info[3];
+  ignore_index = op_compile_info[INDEX_THREE];
   OP_LOGD(op_type.c_str(), "NLLLossTiling: GetCompileParams, core_num[%lld], ub_size[%lld], reduction[%lld], "
           "ignore_index[%lld].", core_num, ub_size, reduction, ignore_index);
 
@@ -376,7 +378,7 @@ bool NLLLossTiling(const std::string& op_type, const ge::Operator& op_paras, con
 
   if (weight_shape.size() == 0) {
     int64_t x_dims = x_shape.size();
-    if (x_dims > 0 && x_dims <= 2) {
+    if (x_dims > 0 && x_dims <= IN_SIZE) {
       weight_shape.push_back(x_shape.back());
     }
   }

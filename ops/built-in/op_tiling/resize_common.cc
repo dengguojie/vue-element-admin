@@ -72,7 +72,8 @@ bool GetResizeClassTuneParams(const nlohmann::json& compile_info, ResizeClassCom
   }
   compile_params.tuneParams.tiling_key = tuneParam["tiling_key"].get<std::int64_t>();
   OP_LOGD(compile_params.op_type, "tiling_key of tune param: %lld", compile_params.tuneParams.tiling_key);
-  if (compile_params.tuneParams.tiling_key == TILING_KEY_100110 || compile_params.tuneParams.tiling_key == TILING_KEY_100000) {
+  if (compile_params.tuneParams.tiling_key == TILING_KEY_100110 || compile_params.tuneParams.tiling_key == \
+      TILING_KEY_100000) {
     if (tuneParam.count("cut_batch_c1_num") == 0) {
       OP_LOGD(compile_params.op_type, "cut_batch_c1_num is not in %s.", TUNEPARAM);
       return false;

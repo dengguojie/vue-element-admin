@@ -579,7 +579,7 @@ def pooling_compute(x_param, pooling_attr):
             error_manager_vector.raise_err_specific_reson("spp_pooling", "the last pooling(width direction) must \
                                                           start strictly inside the image. Image width is {}, \
                                                           stride_w is {}, pad_w is {}.".format(
-                                                          str(shape_in[3]),str(stride[1]), str(pad[2])))
+                                                          str(shape_in[3]), str(stride[1]), str(pad[2])))
 
     if pooling_attr['global_pooling'] is True:
         out = {'h': 1, 'w': 1}

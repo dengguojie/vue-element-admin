@@ -499,6 +499,7 @@ def _get_last_not_one(shape):
 
     return axis
 
+
 def _get_factor(ele_zero, ele_cnt, total_ele, no_remainder):
     """
     get split factor for _tilling_one_axis function

@@ -86,6 +86,17 @@ def classify(ins: list, extra_params: dict):
         operation.add_compile_info_inner("_mergeable", mergeable)
         return new_shape, new_range, new_permute
 
+    def _update_shape_range(_shape, _range):
+        new_shape, new_range = [], []
+        for dim_value, dim_range in zip(_shape, _range):
+            if dim_value > 0:
+                dim_range = (dim_value, dim_value)
+            elif dim_range[0] == dim_range[1] and not dim_range[0] is None and dim_range[0] > 0:
+                dim_value = dim_range[0]
+            new_shape.append(dim_value)
+            new_range.append(dim_range)
+        return new_shape, new_range
+
     if extra_params is None or "axes" not in extra_params:
         dict_args = dict()
         dict_args["errCode"] = "E90001"
@@ -99,6 +110,7 @@ def classify(ins: list, extra_params: dict):
     input_x = ins[0]
     shape_x = input_x.get("shape")
     range_x = input_x.get("range")
+    shape_x, range_x = _update_shape_range(shape_x, range_x)
 
     no_one_shape, no_one_range, no_one_index, one_index = remove_one_axis()
 

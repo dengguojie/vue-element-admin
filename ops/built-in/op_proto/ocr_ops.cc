@@ -52,6 +52,7 @@ IMPLEMT_COMMON_INFERFUNC(OCRRecognitionPreHandleInferShape) {
   auto output_imgs = op_desc->MutableOutputDesc("imgs");
   auto output_imgs_relation = op_desc->MutableOutputDesc("imgs_relation");
   auto output_imgs_lang = op_desc->MutableOutputDesc("imgs_lang");
+  auto output_imgs_piece_fillers = op_desc->MutableOutputDesc("imgs_piece_fillers");
   std::vector<std::pair<int64_t, int64_t>> imgs_data_range;
   input_imgs_data->GetShapeRange(imgs_data_range);
   auto input_imgs_dims = input_imgs_data->GetShape().GetDims();
@@ -117,6 +118,11 @@ IMPLEMT_COMMON_INFERFUNC(OCRRecognitionPreHandleInferShape) {
     std::vector<std::pair<int64_t, int64_t>> imgs_lang_range_vec;
     imgs_lang_range_vec.push_back(imgs_lang_range);
     output_imgs_lang->SetShapeRange(imgs_lang_range_vec);
+
+    std::pair<int64_t, int64_t> imgs_piece_fillers_range({1, max_pic_num});
+    std::vector<std::pair<int64_t, int64_t>> imgs_piece_fillers_range_vec;
+    imgs_piece_fillers_range_vec.push_back(imgs_piece_fillers_range);
+    output_imgs_piece_fillers->SetShapeRange(imgs_piece_fillers_range_vec);
   }
 
   if (data_format == "NHWC") {
@@ -139,6 +145,10 @@ IMPLEMT_COMMON_INFERFUNC(OCRRecognitionPreHandleInferShape) {
   output_imgs_lang->SetDataType(DT_INT32);
   output_imgs_lang->SetShape(ge::GeShape(UNKNOWN_SHAPE));
   output_imgs_lang->SetOriginShape(ge::GeShape(UNKNOWN_SHAPE));
+
+  output_imgs_piece_fillers->SetDataType(DT_INT32);
+  output_imgs_piece_fillers->SetShape(ge::GeShape(UNKNOWN_SHAPE));
+  output_imgs_piece_fillers->SetOriginShape(ge::GeShape(UNKNOWN_SHAPE));
   return GRAPH_SUCCESS;
 }
 
