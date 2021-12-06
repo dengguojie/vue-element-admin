@@ -20,15 +20,10 @@ from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
-
-C0 = 16
-
-MIN_FP32 = 2**(-126)
-
-NONETYPE = type(None)
+from .constant_util import SIZE_SIXTEEN as C0
 
 
-# pylint: disable=locally-disabled,ungrouped-imports,import-error
+# 'pylint: disable=locally-disabled,ungrouped-imports,import-error,too-many-arguments,too-many-locals
 def sigmoid(shape, tensor_allgate_ub, tensor_one,
             product_info, symbol, tensor_list, scope_list, operation_list):
     """
@@ -109,6 +104,7 @@ def sigmoid(shape, tensor_allgate_ub, tensor_one,
         operation_list["tensor_gate_sigmoid_" + symbol] = "vector_mul"
 
 
+# 'pylint: disable=too-many-arguments
 def newton_iteration(shape, tensor_x_rec,
                      tensor_x, symbol, tensor_list, scope_list, operation_list):
     """
@@ -150,6 +146,7 @@ def newton_iteration(shape, tensor_x_rec,
     return tensor_newton_mul2
 
 
+# 'pylint: disable=too-many-arguments,too-many-locals,too-many-statements
 def tanh(shape, tensor, product_info, symbol,
          tensor_list, scope_list, operation_list):
     """
@@ -272,7 +269,7 @@ def tanh(shape, tensor, product_info, symbol,
     operation_list["tensor_ub_tanh_" + symbol] = "vector_mul"
 
 
-# pylint: disable=locally-disabled,too-many-boolean-expressions,invalid-name,too-many-arguments
+# 'pylint: disable=locally-disabled,too-many-boolean-expressions,invalid-name,too-many-arguments,too-many-locals
 def basiclstm_cell_check(x, h, c, w, b, ct, ht, it, ft, jt, ot, tanhct):
     """
     the main function of check basic_lstm_cell
@@ -294,7 +291,6 @@ def basiclstm_cell_check(x, h, c, w, b, ct, ht, it, ft, jt, ot, tanhct):
     -------
     """
     # Check x, h, w, ht dtype
-    #todo add check for hisi_es only support for fp16
     if x["dtype"] != "float16" or h["dtype"] != "float16" or \
             w["dtype"] != "float16" or ht["dtype"] != "float16":
         error_detail = "x, h, w, ht only support float16"
@@ -356,6 +352,7 @@ def basiclstm_cell_check(x, h, c, w, b, ct, ht, it, ft, jt, ot, tanhct):
         error_manager_vector.raise_err_input_shape_invalid("basic_lstm_cell", "b", error_detail)
 
 
+# 'pylint: disable=too-many-locals,too-many-statements,unnecessary-lambda,cell-var-from-loop
 def get_matmul_tensor(x, h, c, w, b, build_list, tensor_list, scope_list, operation_list, is_hisi_es):
     """
     get_matmul_tensor
@@ -393,18 +390,18 @@ def get_matmul_tensor(x, h, c, w, b, build_list, tensor_list, scope_list, operat
     def _index_w(str_name, *index):
         if str_name == "it":
             return index[0], index[1], index[2], index[3]
-        elif str_name == "jt":
+        if str_name == "jt":
             return index[0], index[1] + output_dim, index[2], index[3]
-        elif str_name == "ft":
+        if str_name == "ft":
             return index[0], index[1] + output_dim * 2, index[2], index[3]
         return index[0], index[1] + output_dim * 3, index[2], index[3]
 
     def _index_bias(str_name):
         if str_name == "it":
             return 0
-        elif str_name == "jt":
+        if str_name == "jt":
             return 1
-        elif str_name == "ft":
+        if str_name == "ft":
             return 2
         return 3
 
@@ -511,7 +508,12 @@ def get_matmul_tensor(x, h, c, w, b, build_list, tensor_list, scope_list, operat
         operation_list[t+"_ub"] = "dma_copy"
 
 
+# 'pylint: disable=too-many-locals,too-many-statements,unnecessary-lambda,cell-var-from-loop
 def get_activate_tensor(forget_bias, build_list, tensor_list, scope_list, operation_list, product_info):
+    """
+    get activate tensor
+    """
+    unreused_flag = True
     ft_ub = tensor_list["ft_ub"]
     shape_gate = ft_ub.shape
     const_forget_bias = tvm.const(forget_bias, dtype=ft_ub.dtype)
@@ -531,8 +533,8 @@ def get_activate_tensor(forget_bias, build_list, tensor_list, scope_list, operat
 
     symbol = ["ot", "it", "jt", "ft"]
     for t in symbol:
-        temp_tensor = tensor_list["ft_ub_temp_fbias"] if t is "ft" else tensor_list[t+"_ub"]
-        if t is "jt":
+        temp_tensor = tensor_list["ft_ub_temp_fbias"] if t == "ft" else tensor_list[t+"_ub"]
+        if t == "jt":
             # Do tanh(jt) calculation
             tanh(shape_gate, temp_tensor, product_info, "jt", tensor_list, scope_list, operation_list)
             activate_tmp = tensor_list["tensor_ub_tanh_jt"]
@@ -556,6 +558,7 @@ def get_activate_tensor(forget_bias, build_list, tensor_list, scope_list, operat
         else:
             activate_tmp_ub_true = activate_tmp_x
             operation_list["tensor_"+t+"_ub_true"] = "phony_insn"
+            unreused_flag = False
         tensor_list["tensor_"+t+"_ub_true"] = activate_tmp_ub_true
         scope_list["tensor_"+t+"_ub_true"] = tbe_platform.cce_params.scope_ubuf
 
@@ -714,19 +717,28 @@ def get_activate_tensor(forget_bias, build_list, tensor_list, scope_list, operat
     tensor_list["ht"] = ht
     build_list["ht"] = ht
 
+    return unreused_flag
+
 
 def basic_lstm_cell_compute(x, h, c, w, b, forget_bias, product_info):
+    """
+    This is the compute func
+    """
     build_list = {}
     tensor_list = {}
     scope_list = {}
     operation_list = {}
 
     get_matmul_tensor(x, h, c, w, b, build_list, tensor_list, scope_list, operation_list, product_info["hisi_es"])
-    get_activate_tensor(forget_bias, build_list, tensor_list, scope_list, operation_list, product_info)
-    return build_list, tensor_list, scope_list, operation_list
+    unreused_flag = get_activate_tensor(forget_bias, build_list, tensor_list, scope_list, operation_list, product_info)
+    return build_list, tensor_list, scope_list, operation_list, unreused_flag
 
 
+# 'pylint: disable=too-many-locals,too-many-statements
 def get_tilling(x, h_t, product_info):
+    """
+    This is tiling func
+    """
     block_num = tbe_platform.CceProductParams().getParams("Device_core_num")
     l0_size = tbe_platform.CceProductParams().getParams("L0B_Buffer")
     ub_size = tbe_platform.CceProductParams().getParams("Unified_Buffer")//2
@@ -758,7 +770,6 @@ def get_tilling(x, h_t, product_info):
     dtype_mad_size = 2
 
     #fix type to fp32
-    #todo optimize
     dtype_size = 4
 
     def _decrement_out_factor(temp_out_factor, block_out):
@@ -811,9 +822,10 @@ def get_tilling(x, h_t, product_info):
     return tilling_info
 
 
+# 'pylint: disable=too-many-locals,too-many-statements,too-many-branches
 def basic_lstm_cell_schedule(tensor_list, scope_list,
                              operation_list, build_list,
-                             product_info, tilling_info, kernel_name):
+                             tilling_info, unreused_flag, kernel_name):
     """
     do the schedule for the LSTM compute.
     """
@@ -878,7 +890,6 @@ def basic_lstm_cell_schedule(tensor_list, scope_list,
         s[tmp].emit_insn(l0_n_inner, 'mad', mad_dict)
 
     # split ht  origin linmu
-    ht_0 = ht.shape[0].value
     ht_1 = ht.shape[1].value
     axis_1_o, axis_1_i = s[ht].split(ht.op.axis[1], factor=tilling_info["block_n_factor"])
 
@@ -939,7 +950,10 @@ def basic_lstm_cell_schedule(tensor_list, scope_list,
     for t in ["ot", "it", "ft", "jt"]:
         s[tensor_list[t+"_ub_fake_ub"]].compute_at(s[ht], compute_at_axis)
         s[tensor_list[t+"_ub2gm"]].reused_by(tensor_list[t+"_ub_fake_ub"], tensor_list[t+"_ub_fake_true"])
-        s[tensor_list[t+"_ub2gm"]].unreused_by(tensor_list["tensor_"+t+"_ub_true"])
+
+        if unreused_flag:
+            s[tensor_list[t+"_ub2gm"]].unreused_by(tensor_list["tensor_"+t+"_ub_true"])
+
         s[tensor_list[t+"_ub_fake_ub"]].reused_by(reuse_data=True)
 
 
@@ -977,7 +991,8 @@ def basic_lstm_cell_schedule(tensor_list, scope_list,
 
 
 # Currently not support fusion with dropout
-# pylint: disable=locally-disabled,too-many-statements,unused-argument,too-many-arguments,too-many-locals,unnecessary-lambda,invalid-name,too-many-branches,consider-iterating-dictionary
+# 'pylint: disable=locally-disabled,too-many-statements,unused-argument,too-many-arguments,too-many-locals
+# 'pylint: disable=unnecessary-lambda,invalid-name,too-many-branches,consider-iterating-dictionary
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.REQUIRED_OUTPUT, para_check.OPTION_OUTPUT,
@@ -1011,14 +1026,6 @@ def basic_lstm_cell(x, h, c, w, b, mask, ct, ht, it, jt, ft, ot, tanhct,
     Returns
     -------
     """
-
-    # Perform parameter check
-    x_shape = x.get("shape")
-    h_shape = h.get("shape")
-    c_shape = c.get("shape")
-    w_shape = w.get("shape")
-    b_shape = b.get("shape")
-
     basiclstm_cell_check(x, h, c, w, b, ct, ht, it, ft, jt, ot, tanhct)
 
     is_hisi_es = False
@@ -1027,7 +1034,7 @@ def basic_lstm_cell(x, h, c, w, b, mask, ct, ht, it, jt, ft, ot, tanhct,
     tbe_product = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
     if tbe_product == "Ascend910":
         is_cloud = True
-    elif tbe_product == "Ascend710" or tbe_product == "Ascend610":
+    elif tbe_product in ("Ascend710", "Ascend610"):
         is_cloud = True
     elif tbe_product == "Ascend310":
         is_mini = True
@@ -1038,9 +1045,11 @@ def basic_lstm_cell(x, h, c, w, b, mask, ct, ht, it, jt, ft, ot, tanhct,
     product_info["hisi_es"] = is_hisi_es
     product_info["mini"] = is_mini
     product_info["cloud"] = is_cloud
-    build_list, tensor_list, scope_list, operation_list = basic_lstm_cell_compute(x, h, c, w, b, forget_bias,
-                                                                                  product_info)
+    build_list, tensor_list, scope_list, operation_list, unreused_flag = basic_lstm_cell_compute(x,
+                                                                                                 h, c, w, b,
+                                                                                                 forget_bias,
+                                                                                                 product_info)
 
     tilling_info = get_tilling(x, h, product_info)
     basic_lstm_cell_schedule(tensor_list, scope_list, operation_list, build_list,
-                             product_info, tilling_info, kernel_name)
+                             tilling_info, unreused_flag, kernel_name)
