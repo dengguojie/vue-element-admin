@@ -109,7 +109,7 @@ static int InitTransposeTilingData() {
   return 0;
 }
 
-static int res = InitTransposeTilingData(); 
+static int resInit = InitTransposeTilingData();
 
 static int64_t AcquireID() {
   infoIdMutex.lock();
@@ -1034,12 +1034,7 @@ static void CalcOutShape(ShapeInfo& shapeInfo) {
 }
 
 static bool IsAllOne(const ShapeInfo& shapeInfo) {
-  for (auto it : shapeInfo.inShape) {
-    if (it != 1) {
-      return false;
-    }
-  }
-  return true;
+  return std::all_of(shapeInfo.inShape.begin(), shapeInfo.inShape.end(), [](const int64_t& item) { return item == 1; });
 }
 
 /*
@@ -3714,11 +3709,11 @@ static void RepeatStride(const CompilerInfo& ci, const ShapeInfo& si, RuntimeInf
       int64_t loop3 = 1;
       int64_t vol = 1;
       int64_t bl = burstLen;
-      int64_t id = 0;
-      CalcLoop1(j, s, bi.ubPermNum, permInfo.perm, loop1, id);
-      CalcLoop2(j, s, bi.ubPermNum, permInfo.perm, loop2, id);
-      CalcLoop3(j, s, bi.ubPermNum, permInfo.perm, loop3, id);
-      CalcBurstLen(j, s, bi.ubPermNum, permInfo.perm, bl, id);
+      int64_t idx = 0;
+      CalcLoop1(j, s, bi.ubPermNum, permInfo.perm, loop1, idx);
+      CalcLoop2(j, s, bi.ubPermNum, permInfo.perm, loop2, idx);
+      CalcLoop3(j, s, bi.ubPermNum, permInfo.perm, loop3, idx);
+      CalcBurstLen(j, s, bi.ubPermNum, permInfo.perm, bl, idx);
       vol = loop2 * loop3 * bl * epb;
       if ((loop1 != 0) && (loop2 != 0) && (loop3 != 0) && (bl != 0)) {
         SetLRSB(lrsb[j], loop1, vol, loop2, loop3, bl, epb);
@@ -3761,10 +3756,10 @@ static void SetVol(const ShapeInfo& si, RuntimeInfo& ri, int64_t step[UB_REORDER
  *   3 :  tail_dst_tail_src
  *
  */
-#define SET_P4(d0, p0, p1, p2, p3) step[d0][0] = p0, step[d0][1] = p1, step[d0][2] = p2, step[d0][3] = p3;
+#define SET_P4(d0, p0, p1, p2, p3) step[d0][0] = p0, step[d0][1] = p1, step[d0][2] = p2, step[d0][3] = p3
 #define SET_P6(d0, p0, p1, p2, p3, p4, p5)              \
   step[d0][0] = p0, step[d0][1] = p1, step[d0][2] = p2; \
-  step[d0][3] = p3, step[d0][4] = p4, step[d0][5] = p5;
+  step[d0][3] = p3, step[d0][4] = p4, step[d0][5] = p5
 
 static void ConstructStep(const RuntimeInfo& runtimeInfo, int64_t step[][BORROW_MAX_AXIS_NUM_LT]) {
   const BorrowInfo& bi = runtimeInfo.borrowInfo;
@@ -3831,10 +3826,10 @@ static void ConstructStep(const RuntimeInfo& runtimeInfo, int64_t step[][BORROW_
   }
 
   if (bi.srcNum == 2 && bi.dstNum == 2 && bi.srcNumNoDup == 0 && bi.dstNumNoDup == 0) {
-    SET_P4(0, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, 0, 0)
-    SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].tail, 0, 0)
-    SET_P4(2, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, 0, 0)
-    SET_P4(3, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].tail, 0, 0)
+    SET_P4(0, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, 0, 0);
+    SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].tail, 0, 0);
+    SET_P4(2, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, 0, 0);
+    SET_P4(3, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].tail, 0, 0);
   }
 
   if (bi.srcNum == 2 && bi.dstNum == 1 && bi.dstNumNoDup == 0 && bi.srcNumNoDup == 1) {
@@ -3848,17 +3843,17 @@ static void ConstructStep(const RuntimeInfo& runtimeInfo, int64_t step[][BORROW_
   }
 
   if (bi.srcNum == 1 && bi.dstNum == 2 && bi.srcNumNoDup == 1 && bi.dstNumNoDup == 2 && bi.dstAxisPerm == 0x10) {
-    SET_P4(0, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, 0)
-    SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, 0)
-    SET_P4(2, bi.dstIndexIn[0].step, bi.dstIndexIn[1].tail, bi.srcIndexIn[0].step, 0)
-    SET_P4(3, bi.dstIndexIn[0].step, bi.dstIndexIn[1].tail, bi.srcIndexIn[0].tail, 0)
+    SET_P4(0, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, 0);
+    SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, 0);
+    SET_P4(2, bi.dstIndexIn[0].step, bi.dstIndexIn[1].tail, bi.srcIndexIn[0].step, 0);
+    SET_P4(3, bi.dstIndexIn[0].step, bi.dstIndexIn[1].tail, bi.srcIndexIn[0].tail, 0);
   }
 
   if (bi.srcNum == 1 && bi.dstNum == 2 && bi.srcNumNoDup == 1 && bi.dstNumNoDup == 2 && bi.dstAxisPerm == 0x01) {
-    SET_P4(0, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, 0)
-    SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, 0)
-    SET_P4(2, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, 0)
-    SET_P4(3, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, 0)
+    SET_P4(0, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, 0);
+    SET_P4(1, bi.dstIndexIn[0].step, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, 0);
+    SET_P4(2, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, bi.srcIndexIn[0].step, 0);
+    SET_P4(3, bi.dstIndexIn[0].tail, bi.dstIndexIn[1].step, bi.srcIndexIn[0].tail, 0);
   }
 }
 
@@ -3900,10 +3895,10 @@ static void ConstructStepS5(const RuntimeInfo& ri, int64_t step[][BORROW_MAX_AXI
   }
 
   for (int64_t i = 0; i < UB_REORDER_COMBINATION; i++) {
-    SET_P6(i, st[i][0], st[i][1], st[i][2], st[i][3], st[i][4], st[i][5])
-    SET_P6(i, st[i][0], st[i][1], st[i][2], st[i][3], st[i][4], st[i][5])
-    SET_P6(i, st[i][0], st[i][1], st[i][2], st[i][3], st[i][4], st[i][5])
-    SET_P6(i, st[i][0], st[i][1], st[i][2], st[i][3], st[i][4], st[i][5])
+    SET_P6(i, st[i][0], st[i][1], st[i][2], st[i][3], st[i][4], st[i][5]);
+    SET_P6(i, st[i][0], st[i][1], st[i][2], st[i][3], st[i][4], st[i][5]);
+    SET_P6(i, st[i][0], st[i][1], st[i][2], st[i][3], st[i][4], st[i][5]);
+    SET_P6(i, st[i][0], st[i][1], st[i][2], st[i][3], st[i][4], st[i][5]);
   }
 }
 
@@ -4383,7 +4378,8 @@ static void DispatchNCR(const ShapeInfo& shapeInfo, RuntimeInfo& runtimeInfo) {
 
 class Model001 : public TilingModel {
  public:
-  Model001(int64_t coreNum, int64_t ubBlocks) : TilingModel(TM_PRI_1, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model001") {
+  Model001(int64_t coreNum, int64_t ubBlocks)
+      : TilingModel(TM_PRI_1, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model001") {
     maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks) / 2;
     maxRow = 128;
   }
@@ -4402,7 +4398,8 @@ class Model001 : public TilingModel {
 
 class Model002 : public TilingModel {
  public:
-  Model002(int64_t coreNum, int64_t ubBlocks) : TilingModel(TM_PRI_2, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model002") {
+  Model002(int64_t coreNum, int64_t ubBlocks) 
+      : TilingModel(TM_PRI_2, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model002") {
     maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks) / 2;
     maxRow = 128;
   }
@@ -4421,7 +4418,8 @@ class Model002 : public TilingModel {
 
 class Model003 : public TilingModel {
  public:
-  Model003(int64_t coreNum, int64_t ubBlocks) : TilingModel(TM_PRI_3, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model003") {
+  Model003(int64_t coreNum, int64_t ubBlocks) 
+      : TilingModel(TM_PRI_3, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model003") {
     maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks) / 2;
     maxRow = 128;
   }
@@ -4440,7 +4438,8 @@ class Model003 : public TilingModel {
 
 class Model004 : public TilingModel {
  public:
-  Model004(int64_t coreNum, int64_t ubBlocks) : TilingModel(TM_PRI_4, coreNum, ubBlocks, LAST_AXIS_TR_F2T, "Model004_f2t") {
+  Model004(int64_t coreNum, int64_t ubBlocks) 
+      : TilingModel(TM_PRI_4, coreNum, ubBlocks, LAST_AXIS_TR_F2T, "Model004_f2t") {
   }
   ~Model004() {
   }
@@ -4471,7 +4470,8 @@ class Model004 : public TilingModel {
 
 class Model005 : public TilingModel {
  public:
-  Model005(int64_t coreNum, int64_t ubBlocks) : TilingModel(TM_PRI_5, coreNum, ubBlocks, LAST_AXIS_TR_T2F, "Model005_t2f") {
+  Model005(int64_t coreNum, int64_t ubBlocks) 
+      : TilingModel(TM_PRI_5, coreNum, ubBlocks, LAST_AXIS_TR_T2F, "Model005_t2f") {
   }
   ~Model005() {
   }
@@ -4513,7 +4513,8 @@ class Model005 : public TilingModel {
 
 class Model006 : public TilingModel {
  public:
-  Model006(int64_t coreNum, int64_t ubBlocks) : TilingModel(TM_PRI_6, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model006") {
+  Model006(int64_t coreNum, int64_t ubBlocks) 
+      : TilingModel(TM_PRI_6, coreNum, ubBlocks, LAST_AXIS_TR_COMMON, "Model006") {
     maxCol = CalcVnchwconvFullColSize(coreNum, ubBlocks) / 2;
     maxRow = 128;
   }
@@ -4544,7 +4545,8 @@ class Model006 : public TilingModel {
 
 class Model007 : public TilingModel {
  public:
-  Model007(int64_t coreNum, int64_t ubBlocks) : TilingModel(TM_PRI_7, coreNum, ubBlocks, LAST_AXIS_TR_F2T, "Model007_f2t") {
+  Model007(int64_t coreNum, int64_t ubBlocks) 
+      : TilingModel(TM_PRI_7, coreNum, ubBlocks, LAST_AXIS_TR_F2T, "Model007_f2t") {
   }
   ~Model007() {
   }
@@ -4569,7 +4571,8 @@ class Model007 : public TilingModel {
 
 class Model008 : public TilingModel {
  public:
-  Model008(int64_t coreNum, int64_t ubBlocks) : TilingModel(TM_PRI_8, coreNum, ubBlocks, LAST_AXIS_TR_T2F, "Model008_t2f") {
+  Model008(int64_t coreNum, int64_t ubBlocks) 
+      : TilingModel(TM_PRI_8, coreNum, ubBlocks, LAST_AXIS_TR_T2F, "Model008_t2f") {
   }
   ~Model008() {
   }
@@ -4804,7 +4807,7 @@ class Model007_b16 : public TilingModel {
 class Model008_b16 : public TilingModel {
  public:
   Model008_b16(int64_t coreNum, int64_t ubBlocks)
-      : TilingModel(8, coreNum, ubBlocks, LAST_AXIS_TR_T2F, "Model008_b16_t2f") {
+      : TilingModel(TM_PRI_8, coreNum, ubBlocks, LAST_AXIS_TR_T2F, "Model008_b16_t2f") {
   }
   ~Model008_b16() {
   }
@@ -4996,8 +4999,8 @@ bool TilingDataScenario9(const CompilerInfo& compilerInfo, const ShapeInfo& shap
   } else {
     // 1. dst stride
     for (int64_t i = 0; i < dim - 2; i++) {
-      int64_t index = GetPermIndex(shapeInfo.reducedPerm, dim, i);
-      runtimeInfo.dstJumpStride[i] = CalcStride(shapeInfo.reducedOutShape, dim, index);
+      int64_t permIndex = GetPermIndex(shapeInfo.reducedPerm, dim, i);
+      runtimeInfo.dstJumpStride[i] = CalcStride(shapeInfo.reducedOutShape, dim, permIndex);
     }
 
     // 2. src stride
@@ -5017,8 +5020,8 @@ bool TilingDataScenario9(const CompilerInfo& compilerInfo, const ShapeInfo& shap
     }
 
     int64_t repeatAxis = shapeInfo.dim - 2;
-    int64_t index = GetPermIndex(shapeInfo.reducedPerm, dim, repeatAxis);
-    for (int64_t i = index + 1; i < shapeInfo.dim - 1; i++) {
+    int64_t permIndex = GetPermIndex(shapeInfo.reducedPerm, dim, repeatAxis);
+    for (int64_t i = permIndex + 1; i < shapeInfo.dim - 1; i++) {
       vol *= shapeInfo.reducedOutShape[i];
     }
     runtimeInfo.dstStride = (vol - 1) * shapeInfo.lastAxisBurstLen;
