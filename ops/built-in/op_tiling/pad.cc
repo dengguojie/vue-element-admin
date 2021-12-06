@@ -30,6 +30,8 @@
 
 namespace optiling {
 
+const int64_t ONE_BLOCK_BYTES = 32;
+
 const int64_t TILING_MODE_0 = 0;
 
 const int64_t TILING_MODE_1 = 1;
@@ -527,6 +529,13 @@ bool PadTiling(const std::string& op_type, const ge::Operator& op_paras, const s
   PrintTilingParams(run_params, op_type);
 
   run_info.SetBlockDim(compile_params.core_num);
+  // set workspace for pad_v2
+  if (op_type == "PadV2") {
+    std::vector<int64_t> workspace = {compile_params.core_num * ONE_BLOCK_BYTES};
+    for (auto ws : workspace) {
+      run_info.AddWorkspace(ws);
+    }
+  }
 
   OP_LOGI(op_type, "end to run tiling, succ!");
   PROFILING_TILING_END();
@@ -537,6 +546,8 @@ static const std::vector<std::string> PAD_COMPILE_INFO_KEY = {"core_num", "ub_si
                                                               "tiling_two_max_output_size"};
 static const std::map<std::string, std::int64_t> OPTIONAL_VALUE = {{"tiling_two_max_output_size", 960}};
 REGISTER_OP_TILING_V3_WITH_VECTOR(Pad, PadTiling, PAD_COMPILE_INFO_KEY, OPTIONAL_VALUE);
+REGISTER_OP_TILING_V3_WITH_VECTOR(PadV2, PadTiling, PAD_COMPILE_INFO_KEY, OPTIONAL_VALUE);
+
 // register tiling interface of the StridedSliceGrad op.
 static const std::vector<std::string>& STRIDED_COMPILE_INFO_KEY = {
     "core_num",      "ub_size",       "dtype_rate",      "tiling_two_max_output_size", "begin_mask", "end_mask",

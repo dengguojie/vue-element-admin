@@ -36,6 +36,8 @@
 #include "op_log.h"
 #include "error_util.h"
 #include "pattern_fusion_util.h"
+#include "tbe_ops_pass_util.h"
+
 
 using namespace ge;
 namespace fe {
@@ -149,6 +151,7 @@ Status PadV2FusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vector
   ge::OpDescPtr pad_desc = pad_node->GetOpDesc();
   FUSION_PASS_CHECK(pad_desc == nullptr, VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "pad_node's OpDesc is null, fusion failed."),
                     return PARAM_INVALID);
+  NOT_CHANGED_WITH_DYNAMIC_NODE({pad_node})
 
   std::vector<PassAttrInfo> attr_infos = {{1, "paddings", "SetInt"}};
   const std::string fusion_op_type = "PadV2D";

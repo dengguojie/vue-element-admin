@@ -179,6 +179,12 @@ class OpBase:
         """
         pass
 
+    def pre_compute(self, core_index):
+        """
+        do something like block barrier before compute
+        """
+        pass
+
     def op_run_compute(self):
         """
         op_run_base run all the regist_compute base tiling_key
@@ -186,6 +192,7 @@ class OpBase:
         """
         with self.tik_instance.for_range(0, self.core_nums, block_num=self.core_nums) as core_index:
             self.tiling_args()
+            self.pre_compute(core_index)
             self.core_scedule_args(core_index)
             self.run_compute(self.tiling_key)
 

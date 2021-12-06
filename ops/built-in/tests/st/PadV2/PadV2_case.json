@@ -1,0 +1,381 @@
+[
+    {
+      "op": "PadV2",
+      "calc_expect_func_file": "test_pad_v2_st.py:pad_v2",
+      "input_desc": [
+        {
+          "shape": [-1],
+          "format": "ND",
+          "typical_shape": [4096],
+          "name": "x",
+          "type": "float32",
+          "shape_range": [[1, 10000]],
+          "data_distribute": "uniform",
+          "value_range": [[0, 100]]
+        },
+        {
+          "shape": [1,2],
+          "format": "ND",
+          "name": "paddings",
+          "type": "int32",
+          "value": [[16,16]]
+        },
+        {
+          "shape": [1],
+          "format": "ND",
+          "typical_shape": [1],
+          "name": "constant_values",
+          "type": "float32",
+          "data_distribute": "uniform",
+          "value": [2]
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [-1],
+          "format": "ND",
+          "typical_shape": [4128],
+          "shape_range": [[1, 10000]],
+          "name": "y",
+          "type": "float32"
+        }
+      ],
+      "case_name": "test_PadV2_000"
+    },
+    {
+      "op": "PadV2",
+      "calc_expect_func_file": "test_pad_v2_st.py:pad_v2",
+      "input_desc": [
+        {
+          "shape": [-1, 256, 38, 8],
+          "format": "ND",
+          "typical_shape": [1, 256, 38, 8],
+          "name": "x",
+          "type": "float32",
+          "shape_range": [[1, 10000]],
+          "data_distribute": "uniform",
+          "value_range": [[0, 100]]
+        },
+        {
+          "shape": [4,2],
+          "format": "ND",
+          "name": "paddings",
+          "type": "int32",
+          "value": [[0,0],[0,0],[1,1],[1,1]]
+        },
+        {
+          "shape": [1],
+          "format": "ND",
+          "typical_shape": [1],
+          "name": "constant_values",
+          "type": "float32",  
+          "data_distribute": "uniform",
+          "value": [2]
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [1, 256, 40, 10],
+          "format": "ND",
+          "name": "y",
+          "type": "float32"
+        }
+      ],
+      "case_name": "test_PadV2_001"
+    },
+    {
+      "op": "PadV2",
+      "calc_expect_func_file": "test_pad_v2_st.py:pad_v2",
+      "input_desc": [
+        {
+          "shape": [-1],
+          "format": "ND",
+          "typical_shape": [4096],
+          "name": "x",
+          "type": "int64",
+          "shape_range": [[1, 10000]],
+          "data_distribute": "uniform",
+          "value_range": [[0, 100]]
+        },
+        {
+          "shape": [1,2],
+          "format": "ND",
+          "name": "paddings",
+          "type": "int32",
+          "value": [[16,16]]
+        },
+        {
+          "shape": [1],
+          "format": "ND",
+          "typical_shape": [1],
+          "name": "constant_values",
+          "type": "int64",
+          "data_distribute": "uniform",
+          "value": [2]
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [-1],
+          "format": "ND",
+          "typical_shape": [4128],
+          "shape_range": [[1, 10000]],
+          "name": "y",
+          "type": "int64"
+        }
+      ],
+      "case_name": "test_PadV2_002"
+    },
+    {
+      "op": "PadV2",
+      "calc_expect_func_file": "test_pad_v2_st.py:pad_v2",
+      "input_desc": [
+        {
+          "shape": [-1, 256, 38, 8],
+          "format": "ND",
+          "typical_shape": [1, 256, 38, 8],
+          "name": "x",
+          "type": "int64",
+          "shape_range": [[1, 10000]],
+          "data_distribute": "uniform",
+          "value_range": [[0, 100]]
+        },
+        {
+          "shape": [4,2],
+          "format": "ND",
+          "name": "paddings",
+          "type": "int32",
+          "value": [[0,0],[0,0],[1,1],[1,1]]
+        },
+        {
+          "shape": [1],
+          "format": "ND",
+          "typical_shape": [1],
+          "name": "constant_values",
+          "type": "int64",  
+          "data_distribute": "uniform",
+          "value": [2]
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [1, 256, 40, 10],
+          "format": "ND",
+          "name": "y",
+          "type": "int64"
+        }
+      ],
+      "case_name": "test_PadV2_003"
+    },
+    {
+      "op": "PadV2",
+      "calc_expect_func_file": "test_pad_v2_st.py:pad_v2",
+      "input_desc": [
+        {
+          "shape": [-1],
+          "format": "ND",
+          "typical_shape": [4096],
+          "name": "x",
+          "type": "int16",
+          "shape_range": [[1, 10000]],
+          "data_distribute": "uniform",
+          "value_range": [[0, 100]]
+        },
+        {
+          "shape": [1,2],
+          "format": "ND",
+          "name": "paddings",
+          "type": "int32",
+          "value": [[16,16]]
+        },
+        {
+          "shape": [1],
+          "format": "ND",
+          "typical_shape": [1],
+          "name": "constant_values",
+          "type": "int16",
+          "data_distribute": "uniform",
+          "value": [2]
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [-1],
+          "format": "ND",
+          "typical_shape": [4128],
+          "shape_range": [[1, 10000]],
+          "name": "y",
+          "type": "int16"
+        }
+      ],
+      "case_name": "test_PadV2_004"
+    },
+    {
+      "op": "PadV2",
+      "calc_expect_func_file": "test_pad_v2_st.py:pad_v2",
+      "input_desc": [
+        {
+          "shape": [-1, 256, 38, 8],
+          "format": "ND",
+          "typical_shape": [1, 256, 38, 8],
+          "name": "x",
+          "type": "int16",
+          "shape_range": [[1, 10000]],
+          "data_distribute": "uniform",
+          "value_range": [[0, 100]]
+        },
+        {
+          "shape": [4,2],
+          "format": "ND",
+          "name": "paddings",
+          "type": "int32",
+          "value": [[0,0],[0,0],[1,1],[1,1]]
+        },
+        {
+          "shape": [1],
+          "format": "ND",
+          "typical_shape": [1],
+          "name": "constant_values",
+          "type": "int16",  
+          "data_distribute": "uniform",
+          "value": [2]
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [1, 256, 40, 10],
+          "format": "ND",
+          "name": "y",
+          "type": "int16"
+        }
+      ],
+      "case_name": "test_PadV2_005"
+    },
+    {
+      "op": "PadV2",
+      "calc_expect_func_file": "test_pad_v2_st.py:pad_v2",
+      "input_desc": [
+        {
+          "shape": [-1],
+          "format": "ND",
+          "typical_shape": [4096],
+          "name": "x",
+          "type": "int16",
+          "shape_range": [[1, 10000]],
+          "data_distribute": "uniform",
+          "value_range": [[0, 100]]
+        },
+        {
+          "shape": [1,2],
+          "format": "ND",
+          "name": "paddings",
+          "type": "int32",
+          "value": [[16,16]]
+        },
+        {
+          "shape": [1],
+          "format": "ND",
+          "typical_shape": [1],
+          "name": "constant_values",
+          "type": "int16",
+          "data_distribute": "uniform",
+          "value": [-1]
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [-1],
+          "format": "ND",
+          "typical_shape": [4128],
+          "shape_range": [[1, 10000]],
+          "name": "y",
+          "type": "int16"
+        }
+      ],
+      "case_name": "test_PadV2_006"
+    },
+    {
+      "op": "PadV2",
+      "calc_expect_func_file": "test_pad_v2_st.py:pad_v2",
+      "input_desc": [
+        {
+          "shape": [-1, 256, 38, 8],
+          "format": "ND",
+          "typical_shape": [1, 256, 38, 8],
+          "name": "x",
+          "type": "int16",
+          "shape_range": [[1, 10000]],
+          "data_distribute": "uniform",
+          "value_range": [[0, 100]]
+        },
+        {
+          "shape": [4,2],
+          "format": "ND",
+          "name": "paddings",
+          "type": "int32",
+          "value": [[0,0],[0,0],[1,1],[1,1]]
+        },
+        {
+          "shape": [1],
+          "format": "ND",
+          "typical_shape": [1],
+          "name": "constant_values",
+          "type": "int16",  
+          "data_distribute": "uniform",
+          "value": [-1]
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [1, 256, 40, 10],
+          "format": "ND",
+          "name": "y",
+          "type": "int16"
+        }
+      ],
+      "case_name": "test_PadV2_007"
+    },
+    {
+      "op": "PadV2",
+      "calc_expect_func_file": "test_pad_v2_st.py:pad_v2",
+      "input_desc": [
+        {
+          "shape": [-1],
+          "format": "ND",
+          "typical_shape": [10000],
+          "name": "x",
+          "type": "float16",
+          "shape_range": [[1, 10000]],
+          "data_distribute": "uniform",
+          "value_range": [[0, 100]]
+        },
+        {
+          "shape": [1,2],
+          "format": "ND",
+          "name": "paddings",
+          "type": "int32",
+          "value": [[6, 1]]
+        },
+        {
+          "shape": [1],
+          "format": "ND",
+          "typical_shape": [1],
+          "name": "constant_values",
+          "type": "float16",  
+          "data_distribute": "uniform",
+          "value": [57848]
+        }
+      ],
+      "output_desc": [
+        {
+          "shape": [-1],
+          "format": "ND",
+          "typical_shape": [10007],
+          "shape_range": [[1, 10007]],
+          "name": "y",
+          "type": "float16"
+        }
+      ],
+      "case_name": "test_PadV2_008"
+    }
+  ]

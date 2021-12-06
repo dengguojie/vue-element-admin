@@ -358,6 +358,7 @@ from .wts_arq import wts_arq
 from .ifmr import ifmr
 from .inplace_index_add import inplace_index_add
 from .square_sum_all import square_sum_all
+from .pad_v2 import pad_v2
 
 from .scan_pq_codes import scan_pq_codes
 from .ascend_dequant import ascend_dequant
