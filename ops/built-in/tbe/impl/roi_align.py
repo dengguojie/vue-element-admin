@@ -859,10 +859,8 @@ class RoiAlign:
 
             if cce_product not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                 # height and width of each RoI
-                # h == yEndFp32
                 self.tik_inst.vec_sub(64, y_end_fp32_ub, y_end_fp32_ub, \
                                       y_start_fp32_ub, 2, 8, 8, 8)
-                # w == xEndFp32
                 self.tik_inst.vec_sub(64, x_end_fp32_ub, x_end_fp32_ub, \
                                       x_start_fp32_ub, 2, 8, 8, 8)
 
@@ -1176,7 +1174,6 @@ class RoiAlign:
 
         if cce_product not in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
             # lx, ly, hx, hy are the weights for interpolation
-            # convXt = CalcXtForOneSrcVectorOP(1, 1, 8, 4, 2)
             tik_instance.vec_conv(MASK_FP32, 'none', xlow_fp32, xlow, \
                                   2, 8, 4)   # fp16 -> fp32
             tik_instance.vec_conv(MASK_FP32, 'none', ylow_fp32, ylow, \
@@ -1195,7 +1192,6 @@ class RoiAlign:
             tik_instance.vec_sub(MASK_FP32, hy_fp32, yhigh_fp32, ypos_fp32, \
                                  2, 8, 8, 8)
 
-            # deqXt = CalcXtForOneSrcVectorOP(1, 1, 4, 8, 2)
             tik_instance.vec_conv(MASK_FP32, 'none', lx, lx_fp32, \
                                   2, 4, 8)  # fp32 -> fp16
             tik_instance.vec_conv(MASK_FP32, 'none', ly, ly_fp32, \
@@ -1279,7 +1275,6 @@ class RoiAlign:
         #   `xhigh = xhigh - 1`
         tik_instance.vec_dup(MASK_FP16, cmp_const, ZERO, 1, 8)
 
-        # twoXt = CalcXtForTwoSrcVectorOP(1, 1, 1, 8, 8, 8, 1)
         tik_instance.vec_cmpv_lt(sel, lx, cmp_const, 1, 8, 8)
         tik_instance.vec_sel(MASK_FP16, 0, lx, sel, lx_pos_cmp, lx, \
                              1, 8, 8, 8)
@@ -1438,6 +1433,7 @@ class RoiAlign:
         tik_instance.vec_sel(MASK_FP16, 0, ly, sel, cmp_const, ly, \
                              1, 8, 8, 8)
 
+
 # pylint: disable=too-many-arguments,too-many-locals,too-many-boolean-expressions
 # pylint: disable=no-member,too-many-branches
 def roi_align_cce(feature_map_dict, rois_dict, roisn_dict, output_dict, \
@@ -1491,6 +1487,7 @@ def roi_align_cce(feature_map_dict, rois_dict, roisn_dict, output_dict, \
                    roi_end_mode,
                    kernel_name_val)
     return obj.roialign_compute()
+
 
 #pylint: disable=too-many-statements,too-many-locals,too-many-branches
 #pylint: disable=no-member
@@ -1674,6 +1671,7 @@ def _get_roi_align_perf_scale_for_zero_v200(tik_instance, roi_fp32_fm_index, pro
            proposals_ub_x0, proposals_ub_y0, \
            grid_w_int32, grid_h_int32, grid_w_fp32, \
            grid_h_fp32, roi_int32_fm_index
+
 
 #pylint: disable=too-many-statements,too-many-locals,too-many-branches
 #pylint: disable=no-member
@@ -2428,6 +2426,7 @@ def _prepare_vbi_xn(tik_instance, c1_block_num):
 
     return vbi_addr
 
+
 # pylint: disable=too-many-branches
 # pylint: disable=unused-variable
 def _prepare_vbi_xm(tik_instance, h_y, l_y, h_x, l_x, c1_block_num):
@@ -2475,6 +2474,7 @@ def _prepare_vbi_xm(tik_instance, h_y, l_y, h_x, l_x, c1_block_num):
         vbi_weights[current_c1 * 16 + 3].set_as(w4_tensor[0])
 
     return vbi_weights
+
 
 #pylint: disable=no-member
 def _bilinear_interpolate(tik_instance, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo,

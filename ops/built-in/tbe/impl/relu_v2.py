@@ -39,8 +39,12 @@ from te.utils import para_check
 from te import tvm
 from te.utils.error_manager import error_manager_vector
 
-# const value
-CONST_ZERO = 0
+
+class Constant:
+    """
+    The class for constant
+    """
+    CONST_ZERO = 0
 
 
 def conv2d_relu_v2_check(x):
@@ -88,19 +92,19 @@ def relu_v2_compute(x, y, mask, kernel_name="relu_v2_cce"):
     if tbe_platform.api_check_support('te.lang.cce.vrelu', compatible_dtype):
         data_res = tbe.vrelu(x)
     else:
-        tensor_zero = tbe.broadcast(tvm.const(CONST_ZERO, compatible_dtype), shape)
+        tensor_zero = tbe.broadcast(tvm.const(Constant.CONST_ZERO, compatible_dtype), shape)
         data_res = tbe.vmax(x, tensor_zero)
 
     data_res = tbe.cast_to(data_res, inp_dtype)
 
     conv_relu_v2_flag = conv2d_relu_v2_check(x)
     if conv_relu_v2_flag:
-        scalar = tvm.const(CONST_ZERO, dtype=x.dtype)
+        scalar = tvm.const(Constant.CONST_ZERO, dtype=x.dtype)
         mask = tvm.compute(x.shape, lambda *indice: (x(*indice) > scalar).astype("uint1"),
                            name='output',
                            tag="emit_insn_elewise_binary_cmp|gt|bit")
     else:
-        mask = tbe.vcmp(x, CONST_ZERO, "gt", "bit")
+        mask = tbe.vcmp(x, Constant.CONST_ZERO, "gt", "bit")
 
     return data_res, mask
 

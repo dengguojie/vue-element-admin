@@ -22,10 +22,11 @@ from te import tik
 from te.utils.error_manager import error_manager_vector
 
 
-# C0 size
-C0_SIZE = 16
-# batch size
-BATCH_SIZE = 128
+class Constant:
+    """
+    The class for constant
+    """
+    BATCH_SIZE = 128
 
 
 # pylint: disable-msg=too-many-arguments,too-many-locals,too-many-statements
@@ -849,9 +850,9 @@ def _roi_align_calc_scale_batch(tik_instance, rois_data_ub, scale, pool_w,
     """calc one block gradient
     """
     roi_h_fp32 = tik_instance.Tensor(
-        "float32", [BATCH_SIZE], name="roi_h_fp32", scope=tbe_platform.scope_ubuf)
+        "float32", [Constant.BATCH_SIZE], name="roi_h_fp32", scope=tbe_platform.scope_ubuf)
     roi_w_fp32 = tik_instance.Tensor(
-        "float32", [BATCH_SIZE], name="roi_w_fp32", scope=tbe_platform.scope_ubuf)
+        "float32", [Constant.BATCH_SIZE], name="roi_w_fp32", scope=tbe_platform.scope_ubuf)
 
     rois_start_w = rois_data_ub[1, 0]
     rois_start_h = rois_data_ub[2, 0]
@@ -861,9 +862,9 @@ def _roi_align_calc_scale_batch(tik_instance, rois_data_ub, scale, pool_w,
     _get_roi_pos(tik_instance, rois_start_w, rois_start_h, rois_end_w, rois_end_h, scale, roi_end_mode)
 
     tik_instance.vsub(64, roi_w_fp32, rois_end_w, rois_start_w,
-                      BATCH_SIZE * 2 // 128, 1, 1, 1, 8, 8, 8)
+                      Constant.BATCH_SIZE * 2 // 128, 1, 1, 1, 8, 8, 8)
     tik_instance.vsub(64, roi_h_fp32, rois_end_h, rois_start_h,
-                      BATCH_SIZE * 2 // 128, 1, 1, 1, 8, 8, 8)
+                      Constant.BATCH_SIZE * 2 // 128, 1, 1, 1, 8, 8, 8)
 
     const_one = tik_instance.Tensor(
         "float32", [16], name="const_one", scope=tbe_platform.scope_ubuf)
@@ -872,25 +873,25 @@ def _roi_align_calc_scale_batch(tik_instance, rois_data_ub, scale, pool_w,
     # compare roi_width adn roi_height to 1
     if roi_end_mode != 3:
         tik_instance.vmax(64, roi_w_fp32, roi_w_fp32, const_one,
-                          BATCH_SIZE * 2 // 128, 1, 1, 0, 8, 8, 0)
+                          Constant.BATCH_SIZE * 2 // 128, 1, 1, 0, 8, 8, 0)
         tik_instance.vmax(64, roi_h_fp32, roi_h_fp32, const_one,
-                          BATCH_SIZE * 2 // 128, 1, 1, 0, 8, 8, 0)
+                          Constant.BATCH_SIZE * 2 // 128, 1, 1, 0, 8, 8, 0)
 
     # Declare roi_bin_size tik_instance.Tensor
     rois_bin_w = tik_instance.Tensor(
-        "float32", [BATCH_SIZE], name="roi_bin_w", scope=tbe_platform.scope_ubuf)
+        "float32", [Constant.BATCH_SIZE], name="roi_bin_w", scope=tbe_platform.scope_ubuf)
     rois_bin_h = tik_instance.Tensor(
-        "float32", [BATCH_SIZE], name="roi_bin_h", scope=tbe_platform.scope_ubuf)
+        "float32", [Constant.BATCH_SIZE], name="roi_bin_h", scope=tbe_platform.scope_ubuf)
     # bin size
     tik_instance.vmuls(64, rois_bin_w[:], roi_w_fp32[:], 1.0 / pool_w,
-                       BATCH_SIZE * 2 // 128, 1, 1, 8, 8)
+                       Constant.BATCH_SIZE * 2 // 128, 1, 1, 8, 8)
     tik_instance.vmuls(64, rois_bin_h[:], roi_h_fp32[:], 1.0 / pool_h,
-                       BATCH_SIZE * 2 // 128, 1, 1, 8, 8)
+                       Constant.BATCH_SIZE * 2 // 128, 1, 1, 8, 8)
 
     sample_num_w = tik_instance.Tensor(
-        "int32", [BATCH_SIZE], name="sample_num_w", scope=tbe_platform.scope_ubuf)
+        "int32", [Constant.BATCH_SIZE], name="sample_num_w", scope=tbe_platform.scope_ubuf)
     sample_num_h = tik_instance.Tensor(
-        "int32", [BATCH_SIZE], name="sample_num_h", scope=tbe_platform.scope_ubuf)
+        "int32", [Constant.BATCH_SIZE], name="sample_num_h", scope=tbe_platform.scope_ubuf)
 
     if sample_num is not None:
         if sample_num > 0:
@@ -898,16 +899,16 @@ def _roi_align_calc_scale_batch(tik_instance, rois_data_ub, scale, pool_w,
             tik_instance.vector_dup(64, sample_num_h, sample_num, 2, 1, 8, 0)
         else:
             tik_instance.vconv(64, 'ceil', sample_num_w, rois_bin_w,
-                               BATCH_SIZE * 2 // 128, 1, 1, 8, 8)
+                               Constant.BATCH_SIZE * 2 // 128, 1, 1, 8, 8)
             tik_instance.vconv(64, 'ceil', sample_num_h, rois_bin_h,
-                               BATCH_SIZE * 2 // 128, 1, 1, 8, 8)
+                               Constant.BATCH_SIZE * 2 // 128, 1, 1, 8, 8)
 
     rois_start_w = tik_instance.Tensor(
-        "float32", [BATCH_SIZE], name="roi_h_fp32", scope=tbe_platform.scope_ubuf)
+        "float32", [Constant.BATCH_SIZE], name="roi_h_fp32", scope=tbe_platform.scope_ubuf)
     rois_start_h = tik_instance.Tensor(
-        "float32", [BATCH_SIZE], name="roi_w_fp32", scope=tbe_platform.scope_ubuf)
+        "float32", [Constant.BATCH_SIZE], name="roi_w_fp32", scope=tbe_platform.scope_ubuf)
     rois_index = tik_instance.Tensor(
-        "int32", [BATCH_SIZE], name="roi_index", scope=tbe_platform.scope_ubuf)
+        "int32", [Constant.BATCH_SIZE], name="roi_index", scope=tbe_platform.scope_ubuf)
     tik_instance.vadds(64, rois_start_w, rois_data_ub[1, 0], 0, 2, 1, 1, 8, 8)
     tik_instance.vadds(64, rois_start_h, rois_data_ub[2, 0], 0, 2, 1, 1, 8, 8)
     tik_instance.vconv(64, "floor", rois_index, rois_data_ub[0, 0], 2, 1, 1, 8, 8)
@@ -948,9 +949,9 @@ def _convert_rois_data_to5n(tik_instance, rois_data_gm, rois_data_index, rois_nu
         rois_data_tmp = tik_instance.Tensor(
             "float32", (128, 8), name="rois_data_tmp", scope=tbe_platform.scope_ubuf)
         roi_pos = tik_instance.Tensor(
-            "float16", [BATCH_SIZE, 8], name="roi_pos", scope=tbe_platform.scope_ubuf)
+            "float16", [Constant.BATCH_SIZE, 8], name="roi_pos", scope=tbe_platform.scope_ubuf)
         roi_pos_new = tik_instance.Tensor(
-            "float16", [5, BATCH_SIZE],
+            "float16", [5, Constant.BATCH_SIZE],
             name="roi_pos_new",
             scope=tbe_platform.scope_ubuf)
 
@@ -959,7 +960,7 @@ def _convert_rois_data_to5n(tik_instance, rois_data_gm, rois_data_index, rois_nu
                                 '', 1, (4 * rois_num * 8) // 32, 0, 0)
 
         tik_instance.vconv(128, "", roi_pos[0, 0], rois_data_tmp[0, 0],
-                           (BATCH_SIZE * 8) // 64, 1, 1, 4, 8)
+                           (Constant.BATCH_SIZE * 8) // 64, 1, 1, 4, 8)
 
         tik_instance.vextract(roi_pos_new[0, 0], roi_pos, 8, 0)
         tik_instance.vextract(roi_pos_new[1, 0], roi_pos, 8, 1)
@@ -968,7 +969,7 @@ def _convert_rois_data_to5n(tik_instance, rois_data_gm, rois_data_index, rois_nu
         tik_instance.vextract(roi_pos_new[4, 0], roi_pos, 8, 4)
 
         tik_instance.vconv(128, "", rois_data_ub[0, 0], roi_pos_new[0, 0],
-                           (BATCH_SIZE * 10) // 128, 1, 1, 8, 4)
+                           (Constant.BATCH_SIZE * 10) // 128, 1, 1, 8, 4)
 
     return rois_data_ub
 

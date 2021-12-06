@@ -354,8 +354,8 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
             # No.2 situation : 1. input f16 dtype : large data
             if expand_loop > HW_SIZE_512:
                 l1_half = HW_SIZE_512 * 32
-                L1_in = apply_store_buffer(ib, "float16", [l1_half * f16_c0], name="L1_in", scope=param.scope_cbuf)
-                L1_out = apply_store_buffer(ib, "float16", [l1_half * f16_c0], name="L1_out", scope=param.scope_cbuf)
+                l1_in = apply_store_buffer(ib, "float16", [l1_half * f16_c0], name="l1_in", scope=param.scope_cbuf)
+                l1_out = apply_store_buffer(ib, "float16", [l1_half * f16_c0], name="l1_out", scope=param.scope_cbuf)
 
                 loop_level1 = expand_loop // l1_half
                 tail_level1 = expand_loop % l1_half
@@ -367,7 +367,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                         with ib.new_scope():
                             ib.scope_attr(param.CCE_AXIS, "coproc_scope", 5)
                             ib.emit(
-                                tvm.call_extern("float16", "copy_gm_to_cbuf", L1_in.access_ptr('w'),
+                                tvm.call_extern("float16", "copy_gm_to_cbuf", l1_in.access_ptr('w'),
                                                 inputs.access_ptr('r', offset=i1 * l1_half * f16_c0), sid, 1, l1_half,
                                                 0, 0, pad_mode))
                         # level_2 loop
@@ -377,7 +377,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                 ib.emit(
                                     tvm.call_extern("float16", "copy_cbuf_to_ubuf", f16_in.access_ptr('w'),
-                                                    L1_in.access_ptr('r', offset=i2 * HW_SIZE_512 * f16_c0), 0, 1,
+                                                    l1_in.access_ptr('r', offset=i2 * HW_SIZE_512 * f16_c0), 0, 1,
                                                     HW_SIZE_512, 0, 0))
                             # Note:
                             #   1. H * W > HW_SIZE_512 is common
@@ -393,7 +393,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                                         ib.emit(
                                             tvm.call_extern("float16", "copy_ubuf_to_cbuf",
-                                                            L1_out.access_ptr('w', offset=i3 * f16_c0),
+                                                            l1_out.access_ptr('w', offset=i3 * f16_c0),
                                                             f16_in.access_ptr('r'), 0, HW_SIZE_512, 1, 0, 8 - 1))
                                 # level_3 loop
                                 loop_level3 = HW_SIZE_512
@@ -406,7 +406,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.emit(
                                             tvm.call_extern(
                                                 "float16", "copy_cbuf_to_ubuf", f16_8.access_ptr('w'),
-                                                L1_out.access_ptr('r',
+                                                l1_out.access_ptr('r',
                                                                   offset=block.var * 8 * f16_c0 +
                                                                   core_lp3_idx * core_counts * 8 * f16_c0), 0, 1, 8, 0,
                                                 0))
@@ -517,7 +517,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                                         ib.emit(
                                             tvm.call_extern("float16", "copy_ubuf_to_cbuf",
-                                                            L1_out.access_ptr('w', offset=i3 * f16_c0),
+                                                            l1_out.access_ptr('w', offset=i3 * f16_c0),
                                                             f16_in.access_ptr('r'), 0, HW_SIZE_512, 1, 0, 8 - 1))
                                 # level_3 loop
                                 loop_level3 = HW_SIZE_512 // 8
@@ -526,7 +526,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                         ib.emit(
                                             tvm.call_extern("float16", "copy_cbuf_to_ubuf", f16_64.access_ptr('w'),
-                                                            L1_out.access_ptr('r', offset=i4 * 64 * f16_c0), 0, 1, 64,
+                                                            l1_out.access_ptr('r', offset=i4 * 64 * f16_c0), 0, 1, 64,
                                                             0, 0))
                                     # level_4 loop
                                     loop_level4 = 8
@@ -590,7 +590,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                                         ib.emit(
                                             tvm.call_extern("float16", "copy_ubuf_to_cbuf",
-                                                            L1_out.access_ptr('w', offset=i3 * f16_c0),
+                                                            l1_out.access_ptr('w', offset=i3 * f16_c0),
                                                             f16_in.access_ptr('r'), 0, HW_SIZE_512, 1, 0,
                                                             expand_size - 1))
                                 loop_level3 = expand_size // 12
@@ -602,7 +602,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                             ib.emit(
                                                 tvm.call_extern(
                                                     "float16", "copy_cbuf_to_ubuf", f16_out.access_ptr('w'),
-                                                    L1_out.access_ptr('r', offset=i4 * HW_SIZE_512 * 12 * f16_c0), 0, 1,
+                                                    l1_out.access_ptr('r', offset=i4 * HW_SIZE_512 * 12 * f16_c0), 0, 1,
                                                     HW_SIZE_512 * 12, 0, 0))
                                         with ib.new_scope():
                                             _inner_loop = \
@@ -652,7 +652,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                             "float16",
                                             "copy_cbuf_to_ubuf",
                                             f16_out.access_ptr('w'),
-                                            L1_out.access_ptr(
+                                            l1_out.access_ptr(
                                                 'r',
                                                 offset=loop_level3 * HW_SIZE_512 \
                                                        * 12 * f16_c0),
@@ -705,7 +705,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                         with ib.new_scope():
                             ib.scope_attr(param.CCE_AXIS, "coproc_scope", 5)
                             ib.emit(
-                                tvm.call_extern("float16", "copy_gm_to_cbuf", L1_in.access_ptr('w'),
+                                tvm.call_extern("float16", "copy_gm_to_cbuf", l1_in.access_ptr('w'),
                                                 inputs.access_ptr('r', offset=loop_level1 * l1_half * f16_c0), sid, 1,
                                                 tail_level1, 0, 0, pad_mode))
                     else:
@@ -725,7 +725,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                 ib.emit(
                                     tvm.call_extern("float16", "copy_cbuf_to_ubuf", f16_in.access_ptr('w'),
-                                                    L1_in.access_ptr('r', offset=i1 * HW_SIZE_512 * f16_c0), 0, 1,
+                                                    l1_in.access_ptr('r', offset=i1 * HW_SIZE_512 * f16_c0), 0, 1,
                                                     HW_SIZE_512, 0, 0))
                             # Note:
                             #   1. H * W >= HW_SIZE_512 is common
@@ -741,7 +741,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                                         ib.emit(
                                             tvm.call_extern("float16", "copy_ubuf_to_cbuf",
-                                                            L1_out.access_ptr('w', offset=i2 * f16_c0),
+                                                            l1_out.access_ptr('w', offset=i2 * f16_c0),
                                                             f16_in.access_ptr('r'), 0, HW_SIZE_512, 1, 0, 8 - 1))
                                 # level_2 loop
                                 loop_l2 = HW_SIZE_512
@@ -754,7 +754,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.emit(
                                             tvm.call_extern(
                                                 "float16", "copy_cbuf_to_ubuf", f16_8.access_ptr('w'),
-                                                L1_out.access_ptr('r',
+                                                l1_out.access_ptr('r',
                                                                   offset=block.var * 8 * f16_c0 +
                                                                   core_lp2_idx * core_counts * 8 * f16_c0), 0, 1, 8, 0,
                                                 0))
@@ -873,7 +873,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                                         ib.emit(
                                             tvm.call_extern("float16", "copy_ubuf_to_cbuf",
-                                                            L1_out.access_ptr('w', offset=i2 * f16_c0),
+                                                            l1_out.access_ptr('w', offset=i2 * f16_c0),
                                                             f16_in.access_ptr('r'), 0, HW_SIZE_512, 1, 0, 8 - 1))
                                 # level_2 loop
                                 loop_l2 = HW_SIZE_512 // 8
@@ -882,7 +882,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                         ib.emit(
                                             tvm.call_extern("float16", "copy_cbuf_to_ubuf", f16_64.access_ptr('w'),
-                                                            L1_out.access_ptr('r', offset=i3 * 64 * f16_c0), 0, 1, 64,
+                                                            l1_out.access_ptr('r', offset=i3 * 64 * f16_c0), 0, 1, 64,
                                                             0, 0))
                                     # level_3 loop
                                     loop_l3 = 8
@@ -943,7 +943,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                                         ib.emit(
                                             tvm.call_extern("float16", "copy_ubuf_to_cbuf",
-                                                            L1_out.access_ptr('w', offset=i2 * f16_c0),
+                                                            l1_out.access_ptr('w', offset=i2 * f16_c0),
                                                             f16_in.access_ptr('r'), 0, HW_SIZE_512, 1, 0,
                                                             expand_size - 1))
                                 loop_l2 = expand_size // 12
@@ -955,7 +955,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                             ib.emit(
                                                 tvm.call_extern(
                                                     "float16", "copy_cbuf_to_ubuf", f16_out.access_ptr('w'),
-                                                    L1_out.access_ptr('r', offset=i3 * HW_SIZE_512 * 12 * f16_c0), 0, 1,
+                                                    l1_out.access_ptr('r', offset=i3 * HW_SIZE_512 * 12 * f16_c0), 0, 1,
                                                     HW_SIZE_512 * 12, 0, 0))
                                         with ib.new_scope():
                                             _inner_loop = \
@@ -986,7 +986,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                             "float16",
                                             "copy_cbuf_to_ubuf",
                                             f16_out.access_ptr('w'),
-                                            L1_out.access_ptr(
+                                            l1_out.access_ptr(
                                                 'r',
                                                 offset=loop_l2 * HW_SIZE_512 \
                                                        * 12 * f16_c0),
@@ -1038,7 +1038,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                 ib.emit(
                                     tvm.call_extern("float16", "copy_cbuf_to_ubuf", f16_in.access_ptr('w'),
-                                                    L1_in.access_ptr('r', offset=loop_l1 * HW_SIZE_512 * f16_c0), 0, 1,
+                                                    l1_in.access_ptr('r', offset=loop_l1 * HW_SIZE_512 * f16_c0), 0, 1,
                                                     tail_l1, 0, 0))
                         # Note:
                         #   1. H * W >= HW_SIZE_512 is common
@@ -1054,7 +1054,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                                     ib.emit(
                                         tvm.call_extern("float16", "copy_ubuf_to_cbuf",
-                                                        L1_out.access_ptr('w', offset=i1 * f16_c0),
+                                                        l1_out.access_ptr('w', offset=i1 * f16_c0),
                                                         f16_in.access_ptr('r'), 0, tail_l1, 1, 0, 8 - 1))
                             # level_1 loop
                             loop_le1 = tail_l1
@@ -1063,7 +1063,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                     ib.emit(
                                         tvm.call_extern("float16", "copy_cbuf_to_ubuf", f16_8.access_ptr('w'),
-                                                        L1_out.access_ptr('r', offset=i2 * 8 * f16_c0), 0, 1, 8, 0, 0))
+                                                        l1_out.access_ptr('r', offset=i2 * 8 * f16_c0), 0, 1, 8, 0, 0))
                                 repeat_64 = HW_SIZE_512 // 8
                                 with ib.new_scope():
                                     ib.scope_attr(param.CCE_AXIS, "coproc_scope", 2)
@@ -1161,7 +1161,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                                     ib.emit(
                                         tvm.call_extern("float16", "copy_ubuf_to_cbuf",
-                                                        L1_out.access_ptr('w', offset=i1 * f16_c0),
+                                                        l1_out.access_ptr('w', offset=i1 * f16_c0),
                                                         f16_in.access_ptr('r'), 0, tail_l1, 1, 0, 8 - 1))
                             # level_1 loop
                             loop_le1 = tail_l1 // 8
@@ -1172,7 +1172,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                         ib.emit(
                                             tvm.call_extern("float16", "copy_cbuf_to_ubuf", f16_64.access_ptr('w'),
-                                                            L1_out.access_ptr('r', offset=i2 * 64 * f16_c0), 0, 1, 64,
+                                                            l1_out.access_ptr('r', offset=i2 * 64 * f16_c0), 0, 1, 64,
                                                             0, 0))
                                     # level_2 loop
                                     loop_le2 = 8
@@ -1233,7 +1233,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                     ib.emit(
                                         tvm.call_extern("float16", "copy_cbuf_to_ubuf", f16_64.access_ptr('w'),
-                                                        L1_out.access_ptr('r', offset=loop_le1 * 64 * f16_c0), 0, 1,
+                                                        l1_out.access_ptr('r', offset=loop_le1 * 64 * f16_c0), 0, 1,
                                                         tail_le1 * 8, 0, 0))
                                 # level_2 loop
                                 loop_le2 = tail_le1
@@ -1292,7 +1292,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                                     ib.emit(
                                         tvm.call_extern("float16", "copy_ubuf_to_cbuf",
-                                                        L1_out.access_ptr('w', offset=i1 * f16_c0),
+                                                        l1_out.access_ptr('w', offset=i1 * f16_c0),
                                                         f16_in.access_ptr('r'), 0, tail_l1, 1, 0, expand_size - 1))
                             loop_le2 = tail_l1 * expand_size // (12 * HW_SIZE_512)
                             tail_le2 = tail_l1 * expand_size % (12 * HW_SIZE_512)
@@ -1303,7 +1303,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.emit(
                                             tvm.call_extern(
                                                 "float16", "copy_cbuf_to_ubuf", f16_out.access_ptr('w'),
-                                                L1_out.access_ptr('r', offset=i2 * HW_SIZE_512 * 12 * f16_c0), 0, 1,
+                                                l1_out.access_ptr('r', offset=i2 * HW_SIZE_512 * 12 * f16_c0), 0, 1,
                                                 HW_SIZE_512 * 12, 0, 0))
                                     with ib.new_scope():
                                         _inner_loop = \
@@ -1333,7 +1333,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         "float16",
                                         "copy_cbuf_to_ubuf",
                                         f16_out.access_ptr('w'),
-                                        L1_out.access_ptr(
+                                        l1_out.access_ptr(
                                             'r',
                                             offset=loop_le2 * HW_SIZE_512 \
                                                    * 12 * f16_c0),
@@ -1380,7 +1380,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
             else:
                 # No.2 situation : 1. input f16 dtype : small data
                 l1_half = HW_SIZE_512 * 32
-                L1_out = apply_store_buffer(ib, "float16", [l1_half * f16_c0], name="L1_out", scope=param.scope_cbuf)
+                l1_out = apply_store_buffer(ib, "float16", [l1_half * f16_c0], name="l1_out", scope=param.scope_cbuf)
                 with ib.new_scope():
                     ib.scope_attr(param.CCE_AXIS, "coproc_scope", 5)
                     ib.emit(
@@ -1400,7 +1400,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                             ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                             ib.emit(
                                 tvm.call_extern("float16", "copy_ubuf_to_cbuf",
-                                                L1_out.access_ptr('w', offset=i1 * f16_c0), f16_in.access_ptr('r'), 0,
+                                                l1_out.access_ptr('w', offset=i1 * f16_c0), f16_in.access_ptr('r'), 0,
                                                 expand_loop, 1, 0, 8 - 1))
                     # level_1 loop
                     loop_lev1 = expand_loop
@@ -1413,7 +1413,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                             ib.emit(
                                 tvm.call_extern(
                                     "float16", "copy_cbuf_to_ubuf", f16_8.access_ptr('w'),
-                                    L1_out.access_ptr('r',
+                                    l1_out.access_ptr('r',
                                                       offset=block.var * 8 * f16_c0 +
                                                       core_lp1_idx * core_counts * 8 * f16_c0), 0, 1, 8, 0, 0))
                         repeat_64 = HW_SIZE_512 // 8
@@ -1514,7 +1514,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                             ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                             ib.emit(
                                 tvm.call_extern("float16", "copy_ubuf_to_cbuf",
-                                                L1_out.access_ptr('w', offset=i1 * f16_c0), f16_in.access_ptr('r'), 0,
+                                                l1_out.access_ptr('w', offset=i1 * f16_c0), f16_in.access_ptr('r'), 0,
                                                 expand_loop, 1, 0, 8 - 1))
                     # level_1 loop
                     loop_lev1 = expand_loop // 8
@@ -1525,7 +1525,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                 ib.emit(
                                     tvm.call_extern("float16", "copy_cbuf_to_ubuf", f16_64.access_ptr('w'),
-                                                    L1_out.access_ptr('r', offset=i2 * 64 * f16_c0), 0, 1, 64, 0, 0))
+                                                    l1_out.access_ptr('r', offset=i2 * 64 * f16_c0), 0, 1, 64, 0, 0))
                             # level_2 loop
                             loop_lev2 = 8
                             offset_lev2 = expand_size * f16_c0
@@ -1570,7 +1570,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                             ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                             ib.emit(
                                 tvm.call_extern("float16", "copy_cbuf_to_ubuf", f16_64.access_ptr('w'),
-                                                L1_out.access_ptr('r', offset=loop_lev1 * 64 * f16_c0), 0, 1,
+                                                l1_out.access_ptr('r', offset=loop_lev1 * 64 * f16_c0), 0, 1,
                                                 tail_lev1 * 8, 0, 0))
                         # level_2 loop
                         loop_lev2 = tail_lev1
@@ -1618,7 +1618,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                             ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                             ib.emit(
                                 tvm.call_extern("float16", "copy_ubuf_to_cbuf",
-                                                L1_out.access_ptr('w', offset=i1 * f16_c0), f16_in.access_ptr('r'), 0,
+                                                l1_out.access_ptr('w', offset=i1 * f16_c0), f16_in.access_ptr('r'), 0,
                                                 expand_loop, 1, 0, expand_size - 1))
                     loop_lev2 = expand_loop * expand_size // (12 * HW_SIZE_512)
                     tail_lev2 = expand_loop * expand_size % (12 * HW_SIZE_512)
@@ -1628,7 +1628,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                 ib.emit(
                                     tvm.call_extern("float16", "copy_cbuf_to_ubuf", f16_out.access_ptr('w'),
-                                                    L1_out.access_ptr('r', offset=i2 * HW_SIZE_512 * 12 * f16_c0), 0, 1,
+                                                    l1_out.access_ptr('r', offset=i2 * HW_SIZE_512 * 12 * f16_c0), 0, 1,
                                                     HW_SIZE_512 * 12, 0, 0))
                             with ib.new_scope():
                                 _inner_loop = HW_SIZE_512 * 12 * f16_c0 // free_space_fp32
@@ -1649,7 +1649,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                             ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                             ib.emit(
                                 tvm.call_extern("float16", "copy_cbuf_to_ubuf", f16_out.access_ptr('w'),
-                                                L1_out.access_ptr('r', offset=loop_lev2 * HW_SIZE_512 * 12 * f16_c0), 0,
+                                                l1_out.access_ptr('r', offset=loop_lev2 * HW_SIZE_512 * 12 * f16_c0), 0,
                                                 1, tail_lev2, 0, 0))
                         with ib.new_scope():
                             _inner_loop = tail_lev2 * f16_c0 // free_space_fp32
@@ -1703,8 +1703,8 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
             # No.2 situation : 1. input f32 dtype : large data
             if expand_loop > HW_SIZE_512:
                 l1_half = HW_SIZE_512 * 32
-                in_L1 = apply_store_buffer(ib, "float32", [l1_half * f32_c0], name="in_L1", scope=param.scope_cbuf)
-                out_L1 = apply_store_buffer(ib, "float32", [l1_half * f32_c0], name="out_L1", scope=param.scope_cbuf)
+                in_l1 = apply_store_buffer(ib, "float32", [l1_half * f32_c0], name="in_l1", scope=param.scope_cbuf)
+                out_l1 = apply_store_buffer(ib, "float32", [l1_half * f32_c0], name="out_l1", scope=param.scope_cbuf)
                 f32_half = l1_half // 2
                 loop_level1 = expand_loop // f32_half
                 tail_level1 = expand_loop % f32_half
@@ -1716,7 +1716,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                         with ib.new_scope():
                             ib.scope_attr(param.CCE_AXIS, "coproc_scope", 5)
                             ib.emit(
-                                tvm.call_extern("float32", "copy_gm_to_cbuf", in_L1.access_ptr('w'),
+                                tvm.call_extern("float32", "copy_gm_to_cbuf", in_l1.access_ptr('w'),
                                                 inputs.access_ptr('r', offset=i1 * f32_half * f16_c0), sid, 1, l1_half,
                                                 0, 0, pad_mode))
                         # level_2 loop
@@ -1726,7 +1726,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                 ib.emit(
                                     tvm.call_extern("float32", "copy_cbuf_to_ubuf", f32_in.access_ptr('w'),
-                                                    in_L1.access_ptr('r', offset=i2 * HW_SIZE_512 * f16_c0), 0, 1,
+                                                    in_l1.access_ptr('r', offset=i2 * HW_SIZE_512 * f16_c0), 0, 1,
                                                     HW_SIZE_1024, 0, 0))
                             # Note:
                             #   1. H * W > HW_SIZE_512 is common
@@ -1742,7 +1742,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                                         ib.emit(
                                             tvm.call_extern("float32", "copy_ubuf_to_cbuf",
-                                                            out_L1.access_ptr('w', offset=i3 * f16_c0),
+                                                            out_l1.access_ptr('w', offset=i3 * f16_c0),
                                                             f32_in.access_ptr('r'), 0, HW_SIZE_512, 2, 0, (4 - 1) * 2))
                                 # level_3 loop
                                 loop_level3 = HW_SIZE_512
@@ -1755,7 +1755,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.emit(
                                             tvm.call_extern(
                                                 "float32", "copy_cbuf_to_ubuf", f32_8.access_ptr('w'),
-                                                out_L1.access_ptr('r',
+                                                out_l1.access_ptr('r',
                                                                   offset=block.var * 4 * f16_c0 +
                                                                   core_lp3_idx * core_counts * 4 * f16_c0), 0, 1, 8, 0,
                                                 0))
@@ -1831,7 +1831,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                                         ib.emit(
                                             tvm.call_extern("float32", "copy_ubuf_to_cbuf",
-                                                            out_L1.access_ptr('w', offset=i3 * f16_c0),
+                                                            out_l1.access_ptr('w', offset=i3 * f16_c0),
                                                             f32_in.access_ptr('r'), 0, HW_SIZE_512, 2, 0, (4 - 1) * 2))
                                 # level_3 loop
                                 loop_level3 = HW_SIZE_512 // 4
@@ -1844,7 +1844,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.emit(
                                             tvm.call_extern(
                                                 "float32", "copy_cbuf_to_ubuf", f32_32.access_ptr('w'),
-                                                out_L1.access_ptr('r',
+                                                out_l1.access_ptr('r',
                                                                   offset=block.var * 32 * f32_c0 +
                                                                   core_lp3_idx * core_counts * 32 * f32_c0), 0, 1, 32,
                                                 0, 0))
@@ -1892,7 +1892,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                                         ib.emit(
                                             tvm.call_extern("float32", "copy_ubuf_to_cbuf",
-                                                            out_L1.access_ptr('w', offset=i3 * f16_c0),
+                                                            out_l1.access_ptr('w', offset=i3 * f16_c0),
                                                             f32_in.access_ptr('r'), 0, HW_SIZE_512, 2, 0,
                                                             (expand_size - 1) * 2))
                                 loop_level3 = expand_size * 2 // 12
@@ -1904,7 +1904,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                             ib.emit(
                                                 tvm.call_extern(
                                                     "float32", "copy_cbuf_to_ubuf", f32_out.access_ptr('w'),
-                                                    out_L1.access_ptr('r', offset=i4 * HW_SIZE_512 * 6 * f16_c0), 0, 1,
+                                                    out_l1.access_ptr('r', offset=i4 * HW_SIZE_512 * 6 * f16_c0), 0, 1,
                                                     HW_SIZE_512 * 12, 0, 0))
                                         with ib.new_scope():
                                             ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
@@ -1925,7 +1925,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                             "float32",
                                             "copy_cbuf_to_ubuf",
                                             f32_out.access_ptr('w'),
-                                            out_L1.access_ptr(
+                                            out_l1.access_ptr(
                                                 'r',
                                                 offset=loop_level3 * HW_SIZE_512 \
                                                        * 6 * f16_c0),
@@ -1948,7 +1948,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                         with ib.new_scope():
                             ib.scope_attr(param.CCE_AXIS, "coproc_scope", 5)
                             ib.emit(
-                                tvm.call_extern("float32", "copy_gm_to_cbuf", in_L1.access_ptr('w'),
+                                tvm.call_extern("float32", "copy_gm_to_cbuf", in_l1.access_ptr('w'),
                                                 inputs.access_ptr('r', offset=loop_level1 * f32_half * f16_c0), sid, 1,
                                                 tail_level1 * 2, 0, 0, pad_mode))
                     else:
@@ -1968,7 +1968,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                 ib.emit(
                                     tvm.call_extern("float32", "copy_cbuf_to_ubuf", f32_in.access_ptr('w'),
-                                                    in_L1.access_ptr('r', offset=i1 * HW_SIZE_512 * f16_c0), 0, 1,
+                                                    in_l1.access_ptr('r', offset=i1 * HW_SIZE_512 * f16_c0), 0, 1,
                                                     HW_SIZE_1024, 0, 0))
                             # Note:
                             #   1. H * W >= HW_SIZE_512 is common
@@ -1984,7 +1984,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                                         ib.emit(
                                             tvm.call_extern("float32", "copy_ubuf_to_cbuf",
-                                                            out_L1.access_ptr('w', offset=i2 * f16_c0),
+                                                            out_l1.access_ptr('w', offset=i2 * f16_c0),
                                                             f32_in.access_ptr('r'), 0, HW_SIZE_512, 2, 0, (4 - 1) * 2))
                                 # level_2 loop
                                 loop_l2 = HW_SIZE_512
@@ -1997,7 +1997,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.emit(
                                             tvm.call_extern(
                                                 "float32", "copy_cbuf_to_ubuf", f32_8.access_ptr('w'),
-                                                out_L1.access_ptr('r',
+                                                out_l1.access_ptr('r',
                                                                   offset=block.var * 4 * f16_c0 +
                                                                   core_lp2_idx * core_counts * 4 * f16_c0), 0, 1, 8, 0,
                                                 0))
@@ -2071,7 +2071,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                                         ib.emit(
                                             tvm.call_extern("float32", "copy_ubuf_to_cbuf",
-                                                            out_L1.access_ptr('w', offset=i2 * f16_c0),
+                                                            out_l1.access_ptr('w', offset=i2 * f16_c0),
                                                             f32_in.access_ptr('r'), 0, HW_SIZE_512, 2, 0, (4 - 1) * 2))
                                 # level_2 loop
                                 loop_l2 = HW_SIZE_512 // 4
@@ -2080,7 +2080,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                         ib.emit(
                                             tvm.call_extern("float32", "copy_cbuf_to_ubuf", f32_32.access_ptr('w'),
-                                                            out_L1.access_ptr('r', offset=i3 * 32 * f32_c0), 0, 1, 32,
+                                                            out_l1.access_ptr('r', offset=i3 * 32 * f32_c0), 0, 1, 32,
                                                             0, 0))
                                     # level_3 loop
                                     loop_l3 = 4
@@ -2116,7 +2116,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                                         ib.emit(
                                             tvm.call_extern("float32", "copy_ubuf_to_cbuf",
-                                                            out_L1.access_ptr('w', offset=i2 * f16_c0),
+                                                            out_l1.access_ptr('w', offset=i2 * f16_c0),
                                                             f32_in.access_ptr('r'), 0, HW_SIZE_512, 2, 0,
                                                             (expand_size - 1) * 2))
                                 loop_l2 = expand_size * 2 // 12
@@ -2128,7 +2128,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                             ib.emit(
                                                 tvm.call_extern(
                                                     "float32", "copy_cbuf_to_ubuf", f32_out.access_ptr('w'),
-                                                    out_L1.access_ptr('r', offset=i3 * HW_SIZE_512 * 6 * f16_c0), 0, 1,
+                                                    out_l1.access_ptr('r', offset=i3 * HW_SIZE_512 * 6 * f16_c0), 0, 1,
                                                     HW_SIZE_512 * 12, 0, 0))
                                         with ib.new_scope():
                                             ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
@@ -2149,7 +2149,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                             "float32",
                                             "copy_cbuf_to_ubuf",
                                             f32_out.access_ptr('w'),
-                                            out_L1.access_ptr(
+                                            out_l1.access_ptr(
                                                 'r',
                                                 offset=loop_l2 * HW_SIZE_512 \
                                                        * 6 * f16_c0),
@@ -2173,7 +2173,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                 ib.emit(
                                     tvm.call_extern("float32", "copy_cbuf_to_ubuf", f32_in.access_ptr('w'),
-                                                    in_L1.access_ptr('r', offset=loop_l1 * HW_SIZE_512 * f16_c0), 0, 1,
+                                                    in_l1.access_ptr('r', offset=loop_l1 * HW_SIZE_512 * f16_c0), 0, 1,
                                                     tail_l1 * 2, 0, 0))
                         # Note:
                         #   1. H * W >= HW_SIZE_512 is common
@@ -2189,7 +2189,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                                     ib.emit(
                                         tvm.call_extern("float32", "copy_ubuf_to_cbuf",
-                                                        out_L1.access_ptr('w', offset=i1 * f16_c0),
+                                                        out_l1.access_ptr('w', offset=i1 * f16_c0),
                                                         f32_in.access_ptr('r'), 0, tail_l1, 2, 0, (4 - 1) * 2))
                             # level_1 loop
                             loop_le1 = tail_l1
@@ -2198,7 +2198,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                     ib.emit(
                                         tvm.call_extern("float32", "copy_cbuf_to_ubuf", f32_8.access_ptr('w'),
-                                                        out_L1.access_ptr('r', offset=i2 * 4 * f16_c0), 0, 1, 8, 0, 0))
+                                                        out_l1.access_ptr('r', offset=i2 * 4 * f16_c0), 0, 1, 8, 0, 0))
                                 repeat_128 = HW_SIZE_512 // 4
                                 with ib.new_scope():
                                     ib.scope_attr(param.CCE_AXIS, "coproc_scope", 2)
@@ -2259,7 +2259,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                                     ib.emit(
                                         tvm.call_extern("float32", "copy_ubuf_to_cbuf",
-                                                        out_L1.access_ptr('w', offset=i1 * f16_c0),
+                                                        out_l1.access_ptr('w', offset=i1 * f16_c0),
                                                         f32_in.access_ptr('r'), 0, tail_l1, 2, 0, (4 - 1) * 2))
                             # level_1 loop
                             loop_le1 = tail_l1 // 4
@@ -2270,7 +2270,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                         ib.emit(
                                             tvm.call_extern("float32", "copy_cbuf_to_ubuf", f32_32.access_ptr('w'),
-                                                            out_L1.access_ptr('r', offset=i2 * 32 * f32_c0), 0, 1, 32,
+                                                            out_l1.access_ptr('r', offset=i2 * 32 * f32_c0), 0, 1, 32,
                                                             0, 0))
                                     # level_2 loop
                                     loop_le2 = 4
@@ -2305,7 +2305,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                     ib.emit(
                                         tvm.call_extern("float32", "copy_cbuf_to_ubuf", f32_32.access_ptr('w'),
-                                                        out_L1.access_ptr('r', offset=loop_le1 * 32 * f32_c0), 0, 1,
+                                                        out_l1.access_ptr('r', offset=loop_le1 * 32 * f32_c0), 0, 1,
                                                         tail_le1 * 8, 0, 0))
                                 # level_2 loop
                                 loop_le2 = tail_le1
@@ -2340,7 +2340,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                                     ib.emit(
                                         tvm.call_extern("float32", "copy_ubuf_to_cbuf",
-                                                        out_L1.access_ptr('w', offset=i1 * f16_c0),
+                                                        out_l1.access_ptr('w', offset=i1 * f16_c0),
                                                         f32_in.access_ptr('r'), 0, tail_l1, 2, 0,
                                                         (expand_size - 1) * 2))
                             loop_le2 = tail_l1 * expand_size * 2 // (12 * HW_SIZE_512)
@@ -2352,7 +2352,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         ib.emit(
                                             tvm.call_extern(
                                                 "float32", "copy_cbuf_to_ubuf", f32_out.access_ptr('w'),
-                                                out_L1.access_ptr('r', offset=i2 * HW_SIZE_512 * 6 * f16_c0), 0, 1,
+                                                out_l1.access_ptr('r', offset=i2 * HW_SIZE_512 * 6 * f16_c0), 0, 1,
                                                 HW_SIZE_512 * 12, 0, 0))
                                     with ib.new_scope():
                                         ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
@@ -2374,7 +2374,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                         "float32",
                                         "copy_cbuf_to_ubuf",
                                         f32_out.access_ptr('w'),
-                                        out_L1.access_ptr(
+                                        out_l1.access_ptr(
                                             'r',
                                             offset=loop_le2 * HW_SIZE_512 \
                                                    * 6 * f16_c0),
@@ -2395,7 +2395,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
             else:
                 # No.2 situation : 1. input f32 dtype : small data
                 l1_half = HW_SIZE_512 * 32
-                out_L1 = apply_store_buffer(ib, "float32", [l1_half * f32_c0], name="out_L1", scope=param.scope_cbuf)
+                out_l1 = apply_store_buffer(ib, "float32", [l1_half * f32_c0], name="out_l1", scope=param.scope_cbuf)
                 with ib.new_scope():
                     ib.scope_attr(param.CCE_AXIS, "coproc_scope", 5)
                     ib.emit(
@@ -2415,7 +2415,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                             ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                             ib.emit(
                                 tvm.call_extern("float32", "copy_ubuf_to_cbuf",
-                                                out_L1.access_ptr('w', offset=i1 * f16_c0), f32_in.access_ptr('r'), 0,
+                                                out_l1.access_ptr('w', offset=i1 * f16_c0), f32_in.access_ptr('r'), 0,
                                                 expand_loop, 2, 0, (4 - 1) * 2))
                     # level_1 loop
                     core_lp1 = expand_loop // core_counts
@@ -2427,7 +2427,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                             ib.emit(
                                 tvm.call_extern(
                                     "float32", "copy_cbuf_to_ubuf", f32_8.access_ptr('w'),
-                                    out_L1.access_ptr('r',
+                                    out_l1.access_ptr('r',
                                                       offset=block.var * 4 * f16_c0 +
                                                       core_lp1_idx * core_counts * 4 * f16_c0), 0, 1, 8, 0, 0))
                         repeat_128 = HW_SIZE_512 // 4
@@ -2491,7 +2491,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                             ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                             ib.emit(
                                 tvm.call_extern("float32", "copy_ubuf_to_cbuf",
-                                                out_L1.access_ptr('w', offset=i1 * f16_c0), f32_in.access_ptr('r'), 0,
+                                                out_l1.access_ptr('w', offset=i1 * f16_c0), f32_in.access_ptr('r'), 0,
                                                 expand_loop, 2, 0, (4 - 1) * 2))
                     # level_1 loop
                     loop_lev1 = expand_loop // 4
@@ -2502,7 +2502,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                 ib.emit(
                                     tvm.call_extern("float32", "copy_cbuf_to_ubuf", f32_32.access_ptr('w'),
-                                                    out_L1.access_ptr('r', offset=i2 * 32 * f32_c0), 0, 1, 32, 0, 0))
+                                                    out_l1.access_ptr('r', offset=i2 * 32 * f32_c0), 0, 1, 32, 0, 0))
                             # level_2 loop
                             loop_lev2 = 4
                             offset_lev2 = expand_size * f16_c0
@@ -2529,7 +2529,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                             ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                             ib.emit(
                                 tvm.call_extern("float32", "copy_cbuf_to_ubuf", f32_32.access_ptr('w'),
-                                                out_L1.access_ptr('r', offset=loop_lev1 * 32 * f32_c0), 0, 1,
+                                                out_l1.access_ptr('r', offset=loop_lev1 * 32 * f32_c0), 0, 1,
                                                 tail_lev1 * 8, 0, 0))
                         # level_2 loop
                         loop_lev2 = tail_lev1
@@ -2560,7 +2560,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                             ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
                             ib.emit(
                                 tvm.call_extern("float32", "copy_ubuf_to_cbuf",
-                                                out_L1.access_ptr('w', offset=i1 * f16_c0), f32_in.access_ptr('r'), 0,
+                                                out_l1.access_ptr('w', offset=i1 * f16_c0), f32_in.access_ptr('r'), 0,
                                                 expand_loop, 2, 0, (expand_size - 1) * 2))
                     loop_lev2 = expand_loop * expand_size * 2 // (12 * HW_SIZE_512)
                     tail_lev2 = expand_loop * expand_size * 2 % (12 * HW_SIZE_512)
@@ -2570,7 +2570,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                 ib.emit(
                                     tvm.call_extern("float32", "copy_cbuf_to_ubuf", f32_out.access_ptr('w'),
-                                                    out_L1.access_ptr('r', offset=i2 * HW_SIZE_512 * 6 * f16_c0), 0, 1,
+                                                    out_l1.access_ptr('r', offset=i2 * HW_SIZE_512 * 6 * f16_c0), 0, 1,
                                                     HW_SIZE_512 * 12, 0, 0))
                             with ib.new_scope():
                                 ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
@@ -2583,7 +2583,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                             ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                             ib.emit(
                                 tvm.call_extern("float32", "copy_cbuf_to_ubuf", f32_out.access_ptr('w'),
-                                                out_L1.access_ptr('r', offset=loop_lev2 * HW_SIZE_512 * 6 * f16_c0), 0,
+                                                out_l1.access_ptr('r', offset=loop_lev2 * HW_SIZE_512 * 6 * f16_c0), 0,
                                                 1, tail_lev2, 0, 0))
                         with ib.new_scope():
                             ib.scope_attr(param.CCE_AXIS, "coproc_scope", 6)
@@ -2616,7 +2616,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
             burst_limit = (1 << 12) - 1
             out_ub_f32 = apply_store_buffer(ib, "float32", [f16_size * f16_c0], name="out_f32")
             f16_out = apply_store_buffer(ib, "float16", [f16_size * f16_c0], name="f16_out")
-            in_L1 = apply_store_buffer(ib, "float16", [l1_half * f16_c0], name="in_L1", scope=param.scope_cbuf)
+            in_l1 = apply_store_buffer(ib, "float16", [l1_half * f16_c0], name="in_l1", scope=param.scope_cbuf)
             # Note:
             #   1. output data larger than HW_SIZE_512 * 8 should use L1 optimize
             #   2. output small data do not need L1
@@ -2644,7 +2644,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     ib.scope_attr(param.CCE_AXIS, "coproc_scope", 5)
                                     ib.emit(tvm.call_extern(
                                         "float16", "copy_gm_to_cbuf",
-                                        in_L1.access_ptr(
+                                        in_l1.access_ptr(
                                             'w',
                                             offset=i3 * f16_c0),
                                         inputs.access_ptr(
@@ -2663,7 +2663,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     ib.scope_attr(param.CCE_AXIS, "coproc_scope", 5)
                                     ib.emit(tvm.call_extern(
                                         "float16", "copy_gm_to_cbuf",
-                                        in_L1.access_ptr(
+                                        in_l1.access_ptr(
                                             'w',
                                             offset=i3 * burst_limit * f16_c0),
                                         inputs.access_ptr(
@@ -2678,7 +2678,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 ib.scope_attr(param.CCE_AXIS, "coproc_scope", 5)
                                 ib.emit(tvm.call_extern(
                                     "float16", "copy_gm_to_cbuf",
-                                    in_L1.access_ptr(
+                                    in_l1.access_ptr(
                                         'w',
                                         offset=loop_level2 * offset_4),
                                     inputs.access_ptr(
@@ -2695,7 +2695,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                 ib.emit(
                                     tvm.call_extern("float16", "copy_cbuf_to_ubuf", f16_out.access_ptr('w'),
-                                                    in_L1.access_ptr('r', offset=i2 * f16_size * f16_c0), 0, 1,
+                                                    in_l1.access_ptr('r', offset=i2 * f16_size * f16_c0), 0, 1,
                                                     f16_size, 0, 0))
 
                             offset_4 = l1_half * f16_c0
@@ -2726,7 +2726,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 ib.scope_attr(param.CCE_AXIS, "coproc_scope", 5)
                                 ib.emit(tvm.call_extern(
                                     "float16", "copy_gm_to_cbuf",
-                                    in_L1.access_ptr(
+                                    in_l1.access_ptr(
                                         'w',
                                         offset=i1 * f16_c0),
                                     inputs.access_ptr(
@@ -2747,7 +2747,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     ib.scope_attr(param.CCE_AXIS, "coproc_scope", 5)
                                     ib.emit(tvm.call_extern(
                                         "float16", "copy_gm_to_cbuf",
-                                        in_L1.access_ptr(
+                                        in_l1.access_ptr(
                                             'w',
                                             offset=i1 * burst_limit * f16_c0),
                                         inputs.access_ptr(
@@ -2763,7 +2763,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 ib.scope_attr(param.CCE_AXIS, "coproc_scope", 5)
                                 ib.emit(tvm.call_extern(
                                     "float16", "copy_gm_to_cbuf",
-                                    in_L1.access_ptr(
+                                    in_l1.access_ptr(
                                         'w',
                                         offset=loop_l1 * offset_4),
                                     inputs.access_ptr(
@@ -2783,7 +2783,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                 ib.emit(
                                     tvm.call_extern("float16", "copy_cbuf_to_ubuf", f16_out.access_ptr('w'),
-                                                    in_L1.access_ptr('r', offset=i2 * f16_size * f16_c0), 0, 1,
+                                                    in_l1.access_ptr('r', offset=i2 * f16_size * f16_c0), 0, 1,
                                                     f16_size, 0, 0))
                             offset_3 = l1_half * f16_c0
                             with ib.new_scope():
@@ -2805,7 +2805,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                             ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                             ib.emit(
                                 tvm.call_extern("float16", "copy_cbuf_to_ubuf", f16_out.access_ptr('w'),
-                                                in_L1.access_ptr('r', offset=loop_l1 * f16_size * f16_c0), 0, 1,
+                                                in_l1.access_ptr('r', offset=loop_l1 * f16_size * f16_c0), 0, 1,
                                                 tail_l1, 0, 0))
                         offset_4 = l1_half * f16_c0
                         with ib.new_scope():
@@ -2868,7 +2868,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
             burst_limit = (1 << 12) - 1
 
             f32_out = apply_store_buffer(ib, "float32", [f32_size * f32_c0], name="f32_out")
-            in_L1 = apply_store_buffer(ib, "float32", [l1_half * f16_c0], name="in_L1", scope=param.scope_cbuf)
+            in_l1 = apply_store_buffer(ib, "float32", [l1_half * f16_c0], name="in_l1", scope=param.scope_cbuf)
             f32_in = apply_store_buffer(ib, "float32", [HW_SIZE_1024 * f32_c0], name="f32_in")
             # Note:
             #   1. output data larger than HW_SIZE_512 * 8 should use L1 optimize
@@ -2899,7 +2899,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     ib.scope_attr(param.CCE_AXIS, "coproc_scope", 5)
                                     ib.emit(tvm.call_extern(
                                         "float32", "copy_gm_to_cbuf",
-                                        in_L1.access_ptr(
+                                        in_l1.access_ptr(
                                             'w',
                                             offset=i3 * f16_c0),
                                         inputs.access_ptr(
@@ -2918,7 +2918,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     ib.scope_attr(param.CCE_AXIS, "coproc_scope", 5)
                                     ib.emit(tvm.call_extern(
                                         "float32", "copy_gm_to_cbuf",
-                                        in_L1.access_ptr(
+                                        in_l1.access_ptr(
                                             'w',
                                             offset=i3 * burst_limit * f16_c0),
                                         inputs.access_ptr(
@@ -2933,7 +2933,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 ib.scope_attr(param.CCE_AXIS, "coproc_scope", 5)
                                 ib.emit(tvm.call_extern(
                                     "float32", "copy_gm_to_cbuf",
-                                    in_L1.access_ptr(
+                                    in_l1.access_ptr(
                                         'w',
                                         offset=loop_level2 * offset_4),
                                     inputs.access_ptr(
@@ -2949,7 +2949,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                 ib.emit(
                                     tvm.call_extern("float32", "copy_cbuf_to_ubuf", f32_in.access_ptr('w'),
-                                                    in_L1.access_ptr('r', offset=i2 * f32_size * f32_c0), 0, 1,
+                                                    in_l1.access_ptr('r', offset=i2 * f32_size * f32_c0), 0, 1,
                                                     f32_size, 0, 0))
                             offset_4 = f32_half * f16_c0
                             with ib.new_scope():
@@ -2977,7 +2977,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 ib.scope_attr(param.CCE_AXIS, "coproc_scope", 5)
                                 ib.emit(tvm.call_extern(
                                     "float32", "copy_gm_to_cbuf",
-                                    in_L1.access_ptr(
+                                    in_l1.access_ptr(
                                         'w',
                                         offset=i1 * f16_c0),
                                     inputs.access_ptr(
@@ -2998,7 +2998,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                     ib.scope_attr(param.CCE_AXIS, "coproc_scope", 5)
                                     ib.emit(tvm.call_extern(
                                         "float32", "copy_gm_to_cbuf",
-                                        in_L1.access_ptr(
+                                        in_l1.access_ptr(
                                             'w',
                                             offset=i1 * burst_limit * f16_c0),
                                         inputs.access_ptr(
@@ -3014,7 +3014,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 ib.scope_attr(param.CCE_AXIS, "coproc_scope", 5)
                                 ib.emit(tvm.call_extern(
                                     "float32", "copy_gm_to_cbuf",
-                                    in_L1.access_ptr(
+                                    in_l1.access_ptr(
                                         'w',
                                         offset=loop_l1 * offset_4),
                                     inputs.access_ptr(
@@ -3036,7 +3036,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                 ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                                 ib.emit(
                                     tvm.call_extern("float32", "copy_cbuf_to_ubuf", f32_out.access_ptr('w'),
-                                                    in_L1.access_ptr('r', offset=i2 * f32_size * f32_c0), 0, 1,
+                                                    in_l1.access_ptr('r', offset=i2 * f32_size * f32_c0), 0, 1,
                                                     f32_size, 0, 0))
                             offset_3 = f32_half * f16_c0
                             with ib.new_scope():
@@ -3056,7 +3056,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                             ib.scope_attr(param.CCE_AXIS, "coproc_scope", 4)
                             ib.emit(
                                 tvm.call_extern("float32", "copy_cbuf_to_ubuf", f32_out.access_ptr('w'),
-                                                in_L1.access_ptr('r', offset=loop_l1 * f32_size * f32_c0), 0, 1,
+                                                in_l1.access_ptr('r', offset=loop_l1 * f32_size * f32_c0), 0, 1,
                                                 tail_l1, 0, 0))
                         offset_4 = f32_half * f16_c0
                         with ib.new_scope():

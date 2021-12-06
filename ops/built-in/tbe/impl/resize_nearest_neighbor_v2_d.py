@@ -31,8 +31,12 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from impl.copy_only import copy_only
 
-# one block
-BLOCK_SIZE = 32
+
+class Constant:
+    """
+    The class for constant
+    """
+    BLOCK_SIZE = 32
 
 
 # pylint: disable=invalid-name,too-many-lines,too-many-arguments
@@ -102,8 +106,8 @@ class ResizeNearestNeighbor:
             self.dtype, input_shape, name="input_data", scope=tik.scope_gm)
         self.output_data = self.tik_instance.Tensor(
             self.dtype, output_shape, name="output_data", scope=tik.scope_gm)
-        self.half_ub_block = self.ub_size // BLOCK_SIZE // 2 - 16
-        self.half_l1_block = self.l1_size // BLOCK_SIZE // 2 - 16
+        self.half_ub_block = self.ub_size // Constant.BLOCK_SIZE // 2 - 16
+        self.half_l1_block = self.l1_size // Constant.BLOCK_SIZE // 2 - 16
         self.scale_h, self.scale_w = self.calculate_scale()
         self.one_six_ub_ele = (self.ub_size - 1024) // self.dtype_size // 6
 

@@ -22,12 +22,15 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 from impl.resize_nearest_neighbor_grad_d_h import resize_nearest_neighbor_grad_d_h
 
-# C0 size
-C0_SIZE = 16
-# W_SLICE
-W_SLICE = 256
-# w slice threshold
-SLICE_THRE = 160 * 1024 // (16 * 4)
+
+class Constant:
+    """
+    The class for constant
+    """
+    # W_SLICE
+    W_SLICE = 256
+    # w slice threshold
+    SLICE_THRE = 160 * 1024 // (16 * 4)
 
 
 # pylint: disable-msg=too-many-arguments,too-many-locals,too-many-statements
@@ -92,7 +95,7 @@ def calc_slice_size(scale_w):
     in_w: float
     out_w: float
     """
-    total_res = SLICE_THRE
+    total_res = Constant.SLICE_THRE
     in_w = int((total_res - 1 - scale_w) // (1 + scale_w))
     out_w = int((in_w + 1) * scale_w) + 2
     return in_w, out_w
@@ -105,24 +108,24 @@ def calc_line_slice_bigscale(tik_instance, grads, y, grads_h, loc_h,
     """
     in_w = grads.shape[3]
     grads_ub = tik_instance.Tensor(
-        "float32", [W_SLICE, 16], name="grads_ub", scope=tik.scope_ubuf)
+        "float32", [Constant.W_SLICE, 16], name="grads_ub", scope=tik.scope_ubuf)
     loc_reg = tik_instance.Scalar(dtype="int32")
 
     calc_c1_num = end_c1 - start_c1
-    repeat_times = (in_w + W_SLICE - 1) // W_SLICE
+    repeat_times = (in_w + Constant.W_SLICE - 1) // Constant.W_SLICE
     with tik_instance.for_range(0, calc_c1_num) as c1_index:
 
         with tik_instance.for_range(0, repeat_times) as w_index:
-            cp_len = calc_segment(tik_instance, in_w, w_index, W_SLICE)
+            cp_len = calc_segment(tik_instance, in_w, w_index, Constant.W_SLICE)
             # read one line grads
             tik_instance.tensor_mov(grads_ub,
                                     grads[n_index, start_c1 + c1_index,
                                           grads_h,
-                                          w_index * W_SLICE, 0],
+                                          w_index * Constant.W_SLICE, 0],
                                     '', 1, (cp_len * 16 * 4 + 31) // 32, 0, 0)
 
             with tik_instance.for_range(0, cp_len) as i:
-                loc_reg.set_as(loc_w[(w_index * W_SLICE) + i])
+                loc_reg.set_as(loc_w[(w_index * Constant.W_SLICE) + i])
 
                 # move data out
                 tik_instance.set_atomic_add(1)
@@ -491,7 +494,7 @@ def calc_one_image(tik_instance, grads, y, loc_h, loc_w,
         if scale_w > 10:
             calc_line_slice_bigscale(tik_instance, grads, y, i, loc_h_reg,
                                      loc_w, n_index, start_c1, end_c1)
-        elif (in_w + out_w) >= SLICE_THRE:
+        elif (in_w + out_w) >= Constant.SLICE_THRE:
             calc_line_slice(tik_instance, grads, y, i, loc_h_reg, loc_w,
                             n_index, start_c1, end_c1, scale_w)
         else:
