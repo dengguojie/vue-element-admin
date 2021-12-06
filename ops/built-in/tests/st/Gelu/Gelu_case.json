@@ -111,47 +111,6 @@
     "input_desc": [
       {
         "shape": [
-          16,
-          2,
-          32
-        ],
-        "format": "ND",
-        "ori_shape": [
-          16,
-          2,
-          32
-        ],
-        "ori_format": "ND",
-        "name": "input_x",
-        "type": "float"
-      }
-    ],
-    "output_desc": [
-      {
-        "shape": [
-          16,
-          2,
-          32
-        ],
-        "format": "ND",
-        "ori_shape": [
-          16,
-          2,
-          32
-        ],
-        "ori_format": "ND",
-        "name": "output_y",
-        "type": "float"
-      }
-    ],
-    "attr": [],
-    "case_name": "test_Gelu_003"
-  },
-  {
-    "op": "Gelu",
-    "input_desc": [
-      {
-        "shape": [
           -1,
           -1
         ],
