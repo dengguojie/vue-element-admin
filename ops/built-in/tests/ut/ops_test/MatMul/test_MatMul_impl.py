@@ -24,6 +24,7 @@ from impl.ascend_requant import ascend_requant_compute
 from te.platform.cce_conf import te_set_version
 from impl.mat_mul import op_select_format
 from test_mock_case import *
+
 ut_case = OpUT("MatMul", None, None)
 
 vals = {("CORE_NUM", ): 48,
@@ -35,7 +36,9 @@ vals = {("CORE_NUM", ): 48,
         ("L0C_SIZE", ): 131072,
         ("Intrinsic_fix_pipe_l0c2out",): True,
         ("Compiler_arch",): "dav-c220-cube",
-        ("AICORE_TYPE",): "AiCore"
+        ("AICORE_TYPE",): "AiCore",
+        ("Intrinsic_fix_pipe_unit_list",): True,
+        ("Intrinsic_fix_pipe_unit_list", "post_eltwise"): True
         }
 def side_effects(*args):
     return vals[args]
@@ -410,6 +413,9 @@ def test_mock_cases(test_args):
             test_matmul_NZ2NZ_int8()
             test_matmul_add()
             test_matmul_dequant_add()
+            test_matmul_fixpipe_0()
+            test_matmul_fixpipe_1()
+            test_matmul_fixpipe_2()
 
 ut_case.add_cust_test_func(test_func=test_mock_cases)
 

@@ -348,7 +348,7 @@ def schedule_cce(outs, option=None):  # 'pylint: disable=R0912, R0914, R0915
                                        "elewise_binary_logic|and",
                                        "gemm", "matmul_v2_gemv",
                                        "emit_insn_elewise_multiple_sel|bit",
-                                       "NZ_trans_ND"]):
+                                       "NZ_trans_ND", "fixpipe_reform"]):
             in_dtype = input_tensors[0].dtype
             if in_dtype in ("float32", "float16") and out.dtype == "int32":
                 continue

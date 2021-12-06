@@ -7,6 +7,7 @@ import numpy as np
 from op_test_frame.ut import OpUT
 from op_test_frame.common import precision_info
 from tbe.dsl.compute.dilation_compute import shape_align
+from impl.dilation import get_op_support_info
 
 ut_case = OpUT("dilation")
 
@@ -112,6 +113,14 @@ for case in runtime_error_case_list:
         "expect": RuntimeError
     }
     ut_case.add_case("all", case_info)
+
+def test_dilation_support_info(test_arg):
+    x = {"shape": (4, 1, 3, 3, 16), "ori_shape": (4, 16 , 3, 3), "dtype": "float16", "format": "NC1HWC0", "ori_format": "NHWC"}
+    y = {"shape": (4, 1, 5, 5, 16), "ori_shape": (4, 16 , 5, 5), "dtype": "float16", "format": "NC1HWC0", "ori_format": "NHWC"}
+    dilations = (1, 1, 2, 2, 1)
+    get_op_support_info(x, y, dilations)
+ut_case.add_cust_test_func(test_func=test_dilation_support_info)
+
 
 if __name__ == "__main__":
     ut_case.run()

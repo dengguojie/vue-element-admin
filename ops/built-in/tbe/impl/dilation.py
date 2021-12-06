@@ -21,6 +21,37 @@ from impl.util.platform_adapter import error_manager_util
 from impl.util.platform_adapter import error_manager_cube
 from impl.util.platform_adapter import tbe
 from impl.util.platform_adapter import tvm
+from impl.util import util_select_op_base
+
+
+# 2 means L1 enable
+L1FUSION_INPUT_CTR = 2
+
+
+def get_op_support_info(x, y, dilations, pads=None, padding_value=0.0, kernel_name="dilation"):
+    """
+    the split formation of dilation
+    :param x: dict, input
+    :param y: dict, output
+    :param dilations: list or tuple, dilate
+    :param pads: list or tuple or None, pads of input after dilate
+    :param padding_value: float, the pad value
+    :param kernel_name
+    """
+    n_axis = 0
+    head_overlap_n = -1
+    tail_overlap_n = head_overlap_n
+    axis_split_matrix = [
+        # cut N
+        [util_select_op_base.SplitInput([0, [n_axis], [head_overlap_n], [tail_overlap_n]]),
+         util_select_op_base.SplitOutput([0, [n_axis]])]
+    ]
+    axis_reduce_list = None
+    l1_mini_size = 0
+    op_cal_info_in_json = util_select_op_base.get_op_cal_info(
+        axis_split_matrix, axis_reduce_list, L1FUSION_INPUT_CTR, l1_mini_size)
+
+    return op_cal_info_in_json
 
 
 def _param_check(x, dilations):

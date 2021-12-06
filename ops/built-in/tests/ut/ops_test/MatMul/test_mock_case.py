@@ -8,6 +8,8 @@ from impl.trans_data import trans_data_compute
 from impl.ascend_dequant import ascend_dequant_compute
 from impl.ascend_requant import ascend_requant_compute
 from impl.add import add_compute
+from impl.fix_pipe import fixpipe_compute
+from impl.fix_pipe import fix_pipe
 
 
 def test_matmul_ND2ND_fp16():
@@ -116,7 +118,6 @@ def test_matmul_ND2ND_fp16_batch():
         out = trans_data_compute(dx_res, trans_out, "FRACTAL_NZ", "ND")
         sch = auto_schedule(out)
 
-
 def test_matmul_requant():
     with cce():
         input_x1 = tvm.placeholder((4, 2, 16, 32), name="x1", dtype="int8", attrs={"ori_shape": (32, 128), "format": "FRACTAL_NZ", "ori_format": "ND"})
@@ -183,3 +184,46 @@ def test_matmul_dequant_add():
         res = add_compute(deq_out, x3, None)
         tensor_list = [x1, x2, bias, deq_scale, res]
         sch = auto_schedule(res)
+
+def test_matmul_fixpipe_0():
+    import tbe
+    with tbe.common.context.op_context.OpContext("pre-static"):
+        with cce():
+            x1 = tvm.placeholder((4, 2, 16, 16), name="tensor_a", dtype="float16", attrs={"ori_shape": (32, 64), "format": "FRACTAL_NZ", "ori_format": "ND"})
+            x2 = tvm.placeholder((2, 4, 16, 16), name="tensor_b", dtype="float16", attrs={"ori_shape": (64, 32), "format": "FRACTAL_NZ", "ori_format": "ND"})
+            bias = tvm.placeholder((32,), name="tensor_bias", dtype="float32", attrs={"format": "ND", "ori_format": "ND", "ori_shape": (32,)})
+            output_y = {"shape": (2, 2, 16, 16), "dtype": "float16", "ori_shape": (32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
+            matmul_out = mat_mul_compute(x1, x2, bias, None, output_y, False, False, 0)
+            y = {"shape": (32, 32), "dtype": "float16", "ori_shape": (32, 32), "format": "ND", "ori_format": "ND"}
+            res = fixpipe_compute(matmul_out, None, None, None, None, None, None, None, None, None, y, [], [], "None")
+            tensor_list = [x1, x2, bias, res]
+            sch = auto_schedule(res)
+
+def test_matmul_fixpipe_1():
+    import tbe
+    with tbe.common.context.op_context.OpContext("pre-static"):
+        with cce():
+            x1 = tvm.placeholder((4, 2, 16, 16), name="tensor_a", dtype="float16", attrs={"ori_shape": (32, 64), "format": "FRACTAL_NZ", "ori_format": "ND"})
+            x2 = tvm.placeholder((2, 4, 16, 16), name="tensor_b", dtype="float16", attrs={"ori_shape": (64, 32), "format": "FRACTAL_NZ", "ori_format": "ND"})
+            bias = tvm.placeholder((32,), name="tensor_bias", dtype="float32", attrs={"format": "ND", "ori_format": "ND", "ori_shape": (32,)})
+            output_y = {"shape": (4, 2, 16, 8), "dtype": "float32", "ori_shape": (32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
+            matmul_out = mat_mul_compute(x1, x2, bias, None, output_y, False, False, 0)
+            y = {"shape": (4, 2, 16, 8), "dtype": "float32", "ori_shape": (32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
+            res = fixpipe_compute(matmul_out, None, None, None, None, None, None, None, None, None, y, [], [], "None")
+            tensor_list = [x1, x2, bias, res]
+            sch = auto_schedule(res)
+
+def test_matmul_fixpipe_2():
+    import tbe
+    with tbe.common.context.op_context.OpContext("pre-static"):
+        with cce():
+            x1 = tvm.placeholder((2, 2, 16, 32), name="tensor_a", dtype="int8", attrs={"ori_shape": (32, 64), "format": "FRACTAL_NZ", "ori_format": "ND"})
+            x2 = tvm.placeholder((1, 4, 16, 32), name="tensor_b", dtype="int8", attrs={"ori_shape": (64, 32), "format": "FRACTAL_NZ", "ori_format": "ND"})
+            bias = tvm.placeholder((32,), name="tensor_bias", dtype="int32", attrs={"format": "ND", "ori_format": "ND", "ori_shape": (32,)})
+            output_y = {"shape": (2, 2, 16, 16), "dtype": "int32", "ori_shape": (32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
+            matmul_out = mat_mul_compute(x1, x2, bias, None, output_y, False, False, 0)
+            deq = tvm.placeholder((1, 2, 1, 1, 16), name='deq', dtype="uint64", attrs={"ori_shape": (32, ), "format": "NC1HWC0", "ori_format": "ND"})
+            y = {"shape": (2, 2, 16, 16), "dtype": "float16", "ori_shape": (32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"}
+            res = fixpipe_compute(matmul_out, None, None, None, None, None, None, None, None, None, y, [], [], "None")
+            tensor_list = [x1, x2, bias, deq, res]
+            sch = auto_schedule(res)

@@ -18,9 +18,11 @@ fixpipe factory class
 from typing import List
 from tbe.tvm.tensor import Tensor
 from impl.fixpipe_op.fixpipe_conv2d import FixpipeConv2d
+from impl.fixpipe_op.fixpipe_matmul import FixpipeMatmul
 
 FIXPIPE_OP_SUPPORT_MAP = {
     "conv2d": FixpipeConv2d,
+    "matmul": FixpipeMatmul,
 }
 
 
@@ -39,11 +41,10 @@ class FixpipeFactory:
                     unit_list: List[str], eltwise_mode: str):
         if op_type not in FIXPIPE_OP_SUPPORT_MAP.keys():
             raise RuntimeError("[{}] not support fixpipe fusion".format(op_type))
-        
-        fixpipe = FIXPIPE_OP_SUPPORT_MAP.get(op_type)(op_type, x, x1,
-                                                      quant_scale_0, relu_weight_0, clip_value_0,
-                                                      quant_scale_1, relu_weight_1, clip_value_1,
-                                                      anti_quant_scale, anti_quant_offset, output,
-                                                      fusion_op_list, unit_list, eltwise_mode)
+        else:
+            fixpipe_cube = FIXPIPE_OP_SUPPORT_MAP[op_type]
+        fixpipe = fixpipe_cube(op_type, x, x1, quant_scale_0, relu_weight_0, clip_value_0,
+                               quant_scale_1, relu_weight_1, clip_value_1, anti_quant_scale,
+                               anti_quant_offset, output, fusion_op_list, unit_list, eltwise_mode)
 
         return fixpipe
