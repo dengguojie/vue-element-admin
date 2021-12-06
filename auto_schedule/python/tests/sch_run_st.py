@@ -83,4 +83,6 @@ if __name__ == "__main__":
     else:
         print("args error!!")
         exit(-1)
+    if soc_version == "Ascend910":
+        soc_version = "Ascend910A"
     run_st(case_dir, soc_version, out_dir)
