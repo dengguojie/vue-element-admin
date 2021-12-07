@@ -43,22 +43,22 @@ from tbe.tvm.expr import IntImm
 from tbe.tvm.expr import Var
 from tbe.tvm.tensor import Tensor
 
-from .constants import CompileInfo
-from .constants import Pattern
-from .constants import DTYPE_BYTE_MAPPING
-from .constants import ReducePattern
-from .constants import AtomicSupportMap910
-from .constants import AtomicSupportMap920A
-from .computation import Computation
-from .util import get_reduce_all_axes
-from .util import get_reduce_axes
-from .util import get_reduce_axis_indexes
-from .util import is_reduce_tensor
-from .util import shape_to_list
+from ...constants import CompileInfo
+from ...constants import Pattern
+from ...constants import DTYPE_BYTE_MAPPING
+from ...constants import ReducePattern
+from ...constants import AtomicSupportMap910
+from ...constants import AtomicSupportMap920A
+from ...computation import Computation
+from ...util import get_reduce_all_axes
+from ...util import get_reduce_axes
+from ...util import get_reduce_axis_indexes
+from ...util import is_reduce_tensor
+from ...util import shape_to_list
 from .vector_info import ComputeGraphInfo
 from .vector_tilingcase import TilingCaseBase
-from ...common.utils.errormgr import get_error_message
-from . import util
+from .....common.utils.errormgr import get_error_message
+from ... import util
 
 CONST = "const"
 ZERO = "zero"
@@ -72,7 +72,6 @@ UbOuter = "ub_outer"
 UbInner = "ub_inner"
 A = "A"
 R = "R"
-
 REDUCE_COMPUTE = {
     "reduce_min", "reduce_max", "reduce_sum",
     "reduce_prod", "tuple_reduce_sum",
@@ -115,11 +114,10 @@ class CalcReduceTilingCase(Computation):
         get tiling case of different situation
         """
         outs = list(self.outs) if isinstance(self.outs, (list, tuple)) else [self.outs]
-
         # to check reduce not support outputs with different shapes
         _current_support_check(outs)
-
         current_compute = get_context().get_current_compute()
+
         # construct information of graph
         compute_graph_info = ComputeGraphInfo(outs)
         single_reduce_info = SingleReduceInfo(compute_graph_info)
@@ -956,8 +954,6 @@ def _enable_db(reduce_info, tiling_case):
     if tiling_case.type == ReduceTilingCase.Type.ATOMIC_REDUCE:
         if len(reduce_info.shape_before_reduce) in [3, 5]:
             tiling_case.db = True
-
-
 def _current_support_check(outs):
 
     def _dfs_compute(tensor: tvm.tensor.Tensor):
@@ -976,4 +972,3 @@ def _current_support_check(outs):
         if not ret:
             _raise_error("Dynamic reduce schedule does "
                          "not support outputs before reduce tensor.")
-

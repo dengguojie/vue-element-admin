@@ -44,14 +44,14 @@ from tbe.common.platform import SD3403
 from tbe.common.platform import ASCEND_920A
 from tbe.common.platform import SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
-from .constants import DTYPE_BYTE_MAPPING
-from .constants import FAKE_NODE_TAG
-from .util import equals_one
-from .util import expr_equal
-from .util import get_reduce_all_axes
-from .util import get_reduce_axes
-from .util import is_placeholder
-from .util import shape_to_list
+from ...constants import DTYPE_BYTE_MAPPING
+from ...constants import FAKE_NODE_TAG
+from ...util import equals_one
+from ...util import expr_equal
+from ...util import get_reduce_all_axes
+from ...util import get_reduce_axes
+from ...util import is_placeholder
+from ...util import shape_to_list
 
 ASCEND_SHISI = "smallhisi"
 

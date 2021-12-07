@@ -17,3 +17,5 @@
 """
 reduce
 """
+from . import reduce_schedule
+from . import reduce_tilingcase

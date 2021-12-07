@@ -45,11 +45,11 @@ from tbe.tvm.schedule import Split
 from tbe.tvm.schedule import Stage
 from tbe.tvm.tensor import Tensor
 
-from .util import get_reduce_all_axes
-from .util import get_reduce_axis_indexes
-from .util import get_reduce_axes
-from .util import is_keepdims
-from .util import is_reduce_tensor
+from ...util import get_reduce_all_axes
+from ...util import get_reduce_axis_indexes
+from ...util import get_reduce_axes
+from ...util import is_keepdims
+from ...util import is_reduce_tensor
 from .vector_info import ComputeGraphInfo
 from .vector_schedule_base import VectorScheduleBase
 

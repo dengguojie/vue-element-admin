@@ -31,11 +31,11 @@ from tbe.common.utils.errormgr import get_error_message
 from tbe.dsl.base import operation
 from tbe.dsl.base.operation import var_inner
 
-from .constants import DTYPE_BYTE_MAPPING
-from .constants import INSN_MAPPING
-from .constants import ReduceCategory
-from .util import get_dsl_insn
-from .util import is_reduce_tensor
+from ...constants import DTYPE_BYTE_MAPPING
+from ...constants import INSN_MAPPING
+from ...constants import ReduceCategory
+from ...util import get_dsl_insn
+from ...util import is_reduce_tensor
 
 from .reduce_tilingcase import Dim
 from .reduce_tilingcase import R

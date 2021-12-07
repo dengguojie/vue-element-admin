@@ -18,8 +18,6 @@
 unify schedule
 """
 from . import vector
-from . import reduce_schedule
-from . import reduce_tilingcase
 from . import softmax_schedule
 from . import softmax_tilingcase
 from . import softmax_cross_entropy_with_logits_schedule

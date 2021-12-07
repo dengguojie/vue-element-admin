@@ -32,25 +32,25 @@ from tbe.common.platform import ASCEND_920A
 from tbe.common.platform import SOC_VERSION
 from tbe.common.platform.platform_info import get_soc_spec
 
-from .constants import DTYPE_BYTE_MAPPING
-from .constants import INSN_MAPPING
-from .constants import ReducePattern
-from .constants import Pattern
-from .constants import ReduceCategory
+from ...constants import DTYPE_BYTE_MAPPING
+from ...constants import INSN_MAPPING
+from ...constants import ReducePattern
+from ...constants import Pattern
+from ...constants import ReduceCategory
 from .reduce_atomic_schedule import ReduceAtomicSchedule
 from .reduce_tilingcase import Dim
 from .reduce_tilingcase import R
 from .reduce_tilingcase import A
 from .reduce_tilingcase import ReduceTilingCase
 from .reduce_tilingcase import SingleReduceInfo
-from .util import get_dsl_insn
-from .util import get_reduce_axis_indexes
-from .util import is_keepdims
-from .util import is_reduce_tensor
+from ...util import get_dsl_insn
+from ...util import get_reduce_axis_indexes
+from ...util import is_keepdims
+from ...util import is_reduce_tensor
 from .vector_info import ComputeGraphInfo
 from .vector_schedule import VectorSchedule
 from .empty_schedule import EmptySchedule
-from .schedule import Schedule
+from ...schedule import Schedule
 
 CONST = "const"
 DEFAULT = "default"

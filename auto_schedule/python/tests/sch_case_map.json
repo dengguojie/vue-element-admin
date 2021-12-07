@@ -242,7 +242,7 @@
         "vsel/test_vsel_impl.py",
         "vcmpsel/test_vcmpsel_impl.py"
     ],
-    "auto_schedule/python/tbe/dsl/unify_schedule/reduce_tilingcase.py":[
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/reduce_tilingcase.py":[
         "reduce_sum"
     ],
     "auto_schedule/python/tbe/dsl/unify_schedule/vector_info.py":[
@@ -261,13 +261,13 @@
         "reduce_sum",
         "reduce_classify"
     ],
-    "auto_schedule/python/tbe/dsl/unify_schedule/reduce_atomic_schedule.py":[
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/reduce_atomic_schedule.py":[
         "reduce_sum",
         "reduce_max",
         "reduce_min",
         "reduce_prod"
     ],
-    "auto_schedule/python/tbe/dsl/unify_schedule/reduce_schedule.py":[
+    "auto_schedule/python/tbe/dsl/unify_schedule/vector/reduce_schedule.py":[
         "reduce_sum",
         "reduce_max",
         "reduce_min",
