@@ -80,7 +80,7 @@ LOCAL_MODULE := libcpu_kernels
 LOCAL_SRC_FILES := $(local_normalized_kernels) \
                    $(local_host_kernels)
 LOCAL_C_INCLUDES := $(local_kernels_inc_path)
-LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -ftrapv
+LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -ftrapv -DEIGEN_MPL2_ONLY
 LOCAL_CFLAGS += -fvisibility-inlines-hidden
 LOCAL_CFLAGS += -fvisibility=hidden
 LOCAL_LDFLAGS += -Wl,-z,relro,-z,now -s -ldl -shared
@@ -96,6 +96,6 @@ LOCAL_MODULE := libcpu_kernels
 LOCAL_SRC_FILES := $(local_normalized_kernels) \
                    $(local_host_kernels)
 LOCAL_C_INCLUDES := $(local_kernels_inc_path)
-LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -ftrapv -DVISIBILITY -std=c++11
+LOCAL_CFLAGS += -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -ftrapv -DVISIBILITY -std=c++11 -DEIGEN_MPL2_ONLY
 
 include $(BUILD_HOST_STATIC_LIBRARY)

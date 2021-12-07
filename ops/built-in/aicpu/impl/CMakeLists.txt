@@ -87,6 +87,7 @@ set(local_kernels_src_files
     kernels/normalized/top_k_v2_d.cc
     kernels/normalized/zeroslike.cc
     kernels/normalized/zeta.cc
+    kernels/normalized/tile_with_axis.cc
     utils/allocator_utils.cc
     utils/bcast.cc
     utils/broadcast_iterator.cc
@@ -230,6 +231,7 @@ if(BUILD_OPEN_PROJECT)
         -std=c++11
         -ftrapv
         -fstack-protector-all
+        -DEIGEN_MPL2_ONLY
     )
 
     add_dependencies(cpu_kernels_static eigen_headers c_sec)
@@ -350,6 +352,7 @@ target_compile_options(cpu_kernels_static PRIVATE
     -std=c++11
     -ftrapv
     -fstack-protector-all
+    -DEIGEN_MPL2_ONLY
 )
 
 target_compile_definitions(cpu_kernels_host PRIVATE
@@ -369,6 +372,7 @@ target_compile_options(cpu_kernels_host PRIVATE
     -fvisibility-inlines-hidden
     -fvisibility=hidden
     -fstack-protector-all
+    -DEIGEN_MPL2_ONLY
 )
 
 if("x${PRODUCT}" STREQUAL "xascend310" OR "x${PRODUCT}" STREQUAL "xascend910" OR "x${PRODUCT}" STREQUAL "xascend710" OR "x${PRODUCT}" STREQUAL "xascend310rc")

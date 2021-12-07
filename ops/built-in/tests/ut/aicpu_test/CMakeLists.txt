@@ -161,6 +161,7 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/normalized/top_k_pq_distance.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/zeroslike.cc
   ${CPU_KERNELS_DIR}/kernels/normalized/zeta.cc
+  ${CPU_KERNELS_DIR}/kernels/normalized/tile_with_axis.cc
   ${CPU_KERNELS_DIR}/utils/allocator_utils.cc
   ${CPU_KERNELS_DIR}/utils/bcast.cc
   ${CPU_KERNELS_DIR}/utils/broadcast_iterator.cc
@@ -245,6 +246,7 @@ set(_cpu_kernels_ut_files
   testcase/cast/src/cast_utest.cpp
   testcase/ceil/src/ceil_utest.cpp
   testcase/check_numerics/src/check_numerics_utest.cpp
+  testcase/tile_with_axis/src/tile_with_axis_utest.cpp
   testcase/common/src/async_cpu_kernel_utest.cpp
   testcase/common/src/async_event_util_utest.cpp
   testcase/common/src/attr_value_utest.cpp
