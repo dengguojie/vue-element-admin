@@ -29,6 +29,8 @@ class CumsumCpuKernel : public CpuKernel {
 
  private:
   uint32_t CumsumCheck(CpuKernelContext& ctx);
+  
+  void CumsumGetAttr(CpuKernelContext &ctx, bool &exclusive, bool &reverse);
 
   template <typename T>
   uint32_t CumsumCompute(CpuKernelContext& ctx);

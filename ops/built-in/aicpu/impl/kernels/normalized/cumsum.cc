@@ -82,10 +82,7 @@ uint32_t CumsumCpuKernel::CumsumCheck(CpuKernelContext &ctx) {
                        "Get input tensor shape failed.")
   KERNEL_CHECK_NULLPTR(ctx.Output(kFirstInputIndex)->GetData(),
                        KERNEL_STATUS_PARAM_INVALID, "get output failed.");
-  KERNEL_CHECK_NULLPTR(ctx.GetAttr("exclusive"), KERNEL_STATUS_PARAM_INVALID,
-                       "get exclusive failed.");
-  KERNEL_CHECK_NULLPTR(ctx.GetAttr("reverse"), KERNEL_STATUS_PARAM_INVALID,
-                       "get reverse failed.");
+
   if (ctx.Input(1)->GetData() != nullptr) {
     KERNEL_CHECK_FALSE(
         (ctx.Input(1)->GetDataType() == DT_INT32 ||
@@ -116,16 +113,34 @@ uint32_t CumsumCpuKernel::CumsumCheck(CpuKernelContext &ctx) {
       "The output shape size should be same as the output shape size")
   return KERNEL_STATUS_OK;
 }
+
+void CumsumCpuKernel::CumsumGetAttr(CpuKernelContext &ctx, bool &exclusive, bool &reverse) {
+  exclusive = false;
+  AttrValue *exclusive_attr = ctx.GetAttr("exclusive");
+  if(exclusive_attr != nullptr) {
+    exclusive = exclusive_attr->GetBool();
+  }
+
+  reverse = false;
+  AttrValue *reverse_attr = ctx.GetAttr("reverse");
+  if(reverse_attr != nullptr) {
+    reverse = reverse_attr->GetBool();
+  }
+}
+
 template <typename T>
 uint32_t CumsumCpuKernel::CumsumCompute(CpuKernelContext &ctx) {
   auto input_data = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto axis_data = reinterpret_cast<int32_t *>(ctx.Input(1)->GetData());
+  bool exclusive;
+  bool reverse;
   int32_t axis = 0;
   if (axis_data != nullptr) {
     axis = *axis_data;
   }
-  bool exclusive = ctx.GetAttr("exclusive")->GetBool();
-  bool reverse = ctx.GetAttr("reverse")->GetBool();
+
+  CumsumGetAttr(ctx, exclusive, reverse);
+
   auto output_data = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   auto shape = ctx.Input(kFirstInputIndex)->GetTensorShape();
   const int64_t rank = shape->GetDims();
@@ -236,12 +251,15 @@ template <typename T, typename T2>
 uint32_t CumsumCpuKernel::CumsumCompute2(CpuKernelContext &ctx) {
   auto input_data = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto axis_data = reinterpret_cast<int32_t *>(ctx.Input(1)->GetData());
+  bool exclusive;
+  bool reverse;
   int32_t axis = 0;
   if (axis_data != nullptr) {
     axis = *axis_data;
   }
-  bool exclusive = ctx.GetAttr("exclusive")->GetBool();
-  bool reverse = ctx.GetAttr("reverse")->GetBool();
+
+  CumsumGetAttr(ctx, exclusive, reverse);
+
   auto output_data = reinterpret_cast<T *>(ctx.Output(0)->GetData());
   auto shape = ctx.Input(0)->GetTensorShape();
   const int64_t rank = shape->GetDims();
