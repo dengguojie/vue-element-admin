@@ -297,6 +297,17 @@ def test_update_pattern(_):
              'mode': 'special', 'pattern': ['UNKNOWN', 'UNKNOWN', 'UNKNOWN']}]]
         return ins == except_ins
 
+def test_mul_input_static(_):
+    with op_context.OpContext("static"):
+        inputs = [{"shape": (7, 1), "dtype": "float16", "range": [(7, 7), (1, 1)]},
+                  {"shape": (7, 2), "dtype": "float16", "range": [(7, 7), (2, 2)]},
+                  {"shape": (7, 2), "dtype": "float16", "range": [(7, 7), (2, 2)]}]
+        ins = classify_elewise(inputs, support_broadcast=True)
+        except_ins = [[{'shape': [7, 1], 'range': [(7, 7), (1, 1)], 'const_shape':[7, 1], 'mode': 'const','support_broadcast': True},
+                       {'shape': [7, 2], 'range': [(7, 7), (2, 2)], 'const_shape':[7, 2], 'mode': 'const','support_broadcast': True},
+                       {'shape': [7, 2], 'range': [(7, 7), (2, 2)], 'const_shape':[7, 2], 'mode': 'const','support_broadcast': True}]]
+        return ins == except_ins
+
 
 test_func_list = [
     test_max_inputs,
@@ -310,6 +321,7 @@ test_func_list = [
     test_empty_shape,
     test_mix_empty_shape,
     test_update_pattern,
+    test_mul_input_static
 ]
 for item in test_func_list:
     ut_case.add_cust_test_func(test_func=item)

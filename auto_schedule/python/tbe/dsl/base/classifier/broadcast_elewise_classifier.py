@@ -39,6 +39,7 @@ SPECIAL_SCALAR = "special_scalar"
 CONST = "const"
 ORIGINAL = "original"
 EMPTY = "empty"
+STATIC_CONTEXT = "static"
 VAR_BOUND_LIMIT = 2147483647
 MAX_BROADCAST_INPUT = 70
 UNKNOWN_RANK = -2
@@ -207,6 +208,9 @@ class BroadcastElewiseClassifier:
         fixed_shape_range()
 
     def _is_const(self):
+        if operation.get_context().get_mode() == STATIC_CONTEXT:
+            return True
+
         if len(self.completed_shapes) > 2:
             return False
         for i in range(self.dim_length):
@@ -267,7 +271,7 @@ class BroadcastElewiseClassifier:
             const_range = gen_const_range(shapes)
             fused_shape, _, _ = _simplify_shape(shapes, const_range, self.disable_optimization)
             fused_shape = list(map(list, zip(*fused_shape)))
-            ret.append([ConstMode.gen_in(fused_shape[0], shapes[0]), ConstMode.gen_in(fused_shape[1], shapes[1])])
+            ret.append([ConstMode.gen_in(fused_shape[i], shapes[i]) for i in range(len(fused_shape))])
 
         return ret
 
