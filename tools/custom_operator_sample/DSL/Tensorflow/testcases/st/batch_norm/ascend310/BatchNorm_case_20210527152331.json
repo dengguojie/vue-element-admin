@@ -183,6 +183,19 @@
                     64
                 ],
                 "name": "reserve_space_2"
+            },
+            {
+                "format": [
+                    "NCHW"
+                ],
+                "type": [
+                    "float",
+                    "float"
+                ],
+                "shape": [
+                    64
+                ],
+                "name": "reserve_space_3"
             }
         ],
         "attr": [
