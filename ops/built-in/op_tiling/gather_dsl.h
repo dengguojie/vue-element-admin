@@ -23,14 +23,12 @@
 
 #include <vector>
 #include <string>
-
 #include <nlohmann/json.hpp>
-#include "op_tiling.h"
-#include "external/graph/operator.h"
+
 #include "vector_tiling.h"
+#include "external/graph/operator.h"
 
 namespace optiling {
-
   struct GatherDslCompileInfo {
     // construct func
     GatherDslCompileInfo() = default;
@@ -63,35 +61,8 @@ namespace optiling {
     int32_t const_axis{0};
   };
 
-
   class GatherDsl {
     public:
-      static const int64_t BLOCK_SIZE = 32;
-      static const int64_t DOUBLE_BUFFER_SIZE = 2;
-      static const int64_t GATHER_ND_COMPUTE = 1;
-      static const int64_t GATHER_V2_COMPUTE = 2;
-      static const int64_t INDICES_COEXS = 1;
-      static const int64_t TENSOR_SWELLS_NUM = 4;
-      static const int64_t GATHER_V2_INPUTS_NUM = 3;
-
-      // IDX
-      static const  size_t PARAMS_BATCH_DIM_IDX = 0;
-      static const  size_t PARAMS_LOOP_IDX = 1;
-      static const  size_t PARAMS_AXIS_IDX = 2;
-      static const  size_t PARAMS_ROWS_IDX = 3;
-      static const  size_t INDICES_BATCH_DIM_IDX = 0;
-      static const  size_t INDICES_LOOP_IDX = 1;
-      static const  size_t INDICES_RANK_IDX = 2;
-      static const  size_t OUTPUT_BATCH_DIM_IDX = 0;
-      static const  size_t OUTPUT_PARAMS_PRE_LOOP_IDX = 1;
-      static const  size_t OUTPUT_INDICES_LOOP_IDX = 2;
-      static const  size_t OUTPUT_PARAMS_ROW_IDX = 3;
-
-      // TENSOR_SIZE
-      static const size_t TENSOR_SIZES_NUM = 2;
-      static const size_t TENSOR_SIZES_PARAMS_IDX = 0;
-      static const size_t TENSOR_SIZES_INDICES_IDX = 1;
-
       explicit GatherDsl(const std::string& _op_type, const ge::Operator& _op_paras,
                                  const GatherDslCompileInfo& _gather_compile_info, utils::OpRunInfo& _run_info) :
               op_type(_op_type), op_paras(_op_paras), gather_compile_info(_gather_compile_info), run_info(_run_info){

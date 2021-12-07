@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@
 #include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
-
 namespace {
   bool IsElementInVector(const std::vector<int32_t>& shape, const int32_t& value) {
     for (const auto& single_dim : shape) {
@@ -72,10 +71,16 @@ namespace {
   }
 
   int64_t CeilDiv(const int64_t& dividend, const int64_t& divisor) {
+    V_OP_TILING_CHECK((divisor != 0),
+                      VECTOR_INNER_ERR_REPORT_TILIING("Norm", "In CeilDiv func, divisor cannot be zero."),
+                      return divisor);
     return (dividend + divisor - 1) / divisor;
   }
 
   int64_t CalcRemainder(const int64_t& dividend, const int64_t& divisor) {
+    V_OP_TILING_CHECK((divisor != 0),
+                      VECTOR_INNER_ERR_REPORT_TILIING("Norm", "In CalcRemainder func, divisor cannot be zero."),
+                      return divisor);
     return dividend % divisor == 0 ? divisor : dividend % divisor;
   }
 }
@@ -208,7 +213,7 @@ bool Norm::Init() {
 
   // init disable fuse axes
   std::size_t ori_disable_fuse_axes_len = compileInfo.ori_disable_fuse_axes.size();
-  for(std::size_t i = 0; i < ori_disable_fuse_axes_len; ++i) {
+  for (std::size_t i = 0; i < ori_disable_fuse_axes_len; ++i) {
     int32_t single_disable_fuse_axes = compileInfo.ori_disable_fuse_axes[i];
     // convert axis index from negative to positive
     if (single_disable_fuse_axes < 0) {
@@ -286,7 +291,8 @@ NormBroadcastMode Norm::JudgeBroadcastMode(const std::array<int64_t, NORM_MAX_DI
 }
 
 int32_t Norm::CalcMinEliminateOneIndex() {
-  for (int32_t i = (int32_t)max_dim_len - 2; i >= 0; i--) {
+  constexpr int32_t loop_location = 2;
+  for (int32_t i = (int32_t)max_dim_len - loop_location; i >= 0; i--) {
     if (IsElementInVector(reduce_axis_ori, i) != IsElementInVector(reduce_axis_ori, i + 1)) {
       return i + 1;
     }
@@ -310,8 +316,8 @@ bool Norm::EliminateOne() {
   // disable fuse axes
   bool is_disable_fuse_axes = !disable_fuse_axes_ori.empty();
 
-  bool is_cannot_eliminate_one = is_no_fuse_axis || is_no_after_broadcast_axis || is_unify_broadcast_axis_unknown
-                                                                               || is_disable_fuse_axes;
+  bool is_cannot_eliminate_one = is_no_fuse_axis || is_no_after_broadcast_axis ||
+                                 is_unify_broadcast_axis_unknown || is_disable_fuse_axes;
   if (is_cannot_eliminate_one) {
     return true;
   }
@@ -407,21 +413,23 @@ bool Norm::FusedAxis() {
       input_shape[capacity_shape] = std::accumulate(input_shape_ori.begin() + first, input_shape_ori.begin() + second,
                                                     1, std::multiplies<int64_t>());
 
-      bool is_reduce_axis = (second <= length - 1 && flags[first] == reduce_flag)
-                            || (second == length && flags[second - 1] == reduce_flag);
-      bool is_pad_reduce_axis = (second <= length - 1 && flags[first] % modulo == reduce_flag)
-                                || (second == length && flags[second - 1] % modulo == reduce_flag);
-      bool is_broadcast_axis = (second <= length - 1 && flags[first] == broadcast_flag)
-                               || (second == length && flags[second - 1] == broadcast_flag);
-      bool is_pad_broadcast_axis = (second <= length - 1 && flags[first] % modulo == broadcast_flag)
-                                   || (second == length && flags[second - 1] % modulo == broadcast_flag);
-      bool is_reduce_broadcast_axis = (second <= length - 1 && flags[first] == reduce_broadcast_flag)
-                                      || (second == length && flags[second - 1] == reduce_broadcast_flag);
-      bool is_pad_reduce_broadcast_axis = (second <= length - 1 && flags[first] % modulo == reduce_broadcast_flag)
-                                          || (second == length && flags[second - 1] % modulo == reduce_broadcast_flag);
-      
-      bool reduce_include = is_reduce_axis || is_reduce_broadcast_axis || is_pad_reduce_axis || is_pad_reduce_broadcast_axis;
-      bool broadcast_include = is_broadcast_axis || is_reduce_broadcast_axis || is_pad_broadcast_axis || is_pad_reduce_broadcast_axis;
+      bool is_reduce_axis = (second <= length - 1 && flags[first] == reduce_flag) ||
+                            (second == length && flags[second - 1] == reduce_flag);
+      bool is_pad_reduce_axis = (second <= length - 1 && flags[first] % modulo == reduce_flag) ||
+                                (second == length && flags[second - 1] % modulo == reduce_flag);
+      bool is_broadcast_axis = (second <= length - 1 && flags[first] == broadcast_flag) ||
+                               (second == length && flags[second - 1] == broadcast_flag);
+      bool is_pad_broadcast_axis = (second <= length - 1 && flags[first] % modulo == broadcast_flag) ||
+                                   (second == length && flags[second - 1] % modulo == broadcast_flag);
+      bool is_reduce_broadcast_axis = (second <= length - 1 && flags[first] == reduce_broadcast_flag) ||
+                                      (second == length && flags[second - 1] == reduce_broadcast_flag);
+      bool is_pad_reduce_broadcast_axis = (second <= length - 1 && flags[first] % modulo == reduce_broadcast_flag) ||
+                                          (second == length && flags[second - 1] % modulo == reduce_broadcast_flag);
+
+      bool reduce_include = is_reduce_axis || is_reduce_broadcast_axis ||
+                            is_pad_reduce_axis || is_pad_reduce_broadcast_axis;
+      bool broadcast_include = is_broadcast_axis || is_reduce_broadcast_axis ||
+                               is_pad_broadcast_axis || is_pad_reduce_broadcast_axis;
       if (reduce_include) {
         reduce_axis[capacity_reduce_axis] = capacity_shape;
         capacity_reduce_axis++;
@@ -526,7 +534,8 @@ bool Norm::IsNeedPartialReorder() {
       discontinuous_axis_num++;
     }
   }
-  is_discontinuous_reduce_axis = discontinuous_axis_num >= 2;
+  constexpr std::size_t min_discontinuous_axis_num = 2;
+  is_discontinuous_reduce_axis = discontinuous_axis_num >= min_discontinuous_axis_num;
 
   return is_discontinuous_reduce_axis && input_shape.back() < block_size;
 }
@@ -657,7 +666,6 @@ bool Norm::GetPartialReorderBlockTilingInfo() {
 
 bool Norm::JudgeCurDimSplitBlock(const int64_t& right_product, const std::size_t& index) {
   int64_t cur_block_factor = CeilDiv(block_size, right_product / input_shape[index]);
-
   if (cur_block_factor >= input_shape[index]) {
     tilingInfo.block_tiling_axis = index;
     tilingInfo.block_tiling_factor = input_shape[index];
@@ -1011,7 +1019,6 @@ bool Norm::JudgeNormalCurDimSplitUb(const std::size_t& index) {
   // right_align_product: ub can put in A axis after block_inner
   int64_t right_product = CalcReorderShapeProduct(index, compileInfo.exist_output_after_reduce);
   int64_t right_product_align = CalcReorderAlignShapeProduct(index);
-
   if (right_product_align > ub_size) {
     return false;
   }
@@ -1090,7 +1097,6 @@ bool Norm::JudgeWorkspaceCurDimSplitUb(const std::size_t& index) {
   // after reduce output compute at block_outer, so only consider mte3 of before reduce output
   int64_t right_product = CalcReorderShapeProduct(index, false);
   int64_t right_product_align = CalcReorderAlignShapeProduct(index);
-
   if (right_product_align > ub_size) {
     return false;
   }
@@ -1512,7 +1518,7 @@ NormCompileInfo::NormCompileInfo(const std::string& op_type, const nlohmann::jso
     ori_broadcast_axis = parsed_json_obj.at("_ori_broadcast_axis").get<std::vector<int32_t>>();
     is_broadcast_axis_known = true;
   }
-  if (parsed_json_obj.contains("_disable_fuse_axes")){
+  if (parsed_json_obj.contains("_disable_fuse_axes")) {
     ori_disable_fuse_axes = parsed_json_obj.at("_disable_fuse_axes").get<std::vector<int32_t>>();
   }
   // graph info
@@ -1579,5 +1585,4 @@ std::shared_ptr<AutoTilingHandler> CreateNormTilingHandler(const std::string& op
 
   return compile_info_ptr;
 }
-
 }  // namespace optiling

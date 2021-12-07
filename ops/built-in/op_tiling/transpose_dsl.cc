@@ -32,25 +32,27 @@
 
 namespace optiling {
 namespace transpose {
-static constexpr std::int64_t ELEMENT_IN_BLOCK_DEFAULT = 16;
-static constexpr std::int64_t ELEMENT_IN_BLOCK_B32 = 8;
-static constexpr std::int64_t ELEMENT_IN_BLOCK_B8 = 32;
-static constexpr std::int64_t ELEMENT_IN_BLOCK_B64 = 4;
-static constexpr std::int64_t NO_MULTI_BLOCK_BASE_KEY = 0;
-static constexpr std::int64_t ONE_DIMS_N_LAST_NO_CONV_BASE_KEY = 20000;
-static constexpr std::int64_t ONE_DIMS_N_LAST_ALIGN_BASE_KEY = 10000;
-static constexpr std::int64_t PURE_COPY_BASE_KEY = 3000000;
-static constexpr std::int64_t N_LAST_NO_CONV_BASE_KEY = 2020000;
-static constexpr std::int64_t N_LAST_ALIGN_BASE_KEY = 2030000;
-static constexpr std::int64_t GENERAL_BASE_KEY = 2000000;
-static constexpr std::int64_t BLOCK_AXIS_FACTOR = 100;
-static constexpr std::int64_t LOW_SPLIT_AXIS_FACTOR = 10;
-static constexpr std::int64_t B8_COEXISTING_QUANTITY_FACTOR = 32;
-static constexpr std::int64_t GT_B8_COEXISTING_QUANTITY_FACTOR = 16;
-static constexpr std::int64_t BLOCK_SIZE_BYTE = 32;
-static constexpr int64_t ALIGN_THRESHOLD = 512;
-static constexpr std::int64_t ONE_K_BYTES = 1024;
-static constexpr std::int64_t MULTI_CORE_EXPERIENCE = 64;
+namespace {
+constexpr std::int64_t ELEMENT_IN_BLOCK_DEFAULT = 16;
+constexpr std::int64_t ELEMENT_IN_BLOCK_B32 = 8;
+constexpr std::int64_t ELEMENT_IN_BLOCK_B8 = 32;
+constexpr std::int64_t ELEMENT_IN_BLOCK_B64 = 4;
+constexpr std::int64_t NO_MULTI_BLOCK_BASE_KEY = 0;
+constexpr std::int64_t ONE_DIMS_N_LAST_NO_CONV_BASE_KEY = 20000;
+constexpr std::int64_t ONE_DIMS_N_LAST_ALIGN_BASE_KEY = 10000;
+constexpr std::int64_t PURE_COPY_BASE_KEY = 3000000;
+constexpr std::int64_t N_LAST_NO_CONV_BASE_KEY = 2020000;
+constexpr std::int64_t N_LAST_ALIGN_BASE_KEY = 2030000;
+constexpr std::int64_t GENERAL_BASE_KEY = 2000000;
+constexpr std::int64_t BLOCK_AXIS_FACTOR = 100;
+constexpr std::int64_t LOW_SPLIT_AXIS_FACTOR = 10;
+constexpr std::int64_t B8_COEXISTING_QUANTITY_FACTOR = 32;
+constexpr std::int64_t GT_B8_COEXISTING_QUANTITY_FACTOR = 16;
+constexpr std::int64_t BLOCK_SIZE_BYTE = 32;
+constexpr int64_t ALIGN_THRESHOLD = 512;
+constexpr std::int64_t ONE_K_BYTES = 1024;
+constexpr std::int64_t MULTI_CORE_EXPERIENCE = 64;
+}
 
 static OpInfo dummy_op_info(std::vector<std::vector<int64_t>>(), ge::DT_FLOAT16, std::vector<std::vector<int32_t>>());
 
@@ -185,7 +187,8 @@ bool Transpose::CalcTiling() {
   int64_t last_index = c_info.permute.size() - 1;
   is_last_transpose = c_info.permute[last_index] != last_index;
   int64_t coexisting_quantity = 2;
-  int64_t factor = GetElementByType(dtype) == B8_COEXISTING_QUANTITY_FACTOR ? B8_COEXISTING_QUANTITY_FACTOR : GT_B8_COEXISTING_QUANTITY_FACTOR;
+  int64_t factor = (GetElementByType(dtype) ==
+                    B8_COEXISTING_QUANTITY_FACTOR ? B8_COEXISTING_QUANTITY_FACTOR : GT_B8_COEXISTING_QUANTITY_FACTOR);
   int64_t cross_coexisting_quantity = (factor * 2) + coexisting_quantity;
   int64_t ele_in_block = GetElementByType(dtype);
   int64_t bytes = BLOCK_SIZE_BYTE / ele_in_block;

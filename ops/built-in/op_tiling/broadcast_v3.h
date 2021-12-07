@@ -33,8 +33,8 @@
 
 namespace optiling {
 namespace v3 {
-static constexpr size_t B_MAX_DIM_LEN = 16;
-static constexpr size_t B_MAX_INPUT_NUMS = 70;
+constexpr size_t B_MAX_DIM_LEN = 16;
+constexpr size_t B_MAX_INPUT_NUMS = 70;
 
 struct BroadcastCompileInfo {
   ElewiseCompileInfo pure_elewise_compile_info;

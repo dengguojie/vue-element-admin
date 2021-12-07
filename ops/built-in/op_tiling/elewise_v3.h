@@ -32,7 +32,7 @@ namespace v3 {
 struct ElewiseCompileInfo {
   ElewiseCompileInfo() = default;
   ElewiseCompileInfo(const std::string& op_type, const nlohmann::json& outer_compile_info);
-  void SetBroadcastPattern(bool);
+  void SetBroadcastPattern(const bool& is_broadcast_pattern);
 
   // required outs_uint1
   bool has_outs_uint1{true};
@@ -76,7 +76,7 @@ class Elewise {
   bool DoTiling(const OpInfo& op_info);
 
  private:
-  const int64_t GetElementByType(ge::DataType);
+  const int64_t GetElementByType(const ge::DataType dtype);
   bool CheckCompileInfo();
   bool CheckInOutNum();
   bool CheckInOutNum(const OpInfo& op_info);
@@ -126,7 +126,7 @@ class ElewiseTilingHandler: public AutoTilingHandler {
 };
 
 std::shared_ptr<AutoTilingHandler> CreateElewiseTilingHandler(const std::string& op_type,
-                                                                  const std::string& pattern,
-                                                                  const nlohmann::json& parsed_compile_info);
+                                                              const std::string& pattern,
+                                                              const nlohmann::json& parsed_compile_info);
 }  // namespace optiling
 #endif  // OPS_BUILT_IN_OP_TILING_ELEWISE_V3_H_

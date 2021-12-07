@@ -30,9 +30,9 @@
 
 namespace optiling {
 namespace concat {
-static constexpr size_t MAX_DIM_LEN = 8;
-static constexpr int64_t BLOCK_SIZE = 32;
-static constexpr int64_t MAX_INPUT_NUM = 48;
+constexpr size_t MAX_DIM_LEN = 8;
+constexpr int64_t BLOCK_SIZE = 32;
+constexpr int64_t MAX_INPUT_NUM = 48;
 
 struct CompileInfo {
   int64_t core_num{0};
@@ -67,11 +67,11 @@ class Concat {
   void DoBlockTiling();
   void DoUbTiling();
   void DoAllAlignUbTiling();
-  void DoNoAlignUbTiling(int64_t factor_n);
-  void DoGeneralUbTiling(int64_t factor_n);
+  void DoNoAlignUbTiling(const int64_t factor_n);
+  void DoGeneralUbTiling(const int64_t factor_n);
   void DoOneConcatUbTiling();
   void CalcInputPattern(int64_t col_limit, int64_t& ge_factor_n, int64_t& lt_factor_n);
-  void DoUbSplitZeroAxis(int64_t factor_m);
+  void DoUbSplitZeroAxis(const int64_t factor_m);
   void CheckAndUpdateTiling();
   void UpdateTiling();
   bool CheckZeroBlockTiling();

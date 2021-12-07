@@ -153,7 +153,7 @@ bool Elewise::GetShapeUnderCheck() {
   // check same len inputs shape
   if (!input_check.empty()) {
     const ge::GeShape& first_shape =
-      ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(input_check[0])->MutableShape(); 
+      ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(input_check[0])->MutableShape();
     const uint32_t first_len = first_shape.GetDimNum();
     for (uint32_t i = 1; i < input_check.size(); i++) {
       for (uint32_t j = 0; j < first_len; j++) {
@@ -419,6 +419,7 @@ bool Elewise::DoTiling(const OpInfo& op_info) {
 }
 
 void ElewiseCompileInfo::ParseOutsUintOne(const std::string& op_type, const nlohmann::json& outer_compile_info) {
+  OP_LOGD(op_type.c_str(), "elewise compile info ParseOutsUintOne running");
   if (!outer_compile_info.contains("_outs_uint1")) {
     has_outs_uint1 = false;
   } else {
@@ -427,6 +428,7 @@ void ElewiseCompileInfo::ParseOutsUintOne(const std::string& op_type, const nloh
 }
 
 void ElewiseCompileInfo::ParseFlagInfo(const std::string& op_type, const nlohmann::json& outer_compile_info) {
+  OP_LOGD(op_type.c_str(), "elewise compile info ParseFlagInfo running");
   if (!outer_compile_info.contains("_flag_info")) {
     has_flag_info = false;
   } else {
@@ -447,6 +449,7 @@ void ElewiseCompileInfo::ParseFlagInfo(const std::string& op_type, const nlohman
 }
 
 void ElewiseCompileInfo::ParseBaseInfo(const std::string& op_type, const nlohmann::json& outer_compile_info) {
+  OP_LOGD(op_type.c_str(), "elewise compile info ParseBaseInfo running");
   if (outer_compile_info.contains("_base_info") && !outer_compile_info.at("_base_info").empty()) {
     constexpr uint32_t base_info_size = 4;
     constexpr uint32_t max_ub_index = 2;
@@ -485,6 +488,7 @@ void ElewiseCompileInfo::ParseBaseInfo(const std::string& op_type, const nlohman
 }
 
 void ElewiseCompileInfo::ParseConstDims(const std::string& op_type, const nlohmann::json& outer_compile_info) {
+  OP_LOGD(op_type.c_str(), "elewise compile info ParseConstDims running");
   if (outer_compile_info.contains("_const_block_dims") && is_const_shapes) {
     const std::vector<int64_t>& input_const_dims =
       outer_compile_info.at("_const_block_dims").get<std::vector<int64_t>>();
@@ -495,6 +499,7 @@ void ElewiseCompileInfo::ParseConstDims(const std::string& op_type, const nlohma
 }
 
 void ElewiseCompileInfo::ParseElewiseVarSize(const std::string& op_type, const nlohmann::json& outer_compile_info) {
+  OP_LOGD(op_type.c_str(), "elewise compile info ParseElewiseVarSize running");
   if (outer_compile_info.contains("_elewise_vars")&& !outer_compile_info.at("_elewise_vars").empty()) {
     const std::string tiling_key_str = "210000000";
     const std::string tiling_key_db_str = "210010000";
@@ -508,13 +513,13 @@ void ElewiseCompileInfo::ParseElewiseVarSize(const std::string& op_type, const n
   }
 }
 
-void ElewiseCompileInfo::SetBroadcastPattern(bool is_broadcast_pattern) {
+void ElewiseCompileInfo::SetBroadcastPattern(const bool& is_broadcast_pattern) {
   broadcast_pattern = is_broadcast_pattern;
 }
 
 ElewiseCompileInfo::ElewiseCompileInfo(const std::string& op_type, const nlohmann::json& outer_compile_info) {
   OP_LOGD(op_type.c_str(), "elewise compile info parse running");
-  ParseOutsUintOne(op_type,outer_compile_info);
+  ParseOutsUintOne(op_type, outer_compile_info);
   ParseFlagInfo(op_type, outer_compile_info);
   ParseBaseInfo(op_type, outer_compile_info);
   ParseConstDims(op_type, outer_compile_info);
@@ -537,8 +542,8 @@ bool ElewiseTilingHandler::DoTiling(const ge::Operator& op_paras,
 }
 
 std::shared_ptr<AutoTilingHandler> CreateElewiseTilingHandler(const std::string& op_type,
-                                                                  const std::string& pattern,
-                                                                  const nlohmann::json& parsed_compile_info) {
+                                                              const std::string& pattern,
+                                                              const nlohmann::json& parsed_compile_info) {
   return std::make_shared<ElewiseTilingHandler>(op_type, pattern, parsed_compile_info);
 }
 }  // namespace optiling

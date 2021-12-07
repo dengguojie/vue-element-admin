@@ -40,32 +40,29 @@ namespace optiling {
 
 class OpInfo {
 public:
-    explicit OpInfo(const std::vector<std::vector<int64_t>>& _op_input_shapes,
-                    const ge::DataType& _op_in_type,
-                    const std::vector<std::vector<int32_t>>& _op_reduce_axes = dummy_variable) :
-            op_input_shapes (_op_input_shapes),
-            op_in_type (_op_in_type),
-            op_reduce_axes (_op_reduce_axes){
-    }
-    ~OpInfo() = default;
+  explicit OpInfo(const std::vector<std::vector<int64_t>>& _op_input_shapes,
+                  const ge::DataType& _op_in_type,
+                  const std::vector<std::vector<int32_t>>& _op_reduce_axes = dummy_variable) :
+                  op_input_shapes (_op_input_shapes), op_in_type (_op_in_type), op_reduce_axes (_op_reduce_axes) {}
+  ~OpInfo() = default;
 
-    const std::vector<std::vector<int64_t>>& GetInputShape() const {
-      return op_input_shapes;
-    }
+  const std::vector<std::vector<int64_t>>& GetInputShape() const {
+    return op_input_shapes;
+  }
 
-    const std::vector<std::vector<int32_t>>& GetReduceAxes() const {
-      return op_reduce_axes;
-    }
+  const std::vector<std::vector<int32_t>>& GetReduceAxes() const {
+    return op_reduce_axes;
+  }
 
-    const ge::DataType& GetInType() const {
-      return op_in_type;
-    }
+  const ge::DataType& GetInType() const {
+    return op_in_type;
+  }
 
 private:
-    const std::vector<std::vector<int64_t>>& op_input_shapes;
-    const ge::DataType& op_in_type;
-    const std::vector<std::vector<int32_t>>& op_reduce_axes;
-    static const std::vector<std::vector<int32_t>> dummy_variable;
+  const std::vector<std::vector<int64_t>>& op_input_shapes;
+  const ge::DataType& op_in_type;
+  const std::vector<std::vector<int32_t>>& op_reduce_axes;
+  static const std::vector<std::vector<int32_t>> dummy_variable;
 };
 
 class AutoTilingHandler {

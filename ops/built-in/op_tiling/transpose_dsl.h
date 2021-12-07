@@ -30,7 +30,7 @@
 
 namespace optiling {
 namespace transpose {
-static const size_t MAX_DIM_LEN = 8;
+constexpr size_t MAX_DIM_LEN = 8;
 
 struct CompileInfo {
   int64_t core_num{0};

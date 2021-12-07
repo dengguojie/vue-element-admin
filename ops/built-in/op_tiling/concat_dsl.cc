@@ -1,5 +1,5 @@
 /**
- * Copyright 2021 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,37 +25,39 @@
 #include <numeric>
 
 #include "graph/utils/op_desc_utils.h"
-#include "vector_tiling_log.h"
 #include "vector_tiling.h"
-#include "error_log.h"
 
 namespace optiling {
 namespace concat {
-static constexpr std::int32_t ELEMENT_IN_BLOCK_DEFAULT = 16;
-static constexpr std::int32_t ELEMENT_IN_BLOCK_B32 = 8;
-static constexpr std::int32_t ELEMENT_IN_BLOCK_B8 = 32;
-static constexpr std::int32_t ELEMENT_IN_BLOCK_B64 = 4;
-static constexpr std::int32_t ROW_ALIGN_FACTOR = 16;
-static constexpr std::int32_t COL_SPLIT_LIMIT_B8 = 96;
-static constexpr std::int32_t COL_SPLIT_LIMIT = 128;
-static constexpr std::int32_t ONE_REPEAT_BLOCK_NUM = 8;
-static constexpr std::int32_t HALF_REPEAT_BLOCK_NUM = 4;
-static constexpr std::int32_t HALF = 2;
-static constexpr std::int32_t GENERAL_NODE_NUMBERS = 2;
-static constexpr std::int32_t MULTI_CORE_EXPERIENCE = 24;
-static constexpr std::int32_t ONE_K_BYTES = 1024;
-static constexpr std::int64_t NO_MULTI_BLOCK_BASE_KEY = 0;
-static constexpr std::int64_t GENERAL_BASE_KEY = 2000000;
-static constexpr std::int64_t USE_ONE_CONCAT_BASE_KEY = 3000000;
-static constexpr std::int64_t READ_ALIGN_BASE_KEY = 4000000;
-static constexpr std::int64_t HALF_ALIGN_BASE_KEY = 5000000;
-static constexpr std::int64_t ALL_ONE_NO_CUT_BASE_KEY = 6000000;
-static constexpr std::int64_t GENERAL_NO_CUT_BASE_KEY = 2100000;
-static constexpr std::int64_t ONE_CONCAT_BASE_KEY = 3000001;
-static constexpr std::int64_t READ_ALIGN_NO_CUT_BASE_KEY = 4100000;
-static constexpr std::int64_t HALF_ALIGN_NO_CUT_BASE_KEY = 5100000;
-static constexpr std::size_t CONCAT_DIM_LEN = 2;
-static constexpr double COL_BLOCK_ALIGN_EXPERIENCE = 0.5;
+namespace {
+constexpr std::int32_t ELEMENT_IN_BLOCK_DEFAULT = 16;
+constexpr std::int32_t ELEMENT_IN_BLOCK_B32 = 8;
+constexpr std::int32_t ELEMENT_IN_BLOCK_B8 = 32;
+constexpr std::int32_t ELEMENT_IN_BLOCK_B64 = 4;
+constexpr std::int32_t ROW_ALIGN_FACTOR = 16;
+constexpr std::int32_t COL_SPLIT_LIMIT_B8 = 96;
+constexpr std::int32_t COL_SPLIT_LIMIT = 128;
+constexpr std::int32_t ONE_REPEAT_BLOCK_NUM = 8;
+constexpr std::int32_t HALF_REPEAT_BLOCK_NUM = 4;
+constexpr std::int32_t HALF = 2;
+constexpr std::int32_t GENERAL_NODE_NUMBERS = 2;
+constexpr std::int32_t MULTI_CORE_EXPERIENCE = 24;
+constexpr std::int32_t ONE_K_BYTES = 1024;
+constexpr std::int64_t NO_MULTI_BLOCK_BASE_KEY = 0;
+constexpr std::int64_t GENERAL_BASE_KEY = 2000000;
+constexpr std::int64_t USE_ONE_CONCAT_BASE_KEY = 3000000;
+constexpr std::int64_t READ_ALIGN_BASE_KEY = 4000000;
+constexpr std::int64_t HALF_ALIGN_BASE_KEY = 5000000;
+constexpr std::int64_t ALL_ONE_NO_CUT_BASE_KEY = 6000000;
+constexpr std::int64_t GENERAL_NO_CUT_BASE_KEY = 2100000;
+constexpr std::int64_t ONE_CONCAT_BASE_KEY = 3000001;
+constexpr std::int64_t READ_ALIGN_NO_CUT_BASE_KEY = 4100000;
+constexpr std::int64_t HALF_ALIGN_NO_CUT_BASE_KEY = 5100000;
+constexpr std::size_t CONCAT_DIM_LEN = 2;
+constexpr double COL_BLOCK_ALIGN_EXPERIENCE = 0.5;
+constexpr std::uint32_t CONST_TILING_KEY = 1000000;
+}
+
 
 static OpInfo dummy_op_info(std::vector<std::vector<int64_t>>(), ge::DT_FLOAT16, std::vector<std::vector<int32_t>>());
 
@@ -76,10 +78,16 @@ static const int64_t GetElementByType(const ge::DataType& dtype) {
 }
 
 static inline int64_t CeilDiv(int64_t a, int64_t b) {
+  V_OP_TILING_CHECK((b != 0),
+                    VECTOR_INNER_ERR_REPORT_TILIING("Concat", "CeilDiv denominator cannot be zero."),
+                    return b);
   return (a + b - 1) / b;
 }
 
 static inline int64_t FloorAlign(int64_t a, int64_t b) {
+  V_OP_TILING_CHECK((b != 0),
+                    VECTOR_INNER_ERR_REPORT_TILIING("Concat", "FloorAlign denominator cannot be zero."),
+                    return b);
   return a / b * b;
 }
 
@@ -291,6 +299,9 @@ void Concat::CalcInputPattern(int64_t col_limit, int64_t& ge_factor_n, int64_t& 
 }
 
 void Concat::DoGeneralUbTiling(const int64_t factor_n) {
+  V_OP_TILING_CHECK((factor_n != 0),
+                    VECTOR_INNER_ERR_REPORT_TILIING("Concat", "factor_n cannot be zero."),
+                    return);
   int64_t ele_in_block = GetElementByType(dtype);
   int64_t row_limit = ROW_ALIGN_FACTOR;
   bool is_ub_factor_less_block = output_shapes[1] % factor_n != 0 && output_shapes[1] % factor_n < ele_in_block;
@@ -359,12 +370,13 @@ void Concat::DoOneConcatUbTiling() {
   int64_t ele_in_block = GetElementByType(dtype);
   int64_t dtype_len = BLOCK_SIZE / ele_in_block;
   max_available_ub = FloorAlign((c_info.ub_size - BLOCK_SIZE * (input_nums + 1)) / dtype_len, ele_in_block);
-  int64_t core_size = c_info.core_num;
+  int64_t core_size = 1;
   if (output_shapes[0] >= 1 && output_shapes[0] <= c_info.core_num / HALF) {
     core_size = c_info.core_num / output_shapes[0];
-  } else {
-    core_size = 1;
   }
+  V_OP_TILING_CHECK((max_available_ub != 0),
+                    VECTOR_INNER_ERR_REPORT_TILIING("Concat", "max_available_ub cannot be zero."),
+                    return);
   if (output_shapes[1] / max_available_ub < core_size &&
       output_shapes[1] > HALF_REPEAT_BLOCK_NUM * ele_in_block * core_size) {
     max_available_ub = CeilDiv(output_shapes[1], core_size);
@@ -402,11 +414,9 @@ void Concat::DoAllAlignUbTiling() {
       low_ub_factor = output_shapes[0];
     }
     output_shapes[0] = CeilDiv(output_shapes[0], low_ub_factor);
-    int64_t core_size = c_info.core_num;
+    int64_t core_size = 1;
     if (output_shapes[0] >= 1 && output_shapes[0] <= c_info.core_num / HALF) {
       core_size = c_info.core_num / output_shapes[0];
-    } else {
-      core_size = 1;
     }
     int64_t col_factor = CeilDiv(output_shapes[1], core_size);
     col_factor = CeilDiv(col_factor, ele_in_block) * ele_in_block;
@@ -682,9 +692,9 @@ bool Concat::ProcessConst(bool& is_const) {
   try {
     is_const = compile_info.at("_is_const");
     if (is_const) {
-      int32_t block_dims = compile_info.at("_const_dims");
-      run_info.SetTilingKey(1000000);
-      run_info.SetBlockDim(static_cast<uint32_t>(block_dims));
+      int32_t const_block_dims = compile_info.at("_const_dims");
+      run_info.SetTilingKey(CONST_TILING_KEY);
+      run_info.SetBlockDim(static_cast<uint32_t>(const_block_dims));
       return true;
     }
   } catch (const std::exception& e) {
@@ -705,7 +715,6 @@ bool Concat::ConcatTiling() {
   ret = ret && WriteTilingData();
   return ret;
 }
-
 }  // namespace concat
 
 bool ConcatDsl(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& compile_info,

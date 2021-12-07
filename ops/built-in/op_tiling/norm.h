@@ -28,17 +28,16 @@
 #include "vector_tiling.h"
 
 namespace optiling {
-
-static const std::size_t NORM_MAX_DIM_LEN = 8;
-static const std::size_t NORM_MAX_INPUT_NUMS = 70;
-static const std::size_t NORM_MAX_WORKSPACE_NUMS = 20;
-static const std::size_t NORM_MAX_VAR_NUMS = 40;
-static const int64_t NORM_FAKE_WORKSPACE_SIZE = 32;
-static const int32_t NORM_NONE_SPLIT_KEY = 9;
-static const int32_t NORM_REDUCE_PATTERN_WEIGHT = 1000;
-static const int32_t NORM_COMMON_SCH_TYPE = 0;
-static const int32_t NORM_PARTIAL_REORDER_SCH_TYPE = 1;
-static const int32_t NORM_ALIGNED_IN_UB_SCH_TYPE = 2;
+constexpr std::size_t NORM_MAX_DIM_LEN = 8;
+constexpr std::size_t NORM_MAX_INPUT_NUMS = 70;
+constexpr std::size_t NORM_MAX_WORKSPACE_NUMS = 20;
+constexpr std::size_t NORM_MAX_VAR_NUMS = 40;
+constexpr int64_t NORM_FAKE_WORKSPACE_SIZE = 32;
+constexpr int32_t NORM_NONE_SPLIT_KEY = 9;
+constexpr int32_t NORM_REDUCE_PATTERN_WEIGHT = 1000;
+constexpr int32_t NORM_COMMON_SCH_TYPE = 0;
+constexpr int32_t NORM_PARTIAL_REORDER_SCH_TYPE = 1;
+constexpr int32_t NORM_ALIGNED_IN_UB_SCH_TYPE = 2;
 
 struct NormCompileInfo {
   // construct func
@@ -214,8 +213,8 @@ class NormTilingHandler: public AutoTilingHandler {
 };
 
 std::shared_ptr<AutoTilingHandler> CreateNormTilingHandler(const std::string& op_type,
-                                                               const std::string& pattern,
-                                                               const nlohmann::json& parsed_compile_info);
+                                                           const std::string& pattern,
+                                                           const nlohmann::json& parsed_compile_info);
 
 }  // namespace optiling
 

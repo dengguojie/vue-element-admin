@@ -53,6 +53,7 @@ constexpr std::int32_t ELEMENT_IN_BLOCK_B64 = 4;
 constexpr std::int32_t ELEMENT_IN_BLOCK_UINT1 = 256;
 
 constexpr std::int32_t ONLY_CONST_TILING_INDEX = 0;
+constexpr std::int32_t IS_CONST_INDEX = 1;
 constexpr std::int32_t IS_SUPPORT_BROADCAST_INDEX = 2;
 constexpr std::int32_t USE_SPECIAL_PATTERN_INDEX = 3;
 constexpr std::int32_t IS_SUPPORT_ABSORBABLE_BROADCAST_INDEX = 4;
@@ -74,8 +75,10 @@ constexpr std::int32_t SPLIT_FACTOR_STEP = 2;
 
 constexpr std::int32_t BASE_KEY_NUM = 200000000;
 constexpr std::int32_t ORIGINAL_NO_DB_TILING_LEN = 7;
+constexpr std::int32_t TILING_LEN = 8;
 
 constexpr std::int32_t MIN_BLOCK_CUT_INDEX = 20000;
+constexpr std::int32_t MIN_UB_CUT_INDEX = 30000;
 
 constexpr int64_t BLOCK_SIZE = 32;
 constexpr size_t MAX_UNKNOWN_RANK = 8;
@@ -128,7 +131,8 @@ bool Broadcast::Init() {
                return false);
     is_support_broadcast_compile = broadcast_compile_info.flag_info_compile[IS_SUPPORT_BROADCAST_INDEX];
     use_special_pattern_compile = broadcast_compile_info.flag_info_compile[USE_SPECIAL_PATTERN_INDEX];
-    is_support_absorbable_broadcast_compile = broadcast_compile_info.flag_info_compile[IS_SUPPORT_ABSORBABLE_BROADCAST_INDEX];
+    is_support_absorbable_broadcast_compile =
+      broadcast_compile_info.flag_info_compile[IS_SUPPORT_ABSORBABLE_BROADCAST_INDEX];
     is_unknown_rank_compile = broadcast_compile_info.flag_info_compile[IS_UNKNOWN_RANK_INDEX];
     has_all_unknown_compile = broadcast_compile_info.flag_info_compile[HAS_ALL_UNKNOWN_INDEX];
   }
@@ -443,7 +447,7 @@ bool Broadcast::CalcSplitFactor(std::vector<int64_t>& out_shape, const std::vect
     max_ub = base_info[MAX_UB_INDEX];
   } catch (const std::exception &e) {
     VECTOR_INNER_ERR_REPORT_TILIING(op_type,
-    "get all unknown compile_info[_base_info] error. Error message: %s", e.what());
+                                    "get all unknown compile_info[_base_info] error. Error message: %s", e.what());
     return false;
   }
   int64_t b_axis = 0;
@@ -497,6 +501,9 @@ std::tuple<bool, int64_t> LastFuseOutput(const std::string& op_type,
 
 void Broadcast::GenerateAllUnknown(const std::vector<int64_t>& out_shape, const std::vector<bool>& brc_axis,
                                    const int64_t split_axis, const int64_t split_factor) {
+  V_OP_TILING_CHECK((split_factor != 0),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "split_factor cannot be zero."),
+                    return);
   int64_t shape_len = fusion_shapes[0].size();
   int64_t fusion_len = output_shape.size();
   output_shape.clear();
@@ -544,6 +551,9 @@ bool Broadcast::TryMatchAllUnknown() {
   GenOutputAndBrcAxis(out_shape, brc_axis, fusion_shapes, shape_len);
   output_size = std::accumulate(output_shape.begin(), output_shape.end(), 1LL, std::multiplies<int64_t>());
   int64_t ele_in_block = BGetElementByType(in_type);
+  V_OP_TILING_CHECK((ele_in_block != 0),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ele_in_block cannot be zero."),
+                    return false);
   bool ret = true;
   if ((output_shape.size() - 1) > shape_len && shape_len > NUM_TWO && output_size % ele_in_block == 0) {
     ret = CalcSplitFactor(out_shape, brc_axis, ele_in_block, split_axis, split_factor);
@@ -843,6 +853,9 @@ bool Broadcast::MilanUbTiling() {
   int64_t shape_len = static_cast<int64_t>(output_shape.size()) - 1;
   int64_t under_ub_shape = 1;
   int64_t ele_in_block = BGetElementByType(out_type);
+  V_OP_TILING_CHECK((ele_in_block != 0),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ele_in_block cannot be zero."),
+                    return false);
   for (int64_t i = shape_len; i >= block_axis; i--) {
     int64_t cur_shape = output_shape[i];
     if (i == shape_len) {
@@ -874,6 +887,9 @@ bool Broadcast::DefaultUbTiling() {
   int64_t shape_len = static_cast<int64_t>(output_shape.size()) - 1;
   int64_t max_ub_shape = 1;
   int64_t ele_in_block = BGetElementByType(in_type);
+  V_OP_TILING_CHECK((ele_in_block != 0),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ele_in_block cannot be zero."),
+                    return false);
   bool has_ub_align = false;
   for (int64_t i = shape_len; i >= block_axis; i--) {
     if (output_shape[i] >= limit) {
@@ -914,7 +930,8 @@ bool Broadcast::DoUbTiling() {
 void Broadcast::OptimizeUbTiling() {
   // tiling optimize for ub factor
   // if BROADCAST axis greater than a half elem_in_block, split ub form split COMMON axis to BROADCAST axis
-  if (!only_const_tiling && block_axis < ub_axis && output_shape[ub_axis - 1] >= (BGetElementByType(in_type) / NUM_TWO) &&
+  if (!only_const_tiling && block_axis < ub_axis &&
+      output_shape[ub_axis - 1] >= (BGetElementByType(in_type) / NUM_TWO) &&
       broadcast_axis[ub_axis - 1] && !broadcast_axis[ub_axis] && ub_factor == output_shape[ub_axis]) {
     ub_axis--;
     ub_factor = 1;
@@ -1010,11 +1027,12 @@ void Broadcast::CheckUpdateUbTiling() {
 
 void Broadcast::CalcKey() {
   int64_t base_key = 0;
-  int64_t doubleBufferKey = 10000;
   if (s_pattern != Pattern::ORIGINAL) {
-    base_key = BASE_KEY_NUM + static_cast<int64_t>(s_pattern) * 100000;
+    constexpr int64_t s_pattern_key_num = 100000;
+    base_key = BASE_KEY_NUM + static_cast<int64_t>(s_pattern) * s_pattern_key_num;
   }
   if (need_double_buffer) {
+    constexpr int64_t doubleBufferKey = 10000;
     base_key += doubleBufferKey;
   }
   key = base_key;
@@ -1047,7 +1065,7 @@ bool Broadcast::WriteTilingData() const {
              VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Tiling key error, it is [%lu], please check it", key),
              return false);
   int64_t cur_key = key;
-  int64_t key_len = cur_key == 0 ? ORIGINAL_NO_DB_TILING_LEN : 8;
+  int64_t key_len = cur_key == 0 ? ORIGINAL_NO_DB_TILING_LEN : TILING_LEN;
   char keys[10] = {'0', '0', '0', '0', '0', '0', '0', '0', '0', '\0'};
   while (cur_key && key_len >= 0) {
     keys[key_len] = '0' + cur_key % NUM_TEN;
@@ -1058,7 +1076,7 @@ bool Broadcast::WriteTilingData() const {
   try {
     const auto& all_vars = broadcast_compile_info.elewise_vars_compile.second.at(str_key);
     for (const auto& var : all_vars) {
-      if (var >= 30000) {
+      if (var >= MIN_UB_CUT_INDEX) {
         V_CHECK_GE(ub_axis, 0,
                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "Not cut ub"),
                    return false);
@@ -1303,8 +1321,7 @@ bool Broadcast::WriteConstTiling() {
   return true;
 }
 
-BroadcastCompileInfo::BroadcastCompileInfo(const std::string& op_type,
-                                                   const nlohmann::json& outer_compile_info) {
+BroadcastCompileInfo::BroadcastCompileInfo(const std::string& op_type, const nlohmann::json& outer_compile_info) {
   if (outer_compile_info.contains("_base_info")) {
     base_info_compile.first = true;
     base_info_compile.second =
@@ -1319,7 +1336,7 @@ BroadcastCompileInfo::BroadcastCompileInfo(const std::string& op_type,
     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "broadcast get _outs_uint1 of compile_info error");
     return ;
   }
-  //pure_elewise cases: only_const_tiling && pure_elewise shape, or base_info contains 100 pattern && pure_elewise shape
+  // pure_elewise cases: only_const_tiling && pure_elewise shape, or base_info contains key 100 && pure_elewise shape
   if (base_info_compile.second.count("100") || flag_info_compile.size() == 1) {
     pure_elewise_compile_info = ElewiseCompileInfo(op_type, outer_compile_info);
     pure_elewise_compile_info.SetBroadcastPattern(true);
@@ -1370,13 +1387,11 @@ bool Broadcast::BroadcastTiling() {
   bool is_const = false;
   bool is_support_broadcast = true;
   bool use_special_pattern = true;
-  const int64_t flag_info_threshold = 3;
-  const int64_t support_broadcast_index = 2;
-  const int64_t use_special_pattern_index = 3;
-  if (broadcast_compile_info.flag_info_compile.size() > flag_info_threshold) {
-    is_const = broadcast_compile_info.flag_info_compile[1];
-    is_support_broadcast = broadcast_compile_info.flag_info_compile[support_broadcast_index];
-    use_special_pattern = broadcast_compile_info.flag_info_compile[use_special_pattern_index];
+  const int64_t special_pattern_threshold = 3;
+  if (broadcast_compile_info.flag_info_compile.size() > special_pattern_threshold) {
+    is_const = broadcast_compile_info.flag_info_compile[IS_CONST_INDEX];
+    is_support_broadcast = broadcast_compile_info.flag_info_compile[IS_SUPPORT_BROADCAST_INDEX];
+    use_special_pattern = broadcast_compile_info.flag_info_compile[USE_SPECIAL_PATTERN_INDEX];
   }
   if (is_const) {
     ret = CalcConstKey(is_support_broadcast);
@@ -1388,8 +1403,8 @@ bool Broadcast::BroadcastTiling() {
   } else if ((is_pure_elementwise && !(is_support_broadcast && !use_special_pattern)) || !is_support_broadcast) {
     OP_LOGD(op_type.c_str(), "broadcast turn to elewise_tiling");
     std::vector<std::vector<int64_t>> elewise_input_shapes(input_num, std::vector<int64_t>(dim_len));
-    for(size_t i=0; i< input_num; i++) {
-      for(size_t j=0; j<dim_len; j++) {
+    for (size_t i=0; i< input_num; i++) {
+      for (size_t j=0; j<dim_len; j++) {
         elewise_input_shapes[i][j] = input_shapes[i][j];
       }
     }
@@ -1419,10 +1434,12 @@ bool Broadcast::BroadcastTiling(const OpInfo& op_info) {
   bool is_const = false;
   bool is_support_broadcast = true;
   bool use_special_pattern = true;
-  if (broadcast_compile_info.flag_info_compile.size() > 3) {
-    is_const = broadcast_compile_info.flag_info_compile[1];
-    is_support_broadcast = broadcast_compile_info.flag_info_compile[2];
-    use_special_pattern = broadcast_compile_info.flag_info_compile[3];
+  constexpr uint32_t special_pattern_threshold = 3;
+
+  if (broadcast_compile_info.flag_info_compile.size() > special_pattern_threshold) {
+    is_const = broadcast_compile_info.flag_info_compile[IS_CONST_INDEX];
+    is_support_broadcast = broadcast_compile_info.flag_info_compile[IS_SUPPORT_BROADCAST_INDEX];
+    use_special_pattern = broadcast_compile_info.flag_info_compile[USE_SPECIAL_PATTERN_INDEX];
   }
   if (is_const) {
     ret = CalcConstKey(is_support_broadcast);
@@ -1434,8 +1451,8 @@ bool Broadcast::BroadcastTiling(const OpInfo& op_info) {
   } else if ((is_pure_elementwise && !(is_support_broadcast && !use_special_pattern)) || !is_support_broadcast) {
     OP_LOGD(op_type.c_str(), "broadcast turn to elewise_tiling");
     std::vector<std::vector<int64_t>> elewise_input_shapes(input_num, std::vector<int64_t>(dim_len));
-    for(size_t i=0; i< input_num; i++) {
-      for(size_t j=0; j<dim_len; j++) {
+    for (size_t i=0; i< input_num; i++) {
+      for (size_t j=0; j<dim_len; j++) {
         elewise_input_shapes[i][j] = input_shapes[i][j];
       }
     }
@@ -1451,24 +1468,24 @@ bool Broadcast::BroadcastTiling(const OpInfo& op_info) {
 }
 }  // namespace v3
 
-
 bool BroadcastTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info) const {
   OP_LOGD(op_type.c_str(), "broadcast tiling running");
   v3::Broadcast broadcast(op_type, op_paras, broadcast_compile_info, run_info);
   return broadcast.BroadcastTiling();
 }
 
-bool BroadcastTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRunInfo& run_info,
-                                  const OpInfo& op_info) const {
+bool BroadcastTilingHandler::DoTiling(const ge::Operator& op_paras,
+                                      utils::OpRunInfo& run_info,
+                                      const OpInfo& op_info) const {
   OP_LOGD(op_type.c_str(), "broadcast custom tiling running");
   v3::Broadcast broadcast(op_type, op_paras, broadcast_compile_info, run_info);
   return broadcast.BroadcastTiling(op_info);
 }
 
 std::shared_ptr<AutoTilingHandler> CreateBroadcastTilingHandler(const std::string& op_type,
-                                                                  const std::string& pattern,
-                                                                  const nlohmann::json& parsed_compile_info) {
+                                                                const std::string& pattern,
+                                                                const nlohmann::json& parsed_compile_info) {
   return std::make_shared<BroadcastTilingHandler>(op_type, pattern, parsed_compile_info);
 }
 
-} //namespace optiling
+}  // namespace optiling

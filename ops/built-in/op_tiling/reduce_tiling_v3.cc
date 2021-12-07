@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -421,7 +421,8 @@ void Reduce::ChooseAtomic() {
   // Check if outermost reduce axis is larger than or equal to core_num
   bool input_shape_limitation = input_shape[1] >= compileInfo.core_num && ubSizeA > SMALL_SHAPE_THRESHOLD * BASE_4;
   // Check nlast_reduce again
-  bool n_last_reduce_shape_limitation = (((uint32_t)pattern & 1) == 1) && (input_shape[input_shape.size() - 1] < ubSizeB);
+  bool n_last_reduce_shape_limitation = (((uint32_t)pattern & 1) == 1) &&
+                                        (input_shape[input_shape.size() - 1] < ubSizeB);
   // AND expression for all checks
   bool shape_limitation = output_shape_limitation && input_shape_limitation && n_last_reduce_shape_limitation;
   // check extracted here because of 120 characters per line static check rule
@@ -570,8 +571,8 @@ bool Reduce::GetAtomicBlockDim() {
   for (int32_t i = 0; i <= reduceTilingInfo.block_tiling_axis; i++) {
     if (IsInVector(reduce_axis, i)) {
       if (i == reduceTilingInfo.block_tiling_axis) {
-        block_dim = (int32_t)((input_shape[i] + reduceTilingInfo.block_tiling_factor - 1) / reduceTilingInfo.block_tiling_factor) *
-                    block_dim;
+        block_dim = (int32_t)((input_shape[i] + reduceTilingInfo.block_tiling_factor - 1) /
+                              reduceTilingInfo.block_tiling_factor) * block_dim;
         break;
       } else {
         block_dim = (int32_t)input_shape[i] * block_dim;
@@ -597,7 +598,8 @@ bool Reduce::GetAtomicBlockTilingInfo() {
       if (left_mul * input_shape[i] >= core_num) {
         reduceTilingInfo.block_tiling_axis = i;
         int64_t block_tiling_factor_outer = core_num / left_mul;
-        reduceTilingInfo.block_tiling_factor = (input_shape[i] + block_tiling_factor_outer - 1) / block_tiling_factor_outer;
+        reduceTilingInfo.block_tiling_factor = (input_shape[i] + block_tiling_factor_outer - 1) /
+                                               block_tiling_factor_outer;
         return is_find_block_tiling;
       }
       left_mul = left_mul * input_shape[i];
@@ -729,6 +731,9 @@ bool Reduce::getBlockTilingInfoY(int32_t left_block_dim, int64_t i,
         } else {
           int64_t block_tilling_inner_ddr_count = cur_block_factor * right_total_num;
           if (block_tilling_inner_ddr_count < block_size) {
+            V_OP_TILING_CHECK((right_total_num != 0),
+                              VECTOR_INNER_ERR_REPORT_TILIING(op_type, "right_total_num cannot be zero."),
+                              return false);
             cur_block_factor = (block_size + right_total_num - 1) / right_total_num;
           }
 
@@ -1053,15 +1058,15 @@ bool Reduce::GetGeInfo() {
             ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(compileInfo.axes_idx.second) :
             ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc("axes");
     std::string axes_name = axes_desc->GetName();
-    const char* axes_dst_name = axes_name.c_str();
     geInfo.axes_type = axes_desc->GetDataType();
 
     // push data in axis_tensor
-    V_OP_TILING_CHECK(op_paras.GetInputConstData(axes_dst_name, geInfo.axis_tensor) == ge::GRAPH_SUCCESS,
+    V_OP_TILING_CHECK(op_paras.GetInputConstData(axes_name.c_str(), geInfo.axis_tensor) == ge::GRAPH_SUCCESS,
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetInputConstData Failed"),
                       return false);
     V_OP_TILING_CHECK(!(geInfo.axes_type != ge::DT_INT32 && geInfo.axes_type != ge::DT_INT64),
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "axes_type is %d, not belong to [int32, int64]", geInfo.axes_type),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "axes_type is %d, not belong to [int32, int64]",
+                                                      geInfo.axes_type),
                       return false);
   }
   return true;
@@ -1186,15 +1191,15 @@ bool Reduce::getReduceAxisTensor() {
                        ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(compileInfo.axes_idx.second) :
                        ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc("axes");
     std::string axes_name = axes_desc->GetName();
-    const char* axes_dst_name = axes_name.c_str();
     geInfo.axes_type = axes_desc->GetDataType();
 
     // push data in axis_tensor
-    V_OP_TILING_CHECK(op_paras.GetInputConstData(axes_dst_name, geInfo.axis_tensor) == ge::GRAPH_SUCCESS,
+    V_OP_TILING_CHECK(op_paras.GetInputConstData(axes_name.c_str(), geInfo.axis_tensor) == ge::GRAPH_SUCCESS,
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetInputConstData Failed"),
                       return false);
     V_OP_TILING_CHECK(!(geInfo.axes_type != ge::DT_INT32 && geInfo.axes_type != ge::DT_INT64),
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "axes_type is %d, not belong to [int32, int64]", geInfo.axes_type),
+                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "axes_type is %d, not belong to [int32, int64]",
+                                                      geInfo.axes_type),
                       return false);
     }
 
@@ -1230,7 +1235,8 @@ bool Reduce::DoReduceTiling(const OpInfo& op_info) {
     V_OP_TILING_CHECK(!(inputs_num <= compileInfo.idx_before_reduce),
                       VECTOR_INNER_ERR_REPORT_TILIING(op_type, "idx is invalid index for inputs"),
                       return false);
-    input_shape_ori = ge::OpDescUtils::GetOpDescFromOperator(op_paras)->MutableInputDesc(compileInfo.idx_before_reduce)->GetShape().GetDims();
+    input_shape_ori = ge::OpDescUtils::GetOpDescFromOperator(
+      op_paras)->MutableInputDesc(compileInfo.idx_before_reduce)->GetShape().GetDims();
   }
 
   if (op_info.GetReduceAxes().size() > 0) {
@@ -1319,7 +1325,6 @@ bool ReduceTilingHandler::DoTiling(const ge::Operator& op_paras, utils::OpRunInf
 std::shared_ptr<AutoTilingHandler> CreateReduceTilingHandler(const std::string& op_type,
                                                              const std::string& pattern,
                                                              const nlohmann::json& parsed_compile_info) {
-
   auto reduceCompileInfoV3_ptr = std::make_shared<ReduceTilingHandler>(op_type, pattern, parsed_compile_info);
 
   return reduceCompileInfoV3_ptr->ParsedSuccess() ?

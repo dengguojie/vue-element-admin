@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Huawei Technologies Co., Ltd
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,12 +18,12 @@
  * \file auto_tiling.cpp
  * \brief Auto-Tiling Private Declarations and Implementations
  */
-#include "vector_tiling.h"
 #include "auto_tiling.h"
 #include <mutex>
 
-namespace optiling {
+#include "vector_tiling.h"
 
+namespace optiling {
 static std::vector<std::shared_ptr<AutoTilingHandler>> handler_container;
 
 /*
@@ -80,5 +80,4 @@ void* AutoTilingHandlerParser(const ge::Operator& op_paras, const ge::AscendStri
 
 // register AutoTiling
 REGISTER_OP_TILING_V3(AutoTiling, AutoTiling, AutoTilingHandlerParser);
-
 }  // namespace optiling
