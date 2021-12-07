@@ -35,7 +35,7 @@ C0SIZE = 16
 NoneType = type(None)
 
 
-# pylint: disable = unused-argument,redefined-builtin,too-many-arguments,invalid-name,too-many-locals
+# 'pylint: disable = unused-argument,redefined-builtin,too-many-arguments,invalid-name,too-many-locals
 def get_op_support_info(x,
                         matrix,
                         bias,
@@ -122,7 +122,7 @@ def get_fusion_params(input_data, output_data, is_fused_compute=True):
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("pooling")
-# 'pylint: too-many-branches,too-many-statements,variable_type_changed
+# 'pylint: disable = too-many-branches,too-many-statements,variable_type_changed
 def pool_fuse_compute(input_data,
                       matrix,
                       bias,
@@ -323,7 +323,7 @@ def pool_fuse_compute(input_data,
     return res
 
 
-# 'pylint: disable=unnecessary-lambda
+# 'pylint: disable=unnecessary-lambda, variable_type_changed
 def pooling_compute(x,
                     matrix,
                     y,
@@ -412,7 +412,7 @@ def pooling_compute(x,
     return res
 
 
-# 'pylint: too-many-branches,too-many-statements,variable_type_changed
+# 'pylint: disable = too-many-branches,too-many-statements,variable_type_changed
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.OPTION_INPUT, para_check.OPTION_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_LIST_INT,
                             para_check.OPTION_ATTR_LIST_INT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,

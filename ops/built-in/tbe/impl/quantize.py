@@ -23,7 +23,7 @@ from te import tik
 
 
 # 'pylint: disable=invalid-name, too-many-branches, too-many-arguments
-# 'pylint: disable=too-many-instance-attributes, too-many-lines
+# 'pylint: disable=too-many-instance-attributes, too-many-lines, too-many-statements
 class Quantize():
     """
     impl of quantize
