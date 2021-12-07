@@ -19,8 +19,11 @@ from te import tvm
 from impl.util import util_select_op_base
 
 
+# 'pylint: disable=too-few-public-methods
 class Constant:
-    # 32B to the number of fp16
+    """
+    the class for constant.
+    """
     FP16_BLOCK_VALUE = 16
 
 

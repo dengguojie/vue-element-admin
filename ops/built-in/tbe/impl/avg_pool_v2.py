@@ -24,7 +24,7 @@ from impl.conv2d import conv2d_compute
 from impl.util.platform_adapter import error_manager_vector
 
 
-# 'pylint: disable=too=few-public-methods
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     the class for constant.
@@ -158,7 +158,7 @@ def _check_window_rule(ksize, strides, pads, data_format):
         elif ksize[0] != 1 or ksize[3] != 1:
             error_manager_vector.raise_err_input_value_invalid("avg_pool_v2", "ksize[0], ksize[3]", '1',
                                                                str(ksize[0]) + "," + str(ksize[3]))
-        
+
         if len(strides) != 4:
             error_manager_vector.raise_err_input_value_invalid("avg_pool_v2", "strides", '4', len(strides))
         elif strides[0] != 1 or strides[3] != 1:
@@ -188,7 +188,7 @@ def _check_pads(pads, ksize_h, ksize_w):
     if pads[0] >= ksize_h or pads[1] >= ksize_h:
         error_manager_vector.raise_err_input_param_not_in_range("avg_pool_v2", "pads[0], pads[1]", '0',
                                                                 str(ksize_h-1), str(pads[0]) + "," + str(pads[1]))
-    
+
     if pads[2] >= ksize_w or pads[3] >= ksize_w:
         error_manager_vector.raise_err_input_param_not_in_range("avg_pool_v2", "pads[2], pads[3]", '0',
                                                                 str(ksize_w-1), str(pads[2]) + "," + str(pads[3]))

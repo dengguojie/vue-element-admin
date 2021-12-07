@@ -15,15 +15,14 @@
 """
 ascend_requant
 """
-import te.lang.cce
-import te.platform as tbe_platform
 from functools import reduce as function_reduce
-from tbe.common.platform.platform_info import get_soc_spec
 from te import tvm
 from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 from te.utils import shape_util
 from te.utils.error_manager import error_manager_vector
+import te.lang.cce
+import te.platform as tbe_platform
 from impl import ascend_quant_util as util
 
 

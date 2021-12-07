@@ -30,7 +30,7 @@ from impl.conv2d import conv2d_compute
 from impl.util.platform_adapter import error_manager_vector
 
 
-# 'pylint: disable=too=few-public-methods
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     the class for constant.

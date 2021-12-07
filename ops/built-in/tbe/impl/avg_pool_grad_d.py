@@ -25,7 +25,7 @@ from te.utils import error_manager
 from te.utils.error_manager import error_manager_vector
 
 
-# 'pylint: disable=too=few-public-methods
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     the class for constant.

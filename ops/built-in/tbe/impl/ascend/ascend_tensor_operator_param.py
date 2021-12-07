@@ -28,6 +28,7 @@ class TensorOperatorParam(a_lib.ObjWithConst):
     """
     the params of tensor Operator
     """
+    # 'pylint: disable=too-many-arguments
     def __init__(self, tensor, proc_num, offset, debug=False,
                  num_per_cmd=None, num_stride_blk=None, num_stride_cmd=None):
         """
@@ -91,9 +92,6 @@ class TensorOperatorParam(a_lib.ObjWithConst):
             proc_end = proc_num + offset
             tinst = a_container.AContainer.get_instance().tinst
             with tinst.if_scope(proc_end > total_num):
-                err_str1 = '"set_proc_info invalid proc_num:"+str(proc_num) '
-                err_str2 = '"set_proc_info invalid offset:"+str(offset)'
-                tinst.tikdb.debug_print(err_str1 + err_str2)
                 tinst.tik_return()
             with tinst.else_scope():
                 pass
@@ -242,4 +240,3 @@ class TensorOperatorParam(a_lib.ObjWithConst):
         if self._num_stride_blk != 0:
             a_check.check_param_mod(self._num_stride_cmd, self._num_stride_blk,
                                     "error num_stride_cmd % num_stride_blk")
-

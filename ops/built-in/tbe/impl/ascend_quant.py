@@ -22,7 +22,6 @@ from te import tvm
 from te.utils import shape_util
 from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
-from tbe.common.platform.platform_info import get_soc_spec
 from impl import ascend_quant_util as util
 
 

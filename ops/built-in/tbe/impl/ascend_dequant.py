@@ -352,7 +352,8 @@ def _vector_dequant_v200(x, x_shape, align_shape, deq_scale, relu_flag, conv_fla
                 res = tvm.compute(res_shape_nchw_after_removepad,
                                   lambda batch, cout1, howo, cout0:
                                   res_f16(batch, cout1,
-                                          howo//x.op.attrs["int4_ori_wout"], howo%x.op.attrs["int4_ori_wout"], cout0),
+                                          howo // x.op.attrs["int4_ori_wout"],
+                                          howo % x.op.attrs["int4_ori_wout"], cout0),
                                   name='dequant_remove_pad',
                                   tag="dequant_remove_pad")
             else:
@@ -523,7 +524,7 @@ def _scalar_dequant_v200(x, x_shape, align_shape, deq_scale, conv_flag):
                 res = tvm.compute(res_shape_nchw_after_removepad,
                                   lambda batch, cout1, howo, cout0:
                                   res_f16(batch, cout1, howo//x.op.attrs["int4_ori_wout"],
-                                          howo%x.op.attrs["int4_ori_wout"], cout0),
+                                          howo % x.op.attrs["int4_ori_wout"], cout0),
                                   name='dequant_remove_pad',
                                   tag="dequant_remove_pad")
             else:

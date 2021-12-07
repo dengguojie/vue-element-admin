@@ -128,8 +128,8 @@ def check_func(func, error_str):
 
 
 # --------------------------- tik related -------------------------------
-
-class TikDebug(object):
+# 'pylint: disable=too-few-public-methods
+class TikDebug:
     """
     flag: if debug
     """
@@ -198,7 +198,6 @@ def check_tik_param_low(param, tik, tinst, low, error_str):
     _check_condition((isinstance(error_str, str)), "err type:{}".format(type(error_str)))
     if is_tik_dynamic(param, tik):
         with tinst.if_scope(param < low):
-            tinst.tikdb.debug_print(error_str)
             tinst.tik_return()
         with tinst.else_scope():
             pass
@@ -216,7 +215,6 @@ def check_tik_param_high(param, tik, tinst, high, error_str):
     _check_condition((isinstance(error_str, str)), "err type:{}".format(type(error_str)))
     if is_tik_dynamic(param, tik):
         with tinst.if_scope(param > high):
-            tinst.tikdb.debug_print(error_str)
             tinst.tik_return()
         with tinst.else_scope():
             pass
@@ -234,7 +232,6 @@ def check_tik_param_not_equal(param, tik, tinst, num, error_str):
     _check_condition((isinstance(error_str, str)), "err type:{}".format(type(error_str)))
     if is_tik_dynamic(param, tik):
         with tinst.if_scope(param == num):
-            tinst.tikdb.debug_print(error_str)
             tinst.tik_return()
         with tinst.else_scope():
             pass

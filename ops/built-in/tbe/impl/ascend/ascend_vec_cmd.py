@@ -23,6 +23,7 @@ from ._internal_lib import ObjWithConst
 from ._internal_lib import VecBufInfo
 from . import _check as G_CHECK
 
+
 # 'pylint: disable=too-many-arguments, too-many-instance-attributes, too-few-public-methods
 class _BaseVecCmdRunner(ObjWithConst):
     def __init__(self, cmd_name, mask, repeat,

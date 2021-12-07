@@ -25,7 +25,7 @@ from te.utils import shape_util
 from impl.util import util_compute
 
 
-# 'pylint: disable=too=few-public-methods
+# 'pylint: disable=too-few-public-methods
 class Constant:
     """
     the class for constant.
