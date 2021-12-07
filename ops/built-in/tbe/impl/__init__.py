@@ -219,6 +219,7 @@ from .fused_minimum_or_maximum_grad import fused_minimum_or_maximum_grad_cce
 from .gather_v2_d import gather_v2_d
 from .gelu_grad import gelu_grad
 from .gelu import gelu
+from .fast_gelu_v2 import fast_gelu_v2
 from .greater_equal import greater_equal
 from .layer_norm_grad import layer_norm_grad
 from .layer_norm import layer_norm

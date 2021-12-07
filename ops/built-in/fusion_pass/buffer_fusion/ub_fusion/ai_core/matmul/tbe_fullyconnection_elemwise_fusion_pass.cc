@@ -31,7 +31,7 @@ static const string PATTERN_OTHER_INPUT = "InputData";  // desc name
 static const string PATTERN_OUTPUT = "output";          // desc name
 static const vector<string> elemWiseWhiteList = {
   "Elu", "LeakyRelu", "Gelu", "Softsign", "Relu6", "Relu", "Softplus", "Sigmoid", "Tanh", "Selu",
-  "GeluGrad", "Add", "AddN", "FastGelu", "FastGeluGrad", "Eltwise", "PRelu", "Mul", "Power", "Relu6D"};
+  "GeluGrad", "Add", "AddN", "FastGelu", "FastGeluV2", "FastGeluGrad", "Eltwise", "PRelu", "Mul", "Power", "Relu6D"};
 static const vector<string> matmulWhiteList = {
   "FullyConnection", "MatMul", "MatMulV2", "BatchMatMul", "BatchMatMulV2"
 };

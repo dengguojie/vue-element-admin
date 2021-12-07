@@ -144,6 +144,20 @@ IMPLEMT_COMMON_INFERFUNC(FastGeluInferShape) {
 COMMON_INFER_FUNC_REG(FastGelu, FastGeluInferShape);
 // ----------------------FastGelu END------------------
 
+// ----------------------FastGeluV2----------------------
+IMPLEMT_COMMON_INFERFUNC(FastGeluV2InferShape) {
+  // input0 is x
+  // output0 is y
+  const int64_t input_x_idx = 0;
+  const int64_t output_y_idx = 0;
+  if (OneInOneOutDynamicInfer(op, input_x_idx, {output_y_idx})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(FastGeluV2, FastGeluV2InferShape);
+// ----------------------FastGeluV2 END------------------
+
 // ----------------TanhGrad Op Begin----------------
 IMPLEMT_COMMON_INFERFUNC(TanhGradInferShape) {
   TensorDesc tensordesc_output = op.GetOutputDesc("z");
