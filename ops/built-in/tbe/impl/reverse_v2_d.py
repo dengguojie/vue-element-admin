@@ -15,7 +15,7 @@
 """
 reverse_v2_d
 """
-# pylint: disable=redefined-outer-name,too-many-statements,too-many-locals,too-many-lines
+# 'pylint: disable=redefined-outer-name,too-many-statements,too-many-locals,too-many-lines
 import math
 import functools
 
@@ -36,7 +36,7 @@ class Constant:
     MAX_BLOCK_NUM = 65536
 
 
-# pylint: disable = unused-argument
+# 'pylint: disable = unused-argument
 def get_op_support_info(input_x, output_y, axis, kernel_name="reverse_v2_d"):
     """
     get_op_support_info
@@ -131,7 +131,7 @@ def op_select_format(input_x, output_y, axis, kernel_name="reverse_v2_d"):
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.KERNEL_NAME)
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def reverse_v2_d(input_x, output_y, axis, kernel_name="reverse_v2_d"):
     """
     Generate reverse_v2_d operator
@@ -209,7 +209,7 @@ def _param_check(shape_x, dtype_x, axis, kernel_name):
     return axis
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def get_max_factor(n):
     """
     Get max factor of n, the max factor is less than MAX_BLOCK_NUM
@@ -236,7 +236,7 @@ def get_max_factor(n):
     return factors[-1]
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 def get_min_factor(n):
     """
     Get min factor of n
@@ -332,7 +332,7 @@ def get_new_shape_axis(shape, axis):
     return dst_out_shape, dst_axis
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class ReverseExt2:
     """
     Function: use to store reverse_ext2 schedule parameters
@@ -606,7 +606,7 @@ class ReverseExt2:
             else:
                 self.move_inner(move_in_index, move_out_index, inner_shape)
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def reverse_ext2_data_move_compute(self):
         """
         Reverse the input tensor by the data_move method
@@ -746,7 +746,7 @@ class ReverseExt2:
                         self.data_x_ub, self.offset_ub, 1, 8,
                         self.base_addr, 0, "counter")
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def get_move_index(self, loop_axis, move_in_index, move_out_index,
                        outer_loop_shape, index):
         """

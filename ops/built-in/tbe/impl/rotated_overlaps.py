@@ -55,7 +55,7 @@ class Constant(object):
     K_LIMIT = 2000
 
 
-# pylint: disable=locally-disabled,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("rotated_overlaps")
 class RotatedOverlaps(object):
     """

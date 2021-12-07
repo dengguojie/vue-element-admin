@@ -23,7 +23,7 @@ from te.utils import para_check
 from te import tvm
 
 
-# pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=locally-disabled,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("rint")
 def rint_compute(input_x, output_y, kernel_name="rint"):
     """

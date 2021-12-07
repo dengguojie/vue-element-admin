@@ -15,7 +15,7 @@
 """
 roi_align_grad
 """
-# pylint: disable=too-many-lines,unused-variable
+# 'pylint: disable=too-many-lines,unused-variable
 import te.platform as tbe_platform
 from te.utils import para_check
 from te import tik
@@ -29,8 +29,8 @@ class Constant:
     BATCH_SIZE = 128
 
 
-# pylint: disable-msg=too-many-arguments,too-many-locals,too-many-statements
-# pylint: disable=unused-argument
+# 'pylint: disable-msg=too-many-arguments,too-many-locals,too-many-statements
+# 'pylint: disable=unused-argument
 def _roi_align_calc_grad_line(tik_instance, x_lo_w, x_hi_w, y_lo_w, y_hi_w, x_lo,
                               x_hi, y_hi, y_lo, x_len, y_diff_ub, x_ind, x_diff,
                               image_index, start_c1, calc_c1_num):

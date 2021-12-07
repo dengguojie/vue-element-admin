@@ -19,7 +19,7 @@ import te.platform as tbe_platform
 from impl import roi_pooling_base
 
 
-# pylint: disable=too-many-instance-attributes,arguments-differ
+# 'pylint: disable=too-many-instance-attributes,arguments-differ
 class RoiClassL1(roi_pooling_base.RoiClass):
     """
     Class that execute roi_pooling using L1
@@ -78,7 +78,7 @@ class RoiClassL1(roi_pooling_base.RoiClass):
         """
         return self.l1_byte_size
 
-    # pylint: disable=no-self-use
+    # 'pylint: disable=no-self-use
     def get_roi_ub_cost(self):
         """
         get UB cost of roi (only calculate ub of current class)

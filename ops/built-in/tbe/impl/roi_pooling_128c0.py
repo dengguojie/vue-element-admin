@@ -20,11 +20,11 @@ from te import tik
 from impl import roi_pooling_base
 
 
-# pylint: disable=C0103
-# pylint: disable=unused-argument,no-member,super-init-not-called
-# pylint: disable=too-many-instance-attributes,self-assigning-variable
-# pylint: disable=too-many-locals,too-many-lines,useless-super-delegation
-# pylint: disable=too-many-arguments,attribute-defined-outside-init,arguments-differ
+# 'pylint: disable=C0103
+# 'pylint: disable=unused-argument,no-member,super-init-not-called
+# 'pylint: disable=too-many-instance-attributes,self-assigning-variable
+# 'pylint: disable=too-many-locals,too-many-lines,useless-super-delegation
+# 'pylint: disable=too-many-arguments,attribute-defined-outside-init,arguments-differ
 
 
 EIGHT_C0 = 8

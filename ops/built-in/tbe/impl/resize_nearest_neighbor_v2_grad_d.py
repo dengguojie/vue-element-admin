@@ -15,7 +15,7 @@
 """
 resize_nearest_neighbor_v2_grad_d
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
@@ -33,9 +33,9 @@ class Constant:
     SLICE_THRE = 160 * 1024 // (16 * 4)
 
 
-# pylint: disable-msg=too-many-arguments,too-many-locals,too-many-statements
-# pylint: disable-msg=invalid-name,unused-argument
-# pylint: disable=too-many-branches
+# 'pylint: disable-msg=too-many-arguments,too-many-locals,too-many-statements
+# 'pylint: disable-msg=invalid-name,unused-argument
+# 'pylint: disable=too-many-branches
 def clear_ub(tik_instance, dst_ub):
     """
     clear ub to zero

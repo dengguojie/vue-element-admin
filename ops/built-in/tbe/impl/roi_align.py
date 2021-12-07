@@ -15,7 +15,7 @@
 """
 roi_align
 """
-# pylint: disable=too-many-lines
+# 'pylint: disable=too-many-lines
 import math
 
 import te.platform as tbe_platform
@@ -53,16 +53,16 @@ ES_LIMIT_SAMPLE_NUM = 90
 COM_LIMIT_SAMPLE_NUM = 128
 
 
-# pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-locals
-# pylint: disable=too-many-statements
-# pylint: disable=unused-argument,unused-variable
+# 'pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-locals
+# 'pylint: disable=too-many-statements
+# 'pylint: disable=unused-argument,unused-variable
 class RoiAlign:
     """
     RoiAlign
     modify:2020-12-10
     """
-    # pylint:disable=too-many-arguments,too-many-locals,too-many-statements
-    # pylint:disable=no-member,unused-argument,unused-variable
+    # 'pylint:disable=too-many-arguments,too-many-locals,too-many-statements
+    # 'pylint:disable=no-member,unused-argument,unused-variable
     def __init__(self, feature_map_dict,
                  rois_dict,
                  roisn_dict,
@@ -251,8 +251,8 @@ class RoiAlign:
             self.tik_inst.BuildCCE(kernel_name=self.kernel_name, \
                                    inputs=[self.feature_map, self.rois], outputs=[self.output_gm])
         return self.tik_inst
-    # pylint: disable=too-many-locals,too-many-arguments,too-many-statements
-    # pylint: disable=invalid-name,no-member,unused-variable
+    # 'pylint: disable=too-many-locals,too-many-arguments,too-many-statements
+    # 'pylint: disable=invalid-name,no-member,unused-variable
     def roialign_compute_each_core(self, block_num, block_offset, block_left):
         """
         roialign_compute_each_core
@@ -697,8 +697,8 @@ class RoiAlign:
                         # end of loop_n1
                 # end of loop_n
         # end of loop_b
-    # pylint:disable=invalid-name,no-member,too-many-arguments,
-    # pylint:disable=too-many-branches,too-many-statements
+    # 'pylint:disable=invalid-name,no-member,too-many-arguments,
+    # 'pylint:disable=too-many-branches,too-many-statements
     def roi_align_perf_scale(self, rois, xstart, roisnum, sample_ratio,
                              roi_gridw, roi_gridh, x_start_fp32_ub,
                              y_start_fp32_ub, roi_gridw_fp32,
@@ -968,8 +968,8 @@ class RoiAlign:
                     self.tik_inst.vec_mul(128, roi_gridh_fp32, roi_bin_h_ub, \
                                           n_grid_rec_h_ub, 1, 8, 8, 8)
             return count
-    # pylint:disable=too-many-arguments,too-many-locals,too-many-statements
-    # pylint: disable=no-member,invalid-name,unused-argument
+    # 'pylint:disable=too-many-arguments,too-many-locals,too-many-statements
+    # 'pylint: disable=no-member,invalid-name,unused-argument
     def roialign_perf_gen_grid(self,
                                index_arr,
                                roi_grid_w, roi_grid_h, curr_roi,
@@ -1434,8 +1434,8 @@ class RoiAlign:
                              1, 8, 8, 8)
 
 
-# pylint: disable=too-many-arguments,too-many-locals,too-many-boolean-expressions
-# pylint: disable=no-member,too-many-branches
+# 'pylint: disable=too-many-arguments,too-many-locals,too-many-boolean-expressions
+# 'pylint: disable=no-member,too-many-branches
 def roi_align_cce(feature_map_dict, rois_dict, roisn_dict, output_dict, \
                   spatial_scale, output_h, output_w, sample_ratio, \
                   roi_end_mode, kernel_name_val):
@@ -1901,7 +1901,7 @@ def _reciprocal(tik_instance, mask, dest_ub, src1, repeat, dtype):
     tik_instance.vec_mul(mask, dest_ub, rec_1, rec_2, repeat, 8, 8, 8)
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def _get_grid_weight_per_roi(tik_instance, roi_bin_h_fp32_value,
                              proposals_ub_y0, grid_h_fp32, pool_n, grid_n, fm_h,
                              curr_roi, dtype, verify, w_h):
@@ -2427,8 +2427,8 @@ def _prepare_vbi_xn(tik_instance, c1_block_num):
     return vbi_addr
 
 
-# pylint: disable=too-many-branches
-# pylint: disable=unused-variable
+# 'pylint: disable=too-many-branches
+# 'pylint: disable=unused-variable
 def _prepare_vbi_xm(tik_instance, h_y, l_y, h_x, l_x, c1_block_num):
     """
     :param tik_instance:
@@ -3504,7 +3504,7 @@ def roi_align_tik(feature_map_dict, rois_dict, roisn_dict, \
     return tik_instance
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.REQUIRED_ATTR_FLOAT, para_check.REQUIRED_ATTR_INT,

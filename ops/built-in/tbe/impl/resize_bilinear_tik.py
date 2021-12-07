@@ -22,7 +22,7 @@ from impl import common_util
 from impl.util import util_tik_comm_func
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class ResizeBilinear:
     """
     Function: use to store ResizeBilinear base parameters
@@ -73,8 +73,8 @@ class ResizeBilinear:
         self.height_mask_list = None
         self.width_mask_list = None
 
-    # pylint: disable=locally-disabled,invalid-name,too-many-arguments,too-many-locals
-    # pylint: disable=unused-argument
+    # 'pylint: disable=locally-disabled,invalid-name,too-many-arguments,too-many-locals
+    # 'pylint: disable=unused-argument
     def check_supported_tik(self, method="bilinear"):
         """To check whether the AICORE operator can support the length of w/h or not
         """
@@ -131,7 +131,7 @@ class ResizeBilinear:
 
         return self.tik_instance.Tensor(dtype, shape, name=name, scope=mem_type)
 
-    # pylint: disable=unused-variable
+    # 'pylint: disable=unused-variable
     def init_gm_mem(self):
         """init tik gm mem
         """
@@ -228,8 +228,8 @@ def fill_index_in_ub(tik_instance, idx_ub, idx_num):
             idx_ub[_idx].set_as(_idx)
 
 
-# pylint: disable=too-many-statements,too-many-locals,too-many-branches
-# pylint: disable=unused-variable,invalid-name
+# 'pylint: disable=too-many-statements,too-many-locals,too-many-branches
+# 'pylint: disable=unused-variable,invalid-name
 def do_resize_bilinear_compute_one_core(box_num_sigment, obj, box_num_offset):
     """do crop and resize in one core
         step 1 read boxes from boxes and calc h_top_index/h_bottom_index/h_lerp/w_left_index/w_right_index/w_lerp
@@ -591,7 +591,7 @@ def do_resize_bilinear_compute_one_core(box_num_sigment, obj, box_num_offset):
                                                obj.crop_height * obj.crop_width * c0_block_num - c0_block_num)
 
 
-# pylint: disable=invalid-name
+# 'pylint: disable=invalid-name
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_LIST_INT,
                             para_check.KERNEL_NAME)
 def resize_bilinear(x, y, crop_size, kernel_name="resize_bilinear_v2"):

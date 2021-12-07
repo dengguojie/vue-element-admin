@@ -20,11 +20,11 @@ from te import tik
 from impl import roi_pooling_base
 
 
-# pylint: disable=C0103
-# pylint: disable=unused-argument,no-member,arguments-differ
-# pylint: disable=too-many-instance-attributes
-# pylint: disable=too-many-locals,too-many-lines
-# pylint: disable=too-many-arguments,attribute-defined-outside-init
+# 'pylint: disable=C0103
+# 'pylint: disable=unused-argument,no-member,arguments-differ
+# 'pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-locals,too-many-lines
+# 'pylint: disable=too-many-arguments,attribute-defined-outside-init
 
 
 class RoiClassOneC0FML1(roi_pooling_base.RoiClass):

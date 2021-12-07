@@ -27,7 +27,7 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# pylint: disable=too-many-arguments,unused-argument
+# 'pylint: disable=too-many-arguments,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("relu6_d")
 def relu6_d_compute(input_x, output_y, scale, kernel_name="relu6_d"):
     """

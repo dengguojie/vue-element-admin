@@ -21,7 +21,7 @@ from te.utils import para_check
 from te import tvm
 
 
-# pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=locally-disabled,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("relu_grad_v2")
 def relu_grad_v2_compute(gradients, mask, backprops, kernel_name="relu_grad_v2"):
     """

@@ -25,7 +25,7 @@ from te.utils import shape_util
 from te.utils import para_check
 
 
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("relu6")
 def relu6_compute(input_x, output_y, kernel_name="relu6"):
     """

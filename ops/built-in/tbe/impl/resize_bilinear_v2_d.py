@@ -15,7 +15,7 @@
 """
 resize_bilinear_v2_d
 """
-# pylint: disable=wildcard-import,unused-wildcard-import
+# 'pylint: disable=wildcard-import,unused-wildcard-import
 from functools import reduce as reduce_func
 import numpy as np
 import te
@@ -49,8 +49,8 @@ SCALAR_MUL_FP32 = 2**50
 SCALAR_MUL2_FP32 = 2**26
 
 
-# pylint: disable=invalid-name,too-many-locals,too-many-lines
-# pylint: disable=too-many-lines,undefined-variable,
+# 'pylint: disable=invalid-name,too-many-locals,too-many-lines
+# 'pylint: disable=too-many-lines,undefined-variable,
 def check_whether_error(output_num, scale):
     """
     check_whether_error
@@ -131,7 +131,7 @@ def is_dynamic_white_list(ori_format, ori_input_shape, out_size):
     return True
 
 
-# pylint: disable=unused-argument,unused-variable,too-many-arguments
+# 'pylint: disable=unused-argument,unused-variable,too-many-arguments
 def check_supported(images, y, size, align_corners=False, half_pixel_centers=False, kernel_name="resize_bilinear_v2"):
     """
     To check whether the AICORE operator can support
@@ -179,8 +179,8 @@ def check_supported(images, y, size, align_corners=False, half_pixel_centers=Fal
     return True, ""
 
 
-# pylint: disable=too-many-statements,too-many-branches
-# pylint: disable=too-many-boolean-expressions
+# 'pylint: disable=too-many-statements,too-many-branches
+# 'pylint: disable=too-many-boolean-expressions
 def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
     """
         ir build part
@@ -4098,7 +4098,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                                                     name="x2_512_x3_512_unfold")
 
         apply_ub()
-        # pylint: disable=simplifiable-if-statement
+        # 'pylint: disable=simplifiable-if-statement
         if w_in <= HW_SIZE_512 and dtype == "float32":
             is_input_in_ub = True
         elif w_in <= HW_SIZE_256 and dtype == "float16" and devices == "mini":
@@ -4156,7 +4156,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
         loop_levely = h_per_core // HW_SIZE_256 + \
                       (1 if h_per_core % HW_SIZE_256 > 0 else 0)
 
-        # pylint: disable=too-many-statements
+        # 'pylint: disable=too-many-statements
         def calu_x_y_out_pos(_ib, _loop_info, _scale_info, _ub_info, _l1_info):
             _x_loop = _loop_info[0]
             _y_loop = _loop_info[1]
@@ -4336,7 +4336,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                 index_l1_fp32 = _l1_info["l1_xscale"] \
                     if _y_loop == min_loop else _l1_info["l1_yscale"]
                 tail_scale = _scale_w if _y_loop == min_loop else _scale_h
-                # pylint: disable=simplifiable-if-expression
+                # 'pylint: disable=simplifiable-if-expression
                 is_h = False if _y_loop == min_loop else True
                 with _ib.for_range(0, tail_loop) as _loop:
                     _process_pos_to_l1([index_ub, range_512], [int32_ub, one_ub], [index_l1_int, index_l1_fp32],
@@ -4357,7 +4357,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
         x_segment_loop = w_out // HW_SIZE_256
         x_segment_tail = w_out % HW_SIZE_256
 
-        # pylint: disable=too-many-arguments
+        # 'pylint: disable=too-many-arguments
         def _copy_input_to_l1(src_gm_ub, src_offset, dst_l1_ub, dat_len, mid_ub, y_index):
             dst = dst_l1_ub
             src = src_gm_ub
@@ -4511,7 +4511,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                             _addr = [[fp32_dst, 2 * cp_segment + 16], [fp32_mid_1, HW_SIZE_256 * 8 - 16]]
                             kernel_api.kernel_cp_fuc(ib, _addr, [16, 8], "copy_ubuf_to_ubuf")
 
-        # pylint: disable=unused-variable
+        # 'pylint: disable=unused-variable
         def _data_unfold(part_index, part_data_len):
             if part_index == 0:
                 x0x1_ub = ub_info["x0_512_x1_512_ub_unfold"]
@@ -4565,7 +4565,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
                                             0, 2, 2, 0, 510))
 
             if index_align_left > 0:
-                # pylint: disable=unnecessary-comprehension
+                # 'pylint: disable=unnecessary-comprehension
                 reg_list_left = [_x for _x in range(index_align_left)]
                 for reg_index in reg_list_left:
                     ib.emit(
@@ -4837,7 +4837,7 @@ def _resize_bilinear_ir(inputs, outputs, align_corners, half_pixel_centers):
 
 
 @fusion_manager.register("resize_bilinear_d")
-# pylint: disable=unused-argument
+# 'pylint: disable=unused-argument
 def resize_bilinear_v2_d_compute(images,
                                  y,
                                  size,
@@ -4879,7 +4879,7 @@ def resize_bilinear_v2_d_compute(images,
     return res
 
 
-# pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments
 @check_op_params(REQUIRED_INPUT, REQUIRED_OUTPUT, REQUIRED_ATTR_LIST_INT, OPTION_ATTR_BOOL, OPTION_ATTR_BOOL,
                  KERNEL_NAME)
 def resize_bilinear_v2_d(images,
