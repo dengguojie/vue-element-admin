@@ -549,6 +549,52 @@ Status AvgPoolFusionPass::UpdateDequantConst(ge::ComputeGraph& graph, ge::NodePt
   return SUCCESS;
 }
 
+Status AvgPoolFusionPass::SetInvalidKernelAvgpool(ge::ComputeGraph& graph, ge::NodePtr fusedNode) {
+  ge::InDataAnchorPtr InDataAnchor = fusedNode->GetInDataAnchor(0);
+  FUSION_PASS_CHECK(InDataAnchor == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "InDataAnchor is null, fusion failed."),
+                    return PARAM_INVALID);
+
+  ge::OutDataAnchorPtr preAnchorPtr0 = InDataAnchor->GetPeerOutAnchor();
+  FUSION_PASS_CHECK(preAnchorPtr0 == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "preAnchorPtr0 is null, fusion failed."),
+                    return PARAM_INVALID);
+
+  ge::OutDataAnchorPtr outDataAnchor = fusedNode->GetOutDataAnchor(0);
+  FUSION_PASS_CHECK(outDataAnchor == nullptr,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "outDataAnchor is null, fusion failed."),
+                    return PARAM_INVALID);
+
+  // remove edge between avgpool and pre node
+  FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(InDataAnchor, preAnchorPtr0) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                    "remove edge between avgpool input and pre node failed!"),
+                    return FAILED);
+
+  for (auto postAnchorPtr0 : outDataAnchor->GetPeerInDataAnchors()) {
+    if (postAnchorPtr0 != nullptr) {
+      // remove edge between avgpool and next node
+      FUSION_PASS_CHECK(ge::GraphUtils::RemoveEdge(postAnchorPtr0, outDataAnchor) != SUCCESS,
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                        "remove edge between avgpool output and next node failed!"),
+                        return FAILED);
+
+      // add edge between pre node and next node
+      FUSION_PASS_CHECK(ge::GraphUtils::AddEdge(preAnchorPtr0, postAnchorPtr0) != SUCCESS,
+                        VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(),
+                        "Add edge between pre node and next node failed."),
+                        return FAILED);
+    }
+  }
+
+  // delete avgpool node
+  FUSION_PASS_CHECK(graph.RemoveNode(fusedNode) != SUCCESS,
+                    VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "remove avgpool node failed"),
+                    return FAILED);
+
+  return SUCCESS;
+}
+
 vector<FusionPattern*> AvgPoolFusionPass::DefinePatterns() {
   vector<FusionPattern*> patterns;
 
@@ -654,6 +700,14 @@ Status AvgPoolFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping, vect
   }
   window = {ksizeH, ksizeW};
   stride = {stridesH, stridesW};
+  // judge invalid kernel
+  if (ksizeH == 1 && ksizeW == 1) {
+    FUSION_PASS_CHECK(SetInvalidKernelAvgpool(graph, avgPoolNode) != SUCCESS,
+                      VECTOR_FUSION_INNER_ERR_REPORT(FUSED_OP_TYPE.c_str(), "Invalid kernel set Avgpool failed."),
+                      return FAILED);
+    OP_LOGI(FUSED_OP_TYPE.c_str(), "Invalid kernel set Avgpool fusion end!");
+    return SUCCESS;
+  }
   // judge global pooling or out_put_w==1
   if ((!isDynamic) && (output_w == 1)) {
     OP_LOGI(FUSED_OP_TYPE.c_str(), "avgpool is global or output_w=1, graph not changed.");

@@ -40,6 +40,7 @@ class AvgPoolFusionPass : public PatternFusionBasePass {
   Status GetWeightOfConvAvgpool(const std::string& opName, const int8_t* filterInt8Data,
                                 const std::vector<int64_t>& filterDims, std::unique_ptr<int32_t[]>& weightInt8OutParam);
   Status UpdateDequantConst(ge::ComputeGraph& graph, ge::NodePtr& const_node, float& area_factor);
+  Status SetInvalidKernelAvgpool(ge::ComputeGraph& graph, ge::NodePtr fusedNode);
   const string FUSED_OP_TYPE = "AvgPool";
 };
 }  // namespace fe
