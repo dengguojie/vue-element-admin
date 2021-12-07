@@ -152,8 +152,7 @@ class AscendRTSApi:
         logger.log_info("find runtime so path is: %s" % rts_so_path)
         self.rtsdll = ctypes.CDLL(rts_so_path)
 
-    @staticmethod
-    def _init_simulator_so_path(simulator_mode, soc_version, simulator_lib_path):
+    def _init_simulator_so_path(self, simulator_mode, soc_version, simulator_lib_path):
         simulator_lib_realpath = os.path.realpath(simulator_lib_path)
         simulator_lib_dir = os.path.join(simulator_lib_realpath, soc_version, "lib")
         if not os.path.exists(simulator_lib_dir):

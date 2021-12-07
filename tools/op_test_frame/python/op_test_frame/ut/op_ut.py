@@ -691,7 +691,6 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
 
         return param_desc_list, param_name_list
 
-    @staticmethod
     def _check_and_fix_param_desc(self, param_desc_list, op_params):
 
         def _check_input(param_idx, op_param_desc: str):
