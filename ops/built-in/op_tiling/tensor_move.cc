@@ -122,7 +122,7 @@ bool TensorMoveTiling(const std::string& opType, const TeOpParas& opParas,
     return false;
   }
 
-  for (int64_t i = 0; i < inputShape.size(); i++) {
+  for (uint64_t i = 0; i < inputShape.size(); i++) {
     shapeListNum *= inputShape[i];
   }
 

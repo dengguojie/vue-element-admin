@@ -3822,7 +3822,13 @@ VERIFY_FUNC_REG(KLDiv, KLDivVerify);
 // ---------------------KLDiv End------------------------
 
 // ----------------TensorMove Begin-------------------
-COMMON_INFER_FUNC_REG(TensorMove, ELMTWISE_INFER_SHAPEANDTYPE("x", "y"));
+IMPLEMT_COMMON_INFERFUNC(TensorMoveInferShape) {
+  if (OneInOneOutDynamicInfer(op, "x", {"y"})) {
+    return GRAPH_SUCCESS;
+  }
+  return GRAPH_FAILED;
+}
+COMMON_INFER_FUNC_REG(TensorMove, TensorMoveInferShape);
 // ----------------TensorMove END---------------------
 
 // ----------------TensorRedirect Begin-------------------
