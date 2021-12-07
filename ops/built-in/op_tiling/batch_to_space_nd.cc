@@ -377,7 +377,7 @@ bool BatchToSpaceNDTiling(const string& op_type, const ge::Operator& op_paras, c
       return false;
     }
   }
-  
+
   // if input_h and block_h is one, can swap h and w
   bool swap_h_w = false;
   if (input_format == FORMAT_NC1HWC0 && input_shape.GetDim(2) == 1 && block_vec[0] == 1 && crops_vec[0] == 0 &&
