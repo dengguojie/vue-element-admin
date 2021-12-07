@@ -552,7 +552,7 @@ class OpUT:  # 'pylint: disable=too-many-instance-attributes
             compile_info_str = compile_info
         else:
             compile_info_str = json.dumps(compile_info, indent=4)
-        with os.fdopen(os.open(compile_info_save_path), "w") as info_f:
+        with open(compile_info_save_path, "w") as info_f:
             info_f.write(compile_info_str)
 
     def _get_compile_info(self, kernel_name):
