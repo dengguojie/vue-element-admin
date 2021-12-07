@@ -22,11 +22,13 @@ from impl.util.platform_adapter import para_check
 from impl.util.platform_adapter import error_manager_vector
 
 
-class GroupNormBase(object):
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class GroupNormBase:
     """
     GroupNormBase
     """
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def __init__(self, n_num, c_num, d_num, num_groups, eps, data_type, kernel_name):
         self.n_num = n_num
         self.c_num = c_num
@@ -151,11 +153,13 @@ class GroupNormBase(object):
             self.tik_inst.vconv(mask, "", dst[start_index], src0[start_index], repeat_num, 1, 1, 4, 8)
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class GroupNormTilingC1(GroupNormBase):
     """
     GroupNormTilingC1
     """
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def __init__(self, n_num, c_num, d_num, num_groups, eps, data_type, kernel_name):
         super(GroupNormTilingC1, self).__init__(n_num, c_num, d_num, num_groups, eps, data_type, kernel_name)
         self.c_groups = self.c_num // self.num_groups
@@ -315,6 +319,7 @@ class GroupNormTilingC1(GroupNormBase):
         data_num_all = group_num * self.res_block_num
         self._count_rec_std_ne_mean_loop(group_mean_ub, group_mean_square_ub, group_variance_ub, data_num_all, 1)
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _count_rec_std_ne_mean_loop(self, group_mean_ub, group_mean_square_ub, group_variance_ub,
                                     mask, repeat_num):
         self.tik_inst.vmuls(mask, group_mean_ub, group_mean_ub, 1.0 / self.d_groups,
@@ -404,11 +409,13 @@ class GroupNormTilingC1(GroupNormBase):
             self.tik_inst.data_move(self.output_0[n_index, c1_index, 0, 0], result_data_ub, 0, 1, data_block_num, 0, 0)
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class GroupNormTilingC1D(GroupNormBase):
     """
     GroupNormTilingC1D
     """
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def __init__(self, n_num, c_num, d_num, num_groups, eps, data_type, kernel_name):
         super(GroupNormTilingC1D, self).__init__(n_num, c_num, d_num, num_groups, eps, data_type, kernel_name)
         self.c_groups = self.c_num // self.num_groups
@@ -440,6 +447,7 @@ class GroupNormTilingC1D(GroupNormBase):
             self._count_weight(weight_ub, bias_ub, sum_ub, sum_square_ub)
         self._count_norm(weight_ub, bias_ub, n_index)
 
+    # 'pylint: disable=unused-variable
     def _count_sum(self, sum_ub, sum_square_ub, n_index):
         mask = self.res_repeat_num
         sum_repeat_num = sum_ub.size // mask
@@ -455,6 +463,7 @@ class GroupNormTilingC1D(GroupNormBase):
             d_index = loop_index % each_c1_loop_times * each_loop_d_num
             self._compute_sum_each_loop(sum_ub, sum_square_ub, n_index, c1_index, group_index, d_index, each_loop_d_num)
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _compute_sum_each_loop(self, sum_ub, sum_square_ub, n_index, c1_index, group_index, d_index, d_num):
         mask = self.res_repeat_num
         data_num = d_num * self.c0_num
@@ -480,6 +489,7 @@ class GroupNormTilingC1D(GroupNormBase):
         self.tik_inst.vadd(self.res_block_num, sum_square_ub[group_index, 0], sum_square_ub[group_index, 0],
                            result_ub, 1, 1, 1, 1, 8, 8, 8)
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _count_rec_std_ne_mean_loop(self, group_mean_ub, group_mean_square_ub, group_variance_ub,
                                     mask, repeat_num):
         self.tik_inst.vmuls(mask, group_mean_ub, group_mean_ub, 1.0 / self.d_groups,
@@ -531,6 +541,7 @@ class GroupNormTilingC1D(GroupNormBase):
             self.tik_inst.vmuls(mask, temp_ub, weight_ub[group_index, 0], ne_mean_scalar, 1, 1, 1, 8, 8)
             self.tik_inst.vadd(mask, bias_ub[group_index, 0], bias_ub[group_index, 0], temp_ub, 1, 1, 1, 1, 8, 8, 8)
 
+    # 'pylint: disable=unused-variable
     def _count_norm(self, weight_ub, bias_ub, n_index):
         each_loop_d_num = self.each_loop_repeat_num * self.c0_repeat
         each_c1_loop_times, last_c1_d_num = self._get_loop_info(self.d_num, each_loop_d_num)
@@ -546,6 +557,7 @@ class GroupNormTilingC1D(GroupNormBase):
         self.tik_inst.data_move(result_data[self.c0_num, ], result_data, 0, 1, block_num, 0, 0)
         self.tik_inst.data_move(result_data[self.c0_num * 2], result_data, 0, 1, block_num * 2, 0, 0)
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _count_norm_each_loop(self, weight_ub, bias_ub, n_index, c1_index, d_index, d_num):
         mask = self.res_repeat_num
         data_num = d_num * self.c0_num
@@ -583,11 +595,13 @@ class GroupNormTilingC1D(GroupNormBase):
         self.tik_inst.data_move(self.output_0[n_index, c1_index, d_index, 0], data_move_ub, 0, 1, block_num, 0, 0)
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class GroupNormTilingC0(GroupNormBase):
     """
     GroupNormTilingC0
     """
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def __init__(self, n_num, c_num, d_num, num_groups, eps, data_type, kernel_name):
         super(GroupNormTilingC0, self).__init__(n_num, c_num, d_num, num_groups, eps, data_type, kernel_name)
         self.c_groups = self.c_num // self.num_groups
@@ -769,6 +783,7 @@ class GroupNormTilingC0(GroupNormBase):
         last_num = data_num_all - repeat_times * self.res_repeat_num
         self._count_rec_std_ne_mean_loop(group_mean_ub, group_mean_square_ub, group_variance_ub, last_num, 1)
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _count_rec_std_ne_mean_loop(self, group_mean_ub, group_mean_square_ub, group_variance_ub,
                                     mask, repeat_num):
         self.tik_inst.vmuls(mask, group_mean_ub, group_mean_ub, 1.0 / self.d_groups,
@@ -842,11 +857,13 @@ class GroupNormTilingC0(GroupNormBase):
         self.tik_inst.data_move(self.output_0[n_index, c1_index, 0, 0], data_ub_move, 0, 1, data_block_num, 0, 0)
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class GroupNormTilingD(GroupNormBase):
     """
     GroupNormTilingD
     """
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def __init__(self, n_num, c_num, d_num, num_groups, eps, data_type, kernel_name):
         super(GroupNormTilingD, self).__init__(n_num, c_num, d_num, num_groups, eps, data_type, kernel_name)
         self.c_groups = self.c_num // self.num_groups
@@ -868,6 +885,7 @@ class GroupNormTilingD(GroupNormBase):
             self._count_rec_std_ne_mean(sum_ub, sum_square_ub)
         self._count_norm(sum_square_ub, sum_ub, n_index)
 
+    # 'pylint: disable=unused-variable
     def _count_sum(self, sum_ub, sum_square_ub, n_index):
         mask = self.res_repeat_num
         sum_repeat_num = self.c_num // mask
@@ -899,6 +917,7 @@ class GroupNormTilingD(GroupNormBase):
                 data_num = start_index_1
         return sum_info
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _compute_sum_each_loop(self, sum_ub, sum_square_ub, n_index, c1_index, d_index, d_num):
         mask = self.res_repeat_num
         data_num = d_num * self.c0_num
@@ -951,6 +970,7 @@ class GroupNormTilingD(GroupNormBase):
             self.tik_inst.data_move(temp_ub_1, self.input_2, 0, 1, weight_block_num, 0, 0)
         self._count_weight(sum_ub, sum_square_ub, temp_ub_0, temp_ub_1, temp_ub_2, mask, sum_repeat)
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _count_sum_c8(self, sum_ub, sum_square_ub, temp_ub_0, temp_ub_1, temp_ub_2):
         tensor_const = self.tik_inst.Tensor("int32", (self.c_num,), tik.scope_ubuf, "tensor_const")
         mask = self.res_repeat_num
@@ -973,6 +993,7 @@ class GroupNormTilingD(GroupNormBase):
         self.tik_inst.vgather(mask, sum_ub, temp_ub_0, tensor_const, sum_repeat, 8)
         self.tik_inst.vgather(mask, temp_ub_2, temp_ub_1, tensor_const, sum_repeat, 8)
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _count_sum_c4(self, sum_ub, sum_square_ub, temp_ub_2):
         tensor_const = self.tik_inst.Tensor("int32", (3, self.c_num,), tik.scope_ubuf, "tensor_const")
         temp_ub = self.tik_inst.Tensor(self.res_type, (3, self.c_num,), tik.scope_ubuf, "temp_ub")
@@ -1013,6 +1034,7 @@ class GroupNormTilingD(GroupNormBase):
         self.tik_inst.vadd(mask, sum_square_ub, sum_square_ub, temp_ub[1, 0], add_repeat, 1, 1, 1, 8, 8, 8)
         self.tik_inst.vadd(mask, temp_ub_2, sum_square_ub, temp_ub[2, 0], add_repeat, 1, 1, 1, 8, 8, 8)
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _count_sum_c2(self, sum_ub, sum_square_ub, temp_ub_2):
         tensor_const = self.tik_inst.Tensor("int32", (self.c_num,), tik.scope_ubuf, "tensor_const")
         temp_ub = self.tik_inst.Tensor(self.res_type, (self.c_num,), tik.scope_ubuf, "temp_ub")
@@ -1042,6 +1064,7 @@ class GroupNormTilingD(GroupNormBase):
         add_repeat = self.c_num // self.res_repeat_num
         self.tik_inst.vadd(mask, temp_ub_2, sum_square_ub, temp_ub, add_repeat, 1, 1, 1, 8, 8, 8)
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _count_rec_std_ne_mean_loop(self, group_mean_ub, group_mean_square_ub, group_variance_ub,
                                     mask, repeat_num):
         self.tik_inst.vmuls(mask, group_mean_ub, group_mean_ub, 1.0 / self.d_groups,
@@ -1065,11 +1088,13 @@ class GroupNormTilingD(GroupNormBase):
         self.tik_inst.vdiv(mask, group_variance_ub, group_mean_square_ub, group_variance_ub,
                            repeat_num, 1, 1, 1, 8, 8, 8)
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _count_weight(self, mean_ub, variance_ub, weight_ub, bias_ub, temp_ub_0, mask, repeat_num):
         self.tik_inst.vmul(mask, variance_ub, weight_ub, variance_ub, repeat_num, 1, 1, 1, 8, 8, 8)
         self.tik_inst.vmul(mask, temp_ub_0, variance_ub, mean_ub, repeat_num, 1, 1, 1, 8, 8, 8)
         self.tik_inst.vadd(mask, mean_ub, bias_ub, temp_ub_0, repeat_num, 1, 1, 1, 8, 8, 8)
 
+    # 'pylint: disable=unused-variable
     def _count_norm(self, weight_ub, bias_ub, n_index):
         each_loop_d_num = self.each_loop_repeat_num * self.c0_repeat
         each_c1_loop_times, last_c1_d_num = self._get_loop_info(self.d_num, each_loop_d_num)
@@ -1085,6 +1110,7 @@ class GroupNormTilingD(GroupNormBase):
         self.tik_inst.data_move(result_data[self.c0_num], result_data, 0, 1, block_num, 0, 0)
         self.tik_inst.data_move(result_data[self.c0_num * 2], result_data, 0, 1, block_num * 2, 0, 0)
 
+    # 'pylint: disable=too-many-arguments,too-many-locals
     def _count_norm_each_loop(self, weight_ub, bias_ub, n_index, c1_index, d_index, d_num):
         mask = self.res_repeat_num
         data_num = d_num * self.c0_num
