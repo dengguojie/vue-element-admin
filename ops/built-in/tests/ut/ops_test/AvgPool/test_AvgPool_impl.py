@@ -139,7 +139,7 @@ ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case4)
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case5)
 
-ut_case.add_precision_case(["Ascend310", "Ascend910A"], case6)
+# ut_case.add_precision_case(["Ascend310", "Ascend910A"], case6)
 
 ut_case.add_case(["Ascend310", "Ascend710", "Ascend910A"], case7)
 

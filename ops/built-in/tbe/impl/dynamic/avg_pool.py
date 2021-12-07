@@ -869,7 +869,8 @@ def gen_avg_pool_range(inputs, ksize, strides, padding):
     # check fmap exceed l1buffer
     if x_shape[idx_w] != DYNAMIC_VALUE:
         check_l1_size(op_type, inputs, kh, kw, strides, pads)
-    new_in_range = modify_input_range(input_range, data_type, idx_h, idx_w, strides, kh, kw, pads)
+    attr_params = [strides, kh, kw, pads]
+    new_in_range = modify_input_range(inputs, input_range, data_type, idx_h, idx_w, attr_params)
     log.debug("avgpool fuzz input range is modified for no exceed l1buffer, :%s", new_in_range)
     return new_in_range
 

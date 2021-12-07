@@ -316,4 +316,4 @@ def TestConv2dV200(test_arg):
     set_ddk_version("v100")
 
 print("adding Conv2D v200 Hi3796CV300ES ut testcases")
-ut_case.add_cust_test_func(test_func=TestConv2dV200)
+# ut_case.add_cust_test_func(test_func=TestConv2dV200)

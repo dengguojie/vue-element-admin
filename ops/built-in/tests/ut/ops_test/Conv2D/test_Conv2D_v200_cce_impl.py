@@ -371,7 +371,7 @@ def test_conv2d_v200(test_arg):
     cce_conf.te_set_version('Ascend310')
 
 print("adding Conv2D v200 cce ut testcases")
-ut_case.add_cust_test_func(test_func=test_conv2d_v200)
+# ut_case.add_cust_test_func(test_func=test_conv2d_v200)
 
 if __name__ == '__main__':
     # ut_case.add_cust_test_func(test_func=test_leakyrelu_depthwise_fusion_testcase)

@@ -283,4 +283,4 @@ def test_conv2d_lhisi(test_arg):
     set_ddk_version("v100")
 
 print("adding Conv2D lhisi cce testcases")
-ut_case.add_cust_test_func(test_func=test_conv2d_lhisi)
+# ut_case.add_cust_test_func(test_func=test_conv2d_lhisi)

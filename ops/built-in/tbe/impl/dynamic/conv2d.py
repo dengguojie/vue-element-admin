@@ -117,7 +117,8 @@ def gen_conv2d_range(inputs, weights, strides, pads, dilations):
     # check mini tiling exceed l1buffer
     if x_shape[idx_w] != DYNAMIC_VALUE:
         check_l1_size(op_type, inputs, kh_dilate, kw_dilate, strides, pads)
-    new_in_range = modify_input_range(input_range, data_type, idx_h, idx_w, strides, kh_dilate, kw_dilate, pads)
+    attr_params = [strides, kh_dilate, kw_dilate, pads]
+    new_in_range = modify_input_range(inputs, input_range, data_type, idx_h, idx_w, attr_params)
     log.debug("conv2d fuzz input range is modified for no exceed l1buffer, :%s", new_in_range)
     return new_in_range
 
