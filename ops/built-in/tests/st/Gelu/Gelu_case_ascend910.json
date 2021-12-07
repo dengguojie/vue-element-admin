@@ -4,12 +4,16 @@
     "op": "Gelu",
     "input_desc": [
       {
-        "format": [],
-        "type": [
-          "float",
-          "float16"
+        "format": [
+          "ND"
         ],
-        "shape": [],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          100,
+          100
+        ],
         "data_distribute": [
           "uniform"
         ],
@@ -24,12 +28,25 @@
     ],
     "output_desc": [
       {
-        "format": [],
-        "type": [
-          "float",
-          "float16"
+        "format": [
+          "ND"
         ],
-        "shape": [],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          100,
+          100
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
         "name": "y"
       }
     ]
@@ -39,12 +56,15 @@
     "op": "Gelu",
     "input_desc": [
       {
-        "format": [],
+        "format": [
+          "ND"
+        ],
         "type": [
-          "float",
           "float16"
         ],
-        "shape": [],
+        "shape": [
+          1
+        ],
         "data_distribute": [
           "uniform"
         ],
@@ -54,18 +74,48 @@
             1.0
           ]
         ],
-        "name": "x"
+        "name": "x",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
       }
     ],
     "output_desc": [
       {
-        "format": [],
+        "format": [
+          "ND"
+        ],
         "type": [
-          "float",
           "float16"
         ],
-        "shape": [],
-        "name": "y"
+        "shape": [
+          1
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
+        "name": "y",
+        "shape_range": [
+          [
+            1,
+            100
+          ]
+        ],
+        "typical_shape": [
+          1
+        ]
       }
     ]
   },
@@ -74,12 +124,16 @@
     "op": "Gelu",
     "input_desc": [
       {
-        "format": [],
-        "type": [
-          "float",
-          "float16"
+        "format": [
+          "ND"
         ],
-        "shape": [],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          512,
+          256
+        ],
         "data_distribute": [
           "uniform"
         ],
@@ -94,12 +148,25 @@
     ],
     "output_desc": [
       {
-        "format": [],
-        "type": [
-          "float",
-          "float16"
+        "format": [
+          "ND"
         ],
-        "shape": [],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          512,
+          256
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
         "name": "y"
       }
     ]
@@ -109,12 +176,16 @@
     "op": "Gelu",
     "input_desc": [
       {
-        "format": [],
-        "type": [
-          "float",
-          "float16"
+        "format": [
+          "ND"
         ],
-        "shape": [],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          2
+        ],
         "data_distribute": [
           "uniform"
         ],
@@ -129,12 +200,25 @@
     ],
     "output_desc": [
       {
-        "format": [],
-        "type": [
-          "float",
-          "float16"
+        "format": [
+          "ND"
         ],
-        "shape": [],
+        "type": [
+          "float32"
+        ],
+        "shape": [
+          1,
+          2
+        ],
+        "data_distribute": [
+          "uniform"
+        ],
+        "value_range": [
+          [
+            0.1,
+            1.0
+          ]
+        ],
         "name": "y"
       }
     ]

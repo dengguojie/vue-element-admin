@@ -1,0 +1,98 @@
+[
+    {
+      "op": "HardSwishGrad",
+      "input_desc": [
+        {
+          "format": "ND",
+          "ori_format": "ND",
+          "ori_shape": [
+            100
+          ],
+          "shape": [
+            100
+          ],
+          "param_type": "input",
+          "name": "input_grad",
+          "type": "float"
+        },
+        {
+          "format": "ND",
+          "ori_format": "ND",
+          "ori_shape": [
+            100
+          ],
+          "shape": [
+            100
+          ],
+          "param_type": "input",
+          "name": "input_x",
+          "type": "float"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": "ND",
+          "ori_format": "ND",
+          "ori_shape": [
+            100
+          ],
+          "shape": [
+            100
+          ],
+          "param_type": "output",
+          "name": "output_y",
+          "type": "float"
+        }
+      ],
+      "attr": [],
+      "case_name": "test_HardSwishGrad_001"
+    },
+    {
+      "op": "HardSwishGrad",
+      "input_desc": [
+        {
+          "format": "ND",
+          "ori_format": "ND",
+          "ori_shape": [
+            100
+          ],
+          "shape": [
+            100
+          ],
+          "param_type": "input",
+          "name": "input_grad",
+          "type": "float16"
+        },
+        {
+          "format": "ND",
+          "ori_format": "ND",
+          "ori_shape": [
+            100
+          ],
+          "shape": [
+            100
+          ],
+          "param_type": "input",
+          "name": "input_x",
+          "type": "float16"
+        }
+      ],
+      "output_desc": [
+        {
+          "format": "ND",
+          "ori_format": "ND",
+          "ori_shape": [
+            100
+          ],
+          "shape": [
+            100
+          ],
+          "param_type": "output",
+          "name": "output_y",
+          "type": "float16"
+        }
+      ],
+      "attr": [],
+      "case_name": "test_HardSwishGrad_002"
+    }
+  ]

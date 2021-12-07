@@ -23,6 +23,15 @@ from impl.util.platform_adapter import error_manager_vector
 from impl.util.platform_adapter import para_check
 
 
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    The class for constant.
+    """
+    CONST_THREE = 3.0
+    CONST_HALF = 0.5
+
+
 # 'pylint: disable=too-many-arguments,unused-argument
 @fusion_manager.register("hard_swish_grad")
 def hard_swish_grad_compute(input_grad, input_x, output_y, kernel_name="hard_swish_grad"):
@@ -47,14 +56,12 @@ def hard_swish_grad_compute(input_grad, input_x, output_y, kernel_name="hard_swi
     input_x_grad = x / 3 + 0.5   if -3 <= x <= 3,
     input_x_grad = 1             if x > 3
     """
-    CONST_THREE = 3.0
-    CONST_HALF = 0.5
     input_dtype = input_x.dtype
-    three_tensor = tbe.broadcast(tvm.const(CONST_THREE, input_dtype), input_x.shape)
+    three_tensor = tbe.broadcast(tvm.const(Constant.CONST_THREE, input_dtype), input_x.shape)
     output_x = tbe.vdiv(input_x, three_tensor)
-    output_x = tbe.vadds(output_x, tvm.const(CONST_HALF, input_dtype))
-    output_x = tbe.vcmpsel(input_x, -CONST_THREE, 'lt', 0, output_x)
-    output_x = tbe.vcmpsel(input_x, CONST_THREE, 'gt', 1, output_x)
+    output_x = tbe.vadds(output_x, tvm.const(Constant.CONST_HALF, input_dtype))
+    output_x = tbe.vcmpsel(input_x, -Constant.CONST_THREE, 'lt', 0, output_x)
+    output_x = tbe.vcmpsel(input_x, Constant.CONST_THREE, 'gt', 1, output_x)
     return tbe.vmul(input_grad, output_x)
 
 

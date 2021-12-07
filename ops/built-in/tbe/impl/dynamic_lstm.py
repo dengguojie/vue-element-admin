@@ -31,6 +31,9 @@ from te.utils.error_manager import error_manager_vector
 
 # 'pylint: disable=too-few-public-methods,too-many-instance-attributes
 class Constants:
+    """
+    The class for constant
+    """
     lstm_tiling_map = {
         "32_512_256": (2, 8, 8, 2, 8, 8),
         "16_1536_2048": (1, 32, 12, 1, 32, 12),
@@ -163,7 +166,7 @@ def _get_lstm_tiling(m_size, k_size, n_size):
 
     if key not in Constants.lstm_tiling_map:
         error_manager_vector.raise_err_specific_reson("DynamicLSTM", "Unsupported lstm shape tiling!")
-    return Constants.lstm_tiling_map[key]
+    return Constants.lstm_tiling_map.get(key)
 
 
 def check_dtype(input_x, weight, output_h):
