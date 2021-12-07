@@ -15,7 +15,7 @@
 """
 resize_bilinear_v2_grad
 """
-# pylint: disable=too-many-lines,unused-variable
+# 'pylint: disable=too-many-lines,unused-variable
 from te import tik
 from te import platform as tbe_platform
 from te.utils import para_check
@@ -99,7 +99,7 @@ def _check_param(grads, images, kernel_name, align_corners, half_pixel_centers):
     para_check.check_dtype(images_dtype.lower(), check_list_images, param_name="images")
 
 
-# pylint: disable=unused-argument,invalid-name, unused-variable
+# 'pylint: disable=unused-argument,invalid-name, unused-variable
 def check_supported(grads, images, y, align_corners=False, kernel_name="resize_bilinear_v2_grad"):
     """
     To check whether the AICORE operator can support
@@ -143,7 +143,7 @@ def check_supported(grads, images, y, align_corners=False, kernel_name="resize_b
     return True, ""
 
 
-# pylint: disable=unused-argument,too-many-lines,invalid-name,too-many-arguments
+# 'pylint: disable=unused-argument,too-many-lines,invalid-name,too-many-arguments
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.OPTION_ATTR_BOOL, para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)
 def resize_bilinear_v2_grad(grads,
@@ -181,7 +181,7 @@ def resize_bilinear_v2_grad(grads,
     return resize_bilinear_grad_reslut.tik_instance_function(kernel_name)
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class ResizeBilinearGrad():
     """
        Function: use to finish MaxPoolWithargmax main functions
@@ -258,7 +258,7 @@ class ResizeBilinearGrad():
                                                   scope=tik.scope_gm,
                                                   is_atomic_add=True)
 
-    # pylint: disable=too-many-locals,too-many-branches,too-many-statements
+    # 'pylint: disable=too-many-locals,too-many-branches,too-many-statements
     def tik_instance_function(self, kernel_name):
         """
         tik_instance_function
@@ -717,7 +717,7 @@ class ResizeBilinearGrad():
                                    self.out_size_w * 16], ub_output[0], 0, 1, 2, 0, 0)
                 self.tik_instance.set_atomic_add(0)
 
-    # pylint: disable=too-many-locals, too-many-arguments,too-many-statements
+    # 'pylint: disable=too-many-locals, too-many-arguments,too-many-statements
     def fun_w_out_small(self, core_index, h_per_core, h_in_index, l1_xpos, l1_xscale, one_value_buf):
         """
         funtion for other scene
@@ -956,7 +956,7 @@ class ResizeBilinearGrad():
                     ub_output_2[0], 0, 1, self.out_size_w * 2, 0, 0)
             self.tik_instance.set_atomic_add(0)
 
-    # pylint: disable=too-many-locals, too-many-arguments,too-many-statements
+    # 'pylint: disable=too-many-locals, too-many-arguments,too-many-statements
     def fun_other(self, core_index, h_per_core, h_in_index, l1_xpos, l1_xscale, one_value_buf):
         """
         funtion for other scene
@@ -1508,7 +1508,7 @@ class ResizeBilinearGrad():
                                 (self.out_size_w - cut_w_index * 600) * 2, 0, 0)
                         self.tik_instance.set_atomic_add(0)
 
-    # pylint: disable=too-many-locals,too-many-statements
+    # 'pylint: disable=too-many-locals,too-many-statements
     def fun_special(self):
         """
         funtion special shape

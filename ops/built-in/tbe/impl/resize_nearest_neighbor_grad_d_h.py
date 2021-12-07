@@ -101,7 +101,7 @@ def clear_ub(tik_instance, dst_ub):
     dst_ub.reshape(shape)
 
 
-# pylint: disable-msg=invalid-name,unused-argument,too-many-arguments
+# 'pylint: disable-msg=invalid-name,unused-argument,too-many-arguments
 @para_check.check_input_type(dict, dict, (list, tuple), bool, bool, str)
 def resize_nearest_neighbor_grad_d_h(
         grads, y, size, align_corners=False, half_pixel_centers=False,
@@ -137,7 +137,7 @@ def resize_nearest_neighbor_grad_d_h(
     return resize_bilinear_grad_reslut.tik_instance_function(kernel_name)
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class ResizeNearestGrad():
     """
     Function: use to finish MaxPoolWithargmax main functions
@@ -260,7 +260,7 @@ class ResizeNearestGrad():
 
         self.tik_instance.set_atomic_add(0)
 
-    # pylint: disable=too-many-locals,too-many-branches,too-many-statements
+    # 'pylint: disable=too-many-locals,too-many-branches,too-many-statements
     def tik_instance_function(self, kernel_name):
         """
         tik_instance_function
@@ -543,7 +543,7 @@ class ResizeNearestGrad():
         for i in repeat_num_tmp:
             repeat_num.append(list_num.count(i))
 
-    # pylint: disable=too-many-locals, too-many-arguments
+    # 'pylint: disable=too-many-locals, too-many-arguments
     def not_equal(self, list_w_num, list_num, reg_index_y, reg_cur_index,
                   ub_output):
         """
@@ -671,7 +671,7 @@ class ResizeNearestGrad():
                 i = i + list_w_num[w_out_index]
             self.move_out(ub_output, nc1_index, reg_index_y)
 
-    # pylint: disable=too-many-locals, too-many-arguments,too-many-statements
+    # 'pylint: disable=too-many-locals, too-many-arguments,too-many-statements
     def fun_w_out_small(self, core_index, h_per_core, h_in_index):
         """
         funtion for other scene

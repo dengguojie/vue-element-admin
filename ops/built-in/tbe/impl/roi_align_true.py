@@ -184,8 +184,8 @@ def _get_roi_align_perf_scale_for_zero_v200(tik_instance, roi_fp32_fm_index, pro
            grid_w_int32, grid_h_int32, grid_w_fp32, grid_h_fp32, roi_int32_fm_index
 
 
-# pylint: disable=too-many-statements,too-many-locals,too-many-branches
-# pylint: disable=no-member
+# 'pylint: disable=too-many-statements,too-many-locals,too-many-branches
+# 'pylint: disable=no-member
 def _get_roi_align_perf_scale_for_zero(tik_instance, proposal, proposals_ub_x0,
                                        proposals_ub_y0, proposals_ub_x1,
                                        proposals_ub_y1, scale, pool_h, pool_w,
@@ -1193,7 +1193,7 @@ def _compute_roi_with_single_point(tik_instance, feature_shape, dtype,
                                                    0, 1, n_bust, 0, 0)
 
 
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=unused-argument,invalid-name
 def _get_grid_weight_per_roi(tik_instance, roi_bin_h_fp32_value,
                              proposals_ub_y0, grid_h_fp32, pool_n, grid_n, fm_h,
                              curr_roi, dtype, verify, w_h):
@@ -1319,7 +1319,7 @@ def _get_grid_weight_per_roi(tik_instance, roi_bin_h_fp32_value,
     return roi_bin_ph_gh_ly_int32, low_y, roi_bin_ph_gh_hy_int32, high_y, verify
 
 
-# pylint: disable=unused-argument,invalid-name
+# 'pylint: disable=unused-argument,invalid-name
 def roi_align_true(feature_map_dict, rois_dict, roisn_dict, output, scale, pool_h, pool_w, sample_ratio, roi_end_mode,
                    kernel_name):
     """

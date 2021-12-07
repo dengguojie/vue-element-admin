@@ -15,7 +15,7 @@
 """
 resize_nearest_neighbor_v2_d
 """
-# pylint: disable=too-many-lines,too-many-return-statements
+# 'pylint: disable=too-many-lines,too-many-return-statements
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
@@ -39,7 +39,7 @@ class Constant:
     BLOCK_SIZE = 32
 
 
-# pylint: disable=invalid-name,too-many-lines,too-many-arguments
+# 'pylint: disable=invalid-name,too-many-lines,too-many-arguments
 def _apply_store_buffer(ib,
                         dtype,
                         shape,
@@ -57,14 +57,14 @@ def _apply_store_buffer(ib,
     return tmp_buffer
 
 
-# pylint: disable=too-many-locals,too-many-statements,unused-argument
+# 'pylint: disable=too-many-locals,too-many-statements,unused-argument
 def _apply_reg_buffer(ib, dtype, shape, name="reg_buf"):
     """allocate the reg scope buffer
     """
     return ib.allocate(dtype, shape, name=name, scope=tbe_platform.scope_reg)
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class ResizeNearestNeighbor:
     """
     ResizeNearestNeighbor main functions
@@ -982,7 +982,7 @@ def check_supported(images,
     return True, ""
 
 
-# pylint: disable=too-many-branches
+# 'pylint: disable=too-many-branches
 def resize_nearest_neighbor_v2_d_compute(images,
                                          y,
                                          size,

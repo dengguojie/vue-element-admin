@@ -22,7 +22,7 @@ from te.utils import shape_util
 from te import tvm
 
 
-# pylint: disable=locally-disabled,unused-argument
+# 'pylint: disable=locally-disabled,unused-argument
 @tbe_platform.fusion_manager.fusion_manager.register("relu_grad")
 def relu_grad_compute(input_gradients, input_features, output_backprops, kernel_name="relu_grad"):
     """
@@ -77,7 +77,7 @@ def relu_grad_compute(input_gradients, input_features, output_backprops, kernel_
     return result
 
 
-# pylint: disable=unused-variable
+# 'pylint: disable=unused-variable
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT,
                             para_check.KERNEL_NAME)
 def relu_grad(input_gradients, input_features, output_backprops, kernel_name="relu_grad"):

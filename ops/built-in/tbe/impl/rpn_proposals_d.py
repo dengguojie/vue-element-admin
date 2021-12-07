@@ -15,9 +15,9 @@
 """
 rpn_proposals_d
 """
-# pylint: disable=C0302
-# pylint: disable=R0913
-# pylint: disable=R0914
+# 'pylint: disable=C0302
+# 'pylint: disable=R0913
+# 'pylint: disable=R0914
 from te import tik
 
 from impl.util.platform_adapter import para_check

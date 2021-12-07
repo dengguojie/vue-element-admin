@@ -20,7 +20,7 @@ from te.platform.fusion_manager import fusion_manager
 from te.utils import para_check
 
 
-#pylint: disable=invaild-name,unused-argument
+# 'pylint: disable=not-use-list-comprehension,unused-argument,too-many-locals
 @fusion_manager.register("renorm")
 def renorm_compute(input_x, output_y, p, dim, maxnorm, kernel_name="renorm"):
     """
@@ -94,7 +94,7 @@ def renorm_compute(input_x, output_y, p, dim, maxnorm, kernel_name="renorm"):
     return ratio
 
 
-#pylint: disable=invaild-name
+# 'pylint: disable=not-use-list-comprehension,too-many-arguments,too-many-locals
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_OUTPUT, para_check.REQUIRED_ATTR_FLOAT,
                             para_check.REQUIRED_ATTR_INT, para_check.REQUIRED_ATTR_FLOAT, para_check.KERNEL_NAME)
 def renorm(input_x, output_y, p, dim, maxnorm, kernel_name="renorm"):

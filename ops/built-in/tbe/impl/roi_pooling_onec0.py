@@ -22,14 +22,14 @@ from impl import roi_pooling_base
 NoneType = type(None)
 BLOCKNUM = 8
 
-# pylint: disable=C0103
-# pylint: disable=C0301
-# pylint: disable=C0326
-# pylint: disable=C0330
-# pylint: disable=unused-argument,no-member,arguments-differ
-# pylint: disable=too-many-instance-attributes
-# pylint: disable=too-many-locals,too-many-lines
-# pylint: disable=too-many-arguments,attribute-defined-outside-init
+# 'pylint: disable=C0103
+# 'pylint: disable=C0301
+# 'pylint: disable=C0326
+# 'pylint: disable=C0330
+# 'pylint: disable=unused-argument,no-member,arguments-differ
+# 'pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-locals,too-many-lines
+# 'pylint: disable=too-many-arguments,attribute-defined-outside-init
 
 
 def _align(value, factor):

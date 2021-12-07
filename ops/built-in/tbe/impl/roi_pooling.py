@@ -26,14 +26,14 @@ from impl import roi_pooling_four_c0
 from impl.util.platform_adapter import error_manager_vector
 
 
-# pylint: disable=C0103
-# pylint: disable=C0301
-# pylint: disable=C0111
-# pylint: disable=C0103
-# pylint: disable=unused-argument,no-member,no-else-return
-# pylint: disable=too-many-instance-attributes
-# pylint: disable=too-many-locals,too-many-lines
-# pylint: disable=too-many-arguments,attribute-defined-outside-init
+# 'pylint: disable=C0103
+# 'pylint: disable=C0301
+# 'pylint: disable=C0111
+# 'pylint: disable=C0103
+# 'pylint: disable=unused-argument,no-member,no-else-return
+# 'pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-locals,too-many-lines
+# 'pylint: disable=too-many-arguments,attribute-defined-outside-init
 
 NoneType = type(None)
 

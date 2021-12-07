@@ -60,8 +60,8 @@ def _align_value(value, factor):
     return (value + factor - 1) // factor*factor
 
 
-# pylint: disable=too-many-instance-attributes, too-many-locals, invalid-name
-# pylint: disable=unused-argument, attribute-defined-outside-init
+# 'pylint: disable=too-many-instance-attributes, too-many-locals, invalid-name
+# 'pylint: disable=unused-argument, attribute-defined-outside-init
 class RoiClass4C0(roi_pooling_base.RoiClass):
     """
     RoiClass4C0 class that execute roi_pooling

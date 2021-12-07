@@ -850,7 +850,7 @@ class ResizeLinear:
                             para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_FLOAT, para_check.OPTION_ATTR_STR, para_check.OPTION_ATTR_STR,
                             para_check.KERNEL_NAME)
-# 'pylint: disable=too-many-arguments
+# 'pylint: disable=too-many-arguments,too-many-locals
 # 'pylint: disable=W0613
 def resize_d(x,
              y,

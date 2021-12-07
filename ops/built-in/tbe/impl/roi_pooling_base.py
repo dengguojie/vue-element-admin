@@ -19,15 +19,15 @@ import te.platform as tbe_platform
 from te import tik
 
 
-# pylint: disable=C0103
-# pylint: disable=C0330
-# pylint: disable=C0301
-# pylint: disable=C0325
-# pylint: disable=E1136
-# pylint: disable=unused-argument,no-member,no-self-use
-# pylint: disable=too-many-instance-attributes
-# pylint: disable=too-many-locals,too-many-lines
-# pylint: disable=too-many-arguments,attribute-defined-outside-init
+# 'pylint: disable=C0103
+# 'pylint: disable=C0330
+# 'pylint: disable=C0301
+# 'pylint: disable=C0325
+# 'pylint: disable=E1136
+# 'pylint: disable=unused-argument,no-member,no-self-use
+# 'pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-locals,too-many-lines
+# 'pylint: disable=too-many-arguments,attribute-defined-outside-init
 
 
 INDEX_N = 0

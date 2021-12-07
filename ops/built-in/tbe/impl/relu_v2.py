@@ -59,7 +59,7 @@ def conv2d_relu_v2_check(x):
     return False
 
 
-# pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=locally-disabled,too-many-arguments,unused-argument,invalid-name
 @tbe_platform.fusion_manager.fusion_manager.register("relu_v2")
 def relu_v2_compute(x, y, mask, kernel_name="relu_v2_cce"):
     """
