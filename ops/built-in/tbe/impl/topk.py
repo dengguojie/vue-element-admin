@@ -978,7 +978,7 @@ def tik_topk_merge_sort_tail_subgroup(tik_inst, ub_info, region_info_list,
     if valid_bit > 1:
         tik_inst.vmrgsort4(dst=dst,
                            src_list=src_list,
-                           element_lengths=src_list_lengths,
+                           element_count_list=src_list_lengths,
                            if_exhausted_suspension=False,
                            valid_bit=valid_bit,
                            repeat_times=1)
@@ -1251,7 +1251,7 @@ def tik_topk_merge_sort_external(tik_inst, data_store, sub_list):
             with tik_inst.if_scope(ms_valid_bit_ > 0):
                 # Step-2: Do sort with exhausted suspend mode enabled
                 vms4_sr = tik_inst.vmrgsort4(
-                    ms_dest, ms_src_list, element_lengths=ms_src_list_len_,
+                    ms_dest, ms_src_list, element_count_list=ms_src_list_len_,
                     if_exhausted_suspension=True, valid_bit=ms_valid_bit_,
                     repeat_times=1)
 
