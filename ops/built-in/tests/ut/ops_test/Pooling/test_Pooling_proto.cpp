@@ -253,3 +253,193 @@ TEST_F(Pooling, Pooling_data_slice_infer7) {
   auto status = op_desc->InferDataSlice();
   EXPECT_EQ(status, ge::NOT_SUPPORT_SLICE);
 }
+
+TEST_F(Pooling, InfershapePooling_001) {
+  ge::op::Pooling op;
+
+  auto tensor_desc = create_desc_with_ori({1, 1, 224, 224, 16}, ge::DT_FLOAT16, ge::FORMAT_NC1HWC0, {1, 3, 224, 224},
+                                          ge::FORMAT_NC1HWC0);
+  op.UpdateInputDesc("x", tensor_desc);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(Pooling, InfershapePooling_002) {
+  ge::op::Pooling op;
+  auto tensor_desc =
+      create_desc_with_ori({1, 1, 224, 224, 16}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 3, 224, 224}, ge::FORMAT_NCHW);
+  op.UpdateInputDesc("x", tensor_desc);
+  op.SetAttr("global_pooling", true);
+  std::vector<int32_t> pad_list = {0, 1, 1, 0};
+  op.SetAttr("pad", pad_list);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(Pooling, InfershapePooling_003) {
+  ge::op::Pooling op;
+  auto tensor_desc =
+      create_desc_with_ori({1, 1, 224, 224, 16}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 3, 224, 224}, ge::FORMAT_NCHW);
+  op.UpdateInputDesc("x", tensor_desc);
+  op.SetAttr("ceil_mode", -1);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(Pooling, InfershapePooling_004) {
+  ge::op::Pooling op;
+  std::vector<int64_t> pad_list = {1, 1, 1, 1};
+  op.SetAttr("pad", pad_list);
+  auto tensor_desc =
+      create_desc_with_ori({1, 1, 224, 224, 16}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 3, 224, 224}, ge::FORMAT_NCHW);
+  op.UpdateInputDesc("x", tensor_desc);
+  std::vector<int64_t> window = {100, 1};
+  op.SetAttr("window", window);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(Pooling, InfershapePooling_005) {
+  ge::op::Pooling op;
+  std::vector<int64_t> pad_list = {1, 1, 1, 1};
+  op.SetAttr("pad", pad_list);
+  op.SetAttr("ceil_mode", 1);
+  auto tensor_desc =
+      create_desc_with_ori({1, 224, 224, 1}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 224, 224, 1}, ge::FORMAT_NCHW);
+  op.UpdateInputDesc("x", tensor_desc);
+  std::vector<int64_t> window = {1, 100};
+  op.SetAttr("window", window);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(Pooling, InfershapePooling_006) {
+  ge::op::Pooling op;
+  auto tensor_desc =
+      create_desc_with_ori({1, 1, 224, 224, 16}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 3, 224, 224}, ge::FORMAT_NCHW);
+  op.UpdateInputDesc("x", tensor_desc);
+  op.UpdateOutputDesc("y", create_desc_with_ori({}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {}, ge::FORMAT_NCHW));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  std::vector<int64_t> output_data_shape_nchw = {1, 1, 224, 224};
+  auto outdesc = op.GetOutputDesc("y");
+  EXPECT_EQ(outdesc.GetDataType(), ge::DT_FLOAT16);
+  EXPECT_EQ(outdesc.GetShape().GetDims(), output_data_shape_nchw);
+}
+
+TEST_F(Pooling, InfershapePooling_007) {
+  ge::op::Pooling op;
+  auto tensor_desc =
+      create_desc_with_ori({1, 1, 224, 224}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 3, 224, 224}, ge::FORMAT_NHWC);
+  op.UpdateInputDesc("x", tensor_desc);
+  op.UpdateOutputDesc("y", create_desc_with_ori({}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {}, ge::FORMAT_NHWC));
+
+  auto statue = op.VerifyAllAttr(true);
+  EXPECT_EQ(statue, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  std::vector<int64_t> output_data_shape_nchw = {1, 1, 224, 224};
+  auto outdesc = op.GetOutputDesc("y");
+  EXPECT_EQ(outdesc.GetDataType(), ge::DT_FLOAT16);
+  EXPECT_EQ(outdesc.GetShape().GetDims(), output_data_shape_nchw);
+}
+
+TEST_F(Pooling, VerifyePooling_001) {
+  ge::op::Pooling op;
+  auto tensor_desc =
+      create_desc_with_ori({1, 1, 224, 224, 16}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 3, 224, 224}, ge::FORMAT_NHWC);
+  op.UpdateInputDesc("x", tensor_desc);
+
+  auto statue = op.VerifyAllAttr(true);
+  EXPECT_EQ(statue, ge::GRAPH_FAILED);
+}
+
+TEST_F(Pooling, VerifyePooling_002) {
+  ge::op::Pooling op;
+  auto tensor_desc =
+      create_desc_with_ori({1, 1, 224, 224}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1, 224, 224}, ge::FORMAT_NHWC);
+  op.UpdateInputDesc("x", tensor_desc);
+  std::vector<int64_t> window = {3, 3,3};
+  op.SetAttr("window", window);
+
+  auto statue = op.VerifyAllAttr(true);
+  EXPECT_EQ(statue, ge::GRAPH_FAILED);
+}
+
+TEST_F(Pooling, VerifyePooling_003) {
+  ge::op::Pooling op;
+  auto tensor_desc =
+      create_desc_with_ori({1, 1, 224, 224}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1, 224, 224}, ge::FORMAT_NHWC);
+  op.UpdateInputDesc("x", tensor_desc);
+  std::vector<int64_t> stride = {2, 2,2};
+  op.SetAttr("stride", stride);
+
+  auto statue = op.VerifyAllAttr(true);
+  EXPECT_EQ(statue, ge::GRAPH_FAILED);
+}
+
+TEST_F(Pooling, VerifyePooling_004) {
+  ge::op::Pooling op;
+  auto tensor_desc =
+      create_desc_with_ori({1, 1, 224, 224}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 1, 224, 224}, ge::FORMAT_NHWC);
+  op.UpdateInputDesc("x", tensor_desc);
+  std::vector<int32_t> pad_list = {1, 0, 0};
+  op.SetAttr("pad", pad_list);
+
+  auto statue = op.VerifyAllAttr(true);
+  EXPECT_EQ(statue, ge::GRAPH_FAILED);
+}
+
+TEST_F(Pooling, InferformatPooling_001) {
+  ge::op::Pooling op;
+  auto tensor_desc =
+      create_desc_with_ori({1, 1, 224, 224}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 3, 224, 224}, ge::FORMAT_NHWC);
+  op.UpdateInputDesc("x", tensor_desc);
+  op.SetAttr("data_format",true);
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  ASSERT_EQ(op_desc->CallInferFormatFunc(op), ge::GRAPH_FAILED);
+}
+
+TEST_F(Pooling, InferformatPooling_002) {
+  ge::op::Pooling op;
+  auto tensor_desc =
+      create_desc_with_ori({1, 1, 224, 224}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 3, 224, 224}, ge::FORMAT_NHWC);
+  op.UpdateInputDesc("x", tensor_desc);
+  op.SetAttr("data_format","ND");
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  ASSERT_EQ(op_desc->CallInferFormatFunc(op), ge::GRAPH_FAILED);
+}
+
+TEST_F(Pooling, InferformatPooling_003) {
+  ge::op::Pooling op;
+  auto tensor_desc =
+      create_desc_with_ori({1, 1, 224, 224}, ge::DT_FLOAT16, ge::FORMAT_NHWC, {1, 3, 224, 224}, ge::FORMAT_ND);
+  op.UpdateInputDesc("x", tensor_desc);
+  op.SetAttr("data_format","NHWC");
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  ASSERT_EQ(op_desc->CallInferFormatFunc(op), ge::GRAPH_SUCCESS);
+  ASSERT_EQ(op_desc->MutableOutputDesc(0)->GetOriginFormat(), ge::FORMAT_NHWC);
+}
+
+TEST_F(Pooling, InferformatPooling_004) {
+  ge::op::Pooling op;
+  auto tensor_desc =
+      create_desc_with_ori({1, 1, 224, 224}, ge::DT_FLOAT16, ge::FORMAT_NCHW, {1, 3, 224, 224}, ge::FORMAT_ND);
+  op.UpdateInputDesc("x", tensor_desc);
+  op.SetAttr("data_format","NCHW");
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  ASSERT_EQ(op_desc->CallInferFormatFunc(op), ge::GRAPH_SUCCESS);
+  ASSERT_EQ(op_desc->MutableOutputDesc(0)->GetOriginFormat(), ge::FORMAT_NCHW);
+}

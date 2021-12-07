@@ -378,3 +378,230 @@ TEST_F(AvgPool3DGradDProtoTest, avgPool3DGradD_data_slice_cut_global)
     auto status = op_desc->InferDataSlice();
     EXPECT_EQ(status, ge::NOT_SUPPORT_SLICE);
 }
+TEST_F(AvgPool3DGradDProtoTest, VerifyAvgPool3DGradD_001) {
+  ge::op::AvgPool3DGradD op;
+  std::vector<int64_t> orig_input_shape = {9, 1, 2, 2};
+  op.SetAttr("orig_input_shape", orig_input_shape);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPool3DGradDProtoTest, VerifyAvgPool3DGradD_002) {
+  ge::op::AvgPool3DGradD op;
+  std::vector<int64_t> orig_input_shape = {9, 1, 2, 2, 48};
+  std::vector<int64_t> ksize = {1, 1, 2, 2};
+  op.SetAttr("orig_input_shape", orig_input_shape);
+  op.SetAttr("ksize", ksize);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPool3DGradDProtoTest, VerifyAvgPool3DGradD_003) {
+  ge::op::AvgPool3DGradD op;
+  std::vector<int64_t> orig_input_shape = {9, 1, 2, 2, 48};
+  std::vector<int64_t> ksize = {1, 1, 2, 2, 1};
+  std::vector<int64_t> strides = {1, 1, 9, 2};
+  op.SetAttr("orig_input_shape", orig_input_shape);
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("strides", strides);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPool3DGradDProtoTest, VerifyAvgPool3DGradD_004) {
+  ge::op::AvgPool3DGradD op;
+  std::vector<int64_t> orig_input_shape = {9, 1, 2, 2, 48};
+  std::vector<int64_t> ksize = {1, 1, 2, 2, 1};
+  std::vector<int64_t> strides = {1, 1, 9, 2, 1};
+  op.SetAttr("orig_input_shape", orig_input_shape);
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("strides", strides);
+  op.SetAttr("pads", true);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPool3DGradDProtoTest, VerifyAvgPool3DGradD_005) {
+  ge::op::AvgPool3DGradD op;
+  std::vector<int64_t> orig_input_shape = {9, 1, 2, 2, 48};
+  std::vector<int64_t> ksize = {1, 1, 2, 2, 1};
+  std::vector<int64_t> strides = {1, 1, 9, 2, 1};
+  std::vector<int64_t> pads = {0, 0, 0, 2, 0};
+  op.SetAttr("orig_input_shape", orig_input_shape);
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("strides", strides);
+  op.SetAttr("pads", pads);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPool3DGradDProtoTest, VerifyAvgPool3DGradD_006) {
+  ge::op::AvgPool3DGradD op;
+  std::vector<int64_t> orig_input_shape = {9, 1, 2, 2, 48};
+  std::vector<int64_t> ksize = {1, 1, 2, 2, 1};
+  std::vector<int64_t> strides = {1, 1, 9, 2, 1};
+  std::vector<int64_t> pads = {0, 0, 0, 2, 0, 0};
+  op.SetAttr("orig_input_shape", orig_input_shape);
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("strides", strides);
+  op.SetAttr("pads", pads);
+  op.SetAttr("data_format", false);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPool3DGradDProtoTest, VerifyAvgPool3DGradD_007) {
+  ge::op::AvgPool3DGradD op;
+  std::vector<int64_t> orig_input_shape = {9, 1, 2, 2, 48};
+  std::vector<int64_t> ksize = {1, 1, 2, 2, 1};
+  std::vector<int64_t> strides = {1, 1, 9, 2, 1};
+  std::vector<int64_t> pads = {0, 0, 0, 2, 0, 0};
+  op.SetAttr("orig_input_shape", orig_input_shape);
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("strides", strides);
+  op.SetAttr("pads", pads);
+  op.SetAttr("data_format", "ND");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPool3DGradDProtoTest, InfershapeAvgPool3DGradD_001) {
+  ge::op::AvgPool3DGradD op;
+  std::vector<int64_t> orig_input_shape = {9, 1, 2, 2};
+  op.SetAttr("orig_input_shape", orig_input_shape);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPool3DGradDProtoTest, InfershapeAvgPool3DGradD_002) {
+  ge::op::AvgPool3DGradD op;
+  std::vector<int64_t> orig_input_shape = {9, 1, 2, 2, 48};
+  std::vector<int64_t> ksize = {};
+  op.SetAttr("orig_input_shape", orig_input_shape);
+  op.SetAttr("ksize", ksize);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPool3DGradDProtoTest, InfershapeAvgPool3DGradD_003) {
+  ge::op::AvgPool3DGradD op;
+  std::vector<int64_t> orig_input_shape = {9, 1, 2, 2, 48};
+  std::vector<int64_t> ksize = {1, 1, 2, 2, 1};
+  std::vector<int64_t> strides = {};
+  op.SetAttr("orig_input_shape", orig_input_shape);
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("strides", strides);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPool3DGradDProtoTest, InfershapeAvgPool3DGradD_004) {
+  ge::op::AvgPool3DGradD op;
+  std::vector<int64_t> orig_input_shape = {9, 1, 2, 2, 48};
+  std::vector<int64_t> ksize = {1, 1, 2, 2, 1};
+  std::vector<int64_t> strides = {1, 1, 9, 2, 1};
+  op.SetAttr("orig_input_shape", orig_input_shape);
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("strides", strides);
+  op.SetAttr("pads", true);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPool3DGradDProtoTest, InfershapeAvgPool3DGradD_005) {
+  ge::op::AvgPool3DGradD op;
+  std::vector<int64_t> orig_input_shape = {9, 1, 2, 2, 48};
+  std::vector<int64_t> ksize = {1, 1, 2, 2, 1};
+  std::vector<int64_t> strides = {1, 1, 9, 2, 1};
+  op.SetAttr("orig_input_shape", orig_input_shape);
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("strides", strides);
+  op.SetAttr("pads", true);
+  op.SetAttr("data_format", strides);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPool3DGradDProtoTest, InfershapeAvgPool3DGradD_006) {
+  ge::op::AvgPool3DGradD op;
+  std::vector<int64_t> orig_input_shape = {9, 1, 2, 2, 48};
+  std::vector<int64_t> ksize = {1, 1, 2, 2, 1};
+  std::vector<int64_t> strides = {1, 1, 9, 2, 1};
+  op.SetAttr("orig_input_shape", orig_input_shape);
+  op.SetAttr("ksize", ksize);
+  op.SetAttr("strides", strides);
+  op.SetAttr("pads", true);
+  op.SetAttr("data_format", "ND");
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPool3DGradDProtoTest, InfershapeAvgPool3DGradD_007) {
+  ge::op::AvgPool3DGradD op;
+  op.UpdateInputDesc("grads", create_desc_with_ori({9, 6, 4, 14, 48}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                                   {9, 6, 4, 14, 48}, ge::FORMAT_NCDHW));
+  op.UpdateInputDesc("filter", create_desc_with_ori({1, 2, 2, 1, 48}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                                    {1, 2, 2, 1, 48}, ge::FORMAT_NCDHW));
+  op.UpdateInputDesc("multiplier", create_desc_with_ori({9, 6, 4, 14, 48}, ge::DT_FLOAT, ge::FORMAT_NCDHW,
+                                                        {9, 6, 4, 14, 48}, ge::FORMAT_NCDHW));
+  op.UpdateInputDesc("output", create_desc_with_ori({9, 6, 28, 28, 48}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                                    {9, 6, 28, 28, 48}, ge::FORMAT_NCDHW));
+  op.SetAttr("orig_input_shape", {9, 6, 28, 28, 48});
+  op.SetAttr("ksize", {1, 1, 2, 2, 1});
+  op.SetAttr("strides", {1, 1, 9, 2, 1});
+  op.SetAttr("pads", {0, 0, 0, 1, 0, 0});
+  op.SetAttr("ceil_mode", false);
+  op.SetAttr("count_include_pad", false);
+  op.SetAttr("divisor_override", 0);
+  op.SetAttr("data_format", "NCDHW");
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+}
+
+TEST_F(AvgPool3DGradDProtoTest, DatasliceAvgPool3DGradD_001) {
+  ge::op::AvgPool3DGradD op;
+  op.SetAttr("data_format", "NDHWC");
+  op.SetAttr("strides", true);
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  auto status = op_desc->InferDataSlice();
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPool3DGradDProtoTest, DatasliceAvgPool3DGradD_002) {
+  ge::op::AvgPool3DGradD op;
+  std::vector<int32_t> stride_list = {1, 1, 9, 2};
+  op.SetAttr("data_format", "NDHWC");
+  op.SetAttr("strides", stride_list);
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  auto status = op_desc->InferDataSlice();
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}
+
+TEST_F(AvgPool3DGradDProtoTest, DatasliceAvgPool3DGradD_003) {
+  ge::op::AvgPool3DGradD op;
+  std::vector<int32_t> stride_list = {1, -1, -9, 2, 8};
+  op.SetAttr("data_format", "NDHWC");
+  op.SetAttr("strides", stride_list);
+
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  auto status = op_desc->InferDataSlice();
+  EXPECT_EQ(status, ge::GRAPH_FAILED);
+}

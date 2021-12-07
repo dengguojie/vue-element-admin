@@ -449,3 +449,106 @@ TEST_F(avg_pool, AvgPool_data_slice_infer5) {
   auto status = op_desc->InferDataSlice();
   EXPECT_EQ(status, ge::NO_OVERLAP_DIM);
 }
+
+TEST_F(avg_pool, InfershapeAvgPool_001) {
+  ge::op::AvgPool op;
+  op.UpdateInputDesc("x1", create_desc({1, 224, 224}, ge::DT_FLOAT16));
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(avg_pool, InfershapeAvgPool_002) {
+  ge::op::AvgPool op;
+  op.UpdateInputDesc("x", create_desc({1, 224, 224}, ge::DT_FLOAT16));
+  op.SetAttr("ksize", true);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(avg_pool, InfershapeAvgPool_003) {
+  ge::op::AvgPool op;
+  op.UpdateInputDesc("x", create_desc({1, 224, 224}, ge::DT_FLOAT16));
+  std::vector<int32_t> ksize_list = {1, 2};
+  op.SetAttr("ksize", ksize_list);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(avg_pool, InfershapeAvgPool_004) {
+  ge::op::AvgPool op;
+  op.UpdateInputDesc("x", create_desc({1, 224, 224}, ge::DT_FLOAT16));
+  std::vector<int32_t> ksize_list = {1, 2, 3, 4};
+  op.SetAttr("ksize", ksize_list);
+  op.SetAttr("strides", true);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(avg_pool, InfershapeAvgPool_005) {
+  ge::op::AvgPool op;
+  op.UpdateInputDesc("x", create_desc({1, 224, 224}, ge::DT_FLOAT16));
+  std::vector<int32_t> ksize_list = {1, 2, 3, 4};
+  op.SetAttr("ksize", ksize_list);
+  std::vector<int64_t> stride = {0, 0, 2};
+  op.SetAttr("strides", stride);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(avg_pool, InfershapeAvgPool_006) {
+  ge::op::AvgPool op;
+  op.UpdateInputDesc("x", create_desc({1, 224, 224}, ge::DT_FLOAT16));
+  std::vector<int32_t> ksize_list = {1, 2, 3, 4};
+  op.SetAttr("ksize", ksize_list);
+  std::vector<int64_t> stride = {0, 0, 2, 2};
+  op.SetAttr("strides", stride);
+  op.SetAttr("data_format", stride);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(avg_pool, InfershapeAvgPool_007) {
+  ge::op::AvgPool op;
+  op.UpdateInputDesc("x", create_desc({1, 224, 224}, ge::DT_FLOAT16));
+  std::vector<int32_t> ksize_list = {1, 2, 3, 4};
+  op.SetAttr("ksize", ksize_list);
+  std::vector<int64_t> stride = {0, 0, 2, 2};
+  op.SetAttr("strides", stride);
+  op.SetAttr("padding_mode", stride);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(avg_pool, InfershapeAvgPool_008) {
+  ge::op::AvgPool op;
+  op.UpdateInputDesc("x", create_desc({1, 224, 224}, ge::DT_FLOAT16));
+  std::vector<int32_t> ksize_list = {1, 2, 3, 4};
+  op.SetAttr("ksize", ksize_list);
+  std::vector<int64_t> stride = {0, 0, 2, 2};
+  op.SetAttr("strides", stride);
+  op.SetAttr("padding_mode", "error");
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(avg_pool, InfershapeAvgPool_009) {
+  ge::op::AvgPool op;
+  op.UpdateInputDesc("x", create_desc({1, 224, 224}, ge::DT_FLOAT16));
+  std::vector<int32_t> ksize_list = {1, 2, 3, 4};
+  op.SetAttr("ksize", ksize_list);
+  std::vector<int64_t> stride = {0, 0, 2, 2};
+  op.SetAttr("strides", stride);
+  op.SetAttr("padding_mode", "SAME");
+  op.SetAttr("data_format", "ND");
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}

@@ -400,3 +400,211 @@ TEST_F(MaxPool3DTest, x_dims_invalid) {
     auto ret = op.InferShapeAndType();
     EXPECT_EQ(ret, ge::GRAPH_FAILED);
 }
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_001) {
+  ge::op::MaxPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_original_shape({2, 19, 1, 19, 19}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0,
+                                                          {2, 19, 1, 19, 19}, ge::FORMAT_NDHWC));
+  op.SetAttr("ksize", true);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_002) {
+  ge::op::MaxPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_original_shape({2, 19, 1, 19, 19}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0,
+                                                          {2, 19, 1, 19, 19}, ge::FORMAT_NDHWC));
+  std::vector<int32_t> ksizeList = {5, 5, 5, 5};
+  op.SetAttr("ksize", ksizeList);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_003) {
+  ge::op::MaxPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_original_shape({2, 19, 1, 19, 19}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0,
+                                                          {2, 19, 1, 19, 19}, ge::FORMAT_NDHWC));
+  std::vector<int32_t> ksizeList = {5, 5, 5};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", true);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_004) {
+  ge::op::MaxPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_original_shape({2, 19, 1, 19, 19}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0,
+                                                          {2, 19, 1, 19, 19}, ge::FORMAT_NDHWC));
+  std::vector<int32_t> ksizeList = {5, 5, 5};
+  std::vector<int32_t> stridesList = {3, 3, 3, 3};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_005) {
+  ge::op::MaxPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_original_shape({2, 19, 1, 19, 19}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0,
+                                                          {2, 19, 1, 19, 19}, ge::FORMAT_NDHWC));
+  std::vector<int32_t> ksizeList = {5, 5, 5};
+  std::vector<int32_t> stridesList = {3, 3, 3};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("data_format", stridesList);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_006) {
+  ge::op::MaxPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_original_shape({2, 19, 1, 19, 19}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0,
+                                                          {2, 19, 1, 19, 19}, ge::FORMAT_NDHWC));
+  std::vector<int32_t> ksizeList = {5, 5, 5};
+  std::vector<int32_t> stridesList = {3, 3, 3};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("data_format", "ND");
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_007) {
+  ge::op::MaxPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_original_shape({2, 19, 1, 19, 19}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0,
+                                                          {2, 19, 1, 19, 19}, ge::FORMAT_NDHWC));
+  std::vector<int32_t> ksizeList = {5};
+  std::vector<int32_t> stridesList = {3};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("data_format", "NDHWC");
+  op.SetAttr("pads", true);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_008) {
+  ge::op::MaxPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_original_shape({2, 19, 1, 19, 19}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0,
+                                                          {2, 19, 1, 19, 19}, ge::FORMAT_NDHWC));
+  std::vector<int32_t> ksizeList = {5, 5, 5, 5, 5};
+  std::vector<int32_t> stridesList = {3, 3, 3, 3, 3};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("data_format", "NDHWC");
+  op.SetAttr("pads", true);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_009) {
+  ge::op::MaxPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_original_shape({2, 19, 1, 19, 19}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0,
+                                                          {2, 19, 1, 19, 19}, ge::FORMAT_NDHWC));
+  std::vector<int32_t> ksizeList = {5};
+  std::vector<int32_t> stridesList = {3};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("data_format", "NCDHW");
+  op.SetAttr("pads", true);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_010) {
+  ge::op::MaxPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_original_shape({2, 19, 1, 19, 19}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0,
+                                                          {2, 19, 1, 19, 19}, ge::FORMAT_NDHWC));
+  std::vector<int32_t> ksizeList = {5, 5, 5, 5, 5};
+  std::vector<int32_t> stridesList = {3, 3, 3, 3, 3};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("data_format", "NCDHW");
+  op.SetAttr("pads", true);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_011) {
+  ge::op::MaxPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_original_shape({2, 19, 1, 19, 19}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0,
+                                                          {2, 19, 1, 19, 19}, ge::FORMAT_NDHWC));
+  std::vector<int32_t> ksizeList = {5, 5, 5, 5, 5};
+  std::vector<int32_t> stridesList = {3, 3, 3, 3, 3};
+  std::vector<int32_t> padsList = {2, 2, 2, 2, 2};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("data_format", "NCDHW");
+  op.SetAttr("pads", padsList);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_012) {
+  ge::op::MaxPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_original_shape({2, 19, 1, 19, 19}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0,
+                                                          {2, 19, 1, 19, 19}, ge::FORMAT_NDHWC));
+  std::vector<int32_t> ksizeList = {5, 5, 5, 5, 5};
+  std::vector<int32_t> stridesList = {3, 3, 3, 3, 3};
+  std::vector<int32_t> padsList = {2, 2, 2, 2, 2, 2};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("data_format", "NCDHW");
+  op.SetAttr("pads", padsList);
+  op.SetAttr("padding", "error");
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_013) {
+  ge::op::MaxPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_original_shape({2, 19, 1, 19, 19}, ge::DT_FLOAT16, ge::FORMAT_NDC1HWC0,
+                                                          {2, 19, 1, 19, 19}, ge::FORMAT_NDHWC));
+  std::vector<int32_t> ksizeList = {5, 5, 5, 5, 5};
+  std::vector<int32_t> stridesList = {3, 3, 3, 3, 3};
+  std::vector<int32_t> padsList = {2, 2, 2, 2, 2, 2};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("data_format", "NCDHW");
+  op.SetAttr("pads", padsList);
+  op.SetAttr("padding", "SAME");
+  op.SetAttr("ceil_mode", padsList);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_FAILED);
+}
+
+TEST_F(MaxPool3DTest, InfershapeMaxPool3D_014) {
+  ge::op::MaxPool3D op;
+  op.UpdateInputDesc("x", create_desc_with_original_shape({2, 19, 1, 19, 19}, ge::DT_FLOAT16, ge::FORMAT_NCDHW,
+                                                          {2, 19, 1, 19, 19}, ge::FORMAT_NCDHW));
+  std::vector<int32_t> ksizeList = {5, 5, 5, 5, 5};
+  std::vector<int32_t> stridesList = {3, 3, 3, 3, 3};
+  std::vector<int32_t> padsList = {2, 2, 2, 2, 2, 2};
+  op.SetAttr("ksize", ksizeList);
+  op.SetAttr("strides", stridesList);
+  op.SetAttr("data_format", "NCDHW");
+  op.SetAttr("pads", padsList);
+  op.SetAttr("padding", "CALCULATED");
+  op.SetAttr("ceil_mode", 1);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+  auto output_desc = op.GetOutputDesc("y");
+  EXPECT_EQ(output_desc.GetDataType(), ge::DT_FLOAT16);
+  std::vector<int64_t> expected_output_shape = {2, 19, 1, 7, 7};
+  EXPECT_EQ(output_desc.GetShape().GetDims(), expected_output_shape);
+}
