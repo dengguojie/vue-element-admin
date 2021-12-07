@@ -1003,6 +1003,7 @@ class MaxpoolGrad:
                     start_threshold,
                     offset_gm_block, shape, pad):
 
+        # 'pylint: disable=too-many-locals
         pad_left, pad_right, _, _ = pad
         shape_wo = shape[1]
 
@@ -1145,6 +1146,7 @@ class MaxpoolGrad:
                          start_threshold,
                          offset_gm_block, shape, pad):
 
+        # 'pylint: disable=too-many-locals
         pad_left, pad_right, _, pad_bottom = pad
         shape_wo = shape[1]
 

@@ -22,7 +22,7 @@ from impl.util.platform_adapter import register_operator
 from impl.dynamic.sparse_apply_dynamic_common import SparseApplyDynamic
 
 
-# 'pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-locals,
+# 'pylint: disable=too-many-instance-attributes,too-many-arguments,too-many-locals,too-few-public-methods
 class SparseApplyAdadelta(SparseApplyDynamic):
     """
         Function: use to store sparse_apply_adadelta base parameters
