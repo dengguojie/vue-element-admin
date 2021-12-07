@@ -470,8 +470,8 @@ def nms_with_mask(box_scores, selected_boxes, selected_idx, selected_mask, iou_t
                            min_rank=Constant.INPUT_DIM, max_rank=Constant.INPUT_DIM, param_name="box_scores")
 
     # new soc branch
-    if tbe_platform.api_check_support("tik.vreduce", "float16") and not tbe_platform.api_check_support("tik.vaadd",
-                                                                                                       "float16"):
+    if tbe_platform.api_check_support("tik.vreduce",
+                                      "float16") and not tbe_platform.api_check_support("tik.vaadd", "float16"):
         return _nms_with_mask_basic_api(box_scores, selected_boxes, selected_idx, selected_mask, iou_thr, kernel_name)
 
     input_dtype = box_scores.get("dtype").lower()
