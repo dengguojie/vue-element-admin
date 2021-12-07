@@ -22,25 +22,20 @@ dtype_trans module
 import numpy as np
 
 # 'pylint: disable=too-few-public-methods
-class Constant:
-    """
-    This class for Constant.
-    """
-
-    ASCEND_DTYPE_NP_DTYPE_MAP = {
-        "float16": np.float16,
-        "float32": np.float32,
-        "float64": np.float64,
-        "bool": np.bool,
-        "int8": np.int8,
-        "uint8": np.uint8,
-        "int16": np.int16,
-        "uint16": np.uint16,
-        "int32": np.int32,
-        "uint32": np.uint32,
-        "int64": np.int64,
-        "uint64": np.uint64
-    }
+ASCEND_DTYPE_NP_DTYPE_MAP = {
+    "float16": np.float16,
+    "float32": np.float32,
+    "float64": np.float64,
+    "bool": np.bool,
+    "int8": np.int8,
+    "uint8": np.uint8,
+    "int16": np.int16,
+    "uint16": np.uint16,
+    "int32": np.int32,
+    "uint32": np.uint32,
+    "int64": np.int64,
+    "uint64": np.uint64
+}
 
 
 
