@@ -736,7 +736,7 @@ ge::OpDescPtr CommonLSTMFusionPass::CreateSplitDesc(ge::OpDescPtr splitDesc, ge:
   ge::AttrUtils::SetInt(splitDesc, "num_split", 2);
   vector<int64_t> tensorDims = tensorDesc.GetShape().GetDims();
 
-  tensorDims[splitDim] = tensorDims[splitDim] / 2;
+  tensorDims[splitDim] = 1;
 
   ge::GeShape tensorShape(tensorDims);
   tensorDesc.SetShape(tensorShape);
