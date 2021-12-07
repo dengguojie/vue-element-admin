@@ -43,7 +43,8 @@ namespace fe {
                 FusionPassRegistry::GetInstance().GetCreateFnByType(passType);
         const auto &iter = createFns.find(fusionPassName);
         if (iter != createFns.end()) {
-            if (passType == fe::BUILT_IN_GRAPH_PASS || passType == fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS) {
+            if (passType == fe::BUILT_IN_GRAPH_PASS || passType == fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS ||
+                passType == fe::BUILT_IN_BEFORE_TRANSNODE_INSERTION_GRAPH_PASS) {
                 auto graphFusionPassBasePtr = std::unique_ptr<PatternFusionBasePass>(
                         dynamic_cast<PatternFusionBasePass *>(iter->second()));
                 if (graphFusionPassBasePtr == nullptr) {
@@ -74,7 +75,8 @@ namespace fe {
                 FusionPassRegistry::GetInstance().GetCreateFnByType(passType);
         const auto &iter = createFns.find(fusionPassName);
         if (iter != createFns.end()) {
-            if (passType == fe::BUILT_IN_GRAPH_PASS || passType == fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS) {
+            if (passType == fe::BUILT_IN_GRAPH_PASS || passType == fe::SECOND_ROUND_BUILT_IN_GRAPH_PASS ||
+                passType == fe::BUILT_IN_BEFORE_TRANSNODE_INSERTION_GRAPH_PASS) {
                 auto graphFusionPassBasePtr = std::unique_ptr<PatternFusionBasePass>(
                         dynamic_cast<PatternFusionBasePass *>(iter->second()));
                 if (graphFusionPassBasePtr == nullptr) {
