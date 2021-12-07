@@ -19,14 +19,13 @@
 
 #include <string>
 #include <vector>
-#include <string.h>
 #include "register/scope/scope_fusion_pass_register.h"
 #include "graph/operator.h"
 
 namespace ge {
 
 #define GET_DEQUANT_SCALE_DEQ(dequantScaleData)                                \
-  ((dequantScaleData & 0x00000000ffffffff))
+  (dequantScaleData & 0x00000000ffffffff)
 
 class ScopeDynamicRNNPass : public ScopeBasePass {
  protected:

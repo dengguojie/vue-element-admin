@@ -15,6 +15,7 @@
 */
 #include "scope_dynamic_rnn_pass.h"
 #include <set>
+#include <cstring>
 #include "op_log.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/operator.h"
@@ -508,7 +509,7 @@ void ScopeDynamicRNNPass::GetQuantScale(const std::unordered_map<std::string, ge
       }
       uint64_t scale_deq = *reinterpret_cast<uint64_t*>(data.GetData());
       uint32_t scaleDeq = GET_DEQUANT_SCALE_DEQ(scale_deq);
-      memcpy(&scale_b, &scaleDeq, sizeof(float));
+      std::memcpy(&scale_b, &scaleDeq, sizeof(float));
     }
   }
 }
