@@ -74,14 +74,17 @@ Status SetNewFormat(ge::GeTensorDescPtr mul_in0, ge::GeTensorDescPtr mul_in1, ge
   bool change = false;
   if (op_input0_desc_ori_format != op_input0_desc_format) {
     mul_in0->SetFormat(op_input0_desc_ori_format);
+    mul_in0->SetShape(mul_in0->GetOriginShape());
     change = true;
   }
   if (op_input1_desc_ori_format != op_input1_desc_format) {
     mul_in1->SetFormat(op_input1_desc_ori_format);
+    mul_in1->SetShape(mul_in1->GetOriginShape());
     change = true;
   }
   if (op_output0_desc_ori_format != op_output0_desc_format) {
     mul_out0->SetFormat(op_output0_desc_ori_format);
+    mul_out0->SetShape(mul_out0->GetOriginShape());
     change = true;
   }
   if (!change) {
