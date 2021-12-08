@@ -41,6 +41,8 @@ ADD_DIAG_CASE(float, DT_FLOAT)
 ADD_DIAG_CASE(double, DT_DOUBLE)
 ADD_DIAG_CASE(int32_t, DT_INT32)
 ADD_DIAG_CASE(int64_t, DT_INT64)
+ADD_DIAG_CASE(std::complex<float>, DT_COMPLEX64)
+ADD_DIAG_CASE(std::complex<double>, DT_COMPLEX128)
 
 #define CREATE_DIAG_PART_NODEDEF(shapes, data_types, datas)        \
   auto node_def = CpuKernelUtils::CpuKernelUtils::CreateNodeDef(); \
@@ -67,3 +69,5 @@ ADD_DIAG_PART_CASE(float, DT_FLOAT)
 ADD_DIAG_PART_CASE(double, DT_DOUBLE)
 ADD_DIAG_PART_CASE(int32_t, DT_INT32)
 ADD_DIAG_PART_CASE(int64_t, DT_INT64)
+ADD_DIAG_PART_CASE(std::complex<float>, DT_COMPLEX64)
+ADD_DIAG_PART_CASE(std::complex<double>, DT_COMPLEX128)

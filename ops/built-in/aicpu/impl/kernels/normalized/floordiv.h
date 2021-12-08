@@ -42,6 +42,9 @@ class FloorDivCpuKernel : public CpuKernel {
   uint32_t BcastCompute(CpuKernelContext &ctx, Bcast &bcast);
 
   template <typename T>
+  uint32_t BcastParallelCompute(CpuKernelContext &ctx, Bcast &bcast);
+
+  template <typename T>
   uint32_t FloorDivCompute(CpuKernelContext &ctx);
 };
 }  // namespace aicpu

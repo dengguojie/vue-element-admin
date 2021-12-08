@@ -29,6 +29,9 @@ class GetDynamicDimsCpuKernel : public CpuKernel {
   template <typename T>
   uint32_t DoCompute(CpuKernelContext &ctx);
 
+  template <typename T>
+  uint32_t FillOutput(CpuKernelContext &ctx, std::vector<T> &dims);
+
   /**
    * @brief get inputs' configured shape from attr shape_info
    * @param shape_info attr shape_info

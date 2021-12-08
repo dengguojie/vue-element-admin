@@ -141,10 +141,11 @@ uint32_t FloorDivCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
   int64_t in0_elements_nums = ctx.Input(0)->NumElements();
   int64_t in1_elements_nums = ctx.Input(1)->NumElements();
   int64_t data_num = ctx.Output(0)->NumElements();
-  BcastShapeType type = in0_elements_nums == in1_elements_nums?
-      BcastShapeType::SAME_SHAPE :
-      (in0_elements_nums == 1 ?
-      BcastShapeType::X_ONE_ELEMENT : BcastShapeType::Y_ONE_ELEMENT);
+  BcastShapeType type =
+      in0_elements_nums == in1_elements_nums
+          ? BcastShapeType::SAME_SHAPE
+          : (in0_elements_nums == 1 ? BcastShapeType::X_ONE_ELEMENT
+                                    : BcastShapeType::Y_ONE_ELEMENT);
 
   if (data_num >= kParallelDataNumSameShape) {
     uint32_t min_core_num = 1;
@@ -178,42 +179,53 @@ uint32_t FloorDivCpuKernel::NoBcastCompute(CpuKernelContext &ctx) {
 }
 
 template <typename T>
-uint32_t FloorDivCpuKernel::BcastCompute(CpuKernelContext &ctx, Bcast &bcast) {
+uint32_t FloorDivCpuKernel::BcastParallelCompute(CpuKernelContext &ctx,
+                                                 Bcast &bcast) {
   auto in0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
   auto in1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
   auto out = reinterpret_cast<T *>(ctx.Output(0)->GetData());
 
+  uint32_t min_core_num = 1;
+  uint32_t max_core_num = std::max(
+      min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
+
   int64_t data_num = ctx.Output(0)->NumElements();
-  if (data_num >= kParallelDataNum) {
-    uint32_t min_core_num = 1;
-    uint32_t max_core_num = std::max(
-        min_core_num, aicpu::CpuKernelUtils::GetCPUNum(ctx) - kResvCpuNum);
+  if (data_num <= kParallelDataNumMid) {
+    max_core_num = std::min(max_core_num, 4U);  // up to 4 cpu cores
+  }
 
-    if (data_num <= kParallelDataNumMid) {
-      max_core_num = std::min(max_core_num, 4U);  // up to 4 cpu cores
-    }
-
-    if (max_core_num > data_num) {
-      max_core_num = data_num;
-    }
-    uint32_t status = KERNEL_STATUS_OK;
-    auto sharder_floor_div = [&](int64_t start, int64_t end) {
-      for (int64_t i = start; i < end; ++i) {
-        if (*(in1 + bcast.GetBroadcastYIndex(i)) == static_cast<T>(0)) {
-          KERNEL_LOG_ERROR("Invalid argumengt: Division by zero.");
-          status = KERNEL_STATUS_INNER_ERROR;
-          break;
-        }
-        *(out + i) = Eigen::numext::floor(*(in0 + bcast.GetBroadcastXIndex(i)) /
-                                          *(in1 + bcast.GetBroadcastYIndex(i)));
+  if (max_core_num > data_num) {
+    max_core_num = data_num;
+  }
+  uint32_t status = KERNEL_STATUS_OK;
+  auto sharder_floor_div = [&](int64_t start, int64_t end) {
+    for (int64_t i = start; i < end; ++i) {
+      if (*(in1 + bcast.GetBroadcastYIndex(i)) == static_cast<T>(0)) {
+        KERNEL_LOG_ERROR("Invalid argumengt: Division by zero.");
+        status = KERNEL_STATUS_INNER_ERROR;
+        break;
       }
-    };
+      *(out + i) = Eigen::numext::floor(*(in0 + bcast.GetBroadcastXIndex(i)) /
+                                        *(in1 + bcast.GetBroadcastYIndex(i)));
+    }
+  };
 
-    KERNEL_HANDLE_ERROR(
-        CpuKernelUtils::ParallelFor(ctx, data_num, data_num / max_core_num,
-                                    sharder_floor_div),
-        "FloorDiv Compute failed.")
-    return status;
+  KERNEL_HANDLE_ERROR(
+      CpuKernelUtils::ParallelFor(ctx, data_num, data_num / max_core_num,
+                                  sharder_floor_div),
+      "FloorDiv Compute failed.")
+  return status;
+}
+
+template <typename T>
+uint32_t FloorDivCpuKernel::BcastCompute(CpuKernelContext &ctx, Bcast &bcast) {
+  auto in0 = reinterpret_cast<T *>(ctx.Input(0)->GetData());
+  auto in1 = reinterpret_cast<T *>(ctx.Input(1)->GetData());
+  auto out = reinterpret_cast<T *>(ctx.Output(0)->GetData());
+  int64_t data_num = ctx.Output(0)->NumElements();
+
+  if (data_num >= kParallelDataNum) {
+    return BcastParallelCompute<T>(ctx, bcast);
   } else {
     for (int64_t i = 0; i < data_num; ++i) {
       if (*(in1 + bcast.GetBroadcastYIndex(i)) == static_cast<T>(0)) {

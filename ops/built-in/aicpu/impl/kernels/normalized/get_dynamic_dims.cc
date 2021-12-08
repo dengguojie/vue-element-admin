@@ -1,31 +1,31 @@
 /**
-* Copyright (c) Huawei Technologies Co., Ltd. 2021.All rights reserved.
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-* http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021.All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include "get_dynamic_dims.h"
 
-#include "securec.h"
 #include "cpu_types.h"
 #include "log.h"
+#include "securec.h"
 #include "status.h"
 #include "utils/kernel_util.h"
 
 namespace {
 constexpr uint32_t kGetDynamicDimsOutputNum = 1;
 constexpr const char *kGetDynamicDims = "GetDynamicDims";
-} // namespace
+}  // namespace
 
 namespace aicpu {
 uint32_t GetDynamicDimsCpuKernel::Compute(CpuKernelContext &ctx) {
@@ -69,10 +69,9 @@ uint32_t GetDynamicDimsCpuKernel::DoCompute(CpuKernelContext &ctx) {
 
   // check inputs size
   uint32_t inputs_size = ctx.GetInputsSize();
-  KERNEL_CHECK_FALSE(
-      (inputs_size == count), KERNEL_STATUS_PARAM_INVALID,
-      "[%s] inputs size [%zu] is not match attr N [%ld].",
-      kGetDynamicDims, inputs_size, count);
+  KERNEL_CHECK_FALSE((inputs_size == count), KERNEL_STATUS_PARAM_INVALID,
+                     "[%s] inputs size [%zu] is not match attr N [%ld].",
+                     kGetDynamicDims, inputs_size, count);
   KERNEL_CHECK_FALSE(
       (inputs_size == shape_infos.size()), KERNEL_STATUS_PARAM_INVALID,
       "[%s] inputs size [%u] is not match shape_infos size [%zu].",
@@ -102,6 +101,12 @@ uint32_t GetDynamicDimsCpuKernel::DoCompute(CpuKernelContext &ctx) {
       }
     }
   }
+  return FillOutput<T>(ctx, dims);
+}
+
+template <typename T>
+uint32_t GetDynamicDimsCpuKernel::FillOutput(CpuKernelContext &ctx,
+                                             std::vector<T> &dims) {
   KERNEL_LOG_INFO("[%s] unknown dims: [%s].", kGetDynamicDims,
                   VectorToString(dims).c_str());
 
@@ -112,8 +117,8 @@ uint32_t GetDynamicDimsCpuKernel::DoCompute(CpuKernelContext &ctx) {
   void *output_data = output_tensor->GetData();
   uint64_t output_size = output_tensor->GetDataSize();
 
-  errno_t cpret = memcpy_s(output_data, output_size, dims.data(),
-                           dims.size() * sizeof(T));
+  errno_t cpret =
+      memcpy_s(output_data, output_size, dims.data(), dims.size() * sizeof(T));
   KERNEL_CHECK_FALSE(
       (cpret == EOK), KERNEL_STATUS_INNER_ERROR,
       "[%s] memcpy_s to output failed, destMax [%ld], count [%zu].",
@@ -138,8 +143,7 @@ std::vector<std::vector<int64_t>> GetDynamicDimsCpuKernel::GetShapeInfos(
 
 template <typename T>
 uint32_t GetDynamicDimsCpuKernel::GetInputShapes(
-    CpuKernelContext &ctx,
-    std::vector<std::vector<T>> &input_shapes) const {
+    CpuKernelContext &ctx, std::vector<std::vector<T>> &input_shapes) const {
   for (uint32_t i = 0; i < ctx.GetInputsSize(); ++i) {
     Tensor *input_tensor = ctx.Input(i);
     KERNEL_CHECK_NULLPTR(input_tensor, KERNEL_STATUS_INNER_ERROR,
@@ -154,4 +158,4 @@ uint32_t GetDynamicDimsCpuKernel::GetInputShapes(
 }
 
 REGISTER_CPU_KERNEL(kGetDynamicDims, GetDynamicDimsCpuKernel);
-} // namespace aicpu
+}  // namespace aicpu

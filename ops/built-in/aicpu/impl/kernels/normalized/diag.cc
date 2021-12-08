@@ -47,6 +47,14 @@ void RangeDiagPart(int64_t start, int64_t end, int64_t size, T *input, T *out) {
 }  // namespace
 
 namespace aicpu {
+template <typename T>
+void CallDiagCalc(int64_t start, int64_t end, Tensor *&input_tensor,
+                  Tensor *&output_tensor) {
+  RangeDiag(start, end, input_tensor->NumElements(),
+            static_cast<T *>(input_tensor->GetData()),
+            static_cast<T *>(output_tensor->GetData()));
+}
+
 uint32_t DiagCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum),
                       "Check Diag params failed.");
@@ -66,43 +74,27 @@ uint32_t DiagCpuKernel::Compute(CpuKernelContext &ctx) {
                      "or equal to the square of the input elements number[%ld]",
                      output_tensor->NumElements(), input_tensor->NumElements())
 
-  auto input_data = input_tensor->GetData();
-  auto output_data = output_tensor->GetData();
+  std::map<int, std::function<void(int64_t, int64_t, Tensor *&, Tensor *&)>>
+      calls;
+  calls[DT_FLOAT16] = CallDiagCalc<Eigen::half>;
+  calls[DT_FLOAT] = CallDiagCalc<float>;
+  calls[DT_DOUBLE] = CallDiagCalc<double>;
+  calls[DT_INT32] = CallDiagCalc<int32_t>;
+  calls[DT_INT64] = CallDiagCalc<int64_t>;
+  calls[DT_COMPLEX64] = CallDiagCalc<std::complex<float>>;
+  calls[DT_COMPLEX128] = CallDiagCalc<std::complex<double>>;
+
   DataType input_type = input_tensor->GetDataType();
   std::atomic<bool> shard_ret(true);
+  if (calls.find(input_type) == calls.end()) {
+    KERNEL_LOG_ERROR("Unsupported input data type[%s]",
+                     DTypeStr(input_type).c_str());
+    shard_ret.store(false);
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
+
   auto shard = [&](int64_t start, int64_t end) {
-    switch (input_type) {
-      case DT_FLOAT16:
-        RangeDiag(start, end, input_tensor->NumElements(),
-                  static_cast<Eigen::half *>(input_data),
-                  static_cast<Eigen::half *>(output_data));
-        break;
-      case DT_FLOAT:
-        RangeDiag(start, end, input_tensor->NumElements(),
-                  static_cast<float *>(input_data),
-                  static_cast<float *>(output_data));
-        break;
-      case DT_DOUBLE:
-        RangeDiag(start, end, input_tensor->NumElements(),
-                  static_cast<double *>(input_data),
-                  static_cast<double *>(output_data));
-        break;
-      case DT_INT32:
-        RangeDiag(start, end, input_tensor->NumElements(),
-                  static_cast<int32_t *>(input_data),
-                  static_cast<int32_t *>(output_data));
-        break;
-      case DT_INT64:
-        RangeDiag(start, end, input_tensor->NumElements(),
-                  static_cast<int64_t *>(input_data),
-                  static_cast<int64_t *>(output_data));
-        break;
-      default:
-        KERNEL_LOG_ERROR("Unsupported input data type[%s]",
-                         DTypeStr(input_type).c_str());
-        shard_ret.store(false);
-        return;
-    }
+    calls[input_type](start, end, input_tensor, output_tensor);
   };
 
   uint32_t ret =
@@ -114,6 +106,14 @@ uint32_t DiagCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 REGISTER_CPU_KERNEL(kDiag, DiagCpuKernel);
+
+template <typename T>
+void CallDiagPartCalc(int64_t start, int64_t end, Tensor *&input_tensor,
+                      Tensor *&output_tensor) {
+  RangeDiagPart(start, end, output_tensor->NumElements(),
+                static_cast<T *>(input_tensor->GetData()),
+                static_cast<T *>(output_tensor->GetData()));
+}
 
 uint32_t DiagPartCpuKernel::Compute(CpuKernelContext &ctx) {
   KERNEL_HANDLE_ERROR(NormalCheck(ctx, kInputNum, kOutputNum),
@@ -134,43 +134,28 @@ uint32_t DiagPartCpuKernel::Compute(CpuKernelContext &ctx) {
       "The input elements number[%ld] must be greater than "
       "or equal to the square of the output elements number[%ld]",
       output_tensor->NumElements(), input_tensor->NumElements())
-  auto input_data = input_tensor->GetData();
-  auto output_data = output_tensor->GetData();
-  DataType input_type = input_tensor->GetDataType();
+
+  std::map<int, std::function<void(int64_t, int64_t, Tensor *&, Tensor *&)>>
+      calls;
+  calls[DT_FLOAT16] = CallDiagPartCalc<Eigen::half>;
+  calls[DT_FLOAT] = CallDiagPartCalc<float>;
+  calls[DT_DOUBLE] = CallDiagPartCalc<double>;
+  calls[DT_INT32] = CallDiagPartCalc<int32_t>;
+  calls[DT_INT64] = CallDiagPartCalc<int64_t>;
+  calls[DT_COMPLEX64] = CallDiagPartCalc<std::complex<float>>;
+  calls[DT_COMPLEX128] = CallDiagPartCalc<std::complex<double>>;
+
   std::atomic<bool> shard_ret(true);
+  DataType input_type = input_tensor->GetDataType();
+  if (calls.find(input_type) == calls.end()) {
+    KERNEL_LOG_ERROR("Unsupported input data type[%s]",
+                     DTypeStr(input_type).c_str());
+    shard_ret.store(false);
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
+
   auto shard = [&](int64_t start, int64_t end) {
-    switch (input_type) {
-      case DT_FLOAT16:
-        RangeDiagPart(start, end, output_tensor->NumElements(),
-                      static_cast<Eigen::half *>(input_data),
-                      static_cast<Eigen::half *>(output_data));
-        break;
-      case DT_FLOAT:
-        RangeDiagPart(start, end, output_tensor->NumElements(),
-                      static_cast<float *>(input_data),
-                      static_cast<float *>(output_data));
-        break;
-      case DT_DOUBLE:
-        RangeDiagPart(start, end, output_tensor->NumElements(),
-                      static_cast<double *>(input_data),
-                      static_cast<double *>(output_data));
-        break;
-      case DT_INT32:
-        RangeDiagPart(start, end, output_tensor->NumElements(),
-                      static_cast<int32_t *>(input_data),
-                      static_cast<int32_t *>(output_data));
-        break;
-      case DT_INT64:
-        RangeDiagPart(start, end, output_tensor->NumElements(),
-                      static_cast<int64_t *>(input_data),
-                      static_cast<int64_t *>(output_data));
-        break;
-      default:
-        KERNEL_LOG_ERROR("Unsupported input data type[%s]",
-                         DTypeStr(input_type).c_str());
-        shard_ret.store(false);
-        return;
-    }
+    calls[input_type](start, end, input_tensor, output_tensor);
   };
 
   uint32_t ret =

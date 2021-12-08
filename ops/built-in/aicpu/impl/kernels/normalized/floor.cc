@@ -15,7 +15,7 @@
  */
 #include "floor.h"
 
-#include <stdint.h>
+#include <cstdint>
 
 #include "Eigen/Dense"
 #include "cpu_kernel_utils.h"
@@ -29,16 +29,6 @@ namespace {
 const uint32_t kOutputNum = 1;
 const uint32_t kInputNum = 1;
 const char *kFloor = "Floor";
-
-#define FLOOR_COMPUTE_CASE(DTYPE, TYPE, CTX)            \
-  case (DTYPE): {                                       \
-    uint32_t result = FloorCompute<TYPE>(CTX);          \
-    if (result != KERNEL_STATUS_OK) {                   \
-      KERNEL_LOG_ERROR("Floor kernel compute failed."); \
-      return result;                                    \
-    }                                                   \
-    break;                                              \
-  }
 }  // namespace
 
 namespace aicpu {
@@ -47,16 +37,26 @@ uint32_t FloorCpuKernel::Compute(CpuKernelContext &ctx) {
                       "[%s] check input and output failed.", kFloor);
   KERNEL_HANDLE_ERROR(FloorCheck(ctx), "[%s] check params failed.", kFloor);
   auto data_type = ctx.Input(0)->GetDataType();
+  uint32_t ret;
   switch (data_type) {
-    FLOOR_COMPUTE_CASE(DT_FLOAT16, Eigen::half, ctx)
-    FLOOR_COMPUTE_CASE(DT_FLOAT, float, ctx)
-    FLOOR_COMPUTE_CASE(DT_DOUBLE, double, ctx)
+    case (DT_FLOAT16):
+      ret = FloorCompute<Eigen::half>(ctx);
+      break;
+    case (DT_FLOAT):
+      ret = FloorCompute<float>(ctx);
+      break;
+    case (DT_DOUBLE):
+      ret = FloorCompute<double>(ctx);
+      break;
     default:
       KERNEL_LOG_ERROR("Floor kernel data type [%s] not support.",
                        DTypeStr(data_type).c_str());
       return KERNEL_STATUS_PARAM_INVALID;
   }
-  return KERNEL_STATUS_OK;
+  if (ret != KERNEL_STATUS_OK) {
+    KERNEL_LOG_ERROR("Floor kernel compute failed.");
+  }
+  return ret;
 }
 
 uint32_t FloorCpuKernel::FloorCheck(CpuKernelContext &ctx) {

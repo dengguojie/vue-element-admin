@@ -30,6 +30,7 @@ const char *kGreater = "Greater";
 const uint32_t kInputNum = 2;
 const uint32_t kOutputNum = 1;
 }  // namespace
+
 namespace aicpu {
 template <typename T, int32_t RANK>
 uint32_t GreaterCpuKernel::BroadcastCompute(TensorMap<T> &x, TensorMap<T> &y,
@@ -149,5 +150,4 @@ uint32_t GreaterCpuKernel::Compute(CpuKernelContext &ctx) {
 }
 
 REGISTER_CPU_KERNEL(kGreater, GreaterCpuKernel);
-
 }  // namespace aicpu

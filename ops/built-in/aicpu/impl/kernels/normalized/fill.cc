@@ -22,62 +22,72 @@
 
 namespace {
 const char *kFill = "Fill";
-
-#define FILL_CALCULATE_DIMS_CASE(DTYPE, TYPE)                                 \
-  case (DTYPE): {                                                             \
-    if (CalcDims<TYPE>(dims_tensor, dims) != KERNEL_STATUS_OK) {              \
-      KERNEL_LOG_ERROR("Fill kernel calculate dims failed");                  \
-      return KERNEL_STATUS_PARAM_INVALID;                                     \
-    }                                                                         \
-    break;                                                                    \
-  }
-
-#define FILL_GENERATE_CASE(DTYPE, TYPE)                                       \
-  case (DTYPE): {                                                             \
-    auto value = *(reinterpret_cast<const TYPE *>(value_tensor->GetData()));  \
-    if (AddrAlignedCheck(output->GetData())) {                                \
-      FILL_EIGEN_TENSOR_ASSIGN_CASE(TYPE, Eigen::Aligned);                    \
-    } else {                                                                  \
-      FILL_EIGEN_TENSOR_ASSIGN_CASE(TYPE, Eigen::Unaligned);                  \
-    }                                                                         \
-    break;                                                                    \
-  }
-
-#define FILL_EIGEN_TENSOR_ASSIGN_CASE(TYPE, ALIGNMENT_TYPE)  do {             \
-    Eigen::TensorMap<Eigen::Tensor<TYPE, 1>, ALIGNMENT_TYPE> eigen_output(    \
-      static_cast<TYPE *>(output->GetData()),                                 \
-      output->GetTensorShape()->NumElements());                               \
-    eigen_output.setConstant(value);                                          \
-  } while(0)
 }
 
 namespace aicpu {
-uint32_t FillCpuKernel::Compute(CpuKernelContext &ctx) {
-  std::vector<int64_t> dims;
+template <typename T>
+void FillGenerateCase(Tensor *&value_tensor, Tensor *&output) {
+  auto value = *(reinterpret_cast<T *>(value_tensor->GetData()));
+  if (AddrAlignedCheck(output->GetData())) {
+    Eigen::TensorMap<Eigen::Tensor<T, 1>, Eigen::Aligned> eigen_output(
+        static_cast<T *>(output->GetData()),
+        output->GetTensorShape()->NumElements());
+    eigen_output.setConstant(value);
+  } else {
+    Eigen::TensorMap<Eigen::Tensor<T, 1>, Eigen::Unaligned> eigen_output(
+        static_cast<T *>(output->GetData()),
+        output->GetTensorShape()->NumElements());
+    eigen_output.setConstant(value);
+  }
+}
+
+uint32_t FillCpuKernel::GetDimsByType(CpuKernelContext &ctx) {
+  dims.clear();
   Tensor *dims_tensor = ctx.Input(0);
-  KERNEL_CHECK_NULLPTR(dims_tensor, KERNEL_STATUS_PARAM_INVALID, "Get dims input failed")
+  KERNEL_CHECK_NULLPTR(dims_tensor, KERNEL_STATUS_PARAM_INVALID,
+                       "Get dims input failed")
+  uint32_t ret;
   auto dims_dtype = dims_tensor->GetDataType();
   switch (dims_dtype) {
-    FILL_CALCULATE_DIMS_CASE(DT_INT32, int32_t)
-    FILL_CALCULATE_DIMS_CASE(DT_INT64, int64_t)
+    case (DT_INT32):
+      ret = CalcDims<int32_t>(dims_tensor, dims);
+      break;
+    case (DT_INT64):
+      ret = CalcDims<int64_t>(dims_tensor, dims);
+      break;
     default:
-      KERNEL_LOG_ERROR("Fill kernel dims data_type [%u] not support, support data_types: DT_INT32, DT_INT64",
-                       dims_dtype);
+      KERNEL_LOG_ERROR(
+          "Fill kernel dims data_type [%u] not support, support data_types: "
+          "DT_INT32, DT_INT64",
+          dims_dtype);
       return KERNEL_STATUS_PARAM_INVALID;
   }
+  if (ret != KERNEL_STATUS_OK) {
+    KERNEL_LOG_ERROR("Fill kernel calculate dims failed");
+  }
+  return ret;
+}
 
+uint32_t FillCpuKernel::Compute(CpuKernelContext &ctx) {
+  uint32_t check = GetDimsByType(ctx);
+  if (check != KERNEL_STATUS_OK) {
+    return check;
+  }
   Tensor *value_tensor = ctx.Input(1);
   KERNEL_CHECK_NULLPTR(value_tensor, KERNEL_STATUS_PARAM_INVALID, "Get value input failed")
   KERNEL_CHECK_NULLPTR(value_tensor->GetData(), KERNEL_STATUS_PARAM_INVALID, "Get value input data failed")
-  KERNEL_CHECK_NULLPTR(value_tensor->GetTensorShape(), KERNEL_STATUS_PARAM_INVALID, "Get value input shape failed")
+  KERNEL_CHECK_NULLPTR(value_tensor->GetTensorShape(), KERNEL_STATUS_PARAM_INVALID,
+                       "Get value input shape failed")
   if (!value_tensor->GetTensorShape()->GetDimSizes().empty()) {
     KERNEL_LOG_ERROR("Fill kernel value input is not a scalar.");
     return KERNEL_STATUS_PARAM_INVALID;
   }
   Tensor *output = ctx.Output(0);
   KERNEL_CHECK_NULLPTR(output, KERNEL_STATUS_PARAM_INVALID, "Get output failed")
-  KERNEL_CHECK_NULLPTR(output->GetData(), KERNEL_STATUS_PARAM_INVALID, "Get output data failed")
-  KERNEL_CHECK_NULLPTR(output->GetTensorShape(), KERNEL_STATUS_PARAM_INVALID, "Get output shape failed")
+  KERNEL_CHECK_NULLPTR(output->GetData(), KERNEL_STATUS_PARAM_INVALID,
+                       "Get output data failed")
+  KERNEL_CHECK_NULLPTR(output->GetTensorShape(), KERNEL_STATUS_PARAM_INVALID,
+                       "Get output shape failed")
   if (output->GetTensorShape()->GetDimSizes() != dims) {
     KERNEL_LOG_ERROR("Fill kernel output shape not matched.");
     return KERNEL_STATUS_PARAM_INVALID;
@@ -90,36 +100,39 @@ uint32_t FillCpuKernel::Compute(CpuKernelContext &ctx) {
     return KERNEL_STATUS_PARAM_INVALID;
   }
 
-  switch (output_dtype) {
-    FILL_GENERATE_CASE(DT_INT8, int8_t)
-    FILL_GENERATE_CASE(DT_UINT8, uint8_t)
-    FILL_GENERATE_CASE(DT_INT16, int16_t)
-    FILL_GENERATE_CASE(DT_UINT16, uint16_t)
-    FILL_GENERATE_CASE(DT_INT32, int32_t)
-    FILL_GENERATE_CASE(DT_UINT32, uint32_t)
-    FILL_GENERATE_CASE(DT_INT64, int64_t)
-    FILL_GENERATE_CASE(DT_UINT64, uint64_t)
-    FILL_GENERATE_CASE(DT_BOOL, bool)
-    FILL_GENERATE_CASE(DT_FLOAT16, Eigen::half)
-    FILL_GENERATE_CASE(DT_FLOAT, float)
-    FILL_GENERATE_CASE(DT_DOUBLE, double)
-    default:
-      KERNEL_LOG_ERROR("Fill kernel data type [%u] not support", output_dtype);
-      return KERNEL_STATUS_PARAM_INVALID;
-  }
+  std::map<int, std::function<void(Tensor *&, Tensor *&)>> calls;
+  calls[DT_INT8] = FillGenerateCase<int8_t>;
+  calls[DT_UINT8] = FillGenerateCase<uint8_t>;
+  calls[DT_INT16] = FillGenerateCase<int16_t>;
+  calls[DT_UINT16] = FillGenerateCase<uint16_t>;
+  calls[DT_INT32] = FillGenerateCase<int32_t>;
+  calls[DT_UINT32] = FillGenerateCase<uint32_t>;
+  calls[DT_INT64] = FillGenerateCase<int64_t>;
+  calls[DT_UINT64] = FillGenerateCase<uint64_t>;
+  calls[DT_BOOL] = FillGenerateCase<bool>;
+  calls[DT_FLOAT16] = FillGenerateCase<Eigen::half>;
+  calls[DT_FLOAT] = FillGenerateCase<float>;
+  calls[DT_DOUBLE] = FillGenerateCase<double>;
 
+  if (calls.find(output_dtype) == calls.end()) {
+    KERNEL_LOG_ERROR("Fill kernel data type [%u] not support", output_dtype);
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
+  calls[output_dtype](value_tensor, output);
   return KERNEL_STATUS_OK;
 }
 
 template <typename T>
-uint32_t FillCpuKernel::CalcDims(const Tensor *dims_tensor, std::vector<int64_t> &dims) {
+uint32_t FillCpuKernel::CalcDims(const Tensor *dims_tensor,
+                                 std::vector<int64_t> &dims) {
   uint64_t data_num = dims_tensor->GetDataSize() / sizeof(T);
   if (data_num == 0) {
     KERNEL_LOG_INFO("Fill kernel: dims is empty, no need to fill");
     return KERNEL_STATUS_OK;
   }
 
-  KERNEL_CHECK_NULLPTR(dims_tensor->GetData(), KERNEL_STATUS_PARAM_INVALID, "Get dims data failed")
+  KERNEL_CHECK_NULLPTR(dims_tensor->GetData(), KERNEL_STATUS_PARAM_INVALID,
+                       "Get dims data failed")
   for (uint64_t i = 0; i < data_num; i++) {
     auto dim = *(reinterpret_cast<const T *>(dims_tensor->GetData()) + i);
     if (dim < 0) {

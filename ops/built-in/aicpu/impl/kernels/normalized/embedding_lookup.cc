@@ -102,7 +102,7 @@ uint32_t EmbeddingLookuptMsCpuKernel::DoComputeForEachType(CpuKernelContext &ctx
   return KERNEL_STATUS_OK;
 }
 
-uint32_t EmbeddingLookuptMsCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
+uint32_t EmbeddingLookuptMsCpuKernel::GetInput(CpuKernelContext &ctx) {
   // get input Tensors
   const int kNumInput = 3;
   for (int i = 0; i < kNumInput; ++i) {
@@ -119,18 +119,25 @@ uint32_t EmbeddingLookuptMsCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
                          "Get output:[%d] failed", i);
     ioAddrs_.push_back(reinterpret_cast<void *>(tensor->GetData()));
   }
+  return KERNEL_STATUS_OK;
+}
+
+uint32_t EmbeddingLookuptMsCpuKernel::GetInputAndCheck(CpuKernelContext &ctx) {
+  uint32_t ret = GetInput(ctx);
+  if (ret != KERNEL_STATUS_OK) {
+    return ret;
+  }
 
   Tensor *param_tensor = ctx.Input(0);
   KERNEL_CHECK_NULLPTR(param_tensor, KERNEL_STATUS_PARAM_INVALID,
                        "Get input:[0] failed.");
   std::shared_ptr<TensorShape> param_shape = param_tensor->GetTensorShape();
+  param_type_ = static_cast<DataType>(param_tensor->GetDataType());
 
   Tensor *index_tensor = ctx.Input(1);
   KERNEL_CHECK_NULLPTR(index_tensor, KERNEL_STATUS_PARAM_INVALID,
                        "Get input:[1] failed.");
   std::shared_ptr<TensorShape> index_shape = index_tensor->GetTensorShape();
-
-  param_type_ = static_cast<DataType>(param_tensor->GetDataType());
   index_type_ = static_cast<DataType>(index_tensor->GetDataType());
 
   switch (index_type_) {

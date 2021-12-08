@@ -179,7 +179,7 @@ def gen_random_data_float16(data_files):
 
     x1 = tf.compat.v1.placeholder(tf.float16, shape=shape_x1)
     x2 = tf.compat.v1.placeholder(tf.float16, shape=shape_x2)
-    re = tf.floordiv(x1, x2)
+    re = tf.math.floordiv(x1, x2)
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x1: a, x2: b})
     write_file_txt(data_files[2], data, fmt="%s")
@@ -194,7 +194,7 @@ def gen_random_data_float(data_files):
 
     x1 = tf.compat.v1.placeholder(tf.float32, shape=shape_x1)
     x2 = tf.compat.v1.placeholder(tf.float32, shape=shape_x2)
-    re = tf.floordiv(x1, x2)
+    re = tf.math.floordiv(x1, x2)
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x1: a, x2: b})
     write_file_txt(data_files[2], data, fmt="%s")
@@ -209,7 +209,7 @@ def gen_random_data_double(data_files):
 
     x1 = tf.compat.v1.placeholder(tf.float64, shape=shape_x1)
     x2 = tf.compat.v1.placeholder(tf.float64, shape=shape_x2)
-    re = tf.floordiv(x1, x2)
+    re = tf.math.floordiv(x1, x2)
     with tf.compat.v1.Session(config=config('cpu')) as session:
         data = session.run(re, feed_dict={x1: a, x2: b})
     write_file_txt(data_files[2], data, fmt="%s")

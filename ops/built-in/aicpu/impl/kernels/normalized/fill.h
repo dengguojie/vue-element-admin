@@ -27,6 +27,7 @@ class FillCpuKernel : public CpuKernel {
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
+  uint32_t GetDimsByType(CpuKernelContext &ctx);
   /**
    * @brief calc dims from input dims tensor
    * @param dims_tensor input dims tensor
@@ -35,6 +36,8 @@ class FillCpuKernel : public CpuKernel {
    */
   template <typename T>
   uint32_t CalcDims(const Tensor *dims_tensor, std::vector<int64_t> &dims);
+
+  std::vector<int64_t> dims;
 };
 }  // namespace aicpu
 #endif  // AICPU_KERNELS_NORMALIZED_FILL_H_
