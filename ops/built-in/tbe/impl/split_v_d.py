@@ -190,7 +190,8 @@ class SplitNotEqual():
             with self.tik_instance.for_range(0, 16) as idx:
                 offset_2 = offset_1 + idx * self.last_dim
                 self.tik_instance.data_move(data_ub[idx * self.block_ele], self.input_tensor[offset_2], 0,
-                                            max_ele // 16, 1, self.last_dim - 1, 15)
+                                            max_ele // 16, 1, (self.last_dim * 16 - self.block_ele) // self.block_ele,
+                                            15)
             ub_offset = 0
             for _, i in enumerate(range(len(self.size_splits) - 1)):
                 with self.tik_instance.for_range(0, max_ele) as idx_1:
@@ -208,12 +209,12 @@ class SplitNotEqual():
                 offset_2 = offset_1 + idx * self.last_dim
                 self.tik_instance.data_move(data_ub[idx * self.size_splits[-1]], self.input_tensor[offset_2], 0,
                                             max_ele // 16, self.size_splits[-1] // self.block_ele,
-                                            self.last_dim - self.size_splits[-1] // self.block_ele,
+                                            (self.last_dim * 16 - self.size_splits[-1]) // self.block_ele,
                                             self.size_splits[-1] * 15 // self.block_ele)
             offset_3 = core_offset * self.size_splits[-1] + loop_idx * max_ele * self.size_splits[-1]
             self.tik_instance.data_move(self.output_tensor_list[-1][offset_3], data_ub, 0, 1,
                                         max_ele * self.size_splits[-1] // self.block_ele, 0, 0)
-        if core_ele // max_ele != 0:
+        if core_ele % max_ele != 0:
             with self.tik_instance.for_range(0, 1):
                 # define ub scope
                 data_ub = self.tik_instance.Tensor(self.dtype, [max_ele * self.last_dim],
@@ -227,7 +228,8 @@ class SplitNotEqual():
                 with self.tik_instance.for_range(0, 16) as idx:
                     offset_2 = offset_1 + idx * self.last_dim
                     self.tik_instance.data_move(data_ub[idx * self.block_ele], self.input_tensor[offset_2], 0,
-                                                max_ele // 16, 1, self.last_dim - 1, 15)
+                                                max_ele // 16, 1,
+                                                (self.last_dim * 16 - self.block_ele) // self.block_ele, 15)
                 ub_offset = 0
                 for _, i in enumerate(range(len(self.size_splits) - 1)):
                     with self.tik_instance.for_range(0, max_ele) as idx_1:
@@ -245,7 +247,7 @@ class SplitNotEqual():
                     offset_2 = offset_1 + idx * self.last_dim
                     self.tik_instance.data_move(data_ub[idx * self.size_splits[-1]], self.input_tensor[offset_2], 0,
                                                 max_ele // 16, self.size_splits[-1] // self.block_ele,
-                                                self.last_dim - self.size_splits[-1] // self.block_ele,
+                                                (self.last_dim * 16 - self.size_splits[-1]) // self.block_ele,
                                                 self.size_splits[-1] * 15 // self.block_ele)
                 offset_3 = (self.first_dim - max_ele) * self.size_splits[-1]
                 self.tik_instance.data_move(self.output_tensor_list[-1][offset_3], data_ub, 0, 1,
@@ -296,8 +298,6 @@ class SplitNotEqual():
             if self.size_splits[0] % self.block_ele != 0:
                 return False
         else:
-            if self.dtype not in ("float16",):
-                return False
             if self.last_dim > 128:
                 return False
             if self.first_dim < 256:
