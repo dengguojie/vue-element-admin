@@ -114,7 +114,7 @@ VERIFY_FUNC_REG(NPUAllocFloatStatus, NPUAllocFloatStatusVerify);
 // ----------------------------NPUGetFloatStatusV2------------------------------------//
 IMPLEMT_COMMON_INFERFUNC(NPUGetFloatStatusV2InferShape) {
   TensorDesc td = op.GetOutputDesc("data");
-  td.SetShape(Shape({8}));
+  td.SetShape(Shape({8}));  // 8 * 4B equals 32B
   (void)op.UpdateOutputDesc("data", td);
   return GRAPH_SUCCESS;
 }
