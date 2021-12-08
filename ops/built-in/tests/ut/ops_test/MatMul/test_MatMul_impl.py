@@ -412,6 +412,7 @@ def test_mock_cases(test_args):
             test_matmul_NZ2NZ_fp16()
             test_matmul_NZ2NZ_int8()
             test_matmul_add()
+            test_matmul_add_not_align()
             test_matmul_dequant_add()
             test_matmul_fixpipe_0()
             test_matmul_fixpipe_1()

@@ -176,7 +176,7 @@ Status GemmToMatmulFusionPass::Fusion(ge::ComputeGraph& graph, Mapping& mapping,
     return FAILED
   );
   ge::AttrUtils::SetBool(matmul_desc, "transpose_x1", transpose_a);
-  ge::AttrUtils::SetBool(matmul_desc, "transpose_x2", transpose_a);
+  ge::AttrUtils::SetBool(matmul_desc, "transpose_x2", transpose_b);
   matmul_node = graph.AddNode(matmul_desc);
   fusion_nodes.push_back(matmul_node);
   // mul1 node

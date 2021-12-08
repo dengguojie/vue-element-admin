@@ -171,6 +171,19 @@ def test_matmul_add():
         tensor_list = [x1, x2, x3, out]
         sch = auto_schedule(out)
 
+def test_matmul_add_not_align():
+     with cce():
+        x1 = tvm.placeholder((2, 2, 16, 16), name="x1", dtype="float16", attrs={"ori_shape": (32, 32), "format": "FRACTAL_NZ", "ori_format": "ND"})
+        x2 = tvm.placeholder((2, 2, 16, 16), name="x2", dtype="float16", attrs={"ori_shape": (32, 30), "format": "FRACTAL_NZ", "ori_format": "ND"})
+        y = {"shape": (2, 2, 16, 16), "ori_shape": (32, 30), "format": "FRACTAL_NZ", "ori_format": "ND", "dtype": "float16"}
+        trans_out = {"shape": (32, 30), "ori_shape": (32, 30), "format": "ND", "ori_format": "ND", "dtype": "float16"}
+        matmul_out = mat_mul_compute(x1, x2, None, None, y, False, False, 0)
+        trans_out = trans_data_compute(matmul_out, trans_out, "FRACTAL_NZ", "ND")
+        x3 = tvm.placeholder((1,), name='add_input', dtype="float16", attrs={"ori_shape": (128, 128), "format": "FRACTAL_NZ", "ori_format": "ND"})
+        out = add_compute(trans_out, x3, None)
+        tensor_list = [x1, x2, x3, out]
+        sch = auto_schedule(out)   
+
 def test_matmul_dequant_add():
     with cce():
         x1 = tvm.placeholder((32, 2, 16, 32), name="tensor_a", dtype="int8", attrs={"ori_shape": (32, 1024), "format": "FRACTAL_NZ", "ori_format": "ND"})

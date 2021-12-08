@@ -27,15 +27,24 @@ class FixpipeMatmul(FixpipeBase):
     matmul Fixpipe
     """
     def _get_c0_c1_index(self):
+        """
+        get c0 c1 index according to format
+        """
         nz_c0_idx = -1
         nz_c1_idx = -4
         return nz_c0_idx, nz_c1_idx
 
     def _update_inputs(self):
+        """
+        skip matmul ddr tensor
+        """
         if self.x1.op.input_tensors is not None:
             self.x1 = self.x1.op.input_tensors[0]
 
     def fixpipe_reform(self, res):
+        """
+        shape or format transform for fixpipe_op
+        """
         fixpipe_name = "fixpipe"
         fixpipe_tag = "fixpipe_reform"
         if self._is_nz2nd():
