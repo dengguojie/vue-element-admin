@@ -123,4 +123,56 @@ __attribute__((visibility("default"))) uint32_t RunCpuKernel(void *param) {
   return SessionCache<CpuCacheData>::Instance().RunKernel<CpuKernelCache>(
       param, session->sessionId, stream_id, session->sessFlag);
 }
+
+__attribute__((visibility("default"))) uint32_t RunCpuKernelWithBlock(void *param, 
+                                                                      struct BlkDimInfo *blkdim_info) {
+  KERNEL_LOG_INFO("RunCpuKernelWithBlock C begin");
+  if (param == nullptr || blkdim_info == nullptr) {
+    KERNEL_LOG_ERROR("Param is null.");
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
+
+  // parse param_len
+  AicpuParamHead *param_head = static_cast<AicpuParamHead *>(param);
+  if ((param_head->length < sizeof(AicpuParamHead)) ||
+      (param_head->length > kMaxParamLen) ||
+      (param_head->extInfoLength > kMaxExtendLen)) {
+    KERNEL_LOG_ERROR(
+        "Param length[%u] not in [%zu, %u] or extend info length[%u] is "
+        "greater "
+        "than the limit[%u].",
+        param_head->length, sizeof(AicpuParamHead), kMaxParamLen,
+        param_head->extInfoLength, kMaxExtendLen);
+    return KERNEL_STATUS_PARAM_INVALID;
+  }
+
+  SessionInfo *session = nullptr;
+  uint32_t ret = ParseExtSessionInfo(param_head, session);
+  if (ret != KERNEL_STATUS_OK) {
+    return ret;
+  }
+
+  if (session == nullptr) {
+    KERNEL_LOG_INFO("RunCpuKernelWithBlock directly.");
+    CpuKernelCache cache;
+    cache.Init(false);
+    return cache.RunCpuKernelWithBlock(param, blkdim_info);
+  }
+
+  std::string stream_id_value = "0";
+  if (aicpu::GetThreadLocalCtx != nullptr) {
+    auto status = GetThreadLocalCtx(kContextKeyStreamId, stream_id_value);
+    if (status != AICPU_ERROR_NONE) {
+      KERNEL_LOG_ERROR("GetThreadLocalCtx failed, ret[%d].", status);
+      return KERNEL_STATUS_INNER_ERROR;
+    }
+  }
+  uint64_t stream_id = atoi(stream_id_value.c_str());
+  KERNEL_LOG_INFO(
+      "RunCpuKernel from cache, stream id[%lu], session id[%lu], session "
+      "flag[%d].",
+      stream_id, session->sessionId, session->sessFlag);
+  return SessionCache<CpuCacheData>::Instance().RunCpuKernelWithBlock<CpuKernelCache>(
+      param, session->sessionId, stream_id, session->sessFlag, blkdim_info);
+}
 }

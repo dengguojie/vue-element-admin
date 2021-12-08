@@ -24,6 +24,7 @@
 #include "cpu_context.h"
 #include "cpu_node_def.h"
 #include "kernel_cache.h"
+#include "device_cpu_kernel.h"
 
 namespace aicpu {
 struct ExtInfoMsg {
@@ -64,6 +65,13 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    * @return int32_t: 0 indicates success, whilWe the others fail
    */
   int32_t RunKernel(void *param) override;
+
+  /*
+   * run kernel with blockDimInfo.
+   * @param param: kernel context and blkDimInfo
+   * @return int32_t: 0 indicates success, whilWe the others fail
+   */
+  int32_t RunCpuKernelWithBlock(void *param, struct BlkDimInfo *blkDimInfo) override;
 
  private:
   CpuKernelCache(const CpuKernelCache &) = delete;
@@ -185,6 +193,17 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
   std::shared_ptr<CpuKernelContext> GetCpuKernelContext(
       bool has_sess_info, uint64_t kernel_id, const char *nodedef,
       uint32_t nodedef_len, std::shared_ptr<NodeDef> &nodedef_proto);
+
+  /*
+   * get cpu kernel context from cache
+   * @param has_sess_info: whether has session info
+   * @param kernel_id: kernel id, the key of cache
+   * @param blkDimInfo: kernel blockdim info
+   * @return uint32_t: 0 indicates success, while the others fail
+   */
+  std::shared_ptr<CpuKernelContext> GetCpuKernelContextWithBlock(
+      std::shared_ptr<ExtInfoMsg> extInfoMsg, const char *nodedef, uint32_t nodedef_len,
+      std::shared_ptr<NodeDef> &nodedef_proto, struct BlkDimInfo *blkDimInfo);
 
   /*
    * get bit status on pos

@@ -62,4 +62,18 @@ void SetRandomValue(T input[], uint64_t num, float min = 0.0,
   uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx); \
   EXPECT_EQ(ret, expect);
 
+#define RUN_KERNEL_WITHBLOCK(node_def, device_type, expect, blkInfo)       \
+  string node_def_str;                                            \
+  node_def->SerializeToString(node_def_str);                      \
+  auto blockNum = CpuKernelUtils::CreateAttrValue();              \
+  blockNum->SetInt(blkInfo->blockNum);                            \
+  node_def->AddAttrs("block_num", blockNum.get());                \
+  auto blockId = CpuKernelUtils::CreateAttrValue();               \
+  blockId->SetInt(blkInfo->blockId);                              \
+  node_def->AddAttrs("block_id", blockId.get());                  \
+  CpuKernelContext ctx(device_type);                              \
+  EXPECT_EQ(ctx.Init(node_def.get()), KERNEL_STATUS_OK);          \
+  uint32_t ret = CpuKernelRegister::Instance().RunCpuKernel(ctx); \
+  EXPECT_EQ(ret, expect);
+
 #endif

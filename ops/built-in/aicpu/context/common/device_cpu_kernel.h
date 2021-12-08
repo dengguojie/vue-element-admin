@@ -16,7 +16,14 @@
 #ifndef AICPU_CONTEXT_COMMON_DEVICE_CPU_KERNEL_H
 #define AICPU_CONTEXT_COMMON_DEVICE_CPU_KERNEL_H
 #include <cstdint>
+
+struct BlkDimInfo {
+  uint32_t blockNum;   // blockdim_num
+  uint32_t blockId;    // blockid
+};
+
 extern "C" {
 uint32_t RunCpuKernel(void *param);
+uint32_t RunCpuKernelWithBlock(void *param, struct BlkDimInfo *blkDimInfo);
 }
 #endif // AICPU_CONTEXT_COMMON_DEVICE_CPU_KERNEL_H

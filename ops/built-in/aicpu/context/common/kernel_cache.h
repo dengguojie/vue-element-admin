@@ -24,6 +24,7 @@
 #include <mutex>
 
 #include "log.h"
+#include "device_cpu_kernel.h"
 
 namespace aicpu {
 template <class T>
@@ -50,6 +51,12 @@ class KernelCache {
    */
   virtual int32_t RunKernel(void *param) = 0;
 
+  /*
+   * run kernel with blockDimInfo.
+   * @param param: kernel context and kernel context and blkDimInfo
+   * @return int32_t: 0 indicates success, whilWe the others fail
+   */
+  virtual int32_t RunCpuKernelWithBlock(void *param, struct BlkDimInfo *blkDimInfo) = 0;
   /*
    * get kernel cache, the lru algorithm is supported in non-session scenarios
    * @param key: kernel id

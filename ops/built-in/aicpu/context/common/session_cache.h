@@ -36,6 +36,39 @@ class SessionCache {
    * @param session_id: sesson id
    * @param stream_id: stream id
    * @param sess_flag: whether it's a session scene, true use session id, false
+   * @param blkdim_info: Op's blkdim_info
+   * use stream id
+   * @return int32_t: 0 indicates success, while the others fail
+   */
+  template <class T>
+  int32_t RunCpuKernelWithBlock(void *param, uint64_t session_id, uint64_t stream_id,
+                                bool sess_flag, struct BlkDimInfo *blkdim_info) {
+    std::shared_ptr<KernelCache<C>> kernel = nullptr;
+    if (sess_flag) {
+      KERNEL_LOG_DEBUG("SessionCache KernelCache from session, id[%llu].", session_id);
+      std::unique_lock<std::mutex> lock(session_mutex_);
+      int32_t ret = GetOrCreateKernelCache<T>(session_kernel_cache_, session_id, sess_flag, kernel);
+      if (ret != 0) {
+        return ret;
+      }
+    } else {
+      KERNEL_LOG_DEBUG("SessionCache KernelCache from stream, id[%llu].",
+                       stream_id);
+      std::unique_lock<std::mutex> lock(stream_mutex_);
+      int32_t ret = GetOrCreateKernelCache<T>(stream_kernel_cache_, stream_id, sess_flag, kernel);
+      if (ret != 0) {
+        return ret;
+      }
+    }
+    return kernel->RunCpuKernelWithBlock(param, blkdim_info);
+  }
+
+/*
+   * run and cache kernel.
+   * @param param: kernel context
+   * @param session_id: sesson id
+   * @param stream_id: stream id
+   * @param sess_flag: whether it's a session scene, true use session id, false
    * use stream id
    * @return int32_t: 0 indicates success, while the others fail
    */
@@ -64,7 +97,6 @@ class SessionCache {
     }
     return kernel->RunKernel(param);
   }
-
  private:
   SessionCache() = default;
   ~SessionCache() = default;

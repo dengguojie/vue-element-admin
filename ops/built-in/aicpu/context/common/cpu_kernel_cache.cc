@@ -593,4 +593,108 @@ int32_t CpuKernelCache::RunKernel(void *param) {
   return 0;
 }
 
+/*
+ * run kernel with blockdim info.
+ */
+int32_t CpuKernelCache::RunCpuKernelWithBlock(void *param, struct BlkDimInfo *blkdim_info)
+{
+  AicpuParamHead *param_head = static_cast<AicpuParamHead *>(param);
+  std::vector<uint64_t> io_addrs;
+  char *nodedef = nullptr;
+  uint32_t nodedef_len = 0;
+  uint32_t ret = ParseIoAddr(param_head, io_addrs, nodedef, nodedef_len);
+  if (ret != KERNEL_STATUS_OK) {
+    return -1;
+  }
+  std::shared_ptr<ExtInfoMsg> ext_info_msg = nullptr;
+  try {
+    ext_info_msg = std::make_shared<ExtInfoMsg>();
+  } catch(std::bad_alloc &) {
+    KERNEL_LOG_ERROR("Create ExtInfoMsg failed");
+    return -1;
+  }
+  ret = ParseExtMsg(param_head, *ext_info_msg);
+  if (ret != KERNEL_STATUS_OK) {
+    return -1;
+  }
+  
+  std::shared_ptr<NodeDef> nodedef_proto = nullptr;
+  auto ctx = GetCpuKernelContextWithBlock(ext_info_msg, nodedef,
+                                          nodedef_len, nodedef_proto, blkdim_info);
+  KERNEL_CHECK_NULLPTR(ctx, KERNEL_STATUS_INNER_ERROR, "Get cpu kernel context from buff failed.")
+  
+  ret = UpdateTensor(io_addrs, *ext_info_msg, *ctx);
+  if (ret != KERNEL_STATUS_OK) {
+    return -1;
+  }
+
+  if (ext_info_msg->async_flag) {
+    ret = CpuKernelRegister::Instance().RunCpuKernelAsync(
+        *ctx, ext_info_msg->wait_type, ext_info_msg->wait_id,
+        [&, ctx, ext_info_msg]() {
+          return UpdateFWKOutputShape(*ext_info_msg, *ctx);
+        });
+  } else {
+    ret = CpuKernelRegister::Instance().RunCpuKernel(*ctx);
+    if (ret != KERNEL_STATUS_OK) {
+      return -1;
+    }
+    ret = UpdateFWKOutputShape(*ext_info_msg, *ctx);
+  }
+  if (ret != KERNEL_STATUS_OK) {
+    return -1;
+  }
+  return 0;
+}
+/*
+ * get cpu kernel context from cache
+ */
+std::shared_ptr<CpuKernelContext> CpuKernelCache::GetCpuKernelContextWithBlock(
+    std::shared_ptr<ExtInfoMsg> extInfoMsg, const char *nodedef, uint32_t nodedef_len,
+    std::shared_ptr<NodeDef> &nodedef_proto, struct BlkDimInfo *blkdim_info) {
+  std::shared_ptr<CpuKernelContext> ctx = nullptr;
+  KERNEL_LOG_INFO("Get cpu kernel context with block info begin. kernel id[%lu]", extInfoMsg->kernel_id);
+  if (extInfoMsg->has_sess_info) {
+    CpuCacheData *cache = GetCache(extInfoMsg->kernel_id);
+    if (cache != nullptr) {
+      KERNEL_LOG_INFO("Get kernel from cache success.");
+      return cache->context;
+    }
+  }
+  std::string str_data(nodedef, nodedef_len);
+  nodedef_proto = CpuKernelUtils::CreateNodeDef();
+  KERNEL_CHECK_NULLPTR(nodedef_proto, std::shared_ptr<CpuKernelContext>(nullptr), "Create node def with block info failed.")
+  if (!nodedef_proto->ParseFromString(str_data)) {
+    return std::shared_ptr<CpuKernelContext>(nullptr);
+  }
+
+  if (blkdim_info->blockNum != 1) {
+    auto blockNum = CpuKernelUtils::CreateAttrValue();
+    blockNum->SetInt(blkdim_info->blockNum);
+    nodedef_proto->AddAttrs("block_num", blockNum.get());
+
+    auto blockid = CpuKernelUtils::CreateAttrValue();
+    blockid->SetInt(blkdim_info->blockId);
+    nodedef_proto->AddAttrs("block_id", blockid.get());
+    KERNEL_LOG_INFO("AddAttrs block info , blockNum[%u] blockId[%u].", blkdim_info->blockNum, blkdim_info->blockId);
+  }
+
+  CpuKernelContext *tmp = new (std::nothrow) CpuKernelContext(DEVICE);
+  KERNEL_CHECK_NULLPTR(tmp, std::shared_ptr<CpuKernelContext>(nullptr), "Create context with block info failed.")
+  ctx = std::shared_ptr<CpuKernelContext>(tmp);
+  uint32_t ret = ctx->Init(nodedef_proto.get());
+  if (ret != KERNEL_STATUS_OK) {
+    return std::shared_ptr<CpuKernelContext>(nullptr);
+  }
+
+  if (extInfoMsg->has_sess_info) {
+    CpuCacheData *cache_ptr = new (std::nothrow) CpuCacheData(nodedef_proto, ctx);
+    KERNEL_CHECK_NULLPTR(cache_ptr, std::shared_ptr<CpuKernelContext>(nullptr), "Create cpu cache data failed.")
+    std::shared_ptr<CpuCacheData> cache_shared = std::shared_ptr<CpuCacheData>(cache_ptr);
+    SetCache(extInfoMsg->kernel_id, cache_shared);
+    KERNEL_LOG_INFO("Cache cpu kernel data success. kernel id[%lu]", extInfoMsg->kernel_id);
+  }
+  KERNEL_LOG_INFO("Get cpu kernel context success. kernel id[%lu]", extInfoMsg->kernel_id);
+  return ctx;
+}
 }  // namespace aicpu

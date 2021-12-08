@@ -334,6 +334,7 @@ set(_cpu_kernels_ut_files
   testcase/where/src/where_utest.cpp
   testcase/zeroslike/src/zeroslike_utest.cpp
   testcase/zeta/src/zeta_utest.cpp
+  testcase/add_block/src/add_block_utest.cpp
 )
 
 add_executable(cpu_kernels_ut
