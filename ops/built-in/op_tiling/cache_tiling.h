@@ -26,9 +26,9 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <limits.h>
+#include <climits>
 #include <map>
-#include <math.h>
+#include <cmath>
 #include <numeric>
 #include <ratio>
 #include <unistd.h>
