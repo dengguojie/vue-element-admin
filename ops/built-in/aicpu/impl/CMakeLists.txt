@@ -118,7 +118,6 @@ set(local_device_kernels_src_files
     kernels/device/avg_pool1d_avg_matrix.cc
     kernels/device/mem_cpy.cc
     kernels/device/where.cc
-    kernels/device/stateless_drop_out_gen_mask.cc
 )
 
 if(BUILD_OPEN_PROJECT)

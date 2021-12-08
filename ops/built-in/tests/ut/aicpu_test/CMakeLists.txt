@@ -64,7 +64,6 @@ set(_cpu_kernels_src
   ${CPU_KERNELS_DIR}/kernels/device/avg_pool1d_avg_matrix.cc
   ${CPU_KERNELS_DIR}/kernels/device/mem_cpy.cc
   ${CPU_KERNELS_DIR}/kernels/device/where.cc
-  ${CPU_KERNELS_DIR}/kernels/device/stateless_drop_out_gen_mask.cc
   ${CPU_KERNELS_DIR}/kernels/host/assign.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_fractal_nz.cc
   ${CPU_KERNELS_DIR}/kernels/host/format_transfer/format_transfer_fractal_z.cc
@@ -322,7 +321,6 @@ set(_cpu_kernels_ut_files
   testcase/split_v/src/split_v_utest.cpp
   testcase/square/src/square_utest.cpp
   testcase/squareddifference/src/squareddifference_utest.cpp
-  testcase/stateless_drop_out_gen_mask/src/stateless_drop_out_gen_mask_ut.cpp
   testcase/strided_slice/src/strided_slice_utest.cpp
   testcase/strided_slice_v2/src/strided_slice_v2_utest.cpp
   testcase/sub/src/sub_utest.cpp
