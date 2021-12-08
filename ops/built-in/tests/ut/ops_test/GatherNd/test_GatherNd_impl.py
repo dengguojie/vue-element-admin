@@ -17,7 +17,6 @@ import numpy as np
 from op_test_frame.common import precision_info
 from op_test_frame.ut import OpUT
 
-
 ut_case = OpUT("GatherNd", None, None)
 
 
@@ -94,7 +93,8 @@ ut_case.add_case("all",
                       "format": "ND", "ori_format": "ND"},
                      {"shape": (32, 28, 8, 5, 124, 7, 1), "dtype": "int32", "ori_shape": (32, 28, 8, 5, 124, 7, 1),
                       "format": "ND", "ori_format": "ND"},
-                     {"shape": (32, 28, 8, 5, 124, 7, 20000), "dtype": "float16", "ori_shape": (32, 28, 8, 5, 124, 7, 20000),
+                     {"shape": (32, 28, 8, 5, 124, 7, 20000), "dtype": "float16",
+                      "ori_shape": (32, 28, 8, 5, 124, 7, 20000),
                       "format": "ND", "ori_format": "ND"},
                      "gather_nd_07", "success"))
 
@@ -112,7 +112,7 @@ ut_case.add_case("all",
                  gen_gather_nd_case(
                      {"shape": (1, 7, 4564, 9973), "dtype": "float16", "ori_shape": (1, 7, 4564, 9973),
                       "format": "ND", "ori_format": "ND"},
-                     {"shape": (1, ), "dtype": "int32", "ori_shape": (1, ),
+                     {"shape": (1,), "dtype": "int32", "ori_shape": (1,),
                       "format": "ND", "ori_format": "ND"},
                      {"shape": (1, 7, 4564, 9973), "dtype": "float16", "ori_shape": (1, 7, 4564, 9973),
                       "format": "ND", "ori_format": "ND"},
@@ -138,48 +138,73 @@ ut_case.add_case("all",
                       "format": "ND", "ori_format": "ND"},
                      "gather_nd_11", "success"))
 
+ut_case.add_case("all",
+                 gen_gather_nd_case(
+                     {"shape": (8, 11, 13, 11, 3), "dtype": "int8", "ori_shape": (8, 11, 13, 11, 3),
+                      "format": "ND", "ori_format": "ND"},
+                     {"shape": (5, 7, 16, 7, 3), "dtype": "int32", "ori_shape": (5, 7, 16, 7, 3),
+                      "format": "ND", "ori_format": "ND"},
+                     {"shape": (5, 7, 16, 7, 11, 3), "dtype": "int8", "ori_shape": (5, 7, 16, 7, 11, 3),
+                      "format": "ND", "ori_format": "ND"},
+                     "gather_nd_12", "success"))
+
+
 def calc_expect_func(dict_data, dict_indices, dict_out):
     shape_indices = dict_indices["value"].shape
     shape_indices_ele = list(shape_indices[:-1]) + list(dict_data["value"].shape[shape_indices[-1]:])
-    indices = dict_indices["value"].reshape(np.prod(shape_indices[:-1]),shape_indices[-1])
-    res=[]
+    indices = dict_indices["value"].reshape(np.prod(shape_indices[:-1]), shape_indices[-1])
+    res = []
     for i in range(indices.shape[0]):
         aa = tuple(indices[i])
         tmp = dict_data["value"]
         for j in aa:
-            tmp=tmp[j]
+            tmp = tmp[j]
         res.append(tmp)
     res = np.array(res).astype(dict_data["dtype"]).reshape(shape_indices_ele)
     return res
 
+
 ut_case.add_precision_case("all", {
-    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (16, 3, 3), "shape": (16, 3, 3), "param_type": "input"},
-               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (33, 2), "shape": (33, 2), "param_type": "input","value_range":[0, min((16, 3, 3))]},
-               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (33, 3), "shape": (33, 3), "param_type": "output"}],
+    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (16, 3, 3), "shape": (16, 3, 3),
+                "param_type": "input"},
+               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (33, 2), "shape": (33, 2),
+                "param_type": "input", "value_range": [0, min((16, 3, 3))]},
+               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (33, 3), "shape": (33, 3),
+                "param_type": "output"}],
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
 ut_case.add_precision_case("all", {
-    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (9, 7, 6, 5, 4, 2), "shape": (9, 7, 6, 5, 4, 2), "param_type": "input"},
-               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 2, 3), "shape": (3, 2, 3), "param_type": "input","value_range":[0, min((9, 7, 6, 5, 4, 2))]},
-               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (3, 2, 5, 4, 2), "shape": (3, 2, 5, 4, 2), "param_type": "output"}],
+    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (9, 7, 6, 5, 4, 2),
+                "shape": (9, 7, 6, 5, 4, 2), "param_type": "input"},
+               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 2, 3), "shape": (3, 2, 3),
+                "param_type": "input", "value_range": [0, min((9, 7, 6, 5, 4, 2))]},
+               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (3, 2, 5, 4, 2),
+                "shape": (3, 2, 5, 4, 2), "param_type": "output"}],
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
 ut_case.add_precision_case("all", {
-    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1024, 1024, 16), "shape": (1024, 1024, 16), "param_type": "input"},
-               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 2, 2), "shape": (3, 2, 2), "param_type": "input","value_range":[0, min((1024, 1024, 16))]},
-               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (3, 2, 16), "shape": (3, 2, 16), "param_type": "output"}],
+    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (1024, 1024, 16),
+                "shape": (1024, 1024, 16), "param_type": "input"},
+               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 2, 2), "shape": (3, 2, 2),
+                "param_type": "input", "value_range": [0, min((1024, 1024, 16))]},
+               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (3, 2, 16), "shape": (3, 2, 16),
+                "param_type": "output"}],
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })
 
 ut_case.add_precision_case("all", {
-    "params": [{"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (9, 7, 6, 5), "shape": (9, 7, 6, 5), "param_type": "input"},
-               {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 1), "shape": (3, 1), "param_type": "input","value_range":[0, min((9, 7, 6, 5))]},
-               {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (3, 7, 6, 5), "shape": (3, 7, 6, 5), "param_type": "output"}],
+    "params": [
+        {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (9, 7, 6, 5), "shape": (9, 7, 6, 5),
+         "param_type": "input"},
+        {"dtype": "int32", "format": "ND", "ori_format": "ND", "ori_shape": (3, 1), "shape": (3, 1),
+         "param_type": "input", "value_range": [0, min((9, 7, 6, 5))]},
+        {"dtype": "float16", "format": "ND", "ori_format": "ND", "ori_shape": (3, 7, 6, 5), "shape": (3, 7, 6, 5),
+         "param_type": "output"}],
     "calc_expect_func": calc_expect_func,
     "precision_standard": precision_info.PrecisionStandard(0.001, 0.001)
 })

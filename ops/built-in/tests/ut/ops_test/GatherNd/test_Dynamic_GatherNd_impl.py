@@ -79,6 +79,17 @@ ut_case.add_case("all",
                       "format": "ND", "ori_format": "ND", "range": ((11272, 11272), (1, 1))},
                      "dynamic_gather_nd_05", RuntimeError))
 
+ut_case.add_case("all",
+                 gen_dynamic_gather_nd_case(
+                     {"shape": (-1, 11, 13, 11, 3), "dtype": "int8", "ori_shape": (8, 11, 13, 11, 3),
+                      "format": "ND", "ori_format": "ND", "range": ((8, 8), (11, 11), (13, 13), (11, 11), (3, 3))},
+                     {"shape": (5, 7, 16, -1, 3), "dtype": "int32", "ori_shape": (5, 7, 16, 7, 3),
+                      "format": "ND", "ori_format": "ND", "range": ((5, 5), (7, 7), (16, 16), (7, 7), (3, 3))},
+                     {"shape": (5, 7, 16, -1, 11, 3), "dtype": "int8", "ori_shape": (5, 7, 16, 7, 11, 3),
+                      "format": "ND", "ori_format": "ND",
+                      "range": ((5, 5), (7, 7), (16, 16), (7, 7), (11, 11), (3, 3))},
+                     "dynamic_gather_nd_06", "success"))
+
 
 if __name__ == '__main__':
     ut_case.run("Ascend910A")

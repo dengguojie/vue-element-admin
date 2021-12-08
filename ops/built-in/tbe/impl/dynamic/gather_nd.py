@@ -1098,7 +1098,7 @@ class GatherNd():
         output_offset = (indices_num_offset + (loop_num - 1)) * self.params_row
 
         # compute gm offset in x tensor
-        gm_offset_i = self.get_gm_offset(indices_ub, 0, 0)
+        gm_offset_i = self.get_gm_offset(indices_ub, 0, loop_num - 1)
 
         # move params_row to res_ub from gm
         tik_instance.data_move(res_ub, self.x[gm_offset_i], 0,
