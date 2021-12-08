@@ -51,6 +51,7 @@ DOUBLE_VALUE = 2
 CORE_NUM_THRITY = 30
 CORE_NUM_THRITY_TWO = 32
 CORE_NUM_EIGHT = 8
+MATMUL_CONFUSION_TANSPOSE_OUTPUT_DIM = 6
 
 def gemm_para_check(gm_shape, l1_tiling_shape, l0_tiling_shape):
     """
@@ -275,6 +276,28 @@ def get_cloud_shape_map(core_num):
         }
 
     return shape_map
+
+
+def get_cloud_confusion_transpose_shape_map(core_num):
+    """
+    the knowledge of matmul schedule tiling
+    """
+    shape_map = {}
+    if core_num == CORE_NUM_THRITY_TWO:
+        shape_map[(256, 1024, 1024, 1, 2)] = "128_128_64_128_128_64_2_2_1_16"
+        shape_map[(224, 1024, 1024, 1, 2)] = "112_144_64_112_144_64_2_2_1_16"
+        shape_map[(192, 1024, 1024, 1, 2)] = "96_160_64_96_160_64_2_2_1_16"
+        shape_map[(160, 1024, 1024, 1, 2)] = "80_192_64_80_192_64_2_2_1_16"
+        shape_map[(128, 1024, 1024, 1, 2)] = "64_256_64_64_256_64_2_2_1_16"
+        shape_map[(6720, 1024, 1024, 1, 2)] = "224_256_128_224_64_128_2_2_15_2"
+        shape_map[(7680, 1024, 1024, 1, 2)] = "256_256_128_128_64_128_2_2_15_2"
+    elif core_num == CORE_NUM_THRITY:
+        shape_map[(128, 1024, 1024, 1, 2)] = "160_256_128_128_64_128_2_2_1_8"
+        shape_map[(6720, 1024, 1024, 1, 2)] = "256_256_128_224_64_128_2_2_15_2"
+        shape_map[(7680, 1024, 1024, 1, 2)] = "256_256_128_128_64_128_2_2_15_2"
+
+    return shape_map
+
 
 def get_mdc_shape_map():
     """
@@ -1361,10 +1384,6 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
         n_nparts_mode)
     cce_emitinsn_params.cceEmitParamsIns.insert_param("batch", batch)
     m_factors, n_factors = get_refresh_core_factors(m_factors, n_factors, batch)
-    cce_emitinsn_params.cceEmitParamsIns.insert_param("matmul_m_blk",
-                                                      m_factors)
-    cce_emitinsn_params.cceEmitParamsIns.insert_param("matmul_n_blk",
-                                                      n_factors)
 
     def _get_out_tensors_width(out_tensor):
         """
@@ -1521,6 +1540,18 @@ def mmad_schedule(res, sch_list, dynamic_para=None):
         raise RuntimeError(args_dict, error_manager_util.get_error_message(args_dict))
 
     tiled_shape = tiling_shape.split('_')
+    if with_transpose and len(transpose_shape) == MATMUL_CONFUSION_TANSPOSE_OUTPUT_DIM:
+        core_num = tbe_platform_info.get_soc_spec("CORE_NUM")
+        shape_map = get_cloud_confusion_transpose_shape_map(core_num)
+        if shape_map.get(shape_tiling_args):
+            tiling_shape = shape_map.get(shape_tiling_args)
+            tiled_shape = tiling_shape.split('_')
+            m_factors = int(tiled_shape[8])
+            n_factors = int(tiled_shape[9])
+    cce_emitinsn_params.cceEmitParamsIns.insert_param("matmul_m_blk",
+                                                      m_factors)
+    cce_emitinsn_params.cceEmitParamsIns.insert_param("matmul_n_blk",
+                                                      n_factors)
     m_l1_shape = int(tiled_shape[0])
     k_l1_shape = int(tiled_shape[1])
     n_l1_shape = int(tiled_shape[2])

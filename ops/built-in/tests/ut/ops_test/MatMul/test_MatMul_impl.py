@@ -306,6 +306,92 @@ def test_matmul_confusion_transpose_910(test_arg):
         cce_build_code(sch, config)
     te_set_version("Ascend310")
 
+def test_matmul_confusion_transpose_1_128_910(test_arg):
+    te_set_version("Ascend910")
+    with cce():
+        x1 = tvm.placeholder((64, 8, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (128, 1024)}, dtype="float16")
+        x2 = tvm.placeholder((64, 64, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (1024, 1024)}, dtype="float16")
+        output_y = {"shape": (64, 8, 16, 16), "dtype": "float16", "ori_shape": (128, 1024), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = mat_mul_compute(x1, x2, None, None, output_y)
+        y = {"shape": (1, 16, 4, 8, 16, 16), "ori_shape": (1, 16, 128, 64), "dtype": "float16", "format": "FRACTAL_NZ", "ori_format": "ND"}
+        out = confusion_transpose_d_compute(matmul_out, y, [0, 2, 1, 3], (1, 128, 16, 64), False)
+        tensor_list = [x1, x2, out]
+        sch = auto_schedule(out)
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "matmul_confusion_transpose_910",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+    te_set_version("Ascend310")
+
+def test_matmul_confusion_transpose_30_224_910(test_arg):
+    te_set_version("Ascend910")
+    with cce():
+        x1 = tvm.placeholder((64, 420, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (6720, 1024)}, dtype="float16")
+        x2 = tvm.placeholder((64, 64, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (1024, 1024)}, dtype="float16")
+        output_y = {"shape": (64, 420, 16, 16), "dtype": "float16", "ori_shape": (6720, 1024), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = mat_mul_compute(x1, x2, None, None, output_y)
+        y = {"shape": (30, 16, 4, 14, 16, 16), "ori_shape": (30, 16, 224, 64), "dtype": "float16", "format": "FRACTAL_NZ", "ori_format": "ND"}
+        out = confusion_transpose_d_compute(matmul_out, y, [0, 2, 1, 3], (30, 224, 16, 64), False)
+        tensor_list = [x1, x2, out]
+        sch = auto_schedule(out)
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "matmul_confusion_transpose_910",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+    te_set_version("Ascend310")
+
+def test_matmul_confusion_transpose_30_224_910B(test_arg):
+    te_set_version("Ascend910B")
+    with cce():
+        x1 = tvm.placeholder((64, 420, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (6720, 1024)}, dtype="float16")
+        x2 = tvm.placeholder((64, 64, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (1024, 1024)}, dtype="float16")
+        output_y = {"shape": (64, 420, 16, 16), "dtype": "float16", "ori_shape": (6720, 1024), "format": "FRACTAL_NZ", "ori_format": "ND"}
+        matmul_out = mat_mul_compute(x1, x2, None, None, output_y)
+        y = {"shape": (30, 16, 4, 14, 16, 16), "ori_shape": (30, 16, 224, 64), "dtype": "float16", "format": "FRACTAL_NZ", "ori_format": "ND"}
+        out = confusion_transpose_d_compute(matmul_out, y, [0, 2, 1, 3], (30, 224, 16, 64), False)
+        tensor_list = [x1, x2, out]
+        sch = auto_schedule(out)
+        config = {
+            "print_ir": False,
+            "need_build": True,
+            "name": "matmul_confusion_transpose_910",
+            "tensor_list": tensor_list,
+        }
+        cce_build_code(sch, config)
+    te_set_version("Ascend310")
+
+def test_matmul_confusion_transpose_30_224_310(test_arg):
+    te_set_version("Ascend310")
+    try:
+        with cce():
+            x1 = tvm.placeholder((64, 420, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (6720, 1024)}, dtype="float16")
+            x2 = tvm.placeholder((64, 64, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (1024, 1024)}, dtype="float16")
+            output_y = {"shape": (64, 420, 16, 16), "dtype": "float16", "ori_shape": (6720, 1024), "format": "FRACTAL_NZ", "ori_format": "ND"}
+            matmul_out = mat_mul_compute(x1, x2, None, None, output_y)
+            y = {"shape": (30, 16, 4, 14, 16, 16), "ori_shape": (30, 16, 224, 64), "dtype": "float16", "format": "FRACTAL_NZ", "ori_format": "ND"}
+            out = confusion_transpose_d_compute(matmul_out, y, [0, 2, 1, 3], (30, 224, 16, 64), False)
+    except RuntimeError as e:
+        print("test_matmul_confusion_transpose_30_224_310 success")
+
+def test_matmul_confusion_transpose_30_224_perm_invalid(test_arg):
+    te_set_version("Ascend910B")
+    try:
+        with cce():
+            x1 = tvm.placeholder((64, 420, 16, 16), name="x1", attrs={'format': "FRACTAL_NZ", "ori_shape": (6720, 1024)}, dtype="float16")
+            x2 = tvm.placeholder((64, 64, 16, 16), name="x2", attrs={'format': "FRACTAL_NZ", "ori_shape": (1024, 1024)}, dtype="float16")
+            output_y = {"shape": (64, 420, 16, 16), "dtype": "float16", "ori_shape": (6720, 1024), "format": "FRACTAL_NZ", "ori_format": "ND"}
+            matmul_out = mat_mul_compute(x1, x2, None, None, output_y)
+            y = {"shape": (30, 16, 4, 14, 16, 16), "ori_shape": (30, 16, 224, 64), "dtype": "float16", "format": "FRACTAL_NZ", "ori_format": "ND"}
+            out = confusion_transpose_d_compute(matmul_out, y, [0, 2, 3, 1], (30, 224, 16, 64), False)
+    except RuntimeError as e:
+        print("test_matmul_confusion_transpose_30_224_perm_invalid success")
+
 def test_matmul_confusion_transpose_710(test_arg):
     te_set_version("Ascend710")
     with cce():
@@ -331,6 +417,11 @@ def test_trans_data_fp32(test_arg):
     tensor_a = trans_data_compute(tensor_a_ori, None, src_format="ND", dst_format="FRACTAL_NZ")
 
 ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_910)
+ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_1_128_910)
+ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_30_224_910)
+ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_30_224_910B)
+ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_30_224_310)
+ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_30_224_perm_invalid)
 ut_case.add_cust_test_func(test_func=test_matmul_confusion_transpose_710)
 ut_case.add_cust_test_func(test_func=test_trans_data_fp32)
 

@@ -15,7 +15,9 @@
 """
 confusion_transpose_d
 """
+from collections import defaultdict
 import te.platform as tbe_platform
+from tbe.common.platform import platform_info as tbe_platform_info
 from te.utils import para_check
 from te.utils import shape_util
 from impl import constant_util as constant
@@ -27,6 +29,8 @@ from impl.util.platform_adapter import tbe
 
 # 'pylint: disable=too-many-locals,too-many-arguments,invalid-name,unused-argument
 # 'pylint: disable=simplifiable-if-statement,no-else-return
+CORE_NUM_THRITY_TWO = 32
+
 def _prod(input_shape):
     """
     Calculate the product of all elements
@@ -542,41 +546,51 @@ def _is_matmul_fusion_case(y, perm, shape, transpose_first):
     check if it is case of fusion with matmul
     """
     soc_version = tbe_platform.cce_conf.get_soc_spec("SOC_VERSION")
-    if isinstance(y, dict) and\
-            (isinstance(perm, (list, tuple))) and \
-            (isinstance(shape, (list, tuple))):
-        if list(perm) == [0, 2, 1, 3]:
-            if soc_version == "Ascend910":
-                if not transpose_first:
-                    batch_supported = list(range(16, 176, 16))
-                    if list(y.get("shape"))[1:] == [16, 4, 8, 16, 16] and list(shape)[1:] == [128, 16, 64] and \
-                        y.get("shape")[0] in batch_supported and shape[0] in batch_supported:
-                        return True
-                    batch_supported = list(range(4, 28, 4))
-                    if list(y.get("shape"))[1:] == [16, 4, 32, 16, 16] and list(shape)[1:] == [512, 16, 64] and \
-                        y.get("shape")[0] in batch_supported and shape[0] in batch_supported:
-                        return True
-                else:
-                    batch_supported_block = [i*128 for i in range(1, 11)]
-                    batch_supported = [i*16 for i in batch_supported_block]
-                    if y.get("shape")[0] == 64 and list(y.get("shape"))[2:] == [16, 16] and shape[1] == 1024 and \
-                        y.get("shape")[1] in batch_supported_block and shape[0] in batch_supported:
-                        return True
-            elif soc_version == "Ascend710":
-                if not transpose_first:
-                    batch_supported = [1, 8, 16, 32, 64]
-                    if list(y.get("shape"))[1:] == [12, 4, 8, 16, 16] and list(shape)[1:] ==  [128, 12, 64] and \
-                        y.get("shape")[0] in batch_supported and shape[0] in batch_supported:
-                        return True
-                else:
-                    batch_supported_block = [8, 32, 64, 128, 256, 512]
-                    batch_supported = [i*16 for i in batch_supported_block]
-                    if y.get("shape")[0] == 48 and list(y.get("shape"))[2:] == [16, 16] and shape[1] == 768 and \
-                        y.get("shape")[1] in batch_supported_block and shape[0] in batch_supported:
-                        return True
-            else:
-                return False
-    return False
+    valid = isinstance(y, dict) and (isinstance(perm, (list, tuple))) and \
+            (isinstance(shape, (list, tuple))) and list(perm) == [0, 2, 1, 3]
+    if not valid:
+        return False
+    if soc_version == "Ascend910":
+        if not transpose_first:
+            seq_length = [128, 128, 224, 256]
+            batch_size = [1, 60, 30, 30]
+            if tbe_platform_info.get_soc_spec("CORE_NUM") == CORE_NUM_THRITY_TWO:
+                seq_length = seq_length + [160, 192, 224, 256]
+                batch_size = batch_size + [1] * 4
+            supported_shape = [[batch, seq] for batch, seq in zip(batch_size, seq_length)]
+            supported_shape = supported_shape + [[i, 128] for i in range(16, 176, 16)] + \
+                            [[i, 512] for i in range(4, 28, 4)]
+            supported_shape_temp = defaultdict(list)
+            for value in supported_shape:
+                supported_shape_temp[value[1]].append(value[0])
+            is_support_fusion = list(shape)[1] in supported_shape_temp.keys() and \
+                                list(shape)[2:] == [16, 64] and \
+                                list(y.get("shape"))[1:] == [16, 4, list(shape)[1] // constant.C0_SIZE, \
+                                constant.C0_SIZE, constant.C0_SIZE] and \
+                                y.get("shape")[0] in supported_shape_temp[list(shape)[1]] and \
+                                y.get("shape")[0] == shape[0]
+            if is_support_fusion:
+                return True
+        else:
+            batch_supported_block = [i * 128 for i in range(1, 11)]
+            batch_supported = [i * 16 for i in batch_supported_block]
+            if y.get("shape")[0] == 64 and list(y.get("shape"))[2:] == [16, 16] and shape[1] == 1024 and \
+                y.get("shape")[1] in batch_supported_block and shape[0] in batch_supported:
+                return True
+    elif soc_version == "Ascend710":
+        if not transpose_first:
+            batch_supported = [1, 8, 16, 32, 64]
+            if list(y.get("shape"))[1:] == [12, 4, 8, 16, 16] and list(shape)[1:] ==  [128, 12, 64] and \
+                y.get("shape")[0] in batch_supported and shape[0] in batch_supported:
+                return True
+        else:
+            batch_supported_block = [8, 32, 64, 128, 256, 512]
+            batch_supported = [i * 16 for i in batch_supported_block]
+            if y.get("shape")[0] == 48 and list(y.get("shape"))[2:] == [16, 16] and shape[1] == 768 and \
+                y.get("shape")[1] in batch_supported_block and shape[0] in batch_supported:
+                return True
+    else:
+        return False
 
 
 @tbe_platform.fusion_manager.fusion_manager.register("confusion_transpose_d")
