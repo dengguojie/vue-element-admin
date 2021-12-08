@@ -4,6 +4,8 @@
 #include <gtest/gtest.h>
 #define private public
 #include "register/op_tiling_registry.h"
+#include "elewise_calculation_ops.h"
+#include "array_ops.h"
 
 using namespace std;
 
@@ -31,46 +33,55 @@ static string to_string(const std::stringstream &tiling_data) {
   return result;
 }
 
+using namespace ge;
+#include "common/utils/ut_op_util.h"
+using namespace ut_util;
+
 TEST_F(BiasTiling, Bias_tiling_test_1) {
-  using namespace optiling;
-  optiling::OpRunInfo op_run_info;
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Bias");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
-  TeOpTensorArg tensorInputs, tensorOutputsArg;
-  TeOpParas opParas;
+  auto opParas = op::Bias("Bias");
 
   vector<vector<int64_t>> input_shapes = {
       {2, 3, 4},
       {3, 4},
   };
 
-  vector<string> dtypes = {"float16", "float16"};
-  for (size_t i = 0; i < input_shapes.size(); i++) {
-    tensorInputs.tensor.clear();
-    TeOpTensor tensorInput;
-    tensorInput.shape = input_shapes[i];
-    tensorInput.dtype = dtypes[i];
-    tensorInputs.tensor.push_back(tensorInput);
-    tensorInputs.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensorInputs);
-  }
+  vector<ge::DataType> dtypes = {ge::DT_FLOAT16, ge::DT_FLOAT16};
 
-  TeOpTensor tensorOutput;
-  tensorOutput.shape = input_shapes[0];
-  tensorOutput.dtype = "float16";
-  tensorOutputsArg.tensor.push_back(tensorOutput);
-  tensorOutputsArg.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputsArg);
-  opParas.op_type = "Bias";
-  std::string compileInfo = R"( {"boardcast_bias_shape": [1, -1, -1], "push_status": 0, "_pattern": "Broadcast", "_flag_info": [false, false, true, true, false, false, false], "_base_info": {"210": [32, 4, 21840, 10920]}, "_elewise_vars": {"221000000": [10000, 10100], "221000001": [10000, 10100, 20000, 30000], "221000002": [10000, 10100, 20000, 30001], "221000004": [10000, 10100, 20001, 30001]}, "_vars": {"221000000": ["_dim_0_0", "_dim_1_0"], "221000001": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_0"], "221000002": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_1"], "221000004": ["_dim_0_0", "_dim_1_0", "_block_factor_1", "_ub_factor_1"]}})";
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "Bias_tiling_test_1";
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, bias, input_shapes[1], dtypes[1], ge::FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], ge::DT_FLOAT16, ge::FORMAT_ND, {});
+  std::string compileInfo = R"( {"boardcast_bias_shape": [1, -1, -1], "push_status": 0, "_pattern": "Broadcast", "_flag_info": [false, false, true, true, false, false, false], "_outs_uint1":false, "_base_info": {"210": [32, 4, 21840, 10920]}, "_elewise_vars": {"221000000": [10000, 10100], "221000001": [10000, 10100, 20000, 30000], "221000002": [10000, 10100, 20000, 30001], "221000004": [10000, 10100, 20001, 30001]}, "_vars": {"221000000": ["_dim_0_0", "_dim_1_0"], "221000001": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_0"], "221000002": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_1"], "221000004": ["_dim_0_0", "_dim_1_0", "_block_factor_1", "_ub_factor_1"]}})";
 
   // do tilling, get runInfo
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  EXPECT_EQ(to_string(runInfo.tiling_data),
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
+            "2 12 ");
+}
+
+TEST_F(BiasTiling, Bias_tiling_test_2) {
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("Bias");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  auto opParas = op::Bias("Bias");
+
+  vector<vector<int64_t>> input_shapes = {
+      {2, 3, 4},
+      {3, 4},
+  };
+
+  vector<ge::DataType> dtypes = {ge::DT_FLOAT, ge::DT_FLOAT};
+
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, bias, input_shapes[1], dtypes[1], ge::FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], ge::DT_FLOAT, ge::FORMAT_ND, {});
+  std::string compileInfo = R"( {"boardcast_bias_shape": [1, -1, -1], "push_status": 0, "_pattern": "Broadcast", "_flag_info": [false, false, true, true, false, false, false], "_outs_uint1":false, "_base_info": {"210": [32, 4, 21840, 10920]}, "_elewise_vars": {"221000000": [10000, 10100], "221000001": [10000, 10100, 20000, 30000], "221000002": [10000, 10100, 20000, 30001], "221000004": [10000, 10100, 20001, 30001]}, "_vars": {"221000000": ["_dim_0_0", "_dim_1_0"], "221000001": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_0"], "221000002": ["_dim_0_0", "_dim_1_0", "_block_factor_0", "_ub_factor_1"], "221000004": ["_dim_0_0", "_dim_1_0", "_block_factor_1", "_ub_factor_1"]}})";
+
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
             "2 12 ");
 }
 

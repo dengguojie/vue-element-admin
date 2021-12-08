@@ -18,46 +18,82 @@
  * \file bn_reduce_grad.cpp
  * \brief
  */
-#include <algorithm>
-#include "../fusion_pass/common/fp16_t.hpp"
 #include "eletwise.h"
-#include "error_log.h"
+#include <algorithm>
 #include "vector_tiling.h"
+#include "error_log.h"
+#include "../fusion_pass/common/fp16_t.hpp"
+#include "op_tiling_util.h"
 
 namespace optiling {
-bool BnTrainingReduceGradTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                                OpRunInfo& run_info) {
-    bool ret = EletwiseTiling(op_type, op_paras, op_info, run_info);
-    if (!ret) {
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "bn_training_reduce_grad tiling failed.");
-        return false;
-    }
 
-    const std::vector<int64_t>& input_x_shapes = op_paras.inputs[0].tensor[0].shape;
-    OP_LOGD(op_type, "get shape (%lld,%lld,%lld,%lld,%lld)",
-            input_x_shapes[0], input_x_shapes[1], input_x_shapes[2], input_x_shapes[3], input_x_shapes[4]);
+struct BnTrainingReduceGradCompileInfo {
+  std::shared_ptr<AutoTilingHandler> tiling_handler;
+  int64_t have_reduce_mean_cof_dtype;
+};
 
-    float reduce_mean_cof = 1.0;
-    int64_t num = input_x_shapes[0] * input_x_shapes[2] * input_x_shapes[3];
-    if (num == 0) {
-        VECTOR_INNER_ERR_REPORT_TILIING(op_type, "bn_training_reduce_grad invalid dim value 0. (%ld,%ld,%ld,%ld,%ld)",
-            input_x_shapes[0], input_x_shapes[1], input_x_shapes[2], input_x_shapes[3], input_x_shapes[4]);
-        return false;
-    }
-    reduce_mean_cof = static_cast<float>((reduce_mean_cof / num));
+bool BnTrainingReduceGradTiling(const std::string& op_type, const ge::Operator& op_paras,
+                                const BnTrainingReduceGradCompileInfo& parsed_info, utils::OpRunInfo& run_info) {
+  PROFILING_TILING_INIT(op_type.c_str());
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"),
+                  return false);
+  bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info);
+  if (!ret) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "bn_training_reduce_grad tiling failed.");
+    return false;
+  }
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
+  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
+  OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op_info failed."),
+                  return false);
 
-    if (op_info.count("reduce_mean_cof_dtype") > 0) {
-        const std::string reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<std::string>();
+  auto input_desc = operator_info->MutableInputDesc(0);
+  OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed."),
+                  return false);
 
-        ByteBufferPut(run_info.tiling_data, reduce_mean_cof);
-        ByteBufferPut(run_info.tiling_data, static_cast<float>((-1.0 * reduce_mean_cof)));
+  const std::vector<int64_t>& input_x_shapes = input_desc->MutableShape().GetDims();
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
-        OP_LOGD(op_type, "bn_training_reduce_grad write tilingdata num_rec= %f", reduce_mean_cof);
-    }
+  float reduce_mean_cof = 1.0;
+  int64_t num = input_x_shapes[0] * input_x_shapes[2] * input_x_shapes[3];
+  if (num == 0) {
+    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "bn_training_reduce_grad invalid dim value 0. (%ld,%ld,%ld,%ld,%ld)",
+                                    input_x_shapes[0], input_x_shapes[1], input_x_shapes[2], input_x_shapes[3],
+                                    input_x_shapes[4]);
+    return false;
+  }
+  reduce_mean_cof = reduce_mean_cof / num;
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
 
-    return true;
+  if (parsed_info.have_reduce_mean_cof_dtype) {
+    run_info.AddTilingData(reduce_mean_cof);
+    run_info.AddTilingData(-reduce_mean_cof);
+
+    OP_LOGD(op_type, "bn_training_reduce_grad write tilingdata num_rec= %f", reduce_mean_cof);
+  }
+  PROFILING_TILING_END();
+
+  return true;
+}
+
+static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::json& compile_info,
+                                 BnTrainingReduceGradCompileInfo& parsed_info) {
+  parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_BROADCAST, compile_info);
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"),
+                  return false);
+  // get core_num value
+  std::string dtype;
+  parsed_info.have_reduce_mean_cof_dtype = false;
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "reduce_mean_cof_dtype", dtype),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get reduce_mean_cof_dtype error"),
+                  return false);
+  parsed_info.have_reduce_mean_cof_dtype = true;
+  return true;
 }
 
 // register tiling interface of the bn_training_reduce_grad op.
-REGISTER_OP_TILING_FUNC_BUFFERED(BNTrainingReduceGrad, BnTrainingReduceGradTiling);
+REGISTER_OP_TILING_V3_CUSTOM(BNTrainingReduceGrad, BnTrainingReduceGradTiling, ParseJsonCompileInfo,
+                             BnTrainingReduceGradCompileInfo);
 }  // namespace optiling

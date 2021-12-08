@@ -18,46 +18,77 @@
 #include "error_log.h"
 #include "vector_tiling.h"
 #include "op_log.h"
+#include "op_tiling_util.h"
+#include "vector_tiling_profiling.h"
+#include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
-bool BiasTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                OpRunInfo& run_info) {
-    OP_TILING_CHECK((op_info.count("boardcast_bias_shape") <= 0),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [boardcast_bias_shape]"),
-                    return false);
 
-    std::vector<int64_t> boardcast_bias_shape = op_info["boardcast_bias_shape"];
+struct BiasCompileInfo {
+  std::shared_ptr<AutoTilingHandler> tiling_handler;
+  std::vector<int64_t> broadcast_bias_shape;
+};
 
-    OP_TILING_CHECK(op_paras.inputs.empty(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs cannot be empty"),
-                    return false);
-    OP_TILING_CHECK(op_paras.inputs.size() <= 1,
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs size need more than 1"), return false);
-    OP_TILING_CHECK(op_paras.inputs[0].tensor.empty(),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[0].tensor cannot be empty"), return false);
+bool BiasTiling(const std::string& op_type, const ge::Operator& op_paras, const BiasCompileInfo& parsed_info,
+                utils::OpRunInfo& run_info) {
+  PROFILING_TILING_INIT(op_type.c_str());
+  auto operator_info = OpDescUtils::GetOpDescFromOperator(op_paras);
+  OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op_info failed."),
+                  return false);
 
-    const std::vector<int64_t> input_shape_x = op_paras.inputs[0].tensor[0].shape;
-    const std::vector<int64_t> input_shape_bias = op_paras.inputs[1].tensor[0].shape;
+  auto input_desc = operator_info->MutableInputDesc(0);
+  OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed."),
+                  return false);
 
-    OP_TILING_CHECK(input_shape_x.size() != boardcast_bias_shape.size(),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input_shape_x dims size need same with boardcast_bias"),
-                    return false);
+  const std::vector<int64_t> input_shape_x = input_desc->MutableShape().GetDims();
+  ge::DataType type = input_desc->GetDataType();
 
-    if (input_shape_x.size() == input_shape_bias.size()) {
-        for (size_t i = 0; i < boardcast_bias_shape.size(); i++) {
-            boardcast_bias_shape[i] = boardcast_bias_shape[i] == -1 ? input_shape_bias[i] : boardcast_bias_shape[i];
-        }
-    } else {
-        for (size_t i = 0; i < boardcast_bias_shape.size(); i++) {
-            boardcast_bias_shape[i] = boardcast_bias_shape[i] == -1 ? input_shape_x[i] : boardcast_bias_shape[i];
-        }
+  input_desc = operator_info->MutableInputDesc(1);
+  OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed."),
+                  return false);
+  const std::vector<int64_t> input_shape_bias = input_desc->MutableShape().GetDims();
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
+
+  std::vector<int64_t> broadcast_bias_shape = parsed_info.broadcast_bias_shape;
+  OP_TILING_CHECK(input_shape_x.size() != broadcast_bias_shape.size(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "input_shape_x dims size need same with boardcast_bias"),
+                  return false);
+
+  if (input_shape_x.size() == input_shape_bias.size()) {
+    for (size_t i = 0; i < broadcast_bias_shape.size(); i++) {
+      broadcast_bias_shape[i] = broadcast_bias_shape[i] == -1 ? input_shape_bias[i] : broadcast_bias_shape[i];
     }
+  } else {
+    for (size_t i = 0; i < broadcast_bias_shape.size(); i++) {
+      broadcast_bias_shape[i] = broadcast_bias_shape[i] == -1 ? input_shape_x[i] : broadcast_bias_shape[i];
+    }
+  }
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
-    TeOpParas op_paras_tmp = op_paras;
-    op_paras_tmp.inputs[1].tensor[0].shape = boardcast_bias_shape;
+  vector<vector<int64_t>> input_shapes = {input_shape_x, broadcast_bias_shape};
+  OpInfo eletwise_info(input_shapes, type);
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
 
-    bool ret = EletwiseTiling(op_type, op_paras_tmp, op_info, run_info);
-    return ret;
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"),
+                  return false);
+  bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info, eletwise_info);
+  PROFILING_TILING_END();
+  return ret;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(Bias, BiasTiling);
+static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::json& compile_info,
+                                 BiasCompileInfo& parsed_info) {
+  parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_BROADCAST, compile_info);
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"),
+                  return false);
+  // get core_num value
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "boardcast_bias_shape", parsed_info.broadcast_bias_shape),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get broadcast_bias_shape error"),
+                  return false);
+  return true;
+}
+
+REGISTER_OP_TILING_V3_CUSTOM(Bias, BiasTiling, ParseJsonCompileInfo, BiasCompileInfo);
 }  // namespace optiling

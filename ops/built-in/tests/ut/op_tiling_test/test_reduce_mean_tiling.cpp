@@ -49,14 +49,8 @@ static string to_string(const std::stringstream &tiling_data) {
 using namespace ge;
 #include "common/utils/ut_op_util.h"
 using namespace ut_util;
-/*
-.INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT}))
-    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
-    .REQUIRED_ATTR(axes, ListInt)
-    .ATTR(keep_dims, Bool, false)
-*/
 
-TEST_F(ReduceMeanTiling, ReduceMeanTiling1) {
+TEST_F(ReduceMeanTiling, ReduceMeanDTiling1) {
   std::string op_name = "ReduceMeanD";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -70,14 +64,13 @@ TEST_F(ReduceMeanTiling, ReduceMeanTiling1) {
   auto opParas = op::ReduceMeanD("ReduceMeanD");
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input, in_dtype, ge::FORMAT_ND, {});
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, in_dtype, ge::FORMAT_ND, {});
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "1 1 1 ");
 }
 
-TEST_F(ReduceMeanTiling, ReduceMeanTiling2) {
+TEST_F(ReduceMeanTiling, ReduceMeanDTiling2) {
   std::string op_name = "ReduceMeanD";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -91,14 +84,13 @@ TEST_F(ReduceMeanTiling, ReduceMeanTiling2) {
   auto opParas = op::ReduceMeanD("ReduceMeanD");
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input, in_dtype, ge::FORMAT_ND, {});
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, in_dtype, ge::FORMAT_ND, {});
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "7 2 8 8 1056964608 ");
 }
 
-TEST_F(ReduceMeanTiling, ReduceMeanTiling3) {
+TEST_F(ReduceMeanTiling, ReduceMeanDTiling3) {
   std::string op_name = "ReduceMeanD";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -112,14 +104,13 @@ TEST_F(ReduceMeanTiling, ReduceMeanTiling3) {
   auto opParas = op::ReduceMeanD("ReduceMeanD");
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input, in_dtype, ge::FORMAT_ND, {});
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, in_dtype, ge::FORMAT_ND, {});
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
   EXPECT_EQ(runInfo.GetBlockDim(), 1);
   EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "7 2 16 16 14336 ");
 }
 
-TEST_F(ReduceMeanTiling, ReduceTiling4) {
+TEST_F(ReduceMeanTiling, ReduceMeanTiling4) {
   std::string op_name = "ReduceMean";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -138,12 +129,11 @@ TEST_F(ReduceMeanTiling, ReduceTiling4) {
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input, in_dtype, ge::FORMAT_ND, {});
   TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, axes, input_axis, ge::DT_INT64, FORMAT_ND, axis);
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, in_dtype, ge::FORMAT_ND, {});
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
 }
 
-TEST_F(ReduceMeanTiling, ReduceTiling5) {
+TEST_F(ReduceMeanTiling, ReduceMeanTiling5) {
   std::string op_name = "ReduceMean";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -160,12 +150,11 @@ TEST_F(ReduceMeanTiling, ReduceTiling5) {
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input, in_dtype, ge::FORMAT_ND, {});
   TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, axes, input_axis, ge::DT_INT64, FORMAT_ND, axis);
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, in_dtype, ge::FORMAT_ND, {});
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
 }
 
-TEST_F(ReduceMeanTiling, ReduceTiling7) {
+TEST_F(ReduceMeanTiling, ReduceMeanTiling6) {
   std::string op_name = "ReduceMean";
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
@@ -182,8 +171,7 @@ TEST_F(ReduceMeanTiling, ReduceTiling7) {
   TENSOR_INPUT_WITH_SHAPE(opParas, x, input, in_dtype, ge::FORMAT_ND, {});
   TENSOR_INPUT_WITH_SHAPE_AND_CONST_VALUE(opParas, axes, input_axis, ge::DT_INT64, FORMAT_ND, axis);
   TENSOR_OUTPUT_WITH_SHAPE(opParas, y, output, in_dtype, ge::FORMAT_ND, {});
-  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
   optiling::utils::OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
 }
 

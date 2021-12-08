@@ -15,6 +15,8 @@
 #include <gtest/gtest.h>
 #define private public
 #include "register/op_tiling_registry.h"
+#include "nonlinear_fuc_ops.h"
+#include "array_ops.h"
 
 using namespace std;
 
@@ -41,52 +43,62 @@ static string to_string(const std::stringstream &tiling_data) {
   return result;
 }
 
+using namespace ge;
+#include "common/utils/ut_op_util.h"
+using namespace ut_util;
+
 TEST_F(PReluTiling, PReluTiling_test_1) {
-  using namespace optiling;
-  optiling::OpRunInfo op_run_info;
   auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("PRelu");
   ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
 
-  TeOpTensorArg tensorInputs, tensorOutputsArg;
-  TeOpParas opParas;
+  auto opParas = op::PRelu("PRelu");
 
   vector<vector<int64_t>> input_shapes = {
       {32},
       {1},
   };
 
-  vector<string> dtypes = {
-    "float16",
-    "float16",
+  vector<ge::DataType> dtypes = {
+    ge::DT_FLOAT16,
+    ge::DT_FLOAT16,
   };
 
-  for (size_t i = 0; i < input_shapes.size(); i++) {
-    tensorInputs.tensor.clear();
-    TeOpTensor tensorInput;
-    tensorInput.shape = input_shapes[i];
-    tensorInput.dtype = dtypes[i];
-    tensorInputs.tensor.push_back(tensorInput);
-    tensorInputs.arg_type = TA_SINGLE;
-    opParas.inputs.push_back(tensorInputs);
-  }
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, weight, input_shapes[1], dtypes[1], ge::FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
 
-  TeOpTensor tensorOutput;
-  tensorOutput.shape = input_shapes[0];
-  tensorOutput.dtype = "float16";
-  tensorOutputsArg.tensor.push_back(tensorOutput);
-  tensorOutputsArg.arg_type = TA_SINGLE;
-  opParas.outputs.push_back(tensorOutputsArg);
-  opParas.op_type = "PRelu";
-
-  std::string compileInfo = R"({"broadcast_weight_shape": [1], "_fusion_index": [[0]], "push_status": 1, "_pattern": "Broadcast", "_flag_info": [false, false, true, false, false, false, false], "_base_info": {"000": [32, 2, 31728, 15856]}, "_elewise_vars": {"0": [10000, 20000, 30000]}, "_vars": {"0": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"0": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"0": []}, "_custom_vars": {"0": []}})";
-  OpCompileInfo op_compile_info;
-  op_compile_info.str = compileInfo;
-  op_compile_info.key = "PReluTiling_test_1";
+  std::string compileInfo = R"({"broadcast_weight_shape": [1], "_fusion_index": [[0]], "push_status": 1, "_pattern": "Broadcast", "_flag_info": [false, false, true, false, false, false, false], "_outs_uint1": false, "_base_info": {"000": [32, 2, 31728, 15856]}, "_elewise_vars": {"0": [10000, 20000, 30000]}, "_vars": {"0": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"0": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"0": []}, "_custom_vars": {"0": []}})";
 
   // do tilling, get runInfo
-  OpRunInfo runInfo;
-  ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
-  std::cout << "PReluTiling tiling_data:" << to_string(runInfo.tiling_data) << std::endl;
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "32 32 32 ");
+}
 
-  EXPECT_EQ(to_string(runInfo.tiling_data), "32 32 32 ");
+TEST_F(PReluTiling, PReluTiling_test_2) {
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("PRelu");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+  auto opParas = op::PRelu("PRelu");
+
+  vector<vector<int64_t>> input_shapes = {
+      {32},
+      {1},
+  };
+
+  vector<ge::DataType> dtypes = {
+    ge::DT_FLOAT,
+    ge::DT_FLOAT,
+  };
+
+  TENSOR_INPUT_WITH_SHAPE(opParas, x, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
+  TENSOR_INPUT_WITH_SHAPE(opParas, weight, input_shapes[1], dtypes[1], ge::FORMAT_ND, {});
+  TENSOR_OUTPUT_WITH_SHAPE(opParas, y, input_shapes[0], dtypes[0], ge::FORMAT_ND, {});
+
+  std::string compileInfo = R"({"broadcast_weight_shape": [1], "_fusion_index": [[0]], "push_status": 1, "_pattern": "Broadcast", "_flag_info": [false, false, true, false, false, false, false], "_outs_uint1": false, "_base_info": {"000": [32, 2, 31728, 15856]}, "_elewise_vars": {"0": [10000, 20000, 30000]}, "_vars": {"0": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_normal_vars": {"0": ["_dim_0_0", "_block_factor_0", "_ub_factor_0"]}, "_attr_vars": {"0": []}, "_custom_vars": {"0": []}})";
+
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  RUN_TILING_V3(opParas, iter->second, compileInfo, runInfo);
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()), "32 32 32 ");
 }

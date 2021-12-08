@@ -19,52 +19,66 @@
 #include "eletwise.h"
 #include "vector_tiling.h"
 #include "op_log.h"
+#include "op_tiling_util.h"
 
 namespace optiling {
-bool ScaleTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                 OpRunInfo& run_info) {
-    OP_TILING_CHECK((op_info.count("_boardcast_scale_shape") <= 0),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain[_boardcast_scale_shape]"),
-                    return false);
-    OP_LOGD("op [%s] Enter SCALETILING inputs size:%d", op_type.c_str(), op_paras.inputs.size());
 
-    std::vector<int64_t> boardcast_scale_shape = op_info["_boardcast_scale_shape"];
+struct ScaleCompileInfo {
+  std::shared_ptr<AutoTilingHandler> tiling_handler;
+  std::vector<int64_t> boardcast_scale_shape;
+};
 
-    OP_TILING_CHECK(op_paras.inputs.empty(), VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs cannot be empty"),
-                    return false);
-    OP_TILING_CHECK(op_paras.inputs[0].tensor.empty(),
-                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "op_paras.inputs[0].tensor cannot be empty"), return false);
+bool ScaleTiling(const std::string& op_type, const ge::Operator& op_paras, const ScaleCompileInfo& parsed_info,
+                 utils::OpRunInfo& run_info) {
+  PROFILING_TILING_INIT(op_type.c_str());
+  OP_LOGD("op [%s] Enter SCALETILING inputs size:%d", op_type.c_str(), op_paras.GetInputsSize());
+  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
+  OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op_info failed."),
+                  return false);
 
-    const std::vector<int64_t> input_shape_x = op_paras.inputs[0].tensor[0].shape;
+  auto input_desc = operator_info->MutableInputDesc(0);
+  OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed."),
+                  return false);
 
-    // print debug
-    for (size_t i = 0; i < boardcast_scale_shape.size(); i++) {
-        OP_LOGD("SCALETILING boardcast_scale_shape i=%d value=%d", i, boardcast_scale_shape[i]);
-    }
+  const std::vector<int64_t> input_shape_x = input_desc->MutableShape().GetDims();
+  ge::DataType dtype = input_desc->GetDataType();
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
 
-    for (size_t i = 0; i < boardcast_scale_shape.size(); i++) {
-        boardcast_scale_shape[i] = boardcast_scale_shape[i] == -1 ? input_shape_x[i] : boardcast_scale_shape[i];
-    }
+  std::vector<int64_t> boardcast_scale_shape = parsed_info.boardcast_scale_shape;
 
-    TeOpParas op_paras_tmp = op_paras;
-    if (op_paras_tmp.inputs.size() >= 2) {
-        op_paras_tmp.inputs[1].tensor[0].shape = boardcast_scale_shape;
-    }
+  // print debug
+  for (size_t i = 0; i < boardcast_scale_shape.size(); i++) {
+    OP_LOGD(op_type, "SCALETILING boardcast_scale_shape i=%d value=%d", i, boardcast_scale_shape[i]);
+  }
 
-    // remove varince  scale offset
-    OP_LOGD("ScaleTiling before erase op_paras_tmp inputs size:%d", op_paras_tmp.inputs.size());
-    size_t input_size = op_paras.inputs.size();
-    for (size_t i = 0; i < input_size; i++) {
-        op_paras_tmp.inputs.erase(op_paras_tmp.inputs.end() - 1);
-        if (op_paras_tmp.inputs.size() <= 2) {
-            break;
-        }
-    }
-    OP_LOGD("ScaleTiling after erase op_paras_tmp inputs size:%d", op_paras_tmp.inputs.size());
+  for (size_t i = 0; i < boardcast_scale_shape.size(); i++) {
+    boardcast_scale_shape[i] = boardcast_scale_shape[i] == -1 ? input_shape_x[i] : boardcast_scale_shape[i];
+  }
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
-    bool ret = EletwiseTiling(op_type, op_paras_tmp, op_info, run_info);
-    return ret;
+  vector<vector<int64_t>> input_shapes = {input_shape_x, boardcast_scale_shape};
+  OpInfo eletwise_info(input_shapes, dtype);
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
+
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"),
+                  return false);
+  bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info, eletwise_info);
+  PROFILING_TILING_END();
+  return ret;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(Scale, ScaleTiling);
+static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::json& compile_info,
+                                 ScaleCompileInfo& parsed_info) {
+  parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_BROADCAST, compile_info);
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"),
+                  return false);
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "_boardcast_scale_shape", parsed_info.boardcast_scale_shape),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get boardcast_scale_shape error"),
+                  return false);
+  return true;
+}
+
+REGISTER_OP_TILING_V3_CUSTOM(Scale, ScaleTiling, ParseJsonCompileInfo, ScaleCompileInfo);
 }  // namespace optiling

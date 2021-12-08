@@ -14,42 +14,76 @@
 #include "vector_tiling.h"
 #include "error_log.h"
 #include "op_log.h"
+#include "op_tiling_util.h"
 
 using namespace std;
 
 namespace optiling {
-bool TileWithAxisTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
-                        OpRunInfo& run_info) {
-    std::cout << "Enter TileWithAxisTiling" << std::endl;
 
-    int64_t ori_axis_value = op_info["ori_axis_value"];
-    int64_t axis = op_info["attr_axis"];
-    int64_t tiles = op_info["attr_tiles"];
-    std::cout << "TileWithAxisTiling ori_axis_value:" << ori_axis_value << std::endl;
-    std::cout << "TileWithAxisTiling axis:" << axis << std::endl;
-    std::cout << "TileWithAxisTiling tiles:" << tiles << std::endl;
+struct TileWithAxisCompileInfo {
+  std::shared_ptr<AutoTilingHandler> tiling_handler;
+  int64_t ori_axis_value;
+  int64_t axis;
+  int64_t tiles;
+};
 
-    std::vector<int64_t> shape_x = op_paras.inputs[0].tensor[0].shape;
-    std::vector<int64_t> shape_y(shape_x);
+bool TileWithAxisTiling(const std::string& op_type, const ge::Operator& op_paras,
+                        const TileWithAxisCompileInfo& parsed_info, utils::OpRunInfo& run_info) {
+  std::cout << "Enter TileWithAxisTiling" << std::endl;
+  PROFILING_TILING_INIT(op_type.c_str());
 
-    if (ori_axis_value != 1) {
-        shape_x.insert(shape_x.begin() + axis, 1);
-        shape_y.insert(shape_y.begin() + axis, tiles);
-    } else {
-        shape_y[axis] = tiles;
-    }
+  int64_t ori_axis_value = parsed_info.ori_axis_value;
+  int64_t axis = parsed_info.axis;
+  int64_t tiles = parsed_info.tiles;
+  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
+  OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get op_info failed."),
+                  return false);
 
-    // update output shape
-    TeOpParas op_paras_tmp = op_paras;
-    op_paras_tmp.inputs[0].tensor[0].shape = std::move(shape_x);
-    TeOpTensorArg another_input(op_paras_tmp.inputs[0]);
-    another_input.tensor[0].shape = std::move(shape_y);
-    op_paras_tmp.inputs.push_back(another_input);
+  auto input_desc = operator_info->MutableInputDesc(0);
+  OP_TILING_CHECK(input_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_desc failed."),
+                  return false);
 
-    bool ret = EletwiseTiling(op_type, const_cast<TeOpParas&>(op_paras_tmp), op_info, run_info);
-    std::cout << "Leave TileWithAxisTiling" << std::endl;
-    return ret;
+  std::vector<int64_t> shape_x = input_desc->MutableShape().GetDims();
+  ge::DataType dtype = input_desc->GetDataType();
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
+  std::vector<int64_t> shape_y(shape_x);
+
+  if (ori_axis_value != 1) {
+    shape_x.insert(shape_x.begin() + axis, 1);
+    shape_y.insert(shape_y.begin() + axis, tiles);
+  } else {
+    shape_y[axis] = tiles;
+  }
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
+
+  vector<vector<int64_t>> input_shapes = {shape_x, shape_y};
+  OpInfo eletwise_info(input_shapes, dtype);
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
+
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"),
+                  return false);
+  bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info, eletwise_info);
+  PROFILING_TILING_END();
+  return ret;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED(TileWithAxis, TileWithAxisTiling);
+static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::json& compile_info,
+                                 TileWithAxisCompileInfo& parsed_info) {
+  parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_BROADCAST, compile_info);
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"),
+                  return false);
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "ori_axis_value", parsed_info.ori_axis_value),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get ori_axis_value error"),
+                  return false);
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "attr_axis", parsed_info.axis),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get attr_axis error"), return false);
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "attr_tiles", parsed_info.tiles),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get ori_axis_value error"),
+                  return false);
+  return true;
+}
+
+REGISTER_OP_TILING_V3_CUSTOM(TileWithAxis, TileWithAxisTiling, ParseJsonCompileInfo, TileWithAxisCompileInfo);
 }  // namespace optiling

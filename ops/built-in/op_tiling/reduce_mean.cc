@@ -18,6 +18,16 @@
 #include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
+
+struct ReduceMeanCompileInfo {
+  std::shared_ptr<AutoTilingHandler> tiling_handler;
+  ge::DataType reduce_mean_cof_dtype;
+  bool has_reduce_mean_cof_dtype;
+  int _idx_before_reduce;
+  int axes_idx;
+  std::vector<int32_t> _ori_axis;
+};
+
 bool IsInVector(const std::vector<int32_t>& input, int32_t value) {
   for (uint32_t i = 0; i < input.size(); i++) {
     if (input[i] == value) {
@@ -39,9 +49,8 @@ bool IsPureMove(const std::vector<int64_t>& input_shape, const std::vector<int32
 }
 
 bool GetInputShape(const std::string& op_type, const ge::Operator& op_paras,
-                   const nlohmann::json& op_info, std::vector<int64_t>& input_shape_ori) {
-  int idx = op_info.count("_idx_before_reduce") > 0 ?
-            op_info.at("_idx_before_reduce").get<int>() : 0;
+                   const ReduceMeanCompileInfo& parsed_info, std::vector<int64_t>& input_shape_ori) {
+  int idx = parsed_info._idx_before_reduce;
   // CHECK INPUT
   OP_TILING_CHECK((idx < 0),
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "idx is invalid index for inputs"), return false);
@@ -56,29 +65,16 @@ bool GetInputShape(const std::string& op_type, const ge::Operator& op_paras,
   return true;
 }
 
-bool GetReduceAxis(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+bool GetReduceAxis(const std::string& op_type, const ge::Operator& op_paras, const ReduceMeanCompileInfo& parsed_info,
                    const std::vector<int64_t>& input_shape_ori, std::vector<int32_t>& reduce_axis_ori) {
-  // Get ori reduce aixs
-  std::vector<int64_t> values;
-  if (op_type == "ReduceMean") {
-    // input axes index is 1
-    int axes_idx = 1;
-    if (op_info.count("axes_idx") > 0) {
-      auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
-      OP_TILING_CHECK(operator_info == nullptr,
-                      VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetOpDescFromOperator return nullptr!"), return false);
-      axes_idx = op_info.at("axes_idx").get<int>();
-    }
-    OP_TILING_CHECK(!ops::GetConstIntData(op_paras, axes_idx, values),
+  // Get ori reduce axis
+  if(op_type == "ReduceMean") {
+    int axes_idx = parsed_info.axes_idx;
+    OP_TILING_CHECK(!ops::GetConstIntData(op_paras, axes_idx, reduce_axis_ori),
                     VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetConstIntData %d error!", axes_idx), return false);
-    // clear reduce_axis_ori when shape of input axis is (0, )
-    reduce_axis_ori.resize(values.size());
-    for (size_t i = 0; i < values.size(); i++) {
-      reduce_axis_ori[i] = values[i];
-    }
   } else {
     // axis_known
-    reduce_axis_ori = op_info.at("_ori_axis").get<std::vector<int32_t>>();
+    reduce_axis_ori = parsed_info._ori_axis;
   }
 
   // Convert reduce axis (-1 -> length+1)
@@ -98,8 +94,8 @@ bool GetReduceAxis(const std::string& op_type, const ge::Operator& op_paras, con
   return true;
 }
 
-bool ReduceMeanTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
-                      utils::OpRunInfo& run_info) {
+bool ReduceMeanTiling(const std::string& op_type, const ge::Operator& op_paras,
+                      const ReduceMeanCompileInfo& parsed_info, utils::OpRunInfo& run_info) {
   PROFILING_TILING_INIT(op_type.c_str());
   bool ret = true;
   auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
@@ -107,25 +103,27 @@ bool ReduceMeanTiling(const std::string& op_type, const ge::Operator& op_paras, 
                   VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetOpDescFromOperator return nullptr!"), return false);
   std::vector<int64_t> input_shape{std::vector<int64_t>(10, 0)};
   std::vector<int32_t> reduce_axis{std::vector<int32_t>(10, 0)};
-  ret = ret && GetInputShape(op_type, op_paras, op_info, input_shape);
+  ret = ret && GetInputShape(op_type, op_paras, parsed_info, input_shape);
   ScalarToShape(input_shape);
   PROFILING_TILING_AFTER_GET_SHAPE_REG();
-  ret = ret && GetReduceAxis(op_type, op_paras, op_info, input_shape, reduce_axis);
+  ret = ret && GetReduceAxis(op_type, op_paras, parsed_info, input_shape, reduce_axis);
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
   std::vector<std::vector<int64_t>> shapes = {input_shape};
   std::vector<std::vector<int32_t>> axes{reduce_axis};
   ge::DataType type = operator_info->MutableInputDesc(0)->GetDataType();
   OpInfo eletwise_info(shapes, type, axes);
-  ret = ReduceTiling(op_type, op_paras, op_info, run_info, eletwise_info);
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"),
+                  return false);
+  ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info, eletwise_info);
   // reduce_mean_cof is not required when handling pure dma_copy case
   if (IsPureMove(input_shape, reduce_axis)) {
     return ret;
   }
   PROFILING_TILING_AFTER_CALCU_TILING_REG();
-  if (op_info.count("reduce_mean_cof_dtype") > 0) {
-    const std::string& reduce_mean_cof_dtype = op_info.at("reduce_mean_cof_dtype").get<std::string>();
-    float reduce_mean_cof = 1.0;
-    if (reduce_mean_cof_dtype == "float32") {
+  float reduce_mean_cof = 1.0;
+  if (parsed_info.has_reduce_mean_cof_dtype) {
+    if (parsed_info.reduce_mean_cof_dtype == ge::DT_FLOAT) {
       for (uint32_t i = 0; i < input_shape.size(); i++) {
         if (input_shape[i] == 0) {
           OP_LOGD(op_type.c_str(), "reduce mean shape is 0");
@@ -137,7 +135,7 @@ bool ReduceMeanTiling(const std::string& op_type, const ge::Operator& op_paras, 
       }
       run_info.AddTilingData((float)reduce_mean_cof);
       OP_LOGD(op_type.c_str(), "reduce mean cof:%f", reduce_mean_cof);
-    } else if (reduce_mean_cof_dtype == "float16") {
+    } else {
       for (uint32_t i = 0; i < input_shape.size(); i++) {
         if (input_shape[i] == 0) {
           OP_LOGD(op_type.c_str(), "reduce mean shape is 0, dtype is fp16");
@@ -162,6 +160,32 @@ bool ReduceMeanTiling(const std::string& op_type, const ge::Operator& op_paras, 
   return ret;
 }
 
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(ReduceMean, ReduceMeanTiling);
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(ReduceMeanD, ReduceMeanTiling);
+static bool ParseJsonCompileInfo(const std::string& op_type,
+                          const nlohmann::json& compile_info,
+                          ReduceMeanCompileInfo& parsed_info) {
+  parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_REDUCE, compile_info);
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"),
+                  return false);
+  std::string dtype;
+  parsed_info.has_reduce_mean_cof_dtype = false;
+  if(GetCompileValue(compile_info, "reduce_mean_cof_dtype", dtype)) {
+    parsed_info.has_reduce_mean_cof_dtype = true;
+    parsed_info.reduce_mean_cof_dtype = (dtype == "float32") ? ge::DT_FLOAT : ge::DT_FLOAT16;
+  }
+  parsed_info._idx_before_reduce = 0;
+  GetCompileValue(compile_info, "_idx_before_reduce", parsed_info._idx_before_reduce);
+  //ReduceMean input axes index is 1
+  parsed_info.axes_idx = 1;
+  GetCompileValue(compile_info, "axes_idx", parsed_info.axes_idx);
+  if(op_type == "ReduceMeanD") {
+    OP_TILING_CHECK(!GetCompileValue(compile_info, "_ori_axis", parsed_info._ori_axis),
+                    VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get _ori_axis error"),
+                    return false);
+  }
+  return true;
+}
+
+REGISTER_OP_TILING_V3_CUSTOM(ReduceMean, ReduceMeanTiling, ParseJsonCompileInfo, ReduceMeanCompileInfo);
+REGISTER_OP_TILING_V3_CUSTOM(ReduceMeanD, ReduceMeanTiling, ParseJsonCompileInfo, ReduceMeanCompileInfo);
 }  // namespace optiling

@@ -25,16 +25,17 @@
 #include "graph/debug/ge_log.h"
 #include "vector_tiling.h"
 #include "op_tiling_util.h"
-#include "vector_tiling_profiling.h"
-#include "graph/utils/op_desc_utils.h"
 
 namespace optiling {
 constexpr uint64_t LAST_SIZE_FACTOR = 2;
 
-bool TileTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
+struct TileCompileInfo {
+  std::shared_ptr<AutoTilingHandler> tiling_handler;
+  std::vector<int64_t> compile_shape;
+};
+
+bool TileTiling(const std::string& op_type, const ge::Operator& op_paras, const TileCompileInfo& parsed_info,
                 utils::OpRunInfo& run_info) {
-  OP_TILING_CHECK((op_info.count("compile_shape") <= 0),
-                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "compile info not contain [compile_shape]"), return false);
   PROFILING_TILING_INIT(op_type.c_str());
   auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
   OP_TILING_CHECK(operator_info == nullptr,
@@ -45,7 +46,7 @@ bool TileTiling(const std::string& op_type, const ge::Operator& op_paras, const 
   std::vector<int64_t> x_runtime_shape = input_desc->MutableShape().GetDims();
   ScalarToShape(x_runtime_shape);
 
-  std::vector<int64_t> compile_shape = op_info["compile_shape"].get<std::vector<int64_t>>();
+  std::vector<int64_t> compile_shape = parsed_info.compile_shape;
   std::vector<int64_t> multiples_value;
 
   // input multiples index is 1
@@ -88,16 +89,32 @@ bool TileTiling(const std::string& op_type, const ge::Operator& op_paras, const 
 
   PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
 
-  vector<vector<int64_t>> inputshapes = {broadcast_multiples, broadcast_input};
+  vector<vector<int64_t>> input_shapes = {broadcast_multiples, broadcast_input};
   ge::DataType type = input_desc->GetDataType();
-  OpInfo eletwise_info(inputshapes, type);
+  OpInfo eletwise_info(input_shapes, type);
   PROFILING_TILING_AFTER_CALCU_TILING_REG();
 
-  bool ret = EletwiseTiling(op_type, op_paras, op_info, run_info, eletwise_info);
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "parsed_info.tiling_handler nullptr, error!"),
+                  return false);
+  bool ret = parsed_info.tiling_handler->DoTiling(op_paras, run_info, eletwise_info);
   PROFILING_TILING_END();
   return ret;
 }
 
+static bool ParseJsonCompileInfo(const std::string& op_type, const nlohmann::json& compile_info,
+                                 TileCompileInfo& parsed_info) {
+  parsed_info.tiling_handler = CreateAutoTilingHandler(op_type, PATTERN_BROADCAST, compile_info);
+  OP_TILING_CHECK(parsed_info.tiling_handler == nullptr,
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "CreateAutoTilingHandler return nullptr"),
+                  return false);
+  // get core_num value
+  OP_TILING_CHECK(!GetCompileValue(compile_info, "compile_shape", parsed_info.compile_shape),
+                  VECTOR_INNER_ERR_REPORT_TILIING(op_type, "ParseJsonCompileInfo, get compile_shape error"),
+                  return false);
+  return true;
+}
+
 // register tiling interface of the Tile op.
-REGISTER_OP_TILING_FUNC_BUFFERED_V2(Tile, TileTiling);
+REGISTER_OP_TILING_V3_CUSTOM(Tile, TileTiling, ParseJsonCompileInfo, TileCompileInfo);
 }  // namespace optiling
