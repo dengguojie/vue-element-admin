@@ -111,5 +111,31 @@ IMPLEMT_VERIFIER(NPUAllocFloatStatus, NPUAllocFloatStatusVerify) {
 
 INFER_FUNC_REG(NPUAllocFloatStatus, NPUAllocFloatStatusInferShape);
 VERIFY_FUNC_REG(NPUAllocFloatStatus, NPUAllocFloatStatusVerify);
+// ----------------------------NPUGetFloatStatusV2------------------------------------//
+IMPLEMT_COMMON_INFERFUNC(NPUGetFloatStatusV2InferShape) {
+  TensorDesc td = op.GetOutputDesc("data");
+  td.SetShape(Shape({8}));
+  (void)op.UpdateOutputDesc("data", td);
+  return GRAPH_SUCCESS;
+}
 
+IMPLEMT_VERIFIER(NPUGetFloatStatusV2, NPUGetFloatStatusV2Verify) {
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(NPUGetFloatStatusV2, NPUGetFloatStatusV2InferShape);
+VERIFY_FUNC_REG(NPUGetFloatStatusV2, NPUGetFloatStatusV2Verify);
+// ----------------------------NPUGetFloatStatusV2------------------------------------//
+// ----------------------------NPUClearFloatStatusV2------------------------------------//
+IMPLEMT_COMMON_INFERFUNC(NPUClearFloatStatusV2InferShape) {
+  return GRAPH_SUCCESS;
+}
+
+IMPLEMT_VERIFIER(NPUClearFloatStatusV2, NPUClearFloatStatusV2Verify) {
+  return GRAPH_SUCCESS;
+}
+
+INFER_FUNC_REG(NPUClearFloatStatusV2, NPUClearFloatStatusV2InferShape);
+VERIFY_FUNC_REG(NPUClearFloatStatusV2, NPUClearFloatStatusV2Verify);
+// ----------------------------NPUClearFloatStatusV2------------------------------------//
 }  // namespace ge

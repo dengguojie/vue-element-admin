@@ -117,6 +117,41 @@ REG_OP(NPUGetFloatStatus)
     .INPUT(addr, TensorType{DT_FLOAT})
     .OUTPUT(data, TensorType({DT_FLOAT}))
     .OP_END_FACTORY_REG(NPUGetFloatStatus)
+
+
+/**
+*@brief Set the value of address 0x40000 to 0 in each core . \n
+
+*@par Inputs:
+*addr: A tensor of type float32 . \n
+
+*@par Outputs:
+*data: A Tensor of type float32.
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL.  Please do not use.
+*/
+REG_OP(NPUClearFloatStatusV2)
+    .INPUT(addr, TensorType{DT_FLOAT})
+    .OUTPUT(data, TensorType({DT_FLOAT}))
+    .OP_END_FACTORY_REG(NPUClearFloatStatusV2)
+
+/**
+*@brief Get the value of address 0x40000 . \n
+
+*@par Inputs:
+*addr: A tensor of type float32 . \n
+
+*@par Outputs:
+*data: A Tensor of type float32.
+
+*@par Restrictions:
+*Warning: THIS FUNCTION IS EXPERIMENTAL.  Please do not use.
+*/
+REG_OP(NPUGetFloatStatusV2)
+    .INPUT(addr, TensorType{DT_FLOAT})
+    .OUTPUT(data, TensorType({DT_FLOAT}))
+    .OP_END_FACTORY_REG(NPUGetFloatStatusV2)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NPU_LOSS_SCALE_OPS_H_
