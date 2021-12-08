@@ -343,7 +343,7 @@ def _twice_vnchwconv_invert(args):
         vnc_row_size = repeat_cnt * c0_size
         src_addr_list = [src_ub_casted[tdc.C0_16 * i] for i in tdc.ADDR_IDX_LIST]
         dst_addr_list = [src_ub_casted[ub_offset_casted + vnc_row_size * i] for i in tdc.ADDR_IDX_LIST]
-        
+
         with tik_inst.if_scope(repeat_cnt == 1):
             src_stride.set_as(0)
             dst_stride.set_as(0)
@@ -438,12 +438,12 @@ def _once_vnchwconv_invert(args):
                     tik_inst.data_move(src_ub, src_ub[ub_offset], 0, 1, hidden_head_len, 0, 0)
                 #middle
                 with tik_inst.for_range(0, hidden_mid_cnt) as hidden_mid_idx:
-                    tik_inst.data_move(src_ub[(hidden_head_output + hidden_mid_idx * hidden_ceil) * c0_size], 
+                    tik_inst.data_move(src_ub[(hidden_head_output + hidden_mid_idx * hidden_ceil) * c0_size],
                                        src_ub[ub_offset + (hidden_mid_start + hidden_mid_idx * hidden_size) * c0_size],
                                        0, 1, hidden_size, 0, 0)
                 #tail
                 with tik_inst.if_scope(hidden_tail_end > 0):
-                    tik_inst.data_move(src_ub[(hidden_head_output + hidden_mid_cnt * hidden_ceil) * c0_size], 
+                    tik_inst.data_move(src_ub[(hidden_head_output + hidden_mid_cnt * hidden_ceil) * c0_size],
                                        src_ub[ub_offset + hidden_tail_start * c0_size],
                                        0, 1, hidden_tail_end, 0, 0)
                 hidden_output.set_as(hidden_cr_output * c0_size)
@@ -499,6 +499,7 @@ def calc_cr_offset(step_in, in_idx, hidden_size, c0_size, cr_offset):
     cr_offset_cnt = (step_in * in_idx) // hidden_size
     cr_offset.set_as(cr_offset_cnt * (hidden_ceil - hidden_size) * c0_size)
 
+
 # 'pylint: disable=unused-variable
 def _copy_data_out(out_offset_args, copy_out_args):
     """
@@ -527,7 +528,7 @@ def _func_transform_100(tensor_args, tp_args):
 
     tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, ele_per_block, hidden_size, in_dtype = tensor_args
     (tiling_mode, ub_offset, mc_pos, used_core_cnt, core_step_in, core_step_out, vnc_col_size, c_mod_c0, c0_size,
-     cl_dims, cr_dims, r1st_src_r2nd_dst_same, hidden_cnt, cl_step_in, 
+     cl_dims, cr_dims, r1st_src_r2nd_dst_same, hidden_cnt, cl_step_in,
      cl_step_out, cl_lp_unit, cl_lp_step_in, cl_lp_step_out,
      c_step_in, c_lp_unit, c_lp_step_in, c_lp_step_out, cr_step_in, cr_step_out, cr_lp_unit, cr_lp_step_in,
      cr_lp_step_out, nlc_cl_lp_cnt, nlc_cl_left, nlc_c_lp_cnt, nlc_c_left, nlc_cr_lp_cnt, nlc_cr_left, lc_cl_lp_cnt,
@@ -655,7 +656,7 @@ def trans_data_rnn_positive_source(src, dst, input_size, hidden_size, kernel_nam
             with tik_inst.if_scope(block_idx < used_core_cnt):
                 tensor_args = [tik_inst, block_idx, src_in_gm, dst_out_gm, src_ub, block_elem_cnt, hidden_size, in_dtype]
                 tp_args = tiling_params
-                _func_transform_100(tensor_args, tp_args)        
+                _func_transform_100(tensor_args, tp_args)
     else:
         if in_shape[0] != input_size + hidden_size:
             error_detail = "the shape of in_shape[0] is not satisfied."

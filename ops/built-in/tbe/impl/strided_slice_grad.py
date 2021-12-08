@@ -56,6 +56,7 @@ def check_supported(shape, begin, end, strides, dy, output, begin_mask=0,
 
     return check_result
 
+
 # 'pylint: disable=locally-disabled,too-many-arguments,too-many-locals
 def strided_slice_grad(shape, begin, end, strides, dy, output, begin_mask=0,
                        end_mask=0, ellipsis_mask=0, new_axis_mask=0, shrink_axis_mask=0,

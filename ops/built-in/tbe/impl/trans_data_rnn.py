@@ -98,7 +98,7 @@ def trans_data_rnn(src, dst, src_format, dst_format, input_size, hidden_size,
         output_shape = [hidden_cnt, hidden_size, 1, 1]
         src["shape"] = input_shape
         dst["shape"] = output_shape
-        trans_data_negative_target_ntc.trans_data_negative_target_ntc(src, dst, "NC1HWC0", "NCHW", kernel_name=kernel_name)        
+        trans_data_negative_target_ntc.trans_data_negative_target_ntc(src, dst, "NC1HWC0", "NCHW", kernel_name=kernel_name)
     elif src_format == "FRACTAL_ZN_RNN" and dst_format == "ND":
         if len(in_shape) != 4 or len(out_shape) != 2:
             error_detail = "the length of in_shape is not 4 or the length of out_shape is not 2."

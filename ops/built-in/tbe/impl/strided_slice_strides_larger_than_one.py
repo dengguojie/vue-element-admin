@@ -35,10 +35,8 @@ N_BURST = 4095
 # max value of src_stride/dst_stride in data_move
 MAX_STRIDE = 65535
 
-# 'pylint: disable=too-many-arguments
-# 'pylint: disable=too-many-branches
-# 'pylint: disable=too-many-statements
-# 'pylint: disable=too-few-public-methods
+
+# 'pylint: disable=too-few-public-methods,too-many-arguments,disable=too-many-branches,disable=too-many-statements
 class StridedSliceStridesLargerThanOne:
     """
     StridedSliceStridesLargerThanOne
