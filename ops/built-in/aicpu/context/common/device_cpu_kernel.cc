@@ -126,7 +126,8 @@ __attribute__((visibility("default"))) uint32_t RunCpuKernel(void *param) {
 
 __attribute__((visibility("default"))) uint32_t RunCpuKernelWithBlock(void *param, 
                                                                       struct BlkDimInfo *blkdim_info) {
-  KERNEL_LOG_INFO("RunCpuKernelWithBlock C begin");
+  KERNEL_LOG_INFO("RunCpuKernelWithBlock C begin. blockid[%u], blockdim[%u].",
+                  blkdim_info->blockId, blkdim_info->blockNum);
   if (param == nullptr || blkdim_info == nullptr) {
     KERNEL_LOG_ERROR("Param is null.");
     return KERNEL_STATUS_PARAM_INVALID;

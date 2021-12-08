@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved. 
+ * Copyright (c) Huawei Technologies Co., Ltd. 2020-2021. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -109,7 +109,7 @@ const std::map<std::string, DataType> dtype_maps{
 
 bool IsEmptyTensor(Tensor *tensor) {
   auto dims = tensor->GetTensorShape()->GetDimSizes();
-  if (tensor->GetData() == NULL) {
+  if (tensor->GetData() == nullptr) {
     for (uint32_t i = 0; i < dims.size(); i++) {
       if (dims[i] == 0) {
         return true;

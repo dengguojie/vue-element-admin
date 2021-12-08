@@ -17,7 +17,7 @@
 #ifndef CPU_KERNELS_LOG_H
 #define CPU_KERNELS_LOG_H
 
-#include <cstdio>
+
 #include <sys/syscall.h>
 #include <unistd.h>
 #include "toolchain/slog.h"

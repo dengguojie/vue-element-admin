@@ -4,7 +4,6 @@
 #include <random>
 #include <unordered_set>
 #include "log.h"
-#include "status.h"
 
 namespace aicpu {
 template <typename IntType = int>
