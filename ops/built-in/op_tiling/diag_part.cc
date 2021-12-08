@@ -25,7 +25,7 @@
 #include "error_log.h"
 #include "op_log.h"
 #include "op_tiling.h"
-#include <math.h>
+#include <cmath>
 
 namespace {
   constexpr int32_t NUM_128 = 128;
@@ -56,7 +56,7 @@ static void PrintTilingParam(const TilingParam& param) {
 
 static void CalTilingParam(TilingParam& param, int64_t input_num, int64_t aicore_num) {
   param.input_num = sqrt(input_num);
-  if(aicore_num == 0){
+  if (aicore_num == 0){
       VECTOR_INNER_ERR_REPORT_TILIING("diag_part", "aicore_num = 0 is not support");
       return;
   }
@@ -86,7 +86,7 @@ bool DiagPartGetCompileInfo(const nlohmann::json& op_compile_info, int64_t& core
 }
 
 bool DiagPartTiling(const std::string& op_type, const ge::Operator& op_paras, const nlohmann::json& op_info,
-                utils::OpRunInfo& run_info) {
+                    utils::OpRunInfo& run_info) {
   OP_LOGI(op_type.c_str(), "DIAGPARTTiling running");
 
   auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);

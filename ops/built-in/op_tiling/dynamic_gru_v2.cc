@@ -90,7 +90,7 @@ void PrintTilingParams(const std::string& op_type, const DynamicGruV2Param& para
  * @return bool: success or not
  */
 bool DynamicGruV2Tiling(const std::string& opType, const TeOpParas& opParas, const nlohmann::json& op_info,
-                    OpRunInfo& runInfo) {
+                        OpRunInfo& runInfo) {
   OP_LOGI(opType.c_str(), "op tiling running.");
   if (op_info == nullptr) {
     OP_LOGE(opType.c_str(), "op DynamicGruV2Tiling: op_info json error.");

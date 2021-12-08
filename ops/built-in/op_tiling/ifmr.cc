@@ -18,7 +18,7 @@
  * \file ifmr.cc
  * \brief
  */
-#include <math.h>
+#include <cmath>
 #include <algorithm>
 #include <nlohmann/json.hpp>
 #include <string>
@@ -35,10 +35,10 @@ namespace {
 namespace optiling {
 using namespace ge;
 
-bool IFMRTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info, 
-		OpRunInfo& run_info) {
+bool IFMRTiling(const std::string& op_type, const TeOpParas& op_paras, const nlohmann::json& op_info,
+                OpRunInfo& run_info) {
     OP_LOGI(op_type.c_str(), "IFMRTiling running.");
-    OP_TILING_CHECK(op_paras.inputs.empty(), OP_LOGE(op_type.c_str(), "op_paras.inputs cannot be empty."), 
+    OP_TILING_CHECK(op_paras.inputs.empty(), OP_LOGE(op_type.c_str(), "op_paras.inputs cannot be empty."),
 		    return false);
 
     const std::vector<int64_t> src_shape = op_paras.inputs[0].tensor[0].shape;

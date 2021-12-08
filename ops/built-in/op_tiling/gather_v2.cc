@@ -416,7 +416,7 @@ bool GetV2GatherCompileParams(const std::string& op_type, const std::vector<int6
 // compute tiling params for tiling_mode 8&9
 bool BlockLessForParamsTiling(GatherV2TilingParams& run_params, int64_t indices_num_per_loop, int64_t res_ub_size,
                               int64_t params_d_size, int64_t block_num) {
-  if(indices_num_per_loop == 0 || block_num == 0){
+  if (indices_num_per_loop == 0 || block_num == 0) {
       VECTOR_INNER_ERR_REPORT_TILIING("gather_v2", "indices_num_per_loop or block_num = 0 is not support");
       return false;
   }
@@ -468,7 +468,7 @@ bool BlockLessForParamsTiling(GatherV2TilingParams& run_params, int64_t indices_
 // compute tiling params for tiling_mode 10&11&12
 bool BlockAlignForParamsTiling(GatherV2TilingParams& run_params, int64_t indices_num_per_loop, int64_t res_ub_size,
                                int64_t params_d_size) {
-  if(indices_num_per_loop == 0){
+  if (indices_num_per_loop == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING("gather_v2", "indices_num_per_loop = 0 is not support");
     return false;
   }
@@ -504,7 +504,7 @@ bool BlockAlignForParamsTiling(GatherV2TilingParams& run_params, int64_t indices
 // compute tiling params for tiling_mode 1&4&13
 bool BlockLessForIndicesTiling(GatherV2TilingParams& run_params, int64_t indices_num_per_loop, int64_t res_ub_size,
                                int64_t params_d_size, int64_t block_num) {
-  if(indices_num_per_loop == 0 || block_num == 0){
+  if (indices_num_per_loop == 0 || block_num == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING("gather_v2", "indices_num_per_loop or block_num = 0 is not support");
     return false;
   }
@@ -556,7 +556,7 @@ bool BlockLessForIndicesTiling(GatherV2TilingParams& run_params, int64_t indices
 // compute tiling params for tiling_mode 3&6&7
 bool BlockAlignForIndicesTiling(GatherV2TilingParams& run_params, int64_t indices_num_per_loop, int64_t res_ub_size,
                                 int64_t params_d_size) {
-  if(indices_num_per_loop == 0){
+  if (indices_num_per_loop == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING("gather_v2", "indices_num_per_loop = 0 is not support");
     return false;
   }
@@ -591,7 +591,7 @@ bool BlockAlignForIndicesTiling(GatherV2TilingParams& run_params, int64_t indice
 
 bool CalcWithBatchDims(GatherV2TilingParams& run_params, int64_t indices_num_per_loop, int64_t res_ub_size,
                        int64_t params_d_size) {
-  if(indices_num_per_loop == 0 || params_d_size == 0){
+  if (indices_num_per_loop == 0 || params_d_size == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING("gather_v2", "indices_num_per_loop or params_d_size= 0 is not support");
     return false;
   }
@@ -644,7 +644,7 @@ bool CalcWithBatchDims(GatherV2TilingParams& run_params, int64_t indices_num_per
 
 bool CalcCacheIndices(GatherV2TilingParams& run_params, int64_t indices_num_per_loop, int64_t res_ub_size,
                       int64_t params_d_size, int64_t tiling_mode) {
-  if(params_d_size == 0){
+  if (params_d_size == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING("gather_v2", "params_d_size= 0 is not support");
     return false;
   }
@@ -993,7 +993,7 @@ bool IndicesCachedProcess(GatherV2TilingParams& run_params, const GatherCompileP
 
 bool LargeRowProcess(GatherV2TilingParams& run_params, const GatherCompileParams& compile_params,
                      int64_t half_ub_params_elem) {
-  if(half_ub_params_elem == 0){
+  if (half_ub_params_elem == 0) {
     VECTOR_INNER_ERR_REPORT_TILIING("gather_v2", "half_ub_params_elem = 0 is not support");
     return false;
   }

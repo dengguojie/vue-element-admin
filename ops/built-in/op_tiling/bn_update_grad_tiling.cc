@@ -16,7 +16,7 @@
 #include <nlohmann/json.hpp>
 #include <string>
 #include <iostream>
-#include <math.h>
+#include <cmath>
 
 #include "../op_proto/util/error_util.h"
 #include "graph/debug/ge_log.h"
@@ -54,7 +54,7 @@ int32_t CalcBNGradTilingKey(BNGradTilingInfo& tilingInfo, int32_t pattern, BNGra
 }
 
 int32_t get_nearest_factor(int32_t dim, int32_t split_size) {
-    /* 
+    /*
      * find the exact division factor small than split_size as nearest_factor,
      * if distance of nearest_factor and split_size is small, will use the
      * nearest_factor as factor, otherwise use the split_size
@@ -69,7 +69,7 @@ int32_t get_nearest_factor(int32_t dim, int32_t split_size) {
     return split_size;
 }
 
-bool GetBNGradTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0, vector<int64_t> input_shape, 
+bool GetBNGradTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0, vector<int64_t> input_shape,
                          int64_t max_ub_count, int32_t core_num, BNGradTilingInfo& tilingInfo) {
     tilingInfo.block_dim = -1;
     tilingInfo.block_tiling_axis = -1;
@@ -81,7 +81,7 @@ bool GetBNGradTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0
     int32_t ub_split_inner = 0;
 
     const int DB = 2;
-    if (max_ub_count / (h * w * c0) >= DB && ((c1 >= core_num && c1 % core_num == 0) || 
+    if (max_ub_count / (h * w * c0) >= DB && ((c1 >= core_num && c1 % core_num == 0) ||
         (n >= core_num && n % core_num == 0))) {
         ub_split_axis = 0;
         ub_split_inner = 1;
@@ -133,7 +133,7 @@ bool GetBNGradTilingData(int32_t n, int32_t c1, int32_t h, int32_t w, int32_t c0
                 split_size = i - 1;
                 split_size = get_nearest_factor(input_shape[split_axis], split_size);
                 break;
-            } 
+            }
         }
     } else {
         split_size = block_tiling_inner_loop;
@@ -157,8 +157,8 @@ vector<int32_t> get_factors_of_positive_integer(int32_t value) {
     vector<int32_t> factors;
 
     int32_t sqrt_n = sqrt(value);
-    for(int32_t i = 1; i <= sqrt_n; i++) {
-        if(value % i == 0) {
+    for (int32_t i = 1; i <= sqrt_n; i++) {
+        if (value % i == 0) {
             int32_t tmp = value / i;
             factors.push_back(i);
             if (tmp != i) {
@@ -248,13 +248,13 @@ bool BNUpdateGradTiling(const std::string& op_type, const TeOpParas& op_paras, c
     if (c1 >= core_num) {
         // enter schedule_cut_c1
         block_tiling_axis = 1;
-    } else if ((ub_tiling_axis == 2 || ub_tiling_axis == 3) && 
+    } else if ((ub_tiling_axis == 2 || ub_tiling_axis == 3) &&
                 outer_loop >= core_num &&
                 input_shape[ub_tiling_axis] % core_num == 0) {
         inner_loop = input_shape[ub_tiling_axis] / core_num;
         // enter schedule_cut_h_or_w_twice
         block_tiling_axis = 2;
-    } else if (ub_tiling_axis == 2 && 
+    } else if (ub_tiling_axis == 2 &&
                input_shape[ub_tiling_axis] >= half_core_num &&
                input_shape[ub_tiling_axis] % half_core_num == 0 &&
                input_shape[0] < core_num) {

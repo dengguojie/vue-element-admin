@@ -343,7 +343,7 @@ bool GatherElementsTiling(const std::string& opType, const TeOpParas& opParas, c
     }
     else {
       runParams.tilingMode = TILING_MODE_2;
-    }    
+    }
   }
 
   SetGatherElementsParams(runParams, runInfo);

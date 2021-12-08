@@ -169,7 +169,7 @@ bool InplaceIndexAddTiling(const std::string& opType, const TeOpParas& opParas, 
   if (axis < 0) {
     axis = axis + updatesShape.size();
   }
- 
+
   InplaceIndexAddTilingParam runParams;
   InitRunningParams(runParams);
   runParams.indicesNum = std::accumulate(indicesShape.begin(), indicesShape.end(), 1, std::multiplies<int>());

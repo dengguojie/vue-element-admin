@@ -80,12 +80,12 @@ int32_t GetRnnV2LibItem(const std::string& opType, const nlohmann::json& opCompi
     }
     if ((tune_shape_list[i][0] == -1) && (tune_shape_list[i][1] == -1)) {
       OP_LOGI(opType.c_str(), "op [DynamicRnnV2Tiling] : GetRnnV2LibItem, The corresponding schedule is",
-             tune_shape_list[i][2]);
+              tune_shape_list[i][2]);
       return (int32_t)tune_shape_list[i][2];
     }
     if ((tune_shape_list[i][0] == xShape[0]) && ((tune_shape_list[i][1] / NUM_SIXTEEN) == xShape[2])) {
       OP_LOGI(opType.c_str(), "op [DynamicRnnV2Tiling] : GetRnnV2LibItem, The corresponding schedule is",
-             tune_shape_list[i][2]);
+              tune_shape_list[i][2]);
       return (int32_t)tune_shape_list[i][2];
     }
   }

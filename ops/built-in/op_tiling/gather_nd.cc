@@ -354,13 +354,13 @@ bool GatherNdTiling(const std::string& opType, const TeOpParas& opParas, const n
           runParams.tailProcessCore = 0;
           runParams.indicesNumEachCore = indicesPrefix / runParams.needCoreNum;
           runParams.indicesNumRemaining = 0;
-        } else{
+        } else {
           if (indicesShape[0] > coreNum && indicesPrefix / proCoreNum * runParams.paramsRow >= blockNum){
             runParams.needCoreNum = proCoreNum;
             runParams.tailProcessCore = 0;
             runParams.indicesNumEachCore = indicesPrefix / runParams.needCoreNum;
             runParams.indicesNumRemaining = 0;
-          } else{
+          } else {
             runParams.needCoreNum = 1;
             runParams.tailProcessCore = 0;
             runParams.indicesNumEachCore = indicesPrefix;

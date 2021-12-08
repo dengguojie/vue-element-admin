@@ -23,7 +23,7 @@ namespace {
   constexpr int32_t NUM_SIXTEEN = 16;
   constexpr int32_t NUM_EIGHT = 8;
   constexpr int32_t NUM_TWO = 2;
-  constexpr int32_t ALLIGN_SIZE = 256;   
+  constexpr int32_t ALLIGN_SIZE = 256;
 }
 
 namespace optiling {

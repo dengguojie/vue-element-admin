@@ -19,14 +19,14 @@
 
 namespace optiling {
     bool BNTrainingUpdateV3Tiling(const std::string& op_type, const ge::Operator& op_paras,
-                                const nlohmann::json& op_info, utils::OpRunInfo& run_info) {
+                                  const nlohmann::json& op_info, utils::OpRunInfo& run_info) {
         auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(op_paras);
         OP_TILING_CHECK(operator_info == nullptr,
                         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "GetOpDescFromOperator return nullptr"), return false);
         auto input_x_desc = operator_info->MutableInputDesc(0);
         OP_TILING_CHECK(input_x_desc == nullptr,
                         VECTOR_INNER_ERR_REPORT_TILIING(op_type, "get input_x opdesc failed"), return false);
-        
+
         std::vector<int64_t> shape_x{std::vector<int64_t>(5, 0)};
         shape_x = input_x_desc->MutableShape().GetDims();
         int32_t N = shape_x[0];
@@ -35,7 +35,7 @@ namespace optiling {
 
         float batch_var_scalar = 1.0;
         float num_rec = 1.0;
-        int32_t num = N*H*W;
+        int32_t num = N * H * W;
         if (op_info.count("bn_update_num_rec_dtype") > 0) {
             num_rec = 1.0 / (float)num;
         }
