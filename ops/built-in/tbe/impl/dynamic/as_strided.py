@@ -21,7 +21,7 @@ from impl.util.platform_adapter import tbe_context
 from impl.util.platform_adapter import para_check
 
 
-# pylint: disable=too-few-public-methods, too-many-lines
+# 'pylint: disable=too-few-public-methods, too-many-lines
 class TilingParams:
     """
     The class for getting tiling parameters
@@ -45,7 +45,7 @@ class TilingParams:
             reg.set_as(self.tiling_ub[idx])
 
 
-# pylint: disable=too-many-instance-attributes
+# 'pylint: disable=too-many-instance-attributes
 class AsStrided:
     """
     The class of AsStrided
@@ -283,7 +283,7 @@ class AsStrided:
                     self.tik_inst.data_move(self.data_ub[ub_offset], self.data_in[gm_offset],
                                             0, 1, self.burst_len, 0, 0)
 
-    # pylint: disable=too-many-arguments
+    # 'pylint: disable=too-many-arguments
     def _compute_data_move_out(self, axis_0_lp, valid_elems_cnt, data_gap, axis_0_cur_idx, axis_1_cur_idx):
         """
         copy data from ub to gm for all compute branch
@@ -602,7 +602,7 @@ class AsStrided:
                 self.scalar_reg[0].set_as(self.data_ub[in_offset])
                 self.data_ub[out_offset].set_as(self.scalar_reg[0])
 
-    # pylint: disable=too-many-locals
+    # 'pylint: disable=too-many-locals
     def _reorder_and_move_out_data(self):
         """
         reorder elements by vector_dup and move out
@@ -988,7 +988,7 @@ class AsStrided:
                                flowtable=[self.tiling_gm])
 
 
-# pylint: disable=invalid-name, too-many-arguments, too-many-locals, unused-argument
+# 'pylint: disable=invalid-name, too-many-arguments, too-many-locals, unused-argument
 @register_operator("AsStrided")
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
                             para_check.OPTION_INPUT, para_check.REQUIRED_OUTPUT, para_check.KERNEL_NAME)
@@ -1022,7 +1022,6 @@ def as_strided(x, size, stride, storage_offset, y, kernel_name="as_strided"):
     data_out = tik_inst.Tensor(x_dtype, (AsStrided.MAX_INT64_VALUE,), tik.scope_gm, "y")
     tiling_gm = tik_inst.Tensor(AsStrided.TILING_SPACE[0], (AsStrided.TILING_SPACE[1],), tik.scope_gm, "tiling_gm")
 
-    # 8 bit = 1byte, '8' below for this reason
     dtype_bytes = tbe_platform.get_bit_len(x_dtype) // AsStrided.BITS_PER_BYTE
     ele_per_block = AsStrided.BYTES_PER_BLOCK // dtype_bytes
     max_elem_cnt = (tbe_platform.get_soc_spec(tbe_platform.UB_SIZE) - AsStrided.TILING_SPACE[2]) // dtype_bytes
