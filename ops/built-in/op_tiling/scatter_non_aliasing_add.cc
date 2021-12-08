@@ -26,9 +26,9 @@
 #include "../op_proto/util/error_util.h"
 #include "graph/debug/ge_log.h"
 #include "op_log.h"
-#include "op_tiling.h"
+#include "op_tiling_util.h"
 #include "error_log.h"
-
+#include "vector_tiling_profiling.h"
 namespace optiling {
 namespace scatternonaliasingadd {
 const int64_t BLOCK_SIZE = 32;
@@ -85,7 +85,7 @@ static int64_t GetCeilTwoInt(int64_t value1, int64_t value2) {
 
 void CalRunningParams(ScatterNonAliasingAddTilingParams& runParams, int64_t indicesNum, int64_t addsNum,
                       int64_t addDataNum, int64_t maxIndice, int64_t ubSize, int64_t coreNum, int64_t varSize,
-                      int64_t indicesSize, int64_t varDataEachBlock, const std::string& VarDtype) {
+                      int64_t indicesSize, int64_t varDataEachBlock, const ge::DataType VarDtype) {
   int64_t addSizeByte = varSize * addsNum;
   int64_t halfUbSize = ubSize / 2;
   int64_t halfUbIndicesNum = halfUbSize / indicesSize;
@@ -118,11 +118,11 @@ void CalRunningParams(ScatterNonAliasingAddTilingParams& runParams, int64_t indi
     }
   }
   int64_t VarDtypeSize = 4;
-  if (VarDtype == "int64" || VarDtype == "uint64") {
+  if (VarDtype == ge::DT_INT64 || VarDtype == ge::DT_UINT64) {
     VarDtypeSize = 8;
-  } else if (VarDtype == "float16") {
+  } else if (VarDtype == ge::DT_FLOAT16) {
     VarDtypeSize = 2;
-  } else if (VarDtype == "int8" || VarDtype == "uint8") {
+  } else if (VarDtype == ge::DT_INT8 || VarDtype == ge::DT_UINT8) {
     VarDtypeSize = 1;
   }
   if (addDataNum < varDataEachBlock) {
@@ -140,22 +140,22 @@ void CalRunningParams(ScatterNonAliasingAddTilingParams& runParams, int64_t indi
   }
 }
 
-void SetRuningParams(const ScatterNonAliasingAddTilingParams& params, OpRunInfo& runInfo) {
-  ByteBufferPut(runInfo.tiling_data, params.tilingMode);
-  ByteBufferPut(runInfo.tiling_data, params.indiceStep);
-  ByteBufferPut(runInfo.tiling_data, params.coreNum);
-  ByteBufferPut(runInfo.tiling_data, params.addsDataNum);
-  ByteBufferPut(runInfo.tiling_data, params.indicesLoopNum);
-  ByteBufferPut(runInfo.tiling_data, params.indicesLastNum);
-  ByteBufferPut(runInfo.tiling_data, params.addsNum);
-  ByteBufferPut(runInfo.tiling_data, params.addsLoopNum);
-  ByteBufferPut(runInfo.tiling_data, params.addsLastNum);
+void SetRuningParams(const ScatterNonAliasingAddTilingParams& params, utils::OpRunInfo& runInfo) {
+  runInfo.AddTilingData(params.tilingMode);
+  runInfo.AddTilingData(params.indiceStep);
+  runInfo.AddTilingData(params.coreNum);
+  runInfo.AddTilingData(params.addsDataNum);
+  runInfo.AddTilingData(params.indicesLoopNum);
+  runInfo.AddTilingData(params.indicesLastNum);
+  runInfo.AddTilingData(params.addsNum);
+  runInfo.AddTilingData(params.addsLoopNum);
+  runInfo.AddTilingData(params.addsLastNum);
   for (size_t i = 0; i < params.varOffset.size(); i++) {
-    ByteBufferPut(runInfo.tiling_data, params.varOffset[i]);
+    runInfo.AddTilingData(params.varOffset[i]);
   }
-  ByteBufferPut(runInfo.tiling_data, params.indicesLastDim);
-  ByteBufferPut(runInfo.tiling_data, params.indicesFrontDim);
-  ByteBufferPut(runInfo.tiling_data, params.varNum);
+  runInfo.AddTilingData(params.indicesLastDim);
+  runInfo.AddTilingData(params.indicesFrontDim);
+  runInfo.AddTilingData(params.varNum);
 }
 
 void PrintTilingParams(const std::string& opType, const ScatterNonAliasingAddTilingParams& params) {
@@ -176,84 +176,64 @@ void PrintTilingParams(const std::string& opType, const ScatterNonAliasingAddTil
   OP_LOGD(opType.c_str(), "op [ScatterNonAliasingAddTiling] : varNum=%ld.", params.varNum);
 }
 
-bool CheckScatterNonAliasingAddTensorShape(const std::string& opType, std::vector<int64_t> varShape,
-                                           std::vector<int64_t> indicesShape, std::vector<int64_t> addsShape,
-                                           std::vector<int64_t> outShape) {
-  if (varShape != outShape) {
+bool CheckScatterNonAliasingAddTensorShape(const std::string& opType, const GeShape& varShape,
+                                           const GeShape& indicesShape, const GeShape& addsShape,
+                                           const GeShape& outShape) {
+  if (!(varShape == outShape)) {
     VECTOR_INNER_ERR_REPORT_TILIING(opType, "the length of var must be same as the length of output.");
     return false;
   }
 
-  if (indicesShape.size() == 1 && indicesShape[0] == 1 && varShape.size() - addsShape.size() == 1) {
+  if (indicesShape.GetDimNum() == 1 && indicesShape.GetDim(0) == 1 &&
+      varShape.GetDimNum() - addsShape.GetDimNum() == 1) {
     OP_LOGI(opType.c_str(), "Input indices is a scalar.");
-    return true;
   }
 
-  std::vector<int64_t> actualAddsShape = indicesShape;
-  int64_t varSize = varShape.size();
-  for (int64_t i = 1; i < varSize; i++) {
-    actualAddsShape.push_back(varShape[i]);
-  }
   return true;
 }
 
-bool GetScatteAddCompileParams(const std::string& opType, const nlohmann::json& opCompileInfo, int64_t& coreNum,
-                               int64_t& ubSize, int64_t& varSize, int64_t& indicesSize) {
-  using namespace nlohmann;
-  const auto& allVars = opCompileInfo["vars"];
-  if (allVars.count("core_num") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get core_num error");
-    return false;
+int64_t forMul(const GeShape& inputShape, const int64_t& begin, const int64_t& end) {
+  int64_t addIndices = 1;
+  for (int64_t i = begin; i < end; i++) {
+    addIndices *= inputShape.GetDim(i);
   }
-  coreNum = allVars["core_num"].get<std::int64_t>();
-
-  if (allVars.count("ub_size") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get ub_size error");
-    return false;
-  }
-  ubSize = allVars["ub_size"].get<std::int64_t>();
-
-  if (allVars.count("var_size") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get var_size error");
-    return false;
-  }
-  varSize = allVars["var_size"].get<std::int64_t>();
-
-  if (allVars.count("indices_size") == 0) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetCompileParams, get indices_size error");
-    return false;
-  }
-  indicesSize = allVars["indices_size"].get<std::int64_t>();
-
-  return true;
+  return addIndices;
 }
 }  // namespace scatternonaliasingadd
-bool ScatterNonAliasingAddTiling(const std::string& opType, const TeOpParas& opParas,
-                                 const nlohmann::json& opCompileInfo, OpRunInfo& runInfo) {
-  using namespace ge;
+static const std::vector<std::string> COMPILE_INFO_KEY = {"core_num", "ub_size", "var_size", "indices_size"};
+
+bool ScatterNonAliasingAddTiling(const std::string& opType, const ge::Operator& opParas,
+                                 const std::vector<int64_t>& op_info, utils::OpRunInfo& runInfo) {
   using namespace scatternonaliasingadd;
   OP_LOGI(opType.c_str(), "ScatterNonAliasingAddTiling running.");
-  if (opCompileInfo == nullptr) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "opCompileInfo json error.");
-    return false;
-  }
+  PROFILING_TILING_INIT(opType.c_str());
+  auto operator_info = ge::OpDescUtils::GetOpDescFromOperator(opParas);
 
-  if (opParas.inputs.empty() || opParas.inputs[0].tensor.empty() || opParas.inputs[1].tensor.empty() ||
-      opParas.inputs[2].tensor.empty()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "input shape error");
-    return false;
-  }
+  OP_TILING_CHECK(COMPILE_INFO_KEY.size() != op_info.size(),
+                  VECTOR_INNER_ERR_REPORT_TILIING(opType, "parse op_info failed."), return false);
+  OP_TILING_CHECK(operator_info == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get op_info failed."),
+                  return false);
 
-  if (opParas.outputs.empty() || opParas.outputs[0].tensor.empty()) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "output shape error");
-    return false;
-  }
+  auto var_desc = operator_info->MutableInputDesc(0);
+  auto indices_desc = operator_info->MutableInputDesc(1);
+  auto adds_desc = operator_info->MutableInputDesc(2);
+  auto out_desc = operator_info->MutableOutputDesc(0);
 
-  const std::vector<int64_t>& varShape = opParas.inputs[0].tensor[0].shape;
-  const std::vector<int64_t>& indicesShape = opParas.inputs[1].tensor[0].shape;
-  const std::vector<int64_t>& addsShape = opParas.inputs[2].tensor[0].shape;
-  const std::vector<int64_t>& outShape = opParas.outputs[0].tensor[0].shape;
-  const std::string VarDtype = opParas.inputs[0].tensor[0].dtype;
+  OP_TILING_CHECK(var_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get var_desc shape error."),
+                  return false);
+  OP_TILING_CHECK(indices_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get indices_desc shape error."),
+                  return false);
+  OP_TILING_CHECK(adds_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get adds_desc shape error."),
+                  return false);
+  OP_TILING_CHECK(out_desc == nullptr, VECTOR_INNER_ERR_REPORT_TILIING(opType, "get output_desc shape error."),
+                  return false);
+
+  const GeShape& varShape = var_desc->MutableShape();
+  const GeShape& indicesShape = indices_desc->MutableShape();
+  const GeShape& addsShape = adds_desc->MutableShape();
+  const GeShape& outShape = out_desc->MutableShape();
+  const ge::DataType VarDtype = var_desc->GetDataType();
+  PROFILING_TILING_AFTER_GET_SHAPE_REG();
 
   bool is_valid_shape = CheckScatterNonAliasingAddTensorShape(opType, varShape, indicesShape, addsShape, outShape);
   if (!is_valid_shape) {
@@ -261,33 +241,26 @@ bool ScatterNonAliasingAddTiling(const std::string& opType, const TeOpParas& opP
     return false;
   }
 
-  int64_t coreNum = 0;
-  int64_t ubSize = 0;
-  int64_t varSize = 0;
-  int64_t indicesSize = 0;
-  bool can_get_params = GetScatteAddCompileParams(opType, opCompileInfo, coreNum, ubSize, varSize, indicesSize);
-  if (!can_get_params) {
-    VECTOR_INNER_ERR_REPORT_TILIING(opType, "GetScatteAddCompileParams error.");
-    return false;
-  }
+  int64_t coreNum = op_info[0];
+  int64_t ubSize = op_info[1];
+  int64_t varSize = op_info[2];
+  int64_t indicesSize = op_info[3];
+  PROFILING_TILING_AFTER_GET_COMPILE_INFO_REG();
+
   if (coreNum <= ZERO || ubSize <= ZERO || varSize <= ZERO || indicesSize <= ZERO) {
     VECTOR_INNER_ERR_REPORT_TILIING(
-        opType, "coreNum, ubSize, varSize, indicesSize must be greater to 0, but got %ld, %ld, %ld, %ld", coreNum, ubSize,
-        varSize, indicesSize);
+        opType, "coreNum, ubSize, varSize, indicesSize must be greater to 0, but got %ld, %ld, %ld, %ld", coreNum,
+        ubSize, varSize, indicesSize);
     return false;
   }
 
   ScatterNonAliasingAddTilingParams runParams;
   InitRunningParams(runParams);
-  int64_t indicesNum = std::accumulate(indicesShape.begin(), indicesShape.end(), 1, std::multiplies<int>());
-  int64_t addsNum = std::accumulate(addsShape.begin(), addsShape.end(), 1, std::multiplies<int>());
-  int64_t K = indicesShape.back();
-  int64_t addDataNum =
-      (varShape.size() > 1) ? (std::accumulate(varShape.begin() + K, varShape.end(), 1, std::multiplies<int>())) : 1;
-  int64_t maxIndice = 1;
-
-  maxIndice = std::accumulate(varShape.begin(), varShape.end(), 1, std::multiplies<int>());
-
+  int64_t indicesNum = indicesShape.GetShapeSize();
+  int64_t addsNum = addsShape.GetShapeSize();
+  int64_t K = indicesShape.GetDim(indicesShape.GetDimNum() - 1);
+  int64_t addDataNum = forMul(varShape, K, varShape.GetDimNum());
+  int64_t maxIndice = varShape.GetShapeSize();
   int64_t varDataEachBlock = BLOCK_SIZE / varSize;
   OP_LOGD(opType.c_str(), "BLOCK_SIZE=%ld.", BLOCK_SIZE);
   OP_LOGD(opType.c_str(), "varSize=%ld.", varSize);
@@ -298,28 +271,25 @@ bool ScatterNonAliasingAddTiling(const std::string& opType, const TeOpParas& opP
   OP_LOGD(opType.c_str(), "op [ScatterNonAliasingAddTiling] : addDataNum=%ld.", addDataNum);
   OP_LOGD(opType.c_str(), "op [ScatterNonAliasingAddTiling] : maxIndice=%ld.", maxIndice);
 
-  runParams.indicesLastDim = indicesShape.back();
-  runParams.indicesFrontDim = std::accumulate(indicesShape.begin(), indicesShape.end() - 1, 1, std::multiplies<int>());
+  runParams.indicesLastDim = K;
+  int64_t addIndices = forMul(indicesShape, 0, indicesShape.GetDimNum() - 1);
+  runParams.indicesFrontDim = addIndices;
   CalRunningParams(runParams, indicesNum, addsNum, addDataNum, maxIndice, ubSize, coreNum, varSize, indicesSize,
                    varDataEachBlock, VarDtype);
 
-  for (int64_t i = 0; i < indicesShape.back(); i++) {
-    runParams.varOffset[i] = std::accumulate(varShape.begin() + i + 1, varShape.end(), 1, std::multiplies<int>());
+  for (int64_t i = 0; i < K; i++) {
+    runParams.varOffset[i] = forMul(varShape, i + 1, varShape.GetDimNum());
   }
-
+  PROFILING_TILING_AFTER_CALCU_TILING_REG();
   SetRuningParams(runParams, runInfo);
-
   PrintTilingParams(opType, runParams);
-
-  runInfo.block_dim = runParams.coreNum;
-  std::vector<int64_t> workspace;
-  runInfo.workspaces = workspace;
-
+  runInfo.SetBlockDim(runParams.coreNum);
   OP_LOGI(opType.c_str(), "ScatterNonAliasingAddTiling run success.");
-
+  PROFILING_TILING_END();
   return true;
 }
 
 // register tiling interface of the ScatterNonAliasingAdd op.
-REGISTER_OP_TILING_FUNC_BUFFERED(ScatterNonAliasingAdd, ScatterNonAliasingAddTiling);
+REGISTER_OP_TILING_V3_WITH_VECTOR(ScatterNonAliasingAdd, ScatterNonAliasingAddTiling, COMPILE_INFO_KEY,
+                                  NO_OPTIONAL_VALUE);
 }  // namespace optiling
