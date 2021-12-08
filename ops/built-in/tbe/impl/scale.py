@@ -28,7 +28,7 @@ from impl.util.util_select_op_base import get_dynamic_param_in_json
 NONETYPE = type(None)
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
 def check_param_range(param_name, min_value, max_value, real_value, op_name='ssd_detection_output'):
     """
     check_param_range
@@ -37,8 +37,8 @@ def check_param_range(param_name, min_value, max_value, real_value, op_name='ssd
                                                              str(max_value), str(real_value))
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
-# pylint: disable=too-many-boolean-expressions,too-many-locals,unused-variable
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name,redefined-outer-name
+# 'pylint: disable=too-many-boolean-expressions,too-many-locals,unused-variable
 def op_select_format(x, scale, bias, y, axis=1, num_axes=1, scale_from_blob=True,
                      kernel_name="scale"):
     """
@@ -224,7 +224,7 @@ def _check_dtype(input_dtype, name):
         para_check.check_dtype(input_dtype, ["float16", "float32"], param_name=name)
 
 
-# pylint: disable=too-many-branches
+# 'pylint: disable=too-many-branches
 def _check_scale_shape_axis(shape_x, shape_scale, axis, num_axes, scale_from_blob):
     """
     Function to check if the shape is in line with norms.
@@ -402,7 +402,7 @@ def get_fusion_params(x_tensor, scale_tensor, bias_tensor, y):
     return fusion_params
 
 
-# pylint: disable=invalid-name,redefined-outer-name
+# 'pylint: disable=invalid-name,redefined-outer-name
 def _fused_scale_compute(x, scale):
     """
     algorithm: Scale
@@ -445,7 +445,7 @@ def _fused_scale_compute(x, scale):
     return res
 
 
-# pylint: disable=invalid-name,redefined-outer-name
+# 'pylint: disable=invalid-name,redefined-outer-name
 def _fused_scale_bias_compute(x, scale, bias):
     """
     algorithm: Scale
@@ -495,7 +495,7 @@ def _fused_scale_bias_compute(x, scale, bias):
     return res
 
 
-# pylint: disable=too-many-arguments,unused-argument,invalid-name
+# 'pylint: disable=too-many-arguments,unused-argument,invalid-name
 @fusion_manager.register("scale")
 def scale_compute(x, scale, bias, y, axis, num_axes, scale_from_blob,
                   kernel_name="scale"):
@@ -547,7 +547,7 @@ def scale_compute(x, scale, bias, y, axis, num_axes, scale_from_blob,
     return res
 
 
-# pylint: disable=too-many-locals,no-member,invalid-name,too-many-statements,line-too-long
+# 'pylint: disable=too-many-locals,no-member,invalid-name,too-many-statements,line-too-long
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.OPTION_INPUT,
                             para_check.REQUIRED_OUTPUT, para_check.OPTION_ATTR_INT, para_check.OPTION_ATTR_INT,
                             para_check.OPTION_ATTR_BOOL, para_check.KERNEL_NAME)

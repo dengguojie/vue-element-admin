@@ -449,7 +449,6 @@ bool ScatterAddTiling(const std::string& opType, const TeOpParas& opParas, const
   int64_t maxIndice = varShape[0];
   runParams.maxIndice = maxIndice;
   int64_t varDataEachBlock = BLOCK_SIZE / varSize;
-  int64_t dataNumOneRepeat = 0;
 
   OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : varNum=%ld.", varNum);
   OP_LOGD(opType.c_str(), "op [ScatterAddTiling] : indicesNum=%ld.", indicesNum);
@@ -462,12 +461,6 @@ bool ScatterAddTiling(const std::string& opType, const TeOpParas& opParas, const
   } else {
     runParams.indiceStep = ceil(float(maxIndice) / coreNum);
     runParams.coreNum = ceil(float(maxIndice) / runParams.indiceStep);
-  }
-
-  if (input_dtype == "float32" || input_dtype == "int32") {
-    dataNumOneRepeat = 64;
-  } else {
-    dataNumOneRepeat = 128;
   }
 
   if (supportAtomic == 1 && input_dtype == "float32") {

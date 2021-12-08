@@ -154,7 +154,7 @@ void CalRunningParams(const std::string& opType, ScatterUpdateTilingParams& runP
     }
     runParams.each_core_last_num =
         runParams.each_core_compute_num - runParams.each_core_loop_num * runParams.each_core_loop_compute_num;
-    runParams.last_core_compute_num = var_first_shape * var_num - runParams.each_core_compute_num * \ 
+    runParams.last_core_compute_num = var_first_shape * var_num - runParams.each_core_compute_num * \
 	                              (runParams.coreNum - 1);
     runParams.last_core_loop_num = (runParams.last_core_compute_num * dtype_bytes_size) / halfUbSize;
     if (runParams.last_core_loop_num != 0) {

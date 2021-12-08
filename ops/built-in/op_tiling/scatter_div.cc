@@ -328,7 +328,6 @@ bool ScatterDivTiling(const std::string& opType, const TeOpParas& opParas, const
   int64_t maxIndice = varShape[0];
   runParams.maxIndice = maxIndice;
   int64_t varDataEachBlock = BLOCK_SIZE / varSize;
-  int64_t dataNumOneRepeat = 0;
 
   OP_LOGD(opType.c_str(), "op [ScatterDivTiling] : indicesNum=%ld.", indicesNum);
 
@@ -337,12 +336,6 @@ bool ScatterDivTiling(const std::string& opType, const TeOpParas& opParas, const
   } else {
     runParams.indiceStep = ceil(float(maxIndice) / coreNum);
     runParams.coreNum = ceil(float(maxIndice) / runParams.indiceStep);
-  }
-
-  if (input_dtype == "float32") {
-    dataNumOneRepeat = 64;
-  } else {
-    dataNumOneRepeat = 128;
   }
 
   CalScatterDivBranchRunningParams(runParams, varNum, indicesNum, updatesNum, updateDataNum, ubSize,

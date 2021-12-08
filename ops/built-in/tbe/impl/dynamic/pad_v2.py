@@ -16,7 +16,6 @@
 pad_v2.py
 """
 import functools
-from typing import SupportsComplex
 from impl import constant_util as constant
 from impl.util import util_common
 from impl.util import util_select_op_base
@@ -36,7 +35,7 @@ class Constant:
     """
     # tiling param nums
     TILING_NUMS = 28
-    # 1 byte = 8 bit
+    # 1 byte is 8 bit
     EIGHT_BIT = 8
     # bytes of one block
     BLOCK_BYTES = 32
@@ -103,7 +102,7 @@ def op_select_format(x, paddings, y, kernel_name="pad_v2"):
     base_data_type = \
         ["float", "float16", "int16", "int32", "int64", "uint16", "uint32", "uint64"]
 
-    x_dtype = base_data_type.copy()
+    x_dtype = list(base_data_type)
     x_format = ["ND"] * len(base_data_type)
 
     if is_support_hd:
@@ -170,6 +169,9 @@ class PadInit(OpBase):
         self.inner_dtype = "float16"
         self.input_gm = None
         self.output_gm = None
+        self.sync_workspace = None
+        self.const_values_gm = None
+        self.const_values_scalar = None
         self.input_bytes_size = 0
         self.inner_bytes_size = tbe_platform.get_bit_len(self.inner_dtype) // Constant.EIGHT_BIT
         self.block_num = constant.BLOCK_SIZE // self.inner_bytes_size
@@ -1056,7 +1058,7 @@ class PadInit(OpBase):
                         self.tik_instance.data_move(self.output_gm[dst_offset],
                                                     origin_output_data_ub[_copy_idx * max_output_size], 0, 1,
                                                     burst_len, 0, 0)
-                    # is_last_output_algin = True
+                    # is_last_output_algin is True
                     if not is_last_output_algin:
                         copy_tail_offset = self.tik_instance.Scalar(dtype="int64", name="copy_tail_offset")
                         copy_tail_offset.set_as(third_dim_output_num % 16)
@@ -1168,10 +1170,12 @@ class PadInit(OpBase):
             with self.tik_instance.new_stmt_scope(disable_sync=True):
                 with self.tik_instance.for_range(0, data_move_loop_num) as loop_index:
                     core_offset_loop = loop_index * Constant.FILL_NUM * self.block_num + core_offset
-                    self.tik_instance.data_move(self.output_gm[core_offset_loop], fill_gm_ub, 0, 1, Constant.FILL_NUM, 0, 0)
+                    self.tik_instance.data_move(self.output_gm[core_offset_loop], fill_gm_ub, 0, 1, Constant.FILL_NUM,
+                                                0, 0)
                 with self.tik_instance.if_scope(data_move_loop_left > 0):
                     core_offset_loop = data_move_loop_num * Constant.FILL_NUM * self.block_num + core_offset
-                    self.tik_instance.data_move(self.output_gm[core_offset_loop], fill_gm_ub, 0, 1, data_move_loop_left, 0, 0)
+                    self.tik_instance.data_move(self.output_gm[core_offset_loop], fill_gm_ub, 0, 1,
+                                                data_move_loop_left, 0, 0)
 
     def pre_compute(self, core_index):
         """
@@ -1199,8 +1203,8 @@ class PadInit(OpBase):
                 with self.tik_instance.for_range(0, 256) as loop_index:
                     self.tik_instance.data_move(fill_gm_ub[4 * loop_index], one_block_const_values_ub, 0, 1, 1, 0, 0)
             else:
-                self.tik_instance.vector_dup(Constant.FILL_NUM // const_bytes_size, fill_gm_ub, self.const_values_scalar,
-                                            Constant.BLOCK_BYTES, 1, 8)
+                self.tik_instance.vector_dup(Constant.FILL_NUM // const_bytes_size, fill_gm_ub,
+                                             self.const_values_scalar, Constant.BLOCK_BYTES, 1, 8)
             fill_gm_ub = fill_gm_ub.reinterpret_cast_to(self.inner_dtype)
 
             core_offset, core_len = self.calc_core_args(core_index, output_shape)
@@ -1240,7 +1244,8 @@ class PadInit(OpBase):
             loop_left.set_as(block_num % Constant.TRANS_MIN_BLKS)
             with self.tik_instance.new_stmt_scope(disable_sync=True):
                 with self.tik_instance.for_range(0, loop_num) as loop_index:
-                    self.tik_instance.data_move(used_ub[loop_index * 256], ub_vnchw_after, 0, 1, Constant.TRANS_MIN_BLKS, 0, 0)
+                    self.tik_instance.data_move(used_ub[loop_index * 256], ub_vnchw_after, 0, 1,
+                                                Constant.TRANS_MIN_BLKS, 0, 0)
                 with self.tik_instance.if_scope(loop_left > 0):
                     self.tik_instance.data_move(used_ub[loop_num * 256], ub_vnchw_after, 0, 1, loop_left, 0, 0)
 
