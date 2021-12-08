@@ -63,7 +63,13 @@ IMPLEMT_INFERFUNC(HcomAllGather, HcomAllGatherInferShape) {
     return GRAPH_FAILED;
   }
   outDims = inDims;
-  outDims[0] = inDims[0] * rankSize;
+  uint32_t fissionFactor = 0;
+  if (op.GetAttr("_fission_factor",fissionFactor) == GRAPH_SUCCESS) {
+      outDims[0] = inDims[0] * fissionFactor;
+  } else {
+      outDims[0] = inDims[0] * rankSize;
+  }
+
   ge::Shape outputShape = ge::Shape(outDims);
   ge::DataType outputDtype = inTensorDesc.GetDataType();
   outTensorDesc.SetShape(outputShape);

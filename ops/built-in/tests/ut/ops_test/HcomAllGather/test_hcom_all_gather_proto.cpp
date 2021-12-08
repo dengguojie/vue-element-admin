@@ -52,6 +52,25 @@ TEST_F(HcomAllGatherTest, hcom_all_gather_infershape_test) {
   EXPECT_EQ(y_desc.GetShape().GetDims(), expected_output_shape);
 }
 
+TEST_F(HcomAllGatherTest, hcom_all_gather_infershape_test_sed) {
+  ge::op::HcomAllGather op;
+  op.UpdateInputDesc("x", create_desc({8, 1}, ge::DT_FLOAT));
+  op.SetAttr("rank_size", 8);
+  op.SetAttr("group", "hccl_world_group");
+  op.SetAttr("_fission_factor", 1);
+
+  auto status = op.VerifyAllAttr(true);
+  EXPECT_EQ(status, ge::GRAPH_SUCCESS);
+
+  auto ret = op.InferShapeAndType();
+  EXPECT_EQ(ret, ge::GRAPH_SUCCESS);
+
+  auto y_desc = op.get_output_desc_y();
+  EXPECT_EQ(y_desc.GetDataType(), ge::DT_FLOAT);
+  std::vector<int64_t> expected_output_shape = {8, 1};
+  EXPECT_EQ(y_desc.GetShape().GetDims(), expected_output_shape);
+}
+
 TEST_F(HcomAllGatherTest, hcom_all_gather_infershape_unknown_shape_test) {
   ge::op::HcomAllGather op;
   op.UpdateInputDesc("x", create_desc({-1, 1}, ge::DT_FLOAT));
