@@ -123,7 +123,7 @@ uint32_t CandidateSamplerMsCpuKernel::DoComputeForEachType() {
   // Pick sampled candidates.
   uint32_t sample_ret = sampler_->SampleBatchGetExpectedCount(
       unique_, sampled_candidate, sampled_expected_count,
-      true_candidate,true_expected_count);
+      true_candidate, true_expected_count);
   KERNEL_CHECK_FALSE((sample_ret == KERNEL_STATUS_OK), sample_ret,
                      "Sampler failed!");
 

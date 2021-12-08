@@ -99,7 +99,7 @@ static uint32_t DoCompute(typename TTypes<T>::ConstTensor flat_input,
 
   // strides only for row major order
   dim_strides[DIMS - 1] = 1;
-  for(int i = DIMS - kInitStep; i >= 0; --i) {
+  for (int i = DIMS - kInitStep; i >= 0; --i) {
     dim_strides[i] = dim_strides[i + 1] * input_dims[i + 1];
   }
   for (Eigen::DenseIndex n = 0; n < flat_input.size(); ++n) {
@@ -141,7 +141,7 @@ uint32_t WhereCpuKernel::WhereCompute(CpuKernelContext &ctx) {
   typename TTypes<int64_t>::Matrix eigen_output(
           reinterpret_cast<int64_t*>(output->GetData()),
           output_size);
-  // In order to maintain compatibility with TF API, 
+  // In order to maintain compatibility with TF API,
   // only 8 dimensions are supported
   switch (rank) {
     WHERE_CALCULATE_CASE(1)
@@ -160,7 +160,7 @@ uint32_t WhereCpuKernel::WhereCompute(CpuKernelContext &ctx) {
 }
 
 uint32_t WhereCpuKernel::Compute(CpuKernelContext &ctx) {
-  // check input and output number 
+  // check input and output number
   if (NormalCheck(ctx, 1, 1) != KERNEL_STATUS_OK) {
     return KERNEL_STATUS_PARAM_INVALID;
   }

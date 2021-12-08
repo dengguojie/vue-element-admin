@@ -118,7 +118,7 @@ uint32_t TransDataRNNCpuKernel::GenDataFractalZnCase1(std::vector<int64_t> &dims
   }
   for (int32_t i = 0; i < hiddenSize; i++) {
     for (int32_t j = 0; j < shape1; j++) {
-      outputData[i + inputSizeAlign][j / hiddenSize * hiddenSizeAlign + j % hiddenSize] = 
+      outputData[i + inputSizeAlign][j / hiddenSize * hiddenSizeAlign + j % hiddenSize] =
         inputData[inputSize * shape1 + i * shape1 + j];
     }
   }

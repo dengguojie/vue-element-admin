@@ -565,8 +565,8 @@ uint32_t TransDataCpuKernel::PaddingOne(TransArgs &args,
         auto dst_stride =
             ((i * w_padding + j) * c_padding + k) * n_padding * type_size;
         auto ret_cpy = memcpy_s(dst_add + dst_stride, protect_size - dst_stride,
-                            src_add + ((i * w + j) * c + k) * n * type_size,
-                            n * type_size);
+                                src_add + ((i * w + j) * c + k) * n * type_size,
+                                n * type_size);
         if (ret_cpy != 0) {
           KERNEL_LOG_ERROR("Memcpy failed, ret is [%d]", ret_cpy);
           return KERNEL_STATUS_INNER_ERROR;
@@ -611,7 +611,7 @@ uint32_t TransDataCpuKernel::PaddingTwo(TransArgs &args,
   for (int i = 0; i < n; i++) {
     auto dst_stride = i * z_padding * type_size;
     auto ret_cpy = memcpy_s(dst_add + dst_stride, protect_size - dst_stride,
-                        src_add + i * z * type_size, z * type_size);
+                            src_add + i * z * type_size, z * type_size);
     if (ret_cpy != 0) {
       KERNEL_LOG_ERROR("Memcpy failed, ret is [%d]", ret_cpy);
       return KERNEL_STATUS_INNER_ERROR;
