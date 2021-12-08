@@ -198,7 +198,7 @@ void CastCpuKernel::SetMap() {
   calls_[DT_BOOL][DT_UINT64] = CastTask<bool, uint64_t>;
   calls_[DT_BOOL][DT_BOOL] = CastTask<bool, bool>;
 }
-//transfer data
+// transfer data
 uint32_t CastCpuKernel::TransferType(int64_t start, int64_t end) {
   if (calls_.find(x_data_type_) == calls_.end()) {
     KERNEL_LOG_ERROR(

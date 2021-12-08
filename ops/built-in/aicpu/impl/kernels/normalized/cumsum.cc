@@ -153,9 +153,9 @@ uint32_t CumsumCpuKernel::CumsumCompute(CpuKernelContext &ctx) {
   for (int32_t i = 0; i < rank; ++i) {
     if (i < axis){
       inner *= shape->GetDimSize(i);
-    }else if (i > axis){
+    } else if (i > axis){
       outer *= shape->GetDimSize(i);
-    }else{
+    } else {
       depth = shape->GetDimSize(i);
     }
   }
@@ -242,8 +242,7 @@ uint32_t CumsumCpuKernel::CumsumCompute(CpuKernelContext &ctx) {
       max_core_num = outer;
     }
     KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(
-                            ctx, outer, outer / max_core_num, shard_cumsum),
-                        "CumSum Compute failed.")
+      ctx, outer, outer / max_core_num, shard_cumsum), "CumSum Compute failed.")
   }
   return KERNEL_STATUS_OK;
 }
@@ -377,8 +376,8 @@ uint32_t CumsumCpuKernel::CumsumCompute2(CpuKernelContext &ctx) {
       max_core_num = outer;
     }
     KERNEL_HANDLE_ERROR(CpuKernelUtils::ParallelFor(
-                        ctx, outer, outer / max_core_num, shard_cumsum),
-                        "CumSum Compute failed.")
+      ctx, outer, outer / max_core_num, shard_cumsum),
+      "CumSum Compute failed.")
   }
   return KERNEL_STATUS_OK;
 }

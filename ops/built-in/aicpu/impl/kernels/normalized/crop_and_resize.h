@@ -30,22 +30,16 @@
 #include "utils/eigen_tensor.h"
 
 namespace aicpu {
-namespace {
-const int kInputIndexX = 0;
-const int kInputIndexBoxes = 1;
-const int kInputIndexBoxIndex = 2;
-const int kInputIndexCropSize = 3;
-const int kOutputY = 0;
-
-const int kPerUintSize = 1;
-}  // namespace
-
 class CropAndResizeMsCpuKernel : public CpuKernel {
  public:
   ~CropAndResizeMsCpuKernel() = default;
   uint32_t Compute(CpuKernelContext &ctx) override;
 
  private:
+  uint32_t GetMethodAndAttr(CpuKernelContext &ctx);
+  uint32_t GetInputIndexX(CpuKernelContext &ctx);
+  uint32_t GetInputBox(CpuKernelContext &ctx);
+  uint32_t GetInputCropSize(CpuKernelContext &ctx);
   uint32_t GetInputAndCheck(CpuKernelContext &ctx);
   std::vector<Tensor *> inputs_;
   std::vector<Tensor *> outputs_;
@@ -210,7 +204,7 @@ class CropAndResizeMsCpuKernel : public CpuKernel {
                     typename TTypes<int32_t, 1>::Tensor box_index,
                     const std::string &method_name, float extrapolation_value,
                     typename TTypes<float, 4>::Tensor crops,
-                    CpuKernelContext &ctx) {
+                    const CpuKernelContext &ctx) {
       const int image_height = image.dimension(1);
       const int image_width = image.dimension(2);
 
@@ -233,9 +227,9 @@ class CropAndResizeMsCpuKernel : public CpuKernel {
                                    const std::vector<int64_t> &boxes_shape,
                                    const std::vector<int64_t> &box_index_shape,
                                    const std::vector<int64_t> &crop_size_shape,
-                                   std::string &method,
+                                   const std::string &method,
                                    float extrapolation_value,
-                                   CpuKernelContext &ctx) {
+                                   const CpuKernelContext &ctx) {
     // input
     EigenTensor image(inputs[0], inputs[0]->GetData());
     EigenTensor boxes(inputs[1], inputs[1]->GetData());
@@ -257,6 +251,7 @@ class CropAndResizeMsCpuKernel : public CpuKernel {
     }
 
     // output
+    const int kOutputY = 0;
     EigenTensor output(outputs[kOutputY], outputs[kOutputY]->GetData());
 
     typename TTypes<int32_t, 1>::Tensor box_index_t =
