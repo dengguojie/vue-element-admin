@@ -247,8 +247,8 @@ def aipp_compute_single(input_tensor, input_shape, input_format, output_data, ai
 
         cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
 
-        if cur_cce_product not in aipp_comm.STC_AIPP_SUPPORT_SOC_VERSION_SET:
-            cause_desc = "Only support " + ", ".join(aipp_comm.STC_AIPP_SUPPORT_SOC_VERSION_SET) + \
+        if cur_cce_product not in aipp_comm.Const.STC_AIPP_SUPPORT_SOC_VERSION_SET:
+            cause_desc = "Only support " + ", ".join(aipp_comm.Const.STC_AIPP_SUPPORT_SOC_VERSION_SET) + \
                         ", cur_cce_product is %s" % cur_cce_product
             aipp_comm.raise_runtime_error(cause_desc)
 
@@ -910,9 +910,9 @@ def aipp(input_data, input_dync_param, output_data, aipp_config_json, kernel_nam
         return
 
     if output_format == "NC1HWC0_C04":
-        if cur_cce_product not in aipp_comm.C04_AIPP_SUPPORT_SOC_VERSION_SET:
+        if cur_cce_product not in aipp_comm.Const.C04_AIPP_SUPPORT_SOC_VERSION_SET:
             cause_desc = "output_format is NC1HWC0_C04, only support " + \
-                         ", ".join(aipp_comm.C04_AIPP_SUPPORT_SOC_VERSION_SET)
+                         ", ".join(aipp_comm.Const.C04_AIPP_SUPPORT_SOC_VERSION_SET)
             aipp_comm.raise_runtime_error(cause_desc)
         if output_shape[4] != 4:
             cause_dec = "when output_format is NC1HWC0_C04, c0[%d] must be 4" % \
@@ -930,9 +930,9 @@ def aipp(input_data, input_dync_param, output_data, aipp_config_json, kernel_nam
         para_check.check_shape(input_dync_param_shape, param_name="input_dync_param")
 
         para_check.check_dtype(input_dync_param_dtype, ["uint8"], param_name="input_dync_param_dtype")
-        if cur_cce_product not in aipp_comm.DYN_AIPP_SUPPORT_SOC_VERSION_SET:
+        if cur_cce_product not in aipp_comm.Const.DYN_AIPP_SUPPORT_SOC_VERSION_SET:
             cause_desc = "dynamic aipp only support " + \
-                         ", ".join(aipp_comm.DYN_AIPP_SUPPORT_SOC_VERSION_SET)
+                         ", ".join(aipp_comm.Const.DYN_AIPP_SUPPORT_SOC_VERSION_SET)
             aipp_comm.raise_runtime_error(cause_desc)
 
         if output_format == "NC1HWC0_C04":

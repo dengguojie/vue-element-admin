@@ -473,7 +473,7 @@ def _dynamic_aipp_compute(input_tensor, param_tensor, output_data, cur_cce_produ
                 dtype="uint64",
             ) as n1:
                 batch_id = batch_factor * block_index + n1
-                param_offset = aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE * batch_id
+                param_offset = aipp_comm.Const.DYNC_PARAM_HEAD_STRUCT_SIZE + aipp_comm.Const.DYNC_PARAM_BATCH_STRUCT_SIZE * batch_id
 
                 # load_start_pos_h
                 load_image_info[0] = tvm.const(0, dtype="uint64")
@@ -500,7 +500,7 @@ def _dynamic_aipp_compute(input_tensor, param_tensor, output_data, cur_cce_produ
                         tvm.call_extern("uint64", "reg", tmp[0]),
                         param_buf.access_ptr(
                             "r",
-                            offset=param_offset + aipp_comm.BATCH_OFFSET_CROP_SWITCH,
+                            offset=param_offset + aipp_comm.Const.BATCH_OFFSET_CROP_SWITCH,
                         ),
                     )
                 )
@@ -514,7 +514,7 @@ def _dynamic_aipp_compute(input_tensor, param_tensor, output_data, cur_cce_produ
                         "uint8",
                         "reg_mov",
                         tvm.call_extern("uint64", "reg", tmp[0]),
-                        param_buf.access_ptr("r", offset=aipp_comm.HEAD_OFFSET_INPUT_FORMAT),
+                        param_buf.access_ptr("r", offset=aipp_comm.Const.HEAD_OFFSET_INPUT_FORMAT),
                     )
                 )
 
@@ -524,7 +524,7 @@ def _dynamic_aipp_compute(input_tensor, param_tensor, output_data, cur_cce_produ
                         "int8",
                         "reg_mov",
                         tvm.call_extern("uint64", "reg", tmp[0]),
-                        param_buf.access_ptr("r", offset=aipp_comm.HEAD_OFFSET_CSC_SWITCH),
+                        param_buf.access_ptr("r", offset=aipp_comm.Const.HEAD_OFFSET_CSC_SWITCH),
                     )
                 )
                 param_list = (
@@ -541,11 +541,11 @@ def _dynamic_aipp_compute(input_tensor, param_tensor, output_data, cur_cce_produ
                 ib.emit(tvm.call_extern(dtype, "set_aipp_spr_1", spr0_1[1]))
 
                 aipp_comm.set_spr_dync_in_batch(ib, dtype, param_buf, spr, tmp, offset=param_offset)
-                if cur_cce_product in aipp_comm.V300_SOC_VERSION_LIST:
+                if cur_cce_product in aipp_comm.Const.V300_SOC_VERSION_LIST:
                     aipp_comm.set_spr_dync_in_batch_v300(ib, dtype, param_buf, spr, tmp, offset=param_offset)
                 aipp_comm.get_dync_padding_size(ib, param_buf, tmp, padding_info, param_offset)
 
-                support_vertical_padding = cur_cce_product in aipp_comm.V300_SOC_VERSION_LIST
+                support_vertical_padding = cur_cce_product in aipp_comm.Const.V300_SOC_VERSION_LIST
                 actual_col_size_reg = ib.allocate("uint64", [1], name="actual_col_size_reg",
                     scope=tbe_platform.scope_reg)
                 aipp_comm.get_dync_actual_col_size(out_h, out_w, padding_info, actual_col_size_reg,
@@ -746,7 +746,7 @@ def _static_aipp_compute(data, input_shape, input_format, output_data, aipp_conf
         batch_num = out_n
         batch_factor = 1
 
-        support_vertical_padding = cur_cce_product in aipp_comm.V300_SOC_VERSION_LIST
+        support_vertical_padding = cur_cce_product in aipp_comm.Const.V300_SOC_VERSION_LIST
         actual_col_size = aipp_comm.get_actual_col_size(aipp_config, out_h, out_w, support_vertical_padding)
         l1_size = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
         l1_image_buf_max = l1_size // size // c0
@@ -866,7 +866,7 @@ def _static_aipp_compute(data, input_shape, input_format, output_data, aipp_conf
             # set spr2~spr9
             aipp_comm.set_spr2_spr9(ib, aipp_config, dtype, cur_cce_product, output_format)
             # set spr18~spr21
-            if cur_cce_product in aipp_comm.V300_SOC_VERSION_LIST:
+            if cur_cce_product in aipp_comm.Const.V300_SOC_VERSION_LIST:
                 aipp_comm.set_spr18_spr21(ib, aipp_config, dtype)
 
             horizontal_pad_mask = 0XFFF

@@ -44,80 +44,14 @@ from te import tvm
 from te.utils import para_check
 from te.utils import shape_util
 from impl.util.platform_adapter import error_manager_vector
-NUM_ZERO = 0.0
 
 
-# 'pylint: disable=locally-disabled, too-many-arguments, unused-argument
-# 'pylint: disable=too-many-locals, invalid-name
-@tbe_platform.fusion_manager.fusion_manager.register("apply_adagrad_d")
-def apply_adagrad_d_compute(var,
-                            accum,
-                            lr,
-                            grad,
-                            var_out,
-                            accum_out,
-                            update_slots,
-                            kernel_name="apply_adagrad_d"):
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class Const:
     """
-    Update '*var' according to the Adagrad algorithm.
-
-    accum += grad ** 2
-    var -= lr * grad / accum.sqrt()
-
-    Parameters:
-    ----------
-    var: the dict of var, only support float16, float32
-
-    accum: the dict of accum, only support float16, float32
-
-    lr: the dict of lr, only support float16, float32
-
-    grad: the dict of grad, only support float16, float32
-
-    var_out: the dict of var output, only support float16, float32
-
-    accum_out: the dict of accum output, only support float16, float32
-
-    update_slots: An optional 'bool'. Defaults to 'True',
-        If True, the accum tensor will be updated;
-        otherwise the option is False, the accum tensor will not be update.
-
-    kernel_name : cce kernel name, default value is "apply_adagrad".
-
-    Returns
-    -------
-    None
+    The class for constant.
     """
-    shape_list = shape_util.broadcast_shapes(
-        shape_util.shape_to_list(var.shape),
-        shape_util.shape_to_list(lr.shape),
-        param_name_input1="input_var", param_name_input2="input_lr")
-
-    input_dtype = var.dtype
-
-    if input_dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
-        var = tbe.cast_to(var, "float32")
-        accum = tbe.cast_to(accum, "float32")
-        lr = tbe.cast_to(lr, "float32")
-        grad = tbe.cast_to(grad, "float32")
-    lr = tbe.broadcast(lr, shape_list[2])
-
-    if update_slots is True:
-        grad_square = tbe.vmul(grad, grad)
-        accum = tbe.vadd(accum, grad_square)
-    elif input_dtype == 'float32':
-        accum = tbe.vadds(accum, tvm.const(NUM_ZERO, "float32"))
-    lr_grad = tbe.vmul(grad, lr)
-    sqrtdata = tbe.vsqrt(accum)
-    update = tbe.vdiv(lr_grad, sqrtdata)
-    var = tbe.vsub(var, update)
-    res1 = tbe.vadds(var, tvm.const(0.0, dtype="float32"))
-    res2 = tbe.vadds(accum, tvm.const(0.0, dtype="float32"))
-    if input_dtype == "float16":
-        res1 = tbe.cast_to(res1, "float16")
-        res2 = tbe.cast_to(res2, "float16")
-
-    return [res1, res2]
+    NUM_ZERO = 0.0
 
 
 @para_check.check_op_params(para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT, para_check.REQUIRED_INPUT,
@@ -196,3 +130,75 @@ def apply_adagrad_d(var,
               "tensor_list": list(inputlist) + list(res)}
 
     tbe.cce_build_code(sch, config)
+
+# 'pylint: disable=locally-disabled, too-many-arguments, unused-argument
+# 'pylint: disable=too-many-locals, invalid-name
+@tbe_platform.fusion_manager.fusion_manager.register("apply_adagrad_d")
+def apply_adagrad_d_compute(var,
+                            accum,
+                            lr,
+                            grad,
+                            var_out,
+                            accum_out,
+                            update_slots,
+                            kernel_name="apply_adagrad_d"):
+    """
+    Update '*var' according to the Adagrad algorithm.
+
+    accum += grad ** 2
+    var -= lr * grad / accum.sqrt()
+
+    Parameters:
+    ----------
+    var: the dict of var, only support float16, float32
+
+    accum: the dict of accum, only support float16, float32
+
+    lr: the dict of lr, only support float16, float32
+
+    grad: the dict of grad, only support float16, float32
+
+    var_out: the dict of var output, only support float16, float32
+
+    accum_out: the dict of accum output, only support float16, float32
+
+    update_slots: An optional 'bool'. Defaults to 'True',
+        If True, the accum tensor will be updated;
+        otherwise the option is False, the accum tensor will not be update.
+
+    kernel_name : cce kernel name, default value is "apply_adagrad".
+
+    Returns
+    -------
+    None
+    """
+    shape_list = shape_util.broadcast_shapes(
+        shape_util.shape_to_list(var.shape),
+        shape_util.shape_to_list(lr.shape),
+        param_name_input1="input_var", param_name_input2="input_lr")
+
+    input_dtype = var.dtype
+
+    if input_dtype == "float16" and tbe_platform.cce_conf.api_check_support("te.lang.cce.vadd", "float32"):
+        var = tbe.cast_to(var, "float32")
+        accum = tbe.cast_to(accum, "float32")
+        lr = tbe.cast_to(lr, "float32")
+        grad = tbe.cast_to(grad, "float32")
+    lr = tbe.broadcast(lr, shape_list[2])
+
+    if update_slots is True:
+        grad_square = tbe.vmul(grad, grad)
+        accum = tbe.vadd(accum, grad_square)
+    elif input_dtype == 'float32':
+        accum = tbe.vadds(accum, tvm.const(Const.NUM_ZERO, "float32"))
+    lr_grad = tbe.vmul(grad, lr)
+    sqrtdata = tbe.vsqrt(accum)
+    update = tbe.vdiv(lr_grad, sqrtdata)
+    var = tbe.vsub(var, update)
+    res1 = tbe.vadds(var, tvm.const(0.0, dtype="float32"))
+    res2 = tbe.vadds(accum, tvm.const(0.0, dtype="float32"))
+    if input_dtype == "float16":
+        res1 = tbe.cast_to(res1, "float16")
+        res2 = tbe.cast_to(res2, "float16")
+
+    return [res1, res2]

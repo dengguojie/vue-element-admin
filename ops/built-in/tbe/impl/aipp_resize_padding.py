@@ -24,8 +24,6 @@ from te import tvm
 
 from impl import aipp_comm
 
-NoneType = type(None)
-
 
 def set_padding_ub(ib, dtype, padding_ub_buf, vadds_src_ub_buf, src_block_stride, num):
     """
@@ -734,8 +732,8 @@ def aipp_compute(input_tensor, input_shape, input_format,
 
         cur_cce_product = tbe_platform.get_soc_spec("SOC_VERSION")
 
-        if cur_cce_product not in aipp_comm.STC_AIPP_SUPPORT_SOC_VERSION_SET:
-            cause_dec = "Only support " + ", ".join(aipp_comm.STC_AIPP_SUPPORT_SOC_VERSION_SET) + \
+        if cur_cce_product not in aipp_comm.Const.STC_AIPP_SUPPORT_SOC_VERSION_SET:
+            cause_dec = "Only support " + ", ".join(aipp_comm.Const.STC_AIPP_SUPPORT_SOC_VERSION_SET) + \
                         ", cur_cce_product is %s" % cur_cce_product
             aipp_comm.raise_runtime_error(cause_dec)
 

@@ -3,8 +3,6 @@
 from op_test_frame.ut import OpUT
 import json
 import te.platform as tbe_platform
-from impl.aipp_stc_dyn import new_aipp_compute
-from impl import aipp_comm
 
 ut_case = OpUT("Aipp", "impl.aipp", "aipp")
 
@@ -92,6 +90,8 @@ def test_aipp_static_1(test_arg):
     input_data = param_dict["params"][0]
     input_dync_param = param_dict["params"][1]
     output_data = param_dict["params"][2]
+    from impl.aipp_stc_dyn import new_aipp_compute
+
     try:
         new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict, "Ascend920", kernel_name="aipp")
     except Exception as e:
@@ -122,6 +122,8 @@ def test_aipp_static_2(test_arg):
     input_data = param_dict["params"][0]
     input_dync_param = param_dict["params"][1]
     output_data = param_dict["params"][2]
+    from impl.aipp_stc_dyn import new_aipp_compute
+
     try:
         new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend920", kernel_name="aipp")
     except Exception as e:
@@ -152,6 +154,8 @@ def test_aipp_static_3(test_arg):
     input_data = param_dict["params"][0]
     input_dync_param = param_dict["params"][1]
     output_data = param_dict["params"][2]
+    from impl.aipp_stc_dyn import new_aipp_compute
+
     try:
         new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend920", kernel_name="aipp")
     except Exception as e:
@@ -183,6 +187,8 @@ def test_aipp_static_4(test_arg):
     input_data = param_dict["params"][0]
     input_dync_param = param_dict["params"][1]
     output_data = param_dict["params"][2]
+    from impl.aipp_stc_dyn import new_aipp_compute
+
     try:
         new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend920", kernel_name="aipp")
     except Exception as e:
@@ -214,6 +220,8 @@ def test_aipp_static_5(test_arg):
     input_data = param_dict["params"][0]
     input_dync_param = param_dict["params"][1]
     output_data = param_dict["params"][2]
+    from impl.aipp_stc_dyn import new_aipp_compute
+
     try:
         new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_tmp, "Ascend920", kernel_name="aipp")
     except Exception as e:
@@ -243,7 +251,8 @@ def test_aipp_format_support(test_arg):
     )
     input_data = param_dict["params"][0]
     output_data = param_dict["params"][2]
-    for cce_product in aipp_comm.SUPPORT_IMAGE_FORMAT_MAP:
+    from impl import aipp_comm
+    for cce_product in aipp_comm.Const.SUPPORT_IMAGE_FORMAT_MAP:
         try:
             aipp_comm.check_aipp_static_config(input_data.get("shape"), input_data.get("format"), 
                                                output_data, aipp_config_dict_tmp, cce_product)
@@ -301,6 +310,8 @@ def test_aipp_dynamic_1(test_arg):
     input_data = param_dict["params"][0]
     input_dync_param = param_dict["params"][1]
     output_data = param_dict["params"][2]
+    from impl.aipp_stc_dyn import new_aipp_compute
+
     try:
         new_aipp_compute(input_data, input_dync_param, output_data, aipp_config_dict_dynamic_tmp, "Ascend920", kernel_name="aipp")
     except Exception as e:

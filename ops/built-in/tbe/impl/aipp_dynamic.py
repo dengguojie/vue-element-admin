@@ -35,7 +35,7 @@ def move_data_from_l1_to_gm(ib, totol_num, dtype, output_cb_buf, output_buf, gm_
     """
 
     ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-    ub_size -= (aipp_comm.DYNC_PARAM_SIZE + 1024 - 1) // 1024 * 1024
+    ub_size -= (aipp_comm.Const.DYNC_PARAM_SIZE + 1024 - 1) // 1024 * 1024
 
     if dtype == "float16":
         size = 2
@@ -144,7 +144,7 @@ def reg_move_data_from_l1_to_gm(ib, tmp_reg, totol_num, dtype, output_cb_buf, ou
     """
 
     ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-    ub_size -= (aipp_comm.DYNC_PARAM_SIZE + 1024 - 1) // 1024 * 1024
+    ub_size -= (aipp_comm.Const.DYNC_PARAM_SIZE + 1024 - 1) // 1024 * 1024
 
     if dtype == "float16":
         size = 2
@@ -245,7 +245,7 @@ def process_padding(ib, input_data, output_buf):
     offset = input_data[5]
 
     ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
-    ub_size -= (aipp_comm.DYNC_PARAM_SIZE + 1024 - 1) // 1024*1024
+    ub_size -= (aipp_comm.Const.DYNC_PARAM_SIZE + 1024 - 1) // 1024*1024
     buffer_upper_limit = ub_size // 2 // 2 // c0
 
     with ib.if_scope(buffer_upper_limit >= padding_size*w):
@@ -551,11 +551,11 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                 batch_id = batch_factor * block_index + n1
                 ib.emit(tvm.call_extern("uint8", 'copy_gm_to_ubuf',
                                         p_ub_buf.access_ptr("w", ptr_type=dtype,
-                                                            offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE),
+                                            offset=aipp_comm.Const.DYNC_PARAM_HEAD_STRUCT_SIZE),
                                         param_buf.access_ptr("rw", ptr_type=dtype,
-                                                             offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
-                                                                    aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE*batch_id),
-                                        0, 1, aipp_comm.DYNC_PARAM_BATCH_STRUCT_SIZE // 32, 0, 0))
+                                            offset=aipp_comm.Const.DYNC_PARAM_HEAD_STRUCT_SIZE + \
+                                            aipp_comm.Const.DYNC_PARAM_BATCH_STRUCT_SIZE*batch_id),
+                                        0, 1, aipp_comm.Const.DYNC_PARAM_BATCH_STRUCT_SIZE // 32, 0, 0))
 
                 actual_col_size_reg[0] = src_image_size[0] * src_image_size[1]
 
@@ -581,8 +581,8 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                 ib.emit(tvm.call_extern("int8", "reg_mov",
                                         tvm.call_extern("uint64", "reg", tmp[0]),
                                         p_ub_buf.access_ptr('r',
-                                                            offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
-                                                                   aipp_comm.BATCH_OFFSET_CROP_SWITCH)))
+                                            offset=aipp_comm.Const.DYNC_PARAM_HEAD_STRUCT_SIZE + \
+                                                    aipp_comm.Const.BATCH_OFFSET_CROP_SWITCH)))
                 crop[0] = tmp[0]
                 #crop enable
                 with ib.if_scope(tmp[0] > 0):
@@ -594,7 +594,8 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
 
                 ib.emit(tvm.call_extern("uint8", "reg_mov",
                                         tvm.call_extern("uint64", "reg", tmp[0]),
-                                        p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_INPUT_FORMAT)))
+                                        p_ub_buf.access_ptr('r',
+                                            offset=aipp_comm.Const.HEAD_OFFSET_INPUT_FORMAT)))
 
                 spr0 = 0
                 uv_addr = 0
@@ -617,7 +618,8 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                     ib.emit(tvm.call_extern("int8",
                                             "reg_mov",
                                             tvm.call_extern("uint64", "reg", tmp[0]),
-                                            p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_CSC_SWITCH)))
+                                            p_ub_buf.access_ptr('r',
+                                                offset=aipp_comm.Const.HEAD_OFFSET_CSC_SWITCH)))
                     if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
                         spr[1] = tvm.const(1 << 63, dtype="uint64") | uv_addr
                     else:
@@ -636,7 +638,8 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                     ib.emit(tvm.call_extern("int8",
                                             "reg_mov",
                                             tvm.call_extern("uint64", "reg", tmp[0]),
-                                            p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_CSC_SWITCH)))
+                                            p_ub_buf.access_ptr('r', 
+                                                offset=aipp_comm.Const.HEAD_OFFSET_CSC_SWITCH)))
                     spr[1] = (tmp[0] & 0x1) << 63
                     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_1", spr[1]))
                 # RGB888_U8
@@ -652,7 +655,8 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                     ib.emit(tvm.call_extern("int8",
                                             "reg_mov",
                                             tvm.call_extern("uint64", "reg", tmp[0]),
-                                            p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_CSC_SWITCH)))
+                                            p_ub_buf.access_ptr('r',
+                                                offset=aipp_comm.Const.HEAD_OFFSET_CSC_SWITCH)))
                     spr[1] = (tmp[0] & 0x1) << 63
                     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_1", spr[1]))
                 # ARGB8888
@@ -668,7 +672,8 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                     ib.emit(tvm.call_extern("int8",
                                             "reg_mov",
                                             tvm.call_extern("uint64", "reg", tmp[0]),
-                                            p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_CSC_SWITCH)))
+                                            p_ub_buf.access_ptr('r',
+                                                offset=aipp_comm.Const.HEAD_OFFSET_CSC_SWITCH)))
                     spr[1] = (tmp[0] & 0x1) << 63
                     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_1", spr[1]))
                 # YUYV_U8
@@ -685,7 +690,8 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                     ib.emit(tvm.call_extern("int8",
                                             "reg_mov",
                                             tvm.call_extern("uint64", "reg", tmp[0]),
-                                            p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_CSC_SWITCH)))
+                                            p_ub_buf.access_ptr('r',
+                                                offset=aipp_comm.Const.HEAD_OFFSET_CSC_SWITCH)))
                     if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                         spr[1] = tvm.const(1 << 63, dtype="uint64")
                     else:
@@ -709,7 +715,8 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                     ib.emit(tvm.call_extern("int8",
                                             "reg_mov",
                                             tvm.call_extern("uint64", "reg", tmp[0]),
-                                            p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_CSC_SWITCH)))
+                                            p_ub_buf.access_ptr('r',
+                                                offset=aipp_comm.Const.HEAD_OFFSET_CSC_SWITCH)))
                     if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                         spr[1] = tvm.const(1 << 63, dtype="uint64") | uv_addr
                     else:
@@ -729,7 +736,8 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                     ib.emit(tvm.call_extern("int8",
                                             "reg_mov",
                                             tvm.call_extern("uint64", "reg", tmp[0]),
-                                            p_ub_buf.access_ptr('r', offset=aipp_comm.HEAD_OFFSET_CSC_SWITCH)))
+                                            p_ub_buf.access_ptr('r',
+                                                offset=aipp_comm.Const.HEAD_OFFSET_CSC_SWITCH)))
                     if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
                         spr[1] = tvm.const(1, dtype="uint64") << 63
                     else:
@@ -768,16 +776,16 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                             "reg_mov",
                                             tvm.call_extern("uint64", "reg", tmp[0]),
                                             p_ub_buf.access_ptr('r',
-                                                                offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE +
-                                                                aipp_comm.BATCH_OFFSET_SCF_SWITCH)))
+                                                offset=aipp_comm.Const.DYNC_PARAM_HEAD_STRUCT_SIZE +
+                                                aipp_comm.Const.BATCH_OFFSET_SCF_SWITCH)))
                     resize[0] = tmp[0]
                     with ib.if_scope(resize[0] == 1):
                         ib.emit(tvm.call_extern("int32",
                                                 "reg_mov",
                                                 tvm.call_extern("uint64", "reg", tmp[0]),
                                                 p_ub_buf.access_ptr('r',
-                                                                    offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE +
-                                                                    aipp_comm.BATCH_OFFSET_SCF_INPUT_H)))
+                                                    offset=aipp_comm.Const.DYNC_PARAM_HEAD_STRUCT_SIZE +
+                                                    aipp_comm.Const.BATCH_OFFSET_SCF_INPUT_H)))
                         resize_input_h[0] = tmp[0]
                         with ib.if_scope(resize_input_h[0] == 0):
                             with ib.if_scope(crop[0] == 1):
@@ -789,8 +797,8 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                                 "reg_mov",
                                                 tvm.call_extern("uint64", "reg", tmp[0]),
                                                 p_ub_buf.access_ptr('r',
-                                                                    offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE +
-                                                                    aipp_comm.BATCH_OFFSET_SCF_OUTPUT_H)))
+                                                    offset=aipp_comm.Const.DYNC_PARAM_HEAD_STRUCT_SIZE +
+                                                    aipp_comm.Const.BATCH_OFFSET_SCF_OUTPUT_H)))
                         resize_output_h[0] = tmp[0]
 
                         with ib.if_scope(resize_input_h[0] != resize_output_h[0]):
@@ -807,8 +815,8 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                                 "reg_mov",
                                                 tvm.call_extern("uint64", "reg", tmp[0]),
                                                 p_ub_buf.access_ptr('r',
-                                                                    offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE +
-                                                                    aipp_comm.BATCH_OFFSET_SCF_INPUT_W)))
+                                                    offset=aipp_comm.Const.DYNC_PARAM_HEAD_STRUCT_SIZE +
+                                                    aipp_comm.Const.BATCH_OFFSET_SCF_INPUT_W)))
                         resize_input_w[0] = tmp[0]
                         with ib.if_scope(resize_input_w[0] == 0):
                             with ib.if_scope(crop[0] == 1):
@@ -820,8 +828,8 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                                 "reg_mov",
                                                 tvm.call_extern("uint64", "reg", tmp[0]),
                                                 p_ub_buf.access_ptr('r',
-                                                                    offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE +
-                                                                    aipp_comm.BATCH_OFFSET_SCF_OUTPUT_W)))
+                                                    offset=aipp_comm.Const.DYNC_PARAM_HEAD_STRUCT_SIZE +
+                                                    aipp_comm.Const.BATCH_OFFSET_SCF_OUTPUT_W)))
                         resize_output_w[0] = tmp[0]
 
                         with ib.if_scope(resize_input_w[0] != resize_output_w[0]):
@@ -851,8 +859,8 @@ def aipp_compute(input_tensor, param_tensor, input_shape, input_format, output_d
                                         "reg_mov",
                                         tvm.call_extern("uint64", "reg", tmp[0]),
                                         p_ub_buf.access_ptr('r',
-                                                            offset=aipp_comm.DYNC_PARAM_HEAD_STRUCT_SIZE + \
-                                                                   aipp_comm.BATCH_OFFSET_PAD_SWITCH)))
+                                            offset=aipp_comm.Const.DYNC_PARAM_HEAD_STRUCT_SIZE + \
+                                            aipp_comm.Const.BATCH_OFFSET_PAD_SWITCH)))
                 padding[0] = tmp[0]
                 # padding enable
                 with ib.if_scope(tmp[0] > 0):

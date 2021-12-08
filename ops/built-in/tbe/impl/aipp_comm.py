@@ -21,116 +21,127 @@ import numpy
 
 import te.platform as tbe_platform
 from te import tvm
+import inspect
 
-DEFAULT_MATRIX_R0C0_YUV2RGB = 298
-DEFAULT_MATRIX_R0C1_YUV2RGB = 516
-DEFAULT_MATRIX_R0C2_YUV2RGB = 0
-DEFAULT_MATRIX_R1C0_YUV2RGB = 298
-DEFAULT_MATRIX_R1C1_YUV2RGB = -100
-DEFAULT_MATRIX_R1C2_YUV2RGB = -208
-DEFAULT_MATRIX_R2C0_YUV2RGB = 298
-DEFAULT_MATRIX_R2C1_YUV2RGB = 0
-DEFAULT_MATRIX_R2C2_YUV2RGB = 409
 
-DEFAULT_OUTPUT_BIAS_0 = 16
-DEFAULT_OUTPUT_BIAS_1 = 128
-DEFAULT_OUTPUT_BIAS_2 = 128
-DEFAULT_INPUT_BIAS_0 = 16
-DEFAULT_INPUT_BIAS_1 = 128
-DEFAULT_INPUT_BIAS_2 = 128
-DEFAULT_VAR_RECI_CHN = 1.0
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class Const:
+    """
+    The class for constant.
+    """
+    # get available ub size
+    print("inspect 0000000const")
+    print(inspect.stack())
+    print("inspect 11111111const")
+    DEFAULT_MATRIX_R0C0_YUV2RGB = 298
+    DEFAULT_MATRIX_R0C1_YUV2RGB = 516
+    DEFAULT_MATRIX_R0C2_YUV2RGB = 0
+    DEFAULT_MATRIX_R1C0_YUV2RGB = 298
+    DEFAULT_MATRIX_R1C1_YUV2RGB = -100
+    DEFAULT_MATRIX_R1C2_YUV2RGB = -208
+    DEFAULT_MATRIX_R2C0_YUV2RGB = 298
+    DEFAULT_MATRIX_R2C1_YUV2RGB = 0
+    DEFAULT_MATRIX_R2C2_YUV2RGB = 409
 
-DYNC_PARAM_HEAD_STRUCT_SIZE = 64
-DYNC_PARAM_BATCH_STRUCT_SIZE = 96
-DYNC_PARAM_BATCH_SIZE_MAX = 32
-DYNC_PARAM_SIZE = DYNC_PARAM_HEAD_STRUCT_SIZE + \
-                  DYNC_PARAM_BATCH_STRUCT_SIZE
+    DEFAULT_OUTPUT_BIAS_0 = 16
+    DEFAULT_OUTPUT_BIAS_1 = 128
+    DEFAULT_OUTPUT_BIAS_2 = 128
+    DEFAULT_INPUT_BIAS_0 = 16
+    DEFAULT_INPUT_BIAS_1 = 128
+    DEFAULT_INPUT_BIAS_2 = 128
+    DEFAULT_VAR_RECI_CHN = 1.0
 
-HEAD_OFFSET_INPUT_FORMAT = 0  # uint8
-HEAD_OFFSET_CSC_SWITCH = 1  # int8
-HEAD_OFFSET_RBUV_SWAP_SWITCH = 2  # int8
-HEAD_OFFSET_AX_SWAP_SWITCH = 3  # int8
-HEAD_OFFSET_BATCHNUM = 4  # int8
-HEAD_OFFSET_SRCIMAGE_W = 8  # int32
-HEAD_OFFSET_SRCIMAGE_H = 12  # int32
-HEAD_OFFSET_CSC_MATRIX_R0C0 = 16  # int16
-HEAD_OFFSET_CSC_MATRIX_R0C1 = 18  # int16
-HEAD_OFFSET_CSC_MATRIX_R0C2 = 20  # int16
-HEAD_OFFSET_CSC_MATRIX_R1C0 = 22  # int16
-HEAD_OFFSET_CSC_MATRIX_R1C1 = 24  # int16
-HEAD_OFFSET_CSC_MATRIX_R1C2 = 26  # int16
-HEAD_OFFSET_CSC_MATRIX_R2C0 = 28  # int16
-HEAD_OFFSET_CSC_MATRIX_R2C1 = 30  # int16
-HEAD_OFFSET_CSC_MATRIX_R2C2 = 32  # int16
-HEAD_OFFSET_CSC_OUTPUT_BIAS_R0 = 40  # uint8
-HEAD_OFFSET_CSC_OUTPUT_BIAS_R1 = 41  # uint8
-HEAD_OFFSET_CSC_OUTPUT_BIAS_R2 = 42  # uint8
-HEAD_OFFSET_CSC_INPUT_BIAS_R0 = 43  # uint8
-HEAD_OFFSET_CSC_INPUT_BIAS_R1 = 44  # uint8
-HEAD_OFFSET_CSC_INPUT_BIAS_R2 = 45  # uint8
+    DYNC_PARAM_HEAD_STRUCT_SIZE = 64
+    DYNC_PARAM_BATCH_STRUCT_SIZE = 96
+    DYNC_PARAM_BATCH_SIZE_MAX = 32
+    DYNC_PARAM_SIZE = DYNC_PARAM_HEAD_STRUCT_SIZE + \
+                    DYNC_PARAM_BATCH_STRUCT_SIZE
 
-BATCH_OFFSET_CROP_SWITCH = 0 # int8
-BATCH_OFFSET_SCF_SWITCH = 1 # int8
-BATCH_OFFSET_PAD_SWITCH = 2 # int8
-BATCH_OFFSET_ROTATE_SWITCH = 3 # int8
-BATCH_OFFSET_CROP_STARTPOS_W = 8 # int32
-BATCH_OFFSET_CROP_STARTPOS_H = 12 # int32
-BATCH_OFFSET_CROP_W = 16 # int32
-BATCH_OFFSET_CROP_H = 20 # int32
-BATCH_OFFSET_SCF_INPUT_W = 24 # int32
-BATCH_OFFSET_SCF_INPUT_H = 28 # int32
-BATCH_OFFSET_SCF_OUTPUT_W = 32 # int32
-BATCH_OFFSET_SCF_OUTPUT_H = 36 # int32
-BATCH_OFFSET_PAD_TOP = 40 # int32
-BATCH_OFFSET_PAD_BOTTOM = 44 # int32
-BATCH_OFFSET_PAD_LEFT = 48 # int32
-BATCH_OFFSET_PAD_RIGHT = 52 # int32
-BATCH_OFFSET_DTC_MEAN_C0 = 56 # int16
-BATCH_OFFSET_DTC_MEAN_C1 = 58 # int16
-BATCH_OFFSET_DTC_MEAN_C2 = 60 # int16
-BATCH_OFFSET_DTC_MEAN_C3 = 62 # int16
-BATCH_OFFSET_DTC_MIN_C0 = 64 # uint16
-BATCH_OFFSET_DTC_MIN_C1 = 66 # uint16
-BATCH_OFFSET_DTC_MIN_C2 = 68 # uint16
-BATCH_OFFSET_DTC_MIN_C3 = 70 # uint16
-BATCH_OFFSET_DTC_VAR_C0 = 72 # uint16
-BATCH_OFFSET_DTC_VAR_C1 = 74 # uint16
-BATCH_OFFSET_DTC_VAR_C2 = 76 # uint16
-BATCH_OFFSET_DTC_VAR_C3 = 78 # uint16
+    HEAD_OFFSET_INPUT_FORMAT = 0  # uint8
+    HEAD_OFFSET_CSC_SWITCH = 1  # int8
+    HEAD_OFFSET_RBUV_SWAP_SWITCH = 2  # int8
+    HEAD_OFFSET_AX_SWAP_SWITCH = 3  # int8
+    HEAD_OFFSET_BATCHNUM = 4  # int8
+    HEAD_OFFSET_SRCIMAGE_W = 8  # int32
+    HEAD_OFFSET_SRCIMAGE_H = 12  # int32
+    HEAD_OFFSET_CSC_MATRIX_R0C0 = 16  # int16
+    HEAD_OFFSET_CSC_MATRIX_R0C1 = 18  # int16
+    HEAD_OFFSET_CSC_MATRIX_R0C2 = 20  # int16
+    HEAD_OFFSET_CSC_MATRIX_R1C0 = 22  # int16
+    HEAD_OFFSET_CSC_MATRIX_R1C1 = 24  # int16
+    HEAD_OFFSET_CSC_MATRIX_R1C2 = 26  # int16
+    HEAD_OFFSET_CSC_MATRIX_R2C0 = 28  # int16
+    HEAD_OFFSET_CSC_MATRIX_R2C1 = 30  # int16
+    HEAD_OFFSET_CSC_MATRIX_R2C2 = 32  # int16
+    HEAD_OFFSET_CSC_OUTPUT_BIAS_R0 = 40  # uint8
+    HEAD_OFFSET_CSC_OUTPUT_BIAS_R1 = 41  # uint8
+    HEAD_OFFSET_CSC_OUTPUT_BIAS_R2 = 42  # uint8
+    HEAD_OFFSET_CSC_INPUT_BIAS_R0 = 43  # uint8
+    HEAD_OFFSET_CSC_INPUT_BIAS_R1 = 44  # uint8
+    HEAD_OFFSET_CSC_INPUT_BIAS_R2 = 45  # uint8
 
-AIPP_OP_ERROR_CODE = 'E81012'
+    BATCH_OFFSET_CROP_SWITCH = 0 # int8
+    BATCH_OFFSET_SCF_SWITCH = 1 # int8
+    BATCH_OFFSET_PAD_SWITCH = 2 # int8
+    BATCH_OFFSET_ROTATE_SWITCH = 3 # int8
+    BATCH_OFFSET_CROP_STARTPOS_W = 8 # int32
+    BATCH_OFFSET_CROP_STARTPOS_H = 12 # int32
+    BATCH_OFFSET_CROP_W = 16 # int32
+    BATCH_OFFSET_CROP_H = 20 # int32
+    BATCH_OFFSET_SCF_INPUT_W = 24 # int32
+    BATCH_OFFSET_SCF_INPUT_H = 28 # int32
+    BATCH_OFFSET_SCF_OUTPUT_W = 32 # int32
+    BATCH_OFFSET_SCF_OUTPUT_H = 36 # int32
+    BATCH_OFFSET_PAD_TOP = 40 # int32
+    BATCH_OFFSET_PAD_BOTTOM = 44 # int32
+    BATCH_OFFSET_PAD_LEFT = 48 # int32
+    BATCH_OFFSET_PAD_RIGHT = 52 # int32
+    BATCH_OFFSET_DTC_MEAN_C0 = 56 # int16
+    BATCH_OFFSET_DTC_MEAN_C1 = 58 # int16
+    BATCH_OFFSET_DTC_MEAN_C2 = 60 # int16
+    BATCH_OFFSET_DTC_MEAN_C3 = 62 # int16
+    BATCH_OFFSET_DTC_MIN_C0 = 64 # uint16
+    BATCH_OFFSET_DTC_MIN_C1 = 66 # uint16
+    BATCH_OFFSET_DTC_MIN_C2 = 68 # uint16
+    BATCH_OFFSET_DTC_MIN_C3 = 70 # uint16
+    BATCH_OFFSET_DTC_VAR_C0 = 72 # uint16
+    BATCH_OFFSET_DTC_VAR_C1 = 74 # uint16
+    BATCH_OFFSET_DTC_VAR_C2 = 76 # uint16
+    BATCH_OFFSET_DTC_VAR_C3 = 78 # uint16
 
-STC_AIPP_SUPPORT_SOC_VERSION_SET = ("Ascend310", "Ascend910", "Ascend610", "Ascend710",
-                                   "Ascend615", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403",
-                                   "Ascend920", "Ascend320")
+    AIPP_OP_ERROR_CODE = 'E81012'
 
-DYN_AIPP_SUPPORT_SOC_VERSION_SET = ("Ascend310", "Ascend910", "Ascend610", "Ascend710", "Ascend615",
-                                   "Hi3796CV300ES", "Hi3796CV300CS", "SD3403")
+    STC_AIPP_SUPPORT_SOC_VERSION_SET = ("Ascend310", "Ascend910", "Ascend610", "Ascend710",
+                                    "Ascend615", "Hi3796CV300ES", "Hi3796CV300CS", "SD3403",
+                                    "Ascend920", "Ascend320")
 
-C04_AIPP_SUPPORT_SOC_VERSION_SET = ("Ascend610", "Ascend710", "Ascend615", "Hi3796CV300CS", "SD3403",
-                                   "Ascend920", "Ascend320")
+    DYN_AIPP_SUPPORT_SOC_VERSION_SET = ("Ascend310", "Ascend910", "Ascend610", "Ascend710", "Ascend615",
+                                    "Hi3796CV300ES", "Hi3796CV300CS", "SD3403")
 
-SUPPORT_IMAGE_FORMAT_MAP = {
-    "Ascend310": ("YUV420SP_U8", "XRGB8888_U8", "NC1HWC0DI_FP16",
-                 "NC1HWC0DI_S8", "RGB888_U8", "YUV400_U8"),
-    "Ascend320": ("YUV420SP_U8", "XRGB8888_U8", "RGB888_U8", "YUV400_U8",
-                 "RAW8", "RAW10", "RAW12", "RAW14", "RAW16"),
-    "Ascend910": ("YUV420SP_U8", "XRGB8888_U8", "RGB888_U8", "YUV400_U8"),
-    "Ascend920": ("YUV420SP_U8", "XRGB8888_U8", "RGB888_U8", "YUV400_U8"),
-    "Ascend610": ("YUV420SP_U8", "XRGB8888_U8", "NC1HWC0DI_FP16", "NC1HWC0DI_S8",
-                 "RGB888_U8", "YUV400_U8"),
-    "Ascend710": ("YUV420SP_U8", "XRGB8888_U8", "NC1HWC0DI_FP16", "NC1HWC0DI_S8",
-                 "RGB888_U8", "YUV400_U8"),
-    "Ascend615": ("YUV420SP_U8", "XRGB8888_U8", "NC1HWC0DI_FP16", "NC1HWC0DI_S8",
-                 "RGB888_U8", "YUV400_U8", "RGB16", "RGB20", "RGB24", "RGB8_IR",
-                 "RGB16_IR", "RGB24_IR"),
-    "Hi3796CV300ES-Hi3796CV300CS-SD3403": (
-            "YUV420SP_U8", "RGB888_U8", "XRGB8888_U8", "ARGB8888_U8", "YUYV_U8",
-            "YUV422SP_U8", "AYUV444_U8", "YUV400_U8", "RAW10", "RAW12", "RAW16",
-            "uint16")
-}
+    C04_AIPP_SUPPORT_SOC_VERSION_SET = ("Ascend610", "Ascend710", "Ascend615", "Hi3796CV300CS", "SD3403",
+                                    "Ascend920", "Ascend320")
 
-V300_SOC_VERSION_LIST = ("Ascend320",)
+    SUPPORT_IMAGE_FORMAT_MAP = {
+        "Ascend310": ("YUV420SP_U8", "XRGB8888_U8", "NC1HWC0DI_FP16",
+                    "NC1HWC0DI_S8", "RGB888_U8", "YUV400_U8"),
+        "Ascend320": ("YUV420SP_U8", "XRGB8888_U8", "RGB888_U8", "YUV400_U8",
+                    "RAW8", "RAW10", "RAW12", "RAW14", "RAW16"),
+        "Ascend910": ("YUV420SP_U8", "XRGB8888_U8", "RGB888_U8", "YUV400_U8"),
+        "Ascend920": ("YUV420SP_U8", "XRGB8888_U8", "RGB888_U8", "YUV400_U8"),
+        "Ascend610": ("YUV420SP_U8", "XRGB8888_U8", "NC1HWC0DI_FP16", "NC1HWC0DI_S8",
+                    "RGB888_U8", "YUV400_U8"),
+        "Ascend710": ("YUV420SP_U8", "XRGB8888_U8", "NC1HWC0DI_FP16", "NC1HWC0DI_S8",
+                    "RGB888_U8", "YUV400_U8"),
+        "Ascend615": ("YUV420SP_U8", "XRGB8888_U8", "NC1HWC0DI_FP16", "NC1HWC0DI_S8",
+                    "RGB888_U8", "YUV400_U8", "RGB16", "RGB20", "RGB24", "RGB8_IR",
+                    "RGB16_IR", "RGB24_IR"),
+        "Hi3796CV300ES-Hi3796CV300CS-SD3403": (
+                "YUV420SP_U8", "RGB888_U8", "XRGB8888_U8", "ARGB8888_U8", "YUYV_U8",
+                "YUV422SP_U8", "AYUV444_U8", "YUV400_U8", "RAW10", "RAW12", "RAW16",
+                "uint16")
+    }
+
+    V300_SOC_VERSION_LIST = ("Ascend320",)
 
 
 def get_fp16(value):
@@ -202,7 +213,7 @@ def get_l1_image_buf_max(actual_col_size, dtype, is_dynamic, output_format="NC1H
     l1_size = tbe_platform.get_soc_spec(tbe_platform.L1_SIZE)
     ub_size = tbe_platform.get_soc_spec(tbe_platform.UB_SIZE)
     if is_dynamic:
-        ub_size -= (DYNC_PARAM_SIZE + 1024 - 1) // 1024 * 1024
+        ub_size -= (Const.DYNC_PARAM_SIZE + 1024 - 1) // 1024 * 1024
 
     buffer_upper_limit = l1_size
     if l1_size >= ub_size:
@@ -235,32 +246,32 @@ def _set_spr2_spr4_lhisi_dync_by_yuv(ib, dtype, spr, p_ub_buf, tmp):
     ib.emit(tvm.call_extern("int8",  # actual data type
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_SWITCH)))
+                            p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_SWITCH)))
     #enable csc
     with ib.if_scope(tmp[0] == 1):
         # spr2
         ib.emit(tvm.call_extern("int16",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R2C0)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R2C0)))
         spr[2] = ((tmp[0] * tvm.const(4, dtype="uint64")) & 0xffff)
 
         ib.emit(tvm.call_extern("int16",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R2C1)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R2C1)))
         spr[2] = spr[2] | ((tmp[0] * tvm.const(4, dtype="uint64")) & 0xffff) << 16
 
         ib.emit(tvm.call_extern("int16",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R2C2)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R2C2)))
         spr[2] = spr[2] | ((tmp[0] * tvm.const(4, dtype="uint64")) & 0xffff) << 32
 
         ib.emit(tvm.call_extern("int16",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R1C0)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R1C0)))
         spr[2] = spr[2] | ((tmp[0] * tvm.const(4, dtype="uint64")) & 0xffff) << 48
         ib.emit(tvm.call_extern(dtype, "set_aipp_spr_2", spr[2]))
 
@@ -268,25 +279,25 @@ def _set_spr2_spr4_lhisi_dync_by_yuv(ib, dtype, spr, p_ub_buf, tmp):
         ib.emit(tvm.call_extern("int16",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R1C1)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R1C1)))
         spr[3] = ((tmp[0] * tvm.const(4, dtype="uint64")) & 0xffff)
 
         ib.emit(tvm.call_extern("int16",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R1C2)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R1C2)))
         spr[3] = spr[3] | ((tmp[0] * tvm.const(4, dtype="uint64")) & 0xffff) << 16
 
         ib.emit(tvm.call_extern("int16",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R0C0)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R0C0)))
         spr[3] = spr[3] | ((tmp[0] * tvm.const(4, dtype="uint64")) & 0xffff) << 32
 
         ib.emit(tvm.call_extern("int16",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R0C1)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R0C1)))
         spr[3] = spr[3] | ((tmp[0] * tvm.const(4, dtype="uint64")) & 0xffff) << 48
         ib.emit(tvm.call_extern(dtype, "set_aipp_spr_3", spr[3]))
 
@@ -294,25 +305,25 @@ def _set_spr2_spr4_lhisi_dync_by_yuv(ib, dtype, spr, p_ub_buf, tmp):
         ib.emit(tvm.call_extern("int16",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R0C2)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R0C2)))
         spr[4] = ((tmp[0] * tvm.const(4, dtype="uint64")) & 0xffff)
 
         ib.emit(tvm.call_extern("uint8",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_INPUT_BIAS_R2)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_INPUT_BIAS_R2)))
         spr[4] = spr[4] | (tmp[0] & 0xff) << 40
 
         ib.emit(tvm.call_extern("uint8",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_INPUT_BIAS_R1)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_INPUT_BIAS_R1)))
         spr[4] = spr[4] | (tmp[0] & 0xff) << 48
 
         ib.emit(tvm.call_extern("uint8",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_INPUT_BIAS_R0)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_INPUT_BIAS_R0)))
         spr[4] = spr[4] | (tmp[0] & 0xff) << 56
         ib.emit(tvm.call_extern(dtype, "set_aipp_spr_4", spr[4]))
     with ib.else_scope():
@@ -347,32 +358,32 @@ def _set_spr2_spr4_lhisi_dync_by_rgb(ib, dtype, spr, p_ub_buf, tmp):
     ib.emit(tvm.call_extern("int8",  # actual data type
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_SWITCH)))
+                            p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_SWITCH)))
     #enable csc
     with ib.if_scope(tmp[0] == 1):
         # spr2
         ib.emit(tvm.call_extern("int16",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R2C2)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R2C2)))
         spr[2] = ((tmp[0] * tvm.const(4, dtype="uint64")) & 0xffff)
 
         ib.emit(tvm.call_extern("int16",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R2C1)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R2C1)))
         spr[2] = spr[2] | ((tmp[0] * tvm.const(4, dtype="uint64")) & 0xffff) << 16
 
         ib.emit(tvm.call_extern("int16",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R2C0)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R2C0)))
         spr[2] = spr[2] | ((tmp[0] * tvm.const(4, dtype="uint64")) & 0xffff) << 32
 
         ib.emit(tvm.call_extern("int16",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R1C2)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R1C2)))
         spr[2] = spr[2] | ((tmp[0] * tvm.const(4, dtype="uint64")) & 0xffff) << 48
         ib.emit(tvm.call_extern(dtype, "set_aipp_spr_2", spr[2]))
 
@@ -380,25 +391,25 @@ def _set_spr2_spr4_lhisi_dync_by_rgb(ib, dtype, spr, p_ub_buf, tmp):
         ib.emit(tvm.call_extern("int16",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R1C1)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R1C1)))
         spr[3] = ((tmp[0] * tvm.const(4, dtype="uint64")) & 0xffff)
 
         ib.emit(tvm.call_extern("int16",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R1C0)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R1C0)))
         spr[3] = spr[3] | ((tmp[0] * tvm.const(4, dtype="uint64")) & 0xffff) << 16
 
         ib.emit(tvm.call_extern("int16",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R0C2)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R0C2)))
         spr[3] = spr[3] | ((tmp[0] * tvm.const(4, dtype="uint64")) & 0xffff) << 32
 
         ib.emit(tvm.call_extern("int16",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R0C1)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R0C1)))
         spr[3] = spr[3] | ((tmp[0] * tvm.const(4, dtype="uint64")) & 0xffff) << 48
         ib.emit(tvm.call_extern(dtype, "set_aipp_spr_3", spr[3]))
 
@@ -406,25 +417,25 @@ def _set_spr2_spr4_lhisi_dync_by_rgb(ib, dtype, spr, p_ub_buf, tmp):
         ib.emit(tvm.call_extern("int16",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R0C0)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R0C0)))
         spr[4] = ((tmp[0] * tvm.const(4, dtype="uint64")) & 0xffff)
 
         ib.emit(tvm.call_extern("uint8",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_OUTPUT_BIAS_R0)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_OUTPUT_BIAS_R0)))
         spr[4] = spr[4] | (tmp[0] & 0xff) << 16
 
         ib.emit(tvm.call_extern("uint8",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_OUTPUT_BIAS_R1)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_OUTPUT_BIAS_R1)))
         spr[4] = spr[4] | (tmp[0] & 0xff) << 24
 
         ib.emit(tvm.call_extern("uint8",  # actual data type
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_OUTPUT_BIAS_R2)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_OUTPUT_BIAS_R2)))
         spr[4] = spr[4] | (tmp[0] & 0xff) << 32
         ib.emit(tvm.call_extern(dtype, "set_aipp_spr_4", spr[4]))
 
@@ -438,14 +449,14 @@ def set_spr_dync(ib, param_buf, dtype, cur_cce_product):
     :return:
     """
 
-    p_ub = ib.allocate("uint8", (DYNC_PARAM_SIZE,), "p_ub", scope=tbe_platform.scope_ubuf)
-    p_ub_buf = tvm.decl_buffer((DYNC_PARAM_SIZE,), "uint8", "p_ub_buf",
+    p_ub = ib.allocate("uint8", (Const.DYNC_PARAM_SIZE,), "p_ub", scope=tbe_platform.scope_ubuf)
+    p_ub_buf = tvm.decl_buffer((Const.DYNC_PARAM_SIZE,), "uint8", "p_ub_buf",
                                scope=tbe_platform.scope_ubuf, data=p_ub)
 
     ib.emit(tvm.call_extern("uint8", 'copy_gm_to_ubuf',
                             p_ub_buf.access_ptr("w", ptr_type=dtype, offset=0),
                             param_buf.access_ptr("rw", ptr_type=dtype, offset=0),
-                            0, 1, DYNC_PARAM_SIZE//32, 0, 0))
+                            0, 1, Const.DYNC_PARAM_SIZE//32, 0, 0))
 
     spr = ib.allocate("uint64", [17], name="spr", scope=tbe_platform.scope_reg)
     tmp = ib.allocate("uint64", [1], name="tmp", scope=tbe_platform.scope_reg)
@@ -455,7 +466,7 @@ def set_spr_dync(ib, param_buf, dtype, cur_cce_product):
     ib.emit(tvm.call_extern("uint8",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_INPUT_FORMAT)))
+                            p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_INPUT_FORMAT)))
 
     input_format_tmp[0] = tmp[0]
     if cur_cce_product in ["Hi3796CV300ES", "Hi3796CV300CS", "SD3403"]:
@@ -485,25 +496,25 @@ def set_spr_dync(ib, param_buf, dtype, cur_cce_product):
         ib.emit(tvm.call_extern("int16",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R0C0)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R0C0)))
         spr[2] = (tmp[0] & 0xffff)
 
         ib.emit(tvm.call_extern("int16",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R0C1)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R0C1)))
         spr[2] = spr[2] | (tmp[0] & 0xffff) << 16
 
         ib.emit(tvm.call_extern("int16",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R0C2)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R0C2)))
         spr[2] = spr[2] | (tmp[0] & 0xffff) << 32
 
         ib.emit(tvm.call_extern("int16",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R1C0)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R1C0)))
         spr[2] = spr[2] | (tmp[0] & 0xffff) << 48
         ib.emit(tvm.call_extern(dtype, "set_aipp_spr_2", spr[2]))
 
@@ -511,25 +522,25 @@ def set_spr_dync(ib, param_buf, dtype, cur_cce_product):
         ib.emit(tvm.call_extern("int16",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R1C1)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R1C1)))
         spr[3] = (tmp[0] & 0xffff)
 
         ib.emit(tvm.call_extern("int16",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R1C2)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R1C2)))
         spr[3] = spr[3] | (tmp[0] & 0xffff) << 16
 
         ib.emit(tvm.call_extern("int16",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R2C0)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R2C0)))
         spr[3] = spr[3] | (tmp[0] & 0xffff) << 32
 
         ib.emit(tvm.call_extern("int16",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R2C1)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R2C1)))
         spr[3] = spr[3] | (tmp[0] & 0xffff) << 48
         ib.emit(tvm.call_extern(dtype, "set_aipp_spr_3", spr[3]))
 
@@ -537,43 +548,43 @@ def set_spr_dync(ib, param_buf, dtype, cur_cce_product):
         ib.emit(tvm.call_extern("int16",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R2C2)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R2C2)))
         spr[4] = (tmp[0] & 0xffff)
 
         ib.emit(tvm.call_extern("uint8",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_OUTPUT_BIAS_R0)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_OUTPUT_BIAS_R0)))
         spr[4] = spr[4] | (tmp[0] & 0xff) << 16
 
         ib.emit(tvm.call_extern("uint8",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_OUTPUT_BIAS_R1)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_OUTPUT_BIAS_R1)))
         spr[4] = spr[4] | (tmp[0] & 0xff) << 24
 
         ib.emit(tvm.call_extern("uint8",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_OUTPUT_BIAS_R2)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_OUTPUT_BIAS_R2)))
         spr[4] = spr[4] | (tmp[0] & 0xff) << 32
 
         ib.emit(tvm.call_extern("uint8",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_INPUT_BIAS_R0)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_INPUT_BIAS_R0)))
         spr[4] = spr[4] | (tmp[0] & 0xff) << 40
 
         ib.emit(tvm.call_extern("uint8",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_INPUT_BIAS_R1)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_INPUT_BIAS_R1)))
         spr[4] = spr[4] | (tmp[0] & 0xff) << 48
 
         ib.emit(tvm.call_extern("uint8",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_INPUT_BIAS_R2)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_INPUT_BIAS_R2)))
         spr[4] = spr[4] | (tmp[0] & 0xff) << 56
         ib.emit(tvm.call_extern(dtype, "set_aipp_spr_4", spr[4]))
 
@@ -584,7 +595,7 @@ def set_spr_dync(ib, param_buf, dtype, cur_cce_product):
     ib.emit(tvm.call_extern("int8",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_RBUV_SWAP_SWITCH)))
+                            p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_RBUV_SWAP_SWITCH)))
     # YUV400
     with ib.if_scope(input_format_tmp[0] != 10):
         spr[9] = (tmp[0] & 0x1) << 16
@@ -595,27 +606,27 @@ def set_spr_dync(ib, param_buf, dtype, cur_cce_product):
         ib.emit(tvm.call_extern("int8",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_AX_SWAP_SWITCH)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_AX_SWAP_SWITCH)))
         spr[9] = spr[9] | (tmp[0] & 0x1) << 18
     # ARGB8888_U8
     with ib.if_scope(input_format_tmp[0] == 6):
         ib.emit(tvm.call_extern("int8",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_AX_SWAP_SWITCH)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_AX_SWAP_SWITCH)))
         spr[9] = spr[9] | (tmp[0] & 0x1) << 18
     # AYUV444_U8
     with ib.if_scope(input_format_tmp[0] == 9):
         ib.emit(tvm.call_extern("int8",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_AX_SWAP_SWITCH)))
+                                p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_AX_SWAP_SWITCH)))
         spr[9] = spr[9] | (tmp[0] & 0x1) << 18
 
     ib.emit(tvm.call_extern("uint8",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            p_ub_buf.access_ptr('r', offset=HEAD_OFFSET_INPUT_FORMAT)))
+                            p_ub_buf.access_ptr('r', offset=Const.HEAD_OFFSET_INPUT_FORMAT)))
     spr[9] = spr[9] | ((tmp[0] - tvm.const(1, dtype="uint64")) & 0xf) << 19
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_9", spr[9]))
 
@@ -638,7 +649,7 @@ def set_spr_dync_from_gm(ib, param_buf, dtype):
     ib.emit(tvm.call_extern("uint8",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            param_buf.access_ptr('r', offset=HEAD_OFFSET_INPUT_FORMAT)))
+                            param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_INPUT_FORMAT)))
 
     input_format_tmp[0] = tmp[0]
 
@@ -646,25 +657,25 @@ def set_spr_dync_from_gm(ib, param_buf, dtype):
     ib.emit(tvm.call_extern("int16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R0C0)))
+                            param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R0C0)))
     spr[2] = (tmp[0] & 0xffff)
 
     ib.emit(tvm.call_extern("int16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R0C1)))
+                            param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R0C1)))
     spr[2] = spr[2] | (tmp[0] & 0xffff) << 16
 
     ib.emit(tvm.call_extern("int16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R0C2)))
+                            param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R0C2)))
     spr[2] = spr[2] | (tmp[0] & 0xffff) << 32
 
     ib.emit(tvm.call_extern("int16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R1C0)))
+                            param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R1C0)))
     spr[2] = spr[2] | (tmp[0] & 0xffff) << 48
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_2", spr[2]))
 
@@ -672,25 +683,25 @@ def set_spr_dync_from_gm(ib, param_buf, dtype):
     ib.emit(tvm.call_extern("int16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R1C1)))
+                            param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R1C1)))
     spr[3] = (tmp[0] & 0xffff)
 
     ib.emit(tvm.call_extern("int16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R1C2)))
+                            param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R1C2)))
     spr[3] = spr[3] | (tmp[0] & 0xffff) << 16
 
     ib.emit(tvm.call_extern("int16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R2C0)))
+                            param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R2C0)))
     spr[3] = spr[3] | (tmp[0] & 0xffff) << 32
 
     ib.emit(tvm.call_extern("int16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R2C1)))
+                            param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R2C1)))
     spr[3] = spr[3] | (tmp[0] & 0xffff) << 48
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_3", spr[3]))
 
@@ -698,43 +709,43 @@ def set_spr_dync_from_gm(ib, param_buf, dtype):
     ib.emit(tvm.call_extern("int16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_MATRIX_R2C2)))
+                            param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_MATRIX_R2C2)))
     spr[4] = (tmp[0] & 0xffff)
 
     ib.emit(tvm.call_extern("uint8",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_OUTPUT_BIAS_R0)))
+                            param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_OUTPUT_BIAS_R0)))
     spr[4] = spr[4] | (tmp[0] & 0xff) << 16
 
     ib.emit(tvm.call_extern("uint8",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_OUTPUT_BIAS_R1)))
+                            param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_OUTPUT_BIAS_R1)))
     spr[4] = spr[4] | (tmp[0] & 0xff) << 24
 
     ib.emit(tvm.call_extern("uint8",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_OUTPUT_BIAS_R2)))
+                            param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_OUTPUT_BIAS_R2)))
     spr[4] = spr[4] | (tmp[0] & 0xff) << 32
 
     ib.emit(tvm.call_extern("uint8",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_INPUT_BIAS_R0)))
+                            param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_INPUT_BIAS_R0)))
     spr[4] = spr[4] | (tmp[0] & 0xff) << 40
 
     ib.emit(tvm.call_extern("uint8",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_INPUT_BIAS_R1)))
+                            param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_INPUT_BIAS_R1)))
     spr[4] = spr[4] | (tmp[0] & 0xff) << 48
 
     ib.emit(tvm.call_extern("uint8",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            param_buf.access_ptr('r', offset=HEAD_OFFSET_CSC_INPUT_BIAS_R2)))
+                            param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_CSC_INPUT_BIAS_R2)))
     spr[4] = spr[4] | (tmp[0] & 0xff) << 56
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_4", spr[4]))
 
@@ -745,7 +756,7 @@ def set_spr_dync_from_gm(ib, param_buf, dtype):
     ib.emit(tvm.call_extern("int8",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            param_buf.access_ptr('r', offset=HEAD_OFFSET_RBUV_SWAP_SWITCH)))
+                            param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_RBUV_SWAP_SWITCH)))
     # YUV400
     with ib.if_scope(input_format_tmp[0] != 10):
         spr[9] = (tmp[0] & 0x1) << 16
@@ -756,27 +767,27 @@ def set_spr_dync_from_gm(ib, param_buf, dtype):
         ib.emit(tvm.call_extern("int8",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                param_buf.access_ptr('r', offset=HEAD_OFFSET_AX_SWAP_SWITCH)))
+                                param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_AX_SWAP_SWITCH)))
         spr[9] = spr[9] | (tmp[0] & 0x1) << 18
     # ARGB8888_U8
     with ib.if_scope(input_format_tmp[0] == 6):
         ib.emit(tvm.call_extern("int8",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                param_buf.access_ptr('r', offset=HEAD_OFFSET_AX_SWAP_SWITCH)))
+                                param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_AX_SWAP_SWITCH)))
         spr[9] = spr[9] | (tmp[0] & 0x1) << 18
     # AYUV444_U8
     with ib.if_scope(input_format_tmp[0] == 9):
         ib.emit(tvm.call_extern("int8",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
-                                param_buf.access_ptr('r', offset=HEAD_OFFSET_AX_SWAP_SWITCH)))
+                                param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_AX_SWAP_SWITCH)))
         spr[9] = spr[9] | (tmp[0] & 0x1) << 18
 
     ib.emit(tvm.call_extern("uint8",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            param_buf.access_ptr('r', offset=HEAD_OFFSET_INPUT_FORMAT)))
+                            param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_INPUT_FORMAT)))
     spr[9] = spr[9] | ((tmp[0] - tvm.const(1, dtype="uint64")) & 0xf) << 19
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_9", spr[9]))
 
@@ -784,7 +795,7 @@ def set_spr_dync_from_gm(ib, param_buf, dtype):
 
 
 def get_dync_padding_size(ib, param_buf, tmp, padding_info,
-    offset=DYNC_PARAM_HEAD_STRUCT_SIZE):
+    offset=Const.DYNC_PARAM_HEAD_STRUCT_SIZE):
     """
     :param aipp_config:
     :return:
@@ -794,34 +805,34 @@ def get_dync_padding_size(ib, param_buf, tmp, padding_info,
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset +
-                                                 BATCH_OFFSET_PAD_SWITCH)))
+                                                 Const.BATCH_OFFSET_PAD_SWITCH)))
     with ib.if_scope(tmp[0] > 0):
         ib.emit(tvm.call_extern("int32",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
                                 param_buf.access_ptr('r', offset=offset +
-                                                    BATCH_OFFSET_PAD_TOP)))
+                                                    Const.BATCH_OFFSET_PAD_TOP)))
         padding_info[0] = tmp[0]
 
         ib.emit(tvm.call_extern("int32",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
                                 param_buf.access_ptr('r', offset=offset +
-                                                     BATCH_OFFSET_PAD_BOTTOM)))
+                                                     Const.BATCH_OFFSET_PAD_BOTTOM)))
         padding_info[1] = tmp[0]
 
         ib.emit(tvm.call_extern("int32",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
                                 param_buf.access_ptr('r', offset=offset +
-                                                     BATCH_OFFSET_PAD_LEFT)))
+                                                     Const.BATCH_OFFSET_PAD_LEFT)))
         padding_info[2] = tmp[0]
 
         ib.emit(tvm.call_extern("int32",
                                 "reg_mov",
                                 tvm.call_extern("uint64", "reg", tmp[0]),
                                 param_buf.access_ptr('r', offset=offset +
-                                                     BATCH_OFFSET_PAD_RIGHT)))
+                                                     Const.BATCH_OFFSET_PAD_RIGHT)))
         padding_info[3] = tmp[0]
 
 
@@ -836,19 +847,19 @@ def get_dync_src_image_size(ib, param_buf, tmp, src_image_size):
 
     ib.emit(tvm.call_extern("int32", "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            param_buf.access_ptr('r', offset=HEAD_OFFSET_SRCIMAGE_H)))
+                            param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_SRCIMAGE_H)))
     with ib.if_scope(tmp[0] > 0):
         src_image_size[0] = tmp[0]
 
     ib.emit(tvm.call_extern("int32", "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
-                            param_buf.access_ptr('r', offset=HEAD_OFFSET_SRCIMAGE_W)))
+                            param_buf.access_ptr('r', offset=Const.HEAD_OFFSET_SRCIMAGE_W)))
     with ib.if_scope(tmp[0] > 0):
         src_image_size[1] = tmp[0]
 
 
 def get_dync_crop_info(ib, param_buf, tmp, load_image_info,
-    offset=DYNC_PARAM_HEAD_STRUCT_SIZE):
+    offset=Const.DYNC_PARAM_HEAD_STRUCT_SIZE):
     """
     :param ib:
     :param p_ub_buf:
@@ -860,28 +871,28 @@ def get_dync_crop_info(ib, param_buf, tmp, load_image_info,
     ib.emit(tvm.call_extern("int32", "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_CROP_STARTPOS_W)))
+                                                            Const.BATCH_OFFSET_CROP_STARTPOS_W)))
     # load_start_pos_w
     load_image_info[1] = tmp[0]
 
     ib.emit(tvm.call_extern("int32", "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_CROP_STARTPOS_H)))
+                                                            Const.BATCH_OFFSET_CROP_STARTPOS_H)))
     # load_start_pos_h
     load_image_info[0] = tmp[0]
 
     ib.emit(tvm.call_extern("int32", "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_CROP_W)))
+                                                            Const.BATCH_OFFSET_CROP_W)))
     # load_image_w
     load_image_info[3] = tmp[0]
 
     ib.emit(tvm.call_extern("int32", "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_CROP_H)))
+                                                            Const.BATCH_OFFSET_CROP_H)))
     # load_image_h
     load_image_info[2] = tmp[0]
 
@@ -904,7 +915,7 @@ def get_dync_actual_col_size(out_h, out_w, padding_info, actual_col_size_reg, su
 
 
 def set_spr_dync_in_batch(ib, dtype, param_buf, spr, tmp,
-    is_hisi_yuv400=False, offset=DYNC_PARAM_HEAD_STRUCT_SIZE):
+    is_hisi_yuv400=False, offset=Const.DYNC_PARAM_HEAD_STRUCT_SIZE):
     """
     set_spr_dync_in_batch
     """
@@ -919,28 +930,28 @@ def set_spr_dync_in_batch(ib, dtype, param_buf, spr, tmp,
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_DTC_MEAN_C0)))
+                                                            Const.BATCH_OFFSET_DTC_MEAN_C0)))
     spr[5] = (tmp[0] & 0xffff) << chn_0_position
 
     ib.emit(tvm.call_extern("int16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_DTC_MEAN_C1)))
+                                                            Const.BATCH_OFFSET_DTC_MEAN_C1)))
     spr[5] = spr[5] | (tmp[0] & 0xffff) << 16
 
     ib.emit(tvm.call_extern("int16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_DTC_MEAN_C2)))
+                                                            Const.BATCH_OFFSET_DTC_MEAN_C2)))
     spr[5] = spr[5] | (tmp[0] & 0xffff) << chn_2_position
 
     ib.emit(tvm.call_extern("int16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_DTC_MEAN_C3)))
+                                                            Const.BATCH_OFFSET_DTC_MEAN_C3)))
     spr[5] = spr[5] | (tmp[0] & 0xffff) << 48
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_5", spr[5]))
 
@@ -949,28 +960,28 @@ def set_spr_dync_in_batch(ib, dtype, param_buf, spr, tmp,
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_DTC_MIN_C0)))
+                                                            Const.BATCH_OFFSET_DTC_MIN_C0)))
     spr[6] = (tmp[0] & 0xffff) << chn_0_position
 
     ib.emit(tvm.call_extern("uint16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_DTC_MIN_C1)))
+                                                            Const.BATCH_OFFSET_DTC_MIN_C1)))
     spr[6] = spr[6] | (tmp[0] & 0xffff) << 16
 
     ib.emit(tvm.call_extern("uint16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_DTC_MIN_C2)))
+                                                            Const.BATCH_OFFSET_DTC_MIN_C2)))
     spr[6] = spr[6] | (tmp[0] & 0xffff) << chn_2_position
 
     ib.emit(tvm.call_extern("uint16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_DTC_MIN_C3)))
+                                                            Const.BATCH_OFFSET_DTC_MIN_C3)))
     spr[6] = spr[6] | (tmp[0] & 0xffff) << 48
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_6", spr[6]))
 
@@ -979,33 +990,34 @@ def set_spr_dync_in_batch(ib, dtype, param_buf, spr, tmp,
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_DTC_VAR_C0)))
+                                                            Const.BATCH_OFFSET_DTC_VAR_C0)))
     spr[7] = (tmp[0] & 0xffff) << chn_0_position
 
     ib.emit(tvm.call_extern("uint16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_DTC_VAR_C1)))
+                                                            Const.BATCH_OFFSET_DTC_VAR_C1)))
     spr[7] = spr[7] | (tmp[0] & 0xffff) << 16
 
     ib.emit(tvm.call_extern("uint16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_DTC_VAR_C2)))
+                                                            Const.BATCH_OFFSET_DTC_VAR_C2)))
     spr[7] = spr[7] | (tmp[0] & 0xffff) << chn_2_position
 
     ib.emit(tvm.call_extern("uint16",
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_DTC_VAR_C3)))
+                                                            Const.BATCH_OFFSET_DTC_VAR_C3)))
     spr[7] = spr[7] | (tmp[0] & 0xffff) << 48
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_7", spr[7]))
 
 
-def set_spr_dync_in_batch_v300(ib, dtype, param_buf, spr, tmp, offset=DYNC_PARAM_HEAD_STRUCT_SIZE):
+def set_spr_dync_in_batch_v300(ib, dtype, param_buf, spr, tmp,
+                               offset=Const.DYNC_PARAM_HEAD_STRUCT_SIZE):
     """
     set_spr_dync_in_batch_new
     """
@@ -1016,7 +1028,7 @@ def set_spr_dync_in_batch_v300(ib, dtype, param_buf, spr, tmp, offset=DYNC_PARAM
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_DTC_VAR_C0)))
+                                                            Const.BATCH_OFFSET_DTC_VAR_C0)))
     with ib.if_scope(tmp[0] != 0):
         spr[18] = convert_fp16_to_fp32(tmp[0])
 
@@ -1024,7 +1036,7 @@ def set_spr_dync_in_batch_v300(ib, dtype, param_buf, spr, tmp, offset=DYNC_PARAM
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_DTC_VAR_C1)))
+                                                            Const.BATCH_OFFSET_DTC_VAR_C1)))
     with ib.if_scope(tmp[0] != 0):
         spr[18] = spr[18] | convert_fp16_to_fp32(tmp[0]) << chn_offset
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_18", spr[18]))
@@ -1034,7 +1046,7 @@ def set_spr_dync_in_batch_v300(ib, dtype, param_buf, spr, tmp, offset=DYNC_PARAM
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_DTC_VAR_C2)))
+                                                            Const.BATCH_OFFSET_DTC_VAR_C2)))
     with ib.if_scope(tmp[0] != 0):
         spr[19] = convert_fp16_to_fp32(tmp[0])
 
@@ -1042,7 +1054,7 @@ def set_spr_dync_in_batch_v300(ib, dtype, param_buf, spr, tmp, offset=DYNC_PARAM
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_DTC_VAR_C3)))
+                                                            Const.BATCH_OFFSET_DTC_VAR_C3)))
     with ib.if_scope(tmp[0] != 0):
         spr[19] = spr[19] | convert_fp16_to_fp32(tmp[0]) << chn_offset
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_19", spr[19]))
@@ -1052,7 +1064,7 @@ def set_spr_dync_in_batch_v300(ib, dtype, param_buf, spr, tmp, offset=DYNC_PARAM
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_DTC_MEAN_C0)))
+                                                            Const.BATCH_OFFSET_DTC_MEAN_C0)))
     with ib.if_scope(tmp[0] != 0):
         spr[20] = convert_fp16_to_fp32(tmp[0])
 
@@ -1060,7 +1072,7 @@ def set_spr_dync_in_batch_v300(ib, dtype, param_buf, spr, tmp, offset=DYNC_PARAM
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_DTC_MEAN_C1)))
+                                                            Const.BATCH_OFFSET_DTC_MEAN_C1)))
     with ib.if_scope(tmp[0] != 0):
         spr[20] = spr[20] | convert_fp16_to_fp32(tmp[0]) << chn_offset
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_20", spr[20]))
@@ -1069,7 +1081,7 @@ def set_spr_dync_in_batch_v300(ib, dtype, param_buf, spr, tmp, offset=DYNC_PARAM
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_DTC_MEAN_C2)))
+                                                            Const.BATCH_OFFSET_DTC_MEAN_C2)))
     with ib.if_scope(tmp[0] != 0):
         spr[21] =  convert_fp16_to_fp32(tmp[0])
 
@@ -1077,7 +1089,7 @@ def set_spr_dync_in_batch_v300(ib, dtype, param_buf, spr, tmp, offset=DYNC_PARAM
                             "reg_mov",
                             tvm.call_extern("uint64", "reg", tmp[0]),
                             param_buf.access_ptr('r', offset=offset + \
-                                                            BATCH_OFFSET_DTC_MEAN_C3)))
+                                                            Const.BATCH_OFFSET_DTC_MEAN_C3)))
     with ib.if_scope(tmp[0] != 0):
         spr[21] = spr[21] | convert_fp16_to_fp32(tmp[0]) << chn_offset
     ib.emit(tvm.call_extern(dtype, "set_aipp_spr_21", spr[21]))
@@ -1733,53 +1745,53 @@ def set_aipp_default_params(aipp_config):
 
     if 'csc_switch' in aipp_config and aipp_config.get('csc_switch') == 1:
         if 'matrix_r0c0' not in aipp_config:
-            aipp_config['matrix_r0c0'] = DEFAULT_MATRIX_R0C0_YUV2RGB
+            aipp_config['matrix_r0c0'] = Const.DEFAULT_MATRIX_R0C0_YUV2RGB
         if 'matrix_r0c1' not in aipp_config:
-            aipp_config['matrix_r0c1'] = DEFAULT_MATRIX_R0C1_YUV2RGB
+            aipp_config['matrix_r0c1'] = Const.DEFAULT_MATRIX_R0C1_YUV2RGB
         if  'matrix_r0c2' not in aipp_config:
-            aipp_config['matrix_r0c2'] = DEFAULT_MATRIX_R0C2_YUV2RGB
+            aipp_config['matrix_r0c2'] = Const.DEFAULT_MATRIX_R0C2_YUV2RGB
         if 'matrix_r1c0' not in aipp_config:
-            aipp_config['matrix_r1c0'] = DEFAULT_MATRIX_R1C0_YUV2RGB
+            aipp_config['matrix_r1c0'] = Const.DEFAULT_MATRIX_R1C0_YUV2RGB
         if 'matrix_r1c1' not in aipp_config:
-            aipp_config['matrix_r1c1'] = DEFAULT_MATRIX_R1C1_YUV2RGB
+            aipp_config['matrix_r1c1'] = Const.DEFAULT_MATRIX_R1C1_YUV2RGB
         if 'matrix_r1c2' not in aipp_config:
-            aipp_config['matrix_r1c2'] = DEFAULT_MATRIX_R1C2_YUV2RGB
+            aipp_config['matrix_r1c2'] = Const.DEFAULT_MATRIX_R1C2_YUV2RGB
         if 'matrix_r2c0' not in aipp_config:
-            aipp_config['matrix_r2c0'] = DEFAULT_MATRIX_R2C0_YUV2RGB
+            aipp_config['matrix_r2c0'] = Const.DEFAULT_MATRIX_R2C0_YUV2RGB
         if 'matrix_r2c1' not in aipp_config:
-            aipp_config['matrix_r2c1'] = DEFAULT_MATRIX_R2C1_YUV2RGB
+            aipp_config['matrix_r2c1'] = Const.DEFAULT_MATRIX_R2C1_YUV2RGB
         if 'matrix_r2c2' not in aipp_config:
-            aipp_config['matrix_r2c2'] = DEFAULT_MATRIX_R2C2_YUV2RGB
+            aipp_config['matrix_r2c2'] = Const.DEFAULT_MATRIX_R2C2_YUV2RGB
 
         if 'input_bias_0' not in aipp_config:
-            aipp_config['input_bias_0'] = DEFAULT_INPUT_BIAS_0
+            aipp_config['input_bias_0'] = Const.DEFAULT_INPUT_BIAS_0
         if 'input_bias_1' not in aipp_config:
-            aipp_config['input_bias_1'] = DEFAULT_INPUT_BIAS_1
+            aipp_config['input_bias_1'] = Const.DEFAULT_INPUT_BIAS_1
         if 'input_bias_2' not in aipp_config:
-            aipp_config['input_bias_2'] = DEFAULT_INPUT_BIAS_2
+            aipp_config['input_bias_2'] = Const.DEFAULT_INPUT_BIAS_2
 
         if 'output_bias_0' not in aipp_config:
-            aipp_config['output_bias_0'] = DEFAULT_OUTPUT_BIAS_0
+            aipp_config['output_bias_0'] = Const.DEFAULT_OUTPUT_BIAS_0
         if 'output_bias_1' not in aipp_config:
-            aipp_config['output_bias_1'] = DEFAULT_OUTPUT_BIAS_1
+            aipp_config['output_bias_1'] = Const.DEFAULT_OUTPUT_BIAS_1
         if 'output_bias_2' not in aipp_config:
-            aipp_config['output_bias_2'] = DEFAULT_OUTPUT_BIAS_2
+            aipp_config['output_bias_2'] = Const.DEFAULT_OUTPUT_BIAS_2
 
     if 'var_reci_chn_0' not in aipp_config:
-        aipp_config['var_reci_chn_0'] = DEFAULT_VAR_RECI_CHN
+        aipp_config['var_reci_chn_0'] = Const.DEFAULT_VAR_RECI_CHN
     if 'var_reci_chn_1' not in aipp_config:
-        aipp_config['var_reci_chn_1'] = DEFAULT_VAR_RECI_CHN
+        aipp_config['var_reci_chn_1'] = Const.DEFAULT_VAR_RECI_CHN
     if 'var_reci_chn_2' not in aipp_config:
-        aipp_config['var_reci_chn_2'] = DEFAULT_VAR_RECI_CHN
+        aipp_config['var_reci_chn_2'] = Const.DEFAULT_VAR_RECI_CHN
     if 'var_reci_chn_3' not in aipp_config:
-        aipp_config['var_reci_chn_3'] = DEFAULT_VAR_RECI_CHN
+        aipp_config['var_reci_chn_3'] = Const.DEFAULT_VAR_RECI_CHN
 
 
 def raise_runtime_error(cause_desc):
     """
     raise runtime error
     """
-    error_info = {'errCode': AIPP_OP_ERROR_CODE, 'cause_desc': cause_desc}
+    error_info = {'errCode': Const.AIPP_OP_ERROR_CODE, 'cause_desc': cause_desc}
 
     raise RuntimeError(error_info,
                        "Compile op[aipp] failed, cause: %s." % cause_desc)
@@ -2397,51 +2409,51 @@ def check_aipp_static_config(input_data, input_format, output_data, aipp_config,
 
 
     if cur_cce_product in ["Ascend310"]:
-        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP.get('Ascend310'):
-            cause_desc = "Ascend310 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP.get('Ascend310')) + \
+        if aipp_config.get('input_format') not in Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend310'):
+            cause_desc = "Ascend310 only support " + ", ".join(Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend310')) + \
                          ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
     if cur_cce_product in ["Ascend320"]:
-        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP.get('Ascend320'):
-            cause_desc = "Ascend320 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP.get('Ascend320')) + \
+        if aipp_config.get('input_format') not in Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend320'):
+            cause_desc = "Ascend320 only support " + ", ".join(Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend320')) + \
                          ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
     if cur_cce_product in ["Ascend910"]:
-        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP.get('Ascend910'):
-            cause_desc = "Ascend910 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP.get('Ascend910')) + \
+        if aipp_config.get('input_format') not in Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend910'):
+            cause_desc = "Ascend910 only support " + ", ".join(Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend910')) + \
                          ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
     if cur_cce_product in ["Ascend920"]:
-        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP.get('Ascend920'):
-            cause_desc = "Ascend920 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP.get('Ascend920')) + \
+        if aipp_config.get('input_format') not in Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend920'):
+            cause_desc = "Ascend920 only support " + ", ".join(Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend920')) + \
                          ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
     if cur_cce_product in ["Ascend610"]:
-        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP.get('Ascend610'):
-            cause_desc = "Ascend610 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP.get('Ascend610')) + \
+        if aipp_config.get('input_format') not in Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend610'):
+            cause_desc = "Ascend610 only support " + ", ".join(Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend610')) + \
                          ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
     if cur_cce_product in ["Ascend710"]:
-        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP.get('Ascend710'):
-            cause_desc = "Ascend710 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP.get('Ascend710')) + \
+        if aipp_config.get('input_format') not in Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend710'):
+            cause_desc = "Ascend710 only support " + ", ".join(Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend710')) + \
                          ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
     if cur_cce_product in ["Ascend615"]:
-        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP.get('Ascend615'):
-            cause_desc = "Ascend615 only support " + ", ".join(SUPPORT_IMAGE_FORMAT_MAP.get('Ascend615')) + \
+        if aipp_config.get('input_format') not in Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend615'):
+            cause_desc = "Ascend615 only support " + ", ".join(Const.SUPPORT_IMAGE_FORMAT_MAP.get('Ascend615')) + \
                          ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 
     if cur_cce_product in ("Hi3796CV300ES", "Hi3796CV300CS", "SD3403"):
-        if aipp_config.get('input_format') not in SUPPORT_IMAGE_FORMAT_MAP.get('Hi3796CV300ES-Hi3796CV300CS-SD3403'):
+        if aipp_config.get('input_format') not in Const.SUPPORT_IMAGE_FORMAT_MAP.get('Hi3796CV300ES-Hi3796CV300CS-SD3403'):
             cause_desc = "Hi3796CV300ES, Hi3796CV300CS and SD3403 only support " + \
-                         ", ".join(SUPPORT_IMAGE_FORMAT_MAP.get('Hi3796CV300ES-Hi3796CV300CS-SD3403')) + \
+                         ", ".join(Const.SUPPORT_IMAGE_FORMAT_MAP.get('Hi3796CV300ES-Hi3796CV300CS-SD3403')) + \
                          ", current input format is %s" % aipp_config.get('input_format')
             raise_runtime_error(cause_desc)
 

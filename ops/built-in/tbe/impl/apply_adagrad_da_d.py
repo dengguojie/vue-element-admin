@@ -24,11 +24,16 @@ from impl.util import util_apply_op_schedule
 from impl.util import util_build
 from impl.util import util_compute
 
-# scalar in apply_adagrad_da_d
-NUM_ONE = 1.0
-NUM_TWO = 2.0
-NUM_ZERO = 0.0
-NUM_M_ONE = -1.0
+
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class Const:
+    """
+    The class for constant.
+    """
+    # scalar in apply_adagrad_da_d
+    NUM_ZERO = 0.0
+    NUM_M_ONE = -1.0
+
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments,unused-argument
@@ -95,7 +100,7 @@ def apply_adagrad_da_d_compute(var, gradient_accumulator,
     if dtype == "float16":
         if has_improve_precision:
             var_tmp = tbe.cast_to(var, "float32")
-            var_tmp = tbe.vmuls(var_tmp, tvm.const(NUM_ZERO, "float32"))
+            var_tmp = tbe.vmuls(var_tmp, tvm.const(Const.NUM_ZERO, "float32"))
             grad_accum_tmp = tbe.cast_to(gradient_accumulator, "float32")
             grad_sq_accum_tmp = tbe.cast_to(
                 gradient_squared_accumulator, "float32")
@@ -104,13 +109,13 @@ def apply_adagrad_da_d_compute(var, gradient_accumulator,
             l1 = tbe.cast_to(l1, "float32")
             l2 = tbe.cast_to(l2, "float32")
         else:
-            var_tmp = tbe.vmuls(var, tvm.const(NUM_ZERO, "float16"))
-            grad_accum_tmp = tbe.vadds(gradient_accumulator, tvm.const(NUM_ZERO, "float16"))
-            grad_sq_accum_tmp = tbe.vadds(gradient_squared_accumulator, tvm.const(NUM_ZERO, "float16"))
+            var_tmp = tbe.vmuls(var, tvm.const(Const.NUM_ZERO, "float16"))
+            grad_accum_tmp = tbe.vadds(gradient_accumulator, tvm.const(Const.NUM_ZERO, "float16"))
+            grad_sq_accum_tmp = tbe.vadds(gradient_squared_accumulator, tvm.const(Const.NUM_ZERO, "float16"))
     else:
-        var_tmp = tbe.vmuls(var, tvm.const(NUM_ZERO, "float32"))
-        grad_accum_tmp = tbe.vadds(gradient_accumulator, tvm.const(NUM_ZERO, "float32"))
-        grad_sq_accum_tmp = tbe.vadds(gradient_squared_accumulator, tvm.const(NUM_ZERO, "float32"))
+        var_tmp = tbe.vmuls(var, tvm.const(Const.NUM_ZERO, "float32"))
+        grad_accum_tmp = tbe.vadds(gradient_accumulator, tvm.const(Const.NUM_ZERO, "float32"))
+        grad_sq_accum_tmp = tbe.vadds(gradient_squared_accumulator, tvm.const(Const.NUM_ZERO, "float32"))
 
     global_step = tbe.cast_to(global_step, cast_type)
 
@@ -129,7 +134,7 @@ def apply_adagrad_da_d_compute(var, gradient_accumulator,
     mul_val = tbe.vmul(global_step, l1)
     mul_val = tbe.broadcast(mul_val, var_tmp.shape)
     sub_val = tbe.vsub(abs_val, mul_val)
-    zero_tensor = tbe.broadcast(tvm.const(NUM_ZERO, cast_type), var_tmp.shape)
+    zero_tensor = tbe.broadcast(tvm.const(Const.NUM_ZERO, cast_type), var_tmp.shape)
     max_val = tbe.vmax(sub_val, zero_tensor)
     tmp_val = tbe.vmul(sign_val, max_val)
 
@@ -138,7 +143,7 @@ def apply_adagrad_da_d_compute(var, gradient_accumulator,
     tmp_val = tbe.vsel(l1_cmp, tmp_val, gradient_accum_new)
 
     # 4.x_value = -1 * lr * tmp_val
-    x_value = tbe.vmuls(lr, tvm.const(NUM_M_ONE, cast_type))
+    x_value = tbe.vmuls(lr, tvm.const(Const.NUM_M_ONE, cast_type))
     x_value = tbe.broadcast(x_value, var_tmp.shape)
     x_value = tbe.vmul(x_value, tmp_val)
 
@@ -161,9 +166,9 @@ def apply_adagrad_da_d_compute(var, gradient_accumulator,
             gradient_squared_accum_new, "float16")
 
     # 7. output_data = var_new
-    output_data = tbe.vadds(var_new, tvm.const(NUM_ZERO, var_new.dtype))
-    res1_data = tbe.vadds(gradient_accum_new, tvm.const(NUM_ZERO, var_new.dtype))
-    res2_data = tbe.vadds(gradient_squared_accum_new, tvm.const(NUM_ZERO, var_new.dtype))
+    output_data = tbe.vadds(var_new, tvm.const(Const.NUM_ZERO, var_new.dtype))
+    res1_data = tbe.vadds(gradient_accum_new, tvm.const(Const.NUM_ZERO, var_new.dtype))
+    res2_data = tbe.vadds(gradient_squared_accum_new, tvm.const(Const.NUM_ZERO, var_new.dtype))
 
     def _compute(*index):
         return var_new(*index), gradient_accum_new(*index), \

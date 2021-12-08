@@ -23,9 +23,15 @@ from te.utils import para_check
 from te.utils.error_manager import error_manager_vector
 
 
-# get available ub size
-UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
-L1_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.L1_SIZE)
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class Constant:
+    """
+    The class for constant.
+    """
+    # get available ub size
+    UB_SIZE = tbe_platform.cce_conf.get_soc_spec(tbe_platform.cce_conf.UB_SIZE)
+
+
 # 'pylint: disable=invalid-name
 def _check_param(x, src, indices, kernel_name):
     """
@@ -75,7 +81,7 @@ def _check_param(x, src, indices, kernel_name):
 
 
 # 'pylint: disable=too-few-public-methods,too-many-instance-attributes
-class AddRowRanges(object):
+class AddRowRanges():
     """AddRowRanges main functions
     """
     def __init__(self, x, src, indices, kernel_name="add_row_ranges"):
@@ -124,9 +130,10 @@ class AddRowRanges(object):
         """
         src_n_len = math.ceil(self.src_shape[1] / 8)
         data_not_cut = self.src_shape[0] * src_n_len * 32 + 8 * (src_n_len * 8 + 2) * 4 + 64
-        n = int((UB_SIZE / 4 - 16) / (self.src_shape[0] + 3))
+        n = int((Constant.UB_SIZE / 4 - 16) / (self.src_shape[0] + 3))
+
         # not need cut and n <= 2040
-        if data_not_cut <= UB_SIZE and self.src_shape[1] <= 2040 and self.x_shape[1] % 8 == 0:
+        if data_not_cut <= Constant.UB_SIZE and self.src_shape[1] <= 2040 and self.x_shape[1] % 8 == 0:
             branch_flag = 1
         # src need cut m only
         elif n >= 8 and self.src_shape[1] >= 8 and self.x_shape[1] % 8 == 0:
@@ -349,7 +356,7 @@ class AddRowRanges(object):
         """
         funtion to calc cut size
         """
-        n_len = int((UB_SIZE / 4 - 16) / (self.src_shape[0] + 3))
+        n_len = int((Constant.UB_SIZE / 4 - 16) / (self.src_shape[0] + 3))
         if n_len > 128:
             n_size = min(128, self.src_shape[1])
         elif n_len > 64:

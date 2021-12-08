@@ -330,6 +330,12 @@ def test_get_spr9_001(test_arg):
 
 def test_get_spr2_spr9_001(test_arg):
     from impl.aipp_comm import get_spr2_spr9
+    from impl.aipp_comm import Const
+    if Const.DEFAULT_MATRIX_R0C1_YUV2RGB == 516:
+        print("Const.DEFAULT_MATRIX_R0C1_YUV2RGB == 516")
+    if Const.DEFAULT_MATRIX_R0C1_YUV2RGB != 516:
+        print("Const.DEFAULT_MATRIX_R0C1_YUV2RGB != 516")
+
     aipp_config_dict18 = aipp_config_dict.copy()
     aipp_map = {}
     aipp_config_dict18["input_format"] = "YUV400_U8"
@@ -337,6 +343,11 @@ def test_get_spr2_spr9_001(test_arg):
     get_spr2_spr9(aipp_config_dict18, "float16", "SD3403", "NCHW", aipp_map)
     aipp_config_dict18["input_format"] = "RAW12"
     get_spr2_spr9(aipp_config_dict18, "float16", "SD3403", "NCHW", aipp_map)
+    aipp_config_dict18["csc_switch"] = 1
+    aipp_config_dict18["input_format"] = "YUV400_U8"
+    get_spr2_spr9(aipp_config_dict18, "float16", "SD3403", "NCHW", aipp_map)
+    get_spr2_spr9(aipp_config_dict18, "float16", "SD3400", "NCHW", aipp_map)
+
 
 
 def test_set_aipp_default_params_001(test_arg):
@@ -419,15 +430,21 @@ def test_check_aipp_dtype_001(test_arg):
     set_current_compile_soc_info("SD3403")
     aipp_config_dict21["resize"] = 1
     aipp_config = json.dumps(aipp_config_dict21)
-    aipp(*((gen_static_aipp_case((1, 3, 418, 416), (
-        1, 1, 258, 240, 32), "uint8", "uint8", "NCHW", "NC1HWC0", aipp_config, "aipp_24", "success"))["params"]))
-
-    aipp(*((gen_static_aipp_case((1, 3, 258, 3), (
-        1, 1, 258, 25, 32), "uint8", "uint8", "NHWC", "NC1HWC0", aipp_config, "aipp_24", "success"))["params"]))
-
-    aipp(*((gen_static_aipp_case((1, 3, 258, 3), (
-        1, 1, 258, 25, 4), "uint8", "uint8", "NHWC", "NC1HWC0_C04", aipp_config, "aipp_24", "success"))["params"]))
-
+    try:
+        aipp(*((gen_static_aipp_case((1, 3, 418, 416), (
+            1, 1, 258, 240, 32), "uint8", "uint8", "NCHW", "NC1HWC0", aipp_config, "aipp_24", "success"))["params"]))
+    except RuntimeError as e:
+        pass
+    try:
+        aipp(*((gen_static_aipp_case((1, 3, 258, 3), (
+            1, 1, 258, 25, 32), "uint8", "uint8", "NHWC", "NC1HWC0", aipp_config, "aipp_24", "success"))["params"]))
+    except RuntimeError as e:
+        pass
+    try:
+        aipp(*((gen_static_aipp_case((1, 3, 258, 3), (
+            1, 1, 258, 25, 4), "uint8", "uint8", "NHWC", "NC1HWC0_C04", aipp_config, "aipp_24", "success"))["params"]))
+    except RuntimeError as e:
+        pass
     aipp_config_dict21["input_format"] = "RGB16"
     aipp_config = json.dumps(aipp_config_dict21)
     try:
@@ -505,6 +522,27 @@ def test_check_aipp_dtype_001(test_arg):
     except RuntimeError as e:
         pass
 
+    set_current_compile_soc_info("SD3403")
+
+    aipp_config_dict["input_format"] = "RGB8_IR"
+    aipp_config_dict["src_image_size_w"] = 2
+    aipp_config = json.dumps(aipp_config_dict)
+    try:
+        aipp(*((gen_static_aipp_case((1, 3, 258, 1), (1, 1, 258, 25, 4), "uint8", "uint8", "NCHW", "NC1HWC0_C04",
+                                     aipp_config, "aipp_24", RuntimeError))["params"]))
+    except RuntimeError as e:
+        pass
+
+    from impl.aipp_comm import Const
+    Const.DEFAULT_MATRIX_R0C1_YUV2RGB == 516
+
+def test_import_lib_const(test_arg):
+    import importlib
+    import sys
+    importlib.reload(sys.modules.get("impl.aipp_comm"))
+
+
+ut_case.add_cust_test_func(test_func=test_import_lib_const)
 ut_case.add_cust_test_func(test_func=test_check_aipp_dtype_001)
 ut_case.add_cust_test_func(test_func=test_get_spr9_001)
 ut_case.add_cust_test_func(test_func=test_get_spr2_spr9_001)

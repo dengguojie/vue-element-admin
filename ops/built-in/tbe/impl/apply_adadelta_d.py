@@ -22,8 +22,14 @@ from te import tvm
 from te.utils import para_check
 from impl.util import util_apply_op_schedule
 
-NUM_ONE = 1.0
-NUM_ZERO = 0.0
+
+# 'pylint: disable=too-few-public-methods,too-many-instance-attributes
+class Const:
+    """
+    The class for constant.
+    """
+    NUM_ONE = 1.0
+    NUM_ZERO = 0.0
 
 
 # 'pylint: disable=locally-disabled,too-many-arguments
@@ -94,7 +100,7 @@ def apply_adadelta_d_compute(var,
         epsilon = tbe.cast_to(epsilon, "float32")
         grad = tbe.cast_to(grad, "float32")
 
-    tensor_one = tbe.broadcast(tvm.const(NUM_ONE, cast_type), var.shape)
+    tensor_one = tbe.broadcast(tvm.const(Const.NUM_ONE, cast_type), var.shape)
     tensor_rho = tbe.broadcast(rho, var.shape)
     tensor_rho_gs = tbe.vsub(tensor_one, tensor_rho)
     tensor_epsilon = tbe.broadcast(epsilon, var.shape)
@@ -105,7 +111,7 @@ def apply_adadelta_d_compute(var,
     lhs = tbe.vmul(lhs, tensor_rho_gs)
     accum_res = tbe.vadd(lhs, rhs)
 
-    accum_update_orig = tbe.vadds(accum_update, NUM_ZERO)
+    accum_update_orig = tbe.vadds(accum_update, Const.NUM_ZERO)
     # step2
     rhs = tbe.vadd(accum_update_orig, tensor_epsilon)
     rhs = tbe.vsqrt(rhs)
@@ -126,9 +132,9 @@ def apply_adadelta_d_compute(var,
     accum_update_res = tbe.vadd(lhs, rhs)
 
     # out
-    output_data = tbe.vadds(var_res, NUM_ZERO)
-    accum_output_data = tbe.vadds(accum_res, NUM_ZERO)
-    accum_update_output_data = tbe.vadds(accum_update_res, NUM_ZERO)
+    output_data = tbe.vadds(var_res, Const.NUM_ZERO)
+    accum_output_data = tbe.vadds(accum_res, Const.NUM_ZERO)
+    accum_update_output_data = tbe.vadds(accum_update_res, Const.NUM_ZERO)
 
     if dtype == "float16" and has_improve_precision:
         var_res = tbe.cast_to(var_res, "float16")
