@@ -4986,12 +4986,6 @@ class Transpose:
     def _move_data_s8(self, ub_input_64):
         if self.x_dtype in ("bool", "uint8", "int8", "int64", "uint64"):
             return
-        a=1
-        b=2
-        c=3
-        d=4
-        a, b = b, a
-        c ,d = d, c
         # 4 255 3 8 -> 3 255 4 8
         if api_check_support("tik.vcopy", "int16"):
             ub_input = ub_input_64.reinterpret_cast_to(self.x_dtype)
