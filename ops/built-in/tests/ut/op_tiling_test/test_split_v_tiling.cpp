@@ -522,3 +522,54 @@ TEST_F(SplitVTiling, SplitV_tiling9) {
     iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
   }
 }
+TEST_F(SplitVTiling, SplitV_tiling10) {
+  auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find("SplitV");
+  ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+  auto opParas = op::SplitV("SplitV");
+  vector<vector<int64_t>> input_shapes = {
+      {1820, 232},
+      {1},
+      {1},
+  };
+  vector<vector<int64_t>> output_shapes = {
+      {1820, 232},
+  };
+  vector<ge::DataType> dtypes = {ge::DT_INT8, ge::DT_INT32, ge::DT_INT32};
+  vector<int32_t> SizSplits{1820};
+  vector<int32_t> SplitDim{0};
+
+  TensorDesc tensorInputx;
+  tensorInputx.SetShape(ge::Shape(input_shapes[0]));
+  tensorInputx.SetDataType(dtypes[0]);
+  TENSOR_INPUT(opParas, tensorInputx, x);
+
+  TensorDesc tensorInputSizeSplits;
+  tensorInputSizeSplits.SetShape(ge::Shape(input_shapes[1]));
+  tensorInputSizeSplits.SetDataType(dtypes[1]);
+  TENSOR_INPUT_CONST(opParas, tensorInputSizeSplits, size_splits, (const uint8_t*)SizSplits.data(),
+                     SizSplits.size() * 4);
+
+  TensorDesc tensorInputSplitDim;
+  tensorInputSplitDim.SetShape(ge::Shape(input_shapes[2]));
+  tensorInputSplitDim.SetDataType(dtypes[2]);
+  TENSOR_INPUT_CONST(opParas, tensorInputSplitDim, split_dim, (const uint8_t*)SplitDim.data(), SplitDim.size() * 4);
+
+  for (size_t i = 0; i < output_shapes.size(); i++) {
+    TensorDesc tensorOutput;
+    tensorOutput.SetShape(ge::Shape(output_shapes[i]));
+    tensorOutput.SetDataType(dtypes[0]);
+    TENSOR_OUTPUT(opParas, tensorOutput, y);
+  }
+
+  std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"ub_elems\":13185, \"num_split\":1}}";
+  optiling::utils::OpCompileInfo op_compile_info(this->test_info_->name(), compileInfo);
+  // do tilling, get runInfo
+  optiling::utils::OpRunInfo runInfo;
+  ASSERT_TRUE(iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo));
+  EXPECT_EQ(to_string(runInfo.GetAllTilingData()),
+            "1 32 422240 1820 13195 13195 1 42 13153 1 42 13153 232 1 422240 0 0 0 0 0 0 0 0 0 ");
+  int64_t tiling_test_num = 0;
+  for (int64_t i = 0; i < tiling_test_num; i++) {
+    iter->second.tiling_func_v2_(opParas, op_compile_info, runInfo);
+  }
+}

@@ -803,3 +803,45 @@ TEST_F(OneHotTiling, one_hot_tiling_17) {
     ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
     EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 7 30 4224 1 4224 1364352 0 11 4 ");
 }
+TEST_F(OneHotTiling, one_hot_tiling_18) {
+    using namespace optiling;
+    std::string op_name = "OneHot";
+    auto iter = optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().find(op_name);
+    ASSERT_TRUE(iter != optiling::OpTilingFuncRegistry::RegisteredOpFuncInfo().end());
+
+    std::string compileInfo = "{\"vars\": {\"core_num\": 32, \"axis\":3}}";
+
+    std::vector<int64_t> input0{2, 16, 8, 8, 16};
+    std::vector<int32_t> depth{32};
+    std::vector<int32_t> off_value{1};
+    std::vector<int64_t> output{2, 32, 16, 8, 8, 16};
+
+    TeOpTensor tensor_input0;
+    tensor_input0.shape = input0;
+    tensor_input0.dtype = "int32";
+    TeOpTensor tensor_output;
+    tensor_output.shape = output;
+    tensor_output.dtype = "int32";
+
+    TeOpTensorArg tensor_input_arg0;
+    tensor_input_arg0.tensor.push_back(tensor_input0);
+    tensor_input_arg0.arg_type = TA_SINGLE;
+    TeOpTensorArg tensor_output_arg;
+    tensor_output_arg.tensor.push_back(tensor_output);
+    tensor_output_arg.arg_type = TA_SINGLE;
+
+    TeOpParas opParas;
+    opParas.const_inputs["depth"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
+    (const uint8_t*)depth.data(), depth.size() * 4, ge::Tensor());
+    opParas.const_inputs["off_value"] = std::tuple<const uint8_t*, size_t, ge::Tensor>(
+    (const uint8_t*)off_value.data(), off_value.size() * 4, ge::Tensor());
+    opParas.inputs.push_back(tensor_input_arg0);
+    opParas.outputs.push_back(tensor_output_arg);
+    opParas.op_type = op_name;
+    OpCompileInfo op_compile_info;
+    op_compile_info.str = compileInfo;
+    op_compile_info.key = "12345673";
+    OpRunInfo runInfo;
+    ASSERT_TRUE(iter->second.tiling_func_(opParas, op_compile_info, runInfo));
+    EXPECT_EQ(to_string(runInfo.tiling_data), "0 0 8 32 32768 1 32768 1048576 0 1 1 ");
+}
