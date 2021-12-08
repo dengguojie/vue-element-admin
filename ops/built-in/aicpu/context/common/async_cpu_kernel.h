@@ -28,7 +28,7 @@ class AICPU_VISIBILITY AsyncCpuKernel : public CpuKernel {
 
   virtual uint32_t ComputeAsync(CpuKernelContext &ctx, DoneCallback done) = 0;
 
-  virtual uint32_t Compute(CpuKernelContext &ctx) override;
+  uint32_t Compute(CpuKernelContext &ctx) override;
 };
 } // namespace aicp 
 #endif  // ASYNC_CPU_KERNEL_H

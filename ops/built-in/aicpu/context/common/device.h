@@ -48,7 +48,7 @@ class Device {
    * param device_type: type of device
    * @return Sharder *: not null->success, null->success
    */
-  Sharder *InitSharder(DeviceType device_type);
+  Sharder *InitSharder(DeviceType device_type) const;
 
  private:
   DeviceType device_;  // type of device

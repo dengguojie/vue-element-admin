@@ -34,7 +34,7 @@ class AsyncEventUtil {
  public:
   static AsyncEventUtil &GetInstance();
 
-  void NotifyWait(void *notify_param, const uint32_t param_len);
+  void NotifyWait(void *notify_param, const uint32_t param_len) const;
 
   bool RegEventCb(const uint32_t event_id, const uint32_t sub_event_id,
                   const std::function<void(void *)> &cb);

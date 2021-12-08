@@ -47,9 +47,9 @@ def gen_data_file(data_file, shape, dtype, rand_type, low, high):
 
 def gen_random_data(caseno, nptype, shape, rand_type, low, high, shape_broad):
     np.random.seed(23457)
-    write_file_txt("tile_with_axis/data/tilewithaxis_data_input_shape_" + caseno + ".txt", 
+    write_file_txt("tile_with_axis/data/tilewithaxis_data_input_shape_" + caseno + ".txt",
                    np.array(shape), fmt="%s")
-    input = gen_data_file("tile_with_axis/data/tilewithaxis_input_data_" + caseno + ".txt", 
+    input = gen_data_file("tile_with_axis/data/tilewithaxis_input_data_" + caseno + ".txt",
                           shape, nptype, rand_type, low, high)
     output = np.tile(input, shape_broad)
     write_file_txt("tile_with_axis/data/tilewithaxis_output_data_" + caseno + ".txt",

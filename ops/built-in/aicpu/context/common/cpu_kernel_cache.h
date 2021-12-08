@@ -84,7 +84,7 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    * @return uint32_t: 0 indicates success, while the others fail
    */
   uint32_t UpdateFWKOutputShape(ExtInfoMsg &ext_info_msg,
-                                const CpuKernelContext &ctx);
+                                const CpuKernelContext &ctx) const;
 
   /*
    * get shape information from framework.
@@ -114,7 +114,7 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    * @return uint32_t: 0 indicates success, while the others fail
    */
   uint32_t ParseExtShapeType(const FWKAdapter::ExtInfo *ext_info,
-                             bool &unknown_shape);
+                             bool &unknown_shape) const;
 
   /*
    * parse extend tensor bitmap information.
@@ -151,7 +151,7 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    * @return uint32_t: 0 indicates success, while the others fail
    */
   uint32_t ParseExtSessionInfo(FWKAdapter::ExtInfo *ext_info,
-                               uint64_t &kernel_id);
+                               uint64_t &kernel_id) const;
 
   /*
    * parse extend async wait info
@@ -162,7 +162,7 @@ class CpuKernelCache : public KernelCache<CpuCacheData> {
    */
   uint32_t ParseAsyncWait(FWKAdapter::ExtInfo *ext_info,
                           uint8_t &wait_type,
-                          uint32_t &wait_id);
+                          uint32_t &wait_id) const;
 
   /*
    * parse extend information.

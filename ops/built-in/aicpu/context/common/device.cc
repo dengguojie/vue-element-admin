@@ -51,7 +51,7 @@ const Sharder *Device::GetSharder() const {
  * param device: type of device
  * @return Sharder *: not null->success, null->success
  */
-Sharder *Device::InitSharder(DeviceType device_type) {
+Sharder *Device::InitSharder(DeviceType device_type) const {
   if (device_type == DEVICE) {
     return new (std::nothrow) DeviceSharder(device_type);
   } else {

@@ -76,7 +76,7 @@ AsyncEventUtil::~AsyncEventUtil() {
   }
 }
 
-void AsyncEventUtil::NotifyWait(void *notify_param, const uint32_t param_len) {
+void AsyncEventUtil::NotifyWait(void *notify_param, const uint32_t param_len) const {
   if (notify_wait_func_ != nullptr) {
     notify_wait_func_(notify_param, param_len);
     return;

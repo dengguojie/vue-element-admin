@@ -36,7 +36,7 @@ class AICPU_VISIBILITY CpuKernelRegister {
    * param op_type: the op type of kernel
    * @return shared_ptr<CpuKernel>: cpu kernel ptr
    */
-  std::shared_ptr<CpuKernel> GetCpuKernel(const std::string &op_type);
+  std::shared_ptr<CpuKernel> GetCpuKernel(const std::string &opType);
 
   /*
    * get all cpu kernel registered op types.

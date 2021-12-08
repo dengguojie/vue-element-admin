@@ -158,9 +158,9 @@ uint32_t CpuKernelRegister::RunCpuKernelAsync(CpuKernelContext &ctx,
   notify_info->waitId = wait_id;
 
   auto start = std::chrono::steady_clock::now();
-  auto done = [&, notify_info, kernel, type, cb, start](uint32_t status) {
+  auto done = [notify_info, kernel, type, cb, start](uint32_t status) {
     auto end = std::chrono::steady_clock::now();
-    double dr_us=std::chrono::duration<double,std::micro>(end-start).count();
+    double dr_us = std::chrono::duration<double, std::micro>(end-start).count();
     KERNEL_LOG_EVENT("RunCpuKernel[%s], run time is [%lf] us.", type.c_str(), dr_us);
     if (status == KERNEL_STATUS_OK) {
       KERNEL_LOG_INFO("RunCpuKernel[%s] success.", type.c_str());

@@ -107,7 +107,7 @@ class AICPU_VISIBILITY CpuKernelUtils {
    * @return uint32_t: 0->sucess other->failed
    */
   static uint32_t ParallelFor(
-      const CpuKernelContext &ctx, int64_t total, int64_t per_unit_size,
+      const CpuKernelContext &ctx, int64_t total, int64_t perUnitSize,
       const std::function<void(int64_t, int64_t)> &work);
 
   /*

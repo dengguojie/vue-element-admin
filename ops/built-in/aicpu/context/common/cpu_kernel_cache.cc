@@ -49,7 +49,7 @@ int32_t CpuKernelCache::InitParameter() {
  * update framework output tensor shape.
  */
 uint32_t CpuKernelCache::UpdateFWKOutputShape(ExtInfoMsg &ext_info_msg,
-                                              const CpuKernelContext &ctx) {
+                                              const CpuKernelContext &ctx) const {
   if (ext_info_msg.unknown_shape) {
     for (size_t i = 0; i < ctx.GetOutputsSize(); ++i) {
       Tensor *output = ctx.Output(i);
@@ -204,7 +204,7 @@ uint32_t CpuKernelCache::UpdateTensor(
           static_cast<uintptr_t>(tensor_desc->data_addr)));
     } else {
       output->SetData(
-         reinterpret_cast<void *>(static_cast<uintptr_t>(io_addrs[addr_index])));
+          reinterpret_cast<void *>(static_cast<uintptr_t>(io_addrs[addr_index])));
     }
 
     if (ext_info_msg.unknown_shape) {
@@ -235,7 +235,7 @@ uint32_t CpuKernelCache::UpdateTensor(
  * parse extend tensor shape types information.
  */
 uint32_t CpuKernelCache::ParseExtShapeType(const FWKAdapter::ExtInfo *ext_info,
-                                           bool &unknown_shape) {
+                                           bool &unknown_shape) const {
   if (ext_info->infoLen != sizeof(int32_t)) {
     KERNEL_LOG_ERROR(
         "Parse extend shape type failed, as info length must be [%zu], but got "
@@ -280,7 +280,7 @@ uint32_t CpuKernelCache::ParseExtShapeAndType(
  * parse extend session information.
  */
 uint32_t CpuKernelCache::ParseExtSessionInfo(FWKAdapter::ExtInfo *ext_info,
-                                             uint64_t &kernel_id) {
+                                             uint64_t &kernel_id) const {
   // no overflow
   KERNEL_LOG_INFO("Parse extend session info.");
   auto need_len = sizeof(SessionInfo);
@@ -326,16 +326,16 @@ uint32_t CpuKernelCache::ParseExtBitMap(const FWKAdapter::ExtInfo *ext_info,
 // parse async wait info
 uint32_t CpuKernelCache::ParseAsyncWait(FWKAdapter::ExtInfo *ext_info,
                                         uint8_t &wait_type,
-                                        uint32_t &wait_id) {
+                                        uint32_t &wait_id) const {
   if (ext_info->infoLen != sizeof(FWKAdapter::AsyncWait)) {
     KERNEL_LOG_ERROR("Parse extend async wait failed, as info length must be [%zu], but got [%u].",
-    sizeof(FWKAdapter::AsyncWait), ext_info->infoLen);
+        sizeof(FWKAdapter::AsyncWait), ext_info->infoLen);
     return KERNEL_STATUS_PARAM_INVALID;
   }
   FWKAdapter::AsyncWait *async_info = reinterpret_cast<FWKAdapter::AsyncWait *>(ext_info->infoMsg);
   wait_type = async_info->waitType;
   wait_id = async_info->waitId;
-  KERNEL_LOG_INFO("async wait type [%u], notify_id[%lu].", wait_type, wait_id);
+  KERNEL_LOG_INFO("async wait type [%u], notify_id[%u].", wait_type, wait_id);
   return KERNEL_STATUS_OK;
 }
 
